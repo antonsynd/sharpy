@@ -1,0 +1,9 @@
+{
+  "python.analysis.extraPaths": [
+    "__resources"
+  ],
+  "files.associations": {
+    "*.json5": "jsonc",
+    "*.spy": "python",
+  }
+}

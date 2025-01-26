@@ -1,3 +1,9 @@
+# Custom package files and dirs
+__resources/
+*.png
+*.gv
+**/.DS_Store
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

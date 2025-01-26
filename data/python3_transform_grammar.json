@@ -1,0 +1,5 @@
+{
+  "url": "https://raw.githubusercontent.com/antlr/grammars-v4/refs/heads/master/python/python3_12/Python3/transformGrammar.py",
+  "destination": "transformGrammar.py",
+  "checksum": "85600461b640d8838bee6d7cce58e07b09302db6a82b26a68a6ea008a4f28534"
+}

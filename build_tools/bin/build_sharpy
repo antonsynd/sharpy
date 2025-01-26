@@ -1,0 +1,296 @@
+#!/usr/bin/env python3
+import argparse
+import hashlib
+import json
+import logging
+import os
+import subprocess
+import sys
+from pathlib import Path
+from typing import Iterable, Mapping, Sequence
+
+import requests
+
+_logger: logging.Logger = logging.getLogger(name="build_sharpy")
+
+ROOT_DIR: Path = Path(__file__).parent.parent.parent
+PYTHON_SRC_DIR: Path = ROOT_DIR / "src"
+PYTHON_TEST_DIR: Path = ROOT_DIR / "test"
+PYTHON_TOOLS_DIR: Path = ROOT_DIR / "tools"
+PYTHON_DATA_DIR: Path = ROOT_DIR / "data"
+PYTHON_RESOURCE_DIR: Path = ROOT_DIR / "__resources"
+
+
+_expected_resources: Sequence[Path] = [
+    PYTHON_RESOURCE_DIR / "PythonLexer.g4",
+    PYTHON_RESOURCE_DIR / "PythonParser.g4",
+    PYTHON_RESOURCE_DIR / "PythonLexerBase.py",
+    PYTHON_RESOURCE_DIR / "PythonParserBase.py",
+    PYTHON_RESOURCE_DIR / "PythonParserListener.py",
+    PYTHON_RESOURCE_DIR / "PythonParserVisitor.py",
+    PYTHON_RESOURCE_DIR / "transformGrammar.py",
+]
+
+
+def main() -> None:
+    setup_logger()
+
+    parser: argparse.ArgumentParser = create_parser()
+    args, rest = parser.parse_known_args()
+
+    command: str = args.command
+
+    if command == "build":
+        build(args=args, rest=rest)
+    elif command == "setup":
+        setup(args=args, rest=rest)
+    elif command == "clean":
+        clean(args=args, rest=rest)
+    elif command == "install":
+        install(args=args, rest=rest)
+    elif command == "format":
+        format(args=args, rest=rest)
+    elif command == "release":
+        format(args=args, rest=rest)
+        build(args=args, rest=rest)
+        test(args=args, rest=rest)
+        install(args=args, rest=rest)
+    elif command == "run":
+        run(args=args, rest=rest)
+    elif command == "test":
+        test(args=args, rest=rest)
+    elif command == "help":
+        parser.print_help()
+    else:
+        get_logger().error(f'Unknown command "{command}"')
+
+
+def create_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="")
+    subparsers = parser.add_subparsers(dest="command")
+
+    setup_parser = subparsers.add_parser("setup")
+    build_parser = subparsers.add_parser("build")
+    clean_parser = subparsers.add_parser("clean")
+    install_parser = subparsers.add_parser("install")
+    format_parser = subparsers.add_parser("format")
+    release_parser = subparsers.add_parser("release")
+    run_parser = subparsers.add_parser("run")
+    test_parser = subparsers.add_parser("test")
+    help_parser = subparsers.add_parser("help")
+
+    return parser
+
+
+def build(args: argparse.Namespace, rest: Sequence[str]) -> None:
+    check_for_expected_resources()
+
+
+def setup(args: argparse.Namespace, rest: Sequence[str]) -> None:
+    get_logger().info("Setting up...")
+
+    PYTHON_RESOURCE_DIR.mkdir(exist_ok=True)
+    old_cwd: Path = Path.cwd()
+
+    try:
+        get_logger().info("Downloading resources...")
+        download_data_files()
+
+        os.chdir(PYTHON_RESOURCE_DIR)
+
+        get_logger().info("Fixing grammar...")
+        subprocess.run([sys.executable, str(PYTHON_RESOURCE_DIR / "transformGrammar.py")])
+
+        get_logger().info("Generating lexer...")
+        subprocess.run(["antlr", "-Dlanguage=Python3", str(PYTHON_RESOURCE_DIR / "PythonLexer.g4")])
+
+        get_logger().info("Generating parser...")
+        subprocess.run(
+            ["antlr", "-Dlanguage=Python3", str(PYTHON_RESOURCE_DIR / "PythonParser.g4")]
+        )
+
+        get_logger().info("Generating visitor...")
+        subprocess.run(
+            [
+                "antlr",
+                "-visitor",
+                "-Dlanguage=Python3",
+                str(PYTHON_RESOURCE_DIR / "PythonParser.g4"),
+            ]
+        )
+
+    except subprocess.CalledProcessError as e:
+        print(f"Encountered error {e}", file=sys.stderr)
+        os.chdir(old_cwd)
+        sys.exit(1)
+
+    os.chdir(old_cwd)
+
+
+def check_for_expected_resources() -> None:
+    if not PYTHON_RESOURCE_DIR.exists():
+        print(f"Resources not generated, please run 'setup' target", file=sys.stderr)
+        sys.exit(1)
+
+    missing_files: Sequence[Path] = []
+
+    for file_path in _expected_resources:
+        if not file_path.exists() or file_path.stat().st_size == 0:
+            missing_files.append(file_path)
+
+    if missing_files:
+        print(f"Missing the following files:", file=sys.stderr)
+
+        for file_path in missing_files:
+            print(f"  {file_path}", file=sys.stderr)
+
+        print(f"Please run 'setup' target", file=sys.stderr)
+        sys.exit(1)
+
+
+def download_data_files() -> None:
+    download_files_from_jsons(specs=PYTHON_DATA_DIR.glob("*.json"), target_dir=PYTHON_RESOURCE_DIR)
+
+
+def download_files_from_jsons(specs: Iterable[Path], target_dir: Path) -> None:
+    for spec in specs:
+        download_file_from_json(spec=spec, target_dir=target_dir)
+
+
+def download_file_from_json(spec: Path, target_dir: Path) -> None:
+    spec_json: Mapping[str, str] = json.loads(spec.read_text())
+    url: str = spec_json["url"]
+    dest_path: Path = target_dir / spec_json["destination"]
+    expected_checksum: str = spec_json["checksum"]
+
+    response: requests.Response = requests.get(url)
+
+    if response.status_code != 200:
+        print(
+            f"Failed to download '{url}' with status code {response.status_code}", file=sys.stderr
+        )
+        sys.exit(1)
+
+    retrieved_bytes: bytes = response.content
+    actual_checksum: str = hashlib.sha256(retrieved_bytes).hexdigest()
+
+    if expected_checksum != actual_checksum:
+        print(
+            f"Downloaded file '{url}' has checksum {actual_checksum}, but expected {expected_checksum}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    dest_path.write_bytes(retrieved_bytes)
+
+
+def clean(args: argparse.Namespace, rest: Sequence[str]) -> None:
+    get_logger().info("Removing __pycache__ directories...")
+
+    remove_pycache_dirs(root_path=PYTHON_SRC_DIR)
+    remove_pycache_dirs(root_path=PYTHON_TEST_DIR)
+
+
+def install(args: argparse.Namespace, rest: Sequence[str]) -> None:
+    get_logger().info("Nothing to install!")
+
+
+def format(args: argparse.Namespace, rest: Sequence[str]) -> None:
+    format_with_isort()
+    format_with_black()
+
+
+def format_with_black() -> None:
+    get_logger().info("Formatting with black...")
+
+    try:
+        subprocess.run(["black", str(PYTHON_SRC_DIR), str(PYTHON_TEST_DIR), str(PYTHON_TOOLS_DIR)])
+    except subprocess.CalledProcessError as e:
+        print(f"Encountered error {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def format_with_isort() -> None:
+    get_logger().info("Formatting with isort...")
+
+    try:
+        subprocess.run(["isort", str(PYTHON_SRC_DIR), str(PYTHON_TEST_DIR), str(PYTHON_TOOLS_DIR)])
+    except subprocess.CalledProcessError as e:
+        print(f"Encountered error {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def run(args: argparse.Namespace, rest: Sequence[str]) -> None:
+    get_logger().info("Running custom command...")
+
+    run_env: Mapping[str, str] = os.environ.copy()
+    existing_python_path: str = run_env.get("PYTHONPATH", "")
+    run_env["PYTHONPATH"] = ":".join(
+        [existing_python_path, str(PYTHON_SRC_DIR), str(PYTHON_RESOURCE_DIR)]
+    )
+
+    try:
+        subprocess.run(rest, env=run_env)
+    except subprocess.CalledProcessError as e:
+        get_logger().error(f"Encountered error {e}")
+        sys.exit(1)
+
+
+def test(args: argparse.Namespace, rest: Sequence[str]) -> None:
+    get_logger().info("Running tests with pytest...")
+
+    try:
+        subprocess.run(["pytest", str(PYTHON_TEST_DIR), *rest])
+    except subprocess.CalledProcessError as e:
+        get_logger().error(f"Encountered error {e}")
+        sys.exit(1)
+
+
+def get_logger() -> logging.Logger:
+    global _logger
+    return _logger
+
+
+def setup_logger() -> None:
+    global _logger
+
+    _logger.setLevel(logging.DEBUG)  # Set the base level to the lowest level you want to capture
+
+    # Handler for stdout (INFO and DEBUG)
+    _stdout_handler = logging.StreamHandler(sys.stdout)
+    _stdout_handler.setLevel(logging.DEBUG)
+    _stdout_handler.addFilter(
+        lambda record: record.levelno <= logging.INFO
+    )  # Filter for DEBUG and INFO
+
+    # Handler for stderr (WARNING and ERROR)
+    _stderr_handler = logging.StreamHandler(sys.stderr)
+    _stderr_handler.setLevel(logging.WARNING)
+    _stderr_handler.addFilter(
+        lambda record: record.levelno >= logging.WARNING
+    )  # Filter for WARNING and ERROR
+
+    _formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    _stdout_handler.setFormatter(_formatter)
+    _stderr_handler.setFormatter(_formatter)
+
+    # Add handlers to the logger
+    _logger.addHandler(_stdout_handler)
+    _logger.addHandler(_stderr_handler)
+
+
+def remove_pycache_dirs(root_path: Path):
+    # Iterate over all __pycache__ directories recursively
+    for pycache_dir in root_path.rglob("__pycache__"):
+        if pycache_dir.is_dir():
+            get_logger().info(f"Removing: {pycache_dir}")
+
+            # Remove the __pycache__ directory
+            for pycache_file in pycache_dir.iterdir():
+                pycache_file.unlink()  # Remove the file
+
+            pycache_dir.rmdir()  # Remove the directory itself
+
+
+if __name__ == "__main__":
+    main()
