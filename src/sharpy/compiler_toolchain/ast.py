@@ -1,6 +1,6 @@
-from typing import MutableSequence, Type, Union, Tuple, Dict, AbstractSet, Optional, Sequence
 from enum import Enum, auto
 from io import StringIO
+from typing import AbstractSet, Dict, MutableSequence, Optional, Sequence, Tuple, Type, Union
 
 
 class Source:

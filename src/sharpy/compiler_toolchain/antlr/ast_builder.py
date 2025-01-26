@@ -1,15 +1,13 @@
+import inspect
 from typing import MutableSequence, Optional
 
-from antlr4 import ParseTreeWalker, ParseTreeVisitor
+from antlr4 import ParseTreeVisitor, ParseTreeWalker
 from PythonParser import PythonParser
 from PythonParserListener import PythonParserListener
 
-from sharpy.compiler_toolchain.ast import AST, Module, FunctionDef
+from sharpy.compiler_toolchain.ast import AST, FunctionDef, Module
 from sharpy.compiler_toolchain.ast_builder import ASTBuilderBase
 from sharpy.compiler_toolchain.parser import ParseTreeNode
-
-
-import inspect
 
 
 def print_name():
