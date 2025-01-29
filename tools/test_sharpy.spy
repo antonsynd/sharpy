@@ -1,0 +1,13 @@
+class Example:
+    x: int = 42
+    blah: list[list[float]] = []
+    foo: dict[int, str] = {}
+
+    def greet(self, name: str) -> str:
+        return "Hello, " + name
+
+
+if 1 < 0:
+    x: int = 0
+else:
+    x: int = 4
