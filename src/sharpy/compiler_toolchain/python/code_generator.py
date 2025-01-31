@@ -1,6 +1,9 @@
 import ast
 import re
+import subprocess
+import sys
 
+from pathlib import Path
 from enum import Enum, auto
 from io import TextIOBase
 from typing import Mapping, MutableSequence, Optional, Sequence
@@ -83,27 +86,22 @@ class CodegenContext:
 
 
 class PythonToCSharp(ast.NodeVisitor):
-    def __init__(self, emit_line_metadata: bool = False):
+    def __init__(
+        self,
+        emit_line_metadata: bool = False,
+        format: bool = False,
+        csharpier_path: Optional[str] = None,
+    ):
         self._result: MutableSequence[str] = []
-        self._indent: int = 0
         self._emit_line_metadata: bool = emit_line_metadata
+        self._format: bool = format
+        self._csharpier_path: Optional[str] = csharpier_path
 
         self._file_name: str = "anonymous.spy"
         self._context_stack: MutableSequence[CodegenContext] = []
 
     def set_file_name(self, s: str) -> None:
         self._file_name = s if s else "anonymous.spy"
-
-    def indent(self) -> int:
-        self._indent += 1
-
-        return self._indent * 4
-
-    def get_indent(self) -> int:
-        return self._indent * 4
-
-    def newline(self) -> None:
-        self._result.append("\n")
 
     def peek_context_type(self) -> CodegenContextType:
         return self._context_stack[-1].get_type()
@@ -118,23 +116,12 @@ class PythonToCSharp(ast.NodeVisitor):
         self, line_num: int, col_offset: int, end_line_num: int, end_col_offset: int
     ) -> None:
         if self._emit_line_metadata:
+            # Python column offsets are 0-indexed, but C# is 1-indexed
             self.append(
-                f'#line ({line_num}, {col_offset}) - ({end_line_num}, {end_col_offset}) "{self._file_name}"'
+                f'\n#line ({line_num}, {col_offset + 1}) - ({end_line_num}, {end_col_offset + 1}) "{self._file_name}"\n'
             )
-            self.newline()
-
-    def dedent(self) -> int:
-        if self._indent > 0:
-            self._indent -= 1
-        else:
-            raise Exception("Cannot dedent anymore")
-
-        return self._indent * 4
 
     def append(self, s: str) -> None:
-        self._result.append(" " * self.get_indent() + s)
-
-    def inline(self, s: str) -> None:
         self._result.append(s)
 
     def adjust_identifier(self, s: str, context_type: Optional[CodegenContextType] = None) -> str:
@@ -163,7 +150,6 @@ class PythonToCSharp(ast.NodeVisitor):
         self.pop_context()
 
     def visit_FunctionDef(self, node: ast.FunctionDef):
-        self.newline()
 
         # Return type
         self.push_context(CodegenContext(context_type=CodegenContextType.FUNCTION_RETURN_TYPE))
@@ -185,18 +171,12 @@ class PythonToCSharp(ast.NodeVisitor):
         func_name: str = self.adjust_identifier(node.name)
 
         self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
-        self.append(f"public {ret_type} {func_name}({', '.join(args)})")
-        self.newline()
-        self.append("{")
-        self.newline()
-        self.indent()
+        self.append(f"public {ret_type} {func_name}({', '.join(args)}) {{")
 
         for i, stmt in enumerate(node.body):
             self.visit(stmt)
 
-        self.dedent()
-        self.append("}")
-        self.newline()
+            self.append("}")
 
     def visit_Return(self, node: ast.Return):
         self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
@@ -205,8 +185,7 @@ class PythonToCSharp(ast.NodeVisitor):
         if node.value:
             self.visit_expr(node.value)
 
-        self.inline(";")
-        self.newline()
+        self.append(";")
 
     def visit_AnnAssign(self, node: ast.AnnAssign):
         var_type: str = map_python_type_to_cs_type(ast.unparse(node.annotation))
@@ -215,7 +194,6 @@ class PythonToCSharp(ast.NodeVisitor):
 
         self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
         self.append(f"{var_type} {target} = {value};")
-        self.newline()
 
     def visit_Assign(self, node: ast.Assign):
         targets: str = ", ".join(ast.unparse(t) for t in node.targets)
@@ -223,44 +201,28 @@ class PythonToCSharp(ast.NodeVisitor):
 
         self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
         self.append(f"var {targets} = {value};")
-        self.newline()
 
     def visit_Expr(self, node: ast.Expr):
         self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
         self.append(ast.unparse(node) + ";")
-        self.newline()
 
     def visit_If(self, node: ast.If):
-        self.newline()
 
         self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
-        self.append(f"if ({ast.unparse(node.test)})")
-        self.newline()
-        self.append("{")
-        self.newline()
-        self.indent()
+        self.append(f"if ({ast.unparse(node.test)}) {{")
 
         for stmt in node.body:
             self.visit(stmt)
 
-        self.dedent()
         self.append("}")
 
         if node.orelse:
-            self.newline()
-            self.append("else")
-            self.newline()
-            self.append("{")
-            self.newline()
-            self.indent()
+            self.append("else {")
 
-            for stmt in node.orelse:
-                self.visit(stmt)
+        for stmt in node.orelse:
+            self.visit(stmt)
 
-            self.dedent()
-            self.append("}")
-
-        self.newline()
+        self.append("}")
 
     def visit_Constant(self, node):
         match ast.unparse(node):
@@ -274,17 +236,14 @@ class PythonToCSharp(ast.NodeVisitor):
     def visit_Break(self, node: ast.Break):
         self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
         self.append("break;")
-        self.newline()
 
     def visit_Continue(self, node: ast.Continue):
         self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
         self.append("continue;")
-        self.newline()
 
     def visit_Pass(self, node: ast.Pass):
         self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
-        self.append("// pass")
-        self.newline()
+        self.append("// pass\n")
 
     def visit_BinOp(self, node: ast.BinOp):
         self.visit_expr(node.left)
@@ -292,10 +251,10 @@ class PythonToCSharp(ast.NodeVisitor):
         self.visit_expr(node.right)
 
     def visit_Add(self, node: ast.Add):
-        self.inline(" + ")
+        self.append(" + ")
 
     def visit_Name(self, node: ast.Name):
-        self.inline(node.id)
+        self.append(node.id)
 
     def visit_expr(self, node: ast.expr):
         match type(node):
@@ -317,68 +276,80 @@ class PythonToCSharp(ast.NodeVisitor):
         return ast.unparse(node)  # Default case
 
     def visit_While(self, node: ast.While):
-        self.newline()
 
         self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
         self.append(f"while (")
         self.visit_expr(node.test)
-        self.append(")")
-        self.newline()
-        self.append("{")
-        self.newline()
-        self.indent()
+        self.append(") {")
 
         for stmt in node.body:
             self.visit(stmt)
 
-        self.dedent()
         self.append("}")
-        self.newline()
 
     def visit_For(self, node: ast.For):
-        self.newline()
 
         iter_expr: str = ast.unparse(node.iter)
         target: str = ast.unparse(node.target)
 
         self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
-        self.append(f"foreach (var {target} in {iter_expr})")
-        self.newline()
-        self.append("{")
-        self.newline()
-        self.indent()
+        self.append(f"foreach (var {target} in {iter_expr}) {{")
 
         for stmt in node.body:
             self.visit(stmt)
 
-        self.dedent()
         self.append("}")
 
     def visit_ClassDef(self, node: ast.ClassDef):
-        self.newline()
 
         self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
         class_name: str = self.adjust_identifier(
             s=node.name, context_type=CodegenContextType.CLASS_NAME
         )
-        self.append(f"public class {class_name}")
-        self.newline()
-        self.append("{")
-        self.newline()
-        self.indent()
+        self.append(f"public class {class_name} {{")
 
         for stmt in node.body:
             self.visit(stmt)
 
-        self.dedent()
         self.append("}")
-        self.newline()
 
-    def generate_csharp(self, buffer: TextIOBase, file_name: Optional[str] = None) -> str:
+    def generate_csharp(
+        self, buffer: TextIOBase, file_name: Optional[str] = None, format: bool = False
+    ) -> str:
         self.set_file_name(file_name)
 
         tree: ast.Module = ast.parse(buffer)
 
+        self.append("namespace test {")
+
         self.visit(tree)
 
-        return "".join(self._result)
+        self.append("}")
+
+        if self._format and self._csharpier_path:
+            try:
+                proc: subprocess.Popen = subprocess.Popen(
+                    args=[
+                        self._csharpier_path,
+                        "--no-cache",
+                        "--no-msbuild-check",
+                        "--fast",
+                        "--write-stdout",
+                    ],
+                    text=True,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                )
+
+                for s in self._result:
+                    proc.stdin.write(s)
+
+                proc.stdin.close()
+            except subprocess.CalledProcessError as e:
+                print(e.stderr, file=sys.stderr)
+                print(e, file=sys.stderr)
+                sys.exit(1)
+
+            return proc.stdout.read()
+        else:
+            return "".join(self._result)

@@ -7,12 +7,12 @@ class Example:
         return "Hello, " + name
 
 
-if 1 < 0:
-    x: int = 0
-else:
-    x: int = 4
+# if 1 < 0:
+#     x: int = 0
+# else:
+#     x: int = 4
 
-while True:
-    continue
-    break
-    pass
+# while True:
+#     continue
+#     break
+#     pass
