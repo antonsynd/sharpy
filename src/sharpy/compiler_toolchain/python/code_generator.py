@@ -2,10 +2,9 @@ import ast
 import re
 import subprocess
 import sys
-
-from pathlib import Path
 from enum import Enum, auto
 from io import TextIOBase
+from pathlib import Path
 from typing import Mapping, MutableSequence, Optional, Sequence
 
 # Mapping Python types to C#

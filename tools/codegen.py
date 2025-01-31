@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-from sharpy.compiler_toolchain.python import code_generator
 import argparse
 from pathlib import Path
 from typing import Optional
+
+from sharpy.compiler_toolchain.python import code_generator
 
 
 def main() -> None:
