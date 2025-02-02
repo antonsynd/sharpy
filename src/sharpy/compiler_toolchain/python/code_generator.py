@@ -64,6 +64,16 @@ def map_python_type_to_cs_type(s: str) -> str:
     return "object"
 
 
+class CodegenNameFormat(Enum):
+    FUNCTION_NAME = auto()
+    CLASS_NAME = auto()
+    NAMESPACE_NAME = auto()
+    FUNCTION_VARIABLE_NAME = auto()
+    CLASS_MEMBER_NAME = auto()
+    CLASS_METHOD_NAME = auto()
+    CLASS_PROPERTY_NAME = auto()
+
+
 class CodegenContextType(Enum):
     MODULE = auto()
     NAMESPACE_NAME = auto()
@@ -140,6 +150,9 @@ class PythonToCSharp(ast.NodeVisitor):
                 # TODO: Adjust for whether it is a local variable, class member, etc.
                 return "".join(x.capitalize() for x in s.split("_"))
 
+    def get_module_name(self) -> str:
+        return self._file_name.split(".spy")[0]
+
     def visit_Module(self, node):
         self.push_context(CodegenContext(context_type=CodegenContextType.MODULE))
 
@@ -175,7 +188,7 @@ class PythonToCSharp(ast.NodeVisitor):
         for i, stmt in enumerate(node.body):
             self.visit(stmt)
 
-            self.append("}")
+        self.append("}")
 
     def visit_Return(self, node: ast.Return):
         self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
@@ -218,10 +231,10 @@ class PythonToCSharp(ast.NodeVisitor):
         if node.orelse:
             self.append("else {")
 
-        for stmt in node.orelse:
-            self.visit(stmt)
+            for stmt in node.orelse:
+                self.visit(stmt)
 
-        self.append("}")
+            self.append("}")
 
     def visit_Constant(self, node):
         match ast.unparse(node):
@@ -242,7 +255,7 @@ class PythonToCSharp(ast.NodeVisitor):
 
     def visit_Pass(self, node: ast.Pass):
         self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
-        self.append("// pass\n")
+        self.append("\n// pass\n")
 
     def visit_BinOp(self, node: ast.BinOp):
         self.visit_expr(node.left)
@@ -273,6 +286,12 @@ class PythonToCSharp(ast.NodeVisitor):
                 print(unsupported)
 
         return ast.unparse(node)  # Default case
+
+    def visit_Compare(self, node: ast.Compare):
+        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.visit(node.left)
+        self.visit(node.ops[0])
+        self.visit(node.comparators[0])
 
     def visit_While(self, node: ast.While):
 
@@ -319,7 +338,11 @@ class PythonToCSharp(ast.NodeVisitor):
 
         tree: ast.Module = ast.parse(buffer)
 
-        self.append("namespace test {")
+        namespace_name: str = self.get_module_name()
+        namespace_name = self.adjust_identifier(
+            namespace_name, context_type=CodegenContextType.NAMESPACE_NAME
+        )
+        self.append(f"namespace {namespace_name} {{")
 
         self.visit(tree)
 
