@@ -4,12 +4,12 @@ import subprocess
 import sys
 from enum import Enum, auto
 from io import TextIOBase
-from pathlib import Path
 from typing import Mapping, MutableSequence, Optional, Sequence
 
 # Mapping Python types to C#
 TYPE_MAP: Mapping[str, str] = {
     "bool": "bool",
+    "byte": "byte",
     "decimal": "decimal",
     "double": "double",
     "int": "int",
@@ -17,8 +17,12 @@ TYPE_MAP: Mapping[str, str] = {
     "long": "long",
     "None": "void",  # Only in return types
     "object": "object",
+    "sbyte": "sbyte",
     "short": "short",
     "str": "string",
+    "uint": "uint",
+    "ulong": "ulong",
+    "ushort": "ushort",
 }
 
 SINGLE_TEMPLATE_TYPE_MAP: Mapping[str, str] = {
