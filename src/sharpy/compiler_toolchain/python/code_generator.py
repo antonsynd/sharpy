@@ -165,8 +165,58 @@ class PythonToCSharp(ast.NodeVisitor):
 
         self.pop_context()
 
-    def visit_FunctionDef(self, node: ast.FunctionDef):
+    def visit_And(self, node: ast.And):
+        self.append(" && ")
 
+    def visit_Or(self, node: ast.Or):
+        self.append(" || ")
+
+    def visit_NotEq(self, node: ast.NotEq):
+        self.append(" != ")
+
+    def visit_Eq(self, node: ast.Eq):
+        self.append(" = ")
+
+    def visit_Yield(self, node: ast.Yield):
+        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.append(f"yield return {ast.unparse(node.value)}")
+
+    def visit_ExceptHandler(self, node: ast.ExceptHandler):
+        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        exception_name: str = self.adjust_identifier(node.name)
+        exception_type: str = ast.unparse(node.type)
+
+        self.append(f"catch ({exception_type} {exception_name}) {{")
+
+        for i, stmt in enumerate(node.body):
+            self.visit(stmt)
+
+        self.append("}")
+
+    def visit_Try(self, node: ast.Try):
+        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.append("try {")
+
+        for (
+            i,
+            stmt,
+        ) in enumerate(node.body):
+            self.visit(stmt)
+
+        self.append("}")
+
+        for i, handler in enumerate(node.handlers):
+            self.visit(handler)
+
+        if node.finalbody:
+            self.append("finally {")
+
+            for i, stmt in enumerate(node.finalbody):
+                self.visit(stmt)
+
+            self.append("}")
+
+    def visit_FunctionDef(self, node: ast.FunctionDef):
         # Return type
         self.push_context(CodegenContext(context_type=CodegenContextType.FUNCTION_RETURN_TYPE))
         ret_type: str = map_python_type_to_cs_type(ast.unparse(node.returns))

@@ -14,4 +14,11 @@ class Example:
             break
             pass
 
+        try:
+            pass
+        except Exception as e:
+            pass
+        finally:
+            pass
+
         return "Hello, " + name
