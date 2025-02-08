@@ -3,7 +3,7 @@ import re
 import subprocess
 import sys
 from enum import Enum, auto
-from io import TextIOBase
+from io import StringIO, TextIOBase
 from typing import Mapping, MutableSequence, Optional, Sequence
 
 # Mapping Python types to C#
@@ -98,6 +98,14 @@ class CodegenContext:
         return self._context_type
 
 
+class CodegenDirective(Enum):
+    NOSPACE = auto()
+    SPACE = auto()
+
+
+CodegenElement = CodegenDirective | str
+
+
 class PythonToCSharp(ast.NodeVisitor):
     def __init__(
         self,
@@ -105,7 +113,7 @@ class PythonToCSharp(ast.NodeVisitor):
         format: bool = False,
         csharpier_path: Optional[str] = None,
     ):
-        self._result: MutableSequence[str] = []
+        self._result: MutableSequence[CodegenElement] = []
         self._emit_line_metadata: bool = emit_line_metadata
         self._format: bool = format
         self._csharpier_path: Optional[str] = csharpier_path
@@ -125,16 +133,19 @@ class PythonToCSharp(ast.NodeVisitor):
     def pop_context(self) -> CodegenContext:
         return self._context_stack.pop()
 
-    def source_line(
-        self, line_num: int, col_offset: int, end_line_num: int, end_col_offset: int
-    ) -> None:
+    def source_line(self, node: ast.AST) -> None:
         if self._emit_line_metadata:
+            line_num: int = node.lineno
+            col_offset: int = node.col_offset
+            end_line_num: int = node.end_lineno
+            end_col_offset: int = node.end_col_offset
+
             # Python column offsets are 0-indexed, but C# is 1-indexed
             self.append(
                 f'\n#line ({line_num}, {col_offset + 1}) - ({end_line_num}, {end_col_offset + 1}) "{self._file_name}"\n'
             )
 
-    def append(self, s: str) -> None:
+    def append(self, s: CodegenDirective) -> None:
         self._result.append(s)
 
     def adjust_identifier(self, s: str, context_type: Optional[CodegenContextType] = None) -> str:
@@ -157,21 +168,99 @@ class PythonToCSharp(ast.NodeVisitor):
     def get_module_name(self) -> str:
         return self._file_name.split(".spy")[0]
 
+    def dump_to_buffer(self, buffer: TextIOBase) -> None:
+        emit_space: bool = True
+
+        for s in self._result:
+            if isinstance(s, CodegenDirective):
+                if s == CodegenDirective.NOSPACE:
+                    emit_space = False
+                elif s == CodegenDirective.SPACE:
+                    emit_space = True
+                else:
+                    raise ValueError(f"Unsupported directive {s}")
+            elif isinstance(s, str):
+                buffer.write(s)
+            else:
+                raise ValueError(f"Unsupported element {s}")
+
+            if emit_space:
+                buffer.write(" ")
+
+    def generate_csharp(
+        self, buffer: TextIOBase, file_name: Optional[str] = None, format: bool = False
+    ) -> str:
+        self.set_file_name(file_name)
+
+        tree: ast.Module = ast.parse(buffer)
+
+        namespace_name: str = self.get_module_name()
+        namespace_name = self.adjust_identifier(
+            namespace_name, context_type=CodegenContextType.NAMESPACE_NAME
+        )
+        self.append(f"namespace {namespace_name} {{")
+
+        self.visit(tree)
+
+        self.append("}")
+
+        if self._format and self._csharpier_path:
+            try:
+                proc: subprocess.Popen = subprocess.Popen(
+                    args=[
+                        self._csharpier_path,
+                        "--no-cache",
+                        "--no-msbuild-check",
+                        "--fast",
+                        "--write-stdout",
+                    ],
+                    text=True,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                )
+
+                self.dump_to_buffer(proc.stdin)
+
+                proc.stdin.close()
+            except subprocess.CalledProcessError as e:
+                print(e.stderr, file=sys.stderr)
+                print(e, file=sys.stderr)
+                sys.exit(1)
+
+            return proc.stdout.read()
+        else:
+            buffer = StringIO()
+
+            self.dump_to_buffer(buffer)
+
+            return buffer.getvalue()
+
+    #########################
+    # BEGIN VISITOR METHODS #
+    #########################
+
     def visit_Add(self, node: ast.Add):
-        self.append(" + ")
+        self.append("+")
 
     def visit_alias(self, node: ast.alias):
-        print("alias")
+        self.source_line(node)
+
+        if node.asname:
+            self.append(node.name)
+            self.append("as")
+            self.append(node.asname)
+        else:
+            self.append(node.name)
 
     def visit_And(self, node: ast.And):
-        self.append(" && ")
+        self.append("&&")
 
     def visit_AnnAssign(self, node: ast.AnnAssign):
         var_type: str = map_python_type_to_cs_type(ast.unparse(node.annotation))
         target: str = ast.unparse(node.target)
         value: str = ast.unparse(node.value) if node.value else ""
 
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.source_line(node)
         self.append(f"{var_type} {target} = {value};")
 
     def visit_arg(self, node: ast.arg):
@@ -187,7 +276,7 @@ class PythonToCSharp(ast.NodeVisitor):
         targets: str = ", ".join(ast.unparse(t) for t in node.targets)
         value: str = ast.unparse(node.value)
 
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.source_line(node)
         self.append(f"var {targets} = {value};")
 
     def visit_AsyncFor(self, node: ast.AsyncFor):
@@ -232,7 +321,7 @@ class PythonToCSharp(ast.NodeVisitor):
         print("[DEBUG] BoolOp")
 
     def visit_Break(self, node: ast.Break):
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.source_line(node)
         self.append("break;")
 
     def visit_Bytes(self, node: ast.Bytes):
@@ -242,8 +331,7 @@ class PythonToCSharp(ast.NodeVisitor):
         print("[DEBUG] Call")
 
     def visit_ClassDef(self, node: ast.ClassDef):
-
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.source_line(node)
         class_name: str = self.adjust_identifier(
             s=node.name, context_type=CodegenContextType.CLASS_NAME
         )
@@ -255,7 +343,7 @@ class PythonToCSharp(ast.NodeVisitor):
         self.append("}")
 
     def visit_Compare(self, node: ast.Compare):
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.source_line(node)
         self.visit(node.left)
         self.visit(node.ops[0])
         self.visit(node.comparators[0])
@@ -273,7 +361,7 @@ class PythonToCSharp(ast.NodeVisitor):
                 self.append(f'"{str_literal[1:-1]}"')
 
     def visit_Continue(self, node: ast.Continue):
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.source_line(node)
         self.append("continue;")
 
     def visit_Del(self, node: ast.Del):
@@ -295,10 +383,10 @@ class PythonToCSharp(ast.NodeVisitor):
         print("[DEBUG] Ellipsis")
 
     def visit_Eq(self, node: ast.Eq):
-        self.append(" = ")
+        self.append("=")
 
     def visit_ExceptHandler(self, node: ast.ExceptHandler):
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.source_line(node)
         exception_name: str = self.adjust_identifier(node.name)
         exception_type: str = ast.unparse(node.type)
 
@@ -310,7 +398,7 @@ class PythonToCSharp(ast.NodeVisitor):
         self.append("}")
 
     def visit_Expr(self, node: ast.Expr):
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.source_line(node)
         self.append(ast.unparse(node) + ";")
 
     def visit_Expression(self, node: ast.Expression):
@@ -323,10 +411,10 @@ class PythonToCSharp(ast.NodeVisitor):
         print("[DEBUG] FloorDiv")
 
     def visit_For(self, node: ast.For):
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
-        self.append("foreach (var ")
+        self.source_line(node)
+        self.append("foreach (var")
         self.visit(node.iter)
-        self.append(" in ")
+        self.append("in")
         self.visit(node.target)
         self.append(")")
 
@@ -344,7 +432,8 @@ class PythonToCSharp(ast.NodeVisitor):
     def visit_FunctionDef(self, node: ast.FunctionDef):
         # Return type
         self.push_context(CodegenContext(context_type=CodegenContextType.FUNCTION_RETURN_TYPE))
-        ret_type: str = map_python_type_to_cs_type(ast.unparse(node.returns))
+        # ret_type: str = map_python_type_to_cs_type(ast.unparse(node.returns))
+        ret_type: str = "Todo"
         self.pop_context()
 
         # Arguments
@@ -354,14 +443,15 @@ class PythonToCSharp(ast.NodeVisitor):
         for i, arg in enumerate(node.args.args):
             # Self is implied in C#
             if i > 1 or (i == 0 and arg.arg != "self"):
-                arg_type = map_python_type_to_cs_type(ast.unparse(arg.annotation))
+                # arg_type = map_python_type_to_cs_type(ast.unparse(arg.annotation))
+                arg_type = "Todo"
                 args.append(f"{arg_type} {arg.arg}")
         self.pop_context()
 
         # Name and modifiers
         func_name: str = self.adjust_identifier(node.name)
 
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.source_line(node)
         self.append(f"public {ret_type} {func_name}({', '.join(args)}) {{")
 
         for i, stmt in enumerate(node.body):
@@ -376,22 +466,55 @@ class PythonToCSharp(ast.NodeVisitor):
         print("[DEBUG] Global")
 
     def visit_Gt(self, node: ast.Gt):
-        print("[DEBUG] Gt")
+        self.append(">")
 
     def visit_GtE(self, node: ast.GtE):
-        print("[DEBUG] GtE")
+        self.append(">=")
 
     def visit_If(self, node: ast.If):
-        print("[DEBUG] If")
+        self.source_line(node)
+
+        self.append("if (")
+        self.visit(node.test)
+        self.append(") {")
+
+        for s in node.body:
+            self.visit(s)
+
+        if node.orelse:
+            self.append("else {")
+
+            for s in node.orelse:
+                self.visit(s)
+
+        self.append("}")
 
     def visit_IfExp(self, node: ast.IfExp):
         print("[DEBUG] IfExp")
 
     def visit_Import(self, node: ast.Import):
-        print("[DEBUG] Import")
+        self.source_line(node)
+        self.append("using")
+
+        for n in node.names:
+            self.visit(n)
+
+        self.append(";")
 
     def visit_ImportFrom(self, node: ast.ImportFrom):
-        print("[DEBUG] ImportFrom")
+        self.source_line(node)
+
+        if node.module:
+            for n in node.names:
+                self.append(CodegenDirective.NOSPACE)
+                self.append("using")
+                self.append(node.module)
+                self.append(".")
+                self.visit(n)
+                self.append(";")
+                self.append(CodegenDirective.SPACE)
+        else:
+            raise NotImplementedError("Import from with relative imports")
 
     def visit_In(self, node: ast.In):
         print("[DEBUG] In")
@@ -433,10 +556,10 @@ class PythonToCSharp(ast.NodeVisitor):
         print("[DEBUG] LShift")
 
     def visit_Lt(self, node: ast.Lt):
-        print("[DEBUG] Lt")
+        self.append("<")
 
     def visit_LtE(self, node: ast.LtE):
-        print("[DEBUG] LtE")
+        self.append("<=")
 
     def visit_Match(self, node: ast.Match):
         print("[DEBUG] Match")
@@ -498,10 +621,10 @@ class PythonToCSharp(ast.NodeVisitor):
         print("[DEBUG] Nonlocal")
 
     def visit_Not(self, node: ast.Not):
-        print("[DEBUG] Not")
+        self.append("!")
 
     def visit_NotEq(self, node: ast.NotEq):
-        self.append(" != ")
+        self.append("!=")
 
     def visit_NotIn(self, node: ast.NotIn):
         print("[DEBUG] NotIn")
@@ -510,7 +633,7 @@ class PythonToCSharp(ast.NodeVisitor):
         print("[DEBUG] Num")
 
     def visit_Or(self, node: ast.Or):
-        self.append(" || ")
+        self.append("||")
 
     def visit_Param(self, node: ast.Param):
         print("[DEBUG] Param")
@@ -528,7 +651,7 @@ class PythonToCSharp(ast.NodeVisitor):
         print("[DEBUG] Raise")
 
     def visit_Return(self, node: ast.Return):
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.source_line(node)
         self.append(f"return")
 
         if node.value:
@@ -567,7 +690,7 @@ class PythonToCSharp(ast.NodeVisitor):
         print("[DEBUG] Suite")
 
     def visit_Try(self, node: ast.Try):
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.source_line(node)
         self.append("try {")
 
         for (
@@ -617,7 +740,7 @@ class PythonToCSharp(ast.NodeVisitor):
         print("[DEBUG] USub")
 
     def visit_While(self, node: ast.While):
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.source_line(node)
         self.append(f"while (")
         self.visit(node.test)
         self.append(") {")
@@ -634,53 +757,12 @@ class PythonToCSharp(ast.NodeVisitor):
         print("[DEBUG] withitem")
 
     def visit_Yield(self, node: ast.Yield):
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.source_line(node)
         self.append(f"yield return {ast.unparse(node.value)}")
 
     def visit_YieldFrom(self, node: ast.YieldFrom):
         print("[DEBUG] YieldFrom")
 
-    def generate_csharp(
-        self, buffer: TextIOBase, file_name: Optional[str] = None, format: bool = False
-    ) -> str:
-        self.set_file_name(file_name)
-
-        tree: ast.Module = ast.parse(buffer)
-
-        namespace_name: str = self.get_module_name()
-        namespace_name = self.adjust_identifier(
-            namespace_name, context_type=CodegenContextType.NAMESPACE_NAME
-        )
-        self.append(f"namespace {namespace_name} {{")
-
-        self.visit(tree)
-
-        self.append("}")
-
-        if self._format and self._csharpier_path:
-            try:
-                proc: subprocess.Popen = subprocess.Popen(
-                    args=[
-                        self._csharpier_path,
-                        "--no-cache",
-                        "--no-msbuild-check",
-                        "--fast",
-                        "--write-stdout",
-                    ],
-                    text=True,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                )
-
-                for s in self._result:
-                    proc.stdin.write(s)
-
-                proc.stdin.close()
-            except subprocess.CalledProcessError as e:
-                print(e.stderr, file=sys.stderr)
-                print(e, file=sys.stderr)
-                sys.exit(1)
-
-            return proc.stdout.read()
-        else:
-            return "".join(self._result)
+    #######################
+    # END VISITOR METHODS #
+    #######################
