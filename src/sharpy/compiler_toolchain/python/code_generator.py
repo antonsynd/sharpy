@@ -157,29 +157,145 @@ class PythonToCSharp(ast.NodeVisitor):
     def get_module_name(self) -> str:
         return self._file_name.split(".spy")[0]
 
-    def visit_Module(self, node):
-        self.push_context(CodegenContext(context_type=CodegenContextType.MODULE))
+    def visit_Add(self, node: ast.Add):
+        self.append(" + ")
 
-        for stmt in node.body:
-            self.visit(stmt)
-
-        self.pop_context()
+    def visit_alias(self, node: ast.alias):
+        print("alias")
 
     def visit_And(self, node: ast.And):
         self.append(" && ")
 
-    def visit_Or(self, node: ast.Or):
-        self.append(" || ")
+    def visit_AnnAssign(self, node: ast.AnnAssign):
+        var_type: str = map_python_type_to_cs_type(ast.unparse(node.annotation))
+        target: str = ast.unparse(node.target)
+        value: str = ast.unparse(node.value) if node.value else ""
 
-    def visit_NotEq(self, node: ast.NotEq):
-        self.append(" != ")
+        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.append(f"{var_type} {target} = {value};")
+
+    def visit_arg(self, node: ast.arg):
+        print("arg")
+
+    def visit_arguments(self, node: ast.arguments):
+        print("arguments")
+
+    def visit_Assert(self, node: ast.Assert):
+        print("[DEBUG] Assert")
+
+    def visit_Assign(self, node: ast.Assign):
+        targets: str = ", ".join(ast.unparse(t) for t in node.targets)
+        value: str = ast.unparse(node.value)
+
+        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.append(f"var {targets} = {value};")
+
+    def visit_AsyncFor(self, node: ast.AsyncFor):
+        print("[DEBUG] AsyncFor")
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+        print("[DEBUG] AsyncFunctionDef")
+
+    def visit_AsyncWith(self, node: ast.AsyncWith):
+        print("[DEBUG] AsyncWith")
+
+    def visit_Attribute(self, node: ast.Attribute):
+        print("[DEBUG] Attribute")
+
+    def visit_AugAssign(self, node: ast.AugAssign):
+        print("[DEBUG] AugAssign")
+
+    def visit_AugLoad(self, node: ast.AugLoad):
+        print("[DEBUG] AugLoad")
+
+    def visit_AugStore(self, node: ast.AugStore):
+        print("[DEBUG] AugStore")
+
+    def visit_Await(self, node: ast.Await):
+        print("[DEBUG] Await")
+
+    def visit_BinOp(self, node: ast.BinOp):
+        self.visit(node.left)
+        self.visit(node.op)
+        self.visit(node.right)
+
+    def visit_BitAnd(self, node: ast.BitAnd):
+        print("[DEBUG] BitAnd")
+
+    def visit_BitOr(self, node: ast.BitOr):
+        print("[DEBUG] BitOr")
+
+    def visit_BitXor(self, node: ast.BitXor):
+        print("[DEBUG] BitXor")
+
+    def visit_BoolOp(self, node: ast.BoolOp):
+        print("[DEBUG] BoolOp")
+
+    def visit_Break(self, node: ast.Break):
+        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.append("break;")
+
+    def visit_Bytes(self, node: ast.Bytes):
+        print("[DEBUG] Bytes")
+
+    def visit_Call(self, node: ast.Call):
+        print("[DEBUG] Call")
+
+    def visit_ClassDef(self, node: ast.ClassDef):
+
+        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        class_name: str = self.adjust_identifier(
+            s=node.name, context_type=CodegenContextType.CLASS_NAME
+        )
+        self.append(f"public class {class_name} {{")
+
+        for stmt in node.body:
+            self.visit(stmt)
+
+        self.append("}")
+
+    def visit_Compare(self, node: ast.Compare):
+        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.visit(node.left)
+        self.visit(node.ops[0])
+        self.visit(node.comparators[0])
+
+    def visit_comprehension(self, node: ast.comprehension):
+        print("[DEBUG] comprehension")
+
+    def visit_Constant(self, node: ast.Constant):
+        match ast.unparse(node):
+            case "None":
+                self.append("null")
+            case "True" | "False" as boolean_literal:
+                self.append(boolean_literal.lower())
+            case _ as str_literal:
+                self.append(f'"{str_literal[1:-1]}"')
+
+    def visit_Continue(self, node: ast.Continue):
+        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.append("continue;")
+
+    def visit_Del(self, node: ast.Del):
+        print("[DEBUG] Del")
+
+    def visit_Delete(self, node: ast.Delete):
+        print("[DEBUG] Delete")
+
+    def visit_Dict(self, node: ast.Dict):
+        print("[DEBUG] Dict")
+
+    def visit_DictComp(self, node: ast.DictComp):
+        print("[DEBUG] DictComp")
+
+    def visit_Div(self, node: ast.Div):
+        print("[DEBUG] Div")
+
+    def visit_Ellipsis(self, node: ast.Ellipsis):
+        print("[DEBUG] Ellipsis")
 
     def visit_Eq(self, node: ast.Eq):
         self.append(" = ")
-
-    def visit_Yield(self, node: ast.Yield):
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
-        self.append(f"yield return {ast.unparse(node.value)}")
 
     def visit_ExceptHandler(self, node: ast.ExceptHandler):
         self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
@@ -193,28 +309,37 @@ class PythonToCSharp(ast.NodeVisitor):
 
         self.append("}")
 
-    def visit_Try(self, node: ast.Try):
+    def visit_Expr(self, node: ast.Expr):
         self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
-        self.append("try {")
+        self.append(ast.unparse(node) + ";")
 
-        for (
-            i,
-            stmt,
-        ) in enumerate(node.body):
+    def visit_Expression(self, node: ast.Expression):
+        print("[DEBUG] Expression")
+
+    def visit_ExtSlice(self, node: ast.ExtSlice):
+        print("[DEBUG] ExtSlice")
+
+    def visit_FloorDiv(self, node: ast.FloorDiv):
+        print("[DEBUG] FloorDiv")
+
+    def visit_For(self, node: ast.For):
+        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
+        self.append("foreach (var ")
+        self.visit(node.iter)
+        self.append(" in ")
+        self.visit(node.target)
+        self.append(")")
+
+        # self.append(f"foreach (var {target} in {iter_expr}) {{")
+
+        self.append("{")
+        for stmt in node.body:
             self.visit(stmt)
 
         self.append("}")
 
-        for i, handler in enumerate(node.handlers):
-            self.visit(handler)
-
-        if node.finalbody:
-            self.append("finally {")
-
-            for i, stmt in enumerate(node.finalbody):
-                self.visit(stmt)
-
-            self.append("}")
+    def visit_FormattedValue(self, node: ast.FormattedValue):
+        print("[DEBUG] FormattedValue")
 
     def visit_FunctionDef(self, node: ast.FunctionDef):
         # Return type
@@ -244,114 +369,257 @@ class PythonToCSharp(ast.NodeVisitor):
 
         self.append("}")
 
+    def visit_GeneratorExp(self, node: ast.GeneratorExp):
+        print("[DEBUG] GeneratorExp")
+
+    def visit_Global(self, node: ast.Global):
+        print("[DEBUG] Global")
+
+    def visit_Gt(self, node: ast.Gt):
+        print("[DEBUG] Gt")
+
+    def visit_GtE(self, node: ast.GtE):
+        print("[DEBUG] GtE")
+
+    def visit_If(self, node: ast.If):
+        print("[DEBUG] If")
+
+    def visit_IfExp(self, node: ast.IfExp):
+        print("[DEBUG] IfExp")
+
+    def visit_Import(self, node: ast.Import):
+        print("[DEBUG] Import")
+
+    def visit_ImportFrom(self, node: ast.ImportFrom):
+        print("[DEBUG] ImportFrom")
+
+    def visit_In(self, node: ast.In):
+        print("[DEBUG] In")
+
+    def visit_Index(self, node: ast.Index):
+        print("[DEBUG] Index")
+
+    def visit_Interactive(self, node: ast.Interactive):
+        print("[DEBUG] Interactive")
+
+    def visit_Is(self, node: ast.Is):
+        print("[DEBUG] Is")
+
+    def visit_IsNot(self, node: ast.IsNot):
+        print("[DEBUG] IsNot")
+
+    def visit_Invert(self, node: ast.Invert):
+        print("[DEBUG] Invert")
+
+    def visit_JoinedStr(self, node: ast.JoinedStr):
+        print("[DEBUG] JoinedStr")
+
+    def visit_keyword(self, node: ast.keyword):
+        print("[DEBUG] keyword")
+
+    def visit_Lambda(self, node: ast.Lambda):
+        print("[DEBUG] Lambda")
+
+    def visit_List(self, node: ast.List):
+        print("[DEBUG] List")
+
+    def visit_ListComp(self, node: ast.ListComp):
+        print("[DEBUG] ListComp")
+
+    def visit_Load(self, node: ast.Load):
+        print("[DEBUG] Load")
+
+    def visit_LShift(self, node: ast.LShift):
+        print("[DEBUG] LShift")
+
+    def visit_Lt(self, node: ast.Lt):
+        print("[DEBUG] Lt")
+
+    def visit_LtE(self, node: ast.LtE):
+        print("[DEBUG] LtE")
+
+    def visit_Match(self, node: ast.Match):
+        print("[DEBUG] Match")
+
+    def visit_match_case(self, node: ast.match_case):
+        print("[DEBUG] match_case")
+
+    def visit_MatchAs(self, node: ast.MatchAs):
+        print("[DEBUG] MatchAs")
+
+    def visit_MatchClass(self, node: ast.MatchClass):
+        print("[DEBUG] MatchClass")
+
+    def visit_MatchMapping(self, node: ast.MatchMapping):
+        print("[DEBUG] MatchMapping")
+
+    def visit_MatchOr(self, node: ast.MatchOr):
+        print("[DEBUG] MatchOr")
+
+    def visit_MatchSequence(self, node: ast.MatchSequence):
+        print("[DEBUG] MatchSequence")
+
+    def visit_MatchSingleton(self, node: ast.MatchSingleton):
+        print("[DEBUG] MatchSingleton")
+
+    def visit_MatchStar(self, node: ast.MatchStar):
+        print("[DEBUG] MatchStar")
+
+    def visit_MatchValue(self, node: ast.MatchValue):
+        print("[DEBUG] MatchValue")
+
+    def visit_MatMult(self, node: ast.MatMult):
+        print("[DEBUG] MatMult")
+
+    def visit_Mod(self, node: ast.Mod):
+        print("[DEBUG] Mod")
+
+    def visit_Module(self, node: ast.Module):
+        self.push_context(CodegenContext(context_type=CodegenContextType.MODULE))
+
+        for stmt in node.body:
+            self.visit(stmt)
+
+        self.pop_context()
+
+    def visit_Mult(self, node: ast.Mult):
+        print("[DEBUG] Mult")
+
+    def visit_Name(self, node: ast.Name):
+        self.append(node.id)
+
+    def visit_NameConstant(self, node: ast.NameConstant):
+        print("[DEBUG] NameConstant")
+
+    def visit_NamedExpr(self, node: ast.NamedExpr):
+        print("[DEBUG] NamedExpr")
+
+    def visit_Nonlocal(self, node: ast.Nonlocal):
+        print("[DEBUG] Nonlocal")
+
+    def visit_Not(self, node: ast.Not):
+        print("[DEBUG] Not")
+
+    def visit_NotEq(self, node: ast.NotEq):
+        self.append(" != ")
+
+    def visit_NotIn(self, node: ast.NotIn):
+        print("[DEBUG] NotIn")
+
+    def visit_Num(self, node: ast.Num):
+        print("[DEBUG] Num")
+
+    def visit_Or(self, node: ast.Or):
+        self.append(" || ")
+
+    def visit_Param(self, node: ast.Param):
+        print("[DEBUG] Param")
+
+    def visit_ParamSpec(self, node: ast.ParamSpec):
+        print("[DEBUG] ParamSpec")
+
+    def visit_Pass(self, node: ast.Pass):
+        pass
+
+    def visit_Pow(self, node: ast.Pow):
+        print("[DEBUG] Pow")
+
+    def visit_Raise(self, node: ast.Raise):
+        print("[DEBUG] Raise")
+
     def visit_Return(self, node: ast.Return):
         self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
         self.append(f"return")
 
         if node.value:
-            self.visit_expr(node.value)
+            self.visit(node.value)
 
         self.append(";")
 
-    def visit_AnnAssign(self, node: ast.AnnAssign):
-        var_type: str = map_python_type_to_cs_type(ast.unparse(node.annotation))
-        target: str = ast.unparse(node.target)
-        value: str = ast.unparse(node.value) if node.value else ""
+    def visit_RShift(self, node: ast.RShift):
+        print("[DEBUG] RShift")
 
+    def visit_Set(self, node: ast.Set):
+        print("[DEBUG] Set")
+
+    def visit_SetComp(self, node: ast.SetComp):
+        print("[DEBUG] SetComp")
+
+    def visit_Slice(self, node: ast.Slice):
+        print("[DEBUG] Slice")
+
+    def visit_Starred(self, node: ast.Starred):
+        print("[DEBUG] Starred")
+
+    def visit_Store(self, node: ast.Store):
+        print("[DEBUG] Store")
+
+    def visit_Str(self, node: ast.Str):
+        print("[DEBUG] Str")
+
+    def visit_Sub(self, node: ast.Sub):
+        print("[DEBUG] Sub")
+
+    def visit_Subscript(self, node: ast.Subscript):
+        print("[DEBUG] Subscript")
+
+    def visit_Suite(self, node: ast.Suite):
+        print("[DEBUG] Suite")
+
+    def visit_Try(self, node: ast.Try):
         self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
-        self.append(f"{var_type} {target} = {value};")
+        self.append("try {")
 
-    def visit_Assign(self, node: ast.Assign):
-        targets: str = ", ".join(ast.unparse(t) for t in node.targets)
-        value: str = ast.unparse(node.value)
-
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
-        self.append(f"var {targets} = {value};")
-
-    def visit_Expr(self, node: ast.Expr):
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
-        self.append(ast.unparse(node) + ";")
-
-    def visit_If(self, node: ast.If):
-
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
-        self.append(f"if ({ast.unparse(node.test)}) {{")
-
-        for stmt in node.body:
+        for (
+            i,
+            stmt,
+        ) in enumerate(node.body):
             self.visit(stmt)
 
         self.append("}")
 
-        if node.orelse:
-            self.append("else {")
+        for i, handler in enumerate(node.handlers):
+            self.visit(handler)
 
-            for stmt in node.orelse:
+        if node.finalbody:
+            self.append("finally {")
+
+            for i, stmt in enumerate(node.finalbody):
                 self.visit(stmt)
 
             self.append("}")
 
-    def visit_Constant(self, node):
-        match ast.unparse(node):
-            case "None":
-                self.append("null")
-            case "True" | "False" as boolean_literal:
-                self.append(boolean_literal.lower())
-            case _ as str_literal:
-                self.append(f'"{str_literal[1:-1]}"')
+    def visit_TryStar(self, node: ast.TryStar):
+        print("[DEBUG] TryStar")
 
-    def visit_Break(self, node: ast.Break):
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
-        self.append("break;")
+    def visit_Tuple(self, node: ast.Tuple):
+        print("[DEBUG] Tuple")
 
-    def visit_Continue(self, node: ast.Continue):
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
-        self.append("continue;")
+    def visit_TypeAlias(self, node: ast.TypeAlias):
+        print("[DEBUG] TypeAlias")
 
-    def visit_Pass(self, node: ast.Pass):
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
-        self.append("\n// pass\n")
+    def visit_TypeIgnore(self, node: ast.TypeIgnore):
+        print("[DEBUG] TypeIgnore")
 
-    def visit_BinOp(self, node: ast.BinOp):
-        self.visit_expr(node.left)
-        self.visit_expr(node.op)
-        self.visit_expr(node.right)
+    def visit_TypeVar(self, node: ast.TypeVar):
+        print("[DEBUG] TypeVar")
 
-    def visit_Add(self, node: ast.Add):
-        self.append(" + ")
+    def visit_TypeVarTuple(self, node: ast.TypeVarTuple):
+        print("[DEBUG] TypeVarTuple")
 
-    def visit_Name(self, node: ast.Name):
-        self.append(node.id)
+    def visit_UAdd(self, node: ast.UAdd):
+        print("[DEBUG] UAdd")
 
-    def visit_expr(self, node: ast.expr):
-        match type(node):
-            case ast.Compare:
-                self.visit_Compare(node)
-            case ast.BoolOp:
-                self.visit_BoolOp(node)
-            case ast.Name:
-                self.visit_Name(node)
-            case ast.Constant:
-                self.visit_Constant(node)
-            case ast.BinOp:
-                self.visit_BinOp(node)
-            case ast.Add:
-                self.visit_Add(node)
-            case _ as unsupported:
-                print(unsupported)
+    def visit_UnaryOp(self, node: ast.UnaryOp):
+        print("[DEBUG] UnaryOp")
 
-        return ast.unparse(node)  # Default case
-
-    def visit_Compare(self, node: ast.Compare):
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
-        self.visit(node.left)
-        self.visit(node.ops[0])
-        self.visit(node.comparators[0])
+    def visit_USub(self, node: ast.USub):
+        print("[DEBUG] USub")
 
     def visit_While(self, node: ast.While):
-
         self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
         self.append(f"while (")
-        self.visit_expr(node.test)
+        self.visit(node.test)
         self.append(") {")
 
         for stmt in node.body:
@@ -359,31 +627,18 @@ class PythonToCSharp(ast.NodeVisitor):
 
         self.append("}")
 
-    def visit_For(self, node: ast.For):
+    def visit_With(self, node: ast.With):
+        print("[DEBUG] With")
 
-        iter_expr: str = ast.unparse(node.iter)
-        target: str = ast.unparse(node.target)
+    def visit_withitem(self, node: ast.withitem):
+        print("[DEBUG] withitem")
 
+    def visit_Yield(self, node: ast.Yield):
         self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
-        self.append(f"foreach (var {target} in {iter_expr}) {{")
+        self.append(f"yield return {ast.unparse(node.value)}")
 
-        for stmt in node.body:
-            self.visit(stmt)
-
-        self.append("}")
-
-    def visit_ClassDef(self, node: ast.ClassDef):
-
-        self.source_line(node.lineno, node.col_offset, node.end_lineno, node.end_col_offset)
-        class_name: str = self.adjust_identifier(
-            s=node.name, context_type=CodegenContextType.CLASS_NAME
-        )
-        self.append(f"public class {class_name} {{")
-
-        for stmt in node.body:
-            self.visit(stmt)
-
-        self.append("}")
+    def visit_YieldFrom(self, node: ast.YieldFrom):
+        print("[DEBUG] YieldFrom")
 
     def generate_csharp(
         self, buffer: TextIOBase, file_name: Optional[str] = None, format: bool = False
