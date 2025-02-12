@@ -264,13 +264,15 @@ class PythonToCSharp(ast.NodeVisitor):
         self.append(f"{var_type} {target} = {value};")
 
     def visit_arg(self, node: ast.arg):
-        print("arg")
+        print("[DEBUG] arg")
+        self.source_line(node)
 
     def visit_arguments(self, node: ast.arguments):
-        print("arguments")
+        print("[DEBUG] arguments")
 
     def visit_Assert(self, node: ast.Assert):
         print("[DEBUG] Assert")
+        self.source_line(node)
 
     def visit_Assign(self, node: ast.Assign):
         targets: str = ", ".join(ast.unparse(t) for t in node.targets)
@@ -281,18 +283,23 @@ class PythonToCSharp(ast.NodeVisitor):
 
     def visit_AsyncFor(self, node: ast.AsyncFor):
         print("[DEBUG] AsyncFor")
+        self.source_line(node)
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
         print("[DEBUG] AsyncFunctionDef")
+        self.source_line(node)
 
     def visit_AsyncWith(self, node: ast.AsyncWith):
         print("[DEBUG] AsyncWith")
+        self.source_line(node)
 
     def visit_Attribute(self, node: ast.Attribute):
         print("[DEBUG] Attribute")
+        self.source_line(node)
 
     def visit_AugAssign(self, node: ast.AugAssign):
         print("[DEBUG] AugAssign")
+        self.source_line(node)
 
     def visit_AugLoad(self, node: ast.AugLoad):
         print("[DEBUG] AugLoad")
@@ -302,23 +309,29 @@ class PythonToCSharp(ast.NodeVisitor):
 
     def visit_Await(self, node: ast.Await):
         print("[DEBUG] Await")
+        self.source_line(node)
 
     def visit_BinOp(self, node: ast.BinOp):
+        self.source_line(node)
         self.visit(node.left)
         self.visit(node.op)
         self.visit(node.right)
 
     def visit_BitAnd(self, node: ast.BitAnd):
         print("[DEBUG] BitAnd")
+        self.source_line(node)
 
     def visit_BitOr(self, node: ast.BitOr):
         print("[DEBUG] BitOr")
+        self.source_line(node)
 
     def visit_BitXor(self, node: ast.BitXor):
         print("[DEBUG] BitXor")
+        self.source_line(node)
 
     def visit_BoolOp(self, node: ast.BoolOp):
         print("[DEBUG] BoolOp")
+        self.source_line(node)
 
     def visit_Break(self, node: ast.Break):
         self.source_line(node)
@@ -326,9 +339,12 @@ class PythonToCSharp(ast.NodeVisitor):
 
     def visit_Bytes(self, node: ast.Bytes):
         print("[DEBUG] Bytes")
+        self.source_line(node)
 
     def visit_Call(self, node: ast.Call):
         print("[DEBUG] Call")
+        self.source_line(node)
+        self.visit(node.func)
 
     def visit_ClassDef(self, node: ast.ClassDef):
         self.source_line(node)
@@ -377,7 +393,7 @@ class PythonToCSharp(ast.NodeVisitor):
         print("[DEBUG] DictComp")
 
     def visit_Div(self, node: ast.Div):
-        print("[DEBUG] Div")
+        self.append("/")
 
     def visit_Ellipsis(self, node: ast.Ellipsis):
         print("[DEBUG] Ellipsis")
@@ -401,21 +417,29 @@ class PythonToCSharp(ast.NodeVisitor):
         self.source_line(node)
         self.append(ast.unparse(node) + ";")
 
+    def visit_expr(self, node: ast.expr):
+        print(f"[DEBUG:expr] {node}")
+
     def visit_Expression(self, node: ast.Expression):
         print("[DEBUG] Expression")
 
     def visit_ExtSlice(self, node: ast.ExtSlice):
-        print("[DEBUG] ExtSlice")
+        raise DeprecationWarning("ast.ExtSlice is deprecated. Use ast.Tuple instead.")
 
     def visit_FloorDiv(self, node: ast.FloorDiv):
-        print("[DEBUG] FloorDiv")
+        self.append("/")
 
     def visit_For(self, node: ast.For):
         self.source_line(node)
-        self.append("foreach (var")
-        self.visit(node.iter)
-        self.append("in")
+        self.append("foreach (")
+        if node.type_comment:
+            self.append(node.type_comment)
+            self.append(" ")
+        else:
+            self.append("var ")
         self.visit(node.target)
+        self.append("in")
+        self.visit(node.iter)
         self.append(")")
 
         # self.append(f"foreach (var {target} in {iter_expr}) {{")
@@ -481,6 +505,8 @@ class PythonToCSharp(ast.NodeVisitor):
         for s in node.body:
             self.visit(s)
 
+        self.append("}")
+
         if node.orelse:
             self.append("else {")
 
@@ -506,13 +532,13 @@ class PythonToCSharp(ast.NodeVisitor):
 
         if node.module:
             for n in node.names:
-                self.append(CodegenDirective.NOSPACE)
                 self.append("using")
+                self.append(CodegenDirective.NOSPACE)
                 self.append(node.module)
                 self.append(".")
                 self.visit(n)
-                self.append(";")
                 self.append(CodegenDirective.SPACE)
+                self.append(";")
         else:
             raise NotImplementedError("Import from with relative imports")
 
@@ -544,7 +570,17 @@ class PythonToCSharp(ast.NodeVisitor):
         print("[DEBUG] Lambda")
 
     def visit_List(self, node: ast.List):
-        print("[DEBUG] List")
+        print(f"[DEBUG] List {node.ctx}")
+        self.source_line(node)
+
+        # TODO: correctly infer type
+        self.append("new List<object> {")
+        if node.elts:
+            for x in node.elts:
+                self.visit(x)
+                self.append(",")
+
+        self.append("}")
 
     def visit_ListComp(self, node: ast.ListComp):
         print("[DEBUG] ListComp")
@@ -560,6 +596,10 @@ class PythonToCSharp(ast.NodeVisitor):
 
     def visit_LtE(self, node: ast.LtE):
         self.append("<=")
+
+    def visit(self, node):
+        print(f"[DEBUG:visit] {node}")
+        super().visit(node)
 
     def visit_Match(self, node: ast.Match):
         print("[DEBUG] Match")
@@ -622,33 +662,40 @@ class PythonToCSharp(ast.NodeVisitor):
 
     def visit_Not(self, node: ast.Not):
         self.append("!")
+        self.source_line(node)
 
     def visit_NotEq(self, node: ast.NotEq):
         self.append("!=")
+        self.source_line(node)
 
     def visit_NotIn(self, node: ast.NotIn):
         print("[DEBUG] NotIn")
+        self.source_line(node)
 
     def visit_Num(self, node: ast.Num):
         print("[DEBUG] Num")
 
     def visit_Or(self, node: ast.Or):
         self.append("||")
+        self.source_line(node)
 
     def visit_Param(self, node: ast.Param):
         print("[DEBUG] Param")
 
     def visit_ParamSpec(self, node: ast.ParamSpec):
         print("[DEBUG] ParamSpec")
+        self.source_line(node)
 
     def visit_Pass(self, node: ast.Pass):
         pass
 
     def visit_Pow(self, node: ast.Pow):
         print("[DEBUG] Pow")
+        self.source_line(node)
 
     def visit_Raise(self, node: ast.Raise):
         print("[DEBUG] Raise")
+        self.source_line(node)
 
     def visit_Return(self, node: ast.Return):
         self.source_line(node)
@@ -752,6 +799,7 @@ class PythonToCSharp(ast.NodeVisitor):
 
     def visit_With(self, node: ast.With):
         print("[DEBUG] With")
+        self.source_line(node)
 
     def visit_withitem(self, node: ast.withitem):
         print("[DEBUG] withitem")
@@ -762,6 +810,7 @@ class PythonToCSharp(ast.NodeVisitor):
 
     def visit_YieldFrom(self, node: ast.YieldFrom):
         print("[DEBUG] YieldFrom")
+        self.source_line(node)
 
     #######################
     # END VISITOR METHODS #
