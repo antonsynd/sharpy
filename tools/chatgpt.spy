@@ -1,54 +1,54 @@
 import sys
 import functools
 import asyncio
-from typing import Any, List, Dict, Tuple, Union
+from typing import Any, List, Dict, Tuple, Optional, Union
 
 
 def main():
     # --- Literals ---
-    integer = 42
-    floating = 3.14
-    string = "hello"
-    boolean = True
-    none_type = None
-    complex_number = 3 + 4j
+    integer: int = 42
+    floating: float = 3.14
+    string: str = "hello"
+    boolean: bool = True
+    none_type: Optional[bool] = None
+    complex_number: complex = 3 + 4j
 
     # --- Expressions ---
-    addition = integer + 10
-    subtraction = floating - 1.0
-    multiplication = integer * 2
-    division = floating / 2
-    floor_division = integer // 3
-    modulus = integer % 5
-    power = integer**2
-    bitwise_and = integer & 1
-    bitwise_or = integer | 2
-    bitwise_xor = integer ^ 3
-    bitwise_not = ~integer
-    bitwise_shift_left = integer << 1
-    bitwise_shift_right = integer >> 1
-    logical_and = True and False
-    logical_or = True or False
-    logical_not = not True
-    ternary = "yes" if boolean else "no"
+    addition: int = integer + 10
+    subtraction: float = floating - 1.0
+    multiplication: int = integer * 2
+    division: float = floating / 2
+    floor_division: int = integer // 3
+    modulus: int = integer % 5
+    power: int = integer**2
+    bitwise_and: int = integer & 1
+    bitwise_or: int = integer | 2
+    bitwise_xor: int = integer ^ 3
+    bitwise_not: int = ~integer
+    bitwise_shift_left: int = integer << 1
+    bitwise_shift_right: int = integer >> 1
+    logical_and: bool = True and False
+    logical_or: bool = True or False
+    logical_not: bool = not True
+    ternary: str = "yes" if boolean else "no"
 
     # --- Data Structures ---
-    list_example = [1, 2, 3]
-    tuple_example = (1, 2, 3)
-    set_example = {1, 2, 3}
-    dict_example = {"a": 1, "b": 2}
-    list_comprehension = [x * 2 for x in range(5)]
-    dict_comprehension = {x: x**2 for x in range(5)}
-    set_comprehension = {x * 2 for x in range(5)}
+    list_example: list[int] = [1, 2, 3]
+    tuple_example: tuple[int] = (1, 2, 3)
+    set_example: set[int] = {1, 2, 3}
+    dict_example: dict[str, int] = {"a": 1, "b": 2}
+    list_comprehension: list[int] = [x * 2 for x in range(5)]
+    dict_comprehension: dict[int, int] = {x: x**2 for x in range(5)}
+    set_comprehension: set[int] = {x * 2 for x in range(5)}
     generator_expression = (x * 2 for x in range(5))
 
     # --- Control Flow ---
     if integer > 10:
-        result = "big"
+        result: str = "big"
     elif integer == 10:
-        result = "ten"
+        result: str = "ten"
     else:
-        result = "small"
+        result: str = "small"
 
     for i in range(5):
         pass

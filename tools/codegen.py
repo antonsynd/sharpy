@@ -16,6 +16,7 @@ def main() -> None:
     output: Optional[Path] = args.output
     format: bool = args.format
     csharpier_path: Optional[Path] = args.csharpier_path
+    dotnet_path: Optional[Path] = None
     emit_line_metadata: bool = args.emit_line_metadata
     debug: bool = args.debug
 
@@ -26,11 +27,17 @@ def main() -> None:
     else:
         csharpier_path = "dotnet-csharpier"
 
+    if dotnet_path:
+        dotnet_path = str(dotnet_path)
+    else:
+        dotnet_path = "dotnet"
+
     translator = code_generator.PythonToCSharp(
         logger=logger,
         emit_line_metadata=emit_line_metadata,
         format=format,
         csharpier_path=csharpier_path,
+        dotnet_path=dotnet_path,
     )
 
     csharp_code: str = translator.generate_csharp(buffer=input.read_text(), file_name=input.name)
