@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Optional
 
 from sharpy.compiler_toolchain.python import code_generator
+from sharpy.compiler_toolchain.python.code_formatter import CodeFormatter, CSharpierFormatter
 
 
 def main() -> None:
@@ -20,24 +21,20 @@ def main() -> None:
     emit_line_metadata: bool = args.emit_line_metadata
     debug: bool = args.debug
 
-    logger = create_logger(debug=debug)
+    logger: logging.Logger = create_logger(debug=debug)
 
     if csharpier_path:
         csharpier_path = str(csharpier_path)
     else:
         csharpier_path = "dotnet-csharpier"
 
-    if dotnet_path:
-        dotnet_path = str(dotnet_path)
-    else:
-        dotnet_path = "dotnet"
+    formatter: Optional[CodeFormatter] = None
+
+    if format:
+        formatter = CSharpierFormatter(logger=logger, invocation=csharpier_path)
 
     translator = code_generator.PythonToCSharp(
-        logger=logger,
-        emit_line_metadata=emit_line_metadata,
-        format=format,
-        csharpier_path=csharpier_path,
-        dotnet_path=dotnet_path,
+        logger=logger, emit_line_metadata=emit_line_metadata, formatter=formatter
     )
 
     csharp_code: str = translator.generate_csharp(buffer=input.read_text(), file_name=input.name)

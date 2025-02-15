@@ -8,6 +8,8 @@ from io import StringIO, TextIOBase
 from logging import Logger
 from typing import Mapping, MutableSequence, Optional, Sequence
 
+from sharpy.compiler_toolchain.python.code_formatter import CodeFormatter
+
 # Mapping Python types to C#
 TYPE_MAP: Mapping[str, str] = {
     "bool": "bool",
@@ -136,16 +138,12 @@ class PythonToCSharp(ast.NodeVisitor):
         self,
         logger: Logger,
         emit_line_metadata: bool = False,
-        format: bool = False,
-        csharpier_path: Optional[str] = None,
-        dotnet_path: Optional[str] = None,
+        formatter: Optional[CodeFormatter] = None,
     ):
         self._logger: Logger = logger
         self._result: MutableSequence[CodegenElement] = []
         self._emit_line_metadata: bool = emit_line_metadata
-        self._format: bool = format
-        self._csharpier_path: Optional[str] = csharpier_path
-        self._dotnet_path: Optional[str] = dotnet_path
+        self._formatter: Optional[CodeFormatter] = formatter
 
         self._file_name: str = "anonymous.spy"
         self._context_stack: MutableSequence[CodegenContext] = []
@@ -249,53 +247,12 @@ class PythonToCSharp(ast.NodeVisitor):
 
         self.append("}")
 
-        if self._format:
-            # if self._dotnet_path:
-            #     try:
-            #         proc: subprocess.Popen = subprocess.Popen(
-            #             args=[
-            #                 self._dotnet_path,
-            #                 "--",
-            #                 "--no-msbuild-check",
-            #                 "--fast",
-            #                 "--write-stdout",
-            #             ],
-            #             text=True,
-            #             stdin=subprocess.PIPE,
-            #             stdout=subprocess.PIPE,
-            #         )
+        if self._formatter:
+            buffer = StringIO()
 
-            #         self.dump_to_buffer(proc.stdin)
+            self.dump_to_buffer(self._formatter.format_streamable(output_buffer=buffer))
 
-            #         proc.stdin.close()
-            #     except subprocess.CalledProcessError as e:
-            #         self.error(e.stderr)
-            #         self.error(e)
-            #         sys.exit(1)
-            if self._csharpier_path:
-                try:
-                    proc: subprocess.Popen = subprocess.Popen(
-                        args=[
-                            self._csharpier_path,
-                            "--no-cache",
-                            "--no-msbuild-check",
-                            "--fast",
-                            "--write-stdout",
-                        ],
-                        text=True,
-                        stdin=subprocess.PIPE,
-                        stdout=subprocess.PIPE,
-                    )
-
-                    self.dump_to_buffer(proc.stdin)
-
-                    proc.stdin.close()
-                except subprocess.CalledProcessError as e:
-                    self.error(e.stderr)
-                    self.error(e)
-                    sys.exit(1)
-
-            return proc.stdout.read()
+            return buffer.getvalue()
         else:
             buffer = StringIO()
 
@@ -326,10 +283,13 @@ class PythonToCSharp(ast.NodeVisitor):
     def visit_AnnAssign(self, node: ast.AnnAssign):
         # TODO: node.simple
         self.source_line(node)
+
+        self.append(CodegenDirective.ONELINE)
         self.visit(node.annotation)
         self.visit(node.target)
         self.append("=")
         self.visit(node.value)
+        self.append(CodegenDirective.MULTILINE)
 
         # TODO: maybe this won't work in argument lists...
         self.append(";")
@@ -416,8 +376,12 @@ class PythonToCSharp(ast.NodeVisitor):
         self.append("^")
 
     def visit_BoolOp(self, node: ast.BoolOp):
-        self.debug("BoolOp")
         self.source_line(node)
+
+        # TODO: Handle multi-comparators
+        self.visit(node.values[0])
+        self.visit(node.op)
+        self.visit(node.values[1])
 
     def visit_Break(self, node: ast.Break):
         self.debug("Break")
@@ -630,7 +594,13 @@ class PythonToCSharp(ast.NodeVisitor):
         self.append("}")
 
     def visit_IfExp(self, node: ast.IfExp):
-        self.debug("IfExp")
+        self.source_line(node)
+
+        self.visit(node.test)
+        self.append("?")
+        self.visit(node.body)
+        self.append(":")
+        self.visit(node.orelse)
 
     def visit_Import(self, node: ast.Import):
         self.source_line(node)
@@ -676,7 +646,7 @@ class PythonToCSharp(ast.NodeVisitor):
         self.debug("IsNot")
 
     def visit_Invert(self, node: ast.Invert):
-        self.append("!")
+        self.append("~")
 
     def visit_JoinedStr(self, node: ast.JoinedStr):
         self.debug("JoinedStr")
@@ -905,7 +875,8 @@ class PythonToCSharp(ast.NodeVisitor):
         self.debug("UAdd")
 
     def visit_UnaryOp(self, node: ast.UnaryOp):
-        self.debug(f"UnaryOp {node.op} {node.operand}")
+        self.visit(node.op)
+        self.visit(node.operand)
 
     def visit_USub(self, node: ast.USub):
         self.debug("USub")

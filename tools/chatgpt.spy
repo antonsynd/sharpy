@@ -8,10 +8,10 @@ def main():
     # --- Literals ---
     integer: int = 42
     floating: float = 3.14
-    string: str = "hello"
+    some_string: str = "hello"
     boolean: bool = True
     none_type: Optional[bool] = None
-    complex_number: complex = 3 + 4j
+    # complex_number: complex = 3 + 4j
 
     # --- Expressions ---
     addition: int = integer + 10
@@ -34,111 +34,111 @@ def main():
 
     # --- Data Structures ---
     list_example: list[int] = [1, 2, 3]
-    tuple_example: tuple[int] = (1, 2, 3)
-    set_example: set[int] = {1, 2, 3}
-    dict_example: dict[str, int] = {"a": 1, "b": 2}
-    list_comprehension: list[int] = [x * 2 for x in range(5)]
-    dict_comprehension: dict[int, int] = {x: x**2 for x in range(5)}
-    set_comprehension: set[int] = {x * 2 for x in range(5)}
-    generator_expression = (x * 2 for x in range(5))
+    # tuple_example: tuple[int] = (1, 2, 3)
+    # set_example: set[int] = {1, 2, 3}
+    # dict_example: dict[str, int] = {"a": 1, "b": 2}
+    # list_comprehension: list[int] = [x * 2 for x in range(5)]
+    # dict_comprehension: dict[int, int] = {x: x**2 for x in range(5)}
+    # set_comprehension: set[int] = {x * 2 for x in range(5)}
+    # generator_expression = (x * 2 for x in range(5))
 
-    # --- Control Flow ---
-    if integer > 10:
-        result: str = "big"
-    elif integer == 10:
-        result: str = "ten"
-    else:
-        result: str = "small"
+    # # --- Control Flow ---
+    # if integer > 10:
+    #     result: str = "big"
+    # elif integer == 10:
+    #     result: str = "ten"
+    # else:
+    #     result: str = "small"
 
-    for i in range(5):
-        pass
+    # for i in range(5):
+    #     pass
 
-    while integer > 0:
-        integer -= 1
-
-
-# --- Functions & Lambdas ---
-def add(a: int, b: int) -> int:
-    return a + b
+    # while integer > 0:
+    #     integer -= 1
 
 
-lambda_example = lambda x: x * 2
+# # --- Functions & Lambdas ---
+# def add(a: int, b: int) -> int:
+#     return a + b
 
 
-# --- Classes & OOP ---
-class Base:
-    def __init__(self, value: int):
-        self.value = value
-
-    def method(self) -> int:
-        return self.value
+# lambda_example = lambda x: x * 2
 
 
-class Derived(Base):
-    def method(self) -> int:
-        return super().method() + 1
+# # --- Classes & OOP ---
+# class Base:
+#     def __init__(self, value: int):
+#         self.value = value
+
+#     def method(self) -> int:
+#         return self.value
 
 
-# --- Exception Handling ---
-def exception_handling():
-    try:
-        x = 1 / 0
-    except ZeroDivisionError as e:
-        x = 0
-    finally:
-        x += 1
+# class Derived(Base):
+#     def method(self) -> int:
+#         return super().method() + 1
 
 
-# --- With Statement ---
-def with_statements():
-    with open("test.txt", "w") as f:
-        f.write("Hello")
+# # --- Exception Handling ---
+# def exception_handling():
+#     try:
+#         x = 1 / 0
+#     except ZeroDivisionError as e:
+#         x = 0
+#     finally:
+#         x += 1
 
 
-# --- Decorators ---
-def decorator(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        return func(*args, **kwargs)
-
-    return wrapper
+# # --- With Statement ---
+# def with_statements():
+#     with open("test.txt", "w") as f:
+#         f.write("Hello")
 
 
-@decorator
-def decorated_function():
-    return "Decorated!"
+# # --- Decorators ---
+# def decorator(func):
+#     @functools.wraps(func)
+#     def wrapper(*args, **kwargs):
+#         return func(*args, **kwargs)
+
+#     return wrapper
 
 
-# --- Async Features ---
-async def async_function():
-    await asyncio.sleep(1)
-    return "async result"
+# @decorator
+# def decorated_function():
+#     return "Decorated!"
 
 
-# --- Pattern Matching (Python 3.10+) ---
-def match_example(value: Any):
-    match value:
-        case 1:
-            return "One"
-        case [x, y]:
-            return f"List with {x} and {y}"
-        case {"key": v}:
-            return f"Dict with key={v}"
-        case _:
-            return "Something else"
+# # --- Async Features ---
+# async def async_function():
+#     await asyncio.sleep(1)
+#     return "async result"
 
 
-# --- Metaprogramming ---
-class Meta(type):
-    def __new__(cls, name, bases, dct):
-        dct["extra"] = lambda self: "extra method"
-        return super().__new__(cls, name, bases, dct)
+# # --- Pattern Matching (Python 3.10+) ---
+# def match_example(value: Any):
+#     match value:
+#         case 1:
+#             return "One"
+#         case [x, y]:
+#             return f"List with {x} and {y}"
+#         case {"key": v}:
+#             return f"Dict with key={v}"
+#         case _:
+#             return "Something else"
 
 
-class MyClass(metaclass=Meta):
-    pass
+# # --- Metaprogramming ---
+# class Meta(type):
+#     def __new__(cls, name, bases, dct):
+#         dct["extra"] = lambda self: "extra method"
+#         return super().__new__(cls, name, bases, dct)
 
 
-# --- Type Hints ---
-def process(data: List[Dict[str, Union[int, float]]]) -> Tuple[int, float]:
-    return len(data), sum(d["value"] for d in data)
+# class MyClass(metaclass=Meta):
+#     pass
+
+
+# # --- Type Hints ---
+# def process(data: List[Dict[str, Union[int, float]]]) -> Tuple[int, float]:
+#     return len(data), sum(d["value"] for d in data)
