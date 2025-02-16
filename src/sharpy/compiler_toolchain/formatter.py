@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Callable, MutableSequence, Optional, Sequence, Tuple
 
 
-class CodeFormatter:
+class Formatter:
     def __init__(self, logger: logging.Logger):
         self._logger: logging.Logger = logger
 
@@ -60,7 +60,7 @@ class CSharpierFormatStream(io.TextIOBase):
         self.closed = True
 
 
-class CSharpierFormatter(CodeFormatter):
+class CSharpierFormatter(Formatter):
     MINIMUM_VERSION: Tuple[int, int, int] = (0, 30, 6)
 
     def __init__(self, logger: logging.Logger, invocation: Optional[str]):
@@ -182,6 +182,6 @@ class CSharpierFormatter(CodeFormatter):
             raise e
 
 
-class DotnetFormatFormatter(CodeFormatter):
+class DotnetFormatFormatter(Formatter):
     def __init__(self):
         super().__init__()

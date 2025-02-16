@@ -8,7 +8,7 @@ from io import StringIO, TextIOBase
 from logging import Logger
 from typing import Mapping, MutableSequence, Optional, Sequence
 
-from sharpy.compiler_toolchain.python.code_formatter import CodeFormatter
+from sharpy.compiler_toolchain.formatter import Formatter
 
 # Mapping Python types to C#
 TYPE_MAP: Mapping[str, str] = {
@@ -138,12 +138,12 @@ class PythonToCSharp(ast.NodeVisitor):
         self,
         logger: Logger,
         emit_line_metadata: bool = False,
-        formatter: Optional[CodeFormatter] = None,
+        formatter: Optional[Formatter] = None,
     ):
         self._logger: Logger = logger
         self._result: MutableSequence[CodegenElement] = []
         self._emit_line_metadata: bool = emit_line_metadata
-        self._formatter: Optional[CodeFormatter] = formatter
+        self._formatter: Optional[Formatter] = formatter
 
         self._file_name: str = "anonymous.spy"
         self._context_stack: MutableSequence[CodegenContext] = []
