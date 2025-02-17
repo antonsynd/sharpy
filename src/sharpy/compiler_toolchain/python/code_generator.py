@@ -461,8 +461,7 @@ class PythonToCSharp(ast.NodeVisitor):
         self.debug("Ellipsis")
 
     def visit_Eq(self, node: ast.Eq):
-        self.debug("Eq")
-        self.append("=")
+        self.append("==")
 
     def visit_ExceptHandler(self, node: ast.ExceptHandler):
         self.debug("ExceptHandler")
