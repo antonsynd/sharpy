@@ -33,6 +33,9 @@ namespace Sharpy.Stdlib
             }
         }
 
+        /// <summary>
+        /// Delegate to specialized GetEnumerator() for generalized one.
+        /// </summary>
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         public bool Contains(T value)

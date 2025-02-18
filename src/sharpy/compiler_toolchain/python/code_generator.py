@@ -338,14 +338,23 @@ class PythonToCSharp(ast.NodeVisitor):
         self.source_line(node)
 
     def visit_AugAssign(self, node: ast.AugAssign):
-        self.debug("AugAssign")
         self.source_line(node)
 
+        self.append(CodegenDirective.ONELINE)
+        # TODO: Potentially optimize to just emit {op}=
+        self.visit(node.target)
+        self.append("=")
+        self.visit(node.target)
+        self.visit(node.op)
+        self.visit(node.value)
+        self.append(";")
+        self.append(CodegenDirective.MULTILINE)
+
     def visit_AugLoad(self, node: ast.AugLoad):
-        self.debug("AugLoad")
+        self.warning("Deprecated AugLoad")
 
     def visit_AugStore(self, node: ast.AugStore):
-        self.debug("AugStore")
+        self.warning("Deprecated AugStore")
 
     def visit_Await(self, node: ast.Await):
         self.debug("Await")
@@ -393,9 +402,16 @@ class PythonToCSharp(ast.NodeVisitor):
         self.source_line(node)
 
     def visit_Call(self, node: ast.Call):
-        self.debug("Call")
+        # TODO: node.keywords
+        self.debug(f"Call: keywords = {node.keywords}")
         self.source_line(node)
         self.visit(node.func)
+        self.append("(")
+
+        for arg in node.args:
+            self.visit(arg)
+
+        self.append(")")
 
     def visit_ClassDef(self, node: ast.ClassDef):
         self.debug("ClassDef")
@@ -411,7 +427,6 @@ class PythonToCSharp(ast.NodeVisitor):
         self.append("}")
 
     def visit_Compare(self, node: ast.Compare):
-        self.debug("Compare")
         self.source_line(node)
         self.visit(node.left)
         self.visit(node.ops[0])
@@ -495,20 +510,15 @@ class PythonToCSharp(ast.NodeVisitor):
         self.append("/")
 
     def visit_For(self, node: ast.For):
-        self.debug("For")
         self.source_line(node)
-        self.append("foreach (")
-        if node.type_comment:
-            self.append(node.type_comment)
-            self.append(" ")
-        else:
-            self.append("var ")
+        # TODO: We don't need to actually do any type inference for now, until
+        # we get proper type annotations in Sharpy syntax
+        # TODO: node.type_comment
+        self.append("foreach (var")
         self.visit(node.target)
         self.append("in")
         self.visit(node.iter)
         self.append(")")
-
-        # self.append(f"foreach (var {target} in {iter_expr}) {{")
 
         self.append("{")
         for stmt in node.body:
@@ -572,7 +582,6 @@ class PythonToCSharp(ast.NodeVisitor):
         self.append(">=")
 
     def visit_If(self, node: ast.If):
-        self.debug("If")
         self.source_line(node)
 
         self.append("if (")
@@ -772,7 +781,8 @@ class PythonToCSharp(ast.NodeVisitor):
         self.source_line(node)
 
     def visit_Pass(self, node: ast.Pass):
-        self.debug("Pass")
+        self.source_line(node)
+        self.append(";")
 
     def visit_Pow(self, node: ast.Pow):
         # TODO: Math.pow returns double, need to cast back to int or whatever
