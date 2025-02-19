@@ -62,13 +62,13 @@ namespace Sharpy.Stdlib
             return 0;
         }
 
-        public bool static operator ==(Range<T> other)
+        public static bool operator ==(Range<T> left, Range<T> right)
         {
             // TODO
             return false;
         }
 
-        public bool static operator !=(Range<T> other) { return !(this == other); }
+        public static bool operator !=(Range<T> left, Range<T> right) { return !(left == right); }
 
         public override bool Equals(object obj)
         {

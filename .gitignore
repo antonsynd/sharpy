@@ -4,6 +4,10 @@ __resources/
 *.gv
 **/.DS_Store
 
+# C#/.NET files
+src/sharpy/stdlib/bin/
+src/sharpy/stdlib/obj/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

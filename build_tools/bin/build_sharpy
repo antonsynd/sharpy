@@ -19,6 +19,7 @@ PYTHON_TEST_DIR: Path = ROOT_DIR / "test"
 PYTHON_TOOLS_DIR: Path = ROOT_DIR / "tools"
 PYTHON_DATA_DIR: Path = ROOT_DIR / "data"
 PYTHON_RESOURCE_DIR: Path = ROOT_DIR / "__resources"
+CSHARP_SRC_DIR: Path = ROOT_DIR / "src/sharpy/stdlib"
 
 
 _expected_resources: Sequence[Path] = [
@@ -84,6 +85,17 @@ def create_parser() -> argparse.ArgumentParser:
 
 def build(args: argparse.Namespace, rest: Sequence[str]) -> None:
     check_for_expected_resources()
+    build_stdlib()
+
+
+def build_stdlib() -> None:
+    get_logger().info("Building standard library...")
+
+    try:
+        subprocess.run(["dotnet", "build", str(CSHARP_SRC_DIR)])
+    except subprocess.CalledProcessError as e:
+        print(f"Encountered error {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def setup(args: argparse.Namespace, rest: Sequence[str]) -> None:
@@ -198,6 +210,7 @@ def install(args: argparse.Namespace, rest: Sequence[str]) -> None:
 def format(args: argparse.Namespace, rest: Sequence[str]) -> None:
     format_with_isort()
     format_with_black()
+    format_with_dotnet_format()
 
 
 def format_with_black() -> None:
@@ -215,6 +228,16 @@ def format_with_isort() -> None:
 
     try:
         subprocess.run(["isort", str(PYTHON_SRC_DIR), str(PYTHON_TEST_DIR), str(PYTHON_TOOLS_DIR)])
+    except subprocess.CalledProcessError as e:
+        print(f"Encountered error {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def format_with_dotnet_format() -> None:
+    get_logger().info("Formatting with dotnet-format...")
+
+    try:
+        subprocess.run(["dotnet", "format", str(CSHARP_SRC_DIR / "stdlib.csproj")])
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)

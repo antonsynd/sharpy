@@ -2,12 +2,11 @@
 import argparse
 import logging
 import sys
-
 from pathlib import Path
 from typing import Optional
 
+from sharpy.compiler_toolchain.formatter import CSharpierFormatter, Formatter
 from sharpy.compiler_toolchain.python import code_generator
-from sharpy.compiler_toolchain.formatter import Formatter, CSharpierFormatter
 
 
 def main() -> None:
