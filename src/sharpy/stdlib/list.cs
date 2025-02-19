@@ -139,11 +139,9 @@ namespace Sharpy.Stdlib
         /// <summary>
         /// Return the number of times x appears in the list.
         /// </summary>
-        public int Count(T x)
+        public uint Count(T x)
         {
-            // TODO
-            // return _list.Count(y => x == y);
-            return 0;
+            return (uint)_list.Count(y => x.Equals(y));
         }
 
         /// <summary>
@@ -210,6 +208,23 @@ namespace Sharpy.Stdlib
                 index = (int)_NormalizeIndex(index);
                 return _list[index];
             }
+            set
+            {
+                index = (int)_NormalizeIndex(index);
+                _list[index] = value;
+            }
+        }
+
+        public List<T> this[int start, int end]
+        {
+            get
+            {
+                return this[start, end, 1];
+            }
+            set
+            {
+                // TODO
+            }
         }
 
         public List<T> this[int start, int end, int step = 1]
@@ -221,13 +236,16 @@ namespace Sharpy.Stdlib
                     throw new ValueError("slice step cannot be zero");
                 }
 
+                if (step < 0)
+                {
+
+                    return new List<T>();
+                }
+
                 (start, end) = ((int, int))_NormalizeSlice(start, end);
 
-                var newList = new List<T>();
-
-                // TODO
-
-                return newList;
+                // TODO: Optimize this so that there is only one list allocation
+                return new List<T>(_list.Skip(start).Take(end - start).Where((item, index) => (index % step == 0)).ToList());
             }
         }
 
@@ -261,12 +279,22 @@ namespace Sharpy.Stdlib
 
         public override int GetHashCode()
         {
-            return _list.GetHashCode();
+            // Wrap overflows
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 23 + typeof(List<T>).GetHashCode();
+                hash = hash * 23 + _list.GetHashCode();
+
+                return hash;
+            }
         }
 
-        public override string? ToString()
+        public override string ToString()
         {
-            return _list.ToString();
+            var joinedItems = string.Join(", ", _list);
+
+            return $"[{joinedItems}]";
         }
 
         private (uint, uint) _NormalizeSlice(int start, int end, bool forInsertion = false)
