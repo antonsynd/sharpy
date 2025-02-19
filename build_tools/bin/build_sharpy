@@ -201,6 +201,17 @@ def clean(args: argparse.Namespace, rest: Sequence[str]) -> None:
 
     remove_pycache_dirs(root_path=PYTHON_SRC_DIR)
     remove_pycache_dirs(root_path=PYTHON_TEST_DIR)
+    # remove_csharp_build_dirs(root_path=CSHARP_SRC_DIR / "bin")
+    # remove_csharp_build_dirs(root_path=CSHARP_SRC_DIR / "obj")
+
+
+def remove_csharp_build_dirs(root_path: Path) -> None:
+    get_logger().info(f"Removing: {root_path}")
+
+    for f in root_path.iterdir():
+        f.unlink()  # Remove the file
+
+    root_path.rmdir()  # Remove the directory itself
 
 
 def install(args: argparse.Namespace, rest: Sequence[str]) -> None:
