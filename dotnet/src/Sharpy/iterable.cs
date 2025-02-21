@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Sharpy.Stdlib
+namespace Sharpy
 {
     public interface IIterable<T> : IEnumerable<T> { }
 }

@@ -4,4 +4,5 @@ graphviz>=0.20.3
 isort>=5.13.2
 pydot>=3.0.2
 pyjson5>=1.6.8
+pytest>=8.3.4
 requests>=2.32.3

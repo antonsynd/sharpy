@@ -5,8 +5,8 @@ __resources/
 **/.DS_Store
 
 # C#/.NET files
-src/sharpy/stdlib/bin/
-src/sharpy/stdlib/obj/
+dotnet/src/Sharpy/bin/
+dotnet/src/Sharpy/obj/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

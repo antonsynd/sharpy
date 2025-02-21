@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Numerics;
 
-namespace Sharpy.Stdlib
+namespace Sharpy
 {
     public sealed class Range<T = int> where T : struct, INumber<T> : IEnumerable<T>
     {

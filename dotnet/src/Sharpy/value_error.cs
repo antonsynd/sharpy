@@ -1,6 +1,6 @@
 using System;
 
-namespace Sharpy.Stdlib
+namespace Sharpy
 {
     public class ValueError : Exception
     {

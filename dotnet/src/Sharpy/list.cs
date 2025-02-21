@@ -2,7 +2,7 @@
 
 using System.Linq;
 
-namespace Sharpy.Stdlib
+namespace Sharpy
 {
     public sealed class List<T> where T : IEquatable<T>
     {
@@ -11,7 +11,7 @@ namespace Sharpy.Stdlib
         /// </summary>
         public List()
         {
-            _list = new System.Collections.Generic.List<T>();
+            _list = [];
         }
 
         /// <summary>
@@ -244,8 +244,10 @@ namespace Sharpy.Stdlib
 
                 (start, end) = ((int, int))_NormalizeSlice(start, end);
 
-                // TODO: Optimize this so that there is only one list allocation
-                return new List<T>(_list.Skip(start).Take(end - start).Where((item, index) => (index % step == 0)).ToList());
+                return new List<T>
+                {
+                    _list = [.. _list.Skip(start).Take(end - start).Where((item, index) => index % step == 0)]
+                };
             }
         }
 
@@ -254,7 +256,7 @@ namespace Sharpy.Stdlib
         /// </summary>
         public System.Collections.Generic.List<T> ToList()
         {
-            return _list.Slice(0, (int)Len());
+            return _list[..(int)Len()];
         }
 
         public static bool operator ==(List<T> left, List<T> right)

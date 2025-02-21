@@ -15,6 +15,7 @@ requires = [
   "black >= 24.10.0",
   "isort >= 5.13.2",
   "pyjson5 >= 1.6.8",
+  "pytest >= 8.3.4",
   "requests >= 2.32.3",
   "setuptools >= 40.8.0",
 ]
