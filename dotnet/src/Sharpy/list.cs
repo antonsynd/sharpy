@@ -4,7 +4,10 @@ using System.Linq;
 
 namespace Sharpy
 {
-    public sealed class List<T> where T : IEquatable<T>
+    /// <summary>
+    /// A list of elements.
+    /// </summary>
+    public sealed class List<T> : Object, ISequence<T> where T : IEquatable<T>
     {
         /// <summary>
         /// Constructs an empty list.
@@ -26,7 +29,6 @@ namespace Sharpy
         /// <summary>
         /// Add an item to the end of the list. Similar to a[len(a):] = [x].
         /// </summary>
-        /// <param name="x"></param>
         public void Append(T x)
         {
             _list.Add(x);
@@ -36,7 +38,6 @@ namespace Sharpy
         /// Extend the list by appending all the items from the iterable.
         /// Similar to a[len(a):] = iterable.
         /// </summary>
-        /// <param name="iterable"></param>
         public void Extend(IEnumerable<T> iterable)
         {
             _list.AddRange(iterable);
@@ -48,8 +49,6 @@ namespace Sharpy
         /// inserts at the front of the list, and a.Insert(Len(a), x) is
         /// equivalent to a.Append(x).
         /// </summary>
-        /// <param name="i"></param>
-        /// <param name="x"></param>
         public void Insert(int i, T x)
         {
             _list.Insert((int)_NormalizeIndex(i), x);
@@ -59,7 +58,6 @@ namespace Sharpy
         /// Remove the first item from the list whose value is equal to x. It
         /// raises a ValueError if there is no such item.
         /// </summary>
-        /// <param name="x"></param>
         public void Remove(T x)
         {
             if (!_list.Remove(x))
@@ -259,6 +257,14 @@ namespace Sharpy
             return _list[..(int)Len()];
         }
 
+        /// <summary>
+        /// Returns a reference to the underlying list.
+        /// </summary>
+        public unsafe System.Collections.Generic.List<T> AsList()
+        {
+            return _list;
+        }
+
         public static bool operator ==(List<T> left, List<T> right)
         {
             return left._list == right._list;
@@ -292,7 +298,7 @@ namespace Sharpy
             }
         }
 
-        public override string ToString()
+        public override string Repr()
         {
             var joinedItems = string.Join(", ", _list);
 
