@@ -4,7 +4,7 @@ namespace Sharpy
     {
         public static string Str(Object obj)
         {
-            return obj.Str();
+            return obj.__Str__();
         }
     }
 }

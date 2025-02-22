@@ -1,13 +1,15 @@
 #nullable enable
 
+using System.Text;
 using System.Linq;
+using System.Reflection;
 
 namespace Sharpy
 {
     /// <summary>
     /// A list of elements.
     /// </summary>
-    public sealed class List<T> : Object, ISequence<T> where T : IEquatable<T>
+    public sealed class List<T> : Object, MutableSequence<T> where T : IEquatable<T>
     {
         /// <summary>
         /// Constructs an empty list.
@@ -105,7 +107,7 @@ namespace Sharpy
         /// <summary>
         /// Returns whether the item is in the list.
         /// </summary>
-        public bool Contains(T x)
+        public bool __Contains__(T x)
         {
             return _list.Contains(x);
         }
@@ -145,7 +147,7 @@ namespace Sharpy
         /// <summary>
         /// Returns the number of items in the list.
         /// </summary>
-        public uint Len()
+        public uint __Len__()
         {
             return (uint)_list.Count;
         }
@@ -275,7 +277,7 @@ namespace Sharpy
             return !(left == right);
         }
 
-        public override bool Equals(object? obj)
+        public override bool __Eq__(Object obj)
         {
             if (obj is List<T> other)
             {
@@ -285,7 +287,7 @@ namespace Sharpy
             return false;
         }
 
-        public override int GetHashCode()
+        public override int __Hash__()
         {
             // Wrap overflows
             unchecked
@@ -298,11 +300,19 @@ namespace Sharpy
             }
         }
 
-        public override string Repr()
+        public override string __Repr__()
         {
-            var joinedItems = string.Join(", ", _list);
+            var builder = new StringBuilder();
+            builder.Append("[");
 
-            return $"[{joinedItems}]";
+            foreach (var item in _list)
+            {
+                builder.Append(Repr(item));
+            }
+
+            builder.Append("]");
+
+            return builder.ToString();
         }
 
         private (uint, uint) _NormalizeSlice(int start, int end, bool forInsertion = false)

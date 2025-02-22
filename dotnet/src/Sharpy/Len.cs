@@ -2,9 +2,9 @@ namespace Sharpy
 {
     public static partial class Builtins
     {
-        public static uint Len<T>(ISequence<T> sequence)
+        public static uint Len<T>(Sequence<T> sequence)
         {
-            return sequence.Len();
+            return sequence.__Len__();
         }
     }
 }

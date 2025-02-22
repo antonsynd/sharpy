@@ -4,7 +4,12 @@ namespace Sharpy
     {
         public static string Repr(Object obj)
         {
-            return obj.Repr();
+            return obj.__Repr__();
+        }
+
+        public static string Repr<T>(T i) where T : struct
+        {
+            return i.ToString() ?? "";
         }
     }
 }
