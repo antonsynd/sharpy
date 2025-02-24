@@ -1,15 +1,11 @@
 namespace Sharpy
 {
-    public interface Sequence<T> : Iterable<T>
+    public interface Sequence<T> : Collection<T>, Reversible<T>
     {
-        bool __Contains__(T x);
+        T __GetItem__();
 
-        /// <remarks>
-        /// In subclasses, this must call __Contains__(x) to correctly implement
-        /// `x in y` behavior.
-        /// </remarks>
-        bool Contains(T x);
+        uint Count(T x);
 
-        uint __Len__();
+        uint Index(T x, int start = 0, int end = -1);
     }
 }

@@ -40,9 +40,9 @@ namespace Sharpy
         /// Extend the list by appending all the items from the iterable.
         /// Similar to a[len(a):] = iterable.
         /// </summary>
-        public void Extend(IEnumerable<T> iterable)
+        public void Extend(IEnumerable<T> enumerable)
         {
-            _list.AddRange(iterable);
+            _list.AddRange(enumerable);
         }
 
         /// <summary>
@@ -341,5 +341,20 @@ namespace Sharpy
         }
 
         private System.Collections.Generic.List<T> _list;
+
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(this, obj))
+            {
+                return true;
+            }
+
+            if (ReferenceEquals(obj, null))
+            {
+                return false;
+            }
+
+            throw new NotImplementedException();
+        }
     }
 }
