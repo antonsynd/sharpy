@@ -1,10 +1,22 @@
+using Sharpy.Collections.Interfaces;
+
 namespace Sharpy
 {
     public static partial class Builtins
     {
-        public static uint Len<T>(Sequence<T> sequence)
+        /// <summary>
+        /// Return the length (the number of items) of an object. The argument
+        /// may be a sequence (such as a string, bytes, tuple, list, or range)
+        /// or a collection (such as a dictionary, set, or frozen set).
+        /// </summary>
+        public static uint Len(Sized s)
         {
-            return sequence.__Len__();
+            return s.__Len__();
+        }
+
+        public static uint Len(string s)
+        {
+            return (uint)s.Length;
         }
     }
 }

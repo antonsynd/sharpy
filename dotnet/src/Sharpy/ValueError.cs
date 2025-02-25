@@ -2,8 +2,7 @@ using System;
 
 namespace Sharpy
 {
-    public class ValueError : Exception
+    public class ValueError(string message) : Exception(message)
     {
-        public ValueError(string message) : base(message) { }
     }
 }

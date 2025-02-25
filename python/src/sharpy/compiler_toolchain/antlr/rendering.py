@@ -4,7 +4,6 @@ from typing import Optional
 from antlr4 import ParserRuleContext
 from graphviz import Digraph
 from PythonParser import PythonParser
-
 from sharpy.compiler_toolchain.parser import ParseTreeNode
 
 

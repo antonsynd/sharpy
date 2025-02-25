@@ -1,5 +1,8 @@
-namespace Sharpy
+namespace Sharpy.Collections.Interfaces
 {
+    /// <summary>
+    /// Interface for read-only sets.
+    /// </summary>
     public interface Set<T> : Collection<T>
     {
         bool __Le__(Set<T> other);

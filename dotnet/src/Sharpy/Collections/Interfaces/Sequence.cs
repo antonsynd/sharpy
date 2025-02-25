@@ -1,5 +1,8 @@
-namespace Sharpy
+namespace Sharpy.Collections.Interfaces
 {
+    /// <summary>
+    /// Interface for read-only sequences.
+    /// </summary>
     public interface Sequence<T> : Collection<T>, Reversible<T>
     {
         T __GetItem__();

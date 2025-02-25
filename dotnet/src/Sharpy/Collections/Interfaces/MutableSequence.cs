@@ -1,5 +1,8 @@
-namespace Sharpy
+namespace Sharpy.Collections.Interfaces
 {
+    /// <summary>
+    /// Interface for mutable sequences.
+    /// </summary>
     public interface MutableSequence<T> : Sequence<T>
     {
         void __SetItem__(T x);

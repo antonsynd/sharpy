@@ -6,5 +6,10 @@ namespace Sharpy
         {
             return obj.__Str__();
         }
+
+        public static string Str<T>(T x) where T : struct
+        {
+            return Repr(x);
+        }
     }
 }

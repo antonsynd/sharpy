@@ -5,7 +5,6 @@ from antlr4 import CommonTokenStream, InputStream
 from PythonLexer import PythonLexer
 from PythonParser import PythonParser
 from PythonParserListener import PythonParserListener
-
 from sharpy.compiler_toolchain.parser import ParserBase, ParseTreeNode
 
 
