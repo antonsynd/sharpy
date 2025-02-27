@@ -1,6 +1,8 @@
 using Sharpy;
 using Xunit;
-using Fluent_Assertions;
+using FluentAssertions;
+
+using static Sharpy.Builtins;
 
 namespace Sharpy.Tests
 {
@@ -12,11 +14,8 @@ namespace Sharpy.Tests
             // If
             var l = new List<int>();
 
-            // When
-            uint length = l.Len();
-
-            // Then
-            length.Should().Be(0);
+            // When/then
+            Len(l).Should().Be(0);
         }
 
         [Fact]

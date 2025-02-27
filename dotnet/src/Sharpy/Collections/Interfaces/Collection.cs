@@ -1,6 +1,5 @@
 namespace Sharpy.Collections.Interfaces
 {
-
     /// <summary>
     /// Interface for sized iterable container classes.
     /// </summary>

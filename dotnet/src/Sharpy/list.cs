@@ -1,15 +1,14 @@
-#nullable enable
-
 using System.Text;
 using System.Linq;
 using System.Reflection;
+using Sharpy.Collections.Interfaces;
 
 namespace Sharpy
 {
     /// <summary>
     /// A list of elements.
     /// </summary>
-    public sealed class List<T> : Object, MutableSequence<T> where T : IEquatable<T>
+    public sealed partial class List<T> : Object, MutableSequence<T> where T : IEquatable<T>
     {
         /// <summary>
         /// Constructs an empty list.
@@ -29,127 +28,23 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Add an item to the end of the list. Similar to a[len(a):] = [x].
+        /// Returns a reference to the underlying list.
         /// </summary>
-        public void Append(T x)
+        public unsafe System.Collections.Generic.List<T> AsList()
         {
-            _list.Add(x);
+            return _list;
         }
 
         /// <summary>
-        /// Extend the list by appending all the items from the iterable.
-        /// Similar to a[len(a):] = iterable.
+        /// Return a shallow copy of the list.
         /// </summary>
-        public void Extend(IEnumerable<T> enumerable)
+        /// <returns></returns>
+        public List<T> Copy()
         {
-            _list.AddRange(enumerable);
-        }
+            var newList = new List<T>();
+            newList._list.AddRange(_list);
 
-        /// <summary>
-        /// Insert an item at a given position. The first argument is the
-        /// index of the element before which to insert, so a.Insert(0, x)
-        /// inserts at the front of the list, and a.Insert(Len(a), x) is
-        /// equivalent to a.Append(x).
-        /// </summary>
-        public void Insert(int i, T x)
-        {
-            _list.Insert((int)_NormalizeIndex(i), x);
-        }
-
-        /// <summary>
-        /// Remove the first item from the list whose value is equal to x. It
-        /// raises a ValueError if there is no such item.
-        /// </summary>
-        public void Remove(T x)
-        {
-            if (!_list.Remove(x))
-            {
-                throw new ValueError($"{x} not in list");
-            }
-        }
-
-        /// <summary>
-        /// Remove the item at the given position in the list, and return it.
-        /// If no index is specified, a.Pop() removes and returns the last
-        /// item in the list. It raises an IndexError if the list is empty or
-        /// the index is outside the list range.
-        /// </summary>
-        public T Pop(int i = -1)
-        {
-            if (Len() == 0)
-            {
-                throw new IndexError("pop from empty list");
-            }
-
-            try
-            {
-                _NormalizeIndex(i);
-            }
-            catch (IndexError)
-            {
-                throw new IndexError($"pop index {i} out of range");
-            }
-
-            var item = _list[i];
-            _list.RemoveAt(i);
-
-            return item;
-        }
-
-        /// <summary>
-        /// Remove all items from the list.
-        /// </summary>
-        public void Clear()
-        {
-            _list.Clear();
-        }
-
-        /// <summary>
-        /// Returns whether the item is in the list.
-        /// </summary>
-        public bool __Contains__(T x)
-        {
-            return _list.Contains(x);
-        }
-
-        /// <summary>
-        /// Return zero-based index in the list of the first item whose value
-        /// is equal to x. Raises a ValueError if there is no such item.
-        /// The optional arguments start and end are interpreted as in the
-        /// slice notation and are used to limit the search to a particular
-        /// subsequence of the list. The returned index is computed relative
-        /// to the beginning of the full sequence rather than the start
-        /// argument.
-        /// </summary>
-        public uint Index(T x, int start = 0, int end = -1)
-        {
-            start = (int)_NormalizeIndex(start);
-            int count = (int)_NormalizeIndex(end) - start;
-
-            var result = _list.IndexOf(x, start, count);
-
-            if (result == -1)
-            {
-                throw new ValueError($"{x} is not in list");
-            }
-
-            return (uint)result;
-        }
-
-        /// <summary>
-        /// Return the number of times x appears in the list.
-        /// </summary>
-        public uint Count(T x)
-        {
-            return (uint)_list.Count(y => x.Equals(y));
-        }
-
-        /// <summary>
-        /// Returns the number of items in the list.
-        /// </summary>
-        public uint __Len__()
-        {
-            return (uint)_list.Count;
+            return newList;
         }
 
         /// <summary>
@@ -179,23 +74,11 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Reverse the elements of the list in place.
+        /// Creates a shallow copy this list as a .NET list.
         /// </summary>
-        public void Reverse()
+        public System.Collections.Generic.List<T> ToList()
         {
-            _list.Reverse();
-        }
-
-        /// <summary>
-        /// Return a shallow copy of the list.
-        /// </summary>
-        /// <returns></returns>
-        public List<T> Copy()
-        {
-            var newList = new List<T>();
-            newList._list.AddRange(_list);
-
-            return newList;
+            return _list[..(int)__Len__()];
         }
 
         /// <summary>
@@ -205,13 +88,11 @@ namespace Sharpy
         {
             get
             {
-                index = (int)_NormalizeIndex(index);
-                return _list[index];
+                return __GetItem__(index);
             }
             set
             {
-                index = (int)_NormalizeIndex(index);
-                _list[index] = value;
+                __SetItem__(index, value);
             }
         }
 
@@ -249,22 +130,10 @@ namespace Sharpy
                     _list = [.. _list.Skip(start).Take(end - start).Where((item, index) => index % step == 0)]
                 };
             }
-        }
-
-        /// <summary>
-        /// Creates a shallow copy this list as a .NET list.
-        /// </summary>
-        public System.Collections.Generic.List<T> ToList()
-        {
-            return _list[..(int)Len()];
-        }
-
-        /// <summary>
-        /// Returns a reference to the underlying list.
-        /// </summary>
-        public unsafe System.Collections.Generic.List<T> AsList()
-        {
-            return _list;
+            set
+            {
+                // TODO
+            }
         }
 
         public static bool operator ==(List<T> left, List<T> right)
@@ -277,42 +146,24 @@ namespace Sharpy
             return !(left == right);
         }
 
-        public override bool __Eq__(Object obj)
+        private uint _NormalizeIndex(int i, bool forInsertion = false)
         {
-            if (obj is List<T> other)
+            if (forInsertion)
             {
-                return this == other;
+                return (uint)Math.Clamp(i, 0, (int)__Len__());
             }
 
-            return false;
-        }
-
-        public override int __Hash__()
-        {
-            // Wrap overflows
-            unchecked
+            if (i > __Len__() || i < -__Len__())
             {
-                int hash = 17;
-                hash = hash * 23 + typeof(List<T>).GetHashCode();
-                hash = hash * 23 + _list.GetHashCode();
-
-                return hash;
-            }
-        }
-
-        public override string __Repr__()
-        {
-            var builder = new StringBuilder();
-            builder.Append("[");
-
-            foreach (var item in _list)
-            {
-                builder.Append(Repr(item));
+                throw new IndexError($"list index {i} out of range");
             }
 
-            builder.Append("]");
+            if (i < 0)
+            {
+                return (uint)((int)__Len__() + i);
+            }
 
-            return builder.ToString();
+            return (uint)i;
         }
 
         private (uint, uint) _NormalizeSlice(int start, int end, bool forInsertion = false)
@@ -320,46 +171,6 @@ namespace Sharpy
             return (_NormalizeIndex(start, forInsertion), _NormalizeIndex(end, forInsertion));
         }
 
-        private uint _NormalizeIndex(int i, bool forInsertion = false)
-        {
-            if (forInsertion)
-            {
-                return (uint)Math.Clamp(i, 0, (int)Len());
-            }
-
-            if (i > Len() || i < -Len())
-            {
-                throw new IndexError($"list index {i} out of range");
-            }
-
-            if (i < 0)
-            {
-                return (uint)((int)Len() + i);
-            }
-
-            return (uint)i;
-        }
-
         private System.Collections.Generic.List<T> _list;
-
-        public override bool Equals(object obj)
-        {
-            if (ReferenceEquals(this, obj))
-            {
-                return true;
-            }
-
-            if (ReferenceEquals(obj, null))
-            {
-                return false;
-            }
-
-            throw new NotImplementedException();
-        }
-
-        public override int GetHashCode()
-        {
-            throw new NotImplementedException();
-        }
     }
 }
