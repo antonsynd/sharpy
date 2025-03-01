@@ -21,32 +21,16 @@ namespace Sharpy
     /// iterator object used in the previous iteration pass, making it appear
     /// like an empty container.
     /// </summary>
-    public abstract class Iterator<T> : Iterable<T>
+    public abstract partial class Iterator<T> : Iterable<T>
     {
         /// <summary>
-        /// Return the iterator object itself. This is required to allow both
-        /// containers and iterators to be used with the <c>for</c> and
-        /// <c>in</c> statements.
+        /// Not publicly constructible.
         /// </summary>
-        public virtual Iterator<T> __Iter__()
-        {
-            return this;
-        }
+        protected Iterator() { }
 
         /// <summary>
         /// Return the next item from the iterator. If there are no further
         /// items, raises the <see cref="StopIteration"/> exception.
         /// </summary>
         public abstract T __Next__();
-
-        public abstract IEnumerator<T> GetEnumerator();
-
-        /// <remarks>
-        /// Type-erased version of <see cref="GetEnumerator()"/>.
-        /// </remarks>
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
-    }
 }

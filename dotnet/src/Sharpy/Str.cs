@@ -2,14 +2,14 @@ namespace Sharpy
 {
     public static partial class Builtins
     {
-        public static string Str(Object obj)
+        /// <remarks>
+        /// <see cref="Object.ToString"/> calls <see cref="Object.__Str__"/>
+        /// so this implementation covers all native C# objects and Sharpy
+        /// objects.
+        /// </remarks>
+        public static string Str(object x)
         {
-            return obj.__Str__();
-        }
-
-        public static string Str<T>(T x) where T : struct
-        {
-            return Repr(x);
+            return x.ToString() ?? "";
         }
     }
 }

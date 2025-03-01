@@ -39,6 +39,5 @@ namespace Sharpy
 
             return (uint)result;
         }
-
     }
 }

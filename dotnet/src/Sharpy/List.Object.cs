@@ -43,6 +43,5 @@ namespace Sharpy
 
             return builder.ToString();
         }
-
     }
 }

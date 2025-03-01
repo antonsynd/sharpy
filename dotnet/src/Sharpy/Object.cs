@@ -4,7 +4,7 @@ namespace Sharpy
     /// Base class for all Sharpy objects (except value types), deriving from
     /// C# object.
     /// </summary>
-    public class Object : object, Hashable
+    public partial class Object : object, Hashable
     {
         /// <remarks>
         /// Not publicly constructible.
@@ -66,39 +66,24 @@ namespace Sharpy
             return base.GetHashCode();
         }
 
-        /// <remarks>
-        /// Sealed to prevent subclasses from overriding this mapping to
-        /// <see cref="__Eq__()"/> which should be the one that subclasses
-        /// override.
-        /// </remarks>
-        public override sealed bool Equals(object? obj)
+        public static bool operator ==(Object left, Object right)
         {
-            if (obj is Object other)
-            {
-                return __Eq__(other);
-            }
-
-            return false;
+            return left.__Eq__(right);
         }
 
-        /// <remarks>
-        /// Sealed to prevent subclasses from overriding this mapping to
-        /// <see cref="__Hash__()"/> which should be the one that subclasses
-        /// override.
-        /// </remarks>
-        public override sealed int GetHashCode()
+        public static bool operator !=(Object left, Object right)
         {
-            return __Hash__();
+            return !(left == right);
         }
 
-        /// <remarks>
-        /// Sealed to prevent subclasses from overriding this mapping to
-        /// <see cref="__Str__()"/> which should be the one that subclasses
-        /// override.
-        /// </remarks>
-        public override sealed string ToString()
+        public static bool operator ==(Object left, object right)
         {
-            return __Str__();
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(Object left, object right)
+        {
+            return !(left == right);
         }
     }
 }

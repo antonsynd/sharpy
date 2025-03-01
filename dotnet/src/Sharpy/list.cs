@@ -8,8 +8,10 @@ namespace Sharpy
     /// <summary>
     /// A list of elements.
     /// </summary>
-    public sealed partial class List<T> : Object, MutableSequence<T> where T : IEquatable<T>
+    public sealed partial class List<T> : Object, MutableSequence<T> where T : IComparable<T>, IEquatable<T>
     {
+        private System.Collections.Generic.List<T> _list;
+
         /// <summary>
         /// Constructs an empty list.
         /// </summary>
@@ -25,14 +27,6 @@ namespace Sharpy
         public List(IEnumerable<T> iterable) : this()
         {
             _list.AddRange(iterable);
-        }
-
-        /// <summary>
-        /// Returns a reference to the underlying list.
-        /// </summary>
-        public unsafe System.Collections.Generic.List<T> AsList()
-        {
-            return _list;
         }
 
         /// <summary>
@@ -71,14 +65,6 @@ namespace Sharpy
             {
                 _list.Reverse();
             }
-        }
-
-        /// <summary>
-        /// Creates a shallow copy this list as a .NET list.
-        /// </summary>
-        public System.Collections.Generic.List<T> ToList()
-        {
-            return _list[..(int)__Len__()];
         }
 
         /// <summary>
@@ -146,6 +132,14 @@ namespace Sharpy
             return !(left == right);
         }
 
+        /// <summary>
+        /// Creates a shallow copy this list as a .NET list.
+        /// </summary>
+        public System.Collections.Generic.List<T> ToList()
+        {
+            return _list[..(int)__Len__()];
+        }
+
         private uint _NormalizeIndex(int i, bool forInsertion = false)
         {
             if (forInsertion)
@@ -170,7 +164,5 @@ namespace Sharpy
         {
             return (_NormalizeIndex(start, forInsertion), _NormalizeIndex(end, forInsertion));
         }
-
-        private System.Collections.Generic.List<T> _list;
     }
 }

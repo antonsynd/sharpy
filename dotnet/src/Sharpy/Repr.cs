@@ -19,7 +19,11 @@ namespace Sharpy
         /// value type or struct. This essentially makes an attempt to return
         /// a string that would yield the same value when written in code.
         /// </summary>
-        public static string Repr<T>(T x) where T : struct
+        /// <remarks>
+        /// This actually applies to all C# objects, but overload resolution
+        /// should prefer the <see cref="Object"/> version for Sharpy objects.
+        /// </remarks>
+        public static string Repr(object x)
         {
             return x.ToString() ?? "";
         }
