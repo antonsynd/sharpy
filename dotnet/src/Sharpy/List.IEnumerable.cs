@@ -4,7 +4,7 @@ namespace Sharpy
 {
     public sealed partial class List<T>
     {
-        public IEnumerator<T> GetEnumerator() { return null; }
+        public IEnumerator<T> GetEnumerator() { foreach (var elem in _list) { yield return elem; } }
 
         /// <summary>
         /// Delegate to specialized GetEnumerator() for generalized one.

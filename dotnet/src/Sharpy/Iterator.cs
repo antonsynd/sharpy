@@ -24,13 +24,9 @@ namespace Sharpy
     public abstract partial class Iterator<T> : Iterable<T>
     {
         /// <summary>
-        /// Not publicly constructible.
-        /// </summary>
-        protected Iterator() { }
-
-        /// <summary>
         /// Return the next item from the iterator. If there are no further
         /// items, raises the <see cref="StopIteration"/> exception.
         /// </summary>
         public abstract T __Next__();
+    }
 }

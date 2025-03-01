@@ -4,7 +4,7 @@ namespace Sharpy
     {
         public Iterator<T> __Iter__()
         {
-            return null;
+            return new ListIterator<T>(this);
         }
     }
 }

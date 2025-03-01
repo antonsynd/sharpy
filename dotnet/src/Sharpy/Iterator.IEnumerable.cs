@@ -5,20 +5,23 @@ namespace Sharpy
 {
     public abstract partial class Iterator<T> : Iterable<T>
     {
-        public sealed IEnumerator<T> GetEnumerator()
+        public IEnumerator<T> GetEnumerator()
         {
-            var nextValue = default(T);
-
-            try
+            while (true)
             {
-                nextValue = __Next__();
-            }
-            catch (StopIteration)
-            {
-                nextValue = null;
-            }
+                T nextValue;
 
-            yield return nextValue;
+                try
+                {
+                    nextValue = __Next__();
+                }
+                catch (StopIteration)
+                {
+                    break;
+                }
+
+                yield return nextValue;
+            }
         }
 
         /// <remarks>
