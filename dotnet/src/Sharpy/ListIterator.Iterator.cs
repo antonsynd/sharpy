@@ -14,7 +14,7 @@ namespace Sharpy
                 return res;
             }
 
-            throw new StopIteration("");
+            throw new StopIteration();
         }
     }
 }

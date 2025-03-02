@@ -69,6 +69,21 @@ namespace Sharpy
             }
         }
 
+        public List<T> __Add__(List<T> other) {
+            var res = Copy();
+            res.Extend(other);
+
+            return res;
+        }
+
+        public List<T> __Mul__(List<T> other) {
+            var res = Copy();
+
+            // TODO
+
+            return res;
+        }
+
         /// <summary>
         /// Returns the item at the given index in the list.
         /// </summary>
@@ -132,6 +147,14 @@ namespace Sharpy
         public static bool operator !=(List<T> left, List<T> right)
         {
             return !(left == right);
+        }
+
+        public static List<T> operator +(List<T> left, List<T> right) {
+            return left.__Add__(right);
+        }
+
+        public static List<T> operator *(List<T> left, List<T> right) {
+            return left.__Mul__(right);
         }
 
         /// <summary>

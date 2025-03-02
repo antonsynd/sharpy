@@ -1,4 +1,3 @@
-using Sharpy;
 using Xunit;
 using FluentAssertions;
 
@@ -235,39 +234,39 @@ namespace Sharpy.Tests
             actual.Should().Equal(expected);
         }
 
-        //         [Fact]
-        //         public void List_Addition_Assignment_Operator()
-        //         {
-        //             // If
-        //             List<int> l = [ 9, 11, 13 ];
-        //             List<int> other = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Addition_Assignment_Operator()
+        {
+            // If
+            List<int> l = [ 9, 11, 13 ];
+            List<int> other = [ 1, 3, 5, 7 ];
 
-        //             // When
-        //             l += other;
+            // When
+            l += other;
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 9, 11, 13, 1, 3, 5, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 9, 11, 13, 1, 3, 5, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Addition_Operator()
-        //         {
-        //             // If
-        //             List<int> l = [ 9, 11, 13 ];
-        //             List<int> other = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Addition_Operator()
+        {
+            // If
+            List<int> l = [ 9, 11, 13 ];
+            List<int> other = [ 1, 3, 5, 7 ];
 
-        //             // When
-        //             var sum = l + other;
+            // When
+            var sum = l + other;
 
-        //             // Then
-        //             var actual = sum.ToList();
-        //             DotNetList<int> expected = [ 9, 11, 13, 1, 3, 5, 7 ];
+            // Then
+            var actual = sum.ToList();
+            DotNetList<int> expected = [ 9, 11, 13, 1, 3, 5, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
         //         [Fact]
         //         public void List_Multiplication_Operator_Negative()
@@ -385,85 +384,85 @@ namespace Sharpy.Tests
         //             actual.Should().Equal(expected);
         //         }
 
-        //         [Fact]
-        //         public void List_Get_By_Positive_Index()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Get_By_Positive_Index()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When/then
-        //             l[0].Should().Equal(1);
-        //             l[1].Should().Equal(3);
-        //             l[2].Should().Equal(5);
-        //             l[3].Should().Equal(7);
-        //         }
+            // When/then
+            l[0].Should().Be(1);
+            l[1].Should().Be(3);
+            l[2].Should().Be(5);
+            l[3].Should().Be(7);
+        }
 
-        //         [Fact]
-        //         public void List_Get_By_Negative_Index()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Get_By_Negative_Index()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When/then
-        //             l[-1].Should().Equal(7);
-        //             l[-2].Should().Equal(5);
-        //             l[-3].Should().Equal(3);
-        //             l[-4].Should().Equal(1);
-        //         }
+            // When/then
+            l[-1].Should().Be(7);
+            l[-2].Should().Be(5);
+            l[-3].Should().Be(3);
+            l[-4].Should().Be(1);
+        }
 
-        //         [Fact]
-        //         public void List_Get_By_Out_Of_Bounds()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        // [Fact]
+        // public void List_Get_By_Out_Of_Bounds()
+        // {
+        //     // If
+        //     List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When/then
-        //             EXPECT_THROW(l[-5], Index_Error);
-        //             EXPECT_THROW(l[4], Index_Error);
-        //         }
+        //     // When/then
+        //     EXPECT_THROW(l[-5], Index_Error);
+        //     EXPECT_THROW(l[4], Index_Error);
+        // }
 
-        //         [Fact]
-        //         public void List_Set_By_Positive_Index()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Set_By_Positive_Index()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When
-        //             l[2] = 6;
+            // When
+            l[2] = 6;
 
-        //             // Then
-        //             l[0].Should().Equal(1);
-        //             l[1].Should().Equal(3);
-        //             l[2].Should().Equal(6);
-        //             l[3].Should().Equal(7);
-        //         }
+            // Then
+            l[0].Should().Be(1);
+            l[1].Should().Be(3);
+            l[2].Should().Be(6);
+            l[3].Should().Be(7);
+        }
 
-        //         [Fact]
-        //         public void List_Set_By_Negative_Index()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Set_By_Negative_Index()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When
-        //             l[-3] = 4;
+            // When
+            l[-3] = 4;
 
-        //             // Then
-        //             l[-1].Should().Equal(7);
-        //             l[-2].Should().Equal(5);
-        //             l[-3].Should().Equal(4);
-        //             l[-4].Should().Equal(1);
-        //         }
+            // Then
+            l[-1].Should().Be(7);
+            l[-2].Should().Be(5);
+            l[-3].Should().Be(4);
+            l[-4].Should().Be(1);
+        }
 
-        //         [Fact]
-        //         public void List_Set_By_Out_Of_Bounds()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        // [Fact]
+        // public void List_Set_By_Out_Of_Bounds()
+        // {
+        //     // If
+        //     List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When/then
-        //             EXPECT_THROW({ l[-5] = 9; }, Index_Error);
-        //             EXPECT_THROW({ l[4] = 11; }, Index_Error);
-        //         }
+        //     // When/then
+        //     EXPECT_THROW({ l[-5] = 9; }, Index_Error);
+        //     EXPECT_THROW({ l[4] = 11; }, Index_Error);
+        // }
 
         //         [Fact]
         //         public void List_Len_Zero()
