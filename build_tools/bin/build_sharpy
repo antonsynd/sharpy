@@ -242,10 +242,10 @@ def format_with_isort() -> None:
 def format_with_dotnet_format() -> None:
     try:
         get_logger().info("Formatting source files with dotnet-format...")
-        subprocess.run(["dotnet", "format", str(CSHARP_SRC_DIR / "Sharpy.csproj")])
+        subprocess.run(["dotnet", "format", "style", str(CSHARP_SRC_DIR / "Sharpy.csproj")])
 
         get_logger().info("Formatting test files with dotnet-format...")
-        subprocess.run(["dotnet", "format", str(CSHARP_TEST_DIR / "Sharpy.Tests.csproj")])
+        subprocess.run(["dotnet", "format", "style", str(CSHARP_TEST_DIR / "Sharpy.Tests.csproj")])
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
