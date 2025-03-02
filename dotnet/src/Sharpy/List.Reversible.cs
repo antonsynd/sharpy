@@ -4,8 +4,7 @@ namespace Sharpy
     {
         public Iterator<T> __Reversed__()
         {
-            // TODO
-            return null;
+            return new ListReverseIterator<T>(this);
         }
     }
 }
