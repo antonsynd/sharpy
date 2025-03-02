@@ -29,6 +29,11 @@ namespace Sharpy
             _list.AddRange(iterable);
         }
 
+        /// <remarks>
+        /// For collection initializers.
+        /// </summary>
+        public void Add(T item) => _list.Add(item);
+
         /// <summary>
         /// Return a shallow copy of the list.
         /// </summary>

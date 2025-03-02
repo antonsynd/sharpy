@@ -4,6 +4,7 @@ from typing import MutableSequence, Optional
 from antlr4 import ParseTreeVisitor, ParseTreeWalker
 from PythonParser import PythonParser
 from PythonParserListener import PythonParserListener
+
 from sharpy.compiler_toolchain.ast import AST, FunctionDef, Module
 from sharpy.compiler_toolchain.ast_builder import ASTBuilderBase
 from sharpy.compiler_toolchain.parser import ParseTreeNode
