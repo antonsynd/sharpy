@@ -5,7 +5,16 @@ namespace Sharpy
     {
         public override T __Next__()
         {
-            throw new NotImplementedException();
+            if (_index < _list.__Len__()) {
+
+                var res = _list[(int)_index];
+
+                ++_index;
+
+                return res;
+            }
+
+            throw new StopIteration("");
         }
     }
 }

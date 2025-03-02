@@ -50,21 +50,21 @@ namespace Sharpy.Tests
             actual.Should().Equal(expected);
         }
 
-        //         [Fact]
-        //         public void List_Iterable_Constructor()
-        //         {
-        //             // If/when
-        //             const List<int> source = { 1, 3, 5, 7 };
-        //             const List<int> l = Iter(source);
+        [Fact]
+        public void List_Iterable_Constructor()
+        {
+            // If/when
+            List<int> source = [ 1, 3, 5, 7 ];
+            var l = new List<int>(Iter(source));
 
-        //             // Then
-        //             ASSERT_EQ(Len(l), 4);
+            // Then
+            Len(l).Should().Be(4);
 
-        //             const auto actual = as_vector<int>(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 3, 5, 7 };
+            var actual = l.ToList<int>();
+            DotNetList<int> expected = [1, 3, 5, 7];
 
-        //             EXPECT_EQ(actual, expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
         //         [Fact]
         //         public void List_Append_One_Element()
