@@ -11,7 +11,7 @@ namespace Sharpy.Tests
     public class List_Tests
     {
         [Fact]
-        public void List_Empty_Constructor()
+        public void List_No_Args_Constructor()
         {
             // If/when
             var l = new List<int>();
@@ -24,15 +24,13 @@ namespace Sharpy.Tests
         public void List_Empty_Initializer_List()
         {
             // If/when
-            List<int> l = [1, 3, 5, 7];
+            List<int> l = [];
 
             // Then
-            Len(l).Should().Be(4);
+            Len(l).Should().Be(0);
 
             var actual = l.ToList<int>();
-            DotNetList<int> expected = [1, 3, 5, 7];
-
-            actual.Should().Equal(expected);
+            actual.Count.Should().Be(0);
         }
 
         [Fact]
@@ -51,6 +49,20 @@ namespace Sharpy.Tests
         }
 
         [Fact]
+        public void List_Empty_Iterable_Constructor()
+        {
+            // If/when
+            List<int> source = [];
+            var l = new List<int>(Iter(source));
+
+            // Then
+            Len(l).Should().Be(0);
+
+            var actual = l.ToList<int>();
+            actual.Count.Should().Be(0);
+        }
+
+        [Fact]
         public void List_Iterable_Constructor()
         {
             // If/when
@@ -66,103 +78,85 @@ namespace Sharpy.Tests
             actual.Should().Equal(expected);
         }
 
-        //         [Fact]
-        //         public void List_Append_One_Element()
-        //         {
-        //             // If
-        //             List<int> l = { 1, 3, 5, 7 };
+        [Fact]
+        public void List_Append_One_Element()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When
-        //             l.Append(9);
+            // When
+            l.Append(9);
 
-        //             // Then
-        //             ASSERT_EQ(Len(l), 5);
+            // Then
+            Len(l).Should().Be(5);
 
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 3, 5, 7, 9 };
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 3, 5, 7, 9 ];
 
-        //             EXPECT_EQ(actual, expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Append_Variadic_Elements()
-        //         {
-        //             // If
-        //             List<int> l = { 1, 3, 5, 7 };
+        [Fact]
+        public void List_Contains_Empty()
+        {
+            // If
+            var l = new List<int>();
 
-        //             // When
-        //             l.Append(9, 11, 13);
+            // When/then
+            l.Contains(1).Should().BeFalse();
+        }
 
-        //             // Then
-        //             ASSERT_EQ(Len(l), 7);
+        [Fact]
+        public void List_Contains_Not_Actually_In()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 3, 5, 7, 9, 11, 13 };
+            // When/then
+            l.Contains(4).Should().BeFalse();
+        }
 
-        //             EXPECT_EQ(actual, expected);
-        //         }
+        [Fact]
+        public void List_Contains_Actually_In()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //         [Fact]
-        //         public void List_Contains_Empty()
-        //         {
-        //             // If
-        //             const List<int> l;
+            // When/then
+            l.Contains(5).Should().BeTrue();
+        }
 
-        //             // When/then
-        //             EXPECT_FALSE(Contains(l, 1));
-        //         }
+        [Fact]
+        public void List_Clear_Empty()
+        {
+            // If
+            var l = new List<int>();
 
-        //         [Fact]
-        //         public void List_Contains_Not_Actually_In()
-        //         {
-        //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
+            // When
+            l.Clear();
 
-        //             // When/then
-        //             EXPECT_FALSE(Contains(l, 4));
-        //         }
+            // Then
+            Len(l).Should().Be(0);
+        }
 
-        //         [Fact]
-        //         public void List_Contains_Actually_In()
-        //         {
-        //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
+        [Fact]
+        public void List_Clear_Non_Empty()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When/then
-        //             EXPECT_TRUE(Contains(l, 5));
-        //         }
+            // When
+            l.Clear();
 
-        //         [Fact]
-        //         public void List_Clear_Empty()
-        //         {
-        //             // If
-        //             List<int> l;
-
-        //             // When
-        //             l.Clear();
-
-        //             // Then
-        //             EXPECT_EQ(Len(l), 0);
-        //         }
-
-        //         [Fact]
-        //         public void List_Clear_Non_Empty()
-        //         {
-        //             // If
-        //             List<int> l = { 1, 3, 5, 7 };
-
-        //             // When
-        //             l.Clear();
-
-        //             // Then
-        //             EXPECT_EQ(Len(l), 0);
-        //         }
+            // Then
+            Len(l).Should().Be(0);
+        }
 
         //         [Fact]
         //         public void List_Copy_Empty()
         //         {
         //             // If
-        //             const List<int> l;
+        //             List<int> l;
 
         //             // When
         //             auto copy = l.Copy();
@@ -177,19 +171,19 @@ namespace Sharpy.Tests
         //         public void List_Copy_Non_Empty()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
+        //             List<int> l = { 1, 3, 5, 7 };
 
         //             // When
         //             auto copy = l.Copy();
         //             copy.Append(9);
 
         //             // Then
-        //             const auto actual_l_items = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected_l_items = { 1, 3, 5, 7 };
+        //             var actual_l_items = as_vector(l);
+        //             DotNetList<int> expected_l_items = { 1, 3, 5, 7 };
         //             EXPECT_EQ(actual_l_items, expected_l_items);
 
-        //             const auto actual_copy_items = as_vector<int>(copy);
-        //             const System.Collections.Generic.List<int> expected_copy_items = { 1, 3, 5, 7, 9 };
+        //             var actual_copy_items = copy.ToList();
+        //             DotNetList<int> expected_copy_items = { 1, 3, 5, 7, 9 };
         //             EXPECT_EQ(actual_copy_items, expected_copy_items);
         //         }
 
@@ -198,7 +192,7 @@ namespace Sharpy.Tests
         //         {
         //             // If
         //             List<int> l;
-        //             const List<int> other;
+        //             List<int> other;
 
         //             // When
         //             l.Extend(other);
@@ -212,14 +206,14 @@ namespace Sharpy.Tests
         //         {
         //             // If
         //             List<int> l;
-        //             const List<int> other = { 1, 3, 5, 7 };
+        //             List<int> other = { 1, 3, 5, 7 };
 
         //             // When
         //             l.Extend(other);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 3, 5, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 3, 5, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -229,14 +223,14 @@ namespace Sharpy.Tests
         //         {
         //             // If
         //             List<int> l = { 9, 11, 13 };
-        //             const List<int> other = { 1, 3, 5, 7 };
+        //             List<int> other = { 1, 3, 5, 7 };
 
         //             // When
         //             l.Extend(other);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 9, 11, 13, 1, 3, 5, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 9, 11, 13, 1, 3, 5, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -246,14 +240,14 @@ namespace Sharpy.Tests
         //         {
         //             // If
         //             List<int> l = { 9, 11, 13 };
-        //             const List<int> other = { 1, 3, 5, 7 };
+        //             List<int> other = { 1, 3, 5, 7 };
 
         //             // When
         //             l += other;
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 9, 11, 13, 1, 3, 5, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 9, 11, 13, 1, 3, 5, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -262,15 +256,15 @@ namespace Sharpy.Tests
         //         public void List_Addition_Operator()
         //         {
         //             // If
-        //             const List<int> l = { 9, 11, 13 };
-        //             const List<int> other = { 1, 3, 5, 7 };
+        //             List<int> l = { 9, 11, 13 };
+        //             List<int> other = { 1, 3, 5, 7 };
 
         //             // When
-        //             const auto sum = l + other;
+        //             var sum = l + other;
 
         //             // Then
-        //             const auto actual = as_vector(sum);
-        //             const System.Collections.Generic.List<int> expected = { 9, 11, 13, 1, 3, 5, 7 };
+        //             var actual = as_vector(sum);
+        //             DotNetList<int> expected = { 9, 11, 13, 1, 3, 5, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -279,10 +273,10 @@ namespace Sharpy.Tests
         //         public void List_Multiplication_Operator_Negative()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
+        //             List<int> l = { 1, 3, 5, 7 };
 
         //             // When
-        //             const auto product = l * -1;
+        //             var product = l * -1;
 
         //             // Then
         //             EXPECT_EQ(Len(product), 0);
@@ -292,10 +286,10 @@ namespace Sharpy.Tests
         //         public void List_Multiplication_Operator_Zero()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
+        //             List<int> l = { 1, 3, 5, 7 };
 
         //             // When
-        //             const auto product = l * 0;
+        //             var product = l * 0;
 
         //             // Then
         //             EXPECT_EQ(Len(product), 0);
@@ -305,14 +299,14 @@ namespace Sharpy.Tests
         //         public void List_Multiplication_Operator_One()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
+        //             List<int> l = { 1, 3, 5, 7 };
 
         //             // When
-        //             const auto product = l * 1;
+        //             var product = l * 1;
 
         //             // Then
-        //             const auto actual = as_vector(product);
-        //             const System.Collections.Generic.List<int> expected = { 1, 3, 5, 7 };
+        //             var actual = as_vector(product);
+        //             DotNetList<int> expected = { 1, 3, 5, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -321,14 +315,14 @@ namespace Sharpy.Tests
         //         public void List_Multiplication_Operator_More_Than_One()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
+        //             List<int> l = { 1, 3, 5, 7 };
 
         //             // When
-        //             const auto product = l * 3;
+        //             var product = l * 3;
 
         //             // Then
-        //             const auto actual = as_vector(product);
-        //             const System.Collections.Generic.List<int> expected = { 1, 3, 5, 7, 1, 3, 5, 7, 1, 3, 5, 7 };
+        //             var actual = as_vector(product);
+        //             DotNetList<int> expected = { 1, 3, 5, 7, 1, 3, 5, 7, 1, 3, 5, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -369,8 +363,8 @@ namespace Sharpy.Tests
         //             l *= 1;
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 3, 5, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 3, 5, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -385,8 +379,8 @@ namespace Sharpy.Tests
         //             l *= 3;
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 3, 5, 7, 1, 3, 5, 7, 1, 3, 5, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 3, 5, 7, 1, 3, 5, 7, 1, 3, 5, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -395,7 +389,7 @@ namespace Sharpy.Tests
         //         public void List_Get_By_Positive_Index()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
+        //             List<int> l = { 1, 3, 5, 7 };
 
         //             // When/then
         //             EXPECT_EQ(l[0], 1);
@@ -408,7 +402,7 @@ namespace Sharpy.Tests
         //         public void List_Get_By_Negative_Index()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
+        //             List<int> l = { 1, 3, 5, 7 };
 
         //             // When/then
         //             EXPECT_EQ(l[-1], 7);
@@ -421,7 +415,7 @@ namespace Sharpy.Tests
         //         public void List_Get_By_Out_Of_Bounds()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
+        //             List<int> l = { 1, 3, 5, 7 };
 
         //             // When/then
         //             EXPECT_THROW(l[-5], Index_Error);
@@ -475,7 +469,7 @@ namespace Sharpy.Tests
         //         public void List_Len_Zero()
         //         {
         //             // If
-        //             const List<int> l;
+        //             List<int> l;
 
         //             // When/then
         //             EXPECT_EQ(Len(l), 0);
@@ -485,7 +479,7 @@ namespace Sharpy.Tests
         //         public void List_Len_Non_Zero()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
+        //             List<int> l = { 1, 3, 5, 7 };
 
         //             // When/then
         //             EXPECT_EQ(Len(l), 4);
@@ -495,7 +489,7 @@ namespace Sharpy.Tests
         //         public void List_Min_Empty()
         //         {
         //             // If
-        //             const List<int> l;
+        //             List<int> l;
 
         //             // When/then
         //             EXPECT_THROW(Min(l), Value_Error);
@@ -505,7 +499,7 @@ namespace Sharpy.Tests
         //         public void List_Min_Non_Empty()
         //         {
         //             // If
-        //             const List<int> l = { 5, 7, 3, 1 };
+        //             List<int> l = { 5, 7, 3, 1 };
 
         //             // When/then
         //             EXPECT_EQ(Min(l), 1);
@@ -515,7 +509,7 @@ namespace Sharpy.Tests
         //         public void List_Max_Empty()
         //         {
         //             // If
-        //             const List<int> l;
+        //             List<int> l;
 
         //             // When/then
         //             EXPECT_THROW(Max(l), Value_Error);
@@ -525,7 +519,7 @@ namespace Sharpy.Tests
         //         public void List_Max_Non_Empty()
         //         {
         //             // If
-        //             const List<int> l = { 5, 7, 3, 1 };
+        //             List<int> l = { 5, 7, 3, 1 };
 
         //             // When/then
         //             EXPECT_EQ(Max(l), 7);
@@ -535,7 +529,7 @@ namespace Sharpy.Tests
         //         public void List_Count_Empty()
         //         {
         //             // If
-        //             const List<int> l;
+        //             List<int> l;
 
         //             // When/then
         //             EXPECT_EQ(l.Count(1), 0);
@@ -545,7 +539,7 @@ namespace Sharpy.Tests
         //         public void List_Count_Zero()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
+        //             List<int> l = { 1, 3, 5, 7 };
 
         //             // When/then
         //             EXPECT_EQ(l.Count(9), 0);
@@ -555,7 +549,7 @@ namespace Sharpy.Tests
         //         public void List_Count_Non_Zero()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 1, 7 };
+        //             List<int> l = { 1, 3, 5, 1, 7 };
 
         //             // When/then
         //             EXPECT_EQ(l.Count(1), 2);
@@ -565,7 +559,7 @@ namespace Sharpy.Tests
         //         public void List_Slice_Zero_Step()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 1, 7 };
+        //             List<int> l = { 1, 3, 5, 1, 7 };
 
         //             // When/then
         //             EXPECT_THROW(l.Slice(0, 0, 0), Value_Error);
@@ -575,10 +569,10 @@ namespace Sharpy.Tests
         //         public void List_Slice_Negative_Step()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 1, 7 };
+        //             List<int> l = { 1, 3, 5, 1, 7 };
 
         //             // When
-        //             const auto actual = l.Slice(0, 1, -1);
+        //             var actual = l.Slice(0, 1, -1);
 
         //             // Then
         //             EXPECT_EQ(Len(actual), 0);
@@ -588,10 +582,10 @@ namespace Sharpy.Tests
         //         public void List_Slice_Same_Start_And_End()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 1, 7 };
+        //             List<int> l = { 1, 3, 5, 1, 7 };
 
         //             // When
-        //             const auto actual = l.Slice(1, 1);
+        //             var actual = l.Slice(1, 1);
 
         //             // Then
         //             EXPECT_EQ(Len(actual), 0);
@@ -601,14 +595,14 @@ namespace Sharpy.Tests
         //         public void List_Slice_Single_Step()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
+        //             List<int> l = { 1, 3, 5, 7 };
 
         //             // When
-        //             const auto res = l.Slice(1, 3);
+        //             var res = l.Slice(1, 3);
 
         //             // Then
-        //             const auto actual = as_vector(res);
-        //             const System.Collections.Generic.List<int> expected = { 3, 5 };
+        //             var actual = as_vector(res);
+        //             DotNetList<int> expected = { 3, 5 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -617,14 +611,14 @@ namespace Sharpy.Tests
         //         public void List_Slice_Not_Single_Step_Not_Enough()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
+        //             List<int> l = { 1, 3, 5, 7 };
 
         //             // When
-        //             const auto res = l.Slice(1, 3, 4);
+        //             var res = l.Slice(1, 3, 4);
 
         //             // Then
-        //             const auto actual = as_vector(res);
-        //             const System.Collections.Generic.List<int> expected = { 3 };
+        //             var actual = as_vector(res);
+        //             DotNetList<int> expected = { 3 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -633,14 +627,14 @@ namespace Sharpy.Tests
         //         public void List_Slice_Not_Single_Step_Enough()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7, 9 };
+        //             List<int> l = { 1, 3, 5, 7, 9 };
 
         //             // When
-        //             const auto res = l.Slice(1, 5, 2);
+        //             var res = l.Slice(1, 5, 2);
 
         //             // Then
-        //             const auto actual = as_vector(res);
-        //             const System.Collections.Generic.List<int> expected = { 3, 7 };
+        //             var actual = as_vector(res);
+        //             DotNetList<int> expected = { 3, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -649,14 +643,14 @@ namespace Sharpy.Tests
         //         public void List_Slice_Out_Of_Bounds_Left()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7, 9 };
+        //             List<int> l = { 1, 3, 5, 7, 9 };
 
         //             // When
-        //             const auto res = l.Slice(-9, 4, 2);
+        //             var res = l.Slice(-9, 4, 2);
 
         //             // Then
-        //             const auto actual = as_vector(res);
-        //             const System.Collections.Generic.List<int> expected = { 1, 5 };
+        //             var actual = as_vector(res);
+        //             DotNetList<int> expected = { 1, 5 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -665,14 +659,14 @@ namespace Sharpy.Tests
         //         public void List_Slice_Out_Of_Bounds_Right()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7, 9 };
+        //             List<int> l = { 1, 3, 5, 7, 9 };
 
         //             // When
-        //             const auto res = l.Slice(0, 9, 2);
+        //             var res = l.Slice(0, 9, 2);
 
         //             // Then
-        //             const auto actual = as_vector(res);
-        //             const System.Collections.Generic.List<int> expected = { 1, 5, 9 };
+        //             var actual = as_vector(res);
+        //             DotNetList<int> expected = { 1, 5, 9 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -681,14 +675,14 @@ namespace Sharpy.Tests
         //         public void List_Slice_No_Args_Is_Copy()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7, 9 };
+        //             List<int> l = { 1, 3, 5, 7, 9 };
 
         //             // When
-        //             const auto res = l.Slice();
+        //             var res = l.Slice();
 
         //             // Then
-        //             const auto actual = as_vector(res);
-        //             const System.Collections.Generic.List<int> expected = { 1, 3, 5, 7, 9 };
+        //             var actual = as_vector(res);
+        //             DotNetList<int> expected = { 1, 3, 5, 7, 9 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -697,14 +691,14 @@ namespace Sharpy.Tests
         // [Fact]
         // public void List_Slice_Operator() {
         //   // If
-        //   const List<int> l = {1, 3, 5, 7, 9};
+        //   List<int> l = {1, 3, 5, 7, 9};
 
         //   // When
-        //   const auto res = l[1, 5, 2];
+        //   var res = l[1, 5, 2];
 
         //   // Then
-        //   const auto actual = as_vector(res);
-        //   const System.Collections.Generic.List<int> expected = {3, 7};
+        //   var actual = as_vector(res);
+        //   DotNetList<int> expected = {3, 7};
 
         //   EXPECT_EQ(actual, expected);
         // }
@@ -712,15 +706,15 @@ namespace Sharpy.Tests
         // [Fact]
         // public void List_Slice_Operator_Object() {
         //   // If
-        //   const List<Int_Wrapper> l = {Int_Wrapper(1), Int_Wrapper(3), Int_Wrapper(5),
+        //   List<Int_Wrapper> l = {Int_Wrapper(1), Int_Wrapper(3), Int_Wrapper(5),
         //                               Int_Wrapper(7), Int_Wrapper(9)};
 
         //   // When
-        //   const auto res = l[1, 5, 2];
+        //   var res = l[1, 5, 2];
 
         //   // Then
-        //   const auto actual = as_vector<Int_Wrapper>(res);
-        //   const System.Collections.Generic.List<int> expected = {3, 7};
+        //   var actual = res.ToList();
+        //   DotNetList<int> expected = {3, 7};
 
         //   EXPECT_EQ(actual, expected);
         // }
@@ -728,14 +722,14 @@ namespace Sharpy.Tests
         // [Fact]
         // public void List_Slice_Operator_With_No_Args_Is_Copy() {
         //   // If
-        //   const List<int> l = {1, 3, 5, 7, 9};
+        //   List<int> l = {1, 3, 5, 7, 9};
 
         //   // When
-        //   const auto res = l[];
+        //   var res = l[];
 
         //   // Then
-        //   const auto actual = as_vector(res);
-        //   const System.Collections.Generic.List<int> expected = {1, 3, 5, 7, 9};
+        //   var actual = as_vector(res);
+        //   DotNetList<int> expected = {1, 3, 5, 7, 9};
 
         //   EXPECT_EQ(actual, expected);
         // }
@@ -743,15 +737,15 @@ namespace Sharpy.Tests
         // [Fact]
         // public void List_Slice_Operator_With_No_Args_Is_Copy_Object() {
         //   // If
-        //   const List<Int_Wrapper> l = {Int_Wrapper(1), Int_Wrapper(3), Int_Wrapper(5),
+        //   List<Int_Wrapper> l = {Int_Wrapper(1), Int_Wrapper(3), Int_Wrapper(5),
         //                               Int_Wrapper(7), Int_Wrapper(9)};
 
         //   // When
-        //   const auto res = l[];
+        //   var res = l[];
 
         //   // Then
-        //   const auto actual = as_vector<Int_Wrapper>(res);
-        //   const System.Collections.Generic.List<int> expected = {1, 3, 5, 7, 9};
+        //   var actual = res.ToList();
+        //   DotNetList<int> expected = {1, 3, 5, 7, 9};
 
         //   EXPECT_EQ(actual, expected);
         // }
@@ -780,8 +774,8 @@ namespace Sharpy.Tests
         //             l.Reverse();
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 7, 5, 3, 1 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 7, 5, 3, 1 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -794,7 +788,7 @@ namespace Sharpy.Tests
 
         //             // When
         //             auto reversed = Reverse(l);
-        //             const List<int> reversed_list(reversed);
+        //             List<int> reversed_list(reversed);
 
         //             // Then
         //             EXPECT_EQ(Len(reversed_list), 0);
@@ -808,11 +802,11 @@ namespace Sharpy.Tests
 
         //             // When
         //             auto reversed = Reverse(l);
-        //             const List<int> reversed_list(reversed);
+        //             List<int> reversed_list(reversed);
 
         //             // Then
-        //             const auto actual = as_vector(reversed_list);
-        //             const System.Collections.Generic.List<int> expected = { 7, 5, 3, 1 };
+        //             var actual = as_vector(reversed_list);
+        //             DotNetList<int> expected = { 7, 5, 3, 1 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -821,7 +815,7 @@ namespace Sharpy.Tests
         //         public void List_Bool_Empty()
         //         {
         //             // If
-        //             const List<int> l;
+        //             List<int> l;
 
         //             // When/then
         //             EXPECT_FALSE(Bool(l));
@@ -831,7 +825,7 @@ namespace Sharpy.Tests
         //         public void List_Bool_Non_Empty()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
+        //             List<int> l = { 1, 3, 5, 7 };
 
         //             // When/then
         //             EXPECT_TRUE(Bool(l));
@@ -841,7 +835,7 @@ namespace Sharpy.Tests
         //         public void List_Index_Empty()
         //         {
         //             // If
-        //             const List<int> l;
+        //             List<int> l;
 
         //             // When/then
         //             EXPECT_THROW(l.Index(5), Value_Error);
@@ -851,7 +845,7 @@ namespace Sharpy.Tests
         //         public void List_Index_Non_Empty()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
+        //             List<int> l = { 1, 3, 5, 7 };
 
         //             // When/then
         //             EXPECT_EQ(l.Index(5), 2);
@@ -861,10 +855,10 @@ namespace Sharpy.Tests
         //         public void List_Index_Non_Empty_Object_Equal()
         //         {
         //             // If
-        //             const List<Int_Wrapper> l = {Int_Wrapper(1), Int_Wrapper(3), Int_Wrapper(5),
+        //             List<Int_Wrapper> l = {Int_Wrapper(1), Int_Wrapper(3), Int_Wrapper(5),
         //                               Int_Wrapper(7)};
 
-        //             const Int_Wrapper i{ 5}
+        //             Int_Wrapper i{ 5}
         //             ;
 
         //             ASSERT_NE(&i, &l[2]);
@@ -877,10 +871,10 @@ namespace Sharpy.Tests
         //         public void List_Index_Non_Empty_Object_Not_Equal()
         //         {
         //             // If
-        //             const List<Int_Wrapper> l = {Int_Wrapper(1), Int_Wrapper(3), Int_Wrapper(5),
+        //             List<Int_Wrapper> l = {Int_Wrapper(1), Int_Wrapper(3), Int_Wrapper(5),
         //                               Int_Wrapper(7)};
 
-        //             const Int_Wrapper i{ 4}
+        //             Int_Wrapper i{ 4}
         //             ;
 
         //             // When/then
@@ -891,11 +885,11 @@ namespace Sharpy.Tests
         //         public void List_Index_Non_Empty_Object_Same()
         //         {
         //             // If
-        //             const List<Int_Identity_Wrapper> l = {
+        //             List<Int_Identity_Wrapper> l = {
         //       Int_Identity_Wrapper(1), Int_Identity_Wrapper(3), Int_Identity_Wrapper(5),
         //       Int_Identity_Wrapper(7)};
 
-        //             const auto i = l[2];
+        //             var i = l[2];
 
         //             ASSERT_EQ(&i, &l[2]);
 
@@ -907,11 +901,11 @@ namespace Sharpy.Tests
         //         public void List_Index_Non_Empty_Object_Not_Same()
         //         {
         //             // If
-        //             const List<Int_Identity_Wrapper> l = {
+        //             List<Int_Identity_Wrapper> l = {
         //       Int_Identity_Wrapper(1), Int_Identity_Wrapper(3), Int_Identity_Wrapper(5),
         //       Int_Identity_Wrapper(7)};
 
-        //             const Int_Identity_Wrapper i{ 5}
+        //             Int_Identity_Wrapper i{ 5}
         //             ;
 
         //             ASSERT_NE(&i, &l[2]);
@@ -950,8 +944,8 @@ namespace Sharpy.Tests
         //             l.Remove(3);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 5, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 5, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -964,12 +958,12 @@ namespace Sharpy.Tests
         //                         Int_Wrapper(7)};
 
         //             // When
-        //             const auto second_elem = l[1];
+        //             var second_elem = l[1];
         //             l.Remove(second_elem);
 
         //             // Then
-        //             const auto actual = as_vector<Int_Wrapper>(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 5, 7 };
+        //             var actual = l.ToList();
+        //             DotNetList<int> expected = { 1, 5, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -981,7 +975,7 @@ namespace Sharpy.Tests
         //             List<Int_Wrapper> l = {Int_Wrapper(1), Int_Wrapper(3), Int_Wrapper(5),
         //                         Int_Wrapper(7)};
 
-        //             const Int_Wrapper i{ 4}
+        //             Int_Wrapper i{ 4}
         //             ;
 
         //             // When/then
@@ -995,7 +989,7 @@ namespace Sharpy.Tests
         //             List<Int_Identity_Wrapper> l = {Int_Identity_Wrapper(1), Int_Identity_Wrapper(3),
         //                                 Int_Identity_Wrapper(5), Int_Identity_Wrapper(7)};
 
-        //             const Int_Identity_Wrapper i{ 3}
+        //             Int_Identity_Wrapper i{ 3}
         //             ;
 
         //             ASSERT_NE(&i, &l[1]);
@@ -1014,8 +1008,8 @@ namespace Sharpy.Tests
         //             l.Remove(3);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 5, 7, 3 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 5, 7, 3 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1028,12 +1022,12 @@ namespace Sharpy.Tests
         //                         Int_Wrapper(7), Int_Wrapper(3)};
 
         //             // When
-        //             const auto second_elem = l[1];
+        //             var second_elem = l[1];
         //             l.Remove(second_elem);
 
         //             // Then
-        //             const auto actual = as_vector<Int_Wrapper>(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 5, 7, 3 };
+        //             var actual = l.ToList();
+        //             DotNetList<int> expected = { 1, 5, 7, 3 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1046,12 +1040,12 @@ namespace Sharpy.Tests
         //                         Int_Wrapper(7), Int_Wrapper(3)};
 
         //             // When
-        //             const auto last_elem = l[-1];
+        //             var last_elem = l[-1];
         //             l.Remove(last_elem);
 
         //             // Then
-        //             const auto actual = as_vector<Int_Wrapper>(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 5, 7, 3 };
+        //             var actual = l.ToList();
+        //             DotNetList<int> expected = { 1, 5, 7, 3 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1065,15 +1059,15 @@ namespace Sharpy.Tests
         //                                 Int_Identity_Wrapper(3)};
 
         //             // When
-        //             const auto last_elem = l[-1];
+        //             var last_elem = l[-1];
 
         //             ASSERT_NE(&last_elem, &l[1]);
 
         //             l.Remove(last_elem);
 
         //             // Then
-        //             const auto actual = as_vector<Int_Identity_Wrapper>(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 3, 5, 7 };
+        //             var actual = l.ToList();
+        //             DotNetList<int> expected = { 1, 3, 5, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1100,8 +1094,8 @@ namespace Sharpy.Tests
         //             l.Remove(3);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 5, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 5, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1114,12 +1108,12 @@ namespace Sharpy.Tests
         //                         Int_Wrapper(3)};
 
         //             // When
-        //             const auto last_elem = l[-1];
+        //             var last_elem = l[-1];
         //             l.Remove(last_elem);
 
         //             // Then
-        //             const auto actual = as_vector<Int_Wrapper>(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 5, 7 };
+        //             var actual = l.ToList();
+        //             DotNetList<int> expected = { 1, 5, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1132,15 +1126,15 @@ namespace Sharpy.Tests
         //                         Int_Wrapper(3)};
 
         //             // When
-        //             const auto i = Int_Wrapper(3);
+        //             var i = Int_Wrapper(3);
 
         //             ASSERT_NE(&i, &l[-1]);
 
         //             l.Remove(i);
 
         //             // Then
-        //             const auto actual = as_vector<Int_Wrapper>(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 5, 7 };
+        //             var actual = l.ToList();
+        //             DotNetList<int> expected = { 1, 5, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1152,7 +1146,7 @@ namespace Sharpy.Tests
         //             List<Int_Identity_Wrapper> l = {Int_Identity_Wrapper(1), Int_Identity_Wrapper(5),
         //                                 Int_Identity_Wrapper(7), Int_Identity_Wrapper(3)};
 
-        //             const Int_Identity_Wrapper i{ 3}
+        //             Int_Identity_Wrapper i{ 3}
         //             ;
 
         //             ASSERT_NE(&i, &l[-1]);
@@ -1181,8 +1175,8 @@ namespace Sharpy.Tests
         //             l.Delete_Slice(0, 1, -1);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 3, 5, 1, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 3, 5, 1, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1197,8 +1191,8 @@ namespace Sharpy.Tests
         //             l.Delete_Slice(1, 1);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 3, 5, 1, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 3, 5, 1, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1213,8 +1207,8 @@ namespace Sharpy.Tests
         //             l.Delete_Slice(1, 3);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1229,8 +1223,8 @@ namespace Sharpy.Tests
         //             l.Delete_Slice(1, 3, 4);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 5, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 5, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1245,8 +1239,8 @@ namespace Sharpy.Tests
         //             l.Delete_Slice(1, 5, 2);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 5, 9 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 5, 9 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1261,8 +1255,8 @@ namespace Sharpy.Tests
         //             l.Delete_Slice(-9, 4, 2);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 3, 7, 9 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 3, 7, 9 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1277,8 +1271,8 @@ namespace Sharpy.Tests
         //             l.Delete_Slice(0, 9, 2);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 3, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 3, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1301,7 +1295,7 @@ namespace Sharpy.Tests
         //         {
         //             // If
         //             List<int> l = { 1, 3, 5, 1, 7 };
-        //             const List<int> other = { 2, 4, 6 };
+        //             List<int> other = { 2, 4, 6 };
 
         //             // When/then
         //             EXPECT_THROW(l.Replace_Slice(other, 0, 0, 0), Value_Error);
@@ -1312,14 +1306,14 @@ namespace Sharpy.Tests
         //         {
         //             // If
         //             List<int> l = { 1, 3, 5, 1, 7 };
-        //             const List<int> other = { 2, 4, 6 };
+        //             List<int> other = { 2, 4, 6 };
 
         //             // When
         //             l.Replace_Slice(other, 0, 1, -1);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 3, 5, 1, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 3, 5, 1, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1329,14 +1323,14 @@ namespace Sharpy.Tests
         //         {
         //             // If
         //             List<int> l = { 1, 3, 5, 1, 7 };
-        //             const List<int> other = { 2, 4, 6 };
+        //             List<int> other = { 2, 4, 6 };
 
         //             // When
         //             l.Replace_Slice(other, 1, 1);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 3, 5, 1, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 3, 5, 1, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1346,14 +1340,14 @@ namespace Sharpy.Tests
         //         {
         //             // If
         //             List<int> l = { 1, 3, 5, 7 };
-        //             const List<int> other = { 2, 4, 6 };
+        //             List<int> other = { 2, 4, 6 };
 
         //             // When
         //             l.Replace_Slice(other, 1, 3);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 2, 4, 6, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 2, 4, 6, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1363,14 +1357,14 @@ namespace Sharpy.Tests
         //         {
         //             // If
         //             List<int> l = { 1, 3, 5, 7 };
-        //             const List<int> other = { 2 };
+        //             List<int> other = { 2 };
 
         //             // When
         //             l.Replace_Slice(other, 1, 3);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 2, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 2, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1380,14 +1374,14 @@ namespace Sharpy.Tests
         //         {
         //             // If
         //             List<int> l = { 1, 3, 5, 7 };
-        //             const List<int> other = { 2, 4 };
+        //             List<int> other = { 2, 4 };
 
         //             // When
         //             l.Replace_Slice(other, 1, 3);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 2, 4, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 2, 4, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1397,7 +1391,7 @@ namespace Sharpy.Tests
         //         {
         //             // If
         //             List<int> l = { 1, 3, 5, 7 };
-        //             const List<int> other = { 2, 4, 6 };
+        //             List<int> other = { 2, 4, 6 };
 
         //             // When/then
         //             EXPECT_THROW(l.Replace_Slice(other, 1, 3, 4), Value_Error);
@@ -1408,14 +1402,14 @@ namespace Sharpy.Tests
         //         {
         //             // If
         //             List<int> l = { 1, 3, 5, 7, 9 };
-        //             const List<int> other = { 2, 4 };
+        //             List<int> other = { 2, 4 };
 
         //             // When
         //             l.Replace_Slice(other, 1, 4, 2);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 2, 5, 4, 9 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 2, 5, 4, 9 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1425,14 +1419,14 @@ namespace Sharpy.Tests
         //         {
         //             // If
         //             List<int> l = { 1, 3, 5, 7, 9 };
-        //             const List<int> other = { 2, 4, 6 };
+        //             List<int> other = { 2, 4, 6 };
 
         //             // When
         //             l.Replace_Slice(other);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 2, 4, 6 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 2, 4, 6 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1447,8 +1441,8 @@ namespace Sharpy.Tests
         //             l.Insert(0, 5);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 5 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 5 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1463,8 +1457,8 @@ namespace Sharpy.Tests
         //             l.Insert(1, 5);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 5, 3, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 5, 3, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1479,8 +1473,8 @@ namespace Sharpy.Tests
         //             l.Insert(-100, 5);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 5, 1, 3, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 5, 1, 3, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1495,8 +1489,8 @@ namespace Sharpy.Tests
         //             l.Insert(100, 5);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 3, 7, 5 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 3, 7, 5 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1511,8 +1505,8 @@ namespace Sharpy.Tests
         //             l.Insert(0, 5);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 5, 1, 3, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 5, 1, 3, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1527,8 +1521,8 @@ namespace Sharpy.Tests
         //             l.Insert(-1, 5);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 3, 5, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 3, 5, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1543,8 +1537,8 @@ namespace Sharpy.Tests
         //             l.Insert(3, 5);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 3, 7, 5 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 3, 7, 5 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1569,8 +1563,8 @@ namespace Sharpy.Tests
         //             l.Pop();
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 3, 5 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 3, 5 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1585,8 +1579,8 @@ namespace Sharpy.Tests
         //             l.Pop(0);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 3, 5, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 3, 5, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1601,8 +1595,8 @@ namespace Sharpy.Tests
         //             l.Pop(1);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 5, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 5, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1617,8 +1611,8 @@ namespace Sharpy.Tests
         //             l.Pop(-2);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 3, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 3, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1647,13 +1641,13 @@ namespace Sharpy.Tests
         //         public void List_Native_Iteration()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
-        //             const auto expected = as_vector(l);
+        //             List<int> l = { 1, 3, 5, 7 };
+        //             var expected = as_vector(l);
 
         //             // When
-        //             System.Collections.Generic.List<int> actual;
+        //             DotNetList<int> actual;
 
-        //             for (const auto elem : l) {
+        //             for (var elem : l) {
         //                 actual.emplace_back(elem);
         //             }
 
@@ -1666,13 +1660,13 @@ namespace Sharpy.Tests
         //         {
         //             // If
         //             List<int> l = { 1, 3, 5, 7 };
-        //             const auto expected = as_vector(l);
-        //             const auto it = Iter(l);
+        //             var expected = as_vector(l);
+        //             var it = Iter(l);
 
         //             // When
-        //             System.Collections.Generic.List<int> actual;
+        //             DotNetList<int> actual;
 
-        //             for (const auto elem : it) {
+        //             for (var elem : it) {
         //                 actual.emplace_back(elem);
         //             }
 
@@ -1684,8 +1678,8 @@ namespace Sharpy.Tests
         //         public void List_Equality_Same_Object()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
-        //             const auto copy = l;
+        //             List<int> l = { 1, 3, 5, 7 };
+        //             var copy = l;
         //             ASSERT_NE(&l, &copy);
 
         //             // When/then
@@ -1696,8 +1690,8 @@ namespace Sharpy.Tests
         //         public void List_Native_Equality_Same_Object()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
-        //             const auto copy = l;
+        //             List<int> l = { 1, 3, 5, 7 };
+        //             var copy = l;
         //             ASSERT_NE(&l, &copy);
 
         //             // When/then
@@ -1708,8 +1702,8 @@ namespace Sharpy.Tests
         //         public void List_Native_In_Equality_Same_Object()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
-        //             const auto copy = l;
+        //             List<int> l = { 1, 3, 5, 7 };
+        //             var copy = l;
         //             ASSERT_NE(&l, &copy);
 
         //             // When/then
@@ -1720,7 +1714,7 @@ namespace Sharpy.Tests
         //         public void List_Equality_Different_Object()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
+        //             List<int> l = { 1, 3, 5, 7 };
         //             List<int> m = { 1, 3, 5, 7, 9 };
         //             ASSERT_NE(&l, &m);
 
@@ -1738,7 +1732,7 @@ namespace Sharpy.Tests
         //         public void List_Native_Equality_And_Inequality_Different_Object()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
+        //             List<int> l = { 1, 3, 5, 7 };
         //             List<int> m = { 1, 3, 5, 7, 9 };
 
         //             // When/then
@@ -1755,8 +1749,8 @@ namespace Sharpy.Tests
         //         public void List_Native_Equality_Different_Type()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
-        //             const List<float> m = { 1.0, 3.0, 5.0, 7.0 };
+        //             List<int> l = { 1, 3, 5, 7 };
+        //             List<float> m = { 1.0, 3.0, 5.0, 7.0 };
 
         //             // When/then
         //             EXPECT_NE(l, m);
@@ -1766,7 +1760,7 @@ namespace Sharpy.Tests
         //         public void List_As_Str_Empty()
         //         {
         //             // If
-        //             const List<int> l;
+        //             List<int> l;
 
         //             // When/then
         //             EXPECT_EQ(Str(l), "[]");
@@ -1776,7 +1770,7 @@ namespace Sharpy.Tests
         //         public void List_As_Str_Not_Empty()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
+        //             List<int> l = { 1, 3, 5, 7 };
 
         //             // When/then
         //             EXPECT_EQ(Str(l), "[1, 3, 5, 7]");
@@ -1786,7 +1780,7 @@ namespace Sharpy.Tests
         //         public void List_Repr_Empty()
         //         {
         //             // If
-        //             const List<int> l;
+        //             List<int> l;
 
         //             // When/then
         //             EXPECT_EQ(Repr(l), "[]");
@@ -1796,7 +1790,7 @@ namespace Sharpy.Tests
         //         public void List_Repr_Not_Empty()
         //         {
         //             // If
-        //             const List<int> l = { 1, 3, 5, 7 };
+        //             List<int> l = { 1, 3, 5, 7 };
 
         //             // When/then
         //             EXPECT_EQ(Repr(l), "[1, 3, 5, 7]");
@@ -1812,8 +1806,8 @@ namespace Sharpy.Tests
         //             l.Sort();
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 1, 3, 5, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 1, 3, 5, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1828,8 +1822,8 @@ namespace Sharpy.Tests
         //             l.Sort(true);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 7, 5, 3, 1, 1 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 7, 5, 3, 1, 1 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1841,7 +1835,7 @@ namespace Sharpy.Tests
         //             List<int> l = { 7, 3, 1, 1, 5 };
 
         //             // This effectively inverts the sort
-        //             const auto key = [](const int i) -> float {
+        //             var key = [](var int i) -> float {
         //                 return 1.0 / static_cast<float>(i);
         //             }
         //             ;
@@ -1850,8 +1844,8 @@ namespace Sharpy.Tests
         //             l.Sort(key);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 7, 5, 3, 1, 1 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 7, 5, 3, 1, 1 };
 
         //             EXPECT_EQ(actual, expected);
         //         }
@@ -1863,7 +1857,7 @@ namespace Sharpy.Tests
         //             List<int> l = { 7, 3, 1, 1, 5 };
 
         //             // This effectively inverts the sort, but the reverse reverses it again
-        //             const auto key = [](const int i) -> float {
+        //             var key = [](var int i) -> float {
         //                 return 1.0 / static_cast<float>(i);
         //             }
         //             ;
@@ -1872,8 +1866,8 @@ namespace Sharpy.Tests
         //             l.Sort(key, true);
 
         //             // Then
-        //             const auto actual = as_vector(l);
-        //             const System.Collections.Generic.List<int> expected = { 1, 1, 3, 5, 7 };
+        //             var actual = as_vector(l);
+        //             DotNetList<int> expected = { 1, 1, 3, 5, 7 };
 
         //             EXPECT_EQ(actual, expected);
         //         }

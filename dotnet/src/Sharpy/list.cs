@@ -1,6 +1,3 @@
-using System.Text;
-using System.Linq;
-using System.Reflection;
 using Sharpy.Collections.Interfaces;
 
 namespace Sharpy
@@ -111,7 +108,7 @@ namespace Sharpy
                 if (step < 0)
                 {
 
-                    return new List<T>();
+                    return [];
                 }
 
                 (start, end) = ((int, int))_NormalizeSlice(start, end);

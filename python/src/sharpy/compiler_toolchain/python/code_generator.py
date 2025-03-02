@@ -29,7 +29,7 @@ TYPE_MAP: Mapping[str, str] = {
 }
 
 SINGLE_TEMPLATE_TYPE_MAP: Mapping[str, str] = {
-    "list": "System.Collections.Generic.List",
+    "list": "Sharpy.List",
 }
 
 template_pattern = re.compile(r"(array|list|dict|tuple|Optional)\[(.+)\]")
@@ -42,7 +42,7 @@ def map_python_type_to_cs_type(s: str) -> str:
     res = template_pattern.match(s)
 
     if not res:
-        return "object"
+        return "Sharpy.Object"
 
     main_type, template_type = res.groups()
 
@@ -61,14 +61,14 @@ def map_python_type_to_cs_type(s: str) -> str:
         return f"{template_type}[]"
 
     if main_type == "dict":
-        main_type: str = "System.Collections.Generic.HashMap"
+        main_type: str = "Sharpy.HashMap"
         key_type, value_type = template_type.split(",")
         key_type: str = map_python_type_to_cs_type(key_type.strip())
         value_type: str = map_python_type_to_cs_type(value_type.strip())
 
         return f"{main_type}<{key_type}, {value_type}>"
 
-    return "object"
+    return "Sharpy.Object"
 
 
 class CodegenNameFormat(Enum):
