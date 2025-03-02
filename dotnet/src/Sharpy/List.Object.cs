@@ -34,9 +34,18 @@ namespace Sharpy
             var builder = new StringBuilder();
             builder.Append('[');
 
+            uint i = 1;
+            uint numElems = __Len__();
+
             foreach (var item in _list)
             {
                 builder.Append(Repr(item));
+
+                if (i < numElems) {
+                    builder.Append(", ");
+                }
+
+                ++i;
             }
 
             builder.Append(']');

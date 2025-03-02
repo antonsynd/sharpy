@@ -76,6 +76,10 @@ namespace Sharpy
             return res;
         }
 
+        public override bool __Bool__() {
+            return __Len__() > 0;
+        }
+
         public List<T> __Mul__(List<T> other) {
             var res = Copy();
 
@@ -169,6 +173,10 @@ namespace Sharpy
         {
             if (forInsertion)
             {
+                if (i < 0) {
+                    i = (int)__Len__() + i;
+                }
+
                 return (uint)Math.Clamp(i, 0, (int)__Len__());
             }
 

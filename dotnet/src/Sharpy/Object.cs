@@ -4,12 +4,14 @@ namespace Sharpy
     /// Base class for all Sharpy objects (except value types), deriving from
     /// C# object.
     /// </summary>
-    public partial class Object : object, Hashable
+    public abstract partial class Object : object, Hashable
     {
         /// <remarks>
         /// Not publicly constructible.
         /// </remarks>
         protected Object() { }
+
+        public abstract bool __Bool__();
 
         /// <remarks>
         /// By default, calls <see cref="__Repr__()"/>.

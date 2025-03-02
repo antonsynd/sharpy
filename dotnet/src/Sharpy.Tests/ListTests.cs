@@ -278,7 +278,7 @@ namespace Sharpy.Tests
         //             var product = l * -1;
 
         //             // Then
-        //             Len(product).Should().Equal(0);
+        //             Len(product).Should().Be(0);
         //         }
 
         //         [Fact]
@@ -291,7 +291,7 @@ namespace Sharpy.Tests
         //             var product = l * 0;
 
         //             // Then
-        //             Len(product).Should().Equal(0);
+        //             Len(product).Should().Be(0);
         //         }
 
         //         [Fact]
@@ -336,7 +336,7 @@ namespace Sharpy.Tests
         //             l *= -1;
 
         //             // Then
-        //             Len(l).Should().Equal(0);
+        //             Len(l).Should().Be(0);
         //         }
 
         //         [Fact]
@@ -349,7 +349,7 @@ namespace Sharpy.Tests
         //             l *= 0;
 
         //             // Then
-        //             Len(l).Should().Equal(0);
+        //             Len(l).Should().Be(0);
         //         }
 
         //         [Fact]
@@ -471,7 +471,7 @@ namespace Sharpy.Tests
         //             var l = new List<int>();
 
         //             // When/then
-        //             Len(l).Should().Equal(0);
+        //             Len(l).Should().Be(0);
         //         }
 
         //         [Fact]
@@ -481,7 +481,7 @@ namespace Sharpy.Tests
         //             List<int> l = [ 1, 3, 5, 7 ];
 
         //             // When/then
-        //             Len(l).Should().Equal(4);
+        //             Len(l).Should().Be(4);
         //         }
 
         //         [Fact]
@@ -501,7 +501,7 @@ namespace Sharpy.Tests
         //             List<int> l = [ 5, 7, 3, 1 ];
 
         //             // When/then
-        //             Min(l).Should().Equal(1);
+        //             Min(l).Should().Be(1);
         //         }
 
         //         [Fact]
@@ -521,38 +521,38 @@ namespace Sharpy.Tests
         //             List<int> l = [ 5, 7, 3, 1 ];
 
         //             // When/then
-        //             Max(l).Should().Equal(7);
+        //             Max(l).Should().Be(7);
         //         }
 
-        //         [Fact]
-        //         public void List_Count_Empty()
-        //         {
-        //             // If
-        //             var l = new List<int>();
+        [Fact]
+        public void List_Count_Empty()
+        {
+            // If
+            var l = new List<int>();
 
-        //             // When/then
-        //             l.Count(1).Should().Equal(0);
-        //         }
+            // When/then
+            l.Count(1).Should().Be(0);
+        }
 
-        //         [Fact]
-        //         public void List_Count_Zero()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Count_Zero()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When/then
-        //             l.Count(9).Should().Equal(0);
-        //         }
+            // When/then
+            l.Count(9).Should().Be(0);
+        }
 
-        //         [Fact]
-        //         public void List_Count_Non_Zero()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 1, 7 ];
+        [Fact]
+        public void List_Count_Non_Zero()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 1, 7 ];
 
-        //             // When/then
-        //             l.Count(1).Should().Equal(2);
-        //         }
+            // When/then
+            l.Count(1).Should().Be(2);
+        }
 
         //         [Fact]
         //         public void List_Slice_Zero_Step()
@@ -574,7 +574,7 @@ namespace Sharpy.Tests
         //             var actual = l.Slice(0, 1, -1);
 
         //             // Then
-        //             Len(actual).Should().Equal(0);
+        //             Len(actual).Should().Be(0);
         //         }
 
         //         [Fact]
@@ -587,7 +587,7 @@ namespace Sharpy.Tests
         //             var actual = l.Slice(1, 1);
 
         //             // Then
-        //             Len(actual).Should().Equal(0);
+        //             Len(actual).Should().Be(0);
         //         }
 
         //         [Fact]
@@ -750,85 +750,85 @@ namespace Sharpy.Tests
         // }
         // #endif  // __cplusplus >= 202302L
 
-        //         [Fact]
-        //         public void List_Reverse_Empty()
-        //         {
-        //             // If
-        //             var l = new List<int>();
+        [Fact]
+        public void List_Reverse_Empty()
+        {
+            // If
+            var l = new List<int>();
 
-        //             // When
-        //             l.Reverse();
+            // When
+            l.Reverse();
 
-        //             // Then
-        //             Len(l).Should().Equal(0);
-        //         }
+            // Then
+            Len(l).Should().Be(0);
+        }
 
-        //         [Fact]
-        //         public void List_Reverse_Non_Empty()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Reverse_Non_Empty()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When
-        //             l.Reverse();
+            // When
+            l.Reverse();
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 7, 5, 3, 1 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 7, 5, 3, 1 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Reversed_Empty()
-        //         {
-        //             // If
-        //             var l = new List<int>();
+        // [Fact]
+        // public void List_Reversed_Empty()
+        // {
+        //     // If
+        //     var l = new List<int>();
 
-        //             // When
-        //             var reversed = Reverse(l);
-        //             List<int> reversed_list(reversed);
+        //     // When
+        //     var reversed = Reverse(l);
+        //     List<int> reversed_list(reversed);
 
-        //             // Then
-        //             Len(reversed_list).Should().Equal(0);
-        //         }
+        //     // Then
+        //     Len(reversed_list).Should().Be(0);
+        // }
 
-        //         [Fact]
-        //         public void List_Reversed_Non_Empty()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        // [Fact]
+        // public void List_Reversed_Non_Empty()
+        // {
+        //     // If
+        //     List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When
-        //             var reversed = Reverse(l);
-        //             List<int> reversed_list(reversed);
+        //     // When
+        //     var reversed = Reverse(l);
+        //     List<int> reversed_list(reversed);
 
-        //             // Then
-        //             var actual = reversed_list.ToList();
-        //             DotNetList<int> expected = [ 7, 5, 3, 1 ];
+        //     // Then
+        //     var actual = reversed_list.ToList();
+        //     DotNetList<int> expected = [ 7, 5, 3, 1 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+        //     actual.Should().Equal(expected);
+        // }
 
-        //         [Fact]
-        //         public void List_Bool_Empty()
-        //         {
-        //             // If
-        //             var l = new List<int>();
+        [Fact]
+        public void List_Bool_Empty()
+        {
+            // If
+            var l = new List<int>();
 
-        //             // When/then
-        //             Bool(l).Should().BeFalse();
-        //         }
+            // When/then
+            Bool(l).Should().BeFalse();
+        }
 
-        //         [Fact]
-        //         public void List_Bool_Non_Empty()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Bool_Non_Empty()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When/then
-        //             Bool(l).Should().BeTrue();
-        //         }
+            // When/then
+            Bool(l).Should().BeTrue();
+        }
 
         //         [Fact]
         //         public void List_Index_Empty()
@@ -840,15 +840,15 @@ namespace Sharpy.Tests
         //             EXPECT_THROW(l.Index(5), Value_Error);
         //         }
 
-        //         [Fact]
-        //         public void List_Index_Non_Empty()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Index_Non_Empty()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When/then
-        //             l.Index(5).Should().Equal(2);
-        //         }
+            // When/then
+            l.Index(5).Should().Be(2);
+        }
 
         //         [Fact]
         //         public void List_Index_Non_Empty_Object_Equal()
@@ -863,7 +863,7 @@ namespace Sharpy.Tests
         //             ASSERT_NE(&i, &l[2]);
 
         //             // When/then
-        //             l.Index(i).Should().Equal(2);
+        //             l.Index(i).Should().Be(2);
         //         }
 
         //         [Fact]
@@ -893,7 +893,7 @@ namespace Sharpy.Tests
         //             ASSERT_EQ(&i, &l[2]);
 
         //             // When/then
-        //             l.Index(i).Should().Equal(2);
+        //             l.Index(i).Should().Be(2);
         //         }
 
         //         [Fact]
@@ -933,21 +933,21 @@ namespace Sharpy.Tests
         //             EXPECT_THROW(l.Remove(3), Value_Error);
         //         }
 
-        //         [Fact]
-        //         public void List_Remove_Present_Once()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Remove_Present_Once()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When
-        //             l.Remove(3);
+            // When
+            l.Remove(3);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 5, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 5, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
         //         [Fact]
         //         public void List_Remove_Present_Once_Object_Equal()
@@ -997,21 +997,21 @@ namespace Sharpy.Tests
         //             EXPECT_THROW(l.Remove(Int_Identity_Wrapper(3)), Value_Error);
         //         }
 
-        //         [Fact]
-        //         public void List_Remove_Present_More_Than_Once()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7, 3 ];
+        [Fact]
+        public void List_Remove_Present_More_Than_Once()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7, 3 ];
 
-        //             // When
-        //             l.Remove(3);
+            // When
+            l.Remove(3);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 5, 7, 3 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 5, 7, 3 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
         //         [Fact]
         //         public void List_Remove_Present_More_Than_Once_Object_Same()
@@ -1083,21 +1083,21 @@ namespace Sharpy.Tests
         //             EXPECT_THROW(l.Remove(Int_Identity_Wrapper(3)), Value_Error);
         //         }
 
-        //         [Fact]
-        //         public void List_Remove_At_End()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 5, 7, 3 ];
+        [Fact]
+        public void List_Remove_At_End()
+        {
+            // If
+            List<int> l = [ 1, 5, 7, 3 ];
 
-        //             // When
-        //             l.Remove(3);
+            // When
+            l.Remove(3);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 5, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 5, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
         //         [Fact]
         //         public void List_Remove_At_End_Object_Same()
@@ -1286,7 +1286,7 @@ namespace Sharpy.Tests
         //             l.Delete_Slice();
 
         //             // Then
-        //             Len(l).Should().Equal(0);
+        //             Len(l).Should().Be(0);
         //         }
 
         //         [Fact]
@@ -1430,117 +1430,117 @@ namespace Sharpy.Tests
         //             actual.Should().Equal(expected);
         //         }
 
-        //         [Fact]
-        //         public void List_Insert_Into_Empty()
-        //         {
-        //             // If
-        //             var l = new List<int>();
+        [Fact]
+        public void List_Insert_Into_Empty()
+        {
+            // If
+            var l = new List<int>();
 
-        //             // When
-        //             l.Insert(0, 5);
+            // When
+            l.Insert(0, 5);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 5 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 5 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Insert_Into_Non_Empty()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 7 ];
+        [Fact]
+        public void List_Insert_Into_Non_Empty()
+        {
+            // If
+            List<int> l = [ 1, 3, 7 ];
 
-        //             // When
-        //             l.Insert(1, 5);
+            // When
+            l.Insert(1, 5);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 5, 3, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 5, 3, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Insert_Into_Non_Empty_Beyond_Left_Bound()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 7 ];
+        [Fact]
+        public void List_Insert_Into_Non_Empty_Beyond_Left_Bound()
+        {
+            // If
+            List<int> l = [ 1, 3, 7 ];
 
-        //             // When
-        //             l.Insert(-100, 5);
+            // When
+            l.Insert(-100, 5);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 5, 1, 3, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 5, 1, 3, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Insert_Into_Non_Empty_Beyond_Right_Bound()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 7 ];
+        [Fact]
+        public void List_Insert_Into_Non_Empty_Beyond_Right_Bound()
+        {
+            // If
+            List<int> l = [ 1, 3, 7 ];
 
-        //             // When
-        //             l.Insert(100, 5);
+            // When
+            l.Insert(100, 5);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 3, 7, 5 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 3, 7, 5 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Insert_Into_Non_Empty_At_Left_Bound()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 7 ];
+        [Fact]
+        public void List_Insert_Into_Non_Empty_At_Left_Bound()
+        {
+            // If
+            List<int> l = [ 1, 3, 7 ];
 
-        //             // When
-        //             l.Insert(0, 5);
+            // When
+            l.Insert(0, 5);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 5, 1, 3, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 5, 1, 3, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Insert_Into_Non_Empty_Before_Right_Bound()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 7 ];
+        [Fact]
+        public void List_Insert_Into_Non_Empty_Before_Right_Bound()
+        {
+            // If
+            List<int> l = [ 1, 3, 7 ];
 
-        //             // When
-        //             l.Insert(-1, 5);
+            // When
+            l.Insert(-1, 5);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 3, 5, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 3, 5, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Insert_Into_Non_Empty_At_Right_Bound()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 7 ];
+        [Fact]
+        public void List_Insert_Into_Non_Empty_At_Right_Bound()
+        {
+            // If
+            List<int> l = [ 1, 3, 7 ];
 
-        //             // When
-        //             l.Insert(3, 5);
+            // When
+            l.Insert(3, 5);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 3, 7, 5 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 3, 7, 5 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
         //         [Fact]
         //         public void List_Pop_Empty()
@@ -1552,69 +1552,69 @@ namespace Sharpy.Tests
         //             EXPECT_THROW(l.Pop(), Index_Error);
         //         }
 
-        //         [Fact]
-        //         public void List_Pop_Last()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Pop_Last()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When
-        //             l.Pop();
+            // When
+            l.Pop();
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 3, 5 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 3, 5 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Pop_Front()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Pop_Front()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When
-        //             l.Pop(0);
+            // When
+            l.Pop(0);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 3, 5, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 3, 5, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Pop_Middle()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Pop_Middle()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When
-        //             l.Pop(1);
+            // When
+            l.Pop(1);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 5, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 5, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Pop_Negative()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Pop_Negative()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When
-        //             l.Pop(-2);
+            // When
+            l.Pop(-2);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 3, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 3, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
         //         [Fact]
         //         public void List_Pop_Out_Of_Bounds_Left()
@@ -1755,45 +1755,45 @@ namespace Sharpy.Tests
         //             l.Should().NotEqual(m);
         //         }
 
-        //         [Fact]
-        //         public void List_As_Str_Empty()
-        //         {
-        //             // If
-        //             var l = new List<int>();
+        [Fact]
+        public void List_Str_Empty()
+        {
+            // If
+            var l = new List<int>();
 
-        //             // When/then
-        //             Str(l).Should().Equal("[]");
-        //         }
+            // When/then
+            Str(l).Should().Be("[]");
+        }
 
-        //         [Fact]
-        //         public void List_As_Str_Not_Empty()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Str_Not_Empty()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When/then
-        //             Str(l), "[1, 3, 5.Should().Equal(7]");
-        //         }
+            // When/then
+            Str(l).Should().Be("[1, 3, 5, 7]");
+        }
 
-        //         [Fact]
-        //         public void List_Repr_Empty()
-        //         {
-        //             // If
-        //             var l = new List<int>();
+        [Fact]
+        public void List_Repr_Empty()
+        {
+            // If
+            var l = new List<int>();
 
-        //             // When/then
-        //             Repr(l).Should().Equal("[]");
-        //         }
+            // When/then
+            Repr(l).Should().Be("[]");
+        }
 
-        //         [Fact]
-        //         public void List_Repr_Not_Empty()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Repr_Not_Empty()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When/then
-        //             Repr(l), "[1, 3, 5.Should().Equal(7]");
-        //         }
+            // When/then
+            Repr(l).Should().Be("[1, 3, 5, 7]");
+        }
 
         //         [Fact]
         //         public void List_Sort()

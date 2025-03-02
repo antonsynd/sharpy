@@ -38,7 +38,7 @@ namespace Sharpy
         /// </summary>
         public void Insert(int i, T x)
         {
-            _list.Insert((int)_NormalizeIndex(i), x);
+            _list.Insert((int)_NormalizeIndex(i, true), x);
         }
 
         /// <summary>
@@ -56,7 +56,7 @@ namespace Sharpy
 
             try
             {
-                _NormalizeIndex(i);
+                i = (int)_NormalizeIndex(i);
             }
             catch (IndexError)
             {
