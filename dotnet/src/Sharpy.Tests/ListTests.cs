@@ -464,25 +464,25 @@ namespace Sharpy.Tests
         //     EXPECT_THROW({ l[4] = 11; }, Index_Error);
         // }
 
-        //         [Fact]
-        //         public void List_Len_Zero()
-        //         {
-        //             // If
-        //             var l = new List<int>();
+        [Fact]
+        public void List_Len_Zero()
+        {
+            // If
+            var l = new List<int>();
 
-        //             // When/then
-        //             Len(l).Should().Be(0);
-        //         }
+            // When/then
+            Len(l).Should().Be(0);
+        }
 
-        //         [Fact]
-        //         public void List_Len_Non_Zero()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Len_Non_Zero()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When/then
-        //             Len(l).Should().Be(4);
-        //         }
+            // When/then
+            Len(l).Should().Be(4);
+        }
 
         //         [Fact]
         //         public void List_Min_Empty()
