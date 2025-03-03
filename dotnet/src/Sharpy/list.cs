@@ -80,10 +80,18 @@ namespace Sharpy
             return __Len__() > 0;
         }
 
-        public List<T> __Mul__(List<T> other) {
-            var res = Copy();
+        public List<T> __Mul__(int i) {
+            var res = new List<T>();
 
-            // TODO
+            if (i <= 0) {
+                return res;
+            }
+
+            res._list.EnsureCapacity((int)__Len__() * i);
+
+            for (; i > 0; --i) {
+                res.Extend(this);
+            }
 
             return res;
         }
@@ -157,8 +165,8 @@ namespace Sharpy
             return left.__Add__(right);
         }
 
-        public static List<T> operator *(List<T> left, List<T> right) {
-            return left.__Mul__(right);
+        public static List<T> operator *(List<T> left, int i) {
+            return left.__Mul__(i);
         }
 
         /// <summary>
