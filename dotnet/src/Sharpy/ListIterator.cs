@@ -1,7 +1,7 @@
 
 namespace Sharpy
 {
-    public sealed partial class ListIterator<T> : Iterator<T> where T : IComparable<T>, IEquatable<T>
+    public sealed partial class ListIterator<T> : Iterator<T>
     {
         private readonly List<T> _list;
         private uint _index = 0;

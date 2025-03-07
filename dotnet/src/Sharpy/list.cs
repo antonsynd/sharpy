@@ -5,7 +5,7 @@ namespace Sharpy
     /// <summary>
     /// A list of elements.
     /// </summary>
-    public sealed partial class List<T> : Object, MutableSequence<T> where T : IComparable<T>, IEquatable<T>
+    public sealed partial class List<T> : Object, MutableSequence<T>
     {
         private System.Collections.Generic.List<T> _list;
 

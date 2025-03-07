@@ -9,9 +9,13 @@ namespace Sharpy
         /// what this function returns for its instances by overriding the
         /// <see cref="Object.__Repr__()"/> method.
         /// </summary>
-        public static string Repr(Object obj)
+        public static string Repr(Object? obj)
         {
-            return obj.__Repr__();
+            if (obj is null) {
+                return "None";
+            } else {
+                return obj.__Repr__();
+            }
         }
 
         /// <summary>
@@ -23,9 +27,13 @@ namespace Sharpy
         /// This actually applies to all C# objects, but overload resolution
         /// should prefer the <see cref="Object"/> version for Sharpy objects.
         /// </remarks>
-        public static string Repr(object x)
+        public static string Repr(object? x)
         {
-            return x.ToString() ?? "";
+            if (x is null) {
+                return "";
+            } else {
+                return x.ToString() ?? "";
+            }
         }
     }
 }

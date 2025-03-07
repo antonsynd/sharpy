@@ -4,7 +4,7 @@ namespace Sharpy
     /// Base class for all Sharpy objects (except value types), deriving from
     /// C# object.
     /// </summary>
-    public abstract partial class Object : object, Hashable
+    public abstract partial class Object : object, Hashable, Equatable<Object>
     {
         /// <remarks>
         /// Not publicly constructible.
@@ -29,16 +29,6 @@ namespace Sharpy
         public virtual string __Repr__()
         {
             return $"<Object object with id {__Id__()}>";
-        }
-
-        /// <remarks>
-        /// By default, returns whether this and other refer to the same object
-        /// via <see cref="object.ReferenceEquals(object)"/> .
-        /// </remarks>
-        public virtual bool __Eq__(Object other)
-        {
-            // Default to reference equality
-            return ReferenceEquals(this, other);
         }
 
         /// <remarks>
