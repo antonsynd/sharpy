@@ -188,7 +188,7 @@ namespace Sharpy
                 return (uint)Math.Clamp(i, 0, (int)__Len__());
             }
 
-            if (i > __Len__() || i < -__Len__())
+            if (i >= __Len__() || i < -__Len__())
             {
                 throw new IndexError($"list index {i} out of range");
             }

@@ -27,8 +27,15 @@ namespace Sharpy
         /// </summary>
         public uint Index(T x, int start = 0, int end = -1)
         {
-            start = (int)_NormalizeIndex(start);
-            int count = (int)_NormalizeIndex(end) - start;
+            int count;
+
+            try {
+                start = (int)_NormalizeIndex(start);
+                count = (int)_NormalizeIndex(end) - start;
+            }
+            catch (IndexError) {
+                throw new ValueError($"{x} is not in list");
+            }
 
             var result = _list.IndexOf(x, start, count);
 

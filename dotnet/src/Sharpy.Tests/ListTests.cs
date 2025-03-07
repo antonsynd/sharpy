@@ -410,16 +410,16 @@ namespace Sharpy.Tests
             l[-4].Should().Be(1);
         }
 
-        // [Fact]
-        // public void List_Get_By_Out_Of_Bounds()
-        // {
-        //     // If
-        //     List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Get_By_Out_Of_Bounds()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //     // When/then
-        //     EXPECT_THROW(l[-5], Index_Error);
-        //     EXPECT_THROW(l[4], Index_Error);
-        // }
+            // When/then
+            FluentActions.Invoking(() => { var _ = l[-5]; }).Should().Throw<IndexError>();
+            FluentActions.Invoking(() => { var _ = l[4]; }).Should().Throw<IndexError>();
+        }
 
         [Fact]
         public void List_Set_By_Positive_Index()
@@ -453,16 +453,16 @@ namespace Sharpy.Tests
             l[-4].Should().Be(1);
         }
 
-        // [Fact]
-        // public void List_Set_By_Out_Of_Bounds()
-        // {
-        //     // If
-        //     List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Set_By_Out_Of_Bounds()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //     // When/then
-        //     EXPECT_THROW({ l[-5] = 9; }, Index_Error);
-        //     EXPECT_THROW({ l[4] = 11; }, Index_Error);
-        // }
+            // When/then
+            FluentActions.Invoking(() => { l[-5] = 9; }).Should().Throw<IndexError>();
+            FluentActions.Invoking(() => { l[4] = 11; }).Should().Throw<IndexError>();
+        }
 
         [Fact]
         public void List_Len_Zero()
@@ -491,7 +491,7 @@ namespace Sharpy.Tests
         //             var l = new List<int>();
 
         //             // When/then
-        //             EXPECT_THROW(Min(l), Value_Error);
+        //             EXPECT_THROW(Min(l), ValueError);
         //         }
 
         //         [Fact]
@@ -511,7 +511,7 @@ namespace Sharpy.Tests
         //             var l = new List<int>();
 
         //             // When/then
-        //             EXPECT_THROW(Max(l), Value_Error);
+        //             EXPECT_THROW(Max(l), ValueError);
         //         }
 
         //         [Fact]
@@ -561,7 +561,7 @@ namespace Sharpy.Tests
         //             List<int> l = [ 1, 3, 5, 1, 7 ];
 
         //             // When/then
-        //             EXPECT_THROW(l.Slice(0, 0, 0), Value_Error);
+        //             EXPECT_THROW(l.Slice(0, 0, 0), ValueError);
         //         }
 
         //         [Fact]
@@ -779,36 +779,36 @@ namespace Sharpy.Tests
             actual.Should().Equal(expected);
         }
 
-        // [Fact]
-        // public void List_Reversed_Empty()
-        // {
-        //     // If
-        //     var l = new List<int>();
+        [Fact]
+        public void List_Reversed_Empty()
+        {
+            // If
+            var l = new List<int>();
 
-        //     // When
-        //     var reversed = Reverse(l);
-        //     List<int> reversed_list(reversed);
+            // When
+            var reversed = Reversed(l);
+            var reversed_list = new List<int>(reversed);
 
-        //     // Then
-        //     Len(reversed_list).Should().Be(0);
-        // }
+            // Then
+            Len(reversed_list).Should().Be(0);
+        }
 
-        // [Fact]
-        // public void List_Reversed_Non_Empty()
-        // {
-        //     // If
-        //     List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Reversed_Non_Empty()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //     // When
-        //     var reversed = Reverse(l);
-        //     List<int> reversed_list(reversed);
+            // When
+            var reversed = Reversed(l);
+            var reversedList = new List<int>(reversed);
 
-        //     // Then
-        //     var actual = reversed_list.ToList();
-        //     DotNetList<int> expected = [ 7, 5, 3, 1 ];
+            // Then
+            var actual = reversedList.ToList();
+            DotNetList<int> expected = [ 7, 5, 3, 1 ];
 
-        //     actual.Should().Equal(expected);
-        // }
+            actual.Should().Equal(expected);
+        }
 
         [Fact]
         public void List_Bool_Empty()
@@ -830,15 +830,15 @@ namespace Sharpy.Tests
             Bool(l).Should().BeTrue();
         }
 
-        //         [Fact]
-        //         public void List_Index_Empty()
-        //         {
-        //             // If
-        //             var l = new List<int>();
+        [Fact]
+        public void List_Index_Empty()
+        {
+            // If
+            var l = new List<int>();
 
-        //             // When/then
-        //             EXPECT_THROW(l.Index(5), Value_Error);
-        //         }
+            // When/then
+            FluentActions.Invoking(() => l.Index(5)).Should().Throw<ValueError>();
+        }
 
         [Fact]
         public void List_Index_Non_Empty()
@@ -877,7 +877,7 @@ namespace Sharpy.Tests
         //             ;
 
         //             // When/then
-        //             EXPECT_THROW(l.Index(i), Value_Error);
+        //             EXPECT_THROW(l.Index(i), ValueError);
         //         }
 
         //         [Fact]
@@ -910,7 +910,7 @@ namespace Sharpy.Tests
         //             ASSERT_NE(&i, &l[2]);
 
         //             // When/then
-        //             EXPECT_THROW(l.Index(i), Value_Error);
+        //             EXPECT_THROW(l.Index(i), ValueError);
         //         }
 
         //         [Fact]
@@ -920,7 +920,7 @@ namespace Sharpy.Tests
         //             var l = new List<int>();
 
         //             // When/then
-        //             EXPECT_THROW(l.Remove(3), Value_Error);
+        //             EXPECT_THROW(l.Remove(3), ValueError);
         //         }
 
         //         [Fact]
@@ -930,7 +930,7 @@ namespace Sharpy.Tests
         //             List<int> l = [ 1, 5, 7 ];
 
         //             // When/then
-        //             EXPECT_THROW(l.Remove(3), Value_Error);
+        //             EXPECT_THROW(l.Remove(3), ValueError);
         //         }
 
         [Fact]
@@ -978,7 +978,7 @@ namespace Sharpy.Tests
         //             ;
 
         //             // When/then
-        //             EXPECT_THROW(l.Remove(i), Value_Error);
+        //             EXPECT_THROW(l.Remove(i), ValueError);
         //         }
 
         //         [Fact]
@@ -994,7 +994,7 @@ namespace Sharpy.Tests
         //             ASSERT_NE(&i, &l[1]);
 
         //             // When/then
-        //             EXPECT_THROW(l.Remove(Int_Identity_Wrapper(3)), Value_Error);
+        //             EXPECT_THROW(l.Remove(Int_Identity_Wrapper(3)), ValueError);
         //         }
 
         [Fact]
@@ -1080,7 +1080,7 @@ namespace Sharpy.Tests
         //                                 Int_Identity_Wrapper(3)};
 
         //             // When
-        //             EXPECT_THROW(l.Remove(Int_Identity_Wrapper(3)), Value_Error);
+        //             EXPECT_THROW(l.Remove(Int_Identity_Wrapper(3)), ValueError);
         //         }
 
         [Fact]
@@ -1151,7 +1151,7 @@ namespace Sharpy.Tests
         //             ASSERT_NE(&i, &l[-1]);
 
         //             // When/then
-        //             EXPECT_THROW(l.Remove(i), Value_Error);
+        //             EXPECT_THROW(l.Remove(i), ValueError);
         //         }
 
         //         [Fact]
@@ -1161,7 +1161,7 @@ namespace Sharpy.Tests
         //             List<int> l = [ 1, 3, 5, 1, 7 ];
 
         //             // When/then
-        //             EXPECT_THROW(l.Delete_Slice(0, 0, 0), Value_Error);
+        //             EXPECT_THROW(l.Delete_Slice(0, 0, 0), ValueError);
         //         }
 
         //         [Fact]
@@ -1297,7 +1297,7 @@ namespace Sharpy.Tests
         //             List<int> other = [ 2, 4, 6 ];
 
         //             // When/then
-        //             EXPECT_THROW(l.Replace_Slice(other, 0, 0, 0), Value_Error);
+        //             EXPECT_THROW(l.Replace_Slice(other, 0, 0, 0), ValueError);
         //         }
 
         //         [Fact]
@@ -1393,7 +1393,7 @@ namespace Sharpy.Tests
         //             List<int> other = [ 2, 4, 6 ];
 
         //             // When/then
-        //             EXPECT_THROW(l.Replace_Slice(other, 1, 3, 4), Value_Error);
+        //             EXPECT_THROW(l.Replace_Slice(other, 1, 3, 4), ValueError);
         //         }
 
         //         [Fact]
@@ -1542,15 +1542,15 @@ namespace Sharpy.Tests
             actual.Should().Equal(expected);
         }
 
-        //         [Fact]
-        //         public void List_Pop_Empty()
-        //         {
-        //             // If
-        //             var l = new List<int>();
+        [Fact]
+        public void List_Pop_Empty()
+        {
+            // If
+            var l = new List<int>();
 
-        //             // When/then
-        //             EXPECT_THROW(l.Pop(), Index_Error);
-        //         }
+            // When/then
+            FluentActions.Invoking(() => l.Pop()).Should().Throw<IndexError>();
+        }
 
         [Fact]
         public void List_Pop_Last()
@@ -1623,7 +1623,7 @@ namespace Sharpy.Tests
         //             List<int> l = [ 1, 3, 5, 7 ];
 
         //             // When/then
-        //             EXPECT_THROW(l.Pop(-100), Index_Error);
+        //             EXPECT_THROW(l.Pop(-100), IndexError);
         //         }
 
         //         [Fact]
@@ -1633,7 +1633,7 @@ namespace Sharpy.Tests
         //             List<int> l = [ 1, 3, 5, 7 ];
 
         //             // When/then
-        //             EXPECT_THROW(l.Pop(100), Index_Error);
+        //             EXPECT_THROW(l.Pop(100), IndexError);
         //         }
 
         //         [Fact]
