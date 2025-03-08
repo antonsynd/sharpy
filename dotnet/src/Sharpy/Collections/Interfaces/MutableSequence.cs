@@ -3,7 +3,7 @@ namespace Sharpy.Collections.Interfaces
     /// <summary>
     /// Interface for mutable sequences.
     /// </summary>
-    public interface MutableSequence<T> : Sequence<T>
+    public interface MutableSequence<S, T> : Sequence<S, T>
     {
         void Append(T x);
 
@@ -24,6 +24,10 @@ namespace Sharpy.Collections.Interfaces
 
         void __DelItem__(int i, T x);
 
+        void __DelItem__(Slice slice);
+
         void __SetItem__(int i, T x);
+
+        void __SetItem__(Slice slice, S other);
     }
 }

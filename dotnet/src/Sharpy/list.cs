@@ -5,7 +5,7 @@ namespace Sharpy
     /// <summary>
     /// A list of elements.
     /// </summary>
-    public sealed partial class List<T> : Object, MutableSequence<T>
+    public sealed partial class List<T> : Object, MutableSequence<List<T>, T>
     {
         private System.Collections.Generic.List<T> _list;
 
@@ -119,35 +119,19 @@ namespace Sharpy
             }
             set
             {
-                // TODO
+                this[start, end, 1] = value;
             }
         }
 
-        public List<T> this[int start, int end, int step = 1]
+        public List<T> this[int start, int end, int step]
         {
             get
             {
-                if (step == 0)
-                {
-                    throw new ValueError("slice step cannot be zero");
-                }
-
-                if (step < 0)
-                {
-
-                    return [];
-                }
-
-                (start, end) = ((int, int))_NormalizeSlice(start, end);
-
-                return new List<T>
-                {
-                    _list = [.. _list.Skip(start).Take(end - start).Where((item, index) => index % step == 0)]
-                };
+                return __GetItem__(new Slice(start, end, step));
             }
             set
             {
-                // TODO
+                __SetItem__(new Slice(start, end, step), value);
             }
         }
 

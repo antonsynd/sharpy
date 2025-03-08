@@ -4,11 +4,13 @@ namespace Sharpy
     {
         /// <summary>
         /// Return a string containing a printable representation of an object.
+        /// </summary>
+        /// <remarks>
         /// By default, the representation is a string enclosed in angle
         /// brackets that contains the id of the object. A class can control
         /// what this function returns for its instances by overriding the
         /// <see cref="Object.__Repr__()"/> method.
-        /// </summary>
+        /// </remarks>
         public static string Repr(Object? obj)
         {
             if (obj is null) {
