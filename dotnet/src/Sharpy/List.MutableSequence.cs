@@ -105,6 +105,11 @@ namespace Sharpy
             _list[index] = value;
         }
 
+        public void __SetItem__(List<T> other) {
+            Clear();
+            Extend(other);
+        }
+
         public void __SetItem__(Slice slice, List<T> other) {
             if (slice.step == 0)
             {
@@ -123,7 +128,7 @@ namespace Sharpy
             if (slice.step == 1) {
                 _SetSliceSingleStep(other, start, end);
             } else {
-                _SetSliceMultiStep(other, start, end, slice.step);
+                _SetSliceMultiStep(other, start, end, (uint)slice.step);
             }
         }
 
@@ -184,33 +189,20 @@ namespace Sharpy
             _list.RemoveRange((int)end, (int)numElemsToRemove);
         }
 
-        void _SetSliceMultiStep(List<T> other, uint start, uint end, int step) {
-            var numOldElems = Slice.Len((int)start, (int)end, step);
+        void _SetSliceMultiStep(List<T> other, uint start, uint end, uint step) {
+            var numElems = Slice.Len((int)start, (int)end, (int)step);
 
-            if (other.__Len__() != numOldElems) {
+            if (other.__Len__() != numElems) {
                 throw new ValueError($"Attempt to assign sequence of size "
                     + $"{other.__Len__()} to extended slice of size "
-                    + $"{numOldElems}");
+                    + $"{numElems}");
             }
 
-            // size_t idx = 0;
-            // auto other_it = other.data_.v_.begin();
-            // const auto other_end = other.data_.v_.end();
-
-            // std::for_each(start_it, end_it,
-            //     [&idx, step, &other_it, &other_end](value_type& elem) {
-            //         if (other_it == other_end) {
-            //         // Shouldn't happen, but here as a fail-safe
-            //         return;
-            //         }
-
-            //         if (idx % step == 0) {
-            //         elem = *other_it;
-            //         ++other_it;
-            //         }
-
-            //         ++idx;
-            //     });
+            for (uint i = 0; i < numElems; ++i) {
+                if (i % step == 0) {
+                    _list[(int)(i * step + start)] = other[(int)i];
+                }
+            }
         }
     }
 }

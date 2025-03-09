@@ -554,153 +554,153 @@ namespace Sharpy.Tests
             l.Count(1).Should().Be(2);
         }
 
-        //         [Fact]
-        //         public void List_Slice_Zero_Step()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 1, 7 ];
+        [Fact]
+        public void List_Slice_Zero_Step()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 1, 7 ];
 
-        //             // When/then
-        //             EXPECT_THROW(l.Slice(0, 0, 0), ValueError);
-        //         }
+            // When/then
+            FluentActions.Invoking(() => l.__GetItem__(new Slice(0, 0, 0))).Should().Throw<ValueError>();
+        }
 
-        //         [Fact]
-        //         public void List_Slice_Negative_Step()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 1, 7 ];
+        [Fact]
+        public void List_Slice_Negative_Step()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 1, 7 ];
 
-        //             // When
-        //             var actual = l.Slice(0, 1, -1);
+            // When
+            var actual = l.__GetItem__(new Slice(0, 1, -1));
 
-        //             // Then
-        //             Len(actual).Should().Be(0);
-        //         }
+            // Then
+            Len(actual).Should().Be(0);
+        }
 
-        //         [Fact]
-        //         public void List_Slice_Same_Start_And_End()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 1, 7 ];
+        [Fact]
+        public void List_Slice_Same_Start_And_End()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 1, 7 ];
 
-        //             // When
-        //             var actual = l.Slice(1, 1);
+            // When
+            var actual = l.__GetItem__(new Slice(1, 1));
 
-        //             // Then
-        //             Len(actual).Should().Be(0);
-        //         }
+            // Then
+            Len(actual).Should().Be(0);
+        }
 
-        //         [Fact]
-        //         public void List_Slice_Single_Step()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Slice_Single_Step()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When
-        //             var res = l.Slice(1, 3);
+            // When
+            var res = l.__GetItem__(new Slice(1, 3));
 
-        //             // Then
-        //             var actual = res.ToList();
-        //             DotNetList<int> expected = [ 3, 5 ];
+            // Then
+            var actual = res.ToList();
+            DotNetList<int> expected = [ 3, 5 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Slice_Not_Single_Step_Not_Enough()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Slice_Not_Single_Step_Not_Enough()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When
-        //             var res = l.Slice(1, 3, 4);
+            // When
+            var res = l.__GetItem__(new Slice(1, 3, 4));
 
-        //             // Then
-        //             var actual = res.ToList();
-        //             DotNetList<int> expected = [ 3 ];
+            // Then
+            var actual = res.ToList();
+            DotNetList<int> expected = [ 3 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Slice_Not_Single_Step_Enough()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7, 9 ];
+        [Fact]
+        public void List_Slice_Not_Single_Step_Enough()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7, 9 ];
 
-        //             // When
-        //             var res = l.Slice(1, 5, 2);
+            // When
+            var res = l.__GetItem__(new Slice(1, 5, 2));
 
-        //             // Then
-        //             var actual = res.ToList();
-        //             DotNetList<int> expected = [ 3, 7 ];
+            // Then
+            var actual = res.ToList();
+            DotNetList<int> expected = [ 3, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Slice_Out_Of_Bounds_Left()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7, 9 ];
+        [Fact]
+        public void List_Slice_Out_Of_Bounds_Left()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7, 9 ];
 
-        //             // When
-        //             var res = l.Slice(-9, 4, 2);
+            // When
+            var res = l.__GetItem__(new Slice(-9, 4, 2));
 
-        //             // Then
-        //             var actual = res.ToList();
-        //             DotNetList<int> expected = [ 1, 5 ];
+            // Then
+            var actual = res.ToList();
+            DotNetList<int> expected = [ 1, 5 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Slice_Out_Of_Bounds_Right()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7, 9 ];
+        [Fact]
+        public void List_Slice_Out_Of_Bounds_Right()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7, 9 ];
 
-        //             // When
-        //             var res = l.Slice(0, 9, 2);
+            // When
+            var res = l.__GetItem__(new Slice(0, 9, 2));
 
-        //             // Then
-        //             var actual = res.ToList();
-        //             DotNetList<int> expected = [ 1, 5, 9 ];
+            // Then
+            var actual = res.ToList();
+            DotNetList<int> expected = [ 1, 5, 9 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Slice_No_Args_Is_Copy()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7, 9 ];
+        [Fact]
+        public void List_Slice_No_Args_Is_Copy()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7, 9 ];
 
-        //             // When
-        //             var res = l.Slice();
+            // When
+            var res = l.__GetItem__();
 
-        //             // Then
-        //             var actual = res.ToList();
-        //             DotNetList<int> expected = [ 1, 3, 5, 7, 9 ];
+            // Then
+            var actual = res.ToList();
+            DotNetList<int> expected = [ 1, 3, 5, 7, 9 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
         // #if __cplusplus >= 202302L
-        // [Fact]
-        // public void List_Slice_Operator() {
-        //   // If
-        //   List<int> l = [1, 3, 5, 7, 9];
+        [Fact]
+        public void List_Slice_Operator() {
+          // If
+          List<int> l = [1, 3, 5, 7, 9];
 
-        //   // When
-        //   var res = l[1, 5, 2];
+          // When
+          var res = l[1, 5, 2];
 
-        //   // Then
-        //   var actual = res.ToList();
-        //   DotNetList<int> expected = [3, 7];
+          // Then
+          var actual = res.ToList();
+          DotNetList<int> expected = [3, 7];
 
-        //   actual.Should().Equal(expected);
-        // }
+          actual.Should().Equal(expected);
+        }
 
         // [Fact]
         // public void List_Slice_Operator_Object() {
@@ -714,21 +714,6 @@ namespace Sharpy.Tests
         //   // Then
         //   var actual = res.ToList();
         //   DotNetList<int> expected = [3, 7];
-
-        //   actual.Should().Equal(expected);
-        // }
-
-        // [Fact]
-        // public void List_Slice_Operator_With_No_Args_Is_Copy() {
-        //   // If
-        //   List<int> l = [1, 3, 5, 7, 9];
-
-        //   // When
-        //   var res = l[];
-
-        //   // Then
-        //   var actual = res.ToList();
-        //   DotNetList<int> expected = [1, 3, 5, 7, 9];
 
         //   actual.Should().Equal(expected);
         // }
@@ -1289,146 +1274,146 @@ namespace Sharpy.Tests
         //             Len(l).Should().Be(0);
         //         }
 
-        //         [Fact]
-        //         public void List_Replace_Slice_Zero_Step()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 1, 7 ];
-        //             List<int> other = [ 2, 4, 6 ];
+        [Fact]
+        public void List_Replace_Slice_Zero_Step()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 1, 7 ];
+            List<int> other = [ 2, 4, 6 ];
 
-        //             // When/then
-        //             EXPECT_THROW(l.Replace_Slice(other, 0, 0, 0), ValueError);
-        //         }
+            // When/then
+            FluentActions.Invoking(() => l.__SetItem__(new Slice(0, 0, 0), other)).Should().Throw<ValueError>();
+        }
 
-        //         [Fact]
-        //         public void List_Replace_Slice_Negative_Step()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 1, 7 ];
-        //             List<int> other = [ 2, 4, 6 ];
+        [Fact]
+        public void List_Replace_Slice_Negative_Step()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 1, 7 ];
+            List<int> other = [ 2, 4, 6 ];
 
-        //             // When
-        //             l.Replace_Slice(other, 0, 1, -1);
+            // When
+            l.__SetItem__(new Slice(0, 1, -1), other);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 3, 5, 1, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 3, 5, 1, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Replace_Slice_Same_Start_And_End()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 1, 7 ];
-        //             List<int> other = [ 2, 4, 6 ];
+        [Fact]
+        public void List_Replace_Slice_Same_Start_And_End()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 1, 7 ];
+            List<int> other = [ 2, 4, 6 ];
 
-        //             // When
-        //             l.Replace_Slice(other, 1, 1);
+            // When
+            l.__SetItem__(new Slice(1, 1), other);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 3, 5, 1, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 3, 5, 1, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Replace_Slice_Single_Step_More_New_Elems()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
-        //             List<int> other = [ 2, 4, 6 ];
+        [Fact]
+        public void List_Replace_Slice_Single_Step_More_New_Elems()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
+            List<int> other = [ 2, 4, 6 ];
 
-        //             // When
-        //             l.Replace_Slice(other, 1, 3);
+            // When
+            l.__SetItem__(new Slice(1, 3), other);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 2, 4, 6, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 2, 4, 6, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Replace_Slice_Single_Step_Less_New_Elems()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
-        //             List<int> other = [ 2 ];
+        [Fact]
+        public void List_Replace_Slice_Single_Step_Less_New_Elems()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
+            List<int> other = [ 2 ];
 
-        //             // When
-        //             l.Replace_Slice(other, 1, 3);
+            // When
+            l.__SetItem__(new Slice(1, 3), other);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 2, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 2, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Replace_Slice_Single_Step_Same_New_Elems()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
-        //             List<int> other = [ 2, 4 ];
+        [Fact]
+        public void List_Replace_Slice_Single_Step_Same_New_Elems()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
+            List<int> other = [ 2, 4 ];
 
-        //             // When
-        //             l.Replace_Slice(other, 1, 3);
+            // When
+            l.__SetItem__(new Slice(1, 3), other);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 2, 4, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 2, 4, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Replace_Slice_Not_Single_Step_Not_Same_Num_Elems()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
-        //             List<int> other = [ 2, 4, 6 ];
+        [Fact]
+        public void List_Replace_Slice_Not_Single_Step_Not_Same_Num_Elems()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
+            List<int> other = [ 2, 4, 6 ];
 
-        //             // When/then
-        //             EXPECT_THROW(l.Replace_Slice(other, 1, 3, 4), ValueError);
-        //         }
+            // When/then
+            FluentActions.Invoking(() => l.__SetItem__(new Slice(1, 3, 4), other)).Should().Throw<ValueError>();
+        }
 
-        //         [Fact]
-        //         public void List_Replace_Slice_Not_Single_Step_Same_Num_Elems()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7, 9 ];
-        //             List<int> other = [ 2, 4 ];
+        [Fact]
+        public void List_Replace_Slice_Not_Single_Step_Same_Num_Elems()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7, 9 ];
+            List<int> other = [ 2, 4 ];
 
-        //             // When
-        //             l.Replace_Slice(other, 1, 4, 2);
+            // When
+            l.__SetItem__(new Slice(1, 4, 2), other);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 2, 5, 4, 9 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 2, 5, 4, 9 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Replace_Slice_No_Args_Is_Complete_Replacement()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7, 9 ];
-        //             List<int> other = [ 2, 4, 6 ];
+        [Fact]
+        public void List_Replace_Slice_No_Args_Is_Complete_Replacement()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7, 9 ];
+            List<int> other = [ 2, 4, 6 ];
 
-        //             // When
-        //             l.Replace_Slice(other);
+            // When
+            l.__SetItem__(other);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 2, 4, 6 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 2, 4, 6 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
         [Fact]
         public void List_Insert_Into_Empty()

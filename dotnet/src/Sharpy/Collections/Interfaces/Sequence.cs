@@ -9,6 +9,8 @@ namespace Sharpy.Collections.Interfaces
 
         uint Index(T x, int start = 0, int end = -1);
 
+        S __GetItem__();
+
         T __GetItem__(int index);
 
         S __GetItem__(Slice slice);

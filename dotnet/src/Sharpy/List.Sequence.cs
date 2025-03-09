@@ -5,6 +5,13 @@ namespace Sharpy
 {
     public sealed partial class List<T>
     {
+        public List<T> __GetItem__()
+        {
+            return new List<T> {
+                _list = [.. _list]
+            };
+        }
+
         public T __GetItem__(int index)
         {
             index = (int)_NormalizeIndex(index);
