@@ -1,3 +1,4 @@
+using System.Reflection.Metadata;
 using Sharpy.Collections.Interfaces;
 
 namespace Sharpy
@@ -91,11 +92,11 @@ namespace Sharpy
 
         public void __DelItem__(int index, T x)
         {
-
+            // TODO
         }
 
         public void __DelItem__(Slice slice) {
-
+            // TODO
         }
 
         public void __SetItem__(int index, T value)
@@ -116,94 +117,100 @@ namespace Sharpy
                 return;
             }
 
-            (int start, int end) = ((int, int))_NormalizeSlice(slice.start, slice.end);
+            (uint start, uint end) = _NormalizeSlice(slice.start, slice.end);
+
+            // Single step case, replace all in the range
+            if (slice.step == 1) {
+                _SetSliceSingleStep(other, start, end);
+            } else {
+                _SetSliceMultiStep(other, start, end, slice.step);
+            }
         }
 
-        // void _SetSliceSingleStep(List<T> other,
-        //                             SliceParams<iterator> slice_params) {
-        //     const auto start_it = std::move(slice_params.start_it);
-        //     const auto start = slice_params.start;
-        //     const auto end = slice_params.end;
+        void _SetSliceSingleStep(List<T> other, uint start, uint end) {
+            var numOldElems = end - start;
+            var numNewElems = other.__Len__();
 
-        //     const auto num_old_elems = end - start;
-        //     const auto num_new_elems = other.data_.v_.size();
+            if (numOldElems < numNewElems) {
+                _SetSliceSingleStepExpanding(other, start, numOldElems,
+                                                numNewElems);
+            } else if (numOldElems > numNewElems) {
+                _SetSliceSingleStepReducing(other, start, end, numOldElems,
+                                            numNewElems);
+            } else {
+                // Trivial case, replace 1-to-1
+                for (uint i = start; i < end; ++i) {
+                    _list[(int)i] = other[(int)(i - start)];
+                }
+            }
+        }
 
-        //     if (num_old_elems < num_new_elems) {
-        //         _SetSliceSingleStepExpanding(other, start, num_old_elems,
-        //                                         num_new_elems);
-        //     } else if (num_old_elems > num_new_elems) {
-        //         _SetSliceSingleStepReducing(other, start_it, num_old_elems,
-        //                                     num_new_elems);
-        //     } else {
-        //     // Trivial case, replace 1-to-1
-        //     std::copy(other.data_.v_.begin(), other.data_.v_.end(), start_it);
-        //     }
-        // }
+        void _SetSliceSingleStepExpanding(List<T> other,
+                                            uint start,
+                                            uint numOldElems,
+                                            uint numNewElems) {
+            var numExtraElems = numNewElems - numOldElems;
 
-        // void _SetSliceSingleStepExpanding(const self& other,
-        //                                     size_t start,
-        //                                     size_t num_old_elems,
-        //                                     size_t num_new_elems) {
-        //     const auto num_extra_elems = num_new_elems - num_old_elems;
-        //     data_.v_.resize(data_.v_.size() + num_extra_elems);
+            _list.EnsureCapacity((int)(__Len__() + numExtraElems));
 
-        //     // Recalculate the start iterator in case the resize() call
-        //     // invalidated it
-        //     const auto start_it = data_.v_.begin() + start;
+            // Shift the extra elements to the right that won't be overwritten
+            for (int i = (int)numNewElems; i >=0 ; --i) {
+                _list[i + (int)numExtraElems] = _list[i];
+            }
 
-        //     // Shift elements from the starting position to make room for the
-        //     // incoming ones
-        //     std::shift_right(start_it, data_.v_.end(), num_extra_elems);
+            // Copy the elements from the other list into the target range
+            for (uint i = 0; i < numNewElems; ++i) {
+                _list[(int)(i + start)] = other[(int)i];
+            }
+        }
 
-        //     // Copy into the desired range
-        //     std::copy(other.data_.v_.begin(), other.data_.v_.end(), start_it);
-        // }
+        /// <remarks>
+        /// Replaces <paramref name="numOldElems"/> elements from
+        /// <paramref name="startIndex"/> with <paramref name="numNewElems"/>
+        /// from <paramref name="other"/>
+        /// </remarks>
+        void _SetSliceSingleStepReducing(List<T> other, uint start, uint end,
+                                        uint numOldElems,
+                                        uint numNewElems)
+        {
+            var numElemsToRemove = numOldElems - numNewElems;
 
-        // void _SetSliceSingleStepReducing(const self& other,
-        //                                     iterator start_it,
-        //                                     size_t num_old_elems,
-        //                                     size_t num_new_elems) {
-        //     const auto num_elems_to_remove = num_old_elems - num_new_elems;
+            // Copy into desired range
+            for (uint i = start; i < end; ++i) {
+                _list[(int)i] = other[(int)(i - start)];
+            }
 
-        //     // Copy into desired range
-        //     start_it =
-        //         std::copy(other.data_.v_.begin(), other.data_.v_.end(), start_it);
-        //     const auto end_it = start_it + num_elems_to_remove;
+            // Erase leftover elements
+            _list.RemoveRange((int)end, (int)numElemsToRemove);
+        }
 
-        //     // Erase leftover elements
-        //     data_.v_.erase(start_it, end_it);
-        // }
+        void _SetSliceMultiStep(List<T> other, uint start, uint end, int step) {
+            var numOldElems = Slice.Len((int)start, (int)end, step);
 
-        // void _SetSliceMultiStep(const self& other,
-        //                             SliceParams<iterator> slice_params) {
-        //     const auto [start, end, step, start_it, end_it] = std::move(slice_params);
-        //     const auto num_old_elems = GetNumberOfElementsInSlice(start, end, step);
+            if (other.__Len__() != numOldElems) {
+                throw new ValueError($"Attempt to assign sequence of size "
+                    + $"{other.__Len__()} to extended slice of size "
+                    + $"{numOldElems}");
+            }
 
-        //     if (other.data_.v_.size() != num_old_elems) {
-        //     throw ValueError(
-        //         "ValueError: attempt to assign sequence of size {} to extended "
-        //         "slice "
-        //         "of size {}");
-        //     }
+            // size_t idx = 0;
+            // auto other_it = other.data_.v_.begin();
+            // const auto other_end = other.data_.v_.end();
 
-        //     size_t idx = 0;
-        //     auto other_it = other.data_.v_.begin();
-        //     const auto other_end = other.data_.v_.end();
+            // std::for_each(start_it, end_it,
+            //     [&idx, step, &other_it, &other_end](value_type& elem) {
+            //         if (other_it == other_end) {
+            //         // Shouldn't happen, but here as a fail-safe
+            //         return;
+            //         }
 
-        //     std::for_each(start_it, end_it,
-        //                 [&idx, step, &other_it, &other_end](value_type& elem) {
-        //                     if (other_it == other_end) {
-        //                     // Shouldn't happen, but here as a fail-safe
-        //                     return;
-        //                     }
+            //         if (idx % step == 0) {
+            //         elem = *other_it;
+            //         ++other_it;
+            //         }
 
-        //                     if (idx % step == 0) {
-        //                     elem = *other_it;
-        //                     ++other_it;
-        //                     }
-
-        //                     ++idx;
-        //                 });
-        // }
+            //         ++idx;
+            //     });
+        }
     }
 }
