@@ -38,6 +38,7 @@ namespace Sharpy
         public List<T> Copy()
         {
             var newList = new List<T>();
+            newList._list.EnsureCapacity(_list.Count);
             newList._list.AddRange(_list);
 
             return newList;
@@ -77,7 +78,7 @@ namespace Sharpy
         }
 
         public override bool __Bool__() {
-            return __Len__() > 0;
+            return _list.Count > 0;
         }
 
         public List<T> __Mul__(int i) {
@@ -87,7 +88,7 @@ namespace Sharpy
                 return res;
             }
 
-            res._list.EnsureCapacity((int)__Len__() * i);
+            res._list.EnsureCapacity(_list.Count * i);
 
             for (; i > 0; --i) {
                 res.Extend(this);
@@ -158,36 +159,36 @@ namespace Sharpy
         /// </summary>
         public System.Collections.Generic.List<T> ToList()
         {
-            return _list[..(int)__Len__()];
+            return _list[.._list.Count];
         }
 
-        private uint _NormalizeIndex(int i, bool forInsertion = false)
+        private uint _NormalizeIndex(int i, bool forSlice, bool forInsertion)
         {
-            if (forInsertion)
+            if (forSlice || forInsertion)
             {
                 if (i < 0) {
-                    i = (int)__Len__() + i;
+                    i = _list.Count + i;
                 }
 
-                return (uint)Math.Clamp(i, 0, (int)__Len__());
+                return (uint)Math.Clamp(i, 0, _list.Count);
             }
 
-            if (i >= __Len__() || i < -__Len__())
+            if (i >= _list.Count || i < -_list.Count)
             {
                 throw new IndexError($"list index {i} out of range");
             }
 
             if (i < 0)
             {
-                return (uint)((int)__Len__() + i);
+                return (uint)(_list.Count + i);
             }
 
             return (uint)i;
         }
 
-        private (uint, uint) _NormalizeSlice(int start, int end, bool forInsertion = false)
+        private (uint, uint) _NormalizeSlice(int start, int end)
         {
-            return (_NormalizeIndex(start, forInsertion), _NormalizeIndex(end, forInsertion));
+            return (_NormalizeIndex(start, true, false), _NormalizeIndex(end, true, false));
         }
     }
 }

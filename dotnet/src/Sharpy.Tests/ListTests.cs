@@ -898,25 +898,25 @@ namespace Sharpy.Tests
         //             EXPECT_THROW(l.Index(i), ValueError);
         //         }
 
-        //         [Fact]
-        //         public void List_Remove_Empty()
-        //         {
-        //             // If
-        //             var l = new List<int>();
+        [Fact]
+        public void List_Remove_Empty()
+        {
+            // If
+            var l = new List<int>();
 
-        //             // When/then
-        //             EXPECT_THROW(l.Remove(3), ValueError);
-        //         }
+            // When/then
+            FluentActions.Invoking(() => l.Remove(3)).Should().Throw<ValueError>();
+        }
 
-        //         [Fact]
-        //         public void List_Remove_Not_Present()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 5, 7 ];
+        [Fact]
+        public void List_Remove_Not_Present()
+        {
+            // If
+            List<int> l = [ 1, 5, 7 ];
 
-        //             // When/then
-        //             EXPECT_THROW(l.Remove(3), ValueError);
-        //         }
+            // When/then
+            FluentActions.Invoking(() => l.Remove(3)).Should().Throw<ValueError>();
+        }
 
         [Fact]
         public void List_Remove_Present_Once()
@@ -1303,7 +1303,7 @@ namespace Sharpy.Tests
         }
 
         [Fact]
-        public void List_Replace_Slice_Same_Start_And_End()
+        public void List_Replace_Slice_Same_Start_And_End_More_New_Elems()
         {
             // If
             List<int> l = [ 1, 3, 5, 1, 7 ];
@@ -1314,7 +1314,24 @@ namespace Sharpy.Tests
 
             // Then
             var actual = l.ToList();
-            DotNetList<int> expected = [ 1, 3, 5, 1, 7 ];
+            DotNetList<int> expected = [ 1, 2, 4, 6, 3, 5, 1, 7 ];
+
+            actual.Should().Equal(expected);
+        }
+
+        [Fact]
+        public void List_Replace_Slice_Same_Start_And_End_Less_New_Elems()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 1, 7 ];
+            List<int> other = [ 2, 4 ];
+
+            // When
+            l.__SetItem__(new Slice(1, 1), other);
+
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 2, 4, 3, 5, 1, 7 ];
 
             actual.Should().Equal(expected);
         }
@@ -1394,6 +1411,34 @@ namespace Sharpy.Tests
             // Then
             var actual = l.ToList();
             DotNetList<int> expected = [ 1, 2, 5, 4, 9 ];
+
+            actual.Should().Equal(expected);
+        }
+
+        [Fact]
+        public void List_Replace_Slice_Not_Single_Step_Same_Start_And_End_Not_Same_Num_Elems()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
+            List<int> other = [ 2, 4, 6 ];
+
+            // When/then
+            FluentActions.Invoking(() => l.__SetItem__(new Slice(1, 1, 4), other)).Should().Throw<ValueError>();
+        }
+
+        [Fact]
+        public void List_Replace_Slice_Not_Single_Step_Same_Start_And_End_Same_Num_Elems()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7, 9 ];
+            List<int> other = [];
+
+            // When
+            l.__SetItem__(new Slice(1, 1, 2), other);
+
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 3, 5, 7, 9 ];
 
             actual.Should().Equal(expected);
         }

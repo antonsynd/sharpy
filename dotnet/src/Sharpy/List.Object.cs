@@ -35,7 +35,7 @@ namespace Sharpy
             builder.Append('[');
 
             uint i = 1;
-            uint numElems = __Len__();
+            var numElems = _list.Count;
 
             foreach (var item in _list)
             {

@@ -14,7 +14,7 @@ namespace Sharpy
 
         public T __GetItem__(int index)
         {
-            index = (int)_NormalizeIndex(index);
+            index = (int)_NormalizeIndex(index, false, false);
             return _list[index];
         }
 
@@ -66,8 +66,8 @@ namespace Sharpy
             int count;
 
             try {
-                start = (int)_NormalizeIndex(start);
-                count = (int)_NormalizeIndex(end) - start;
+                start = (int)_NormalizeIndex(start, false, false);
+                count = (int)_NormalizeIndex(end, false, false) - start;
             }
             catch (IndexError) {
                 throw new ValueError($"{x} is not in list");

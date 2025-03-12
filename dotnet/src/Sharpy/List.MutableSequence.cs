@@ -1,3 +1,4 @@
+using System.Data;
 using System.Reflection.Metadata;
 using Sharpy.Collections.Interfaces;
 
@@ -39,7 +40,7 @@ namespace Sharpy
         /// </summary>
         public void Insert(int i, T x)
         {
-            _list.Insert((int)_NormalizeIndex(i, true), x);
+            _list.Insert((int)_NormalizeIndex(i, false, true), x);
         }
 
         /// <summary>
@@ -50,14 +51,14 @@ namespace Sharpy
         /// </summary>
         public T Pop(int i = -1)
         {
-            if (__Len__() == 0)
+            if (_list.Count == 0)
             {
                 throw new IndexError("pop from empty list");
             }
 
             try
             {
-                i = (int)_NormalizeIndex(i);
+                i = (int)_NormalizeIndex(i, false, false);
             }
             catch (IndexError)
             {
@@ -101,13 +102,14 @@ namespace Sharpy
 
         public void __SetItem__(int index, T value)
         {
-            index = (int)_NormalizeIndex(index);
+            index = (int)_NormalizeIndex(index, false, false);
             _list[index] = value;
         }
 
         public void __SetItem__(List<T> other) {
             Clear();
-            Extend(other);
+            _list.EnsureCapacity(other._list.Count);
+            _list.AddRange(other._list);
         }
 
         public void __SetItem__(Slice slice, List<T> other) {
@@ -124,12 +126,24 @@ namespace Sharpy
 
             (uint start, uint end) = _NormalizeSlice(slice.start, slice.end);
 
-            // Single step case, replace all in the range
-            if (slice.step == 1) {
+            if (start == end) {
+                // Simple insertion
+                _SetSliceInsertion(other, start);
+            } else if (slice.step == 1) {
+                // Replace entire given range
                 _SetSliceSingleStep(other, start, end);
             } else {
                 _SetSliceMultiStep(other, start, end, (uint)slice.step);
             }
+        }
+
+        void _SetSliceInsertion(List<T> other, uint start) {
+            if (other._list.Count == 0) {
+                return;
+            }
+
+            _list.EnsureCapacity(_list.Count + other._list.Count);
+            _list.InsertRange((int)start, other);
         }
 
         void _SetSliceSingleStep(List<T> other, uint start, uint end) {
@@ -156,7 +170,7 @@ namespace Sharpy
                                             uint numNewElems) {
             var numExtraElems = numNewElems - numOldElems;
 
-            _list.EnsureCapacity((int)(__Len__() + numExtraElems));
+            _list.EnsureCapacity((int)(_list.Count + numExtraElems));
 
             // Shift the extra elements to the right that won't be overwritten
             for (int i = (int)numNewElems; i >=0 ; --i) {
@@ -190,17 +204,21 @@ namespace Sharpy
         }
 
         void _SetSliceMultiStep(List<T> other, uint start, uint end, uint step) {
-            var numElems = Slice.Len((int)start, (int)end, (int)step);
+            var numElemsToChange = Slice.Len((int)start, (int)end, (int)step);
 
-            if (other.__Len__() != numElems) {
+            if (other._list.Count != numElemsToChange) {
                 throw new ValueError($"Attempt to assign sequence of size "
-                    + $"{other.__Len__()} to extended slice of size "
-                    + $"{numElems}");
+                    + $"{other._list.Count} to extended slice of size "
+                    + $"{numElemsToChange}");
             }
 
-            for (uint i = 0; i < numElems; ++i) {
-                if (i % step == 0) {
-                    _list[(int)(i * step + start)] = other[(int)i];
+            uint elemsChanged = 0;
+
+            for (uint i = start; i < end && elemsChanged < numElemsToChange; ++i) {
+                if ((i - start) % step == 0) {
+                    _list[(int)i] = other[(int)elemsChanged];
+
+                    ++elemsChanged;
                 }
             }
         }
