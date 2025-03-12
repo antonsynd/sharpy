@@ -107,7 +107,7 @@ namespace Sharpy
         }
 
         public void __SetItem__(List<T> other) {
-            Clear();
+            _list.Clear();
             _list.EnsureCapacity(other._list.Count);
             _list.AddRange(other._list);
         }
@@ -126,12 +126,14 @@ namespace Sharpy
 
             (uint start, uint end) = _NormalizeSlice(slice.start, slice.end);
 
-            if (start == end) {
-                // Simple insertion
-                _SetSliceInsertion(other, start);
-            } else if (slice.step == 1) {
-                // Replace entire given range
-                _SetSliceSingleStep(other, start, end);
+            if (slice.step == 1) {
+                if (start == end) {
+                    // Simple insertion
+                    _SetSliceInsertion(other, start);
+                }  else {
+                    // Replace entire given range
+                    _SetSliceSingleStep(other, start, end);
+                }
             } else {
                 _SetSliceMultiStep(other, start, end, (uint)slice.step);
             }

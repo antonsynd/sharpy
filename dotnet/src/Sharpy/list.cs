@@ -159,7 +159,7 @@ namespace Sharpy
         /// </summary>
         public System.Collections.Generic.List<T> ToList()
         {
-            return _list[.._list.Count];
+            return [.._list];
         }
 
         private uint _NormalizeIndex(int i, bool forSlice, bool forInsertion)
