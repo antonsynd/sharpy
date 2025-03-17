@@ -22,7 +22,7 @@ namespace Sharpy.Collections.Interfaces
 
         void Reverse();
 
-        void __DelItem__(int i, T x);
+        void __DelItem__(int i);
 
         void __DelItem__(Slice slice);
 

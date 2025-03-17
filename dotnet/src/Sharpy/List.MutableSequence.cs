@@ -1,7 +1,3 @@
-using System.Data;
-using System.Reflection.Metadata;
-using Sharpy.Collections.Interfaces;
-
 namespace Sharpy
 {
     public sealed partial class List<T>
@@ -91,13 +87,60 @@ namespace Sharpy
             _list.Reverse();
         }
 
-        public void __DelItem__(int index, T x)
+
+        public void __DelItem__()
         {
-            // TODO
+            _list.Clear();
+        }
+
+        public void __DelItem__(int index)
+        {
+            _list.RemoveAt((int)_NormalizeIndex(index, false, false));
         }
 
         public void __DelItem__(Slice slice) {
-            // TODO
+            if (slice.step == 0)
+            {
+                throw new ValueError("slice step cannot be zero");
+            }
+
+            if (slice.step < 0)
+            {
+                // Negative slice is no-op
+                return;
+            }
+
+            (uint start, uint end) = _NormalizeSlice(slice.start, slice.end);
+
+            if (slice.step == 1) {
+                if (start == end) {
+                    // No-op
+                    return;
+                }
+
+                // Replace entire given range
+                _DeleteSliceSingleStep(start, end);
+            } else {
+                _DeleteSliceMultiStep(start, end, (uint)slice.step);
+            }
+        }
+
+        private void _DeleteSliceSingleStep(uint start, uint end) {
+            _list.RemoveRange((int)start, (int)(end - start));
+        }
+
+        private void _DeleteSliceMultiStep(uint start, uint end, uint step) {
+            var numElemsToChange = Slice.Len((int)start, (int)end, (int)step);
+
+            uint elemsChanged = 0;
+
+            for (uint i = start; i < end && elemsChanged < numElemsToChange; ++i) {
+                if ((i - start) % step == 0) {
+                    _list.RemoveAt((int)i);
+
+                    ++elemsChanged;
+                }
+            }
         }
 
         public void __SetItem__(int index, T value)
@@ -139,7 +182,7 @@ namespace Sharpy
             }
         }
 
-        void _SetSliceInsertion(List<T> other, uint start) {
+        private void _SetSliceInsertion(List<T> other, uint start) {
             if (other._list.Count == 0) {
                 return;
             }
@@ -148,16 +191,13 @@ namespace Sharpy
             _list.InsertRange((int)start, other);
         }
 
-        void _SetSliceSingleStep(List<T> other, uint start, uint end) {
+        private void _SetSliceSingleStep(List<T> other, uint start, uint end) {
             var numOldElems = end - start;
             var numNewElems = other.__Len__();
 
-            if (numOldElems < numNewElems) {
-                _SetSliceSingleStepExpanding(other, start, numOldElems,
+            if (numOldElems != numNewElems) {
+                _SetSliceSingleStepReplacement(other, start, numOldElems,
                                                 numNewElems);
-            } else if (numOldElems > numNewElems) {
-                _SetSliceSingleStepReducing(other, start, end, numOldElems,
-                                            numNewElems);
             } else {
                 // Trivial case, replace 1-to-1
                 for (uint i = start; i < end; ++i) {
@@ -166,43 +206,18 @@ namespace Sharpy
             }
         }
 
-        void _SetSliceSingleStepExpanding(List<T> other,
+        private void _SetSliceSingleStepReplacement(List<T> other,
                                             uint start,
                                             uint numOldElems,
                                             uint numNewElems) {
-            var numExtraElems = numNewElems - numOldElems;
-
-            _list.EnsureCapacity((int)(_list.Count + numExtraElems));
-
-            // Shift the extra elements to the right that won't be overwritten
-            for (int i = (int)numNewElems; i >=0 ; --i) {
-                _list[i + (int)numExtraElems] = _list[i];
+            if (numNewElems > numOldElems) {
+                var numExtraElems = numNewElems - numOldElems;
+                _list.EnsureCapacity(_list.Count + (int)numExtraElems);
             }
 
-            // Copy the elements from the other list into the target range
-            for (uint i = 0; i < numNewElems; ++i) {
-                _list[(int)(i + start)] = other[(int)i];
-            }
-        }
-
-        /// <remarks>
-        /// Replaces <paramref name="numOldElems"/> elements from
-        /// <paramref name="startIndex"/> with <paramref name="numNewElems"/>
-        /// from <paramref name="other"/>
-        /// </remarks>
-        void _SetSliceSingleStepReducing(List<T> other, uint start, uint end,
-                                        uint numOldElems,
-                                        uint numNewElems)
-        {
-            var numElemsToRemove = numOldElems - numNewElems;
-
-            // Copy into desired range
-            for (uint i = start; i < end; ++i) {
-                _list[(int)i] = other[(int)(i - start)];
-            }
-
-            // Erase leftover elements
-            _list.RemoveRange((int)end, (int)numElemsToRemove);
+            // TODO: Can optimize for fewer element shifts
+            _list.RemoveRange((int)start, (int)numOldElems);
+            _list.InsertRange((int)start, other);
         }
 
         void _SetSliceMultiStep(List<T> other, uint start, uint end, uint step) {

@@ -1139,140 +1139,140 @@ namespace Sharpy.Tests
         //             EXPECT_THROW(l.Remove(i), ValueError);
         //         }
 
-        //         [Fact]
-        //         public void List_Delete_Slice_Zero_Step()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 1, 7 ];
+        [Fact]
+        public void List_Delete_Slice_Zero_Step()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 1, 7 ];
 
-        //             // When/then
-        //             EXPECT_THROW(l.Delete_Slice(0, 0, 0), ValueError);
-        //         }
+            // When/then
+            FluentActions.Invoking(() => l.__DelItem__(new Slice(0, 0, 0))).Should().Throw<ValueError>();
+        }
 
-        //         [Fact]
-        //         public void List_Delete_Slice_Negative_Step()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 1, 7 ];
+        [Fact]
+        public void List_Delete_Slice_Negative_Step()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 1, 7 ];
 
-        //             // When
-        //             l.Delete_Slice(0, 1, -1);
+            // When
+            l.__DelItem__(new Slice(0, 1, -1));
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 3, 5, 1, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 3, 5, 1, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Delete_Slice_Same_Start_And_End()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 1, 7 ];
+        [Fact]
+        public void List_Delete_Slice_Same_Start_And_End()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 1, 7 ];
 
-        //             // When
-        //             l.Delete_Slice(1, 1);
+            // When
+            l.__DelItem__(new Slice(1, 1));
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 3, 5, 1, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 3, 5, 1, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Delete_Slice_Single_Step()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Delete_Slice_Single_Step()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When
-        //             l.Delete_Slice(1, 3);
+            // When
+            l.__DelItem__(new Slice(1, 3));
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Delete_Slice_Not_Single_Step_Not_Enough()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Delete_Slice_Not_Single_Step_Not_Enough()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When
-        //             l.Delete_Slice(1, 3, 4);
+            // When
+            l.__DelItem__(new Slice(1, 3, 4));
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 5, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 5, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Delete_Slice_Not_Single_Step_Enough()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7, 9 ];
+        [Fact]
+        public void List_Delete_Slice_Not_Single_Step_Enough()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7, 9 ];
 
-        //             // When
-        //             l.Delete_Slice(1, 5, 2);
+            // When
+            l.__DelItem__(new Slice(1, 5, 2));
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 5, 9 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 5, 9 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Delete_Slice_Out_Of_Bounds_Left()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7, 9 ];
+        [Fact]
+        public void List_Delete_Slice_Out_Of_Bounds_Left()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7, 9 ];
 
-        //             // When
-        //             l.Delete_Slice(-9, 4, 2);
+            // When
+            l.__DelItem__(new Slice(-9, 4, 2));
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 3, 7, 9 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 3, 7, 9 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Delete_Slice_Out_Of_Bounds_Right()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7, 9 ];
+        [Fact]
+        public void List_Delete_Slice_Out_Of_Bounds_Right()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7, 9 ];
 
-        //             // When
-        //             l.Delete_Slice(0, 9, 2);
+            // When
+            l.__DelItem__(new Slice(0, 9, 2));
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 3, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 3, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Delete_Slice_No_Args_Is_Clear()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7, 9 ];
+        [Fact]
+        public void List_Delete_Slice_No_Args_Is_Clear()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7, 9 ];
 
-        //             // When
-        //             l.Delete_Slice();
+            // When
+            l.__DelItem__();
 
-        //             // Then
-        //             Len(l).Should().Be(0);
-        //         }
+            // Then
+            Len(l).Should().Be(0);
+        }
 
         [Fact]
         public void List_Replace_Slice_Zero_Step()
@@ -1646,144 +1646,151 @@ namespace Sharpy.Tests
             actual.Should().Equal(expected);
         }
 
-        //         [Fact]
-        //         public void List_Pop_Out_Of_Bounds_Left()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Pop_Out_Of_Bounds_Left()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When/then
-        //             EXPECT_THROW(l.Pop(-100), IndexError);
-        //         }
+            // When/then
+            FluentActions.Invoking(() => l.Pop(-100)).Should().Throw<IndexError>();
+        }
 
-        //         [Fact]
-        //         public void List_Pop_Out_Of_Bounds_Right()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Pop_Out_Of_Bounds_Right()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
 
-        //             // When/then
-        //             EXPECT_THROW(l.Pop(100), IndexError);
-        //         }
+            // When/then
+            FluentActions.Invoking(() => l.Pop(100)).Should().Throw<IndexError>();
+        }
 
-        //         [Fact]
-        //         public void List_Native_Iteration()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
-        //             var expected = l.ToList();
+        [Fact]
+        public void List_Native_Iteration()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
+            var expected = l.ToList();
 
-        //             // When
-        //             DotNetList<int> actual;
+            // When
+            DotNetList<int> actual = [];
 
-        //             for (var elem : l) {
-        //                 actual.emplace_back(elem);
-        //             }
+            foreach (var elem in l) {
+                actual.Add(elem);
+            }
 
-        //             // Then
-        //             actual.Should().Equal(expected);
-        //         }
+            // Then
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Iterator_Iteration()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
-        //             var expected = l.ToList();
-        //             var it = Iter(l);
+        [Fact]
+        public void List_Iterator_Iteration()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
+            var expected = l.ToList();
+            var it = Iter(l);
 
-        //             // When
-        //             DotNetList<int> actual;
+            // When
+            DotNetList<int> actual = [];
 
-        //             for (var elem : it) {
-        //                 actual.emplace_back(elem);
-        //             }
+            foreach (var elem in it) {
+                actual.Add(elem);
+            }
 
-        //             // Then
-        //             actual.Should().Equal(expected);
-        //         }
+            // Then
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Equality_Same_Object()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
-        //             var copy = l;
-        //             ASSERT_NE(&l, &copy);
+        [Fact]
+        public void List_Native_Equality_Same_Object()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
+            var copy = l;
 
-        //             // When/then
-        //             l.Should().Equal(copy);
-        //         }
+            // When/then
+            (l == copy).Should().BeTrue();
+        }
 
-        //         [Fact]
-        //         public void List_Native_Equality_Same_Object()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
-        //             var copy = l;
-        //             ASSERT_NE(&l, &copy);
+        [Fact]
+        public void List_Equality_Same_Object()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
+            var copy = l;
 
-        //             // When/then
-        //             l.Should().Equal(copy);
-        //         }
+            // When/then
+            copy.Should().Equal(l);
+        }
 
-        //         [Fact]
-        //         public void List_Native_In_Equality_Same_Object()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
-        //             var copy = l;
-        //             ASSERT_NE(&l, &copy);
+        [Fact]
+        public void List_Native_Inequality_Same_Object()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
+            var copy = l;
 
-        //             // When/then
-        //             l != copy.Should().BeFalse();
-        //         }
+            // When/then
+            (l != copy).Should().BeFalse();
+        }
 
-        //         [Fact]
-        //         public void List_Equality_Different_Object()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
-        //             List<int> m = [ 1, 3, 5, 7, 9 ];
-        //             ASSERT_NE(&l, &m);
+        [Fact]
+        public void List_Equality_And_Inequality_Different_Object()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
+            List<int> m = [ 1, 3, 5, 7, 9 ];
 
-        //             // When/then
-        //             l.Should().NotEqual(m);
+            // When/then
+            l.Should().NotEqual(m);
 
-        //             // When
-        //             m.Pop();
+            // When
+            m.Pop();
 
-        //             // Then
-        //             l.Should().Equal(m);
-        //         }
+            // Then
+            l.Should().Equal(m);
+        }
 
-        //         [Fact]
-        //         public void List_Native_Equality_And_Inequality_Different_Object()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
-        //             List<int> m = [ 1, 3, 5, 7, 9 ];
+        [Fact]
+        public void List_Native_Equality_And_Inequality_Different_Object()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
+            List<int> m = [ 1, 3, 5, 7, 9 ];
 
-        //             // When/then
-        //             l.Should().NotEqual(m);
+            // When/then
+            (l == m).Should().BeFalse();
 
-        //             // When
-        //             m.Pop();
+            // When
+            m.Pop();
 
-        //             // Then
-        //             l.Should().Equal(m);
-        //         }
+            // Then
+            (l == m).Should().BeTrue();
+        }
 
-        //         [Fact]
-        //         public void List_Native_Equality_Different_Type()
-        //         {
-        //             // If
-        //             List<int> l = [ 1, 3, 5, 7 ];
-        //             List<float> m = [ 1.0, 3.0, 5.0, 7.0 ];
+        [Fact]
+        public void List_Native_Equality_Different_Type()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
+            List<double> m = [ 1.0, 3.0, 5.0, 7.0 ];
 
-        //             // When/then
-        //             l.Should().NotEqual(m);
-        //         }
+            // When/then
+            (l == m).Should().BeFalse();
+        }
+
+        [Fact]
+        public void List_Equality_Different_Type()
+        {
+            // If
+            List<int> l = [ 1, 3, 5, 7 ];
+            List<double> m = [ 1.0, 3.0, 5.0, 7.0 ];
+
+            // When/then
+            l.Equals(m).Should().BeFalse();
+        }
 
         [Fact]
         public void List_Str_Empty()
