@@ -136,7 +136,7 @@ namespace Sharpy
 
             for (uint i = start; i < end && elemsChanged < numElemsToChange; ++i) {
                 if ((i - start) % step == 0) {
-                    _list.RemoveAt((int)i);
+                    _list.RemoveAt((int)(i - elemsChanged));
 
                     ++elemsChanged;
                 }
