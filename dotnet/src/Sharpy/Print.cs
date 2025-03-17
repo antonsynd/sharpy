@@ -1,5 +1,3 @@
-using static Sharpy.Sys.Builtins;
-
 namespace Sharpy {
     public static partial class Builtins {
         public static void Print(Object? obj, uint file = Stdout, bool flush = false) {

@@ -1,8 +1,6 @@
 using Xunit;
 using FluentAssertions;
 
-using static Sharpy.Builtins;
-
 namespace Sharpy.Tests
 {
     file class DotNetList<T> : System.Collections.Generic.List<T>;
