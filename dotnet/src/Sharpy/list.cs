@@ -51,7 +51,11 @@ namespace Sharpy
         /// <remarks>
         /// This is not a stable sort.
         /// </remarks>
-        public void Sort<TKey>(bool reverse = false, Func<T, TKey>? key = null)
+        public void Sort(bool reverse = false)
+        {
+            Sort<T>(null, reverse);
+        }
+        public void Sort<TKey>(Func<T, TKey>? key = null, bool reverse = false)
         {
             if (key == null)
             {

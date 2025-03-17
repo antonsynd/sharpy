@@ -686,7 +686,6 @@ namespace Sharpy.Tests
             actual.Should().Equal(expected);
         }
 
-        // #if __cplusplus >= 202302L
         [Fact]
         public void List_Slice_Operator() {
           // If
@@ -733,7 +732,6 @@ namespace Sharpy.Tests
 
         //   actual.Should().Equal(expected);
         // }
-        // #endif  // __cplusplus >= 202302L
 
         [Fact]
         public void List_Reverse_Empty()
@@ -1832,80 +1830,78 @@ namespace Sharpy.Tests
             Repr(l).Should().Be("[1, 3, 5, 7]");
         }
 
-        //         [Fact]
-        //         public void List_Sort()
-        //         {
-        //             // If
-        //             List<int> l = [ 7, 3, 1, 1, 5 ];
+        [Fact]
+        public void List_Sort()
+        {
+            // If
+            List<int> l = [ 7, 3, 1, 1, 5 ];
 
-        //             // When
-        //             l.Sort();
+            // When
+            l.Sort();
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 1, 3, 5, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 1, 3, 5, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Sort_Reverse()
-        //         {
-        //             // If
-        //             List<int> l = [ 7, 3, 1, 1, 5 ];
+        [Fact]
+        public void List_Sort_Reverse()
+        {
+            // If
+            List<int> l = [ 7, 3, 1, 1, 5 ];
 
-        //             // When
-        //             l.Sort(true);
+            // When
+            l.Sort(true);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 7, 5, 3, 1, 1 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 7, 5, 3, 1, 1 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Sort_With_Key()
-        //         {
-        //             // If
-        //             List<int> l = [ 7, 3, 1, 1, 5 ];
+        [Fact]
+        public void List_Sort_With_Key()
+        {
+            // If
+            List<int> l = [ 7, 3, 1, 1, 5 ];
 
-        //             // This effectively inverts the sort
-        //             var key = [](var int i) -> float {
-        //                 return 1.0 / static_cast<float>(i);
-        //             }
-        //             ;
+            // This effectively inverts the sort
+            var key = (int i) => {
+                return 1.0 / i;
+            };
 
-        //             // When
-        //             l.Sort(key);
+            // When
+            l.Sort(key);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 7, 5, 3, 1, 1 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 7, 5, 3, 1, 1 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Sort_With_Key_And_Reverse()
-        //         {
-        //             // If
-        //             List<int> l = [ 7, 3, 1, 1, 5 ];
+        [Fact]
+        public void List_Sort_With_Key_And_Reverse()
+        {
+            // If
+            List<int> l = [ 7, 3, 1, 1, 5 ];
 
-        //             // This effectively inverts the sort, but the reverse reverses it again
-        //             var key = [](var int i) -> float {
-        //                 return 1.0 / static_cast<float>(i);
-        //             }
-        //             ;
+            // This effectively inverts the sort, but the reverse reverses it again
+            var key = (int i) => {
+                return 1.0 / i;
+            };
 
-        //             // When
-        //             l.Sort(key, true);
+            // When
+            l.Sort(key, true);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 1, 3, 5, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<int> expected = [ 1, 1, 3, 5, 7 ];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
     }
 }
