@@ -99,7 +99,8 @@ namespace Sharpy
         /// <remarks>
         /// Objects are truthy based on <see cref="__Bool__()"/>.
         /// </remarks>
-        public static bool operator true(Object obj) {
+        public static bool operator true(Object obj)
+        {
             return obj.__Bool__();
         }
 
@@ -107,7 +108,8 @@ namespace Sharpy
         /// Objects are falsey based on the inverse of
         /// <see cref="__Bool__()"/>.
         /// </remarks>
-        public static bool operator false(Object obj) {
+        public static bool operator false(Object obj)
+        {
             return !obj.__Bool__();
         }
     }

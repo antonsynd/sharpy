@@ -13,9 +13,12 @@ namespace Sharpy
         /// </remarks>
         public static string Repr(Object? obj)
         {
-            if (obj is null) {
+            if (obj is null)
+            {
                 return "None";
-            } else {
+            }
+            else
+            {
                 return obj.__Repr__();
             }
         }
@@ -31,9 +34,12 @@ namespace Sharpy
         /// </remarks>
         public static string Repr(object? x)
         {
-            if (x is null) {
+            if (x is null)
+            {
                 return "";
-            } else {
+            }
+            else
+            {
                 return x.ToString() ?? "";
             }
         }

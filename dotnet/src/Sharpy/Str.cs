@@ -1,232 +1,343 @@
-using System.Runtime.CompilerServices;
 using Sharpy.Collections.Interfaces;
 
 namespace Sharpy
 {
     public static partial class Builtins
     {
+        public static Str Str(object x)
+        {
+            return new Str(x);
+        }
+    }
+
+    public readonly partial struct Str
+    {
+        private readonly string _s;
+
+        public Str()
+        {
+            _s = "";
+        }
+
+        public Str(string x)
+        {
+            _s = x;
+        }
+
         /// <remarks>
         /// <see cref="Object.ToString"/> calls <see cref="Object.__Str__"/>
         /// so this implementation covers all native C# objects and Sharpy
         /// objects.
         /// </remarks>
-        public static string Str(object x)
+        public Str(object x)
         {
-            return x.ToString() ?? "";
+            _s = x.ToString() ?? "";
         }
 
-        // public static string Str(bytes, encoding, errors)
-
-        public static uint __Len__(this string s)
+        public Str(Bytes bytes, string encoding = "utf-8", string errors = "strict")
         {
-            return (uint)s.Length;
+            _s = "";
         }
 
-        public static string Capitalize(this string s)
+        /// <remarks>
+        /// Implicit conversion from string.
+        /// </remarks>
+        public static implicit operator Str(string value)
         {
-            return s;
+            return new Str(value);
         }
 
-        public static string CaseFold(this string s)
+        /// <remarks>
+        /// Implicit conversion to string.
+        /// </remarks>
+        public static implicit operator string(Str value)
         {
-            return s;
+            return value._s;
         }
-        public static string Center(this string s, uint width, string fillchar = " ")
+
+        public static bool operator ==(Str lhs, string rhs)
         {
-            return s;
+            return lhs._s == rhs;
         }
-        public static string Count(this string s, string sub, uint start, uint end)
+
+        public static bool operator !=(Str lhs, string rhs)
         {
-            return s;
+            return !(lhs == rhs);
         }
-        public static string Encode(this string s, string encoding = "utf-8", string errors = "strict")
+
+        public static bool operator ==(string lhs, Str rhs)
         {
-            return s;
+            return lhs == rhs._s;
         }
-        public static string EndsWith(this string s, string encoding = "utf-8", string errors = "strict")
+
+        public static bool operator !=(string lhs, Str rhs)
         {
-            return s;
+            return !(lhs == rhs);
         }
-        public static string ExpandTabs(this string s, string encoding = "utf-8", string errors = "strict")
+
+        public static bool operator ==(Str lhs, Str rhs)
         {
-            return s;
+            return lhs._s == rhs._s;
         }
-        public static string Find(this string s, string encoding = "utf-8", string errors = "strict")
+
+        public static bool operator !=(Str lhs, Str rhs)
         {
-            return s;
+            return !(lhs == rhs);
         }
-        public static string Format(this string s, string encoding = "utf-8", string errors = "strict")
+
+        public override bool Equals(object? obj)
         {
-            return s;
-        }
-        public static string FormatMap(this string s, string encoding = "utf-8", string errors = "strict")
-        {
-            return s;
-        }
-        public static string Index(this string s, string encoding = "utf-8", string errors = "strict")
-        {
-            return s;
-        }
-        public static bool IsAlnum(this string s)
-        {
-            return false;
-        }
-        public static bool IsAlpha(this string s)
-        {
-            return false;
-        }
-        public static bool IsAscii(this string s)
-        {
-            return false;
-        }
-        public static bool IsDecimal(this string s)
-        {
+            if (obj is string s)
+            {
+                return _s == s;
+            }
+
             return false;
         }
 
-        public static bool IsIdentifier(this string s)
+        /// <remarks>
+        /// Same hash code as C# strings. Both are immutable and readonly with
+        /// the same logical semantics.
+        /// </remarks>
+        public override int GetHashCode()
+        {
+            return _s.GetHashCode();
+        }
+
+        public override string ToString()
+        {
+            return _s;
+        }
+
+        public Str Capitalize()
+        {
+            if (string.IsNullOrEmpty(_s))
+            {
+                return _s;
+            }
+
+            if (_s.Length == 1)
+            {
+                return _s.ToUpper();
+            }
+
+            return char.ToUpper(_s[0]) + _s[1..].ToLower();
+        }
+
+        public string CaseFold()
+        {
+            return _s;
+        }
+
+        public string Center(uint width, string fillchar = " ")
+        {
+            return _s;
+        }
+
+        public string Count(string sub, int start, int end)
+        {
+            return _s;
+        }
+
+        public string Encode(string encoding = "utf-8", string errors = "strict")
+        {
+            return _s;
+        }
+
+        public string EndsWith(string encoding = "utf-8", string errors = "strict")
+        {
+            return _s;
+        }
+
+        public string ExpandTabs(string encoding = "utf-8", string errors = "strict")
+        {
+            return _s;
+        }
+
+        public string Find(string encoding = "utf-8", string errors = "strict")
+        {
+            return _s;
+        }
+
+        public Str Format(string encoding = "utf-8", string errors = "strict")
+        {
+            return _s;
+        }
+
+        public Str FormatMap(string encoding = "utf-8", string errors = "strict")
+        {
+            return _s;
+        }
+
+        public Str Index(string encoding = "utf-8", string errors = "strict")
+        {
+            return _s;
+        }
+
+        public bool IsAlnum()
         {
             return false;
         }
 
-        public static bool IsLower(this string s)
+        public bool IsAlpha()
         {
             return false;
         }
 
-        public static bool IsNumeric(this string s)
+        public bool IsAscii()
         {
             return false;
         }
 
-        public static bool IsPrintable(this string s)
+        public bool IsDecimal()
         {
             return false;
         }
 
-        public static bool IsSpace(this string s)
+        public bool IsIdentifier()
         {
             return false;
         }
 
-        public static bool IsTitle(this string s)
+        public bool IsLower()
         {
             return false;
         }
 
-        public static bool IsUpper(this string s)
+        public bool IsNumeric()
         {
             return false;
         }
 
-        public static string Join(this string s, Iterable<string> iterable)
+        public bool IsPrintable()
         {
-            return s;
+            return false;
         }
 
-        public static void LJust(this string s, uint width, string fillchar)
+        public bool IsSpace()
         {
+            return false;
         }
 
-        public static string Lower(this string s)
+        public bool IsTitle()
         {
-            return s;
+            return false;
         }
 
-        public static void LStrip(this string s, string chars)
+        public bool IsUpper()
         {
+            return false;
         }
 
-        public static void MakeTrans(Mapping<string, string?> mapping)
+        public string Join(Iterable<string> iterable)
         {
+            return _s;
         }
 
-        public static void MakeTrans(Mapping<uint, string?> mapping)
-        {
-        }
-
-        public static void MakeTrans(string fromChars, string toChars)
-        {
-        }
-
-        public static void MakeTrans(string fromChars, string toChars, string ignoreChars)
+        public void LJust(uint width, string fillchar)
         {
         }
 
-        public static void Partition(this string s, string sep)
+        public string Lower()
+        {
+            return _s.ToLower();
+        }
+
+        public void LStrip(string chars)
         {
         }
 
-        public static void RemovePrefix(this string s, string prefix)
+        public void MakeTrans(Mapping<string, string?> mapping)
         {
         }
 
-        public static void RemoveSuffix(this string s, string suffix)
+        public void MakeTrans(Mapping<uint, string?> mapping)
         {
         }
 
-        public static void Replace(this string s, string old, string @new, uint count) {
-        }
-
-        public static void RFind(this string s, string sub, int start = 0, int end = -1)
+        public void MakeTrans(string fromChars, string toChars)
         {
         }
 
-        public static void RIndex(this string s, string sub, int start = 0, int end = -1)
+        public void MakeTrans(string fromChars, string toChars, string ignoreChars)
         {
         }
 
-        public static void RJust(this string s, uint width, string fillchar)
+        public void Partition(string sep)
         {
         }
 
-        public static void RPartition(this string s, string sep)
+        public void RemovePrefix(string prefix)
         {
         }
 
-        public static void RSplit(this string s, string sep, uint maxsplit)
+        public void RemoveSuffix(string suffix)
         {
         }
 
-        public static void RStrip(this string s, string chars)
+        public void Replace(string old, string @new, uint count)
         {
         }
 
-        public static void Split(this string s, string sep, uint maxsplit)
+        public void RFind(string sub, int start = 0, int end = -1)
         {
         }
 
-        public static void SplitLines(this string s, bool keepends = false)
+        public void RIndex(string sub, int start = 0, int end = -1)
         {
         }
 
-        public static void StartsWith(this string s, string prefix, int start = 0, int end = -1)
+        public void RJust(uint width, string fillchar)
         {
         }
 
-        public static void Strip(this string s, string chars)
+        public void RPartition(string sep)
         {
         }
 
-        public static void SwapCase(this string s)
+        public void RSplit(string sep, uint maxsplit)
         {
         }
 
-        public static void Title(this string s)
+        public void RStrip(string chars)
         {
         }
 
-        public static void Translate(this string s, uint table)
+        public void Split(string sep, uint maxsplit)
         {
         }
 
-        public static void Upper(this string s)
+        public void SplitLines(bool keepends = false)
         {
         }
 
-        public static void ZFill(this string s, uint width)
+        public void StartsWith(string prefix, int start = 0, int end = -1)
         {
+        }
 
+        public void Strip(string chars)
+        {
+        }
+
+        public void SwapCase()
+        {
+        }
+
+        public void Title()
+        {
+        }
+
+        public void Translate(uint table)
+        {
+        }
+
+        public Str Upper()
+        {
+            return _s.ToUpper();
+        }
+
+        public void ZFill(uint width)
+        {
         }
     }
 }

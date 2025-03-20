@@ -41,7 +41,8 @@ namespace Sharpy
             {
                 builder.Append(Repr(item));
 
-                if (i < numElems) {
+                if (i < numElems)
+                {
                     builder.Append(", ");
                 }
 

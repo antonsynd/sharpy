@@ -74,27 +74,32 @@ namespace Sharpy
             }
         }
 
-        public List<T> __Add__(List<T> other) {
+        public List<T> __Add__(List<T> other)
+        {
             var res = Copy();
             res.Extend(other);
 
             return res;
         }
 
-        public override bool __Bool__() {
+        public override bool __Bool__()
+        {
             return _list.Count > 0;
         }
 
-        public List<T> __Mul__(int i) {
+        public List<T> __Mul__(int i)
+        {
             var res = new List<T>();
 
-            if (i <= 0) {
+            if (i <= 0)
+            {
                 return res;
             }
 
             res._list.EnsureCapacity(_list.Count * i);
 
-            for (; i > 0; --i) {
+            for (; i > 0; --i)
+            {
                 res.Extend(this);
             }
 
@@ -147,15 +152,21 @@ namespace Sharpy
         /// </remarks>
         public static bool operator ==(List<T> left, List<T> right)
         {
-            if (left._list.Count == right._list.Count) {
-                for (uint i = 0; i < left._list.Count; ++i) {
+            if (left._list.Count == right._list.Count)
+            {
+                for (uint i = 0; i < left._list.Count; ++i)
+                {
                     var leftElem = left._list[(int)i];
 
-                    if (leftElem is null) {
-                        if (right._list[(int)i] is not null) {
+                    if (leftElem is null)
+                    {
+                        if (right._list[(int)i] is not null)
+                        {
                             return false;
                         }
-                    } else if (!leftElem.Equals(right._list[(int)i])) {
+                    }
+                    else if (!leftElem.Equals(right._list[(int)i]))
+                    {
                         return false;
                     }
                 }
@@ -171,11 +182,13 @@ namespace Sharpy
             return !(left == right);
         }
 
-        public static List<T> operator +(List<T> left, List<T> right) {
+        public static List<T> operator +(List<T> left, List<T> right)
+        {
             return left.__Add__(right);
         }
 
-        public static List<T> operator *(List<T> left, int i) {
+        public static List<T> operator *(List<T> left, int i)
+        {
             return left.__Mul__(i);
         }
 
@@ -184,36 +197,7 @@ namespace Sharpy
         /// </summary>
         public System.Collections.Generic.List<T> ToList()
         {
-            return [.._list];
-        }
-
-        private uint _NormalizeIndex(int i, bool forSlice, bool forInsertion)
-        {
-            if (forSlice || forInsertion)
-            {
-                if (i < 0) {
-                    i = _list.Count + i;
-                }
-
-                return (uint)Math.Clamp(i, 0, _list.Count);
-            }
-
-            if (i >= _list.Count || i < -_list.Count)
-            {
-                throw new IndexError($"list index {i} out of range");
-            }
-
-            if (i < 0)
-            {
-                return (uint)(_list.Count + i);
-            }
-
-            return (uint)i;
-        }
-
-        private (uint, uint) _NormalizeSlice(int start, int end)
-        {
-            return (_NormalizeIndex(start, true, false), _NormalizeIndex(end, true, false));
+            return [.. _list];
         }
     }
 }

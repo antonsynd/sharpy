@@ -1,19 +1,25 @@
-namespace Sharpy {
-    public static partial class Builtins {
-        public static void Print(Object? obj, uint file = Stdout, bool flush = false) {
+namespace Sharpy
+{
+    public static partial class Builtins
+    {
+        public static void Print(Object? obj, uint file = Stdout, bool flush = false)
+        {
             var result = obj?.__Str__() ?? "None";
 
             _Print(result, file, flush);
         }
 
-        public static void Print(object? obj, uint file = Stdout, bool flush = false) {
+        public static void Print(object? obj, uint file = Stdout, bool flush = false)
+        {
             var result = obj?.ToString() ?? "None";
 
             _Print(result, file, flush);
         }
 
-        private static void _Print(string s, uint file = Stdout, bool flush = false) {
-            if (file == Stddev) {
+        private static void _Print(string s, uint file = Stdout, bool flush = false)
+        {
+            if (file == Stddev)
+            {
                 return;
             }
 
@@ -21,7 +27,8 @@ namespace Sharpy {
 
             textWriter.WriteLine(s);
 
-            if (flush) {
+            if (flush)
+            {
                 textWriter.Flush();
             }
         }

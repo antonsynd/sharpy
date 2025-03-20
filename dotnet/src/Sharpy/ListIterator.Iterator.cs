@@ -5,7 +5,8 @@ namespace Sharpy
     {
         public override T __Next__()
         {
-            if (_index < _list.__Len__()) {
+            if (_index < _list.__Len__())
+            {
 
                 var res = _list[(int)_index];
 

@@ -1,4 +1,5 @@
-namespace Sharpy.Tests {
+namespace Sharpy.Tests
+{
     public class Wrapper<T>(T value)
     {
         private static uint _id;

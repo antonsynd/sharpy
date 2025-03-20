@@ -1,22 +1,19 @@
 namespace Sharpy
 {
-    public sealed partial class List<T>
+    public readonly partial struct Str
     {
-        public List<T> __GetItem__()
+        public Str __GetItem__()
         {
-            return new List<T>
-            {
-                _list = [.. _list]
-            };
+            return new Str(_s);
         }
 
-        public T __GetItem__(int index)
+        public Str __GetItem__(int index)
         {
-            index = (int)Sharpy.Index.Normalize(index, (uint)_list.Count, false, false);
-            return _list[index];
+            index = (int)Sharpy.Index.Normalize(index, (uint)_s.Length, false, false);
+            return new Str(_s[index]);
         }
 
-        public List<T> __GetItem__(Slice slice)
+        public Str __GetItem__(Slice slice)
         {
             if (slice.step == 0)
             {
@@ -25,28 +22,20 @@ namespace Sharpy
 
             if (slice.step < 0)
             {
-                return [];
+                return "";
             }
 
-            (int start, int end) = ((int, int))Slice.Normalize(slice.start, slice.end, (uint)_list.Count);
+            (int start, int end) = ((int, int))Slice.Normalize(slice.start, slice.end, (uint)_s.Length);
 
-            return new List<T>
-            {
-                _list = [.. _list.Skip(start).Take(end - start).Where((item, index) => index % slice.step == 0)]
-            };
+            return "TODO";
         }
 
         /// <summary>
         /// Return the number of times x appears in the list.
         /// </summary>
-        public uint Count(T x)
+        public uint Count(Str x)
         {
-            if (x is null)
-            {
-                return (uint)_list.Count(y => y is null);
-            }
-
-            return (uint)_list.Count(y => x.Equals(y));
+            return (uint)_s.Count(y => x.Equals(y));
         }
 
         /// <summary>
@@ -61,21 +50,21 @@ namespace Sharpy
         /// relative to the beginning of the full sequence rather than the
         /// start argument.
         /// </remarks>
-        public uint Index(T x, int start = 0, int end = -1)
+        public uint Index(char x, int start = 0, int end = -1)
         {
             int count;
 
             try
             {
-                start = (int)Sharpy.Index.Normalize(start, (uint)_list.Count, false, false);
-                count = (int)Sharpy.Index.Normalize(end, (uint)_list.Count, false, false) - start;
+                start = (int)Sharpy.Index.Normalize(start, (uint)_s.Length, false, false);
+                count = (int)Sharpy.Index.Normalize(end, (uint)_s.Length, false, false) - start;
             }
             catch (IndexError)
             {
                 throw new ValueError($"{x} is not in list");
             }
 
-            var result = _list.IndexOf(x, start, count);
+            var result = _s.IndexOf(x, start, count);
 
             if (result == -1)
             {

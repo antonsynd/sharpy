@@ -16,7 +16,7 @@ namespace Sharpy
 
         public static uint Len(string s)
         {
-            return s.__Len__();
+            return (uint)s.Length;
         }
     }
 }
