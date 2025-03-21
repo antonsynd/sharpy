@@ -1,4 +1,3 @@
-using System.Collections;
 using Sharpy.Collections.Interfaces;
 
 namespace Sharpy

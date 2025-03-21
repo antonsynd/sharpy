@@ -1,5 +1,3 @@
-using Sharpy.Collections.Interfaces;
-
 namespace Sharpy
 {
     public sealed partial class List<T>
@@ -18,21 +16,6 @@ namespace Sharpy
         public bool Contains(T x)
         {
             return __Contains__(x);
-        }
-
-        public override bool Equals(object obj)
-        {
-            if (ReferenceEquals(this, obj))
-            {
-                return true;
-            }
-
-            if (ReferenceEquals(obj, null))
-            {
-                return false;
-            }
-
-            throw new NotImplementedException();
         }
     }
 }

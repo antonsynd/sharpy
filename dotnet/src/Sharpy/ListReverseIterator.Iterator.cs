@@ -1,4 +1,3 @@
-
 namespace Sharpy
 {
     public sealed partial class ListReverseIterator<T>

@@ -55,17 +55,11 @@ namespace Sharpy
         {
             Sort<T>(null, reverse);
         }
-        public void Sort<TKey>(Func<T, TKey>? key = null, bool reverse = false)
+
+        public void Sort<TKey>(Func<T?, TKey?>? key = null, bool reverse = false)
         {
-            if (key == null)
-            {
-                // use https://learn.microsoft.com/en-us/dotnet/api/system.linq.enumerable.orderby?view=net-9.0&redirectedfrom=MSDN#System_Linq_Enumerable_OrderBy__2_System_Collections_Generic_IEnumerable___0__System_Func___0___1__
-                _list.Sort();
-            }
-            else
-            {
-                _list.Sort(Comparer<T>.Create((a, b) => Comparer<TKey>.Default.Compare(key(a), key(b))));
-            }
+            // use https://learn.microsoft.com/en-us/dotnet/api/system.linq.enumerable.orderby?view=net-9.0&redirectedfrom=MSDN#System_Linq_Enumerable_OrderBy__2_System_Collections_Generic_IEnumerable___0__System_Func___0___1__
+            _list.Sort(KeyComparerFactory<T, TKey>.Create(key));
 
             // TODO: Make this more efficient with the reverse
             if (reverse)
