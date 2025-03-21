@@ -17,9 +17,20 @@ namespace Sharpy
                 return new LessThanOrEquatableComparer();
             }
 
+            if (typeof(GreaterThanOrEquatable<T>).IsAssignableFrom(typeof(T)) ||
+            (typeof(GreaterThanComparable<T>).IsAssignableFrom(typeof(T)) && typeof(Equatable<T>).IsAssignableFrom(typeof(T))))
+            {
+                return new GreaterThanOrEquatableComparer();
+            }
+
             if (typeof(LessThanComparable<T>).IsAssignableFrom(typeof(T)))
             {
                 return new LessThanComparableComparer();
+            }
+
+            if (typeof(GreaterThanComparable<T>).IsAssignableFrom(typeof(T)))
+            {
+                return new GreaterThanComparableComparer();
             }
 
             if (typeof(IComparable<T>).IsAssignableFrom(typeof(T))) {
@@ -65,7 +76,7 @@ namespace Sharpy
 
                 var ylt = (LessThanComparable<T>)y;
 
-                // y is less than y, so x is greater than y
+                // y is less than x, so x is greater than y
                 if (ylt.__Lt__(x))
                 {
                     return 1;
@@ -116,6 +127,92 @@ namespace Sharpy
                 // x is not less than y and not equal to y, so it is greater
                 // than y
                 return 1;
+            }
+        }
+
+        private class GreaterThanComparableComparer : IComparer<T>
+        {
+            public int Compare(T? x, T? y)
+            {
+                // These are the same objects
+                if (ReferenceEquals(x, y))
+                {
+                    return 0;
+                }
+
+                // x is less than y
+                if (x is null)
+                {
+                    return -1;
+                }
+
+                // x is greater than y
+                if (y is null)
+                {
+                    return 1;
+                }
+
+                var xgt = (GreaterThanComparable<T>)x;
+
+                // x is greater than y
+                if (xgt.__Gt__(y))
+                {
+                    return -1;
+                }
+
+                var ygt = (GreaterThanComparable<T>)y;
+
+                // y is greater than x, so x is less than y
+                if (ygt.__Gt__(x))
+                {
+                    return -1;
+                }
+
+                // Neither y or x are greater than each other, so both are equal
+                return 0;
+            }
+        }
+
+        private class GreaterThanOrEquatableComparer : IComparer<T>
+        {
+            public int Compare(T? x, T? y)
+            {
+                // These are the same objects
+                if (ReferenceEquals(x, y))
+                {
+                    return 0;
+                }
+
+                // x is less than y
+                if (x is null)
+                {
+                    return -1;
+                }
+
+                // x is greater than y
+                if (y is null)
+                {
+                    return 1;
+                }
+
+                var xeq = (Equatable<T>)x;
+                var xlt = (GreaterThanComparable<T>)x;
+
+                // Both are equal
+                if (xeq.__Eq__(y))
+                {
+                    return 0;
+                }
+
+                // x is greater than y
+                if (xlt.__Gt__(y))
+                {
+                    return 1;
+                }
+
+                // x is not greater than y and not equal to y, so it is less
+                // than y
+                return -1;
             }
         }
 
