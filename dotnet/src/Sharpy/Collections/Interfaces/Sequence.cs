@@ -3,7 +3,7 @@ namespace Sharpy.Collections.Interfaces
     /// <summary>
     /// Interface for read-only sequences.
     /// </summary>
-    public interface Sequence<S, T> : Collection<T>, Reversible<T> where S : notnull where T : notnull
+    public interface Sequence<S, T> : Collection<T>, Reversible<T>
     {
         uint Count(T x);
 

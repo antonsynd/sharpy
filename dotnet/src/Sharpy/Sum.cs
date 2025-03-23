@@ -4,7 +4,7 @@ namespace Sharpy
 {
     public static partial class Builtins
     {
-        public static T Sum<T>(Iterable<T> iterable) where T : notnull, Addable<T>
+        public static T Sum<T>(Iterable<T> iterable) where T : Addable<T>
         {
             var iterator = iterable.__Iter__();
 

@@ -3,7 +3,7 @@ namespace Sharpy.Collections.Interfaces
     /// <summary>
     /// Interface for read-only mappings.
     /// </summary>
-    public interface Mapping<K, V> : Collection<(K, V)> where K : notnull where V : notnull
+    public interface Mapping<K, V> : Collection<(K, V)>
     {
         V __GetItem__(K k);
 

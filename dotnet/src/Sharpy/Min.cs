@@ -4,12 +4,12 @@ namespace Sharpy
 {
     public static partial class Builtins
     {
-        public static T Min<T>(Iterable<T> iterable) where T : notnull
+        public static T Min<T>(Iterable<T> iterable)
         {
             return Min(iterable, value => value);
         }
 
-        public static T Min<T, TKey>(Iterable<T> iterable, Func<T, TKey> key) where T : notnull where TKey : notnull
+        public static T Min<T, TKey>(Iterable<T> iterable, Func<T, TKey> key)
         {
             if (typeof(LessThanComparable<TKey>).IsAssignableFrom(typeof(TKey))) {
                 bool iterableIsEmpty = true;

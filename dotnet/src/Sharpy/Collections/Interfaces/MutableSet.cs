@@ -3,7 +3,7 @@ namespace Sharpy.Collections.Interfaces
     /// <summary>
     /// Interface for mutable sets.
     /// </summary>
-    public interface MutableSet<T> : Set<T> where T : notnull
+    public interface MutableSet<T> : Set<T>
     {
         void Add(T x);
 

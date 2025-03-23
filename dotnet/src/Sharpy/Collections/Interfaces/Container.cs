@@ -4,7 +4,7 @@ namespace Sharpy.Collections.Interfaces
     /// Interface for classes that provide the <see cref="__Contains__()"/>
     /// method.
     /// </summary>
-    public interface Container<T> where T : notnull
+    public interface Container<T>
     {
         /// <summary>
         /// Called to implement membership test operators. Should return

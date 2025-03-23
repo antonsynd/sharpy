@@ -3,7 +3,7 @@ namespace Sharpy.Collections.Interfaces
     /// <summary>
     /// Interface for mutable sequences.
     /// </summary>
-    public interface MutableSequence<S, T> : Sequence<S, T> where S : notnull where T : notnull
+    public interface MutableSequence<S, T> : Sequence<S, T>
     {
         void Append(T x);
 

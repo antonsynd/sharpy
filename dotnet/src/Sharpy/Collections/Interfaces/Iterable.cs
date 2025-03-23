@@ -3,7 +3,7 @@ namespace Sharpy.Collections.Interfaces
     /// <summary>
     /// Interface for classes that provide the <see cref="__Iter__()"/> method.
     /// </summary>
-    public interface Iterable<T> : IEnumerable<T> where T : notnull
+    public interface Iterable<T> : IEnumerable<T>
     {
         /// <summary>
         /// Return an <see cref="Iterator"/> object. The object is required to
