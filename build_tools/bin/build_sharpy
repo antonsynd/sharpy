@@ -6,8 +6,9 @@ import logging
 import os
 import subprocess
 import sys
+from enum import Enum
 from pathlib import Path
-from typing import Iterable, Mapping, Sequence
+from typing import AbstractSet, Iterable, Mapping, Sequence
 
 import requests
 
@@ -79,6 +80,7 @@ def create_parser() -> argparse.ArgumentParser:
     clean_parser = subparsers.add_parser("clean", help="Cleans up intermediate objects.")
     install_parser = subparsers.add_parser("install", help="TODO")
     format_parser = subparsers.add_parser("format", help="Runs code formatters.")
+    format_parser.add_argument("--target", action="append", choices=("cs", "csharp", "py", "python"), default=None)
     release_parser = subparsers.add_parser("release", help="TODO")
     run_parser = subparsers.add_parser(
         "run", help="Runs the given arguments in the context of the Python modules available here."
@@ -214,9 +216,16 @@ def install(args: argparse.Namespace, rest: Sequence[str]) -> None:
 
 
 def format(args: argparse.Namespace, rest: Sequence[str]) -> None:
-    format_with_isort()
-    format_with_black()
-    format_with_dotnet_format()
+    targets: AbstractSet[str] = set(args.target)
+
+    if not targets:
+        targets = {"cs", "py"}
+
+    if "py" in args.target or "python" in args.target:
+        format_with_isort()
+        format_with_black()
+    if "cs" in args.target or "csharp" in args.target:
+        format_with_dotnet_format()
 
 
 def format_with_black() -> None:
