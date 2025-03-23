@@ -19,9 +19,11 @@ namespace Sharpy
                 return LessThanComparableAdapter.AreEqual;
             }
 
-            // By default, use Equals() (which for Sharpy Objects will
-            // delegate to __Eq__() anyway due to it being sealed in Object).
-            return EqualsAdapter.AreEqual;
+            if (typeof(T).IsValueType) {
+                return EqualsAdapter.AreEqual;
+            }
+
+            return ReferenceEqualsAdapter.AreEqual;
         }
 
         private static class EquatableAdapter
@@ -29,17 +31,12 @@ namespace Sharpy
 
             public static bool AreEqual(T lhs, T rhs)
             {
-                if (lhs == null)
-                {
-                    if (rhs == null)
-                    {
-                        return true;
-                    }
-
-                    return false;
+                // References to the same object are always equal
+                if (ReferenceEquals(lhs, rhs)) {
+                    return true;
                 }
 
-                return ((Equatable<T>)lhs).__Eq__(rhs);
+                return (lhs as Equatable<T>)?.__Eq__(rhs) ?? false;
             }
         }
 
@@ -47,9 +44,17 @@ namespace Sharpy
         {
             public static bool AreEqual(T lhs, T rhs)
             {
+                // References to the same object are always equal
+                if (ReferenceEquals(lhs, rhs)) {
+                    return true;
+                }
+
+                // If the above doesn't establish equality, then if either of
+                // them are false, then return false because None with any
+                // other type is false.
                 if (lhs == null || rhs == null)
                 {
-                    throw new TypeError($"'<' not supported between instances of None and ${typeof(T).Name}");
+                    return false;
                 }
 
                 // Neither is less than the other, so they are equal
@@ -72,6 +77,19 @@ namespace Sharpy
                 }
 
                 return lhs.Equals(rhs);
+            }
+        }
+
+        private static class ReferenceEqualsAdapter
+        {
+            public static bool AreEqual(T lhs, T rhs)
+            {
+                // References to the same object are always equal
+                if (ReferenceEquals(lhs, rhs)) {
+                    return true;
+                }
+
+                return lhs?.Equals(rhs) ?? false;
             }
         }
     }

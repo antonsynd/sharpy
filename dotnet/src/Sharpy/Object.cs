@@ -87,8 +87,8 @@ namespace Sharpy
         /// </remarks>
         public static bool operator ==(Object? left, object? right)
         {
-            if (left == null) {
-                if (right == null) {
+            if (left is null) {
+                if (right is null) {
                     return true;
                 }
 
@@ -115,8 +115,8 @@ namespace Sharpy
         /// </remarks>
         public static bool operator ==(object? left, Object? right)
         {
-            if (right == null) {
-                if (left == null) {
+            if (right is null) {
+                if (left is null) {
                     return true;
                 }
 

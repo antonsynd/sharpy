@@ -1,7 +1,5 @@
 using System.Text;
 
-using static Sharpy.Builtins;
-
 namespace Sharpy
 {
     public sealed partial class List<T>
@@ -22,7 +20,7 @@ namespace Sharpy
         }
 
         public bool __Eq__(List<T>? other) {
-            if (other == null) {
+            if (other is null) {
                 return false;
             }
 
@@ -31,15 +29,9 @@ namespace Sharpy
                 for (uint i = 0; i < _list.Count; ++i)
                 {
                     var leftElem = _list[(int)i];
+                    var rightElem = other._list[(int)i];
 
-                    if (leftElem is null)
-                    {
-                        if (other._list[(int)i] is not null)
-                        {
-                            return false;
-                        }
-                    }
-                    else if (EqualityAdapterFactory<T>.AreEqual(leftElem, other._list[(int)i]))
+                    if (!EqualityAdapterFactory<T>.AreEqual(leftElem, rightElem))
                     {
                         return false;
                     }
@@ -53,15 +45,11 @@ namespace Sharpy
 
         public override int __Hash__()
         {
-            // Wrap overflows
-            unchecked
-            {
-                int hash = 17;
-                hash = hash * 23 + typeof(List<T>).GetHashCode();
-                hash = hash * 23 + _list.GetHashCode();
+            var hashCode = new HashCode();
+            hashCode.Add(typeof(List<T>).GetHashCode());
+            hashCode.Add(_list.GetHashCode());
 
-                return hash;
-            }
+            return hashCode.ToHashCode();
         }
 
         public override string __Repr__()

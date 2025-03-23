@@ -9,7 +9,7 @@ namespace Sharpy
         /// </remarks>
         public virtual bool __Eq__(Object? other)
         {
-            if (other == null) {
+            if (other is null) {
                 return false;
             }
 

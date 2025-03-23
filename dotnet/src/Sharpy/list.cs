@@ -175,8 +175,9 @@ namespace Sharpy
 
         /// <remarks>
         /// This returns true for both lists if they contain the same elements,
-        /// even if they are not the actual same list reference. Internally, it
-        /// uses <see cref="object.Equals(object?)" /> for comparisons.
+        /// even if they are not the actual same list reference. If the elements
+        /// are Sharpy Objects, then <see cref="Object.__Eq__()"/> is used.
+        /// Otherwise, <see cref="object.Equals()"/> is used.
         /// </remarks>
         public static bool operator ==(List<T>? left, List<T>? right)
         {

@@ -6,7 +6,6 @@ import logging
 import os
 import subprocess
 import sys
-from enum import Enum
 from pathlib import Path
 from typing import AbstractSet, Iterable, Mapping, Sequence
 
@@ -91,6 +90,13 @@ def create_parser() -> argparse.ArgumentParser:
     help_parser = subparsers.add_parser("help", help="Prints this help message.")
 
     return parser
+
+
+def get_targets(args: argparse.Namespace) -> AbstractSet[str]:
+    if args.target:
+        return set(args.target)
+
+    return {"py", "cs"}
 
 
 def build(args: argparse.Namespace, rest: Sequence[str]) -> None:
@@ -218,16 +224,13 @@ def install(args: argparse.Namespace, rest: Sequence[str]) -> None:
 
 
 def format(args: argparse.Namespace, rest: Sequence[str]) -> None:
-    targets: AbstractSet[str] = set(args.target)
+    targets: AbstractSet[str] = get_targets(args)
 
-    if not targets:
-        targets = {"cs", "py"}
-
-    if "py" in args.target or "python" in args.target:
+    if "py" in targets or "python" in targets:
         format_with_isort()
         format_with_black()
 
-    if "cs" in args.target or "csharp" in args.target:
+    if "cs" in targets or "csharp" in targets:
         format_with_dotnet_format()
 
 
@@ -278,10 +281,7 @@ def run(args: argparse.Namespace, rest: Sequence[str]) -> None:
 
 
 def test(args: argparse.Namespace, rest: Sequence[str]) -> None:
-    targets: AbstractSet[str] = set(args.target)
-
-    if not targets:
-        targets = {"cs", "py"}
+    targets: AbstractSet[str] = get_targets(args)
 
     if "py" in targets or "python" in targets:
         get_logger().info("Running tests with pytest...")
