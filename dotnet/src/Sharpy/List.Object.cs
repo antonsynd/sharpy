@@ -6,7 +6,12 @@ namespace Sharpy
 {
     public sealed partial class List<T>
     {
-        public override bool __Eq__(Object obj)
+        public override bool __Bool__()
+        {
+            return _list.Count > 0;
+        }
+
+        public override bool __Eq__(Object? obj)
         {
             if (obj is List<T> other)
             {
@@ -16,7 +21,11 @@ namespace Sharpy
             return false;
         }
 
-        public bool __Eq__(List<T> other) {
+        public bool __Eq__(List<T>? other) {
+            if (other == null) {
+                return false;
+            }
+
             if (_list.Count == other._list.Count)
             {
                 for (uint i = 0; i < _list.Count; ++i)
@@ -30,7 +39,7 @@ namespace Sharpy
                             return false;
                         }
                     }
-                    else if (!leftElem.Equals(other._list[(int)i]))
+                    else if (EqualityAdapterFactory<T>.AreEqual(leftElem, other._list[(int)i]))
                     {
                         return false;
                     }

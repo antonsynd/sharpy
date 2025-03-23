@@ -76,15 +76,18 @@ namespace Sharpy
             return res;
         }
 
+        public List<T> __RAdd__(List<T> other)
+        {
+            var res = other.Copy();
+            res.Extend(this);
+
+            return res;
+        }
+
         public List<T> __IAdd__(List<T> other) {
             Extend(other);
 
             return this;
-        }
-
-        public override bool __Bool__()
-        {
-            return _list.Count > 0;
         }
 
         public List<T> __Mul__(int i)
@@ -108,6 +111,8 @@ namespace Sharpy
 
         public List<T> __IMul__(int i) {
             if (i <= 0) {
+                Clear();
+
                 return this;
             }
 
@@ -123,6 +128,10 @@ namespace Sharpy
             }
 
             return this;
+        }
+
+        public List<T> __RMul__(int i) {
+            return __Mul__(i);
         }
 
         /// <summary>
@@ -169,12 +178,12 @@ namespace Sharpy
         /// even if they are not the actual same list reference. Internally, it
         /// uses <see cref="object.Equals(object?)" /> for comparisons.
         /// </remarks>
-        public static bool operator ==(List<T> left, List<T> right)
+        public static bool operator ==(List<T>? left, List<T>? right)
         {
-            return left.__Eq__(right);
+            return left?.__Eq__(right) ?? false;
         }
 
-        public static bool operator !=(List<T> left, List<T> right)
+        public static bool operator !=(List<T>? left, List<T>? right)
         {
             return !(left == right);
         }

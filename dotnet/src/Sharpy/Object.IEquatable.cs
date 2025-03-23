@@ -7,7 +7,7 @@ namespace Sharpy
         /// </remarks>
         public bool Equals(Object? obj)
         {
-            return obj?.__Eq__(this) ?? false;
+            return __Eq__(obj);
         }
     }
 }
