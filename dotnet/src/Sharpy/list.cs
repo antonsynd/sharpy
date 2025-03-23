@@ -76,6 +76,12 @@ namespace Sharpy
             return res;
         }
 
+        public List<T> __IAdd__(List<T> other) {
+            Extend(other);
+
+            return this;
+        }
+
         public override bool __Bool__()
         {
             return _list.Count > 0;
@@ -98,6 +104,25 @@ namespace Sharpy
             }
 
             return res;
+        }
+
+        public List<T> __IMul__(int i) {
+            if (i <= 0) {
+                return this;
+            }
+
+            var originalLength = _list.Count;
+            _list.EnsureCapacity(originalLength * i);
+
+            for (; i > 0; --i)
+            {
+                for (uint j = 0; j < originalLength; ++j)
+                {
+                    _list.Add(_list[(int)j]);
+                }
+            }
+
+            return this;
         }
 
         /// <summary>
@@ -146,29 +171,7 @@ namespace Sharpy
         /// </remarks>
         public static bool operator ==(List<T> left, List<T> right)
         {
-            if (left._list.Count == right._list.Count)
-            {
-                for (uint i = 0; i < left._list.Count; ++i)
-                {
-                    var leftElem = left._list[(int)i];
-
-                    if (leftElem is null)
-                    {
-                        if (right._list[(int)i] is not null)
-                        {
-                            return false;
-                        }
-                    }
-                    else if (!leftElem.Equals(right._list[(int)i]))
-                    {
-                        return false;
-                    }
-                }
-
-                return true;
-            }
-
-            return false;
+            return left.__Eq__(right);
         }
 
         public static bool operator !=(List<T> left, List<T> right)
@@ -192,6 +195,14 @@ namespace Sharpy
         public System.Collections.Generic.List<T> ToList()
         {
             return [.. _list];
+        }
+
+        public static bool operator true(List<T> list) {
+            return list.__Bool__();
+        }
+
+        public static bool operator false(List<T> list) {
+            return !list.__Bool__();
         }
     }
 }

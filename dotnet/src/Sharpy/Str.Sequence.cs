@@ -2,11 +2,6 @@ namespace Sharpy
 {
     public readonly partial struct Str
     {
-        public Str __GetItem__()
-        {
-            return new Str(_s);
-        }
-
         public Str __GetItem__(int index)
         {
             index = (int)Sharpy.Index.Normalize(index, (uint)_s.Length, false, false);

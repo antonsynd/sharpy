@@ -10,7 +10,33 @@ namespace Sharpy
         {
             if (obj is List<T> other)
             {
-                return this == other;
+                return __Eq__(other);
+            }
+
+            return false;
+        }
+
+        public bool __Eq__(List<T> other) {
+            if (_list.Count == other._list.Count)
+            {
+                for (uint i = 0; i < _list.Count; ++i)
+                {
+                    var leftElem = _list[(int)i];
+
+                    if (leftElem is null)
+                    {
+                        if (other._list[(int)i] is not null)
+                        {
+                            return false;
+                        }
+                    }
+                    else if (!leftElem.Equals(other._list[(int)i]))
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
             }
 
             return false;

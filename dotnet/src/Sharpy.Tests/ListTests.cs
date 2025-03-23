@@ -629,22 +629,6 @@ namespace Sharpy.Tests
         }
 
         [Fact]
-        public void List_Slice_No_Args_Is_Copy()
-        {
-            // If
-            List<int> l = [1, 3, 5, 7, 9];
-
-            // When
-            var res = l.__GetItem__();
-
-            // Then
-            var actual = res.ToList();
-            DotNetList<int> expected = [1, 3, 5, 7, 9];
-
-            actual.Should().Equal(expected);
-        }
-
-        [Fact]
         public void List_Slice_Operator()
         {
             // If
@@ -1216,19 +1200,6 @@ namespace Sharpy.Tests
             DotNetList<int> expected = [3, 7];
 
             actual.Should().Equal(expected);
-        }
-
-        [Fact]
-        public void List_Delete_Slice_No_Args_Is_Clear()
-        {
-            // If
-            List<int> l = [1, 3, 5, 7, 9];
-
-            // When
-            l.__DelItem__();
-
-            // Then
-            Len(l).Should().Be(0);
         }
 
         [Fact]

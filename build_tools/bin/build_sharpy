@@ -78,14 +78,16 @@ def create_parser() -> argparse.ArgumentParser:
     )
     build_parser = subparsers.add_parser("build", help="Builds the package.")
     clean_parser = subparsers.add_parser("clean", help="Cleans up intermediate objects.")
-    install_parser = subparsers.add_parser("install", help="TODO")
+    install_parser = subparsers.add_parser("install", help="TODO: No-op")
     format_parser = subparsers.add_parser("format", help="Runs code formatters.")
     format_parser.add_argument("--target", action="append", choices=("cs", "csharp", "py", "python"), default=None)
-    release_parser = subparsers.add_parser("release", help="TODO")
+    release_parser = subparsers.add_parser("release", help="Runs all steps.")
+    release_parser.add_argument("--target", action="append", choices=("cs", "csharp", "py", "python"), default=None)
     run_parser = subparsers.add_parser(
         "run", help="Runs the given arguments in the context of the Python modules available here."
     )
     test_parser = subparsers.add_parser("test", help="Runs tests.")
+    test_parser.add_argument("--target", action="append", choices=("cs", "csharp", "py", "python"), default=None)
     help_parser = subparsers.add_parser("help", help="Prints this help message.")
 
     return parser
@@ -224,6 +226,7 @@ def format(args: argparse.Namespace, rest: Sequence[str]) -> None:
     if "py" in args.target or "python" in args.target:
         format_with_isort()
         format_with_black()
+
     if "cs" in args.target or "csharp" in args.target:
         format_with_dotnet_format()
 
@@ -275,20 +278,28 @@ def run(args: argparse.Namespace, rest: Sequence[str]) -> None:
 
 
 def test(args: argparse.Namespace, rest: Sequence[str]) -> None:
-    get_logger().info("Running tests with pytest...")
+    targets: AbstractSet[str] = set(args.target)
 
-    try:
-        subprocess.run(["pytest", str(PYTHON_TEST_DIR), *rest])
-    except subprocess.CalledProcessError as e:
-        get_logger().error(f"Encountered error {e}")
-        sys.exit(1)
+    if not targets:
+        targets = {"cs", "py"}
 
-    get_logger().info("Running tests with dotnet...")
-    try:
-        subprocess.run(["dotnet", "test", str(CSHARP_TEST_DIR), *rest])
-    except subprocess.CalledProcessError as e:
-        get_logger().error(f"Encountered error {e}")
-        sys.exit(1)
+    if "py" in targets or "python" in targets:
+        get_logger().info("Running tests with pytest...")
+
+        try:
+            subprocess.run(["pytest", str(PYTHON_TEST_DIR), *rest])
+        except subprocess.CalledProcessError as e:
+            get_logger().error(f"Encountered error {e}")
+            sys.exit(1)
+
+
+    if "cs" in targets or "csharp" in targets:
+        get_logger().info("Running tests with dotnet...")
+        try:
+            subprocess.run(["dotnet", "test", str(CSHARP_TEST_DIR), *rest])
+        except subprocess.CalledProcessError as e:
+            get_logger().error(f"Encountered error {e}")
+            sys.exit(1)
 
 
 def get_logger() -> logging.Logger:

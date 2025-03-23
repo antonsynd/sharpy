@@ -1,22 +1,25 @@
+using Sharpy.Collections.Interfaces;
+
 namespace Sharpy
 {
-    public sealed partial class List<T>
+    public sealed partial class ByteArray : Object, MutableSequence<ByteArray, byte>
     {
         /// <summary>
         /// Add an item to the end of the list. Similar to a[len(a):] = [x].
         /// </summary>
-        public void Append(T x)
+        public void Append(byte x)
         {
-            _list.Add(x);
+            _EnsureCapacity(_numBytes + 1);
+            _data.Add(x);
         }
 
         /// <summary>
         /// Extend the list by appending all the items from the iterable.
         /// Similar to a[len(a):] = iterable.
         /// </summary>
-        public void Extend(IEnumerable<T> enumerable)
+        public void Extend(IEnumerable<byte> enumerable)
         {
-            _list.AddRange(enumerable);
+            _data.AddRange(enumerable);
         }
 
 
@@ -25,7 +28,7 @@ namespace Sharpy
         /// </summary>
         public void Clear()
         {
-            _list.Clear();
+            _numBytes = 0;
         }
 
         /// <summary>
@@ -34,9 +37,9 @@ namespace Sharpy
         /// inserts at the front of the list, and a.Insert(Len(a), x) is
         /// equivalent to a.Append(x).
         /// </summary>
-        public void Insert(int i, T x)
+        public void Insert(int i, byte x)
         {
-            _list.Insert((int)Sharpy.Index.Normalize(i, (uint)_list.Count, false, true), x);
+            _data.Insert((int)Sharpy.Index.Normalize(i, (uint)_data.Length, false, true), x);
         }
 
         /// <summary>
@@ -45,24 +48,24 @@ namespace Sharpy
         /// item in the list. It raises an IndexError if the list is empty or
         /// the index is outside the list range.
         /// </summary>
-        public T Pop(int i = -1)
+        public byte Pop(int i = -1)
         {
-            if (_list.Count == 0)
+            if (_data.Length == 0)
             {
-                throw new IndexError("pop from empty list");
+                throw new IndexError("pop from empty byte array");
             }
 
             try
             {
-                i = (int)Sharpy.Index.Normalize(i, (uint)_list.Count, false, false);
+                i = (int)Sharpy.Index.Normalize(i, (uint)_data.Length, false, false);
             }
             catch (IndexError)
             {
                 throw new IndexError($"pop index {i} out of range");
             }
 
-            var item = _list[i];
-            _list.RemoveAt(i);
+            var item = _data[i];
+            _data.RemoveAt(i);
 
             return item;
         }
@@ -71,9 +74,9 @@ namespace Sharpy
         /// Remove the first item from the list whose value is equal to x. It
         /// raises a ValueError if there is no such item.
         /// </summary>
-        public void Remove(T x)
+        public void Remove(byte x)
         {
-            if (!_list.Remove(x))
+            if (!_data.Remove(x))
             {
                 throw new ValueError($"{x} not in list");
             }
@@ -84,12 +87,18 @@ namespace Sharpy
         /// </summary>
         public void Reverse()
         {
-            _list.Reverse();
+            _data.Reverse();
+        }
+
+
+        public void __DelItem__()
+        {
+            _data.Clear();
         }
 
         public void __DelItem__(int index)
         {
-            _list.RemoveAt((int)Sharpy.Index.Normalize(index, (uint)_list.Count, false, false));
+            _data.RemoveAt((int)Sharpy.Index.Normalize(index, (uint)_data.Length, false, false));
         }
 
         public void __DelItem__(Slice slice)
@@ -105,7 +114,7 @@ namespace Sharpy
                 return;
             }
 
-            (uint start, uint end) = Sharpy.Slice.Normalize(slice.start, slice.end, (uint)_list.Count);
+            (uint start, uint end) = Sharpy.Slice.Normalize(slice.start, slice.end, (uint)_data.Count);
 
             if (slice.step == 1)
             {
@@ -126,7 +135,7 @@ namespace Sharpy
 
         private void _DeleteSliceSingleStep(uint start, uint end)
         {
-            _list.RemoveRange((int)start, (int)(end - start));
+            _data.RemoveRange((int)start, (int)(end - start));
         }
 
         private void _DeleteSliceMultiStep(uint start, uint end, uint step)
@@ -139,27 +148,27 @@ namespace Sharpy
             {
                 if ((i - start) % step == 0)
                 {
-                    _list.RemoveAt((int)(i - elemsChanged));
+                    _data.RemoveAt((int)(i - elemsChanged));
 
                     ++elemsChanged;
                 }
             }
         }
 
-        public void __SetItem__(int index, T value)
+        public void __SetItem__(int index, byte value)
         {
-            index = (int)Sharpy.Index.Normalize(index, (uint)_list.Count, false, false);
-            _list[index] = value;
+            index = (int)Sharpy.Index.Normalize(index, (uint)_data.Count, false, false);
+            _data[index] = value;
         }
 
-        public void __SetItem__(List<T> other)
+        public void __SetItem__(List<byte> other)
         {
-            _list.Clear();
-            _list.EnsureCapacity(other._list.Count);
-            _list.AddRange(other._list);
+            _data.Clear();
+            _data.EnsureCapacity(other._data.Count);
+            _data.AddRange(other._data);
         }
 
-        public void __SetItem__(Slice slice, List<T> other)
+        public void __SetItem__(Slice slice, List<byte> other)
         {
             if (slice.step == 0)
             {
@@ -172,7 +181,7 @@ namespace Sharpy
                 return;
             }
 
-            (uint start, uint end) = Sharpy.Slice.Normalize(slice.start, slice.end, (uint)_list.Count);
+            (uint start, uint end) = Sharpy.Slice.Normalize(slice.start, slice.end, (uint)_data.Count);
 
             if (slice.step == 1)
             {
@@ -193,18 +202,18 @@ namespace Sharpy
             }
         }
 
-        private void _SetSliceInsertion(List<T> other, uint start)
+        private void _SetSliceInsertion(List<byte> other, uint start)
         {
-            if (other._list.Count == 0)
+            if (other._data.Count == 0)
             {
                 return;
             }
 
-            _list.EnsureCapacity(_list.Count + other._list.Count);
-            _list.InsertRange((int)start, other);
+            _data.EnsureCapacity(_data.Count + other._data.Count);
+            _data.InsertRange((int)start, other);
         }
 
-        private void _SetSliceSingleStep(List<T> other, uint start, uint end)
+        private void _SetSliceSingleStep(List<byte> other, uint start, uint end)
         {
             var numOldElems = end - start;
             var numNewElems = other.__Len__();
@@ -219,12 +228,12 @@ namespace Sharpy
                 // Trivial case, replace 1-to-1
                 for (uint i = start; i < end; ++i)
                 {
-                    _list[(int)i] = other[(int)(i - start)];
+                    _data[(int)i] = other[(int)(i - start)];
                 }
             }
         }
 
-        private void _SetSliceSingleStepReplacement(List<T> other,
+        private void _SetSliceSingleStepReplacement(List<byte> other,
                                             uint start,
                                             uint numOldElems,
                                             uint numNewElems)
@@ -232,22 +241,22 @@ namespace Sharpy
             if (numNewElems > numOldElems)
             {
                 var numExtraElems = numNewElems - numOldElems;
-                _list.EnsureCapacity(_list.Count + (int)numExtraElems);
+                _data.EnsureCapacity(_data.Count + (int)numExtraElems);
             }
 
             // TODO: Can optimize for fewer element shifts
-            _list.RemoveRange((int)start, (int)numOldElems);
-            _list.InsertRange((int)start, other);
+            _data.RemoveRange((int)start, (int)numOldElems);
+            _data.InsertRange((int)start, other);
         }
 
-        void _SetSliceMultiStep(List<T> other, uint start, uint end, uint step)
+        void _SetSliceMultiStep(List<byte> other, uint start, uint end, uint step)
         {
             var numElemsToChange = Slice.Len((int)start, (int)end, (int)step);
 
-            if (other._list.Count != numElemsToChange)
+            if (other._data.Count != numElemsToChange)
             {
                 throw new ValueError($"Attempt to assign sequence of size "
-                    + $"{other._list.Count} to extended slice of size "
+                    + $"{other._data.Count} to extended slice of size "
                     + $"{numElemsToChange}");
             }
 
@@ -257,7 +266,7 @@ namespace Sharpy
             {
                 if ((i - start) % step == 0)
                 {
-                    _list[(int)i] = other[(int)elemsChanged];
+                    _data[(int)i] = other[(int)elemsChanged];
 
                     ++elemsChanged;
                 }
