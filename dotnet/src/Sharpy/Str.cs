@@ -10,6 +10,10 @@ namespace Sharpy
         }
     }
 
+    /// <remarks>
+    /// Unlike Python strings, Sharpy strings use C# strings as storage, so
+    /// they are always UTF-16.
+    /// </remarks>
     public readonly partial struct Str
     {
         private readonly string _s;

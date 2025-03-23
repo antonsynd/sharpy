@@ -4,9 +4,9 @@ namespace Sharpy
 {
     public static partial class Builtins
     {
-        public static Iterator<T> Reversed<T>(Reversible<T> s)
+        public static Iterator<T> Reversed<T>(Reversible<T> r) where T : notnull
         {
-            return s.__Reversed__();
+            return r.__Reversed__();
         }
     }
 }

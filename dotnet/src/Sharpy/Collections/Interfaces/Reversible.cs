@@ -4,7 +4,7 @@ namespace Sharpy.Collections.Interfaces
     /// Interface for iterable classes that also provide the
     /// <see cref="__Reversed__()"/> method.
     /// </summary>
-    public interface Reversible<T> : Iterable<T>
+    public interface Reversible<T> : Iterable<T> where T : notnull
     {
         /// <summary>
         /// Called (if present) by the <see cref="Reversed()"/> built-in to

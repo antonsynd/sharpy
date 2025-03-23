@@ -97,6 +97,24 @@ namespace Sharpy
         }
 
         /// <remarks>
+        /// Symmetrical equality prioritizing Sharpy Object's
+        /// <see cref="Equals()"/> implementation.
+        /// </remarks>
+        public static bool operator ==(object left, Object right)
+        {
+            return right.Equals(left);
+        }
+
+        /// <remarks>
+        /// Symmetrical equality prioritizing Sharpy Object's
+        /// <see cref="Equals()"/> implementation.
+        /// </remarks>
+        public static bool operator !=(object left, Object right)
+        {
+            return !(left == right);
+        }
+
+        /// <remarks>
         /// Objects are truthy based on <see cref="__Bool__()"/>.
         /// </remarks>
         public static bool operator true(Object obj)

@@ -22,7 +22,7 @@ namespace Sharpy
     /// same exhausted iterator object used in the previous iteration pass,
     /// making it appear like an empty container.
     /// </remarks>
-    public abstract partial class Iterator<T> : Iterable<T>
+    public abstract partial class Iterator<T> : Iterable<T> where T : notnull
     {
         /// <summary>
         /// Return the next item from the iterator. If there are no further

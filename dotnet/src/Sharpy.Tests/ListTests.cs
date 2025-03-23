@@ -482,46 +482,6 @@ namespace Sharpy.Tests
             Len(l).Should().Be(4);
         }
 
-        //         [Fact]
-        //         public void List_Min_Empty()
-        //         {
-        //             // If
-        //             var l = new List<int>();
-
-        //             // When/then
-        //             EXPECT_THROW(Min(l), ValueError);
-        //         }
-
-        //         [Fact]
-        //         public void List_Min_Non_Empty()
-        //         {
-        //             // If
-        //             List<int> l = [ 5, 7, 3, 1 ];
-
-        //             // When/then
-        //             Min(l).Should().Be(1);
-        //         }
-
-        //         [Fact]
-        //         public void List_Max_Empty()
-        //         {
-        //             // If
-        //             var l = new List<int>();
-
-        //             // When/then
-        //             EXPECT_THROW(Max(l), ValueError);
-        //         }
-
-        //         [Fact]
-        //         public void List_Max_Non_Empty()
-        //         {
-        //             // If
-        //             List<int> l = [ 5, 7, 3, 1 ];
-
-        //             // When/then
-        //             Max(l).Should().Be(7);
-        //         }
-
         [Fact]
         public void List_Count_Empty()
         {
