@@ -10,7 +10,7 @@ namespace Sharpy {
         public Optional(T? value) {_value = value; }
 
         public T GetValue() {
-            if (_value == null) {
+            if (_value is null) {
                 throw new ArgumentNullException($"Optional<${typeof(T).Name}> has no value.");
             }
 

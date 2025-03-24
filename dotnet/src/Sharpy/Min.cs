@@ -4,64 +4,49 @@ namespace Sharpy
 {
     public static partial class Builtins
     {
-        public static T Min<T>(Iterable<T> iterable)
+        public static T Min<T>(Iterable<T>? iterable)
         {
             return Min(iterable, value => value);
         }
 
-        public static T Min<T, TKey>(Iterable<T> iterable, Func<T, TKey> key)
+        public static T Min<T, TKey>(Iterable<T>? iterable, Func<T, TKey>? key)
         {
-            if (typeof(LessThanComparable<TKey>).IsAssignableFrom(typeof(TKey))) {
-                bool iterableIsEmpty = true;
-                T? smallest = default;
+            if (iterable is null) {
+                throw new TypeError("'NoneType' object is not iterable");
+            }
 
-                foreach (var elem in iterable) {
-                    if (smallest == null || iterableIsEmpty) {
-                        iterableIsEmpty = false;
-                        smallest = elem;
+            if (key is null) {
+                throw new TypeError("Min() key argument cannot be None");
+            }
 
-                        continue;
-                    }
+            bool iterableIsEmpty = true;
+            T? smallest = default;
 
-                    if (((LessThanComparable<TKey>)key(elem)).__Lt__(key(smallest))) {
-                        smallest = elem;
-                    }
-
-                    // No-op, these are equivalent, no need to do anything
+            foreach (var elem in iterable) {
+                if (elem is null) {
+                    throw new TypeError("'<' not supported for instances of 'NoneType'");
                 }
 
-                if (smallest == null || iterableIsEmpty) {
-                    throw new ValueError("Min() iterable argument is empty");
+                if (smallest is null || iterableIsEmpty) {
+                    smallest = elem;
+                    iterableIsEmpty = false;
+
+                    continue;
                 }
 
-                return smallest;
-            } else if (typeof(IComparable<TKey>).IsAssignableFrom(typeof(TKey))) {
-                bool iterableIsEmpty = true;
-                T? smallest = default;
-
-                foreach (var elem in iterable) {
-                    if (smallest == null || iterableIsEmpty) {
-                        iterableIsEmpty = false;
-                        smallest = elem;
-
-                        continue;
-                    }
-
-                    if (((IComparable<TKey>)key(smallest)).CompareTo(key(elem)) <= 0) {
-                        continue;
-                    }
-
+                if (LessThanAdapterFactory<TKey>.IsLessThan(key(elem), key(smallest)))
+                {
                     smallest = elem;
                 }
 
-                if (smallest == null || iterableIsEmpty) {
-                    throw new ValueError("Min() iterable argument is empty");
-                }
-
-                return smallest;
+                // No-op, these are equivalent, no need to do anything
             }
 
-            throw new TypeError($"'<' not supported for instances of ${typeof(TKey).Name}");
+            if (smallest is null || iterableIsEmpty) {
+                throw new ValueError("Min() iterable argument is empty");
+            }
+
+            return smallest;
         }
     }
 }

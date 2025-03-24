@@ -12,7 +12,7 @@ namespace Sharpy {
         /// </summary>
         /// <param name="other"></param>
         /// <returns></returns>
-        public override bool __Eq__(Object other)
+        public override bool __Eq__(Object? other)
         {
             if (other is Optional<T> optional) {
                 return __Eq__(optional);
@@ -21,17 +21,17 @@ namespace Sharpy {
             return false;
         }
 
-        public bool __Eq__(Optional<T> other)
+        public bool __Eq__(Optional<T>? other)
         {
-            if (_value is ValueType) {
-                return _value.Equals(other);
+            if (other is null) {
+                return false;
             }
 
-            return ReferenceEquals(_value, other._value);
+            return EqualityAdapterFactory<T>.AreEqual((T?)_value, (T?)other._value);
         }
 
         public override string __Repr__() {
-            if (_value == null) {
+            if (_value is null) {
                 return "None";
             }
 

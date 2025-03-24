@@ -4,78 +4,49 @@ namespace Sharpy
 {
     public static partial class Builtins
     {
-        public static T? Max<T>(Iterable<T> iterable)
+        public static T? Max<T>(Iterable<T>? iterable)
         {
             return Max(iterable, value => value);
         }
 
-        public static T? Max<T, TKey>(Iterable<T> iterable, Func<T, TKey> key)
+        public static T? Max<T, TKey>(Iterable<T>? iterable, Func<T, TKey>? key)
         {
-            if (typeof(LessThanComparable<TKey>).IsAssignableFrom(typeof(TKey))) {
-                bool iterableIsEmpty = true;
-                T? biggest = default;
+            if (iterable is null) {
+                throw new TypeError("'NoneType' object is not iterable");
+            }
 
-                foreach (var elem in iterable) {
-                    // If this element is null, skip it, because null is the
-                    // smallest element
-                    if (elem == null) {
-                        iterableIsEmpty = false;
-                        continue;
-                    }
+            if (key is null) {
+                throw new TypeError("Max() key argument cannot be None");
+            }
 
-                    if (biggest == null || iterableIsEmpty) {
-                        biggest = elem;
-                        iterableIsEmpty = false;
+            bool iterableIsEmpty = true;
+            T? biggest = default;
 
-                        continue;
-                    }
-
-                    if (((LessThanComparable<TKey>)key(biggest)).__Lt__(key(elem))) {
-                        biggest = elem;
-                    }
-
-                    // No-op, these are equivalent, no need to do anything
+            foreach (var elem in iterable) {
+                if (elem is null) {
+                    throw new TypeError("'<' not supported for instances of 'NoneType'");
                 }
 
-                if (iterableIsEmpty) {
-                    throw new ValueError("Max() iterable argument is empty");
+                if (biggest is null || iterableIsEmpty) {
+                    biggest = elem;
+                    iterableIsEmpty = false;
+
+                    continue;
                 }
 
-                return biggest;
-            } else if (typeof(IComparable<TKey>).IsAssignableFrom(typeof(TKey))) {
-                bool iterableIsEmpty = true;
-                T? biggest = default;
-
-                foreach (var elem in iterable) {
-                    // If this element is null, skip it, because null is the
-                    // smallest element
-                    if (elem == null) {
-                        iterableIsEmpty = false;
-                        continue;
-                    }
-
-                    if (biggest == null || iterableIsEmpty) {
-                        iterableIsEmpty = false;
-                        biggest = elem;
-
-                        continue;
-                    }
-
-                    if (((IComparable<TKey>)key(biggest)).CompareTo(key(elem)) > 0) {
-                        continue;
-                    }
-
+                if (LessThanAdapterFactory<TKey>.IsLessThan(key(biggest), key(elem)))
+                {
                     biggest = elem;
                 }
 
-                if (iterableIsEmpty) {
-                    throw new ValueError("Min() iterable argument is empty");
-                }
-
-                return biggest;
+                // No-op, these are equivalent, no need to do anything
             }
 
-            throw new TypeError($"'<' not supported for instances of ${typeof(TKey).Name}");
+            if (biggest is null || iterableIsEmpty) {
+                throw new ValueError("Max() iterable argument is empty");
+            }
+
+            return biggest;
         }
     }
 }

@@ -28,7 +28,7 @@ namespace Sharpy
         public static IComparer<T> Create(Func<T?, TKey?>? key = null)
         {
             // If the key selector is null
-            if (key == null)
+            if (key is null)
             {
                 return Comparer<T>.Instance;
             }

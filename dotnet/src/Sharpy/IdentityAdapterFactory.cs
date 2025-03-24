@@ -27,9 +27,9 @@ namespace Sharpy
                 var lhsObject = lhs as Object;
                 var rhsObject = rhs as Object;
 
-                if (lhsObject == null)
+                if (lhsObject is null)
                 {
-                    if (rhsObject == null)
+                    if (rhsObject is null)
                     {
                         return true;
                     }
@@ -37,7 +37,7 @@ namespace Sharpy
                     return false;
                 }
 
-                if (rhsObject == null) {
+                if (rhsObject is null) {
                     return false;
                 }
 
@@ -49,7 +49,7 @@ namespace Sharpy
         {
             public static bool AreSame(T lhs, T rhs)
             {
-                if (lhs == null) {
+                if (lhs is null) {
                     return false;
                 }
 
