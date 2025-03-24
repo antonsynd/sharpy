@@ -6,6 +6,10 @@ namespace Sharpy
     {
         public static T Sum<T>(Iterable<T> iterable) where T : Addable<T>
         {
+            if (iterable is null) {
+                throw new TypeError("Sum() iterable argument cannot be None");
+            }
+
             var iterator = iterable.__Iter__();
 
             try

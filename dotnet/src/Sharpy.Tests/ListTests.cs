@@ -1372,23 +1372,6 @@ namespace Sharpy.Tests
         }
 
         [Fact]
-        public void List_Replace_Slice_No_Args_Is_Complete_Replacement()
-        {
-            // If
-            List<int> l = [1, 3, 5, 7, 9];
-            List<int> other = [2, 4, 6];
-
-            // When
-            l.__SetItem__(other);
-
-            // Then
-            var actual = l.ToList();
-            DotNetList<int> expected = [2, 4, 6];
-
-            actual.Should().Equal(expected);
-        }
-
-        [Fact]
         public void List_Insert_Into_Empty()
         {
             // If

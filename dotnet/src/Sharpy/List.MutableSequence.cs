@@ -16,9 +16,12 @@ namespace Sharpy
         /// </summary>
         public void Extend(IEnumerable<T> enumerable)
         {
+            if (enumerable is null) {
+                throw new TypeError("Extend() enumerable argument cannot be None");
+            }
+
             _list.AddRange(enumerable);
         }
-
 
         /// <summary>
         /// Remove all items from the list.
@@ -152,15 +155,12 @@ namespace Sharpy
             _list[index] = value;
         }
 
-        public void __SetItem__(List<T> other)
-        {
-            _list.Clear();
-            _list.EnsureCapacity(other._list.Count);
-            _list.AddRange(other._list);
-        }
-
         public void __SetItem__(Slice slice, List<T> other)
         {
+            if (other is null) {
+                throw new TypeError("must assign iterable (not \"NoneType\") to extended slice");
+            }
+
             if (slice.step == 0)
             {
                 throw new ValueError("slice step cannot be zero");
@@ -240,7 +240,7 @@ namespace Sharpy
             _list.InsertRange((int)start, other);
         }
 
-        void _SetSliceMultiStep(List<T> other, uint start, uint end, uint step)
+        private void _SetSliceMultiStep(List<T> other, uint start, uint end, uint step)
         {
             var numElemsToChange = Slice.Len((int)start, (int)end, (int)step);
 

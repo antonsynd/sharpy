@@ -2,14 +2,18 @@ namespace Sharpy
 {
     public static partial class Builtins
     {
-        public static bool Bool(Object obj)
+        public static bool Bool(Object? obj)
         {
-            return obj.__Bool__();
+            return obj?.__Bool__() ?? false;
         }
 
-        public static bool Bool(object x)
+        public static bool Bool(object? obj)
         {
-            return (bool)x;
+            if (obj is null) {
+                return false;
+            }
+
+            return (bool)obj;
         }
     }
 }

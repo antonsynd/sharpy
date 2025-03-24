@@ -23,6 +23,10 @@ namespace Sharpy
         /// </summary>
         public List(IEnumerable<T> iterable) : this()
         {
+            if (iterable is null) {
+                throw new TypeError("'NoneType' object is not iterable");
+            }
+
             _list.AddRange(iterable);
         }
 
@@ -70,6 +74,10 @@ namespace Sharpy
 
         public List<T> __Add__(List<T> other)
         {
+            if (other is null) {
+                throw new TypeError($"can only concatenate List<${typeof(T).Name}> (not \"NoneType\") to List<${typeof(T).Name}");
+            }
+
             var res = Copy();
             res.Extend(other);
 
@@ -78,6 +86,10 @@ namespace Sharpy
 
         public List<T> __RAdd__(List<T> other)
         {
+            if (other is null) {
+                throw new TypeError($"can only concatenate List<${typeof(T).Name}> (not \"NoneType\") to List<${typeof(T).Name}");
+            }
+
             var res = other.Copy();
             res.Extend(this);
 
@@ -85,6 +97,10 @@ namespace Sharpy
         }
 
         public List<T> __IAdd__(List<T> other) {
+            if (other is null) {
+                throw new TypeError($"can only concatenate List<${typeof(T).Name}> (not \"NoneType\") to List<${typeof(T).Name}");
+            }
+
             Extend(other);
 
             return this;
@@ -181,7 +197,15 @@ namespace Sharpy
         /// </remarks>
         public static bool operator ==(List<T>? left, List<T>? right)
         {
-            return left?.__Eq__(right) ?? false;
+            if (ReferenceEquals(left, right)) {
+                return true;
+            }
+
+            if (left is null || right is null) {
+                return false;
+            }
+
+            return left.__Eq__(right);
         }
 
         public static bool operator !=(List<T>? left, List<T>? right)
@@ -191,11 +215,19 @@ namespace Sharpy
 
         public static List<T> operator +(List<T> left, List<T> right)
         {
+            if (left is null) {
+                throw new TypeError($"can only concatenate List<${typeof(T).Name}> (not \"NoneType\") to List<${typeof(T).Name}");
+            }
+
             return left.__Add__(right);
         }
 
         public static List<T> operator *(List<T> left, int i)
         {
+            if (left is null) {
+                throw new TypeError($"can only multiply List<${typeof(T).Name} (not \"NoneType\") with int");
+            }
+
             return left.__Mul__(i);
         }
 
@@ -208,11 +240,11 @@ namespace Sharpy
         }
 
         public static bool operator true(List<T> list) {
-            return list.__Bool__();
+            return list?.__Bool__() ?? false;
         }
 
         public static bool operator false(List<T> list) {
-            return !list.__Bool__();
+            return !(list?.__Bool__() ?? false);
         }
     }
 }

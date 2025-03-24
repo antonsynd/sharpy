@@ -9,9 +9,13 @@ namespace Sharpy
         /// may be a sequence (such as a string, bytes, tuple, list, or range)
         /// or a collection (such as a dictionary, set, or frozen set).
         /// </summary>
-        public static uint Len(Sized s)
+        public static uint Len(Sized sized)
         {
-            return s.__Len__();
+            if (sized is null) {
+                throw new TypeError("Len() sized argument cannot be None");
+            }
+
+            return sized.__Len__();
         }
 
         public static uint Len(string s)

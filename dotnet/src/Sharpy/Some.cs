@@ -7,6 +7,10 @@ namespace Sharpy {
         /// </summary>
         public static Optional<T> Some<T>(T value) where T : notnull
         {
+            if (value is null) {
+                throw new TypeError("Some() value argument cannot be None");
+            }
+
             return new Optional<T>(value);
         }
     }

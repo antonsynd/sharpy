@@ -7,6 +7,10 @@ namespace Sharpy
         /// </remarks>
         public bool Equals(Object? obj)
         {
+            if (obj is null) {
+                return false;
+            }
+
             return __Eq__(obj);
         }
     }

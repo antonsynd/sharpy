@@ -4,12 +4,12 @@ namespace Sharpy
 {
     public static partial class Builtins
     {
-        public static T? Max<T>(Iterable<T>? iterable)
+        public static T? Max<T>(Iterable<T> iterable)
         {
             return Max(iterable, value => value);
         }
 
-        public static T? Max<T, TKey>(Iterable<T>? iterable, Func<T, TKey>? key)
+        public static T? Max<T, TKey>(Iterable<T> iterable, Func<T, TKey> key)
         {
             if (iterable is null) {
                 throw new TypeError("'NoneType' object is not iterable");

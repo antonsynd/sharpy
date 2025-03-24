@@ -28,8 +28,6 @@ namespace Sharpy.Collections.Interfaces
 
         void __SetItem__(int i, T x);
 
-        void __SetItem__(S other);
-
         void __SetItem__(Slice slice, S other);
     }
 }

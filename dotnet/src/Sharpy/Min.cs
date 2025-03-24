@@ -4,12 +4,12 @@ namespace Sharpy
 {
     public static partial class Builtins
     {
-        public static T Min<T>(Iterable<T>? iterable)
+        public static T Min<T>(Iterable<T> iterable)
         {
             return Min(iterable, value => value);
         }
 
-        public static T Min<T, TKey>(Iterable<T>? iterable, Func<T, TKey>? key)
+        public static T Min<T, TKey>(Iterable<T> iterable, Func<T, TKey> key)
         {
             if (iterable is null) {
                 throw new TypeError("'NoneType' object is not iterable");

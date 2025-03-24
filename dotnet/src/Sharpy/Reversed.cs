@@ -1,12 +1,17 @@
+using System.Diagnostics;
 using Sharpy.Collections.Interfaces;
 
 namespace Sharpy
 {
     public static partial class Builtins
     {
-        public static Iterator<T> Reversed<T>(Reversible<T> r)
+        public static Iterator<T> Reversed<T>(Reversible<T> reversible)
         {
-            return r.__Reversed__();
+            if (reversible is null) {
+                throw new TypeError("Reversed() reversible argument cannot be None");
+            }
+
+            return reversible.__Reversed__();
         }
     }
 }

@@ -39,7 +39,7 @@ namespace Sharpy
         /// <remarks>
         /// By default, inverts the result of <see cref="__Eq__(Object)"/>.
         /// </remarks>
-        public virtual bool __Ne__(Object? other)
+        public virtual bool __Ne__(Object other)
         {
             return !__Eq__(other);
         }
@@ -68,7 +68,15 @@ namespace Sharpy
         /// </remarks>
         public static bool operator ==(Object? left, Object? right)
         {
-            return left?.__Eq__(right) ?? false;
+            if (ReferenceEquals(left, right)) {
+                return true;
+            }
+
+            if (left is null || right is null) {
+                return false;
+            }
+
+            return left.__Eq__(right);
         }
 
         /// <remarks>
