@@ -1,15 +1,12 @@
+using Sharpy.Collections.Interfaces;
+
 namespace Sharpy
 {
-    public readonly struct Slice(int start, int end, int step = 1)
+    public readonly partial struct Slice(int start, int end, int step = 1) : Sized
     {
         public readonly int start = start;
         public readonly int end = end;
         public readonly int step = step;
-
-        public uint __Len__()
-        {
-            return Len(start, end, step);
-        }
 
         public static uint Len(int start, int end, int step)
         {

@@ -1,10 +1,6 @@
 namespace Sharpy
 {
-    /// <summary>
-    /// Static helper that selects the best available KeyComparer given the
-    /// available.
-    /// </summary>
-    internal static class Comparer<T>
+    internal static class ComparerAdapter<T>
     {
         public static readonly IComparer<T> Instance = CreateComparer();
 
@@ -41,7 +37,7 @@ namespace Sharpy
                 return new UntypedIComparableComparer();
             }
 
-            throw new TypeError("Provided type does not support comparison");
+            throw new TypeError($"'<' not supported for instances of ${typeof(T).Name}");
         }
 
         private class LessThanComparableComparer : IComparer<T>
@@ -55,15 +51,9 @@ namespace Sharpy
                 }
 
                 // x is less than y
-                if (x is null)
+                if (x is null || y is null)
                 {
-                    return -1;
-                }
-
-                // x is greater than y
-                if (y is null)
-                {
-                    return 1;
+                    throw new TypeError("'<' not supported for instances of 'NoneType'");
                 }
 
                 var xlt = (LessThanComparable<T>)x;
@@ -98,15 +88,9 @@ namespace Sharpy
                 }
 
                 // x is less than y
-                if (x is null)
+                if (x is null || y is null)
                 {
-                    return -1;
-                }
-
-                // x is greater than y
-                if (y is null)
-                {
-                    return 1;
+                    throw new TypeError("'<' not supported for instances of 'NoneType'");
                 }
 
                 var xeq = (Equatable<T>)x;
@@ -140,16 +124,9 @@ namespace Sharpy
                     return 0;
                 }
 
-                // x is less than y
-                if (x is null)
+                if (x is null || y is null)
                 {
-                    return -1;
-                }
-
-                // x is greater than y
-                if (y is null)
-                {
-                    return 1;
+                    throw new TypeError("'>' not supported for instances of 'NoneType'");
                 }
 
                 var xgt = (GreaterThanComparable<T>)x;
@@ -183,16 +160,9 @@ namespace Sharpy
                     return 0;
                 }
 
-                // x is less than y
-                if (x is null)
+                if (x is null || y is null)
                 {
-                    return -1;
-                }
-
-                // x is greater than y
-                if (y is null)
-                {
-                    return 1;
+                    throw new TypeError("'>' not supported for instances of 'NoneType'");
                 }
 
                 var xeq = (Equatable<T>)x;
@@ -226,16 +196,9 @@ namespace Sharpy
                     return 0;
                 }
 
-                // x is less than y
-                if (x is null)
+                if (x is null || y is null)
                 {
-                    return -1;
-                }
-
-                // x is greater than y
-                if (y is null)
-                {
-                    return 1;
+                    throw new TypeError("'<' not supported for instances of 'NoneType'");
                 }
 
                 return ((IComparable<T>)x).CompareTo(y);
@@ -252,16 +215,9 @@ namespace Sharpy
                     return 0;
                 }
 
-                // x is less than y
-                if (x is null)
+                if (x is null || y is null)
                 {
-                    return -1;
-                }
-
-                // x is greater than y
-                if (y is null)
-                {
-                    return 1;
+                    throw new TypeError("'<' not supported for instances of 'NoneType'");
                 }
 
                 return ((IComparable)x).CompareTo(y);

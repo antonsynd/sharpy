@@ -3,9 +3,9 @@ namespace Sharpy
     /// <summary>
     /// Delegator to statically chosen comparer.
     /// </summary>
-    file class KeyComparer<T, TKey>(Func<T?, TKey?> key) : IComparer<T>
+    file class KeyComparer<T, TKey>(Func<T, TKey> key) : IComparer<T>
     {
-        private readonly Func<T?, TKey?> _key = key;
+        private readonly Func<T, TKey> _key = key;
 
         /// <remarks>
         /// Unlike in Python, this compares None to non-None values as ordering
@@ -14,7 +14,15 @@ namespace Sharpy
         /// </remarks>
         public int Compare(T? x, T? y)
         {
-            return Comparer<TKey>.Instance.Compare(_key(x), _key(y));
+            if (ReferenceEquals(x, y)) {
+                return 0;
+            }
+
+            if (x is null || y is null) {
+                throw new TypeError("'<' not supported for instances of 'NoneType'");
+            }
+
+            return ComparerAdapter<TKey>.Instance.Compare(_key(x), _key(y));
         }
 
     }
@@ -25,14 +33,8 @@ namespace Sharpy
     /// </summary>
     internal class KeyComparerFactory<T, TKey>
     {
-        public static IComparer<T> Create(Func<T?, TKey?>? key = null)
+        public static IComparer<T> Create(Func<T, TKey> key)
         {
-            // If the key selector is null
-            if (key is null)
-            {
-                return Comparer<T>.Instance;
-            }
-
             return new KeyComparer<T, TKey>(key);
         }
     }
