@@ -44,7 +44,7 @@ def main() -> None:
     command: str = args.command
 
     if command == "build":
-        build(args=args, rest=rest)
+        build(args=args, rest=rest, release=args.release)
     elif command == "setup":
         setup(args=args, rest=rest)
     elif command == "clean":
@@ -53,10 +53,16 @@ def main() -> None:
         install(args=args, rest=rest)
     elif command == "format":
         format(args=args, rest=rest)
+    elif command == "debug":
+        format(args=args, rest=rest)
+        build(args=args, rest=rest, release=False)
+        test(args=args, rest=rest, release=False)
     elif command == "release":
         format(args=args, rest=rest)
-        build(args=args, rest=rest)
-        test(args=args, rest=rest)
+        build(args=args, rest=rest, release=False)
+        test(args=args, rest=rest, release=False)
+        build(args=args, rest=rest, release=True)
+        test(args=args, rest=rest, release=True)
         install(args=args, rest=rest)
     elif command == "run":
         run(args=args, rest=rest)
@@ -76,10 +82,15 @@ def create_parser() -> argparse.ArgumentParser:
         "setup", help="Downloads resources and generates required code."
     )
     build_parser = subparsers.add_parser("build", help="Builds the package.")
+    build_parser.add_argument("--release", action="store_true")
     clean_parser = subparsers.add_parser("clean", help="Cleans up intermediate objects.")
     install_parser = subparsers.add_parser("install", help="TODO: No-op")
     format_parser = subparsers.add_parser("format", help="Runs code formatters.")
     format_parser.add_argument(
+        "--target", action="append", choices=("cs", "csharp", "py", "python"), default=None
+    )
+    debug_parser = subparsers.add_parser("debug", help="Runs all steps.")
+    debug_parser.add_argument(
         "--target", action="append", choices=("cs", "csharp", "py", "python"), default=None
     )
     release_parser = subparsers.add_parser("release", help="Runs all steps.")
@@ -105,18 +116,20 @@ def get_targets(args: argparse.Namespace) -> AbstractSet[str]:
     return {"py", "cs"}
 
 
-def build(args: argparse.Namespace, rest: Sequence[str]) -> None:
+def build(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
     check_for_expected_resources()
-    build_stdlib()
+    build_stdlib(release=release)
 
 
-def build_stdlib() -> None:
+def build_stdlib(release: bool) -> None:
+    build_type: str = "Release" if release else "Debug"
+
     try:
-        get_logger().info("Building standard library...")
-        subprocess.run(["dotnet", "build", str(CSHARP_SRC_DIR)])
+        get_logger().info(f"Building standard library with {build_type.lower()} configuration...")
+        subprocess.run(["dotnet", "build", "-c", build_type, str(CSHARP_SRC_DIR)])
 
-        get_logger().info("Building tests...")
-        subprocess.run(["dotnet", "build", str(CSHARP_TEST_DIR)])
+        get_logger().info(f"Building tests with {build_type.lower()} configuration...")
+        subprocess.run(["dotnet", "build", "-c", build_type, str(CSHARP_TEST_DIR)])
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -304,7 +317,7 @@ def run(args: argparse.Namespace, rest: Sequence[str]) -> None:
         sys.exit(1)
 
 
-def test(args: argparse.Namespace, rest: Sequence[str]) -> None:
+def test(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
     targets: AbstractSet[str] = get_targets(args)
 
     if "py" in targets or "python" in targets:
@@ -317,9 +330,11 @@ def test(args: argparse.Namespace, rest: Sequence[str]) -> None:
             sys.exit(1)
 
     if "cs" in targets or "csharp" in targets:
-        get_logger().info("Running tests with dotnet...")
+        build_type: str = "Release" if release else "Debug"
+
+        get_logger().info(f"Running tests with dotnet with {build_type.lower()} configuration...")
         try:
-            subprocess.run(["dotnet", "test", str(CSHARP_TEST_DIR), *rest])
+            subprocess.run(["dotnet", "test", "-c", build_type, str(CSHARP_TEST_DIR), *rest])
         except subprocess.CalledProcessError as e:
             get_logger().error(f"Encountered error {e}")
             sys.exit(1)
