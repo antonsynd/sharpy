@@ -19,7 +19,8 @@ namespace Sharpy
                 return LessThanComparableAdapter.AreEqual;
             }
 
-            if (typeof(T).IsValueType) {
+            if (typeof(T).IsValueType)
+            {
                 return EqualsAdapter.AreEqual;
             }
 
@@ -32,14 +33,16 @@ namespace Sharpy
             public static bool AreEqual(T? lhs, T? rhs)
             {
                 // References to the same object are always equal
-                if (ReferenceEquals(lhs, rhs)) {
+                if (ReferenceEquals(lhs, rhs))
+                {
                     return true;
                 }
 
                 // If the above doesn't establish equality, then if either of
                 // them are false, then return false because None with any
                 // other type is false.
-                if (lhs is null || rhs is null) {
+                if (lhs is null || rhs is null)
+                {
                     return false;
                 }
 
@@ -52,7 +55,8 @@ namespace Sharpy
             public static bool AreEqual(T? lhs, T? rhs)
             {
                 // References to the same object are always equal
-                if (ReferenceEquals(lhs, rhs)) {
+                if (ReferenceEquals(lhs, rhs))
+                {
                     return true;
                 }
 
@@ -92,14 +96,16 @@ namespace Sharpy
             public static bool AreEqual(T? lhs, T? rhs)
             {
                 // References to the same object are always equal
-                if (ReferenceEquals(lhs, rhs)) {
+                if (ReferenceEquals(lhs, rhs))
+                {
                     return true;
                 }
 
                 // If the above doesn't establish equality, then if either of
                 // them are false, then return false because None with any
                 // other type is false.
-                if (lhs is null || rhs is null) {
+                if (lhs is null || rhs is null)
+                {
                     return false;
                 }
 

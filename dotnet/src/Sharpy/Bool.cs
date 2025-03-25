@@ -9,7 +9,8 @@ namespace Sharpy
 
         public static bool Bool(object? obj)
         {
-            if (obj is null) {
+            if (obj is null)
+            {
                 return false;
             }
 

@@ -3,7 +3,8 @@ using FluentAssertions;
 
 namespace Sharpy.Tests
 {
-    public class Max_Tests {
+    public class Max_Tests
+    {
         [Fact]
         public void Max_List_Empty()
         {
@@ -18,7 +19,7 @@ namespace Sharpy.Tests
         public void Max_List_Non_Empty()
         {
             // If
-            List<int> l = [ 5, 7, 3, 1 ];
+            List<int> l = [5, 7, 3, 1];
 
             // When/then
             Max(l).Should().Be(7);

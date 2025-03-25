@@ -1,28 +1,27 @@
 namespace Sharpy.Tests
 {
-    public class Wrapper<T>(T value) : Object
+    public sealed class IdentityWrapper<T> : Wrapper<T>
     {
-        private static uint _id;
-
-        public readonly uint Id = _id++;
-        public readonly T Value = value;
+        public IdentityWrapper(T value) : base(value)
+        {
+        }
 
         public override bool __Eq__(Object other)
         {
-            if (other is Wrapper<T> wrapper)
+            if (other is IdentityWrapper<T> wrapper)
             {
-                return Equals(Value, wrapper.Value);
+                return Id == wrapper.Id;
             }
 
             return false;
         }
 
-        public static implicit operator Wrapper<T>(T value)
+        public static implicit operator IdentityWrapper<T>(T value)
         {
-            return new Wrapper<T>(value);
+            return new IdentityWrapper<T>(value);
         }
 
-        public static bool operator ==(Wrapper<T> left, Wrapper<T> right)
+        public static bool operator ==(IdentityWrapper<T> left, IdentityWrapper<T> right)
         {
             if (ReferenceEquals(left, right))
             {
@@ -34,10 +33,10 @@ namespace Sharpy.Tests
                 return false;
             }
 
-            return Equals(left.Value, right.Value);
+            return left.Id == right.Id;
         }
 
-        public static bool operator !=(Wrapper<T> left, Wrapper<T> right)
+        public static bool operator !=(IdentityWrapper<T> left, IdentityWrapper<T> right)
         {
             return !(left == right);
         }

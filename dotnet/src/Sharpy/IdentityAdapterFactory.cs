@@ -12,7 +12,8 @@ namespace Sharpy
                 return IdentityAdapter.AreSame;
             }
 
-            if (typeof(T).IsValueType) {
+            if (typeof(T).IsValueType)
+            {
                 return EqualsAdapter.AreSame;
             }
 
@@ -37,7 +38,8 @@ namespace Sharpy
                     return false;
                 }
 
-                if (rhsObject is null) {
+                if (rhsObject is null)
+                {
                     return false;
                 }
 
@@ -49,7 +51,8 @@ namespace Sharpy
         {
             public static bool AreSame(T lhs, T rhs)
             {
-                if (lhs is null) {
+                if (lhs is null)
+                {
                     return false;
                 }
 

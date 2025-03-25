@@ -3,6 +3,8 @@ using FluentAssertions;
 
 namespace Sharpy.Tests
 {
+    using IntWrapper = Wrapper<int>;
+    using IntIdentityWrapper = IdentityWrapper<int>;
     file class DotNetList<T> : System.Collections.Generic.List<T>;
 
     public class List_Tests
@@ -644,37 +646,21 @@ namespace Sharpy.Tests
             actual.Should().Equal(expected);
         }
 
-        // [Fact]
-        // public void List_Slice_Operator_Object() {
-        //   // If
-        //   List<Int_Wrapper> l = {Int_Wrapper(1), Int_Wrapper(3), Int_Wrapper(5),
-        //                               Int_Wrapper(7), Int_Wrapper(9)};
+        [Fact]
+        public void List_Slice_Operator_Object()
+        {
+            // If
+            List<IntWrapper> l = [1, 3, 5, 7, 9];
 
-        //   // When
-        //   var res = l[1, 5, 2];
+            // When
+            var res = l[1, 5, 2];
 
-        //   // Then
-        //   var actual = res.ToList();
-        //   DotNetList<int> expected = [3, 7];
+            // Then
+            var actual = res.ToList();
+            DotNetList<IntWrapper> expected = [3, 7];
 
-        //   actual.Should().Equal(expected);
-        // }
-
-        // [Fact]
-        // public void List_Slice_Operator_With_No_Args_Is_Copy_Object() {
-        //   // If
-        //   List<Int_Wrapper> l = {Int_Wrapper(1), Int_Wrapper(3), Int_Wrapper(5),
-        //                               Int_Wrapper(7), Int_Wrapper(9)};
-
-        //   // When
-        //   var res = l[];
-
-        //   // Then
-        //   var actual = res.ToList();
-        //   DotNetList<int> expected = [1, 3, 5, 7, 9];
-
-        //   actual.Should().Equal(expected);
-        // }
+            actual.Should().Equal(expected);
+        }
 
         [Fact]
         public void List_Reverse_Empty()
@@ -776,68 +762,53 @@ namespace Sharpy.Tests
             l.Index(5).Should().Be(2);
         }
 
-        //         [Fact]
-        //         public void List_Index_Non_Empty_Object_Equal()
-        //         {
-        //             // If
-        //             List<Int_Wrapper> l = {Int_Wrapper(1), Int_Wrapper(3), Int_Wrapper(5),
-        //                               Int_Wrapper(7)};
+        [Fact]
+        public void List_Index_Non_Empty_Object_Equal()
+        {
+            // If
+            List<IntWrapper> l = [1, 3, 5, 7];
 
-        //             Int_Wrapper i{ 5}
-        //             ;
+            IntWrapper i = 5;
 
-        //             ASSERT_NE(&i, &l[2]);
+            // When/then
+            l.Index(i).Should().Be(2);
+        }
 
-        //             // When/then
-        //             l.Index(i).Should().Be(2);
-        //         }
+        [Fact]
+        public void List_Index_Non_Empty_Object_Not_Equal()
+        {
+            // If
+            List<IntWrapper> l = [1, 3, 5, 7];
 
-        //         [Fact]
-        //         public void List_Index_Non_Empty_Object_Not_Equal()
-        //         {
-        //             // If
-        //             List<Int_Wrapper> l = {Int_Wrapper(1), Int_Wrapper(3), Int_Wrapper(5),
-        //                               Int_Wrapper(7)};
+            IntWrapper i = 4;
 
-        //             Int_Wrapper i{ 4}
-        //             ;
+            // When/then
+            FluentActions.Invoking(() => l.Index(i)).Should().Throw<ValueError>();
+        }
 
-        //             // When/then
-        //             EXPECT_THROW(l.Index(i), ValueError);
-        //         }
+        [Fact]
+        public void List_Index_Non_Empty_Object_Same()
+        {
+            // If
+            List<IntIdentityWrapper> l = [1, 3, 5, 7];
 
-        //         [Fact]
-        //         public void List_Index_Non_Empty_Object_Same()
-        //         {
-        //             // If
-        //             List<Int_Identity_Wrapper> l = {
-        //       Int_Identity_Wrapper(1), Int_Identity_Wrapper(3), Int_Identity_Wrapper(5),
-        //       Int_Identity_Wrapper(7)};
+            var i = l[2];
 
-        //             var i = l[2];
+            // When/then
+            l.Index(i).Should().Be(2);
+        }
 
-        //             ASSERT_EQ(&i, &l[2]);
+        [Fact]
+        public void List_Index_Non_Empty_Object_Not_Same()
+        {
+            // If
+            List<IntIdentityWrapper> l = [1, 3, 5, 7];
 
-        //             // When/then
-        //             l.Index(i).Should().Be(2);
-        //         }
+            IntIdentityWrapper i = 5;
 
-        //         [Fact]
-        //         public void List_Index_Non_Empty_Object_Not_Same()
-        //         {
-        //             // If
-        //             List<Int_Identity_Wrapper> l = {
-        //       Int_Identity_Wrapper(1), Int_Identity_Wrapper(3), Int_Identity_Wrapper(5),
-        //       Int_Identity_Wrapper(7)};
-
-        //             Int_Identity_Wrapper i{ 5}
-        //             ;
-
-        //             ASSERT_NE(&i, &l[2]);
-
-        //             // When/then
-        //             EXPECT_THROW(l.Index(i), ValueError);
-        //         }
+            // When/then
+            FluentActions.Invoking(() => l.Index(i)).Should().Throw<ValueError>();
+        }
 
         [Fact]
         public void List_Remove_Empty()
@@ -879,8 +850,8 @@ namespace Sharpy.Tests
         //         public void List_Remove_Present_Once_Object_Equal()
         //         {
         //             // If
-        //             List<Int_Wrapper> l = {Int_Wrapper(1), Int_Wrapper(3), Int_Wrapper(5),
-        //                         Int_Wrapper(7)};
+        //             List<IntWrapper> l = {IntWrapper(1), IntWrapper(3), IntWrapper(5),
+        //                         IntWrapper(7)};
 
         //             // When
         //             var second_elem = l[1];
@@ -897,10 +868,10 @@ namespace Sharpy.Tests
         //         public void List_Remove_Present_Once_Object_Not_Equal()
         //         {
         //             // If
-        //             List<Int_Wrapper> l = {Int_Wrapper(1), Int_Wrapper(3), Int_Wrapper(5),
-        //                         Int_Wrapper(7)};
+        //             List<IntWrapper> l = {IntWrapper(1), IntWrapper(3), IntWrapper(5),
+        //                         IntWrapper(7)};
 
-        //             Int_Wrapper i{ 4}
+        //             IntWrapper i{ 4}
         //             ;
 
         //             // When/then
@@ -911,16 +882,16 @@ namespace Sharpy.Tests
         //         public void List_Remove_Present_Once_Object_Not_Same()
         //         {
         //             // If
-        //             List<Int_Identity_Wrapper> l = {Int_Identity_Wrapper(1), Int_Identity_Wrapper(3),
-        //                                 Int_Identity_Wrapper(5), Int_Identity_Wrapper(7)};
+        //             List<IntIdentityWrapper> l = {IntIdentityWrapper(1), IntIdentityWrapper(3),
+        //                                 IntIdentityWrapper(5), IntIdentityWrapper(7)};
 
-        //             Int_Identity_Wrapper i{ 3}
+        //             IntIdentityWrapper i{ 3}
         //             ;
 
         //             ASSERT_NE(&i, &l[1]);
 
         //             // When/then
-        //             EXPECT_THROW(l.Remove(Int_Identity_Wrapper(3)), ValueError);
+        //             EXPECT_THROW(l.Remove(IntIdentityWrapper(3)), ValueError);
         //         }
 
         [Fact]
@@ -943,8 +914,8 @@ namespace Sharpy.Tests
         //         public void List_Remove_Present_More_Than_Once_Object_Same()
         //         {
         //             // If
-        //             List<Int_Wrapper> l = {Int_Wrapper(1), Int_Wrapper(3), Int_Wrapper(5),
-        //                         Int_Wrapper(7), Int_Wrapper(3)};
+        //             List<IntWrapper> l = {IntWrapper(1), IntWrapper(3), IntWrapper(5),
+        //                         IntWrapper(7), IntWrapper(3)};
 
         //             // When
         //             var second_elem = l[1];
@@ -961,8 +932,8 @@ namespace Sharpy.Tests
         //         public void List_Remove_Present_More_Than_Once_Object_Equality_Last()
         //         {
         //             // If
-        //             List<Int_Wrapper> l = {Int_Wrapper(1), Int_Wrapper(3), Int_Wrapper(5),
-        //                         Int_Wrapper(7), Int_Wrapper(3)};
+        //             List<IntWrapper> l = {IntWrapper(1), IntWrapper(3), IntWrapper(5),
+        //                         IntWrapper(7), IntWrapper(3)};
 
         //             // When
         //             var last_elem = l[-1];
@@ -979,9 +950,9 @@ namespace Sharpy.Tests
         //         public void List_Remove_Present_More_Than_Once_Object_Identity_Last()
         //         {
         //             // If
-        //             List<Int_Identity_Wrapper> l = {Int_Identity_Wrapper(1), Int_Identity_Wrapper(3),
-        //                                 Int_Identity_Wrapper(5), Int_Identity_Wrapper(7),
-        //                                 Int_Identity_Wrapper(3)};
+        //             List<IntIdentityWrapper> l = {IntIdentityWrapper(1), IntIdentityWrapper(3),
+        //                                 IntIdentityWrapper(5), IntIdentityWrapper(7),
+        //                                 IntIdentityWrapper(3)};
 
         //             // When
         //             var last_elem = l[-1];
@@ -1001,12 +972,12 @@ namespace Sharpy.Tests
         //         public void List_Remove_Present_More_Than_Once_Object_Identity_Not_Same()
         //         {
         //             // If
-        //             List<Int_Identity_Wrapper> l = {Int_Identity_Wrapper(1), Int_Identity_Wrapper(3),
-        //                                 Int_Identity_Wrapper(5), Int_Identity_Wrapper(7),
-        //                                 Int_Identity_Wrapper(3)};
+        //             List<IntIdentityWrapper> l = {IntIdentityWrapper(1), IntIdentityWrapper(3),
+        //                                 IntIdentityWrapper(5), IntIdentityWrapper(7),
+        //                                 IntIdentityWrapper(3)};
 
         //             // When
-        //             EXPECT_THROW(l.Remove(Int_Identity_Wrapper(3)), ValueError);
+        //             EXPECT_THROW(l.Remove(IntIdentityWrapper(3)), ValueError);
         //         }
 
         [Fact]
@@ -1025,60 +996,52 @@ namespace Sharpy.Tests
             actual.Should().Equal(expected);
         }
 
-        //         [Fact]
-        //         public void List_Remove_At_End_Object_Same()
-        //         {
-        //             // If
-        //             List<Int_Wrapper> l = {Int_Wrapper(1), Int_Wrapper(5), Int_Wrapper(7),
-        //                         Int_Wrapper(3)};
+        [Fact]
+        public void List_Remove_At_End_Object_Same()
+        {
+            // If
+            List<IntWrapper> l = [1, 5, 7, 3];
 
-        //             // When
-        //             var last_elem = l[-1];
-        //             l.Remove(last_elem);
+            // When
+            var last_elem = l[-1];
+            l.Remove(last_elem);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 5, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<IntWrapper> expected = [1, 5, 7];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Remove_At_End_Object_Equality_Not_Same()
-        //         {
-        //             // If
-        //             List<Int_Wrapper> l = {Int_Wrapper(1), Int_Wrapper(5), Int_Wrapper(7),
-        //                         Int_Wrapper(3)};
+        [Fact]
+        public void List_Remove_At_End_Object_Equality_Not_Same()
+        {
+            // If
+            List<IntWrapper> l = [1, 5, 7, 3];
 
-        //             // When
-        //             var i = Int_Wrapper(3);
+            // When
+            IntWrapper i = 3;
 
-        //             ASSERT_NE(&i, &l[-1]);
+            l.Remove(i);
 
-        //             l.Remove(i);
+            // Then
+            var actual = l.ToList();
+            DotNetList<IntWrapper> expected = [1, 5, 7];
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 5, 7 ];
+            actual.Should().Equal(expected);
+        }
 
-        //             actual.Should().Equal(expected);
-        //         }
+        [Fact]
+        public void List_Remove_At_End_Object_Identity_Not_Same()
+        {
+            // If
+            List<IntIdentityWrapper> l = [1, 5, 7, 3];
 
-        //         [Fact]
-        //         public void List_Remove_At_End_Object_Identity_Not_Same()
-        //         {
-        //             // If
-        //             List<Int_Identity_Wrapper> l = {Int_Identity_Wrapper(1), Int_Identity_Wrapper(5),
-        //                                 Int_Identity_Wrapper(7), Int_Identity_Wrapper(3)};
+            IntIdentityWrapper i = 3;
 
-        //             Int_Identity_Wrapper i{ 3}
-        //             ;
-
-        //             ASSERT_NE(&i, &l[-1]);
-
-        //             // When/then
-        //             EXPECT_THROW(l.Remove(i), ValueError);
-        //         }
+            // When/then
+            FluentActions.Invoking(() => l.Remove(i)).Should().Throw<ValueError>();
+        }
 
         [Fact]
         public void List_Delete_Slice_Zero_Step()

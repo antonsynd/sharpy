@@ -12,8 +12,10 @@ namespace Sharpy
             return false;
         }
 
-        public bool __Eq__(List<T> other) {
-            if (other is null) {
+        public bool __Eq__(List<T> other)
+        {
+            if (other is null)
+            {
                 return false;
             }
 

@@ -14,11 +14,13 @@ namespace Sharpy
         /// </remarks>
         public int Compare(T? x, T? y)
         {
-            if (ReferenceEquals(x, y)) {
+            if (ReferenceEquals(x, y))
+            {
                 return 0;
             }
 
-            if (x is null || y is null) {
+            if (x is null || y is null)
+            {
                 throw new TypeError("'<' not supported for instances of 'NoneType'");
             }
 

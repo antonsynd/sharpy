@@ -7,7 +7,8 @@ namespace Sharpy
     {
         public static Iterator<T> Reversed<T>(Reversible<T> reversible)
         {
-            if (reversible is null) {
+            if (reversible is null)
+            {
                 throw new TypeError("Reversed() reversible argument cannot be None");
             }
 

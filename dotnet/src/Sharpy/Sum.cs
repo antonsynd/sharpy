@@ -6,7 +6,8 @@ namespace Sharpy
     {
         public static T Sum<T>(Iterable<T> iterable) where T : Addable<T>
         {
-            if (iterable is null) {
+            if (iterable is null)
+            {
                 throw new TypeError("Sum() iterable argument cannot be None");
             }
 

@@ -11,7 +11,8 @@ namespace Sharpy
         /// </summary>
         public static uint Len(Sized sized)
         {
-            if (sized is null) {
+            if (sized is null)
+            {
                 throw new TypeError("Len() sized argument cannot be None");
             }
 

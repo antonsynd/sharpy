@@ -4,7 +4,8 @@ namespace Sharpy
     {
         public List<T> __Add__(List<T> other)
         {
-            if (other is null) {
+            if (other is null)
+            {
                 throw new TypeError($"can only concatenate List<${typeof(T).Name}> (not \"NoneType\") to List<${typeof(T).Name}");
             }
 
@@ -16,7 +17,8 @@ namespace Sharpy
 
         public List<T> __RAdd__(List<T> other)
         {
-            if (other is null) {
+            if (other is null)
+            {
                 throw new TypeError($"can only concatenate List<${typeof(T).Name}> (not \"NoneType\") to List<${typeof(T).Name}");
             }
 
@@ -26,8 +28,10 @@ namespace Sharpy
             return res;
         }
 
-        public List<T> __IAdd__(List<T> other) {
-            if (other is null) {
+        public List<T> __IAdd__(List<T> other)
+        {
+            if (other is null)
+            {
                 throw new TypeError($"can only concatenate List<${typeof(T).Name}> (not \"NoneType\") to List<${typeof(T).Name}");
             }
 
@@ -55,8 +59,10 @@ namespace Sharpy
             return res;
         }
 
-        public List<T> __IMul__(int i) {
-            if (i <= 0) {
+        public List<T> __IMul__(int i)
+        {
+            if (i <= 0)
+            {
                 Clear();
 
                 return this;
@@ -76,7 +82,8 @@ namespace Sharpy
             return this;
         }
 
-        public List<T> __RMul__(int i) {
+        public List<T> __RMul__(int i)
+        {
             return __Mul__(i);
         }
     }

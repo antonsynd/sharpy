@@ -1,4 +1,5 @@
-namespace Sharpy {
+namespace Sharpy
+{
     public sealed partial class Optional<T>
     {
         public override bool __Bool__()
@@ -14,7 +15,8 @@ namespace Sharpy {
         /// <returns></returns>
         public override bool __Eq__(Object? other)
         {
-            if (other is Optional<T> optional) {
+            if (other is Optional<T> optional)
+            {
                 return __Eq__(optional);
             }
 
@@ -23,15 +25,18 @@ namespace Sharpy {
 
         public bool __Eq__(Optional<T>? other)
         {
-            if (other is null) {
+            if (other is null)
+            {
                 return false;
             }
 
             return EqualityAdapterFactory<T>.AreEqual((T?)_value, (T?)other._value);
         }
 
-        public override string __Repr__() {
-            if (_value is null) {
+        public override string __Repr__()
+        {
+            if (_value is null)
+            {
                 return "None";
             }
 

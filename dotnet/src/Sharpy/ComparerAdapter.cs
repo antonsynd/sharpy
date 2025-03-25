@@ -29,11 +29,13 @@ namespace Sharpy
                 return new GreaterThanComparableComparer();
             }
 
-            if (typeof(IComparable<T>).IsAssignableFrom(typeof(T))) {
+            if (typeof(IComparable<T>).IsAssignableFrom(typeof(T)))
+            {
                 return new TypedIComparableComparer();
             }
 
-            if (typeof(IComparable).IsAssignableFrom(typeof(T))) {
+            if (typeof(IComparable).IsAssignableFrom(typeof(T)))
+            {
                 return new UntypedIComparableComparer();
             }
 

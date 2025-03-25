@@ -32,11 +32,13 @@ namespace Sharpy
             public static bool IsLessThan(T? lhs, T? rhs)
             {
                 // References to the same object are always not less than
-                if (ReferenceEquals(lhs, rhs)) {
+                if (ReferenceEquals(lhs, rhs))
+                {
                     return false;
                 }
 
-                if (lhs is null || rhs is null) {
+                if (lhs is null || rhs is null)
+                {
                     throw new TypeError("'<' not supported for instances of 'NoneType'");
                 }
 
@@ -49,11 +51,13 @@ namespace Sharpy
             public static bool IsLessThan(T? lhs, T? rhs)
             {
                 // References to the same object are always not less than
-                if (ReferenceEquals(lhs, rhs)) {
+                if (ReferenceEquals(lhs, rhs))
+                {
                     return false;
                 }
 
-                if (lhs is null || rhs is null) {
+                if (lhs is null || rhs is null)
+                {
                     throw new TypeError("'<' not supported for instances of 'NoneType'");
                 }
 
@@ -66,11 +70,13 @@ namespace Sharpy
             public static bool IsLessThan(T? lhs, T? rhs)
             {
                 // References to the same object are always not less than
-                if (ReferenceEquals(lhs, rhs)) {
+                if (ReferenceEquals(lhs, rhs))
+                {
                     return false;
                 }
 
-                if (lhs is null || rhs is null) {
+                if (lhs is null || rhs is null)
+                {
                     throw new TypeError("'<' not supported for instances of 'NoneType'");
                 }
 

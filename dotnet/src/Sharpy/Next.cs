@@ -4,7 +4,8 @@ namespace Sharpy
     {
         public static T Next<T>(Iterator<T> iterator)
         {
-            if (iterator is null) {
+            if (iterator is null)
+            {
                 throw new TypeError("Next() iterator argument cannot be None");
             }
 

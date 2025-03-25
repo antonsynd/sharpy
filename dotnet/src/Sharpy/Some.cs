@@ -1,4 +1,5 @@
-namespace Sharpy {
+namespace Sharpy
+{
     public static partial class Builtins
     {
         /// <summary>
@@ -7,7 +8,8 @@ namespace Sharpy {
         /// </summary>
         public static Optional<T> Some<T>(T value) where T : notnull
         {
-            if (value is null) {
+            if (value is null)
+            {
                 throw new TypeError("Some() value argument cannot be None");
             }
 

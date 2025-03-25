@@ -7,7 +7,8 @@ namespace Sharpy
         /// </remarks>
         public bool Equals(Object? obj)
         {
-            if (obj is null) {
+            if (obj is null)
+            {
                 return false;
             }
 

@@ -3,7 +3,8 @@ using FluentAssertions;
 
 namespace Sharpy.Tests
 {
-    public class Min_Tests {
+    public class Min_Tests
+    {
         [Fact]
         public void Min_List_Empty()
         {
@@ -18,7 +19,7 @@ namespace Sharpy.Tests
         public void Min_List_Non_Empty()
         {
             // If
-            List<int> l = [ 5, 7, 3, 1 ];
+            List<int> l = [5, 7, 3, 1];
 
             // When/then
             Min(l).Should().Be(1);

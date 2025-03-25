@@ -47,27 +47,30 @@ namespace Sharpy
         /// are Sharpy Objects, then <see cref="Object.__Eq__()"/> is used.
         /// Otherwise, <see cref="object.Equals()"/> is used.
         /// </remarks>
-        public static bool operator ==(List<T>? left, List<T>? right)
+        public static bool operator ==(List<T> left, List<T> right)
         {
-            if (ReferenceEquals(left, right)) {
+            if (ReferenceEquals(left, right))
+            {
                 return true;
             }
 
-            if (left is null || right is null) {
+            if (left is null || right is null)
+            {
                 return false;
             }
 
             return left.__Eq__(right);
         }
 
-        public static bool operator !=(List<T>? left, List<T>? right)
+        public static bool operator !=(List<T> left, List<T> right)
         {
             return !(left == right);
         }
 
         public static List<T> operator +(List<T> left, List<T> right)
         {
-            if (left is null) {
+            if (left is null)
+            {
                 throw new TypeError($"can only concatenate List<${typeof(T).Name}> (not \"NoneType\") to List<${typeof(T).Name}");
             }
 
@@ -76,18 +79,21 @@ namespace Sharpy
 
         public static List<T> operator *(List<T> left, int i)
         {
-            if (left is null) {
+            if (left is null)
+            {
                 throw new TypeError($"can only multiply List<${typeof(T).Name} (not \"NoneType\") with int");
             }
 
             return left.__Mul__(i);
         }
 
-        public static bool operator true(List<T> list) {
+        public static bool operator true(List<T> list)
+        {
             return list?.__Bool__() ?? false;
         }
 
-        public static bool operator false(List<T> list) {
+        public static bool operator false(List<T> list)
+        {
             return !(list?.__Bool__() ?? false);
         }
     }

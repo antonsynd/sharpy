@@ -23,7 +23,8 @@ namespace Sharpy
         /// </summary>
         public List(IEnumerable<T> iterable) : this()
         {
-            if (iterable is null) {
+            if (iterable is null)
+            {
                 throw new TypeError("'NoneType' object is not iterable");
             }
 
@@ -62,7 +63,8 @@ namespace Sharpy
 
         public void Sort<TKey>(Func<T, TKey> key, bool reverse = false)
         {
-            if (key is null) {
+            if (key is null)
+            {
                 throw new TypeError("Sort() key argument cannot be None");
             }
 

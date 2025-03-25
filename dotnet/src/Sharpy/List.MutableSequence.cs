@@ -16,7 +16,8 @@ namespace Sharpy
         /// </summary>
         public void Extend(IEnumerable<T> enumerable)
         {
-            if (enumerable is null) {
+            if (enumerable is null)
+            {
                 throw new TypeError("Extend() enumerable argument cannot be None");
             }
 
@@ -157,7 +158,8 @@ namespace Sharpy
 
         public void __SetItem__(Slice slice, List<T> other)
         {
-            if (other is null) {
+            if (other is null)
+            {
                 throw new TypeError("must assign iterable (not \"NoneType\") to extended slice");
             }
 
