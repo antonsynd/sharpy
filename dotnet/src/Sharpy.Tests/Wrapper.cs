@@ -46,5 +46,10 @@ namespace Sharpy.Tests
         {
             return Bool(Value);
         }
+
+        public override string __Repr__()
+        {
+            return $"<Wrapper object with id {Id} and value {Repr(Value)}>";
+        }
     }
 }

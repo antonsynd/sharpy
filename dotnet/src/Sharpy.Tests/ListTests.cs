@@ -846,53 +846,46 @@ namespace Sharpy.Tests
             actual.Should().Equal(expected);
         }
 
-        //         [Fact]
-        //         public void List_Remove_Present_Once_Object_Equal()
-        //         {
-        //             // If
-        //             List<IntWrapper> l = {IntWrapper(1), IntWrapper(3), IntWrapper(5),
-        //                         IntWrapper(7)};
+        [Fact]
+        public void List_Remove_Present_Once_Object_Equal()
+        {
+            // If
+            List<IntWrapper> l = [1, 3, 5, 7];
 
-        //             // When
-        //             var second_elem = l[1];
-        //             l.Remove(second_elem);
+            // When
+            var second_elem = l[1];
+            l.Remove(second_elem);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 5, 7 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<IntWrapper> expected = [1, 5, 7];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Remove_Present_Once_Object_Not_Equal()
-        //         {
-        //             // If
-        //             List<IntWrapper> l = {IntWrapper(1), IntWrapper(3), IntWrapper(5),
-        //                         IntWrapper(7)};
+        [Fact]
+        public void List_Remove_Present_Once_Object_Not_Equal()
+        {
+            // If
+            List<IntWrapper> l = [1, 3, 5, 7];
 
-        //             IntWrapper i{ 4}
-        //             ;
+            IntWrapper i = 4;
 
-        //             // When/then
-        //             EXPECT_THROW(l.Remove(i), ValueError);
-        //         }
+            // When/then
+            FluentActions.Invoking(() => l.Remove(i)).Should().Throw<ValueError>();
+        }
 
-        //         [Fact]
-        //         public void List_Remove_Present_Once_Object_Not_Same()
-        //         {
-        //             // If
-        //             List<IntIdentityWrapper> l = {IntIdentityWrapper(1), IntIdentityWrapper(3),
-        //                                 IntIdentityWrapper(5), IntIdentityWrapper(7)};
+        [Fact]
+        public void List_Remove_Present_Once_Object_Not_Same()
+        {
+            // If
+            List<IntIdentityWrapper> l = [1, 3, 5, 7];
 
-        //             IntIdentityWrapper i{ 3}
-        //             ;
+            IntIdentityWrapper i = 3;
 
-        //             ASSERT_NE(&i, &l[1]);
-
-        //             // When/then
-        //             EXPECT_THROW(l.Remove(IntIdentityWrapper(3)), ValueError);
-        //         }
+            // When/then
+            FluentActions.Invoking(() => l.Remove(i)).Should().Throw<ValueError>();
+        }
 
         [Fact]
         public void List_Remove_Present_More_Than_Once()
@@ -910,75 +903,67 @@ namespace Sharpy.Tests
             actual.Should().Equal(expected);
         }
 
-        //         [Fact]
-        //         public void List_Remove_Present_More_Than_Once_Object_Same()
-        //         {
-        //             // If
-        //             List<IntWrapper> l = {IntWrapper(1), IntWrapper(3), IntWrapper(5),
-        //                         IntWrapper(7), IntWrapper(3)};
+        [Fact]
+        public void List_Remove_Present_More_Than_Once_Object_Same()
+        {
+            // If
+            List<IntWrapper> l = [1, 3, 5, 7, 3];
 
-        //             // When
-        //             var second_elem = l[1];
-        //             l.Remove(second_elem);
+            // When
+            var second_elem = l[1];
+            l.Remove(second_elem);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 5, 7, 3 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<IntWrapper> expected = [1, 5, 7, 3];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Remove_Present_More_Than_Once_Object_Equality_Last()
-        //         {
-        //             // If
-        //             List<IntWrapper> l = {IntWrapper(1), IntWrapper(3), IntWrapper(5),
-        //                         IntWrapper(7), IntWrapper(3)};
+        [Fact]
+        public void List_Remove_Present_More_Than_Once_Object_Equality_Last()
+        {
+            // If
+            List<IntWrapper> l = [1, 3, 5, 7, 3];
 
-        //             // When
-        //             var last_elem = l[-1];
-        //             l.Remove(last_elem);
+            // When
+            var last_elem = l[-1];
+            l.Remove(last_elem);
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 5, 7, 3 ];
+            // Then
+            var actual = l.ToList();
+            DotNetList<IntWrapper> expected = [1, 5, 7, 3];
 
-        //             actual.Should().Equal(expected);
-        //         }
+            actual.Should().Equal(expected);
+        }
 
-        //         [Fact]
-        //         public void List_Remove_Present_More_Than_Once_Object_Identity_Last()
-        //         {
-        //             // If
-        //             List<IntIdentityWrapper> l = {IntIdentityWrapper(1), IntIdentityWrapper(3),
-        //                                 IntIdentityWrapper(5), IntIdentityWrapper(7),
-        //                                 IntIdentityWrapper(3)};
+        [Fact]
+        public void List_Remove_Present_More_Than_Once_Object_Identity_Last()
+        {
+            // If
+            List<IntIdentityWrapper> source = [1, 3, 5, 7, 3];
+            List<IntIdentityWrapper> l = source.Copy();
 
-        //             // When
-        //             var last_elem = l[-1];
+            // When
+            var last_elem = l[-1];
+            l.Remove(last_elem);
 
-        //             ASSERT_NE(&last_elem, &l[1]);
+            // Then
+            var actual = l.ToList();
+            DotNetList<IntIdentityWrapper> expected = [.. source[0, -1]];
 
-        //             l.Remove(last_elem);
+            actual.Should().Equal(expected);
+        }
 
-        //             // Then
-        //             var actual = l.ToList();
-        //             DotNetList<int> expected = [ 1, 3, 5, 7 ];
+        [Fact]
+        public void List_Remove_Present_More_Than_Once_Object_Identity_Not_Same()
+        {
+            // If
+            List<IntIdentityWrapper> l = [1, 3, 5, 7, 3];
 
-        //             actual.Should().Equal(expected);
-        //         }
-
-        //         [Fact]
-        //         public void List_Remove_Present_More_Than_Once_Object_Identity_Not_Same()
-        //         {
-        //             // If
-        //             List<IntIdentityWrapper> l = {IntIdentityWrapper(1), IntIdentityWrapper(3),
-        //                                 IntIdentityWrapper(5), IntIdentityWrapper(7),
-        //                                 IntIdentityWrapper(3)};
-
-        //             // When
-        //             EXPECT_THROW(l.Remove(IntIdentityWrapper(3)), ValueError);
-        //         }
+            // When/then
+            FluentActions.Invoking(() => l.Remove(new IntIdentityWrapper(3))).Should().Throw<ValueError>();
+        }
 
         [Fact]
         public void List_Remove_At_End()
