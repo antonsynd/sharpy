@@ -9,6 +9,10 @@ namespace Sharpy.Collections.Interfaces
 
         void __DelItem__(K k);
 
+        void __IOr__(Mapping<K, V> other);
+
+        void __IOr__(Iterable<(K, V)> other);
+
         V Pop(K k);
 
         V Pop(K k, V @default);

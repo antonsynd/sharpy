@@ -116,17 +116,28 @@ namespace Sharpy
 
         public V SetDefault(K k, V @default)
         {
-            throw new NotImplementedException();
+            if (_dict.TryGetValue(k, out V? value))
+            {
+                return value;
+            }
+
+            return _dict[k] = @default;
         }
 
         public void Update(Mapping<K, V> other)
         {
-            throw new NotImplementedException();
+            foreach (var key in other.Keys())
+            {
+                _dict[key] = other.__GetItem__(key);
+            }
         }
 
         public void Update(Iterable<(K, V)> other)
         {
-            throw new NotImplementedException();
+            foreach (var (key, value) in other)
+            {
+                _dict[key] = value;
+            }
         }
 
         public ValuesView<V> Values()
@@ -180,6 +191,50 @@ namespace Sharpy
         public Dictionary<K, V> ToDictionary()
         {
             return new Dictionary<K, V>(_dict);
+        }
+
+        public Dict<K, V> __Or__(Dict<K, V> other)
+        {
+            var newDict = Copy();
+            newDict.Update(other);
+
+            return newDict;
+        }
+
+        public void __IOr__(Dict<K, V> other)
+        {
+            Update(other);
+        }
+
+        public Mapping<K, V> __Or__(Mapping<K, V> other)
+        {
+            var newDict = Copy();
+            newDict.Update(other);
+
+            return newDict;
+        }
+
+        public void __IOr__(Mapping<K, V> other)
+        {
+            Update(other);
+        }
+
+        public Mapping<K, V> __Or__(Iterable<(K, V)> other)
+        {
+            var newDict = Copy();
+            newDict.Update(other);
+
+            return newDict;
+        }
+
+        public void __IOr__(Iterable<(K, V)> other)
+        {
+            Update(other);
+        }
+
+        public static Dict<K, V> operator |(Dict<K, V> left, Dict<K, V> right)
+        {
+            return left.__Or__(right);
         }
     }
 }
