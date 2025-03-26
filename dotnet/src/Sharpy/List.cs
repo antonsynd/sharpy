@@ -39,7 +39,6 @@ namespace Sharpy
         /// <summary>
         /// Return a shallow copy of the list.
         /// </summary>
-        /// <returns></returns>
         public List<T> Copy()
         {
             var newList = new List<T>();
