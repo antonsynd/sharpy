@@ -7,7 +7,6 @@ namespace Sharpy.Collections.Interfaces
     {
         V __GetItem__(K k);
 
-
         Mapping<K, V> __Or__(Mapping<K, V> other);
 
         Mapping<K, V> __Or__(Iterable<(K, V)> other);
