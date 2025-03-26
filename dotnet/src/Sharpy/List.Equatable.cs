@@ -19,23 +19,22 @@ namespace Sharpy
                 return false;
             }
 
-            if (_list.Count == other._list.Count)
+            if (_list.Count != other._list.Count)
             {
-                for (uint i = 0; i < _list.Count; ++i)
+                return false;
+            }
+            for (uint i = 0; i < _list.Count; ++i)
+            {
+                var leftElem = _list[(int)i];
+                var rightElem = other._list[(int)i];
+
+                if (!EqualityAdapterFactory<T>.AreEqual(leftElem, rightElem))
                 {
-                    var leftElem = _list[(int)i];
-                    var rightElem = other._list[(int)i];
-
-                    if (!EqualityAdapterFactory<T>.AreEqual(leftElem, rightElem))
-                    {
-                        return false;
-                    }
+                    return false;
                 }
-
-                return true;
             }
 
-            return false;
+            return true;
         }
     }
 }

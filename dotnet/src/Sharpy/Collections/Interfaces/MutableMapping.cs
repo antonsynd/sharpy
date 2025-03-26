@@ -5,19 +5,19 @@ namespace Sharpy.Collections.Interfaces
     /// </summary>
     public interface MutableMapping<K, V> : Mapping<K, V> where K : notnull
     {
-        void __SetItem__(K k, V v);
+        void __SetItem__(K key, V value);
 
-        void __DelItem__(K k);
+        void __DelItem__(K key);
 
         void __IOr__(Mapping<K, V> other);
 
         void __IOr__(Iterable<(K, V)> other);
 
-        V Pop(K k);
+        V Pop(K key);
 
-        V Pop(K k, V @default);
+        V Pop(K key, V @default);
 
-        (K, V) PopItem();
+        (K, V) PopItem(bool last = false);
 
         void Clear();
 
@@ -25,6 +25,6 @@ namespace Sharpy.Collections.Interfaces
 
         void Update(Iterable<(K, V)> other);
 
-        V SetDefault(K k, V @default);
+        V SetDefault(K key, V @default);
     }
 }

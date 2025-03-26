@@ -1,9 +1,11 @@
 using System.Collections;
+using System.ComponentModel;
+using System.Text;
 using Sharpy.Collections.Interfaces;
 
 namespace Sharpy
 {
-    public sealed partial class Dict<K, V> : MutableMapping<K, V> where K : notnull
+    public sealed partial class Dict<K, V> : Object, MutableMapping<K, V> where K : notnull
     {
         private readonly Dictionary<K, V> _dict;
 
@@ -49,14 +51,14 @@ namespace Sharpy
             _dict.Clear();
         }
 
-        public bool Contains(K k)
+        public bool Contains(K key)
         {
-            return __Contains__(k);
+            return __Contains__(key);
         }
 
-        public V? Get(K k)
+        public V? Get(K key)
         {
-            if (_dict.TryGetValue(k, out V? value))
+            if (_dict.TryGetValue(key, out V? value))
             {
                 return value;
             }
@@ -64,9 +66,9 @@ namespace Sharpy
             return default;
         }
 
-        public V Get(K k, V @default)
+        public V Get(K key, V @default)
         {
-            if (_dict.TryGetValue(k, out V? value))
+            if (_dict.TryGetValue(key, out V? value))
             {
                 return value;
             }
@@ -76,7 +78,10 @@ namespace Sharpy
 
         public IEnumerator<K> GetEnumerator()
         {
-            throw new NotImplementedException();
+            foreach (var key in _dict.Keys)
+            {
+                yield return key;
+            }
         }
 
         public ItemsView<K, V> Items()
@@ -86,22 +91,22 @@ namespace Sharpy
 
         public KeysView<K> Keys()
         {
-            throw new NotImplementedException();
+            return new DictKeyView<K, V>(_dict.Keys);
         }
 
-        public V Pop(K k)
+        public V Pop(K key)
         {
-            if (_dict.Remove(k, out V? value))
+            if (_dict.Remove(key, out V? value))
             {
                 return value;
             }
 
-            throw new KeyError(Repr(k));
+            throw new KeyError(Repr(key));
         }
 
-        public V Pop(K k, V @default)
+        public V Pop(K key, V @default)
         {
-            if (_dict.Remove(k, out V? value))
+            if (_dict.Remove(key, out V? value))
             {
                 return value;
             }
@@ -109,19 +114,22 @@ namespace Sharpy
             return @default;
         }
 
-        public (K, V) PopItem()
+        public (K, V) PopItem(bool last = false)
         {
-            throw new NotImplementedException();
+            var pair = last ? _dict.Last() : _dict.First();
+            _dict.Remove(pair.Key);
+
+            return (pair.Key, pair.Value);
         }
 
-        public V SetDefault(K k, V @default)
+        public V SetDefault(K key, V @default)
         {
-            if (_dict.TryGetValue(k, out V? value))
+            if (_dict.TryGetValue(key, out V? value))
             {
                 return value;
             }
 
-            return _dict[k] = @default;
+            return _dict[key] = @default;
         }
 
         public void Update(Mapping<K, V> other)
@@ -145,32 +153,44 @@ namespace Sharpy
             throw new NotImplementedException();
         }
 
-        public bool __Contains__(K k)
+        public bool __Contains__(K key)
         {
-            return _dict.ContainsKey(k);
+            return _dict.ContainsKey(key);
         }
 
-        public void __DelItem__(K k)
+        public void __DelItem__(K key)
         {
-            if (!_dict.Remove(k))
+            if (!_dict.Remove(key))
             {
-                throw new KeyError(Repr(k));
+                throw new KeyError(Repr(key));
             }
         }
 
-        public V __GetItem__(K k)
+        public V __GetItem__(K key)
         {
-            if (_dict.TryGetValue(k, out V? value))
+            if (_dict.TryGetValue(key, out V? value))
             {
                 return value;
             }
 
-            throw new KeyError(Repr(k));
+            throw new KeyError(Repr(key));
         }
 
         public Iterator<K> __Iter__()
         {
-            throw new NotImplementedException();
+            return Keys().__Iter__();
+        }
+
+        public V this[K key]
+        {
+            get
+            {
+                return __GetItem__(key);
+            }
+            set
+            {
+                __SetItem__(key, value);
+            }
         }
 
         public uint __Len__()
@@ -178,15 +198,54 @@ namespace Sharpy
             return (uint)_dict.Count;
         }
 
-        public void __SetItem__(K k, V v)
+        public override bool __Eq__(Object obj)
         {
-            _dict[k] = v;
+            if (obj is Dict<K, V> other)
+            {
+                return __Eq__(other);
+            }
+
+            return false;
         }
 
-        IEnumerator IEnumerable.GetEnumerator()
+        public bool __Eq__(Dict<K, V> other)
         {
-            return GetEnumerator();
+            if (other is null)
+            {
+                return false;
+            }
+
+            if (_dict.Count != other._dict.Count)
+            {
+                return false;
+            }
+
+            foreach (var kv in _dict)
+            {
+
+                if (!other._dict.TryGetValue(kv.Key, out V? value))
+                {
+                    return false;
+                }
+
+                if (!EqualityAdapterFactory<V>.AreEqual(kv.Value, value))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
+
+        public void __SetItem__(K key, V value)
+        {
+            _dict[key] = value;
+        }
+
+        /// <summary>
+        /// Delegate to specialized GetEnumerator() for generalized one.
+        /// </summary>
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         public Dictionary<K, V> ToDictionary()
         {
@@ -235,6 +294,75 @@ namespace Sharpy
         public static Dict<K, V> operator |(Dict<K, V> left, Dict<K, V> right)
         {
             return left.__Or__(right);
+        }
+
+        public static bool operator ==(Dict<K, V> left, Dict<K, V> right)
+        {
+            if (ReferenceEquals(left, right))
+            {
+                return true;
+            }
+
+            if (left is null || right is null)
+            {
+                return false;
+            }
+
+            return left.__Eq__(right);
+        }
+
+        public static bool operator !=(Dict<K, V> left, Dict<K, V> right)
+        {
+            return !(left == right);
+        }
+
+        public override int __Hash__()
+        {
+            var hashCode = new HashCode();
+            hashCode.Add(typeof(Dict<K, V>).GetHashCode());
+            hashCode.Add(_dict.GetHashCode());
+
+            return hashCode.ToHashCode();
+        }
+
+        public override string __Repr__()
+        {
+            var builder = new StringBuilder();
+            builder.Append('{');
+
+            uint i = 1;
+            var numItems = _dict.Count;
+
+            foreach (var kv in _dict)
+            {
+                builder.Append($"{Repr(kv.Key)}: {Repr(kv.Value)}");
+
+                if (i < numItems)
+                {
+                    builder.Append(", ");
+                }
+
+                ++i;
+            }
+
+            builder.Append('}');
+
+            return builder.ToString();
+        }
+
+        public override bool __Bool__()
+        {
+            return _dict.Count > 0;
+        }
+
+        public static bool operator true(Dict<K, V> dict)
+        {
+            return dict?.__Bool__() ?? false;
+        }
+
+        public static bool operator false(Dict<K, V> dict)
+        {
+            return !(dict?.__Bool__() ?? false);
         }
     }
 }

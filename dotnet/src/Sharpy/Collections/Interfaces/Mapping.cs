@@ -5,7 +5,7 @@ namespace Sharpy.Collections.Interfaces
     /// </summary>
     public interface Mapping<K, V> : Collection<K> where K : notnull
     {
-        V __GetItem__(K k);
+        V __GetItem__(K key);
 
         Mapping<K, V> __Or__(Mapping<K, V> other);
 
@@ -17,8 +17,8 @@ namespace Sharpy.Collections.Interfaces
 
         ValuesView<V> Values();
 
-        V? Get(K k);
+        V? Get(K key);
 
-        V Get(K k, V @default);
+        V Get(K key, V @default);
     }
 }
