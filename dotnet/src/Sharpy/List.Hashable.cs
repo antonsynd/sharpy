@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace Sharpy
 {
     public sealed partial class List<T>

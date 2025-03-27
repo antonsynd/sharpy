@@ -2,7 +2,6 @@ namespace Sharpy
 {
     public sealed partial class List<T>
     {
-
         public T this[int index]
         {
             get

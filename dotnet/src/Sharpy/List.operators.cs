@@ -10,17 +10,7 @@ namespace Sharpy
         /// </remarks>
         public static bool operator ==(List<T> left, List<T> right)
         {
-            if (ReferenceEquals(left, right))
-            {
-                return true;
-            }
-
-            if (left is null || right is null)
-            {
-                return false;
-            }
-
-            return left.__Eq__(right);
+            return Internals.__Eq__(left, right);
         }
 
         public static bool operator !=(List<T> left, List<T> right)
@@ -46,6 +36,16 @@ namespace Sharpy
             }
 
             return left.__Mul__(i);
+        }
+
+        public static List<T> operator *(int i, List<T> left)
+        {
+            if (left is null)
+            {
+                throw new TypeError($"can only multiply List<${typeof(T).Name} (not \"NoneType\") with int");
+            }
+
+            return left.__RMul__(i);
         }
 
         public static bool operator true(List<T> list)
