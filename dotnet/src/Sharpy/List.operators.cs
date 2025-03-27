@@ -2,45 +2,6 @@ namespace Sharpy
 {
     public sealed partial class List<T>
     {
-        /// <summary>
-        /// Returns the item at the given index in the list.
-        /// </summary>
-        public T this[int index]
-        {
-            get
-            {
-                return __GetItem__(index);
-            }
-            set
-            {
-                __SetItem__(index, value);
-            }
-        }
-
-        public List<T> this[int start, int end]
-        {
-            get
-            {
-                return this[start, end, 1];
-            }
-            set
-            {
-                this[start, end, 1] = value;
-            }
-        }
-
-        public List<T> this[int start, int end, int step]
-        {
-            get
-            {
-                return __GetItem__(new Slice(start, end, step));
-            }
-            set
-            {
-                __SetItem__(new Slice(start, end, step), value);
-            }
-        }
-
         /// <remarks>
         /// This returns true for both lists if they contain the same elements,
         /// even if they are not the actual same list reference. If the elements

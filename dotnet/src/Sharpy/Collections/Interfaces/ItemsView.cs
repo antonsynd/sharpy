@@ -3,7 +3,7 @@ namespace Sharpy.Collections.Interfaces
     /// <summary>
     /// Interface for mapping views over pairs of keys and values.
     /// </summary>
-    public interface ItemsView<K, V> : Set<(K, V)>, MappingView where K : notnull
+    public interface ItemsView<K, V> : MappingView<(K, V)> where K : notnull
     {
     }
 }

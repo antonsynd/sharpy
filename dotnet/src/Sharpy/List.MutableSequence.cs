@@ -2,6 +2,43 @@ namespace Sharpy
 {
     public sealed partial class List<T>
     {
+
+        public T this[int index]
+        {
+            get
+            {
+                return __GetItem__(index);
+            }
+            set
+            {
+                __SetItem__(index, value);
+            }
+        }
+
+        public List<T> this[int start, int end]
+        {
+            get
+            {
+                return __GetItem__(new Slice(start, end, 1));
+            }
+            set
+            {
+                __SetItem__(new Slice(start, end, 1), value);
+            }
+        }
+
+        public List<T> this[int start, int end, int step]
+        {
+            get
+            {
+                return __GetItem__(new Slice(start, end, step));
+            }
+            set
+            {
+                __SetItem__(new Slice(start, end, step), value);
+            }
+        }
+
         /// <summary>
         /// Add an item to the end of the list. Similar to a[len(a):] = [x].
         /// </summary>

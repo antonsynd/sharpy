@@ -76,5 +76,7 @@ namespace Sharpy
 
             return (uint)result;
         }
+
+        // Getters for this[...] are defined in List.MutableSequence.cs
     }
 }

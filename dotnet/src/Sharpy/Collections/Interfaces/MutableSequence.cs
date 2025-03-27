@@ -5,6 +5,22 @@ namespace Sharpy.Collections.Interfaces
     /// </summary>
     public interface MutableSequence<S, T> : Sequence<S, T>
     {
+        /// <summary>
+        /// Returns or sets the element at the given index. Supports negative
+        /// indices to get or set from the back. If the index is out of range,
+        /// then this raises an <see cref="IndexError"/>.
+        /// </summary>
+        new T this[int index] { get; set; }
+
+        /// <summary>
+        /// Returns  at the given index. Supports negative
+        /// indices to get or set from the back. If the index is out of range,
+        /// then this raises an <see cref="IndexError"/>.
+        /// </summary>
+        new S this[int start, int end] { get; set; }
+
+        new S this[int start, int end, int step] { get; set; }
+
         void Append(T x);
 
         /// <remarks>
