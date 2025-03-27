@@ -16,5 +16,17 @@ namespace Sharpy
 
             return ReferenceEquals(this, other) || __Id__() == other.__Id__();
         }
+
+        public virtual bool __Eq__(object other)
+        {
+            if (other is Object obj)
+            {
+                return __Eq__(obj);
+            }
+
+            // NOTE: Do NOT call Equals() because it will result in an infinite
+            // loop as Equals() ultimately references __Eq__()
+            return ReferenceEquals(this, other);
+        }
     }
 }

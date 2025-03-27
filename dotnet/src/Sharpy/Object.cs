@@ -4,7 +4,7 @@ namespace Sharpy
     /// Base class for all Sharpy objects (except value types), deriving from
     /// C# object.
     /// </summary>
-    public abstract partial class Object : object, Hashable, Equatable<Object>
+    public abstract partial class Object : object, Equatable<Object>, StrConvertible, BoolConvertible, Identifiable
     {
         /// <remarks>
         /// Not publicly constructible.

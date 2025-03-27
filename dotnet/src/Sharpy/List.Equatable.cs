@@ -23,6 +23,7 @@ namespace Sharpy
             {
                 return false;
             }
+
             for (uint i = 0; i < _list.Count; ++i)
             {
                 var leftElem = _list[(int)i];

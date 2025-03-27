@@ -9,12 +9,12 @@ namespace Sharpy
         /// </remarks>
         public override sealed bool Equals(object? obj)
         {
-            if (obj is Object other)
+            if (obj is null)
             {
-                return __Eq__(other);
+                return false;
             }
 
-            return false;
+            return __Eq__(obj);
         }
 
         /// <remarks>
