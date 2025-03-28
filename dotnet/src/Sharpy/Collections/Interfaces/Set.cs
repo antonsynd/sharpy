@@ -3,10 +3,8 @@ namespace Sharpy.Collections.Interfaces
     /// <summary>
     /// Interface for read-only sets.
     /// </summary>
-    public interface Set<T> : Collection<T>, Equatable<Set<T>>, Comparable<Set<T>>
+    public interface Set<T> : Collection<T>, Equatable<Set<T>>, Inequatable<Set<T>>, Comparable<Set<T>>
     {
-        bool __Ne__(Set<T> other);
-
         Set<T> __And__(Set<T> other);
 
         Set<T> __Or__(Set<T> other);
