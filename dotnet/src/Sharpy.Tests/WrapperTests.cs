@@ -18,6 +18,18 @@ namespace Sharpy.Tests
         }
 
         [Fact]
+        public void Wrapper_Implicit_Conversion()
+        {
+            // If
+            Wrapper<int>.ResetId();
+            Wrapper<int> wrapper = 1;
+
+            // When/then
+            wrapper.Id.Should().Be(0);
+            wrapper.Value.Should().Be(1);
+        }
+
+        [Fact]
         public void Wrapper_Bool_Convertible()
         {
             // If/when/then
