@@ -12,12 +12,7 @@ namespace Sharpy
                 return true;
             }
 
-            if (left is null || right is null)
-            {
-                return false;
-            }
-
-            return left.__Eq__(right);
+            return left?.__Eq__(right) ?? right is null;
         }
 
         /// <remarks>
@@ -36,17 +31,7 @@ namespace Sharpy
         /// </remarks>
         public static bool operator ==(Object left, object right)
         {
-            if (left is null)
-            {
-                if (right is null)
-                {
-                    return true;
-                }
-
-                return false;
-            }
-
-            return left.Equals(right);
+            return left?.Equals(right) ?? right is null;
         }
 
         /// <remarks>
@@ -66,17 +51,7 @@ namespace Sharpy
         /// </remarks>
         public static bool operator ==(object left, Object right)
         {
-            if (right is null)
-            {
-                if (left is null)
-                {
-                    return true;
-                }
-
-                return false;
-            }
-
-            return right.Equals(left);
+            return right?.Equals(left) ?? left is null;
         }
 
         /// <remarks>

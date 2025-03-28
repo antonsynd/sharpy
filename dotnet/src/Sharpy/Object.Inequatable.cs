@@ -10,5 +10,9 @@ namespace Sharpy
             return !__Eq__(other);
         }
 
+        public virtual bool __Ne__(object other)
+        {
+            return !__Eq__(other);
+        }
     }
 }
