@@ -4,14 +4,13 @@ namespace Sharpy
     {
         public bool __Le__(Set<T> other)
         {
-            throw new NotImplementedException();
+            return __Eq__(other) || __Lt__(other);
         }
 
 
         public bool __Le__(Collections.Interfaces.Set<T> other)
         {
-            throw new NotImplementedException();
+            return __Eq__(other) || __Lt__(other);
         }
-
     }
 }

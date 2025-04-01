@@ -11,24 +11,40 @@ namespace Sharpy
             _set = [];
         }
 
-        public Set(Collections.Interfaces.Set<T> set) : this()
+        public Set(Set<T> set) : this()
         {
+            _set.UnionWith(set._set);
         }
 
-        public int CompareTo(Collections.Interfaces.Set<T>? other)
+        public Set(IEnumerable<T> enumerable) : this()
         {
-            throw new NotImplementedException();
+            if (enumerable is null)
+            {
+                throw new TypeError("'NoneType' object is not iterable");
+            }
+
+            foreach (var x in enumerable)
+            {
+                _set.Add(x);
+            }
         }
 
-        public bool Contains(T x)
+        public Set<T> Copy()
         {
-            throw new NotImplementedException();
+            var newSet = new Set<T>();
+            newSet._set.EnsureCapacity(_set.Count);
+            newSet._set.UnionWith(_set);
+
+            return newSet;
         }
 
-        public bool __Contains__(T x)
+        public HashSet<T> ToHashSet()
         {
-            throw new NotImplementedException();
-        }
+            var result = new HashSet<T>();
+            result.EnsureCapacity(_set.Count);
+            result.UnionWith(_set);
 
+            return result;
+        }
     }
 }

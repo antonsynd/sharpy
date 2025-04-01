@@ -4,17 +4,18 @@ namespace Sharpy
     {
         public bool IsDisjoint(Set<T> other)
         {
-            throw new NotImplementedException();
+            if (other is null)
+            {
+                // Not actually true here, but whatever
+                throw new TypeError("'NoneType' object is not iterable");
+            }
+
+            return _set.Overlaps(other._set);
         }
 
         public Set<T> __And__(Set<T> other)
         {
             throw new NotImplementedException();
-        }
-
-        public bool __Ne__(Set<T> other)
-        {
-            return !__Eq__(other);
         }
 
         public Set<T> __Or__(Set<T> other)
@@ -38,11 +39,6 @@ namespace Sharpy
         }
 
         public Set<T> __XOr__(Set<T> other)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool __Ne__(Collections.Interfaces.Set<T> other)
         {
             throw new NotImplementedException();
         }

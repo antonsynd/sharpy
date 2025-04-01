@@ -2,23 +2,6 @@ namespace Sharpy
 {
     public sealed partial class Set<T>
     {
-        public bool __Eq__(Collections.Interfaces.Set<T> other)
-        {
-            uint numElems = 0;
-
-            foreach (var elem in other)
-            {
-                if (!_set.Contains(elem))
-                {
-                    return false;
-                }
-
-                ++numElems;
-            }
-
-            return numElems == _set.Count;
-        }
-
         public bool __Eq__(Set<T> other)
         {
             if (other is null)
@@ -26,7 +9,22 @@ namespace Sharpy
                 return false;
             }
 
-            return _set == other._set;
+            return _set.SetEquals(other._set);
+        }
+
+        public bool __Eq__(Collections.Interfaces.Set<T> other)
+        {
+            uint numElems = 0;
+
+            foreach (var x in other)
+            {
+                if (_set.Contains(x))
+                {
+                    numElems++;
+                }
+            }
+
+            return numElems == _set.Count;
         }
 
         public override bool __Eq__(Object other)

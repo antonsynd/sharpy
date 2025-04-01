@@ -1,23 +1,20 @@
-using System.Collections;
-using Sharpy.Collections.Interfaces;
-
 namespace Sharpy
 {
     public sealed partial class Set<T>
     {
         public void Add(T x)
         {
-            throw new NotImplementedException();
+            _set.Add(x);
         }
 
         public void Discard(T x)
         {
-            throw new NotImplementedException();
+            _set.Remove(x);
         }
 
         public void Clear()
         {
-            throw new NotImplementedException();
+            _set.Clear();
         }
 
         public T Pop()
@@ -27,7 +24,10 @@ namespace Sharpy
 
         public void Remove(T x)
         {
-            throw new NotImplementedException();
+            if (!_set.Remove(x))
+            {
+                throw new KeyError($"{x}");
+            }
         }
 
         public void __IOr__(Collections.Interfaces.Set<T> other)

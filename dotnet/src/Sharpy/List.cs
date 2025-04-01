@@ -25,14 +25,14 @@ namespace Sharpy
         /// Constructs a list with a shallow copy of the elements in the
         /// iterable.
         /// </summary>
-        public List(IEnumerable<T> iterable) : this()
+        public List(IEnumerable<T> enumerable) : this()
         {
-            if (iterable is null)
+            if (enumerable is null)
             {
                 throw new TypeError("'NoneType' object is not iterable");
             }
 
-            _list.AddRange(iterable);
+            _list.AddRange(enumerable);
         }
 
         /// <remarks>

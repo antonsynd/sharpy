@@ -13,9 +13,9 @@ namespace Sharpy.Collections.Interfaces
         new T this[int index] { get; set; }
 
         /// <summary>
-        /// Returns  at the given index. Supports negative
-        /// indices to get or set from the back. If the index is out of range,
-        /// then this raises an <see cref="IndexError"/>.
+        /// Returns the element at the given index. Supports negative indices
+        /// to get or set from the back. If the index is out of range, then
+        /// this raises an <see cref="IndexError"/>.
         /// </summary>
         new S this[int start, int end] { get; set; }
 
