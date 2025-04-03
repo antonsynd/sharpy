@@ -1,3 +1,6 @@
+# DocFX files
+_site/
+
 # Custom package files and dirs
 __resources/
 *.png

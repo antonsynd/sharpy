@@ -6,6 +6,15 @@ namespace Sharpy.Collections.Interfaces
     public interface Mapping<K, V> : Collection<K> where K : notnull
     {
         /// <summary>
+        /// Returns the value at the given key in the mapping. If the key does
+        /// not exist then this raises a <see cref="KeyError"/>.
+        /// </summary>
+        /// <remarks>
+        /// Should call <see cref="__GetItem__()"/> underneath.
+        /// </remarks>
+        V this[K key] { get; }
+
+        /// <summary>
         /// Gets the value for the given key. Raises <see cref="KeyError"/>
         /// if the key doesn't exist in the mapping.
         /// </summary>
@@ -59,5 +68,10 @@ namespace Sharpy.Collections.Interfaces
         /// the class is sealed, in which case it doesn't matter.
         /// </remarks>
         V Get(K key, V @default);
+    }
+
+    public interface Mapping<M, K, V> : Mapping<K, V> where K : notnull
+    {
+        M __Or__(M other);
     }
 }

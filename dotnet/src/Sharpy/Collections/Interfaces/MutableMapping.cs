@@ -5,6 +5,8 @@ namespace Sharpy.Collections.Interfaces
     /// </summary>
     public interface MutableMapping<K, V> : Mapping<K, V> where K : notnull
     {
+        new V this[K key] { get; set; }
+
         /// <summary>
         /// Sets the given key to the given value.
         /// </summary>
@@ -76,5 +78,12 @@ namespace Sharpy.Collections.Interfaces
         /// if the key is not in the mapping, before returning it.
         /// </summary>
         V SetDefault(K key, V @default);
+    }
+
+    public interface MutableMapping<M, K, V> : MutableMapping<K, V>, Mapping<M, K, V> where K : notnull
+    {
+        void __IOr__(M other);
+
+        void Update(M other);
     }
 }

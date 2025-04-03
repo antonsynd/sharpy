@@ -19,4 +19,21 @@ namespace Sharpy.Collections.Interfaces
 
         bool IsDisjoint(Set<T> other);
     }
+
+    public interface Set<S, T> : Set<T>
+    {
+        S __And__(S other);
+
+        S __Or__(S other);
+
+        S __Sub__(S other);
+
+        S __RSub__(S other);
+
+        S __XOr__(S other);
+
+        S __ROr__(S other);
+
+        bool IsDisjoint(S other);
+    }
 }

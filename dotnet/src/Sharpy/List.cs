@@ -7,7 +7,7 @@ namespace Sharpy
     /// </summary>
     public sealed partial class List<T>
         : Object, MutableSequence<List<T>, T>, Equatable<List<T>>,
-          Addable<List<T>, List<T>>, RightAddable<List<T>, List<T>>,
+          Addable<List<T>>, RightAddable<List<T>>,
           InplaceAddable<List<T>>, Multipliable<List<T>, int>,
           InplaceMultipliable<int>, RightMultipliable<List<T>, int>
     {
@@ -88,6 +88,5 @@ namespace Sharpy
         {
             return [.. _list];
         }
-
     }
 }

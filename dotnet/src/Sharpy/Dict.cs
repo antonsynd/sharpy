@@ -182,14 +182,8 @@ namespace Sharpy
 
         public V this[K key]
         {
-            get
-            {
-                return __GetItem__(key);
-            }
-            set
-            {
-                __SetItem__(key, value);
-            }
+            get => __GetItem__(key);
+            set => __SetItem__(key, value);
         }
 
         public uint __Len__()

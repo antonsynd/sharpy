@@ -1,7 +1,43 @@
+using Sharpy.Collections.Interfaces;
+
 namespace Sharpy
 {
     public sealed partial class List<T>
     {
+        Sequence<T> Sequence<T>.this[int start, int end]
+        {
+            get => this[start, end];
+        }
+
+        Sequence<T> Sequence<T>.this[int start, int end, int step]
+        {
+            get => this[start, end, step];
+        }
+
+        public Sequence<T> __Add__(Sequence<T> other)
+        {
+            var res = new List<T>
+            {
+                _list = [.. _list]
+            };
+
+            res._list.AddRange(other);
+
+            return res;
+        }
+
+        public Sequence<T> __RAdd__(Sequence<T> other)
+        {
+            var res = new List<T>
+            {
+                _list = [.. _list]
+            };
+
+            res._list.AddRange(other);
+
+            return res;
+        }
+
         public T __GetItem__(int index)
         {
             index = (int)Sharpy.Index.Normalize(index, (uint)_list.Count, false, false);

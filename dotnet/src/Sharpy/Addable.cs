@@ -4,4 +4,8 @@ namespace Sharpy
     {
         T __Add__(U other);
     }
+
+    public interface Addable<T> : Addable<T, T>
+    {
+    }
 }

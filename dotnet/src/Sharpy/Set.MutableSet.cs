@@ -49,5 +49,25 @@ namespace Sharpy
         {
             throw new NotImplementedException();
         }
+
+        public Set<T> __IAnd__(Set<T> other)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Set<T> __IOr__(Set<T> other)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Set<T> __ISub__(Set<T> other)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Set<T> __IXOr__(Set<T> other)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

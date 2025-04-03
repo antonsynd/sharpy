@@ -23,4 +23,15 @@ namespace Sharpy.Collections.Interfaces
 
         void __ISub__(Set<T> other);
     }
+
+    public interface MutableSet<S, T> : MutableSet<T>, Set<S, T>
+    {
+        S __IOr__(S other);
+
+        S __IAnd__(S other);
+
+        S __IXOr__(S other);
+
+        S __ISub__(S other);
+    }
 }

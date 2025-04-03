@@ -1,41 +1,37 @@
+using Sharpy.Collections.Interfaces;
+
 namespace Sharpy
 {
     public sealed partial class List<T>
     {
         public T this[int index]
         {
-            get
-            {
-                return __GetItem__(index);
-            }
-            set
-            {
-                __SetItem__(index, value);
-            }
+            get => __GetItem__(index);
+            set => __SetItem__(index, value);
         }
 
         public List<T> this[int start, int end]
         {
-            get
-            {
-                return __GetItem__(new Slice(start, end, 1));
-            }
-            set
-            {
-                __SetItem__(new Slice(start, end, 1), value);
-            }
+            get => __GetItem__(new Slice(start, end, 1));
+            set => __SetItem__(new Slice(start, end, 1), value);
         }
 
         public List<T> this[int start, int end, int step]
         {
-            get
-            {
-                return __GetItem__(new Slice(start, end, step));
-            }
-            set
-            {
-                __SetItem__(new Slice(start, end, step), value);
-            }
+            get => __GetItem__(new Slice(start, end, step));
+            set => __SetItem__(new Slice(start, end, step), value);
+        }
+
+        MutableSequence<T> MutableSequence<T>.this[int start, int end]
+        {
+            get => this[start, end];
+            set => this[start, end] = [.. value];
+        }
+
+        MutableSequence<T> MutableSequence<T>.this[int start, int end, int step]
+        {
+            get => this[start, end, step];
+            set => this[start, end, step] = [.. value];
         }
 
         /// <summary>
@@ -127,6 +123,31 @@ namespace Sharpy
             _list.Reverse();
         }
 
+        public void __IAdd__(Sequence<T> other)
+        {
+            if (other is null)
+            {
+                throw new TypeError("'NoneType' object is not iterable");
+            }
+
+            _list.AddRange(other);
+        }
+
+        public void __SetItem__(Slice slice, Sequence<T> other)
+        {
+            if (other is null)
+            {
+                throw new TypeError("'NoneType' object is not iterable");
+            }
+
+            __SetItem__(slice, [.. other]);
+        }
+
+        Sequence<T> Sequence<T>.__GetItem__(Slice slice)
+        {
+            return __GetItem__(slice);
+        }
+
         public void __DelItem__(int index)
         {
             _list.RemoveAt((int)Sharpy.Index.Normalize(index, (uint)_list.Count, false, false));
@@ -210,7 +231,7 @@ namespace Sharpy
                 return;
             }
 
-            (uint start, uint end) = Sharpy.Slice.Normalize(slice.start, slice.end, (uint)_list.Count);
+            (uint start, uint end) = Slice.Normalize(slice.start, slice.end, (uint)_list.Count);
 
             if (slice.step == 1)
             {

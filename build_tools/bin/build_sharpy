@@ -20,6 +20,7 @@ RESOURCE_DIR: Path = ROOT_DIR / "__resources"
 TOOLS_DIR: Path = ROOT_DIR / "tools"
 DATA_DIR: Path = ROOT_DIR / "data"
 
+CSHARP_ROOT_DIR: Path = ROOT_DIR / "dotnet"
 CSHARP_SRC_DIR: Path = ROOT_DIR / "dotnet/src/Sharpy"
 CSHARP_TEST_DIR: Path = ROOT_DIR / "dotnet/src/Sharpy.Tests"
 
@@ -51,6 +52,8 @@ def main() -> None:
         clean(args=args, rest=rest)
     elif command == "install":
         install(args=args, rest=rest)
+    elif command == "docs":
+        docs(args=args, rest=rest)
     elif command == "format":
         format(args=args, rest=rest)
     elif command == "debug":
@@ -63,6 +66,7 @@ def main() -> None:
         test(args=args, rest=rest, release=False)
         build(args=args, rest=rest, release=True)
         test(args=args, rest=rest, release=True)
+        docs(args=args, rest=rest)
         install(args=args, rest=rest)
     elif command == "run":
         run(args=args, rest=rest)
@@ -104,6 +108,7 @@ def create_parser() -> argparse.ArgumentParser:
     test_parser.add_argument(
         "--target", action="append", choices=("cs", "csharp", "py", "python"), default=None
     )
+    docs_parser = subparsers.add_parser("docs", help="Generates documentation.")
     help_parser = subparsers.add_parser("help", help="Prints this help message.")
 
     return parser
@@ -236,6 +241,16 @@ def clean(args: argparse.Namespace, rest: Sequence[str]) -> None:
 
     remove_pycache_dirs(root_path=PYTHON_SRC_DIR)
     remove_pycache_dirs(root_path=PYTHON_TEST_DIR)
+
+
+def docs(args: argparse.Namespace, rest: Sequence[str]) -> None:
+    get_logger().info("Generating documentation...")
+
+    try:
+        subprocess.run(["docfx", str(CSHARP_ROOT_DIR / "docfx.json")])
+    except subprocess.CalledProcessError as e:
+        print(f"Encountered error {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def install(args: argparse.Namespace, rest: Sequence[str]) -> None:
