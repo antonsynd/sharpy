@@ -1,0 +1,103 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.RightAddable`2
+  commentId: T:Sharpy.RightAddable`2
+  id: RightAddable`2
+  parent: Sharpy
+  children:
+  - Sharpy.RightAddable`2.__RAdd__(`1)
+  langs:
+  - csharp
+  - vb
+  name: RightAddable<T, U>
+  nameWithType: RightAddable<T, U>
+  fullName: Sharpy.RightAddable<T, U>
+  type: Interface
+  source:
+    remote:
+      path: dotnet/src/Sharpy/RightAddable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: RightAddable
+    path: ../src/Sharpy/RightAddable.cs
+    startLine: 2
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public interface RightAddable<T, U>
+    typeParameters:
+    - id: T
+    - id: U
+    content.vb: Public Interface RightAddable(Of T, U)
+  nameWithType.vb: RightAddable(Of T, U)
+  fullName.vb: Sharpy.RightAddable(Of T, U)
+  name.vb: RightAddable(Of T, U)
+- uid: Sharpy.RightAddable`2.__RAdd__(`1)
+  commentId: M:Sharpy.RightAddable`2.__RAdd__(`1)
+  id: __RAdd__(`1)
+  parent: Sharpy.RightAddable`2
+  langs:
+  - csharp
+  - vb
+  name: __RAdd__(U)
+  nameWithType: RightAddable<T, U>.__RAdd__(U)
+  fullName: Sharpy.RightAddable<T, U>.__RAdd__(U)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/RightAddable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __RAdd__
+    path: ../src/Sharpy/RightAddable.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: T __RAdd__(U other)
+    parameters:
+    - id: other
+      type: '{U}'
+    return:
+      type: '{T}'
+    content.vb: Function __RAdd__(other As U) As T
+  overload: Sharpy.RightAddable`2.__RAdd__*
+  nameWithType.vb: RightAddable(Of T, U).__RAdd__(U)
+  fullName.vb: Sharpy.RightAddable(Of T, U).__RAdd__(U)
+references:
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: Sharpy.RightAddable`2.__RAdd__*
+  commentId: Overload:Sharpy.RightAddable`2.__RAdd__
+  href: Sharpy.RightAddable-2.html#Sharpy_RightAddable_2___RAdd____1_
+  name: __RAdd__
+  nameWithType: RightAddable<T, U>.__RAdd__
+  fullName: Sharpy.RightAddable<T, U>.__RAdd__
+  nameWithType.vb: RightAddable(Of T, U).__RAdd__
+  fullName.vb: Sharpy.RightAddable(Of T, U).__RAdd__
+- uid: '{U}'
+  commentId: '!:U'
+  definition: U
+  name: U
+  nameWithType: U
+  fullName: U
+- uid: '{T}'
+  commentId: '!:T'
+  definition: T
+  name: T
+  nameWithType: T
+  fullName: T
+- uid: U
+  name: U
+  nameWithType: U
+  fullName: U
+- uid: T
+  name: T
+  nameWithType: T
+  fullName: T

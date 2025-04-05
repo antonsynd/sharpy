@@ -64,6 +64,13 @@ namespace Sharpy
             Sort(value => value, reverse);
         }
 
+        /// <summary>
+        /// Sort the items of the list in place (the arguments can be used for
+        /// sort customization, see Sorted() for their explanation).
+        /// </summary>
+        /// <remarks>
+        /// This is not a stable sort.
+        /// </remarks>
         public void Sort<TKey>(Func<T, TKey> key, bool reverse = false)
         {
             if (key is null)

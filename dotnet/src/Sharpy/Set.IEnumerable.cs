@@ -4,6 +4,7 @@ namespace Sharpy
 {
     public sealed partial class Set<T>
     {
+        /// <inheritdoc/>
         public IEnumerator<T> GetEnumerator()
         {
             foreach (var elem in _set)

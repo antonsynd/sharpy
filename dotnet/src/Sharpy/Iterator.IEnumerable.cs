@@ -5,6 +5,7 @@ namespace Sharpy
 {
     public abstract partial class Iterator<T> : Iterable<T>
     {
+        /// <inheritdoc/>
         public IEnumerator<T> GetEnumerator()
         {
             while (true)

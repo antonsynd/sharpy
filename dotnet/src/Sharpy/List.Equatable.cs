@@ -2,6 +2,7 @@ namespace Sharpy
 {
     public sealed partial class List<T>
     {
+        /// <inheritdoc/>
         public override bool __Eq__(Object obj)
         {
             if (obj is List<T> other)
@@ -12,6 +13,7 @@ namespace Sharpy
             return false;
         }
 
+        /// <inheritdoc/>
         public bool __Eq__(List<T> other)
         {
             if (other is null)

@@ -3,7 +3,7 @@ namespace Sharpy
     public abstract partial class Object
     {
         /// <remarks>
-        /// Comparison between Objects is based on <see cref="__Eq__()"/>.
+        /// Comparison between Objects is based on <see cref="__Eq__(Object)"/>.
         /// </remarks>
         public static bool operator ==(Object left, Object right)
         {
@@ -16,7 +16,7 @@ namespace Sharpy
         }
 
         /// <remarks>
-        /// Comparison between Objects is based on <see cref="__Eq__()"/>.
+        /// Comparison between Objects is based on <see cref="__Eq__(Object)"/>.
         /// </remarks>
         public static bool operator !=(Object left, Object right)
         {
@@ -25,9 +25,9 @@ namespace Sharpy
 
         /// <remarks>
         /// Comparison between Sharpy Objects and C# objects is based on
-        /// <see cref="Equals()"/> which is false if the C# object is not
+        /// <see cref="Equals(object)"/> which is false if the C# object is not
         /// a type-erased Sharpy Object. If it is one, then it uses
-        /// <see cref="__Eq__()"/>.
+        /// <see cref="__Eq__(Object)"/>.
         /// </remarks>
         public static bool operator ==(Object left, object right)
         {
@@ -36,9 +36,9 @@ namespace Sharpy
 
         /// <remarks>
         /// Comparison between Sharpy Objects and C# objects is based on
-        /// <see cref="Equals()"/> which is false if the C# object is not
+        /// <see cref="Equals(object)"/> which is false if the C# object is not
         /// a type-erased Sharpy Object. If it is one, then it uses
-        /// <see cref="__Eq__()"/>.
+        /// <see cref="__Eq__(Object)"/>.
         /// </remarks>
         public static bool operator !=(Object left, object right)
         {
@@ -47,7 +47,7 @@ namespace Sharpy
 
         /// <remarks>
         /// Symmetrical equality prioritizing Sharpy Object's
-        /// <see cref="Equals()"/> implementation.
+        /// <see cref="Equals(Object)"/> implementation.
         /// </remarks>
         public static bool operator ==(object left, Object right)
         {
@@ -56,7 +56,7 @@ namespace Sharpy
 
         /// <remarks>
         /// Symmetrical equality prioritizing Sharpy Object's
-        /// <see cref="Equals()"/> implementation.
+        /// <see cref="Equals(Object)"/> implementation.
         /// </remarks>
         public static bool operator !=(object left, Object right)
         {

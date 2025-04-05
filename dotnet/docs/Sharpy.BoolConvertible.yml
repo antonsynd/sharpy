@@ -1,0 +1,88 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.BoolConvertible
+  commentId: T:Sharpy.BoolConvertible
+  id: BoolConvertible
+  parent: Sharpy
+  children:
+  - Sharpy.BoolConvertible.__Bool__
+  langs:
+  - csharp
+  - vb
+  name: BoolConvertible
+  nameWithType: BoolConvertible
+  fullName: Sharpy.BoolConvertible
+  type: Interface
+  source:
+    remote:
+      path: dotnet/src/Sharpy/BoolConvertible.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: BoolConvertible
+    path: ../src/Sharpy/BoolConvertible.cs
+    startLine: 2
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public interface BoolConvertible
+    content.vb: Public Interface BoolConvertible
+- uid: Sharpy.BoolConvertible.__Bool__
+  commentId: M:Sharpy.BoolConvertible.__Bool__
+  id: __Bool__
+  parent: Sharpy.BoolConvertible
+  langs:
+  - csharp
+  - vb
+  name: __Bool__()
+  nameWithType: BoolConvertible.__Bool__()
+  fullName: Sharpy.BoolConvertible.__Bool__()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/BoolConvertible.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Bool__
+    path: ../src/Sharpy/BoolConvertible.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: bool __Bool__()
+    return:
+      type: System.Boolean
+    content.vb: Function __Bool__() As Boolean
+  overload: Sharpy.BoolConvertible.__Bool__*
+references:
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: Sharpy.BoolConvertible.__Bool__*
+  commentId: Overload:Sharpy.BoolConvertible.__Bool__
+  href: Sharpy.BoolConvertible.html#Sharpy_BoolConvertible___Bool__
+  name: __Bool__
+  nameWithType: BoolConvertible.__Bool__
+  fullName: Sharpy.BoolConvertible.__Bool__
+- uid: System.Boolean
+  commentId: T:System.Boolean
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.boolean
+  name: bool
+  nameWithType: bool
+  fullName: bool
+  nameWithType.vb: Boolean
+  fullName.vb: Boolean
+  name.vb: Boolean
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System

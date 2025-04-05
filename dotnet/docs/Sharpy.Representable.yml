@@ -1,0 +1,88 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.Representable
+  commentId: T:Sharpy.Representable
+  id: Representable
+  parent: Sharpy
+  children:
+  - Sharpy.Representable.__Repr__
+  langs:
+  - csharp
+  - vb
+  name: Representable
+  nameWithType: Representable
+  fullName: Sharpy.Representable
+  type: Interface
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Representable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Representable
+    path: ../src/Sharpy/Representable.cs
+    startLine: 2
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public interface Representable
+    content.vb: Public Interface Representable
+- uid: Sharpy.Representable.__Repr__
+  commentId: M:Sharpy.Representable.__Repr__
+  id: __Repr__
+  parent: Sharpy.Representable
+  langs:
+  - csharp
+  - vb
+  name: __Repr__()
+  nameWithType: Representable.__Repr__()
+  fullName: Sharpy.Representable.__Repr__()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Representable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Repr__
+    path: ../src/Sharpy/Representable.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: string __Repr__()
+    return:
+      type: System.String
+    content.vb: Function __Repr__() As String
+  overload: Sharpy.Representable.__Repr__*
+references:
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: Sharpy.Representable.__Repr__*
+  commentId: Overload:Sharpy.Representable.__Repr__
+  href: Sharpy.Representable.html#Sharpy_Representable___Repr__
+  name: __Repr__
+  nameWithType: Representable.__Repr__
+  fullName: Sharpy.Representable.__Repr__
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System

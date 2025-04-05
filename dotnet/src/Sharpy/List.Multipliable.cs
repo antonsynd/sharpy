@@ -2,6 +2,7 @@ namespace Sharpy
 {
     public sealed partial class List<T>
     {
+        /// <inheritdoc/>
         public List<T> __Mul__(int i)
         {
             var res = new List<T>();

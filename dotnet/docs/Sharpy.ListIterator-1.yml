@@ -1,0 +1,720 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.ListIterator`1
+  commentId: T:Sharpy.ListIterator`1
+  id: ListIterator`1
+  parent: Sharpy
+  children:
+  - Sharpy.ListIterator`1.__Next__
+  langs:
+  - csharp
+  - vb
+  name: ListIterator<T>
+  nameWithType: ListIterator<T>
+  fullName: Sharpy.ListIterator<T>
+  type: Class
+  source:
+    remote:
+      path: dotnet/src/Sharpy/ListIterator.Iterator.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: ListIterator
+    path: ../src/Sharpy/ListIterator.Iterator.cs
+    startLine: 2
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: 'public sealed class ListIterator<T> : Iterator<T>, Iterable<T>, IEnumerable<T>, IEnumerable'
+    typeParameters:
+    - id: T
+    content.vb: Public NotInheritable Class ListIterator(Of T) Inherits Iterator(Of T) Implements Iterable(Of T), IEnumerable(Of T), IEnumerable
+  inheritance:
+  - System.Object
+  - Sharpy.Iterator{{T}}
+  implements:
+  - Sharpy.Collections.Interfaces.Iterable{{T}}
+  - System.Collections.Generic.IEnumerable{{T}}
+  - System.Collections.IEnumerable
+  inheritedMembers:
+  - Sharpy.Iterator{{T}}.GetEnumerator
+  - Sharpy.Iterator{{T}}.__Iter__
+  - System.Object.Equals(System.Object)
+  - System.Object.Equals(System.Object,System.Object)
+  - System.Object.GetHashCode
+  - System.Object.GetType
+  - System.Object.ReferenceEquals(System.Object,System.Object)
+  - System.Object.ToString
+  nameWithType.vb: ListIterator(Of T)
+  fullName.vb: Sharpy.ListIterator(Of T)
+  name.vb: ListIterator(Of T)
+- uid: Sharpy.ListIterator`1.__Next__
+  commentId: M:Sharpy.ListIterator`1.__Next__
+  id: __Next__
+  parent: Sharpy.ListIterator`1
+  langs:
+  - csharp
+  - vb
+  name: __Next__()
+  nameWithType: ListIterator<T>.__Next__()
+  fullName: Sharpy.ListIterator<T>.__Next__()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/ListIterator.Iterator.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Next__
+    path: ../src/Sharpy/ListIterator.Iterator.cs
+    startLine: 5
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    Return the next item from the iterator. If there are no further
+
+    items, raises the <xref href="Sharpy.StopIteration" data-throw-if-not-resolved="false"></xref> exception.
+  example: []
+  syntax:
+    content: public override T __Next__()
+    return:
+      type: '{T}'
+    content.vb: Public Overrides Function __Next__() As T
+  overridden: Sharpy.Iterator{{T}}.__Next__
+  overload: Sharpy.ListIterator`1.__Next__*
+  nameWithType.vb: ListIterator(Of T).__Next__()
+  fullName.vb: Sharpy.ListIterator(Of T).__Next__()
+references:
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: System.Object
+  commentId: T:System.Object
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object
+  name: object
+  nameWithType: object
+  fullName: object
+  nameWithType.vb: Object
+  fullName.vb: Object
+  name.vb: Object
+- uid: Sharpy.Iterator{{T}}
+  commentId: T:Sharpy.Iterator{``0}
+  parent: Sharpy
+  definition: Sharpy.Iterator`1
+  href: Sharpy.Iterator-1.html
+  name: Iterator<T>
+  nameWithType: Iterator<T>
+  fullName: Sharpy.Iterator<T>
+  nameWithType.vb: Iterator(Of T)
+  fullName.vb: Sharpy.Iterator(Of T)
+  name.vb: Iterator(Of T)
+  spec.csharp:
+  - uid: Sharpy.Iterator`1
+    name: Iterator
+    href: Sharpy.Iterator-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Iterator`1
+    name: Iterator
+    href: Sharpy.Iterator-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Iterable{{T}}
+  commentId: T:Sharpy.Collections.Interfaces.Iterable{``0}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.Iterable`1
+  href: Sharpy.Collections.Interfaces.Iterable-1.html
+  name: Iterable<T>
+  nameWithType: Iterable<T>
+  fullName: Sharpy.Collections.Interfaces.Iterable<T>
+  nameWithType.vb: Iterable(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T)
+  name.vb: Iterable(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic.IEnumerable{{T}}
+  commentId: T:System.Collections.Generic.IEnumerable{`0}
+  parent: System.Collections.Generic
+  definition: System.Collections.Generic.IEnumerable`1
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  name: IEnumerable<T>
+  nameWithType: IEnumerable<T>
+  fullName: System.Collections.Generic.IEnumerable<T>
+  nameWithType.vb: IEnumerable(Of T)
+  fullName.vb: System.Collections.Generic.IEnumerable(Of T)
+  name.vb: IEnumerable(Of T)
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.IEnumerable
+  commentId: T:System.Collections.IEnumerable
+  parent: System.Collections
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.ienumerable
+  name: IEnumerable
+  nameWithType: IEnumerable
+  fullName: System.Collections.IEnumerable
+- uid: Sharpy.Iterator{{T}}.GetEnumerator
+  commentId: M:Sharpy.Iterator{`0}.GetEnumerator
+  parent: Sharpy.Iterator{{T}}
+  definition: Sharpy.Iterator`1.GetEnumerator
+  href: Sharpy.Iterator-1.html#Sharpy_Iterator_1_GetEnumerator
+  name: GetEnumerator()
+  nameWithType: Iterator<T>.GetEnumerator()
+  fullName: Sharpy.Iterator<T>.GetEnumerator()
+  nameWithType.vb: Iterator(Of T).GetEnumerator()
+  fullName.vb: Sharpy.Iterator(Of T).GetEnumerator()
+  spec.csharp:
+  - uid: Sharpy.Iterator{`0}.GetEnumerator
+    name: GetEnumerator
+    href: Sharpy.Iterator-1.html#Sharpy_Iterator_1_GetEnumerator
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Iterator{`0}.GetEnumerator
+    name: GetEnumerator
+    href: Sharpy.Iterator-1.html#Sharpy_Iterator_1_GetEnumerator
+  - name: (
+  - name: )
+- uid: Sharpy.Iterator{{T}}.__Iter__
+  commentId: M:Sharpy.Iterator{`0}.__Iter__
+  parent: Sharpy.Iterator{{T}}
+  definition: Sharpy.Iterator`1.__Iter__
+  href: Sharpy.Iterator-1.html#Sharpy_Iterator_1___Iter__
+  name: __Iter__()
+  nameWithType: Iterator<T>.__Iter__()
+  fullName: Sharpy.Iterator<T>.__Iter__()
+  nameWithType.vb: Iterator(Of T).__Iter__()
+  fullName.vb: Sharpy.Iterator(Of T).__Iter__()
+  spec.csharp:
+  - uid: Sharpy.Iterator{`0}.__Iter__
+    name: __Iter__
+    href: Sharpy.Iterator-1.html#Sharpy_Iterator_1___Iter__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Iterator{`0}.__Iter__
+    name: __Iter__
+    href: Sharpy.Iterator-1.html#Sharpy_Iterator_1___Iter__
+  - name: (
+  - name: )
+- uid: System.Object.Equals(System.Object)
+  commentId: M:System.Object.Equals(System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  name: Equals(object)
+  nameWithType: object.Equals(object)
+  fullName: object.Equals(object)
+  nameWithType.vb: Object.Equals(Object)
+  fullName.vb: Object.Equals(Object)
+  name.vb: Equals(Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.Equals(System.Object,System.Object)
+  commentId: M:System.Object.Equals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  name: Equals(object, object)
+  nameWithType: object.Equals(object, object)
+  fullName: object.Equals(object, object)
+  nameWithType.vb: Object.Equals(Object, Object)
+  fullName.vb: Object.Equals(Object, Object)
+  name.vb: Equals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.GetHashCode
+  commentId: M:System.Object.GetHashCode
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  name: GetHashCode()
+  nameWithType: object.GetHashCode()
+  fullName: object.GetHashCode()
+  nameWithType.vb: Object.GetHashCode()
+  fullName.vb: Object.GetHashCode()
+  spec.csharp:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+- uid: System.Object.GetType
+  commentId: M:System.Object.GetType
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  name: GetType()
+  nameWithType: object.GetType()
+  fullName: object.GetType()
+  nameWithType.vb: Object.GetType()
+  fullName.vb: Object.GetType()
+  spec.csharp:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+- uid: System.Object.ReferenceEquals(System.Object,System.Object)
+  commentId: M:System.Object.ReferenceEquals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  name: ReferenceEquals(object, object)
+  nameWithType: object.ReferenceEquals(object, object)
+  fullName: object.ReferenceEquals(object, object)
+  nameWithType.vb: Object.ReferenceEquals(Object, Object)
+  fullName.vb: Object.ReferenceEquals(Object, Object)
+  name.vb: ReferenceEquals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.ToString
+  commentId: M:System.Object.ToString
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  name: ToString()
+  nameWithType: object.ToString()
+  fullName: object.ToString()
+  nameWithType.vb: Object.ToString()
+  fullName.vb: Object.ToString()
+  spec.csharp:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: Sharpy.Iterator`1
+  commentId: T:Sharpy.Iterator`1
+  parent: Sharpy
+  href: Sharpy.Iterator-1.html
+  name: Iterator<T>
+  nameWithType: Iterator<T>
+  fullName: Sharpy.Iterator<T>
+  nameWithType.vb: Iterator(Of T)
+  fullName.vb: Sharpy.Iterator(Of T)
+  name.vb: Iterator(Of T)
+  spec.csharp:
+  - uid: Sharpy.Iterator`1
+    name: Iterator
+    href: Sharpy.Iterator-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Iterator`1
+    name: Iterator
+    href: Sharpy.Iterator-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Iterable`1
+  commentId: T:Sharpy.Collections.Interfaces.Iterable`1
+  href: Sharpy.Collections.Interfaces.Iterable-1.html
+  name: Iterable<T>
+  nameWithType: Iterable<T>
+  fullName: Sharpy.Collections.Interfaces.Iterable<T>
+  nameWithType.vb: Iterable(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T)
+  name.vb: Iterable(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces
+  commentId: N:Sharpy.Collections.Interfaces
+  href: Sharpy.html
+  name: Sharpy.Collections.Interfaces
+  nameWithType: Sharpy.Collections.Interfaces
+  fullName: Sharpy.Collections.Interfaces
+  spec.csharp:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+  spec.vb:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+- uid: System.Collections.Generic.IEnumerable`1
+  commentId: T:System.Collections.Generic.IEnumerable`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  name: IEnumerable<T>
+  nameWithType: IEnumerable<T>
+  fullName: System.Collections.Generic.IEnumerable<T>
+  nameWithType.vb: IEnumerable(Of T)
+  fullName.vb: System.Collections.Generic.IEnumerable(Of T)
+  name.vb: IEnumerable(Of T)
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic
+  commentId: N:System.Collections.Generic
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Collections.Generic
+  nameWithType: System.Collections.Generic
+  fullName: System.Collections.Generic
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+- uid: System.Collections
+  commentId: N:System.Collections
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Collections
+  nameWithType: System.Collections
+  fullName: System.Collections
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+- uid: Sharpy.Iterator`1.GetEnumerator
+  commentId: M:Sharpy.Iterator`1.GetEnumerator
+  href: Sharpy.Iterator-1.html#Sharpy_Iterator_1_GetEnumerator
+  name: GetEnumerator()
+  nameWithType: Iterator<T>.GetEnumerator()
+  fullName: Sharpy.Iterator<T>.GetEnumerator()
+  nameWithType.vb: Iterator(Of T).GetEnumerator()
+  fullName.vb: Sharpy.Iterator(Of T).GetEnumerator()
+  spec.csharp:
+  - uid: Sharpy.Iterator`1.GetEnumerator
+    name: GetEnumerator
+    href: Sharpy.Iterator-1.html#Sharpy_Iterator_1_GetEnumerator
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Iterator`1.GetEnumerator
+    name: GetEnumerator
+    href: Sharpy.Iterator-1.html#Sharpy_Iterator_1_GetEnumerator
+  - name: (
+  - name: )
+- uid: Sharpy.Iterator`1.__Iter__
+  commentId: M:Sharpy.Iterator`1.__Iter__
+  href: Sharpy.Iterator-1.html#Sharpy_Iterator_1___Iter__
+  name: __Iter__()
+  nameWithType: Iterator<T>.__Iter__()
+  fullName: Sharpy.Iterator<T>.__Iter__()
+  nameWithType.vb: Iterator(Of T).__Iter__()
+  fullName.vb: Sharpy.Iterator(Of T).__Iter__()
+  spec.csharp:
+  - uid: Sharpy.Iterator`1.__Iter__
+    name: __Iter__
+    href: Sharpy.Iterator-1.html#Sharpy_Iterator_1___Iter__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Iterator`1.__Iter__
+    name: __Iter__
+    href: Sharpy.Iterator-1.html#Sharpy_Iterator_1___Iter__
+  - name: (
+  - name: )
+- uid: Sharpy.StopIteration
+  commentId: T:Sharpy.StopIteration
+  href: Sharpy.StopIteration.html
+  name: StopIteration
+  nameWithType: StopIteration
+  fullName: Sharpy.StopIteration
+- uid: Sharpy.Iterator{{T}}.__Next__
+  commentId: M:Sharpy.Iterator{`0}.__Next__
+  parent: Sharpy.Iterator{{T}}
+  definition: Sharpy.Iterator`1.__Next__
+  href: Sharpy.Iterator-1.html#Sharpy_Iterator_1___Next__
+  name: __Next__()
+  nameWithType: Iterator<T>.__Next__()
+  fullName: Sharpy.Iterator<T>.__Next__()
+  nameWithType.vb: Iterator(Of T).__Next__()
+  fullName.vb: Sharpy.Iterator(Of T).__Next__()
+  spec.csharp:
+  - uid: Sharpy.Iterator{`0}.__Next__
+    name: __Next__
+    href: Sharpy.Iterator-1.html#Sharpy_Iterator_1___Next__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Iterator{`0}.__Next__
+    name: __Next__
+    href: Sharpy.Iterator-1.html#Sharpy_Iterator_1___Next__
+  - name: (
+  - name: )
+- uid: Sharpy.ListIterator`1.__Next__*
+  commentId: Overload:Sharpy.ListIterator`1.__Next__
+  href: Sharpy.ListIterator-1.html#Sharpy_ListIterator_1___Next__
+  name: __Next__
+  nameWithType: ListIterator<T>.__Next__
+  fullName: Sharpy.ListIterator<T>.__Next__
+  nameWithType.vb: ListIterator(Of T).__Next__
+  fullName.vb: Sharpy.ListIterator(Of T).__Next__
+- uid: '{T}'
+  commentId: '!:T'
+  definition: T
+  name: T
+  nameWithType: T
+  fullName: T
+- uid: Sharpy.Iterator`1.__Next__
+  commentId: M:Sharpy.Iterator`1.__Next__
+  href: Sharpy.Iterator-1.html#Sharpy_Iterator_1___Next__
+  name: __Next__()
+  nameWithType: Iterator<T>.__Next__()
+  fullName: Sharpy.Iterator<T>.__Next__()
+  nameWithType.vb: Iterator(Of T).__Next__()
+  fullName.vb: Sharpy.Iterator(Of T).__Next__()
+  spec.csharp:
+  - uid: Sharpy.Iterator`1.__Next__
+    name: __Next__
+    href: Sharpy.Iterator-1.html#Sharpy_Iterator_1___Next__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Iterator`1.__Next__
+    name: __Next__
+    href: Sharpy.Iterator-1.html#Sharpy_Iterator_1___Next__
+  - name: (
+  - name: )
+- uid: T
+  name: T
+  nameWithType: T
+  fullName: T

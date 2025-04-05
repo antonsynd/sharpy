@@ -1,0 +1,5089 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.Dict`2
+  commentId: T:Sharpy.Dict`2
+  id: Dict`2
+  parent: Sharpy
+  children:
+  - Sharpy.Dict`2.#ctor
+  - Sharpy.Dict`2.#ctor(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  - Sharpy.Dict`2.#ctor(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  - Sharpy.Dict`2.Clear
+  - Sharpy.Dict`2.Contains(`0)
+  - Sharpy.Dict`2.Copy
+  - Sharpy.Dict`2.Get(`0)
+  - Sharpy.Dict`2.Get(`0,`1)
+  - Sharpy.Dict`2.GetEnumerator
+  - Sharpy.Dict`2.Item(`0)
+  - Sharpy.Dict`2.Items
+  - Sharpy.Dict`2.Keys
+  - Sharpy.Dict`2.Pop(`0)
+  - Sharpy.Dict`2.Pop(`0,`1)
+  - Sharpy.Dict`2.PopItem(System.Boolean)
+  - Sharpy.Dict`2.SetDefault(`0,`1)
+  - Sharpy.Dict`2.ToDictionary
+  - Sharpy.Dict`2.Update(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  - Sharpy.Dict`2.Update(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  - Sharpy.Dict`2.Values
+  - Sharpy.Dict`2.__Bool__
+  - Sharpy.Dict`2.__Contains__(`0)
+  - Sharpy.Dict`2.__DelItem__(`0)
+  - Sharpy.Dict`2.__Eq__(Sharpy.Dict{`0,`1})
+  - Sharpy.Dict`2.__Eq__(Sharpy.Object)
+  - Sharpy.Dict`2.__GetItem__(`0)
+  - Sharpy.Dict`2.__Hash__
+  - Sharpy.Dict`2.__IOr__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  - Sharpy.Dict`2.__IOr__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  - Sharpy.Dict`2.__IOr__(Sharpy.Dict{`0,`1})
+  - Sharpy.Dict`2.__Iter__
+  - Sharpy.Dict`2.__Len__
+  - Sharpy.Dict`2.__Or__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  - Sharpy.Dict`2.__Or__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  - Sharpy.Dict`2.__Or__(Sharpy.Dict{`0,`1})
+  - Sharpy.Dict`2.__Repr__
+  - Sharpy.Dict`2.__SetItem__(`0,`1)
+  - Sharpy.Dict`2.op_BitwiseOr(Sharpy.Dict{`0,`1},Sharpy.Dict{`0,`1})
+  - Sharpy.Dict`2.op_Equality(Sharpy.Dict{`0,`1},Sharpy.Dict{`0,`1})
+  - Sharpy.Dict`2.op_False(Sharpy.Dict{`0,`1})
+  - Sharpy.Dict`2.op_Inequality(Sharpy.Dict{`0,`1},Sharpy.Dict{`0,`1})
+  - Sharpy.Dict`2.op_True(Sharpy.Dict{`0,`1})
+  langs:
+  - csharp
+  - vb
+  name: Dict<K, V>
+  nameWithType: Dict<K, V>
+  fullName: Sharpy.Dict<K, V>
+  type: Class
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Dict
+    path: ../src/Sharpy/Dict.cs
+    startLine: 6
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: 'public sealed class Dict<K, V> : Object, Equatable<Object>, Hashable, Inequatable<Object>, IEquatable<Object>, StrConvertible, Representable, BoolConvertible, Identifiable, MutableMapping<K, V>, Mapping<K, V>, Collection<K>, Container<K>, Iterable<K>, IEnumerable<K>, IEnumerable, Sized where K : notnull'
+    typeParameters:
+    - id: K
+    - id: V
+    content.vb: Public NotInheritable Class Dict(Of K, V) Inherits Object Implements Equatable(Of Object), Hashable, Inequatable(Of Object), IEquatable(Of Object), StrConvertible, Representable, BoolConvertible, Identifiable, MutableMapping(Of K, V), Mapping(Of K, V), Collection(Of K), Container(Of K), Iterable(Of K), IEnumerable(Of K), IEnumerable, Sized
+  inheritance:
+  - System.Object
+  - Sharpy.Object
+  implements:
+  - Sharpy.Equatable{Sharpy.Object}
+  - Sharpy.Hashable
+  - Sharpy.Inequatable{Sharpy.Object}
+  - System.IEquatable{Sharpy.Object}
+  - Sharpy.StrConvertible
+  - Sharpy.Representable
+  - Sharpy.BoolConvertible
+  - Sharpy.Identifiable
+  - Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}
+  - Sharpy.Collections.Interfaces.Mapping{{K},{V}}
+  - Sharpy.Collections.Interfaces.Collection{{K}}
+  - Sharpy.Collections.Interfaces.Container{{K}}
+  - Sharpy.Collections.Interfaces.Iterable{{K}}
+  - System.Collections.Generic.IEnumerable{{K}}
+  - System.Collections.IEnumerable
+  - Sharpy.Collections.Interfaces.Sized
+  inheritedMembers:
+  - Sharpy.Object.__Eq__(System.Object)
+  - Sharpy.Object.__Id__
+  - Sharpy.Object.Equals(Sharpy.Object)
+  - Sharpy.Object.__Ne__(Sharpy.Object)
+  - Sharpy.Object.__Ne__(System.Object)
+  - Sharpy.Object.Equals(System.Object)
+  - Sharpy.Object.GetHashCode
+  - Sharpy.Object.ToString
+  - Sharpy.Object.__Str__
+  - System.Object.Equals(System.Object,System.Object)
+  - System.Object.GetType
+  - System.Object.ReferenceEquals(System.Object,System.Object)
+  nameWithType.vb: Dict(Of K, V)
+  fullName.vb: Sharpy.Dict(Of K, V)
+  name.vb: Dict(Of K, V)
+- uid: Sharpy.Dict`2.#ctor
+  commentId: M:Sharpy.Dict`2.#ctor
+  id: '#ctor'
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: Dict()
+  nameWithType: Dict<K, V>.Dict()
+  fullName: Sharpy.Dict<K, V>.Dict()
+  type: Constructor
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: .ctor
+    path: ../src/Sharpy/Dict.cs
+    startLine: 10
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public Dict()
+    content.vb: Public Sub New()
+  overload: Sharpy.Dict`2.#ctor*
+  nameWithType.vb: Dict(Of K, V).New()
+  fullName.vb: Sharpy.Dict(Of K, V).New()
+  name.vb: New()
+- uid: Sharpy.Dict`2.#ctor(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  commentId: M:Sharpy.Dict`2.#ctor(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  id: '#ctor(Sharpy.Collections.Interfaces.Mapping{`0,`1})'
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: Dict(Mapping<K, V>)
+  nameWithType: Dict<K, V>.Dict(Mapping<K, V>)
+  fullName: Sharpy.Dict<K, V>.Dict(Sharpy.Collections.Interfaces.Mapping<K, V>)
+  type: Constructor
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: .ctor
+    path: ../src/Sharpy/Dict.cs
+    startLine: 15
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public Dict(Mapping<K, V> mapping)
+    parameters:
+    - id: mapping
+      type: Sharpy.Collections.Interfaces.Mapping{{K},{V}}
+    content.vb: Public Sub New(mapping As Mapping(Of K, V))
+  overload: Sharpy.Dict`2.#ctor*
+  nameWithType.vb: Dict(Of K, V).New(Mapping(Of K, V))
+  fullName.vb: Sharpy.Dict(Of K, V).New(Sharpy.Collections.Interfaces.Mapping(Of K, V))
+  name.vb: New(Mapping(Of K, V))
+- uid: Sharpy.Dict`2.#ctor(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  commentId: M:Sharpy.Dict`2.#ctor(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  id: '#ctor(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})'
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: Dict(Iterable<(K, V)>)
+  nameWithType: Dict<K, V>.Dict(Iterable<(K, V)>)
+  fullName: Sharpy.Dict<K, V>.Dict(Sharpy.Collections.Interfaces.Iterable<(K, V)>)
+  type: Constructor
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: .ctor
+    path: ../src/Sharpy/Dict.cs
+    startLine: 23
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public Dict(Iterable<(K, V)> iterable)
+    parameters:
+    - id: iterable
+      type: Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{{K},{V}}}
+    content.vb: Public Sub New(iterable As Iterable(Of (K, V)))
+  overload: Sharpy.Dict`2.#ctor*
+  nameWithType.vb: Dict(Of K, V).New(Iterable(Of (K, V)))
+  fullName.vb: Sharpy.Dict(Of K, V).New(Sharpy.Collections.Interfaces.Iterable(Of (K, V)))
+  name.vb: New(Iterable(Of (K, V)))
+- uid: Sharpy.Dict`2.Copy
+  commentId: M:Sharpy.Dict`2.Copy
+  id: Copy
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: Copy()
+  nameWithType: Dict<K, V>.Copy()
+  fullName: Sharpy.Dict<K, V>.Copy()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Copy
+    path: ../src/Sharpy/Dict.cs
+    startLine: 34
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: Return a shallow copy of the dictionary.
+  example: []
+  syntax:
+    content: public Dict<K, V> Copy()
+    return:
+      type: Sharpy.Dict`2
+    content.vb: Public Function Copy() As Dict(Of K, V)
+  overload: Sharpy.Dict`2.Copy*
+  nameWithType.vb: Dict(Of K, V).Copy()
+  fullName.vb: Sharpy.Dict(Of K, V).Copy()
+- uid: Sharpy.Dict`2.Clear
+  commentId: M:Sharpy.Dict`2.Clear
+  id: Clear
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: Clear()
+  nameWithType: Dict<K, V>.Clear()
+  fullName: Sharpy.Dict<K, V>.Clear()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Clear
+    path: ../src/Sharpy/Dict.cs
+    startLine: 47
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: Clears all key-value pairs from this mapping.
+  example: []
+  syntax:
+    content: public void Clear()
+    content.vb: Public Sub Clear()
+  overload: Sharpy.Dict`2.Clear*
+  implements:
+  - Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.Clear
+  nameWithType.vb: Dict(Of K, V).Clear()
+  fullName.vb: Sharpy.Dict(Of K, V).Clear()
+- uid: Sharpy.Dict`2.Contains(`0)
+  commentId: M:Sharpy.Dict`2.Contains(`0)
+  id: Contains(`0)
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: Contains(K)
+  nameWithType: Dict<K, V>.Contains(K)
+  fullName: Sharpy.Dict<K, V>.Contains(K)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Contains
+    path: ../src/Sharpy/Dict.cs
+    startLine: 52
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  remarks: >-
+    In subclasses, this must call <xref href="Sharpy.Collections.Interfaces.Container%601.__Contains__(%600)" data-throw-if-not-resolved="false"></xref> to
+
+    correctly implement <code>x in y</code> behavior.
+  example: []
+  syntax:
+    content: public bool Contains(K key)
+    parameters:
+    - id: key
+      type: '{K}'
+    return:
+      type: System.Boolean
+    content.vb: Public Function Contains(key As K) As Boolean
+  overload: Sharpy.Dict`2.Contains*
+  implements:
+  - Sharpy.Collections.Interfaces.Container{{K}}.Contains({K})
+  nameWithType.vb: Dict(Of K, V).Contains(K)
+  fullName.vb: Sharpy.Dict(Of K, V).Contains(K)
+- uid: Sharpy.Dict`2.Get(`0)
+  commentId: M:Sharpy.Dict`2.Get(`0)
+  id: Get(`0)
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: Get(K)
+  nameWithType: Dict<K, V>.Get(K)
+  fullName: Sharpy.Dict<K, V>.Get(K)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Get
+    path: ../src/Sharpy/Dict.cs
+    startLine: 57
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    Gets the value with the given key, if it exists. If it doesn't
+
+    exist, it returns <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a>.
+  remarks: >-
+    Internally, this should call <xref href="Sharpy.Collections.Interfaces.Mapping%602.__GetItem__(%600)" data-throw-if-not-resolved="false"></xref>, unless
+
+    the class is sealed, in which case it doesn't matter.
+  example: []
+  syntax:
+    content: public V? Get(K key)
+    parameters:
+    - id: key
+      type: '{K}'
+    return:
+      type: '{V}'
+    content.vb: Public Function [Get](key As K) As V
+  overload: Sharpy.Dict`2.Get*
+  implements:
+  - Sharpy.Collections.Interfaces.Mapping{{K},{V}}.Get({K})
+  nameWithType.vb: Dict(Of K, V).Get(K)
+  fullName.vb: Sharpy.Dict(Of K, V).Get(K)
+- uid: Sharpy.Dict`2.Get(`0,`1)
+  commentId: M:Sharpy.Dict`2.Get(`0,`1)
+  id: Get(`0,`1)
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: Get(K, V)
+  nameWithType: Dict<K, V>.Get(K, V)
+  fullName: Sharpy.Dict<K, V>.Get(K, V)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Get
+    path: ../src/Sharpy/Dict.cs
+    startLine: 67
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    Gets the value with the given key, if it exists. If it doesn't
+
+    exist, it returns the given default value.
+  remarks: >-
+    Internally, this should call <xref href="Sharpy.Collections.Interfaces.Mapping%602.__GetItem__(%600)" data-throw-if-not-resolved="false"></xref>, unless
+
+    the class is sealed, in which case it doesn't matter.
+  example: []
+  syntax:
+    content: public V Get(K key, V @default)
+    parameters:
+    - id: key
+      type: '{K}'
+    - id: default
+      type: '{V}'
+    return:
+      type: '{V}'
+    content.vb: Public Function [Get](key As K, [default] As V) As V
+  overload: Sharpy.Dict`2.Get*
+  implements:
+  - Sharpy.Collections.Interfaces.Mapping{{K},{V}}.Get({K},{V})
+  nameWithType.vb: Dict(Of K, V).Get(K, V)
+  fullName.vb: Sharpy.Dict(Of K, V).Get(K, V)
+- uid: Sharpy.Dict`2.GetEnumerator
+  commentId: M:Sharpy.Dict`2.GetEnumerator
+  id: GetEnumerator
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: GetEnumerator()
+  nameWithType: Dict<K, V>.GetEnumerator()
+  fullName: Sharpy.Dict<K, V>.GetEnumerator()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: GetEnumerator
+    path: ../src/Sharpy/Dict.cs
+    startLine: 77
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: Returns an enumerator that iterates through the collection.
+  example: []
+  syntax:
+    content: public IEnumerator<K> GetEnumerator()
+    return:
+      type: System.Collections.Generic.IEnumerator{{K}}
+      description: An enumerator that can be used to iterate through the collection.
+    content.vb: Public Function GetEnumerator() As IEnumerator(Of K)
+  overload: Sharpy.Dict`2.GetEnumerator*
+  implements:
+  - System.Collections.Generic.IEnumerable{{K}}.GetEnumerator
+  nameWithType.vb: Dict(Of K, V).GetEnumerator()
+  fullName.vb: Sharpy.Dict(Of K, V).GetEnumerator()
+- uid: Sharpy.Dict`2.Items
+  commentId: M:Sharpy.Dict`2.Items
+  id: Items
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: Items()
+  nameWithType: Dict<K, V>.Items()
+  fullName: Sharpy.Dict<K, V>.Items()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Items
+    path: ../src/Sharpy/Dict.cs
+    startLine: 85
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    Returns a view over the items (key-value pairs) of this mapping,
+
+    in insertion order.
+  example: []
+  syntax:
+    content: public ItemsView<K, V> Items()
+    return:
+      type: Sharpy.Collections.Interfaces.ItemsView{{K},{V}}
+    content.vb: Public Function Items() As ItemsView(Of K, V)
+  overload: Sharpy.Dict`2.Items*
+  implements:
+  - Sharpy.Collections.Interfaces.Mapping{{K},{V}}.Items
+  nameWithType.vb: Dict(Of K, V).Items()
+  fullName.vb: Sharpy.Dict(Of K, V).Items()
+- uid: Sharpy.Dict`2.Keys
+  commentId: M:Sharpy.Dict`2.Keys
+  id: Keys
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: Keys()
+  nameWithType: Dict<K, V>.Keys()
+  fullName: Sharpy.Dict<K, V>.Keys()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Keys
+    path: ../src/Sharpy/Dict.cs
+    startLine: 90
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: Returns a view over the keys of this mapping, in insertion order.
+  example: []
+  syntax:
+    content: public KeysView<K> Keys()
+    return:
+      type: Sharpy.Collections.Interfaces.KeysView{{K}}
+    content.vb: Public Function Keys() As KeysView(Of K)
+  overload: Sharpy.Dict`2.Keys*
+  implements:
+  - Sharpy.Collections.Interfaces.Mapping{{K},{V}}.Keys
+  nameWithType.vb: Dict(Of K, V).Keys()
+  fullName.vb: Sharpy.Dict(Of K, V).Keys()
+- uid: Sharpy.Dict`2.Pop(`0)
+  commentId: M:Sharpy.Dict`2.Pop(`0)
+  id: Pop(`0)
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: Pop(K)
+  nameWithType: Dict<K, V>.Pop(K)
+  fullName: Sharpy.Dict<K, V>.Pop(K)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Pop
+    path: ../src/Sharpy/Dict.cs
+    startLine: 95
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    Removes the value at the given key. If the key does not exist,
+
+    this raises a <xref href="Sharpy.KeyError" data-throw-if-not-resolved="false"></xref>.
+  example: []
+  syntax:
+    content: public V Pop(K key)
+    parameters:
+    - id: key
+      type: '{K}'
+    return:
+      type: '{V}'
+    content.vb: Public Function Pop(key As K) As V
+  overload: Sharpy.Dict`2.Pop*
+  implements:
+  - Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.Pop({K})
+  nameWithType.vb: Dict(Of K, V).Pop(K)
+  fullName.vb: Sharpy.Dict(Of K, V).Pop(K)
+- uid: Sharpy.Dict`2.Pop(`0,`1)
+  commentId: M:Sharpy.Dict`2.Pop(`0,`1)
+  id: Pop(`0,`1)
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: Pop(K, V)
+  nameWithType: Dict<K, V>.Pop(K, V)
+  fullName: Sharpy.Dict<K, V>.Pop(K, V)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Pop
+    path: ../src/Sharpy/Dict.cs
+    startLine: 105
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    Removes the value at the given key. If the key does not exist,
+
+    this returns the given default value.
+  example: []
+  syntax:
+    content: public V Pop(K key, V @default)
+    parameters:
+    - id: key
+      type: '{K}'
+    - id: default
+      type: '{V}'
+    return:
+      type: '{V}'
+    content.vb: Public Function Pop(key As K, [default] As V) As V
+  overload: Sharpy.Dict`2.Pop*
+  implements:
+  - Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.Pop({K},{V})
+  nameWithType.vb: Dict(Of K, V).Pop(K, V)
+  fullName.vb: Sharpy.Dict(Of K, V).Pop(K, V)
+- uid: Sharpy.Dict`2.PopItem(System.Boolean)
+  commentId: M:Sharpy.Dict`2.PopItem(System.Boolean)
+  id: PopItem(System.Boolean)
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: PopItem(bool)
+  nameWithType: Dict<K, V>.PopItem(bool)
+  fullName: Sharpy.Dict<K, V>.PopItem(bool)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: PopItem
+    path: ../src/Sharpy/Dict.cs
+    startLine: 115
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    Removes the first key-value pair from the mapping, by insertion
+
+    order. If last is True, then returns the last such pair.
+  example: []
+  syntax:
+    content: public (K, V) PopItem(bool last = false)
+    parameters:
+    - id: last
+      type: System.Boolean
+    return:
+      type: System.ValueTuple{{K},{V}}
+    content.vb: Public Function PopItem(last As Boolean = False) As (K, V)
+  overload: Sharpy.Dict`2.PopItem*
+  implements:
+  - Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.PopItem(System.Boolean)
+  nameWithType.vb: Dict(Of K, V).PopItem(Boolean)
+  fullName.vb: Sharpy.Dict(Of K, V).PopItem(Boolean)
+  name.vb: PopItem(Boolean)
+- uid: Sharpy.Dict`2.SetDefault(`0,`1)
+  commentId: M:Sharpy.Dict`2.SetDefault(`0,`1)
+  id: SetDefault(`0,`1)
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: SetDefault(K, V)
+  nameWithType: Dict<K, V>.SetDefault(K, V)
+  fullName: Sharpy.Dict<K, V>.SetDefault(K, V)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: SetDefault
+    path: ../src/Sharpy/Dict.cs
+    startLine: 123
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    Returns the value for the given key, setting it to the given default
+
+    if the key is not in the mapping, before returning it.
+  example: []
+  syntax:
+    content: public V SetDefault(K key, V @default)
+    parameters:
+    - id: key
+      type: '{K}'
+    - id: default
+      type: '{V}'
+    return:
+      type: '{V}'
+    content.vb: Public Function SetDefault(key As K, [default] As V) As V
+  overload: Sharpy.Dict`2.SetDefault*
+  implements:
+  - Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.SetDefault({K},{V})
+  nameWithType.vb: Dict(Of K, V).SetDefault(K, V)
+  fullName.vb: Sharpy.Dict(Of K, V).SetDefault(K, V)
+- uid: Sharpy.Dict`2.Update(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  commentId: M:Sharpy.Dict`2.Update(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  id: Update(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: Update(Mapping<K, V>)
+  nameWithType: Dict<K, V>.Update(Mapping<K, V>)
+  fullName: Sharpy.Dict<K, V>.Update(Sharpy.Collections.Interfaces.Mapping<K, V>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Update
+    path: ../src/Sharpy/Dict.cs
+    startLine: 133
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    Updates this mapping with the pairs from the other mapping, with
+
+    conflicting keys using the value from the other mapping.
+  remarks: >-
+    Internally should call <xref href="Sharpy.Collections.Interfaces.MutableMapping%602.__IOr__(Sharpy.Collections.Interfaces.Mapping%7b%600%2c%601%7d)" data-throw-if-not-resolved="false"></xref> if the class is
+
+    not sealed.
+  example: []
+  syntax:
+    content: public void Update(Mapping<K, V> other)
+    parameters:
+    - id: other
+      type: Sharpy.Collections.Interfaces.Mapping{{K},{V}}
+    content.vb: Public Sub Update(other As Mapping(Of K, V))
+  overload: Sharpy.Dict`2.Update*
+  implements:
+  - Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.Update(Sharpy.Collections.Interfaces.Mapping{{K},{V}})
+  nameWithType.vb: Dict(Of K, V).Update(Mapping(Of K, V))
+  fullName.vb: Sharpy.Dict(Of K, V).Update(Sharpy.Collections.Interfaces.Mapping(Of K, V))
+  name.vb: Update(Mapping(Of K, V))
+- uid: Sharpy.Dict`2.Update(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  commentId: M:Sharpy.Dict`2.Update(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  id: Update(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: Update(Iterable<(K, V)>)
+  nameWithType: Dict<K, V>.Update(Iterable<(K, V)>)
+  fullName: Sharpy.Dict<K, V>.Update(Sharpy.Collections.Interfaces.Iterable<(K, V)>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Update
+    path: ../src/Sharpy/Dict.cs
+    startLine: 141
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    Updates this mapping with the key-value tuples in the iterable,
+
+    with conflicting keys using the value from the iterable.
+  remarks: >-
+    Internally should call
+
+    __IOr__(Iterable) if the class is
+
+    not sealed.
+  example: []
+  syntax:
+    content: public void Update(Iterable<(K, V)> other)
+    parameters:
+    - id: other
+      type: Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{{K},{V}}}
+    content.vb: Public Sub Update(other As Iterable(Of (K, V)))
+  overload: Sharpy.Dict`2.Update*
+  implements:
+  - Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.Update(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{{K},{V}}})
+  nameWithType.vb: Dict(Of K, V).Update(Iterable(Of (K, V)))
+  fullName.vb: Sharpy.Dict(Of K, V).Update(Sharpy.Collections.Interfaces.Iterable(Of (K, V)))
+  name.vb: Update(Iterable(Of (K, V)))
+- uid: Sharpy.Dict`2.Values
+  commentId: M:Sharpy.Dict`2.Values
+  id: Values
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: Values()
+  nameWithType: Dict<K, V>.Values()
+  fullName: Sharpy.Dict<K, V>.Values()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Values
+    path: ../src/Sharpy/Dict.cs
+    startLine: 149
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: Returns a view over the values of this mapping, in insertion order.
+  example: []
+  syntax:
+    content: public ValuesView<V> Values()
+    return:
+      type: Sharpy.Collections.Interfaces.ValuesView{{V}}
+    content.vb: Public Function Values() As ValuesView(Of V)
+  overload: Sharpy.Dict`2.Values*
+  implements:
+  - Sharpy.Collections.Interfaces.Mapping{{K},{V}}.Values
+  nameWithType.vb: Dict(Of K, V).Values()
+  fullName.vb: Sharpy.Dict(Of K, V).Values()
+- uid: Sharpy.Dict`2.__Contains__(`0)
+  commentId: M:Sharpy.Dict`2.__Contains__(`0)
+  id: __Contains__(`0)
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: __Contains__(K)
+  nameWithType: Dict<K, V>.__Contains__(K)
+  fullName: Sharpy.Dict<K, V>.__Contains__(K)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Contains__
+    path: ../src/Sharpy/Dict.cs
+    startLine: 154
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    Called to implement membership test operators. Should return
+
+    <code>true</code> if item is in self, <code>false</code> otherwise.
+  remarks: >-
+    For mapping objects, this should consider the keys of the mapping
+
+    rather than the values or the key-item pairs.
+  example: []
+  syntax:
+    content: public bool __Contains__(K key)
+    parameters:
+    - id: key
+      type: '{K}'
+    return:
+      type: System.Boolean
+    content.vb: Public Function __Contains__(key As K) As Boolean
+  overload: Sharpy.Dict`2.__Contains__*
+  implements:
+  - Sharpy.Collections.Interfaces.Container{{K}}.__Contains__({K})
+  nameWithType.vb: Dict(Of K, V).__Contains__(K)
+  fullName.vb: Sharpy.Dict(Of K, V).__Contains__(K)
+- uid: Sharpy.Dict`2.__DelItem__(`0)
+  commentId: M:Sharpy.Dict`2.__DelItem__(`0)
+  id: __DelItem__(`0)
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: __DelItem__(K)
+  nameWithType: Dict<K, V>.__DelItem__(K)
+  fullName: Sharpy.Dict<K, V>.__DelItem__(K)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __DelItem__
+    path: ../src/Sharpy/Dict.cs
+    startLine: 159
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    Deletes the value at the given key. Raises <xref href="Sharpy.KeyError" data-throw-if-not-resolved="false"></xref>
+
+    if the key does not exist in this mapping.
+  example: []
+  syntax:
+    content: public void __DelItem__(K key)
+    parameters:
+    - id: key
+      type: '{K}'
+    content.vb: Public Sub __DelItem__(key As K)
+  overload: Sharpy.Dict`2.__DelItem__*
+  implements:
+  - Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.__DelItem__({K})
+  nameWithType.vb: Dict(Of K, V).__DelItem__(K)
+  fullName.vb: Sharpy.Dict(Of K, V).__DelItem__(K)
+- uid: Sharpy.Dict`2.__GetItem__(`0)
+  commentId: M:Sharpy.Dict`2.__GetItem__(`0)
+  id: __GetItem__(`0)
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: __GetItem__(K)
+  nameWithType: Dict<K, V>.__GetItem__(K)
+  fullName: Sharpy.Dict<K, V>.__GetItem__(K)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __GetItem__
+    path: ../src/Sharpy/Dict.cs
+    startLine: 167
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    Gets the value for the given key. Raises <xref href="Sharpy.KeyError" data-throw-if-not-resolved="false"></xref>
+
+    if the key doesn't exist in the mapping.
+  example: []
+  syntax:
+    content: public V __GetItem__(K key)
+    parameters:
+    - id: key
+      type: '{K}'
+    return:
+      type: '{V}'
+    content.vb: Public Function __GetItem__(key As K) As V
+  overload: Sharpy.Dict`2.__GetItem__*
+  implements:
+  - Sharpy.Collections.Interfaces.Mapping{{K},{V}}.__GetItem__({K})
+  nameWithType.vb: Dict(Of K, V).__GetItem__(K)
+  fullName.vb: Sharpy.Dict(Of K, V).__GetItem__(K)
+- uid: Sharpy.Dict`2.__Iter__
+  commentId: M:Sharpy.Dict`2.__Iter__
+  id: __Iter__
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: __Iter__()
+  nameWithType: Dict<K, V>.__Iter__()
+  fullName: Sharpy.Dict<K, V>.__Iter__()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Iter__
+    path: ../src/Sharpy/Dict.cs
+    startLine: 177
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    Return an <xref href="Sharpy.Iterator%601" data-throw-if-not-resolved="false"></xref> object. The object is required to
+
+    support the iterator protocol described below.
+  remarks: >-
+    If a container supports different types of iteration, additional
+
+    methods can be provided to specifically request iterators for
+
+    those iteration types. (An example of an object supporting multiple
+
+    forms of iteration would be a tree structure which supports both
+
+    breadth-first and depth-first traversal).
+  example: []
+  syntax:
+    content: public Iterator<K> __Iter__()
+    return:
+      type: Sharpy.Iterator{{K}}
+    content.vb: Public Function __Iter__() As Iterator(Of K)
+  overload: Sharpy.Dict`2.__Iter__*
+  implements:
+  - Sharpy.Collections.Interfaces.Iterable{{K}}.__Iter__
+  nameWithType.vb: Dict(Of K, V).__Iter__()
+  fullName.vb: Sharpy.Dict(Of K, V).__Iter__()
+- uid: Sharpy.Dict`2.Item(`0)
+  commentId: P:Sharpy.Dict`2.Item(`0)
+  id: Item(`0)
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: this[K]
+  nameWithType: Dict<K, V>.this[K]
+  fullName: Sharpy.Dict<K, V>.this[K]
+  type: Property
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: this[]
+    path: ../src/Sharpy/Dict.cs
+    startLine: 182
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: Gets the value of or sets the value of the given key.
+  example: []
+  syntax:
+    content: public V this[K key] { get; set; }
+    parameters:
+    - id: key
+      type: '{K}'
+    return:
+      type: '{V}'
+    content.vb: Public Default Property this[](key As K) As V
+  overload: Sharpy.Dict`2.Item*
+  implements:
+  - Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.Item({K})
+  - Sharpy.Collections.Interfaces.Mapping{{K},{V}}.Item({K})
+  nameWithType.vb: Dict(Of K, V).this[](K)
+  fullName.vb: Sharpy.Dict(Of K, V).this[](K)
+  name.vb: this[](K)
+- uid: Sharpy.Dict`2.__Len__
+  commentId: M:Sharpy.Dict`2.__Len__
+  id: __Len__
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: __Len__()
+  nameWithType: Dict<K, V>.__Len__()
+  fullName: Sharpy.Dict<K, V>.__Len__()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Len__
+    path: ../src/Sharpy/Dict.cs
+    startLine: 188
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: Return the length (the number of items) of an object.
+  example: []
+  syntax:
+    content: public uint __Len__()
+    return:
+      type: System.UInt32
+    content.vb: Public Function __Len__() As UInteger
+  overload: Sharpy.Dict`2.__Len__*
+  implements:
+  - Sharpy.Collections.Interfaces.Sized.__Len__
+  nameWithType.vb: Dict(Of K, V).__Len__()
+  fullName.vb: Sharpy.Dict(Of K, V).__Len__()
+- uid: Sharpy.Dict`2.__Eq__(Sharpy.Object)
+  commentId: M:Sharpy.Dict`2.__Eq__(Sharpy.Object)
+  id: __Eq__(Sharpy.Object)
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: __Eq__(Object)
+  nameWithType: Dict<K, V>.__Eq__(Object)
+  fullName: Sharpy.Dict<K, V>.__Eq__(Sharpy.Object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Eq__
+    path: ../src/Sharpy/Dict.cs
+    startLine: 193
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  remarks: >-
+    By default, returns whether this and other refer to the same object
+
+    via <xref href="System.Object.ReferenceEquals(System.Object%2cSystem.Object)" data-throw-if-not-resolved="false"></xref> with a fallback to
+
+    <xref href="Sharpy.Object.__Id__" data-throw-if-not-resolved="false"></xref>.
+  example: []
+  syntax:
+    content: public override bool __Eq__(Object obj)
+    parameters:
+    - id: obj
+      type: Sharpy.Object
+    return:
+      type: System.Boolean
+    content.vb: Public Overrides Function __Eq__(obj As [Object]) As Boolean
+  overridden: Sharpy.Object.__Eq__(Sharpy.Object)
+  overload: Sharpy.Dict`2.__Eq__*
+  nameWithType.vb: Dict(Of K, V).__Eq__(Object)
+  fullName.vb: Sharpy.Dict(Of K, V).__Eq__(Sharpy.Object)
+- uid: Sharpy.Dict`2.__Eq__(Sharpy.Dict{`0,`1})
+  commentId: M:Sharpy.Dict`2.__Eq__(Sharpy.Dict{`0,`1})
+  id: __Eq__(Sharpy.Dict{`0,`1})
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: __Eq__(Dict<K, V>)
+  nameWithType: Dict<K, V>.__Eq__(Dict<K, V>)
+  fullName: Sharpy.Dict<K, V>.__Eq__(Sharpy.Dict<K, V>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Eq__
+    path: ../src/Sharpy/Dict.cs
+    startLine: 203
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public bool __Eq__(Dict<K, V> other)
+    parameters:
+    - id: other
+      type: Sharpy.Dict`2
+    return:
+      type: System.Boolean
+    content.vb: Public Function __Eq__(other As Dict(Of K, V)) As Boolean
+  overload: Sharpy.Dict`2.__Eq__*
+  nameWithType.vb: Dict(Of K, V).__Eq__(Dict(Of K, V))
+  fullName.vb: Sharpy.Dict(Of K, V).__Eq__(Sharpy.Dict(Of K, V))
+  name.vb: __Eq__(Dict(Of K, V))
+- uid: Sharpy.Dict`2.__SetItem__(`0,`1)
+  commentId: M:Sharpy.Dict`2.__SetItem__(`0,`1)
+  id: __SetItem__(`0,`1)
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: __SetItem__(K, V)
+  nameWithType: Dict<K, V>.__SetItem__(K, V)
+  fullName: Sharpy.Dict<K, V>.__SetItem__(K, V)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __SetItem__
+    path: ../src/Sharpy/Dict.cs
+    startLine: 232
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: Sets the given key to the given value.
+  example: []
+  syntax:
+    content: public void __SetItem__(K key, V value)
+    parameters:
+    - id: key
+      type: '{K}'
+    - id: value
+      type: '{V}'
+    content.vb: Public Sub __SetItem__(key As K, value As V)
+  overload: Sharpy.Dict`2.__SetItem__*
+  implements:
+  - Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.__SetItem__({K},{V})
+  nameWithType.vb: Dict(Of K, V).__SetItem__(K, V)
+  fullName.vb: Sharpy.Dict(Of K, V).__SetItem__(K, V)
+- uid: Sharpy.Dict`2.ToDictionary
+  commentId: M:Sharpy.Dict`2.ToDictionary
+  id: ToDictionary
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: ToDictionary()
+  nameWithType: Dict<K, V>.ToDictionary()
+  fullName: Sharpy.Dict<K, V>.ToDictionary()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: ToDictionary
+    path: ../src/Sharpy/Dict.cs
+    startLine: 242
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public Dictionary<K, V> ToDictionary()
+    return:
+      type: System.Collections.Generic.Dictionary{{K},{V}}
+    content.vb: Public Function ToDictionary() As Dictionary(Of K, V)
+  overload: Sharpy.Dict`2.ToDictionary*
+  nameWithType.vb: Dict(Of K, V).ToDictionary()
+  fullName.vb: Sharpy.Dict(Of K, V).ToDictionary()
+- uid: Sharpy.Dict`2.__Or__(Sharpy.Dict{`0,`1})
+  commentId: M:Sharpy.Dict`2.__Or__(Sharpy.Dict{`0,`1})
+  id: __Or__(Sharpy.Dict{`0,`1})
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: __Or__(Dict<K, V>)
+  nameWithType: Dict<K, V>.__Or__(Dict<K, V>)
+  fullName: Sharpy.Dict<K, V>.__Or__(Sharpy.Dict<K, V>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Or__
+    path: ../src/Sharpy/Dict.cs
+    startLine: 247
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public Dict<K, V> __Or__(Dict<K, V> other)
+    parameters:
+    - id: other
+      type: Sharpy.Dict`2
+    return:
+      type: Sharpy.Dict`2
+    content.vb: Public Function __Or__(other As Dict(Of K, V)) As Dict(Of K, V)
+  overload: Sharpy.Dict`2.__Or__*
+  nameWithType.vb: Dict(Of K, V).__Or__(Dict(Of K, V))
+  fullName.vb: Sharpy.Dict(Of K, V).__Or__(Sharpy.Dict(Of K, V))
+  name.vb: __Or__(Dict(Of K, V))
+- uid: Sharpy.Dict`2.__IOr__(Sharpy.Dict{`0,`1})
+  commentId: M:Sharpy.Dict`2.__IOr__(Sharpy.Dict{`0,`1})
+  id: __IOr__(Sharpy.Dict{`0,`1})
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: __IOr__(Dict<K, V>)
+  nameWithType: Dict<K, V>.__IOr__(Dict<K, V>)
+  fullName: Sharpy.Dict<K, V>.__IOr__(Sharpy.Dict<K, V>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __IOr__
+    path: ../src/Sharpy/Dict.cs
+    startLine: 255
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public void __IOr__(Dict<K, V> other)
+    parameters:
+    - id: other
+      type: Sharpy.Dict`2
+    content.vb: Public Sub __IOr__(other As Dict(Of K, V))
+  overload: Sharpy.Dict`2.__IOr__*
+  nameWithType.vb: Dict(Of K, V).__IOr__(Dict(Of K, V))
+  fullName.vb: Sharpy.Dict(Of K, V).__IOr__(Sharpy.Dict(Of K, V))
+  name.vb: __IOr__(Dict(Of K, V))
+- uid: Sharpy.Dict`2.__Or__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  commentId: M:Sharpy.Dict`2.__Or__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  id: __Or__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: __Or__(Mapping<K, V>)
+  nameWithType: Dict<K, V>.__Or__(Mapping<K, V>)
+  fullName: Sharpy.Dict<K, V>.__Or__(Sharpy.Collections.Interfaces.Mapping<K, V>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Or__
+    path: ../src/Sharpy/Dict.cs
+    startLine: 260
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    Returns the union of this mapping and the other mapping, with
+
+    conflicting keys using the value from the other mapping.
+  example: []
+  syntax:
+    content: public Mapping<K, V> __Or__(Mapping<K, V> other)
+    parameters:
+    - id: other
+      type: Sharpy.Collections.Interfaces.Mapping{{K},{V}}
+    return:
+      type: Sharpy.Collections.Interfaces.Mapping{{K},{V}}
+    content.vb: Public Function __Or__(other As Mapping(Of K, V)) As Mapping(Of K, V)
+  overload: Sharpy.Dict`2.__Or__*
+  implements:
+  - Sharpy.Collections.Interfaces.Mapping{{K},{V}}.__Or__(Sharpy.Collections.Interfaces.Mapping{{K},{V}})
+  nameWithType.vb: Dict(Of K, V).__Or__(Mapping(Of K, V))
+  fullName.vb: Sharpy.Dict(Of K, V).__Or__(Sharpy.Collections.Interfaces.Mapping(Of K, V))
+  name.vb: __Or__(Mapping(Of K, V))
+- uid: Sharpy.Dict`2.__IOr__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  commentId: M:Sharpy.Dict`2.__IOr__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  id: __IOr__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: __IOr__(Mapping<K, V>)
+  nameWithType: Dict<K, V>.__IOr__(Mapping<K, V>)
+  fullName: Sharpy.Dict<K, V>.__IOr__(Sharpy.Collections.Interfaces.Mapping<K, V>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __IOr__
+    path: ../src/Sharpy/Dict.cs
+    startLine: 268
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    Updates this mapping with the pairs from the other mapping, with
+
+    conflicting keys using the value from the other mapping.
+  example: []
+  syntax:
+    content: public void __IOr__(Mapping<K, V> other)
+    parameters:
+    - id: other
+      type: Sharpy.Collections.Interfaces.Mapping{{K},{V}}
+    content.vb: Public Sub __IOr__(other As Mapping(Of K, V))
+  overload: Sharpy.Dict`2.__IOr__*
+  implements:
+  - Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.__IOr__(Sharpy.Collections.Interfaces.Mapping{{K},{V}})
+  nameWithType.vb: Dict(Of K, V).__IOr__(Mapping(Of K, V))
+  fullName.vb: Sharpy.Dict(Of K, V).__IOr__(Sharpy.Collections.Interfaces.Mapping(Of K, V))
+  name.vb: __IOr__(Mapping(Of K, V))
+- uid: Sharpy.Dict`2.__Or__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  commentId: M:Sharpy.Dict`2.__Or__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  id: __Or__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: __Or__(Iterable<(K, V)>)
+  nameWithType: Dict<K, V>.__Or__(Iterable<(K, V)>)
+  fullName: Sharpy.Dict<K, V>.__Or__(Sharpy.Collections.Interfaces.Iterable<(K, V)>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Or__
+    path: ../src/Sharpy/Dict.cs
+    startLine: 273
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    Returns the union of this mapping and the iterable of key-value
+
+    tuples, with conflicting keys using the value from the other
+
+    mapping.
+  example: []
+  syntax:
+    content: public Mapping<K, V> __Or__(Iterable<(K, V)> other)
+    parameters:
+    - id: other
+      type: Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{{K},{V}}}
+    return:
+      type: Sharpy.Collections.Interfaces.Mapping{{K},{V}}
+    content.vb: Public Function __Or__(other As Iterable(Of (K, V))) As Mapping(Of K, V)
+  overload: Sharpy.Dict`2.__Or__*
+  implements:
+  - Sharpy.Collections.Interfaces.Mapping{{K},{V}}.__Or__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{{K},{V}}})
+  nameWithType.vb: Dict(Of K, V).__Or__(Iterable(Of (K, V)))
+  fullName.vb: Sharpy.Dict(Of K, V).__Or__(Sharpy.Collections.Interfaces.Iterable(Of (K, V)))
+  name.vb: __Or__(Iterable(Of (K, V)))
+- uid: Sharpy.Dict`2.__IOr__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  commentId: M:Sharpy.Dict`2.__IOr__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  id: __IOr__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: __IOr__(Iterable<(K, V)>)
+  nameWithType: Dict<K, V>.__IOr__(Iterable<(K, V)>)
+  fullName: Sharpy.Dict<K, V>.__IOr__(Sharpy.Collections.Interfaces.Iterable<(K, V)>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __IOr__
+    path: ../src/Sharpy/Dict.cs
+    startLine: 281
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    Updates this mapping with the key-value tuples in the iterable,
+
+    with conflicting keys using the value from the iterable.
+  example: []
+  syntax:
+    content: public void __IOr__(Iterable<(K, V)> other)
+    parameters:
+    - id: other
+      type: Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{{K},{V}}}
+    content.vb: Public Sub __IOr__(other As Iterable(Of (K, V)))
+  overload: Sharpy.Dict`2.__IOr__*
+  implements:
+  - Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.__IOr__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{{K},{V}}})
+  nameWithType.vb: Dict(Of K, V).__IOr__(Iterable(Of (K, V)))
+  fullName.vb: Sharpy.Dict(Of K, V).__IOr__(Sharpy.Collections.Interfaces.Iterable(Of (K, V)))
+  name.vb: __IOr__(Iterable(Of (K, V)))
+- uid: Sharpy.Dict`2.op_BitwiseOr(Sharpy.Dict{`0,`1},Sharpy.Dict{`0,`1})
+  commentId: M:Sharpy.Dict`2.op_BitwiseOr(Sharpy.Dict{`0,`1},Sharpy.Dict{`0,`1})
+  id: op_BitwiseOr(Sharpy.Dict{`0,`1},Sharpy.Dict{`0,`1})
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: operator |(Dict<K, V>, Dict<K, V>)
+  nameWithType: Dict<K, V>.operator |(Dict<K, V>, Dict<K, V>)
+  fullName: Sharpy.Dict<K, V>.operator |(Sharpy.Dict<K, V>, Sharpy.Dict<K, V>)
+  type: Operator
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: op_BitwiseOr
+    path: ../src/Sharpy/Dict.cs
+    startLine: 286
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static Dict<K, V> operator |(Dict<K, V> left, Dict<K, V> right)
+    parameters:
+    - id: left
+      type: Sharpy.Dict`2
+    - id: right
+      type: Sharpy.Dict`2
+    return:
+      type: Sharpy.Dict`2
+    content.vb: Public Shared Operator Or(left As Dict(Of K, V), right As Dict(Of K, V)) As Dict(Of K, V)
+  overload: Sharpy.Dict`2.op_BitwiseOr*
+  nameWithType.vb: Dict(Of K, V).Or(Dict(Of K, V), Dict(Of K, V))
+  fullName.vb: Sharpy.Dict(Of K, V).Or(Sharpy.Dict(Of K, V), Sharpy.Dict(Of K, V))
+  name.vb: Or(Dict(Of K, V), Dict(Of K, V))
+- uid: Sharpy.Dict`2.op_Equality(Sharpy.Dict{`0,`1},Sharpy.Dict{`0,`1})
+  commentId: M:Sharpy.Dict`2.op_Equality(Sharpy.Dict{`0,`1},Sharpy.Dict{`0,`1})
+  id: op_Equality(Sharpy.Dict{`0,`1},Sharpy.Dict{`0,`1})
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: operator ==(Dict<K, V>, Dict<K, V>)
+  nameWithType: Dict<K, V>.operator ==(Dict<K, V>, Dict<K, V>)
+  fullName: Sharpy.Dict<K, V>.operator ==(Sharpy.Dict<K, V>, Sharpy.Dict<K, V>)
+  type: Operator
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: op_Equality
+    path: ../src/Sharpy/Dict.cs
+    startLine: 291
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static bool operator ==(Dict<K, V> left, Dict<K, V> right)
+    parameters:
+    - id: left
+      type: Sharpy.Dict`2
+    - id: right
+      type: Sharpy.Dict`2
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Operator =(left As Dict(Of K, V), right As Dict(Of K, V)) As Boolean
+  overload: Sharpy.Dict`2.op_Equality*
+  nameWithType.vb: Dict(Of K, V).=(Dict(Of K, V), Dict(Of K, V))
+  fullName.vb: Sharpy.Dict(Of K, V).=(Sharpy.Dict(Of K, V), Sharpy.Dict(Of K, V))
+  name.vb: =(Dict(Of K, V), Dict(Of K, V))
+- uid: Sharpy.Dict`2.op_Inequality(Sharpy.Dict{`0,`1},Sharpy.Dict{`0,`1})
+  commentId: M:Sharpy.Dict`2.op_Inequality(Sharpy.Dict{`0,`1},Sharpy.Dict{`0,`1})
+  id: op_Inequality(Sharpy.Dict{`0,`1},Sharpy.Dict{`0,`1})
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: operator !=(Dict<K, V>, Dict<K, V>)
+  nameWithType: Dict<K, V>.operator !=(Dict<K, V>, Dict<K, V>)
+  fullName: Sharpy.Dict<K, V>.operator !=(Sharpy.Dict<K, V>, Sharpy.Dict<K, V>)
+  type: Operator
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: op_Inequality
+    path: ../src/Sharpy/Dict.cs
+    startLine: 306
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static bool operator !=(Dict<K, V> left, Dict<K, V> right)
+    parameters:
+    - id: left
+      type: Sharpy.Dict`2
+    - id: right
+      type: Sharpy.Dict`2
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Operator <>(left As Dict(Of K, V), right As Dict(Of K, V)) As Boolean
+  overload: Sharpy.Dict`2.op_Inequality*
+  nameWithType.vb: Dict(Of K, V).<>(Dict(Of K, V), Dict(Of K, V))
+  fullName.vb: Sharpy.Dict(Of K, V).<>(Sharpy.Dict(Of K, V), Sharpy.Dict(Of K, V))
+  name.vb: <>(Dict(Of K, V), Dict(Of K, V))
+- uid: Sharpy.Dict`2.__Hash__
+  commentId: M:Sharpy.Dict`2.__Hash__
+  id: __Hash__
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: __Hash__()
+  nameWithType: Dict<K, V>.__Hash__()
+  fullName: Sharpy.Dict<K, V>.__Hash__()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Hash__
+    path: ../src/Sharpy/Dict.cs
+    startLine: 311
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  remarks: By default, returns <xref href="System.Object.GetHashCode" data-throw-if-not-resolved="false"></xref>.
+  example: []
+  syntax:
+    content: public override int __Hash__()
+    return:
+      type: System.Int32
+    content.vb: Public Overrides Function __Hash__() As Integer
+  overridden: Sharpy.Object.__Hash__
+  overload: Sharpy.Dict`2.__Hash__*
+  nameWithType.vb: Dict(Of K, V).__Hash__()
+  fullName.vb: Sharpy.Dict(Of K, V).__Hash__()
+- uid: Sharpy.Dict`2.__Repr__
+  commentId: M:Sharpy.Dict`2.__Repr__
+  id: __Repr__
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: __Repr__()
+  nameWithType: Dict<K, V>.__Repr__()
+  fullName: Sharpy.Dict<K, V>.__Repr__()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Repr__
+    path: ../src/Sharpy/Dict.cs
+    startLine: 320
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    By default, returns a string containing the result of
+
+    <xref href="Sharpy.Object.__Id__" data-throw-if-not-resolved="false"></xref> in the form <code>"&lt;Object object with id {__Id__()}&gt;"</code>.
+  example: []
+  syntax:
+    content: public override string __Repr__()
+    return:
+      type: System.String
+      description: ''
+    content.vb: Public Overrides Function __Repr__() As String
+  overridden: Sharpy.Object.__Repr__
+  overload: Sharpy.Dict`2.__Repr__*
+  nameWithType.vb: Dict(Of K, V).__Repr__()
+  fullName.vb: Sharpy.Dict(Of K, V).__Repr__()
+- uid: Sharpy.Dict`2.__Bool__
+  commentId: M:Sharpy.Dict`2.__Bool__
+  id: __Bool__
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: __Bool__()
+  nameWithType: Dict<K, V>.__Bool__()
+  fullName: Sharpy.Dict<K, V>.__Bool__()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Bool__
+    path: ../src/Sharpy/Dict.cs
+    startLine: 345
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  remarks: >-
+    Unlike Python where all base objects are implicitly truthy, Sharpy
+
+    ones are not, to enforce custom implementations that are suitable
+
+    for the given subclass.
+  example: []
+  syntax:
+    content: public override bool __Bool__()
+    return:
+      type: System.Boolean
+    content.vb: Public Overrides Function __Bool__() As Boolean
+  overridden: Sharpy.Object.__Bool__
+  overload: Sharpy.Dict`2.__Bool__*
+  nameWithType.vb: Dict(Of K, V).__Bool__()
+  fullName.vb: Sharpy.Dict(Of K, V).__Bool__()
+- uid: Sharpy.Dict`2.op_True(Sharpy.Dict{`0,`1})
+  commentId: M:Sharpy.Dict`2.op_True(Sharpy.Dict{`0,`1})
+  id: op_True(Sharpy.Dict{`0,`1})
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: operator true(Dict<K, V>)
+  nameWithType: Dict<K, V>.operator true(Dict<K, V>)
+  fullName: Sharpy.Dict<K, V>.operator true(Sharpy.Dict<K, V>)
+  type: Operator
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: op_True
+    path: ../src/Sharpy/Dict.cs
+    startLine: 350
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static bool operator true(Dict<K, V> dict)
+    parameters:
+    - id: dict
+      type: Sharpy.Dict`2
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Operator IsTrue(dict As Dict(Of K, V)) As Boolean
+  overload: Sharpy.Dict`2.op_True*
+  nameWithType.vb: Dict(Of K, V).IsTrue(Dict(Of K, V))
+  fullName.vb: Sharpy.Dict(Of K, V).IsTrue(Sharpy.Dict(Of K, V))
+  name.vb: IsTrue(Dict(Of K, V))
+- uid: Sharpy.Dict`2.op_False(Sharpy.Dict{`0,`1})
+  commentId: M:Sharpy.Dict`2.op_False(Sharpy.Dict{`0,`1})
+  id: op_False(Sharpy.Dict{`0,`1})
+  parent: Sharpy.Dict`2
+  langs:
+  - csharp
+  - vb
+  name: operator false(Dict<K, V>)
+  nameWithType: Dict<K, V>.operator false(Dict<K, V>)
+  fullName: Sharpy.Dict<K, V>.operator false(Sharpy.Dict<K, V>)
+  type: Operator
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Dict.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: op_False
+    path: ../src/Sharpy/Dict.cs
+    startLine: 355
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static bool operator false(Dict<K, V> dict)
+    parameters:
+    - id: dict
+      type: Sharpy.Dict`2
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Operator IsFalse(dict As Dict(Of K, V)) As Boolean
+  overload: Sharpy.Dict`2.op_False*
+  nameWithType.vb: Dict(Of K, V).IsFalse(Dict(Of K, V))
+  fullName.vb: Sharpy.Dict(Of K, V).IsFalse(Sharpy.Dict(Of K, V))
+  name.vb: IsFalse(Dict(Of K, V))
+references:
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: System.Object
+  commentId: T:System.Object
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object
+  name: object
+  nameWithType: object
+  fullName: object
+  nameWithType.vb: Object
+  fullName.vb: Object
+  name.vb: Object
+- uid: Sharpy.Object
+  commentId: T:Sharpy.Object
+  parent: Sharpy
+  href: Sharpy.Object.html
+  name: Object
+  nameWithType: Object
+  fullName: Sharpy.Object
+- uid: Sharpy.Equatable{Sharpy.Object}
+  commentId: T:Sharpy.Equatable{Sharpy.Object}
+  parent: Sharpy
+  definition: Sharpy.Equatable`1
+  href: Sharpy.Equatable-1.html
+  name: Equatable<Object>
+  nameWithType: Equatable<Object>
+  fullName: Sharpy.Equatable<Sharpy.Object>
+  nameWithType.vb: Equatable(Of Object)
+  fullName.vb: Sharpy.Equatable(Of Sharpy.Object)
+  name.vb: Equatable(Of Object)
+  spec.csharp:
+  - uid: Sharpy.Equatable`1
+    name: Equatable
+    href: Sharpy.Equatable-1.html
+  - name: <
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Equatable`1
+    name: Equatable
+    href: Sharpy.Equatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: )
+- uid: Sharpy.Hashable
+  commentId: T:Sharpy.Hashable
+  parent: Sharpy
+  href: Sharpy.Hashable.html
+  name: Hashable
+  nameWithType: Hashable
+  fullName: Sharpy.Hashable
+- uid: Sharpy.Inequatable{Sharpy.Object}
+  commentId: T:Sharpy.Inequatable{Sharpy.Object}
+  parent: Sharpy
+  definition: Sharpy.Inequatable`1
+  href: Sharpy.Inequatable-1.html
+  name: Inequatable<Object>
+  nameWithType: Inequatable<Object>
+  fullName: Sharpy.Inequatable<Sharpy.Object>
+  nameWithType.vb: Inequatable(Of Object)
+  fullName.vb: Sharpy.Inequatable(Of Sharpy.Object)
+  name.vb: Inequatable(Of Object)
+  spec.csharp:
+  - uid: Sharpy.Inequatable`1
+    name: Inequatable
+    href: Sharpy.Inequatable-1.html
+  - name: <
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Inequatable`1
+    name: Inequatable
+    href: Sharpy.Inequatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: )
+- uid: System.IEquatable{Sharpy.Object}
+  commentId: T:System.IEquatable{Sharpy.Object}
+  parent: System
+  definition: System.IEquatable`1
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  name: IEquatable<Object>
+  nameWithType: IEquatable<Object>
+  fullName: System.IEquatable<Sharpy.Object>
+  nameWithType.vb: IEquatable(Of Object)
+  fullName.vb: System.IEquatable(Of Sharpy.Object)
+  name.vb: IEquatable(Of Object)
+  spec.csharp:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: <
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: '>'
+  spec.vb:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: )
+- uid: Sharpy.StrConvertible
+  commentId: T:Sharpy.StrConvertible
+  parent: Sharpy
+  href: Sharpy.StrConvertible.html
+  name: StrConvertible
+  nameWithType: StrConvertible
+  fullName: Sharpy.StrConvertible
+- uid: Sharpy.Representable
+  commentId: T:Sharpy.Representable
+  parent: Sharpy
+  href: Sharpy.Representable.html
+  name: Representable
+  nameWithType: Representable
+  fullName: Sharpy.Representable
+- uid: Sharpy.BoolConvertible
+  commentId: T:Sharpy.BoolConvertible
+  parent: Sharpy
+  href: Sharpy.BoolConvertible.html
+  name: BoolConvertible
+  nameWithType: BoolConvertible
+  fullName: Sharpy.BoolConvertible
+- uid: Sharpy.Identifiable
+  commentId: T:Sharpy.Identifiable
+  parent: Sharpy
+  href: Sharpy.Identifiable.html
+  name: Identifiable
+  nameWithType: Identifiable
+  fullName: Sharpy.Identifiable
+- uid: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}
+  commentId: T:Sharpy.Collections.Interfaces.MutableMapping{`0,`1}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.MutableMapping`2
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html
+  name: MutableMapping<K, V>
+  nameWithType: MutableMapping<K, V>
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>
+  nameWithType.vb: MutableMapping(Of K, V)
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V)
+  name.vb: MutableMapping(Of K, V)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2
+    name: MutableMapping
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html
+  - name: <
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2
+    name: MutableMapping
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Mapping{{K},{V}}
+  commentId: T:Sharpy.Collections.Interfaces.Mapping{`0,`1}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.Mapping`2
+  href: Sharpy.Collections.Interfaces.Mapping-2.html
+  name: Mapping<K, V>
+  nameWithType: Mapping<K, V>
+  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>
+  nameWithType.vb: Mapping(Of K, V)
+  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V)
+  name.vb: Mapping(Of K, V)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2
+    name: Mapping
+    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - name: <
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2
+    name: Mapping
+    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Collection{{K}}
+  commentId: T:Sharpy.Collections.Interfaces.Collection{`0}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.Collection`1
+  href: Sharpy.Collections.Interfaces.Collection-1.html
+  name: Collection<K>
+  nameWithType: Collection<K>
+  fullName: Sharpy.Collections.Interfaces.Collection<K>
+  nameWithType.vb: Collection(Of K)
+  fullName.vb: Sharpy.Collections.Interfaces.Collection(Of K)
+  name.vb: Collection(Of K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Collection`1
+    name: Collection
+    href: Sharpy.Collections.Interfaces.Collection-1.html
+  - name: <
+  - name: K
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Collection`1
+    name: Collection
+    href: Sharpy.Collections.Interfaces.Collection-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Container{{K}}
+  commentId: T:Sharpy.Collections.Interfaces.Container{`0}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.Container`1
+  href: Sharpy.Collections.Interfaces.Container-1.html
+  name: Container<K>
+  nameWithType: Container<K>
+  fullName: Sharpy.Collections.Interfaces.Container<K>
+  nameWithType.vb: Container(Of K)
+  fullName.vb: Sharpy.Collections.Interfaces.Container(Of K)
+  name.vb: Container(Of K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Container`1
+    name: Container
+    href: Sharpy.Collections.Interfaces.Container-1.html
+  - name: <
+  - name: K
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Container`1
+    name: Container
+    href: Sharpy.Collections.Interfaces.Container-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Iterable{{K}}
+  commentId: T:Sharpy.Collections.Interfaces.Iterable{`0}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.Iterable`1
+  href: Sharpy.Collections.Interfaces.Iterable-1.html
+  name: Iterable<K>
+  nameWithType: Iterable<K>
+  fullName: Sharpy.Collections.Interfaces.Iterable<K>
+  nameWithType.vb: Iterable(Of K)
+  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of K)
+  name.vb: Iterable(Of K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: <
+  - name: K
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: )
+- uid: System.Collections.Generic.IEnumerable{{K}}
+  commentId: T:System.Collections.Generic.IEnumerable{`0}
+  parent: System.Collections.Generic
+  definition: System.Collections.Generic.IEnumerable`1
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  name: IEnumerable<K>
+  nameWithType: IEnumerable<K>
+  fullName: System.Collections.Generic.IEnumerable<K>
+  nameWithType.vb: IEnumerable(Of K)
+  fullName.vb: System.Collections.Generic.IEnumerable(Of K)
+  name.vb: IEnumerable(Of K)
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: <
+  - name: K
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: )
+- uid: System.Collections.IEnumerable
+  commentId: T:System.Collections.IEnumerable
+  parent: System.Collections
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.ienumerable
+  name: IEnumerable
+  nameWithType: IEnumerable
+  fullName: System.Collections.IEnumerable
+- uid: Sharpy.Collections.Interfaces.Sized
+  commentId: T:Sharpy.Collections.Interfaces.Sized
+  parent: Sharpy.Collections.Interfaces
+  href: Sharpy.Collections.Interfaces.Sized.html
+  name: Sized
+  nameWithType: Sized
+  fullName: Sharpy.Collections.Interfaces.Sized
+- uid: Sharpy.Object.__Eq__(System.Object)
+  commentId: M:Sharpy.Object.__Eq__(System.Object)
+  parent: Sharpy.Object
+  isExternal: true
+  href: Sharpy.Object.html#Sharpy_Object___Eq___System_Object_
+  name: __Eq__(object)
+  nameWithType: Object.__Eq__(object)
+  fullName: Sharpy.Object.__Eq__(object)
+  nameWithType.vb: Object.__Eq__(Object)
+  fullName.vb: Sharpy.Object.__Eq__(Object)
+  name.vb: __Eq__(Object)
+  spec.csharp:
+  - uid: Sharpy.Object.__Eq__(System.Object)
+    name: __Eq__
+    href: Sharpy.Object.html#Sharpy_Object___Eq___System_Object_
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Object.__Eq__(System.Object)
+    name: __Eq__
+    href: Sharpy.Object.html#Sharpy_Object___Eq___System_Object_
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: Sharpy.Object.__Id__
+  commentId: M:Sharpy.Object.__Id__
+  parent: Sharpy.Object
+  href: Sharpy.Object.html#Sharpy_Object___Id__
+  name: __Id__()
+  nameWithType: Object.__Id__()
+  fullName: Sharpy.Object.__Id__()
+  spec.csharp:
+  - uid: Sharpy.Object.__Id__
+    name: __Id__
+    href: Sharpy.Object.html#Sharpy_Object___Id__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Object.__Id__
+    name: __Id__
+    href: Sharpy.Object.html#Sharpy_Object___Id__
+  - name: (
+  - name: )
+- uid: Sharpy.Object.Equals(Sharpy.Object)
+  commentId: M:Sharpy.Object.Equals(Sharpy.Object)
+  parent: Sharpy.Object
+  href: Sharpy.Object.html#Sharpy_Object_Equals_Sharpy_Object_
+  name: Equals(Object)
+  nameWithType: Object.Equals(Object)
+  fullName: Sharpy.Object.Equals(Sharpy.Object)
+  spec.csharp:
+  - uid: Sharpy.Object.Equals(Sharpy.Object)
+    name: Equals
+    href: Sharpy.Object.html#Sharpy_Object_Equals_Sharpy_Object_
+  - name: (
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Object.Equals(Sharpy.Object)
+    name: Equals
+    href: Sharpy.Object.html#Sharpy_Object_Equals_Sharpy_Object_
+  - name: (
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: )
+- uid: Sharpy.Object.__Ne__(Sharpy.Object)
+  commentId: M:Sharpy.Object.__Ne__(Sharpy.Object)
+  parent: Sharpy.Object
+  href: Sharpy.Object.html#Sharpy_Object___Ne___Sharpy_Object_
+  name: __Ne__(Object)
+  nameWithType: Object.__Ne__(Object)
+  fullName: Sharpy.Object.__Ne__(Sharpy.Object)
+  spec.csharp:
+  - uid: Sharpy.Object.__Ne__(Sharpy.Object)
+    name: __Ne__
+    href: Sharpy.Object.html#Sharpy_Object___Ne___Sharpy_Object_
+  - name: (
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Object.__Ne__(Sharpy.Object)
+    name: __Ne__
+    href: Sharpy.Object.html#Sharpy_Object___Ne___Sharpy_Object_
+  - name: (
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: )
+- uid: Sharpy.Object.__Ne__(System.Object)
+  commentId: M:Sharpy.Object.__Ne__(System.Object)
+  parent: Sharpy.Object
+  isExternal: true
+  href: Sharpy.Object.html#Sharpy_Object___Ne___System_Object_
+  name: __Ne__(object)
+  nameWithType: Object.__Ne__(object)
+  fullName: Sharpy.Object.__Ne__(object)
+  nameWithType.vb: Object.__Ne__(Object)
+  fullName.vb: Sharpy.Object.__Ne__(Object)
+  name.vb: __Ne__(Object)
+  spec.csharp:
+  - uid: Sharpy.Object.__Ne__(System.Object)
+    name: __Ne__
+    href: Sharpy.Object.html#Sharpy_Object___Ne___System_Object_
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Object.__Ne__(System.Object)
+    name: __Ne__
+    href: Sharpy.Object.html#Sharpy_Object___Ne___System_Object_
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: Sharpy.Object.Equals(System.Object)
+  commentId: M:Sharpy.Object.Equals(System.Object)
+  parent: Sharpy.Object
+  isExternal: true
+  href: Sharpy.Object.html#Sharpy_Object_Equals_System_Object_
+  name: Equals(object)
+  nameWithType: Object.Equals(object)
+  fullName: Sharpy.Object.Equals(object)
+  nameWithType.vb: Object.Equals(Object)
+  fullName.vb: Sharpy.Object.Equals(Object)
+  name.vb: Equals(Object)
+  spec.csharp:
+  - uid: Sharpy.Object.Equals(System.Object)
+    name: Equals
+    href: Sharpy.Object.html#Sharpy_Object_Equals_System_Object_
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Object.Equals(System.Object)
+    name: Equals
+    href: Sharpy.Object.html#Sharpy_Object_Equals_System_Object_
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: Sharpy.Object.GetHashCode
+  commentId: M:Sharpy.Object.GetHashCode
+  parent: Sharpy.Object
+  href: Sharpy.Object.html#Sharpy_Object_GetHashCode
+  name: GetHashCode()
+  nameWithType: Object.GetHashCode()
+  fullName: Sharpy.Object.GetHashCode()
+  spec.csharp:
+  - uid: Sharpy.Object.GetHashCode
+    name: GetHashCode
+    href: Sharpy.Object.html#Sharpy_Object_GetHashCode
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Object.GetHashCode
+    name: GetHashCode
+    href: Sharpy.Object.html#Sharpy_Object_GetHashCode
+  - name: (
+  - name: )
+- uid: Sharpy.Object.ToString
+  commentId: M:Sharpy.Object.ToString
+  parent: Sharpy.Object
+  href: Sharpy.Object.html#Sharpy_Object_ToString
+  name: ToString()
+  nameWithType: Object.ToString()
+  fullName: Sharpy.Object.ToString()
+  spec.csharp:
+  - uid: Sharpy.Object.ToString
+    name: ToString
+    href: Sharpy.Object.html#Sharpy_Object_ToString
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Object.ToString
+    name: ToString
+    href: Sharpy.Object.html#Sharpy_Object_ToString
+  - name: (
+  - name: )
+- uid: Sharpy.Object.__Str__
+  commentId: M:Sharpy.Object.__Str__
+  parent: Sharpy.Object
+  href: Sharpy.Object.html#Sharpy_Object___Str__
+  name: __Str__()
+  nameWithType: Object.__Str__()
+  fullName: Sharpy.Object.__Str__()
+  spec.csharp:
+  - uid: Sharpy.Object.__Str__
+    name: __Str__
+    href: Sharpy.Object.html#Sharpy_Object___Str__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Object.__Str__
+    name: __Str__
+    href: Sharpy.Object.html#Sharpy_Object___Str__
+  - name: (
+  - name: )
+- uid: System.Object.Equals(System.Object,System.Object)
+  commentId: M:System.Object.Equals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  name: Equals(object, object)
+  nameWithType: object.Equals(object, object)
+  fullName: object.Equals(object, object)
+  nameWithType.vb: Object.Equals(Object, Object)
+  fullName.vb: Object.Equals(Object, Object)
+  name.vb: Equals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.GetType
+  commentId: M:System.Object.GetType
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  name: GetType()
+  nameWithType: object.GetType()
+  fullName: object.GetType()
+  nameWithType.vb: Object.GetType()
+  fullName.vb: Object.GetType()
+  spec.csharp:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+- uid: System.Object.ReferenceEquals(System.Object,System.Object)
+  commentId: M:System.Object.ReferenceEquals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  name: ReferenceEquals(object, object)
+  nameWithType: object.ReferenceEquals(object, object)
+  fullName: object.ReferenceEquals(object, object)
+  nameWithType.vb: Object.ReferenceEquals(Object, Object)
+  fullName.vb: Object.ReferenceEquals(Object, Object)
+  name.vb: ReferenceEquals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: Sharpy.Equatable`1
+  commentId: T:Sharpy.Equatable`1
+  href: Sharpy.Equatable-1.html
+  name: Equatable<T>
+  nameWithType: Equatable<T>
+  fullName: Sharpy.Equatable<T>
+  nameWithType.vb: Equatable(Of T)
+  fullName.vb: Sharpy.Equatable(Of T)
+  name.vb: Equatable(Of T)
+  spec.csharp:
+  - uid: Sharpy.Equatable`1
+    name: Equatable
+    href: Sharpy.Equatable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Equatable`1
+    name: Equatable
+    href: Sharpy.Equatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Inequatable`1
+  commentId: T:Sharpy.Inequatable`1
+  href: Sharpy.Inequatable-1.html
+  name: Inequatable<T>
+  nameWithType: Inequatable<T>
+  fullName: Sharpy.Inequatable<T>
+  nameWithType.vb: Inequatable(Of T)
+  fullName.vb: Sharpy.Inequatable(Of T)
+  name.vb: Inequatable(Of T)
+  spec.csharp:
+  - uid: Sharpy.Inequatable`1
+    name: Inequatable
+    href: Sharpy.Inequatable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Inequatable`1
+    name: Inequatable
+    href: Sharpy.Inequatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.IEquatable`1
+  commentId: T:System.IEquatable`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  name: IEquatable<T>
+  nameWithType: IEquatable<T>
+  fullName: System.IEquatable<T>
+  nameWithType.vb: IEquatable(Of T)
+  fullName.vb: System.IEquatable(Of T)
+  name.vb: IEquatable(Of T)
+  spec.csharp:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.MutableMapping`2
+  commentId: T:Sharpy.Collections.Interfaces.MutableMapping`2
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html
+  name: MutableMapping<K, V>
+  nameWithType: MutableMapping<K, V>
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>
+  nameWithType.vb: MutableMapping(Of K, V)
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V)
+  name.vb: MutableMapping(Of K, V)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2
+    name: MutableMapping
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html
+  - name: <
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2
+    name: MutableMapping
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Collections.Interfaces
+  commentId: N:Sharpy.Collections.Interfaces
+  href: Sharpy.html
+  name: Sharpy.Collections.Interfaces
+  nameWithType: Sharpy.Collections.Interfaces
+  fullName: Sharpy.Collections.Interfaces
+  spec.csharp:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+  spec.vb:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+- uid: Sharpy.Collections.Interfaces.Mapping`2
+  commentId: T:Sharpy.Collections.Interfaces.Mapping`2
+  parent: Sharpy.Collections.Interfaces
+  href: Sharpy.Collections.Interfaces.Mapping-2.html
+  name: Mapping<K, V>
+  nameWithType: Mapping<K, V>
+  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>
+  nameWithType.vb: Mapping(Of K, V)
+  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V)
+  name.vb: Mapping(Of K, V)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2
+    name: Mapping
+    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - name: <
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2
+    name: Mapping
+    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Collection`1
+  commentId: T:Sharpy.Collections.Interfaces.Collection`1
+  href: Sharpy.Collections.Interfaces.Collection-1.html
+  name: Collection<T>
+  nameWithType: Collection<T>
+  fullName: Sharpy.Collections.Interfaces.Collection<T>
+  nameWithType.vb: Collection(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.Collection(Of T)
+  name.vb: Collection(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Collection`1
+    name: Collection
+    href: Sharpy.Collections.Interfaces.Collection-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Collection`1
+    name: Collection
+    href: Sharpy.Collections.Interfaces.Collection-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Container`1
+  commentId: T:Sharpy.Collections.Interfaces.Container`1
+  href: Sharpy.Collections.Interfaces.Container-1.html
+  name: Container<T>
+  nameWithType: Container<T>
+  fullName: Sharpy.Collections.Interfaces.Container<T>
+  nameWithType.vb: Container(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.Container(Of T)
+  name.vb: Container(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Container`1
+    name: Container
+    href: Sharpy.Collections.Interfaces.Container-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Container`1
+    name: Container
+    href: Sharpy.Collections.Interfaces.Container-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Iterable`1
+  commentId: T:Sharpy.Collections.Interfaces.Iterable`1
+  href: Sharpy.Collections.Interfaces.Iterable-1.html
+  name: Iterable<T>
+  nameWithType: Iterable<T>
+  fullName: Sharpy.Collections.Interfaces.Iterable<T>
+  nameWithType.vb: Iterable(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T)
+  name.vb: Iterable(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic.IEnumerable`1
+  commentId: T:System.Collections.Generic.IEnumerable`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  name: IEnumerable<T>
+  nameWithType: IEnumerable<T>
+  fullName: System.Collections.Generic.IEnumerable<T>
+  nameWithType.vb: IEnumerable(Of T)
+  fullName.vb: System.Collections.Generic.IEnumerable(Of T)
+  name.vb: IEnumerable(Of T)
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic
+  commentId: N:System.Collections.Generic
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Collections.Generic
+  nameWithType: System.Collections.Generic
+  fullName: System.Collections.Generic
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+- uid: System.Collections
+  commentId: N:System.Collections
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Collections
+  nameWithType: System.Collections
+  fullName: System.Collections
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+- uid: Sharpy.Dict`2.#ctor*
+  commentId: Overload:Sharpy.Dict`2.#ctor
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2__ctor
+  name: Dict
+  nameWithType: Dict<K, V>.Dict
+  fullName: Sharpy.Dict<K, V>.Dict
+  nameWithType.vb: Dict(Of K, V).New
+  fullName.vb: Sharpy.Dict(Of K, V).New
+  name.vb: New
+- uid: Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{{K},{V}}}
+  commentId: T:Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.Iterable`1
+  href: Sharpy.Collections.Interfaces.Iterable-1.html
+  name: Iterable<(K, V)>
+  nameWithType: Iterable<(K, V)>
+  fullName: Sharpy.Collections.Interfaces.Iterable<(K, V)>
+  nameWithType.vb: Iterable(Of (K, V))
+  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of (K, V))
+  name.vb: Iterable(Of (K, V))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: <
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: )
+- uid: Sharpy.Dict`2.Copy*
+  commentId: Overload:Sharpy.Dict`2.Copy
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2_Copy
+  name: Copy
+  nameWithType: Dict<K, V>.Copy
+  fullName: Sharpy.Dict<K, V>.Copy
+  nameWithType.vb: Dict(Of K, V).Copy
+  fullName.vb: Sharpy.Dict(Of K, V).Copy
+- uid: Sharpy.Dict`2
+  commentId: T:Sharpy.Dict`2
+  parent: Sharpy
+  href: Sharpy.Dict-2.html
+  name: Dict<K, V>
+  nameWithType: Dict<K, V>
+  fullName: Sharpy.Dict<K, V>
+  nameWithType.vb: Dict(Of K, V)
+  fullName.vb: Sharpy.Dict(Of K, V)
+  name.vb: Dict(Of K, V)
+  spec.csharp:
+  - uid: Sharpy.Dict`2
+    name: Dict
+    href: Sharpy.Dict-2.html
+  - name: <
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Dict`2
+    name: Dict
+    href: Sharpy.Dict-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Dict`2.Clear*
+  commentId: Overload:Sharpy.Dict`2.Clear
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2_Clear
+  name: Clear
+  nameWithType: Dict<K, V>.Clear
+  fullName: Sharpy.Dict<K, V>.Clear
+  nameWithType.vb: Dict(Of K, V).Clear
+  fullName.vb: Sharpy.Dict(Of K, V).Clear
+- uid: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.Clear
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.Clear
+  parent: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.MutableMapping`2.Clear
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Clear
+  name: Clear()
+  nameWithType: MutableMapping<K, V>.Clear()
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.Clear()
+  nameWithType.vb: MutableMapping(Of K, V).Clear()
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).Clear()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.Clear
+    name: Clear
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Clear
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.Clear
+    name: Clear
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Clear
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.MutableMapping`2.Clear
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping`2.Clear
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Clear
+  name: Clear()
+  nameWithType: MutableMapping<K, V>.Clear()
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.Clear()
+  nameWithType.vb: MutableMapping(Of K, V).Clear()
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).Clear()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.Clear
+    name: Clear
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Clear
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.Clear
+    name: Clear
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Clear
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Container`1.__Contains__(`0)
+  commentId: M:Sharpy.Collections.Interfaces.Container`1.__Contains__(`0)
+  href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1___Contains____0_
+  name: __Contains__(T)
+  nameWithType: Container<T>.__Contains__(T)
+  fullName: Sharpy.Collections.Interfaces.Container<T>.__Contains__(T)
+  nameWithType.vb: Container(Of T).__Contains__(T)
+  fullName.vb: Sharpy.Collections.Interfaces.Container(Of T).__Contains__(T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Container`1.__Contains__(`0)
+    name: __Contains__
+    href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1___Contains____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Container`1.__Contains__(`0)
+    name: __Contains__
+    href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1___Contains____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.Dict`2.Contains*
+  commentId: Overload:Sharpy.Dict`2.Contains
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2_Contains__0_
+  name: Contains
+  nameWithType: Dict<K, V>.Contains
+  fullName: Sharpy.Dict<K, V>.Contains
+  nameWithType.vb: Dict(Of K, V).Contains
+  fullName.vb: Sharpy.Dict(Of K, V).Contains
+- uid: Sharpy.Collections.Interfaces.Container{{K}}.Contains({K})
+  commentId: M:Sharpy.Collections.Interfaces.Container{`0}.Contains(`0)
+  parent: Sharpy.Collections.Interfaces.Container{{K}}
+  definition: Sharpy.Collections.Interfaces.Container`1.Contains(`0)
+  href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1_Contains__0_
+  name: Contains(K)
+  nameWithType: Container<K>.Contains(K)
+  fullName: Sharpy.Collections.Interfaces.Container<K>.Contains(K)
+  nameWithType.vb: Container(Of K).Contains(K)
+  fullName.vb: Sharpy.Collections.Interfaces.Container(Of K).Contains(K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Container{`0}.Contains(`0)
+    name: Contains
+    href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1_Contains__0_
+  - name: (
+  - name: K
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Container{`0}.Contains(`0)
+    name: Contains
+    href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1_Contains__0_
+  - name: (
+  - name: K
+  - name: )
+- uid: '{K}'
+  commentId: '!:K'
+  definition: K
+  name: K
+  nameWithType: K
+  fullName: K
+- uid: System.Boolean
+  commentId: T:System.Boolean
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.boolean
+  name: bool
+  nameWithType: bool
+  fullName: bool
+  nameWithType.vb: Boolean
+  fullName.vb: Boolean
+  name.vb: Boolean
+- uid: Sharpy.Collections.Interfaces.Container`1.Contains(`0)
+  commentId: M:Sharpy.Collections.Interfaces.Container`1.Contains(`0)
+  href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1_Contains__0_
+  name: Contains(T)
+  nameWithType: Container<T>.Contains(T)
+  fullName: Sharpy.Collections.Interfaces.Container<T>.Contains(T)
+  nameWithType.vb: Container(Of T).Contains(T)
+  fullName.vb: Sharpy.Collections.Interfaces.Container(Of T).Contains(T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Container`1.Contains(`0)
+    name: Contains
+    href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1_Contains__0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Container`1.Contains(`0)
+    name: Contains
+    href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1_Contains__0_
+  - name: (
+  - name: T
+  - name: )
+- uid: K
+  name: K
+  nameWithType: K
+  fullName: K
+- uid: Sharpy.Collections.Interfaces.Mapping`2.__GetItem__(`0)
+  commentId: M:Sharpy.Collections.Interfaces.Mapping`2.__GetItem__(`0)
+  href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2___GetItem____0_
+  name: __GetItem__(K)
+  nameWithType: Mapping<K, V>.__GetItem__(K)
+  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>.__GetItem__(K)
+  nameWithType.vb: Mapping(Of K, V).__GetItem__(K)
+  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V).__GetItem__(K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2.__GetItem__(`0)
+    name: __GetItem__
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2___GetItem____0_
+  - name: (
+  - name: K
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2.__GetItem__(`0)
+    name: __GetItem__
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2___GetItem____0_
+  - name: (
+  - name: K
+  - name: )
+- uid: Sharpy.Dict`2.Get*
+  commentId: Overload:Sharpy.Dict`2.Get
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2_Get__0_
+  name: Get
+  nameWithType: Dict<K, V>.Get
+  fullName: Sharpy.Dict<K, V>.Get
+  nameWithType.vb: Dict(Of K, V).Get
+  fullName.vb: Sharpy.Dict(Of K, V).Get
+- uid: Sharpy.Collections.Interfaces.Mapping{{K},{V}}.Get({K})
+  commentId: M:Sharpy.Collections.Interfaces.Mapping{`0,`1}.Get(`0)
+  parent: Sharpy.Collections.Interfaces.Mapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.Mapping`2.Get(`0)
+  href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Get__0_
+  name: Get(K)
+  nameWithType: Mapping<K, V>.Get(K)
+  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>.Get(K)
+  nameWithType.vb: Mapping(Of K, V).Get(K)
+  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V).Get(K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Mapping{`0,`1}.Get(`0)
+    name: Get
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Get__0_
+  - name: (
+  - name: K
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Mapping{`0,`1}.Get(`0)
+    name: Get
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Get__0_
+  - name: (
+  - name: K
+  - name: )
+- uid: '{V}'
+  commentId: '!:V'
+  definition: V
+  name: V
+  nameWithType: V
+  fullName: V
+- uid: Sharpy.Collections.Interfaces.Mapping`2.Get(`0)
+  commentId: M:Sharpy.Collections.Interfaces.Mapping`2.Get(`0)
+  href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Get__0_
+  name: Get(K)
+  nameWithType: Mapping<K, V>.Get(K)
+  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>.Get(K)
+  nameWithType.vb: Mapping(Of K, V).Get(K)
+  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V).Get(K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2.Get(`0)
+    name: Get
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Get__0_
+  - name: (
+  - name: K
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2.Get(`0)
+    name: Get
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Get__0_
+  - name: (
+  - name: K
+  - name: )
+- uid: V
+  name: V
+  nameWithType: V
+  fullName: V
+- uid: Sharpy.Collections.Interfaces.Mapping{{K},{V}}.Get({K},{V})
+  commentId: M:Sharpy.Collections.Interfaces.Mapping{`0,`1}.Get(`0,`1)
+  parent: Sharpy.Collections.Interfaces.Mapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.Mapping`2.Get(`0,`1)
+  href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Get__0__1_
+  name: Get(K, V)
+  nameWithType: Mapping<K, V>.Get(K, V)
+  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>.Get(K, V)
+  nameWithType.vb: Mapping(Of K, V).Get(K, V)
+  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V).Get(K, V)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Mapping{`0,`1}.Get(`0,`1)
+    name: Get
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Get__0__1_
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Mapping{`0,`1}.Get(`0,`1)
+    name: Get
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Get__0__1_
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Mapping`2.Get(`0,`1)
+  commentId: M:Sharpy.Collections.Interfaces.Mapping`2.Get(`0,`1)
+  href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Get__0__1_
+  name: Get(K, V)
+  nameWithType: Mapping<K, V>.Get(K, V)
+  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>.Get(K, V)
+  nameWithType.vb: Mapping(Of K, V).Get(K, V)
+  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V).Get(K, V)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2.Get(`0,`1)
+    name: Get
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Get__0__1_
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2.Get(`0,`1)
+    name: Get
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Get__0__1_
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Dict`2.GetEnumerator*
+  commentId: Overload:Sharpy.Dict`2.GetEnumerator
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2_GetEnumerator
+  name: GetEnumerator
+  nameWithType: Dict<K, V>.GetEnumerator
+  fullName: Sharpy.Dict<K, V>.GetEnumerator
+  nameWithType.vb: Dict(Of K, V).GetEnumerator
+  fullName.vb: Sharpy.Dict(Of K, V).GetEnumerator
+- uid: System.Collections.Generic.IEnumerable{{K}}.GetEnumerator
+  commentId: M:System.Collections.Generic.IEnumerable{`0}.GetEnumerator
+  parent: System.Collections.Generic.IEnumerable{{K}}
+  definition: System.Collections.Generic.IEnumerable`1.GetEnumerator
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  name: GetEnumerator()
+  nameWithType: IEnumerable<K>.GetEnumerator()
+  fullName: System.Collections.Generic.IEnumerable<K>.GetEnumerator()
+  nameWithType.vb: IEnumerable(Of K).GetEnumerator()
+  fullName.vb: System.Collections.Generic.IEnumerable(Of K).GetEnumerator()
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable{`0}.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable{`0}.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+- uid: System.Collections.Generic.IEnumerator{{K}}
+  commentId: T:System.Collections.Generic.IEnumerator{`0}
+  parent: System.Collections.Generic
+  definition: System.Collections.Generic.IEnumerator`1
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerator-1
+  name: IEnumerator<K>
+  nameWithType: IEnumerator<K>
+  fullName: System.Collections.Generic.IEnumerator<K>
+  nameWithType.vb: IEnumerator(Of K)
+  fullName.vb: System.Collections.Generic.IEnumerator(Of K)
+  name.vb: IEnumerator(Of K)
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerator`1
+    name: IEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerator-1
+  - name: <
+  - name: K
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerator`1
+    name: IEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerator-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: )
+- uid: System.Collections.Generic.IEnumerable`1.GetEnumerator
+  commentId: M:System.Collections.Generic.IEnumerable`1.GetEnumerator
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  name: GetEnumerator()
+  nameWithType: IEnumerable<T>.GetEnumerator()
+  fullName: System.Collections.Generic.IEnumerable<T>.GetEnumerator()
+  nameWithType.vb: IEnumerable(Of T).GetEnumerator()
+  fullName.vb: System.Collections.Generic.IEnumerable(Of T).GetEnumerator()
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable`1.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable`1.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+- uid: System.Collections.Generic.IEnumerator`1
+  commentId: T:System.Collections.Generic.IEnumerator`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerator-1
+  name: IEnumerator<T>
+  nameWithType: IEnumerator<T>
+  fullName: System.Collections.Generic.IEnumerator<T>
+  nameWithType.vb: IEnumerator(Of T)
+  fullName.vb: System.Collections.Generic.IEnumerator(Of T)
+  name.vb: IEnumerator(Of T)
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerator`1
+    name: IEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerator-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerator`1
+    name: IEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerator-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Dict`2.Items*
+  commentId: Overload:Sharpy.Dict`2.Items
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2_Items
+  name: Items
+  nameWithType: Dict<K, V>.Items
+  fullName: Sharpy.Dict<K, V>.Items
+  nameWithType.vb: Dict(Of K, V).Items
+  fullName.vb: Sharpy.Dict(Of K, V).Items
+- uid: Sharpy.Collections.Interfaces.Mapping{{K},{V}}.Items
+  commentId: M:Sharpy.Collections.Interfaces.Mapping{`0,`1}.Items
+  parent: Sharpy.Collections.Interfaces.Mapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.Mapping`2.Items
+  href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Items
+  name: Items()
+  nameWithType: Mapping<K, V>.Items()
+  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>.Items()
+  nameWithType.vb: Mapping(Of K, V).Items()
+  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V).Items()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Mapping{`0,`1}.Items
+    name: Items
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Items
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Mapping{`0,`1}.Items
+    name: Items
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Items
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.ItemsView{{K},{V}}
+  commentId: T:Sharpy.Collections.Interfaces.ItemsView{`0,`1}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.ItemsView`2
+  href: Sharpy.Collections.Interfaces.ItemsView-2.html
+  name: ItemsView<K, V>
+  nameWithType: ItemsView<K, V>
+  fullName: Sharpy.Collections.Interfaces.ItemsView<K, V>
+  nameWithType.vb: ItemsView(Of K, V)
+  fullName.vb: Sharpy.Collections.Interfaces.ItemsView(Of K, V)
+  name.vb: ItemsView(Of K, V)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.ItemsView`2
+    name: ItemsView
+    href: Sharpy.Collections.Interfaces.ItemsView-2.html
+  - name: <
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.ItemsView`2
+    name: ItemsView
+    href: Sharpy.Collections.Interfaces.ItemsView-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Mapping`2.Items
+  commentId: M:Sharpy.Collections.Interfaces.Mapping`2.Items
+  href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Items
+  name: Items()
+  nameWithType: Mapping<K, V>.Items()
+  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>.Items()
+  nameWithType.vb: Mapping(Of K, V).Items()
+  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V).Items()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2.Items
+    name: Items
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Items
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2.Items
+    name: Items
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Items
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.ItemsView`2
+  commentId: T:Sharpy.Collections.Interfaces.ItemsView`2
+  href: Sharpy.Collections.Interfaces.ItemsView-2.html
+  name: ItemsView<K, V>
+  nameWithType: ItemsView<K, V>
+  fullName: Sharpy.Collections.Interfaces.ItemsView<K, V>
+  nameWithType.vb: ItemsView(Of K, V)
+  fullName.vb: Sharpy.Collections.Interfaces.ItemsView(Of K, V)
+  name.vb: ItemsView(Of K, V)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.ItemsView`2
+    name: ItemsView
+    href: Sharpy.Collections.Interfaces.ItemsView-2.html
+  - name: <
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.ItemsView`2
+    name: ItemsView
+    href: Sharpy.Collections.Interfaces.ItemsView-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Dict`2.Keys*
+  commentId: Overload:Sharpy.Dict`2.Keys
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2_Keys
+  name: Keys
+  nameWithType: Dict<K, V>.Keys
+  fullName: Sharpy.Dict<K, V>.Keys
+  nameWithType.vb: Dict(Of K, V).Keys
+  fullName.vb: Sharpy.Dict(Of K, V).Keys
+- uid: Sharpy.Collections.Interfaces.Mapping{{K},{V}}.Keys
+  commentId: M:Sharpy.Collections.Interfaces.Mapping{`0,`1}.Keys
+  parent: Sharpy.Collections.Interfaces.Mapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.Mapping`2.Keys
+  href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Keys
+  name: Keys()
+  nameWithType: Mapping<K, V>.Keys()
+  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>.Keys()
+  nameWithType.vb: Mapping(Of K, V).Keys()
+  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V).Keys()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Mapping{`0,`1}.Keys
+    name: Keys
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Keys
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Mapping{`0,`1}.Keys
+    name: Keys
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Keys
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.KeysView{{K}}
+  commentId: T:Sharpy.Collections.Interfaces.KeysView{`0}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.KeysView`1
+  href: Sharpy.Collections.Interfaces.KeysView-1.html
+  name: KeysView<K>
+  nameWithType: KeysView<K>
+  fullName: Sharpy.Collections.Interfaces.KeysView<K>
+  nameWithType.vb: KeysView(Of K)
+  fullName.vb: Sharpy.Collections.Interfaces.KeysView(Of K)
+  name.vb: KeysView(Of K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.KeysView`1
+    name: KeysView
+    href: Sharpy.Collections.Interfaces.KeysView-1.html
+  - name: <
+  - name: K
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.KeysView`1
+    name: KeysView
+    href: Sharpy.Collections.Interfaces.KeysView-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Mapping`2.Keys
+  commentId: M:Sharpy.Collections.Interfaces.Mapping`2.Keys
+  href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Keys
+  name: Keys()
+  nameWithType: Mapping<K, V>.Keys()
+  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>.Keys()
+  nameWithType.vb: Mapping(Of K, V).Keys()
+  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V).Keys()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2.Keys
+    name: Keys
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Keys
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2.Keys
+    name: Keys
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Keys
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.KeysView`1
+  commentId: T:Sharpy.Collections.Interfaces.KeysView`1
+  href: Sharpy.Collections.Interfaces.KeysView-1.html
+  name: KeysView<T>
+  nameWithType: KeysView<T>
+  fullName: Sharpy.Collections.Interfaces.KeysView<T>
+  nameWithType.vb: KeysView(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.KeysView(Of T)
+  name.vb: KeysView(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.KeysView`1
+    name: KeysView
+    href: Sharpy.Collections.Interfaces.KeysView-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.KeysView`1
+    name: KeysView
+    href: Sharpy.Collections.Interfaces.KeysView-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.KeyError
+  commentId: T:Sharpy.KeyError
+  href: Sharpy.KeyError.html
+  name: KeyError
+  nameWithType: KeyError
+  fullName: Sharpy.KeyError
+- uid: Sharpy.Dict`2.Pop*
+  commentId: Overload:Sharpy.Dict`2.Pop
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2_Pop__0_
+  name: Pop
+  nameWithType: Dict<K, V>.Pop
+  fullName: Sharpy.Dict<K, V>.Pop
+  nameWithType.vb: Dict(Of K, V).Pop
+  fullName.vb: Sharpy.Dict(Of K, V).Pop
+- uid: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.Pop({K})
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.Pop(`0)
+  parent: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.MutableMapping`2.Pop(`0)
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Pop__0_
+  name: Pop(K)
+  nameWithType: MutableMapping<K, V>.Pop(K)
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.Pop(K)
+  nameWithType.vb: MutableMapping(Of K, V).Pop(K)
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).Pop(K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.Pop(`0)
+    name: Pop
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Pop__0_
+  - name: (
+  - name: K
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.Pop(`0)
+    name: Pop
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Pop__0_
+  - name: (
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.MutableMapping`2.Pop(`0)
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping`2.Pop(`0)
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Pop__0_
+  name: Pop(K)
+  nameWithType: MutableMapping<K, V>.Pop(K)
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.Pop(K)
+  nameWithType.vb: MutableMapping(Of K, V).Pop(K)
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).Pop(K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.Pop(`0)
+    name: Pop
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Pop__0_
+  - name: (
+  - name: K
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.Pop(`0)
+    name: Pop
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Pop__0_
+  - name: (
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.Pop({K},{V})
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.Pop(`0,`1)
+  parent: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.MutableMapping`2.Pop(`0,`1)
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Pop__0__1_
+  name: Pop(K, V)
+  nameWithType: MutableMapping<K, V>.Pop(K, V)
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.Pop(K, V)
+  nameWithType.vb: MutableMapping(Of K, V).Pop(K, V)
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).Pop(K, V)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.Pop(`0,`1)
+    name: Pop
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Pop__0__1_
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.Pop(`0,`1)
+    name: Pop
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Pop__0__1_
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Collections.Interfaces.MutableMapping`2.Pop(`0,`1)
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping`2.Pop(`0,`1)
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Pop__0__1_
+  name: Pop(K, V)
+  nameWithType: MutableMapping<K, V>.Pop(K, V)
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.Pop(K, V)
+  nameWithType.vb: MutableMapping(Of K, V).Pop(K, V)
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).Pop(K, V)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.Pop(`0,`1)
+    name: Pop
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Pop__0__1_
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.Pop(`0,`1)
+    name: Pop
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Pop__0__1_
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Dict`2.PopItem*
+  commentId: Overload:Sharpy.Dict`2.PopItem
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2_PopItem_System_Boolean_
+  name: PopItem
+  nameWithType: Dict<K, V>.PopItem
+  fullName: Sharpy.Dict<K, V>.PopItem
+  nameWithType.vb: Dict(Of K, V).PopItem
+  fullName.vb: Sharpy.Dict(Of K, V).PopItem
+- uid: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.PopItem(System.Boolean)
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.PopItem(System.Boolean)
+  parent: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.MutableMapping`2.PopItem(System.Boolean)
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_PopItem_System_Boolean_
+  name: PopItem(bool)
+  nameWithType: MutableMapping<K, V>.PopItem(bool)
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.PopItem(bool)
+  nameWithType.vb: MutableMapping(Of K, V).PopItem(Boolean)
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).PopItem(Boolean)
+  name.vb: PopItem(Boolean)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.PopItem(System.Boolean)
+    name: PopItem
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_PopItem_System_Boolean_
+  - name: (
+  - uid: System.Boolean
+    name: bool
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.boolean
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.PopItem(System.Boolean)
+    name: PopItem
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_PopItem_System_Boolean_
+  - name: (
+  - uid: System.Boolean
+    name: Boolean
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.boolean
+  - name: )
+- uid: System.ValueTuple{{K},{V}}
+  commentId: T:System.ValueTuple{`0,`1}
+  parent: System
+  definition: System.ValueTuple`2
+  name: (K, V)
+  nameWithType: (K, V)
+  fullName: (K, V)
+  spec.csharp:
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  spec.vb:
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Collections.Interfaces.MutableMapping`2.PopItem(System.Boolean)
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping`2.PopItem(System.Boolean)
+  isExternal: true
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_PopItem_System_Boolean_
+  name: PopItem(bool)
+  nameWithType: MutableMapping<K, V>.PopItem(bool)
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.PopItem(bool)
+  nameWithType.vb: MutableMapping(Of K, V).PopItem(Boolean)
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).PopItem(Boolean)
+  name.vb: PopItem(Boolean)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.PopItem(System.Boolean)
+    name: PopItem
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_PopItem_System_Boolean_
+  - name: (
+  - uid: System.Boolean
+    name: bool
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.boolean
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.PopItem(System.Boolean)
+    name: PopItem
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_PopItem_System_Boolean_
+  - name: (
+  - uid: System.Boolean
+    name: Boolean
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.boolean
+  - name: )
+- uid: System.ValueTuple`2
+  commentId: T:System.ValueTuple`2
+  name: (T1, T2)
+  nameWithType: (T1, T2)
+  fullName: (T1, T2)
+  spec.csharp:
+  - name: (
+  - name: T1
+  - name: ','
+  - name: " "
+  - name: T2
+  - name: )
+  spec.vb:
+  - name: (
+  - name: T1
+  - name: ','
+  - name: " "
+  - name: T2
+  - name: )
+- uid: Sharpy.Dict`2.SetDefault*
+  commentId: Overload:Sharpy.Dict`2.SetDefault
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2_SetDefault__0__1_
+  name: SetDefault
+  nameWithType: Dict<K, V>.SetDefault
+  fullName: Sharpy.Dict<K, V>.SetDefault
+  nameWithType.vb: Dict(Of K, V).SetDefault
+  fullName.vb: Sharpy.Dict(Of K, V).SetDefault
+- uid: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.SetDefault({K},{V})
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.SetDefault(`0,`1)
+  parent: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.MutableMapping`2.SetDefault(`0,`1)
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_SetDefault__0__1_
+  name: SetDefault(K, V)
+  nameWithType: MutableMapping<K, V>.SetDefault(K, V)
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.SetDefault(K, V)
+  nameWithType.vb: MutableMapping(Of K, V).SetDefault(K, V)
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).SetDefault(K, V)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.SetDefault(`0,`1)
+    name: SetDefault
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_SetDefault__0__1_
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.SetDefault(`0,`1)
+    name: SetDefault
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_SetDefault__0__1_
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Collections.Interfaces.MutableMapping`2.SetDefault(`0,`1)
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping`2.SetDefault(`0,`1)
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_SetDefault__0__1_
+  name: SetDefault(K, V)
+  nameWithType: MutableMapping<K, V>.SetDefault(K, V)
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.SetDefault(K, V)
+  nameWithType.vb: MutableMapping(Of K, V).SetDefault(K, V)
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).SetDefault(K, V)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.SetDefault(`0,`1)
+    name: SetDefault
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_SetDefault__0__1_
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.SetDefault(`0,`1)
+    name: SetDefault
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_SetDefault__0__1_
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Collections.Interfaces.MutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___IOr___Sharpy_Collections_Interfaces_Mapping__0__1__
+  name: __IOr__(Mapping<K, V>)
+  nameWithType: MutableMapping<K, V>.__IOr__(Mapping<K, V>)
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.__IOr__(Sharpy.Collections.Interfaces.Mapping<K, V>)
+  nameWithType.vb: MutableMapping(Of K, V).__IOr__(Mapping(Of K, V))
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).__IOr__(Sharpy.Collections.Interfaces.Mapping(Of K, V))
+  name.vb: __IOr__(Mapping(Of K, V))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+    name: __IOr__
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___IOr___Sharpy_Collections_Interfaces_Mapping__0__1__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Mapping`2
+    name: Mapping
+    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - name: <
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+    name: __IOr__
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___IOr___Sharpy_Collections_Interfaces_Mapping__0__1__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Mapping`2
+    name: Mapping
+    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: )
+- uid: Sharpy.Dict`2.Update*
+  commentId: Overload:Sharpy.Dict`2.Update
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2_Update_Sharpy_Collections_Interfaces_Mapping__0__1__
+  name: Update
+  nameWithType: Dict<K, V>.Update
+  fullName: Sharpy.Dict<K, V>.Update
+  nameWithType.vb: Dict(Of K, V).Update
+  fullName.vb: Sharpy.Dict(Of K, V).Update
+- uid: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.Update(Sharpy.Collections.Interfaces.Mapping{{K},{V}})
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.Update(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  parent: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.MutableMapping`2.Update(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Update_Sharpy_Collections_Interfaces_Mapping__0__1__
+  name: Update(Mapping<K, V>)
+  nameWithType: MutableMapping<K, V>.Update(Mapping<K, V>)
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.Update(Sharpy.Collections.Interfaces.Mapping<K, V>)
+  nameWithType.vb: MutableMapping(Of K, V).Update(Mapping(Of K, V))
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).Update(Sharpy.Collections.Interfaces.Mapping(Of K, V))
+  name.vb: Update(Mapping(Of K, V))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.Update(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+    name: Update
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Update_Sharpy_Collections_Interfaces_Mapping__0__1__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Mapping`2
+    name: Mapping
+    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - name: <
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.Update(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+    name: Update
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Update_Sharpy_Collections_Interfaces_Mapping__0__1__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Mapping`2
+    name: Mapping
+    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.MutableMapping`2.Update(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping`2.Update(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Update_Sharpy_Collections_Interfaces_Mapping__0__1__
+  name: Update(Mapping<K, V>)
+  nameWithType: MutableMapping<K, V>.Update(Mapping<K, V>)
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.Update(Sharpy.Collections.Interfaces.Mapping<K, V>)
+  nameWithType.vb: MutableMapping(Of K, V).Update(Mapping(Of K, V))
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).Update(Sharpy.Collections.Interfaces.Mapping(Of K, V))
+  name.vb: Update(Mapping(Of K, V))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.Update(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+    name: Update
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Update_Sharpy_Collections_Interfaces_Mapping__0__1__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Mapping`2
+    name: Mapping
+    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - name: <
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.Update(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+    name: Update
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Update_Sharpy_Collections_Interfaces_Mapping__0__1__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Mapping`2
+    name: Mapping
+    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.Update(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{{K},{V}}})
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.Update(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  parent: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.MutableMapping`2.Update(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Update_Sharpy_Collections_Interfaces_Iterable_System_ValueTuple__0__1___
+  name: Update(Iterable<(K, V)>)
+  nameWithType: MutableMapping<K, V>.Update(Iterable<(K, V)>)
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.Update(Sharpy.Collections.Interfaces.Iterable<(K, V)>)
+  nameWithType.vb: MutableMapping(Of K, V).Update(Iterable(Of (K, V)))
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).Update(Sharpy.Collections.Interfaces.Iterable(Of (K, V)))
+  name.vb: Update(Iterable(Of (K, V)))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.Update(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+    name: Update
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Update_Sharpy_Collections_Interfaces_Iterable_System_ValueTuple__0__1___
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: <
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.Update(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+    name: Update
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Update_Sharpy_Collections_Interfaces_Iterable_System_ValueTuple__0__1___
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.MutableMapping`2.Update(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping`2.Update(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Update_Sharpy_Collections_Interfaces_Iterable_System_ValueTuple__0__1___
+  name: Update(Iterable<(K, V)>)
+  nameWithType: MutableMapping<K, V>.Update(Iterable<(K, V)>)
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.Update(Sharpy.Collections.Interfaces.Iterable<(K, V)>)
+  nameWithType.vb: MutableMapping(Of K, V).Update(Iterable(Of (K, V)))
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).Update(Sharpy.Collections.Interfaces.Iterable(Of (K, V)))
+  name.vb: Update(Iterable(Of (K, V)))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.Update(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+    name: Update
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Update_Sharpy_Collections_Interfaces_Iterable_System_ValueTuple__0__1___
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: <
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.Update(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+    name: Update
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Update_Sharpy_Collections_Interfaces_Iterable_System_ValueTuple__0__1___
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: )
+  - name: )
+- uid: Sharpy.Dict`2.Values*
+  commentId: Overload:Sharpy.Dict`2.Values
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2_Values
+  name: Values
+  nameWithType: Dict<K, V>.Values
+  fullName: Sharpy.Dict<K, V>.Values
+  nameWithType.vb: Dict(Of K, V).Values
+  fullName.vb: Sharpy.Dict(Of K, V).Values
+- uid: Sharpy.Collections.Interfaces.Mapping{{K},{V}}.Values
+  commentId: M:Sharpy.Collections.Interfaces.Mapping{`0,`1}.Values
+  parent: Sharpy.Collections.Interfaces.Mapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.Mapping`2.Values
+  href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Values
+  name: Values()
+  nameWithType: Mapping<K, V>.Values()
+  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>.Values()
+  nameWithType.vb: Mapping(Of K, V).Values()
+  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V).Values()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Mapping{`0,`1}.Values
+    name: Values
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Values
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Mapping{`0,`1}.Values
+    name: Values
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Values
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.ValuesView{{V}}
+  commentId: T:Sharpy.Collections.Interfaces.ValuesView{`1}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.ValuesView`1
+  href: Sharpy.Collections.Interfaces.ValuesView-1.html
+  name: ValuesView<V>
+  nameWithType: ValuesView<V>
+  fullName: Sharpy.Collections.Interfaces.ValuesView<V>
+  nameWithType.vb: ValuesView(Of V)
+  fullName.vb: Sharpy.Collections.Interfaces.ValuesView(Of V)
+  name.vb: ValuesView(Of V)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.ValuesView`1
+    name: ValuesView
+    href: Sharpy.Collections.Interfaces.ValuesView-1.html
+  - name: <
+  - name: V
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.ValuesView`1
+    name: ValuesView
+    href: Sharpy.Collections.Interfaces.ValuesView-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Mapping`2.Values
+  commentId: M:Sharpy.Collections.Interfaces.Mapping`2.Values
+  href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Values
+  name: Values()
+  nameWithType: Mapping<K, V>.Values()
+  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>.Values()
+  nameWithType.vb: Mapping(Of K, V).Values()
+  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V).Values()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2.Values
+    name: Values
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Values
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2.Values
+    name: Values
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Values
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.ValuesView`1
+  commentId: T:Sharpy.Collections.Interfaces.ValuesView`1
+  href: Sharpy.Collections.Interfaces.ValuesView-1.html
+  name: ValuesView<T>
+  nameWithType: ValuesView<T>
+  fullName: Sharpy.Collections.Interfaces.ValuesView<T>
+  nameWithType.vb: ValuesView(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.ValuesView(Of T)
+  name.vb: ValuesView(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.ValuesView`1
+    name: ValuesView
+    href: Sharpy.Collections.Interfaces.ValuesView-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.ValuesView`1
+    name: ValuesView
+    href: Sharpy.Collections.Interfaces.ValuesView-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Dict`2.__Contains__*
+  commentId: Overload:Sharpy.Dict`2.__Contains__
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2___Contains____0_
+  name: __Contains__
+  nameWithType: Dict<K, V>.__Contains__
+  fullName: Sharpy.Dict<K, V>.__Contains__
+  nameWithType.vb: Dict(Of K, V).__Contains__
+  fullName.vb: Sharpy.Dict(Of K, V).__Contains__
+- uid: Sharpy.Collections.Interfaces.Container{{K}}.__Contains__({K})
+  commentId: M:Sharpy.Collections.Interfaces.Container{`0}.__Contains__(`0)
+  parent: Sharpy.Collections.Interfaces.Container{{K}}
+  definition: Sharpy.Collections.Interfaces.Container`1.__Contains__(`0)
+  href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1___Contains____0_
+  name: __Contains__(K)
+  nameWithType: Container<K>.__Contains__(K)
+  fullName: Sharpy.Collections.Interfaces.Container<K>.__Contains__(K)
+  nameWithType.vb: Container(Of K).__Contains__(K)
+  fullName.vb: Sharpy.Collections.Interfaces.Container(Of K).__Contains__(K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Container{`0}.__Contains__(`0)
+    name: __Contains__
+    href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1___Contains____0_
+  - name: (
+  - name: K
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Container{`0}.__Contains__(`0)
+    name: __Contains__
+    href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1___Contains____0_
+  - name: (
+  - name: K
+  - name: )
+- uid: Sharpy.Dict`2.__DelItem__*
+  commentId: Overload:Sharpy.Dict`2.__DelItem__
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2___DelItem____0_
+  name: __DelItem__
+  nameWithType: Dict<K, V>.__DelItem__
+  fullName: Sharpy.Dict<K, V>.__DelItem__
+  nameWithType.vb: Dict(Of K, V).__DelItem__
+  fullName.vb: Sharpy.Dict(Of K, V).__DelItem__
+- uid: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.__DelItem__({K})
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.__DelItem__(`0)
+  parent: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.MutableMapping`2.__DelItem__(`0)
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___DelItem____0_
+  name: __DelItem__(K)
+  nameWithType: MutableMapping<K, V>.__DelItem__(K)
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.__DelItem__(K)
+  nameWithType.vb: MutableMapping(Of K, V).__DelItem__(K)
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).__DelItem__(K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.__DelItem__(`0)
+    name: __DelItem__
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___DelItem____0_
+  - name: (
+  - name: K
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.__DelItem__(`0)
+    name: __DelItem__
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___DelItem____0_
+  - name: (
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.MutableMapping`2.__DelItem__(`0)
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping`2.__DelItem__(`0)
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___DelItem____0_
+  name: __DelItem__(K)
+  nameWithType: MutableMapping<K, V>.__DelItem__(K)
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.__DelItem__(K)
+  nameWithType.vb: MutableMapping(Of K, V).__DelItem__(K)
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).__DelItem__(K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.__DelItem__(`0)
+    name: __DelItem__
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___DelItem____0_
+  - name: (
+  - name: K
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.__DelItem__(`0)
+    name: __DelItem__
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___DelItem____0_
+  - name: (
+  - name: K
+  - name: )
+- uid: Sharpy.Dict`2.__GetItem__*
+  commentId: Overload:Sharpy.Dict`2.__GetItem__
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2___GetItem____0_
+  name: __GetItem__
+  nameWithType: Dict<K, V>.__GetItem__
+  fullName: Sharpy.Dict<K, V>.__GetItem__
+  nameWithType.vb: Dict(Of K, V).__GetItem__
+  fullName.vb: Sharpy.Dict(Of K, V).__GetItem__
+- uid: Sharpy.Collections.Interfaces.Mapping{{K},{V}}.__GetItem__({K})
+  commentId: M:Sharpy.Collections.Interfaces.Mapping{`0,`1}.__GetItem__(`0)
+  parent: Sharpy.Collections.Interfaces.Mapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.Mapping`2.__GetItem__(`0)
+  href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2___GetItem____0_
+  name: __GetItem__(K)
+  nameWithType: Mapping<K, V>.__GetItem__(K)
+  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>.__GetItem__(K)
+  nameWithType.vb: Mapping(Of K, V).__GetItem__(K)
+  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V).__GetItem__(K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Mapping{`0,`1}.__GetItem__(`0)
+    name: __GetItem__
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2___GetItem____0_
+  - name: (
+  - name: K
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Mapping{`0,`1}.__GetItem__(`0)
+    name: __GetItem__
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2___GetItem____0_
+  - name: (
+  - name: K
+  - name: )
+- uid: Sharpy.Iterator`1
+  commentId: T:Sharpy.Iterator`1
+  parent: Sharpy
+  href: Sharpy.Iterator-1.html
+  name: Iterator<T>
+  nameWithType: Iterator<T>
+  fullName: Sharpy.Iterator<T>
+  nameWithType.vb: Iterator(Of T)
+  fullName.vb: Sharpy.Iterator(Of T)
+  name.vb: Iterator(Of T)
+  spec.csharp:
+  - uid: Sharpy.Iterator`1
+    name: Iterator
+    href: Sharpy.Iterator-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Iterator`1
+    name: Iterator
+    href: Sharpy.Iterator-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Dict`2.__Iter__*
+  commentId: Overload:Sharpy.Dict`2.__Iter__
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2___Iter__
+  name: __Iter__
+  nameWithType: Dict<K, V>.__Iter__
+  fullName: Sharpy.Dict<K, V>.__Iter__
+  nameWithType.vb: Dict(Of K, V).__Iter__
+  fullName.vb: Sharpy.Dict(Of K, V).__Iter__
+- uid: Sharpy.Collections.Interfaces.Iterable{{K}}.__Iter__
+  commentId: M:Sharpy.Collections.Interfaces.Iterable{`0}.__Iter__
+  parent: Sharpy.Collections.Interfaces.Iterable{{K}}
+  definition: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+  href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  name: __Iter__()
+  nameWithType: Iterable<K>.__Iter__()
+  fullName: Sharpy.Collections.Interfaces.Iterable<K>.__Iter__()
+  nameWithType.vb: Iterable(Of K).__Iter__()
+  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of K).__Iter__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Iterable{`0}.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Iterable{`0}.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  - name: (
+  - name: )
+- uid: Sharpy.Iterator{{K}}
+  commentId: T:Sharpy.Iterator{`0}
+  parent: Sharpy
+  definition: Sharpy.Iterator`1
+  href: Sharpy.Iterator-1.html
+  name: Iterator<K>
+  nameWithType: Iterator<K>
+  fullName: Sharpy.Iterator<K>
+  nameWithType.vb: Iterator(Of K)
+  fullName.vb: Sharpy.Iterator(Of K)
+  name.vb: Iterator(Of K)
+  spec.csharp:
+  - uid: Sharpy.Iterator`1
+    name: Iterator
+    href: Sharpy.Iterator-1.html
+  - name: <
+  - name: K
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Iterator`1
+    name: Iterator
+    href: Sharpy.Iterator-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+  commentId: M:Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+  href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  name: __Iter__()
+  nameWithType: Iterable<T>.__Iter__()
+  fullName: Sharpy.Collections.Interfaces.Iterable<T>.__Iter__()
+  nameWithType.vb: Iterable(Of T).__Iter__()
+  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T).__Iter__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  - name: (
+  - name: )
+- uid: Sharpy.Dict`2.Item*
+  commentId: Overload:Sharpy.Dict`2.Item
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2_Item__0_
+  name: this
+  nameWithType: Dict<K, V>.this
+  fullName: Sharpy.Dict<K, V>.this
+  nameWithType.vb: Dict(Of K, V).this[]
+  fullName.vb: Sharpy.Dict(Of K, V).this[]
+  name.vb: this[]
+- uid: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.Item({K})
+  commentId: P:Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.Item(`0)
+  parent: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.MutableMapping`2.Item(`0)
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Item__0_
+  name: this[K]
+  nameWithType: MutableMapping<K, V>.this[K]
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.this[K]
+  nameWithType.vb: MutableMapping(Of K, V).this[](K)
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).this[](K)
+  name.vb: this[](K)
+  spec.csharp:
+  - name: this
+  - name: '['
+  - name: K
+  - name: ']'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.Item(`0)
+    name: this[]
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Item__0_
+  - name: (
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Mapping{{K},{V}}.Item({K})
+  commentId: P:Sharpy.Collections.Interfaces.Mapping{`0,`1}.Item(`0)
+  parent: Sharpy.Collections.Interfaces.Mapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.Mapping`2.Item(`0)
+  href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Item__0_
+  name: this[K]
+  nameWithType: Mapping<K, V>.this[K]
+  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>.this[K]
+  nameWithType.vb: Mapping(Of K, V).this[](K)
+  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V).this[](K)
+  name.vb: this[](K)
+  spec.csharp:
+  - name: this
+  - name: '['
+  - name: K
+  - name: ']'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Mapping{`0,`1}.Item(`0)
+    name: this[]
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Item__0_
+  - name: (
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.MutableMapping`2.Item(`0)
+  commentId: P:Sharpy.Collections.Interfaces.MutableMapping`2.Item(`0)
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Item__0_
+  name: this[K]
+  nameWithType: MutableMapping<K, V>.this[K]
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.this[K]
+  nameWithType.vb: MutableMapping(Of K, V).this[](K)
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).this[](K)
+  name.vb: this[](K)
+  spec.csharp:
+  - name: this
+  - name: '['
+  - name: K
+  - name: ']'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.Item(`0)
+    name: this[]
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2_Item__0_
+  - name: (
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Mapping`2.Item(`0)
+  commentId: P:Sharpy.Collections.Interfaces.Mapping`2.Item(`0)
+  href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Item__0_
+  name: this[K]
+  nameWithType: Mapping<K, V>.this[K]
+  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>.this[K]
+  nameWithType.vb: Mapping(Of K, V).this[](K)
+  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V).this[](K)
+  name.vb: this[](K)
+  spec.csharp:
+  - name: this
+  - name: '['
+  - name: K
+  - name: ']'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2.Item(`0)
+    name: this[]
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2_Item__0_
+  - name: (
+  - name: K
+  - name: )
+- uid: Sharpy.Dict`2.__Len__*
+  commentId: Overload:Sharpy.Dict`2.__Len__
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2___Len__
+  name: __Len__
+  nameWithType: Dict<K, V>.__Len__
+  fullName: Sharpy.Dict<K, V>.__Len__
+  nameWithType.vb: Dict(Of K, V).__Len__
+  fullName.vb: Sharpy.Dict(Of K, V).__Len__
+- uid: Sharpy.Collections.Interfaces.Sized.__Len__
+  commentId: M:Sharpy.Collections.Interfaces.Sized.__Len__
+  parent: Sharpy.Collections.Interfaces.Sized
+  href: Sharpy.Collections.Interfaces.Sized.html#Sharpy_Collections_Interfaces_Sized___Len__
+  name: __Len__()
+  nameWithType: Sized.__Len__()
+  fullName: Sharpy.Collections.Interfaces.Sized.__Len__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Sized.__Len__
+    name: __Len__
+    href: Sharpy.Collections.Interfaces.Sized.html#Sharpy_Collections_Interfaces_Sized___Len__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Sized.__Len__
+    name: __Len__
+    href: Sharpy.Collections.Interfaces.Sized.html#Sharpy_Collections_Interfaces_Sized___Len__
+  - name: (
+  - name: )
+- uid: System.UInt32
+  commentId: T:System.UInt32
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.uint32
+  name: uint
+  nameWithType: uint
+  fullName: uint
+  nameWithType.vb: UInteger
+  fullName.vb: UInteger
+  name.vb: UInteger
+- uid: Sharpy.Object.__Eq__(Sharpy.Object)
+  commentId: M:Sharpy.Object.__Eq__(Sharpy.Object)
+  parent: Sharpy.Object
+  href: Sharpy.Object.html#Sharpy_Object___Eq___Sharpy_Object_
+  name: __Eq__(Object)
+  nameWithType: Object.__Eq__(Object)
+  fullName: Sharpy.Object.__Eq__(Sharpy.Object)
+  spec.csharp:
+  - uid: Sharpy.Object.__Eq__(Sharpy.Object)
+    name: __Eq__
+    href: Sharpy.Object.html#Sharpy_Object___Eq___Sharpy_Object_
+  - name: (
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Object.__Eq__(Sharpy.Object)
+    name: __Eq__
+    href: Sharpy.Object.html#Sharpy_Object___Eq___Sharpy_Object_
+  - name: (
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: )
+- uid: Sharpy.Dict`2.__Eq__*
+  commentId: Overload:Sharpy.Dict`2.__Eq__
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2___Eq___Sharpy_Object_
+  name: __Eq__
+  nameWithType: Dict<K, V>.__Eq__
+  fullName: Sharpy.Dict<K, V>.__Eq__
+  nameWithType.vb: Dict(Of K, V).__Eq__
+  fullName.vb: Sharpy.Dict(Of K, V).__Eq__
+- uid: Sharpy.Dict`2.__SetItem__*
+  commentId: Overload:Sharpy.Dict`2.__SetItem__
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2___SetItem____0__1_
+  name: __SetItem__
+  nameWithType: Dict<K, V>.__SetItem__
+  fullName: Sharpy.Dict<K, V>.__SetItem__
+  nameWithType.vb: Dict(Of K, V).__SetItem__
+  fullName.vb: Sharpy.Dict(Of K, V).__SetItem__
+- uid: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.__SetItem__({K},{V})
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.__SetItem__(`0,`1)
+  parent: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.MutableMapping`2.__SetItem__(`0,`1)
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___SetItem____0__1_
+  name: __SetItem__(K, V)
+  nameWithType: MutableMapping<K, V>.__SetItem__(K, V)
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.__SetItem__(K, V)
+  nameWithType.vb: MutableMapping(Of K, V).__SetItem__(K, V)
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).__SetItem__(K, V)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.__SetItem__(`0,`1)
+    name: __SetItem__
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___SetItem____0__1_
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.__SetItem__(`0,`1)
+    name: __SetItem__
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___SetItem____0__1_
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Collections.Interfaces.MutableMapping`2.__SetItem__(`0,`1)
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping`2.__SetItem__(`0,`1)
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___SetItem____0__1_
+  name: __SetItem__(K, V)
+  nameWithType: MutableMapping<K, V>.__SetItem__(K, V)
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.__SetItem__(K, V)
+  nameWithType.vb: MutableMapping(Of K, V).__SetItem__(K, V)
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).__SetItem__(K, V)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.__SetItem__(`0,`1)
+    name: __SetItem__
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___SetItem____0__1_
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.__SetItem__(`0,`1)
+    name: __SetItem__
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___SetItem____0__1_
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Dict`2.ToDictionary*
+  commentId: Overload:Sharpy.Dict`2.ToDictionary
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2_ToDictionary
+  name: ToDictionary
+  nameWithType: Dict<K, V>.ToDictionary
+  fullName: Sharpy.Dict<K, V>.ToDictionary
+  nameWithType.vb: Dict(Of K, V).ToDictionary
+  fullName.vb: Sharpy.Dict(Of K, V).ToDictionary
+- uid: System.Collections.Generic.Dictionary{{K},{V}}
+  commentId: T:System.Collections.Generic.Dictionary{`0,`1}
+  parent: System.Collections.Generic
+  definition: System.Collections.Generic.Dictionary`2
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.dictionary-2
+  name: Dictionary<K, V>
+  nameWithType: Dictionary<K, V>
+  fullName: System.Collections.Generic.Dictionary<K, V>
+  nameWithType.vb: Dictionary(Of K, V)
+  fullName.vb: System.Collections.Generic.Dictionary(Of K, V)
+  name.vb: Dictionary(Of K, V)
+  spec.csharp:
+  - uid: System.Collections.Generic.Dictionary`2
+    name: Dictionary
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.dictionary-2
+  - name: <
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.Dictionary`2
+    name: Dictionary
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.dictionary-2
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: System.Collections.Generic.Dictionary`2
+  commentId: T:System.Collections.Generic.Dictionary`2
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.dictionary-2
+  name: Dictionary<TKey, TValue>
+  nameWithType: Dictionary<TKey, TValue>
+  fullName: System.Collections.Generic.Dictionary<TKey, TValue>
+  nameWithType.vb: Dictionary(Of TKey, TValue)
+  fullName.vb: System.Collections.Generic.Dictionary(Of TKey, TValue)
+  name.vb: Dictionary(Of TKey, TValue)
+  spec.csharp:
+  - uid: System.Collections.Generic.Dictionary`2
+    name: Dictionary
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.dictionary-2
+  - name: <
+  - name: TKey
+  - name: ','
+  - name: " "
+  - name: TValue
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.Dictionary`2
+    name: Dictionary
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.dictionary-2
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TKey
+  - name: ','
+  - name: " "
+  - name: TValue
+  - name: )
+- uid: Sharpy.Dict`2.__Or__*
+  commentId: Overload:Sharpy.Dict`2.__Or__
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2___Or___Sharpy_Dict__0__1__
+  name: __Or__
+  nameWithType: Dict<K, V>.__Or__
+  fullName: Sharpy.Dict<K, V>.__Or__
+  nameWithType.vb: Dict(Of K, V).__Or__
+  fullName.vb: Sharpy.Dict(Of K, V).__Or__
+- uid: Sharpy.Dict`2.__IOr__*
+  commentId: Overload:Sharpy.Dict`2.__IOr__
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2___IOr___Sharpy_Dict__0__1__
+  name: __IOr__
+  nameWithType: Dict<K, V>.__IOr__
+  fullName: Sharpy.Dict<K, V>.__IOr__
+  nameWithType.vb: Dict(Of K, V).__IOr__
+  fullName.vb: Sharpy.Dict(Of K, V).__IOr__
+- uid: Sharpy.Collections.Interfaces.Mapping{{K},{V}}.__Or__(Sharpy.Collections.Interfaces.Mapping{{K},{V}})
+  commentId: M:Sharpy.Collections.Interfaces.Mapping{`0,`1}.__Or__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  parent: Sharpy.Collections.Interfaces.Mapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.Mapping`2.__Or__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2___Or___Sharpy_Collections_Interfaces_Mapping__0__1__
+  name: __Or__(Mapping<K, V>)
+  nameWithType: Mapping<K, V>.__Or__(Mapping<K, V>)
+  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>.__Or__(Sharpy.Collections.Interfaces.Mapping<K, V>)
+  nameWithType.vb: Mapping(Of K, V).__Or__(Mapping(Of K, V))
+  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V).__Or__(Sharpy.Collections.Interfaces.Mapping(Of K, V))
+  name.vb: __Or__(Mapping(Of K, V))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Mapping{`0,`1}.__Or__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+    name: __Or__
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2___Or___Sharpy_Collections_Interfaces_Mapping__0__1__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Mapping`2
+    name: Mapping
+    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - name: <
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Mapping{`0,`1}.__Or__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+    name: __Or__
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2___Or___Sharpy_Collections_Interfaces_Mapping__0__1__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Mapping`2
+    name: Mapping
+    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Mapping`2.__Or__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  commentId: M:Sharpy.Collections.Interfaces.Mapping`2.__Or__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2___Or___Sharpy_Collections_Interfaces_Mapping__0__1__
+  name: __Or__(Mapping<K, V>)
+  nameWithType: Mapping<K, V>.__Or__(Mapping<K, V>)
+  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>.__Or__(Sharpy.Collections.Interfaces.Mapping<K, V>)
+  nameWithType.vb: Mapping(Of K, V).__Or__(Mapping(Of K, V))
+  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V).__Or__(Sharpy.Collections.Interfaces.Mapping(Of K, V))
+  name.vb: __Or__(Mapping(Of K, V))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2.__Or__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+    name: __Or__
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2___Or___Sharpy_Collections_Interfaces_Mapping__0__1__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Mapping`2
+    name: Mapping
+    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - name: <
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2.__Or__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+    name: __Or__
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2___Or___Sharpy_Collections_Interfaces_Mapping__0__1__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Mapping`2
+    name: Mapping
+    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.__IOr__(Sharpy.Collections.Interfaces.Mapping{{K},{V}})
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.__IOr__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  parent: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.MutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___IOr___Sharpy_Collections_Interfaces_Mapping__0__1__
+  name: __IOr__(Mapping<K, V>)
+  nameWithType: MutableMapping<K, V>.__IOr__(Mapping<K, V>)
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.__IOr__(Sharpy.Collections.Interfaces.Mapping<K, V>)
+  nameWithType.vb: MutableMapping(Of K, V).__IOr__(Mapping(Of K, V))
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).__IOr__(Sharpy.Collections.Interfaces.Mapping(Of K, V))
+  name.vb: __IOr__(Mapping(Of K, V))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.__IOr__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+    name: __IOr__
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___IOr___Sharpy_Collections_Interfaces_Mapping__0__1__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Mapping`2
+    name: Mapping
+    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - name: <
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.__IOr__(Sharpy.Collections.Interfaces.Mapping{`0,`1})
+    name: __IOr__
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___IOr___Sharpy_Collections_Interfaces_Mapping__0__1__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Mapping`2
+    name: Mapping
+    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Mapping{{K},{V}}.__Or__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{{K},{V}}})
+  commentId: M:Sharpy.Collections.Interfaces.Mapping{`0,`1}.__Or__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  parent: Sharpy.Collections.Interfaces.Mapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.Mapping`2.__Or__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2___Or___Sharpy_Collections_Interfaces_Iterable_System_ValueTuple__0__1___
+  name: __Or__(Iterable<(K, V)>)
+  nameWithType: Mapping<K, V>.__Or__(Iterable<(K, V)>)
+  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>.__Or__(Sharpy.Collections.Interfaces.Iterable<(K, V)>)
+  nameWithType.vb: Mapping(Of K, V).__Or__(Iterable(Of (K, V)))
+  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V).__Or__(Sharpy.Collections.Interfaces.Iterable(Of (K, V)))
+  name.vb: __Or__(Iterable(Of (K, V)))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Mapping{`0,`1}.__Or__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+    name: __Or__
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2___Or___Sharpy_Collections_Interfaces_Iterable_System_ValueTuple__0__1___
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: <
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Mapping{`0,`1}.__Or__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+    name: __Or__
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2___Or___Sharpy_Collections_Interfaces_Iterable_System_ValueTuple__0__1___
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Mapping`2.__Or__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  commentId: M:Sharpy.Collections.Interfaces.Mapping`2.__Or__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2___Or___Sharpy_Collections_Interfaces_Iterable_System_ValueTuple__0__1___
+  name: __Or__(Iterable<(K, V)>)
+  nameWithType: Mapping<K, V>.__Or__(Iterable<(K, V)>)
+  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>.__Or__(Sharpy.Collections.Interfaces.Iterable<(K, V)>)
+  nameWithType.vb: Mapping(Of K, V).__Or__(Iterable(Of (K, V)))
+  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V).__Or__(Sharpy.Collections.Interfaces.Iterable(Of (K, V)))
+  name.vb: __Or__(Iterable(Of (K, V)))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2.__Or__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+    name: __Or__
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2___Or___Sharpy_Collections_Interfaces_Iterable_System_ValueTuple__0__1___
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: <
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Mapping`2.__Or__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+    name: __Or__
+    href: Sharpy.Collections.Interfaces.Mapping-2.html#Sharpy_Collections_Interfaces_Mapping_2___Or___Sharpy_Collections_Interfaces_Iterable_System_ValueTuple__0__1___
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}.__IOr__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{{K},{V}}})
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.__IOr__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  parent: Sharpy.Collections.Interfaces.MutableMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.MutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___IOr___Sharpy_Collections_Interfaces_Iterable_System_ValueTuple__0__1___
+  name: __IOr__(Iterable<(K, V)>)
+  nameWithType: MutableMapping<K, V>.__IOr__(Iterable<(K, V)>)
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.__IOr__(Sharpy.Collections.Interfaces.Iterable<(K, V)>)
+  nameWithType.vb: MutableMapping(Of K, V).__IOr__(Iterable(Of (K, V)))
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).__IOr__(Sharpy.Collections.Interfaces.Iterable(Of (K, V)))
+  name.vb: __IOr__(Iterable(Of (K, V)))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.__IOr__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+    name: __IOr__
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___IOr___Sharpy_Collections_Interfaces_Iterable_System_ValueTuple__0__1___
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: <
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping{`0,`1}.__IOr__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+    name: __IOr__
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___IOr___Sharpy_Collections_Interfaces_Iterable_System_ValueTuple__0__1___
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.MutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  commentId: M:Sharpy.Collections.Interfaces.MutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+  href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___IOr___Sharpy_Collections_Interfaces_Iterable_System_ValueTuple__0__1___
+  name: __IOr__(Iterable<(K, V)>)
+  nameWithType: MutableMapping<K, V>.__IOr__(Iterable<(K, V)>)
+  fullName: Sharpy.Collections.Interfaces.MutableMapping<K, V>.__IOr__(Sharpy.Collections.Interfaces.Iterable<(K, V)>)
+  nameWithType.vb: MutableMapping(Of K, V).__IOr__(Iterable(Of (K, V)))
+  fullName.vb: Sharpy.Collections.Interfaces.MutableMapping(Of K, V).__IOr__(Sharpy.Collections.Interfaces.Iterable(Of (K, V)))
+  name.vb: __IOr__(Iterable(Of (K, V)))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+    name: __IOr__
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___IOr___Sharpy_Collections_Interfaces_Iterable_System_ValueTuple__0__1___
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: <
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.Iterable{System.ValueTuple{`0,`1}})
+    name: __IOr__
+    href: Sharpy.Collections.Interfaces.MutableMapping-2.html#Sharpy_Collections_Interfaces_MutableMapping_2___IOr___Sharpy_Collections_Interfaces_Iterable_System_ValueTuple__0__1___
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: )
+  - name: )
+- uid: Sharpy.Dict`2.op_BitwiseOr*
+  commentId: Overload:Sharpy.Dict`2.op_BitwiseOr
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2_op_BitwiseOr_Sharpy_Dict__0__1__Sharpy_Dict__0__1__
+  name: operator |
+  nameWithType: Dict<K, V>.operator |
+  fullName: Sharpy.Dict<K, V>.operator |
+  nameWithType.vb: Dict(Of K, V).Or
+  fullName.vb: Sharpy.Dict(Of K, V).Or
+  name.vb: Or
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.Dict`2.op_BitwiseOr*
+    name: '|'
+    href: Sharpy.Dict-2.html#Sharpy_Dict_2_op_BitwiseOr_Sharpy_Dict__0__1__Sharpy_Dict__0__1__
+- uid: Sharpy.Dict`2.op_Equality*
+  commentId: Overload:Sharpy.Dict`2.op_Equality
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2_op_Equality_Sharpy_Dict__0__1__Sharpy_Dict__0__1__
+  name: operator ==
+  nameWithType: Dict<K, V>.operator ==
+  fullName: Sharpy.Dict<K, V>.operator ==
+  nameWithType.vb: Dict(Of K, V).=
+  fullName.vb: Sharpy.Dict(Of K, V).=
+  name.vb: =
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.Dict`2.op_Equality*
+    name: ==
+    href: Sharpy.Dict-2.html#Sharpy_Dict_2_op_Equality_Sharpy_Dict__0__1__Sharpy_Dict__0__1__
+- uid: Sharpy.Dict`2.op_Inequality*
+  commentId: Overload:Sharpy.Dict`2.op_Inequality
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2_op_Inequality_Sharpy_Dict__0__1__Sharpy_Dict__0__1__
+  name: operator !=
+  nameWithType: Dict<K, V>.operator !=
+  fullName: Sharpy.Dict<K, V>.operator !=
+  nameWithType.vb: Dict(Of K, V).<>
+  fullName.vb: Sharpy.Dict(Of K, V).<>
+  name.vb: <>
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.Dict`2.op_Inequality*
+    name: '!='
+    href: Sharpy.Dict-2.html#Sharpy_Dict_2_op_Inequality_Sharpy_Dict__0__1__Sharpy_Dict__0__1__
+- uid: System.Object.GetHashCode
+  commentId: M:System.Object.GetHashCode
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  name: GetHashCode()
+  nameWithType: object.GetHashCode()
+  fullName: object.GetHashCode()
+  nameWithType.vb: Object.GetHashCode()
+  fullName.vb: Object.GetHashCode()
+  spec.csharp:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+- uid: Sharpy.Object.__Hash__
+  commentId: M:Sharpy.Object.__Hash__
+  parent: Sharpy.Object
+  href: Sharpy.Object.html#Sharpy_Object___Hash__
+  name: __Hash__()
+  nameWithType: Object.__Hash__()
+  fullName: Sharpy.Object.__Hash__()
+  spec.csharp:
+  - uid: Sharpy.Object.__Hash__
+    name: __Hash__
+    href: Sharpy.Object.html#Sharpy_Object___Hash__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Object.__Hash__
+    name: __Hash__
+    href: Sharpy.Object.html#Sharpy_Object___Hash__
+  - name: (
+  - name: )
+- uid: Sharpy.Dict`2.__Hash__*
+  commentId: Overload:Sharpy.Dict`2.__Hash__
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2___Hash__
+  name: __Hash__
+  nameWithType: Dict<K, V>.__Hash__
+  fullName: Sharpy.Dict<K, V>.__Hash__
+  nameWithType.vb: Dict(Of K, V).__Hash__
+  fullName.vb: Sharpy.Dict(Of K, V).__Hash__
+- uid: System.Int32
+  commentId: T:System.Int32
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.int32
+  name: int
+  nameWithType: int
+  fullName: int
+  nameWithType.vb: Integer
+  fullName.vb: Integer
+  name.vb: Integer
+- uid: Sharpy.Object.__Repr__
+  commentId: M:Sharpy.Object.__Repr__
+  parent: Sharpy.Object
+  href: Sharpy.Object.html#Sharpy_Object___Repr__
+  name: __Repr__()
+  nameWithType: Object.__Repr__()
+  fullName: Sharpy.Object.__Repr__()
+  spec.csharp:
+  - uid: Sharpy.Object.__Repr__
+    name: __Repr__
+    href: Sharpy.Object.html#Sharpy_Object___Repr__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Object.__Repr__
+    name: __Repr__
+    href: Sharpy.Object.html#Sharpy_Object___Repr__
+  - name: (
+  - name: )
+- uid: Sharpy.Dict`2.__Repr__*
+  commentId: Overload:Sharpy.Dict`2.__Repr__
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2___Repr__
+  name: __Repr__
+  nameWithType: Dict<K, V>.__Repr__
+  fullName: Sharpy.Dict<K, V>.__Repr__
+  nameWithType.vb: Dict(Of K, V).__Repr__
+  fullName.vb: Sharpy.Dict(Of K, V).__Repr__
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String
+- uid: Sharpy.Object.__Bool__
+  commentId: M:Sharpy.Object.__Bool__
+  parent: Sharpy.Object
+  href: Sharpy.Object.html#Sharpy_Object___Bool__
+  name: __Bool__()
+  nameWithType: Object.__Bool__()
+  fullName: Sharpy.Object.__Bool__()
+  spec.csharp:
+  - uid: Sharpy.Object.__Bool__
+    name: __Bool__
+    href: Sharpy.Object.html#Sharpy_Object___Bool__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Object.__Bool__
+    name: __Bool__
+    href: Sharpy.Object.html#Sharpy_Object___Bool__
+  - name: (
+  - name: )
+- uid: Sharpy.Dict`2.__Bool__*
+  commentId: Overload:Sharpy.Dict`2.__Bool__
+  href: Sharpy.Dict-2.html#Sharpy_Dict_2___Bool__
+  name: __Bool__
+  nameWithType: Dict<K, V>.__Bool__
+  fullName: Sharpy.Dict<K, V>.__Bool__
+  nameWithType.vb: Dict(Of K, V).__Bool__
+  fullName.vb: Sharpy.Dict(Of K, V).__Bool__
+- uid: Sharpy.Dict`2.op_True*
+  commentId: Overload:Sharpy.Dict`2.op_True
+  name: operator true
+  nameWithType: Dict<K, V>.operator true
+  fullName: Sharpy.Dict<K, V>.operator true
+  nameWithType.vb: Dict(Of K, V).IsTrue
+  fullName.vb: Sharpy.Dict(Of K, V).IsTrue
+  name.vb: IsTrue
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - name: "true"
+- uid: Sharpy.Dict`2.op_False*
+  commentId: Overload:Sharpy.Dict`2.op_False
+  name: operator false
+  nameWithType: Dict<K, V>.operator false
+  fullName: Sharpy.Dict<K, V>.operator false
+  nameWithType.vb: Dict(Of K, V).IsFalse
+  fullName.vb: Sharpy.Dict(Of K, V).IsFalse
+  name.vb: IsFalse
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - name: "false"

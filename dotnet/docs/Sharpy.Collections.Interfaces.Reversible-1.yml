@@ -1,0 +1,434 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.Collections.Interfaces.Reversible`1
+  commentId: T:Sharpy.Collections.Interfaces.Reversible`1
+  id: Reversible`1
+  parent: Sharpy.Collections.Interfaces
+  children:
+  - Sharpy.Collections.Interfaces.Reversible`1.__Reversed__
+  langs:
+  - csharp
+  - vb
+  name: Reversible<T>
+  nameWithType: Reversible<T>
+  fullName: Sharpy.Collections.Interfaces.Reversible<T>
+  type: Interface
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Collections/Interfaces/Reversible.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Reversible
+    path: ../src/Sharpy/Collections/Interfaces/Reversible.cs
+    startLine: 6
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Collections.Interfaces
+  summary: >-
+    Interface for iterable classes that also provide the
+
+    <xref href="Sharpy.Collections.Interfaces.Reversible%601.__Reversed__" data-throw-if-not-resolved="false"></xref> method.
+  example: []
+  syntax:
+    content: 'public interface Reversible<T> : Iterable<T>, IEnumerable<T>, IEnumerable'
+    typeParameters:
+    - id: T
+    content.vb: Public Interface Reversible(Of T) Inherits Iterable(Of T), IEnumerable(Of T), IEnumerable
+  inheritedMembers:
+  - Sharpy.Collections.Interfaces.Iterable{{T}}.__Iter__
+  - System.Collections.Generic.IEnumerable{{T}}.GetEnumerator
+  nameWithType.vb: Reversible(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.Reversible(Of T)
+  name.vb: Reversible(Of T)
+- uid: Sharpy.Collections.Interfaces.Reversible`1.__Reversed__
+  commentId: M:Sharpy.Collections.Interfaces.Reversible`1.__Reversed__
+  id: __Reversed__
+  parent: Sharpy.Collections.Interfaces.Reversible`1
+  langs:
+  - csharp
+  - vb
+  name: __Reversed__()
+  nameWithType: Reversible<T>.__Reversed__()
+  fullName: Sharpy.Collections.Interfaces.Reversible<T>.__Reversed__()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Collections/Interfaces/Reversible.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Reversed__
+    path: ../src/Sharpy/Collections/Interfaces/Reversible.cs
+    startLine: 14
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Collections.Interfaces
+  summary: >-
+    Called (if present) by the Reversed(Reversible&lt;T&gt;) built-in to
+
+    implement reverse iteration. It should return a new
+
+    <xref href="Sharpy.Iterator%601" data-throw-if-not-resolved="false"></xref> that iterates over all the objects in the
+
+    container in reverse order.
+  example: []
+  syntax:
+    content: Iterator<T> __Reversed__()
+    return:
+      type: Sharpy.Iterator{{T}}
+    content.vb: Function __Reversed__() As Iterator(Of T)
+  overload: Sharpy.Collections.Interfaces.Reversible`1.__Reversed__*
+  nameWithType.vb: Reversible(Of T).__Reversed__()
+  fullName.vb: Sharpy.Collections.Interfaces.Reversible(Of T).__Reversed__()
+references:
+- uid: Sharpy.Collections.Interfaces.Reversible`1.__Reversed__
+  commentId: M:Sharpy.Collections.Interfaces.Reversible`1.__Reversed__
+  href: Sharpy.Collections.Interfaces.Reversible-1.html#Sharpy_Collections_Interfaces_Reversible_1___Reversed__
+  name: __Reversed__()
+  nameWithType: Reversible<T>.__Reversed__()
+  fullName: Sharpy.Collections.Interfaces.Reversible<T>.__Reversed__()
+  nameWithType.vb: Reversible(Of T).__Reversed__()
+  fullName.vb: Sharpy.Collections.Interfaces.Reversible(Of T).__Reversed__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Reversible`1.__Reversed__
+    name: __Reversed__
+    href: Sharpy.Collections.Interfaces.Reversible-1.html#Sharpy_Collections_Interfaces_Reversible_1___Reversed__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Reversible`1.__Reversed__
+    name: __Reversed__
+    href: Sharpy.Collections.Interfaces.Reversible-1.html#Sharpy_Collections_Interfaces_Reversible_1___Reversed__
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces
+  commentId: N:Sharpy.Collections.Interfaces
+  href: Sharpy.html
+  name: Sharpy.Collections.Interfaces
+  nameWithType: Sharpy.Collections.Interfaces
+  fullName: Sharpy.Collections.Interfaces
+  spec.csharp:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+  spec.vb:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+- uid: Sharpy.Collections.Interfaces.Iterable{{T}}.__Iter__
+  commentId: M:Sharpy.Collections.Interfaces.Iterable{`0}.__Iter__
+  parent: Sharpy.Collections.Interfaces.Iterable{{T}}
+  definition: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+  href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  name: __Iter__()
+  nameWithType: Iterable<T>.__Iter__()
+  fullName: Sharpy.Collections.Interfaces.Iterable<T>.__Iter__()
+  nameWithType.vb: Iterable(Of T).__Iter__()
+  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T).__Iter__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Iterable{`0}.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Iterable{`0}.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  - name: (
+  - name: )
+- uid: System.Collections.Generic.IEnumerable{{T}}.GetEnumerator
+  commentId: M:System.Collections.Generic.IEnumerable{`0}.GetEnumerator
+  parent: System.Collections.Generic.IEnumerable{{T}}
+  definition: System.Collections.Generic.IEnumerable`1.GetEnumerator
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  name: GetEnumerator()
+  nameWithType: IEnumerable<T>.GetEnumerator()
+  fullName: System.Collections.Generic.IEnumerable<T>.GetEnumerator()
+  nameWithType.vb: IEnumerable(Of T).GetEnumerator()
+  fullName.vb: System.Collections.Generic.IEnumerable(Of T).GetEnumerator()
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable{`0}.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable{`0}.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+  commentId: M:Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+  href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  name: __Iter__()
+  nameWithType: Iterable<T>.__Iter__()
+  fullName: Sharpy.Collections.Interfaces.Iterable<T>.__Iter__()
+  nameWithType.vb: Iterable(Of T).__Iter__()
+  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T).__Iter__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Iterable{{T}}
+  commentId: T:Sharpy.Collections.Interfaces.Iterable{``0}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.Iterable`1
+  href: Sharpy.Collections.Interfaces.Iterable-1.html
+  name: Iterable<T>
+  nameWithType: Iterable<T>
+  fullName: Sharpy.Collections.Interfaces.Iterable<T>
+  nameWithType.vb: Iterable(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T)
+  name.vb: Iterable(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic.IEnumerable`1.GetEnumerator
+  commentId: M:System.Collections.Generic.IEnumerable`1.GetEnumerator
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  name: GetEnumerator()
+  nameWithType: IEnumerable<T>.GetEnumerator()
+  fullName: System.Collections.Generic.IEnumerable<T>.GetEnumerator()
+  nameWithType.vb: IEnumerable(Of T).GetEnumerator()
+  fullName.vb: System.Collections.Generic.IEnumerable(Of T).GetEnumerator()
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable`1.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable`1.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+- uid: System.Collections.Generic.IEnumerable{{T}}
+  commentId: T:System.Collections.Generic.IEnumerable{`0}
+  parent: System.Collections.Generic
+  definition: System.Collections.Generic.IEnumerable`1
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  name: IEnumerable<T>
+  nameWithType: IEnumerable<T>
+  fullName: System.Collections.Generic.IEnumerable<T>
+  nameWithType.vb: IEnumerable(Of T)
+  fullName.vb: System.Collections.Generic.IEnumerable(Of T)
+  name.vb: IEnumerable(Of T)
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Iterable`1
+  commentId: T:Sharpy.Collections.Interfaces.Iterable`1
+  href: Sharpy.Collections.Interfaces.Iterable-1.html
+  name: Iterable<T>
+  nameWithType: Iterable<T>
+  fullName: Sharpy.Collections.Interfaces.Iterable<T>
+  nameWithType.vb: Iterable(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T)
+  name.vb: Iterable(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic.IEnumerable`1
+  commentId: T:System.Collections.Generic.IEnumerable`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  name: IEnumerable<T>
+  nameWithType: IEnumerable<T>
+  fullName: System.Collections.Generic.IEnumerable<T>
+  nameWithType.vb: IEnumerable(Of T)
+  fullName.vb: System.Collections.Generic.IEnumerable(Of T)
+  name.vb: IEnumerable(Of T)
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic
+  commentId: N:System.Collections.Generic
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Collections.Generic
+  nameWithType: System.Collections.Generic
+  fullName: System.Collections.Generic
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+- uid: Sharpy.Iterator`1
+  commentId: T:Sharpy.Iterator`1
+  parent: Sharpy
+  href: Sharpy.Iterator-1.html
+  name: Iterator<T>
+  nameWithType: Iterator<T>
+  fullName: Sharpy.Iterator<T>
+  nameWithType.vb: Iterator(Of T)
+  fullName.vb: Sharpy.Iterator(Of T)
+  name.vb: Iterator(Of T)
+  spec.csharp:
+  - uid: Sharpy.Iterator`1
+    name: Iterator
+    href: Sharpy.Iterator-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Iterator`1
+    name: Iterator
+    href: Sharpy.Iterator-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Reversible`1.__Reversed__*
+  commentId: Overload:Sharpy.Collections.Interfaces.Reversible`1.__Reversed__
+  href: Sharpy.Collections.Interfaces.Reversible-1.html#Sharpy_Collections_Interfaces_Reversible_1___Reversed__
+  name: __Reversed__
+  nameWithType: Reversible<T>.__Reversed__
+  fullName: Sharpy.Collections.Interfaces.Reversible<T>.__Reversed__
+  nameWithType.vb: Reversible(Of T).__Reversed__
+  fullName.vb: Sharpy.Collections.Interfaces.Reversible(Of T).__Reversed__
+- uid: Sharpy.Iterator{{T}}
+  commentId: T:Sharpy.Iterator{``0}
+  parent: Sharpy
+  definition: Sharpy.Iterator`1
+  href: Sharpy.Iterator-1.html
+  name: Iterator<T>
+  nameWithType: Iterator<T>
+  fullName: Sharpy.Iterator<T>
+  nameWithType.vb: Iterator(Of T)
+  fullName.vb: Sharpy.Iterator(Of T)
+  name.vb: Iterator(Of T)
+  spec.csharp:
+  - uid: Sharpy.Iterator`1
+    name: Iterator
+    href: Sharpy.Iterator-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Iterator`1
+    name: Iterator
+    href: Sharpy.Iterator-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy

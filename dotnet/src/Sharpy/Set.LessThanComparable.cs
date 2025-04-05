@@ -2,6 +2,7 @@ namespace Sharpy
 {
     public sealed partial class Set<T>
     {
+        /// <inheritdoc/>
         public bool __Lt__(Set<T> other)
         {
             if (other is null)
@@ -12,6 +13,7 @@ namespace Sharpy
             return _set.IsProperSubsetOf(other._set);
         }
 
+        /// <inheritdoc/>
         public bool __Lt__(Collections.Interfaces.Set<T> other)
         {
             if (other is null)

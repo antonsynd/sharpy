@@ -38,6 +38,36 @@ namespace Sharpy
             return newSet;
         }
 
+        public bool IsSubset(Set<T> other)
+        {
+            return __Le__(other);
+        }
+
+        public bool IsSuperset(Set<T> other)
+        {
+            return __Ge__(other);
+        }
+
+        public Set<T> Union(Set<T> other)
+        {
+            return __Or__(other);
+        }
+
+        public Set<T> Intersection(Set<T> other)
+        {
+            return __And__(other);
+        }
+
+        public Set<T> Difference(Set<T> other)
+        {
+            return __Sub__(other);
+        }
+
+        public Set<T> SymmetricDifference(Set<T> other)
+        {
+            return __XOr__(other);
+        }
+
         public HashSet<T> ToHashSet()
         {
             var result = new HashSet<T>();

@@ -2,6 +2,7 @@ namespace Sharpy
 {
     public sealed partial class Set<T>
     {
+        /// <inheritdoc/>
         public bool Equals(Collections.Interfaces.Set<T>? other)
         {
             if (other is null)

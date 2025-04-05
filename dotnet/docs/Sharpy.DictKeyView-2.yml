@@ -1,0 +1,1862 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.DictKeyView`2
+  commentId: T:Sharpy.DictKeyView`2
+  id: DictKeyView`2
+  parent: Sharpy
+  children:
+  - Sharpy.DictKeyView`2.CompareTo(Sharpy.Set{`0})
+  - Sharpy.DictKeyView`2.Contains(`0)
+  - Sharpy.DictKeyView`2.Equals(Sharpy.Set{`0})
+  - Sharpy.DictKeyView`2.GetEnumerator
+  - Sharpy.DictKeyView`2.IsDisjoint(Sharpy.Set{`0})
+  - Sharpy.DictKeyView`2.__And__(Sharpy.Set{`0})
+  - Sharpy.DictKeyView`2.__Contains__(`0)
+  - Sharpy.DictKeyView`2.__Eq__(Sharpy.Set{`0})
+  - Sharpy.DictKeyView`2.__Ge__(Sharpy.Set{`0})
+  - Sharpy.DictKeyView`2.__Gt__(Sharpy.Set{`0})
+  - Sharpy.DictKeyView`2.__Iter__
+  - Sharpy.DictKeyView`2.__Le__(Sharpy.Set{`0})
+  - Sharpy.DictKeyView`2.__Len__
+  - Sharpy.DictKeyView`2.__Lt__(Sharpy.Set{`0})
+  - Sharpy.DictKeyView`2.__Ne__(Sharpy.Set{`0})
+  - Sharpy.DictKeyView`2.__Or__(Sharpy.Set{`0})
+  - Sharpy.DictKeyView`2.__ROr__(Sharpy.Set{`0})
+  - Sharpy.DictKeyView`2.__RSub__(Sharpy.Set{`0})
+  - Sharpy.DictKeyView`2.__Sub__(Sharpy.Set{`0})
+  - Sharpy.DictKeyView`2.__XOr__(Sharpy.Set{`0})
+  - Sharpy.DictKeyView`2.op_BitwiseOr(Sharpy.DictKeyView{`0,`1},Sharpy.DictKeyView{`0,`1})
+  langs:
+  - csharp
+  - vb
+  name: DictKeyView<K, V>
+  nameWithType: DictKeyView<K, V>
+  fullName: Sharpy.DictKeyView<K, V>
+  type: Class
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: DictKeyView
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 5
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: 'public sealed class DictKeyView<K, V> : KeysView<K>, MappingView<K>, Iterable<K>, IEnumerable<K>, IEnumerable, Sized where K : notnull'
+    typeParameters:
+    - id: K
+    - id: V
+    content.vb: Public NotInheritable Class DictKeyView(Of K, V) Implements KeysView(Of K), MappingView(Of K), Iterable(Of K), IEnumerable(Of K), IEnumerable, Sized
+  inheritance:
+  - System.Object
+  implements:
+  - Sharpy.Collections.Interfaces.KeysView{{K}}
+  - Sharpy.Collections.Interfaces.MappingView{{K}}
+  - Sharpy.Collections.Interfaces.Iterable{{K}}
+  - System.Collections.Generic.IEnumerable{{K}}
+  - System.Collections.IEnumerable
+  - Sharpy.Collections.Interfaces.Sized
+  inheritedMembers:
+  - System.Object.Equals(System.Object)
+  - System.Object.Equals(System.Object,System.Object)
+  - System.Object.GetHashCode
+  - System.Object.GetType
+  - System.Object.ReferenceEquals(System.Object,System.Object)
+  - System.Object.ToString
+  nameWithType.vb: DictKeyView(Of K, V)
+  fullName.vb: Sharpy.DictKeyView(Of K, V)
+  name.vb: DictKeyView(Of K, V)
+- uid: Sharpy.DictKeyView`2.CompareTo(Sharpy.Set{`0})
+  commentId: M:Sharpy.DictKeyView`2.CompareTo(Sharpy.Set{`0})
+  id: CompareTo(Sharpy.Set{`0})
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: CompareTo(Set<K>?)
+  nameWithType: DictKeyView<K, V>.CompareTo(Set<K>?)
+  fullName: Sharpy.DictKeyView<K, V>.CompareTo(Sharpy.Set<K>?)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: CompareTo
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 14
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public int CompareTo(Set<K>? other)
+    parameters:
+    - id: other
+      type: Sharpy.Set{{K}}
+    return:
+      type: System.Int32
+    content.vb: Public Function CompareTo(other As [Set](Of K)) As Integer
+  overload: Sharpy.DictKeyView`2.CompareTo*
+  nameWithType.vb: DictKeyView(Of K, V).CompareTo(Set(Of K))
+  fullName.vb: Sharpy.DictKeyView(Of K, V).CompareTo(Sharpy.Set(Of K))
+  name.vb: CompareTo(Set(Of K))
+- uid: Sharpy.DictKeyView`2.Contains(`0)
+  commentId: M:Sharpy.DictKeyView`2.Contains(`0)
+  id: Contains(`0)
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: Contains(K)
+  nameWithType: DictKeyView<K, V>.Contains(K)
+  fullName: Sharpy.DictKeyView<K, V>.Contains(K)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Contains
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 19
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public bool Contains(K x)
+    parameters:
+    - id: x
+      type: '{K}'
+    return:
+      type: System.Boolean
+    content.vb: Public Function Contains(x As K) As Boolean
+  overload: Sharpy.DictKeyView`2.Contains*
+  nameWithType.vb: DictKeyView(Of K, V).Contains(K)
+  fullName.vb: Sharpy.DictKeyView(Of K, V).Contains(K)
+- uid: Sharpy.DictKeyView`2.Equals(Sharpy.Set{`0})
+  commentId: M:Sharpy.DictKeyView`2.Equals(Sharpy.Set{`0})
+  id: Equals(Sharpy.Set{`0})
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: Equals(Set<K>?)
+  nameWithType: DictKeyView<K, V>.Equals(Set<K>?)
+  fullName: Sharpy.DictKeyView<K, V>.Equals(Sharpy.Set<K>?)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Equals
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 24
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public bool Equals(Set<K>? other)
+    parameters:
+    - id: other
+      type: Sharpy.Set{{K}}
+    return:
+      type: System.Boolean
+    content.vb: Public Function Equals(other As [Set](Of K)) As Boolean
+  overload: Sharpy.DictKeyView`2.Equals*
+  nameWithType.vb: DictKeyView(Of K, V).Equals(Set(Of K))
+  fullName.vb: Sharpy.DictKeyView(Of K, V).Equals(Sharpy.Set(Of K))
+  name.vb: Equals(Set(Of K))
+- uid: Sharpy.DictKeyView`2.GetEnumerator
+  commentId: M:Sharpy.DictKeyView`2.GetEnumerator
+  id: GetEnumerator
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: GetEnumerator()
+  nameWithType: DictKeyView<K, V>.GetEnumerator()
+  fullName: Sharpy.DictKeyView<K, V>.GetEnumerator()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: GetEnumerator
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 29
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: Returns an enumerator that iterates through the collection.
+  example: []
+  syntax:
+    content: public IEnumerator<K> GetEnumerator()
+    return:
+      type: System.Collections.Generic.IEnumerator{{K}}
+      description: An enumerator that can be used to iterate through the collection.
+    content.vb: Public Function GetEnumerator() As IEnumerator(Of K)
+  overload: Sharpy.DictKeyView`2.GetEnumerator*
+  implements:
+  - System.Collections.Generic.IEnumerable{{K}}.GetEnumerator
+  nameWithType.vb: DictKeyView(Of K, V).GetEnumerator()
+  fullName.vb: Sharpy.DictKeyView(Of K, V).GetEnumerator()
+- uid: Sharpy.DictKeyView`2.IsDisjoint(Sharpy.Set{`0})
+  commentId: M:Sharpy.DictKeyView`2.IsDisjoint(Sharpy.Set{`0})
+  id: IsDisjoint(Sharpy.Set{`0})
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: IsDisjoint(Set<K>)
+  nameWithType: DictKeyView<K, V>.IsDisjoint(Set<K>)
+  fullName: Sharpy.DictKeyView<K, V>.IsDisjoint(Sharpy.Set<K>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IsDisjoint
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 37
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public bool IsDisjoint(Set<K> other)
+    parameters:
+    - id: other
+      type: Sharpy.Set{{K}}
+    return:
+      type: System.Boolean
+    content.vb: Public Function IsDisjoint(other As [Set](Of K)) As Boolean
+  overload: Sharpy.DictKeyView`2.IsDisjoint*
+  nameWithType.vb: DictKeyView(Of K, V).IsDisjoint(Set(Of K))
+  fullName.vb: Sharpy.DictKeyView(Of K, V).IsDisjoint(Sharpy.Set(Of K))
+  name.vb: IsDisjoint(Set(Of K))
+- uid: Sharpy.DictKeyView`2.__And__(Sharpy.Set{`0})
+  commentId: M:Sharpy.DictKeyView`2.__And__(Sharpy.Set{`0})
+  id: __And__(Sharpy.Set{`0})
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: __And__(Set<K>)
+  nameWithType: DictKeyView<K, V>.__And__(Set<K>)
+  fullName: Sharpy.DictKeyView<K, V>.__And__(Sharpy.Set<K>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __And__
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 42
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public Set<K> __And__(Set<K> other)
+    parameters:
+    - id: other
+      type: Sharpy.Set{{K}}
+    return:
+      type: Sharpy.Set{{K}}
+    content.vb: Public Function __And__(other As [Set](Of K)) As [Set](Of K)
+  overload: Sharpy.DictKeyView`2.__And__*
+  nameWithType.vb: DictKeyView(Of K, V).__And__(Set(Of K))
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__And__(Sharpy.Set(Of K))
+  name.vb: __And__(Set(Of K))
+- uid: Sharpy.DictKeyView`2.__Contains__(`0)
+  commentId: M:Sharpy.DictKeyView`2.__Contains__(`0)
+  id: __Contains__(`0)
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: __Contains__(K)
+  nameWithType: DictKeyView<K, V>.__Contains__(K)
+  fullName: Sharpy.DictKeyView<K, V>.__Contains__(K)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Contains__
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 47
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public bool __Contains__(K x)
+    parameters:
+    - id: x
+      type: '{K}'
+    return:
+      type: System.Boolean
+    content.vb: Public Function __Contains__(x As K) As Boolean
+  overload: Sharpy.DictKeyView`2.__Contains__*
+  nameWithType.vb: DictKeyView(Of K, V).__Contains__(K)
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Contains__(K)
+- uid: Sharpy.DictKeyView`2.__Eq__(Sharpy.Set{`0})
+  commentId: M:Sharpy.DictKeyView`2.__Eq__(Sharpy.Set{`0})
+  id: __Eq__(Sharpy.Set{`0})
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: __Eq__(Set<K>)
+  nameWithType: DictKeyView<K, V>.__Eq__(Set<K>)
+  fullName: Sharpy.DictKeyView<K, V>.__Eq__(Sharpy.Set<K>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Eq__
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 52
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public bool __Eq__(Set<K> other)
+    parameters:
+    - id: other
+      type: Sharpy.Set{{K}}
+    return:
+      type: System.Boolean
+    content.vb: Public Function __Eq__(other As [Set](Of K)) As Boolean
+  overload: Sharpy.DictKeyView`2.__Eq__*
+  nameWithType.vb: DictKeyView(Of K, V).__Eq__(Set(Of K))
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Eq__(Sharpy.Set(Of K))
+  name.vb: __Eq__(Set(Of K))
+- uid: Sharpy.DictKeyView`2.__Ge__(Sharpy.Set{`0})
+  commentId: M:Sharpy.DictKeyView`2.__Ge__(Sharpy.Set{`0})
+  id: __Ge__(Sharpy.Set{`0})
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: __Ge__(Set<K>)
+  nameWithType: DictKeyView<K, V>.__Ge__(Set<K>)
+  fullName: Sharpy.DictKeyView<K, V>.__Ge__(Sharpy.Set<K>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Ge__
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 57
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public bool __Ge__(Set<K> other)
+    parameters:
+    - id: other
+      type: Sharpy.Set{{K}}
+    return:
+      type: System.Boolean
+    content.vb: Public Function __Ge__(other As [Set](Of K)) As Boolean
+  overload: Sharpy.DictKeyView`2.__Ge__*
+  nameWithType.vb: DictKeyView(Of K, V).__Ge__(Set(Of K))
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Ge__(Sharpy.Set(Of K))
+  name.vb: __Ge__(Set(Of K))
+- uid: Sharpy.DictKeyView`2.__Gt__(Sharpy.Set{`0})
+  commentId: M:Sharpy.DictKeyView`2.__Gt__(Sharpy.Set{`0})
+  id: __Gt__(Sharpy.Set{`0})
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: __Gt__(Set<K>)
+  nameWithType: DictKeyView<K, V>.__Gt__(Set<K>)
+  fullName: Sharpy.DictKeyView<K, V>.__Gt__(Sharpy.Set<K>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Gt__
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 62
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public bool __Gt__(Set<K> other)
+    parameters:
+    - id: other
+      type: Sharpy.Set{{K}}
+    return:
+      type: System.Boolean
+    content.vb: Public Function __Gt__(other As [Set](Of K)) As Boolean
+  overload: Sharpy.DictKeyView`2.__Gt__*
+  nameWithType.vb: DictKeyView(Of K, V).__Gt__(Set(Of K))
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Gt__(Sharpy.Set(Of K))
+  name.vb: __Gt__(Set(Of K))
+- uid: Sharpy.DictKeyView`2.__Iter__
+  commentId: M:Sharpy.DictKeyView`2.__Iter__
+  id: __Iter__
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: __Iter__()
+  nameWithType: DictKeyView<K, V>.__Iter__()
+  fullName: Sharpy.DictKeyView<K, V>.__Iter__()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Iter__
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 67
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    Return an <xref href="Sharpy.Iterator%601" data-throw-if-not-resolved="false"></xref> object. The object is required to
+
+    support the iterator protocol described below.
+  remarks: >-
+    If a container supports different types of iteration, additional
+
+    methods can be provided to specifically request iterators for
+
+    those iteration types. (An example of an object supporting multiple
+
+    forms of iteration would be a tree structure which supports both
+
+    breadth-first and depth-first traversal).
+  example: []
+  syntax:
+    content: public Iterator<K> __Iter__()
+    return:
+      type: Sharpy.Iterator{{K}}
+    content.vb: Public Function __Iter__() As Iterator(Of K)
+  overload: Sharpy.DictKeyView`2.__Iter__*
+  implements:
+  - Sharpy.Collections.Interfaces.Iterable{{K}}.__Iter__
+  nameWithType.vb: DictKeyView(Of K, V).__Iter__()
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Iter__()
+- uid: Sharpy.DictKeyView`2.__Len__
+  commentId: M:Sharpy.DictKeyView`2.__Len__
+  id: __Len__
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: __Len__()
+  nameWithType: DictKeyView<K, V>.__Len__()
+  fullName: Sharpy.DictKeyView<K, V>.__Len__()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Len__
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 72
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: Return the length (the number of items) of an object.
+  example: []
+  syntax:
+    content: public uint __Len__()
+    return:
+      type: System.UInt32
+    content.vb: Public Function __Len__() As UInteger
+  overload: Sharpy.DictKeyView`2.__Len__*
+  implements:
+  - Sharpy.Collections.Interfaces.Sized.__Len__
+  nameWithType.vb: DictKeyView(Of K, V).__Len__()
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Len__()
+- uid: Sharpy.DictKeyView`2.__Le__(Sharpy.Set{`0})
+  commentId: M:Sharpy.DictKeyView`2.__Le__(Sharpy.Set{`0})
+  id: __Le__(Sharpy.Set{`0})
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: __Le__(Set<K>)
+  nameWithType: DictKeyView<K, V>.__Le__(Set<K>)
+  fullName: Sharpy.DictKeyView<K, V>.__Le__(Sharpy.Set<K>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Le__
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 77
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public bool __Le__(Set<K> other)
+    parameters:
+    - id: other
+      type: Sharpy.Set{{K}}
+    return:
+      type: System.Boolean
+    content.vb: Public Function __Le__(other As [Set](Of K)) As Boolean
+  overload: Sharpy.DictKeyView`2.__Le__*
+  nameWithType.vb: DictKeyView(Of K, V).__Le__(Set(Of K))
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Le__(Sharpy.Set(Of K))
+  name.vb: __Le__(Set(Of K))
+- uid: Sharpy.DictKeyView`2.__Lt__(Sharpy.Set{`0})
+  commentId: M:Sharpy.DictKeyView`2.__Lt__(Sharpy.Set{`0})
+  id: __Lt__(Sharpy.Set{`0})
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: __Lt__(Set<K>)
+  nameWithType: DictKeyView<K, V>.__Lt__(Set<K>)
+  fullName: Sharpy.DictKeyView<K, V>.__Lt__(Sharpy.Set<K>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Lt__
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 82
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public bool __Lt__(Set<K> other)
+    parameters:
+    - id: other
+      type: Sharpy.Set{{K}}
+    return:
+      type: System.Boolean
+    content.vb: Public Function __Lt__(other As [Set](Of K)) As Boolean
+  overload: Sharpy.DictKeyView`2.__Lt__*
+  nameWithType.vb: DictKeyView(Of K, V).__Lt__(Set(Of K))
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Lt__(Sharpy.Set(Of K))
+  name.vb: __Lt__(Set(Of K))
+- uid: Sharpy.DictKeyView`2.__Ne__(Sharpy.Set{`0})
+  commentId: M:Sharpy.DictKeyView`2.__Ne__(Sharpy.Set{`0})
+  id: __Ne__(Sharpy.Set{`0})
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: __Ne__(Set<K>)
+  nameWithType: DictKeyView<K, V>.__Ne__(Set<K>)
+  fullName: Sharpy.DictKeyView<K, V>.__Ne__(Sharpy.Set<K>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Ne__
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 87
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public bool __Ne__(Set<K> other)
+    parameters:
+    - id: other
+      type: Sharpy.Set{{K}}
+    return:
+      type: System.Boolean
+    content.vb: Public Function __Ne__(other As [Set](Of K)) As Boolean
+  overload: Sharpy.DictKeyView`2.__Ne__*
+  nameWithType.vb: DictKeyView(Of K, V).__Ne__(Set(Of K))
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Ne__(Sharpy.Set(Of K))
+  name.vb: __Ne__(Set(Of K))
+- uid: Sharpy.DictKeyView`2.__Or__(Sharpy.Set{`0})
+  commentId: M:Sharpy.DictKeyView`2.__Or__(Sharpy.Set{`0})
+  id: __Or__(Sharpy.Set{`0})
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: __Or__(Set<K>)
+  nameWithType: DictKeyView<K, V>.__Or__(Set<K>)
+  fullName: Sharpy.DictKeyView<K, V>.__Or__(Sharpy.Set<K>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Or__
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 92
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public Set<K> __Or__(Set<K> other)
+    parameters:
+    - id: other
+      type: Sharpy.Set{{K}}
+    return:
+      type: Sharpy.Set{{K}}
+    content.vb: Public Function __Or__(other As [Set](Of K)) As [Set](Of K)
+  overload: Sharpy.DictKeyView`2.__Or__*
+  nameWithType.vb: DictKeyView(Of K, V).__Or__(Set(Of K))
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Or__(Sharpy.Set(Of K))
+  name.vb: __Or__(Set(Of K))
+- uid: Sharpy.DictKeyView`2.op_BitwiseOr(Sharpy.DictKeyView{`0,`1},Sharpy.DictKeyView{`0,`1})
+  commentId: M:Sharpy.DictKeyView`2.op_BitwiseOr(Sharpy.DictKeyView{`0,`1},Sharpy.DictKeyView{`0,`1})
+  id: op_BitwiseOr(Sharpy.DictKeyView{`0,`1},Sharpy.DictKeyView{`0,`1})
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: operator |(DictKeyView<K, V>, DictKeyView<K, V>)
+  nameWithType: DictKeyView<K, V>.operator |(DictKeyView<K, V>, DictKeyView<K, V>)
+  fullName: Sharpy.DictKeyView<K, V>.operator |(Sharpy.DictKeyView<K, V>, Sharpy.DictKeyView<K, V>)
+  type: Operator
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: op_BitwiseOr
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 97
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static DictKeyView<K, V> operator |(DictKeyView<K, V> left, DictKeyView<K, V> right)
+    parameters:
+    - id: left
+      type: Sharpy.DictKeyView`2
+    - id: right
+      type: Sharpy.DictKeyView`2
+    return:
+      type: Sharpy.DictKeyView`2
+    content.vb: Public Shared Operator Or(left As DictKeyView(Of K, V), right As DictKeyView(Of K, V)) As DictKeyView(Of K, V)
+  overload: Sharpy.DictKeyView`2.op_BitwiseOr*
+  nameWithType.vb: DictKeyView(Of K, V).Or(DictKeyView(Of K, V), DictKeyView(Of K, V))
+  fullName.vb: Sharpy.DictKeyView(Of K, V).Or(Sharpy.DictKeyView(Of K, V), Sharpy.DictKeyView(Of K, V))
+  name.vb: Or(DictKeyView(Of K, V), DictKeyView(Of K, V))
+- uid: Sharpy.DictKeyView`2.__ROr__(Sharpy.Set{`0})
+  commentId: M:Sharpy.DictKeyView`2.__ROr__(Sharpy.Set{`0})
+  id: __ROr__(Sharpy.Set{`0})
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: __ROr__(Set<K>)
+  nameWithType: DictKeyView<K, V>.__ROr__(Set<K>)
+  fullName: Sharpy.DictKeyView<K, V>.__ROr__(Sharpy.Set<K>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __ROr__
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 102
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public Set<K> __ROr__(Set<K> other)
+    parameters:
+    - id: other
+      type: Sharpy.Set{{K}}
+    return:
+      type: Sharpy.Set{{K}}
+    content.vb: Public Function __ROr__(other As [Set](Of K)) As [Set](Of K)
+  overload: Sharpy.DictKeyView`2.__ROr__*
+  nameWithType.vb: DictKeyView(Of K, V).__ROr__(Set(Of K))
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__ROr__(Sharpy.Set(Of K))
+  name.vb: __ROr__(Set(Of K))
+- uid: Sharpy.DictKeyView`2.__RSub__(Sharpy.Set{`0})
+  commentId: M:Sharpy.DictKeyView`2.__RSub__(Sharpy.Set{`0})
+  id: __RSub__(Sharpy.Set{`0})
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: __RSub__(Set<K>)
+  nameWithType: DictKeyView<K, V>.__RSub__(Set<K>)
+  fullName: Sharpy.DictKeyView<K, V>.__RSub__(Sharpy.Set<K>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __RSub__
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 107
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public Set<K> __RSub__(Set<K> other)
+    parameters:
+    - id: other
+      type: Sharpy.Set{{K}}
+    return:
+      type: Sharpy.Set{{K}}
+    content.vb: Public Function __RSub__(other As [Set](Of K)) As [Set](Of K)
+  overload: Sharpy.DictKeyView`2.__RSub__*
+  nameWithType.vb: DictKeyView(Of K, V).__RSub__(Set(Of K))
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__RSub__(Sharpy.Set(Of K))
+  name.vb: __RSub__(Set(Of K))
+- uid: Sharpy.DictKeyView`2.__Sub__(Sharpy.Set{`0})
+  commentId: M:Sharpy.DictKeyView`2.__Sub__(Sharpy.Set{`0})
+  id: __Sub__(Sharpy.Set{`0})
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: __Sub__(Set<K>)
+  nameWithType: DictKeyView<K, V>.__Sub__(Set<K>)
+  fullName: Sharpy.DictKeyView<K, V>.__Sub__(Sharpy.Set<K>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Sub__
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 112
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public Set<K> __Sub__(Set<K> other)
+    parameters:
+    - id: other
+      type: Sharpy.Set{{K}}
+    return:
+      type: Sharpy.Set{{K}}
+    content.vb: Public Function __Sub__(other As [Set](Of K)) As [Set](Of K)
+  overload: Sharpy.DictKeyView`2.__Sub__*
+  nameWithType.vb: DictKeyView(Of K, V).__Sub__(Set(Of K))
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Sub__(Sharpy.Set(Of K))
+  name.vb: __Sub__(Set(Of K))
+- uid: Sharpy.DictKeyView`2.__XOr__(Sharpy.Set{`0})
+  commentId: M:Sharpy.DictKeyView`2.__XOr__(Sharpy.Set{`0})
+  id: __XOr__(Sharpy.Set{`0})
+  parent: Sharpy.DictKeyView`2
+  langs:
+  - csharp
+  - vb
+  name: __XOr__(Set<K>)
+  nameWithType: DictKeyView<K, V>.__XOr__(Set<K>)
+  fullName: Sharpy.DictKeyView<K, V>.__XOr__(Sharpy.Set<K>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/DictKeyView.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __XOr__
+    path: ../src/Sharpy/DictKeyView.cs
+    startLine: 117
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public Set<K> __XOr__(Set<K> other)
+    parameters:
+    - id: other
+      type: Sharpy.Set{{K}}
+    return:
+      type: Sharpy.Set{{K}}
+    content.vb: Public Function __XOr__(other As [Set](Of K)) As [Set](Of K)
+  overload: Sharpy.DictKeyView`2.__XOr__*
+  nameWithType.vb: DictKeyView(Of K, V).__XOr__(Set(Of K))
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__XOr__(Sharpy.Set(Of K))
+  name.vb: __XOr__(Set(Of K))
+references:
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: System.Object
+  commentId: T:System.Object
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object
+  name: object
+  nameWithType: object
+  fullName: object
+  nameWithType.vb: Object
+  fullName.vb: Object
+  name.vb: Object
+- uid: Sharpy.Collections.Interfaces.KeysView{{K}}
+  commentId: T:Sharpy.Collections.Interfaces.KeysView{`0}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.KeysView`1
+  href: Sharpy.Collections.Interfaces.KeysView-1.html
+  name: KeysView<K>
+  nameWithType: KeysView<K>
+  fullName: Sharpy.Collections.Interfaces.KeysView<K>
+  nameWithType.vb: KeysView(Of K)
+  fullName.vb: Sharpy.Collections.Interfaces.KeysView(Of K)
+  name.vb: KeysView(Of K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.KeysView`1
+    name: KeysView
+    href: Sharpy.Collections.Interfaces.KeysView-1.html
+  - name: <
+  - name: K
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.KeysView`1
+    name: KeysView
+    href: Sharpy.Collections.Interfaces.KeysView-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.MappingView{{K}}
+  commentId: T:Sharpy.Collections.Interfaces.MappingView{`0}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.MappingView`1
+  href: Sharpy.Collections.Interfaces.MappingView-1.html
+  name: MappingView<K>
+  nameWithType: MappingView<K>
+  fullName: Sharpy.Collections.Interfaces.MappingView<K>
+  nameWithType.vb: MappingView(Of K)
+  fullName.vb: Sharpy.Collections.Interfaces.MappingView(Of K)
+  name.vb: MappingView(Of K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MappingView`1
+    name: MappingView
+    href: Sharpy.Collections.Interfaces.MappingView-1.html
+  - name: <
+  - name: K
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MappingView`1
+    name: MappingView
+    href: Sharpy.Collections.Interfaces.MappingView-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Iterable{{K}}
+  commentId: T:Sharpy.Collections.Interfaces.Iterable{`0}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.Iterable`1
+  href: Sharpy.Collections.Interfaces.Iterable-1.html
+  name: Iterable<K>
+  nameWithType: Iterable<K>
+  fullName: Sharpy.Collections.Interfaces.Iterable<K>
+  nameWithType.vb: Iterable(Of K)
+  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of K)
+  name.vb: Iterable(Of K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: <
+  - name: K
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: )
+- uid: System.Collections.Generic.IEnumerable{{K}}
+  commentId: T:System.Collections.Generic.IEnumerable{`0}
+  parent: System.Collections.Generic
+  definition: System.Collections.Generic.IEnumerable`1
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  name: IEnumerable<K>
+  nameWithType: IEnumerable<K>
+  fullName: System.Collections.Generic.IEnumerable<K>
+  nameWithType.vb: IEnumerable(Of K)
+  fullName.vb: System.Collections.Generic.IEnumerable(Of K)
+  name.vb: IEnumerable(Of K)
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: <
+  - name: K
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: )
+- uid: System.Collections.IEnumerable
+  commentId: T:System.Collections.IEnumerable
+  parent: System.Collections
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.ienumerable
+  name: IEnumerable
+  nameWithType: IEnumerable
+  fullName: System.Collections.IEnumerable
+- uid: Sharpy.Collections.Interfaces.Sized
+  commentId: T:Sharpy.Collections.Interfaces.Sized
+  parent: Sharpy.Collections.Interfaces
+  href: Sharpy.Collections.Interfaces.Sized.html
+  name: Sized
+  nameWithType: Sized
+  fullName: Sharpy.Collections.Interfaces.Sized
+- uid: System.Object.Equals(System.Object)
+  commentId: M:System.Object.Equals(System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  name: Equals(object)
+  nameWithType: object.Equals(object)
+  fullName: object.Equals(object)
+  nameWithType.vb: Object.Equals(Object)
+  fullName.vb: Object.Equals(Object)
+  name.vb: Equals(Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.Equals(System.Object,System.Object)
+  commentId: M:System.Object.Equals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  name: Equals(object, object)
+  nameWithType: object.Equals(object, object)
+  fullName: object.Equals(object, object)
+  nameWithType.vb: Object.Equals(Object, Object)
+  fullName.vb: Object.Equals(Object, Object)
+  name.vb: Equals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.GetHashCode
+  commentId: M:System.Object.GetHashCode
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  name: GetHashCode()
+  nameWithType: object.GetHashCode()
+  fullName: object.GetHashCode()
+  nameWithType.vb: Object.GetHashCode()
+  fullName.vb: Object.GetHashCode()
+  spec.csharp:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+- uid: System.Object.GetType
+  commentId: M:System.Object.GetType
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  name: GetType()
+  nameWithType: object.GetType()
+  fullName: object.GetType()
+  nameWithType.vb: Object.GetType()
+  fullName.vb: Object.GetType()
+  spec.csharp:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+- uid: System.Object.ReferenceEquals(System.Object,System.Object)
+  commentId: M:System.Object.ReferenceEquals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  name: ReferenceEquals(object, object)
+  nameWithType: object.ReferenceEquals(object, object)
+  fullName: object.ReferenceEquals(object, object)
+  nameWithType.vb: Object.ReferenceEquals(Object, Object)
+  fullName.vb: Object.ReferenceEquals(Object, Object)
+  name.vb: ReferenceEquals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.ToString
+  commentId: M:System.Object.ToString
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  name: ToString()
+  nameWithType: object.ToString()
+  fullName: object.ToString()
+  nameWithType.vb: Object.ToString()
+  fullName.vb: Object.ToString()
+  spec.csharp:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.tostring
+  - name: (
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: Sharpy.Collections.Interfaces.KeysView`1
+  commentId: T:Sharpy.Collections.Interfaces.KeysView`1
+  href: Sharpy.Collections.Interfaces.KeysView-1.html
+  name: KeysView<T>
+  nameWithType: KeysView<T>
+  fullName: Sharpy.Collections.Interfaces.KeysView<T>
+  nameWithType.vb: KeysView(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.KeysView(Of T)
+  name.vb: KeysView(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.KeysView`1
+    name: KeysView
+    href: Sharpy.Collections.Interfaces.KeysView-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.KeysView`1
+    name: KeysView
+    href: Sharpy.Collections.Interfaces.KeysView-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces
+  commentId: N:Sharpy.Collections.Interfaces
+  href: Sharpy.html
+  name: Sharpy.Collections.Interfaces
+  nameWithType: Sharpy.Collections.Interfaces
+  fullName: Sharpy.Collections.Interfaces
+  spec.csharp:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+  spec.vb:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+- uid: Sharpy.Collections.Interfaces.MappingView`1
+  commentId: T:Sharpy.Collections.Interfaces.MappingView`1
+  href: Sharpy.Collections.Interfaces.MappingView-1.html
+  name: MappingView<T>
+  nameWithType: MappingView<T>
+  fullName: Sharpy.Collections.Interfaces.MappingView<T>
+  nameWithType.vb: MappingView(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.MappingView(Of T)
+  name.vb: MappingView(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.MappingView`1
+    name: MappingView
+    href: Sharpy.Collections.Interfaces.MappingView-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.MappingView`1
+    name: MappingView
+    href: Sharpy.Collections.Interfaces.MappingView-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Iterable`1
+  commentId: T:Sharpy.Collections.Interfaces.Iterable`1
+  href: Sharpy.Collections.Interfaces.Iterable-1.html
+  name: Iterable<T>
+  nameWithType: Iterable<T>
+  fullName: Sharpy.Collections.Interfaces.Iterable<T>
+  nameWithType.vb: Iterable(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T)
+  name.vb: Iterable(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic.IEnumerable`1
+  commentId: T:System.Collections.Generic.IEnumerable`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  name: IEnumerable<T>
+  nameWithType: IEnumerable<T>
+  fullName: System.Collections.Generic.IEnumerable<T>
+  nameWithType.vb: IEnumerable(Of T)
+  fullName.vb: System.Collections.Generic.IEnumerable(Of T)
+  name.vb: IEnumerable(Of T)
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic
+  commentId: N:System.Collections.Generic
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Collections.Generic
+  nameWithType: System.Collections.Generic
+  fullName: System.Collections.Generic
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+- uid: System.Collections
+  commentId: N:System.Collections
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Collections
+  nameWithType: System.Collections
+  fullName: System.Collections
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+- uid: Sharpy.DictKeyView`2.CompareTo*
+  commentId: Overload:Sharpy.DictKeyView`2.CompareTo
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2_CompareTo_Sharpy_Set__0__
+  name: CompareTo
+  nameWithType: DictKeyView<K, V>.CompareTo
+  fullName: Sharpy.DictKeyView<K, V>.CompareTo
+  nameWithType.vb: DictKeyView(Of K, V).CompareTo
+  fullName.vb: Sharpy.DictKeyView(Of K, V).CompareTo
+- uid: Sharpy.Set{{K}}
+  commentId: T:Sharpy.Set{`0}
+  parent: Sharpy
+  definition: Sharpy.Set`1
+  href: Sharpy.Set-1.html
+  name: Set<K>
+  nameWithType: Set<K>
+  fullName: Sharpy.Set<K>
+  nameWithType.vb: Set(Of K)
+  fullName.vb: Sharpy.Set(Of K)
+  name.vb: Set(Of K)
+  spec.csharp:
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: K
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: )
+- uid: System.Int32
+  commentId: T:System.Int32
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.int32
+  name: int
+  nameWithType: int
+  fullName: int
+  nameWithType.vb: Integer
+  fullName.vb: Integer
+  name.vb: Integer
+- uid: Sharpy.Set`1
+  commentId: T:Sharpy.Set`1
+  parent: Sharpy
+  href: Sharpy.Set-1.html
+  name: Set<T>
+  nameWithType: Set<T>
+  fullName: Sharpy.Set<T>
+  nameWithType.vb: Set(Of T)
+  fullName.vb: Sharpy.Set(Of T)
+  name.vb: Set(Of T)
+  spec.csharp:
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.DictKeyView`2.Contains*
+  commentId: Overload:Sharpy.DictKeyView`2.Contains
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2_Contains__0_
+  name: Contains
+  nameWithType: DictKeyView<K, V>.Contains
+  fullName: Sharpy.DictKeyView<K, V>.Contains
+  nameWithType.vb: DictKeyView(Of K, V).Contains
+  fullName.vb: Sharpy.DictKeyView(Of K, V).Contains
+- uid: '{K}'
+  commentId: '!:K'
+  definition: K
+  name: K
+  nameWithType: K
+  fullName: K
+- uid: System.Boolean
+  commentId: T:System.Boolean
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.boolean
+  name: bool
+  nameWithType: bool
+  fullName: bool
+  nameWithType.vb: Boolean
+  fullName.vb: Boolean
+  name.vb: Boolean
+- uid: K
+  name: K
+  nameWithType: K
+  fullName: K
+- uid: Sharpy.DictKeyView`2.Equals*
+  commentId: Overload:Sharpy.DictKeyView`2.Equals
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2_Equals_Sharpy_Set__0__
+  name: Equals
+  nameWithType: DictKeyView<K, V>.Equals
+  fullName: Sharpy.DictKeyView<K, V>.Equals
+  nameWithType.vb: DictKeyView(Of K, V).Equals
+  fullName.vb: Sharpy.DictKeyView(Of K, V).Equals
+- uid: Sharpy.DictKeyView`2.GetEnumerator*
+  commentId: Overload:Sharpy.DictKeyView`2.GetEnumerator
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2_GetEnumerator
+  name: GetEnumerator
+  nameWithType: DictKeyView<K, V>.GetEnumerator
+  fullName: Sharpy.DictKeyView<K, V>.GetEnumerator
+  nameWithType.vb: DictKeyView(Of K, V).GetEnumerator
+  fullName.vb: Sharpy.DictKeyView(Of K, V).GetEnumerator
+- uid: System.Collections.Generic.IEnumerable{{K}}.GetEnumerator
+  commentId: M:System.Collections.Generic.IEnumerable{`0}.GetEnumerator
+  parent: System.Collections.Generic.IEnumerable{{K}}
+  definition: System.Collections.Generic.IEnumerable`1.GetEnumerator
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  name: GetEnumerator()
+  nameWithType: IEnumerable<K>.GetEnumerator()
+  fullName: System.Collections.Generic.IEnumerable<K>.GetEnumerator()
+  nameWithType.vb: IEnumerable(Of K).GetEnumerator()
+  fullName.vb: System.Collections.Generic.IEnumerable(Of K).GetEnumerator()
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable{`0}.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable{`0}.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+- uid: System.Collections.Generic.IEnumerator{{K}}
+  commentId: T:System.Collections.Generic.IEnumerator{`0}
+  parent: System.Collections.Generic
+  definition: System.Collections.Generic.IEnumerator`1
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerator-1
+  name: IEnumerator<K>
+  nameWithType: IEnumerator<K>
+  fullName: System.Collections.Generic.IEnumerator<K>
+  nameWithType.vb: IEnumerator(Of K)
+  fullName.vb: System.Collections.Generic.IEnumerator(Of K)
+  name.vb: IEnumerator(Of K)
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerator`1
+    name: IEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerator-1
+  - name: <
+  - name: K
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerator`1
+    name: IEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerator-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: )
+- uid: System.Collections.Generic.IEnumerable`1.GetEnumerator
+  commentId: M:System.Collections.Generic.IEnumerable`1.GetEnumerator
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  name: GetEnumerator()
+  nameWithType: IEnumerable<T>.GetEnumerator()
+  fullName: System.Collections.Generic.IEnumerable<T>.GetEnumerator()
+  nameWithType.vb: IEnumerable(Of T).GetEnumerator()
+  fullName.vb: System.Collections.Generic.IEnumerable(Of T).GetEnumerator()
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable`1.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable`1.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+- uid: System.Collections.Generic.IEnumerator`1
+  commentId: T:System.Collections.Generic.IEnumerator`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerator-1
+  name: IEnumerator<T>
+  nameWithType: IEnumerator<T>
+  fullName: System.Collections.Generic.IEnumerator<T>
+  nameWithType.vb: IEnumerator(Of T)
+  fullName.vb: System.Collections.Generic.IEnumerator(Of T)
+  name.vb: IEnumerator(Of T)
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerator`1
+    name: IEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerator-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerator`1
+    name: IEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerator-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.DictKeyView`2.IsDisjoint*
+  commentId: Overload:Sharpy.DictKeyView`2.IsDisjoint
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2_IsDisjoint_Sharpy_Set__0__
+  name: IsDisjoint
+  nameWithType: DictKeyView<K, V>.IsDisjoint
+  fullName: Sharpy.DictKeyView<K, V>.IsDisjoint
+  nameWithType.vb: DictKeyView(Of K, V).IsDisjoint
+  fullName.vb: Sharpy.DictKeyView(Of K, V).IsDisjoint
+- uid: Sharpy.DictKeyView`2.__And__*
+  commentId: Overload:Sharpy.DictKeyView`2.__And__
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2___And___Sharpy_Set__0__
+  name: __And__
+  nameWithType: DictKeyView<K, V>.__And__
+  fullName: Sharpy.DictKeyView<K, V>.__And__
+  nameWithType.vb: DictKeyView(Of K, V).__And__
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__And__
+- uid: Sharpy.DictKeyView`2.__Contains__*
+  commentId: Overload:Sharpy.DictKeyView`2.__Contains__
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2___Contains____0_
+  name: __Contains__
+  nameWithType: DictKeyView<K, V>.__Contains__
+  fullName: Sharpy.DictKeyView<K, V>.__Contains__
+  nameWithType.vb: DictKeyView(Of K, V).__Contains__
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Contains__
+- uid: Sharpy.DictKeyView`2.__Eq__*
+  commentId: Overload:Sharpy.DictKeyView`2.__Eq__
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2___Eq___Sharpy_Set__0__
+  name: __Eq__
+  nameWithType: DictKeyView<K, V>.__Eq__
+  fullName: Sharpy.DictKeyView<K, V>.__Eq__
+  nameWithType.vb: DictKeyView(Of K, V).__Eq__
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Eq__
+- uid: Sharpy.DictKeyView`2.__Ge__*
+  commentId: Overload:Sharpy.DictKeyView`2.__Ge__
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2___Ge___Sharpy_Set__0__
+  name: __Ge__
+  nameWithType: DictKeyView<K, V>.__Ge__
+  fullName: Sharpy.DictKeyView<K, V>.__Ge__
+  nameWithType.vb: DictKeyView(Of K, V).__Ge__
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Ge__
+- uid: Sharpy.DictKeyView`2.__Gt__*
+  commentId: Overload:Sharpy.DictKeyView`2.__Gt__
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2___Gt___Sharpy_Set__0__
+  name: __Gt__
+  nameWithType: DictKeyView<K, V>.__Gt__
+  fullName: Sharpy.DictKeyView<K, V>.__Gt__
+  nameWithType.vb: DictKeyView(Of K, V).__Gt__
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Gt__
+- uid: Sharpy.Iterator`1
+  commentId: T:Sharpy.Iterator`1
+  parent: Sharpy
+  href: Sharpy.Iterator-1.html
+  name: Iterator<T>
+  nameWithType: Iterator<T>
+  fullName: Sharpy.Iterator<T>
+  nameWithType.vb: Iterator(Of T)
+  fullName.vb: Sharpy.Iterator(Of T)
+  name.vb: Iterator(Of T)
+  spec.csharp:
+  - uid: Sharpy.Iterator`1
+    name: Iterator
+    href: Sharpy.Iterator-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Iterator`1
+    name: Iterator
+    href: Sharpy.Iterator-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.DictKeyView`2.__Iter__*
+  commentId: Overload:Sharpy.DictKeyView`2.__Iter__
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2___Iter__
+  name: __Iter__
+  nameWithType: DictKeyView<K, V>.__Iter__
+  fullName: Sharpy.DictKeyView<K, V>.__Iter__
+  nameWithType.vb: DictKeyView(Of K, V).__Iter__
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Iter__
+- uid: Sharpy.Collections.Interfaces.Iterable{{K}}.__Iter__
+  commentId: M:Sharpy.Collections.Interfaces.Iterable{`0}.__Iter__
+  parent: Sharpy.Collections.Interfaces.Iterable{{K}}
+  definition: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+  href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  name: __Iter__()
+  nameWithType: Iterable<K>.__Iter__()
+  fullName: Sharpy.Collections.Interfaces.Iterable<K>.__Iter__()
+  nameWithType.vb: Iterable(Of K).__Iter__()
+  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of K).__Iter__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Iterable{`0}.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Iterable{`0}.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  - name: (
+  - name: )
+- uid: Sharpy.Iterator{{K}}
+  commentId: T:Sharpy.Iterator{`0}
+  parent: Sharpy
+  definition: Sharpy.Iterator`1
+  href: Sharpy.Iterator-1.html
+  name: Iterator<K>
+  nameWithType: Iterator<K>
+  fullName: Sharpy.Iterator<K>
+  nameWithType.vb: Iterator(Of K)
+  fullName.vb: Sharpy.Iterator(Of K)
+  name.vb: Iterator(Of K)
+  spec.csharp:
+  - uid: Sharpy.Iterator`1
+    name: Iterator
+    href: Sharpy.Iterator-1.html
+  - name: <
+  - name: K
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Iterator`1
+    name: Iterator
+    href: Sharpy.Iterator-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+  commentId: M:Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+  href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  name: __Iter__()
+  nameWithType: Iterable<T>.__Iter__()
+  fullName: Sharpy.Collections.Interfaces.Iterable<T>.__Iter__()
+  nameWithType.vb: Iterable(Of T).__Iter__()
+  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T).__Iter__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  - name: (
+  - name: )
+- uid: Sharpy.DictKeyView`2.__Len__*
+  commentId: Overload:Sharpy.DictKeyView`2.__Len__
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2___Len__
+  name: __Len__
+  nameWithType: DictKeyView<K, V>.__Len__
+  fullName: Sharpy.DictKeyView<K, V>.__Len__
+  nameWithType.vb: DictKeyView(Of K, V).__Len__
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Len__
+- uid: Sharpy.Collections.Interfaces.Sized.__Len__
+  commentId: M:Sharpy.Collections.Interfaces.Sized.__Len__
+  parent: Sharpy.Collections.Interfaces.Sized
+  href: Sharpy.Collections.Interfaces.Sized.html#Sharpy_Collections_Interfaces_Sized___Len__
+  name: __Len__()
+  nameWithType: Sized.__Len__()
+  fullName: Sharpy.Collections.Interfaces.Sized.__Len__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Sized.__Len__
+    name: __Len__
+    href: Sharpy.Collections.Interfaces.Sized.html#Sharpy_Collections_Interfaces_Sized___Len__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Sized.__Len__
+    name: __Len__
+    href: Sharpy.Collections.Interfaces.Sized.html#Sharpy_Collections_Interfaces_Sized___Len__
+  - name: (
+  - name: )
+- uid: System.UInt32
+  commentId: T:System.UInt32
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.uint32
+  name: uint
+  nameWithType: uint
+  fullName: uint
+  nameWithType.vb: UInteger
+  fullName.vb: UInteger
+  name.vb: UInteger
+- uid: Sharpy.DictKeyView`2.__Le__*
+  commentId: Overload:Sharpy.DictKeyView`2.__Le__
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2___Le___Sharpy_Set__0__
+  name: __Le__
+  nameWithType: DictKeyView<K, V>.__Le__
+  fullName: Sharpy.DictKeyView<K, V>.__Le__
+  nameWithType.vb: DictKeyView(Of K, V).__Le__
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Le__
+- uid: Sharpy.DictKeyView`2.__Lt__*
+  commentId: Overload:Sharpy.DictKeyView`2.__Lt__
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2___Lt___Sharpy_Set__0__
+  name: __Lt__
+  nameWithType: DictKeyView<K, V>.__Lt__
+  fullName: Sharpy.DictKeyView<K, V>.__Lt__
+  nameWithType.vb: DictKeyView(Of K, V).__Lt__
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Lt__
+- uid: Sharpy.DictKeyView`2.__Ne__*
+  commentId: Overload:Sharpy.DictKeyView`2.__Ne__
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2___Ne___Sharpy_Set__0__
+  name: __Ne__
+  nameWithType: DictKeyView<K, V>.__Ne__
+  fullName: Sharpy.DictKeyView<K, V>.__Ne__
+  nameWithType.vb: DictKeyView(Of K, V).__Ne__
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Ne__
+- uid: Sharpy.DictKeyView`2.__Or__*
+  commentId: Overload:Sharpy.DictKeyView`2.__Or__
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2___Or___Sharpy_Set__0__
+  name: __Or__
+  nameWithType: DictKeyView<K, V>.__Or__
+  fullName: Sharpy.DictKeyView<K, V>.__Or__
+  nameWithType.vb: DictKeyView(Of K, V).__Or__
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Or__
+- uid: Sharpy.DictKeyView`2.op_BitwiseOr*
+  commentId: Overload:Sharpy.DictKeyView`2.op_BitwiseOr
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2_op_BitwiseOr_Sharpy_DictKeyView__0__1__Sharpy_DictKeyView__0__1__
+  name: operator |
+  nameWithType: DictKeyView<K, V>.operator |
+  fullName: Sharpy.DictKeyView<K, V>.operator |
+  nameWithType.vb: DictKeyView(Of K, V).Or
+  fullName.vb: Sharpy.DictKeyView(Of K, V).Or
+  name.vb: Or
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.DictKeyView`2.op_BitwiseOr*
+    name: '|'
+    href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2_op_BitwiseOr_Sharpy_DictKeyView__0__1__Sharpy_DictKeyView__0__1__
+- uid: Sharpy.DictKeyView`2
+  commentId: T:Sharpy.DictKeyView`2
+  parent: Sharpy
+  href: Sharpy.DictKeyView-2.html
+  name: DictKeyView<K, V>
+  nameWithType: DictKeyView<K, V>
+  fullName: Sharpy.DictKeyView<K, V>
+  nameWithType.vb: DictKeyView(Of K, V)
+  fullName.vb: Sharpy.DictKeyView(Of K, V)
+  name.vb: DictKeyView(Of K, V)
+  spec.csharp:
+  - uid: Sharpy.DictKeyView`2
+    name: DictKeyView
+    href: Sharpy.DictKeyView-2.html
+  - name: <
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.DictKeyView`2
+    name: DictKeyView
+    href: Sharpy.DictKeyView-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.DictKeyView`2.__ROr__*
+  commentId: Overload:Sharpy.DictKeyView`2.__ROr__
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2___ROr___Sharpy_Set__0__
+  name: __ROr__
+  nameWithType: DictKeyView<K, V>.__ROr__
+  fullName: Sharpy.DictKeyView<K, V>.__ROr__
+  nameWithType.vb: DictKeyView(Of K, V).__ROr__
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__ROr__
+- uid: Sharpy.DictKeyView`2.__RSub__*
+  commentId: Overload:Sharpy.DictKeyView`2.__RSub__
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2___RSub___Sharpy_Set__0__
+  name: __RSub__
+  nameWithType: DictKeyView<K, V>.__RSub__
+  fullName: Sharpy.DictKeyView<K, V>.__RSub__
+  nameWithType.vb: DictKeyView(Of K, V).__RSub__
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__RSub__
+- uid: Sharpy.DictKeyView`2.__Sub__*
+  commentId: Overload:Sharpy.DictKeyView`2.__Sub__
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2___Sub___Sharpy_Set__0__
+  name: __Sub__
+  nameWithType: DictKeyView<K, V>.__Sub__
+  fullName: Sharpy.DictKeyView<K, V>.__Sub__
+  nameWithType.vb: DictKeyView(Of K, V).__Sub__
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__Sub__
+- uid: Sharpy.DictKeyView`2.__XOr__*
+  commentId: Overload:Sharpy.DictKeyView`2.__XOr__
+  href: Sharpy.DictKeyView-2.html#Sharpy_DictKeyView_2___XOr___Sharpy_Set__0__
+  name: __XOr__
+  nameWithType: DictKeyView<K, V>.__XOr__
+  fullName: Sharpy.DictKeyView<K, V>.__XOr__
+  nameWithType.vb: DictKeyView(Of K, V).__XOr__
+  fullName.vb: Sharpy.DictKeyView(Of K, V).__XOr__

@@ -2,6 +2,7 @@ namespace Sharpy
 {
     public sealed partial class ListIterator<T>
     {
+        /// <inheritdoc/>
         public override T __Next__()
         {
             if (_index < _list.__Len__())

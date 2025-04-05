@@ -2,6 +2,7 @@ namespace Sharpy
 {
     public sealed partial class List<T>
     {
+        /// <inheritdoc/>
         public override int __Hash__()
         {
             var hashCode = new HashCode();

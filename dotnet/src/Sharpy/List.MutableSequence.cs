@@ -4,18 +4,21 @@ namespace Sharpy
 {
     public sealed partial class List<T>
     {
+        /// <inheritdoc/>
         public T this[int index]
         {
             get => __GetItem__(index);
             set => __SetItem__(index, value);
         }
 
+        /// <inheritdoc/>
         public List<T> this[int start, int end]
         {
             get => __GetItem__(new Slice(start, end, 1));
             set => __SetItem__(new Slice(start, end, 1), value);
         }
 
+        /// <inheritdoc/>
         public List<T> this[int start, int end, int step]
         {
             get => __GetItem__(new Slice(start, end, step));
@@ -123,6 +126,7 @@ namespace Sharpy
             _list.Reverse();
         }
 
+        /// <inheritdoc/>
         public void __IAdd__(Sequence<T> other)
         {
             if (other is null)
@@ -133,6 +137,7 @@ namespace Sharpy
             _list.AddRange(other);
         }
 
+        /// <inheritdoc/>
         public void __SetItem__(Slice slice, Sequence<T> other)
         {
             if (other is null)
@@ -148,11 +153,13 @@ namespace Sharpy
             return __GetItem__(slice);
         }
 
+        /// <inheritdoc/>
         public void __DelItem__(int index)
         {
             _list.RemoveAt((int)Sharpy.Index.Normalize(index, (uint)_list.Count, false, false));
         }
 
+        /// <inheritdoc/>
         public void __DelItem__(Slice slice)
         {
             if (slice.step == 0)
@@ -207,12 +214,14 @@ namespace Sharpy
             }
         }
 
+        /// <inheritdoc/>
         public void __SetItem__(int index, T value)
         {
             index = (int)Sharpy.Index.Normalize(index, (uint)_list.Count, false, false);
             _list[index] = value;
         }
 
+        /// <inheritdoc/>
         public void __SetItem__(Slice slice, List<T> other)
         {
             if (other is null)

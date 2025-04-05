@@ -1,7 +1,7 @@
 namespace Sharpy.Collections.Interfaces
 {
     /// <summary>
-    /// Interface for classes that provide the <see cref="__Contains__()"/>
+    /// Interface for classes that provide the <see cref="__Contains__(T)"/>
     /// method.
     /// </summary>
     public interface Container<T>
@@ -17,7 +17,7 @@ namespace Sharpy.Collections.Interfaces
         bool __Contains__(T x);
 
         /// <remarks>
-        /// In subclasses, this must call <see cref="__Contains__(x)" /> to
+        /// In subclasses, this must call <see cref="__Contains__(T)" /> to
         /// correctly implement <c>x in y</c> behavior.
         /// </remarks>
         bool Contains(T x);

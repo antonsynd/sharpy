@@ -6,7 +6,7 @@ namespace Sharpy.Collections.Interfaces
     public interface Iterable<T> : IEnumerable<T>
     {
         /// <summary>
-        /// Return an <see cref="Iterator"/> object. The object is required to
+        /// Return an <see cref="Iterator&lt;T&gt;"/> object. The object is required to
         /// support the iterator protocol described below.
         /// </summary>
         /// <remarks>

@@ -1,0 +1,103 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.Multipliable`2
+  commentId: T:Sharpy.Multipliable`2
+  id: Multipliable`2
+  parent: Sharpy
+  children:
+  - Sharpy.Multipliable`2.__Mul__(`1)
+  langs:
+  - csharp
+  - vb
+  name: Multipliable<T, U>
+  nameWithType: Multipliable<T, U>
+  fullName: Sharpy.Multipliable<T, U>
+  type: Interface
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Multipliable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Multipliable
+    path: ../src/Sharpy/Multipliable.cs
+    startLine: 2
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public interface Multipliable<T, U>
+    typeParameters:
+    - id: T
+    - id: U
+    content.vb: Public Interface Multipliable(Of T, U)
+  nameWithType.vb: Multipliable(Of T, U)
+  fullName.vb: Sharpy.Multipliable(Of T, U)
+  name.vb: Multipliable(Of T, U)
+- uid: Sharpy.Multipliable`2.__Mul__(`1)
+  commentId: M:Sharpy.Multipliable`2.__Mul__(`1)
+  id: __Mul__(`1)
+  parent: Sharpy.Multipliable`2
+  langs:
+  - csharp
+  - vb
+  name: __Mul__(U)
+  nameWithType: Multipliable<T, U>.__Mul__(U)
+  fullName: Sharpy.Multipliable<T, U>.__Mul__(U)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Multipliable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Mul__
+    path: ../src/Sharpy/Multipliable.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: T __Mul__(U other)
+    parameters:
+    - id: other
+      type: '{U}'
+    return:
+      type: '{T}'
+    content.vb: Function __Mul__(other As U) As T
+  overload: Sharpy.Multipliable`2.__Mul__*
+  nameWithType.vb: Multipliable(Of T, U).__Mul__(U)
+  fullName.vb: Sharpy.Multipliable(Of T, U).__Mul__(U)
+references:
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: Sharpy.Multipliable`2.__Mul__*
+  commentId: Overload:Sharpy.Multipliable`2.__Mul__
+  href: Sharpy.Multipliable-2.html#Sharpy_Multipliable_2___Mul____1_
+  name: __Mul__
+  nameWithType: Multipliable<T, U>.__Mul__
+  fullName: Sharpy.Multipliable<T, U>.__Mul__
+  nameWithType.vb: Multipliable(Of T, U).__Mul__
+  fullName.vb: Sharpy.Multipliable(Of T, U).__Mul__
+- uid: '{U}'
+  commentId: '!:U'
+  definition: U
+  name: U
+  nameWithType: U
+  fullName: U
+- uid: '{T}'
+  commentId: '!:T'
+  definition: T
+  name: T
+  nameWithType: T
+  fullName: T
+- uid: U
+  name: U
+  nameWithType: U
+  fullName: U
+- uid: T
+  name: T
+  nameWithType: T
+  fullName: T

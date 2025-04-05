@@ -19,6 +19,7 @@ namespace Sharpy.Collections.Interfaces
         /// </summary>
         new MutableSequence<T> this[int start, int end] { get; set; }
 
+        /// <see cref="this[int, int]"/>
         new MutableSequence<T> this[int start, int end, int step] { get; set; }
 
         void Append(T x);
@@ -63,8 +64,10 @@ namespace Sharpy.Collections.Interfaces
         /// </summary>
         new S this[int start, int end] { get; set; }
 
+        /// <inheritdoc/>
         new S this[int start, int end, int step] { get; set; }
 
+        /// <inheritdoc/>
         void __SetItem__(Slice slice, S other);
     }
 }

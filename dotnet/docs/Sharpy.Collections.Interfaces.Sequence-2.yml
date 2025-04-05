@@ -1,0 +1,1427 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.Collections.Interfaces.Sequence`2
+  commentId: T:Sharpy.Collections.Interfaces.Sequence`2
+  id: Sequence`2
+  parent: Sharpy.Collections.Interfaces
+  children:
+  - Sharpy.Collections.Interfaces.Sequence`2.Item(System.Int32,System.Int32)
+  - Sharpy.Collections.Interfaces.Sequence`2.Item(System.Int32,System.Int32,System.Int32)
+  - Sharpy.Collections.Interfaces.Sequence`2.__GetItem__(Sharpy.Slice)
+  langs:
+  - csharp
+  - vb
+  name: Sequence<S, T>
+  nameWithType: Sequence<S, T>
+  fullName: Sharpy.Collections.Interfaces.Sequence<S, T>
+  type: Interface
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Collections/Interfaces/Sequence.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Sequence
+    path: ../src/Sharpy/Collections/Interfaces/Sequence.cs
+    startLine: 74
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Collections.Interfaces
+  summary: >-
+    Interface for read-only sequences as a curiously recursive template,
+
+    with methods dealing directly with the given sequence type.
+  example: []
+  syntax:
+    content: 'public interface Sequence<S, T> : Sequence<T>, Collection<T>, Container<T>, Sized, Reversible<T>, Iterable<T>, IEnumerable<T>, IEnumerable, Addable<Sequence<T>>, Addable<Sequence<T>, Sequence<T>>, RightAddable<Sequence<T>>, RightAddable<Sequence<T>, Sequence<T>>'
+    typeParameters:
+    - id: S
+    - id: T
+    content.vb: Public Interface Sequence(Of S, T) Inherits Sequence(Of T), Collection(Of T), Container(Of T), Sized, Reversible(Of T), Iterable(Of T), IEnumerable(Of T), IEnumerable, Addable(Of Sequence(Of T)), Addable(Of Sequence(Of T), Sequence(Of T)), RightAddable(Of Sequence(Of T)), RightAddable(Of Sequence(Of T), Sequence(Of T))
+  inheritedMembers:
+  - Sharpy.Collections.Interfaces.Sequence{{T}}.Item(System.Int32)
+  - Sharpy.Collections.Interfaces.Sequence{{T}}.Count({T})
+  - Sharpy.Collections.Interfaces.Sequence{{T}}.Index({T},System.Int32,System.Int32)
+  - Sharpy.Collections.Interfaces.Sequence{{T}}.__GetItem__(System.Int32)
+  - Sharpy.Collections.Interfaces.Container{{T}}.__Contains__({T})
+  - Sharpy.Collections.Interfaces.Container{{T}}.Contains({T})
+  - Sharpy.Collections.Interfaces.Sized.__Len__
+  - Sharpy.Collections.Interfaces.Reversible{{T}}.__Reversed__
+  - Sharpy.Collections.Interfaces.Iterable{{T}}.__Iter__
+  - System.Collections.Generic.IEnumerable{{T}}.GetEnumerator
+  - Sharpy.Addable{Sharpy.Collections.Interfaces.Sequence{{T}},Sharpy.Collections.Interfaces.Sequence{{T}}}.__Add__(Sharpy.Collections.Interfaces.Sequence{{T}})
+  - Sharpy.RightAddable{Sharpy.Collections.Interfaces.Sequence{{T}},Sharpy.Collections.Interfaces.Sequence{{T}}}.__RAdd__(Sharpy.Collections.Interfaces.Sequence{{T}})
+  nameWithType.vb: Sequence(Of S, T)
+  fullName.vb: Sharpy.Collections.Interfaces.Sequence(Of S, T)
+  name.vb: Sequence(Of S, T)
+- uid: Sharpy.Collections.Interfaces.Sequence`2.Item(System.Int32,System.Int32)
+  commentId: P:Sharpy.Collections.Interfaces.Sequence`2.Item(System.Int32,System.Int32)
+  id: Item(System.Int32,System.Int32)
+  parent: Sharpy.Collections.Interfaces.Sequence`2
+  langs:
+  - csharp
+  - vb
+  name: this[int, int]
+  nameWithType: Sequence<S, T>.this[int, int]
+  fullName: Sharpy.Collections.Interfaces.Sequence<S, T>.this[int, int]
+  type: Property
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Collections/Interfaces/Sequence.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: this[]
+    path: ../src/Sharpy/Collections/Interfaces/Sequence.cs
+    startLine: 85
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Collections.Interfaces
+  summary: >-
+    Returns the sub-sequence at the given start and end (exclusive) indices
+
+    in the sequence. Supports negative indices to count from the back.
+
+    If either index is out of range, then this raises an
+
+    <xref href="Sharpy.IndexError" data-throw-if-not-resolved="false"></xref>.
+  remarks: Should call <xref href="Sharpy.Collections.Interfaces.Sequence%602.__GetItem__(Sharpy.Slice)" data-throw-if-not-resolved="false"></xref> underneath.
+  example: []
+  syntax:
+    content: S this[int start, int end] { get; }
+    parameters:
+    - id: start
+      type: System.Int32
+    - id: end
+      type: System.Int32
+    return:
+      type: '{S}'
+    content.vb: ReadOnly Default Property this[](start As Integer, [end] As Integer) As S
+  overload: Sharpy.Collections.Interfaces.Sequence`2.Item*
+  nameWithType.vb: Sequence(Of S, T).this[](Integer, Integer)
+  fullName.vb: Sharpy.Collections.Interfaces.Sequence(Of S, T).this[](Integer, Integer)
+  name.vb: this[](Integer, Integer)
+- uid: Sharpy.Collections.Interfaces.Sequence`2.Item(System.Int32,System.Int32,System.Int32)
+  commentId: P:Sharpy.Collections.Interfaces.Sequence`2.Item(System.Int32,System.Int32,System.Int32)
+  id: Item(System.Int32,System.Int32,System.Int32)
+  parent: Sharpy.Collections.Interfaces.Sequence`2
+  langs:
+  - csharp
+  - vb
+  name: this[int, int, int]
+  nameWithType: Sequence<S, T>.this[int, int, int]
+  fullName: Sharpy.Collections.Interfaces.Sequence<S, T>.this[int, int, int]
+  type: Property
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Collections/Interfaces/Sequence.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: this[]
+    path: ../src/Sharpy/Collections/Interfaces/Sequence.cs
+    startLine: 98
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Collections.Interfaces
+  summary: >-
+    Returns the sub-sequence at the given start and end (exclusive)
+
+    indices in the sequence, skipping every step elements after the
+
+    start. Supports negative indices to count from the back. If either
+
+    index is out of range, then this raises an
+
+    <xref href="Sharpy.IndexError" data-throw-if-not-resolved="false"></xref>. If the step is less than 1, then an
+
+    empty sequence is returned.
+  remarks: Should call <xref href="Sharpy.Collections.Interfaces.Sequence%602.__GetItem__(Sharpy.Slice)" data-throw-if-not-resolved="false"></xref> underneath.
+  example: []
+  syntax:
+    content: S this[int start, int end, int step] { get; }
+    parameters:
+    - id: start
+      type: System.Int32
+    - id: end
+      type: System.Int32
+    - id: step
+      type: System.Int32
+    return:
+      type: '{S}'
+    content.vb: ReadOnly Default Property this[](start As Integer, [end] As Integer, [step] As Integer) As S
+  overload: Sharpy.Collections.Interfaces.Sequence`2.Item*
+  nameWithType.vb: Sequence(Of S, T).this[](Integer, Integer, Integer)
+  fullName.vb: Sharpy.Collections.Interfaces.Sequence(Of S, T).this[](Integer, Integer, Integer)
+  name.vb: this[](Integer, Integer, Integer)
+- uid: Sharpy.Collections.Interfaces.Sequence`2.__GetItem__(Sharpy.Slice)
+  commentId: M:Sharpy.Collections.Interfaces.Sequence`2.__GetItem__(Sharpy.Slice)
+  id: __GetItem__(Sharpy.Slice)
+  parent: Sharpy.Collections.Interfaces.Sequence`2
+  langs:
+  - csharp
+  - vb
+  name: __GetItem__(Slice)
+  nameWithType: Sequence<S, T>.__GetItem__(Slice)
+  fullName: Sharpy.Collections.Interfaces.Sequence<S, T>.__GetItem__(Sharpy.Slice)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Collections/Interfaces/Sequence.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __GetItem__
+    path: ../src/Sharpy/Collections/Interfaces/Sequence.cs
+    startLine: 108
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Collections.Interfaces
+  summary: >-
+    Returns the sub-sequence at the given start and end (exclusive)
+
+    indices in the sequence, skipping every step elements after the
+
+    start. Supports negative indices to count from the back. If either
+
+    index is out of range, then this raises an
+
+    <xref href="Sharpy.IndexError" data-throw-if-not-resolved="false"></xref>. If the step is less than 1, then an
+
+    empty sequence is returned.
+  example: []
+  syntax:
+    content: S __GetItem__(Slice slice)
+    parameters:
+    - id: slice
+      type: Sharpy.Slice
+    return:
+      type: '{S}'
+    content.vb: Function __GetItem__(slice As Slice) As S
+  overload: Sharpy.Collections.Interfaces.Sequence`2.__GetItem__*
+  nameWithType.vb: Sequence(Of S, T).__GetItem__(Slice)
+  fullName.vb: Sharpy.Collections.Interfaces.Sequence(Of S, T).__GetItem__(Sharpy.Slice)
+references:
+- uid: Sharpy.Collections.Interfaces
+  commentId: N:Sharpy.Collections.Interfaces
+  href: Sharpy.html
+  name: Sharpy.Collections.Interfaces
+  nameWithType: Sharpy.Collections.Interfaces
+  fullName: Sharpy.Collections.Interfaces
+  spec.csharp:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+  spec.vb:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+- uid: Sharpy.Collections.Interfaces.Sequence{{T}}.Item(System.Int32)
+  commentId: P:Sharpy.Collections.Interfaces.Sequence{`0}.Item(System.Int32)
+  parent: Sharpy.Collections.Interfaces.Sequence{{T}}
+  definition: Sharpy.Collections.Interfaces.Sequence`1.Item(System.Int32)
+  href: https://learn.microsoft.com/dotnet/api/system.int32
+  name: this[int]
+  nameWithType: Sequence<T>.this[int]
+  fullName: Sharpy.Collections.Interfaces.Sequence<T>.this[int]
+  nameWithType.vb: Sequence(Of T).this[](Integer)
+  fullName.vb: Sharpy.Collections.Interfaces.Sequence(Of T).this[](Integer)
+  name.vb: this[](Integer)
+  spec.csharp:
+  - name: this
+  - name: '['
+  - uid: System.Int32
+    name: int
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: ']'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Sequence{`0}.Item(System.Int32)
+    name: this[]
+    href: Sharpy.Collections.Interfaces.Sequence-1.html#Sharpy_Collections_Interfaces_Sequence_1_Item_System_Int32_
+  - name: (
+  - uid: System.Int32
+    name: Integer
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Sequence{{T}}.Count({T})
+  commentId: M:Sharpy.Collections.Interfaces.Sequence{`0}.Count(`0)
+  parent: Sharpy.Collections.Interfaces.Sequence{{T}}
+  definition: Sharpy.Collections.Interfaces.Sequence`1.Count(`0)
+  href: Sharpy.Collections.Interfaces.Sequence-1.html#Sharpy_Collections_Interfaces_Sequence_1_Count__0_
+  name: Count(T)
+  nameWithType: Sequence<T>.Count(T)
+  fullName: Sharpy.Collections.Interfaces.Sequence<T>.Count(T)
+  nameWithType.vb: Sequence(Of T).Count(T)
+  fullName.vb: Sharpy.Collections.Interfaces.Sequence(Of T).Count(T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Sequence{`0}.Count(`0)
+    name: Count
+    href: Sharpy.Collections.Interfaces.Sequence-1.html#Sharpy_Collections_Interfaces_Sequence_1_Count__0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Sequence{`0}.Count(`0)
+    name: Count
+    href: Sharpy.Collections.Interfaces.Sequence-1.html#Sharpy_Collections_Interfaces_Sequence_1_Count__0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Sequence{{T}}.Index({T},System.Int32,System.Int32)
+  commentId: M:Sharpy.Collections.Interfaces.Sequence{`0}.Index(`0,System.Int32,System.Int32)
+  parent: Sharpy.Collections.Interfaces.Sequence{{T}}
+  definition: Sharpy.Collections.Interfaces.Sequence`1.Index(`0,System.Int32,System.Int32)
+  href: Sharpy.Collections.Interfaces.Sequence-1.html#Sharpy_Collections_Interfaces_Sequence_1_Index__0_System_Int32_System_Int32_
+  name: Index(T, int, int)
+  nameWithType: Sequence<T>.Index(T, int, int)
+  fullName: Sharpy.Collections.Interfaces.Sequence<T>.Index(T, int, int)
+  nameWithType.vb: Sequence(Of T).Index(T, Integer, Integer)
+  fullName.vb: Sharpy.Collections.Interfaces.Sequence(Of T).Index(T, Integer, Integer)
+  name.vb: Index(T, Integer, Integer)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Sequence{`0}.Index(`0,System.Int32,System.Int32)
+    name: Index
+    href: Sharpy.Collections.Interfaces.Sequence-1.html#Sharpy_Collections_Interfaces_Sequence_1_Index__0_System_Int32_System_Int32_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: int
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: int
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Sequence{`0}.Index(`0,System.Int32,System.Int32)
+    name: Index
+    href: Sharpy.Collections.Interfaces.Sequence-1.html#Sharpy_Collections_Interfaces_Sequence_1_Index__0_System_Int32_System_Int32_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: Integer
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: Integer
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Sequence{{T}}.__GetItem__(System.Int32)
+  commentId: M:Sharpy.Collections.Interfaces.Sequence{`0}.__GetItem__(System.Int32)
+  parent: Sharpy.Collections.Interfaces.Sequence{{T}}
+  definition: Sharpy.Collections.Interfaces.Sequence`1.__GetItem__(System.Int32)
+  href: Sharpy.Collections.Interfaces.Sequence-1.html#Sharpy_Collections_Interfaces_Sequence_1___GetItem___System_Int32_
+  name: __GetItem__(int)
+  nameWithType: Sequence<T>.__GetItem__(int)
+  fullName: Sharpy.Collections.Interfaces.Sequence<T>.__GetItem__(int)
+  nameWithType.vb: Sequence(Of T).__GetItem__(Integer)
+  fullName.vb: Sharpy.Collections.Interfaces.Sequence(Of T).__GetItem__(Integer)
+  name.vb: __GetItem__(Integer)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Sequence{`0}.__GetItem__(System.Int32)
+    name: __GetItem__
+    href: Sharpy.Collections.Interfaces.Sequence-1.html#Sharpy_Collections_Interfaces_Sequence_1___GetItem___System_Int32_
+  - name: (
+  - uid: System.Int32
+    name: int
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Sequence{`0}.__GetItem__(System.Int32)
+    name: __GetItem__
+    href: Sharpy.Collections.Interfaces.Sequence-1.html#Sharpy_Collections_Interfaces_Sequence_1___GetItem___System_Int32_
+  - name: (
+  - uid: System.Int32
+    name: Integer
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Container{{T}}.__Contains__({T})
+  commentId: M:Sharpy.Collections.Interfaces.Container{`0}.__Contains__(`0)
+  parent: Sharpy.Collections.Interfaces.Container{{T}}
+  definition: Sharpy.Collections.Interfaces.Container`1.__Contains__(`0)
+  href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1___Contains____0_
+  name: __Contains__(T)
+  nameWithType: Container<T>.__Contains__(T)
+  fullName: Sharpy.Collections.Interfaces.Container<T>.__Contains__(T)
+  nameWithType.vb: Container(Of T).__Contains__(T)
+  fullName.vb: Sharpy.Collections.Interfaces.Container(Of T).__Contains__(T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Container{`0}.__Contains__(`0)
+    name: __Contains__
+    href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1___Contains____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Container{`0}.__Contains__(`0)
+    name: __Contains__
+    href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1___Contains____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Container{{T}}.Contains({T})
+  commentId: M:Sharpy.Collections.Interfaces.Container{`0}.Contains(`0)
+  parent: Sharpy.Collections.Interfaces.Container{{T}}
+  definition: Sharpy.Collections.Interfaces.Container`1.Contains(`0)
+  href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1_Contains__0_
+  name: Contains(T)
+  nameWithType: Container<T>.Contains(T)
+  fullName: Sharpy.Collections.Interfaces.Container<T>.Contains(T)
+  nameWithType.vb: Container(Of T).Contains(T)
+  fullName.vb: Sharpy.Collections.Interfaces.Container(Of T).Contains(T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Container{`0}.Contains(`0)
+    name: Contains
+    href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1_Contains__0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Container{`0}.Contains(`0)
+    name: Contains
+    href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1_Contains__0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Sized.__Len__
+  commentId: M:Sharpy.Collections.Interfaces.Sized.__Len__
+  parent: Sharpy.Collections.Interfaces.Sized
+  href: Sharpy.Collections.Interfaces.Sized.html#Sharpy_Collections_Interfaces_Sized___Len__
+  name: __Len__()
+  nameWithType: Sized.__Len__()
+  fullName: Sharpy.Collections.Interfaces.Sized.__Len__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Sized.__Len__
+    name: __Len__
+    href: Sharpy.Collections.Interfaces.Sized.html#Sharpy_Collections_Interfaces_Sized___Len__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Sized.__Len__
+    name: __Len__
+    href: Sharpy.Collections.Interfaces.Sized.html#Sharpy_Collections_Interfaces_Sized___Len__
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Reversible{{T}}.__Reversed__
+  commentId: M:Sharpy.Collections.Interfaces.Reversible{`0}.__Reversed__
+  parent: Sharpy.Collections.Interfaces.Reversible{{T}}
+  definition: Sharpy.Collections.Interfaces.Reversible`1.__Reversed__
+  href: Sharpy.Collections.Interfaces.Reversible-1.html#Sharpy_Collections_Interfaces_Reversible_1___Reversed__
+  name: __Reversed__()
+  nameWithType: Reversible<T>.__Reversed__()
+  fullName: Sharpy.Collections.Interfaces.Reversible<T>.__Reversed__()
+  nameWithType.vb: Reversible(Of T).__Reversed__()
+  fullName.vb: Sharpy.Collections.Interfaces.Reversible(Of T).__Reversed__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Reversible{`0}.__Reversed__
+    name: __Reversed__
+    href: Sharpy.Collections.Interfaces.Reversible-1.html#Sharpy_Collections_Interfaces_Reversible_1___Reversed__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Reversible{`0}.__Reversed__
+    name: __Reversed__
+    href: Sharpy.Collections.Interfaces.Reversible-1.html#Sharpy_Collections_Interfaces_Reversible_1___Reversed__
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Iterable{{T}}.__Iter__
+  commentId: M:Sharpy.Collections.Interfaces.Iterable{`0}.__Iter__
+  parent: Sharpy.Collections.Interfaces.Iterable{{T}}
+  definition: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+  href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  name: __Iter__()
+  nameWithType: Iterable<T>.__Iter__()
+  fullName: Sharpy.Collections.Interfaces.Iterable<T>.__Iter__()
+  nameWithType.vb: Iterable(Of T).__Iter__()
+  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T).__Iter__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Iterable{`0}.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Iterable{`0}.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  - name: (
+  - name: )
+- uid: System.Collections.Generic.IEnumerable{{T}}.GetEnumerator
+  commentId: M:System.Collections.Generic.IEnumerable{`0}.GetEnumerator
+  parent: System.Collections.Generic.IEnumerable{{T}}
+  definition: System.Collections.Generic.IEnumerable`1.GetEnumerator
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  name: GetEnumerator()
+  nameWithType: IEnumerable<T>.GetEnumerator()
+  fullName: System.Collections.Generic.IEnumerable<T>.GetEnumerator()
+  nameWithType.vb: IEnumerable(Of T).GetEnumerator()
+  fullName.vb: System.Collections.Generic.IEnumerable(Of T).GetEnumerator()
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable{`0}.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable{`0}.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+- uid: Sharpy.Addable{Sharpy.Collections.Interfaces.Sequence{{T}},Sharpy.Collections.Interfaces.Sequence{{T}}}.__Add__(Sharpy.Collections.Interfaces.Sequence{{T}})
+  commentId: M:Sharpy.Addable{Sharpy.Collections.Interfaces.Sequence{`0},Sharpy.Collections.Interfaces.Sequence{`0}}.__Add__(Sharpy.Collections.Interfaces.Sequence{`0})
+  parent: Sharpy.Addable{Sharpy.Collections.Interfaces.Sequence{{T}},Sharpy.Collections.Interfaces.Sequence{{T}}}
+  definition: Sharpy.Addable`2.__Add__(`1)
+  href: Sharpy.Addable-2.html#Sharpy_Addable_2___Add____1_
+  name: __Add__(Sequence<T>)
+  nameWithType: Addable<Sequence<T>, Sequence<T>>.__Add__(Sequence<T>)
+  fullName: Sharpy.Addable<Sharpy.Collections.Interfaces.Sequence<T>, Sharpy.Collections.Interfaces.Sequence<T>>.__Add__(Sharpy.Collections.Interfaces.Sequence<T>)
+  nameWithType.vb: Addable(Of Sequence(Of T), Sequence(Of T)).__Add__(Sequence(Of T))
+  fullName.vb: Sharpy.Addable(Of Sharpy.Collections.Interfaces.Sequence(Of T), Sharpy.Collections.Interfaces.Sequence(Of T)).__Add__(Sharpy.Collections.Interfaces.Sequence(Of T))
+  name.vb: __Add__(Sequence(Of T))
+  spec.csharp:
+  - uid: Sharpy.Addable{Sharpy.Collections.Interfaces.Sequence{`0},Sharpy.Collections.Interfaces.Sequence{`0}}.__Add__(Sharpy.Collections.Interfaces.Sequence{`0})
+    name: __Add__
+    href: Sharpy.Addable-2.html#Sharpy_Addable_2___Add____1_
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Sequence`1
+    name: Sequence
+    href: Sharpy.Collections.Interfaces.Sequence-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Addable{Sharpy.Collections.Interfaces.Sequence{`0},Sharpy.Collections.Interfaces.Sequence{`0}}.__Add__(Sharpy.Collections.Interfaces.Sequence{`0})
+    name: __Add__
+    href: Sharpy.Addable-2.html#Sharpy_Addable_2___Add____1_
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Sequence`1
+    name: Sequence
+    href: Sharpy.Collections.Interfaces.Sequence-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.RightAddable{Sharpy.Collections.Interfaces.Sequence{{T}},Sharpy.Collections.Interfaces.Sequence{{T}}}.__RAdd__(Sharpy.Collections.Interfaces.Sequence{{T}})
+  commentId: M:Sharpy.RightAddable{Sharpy.Collections.Interfaces.Sequence{`0},Sharpy.Collections.Interfaces.Sequence{`0}}.__RAdd__(Sharpy.Collections.Interfaces.Sequence{`0})
+  parent: Sharpy.RightAddable{Sharpy.Collections.Interfaces.Sequence{{T}},Sharpy.Collections.Interfaces.Sequence{{T}}}
+  definition: Sharpy.RightAddable`2.__RAdd__(`1)
+  href: Sharpy.RightAddable-2.html#Sharpy_RightAddable_2___RAdd____1_
+  name: __RAdd__(Sequence<T>)
+  nameWithType: RightAddable<Sequence<T>, Sequence<T>>.__RAdd__(Sequence<T>)
+  fullName: Sharpy.RightAddable<Sharpy.Collections.Interfaces.Sequence<T>, Sharpy.Collections.Interfaces.Sequence<T>>.__RAdd__(Sharpy.Collections.Interfaces.Sequence<T>)
+  nameWithType.vb: RightAddable(Of Sequence(Of T), Sequence(Of T)).__RAdd__(Sequence(Of T))
+  fullName.vb: Sharpy.RightAddable(Of Sharpy.Collections.Interfaces.Sequence(Of T), Sharpy.Collections.Interfaces.Sequence(Of T)).__RAdd__(Sharpy.Collections.Interfaces.Sequence(Of T))
+  name.vb: __RAdd__(Sequence(Of T))
+  spec.csharp:
+  - uid: Sharpy.RightAddable{Sharpy.Collections.Interfaces.Sequence{`0},Sharpy.Collections.Interfaces.Sequence{`0}}.__RAdd__(Sharpy.Collections.Interfaces.Sequence{`0})
+    name: __RAdd__
+    href: Sharpy.RightAddable-2.html#Sharpy_RightAddable_2___RAdd____1_
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Sequence`1
+    name: Sequence
+    href: Sharpy.Collections.Interfaces.Sequence-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.RightAddable{Sharpy.Collections.Interfaces.Sequence{`0},Sharpy.Collections.Interfaces.Sequence{`0}}.__RAdd__(Sharpy.Collections.Interfaces.Sequence{`0})
+    name: __RAdd__
+    href: Sharpy.RightAddable-2.html#Sharpy_RightAddable_2___RAdd____1_
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.Sequence`1
+    name: Sequence
+    href: Sharpy.Collections.Interfaces.Sequence-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Sequence`1.Item(System.Int32)
+  commentId: P:Sharpy.Collections.Interfaces.Sequence`1.Item(System.Int32)
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.int32
+  name: this[int]
+  nameWithType: Sequence<T>.this[int]
+  fullName: Sharpy.Collections.Interfaces.Sequence<T>.this[int]
+  nameWithType.vb: Sequence(Of T).this[](Integer)
+  fullName.vb: Sharpy.Collections.Interfaces.Sequence(Of T).this[](Integer)
+  name.vb: this[](Integer)
+  spec.csharp:
+  - name: this
+  - name: '['
+  - uid: System.Int32
+    name: int
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: ']'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Sequence`1.Item(System.Int32)
+    name: this[]
+    href: Sharpy.Collections.Interfaces.Sequence-1.html#Sharpy_Collections_Interfaces_Sequence_1_Item_System_Int32_
+  - name: (
+  - uid: System.Int32
+    name: Integer
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Sequence{{T}}
+  commentId: T:Sharpy.Collections.Interfaces.Sequence{`0}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.Sequence`1
+  href: Sharpy.Collections.Interfaces.Sequence-1.html
+  name: Sequence<T>
+  nameWithType: Sequence<T>
+  fullName: Sharpy.Collections.Interfaces.Sequence<T>
+  nameWithType.vb: Sequence(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.Sequence(Of T)
+  name.vb: Sequence(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Sequence`1
+    name: Sequence
+    href: Sharpy.Collections.Interfaces.Sequence-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Sequence`1
+    name: Sequence
+    href: Sharpy.Collections.Interfaces.Sequence-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Sequence`1.Count(`0)
+  commentId: M:Sharpy.Collections.Interfaces.Sequence`1.Count(`0)
+  href: Sharpy.Collections.Interfaces.Sequence-1.html#Sharpy_Collections_Interfaces_Sequence_1_Count__0_
+  name: Count(T)
+  nameWithType: Sequence<T>.Count(T)
+  fullName: Sharpy.Collections.Interfaces.Sequence<T>.Count(T)
+  nameWithType.vb: Sequence(Of T).Count(T)
+  fullName.vb: Sharpy.Collections.Interfaces.Sequence(Of T).Count(T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Sequence`1.Count(`0)
+    name: Count
+    href: Sharpy.Collections.Interfaces.Sequence-1.html#Sharpy_Collections_Interfaces_Sequence_1_Count__0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Sequence`1.Count(`0)
+    name: Count
+    href: Sharpy.Collections.Interfaces.Sequence-1.html#Sharpy_Collections_Interfaces_Sequence_1_Count__0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Sequence`1.Index(`0,System.Int32,System.Int32)
+  commentId: M:Sharpy.Collections.Interfaces.Sequence`1.Index(`0,System.Int32,System.Int32)
+  isExternal: true
+  href: Sharpy.Collections.Interfaces.Sequence-1.html#Sharpy_Collections_Interfaces_Sequence_1_Index__0_System_Int32_System_Int32_
+  name: Index(T, int, int)
+  nameWithType: Sequence<T>.Index(T, int, int)
+  fullName: Sharpy.Collections.Interfaces.Sequence<T>.Index(T, int, int)
+  nameWithType.vb: Sequence(Of T).Index(T, Integer, Integer)
+  fullName.vb: Sharpy.Collections.Interfaces.Sequence(Of T).Index(T, Integer, Integer)
+  name.vb: Index(T, Integer, Integer)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Sequence`1.Index(`0,System.Int32,System.Int32)
+    name: Index
+    href: Sharpy.Collections.Interfaces.Sequence-1.html#Sharpy_Collections_Interfaces_Sequence_1_Index__0_System_Int32_System_Int32_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: int
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: int
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Sequence`1.Index(`0,System.Int32,System.Int32)
+    name: Index
+    href: Sharpy.Collections.Interfaces.Sequence-1.html#Sharpy_Collections_Interfaces_Sequence_1_Index__0_System_Int32_System_Int32_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: Integer
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: Integer
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Sequence`1.__GetItem__(System.Int32)
+  commentId: M:Sharpy.Collections.Interfaces.Sequence`1.__GetItem__(System.Int32)
+  isExternal: true
+  href: Sharpy.Collections.Interfaces.Sequence-1.html#Sharpy_Collections_Interfaces_Sequence_1___GetItem___System_Int32_
+  name: __GetItem__(int)
+  nameWithType: Sequence<T>.__GetItem__(int)
+  fullName: Sharpy.Collections.Interfaces.Sequence<T>.__GetItem__(int)
+  nameWithType.vb: Sequence(Of T).__GetItem__(Integer)
+  fullName.vb: Sharpy.Collections.Interfaces.Sequence(Of T).__GetItem__(Integer)
+  name.vb: __GetItem__(Integer)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Sequence`1.__GetItem__(System.Int32)
+    name: __GetItem__
+    href: Sharpy.Collections.Interfaces.Sequence-1.html#Sharpy_Collections_Interfaces_Sequence_1___GetItem___System_Int32_
+  - name: (
+  - uid: System.Int32
+    name: int
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Sequence`1.__GetItem__(System.Int32)
+    name: __GetItem__
+    href: Sharpy.Collections.Interfaces.Sequence-1.html#Sharpy_Collections_Interfaces_Sequence_1___GetItem___System_Int32_
+  - name: (
+  - uid: System.Int32
+    name: Integer
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Container`1.__Contains__(`0)
+  commentId: M:Sharpy.Collections.Interfaces.Container`1.__Contains__(`0)
+  href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1___Contains____0_
+  name: __Contains__(T)
+  nameWithType: Container<T>.__Contains__(T)
+  fullName: Sharpy.Collections.Interfaces.Container<T>.__Contains__(T)
+  nameWithType.vb: Container(Of T).__Contains__(T)
+  fullName.vb: Sharpy.Collections.Interfaces.Container(Of T).__Contains__(T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Container`1.__Contains__(`0)
+    name: __Contains__
+    href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1___Contains____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Container`1.__Contains__(`0)
+    name: __Contains__
+    href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1___Contains____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Container{{T}}
+  commentId: T:Sharpy.Collections.Interfaces.Container{`0}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.Container`1
+  href: Sharpy.Collections.Interfaces.Container-1.html
+  name: Container<T>
+  nameWithType: Container<T>
+  fullName: Sharpy.Collections.Interfaces.Container<T>
+  nameWithType.vb: Container(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.Container(Of T)
+  name.vb: Container(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Container`1
+    name: Container
+    href: Sharpy.Collections.Interfaces.Container-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Container`1
+    name: Container
+    href: Sharpy.Collections.Interfaces.Container-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Container`1.Contains(`0)
+  commentId: M:Sharpy.Collections.Interfaces.Container`1.Contains(`0)
+  href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1_Contains__0_
+  name: Contains(T)
+  nameWithType: Container<T>.Contains(T)
+  fullName: Sharpy.Collections.Interfaces.Container<T>.Contains(T)
+  nameWithType.vb: Container(Of T).Contains(T)
+  fullName.vb: Sharpy.Collections.Interfaces.Container(Of T).Contains(T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Container`1.Contains(`0)
+    name: Contains
+    href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1_Contains__0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Container`1.Contains(`0)
+    name: Contains
+    href: Sharpy.Collections.Interfaces.Container-1.html#Sharpy_Collections_Interfaces_Container_1_Contains__0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Sized
+  commentId: T:Sharpy.Collections.Interfaces.Sized
+  parent: Sharpy.Collections.Interfaces
+  href: Sharpy.Collections.Interfaces.Sized.html
+  name: Sized
+  nameWithType: Sized
+  fullName: Sharpy.Collections.Interfaces.Sized
+- uid: Sharpy.Collections.Interfaces.Reversible`1.__Reversed__
+  commentId: M:Sharpy.Collections.Interfaces.Reversible`1.__Reversed__
+  href: Sharpy.Collections.Interfaces.Reversible-1.html#Sharpy_Collections_Interfaces_Reversible_1___Reversed__
+  name: __Reversed__()
+  nameWithType: Reversible<T>.__Reversed__()
+  fullName: Sharpy.Collections.Interfaces.Reversible<T>.__Reversed__()
+  nameWithType.vb: Reversible(Of T).__Reversed__()
+  fullName.vb: Sharpy.Collections.Interfaces.Reversible(Of T).__Reversed__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Reversible`1.__Reversed__
+    name: __Reversed__
+    href: Sharpy.Collections.Interfaces.Reversible-1.html#Sharpy_Collections_Interfaces_Reversible_1___Reversed__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Reversible`1.__Reversed__
+    name: __Reversed__
+    href: Sharpy.Collections.Interfaces.Reversible-1.html#Sharpy_Collections_Interfaces_Reversible_1___Reversed__
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Reversible{{T}}
+  commentId: T:Sharpy.Collections.Interfaces.Reversible{``0}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.Reversible`1
+  href: Sharpy.Collections.Interfaces.Reversible-1.html
+  name: Reversible<T>
+  nameWithType: Reversible<T>
+  fullName: Sharpy.Collections.Interfaces.Reversible<T>
+  nameWithType.vb: Reversible(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.Reversible(Of T)
+  name.vb: Reversible(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Reversible`1
+    name: Reversible
+    href: Sharpy.Collections.Interfaces.Reversible-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Reversible`1
+    name: Reversible
+    href: Sharpy.Collections.Interfaces.Reversible-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+  commentId: M:Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+  href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  name: __Iter__()
+  nameWithType: Iterable<T>.__Iter__()
+  fullName: Sharpy.Collections.Interfaces.Iterable<T>.__Iter__()
+  nameWithType.vb: Iterable(Of T).__Iter__()
+  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T).__Iter__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Iterable{{T}}
+  commentId: T:Sharpy.Collections.Interfaces.Iterable{``0}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.Iterable`1
+  href: Sharpy.Collections.Interfaces.Iterable-1.html
+  name: Iterable<T>
+  nameWithType: Iterable<T>
+  fullName: Sharpy.Collections.Interfaces.Iterable<T>
+  nameWithType.vb: Iterable(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T)
+  name.vb: Iterable(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic.IEnumerable`1.GetEnumerator
+  commentId: M:System.Collections.Generic.IEnumerable`1.GetEnumerator
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  name: GetEnumerator()
+  nameWithType: IEnumerable<T>.GetEnumerator()
+  fullName: System.Collections.Generic.IEnumerable<T>.GetEnumerator()
+  nameWithType.vb: IEnumerable(Of T).GetEnumerator()
+  fullName.vb: System.Collections.Generic.IEnumerable(Of T).GetEnumerator()
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable`1.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable`1.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+- uid: System.Collections.Generic.IEnumerable{{T}}
+  commentId: T:System.Collections.Generic.IEnumerable{`0}
+  parent: System.Collections.Generic
+  definition: System.Collections.Generic.IEnumerable`1
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  name: IEnumerable<T>
+  nameWithType: IEnumerable<T>
+  fullName: System.Collections.Generic.IEnumerable<T>
+  nameWithType.vb: IEnumerable(Of T)
+  fullName.vb: System.Collections.Generic.IEnumerable(Of T)
+  name.vb: IEnumerable(Of T)
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Addable`2.__Add__(`1)
+  commentId: M:Sharpy.Addable`2.__Add__(`1)
+  href: Sharpy.Addable-2.html#Sharpy_Addable_2___Add____1_
+  name: __Add__(U)
+  nameWithType: Addable<T, U>.__Add__(U)
+  fullName: Sharpy.Addable<T, U>.__Add__(U)
+  nameWithType.vb: Addable(Of T, U).__Add__(U)
+  fullName.vb: Sharpy.Addable(Of T, U).__Add__(U)
+  spec.csharp:
+  - uid: Sharpy.Addable`2.__Add__(`1)
+    name: __Add__
+    href: Sharpy.Addable-2.html#Sharpy_Addable_2___Add____1_
+  - name: (
+  - name: U
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Addable`2.__Add__(`1)
+    name: __Add__
+    href: Sharpy.Addable-2.html#Sharpy_Addable_2___Add____1_
+  - name: (
+  - name: U
+  - name: )
+- uid: Sharpy.Addable{Sharpy.Collections.Interfaces.Sequence{{T}},Sharpy.Collections.Interfaces.Sequence{{T}}}
+  commentId: T:Sharpy.Addable{Sharpy.Collections.Interfaces.Sequence{`0},Sharpy.Collections.Interfaces.Sequence{`0}}
+  parent: Sharpy
+  definition: Sharpy.Addable`2
+  href: Sharpy.Addable-2.html
+  name: Addable<Sequence<T>, Sequence<T>>
+  nameWithType: Addable<Sequence<T>, Sequence<T>>
+  fullName: Sharpy.Addable<Sharpy.Collections.Interfaces.Sequence<T>, Sharpy.Collections.Interfaces.Sequence<T>>
+  nameWithType.vb: Addable(Of Sequence(Of T), Sequence(Of T))
+  fullName.vb: Sharpy.Addable(Of Sharpy.Collections.Interfaces.Sequence(Of T), Sharpy.Collections.Interfaces.Sequence(Of T))
+  name.vb: Addable(Of Sequence(Of T), Sequence(Of T))
+  spec.csharp:
+  - uid: Sharpy.Addable`2
+    name: Addable
+    href: Sharpy.Addable-2.html
+  - name: <
+  - uid: Sharpy.Collections.Interfaces.Sequence`1
+    name: Sequence
+    href: Sharpy.Collections.Interfaces.Sequence-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.Sequence`1
+    name: Sequence
+    href: Sharpy.Collections.Interfaces.Sequence-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Addable`2
+    name: Addable
+    href: Sharpy.Addable-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.Sequence`1
+    name: Sequence
+    href: Sharpy.Collections.Interfaces.Sequence-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.Sequence`1
+    name: Sequence
+    href: Sharpy.Collections.Interfaces.Sequence-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.RightAddable`2.__RAdd__(`1)
+  commentId: M:Sharpy.RightAddable`2.__RAdd__(`1)
+  href: Sharpy.RightAddable-2.html#Sharpy_RightAddable_2___RAdd____1_
+  name: __RAdd__(U)
+  nameWithType: RightAddable<T, U>.__RAdd__(U)
+  fullName: Sharpy.RightAddable<T, U>.__RAdd__(U)
+  nameWithType.vb: RightAddable(Of T, U).__RAdd__(U)
+  fullName.vb: Sharpy.RightAddable(Of T, U).__RAdd__(U)
+  spec.csharp:
+  - uid: Sharpy.RightAddable`2.__RAdd__(`1)
+    name: __RAdd__
+    href: Sharpy.RightAddable-2.html#Sharpy_RightAddable_2___RAdd____1_
+  - name: (
+  - name: U
+  - name: )
+  spec.vb:
+  - uid: Sharpy.RightAddable`2.__RAdd__(`1)
+    name: __RAdd__
+    href: Sharpy.RightAddable-2.html#Sharpy_RightAddable_2___RAdd____1_
+  - name: (
+  - name: U
+  - name: )
+- uid: Sharpy.RightAddable{Sharpy.Collections.Interfaces.Sequence{{T}},Sharpy.Collections.Interfaces.Sequence{{T}}}
+  commentId: T:Sharpy.RightAddable{Sharpy.Collections.Interfaces.Sequence{`0},Sharpy.Collections.Interfaces.Sequence{`0}}
+  parent: Sharpy
+  definition: Sharpy.RightAddable`2
+  href: Sharpy.RightAddable-2.html
+  name: RightAddable<Sequence<T>, Sequence<T>>
+  nameWithType: RightAddable<Sequence<T>, Sequence<T>>
+  fullName: Sharpy.RightAddable<Sharpy.Collections.Interfaces.Sequence<T>, Sharpy.Collections.Interfaces.Sequence<T>>
+  nameWithType.vb: RightAddable(Of Sequence(Of T), Sequence(Of T))
+  fullName.vb: Sharpy.RightAddable(Of Sharpy.Collections.Interfaces.Sequence(Of T), Sharpy.Collections.Interfaces.Sequence(Of T))
+  name.vb: RightAddable(Of Sequence(Of T), Sequence(Of T))
+  spec.csharp:
+  - uid: Sharpy.RightAddable`2
+    name: RightAddable
+    href: Sharpy.RightAddable-2.html
+  - name: <
+  - uid: Sharpy.Collections.Interfaces.Sequence`1
+    name: Sequence
+    href: Sharpy.Collections.Interfaces.Sequence-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.Sequence`1
+    name: Sequence
+    href: Sharpy.Collections.Interfaces.Sequence-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.RightAddable`2
+    name: RightAddable
+    href: Sharpy.RightAddable-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.Sequence`1
+    name: Sequence
+    href: Sharpy.Collections.Interfaces.Sequence-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.Sequence`1
+    name: Sequence
+    href: Sharpy.Collections.Interfaces.Sequence-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Sequence`1
+  commentId: T:Sharpy.Collections.Interfaces.Sequence`1
+  parent: Sharpy.Collections.Interfaces
+  href: Sharpy.Collections.Interfaces.Sequence-1.html
+  name: Sequence<T>
+  nameWithType: Sequence<T>
+  fullName: Sharpy.Collections.Interfaces.Sequence<T>
+  nameWithType.vb: Sequence(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.Sequence(Of T)
+  name.vb: Sequence(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Sequence`1
+    name: Sequence
+    href: Sharpy.Collections.Interfaces.Sequence-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Sequence`1
+    name: Sequence
+    href: Sharpy.Collections.Interfaces.Sequence-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Container`1
+  commentId: T:Sharpy.Collections.Interfaces.Container`1
+  href: Sharpy.Collections.Interfaces.Container-1.html
+  name: Container<T>
+  nameWithType: Container<T>
+  fullName: Sharpy.Collections.Interfaces.Container<T>
+  nameWithType.vb: Container(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.Container(Of T)
+  name.vb: Container(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Container`1
+    name: Container
+    href: Sharpy.Collections.Interfaces.Container-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Container`1
+    name: Container
+    href: Sharpy.Collections.Interfaces.Container-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Reversible`1
+  commentId: T:Sharpy.Collections.Interfaces.Reversible`1
+  href: Sharpy.Collections.Interfaces.Reversible-1.html
+  name: Reversible<T>
+  nameWithType: Reversible<T>
+  fullName: Sharpy.Collections.Interfaces.Reversible<T>
+  nameWithType.vb: Reversible(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.Reversible(Of T)
+  name.vb: Reversible(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Reversible`1
+    name: Reversible
+    href: Sharpy.Collections.Interfaces.Reversible-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Reversible`1
+    name: Reversible
+    href: Sharpy.Collections.Interfaces.Reversible-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Iterable`1
+  commentId: T:Sharpy.Collections.Interfaces.Iterable`1
+  href: Sharpy.Collections.Interfaces.Iterable-1.html
+  name: Iterable<T>
+  nameWithType: Iterable<T>
+  fullName: Sharpy.Collections.Interfaces.Iterable<T>
+  nameWithType.vb: Iterable(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T)
+  name.vb: Iterable(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Iterable`1
+    name: Iterable
+    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic.IEnumerable`1
+  commentId: T:System.Collections.Generic.IEnumerable`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  name: IEnumerable<T>
+  nameWithType: IEnumerable<T>
+  fullName: System.Collections.Generic.IEnumerable<T>
+  nameWithType.vb: IEnumerable(Of T)
+  fullName.vb: System.Collections.Generic.IEnumerable(Of T)
+  name.vb: IEnumerable(Of T)
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic
+  commentId: N:System.Collections.Generic
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Collections.Generic
+  nameWithType: System.Collections.Generic
+  fullName: System.Collections.Generic
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+- uid: Sharpy.Addable`2
+  commentId: T:Sharpy.Addable`2
+  href: Sharpy.Addable-2.html
+  name: Addable<T, U>
+  nameWithType: Addable<T, U>
+  fullName: Sharpy.Addable<T, U>
+  nameWithType.vb: Addable(Of T, U)
+  fullName.vb: Sharpy.Addable(Of T, U)
+  name.vb: Addable(Of T, U)
+  spec.csharp:
+  - uid: Sharpy.Addable`2
+    name: Addable
+    href: Sharpy.Addable-2.html
+  - name: <
+  - name: T
+  - name: ','
+  - name: " "
+  - name: U
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Addable`2
+    name: Addable
+    href: Sharpy.Addable-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: ','
+  - name: " "
+  - name: U
+  - name: )
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: Sharpy.RightAddable`2
+  commentId: T:Sharpy.RightAddable`2
+  href: Sharpy.RightAddable-2.html
+  name: RightAddable<T, U>
+  nameWithType: RightAddable<T, U>
+  fullName: Sharpy.RightAddable<T, U>
+  nameWithType.vb: RightAddable(Of T, U)
+  fullName.vb: Sharpy.RightAddable(Of T, U)
+  name.vb: RightAddable(Of T, U)
+  spec.csharp:
+  - uid: Sharpy.RightAddable`2
+    name: RightAddable
+    href: Sharpy.RightAddable-2.html
+  - name: <
+  - name: T
+  - name: ','
+  - name: " "
+  - name: U
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.RightAddable`2
+    name: RightAddable
+    href: Sharpy.RightAddable-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: ','
+  - name: " "
+  - name: U
+  - name: )
+- uid: Sharpy.IndexError
+  commentId: T:Sharpy.IndexError
+  href: Sharpy.IndexError.html
+  name: IndexError
+  nameWithType: IndexError
+  fullName: Sharpy.IndexError
+- uid: Sharpy.Collections.Interfaces.Sequence`2.__GetItem__(Sharpy.Slice)
+  commentId: M:Sharpy.Collections.Interfaces.Sequence`2.__GetItem__(Sharpy.Slice)
+  href: Sharpy.Collections.Interfaces.Sequence-2.html#Sharpy_Collections_Interfaces_Sequence_2___GetItem___Sharpy_Slice_
+  name: __GetItem__(Slice)
+  nameWithType: Sequence<S, T>.__GetItem__(Slice)
+  fullName: Sharpy.Collections.Interfaces.Sequence<S, T>.__GetItem__(Sharpy.Slice)
+  nameWithType.vb: Sequence(Of S, T).__GetItem__(Slice)
+  fullName.vb: Sharpy.Collections.Interfaces.Sequence(Of S, T).__GetItem__(Sharpy.Slice)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Sequence`2.__GetItem__(Sharpy.Slice)
+    name: __GetItem__
+    href: Sharpy.Collections.Interfaces.Sequence-2.html#Sharpy_Collections_Interfaces_Sequence_2___GetItem___Sharpy_Slice_
+  - name: (
+  - uid: Sharpy.Slice
+    name: Slice
+    href: Sharpy.Slice.html
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Sequence`2.__GetItem__(Sharpy.Slice)
+    name: __GetItem__
+    href: Sharpy.Collections.Interfaces.Sequence-2.html#Sharpy_Collections_Interfaces_Sequence_2___GetItem___Sharpy_Slice_
+  - name: (
+  - uid: Sharpy.Slice
+    name: Slice
+    href: Sharpy.Slice.html
+  - name: )
+- uid: Sharpy.Collections.Interfaces.Sequence`2.Item*
+  commentId: Overload:Sharpy.Collections.Interfaces.Sequence`2.Item
+  href: Sharpy.Collections.Interfaces.Sequence-2.html#Sharpy_Collections_Interfaces_Sequence_2_Item_System_Int32_System_Int32_
+  name: this
+  nameWithType: Sequence<S, T>.this
+  fullName: Sharpy.Collections.Interfaces.Sequence<S, T>.this
+  nameWithType.vb: Sequence(Of S, T).this[]
+  fullName.vb: Sharpy.Collections.Interfaces.Sequence(Of S, T).this[]
+  name.vb: this[]
+- uid: System.Int32
+  commentId: T:System.Int32
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.int32
+  name: int
+  nameWithType: int
+  fullName: int
+  nameWithType.vb: Integer
+  fullName.vb: Integer
+  name.vb: Integer
+- uid: '{S}'
+  commentId: '!:S'
+  definition: S
+  name: S
+  nameWithType: S
+  fullName: S
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: S
+  name: S
+  nameWithType: S
+  fullName: S
+- uid: Sharpy.Collections.Interfaces.Sequence`2.__GetItem__*
+  commentId: Overload:Sharpy.Collections.Interfaces.Sequence`2.__GetItem__
+  href: Sharpy.Collections.Interfaces.Sequence-2.html#Sharpy_Collections_Interfaces_Sequence_2___GetItem___Sharpy_Slice_
+  name: __GetItem__
+  nameWithType: Sequence<S, T>.__GetItem__
+  fullName: Sharpy.Collections.Interfaces.Sequence<S, T>.__GetItem__
+  nameWithType.vb: Sequence(Of S, T).__GetItem__
+  fullName.vb: Sharpy.Collections.Interfaces.Sequence(Of S, T).__GetItem__
+- uid: Sharpy.Slice
+  commentId: T:Sharpy.Slice
+  parent: Sharpy
+  href: Sharpy.Slice.html
+  name: Slice
+  nameWithType: Slice
+  fullName: Sharpy.Slice

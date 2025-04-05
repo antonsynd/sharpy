@@ -14,6 +14,7 @@ namespace Sharpy
             get => this[start, end, step];
         }
 
+        /// <inheritdoc/>
         public Sequence<T> __Add__(Sequence<T> other)
         {
             var res = new List<T>
@@ -26,6 +27,7 @@ namespace Sharpy
             return res;
         }
 
+        /// <inheritdoc/>
         public Sequence<T> __RAdd__(Sequence<T> other)
         {
             var res = new List<T>
@@ -38,12 +40,14 @@ namespace Sharpy
             return res;
         }
 
+        /// <inheritdoc/>
         public T __GetItem__(int index)
         {
             index = (int)Sharpy.Index.Normalize(index, (uint)_list.Count, false, false);
             return _list[index];
         }
 
+        /// <inheritdoc/>
         public List<T> __GetItem__(Slice slice)
         {
             if (slice.step == 0)

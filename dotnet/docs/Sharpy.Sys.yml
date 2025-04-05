@@ -1,0 +1,23 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.Sys
+  commentId: N:Sharpy.Sys
+  id: Sharpy.Sys
+  children:
+  - Sharpy.Sys.Builtins
+  langs:
+  - csharp
+  - vb
+  name: Sharpy.Sys
+  nameWithType: Sharpy.Sys
+  fullName: Sharpy.Sys
+  type: Namespace
+  assemblies:
+  - Sharpy
+references:
+- uid: Sharpy.Sys.Builtins
+  commentId: T:Sharpy.Sys.Builtins
+  href: Sharpy.Sys.Builtins.html
+  name: Builtins
+  nameWithType: Builtins
+  fullName: Sharpy.Sys.Builtins

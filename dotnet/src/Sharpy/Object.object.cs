@@ -4,7 +4,7 @@ namespace Sharpy
     {
         /// <remarks>
         /// Sealed to prevent subclasses from overriding this mapping to
-        /// <see cref="__Eq__()"/> which should be the one that subclasses
+        /// <see cref="__Eq__(Object)"/> which should be the one that subclasses
         /// override.
         /// </remarks>
         public override sealed bool Equals(object? obj)

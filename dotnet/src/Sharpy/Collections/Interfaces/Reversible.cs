@@ -7,9 +7,9 @@ namespace Sharpy.Collections.Interfaces
     public interface Reversible<T> : Iterable<T>
     {
         /// <summary>
-        /// Called (if present) by the <see cref="Reversed()"/> built-in to
+        /// Called (if present) by the <see cref="Reversed(Reversible&lt;T&gt;)"/> built-in to
         /// implement reverse iteration. It should return a new
-        /// <see cref="Iterator"/> that iterates over all the objects in the
+        /// <see cref="Iterator&lt;T&gt;"/> that iterates over all the objects in the
         /// container in reverse order.
         /// </summary>
         Iterator<T> __Reversed__();

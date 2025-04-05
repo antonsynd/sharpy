@@ -5,6 +5,9 @@ namespace Sharpy.Collections.Interfaces
     /// </summary>
     public interface MutableMapping<K, V> : Mapping<K, V> where K : notnull
     {
+        /// <summary>
+        /// Gets the value of or sets the value of the given key.
+        /// </summary>
         new V this[K key] { get; set; }
 
         /// <summary>
@@ -58,7 +61,7 @@ namespace Sharpy.Collections.Interfaces
         /// conflicting keys using the value from the other mapping.
         /// </summary>
         /// <remarks>
-        /// Internally should call <see cref="__IOr__()"/> if the class is
+        /// Internally should call <see cref="__IOr__(Mapping&lt;K, V&gt;)"/> if the class is
         /// not sealed.
         /// </remarks>
         void Update(Mapping<K, V> other);
@@ -68,7 +71,8 @@ namespace Sharpy.Collections.Interfaces
         /// with conflicting keys using the value from the iterable.
         /// </summary>
         /// <remarks>
-        /// Internally should call <see cref="__IOr__()"/> if the class is
+        /// Internally should call
+        /// <see cref="__IOr__(Iterable)"/> if the class is
         /// not sealed.
         /// </remarks>
         void Update(Iterable<(K, V)> other);
@@ -80,10 +84,16 @@ namespace Sharpy.Collections.Interfaces
         V SetDefault(K key, V @default);
     }
 
+    /// <summary>
+    /// Interface for mutable mappings that can be updated with other
+    /// mutable mappings via a curiously recursive template.
+    /// </summary>
     public interface MutableMapping<M, K, V> : MutableMapping<K, V>, Mapping<M, K, V> where K : notnull
     {
+        /// <inheritdoc/>
         void __IOr__(M other);
 
+        /// <inheritdoc/>
         void Update(M other);
     }
 }

@@ -1,0 +1,553 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.Slice
+  commentId: T:Sharpy.Slice
+  id: Slice
+  parent: Sharpy
+  children:
+  - Sharpy.Slice.#ctor(System.Int32,System.Int32,System.Int32)
+  - Sharpy.Slice.Len(System.Int32,System.Int32,System.Int32)
+  - Sharpy.Slice.__Len__
+  - Sharpy.Slice.end
+  - Sharpy.Slice.start
+  - Sharpy.Slice.step
+  langs:
+  - csharp
+  - vb
+  name: Slice
+  nameWithType: Slice
+  fullName: Sharpy.Slice
+  type: Struct
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Slice.Sized.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Slice
+    path: ../src/Sharpy/Slice.Sized.cs
+    startLine: 2
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: 'public readonly struct Slice : Sized'
+    content.vb: Public Structure Slice Implements Sized
+  implements:
+  - Sharpy.Collections.Interfaces.Sized
+  inheritedMembers:
+  - System.ValueType.Equals(System.Object)
+  - System.ValueType.GetHashCode
+  - System.ValueType.ToString
+  - System.Object.Equals(System.Object,System.Object)
+  - System.Object.GetType
+  - System.Object.ReferenceEquals(System.Object,System.Object)
+- uid: Sharpy.Slice.#ctor(System.Int32,System.Int32,System.Int32)
+  commentId: M:Sharpy.Slice.#ctor(System.Int32,System.Int32,System.Int32)
+  id: '#ctor(System.Int32,System.Int32,System.Int32)'
+  parent: Sharpy.Slice
+  langs:
+  - csharp
+  - vb
+  name: Slice(int, int, int)
+  nameWithType: Slice.Slice(int, int, int)
+  fullName: Sharpy.Slice.Slice(int, int, int)
+  type: Constructor
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Slice.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: .ctor
+    path: ../src/Sharpy/Slice.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public Slice(int start, int end, int step = 1)
+    parameters:
+    - id: start
+      type: System.Int32
+    - id: end
+      type: System.Int32
+    - id: step
+      type: System.Int32
+    content.vb: Public Sub New(start As Integer, [end] As Integer, [step] As Integer = 1)
+  overload: Sharpy.Slice.#ctor*
+  nameWithType.vb: Slice.New(Integer, Integer, Integer)
+  fullName.vb: Sharpy.Slice.New(Integer, Integer, Integer)
+  name.vb: New(Integer, Integer, Integer)
+- uid: Sharpy.Slice.start
+  commentId: F:Sharpy.Slice.start
+  id: start
+  parent: Sharpy.Slice
+  langs:
+  - csharp
+  - vb
+  name: start
+  nameWithType: Slice.start
+  fullName: Sharpy.Slice.start
+  type: Field
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Slice.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: start
+    path: ../src/Sharpy/Slice.cs
+    startLine: 6
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public readonly int start
+    return:
+      type: System.Int32
+    content.vb: Public ReadOnly start As Integer
+- uid: Sharpy.Slice.end
+  commentId: F:Sharpy.Slice.end
+  id: end
+  parent: Sharpy.Slice
+  langs:
+  - csharp
+  - vb
+  name: end
+  nameWithType: Slice.end
+  fullName: Sharpy.Slice.end
+  type: Field
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Slice.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: end
+    path: ../src/Sharpy/Slice.cs
+    startLine: 7
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public readonly int end
+    return:
+      type: System.Int32
+    content.vb: Public ReadOnly [end] As Integer
+- uid: Sharpy.Slice.step
+  commentId: F:Sharpy.Slice.step
+  id: step
+  parent: Sharpy.Slice
+  langs:
+  - csharp
+  - vb
+  name: step
+  nameWithType: Slice.step
+  fullName: Sharpy.Slice.step
+  type: Field
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Slice.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: step
+    path: ../src/Sharpy/Slice.cs
+    startLine: 8
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public readonly int step
+    return:
+      type: System.Int32
+    content.vb: Public ReadOnly [step] As Integer
+- uid: Sharpy.Slice.Len(System.Int32,System.Int32,System.Int32)
+  commentId: M:Sharpy.Slice.Len(System.Int32,System.Int32,System.Int32)
+  id: Len(System.Int32,System.Int32,System.Int32)
+  parent: Sharpy.Slice
+  langs:
+  - csharp
+  - vb
+  name: Len(int, int, int)
+  nameWithType: Slice.Len(int, int, int)
+  fullName: Sharpy.Slice.Len(int, int, int)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Slice.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Len
+    path: ../src/Sharpy/Slice.cs
+    startLine: 10
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static uint Len(int start, int end, int step)
+    parameters:
+    - id: start
+      type: System.Int32
+    - id: end
+      type: System.Int32
+    - id: step
+      type: System.Int32
+    return:
+      type: System.UInt32
+    content.vb: Public Shared Function Len(start As Integer, [end] As Integer, [step] As Integer) As UInteger
+  overload: Sharpy.Slice.Len*
+  nameWithType.vb: Slice.Len(Integer, Integer, Integer)
+  fullName.vb: Sharpy.Slice.Len(Integer, Integer, Integer)
+  name.vb: Len(Integer, Integer, Integer)
+- uid: Sharpy.Slice.__Len__
+  commentId: M:Sharpy.Slice.__Len__
+  id: __Len__
+  parent: Sharpy.Slice
+  langs:
+  - csharp
+  - vb
+  name: __Len__()
+  nameWithType: Slice.__Len__()
+  fullName: Sharpy.Slice.__Len__()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Slice.Sized.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Len__
+    path: ../src/Sharpy/Slice.Sized.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: Return the length (the number of items) of an object.
+  example: []
+  syntax:
+    content: public uint __Len__()
+    return:
+      type: System.UInt32
+    content.vb: Public Function __Len__() As UInteger
+  overload: Sharpy.Slice.__Len__*
+  implements:
+  - Sharpy.Collections.Interfaces.Sized.__Len__
+references:
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: Sharpy.Collections.Interfaces.Sized
+  commentId: T:Sharpy.Collections.Interfaces.Sized
+  parent: Sharpy.Collections.Interfaces
+  href: Sharpy.Collections.Interfaces.Sized.html
+  name: Sized
+  nameWithType: Sized
+  fullName: Sharpy.Collections.Interfaces.Sized
+- uid: System.ValueType.Equals(System.Object)
+  commentId: M:System.ValueType.Equals(System.Object)
+  parent: System.ValueType
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.valuetype.equals
+  name: Equals(object)
+  nameWithType: ValueType.Equals(object)
+  fullName: System.ValueType.Equals(object)
+  nameWithType.vb: ValueType.Equals(Object)
+  fullName.vb: System.ValueType.Equals(Object)
+  name.vb: Equals(Object)
+  spec.csharp:
+  - uid: System.ValueType.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.valuetype.equals
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.ValueType.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.valuetype.equals
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.ValueType.GetHashCode
+  commentId: M:System.ValueType.GetHashCode
+  parent: System.ValueType
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.valuetype.gethashcode
+  name: GetHashCode()
+  nameWithType: ValueType.GetHashCode()
+  fullName: System.ValueType.GetHashCode()
+  spec.csharp:
+  - uid: System.ValueType.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.valuetype.gethashcode
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.ValueType.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.valuetype.gethashcode
+  - name: (
+  - name: )
+- uid: System.ValueType.ToString
+  commentId: M:System.ValueType.ToString
+  parent: System.ValueType
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.valuetype.tostring
+  name: ToString()
+  nameWithType: ValueType.ToString()
+  fullName: System.ValueType.ToString()
+  spec.csharp:
+  - uid: System.ValueType.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.valuetype.tostring
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.ValueType.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.valuetype.tostring
+  - name: (
+  - name: )
+- uid: System.Object.Equals(System.Object,System.Object)
+  commentId: M:System.Object.Equals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  name: Equals(object, object)
+  nameWithType: object.Equals(object, object)
+  fullName: object.Equals(object, object)
+  nameWithType.vb: Object.Equals(Object, Object)
+  fullName.vb: Object.Equals(Object, Object)
+  name.vb: Equals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.GetType
+  commentId: M:System.Object.GetType
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  name: GetType()
+  nameWithType: object.GetType()
+  fullName: object.GetType()
+  nameWithType.vb: Object.GetType()
+  fullName.vb: Object.GetType()
+  spec.csharp:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+- uid: System.Object.ReferenceEquals(System.Object,System.Object)
+  commentId: M:System.Object.ReferenceEquals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  name: ReferenceEquals(object, object)
+  nameWithType: object.ReferenceEquals(object, object)
+  fullName: object.ReferenceEquals(object, object)
+  nameWithType.vb: Object.ReferenceEquals(Object, Object)
+  fullName.vb: Object.ReferenceEquals(Object, Object)
+  name.vb: ReferenceEquals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: Sharpy.Collections.Interfaces
+  commentId: N:Sharpy.Collections.Interfaces
+  href: Sharpy.html
+  name: Sharpy.Collections.Interfaces
+  nameWithType: Sharpy.Collections.Interfaces
+  fullName: Sharpy.Collections.Interfaces
+  spec.csharp:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+  spec.vb:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+- uid: System.ValueType
+  commentId: T:System.ValueType
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.valuetype
+  name: ValueType
+  nameWithType: ValueType
+  fullName: System.ValueType
+- uid: System.Object
+  commentId: T:System.Object
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object
+  name: object
+  nameWithType: object
+  fullName: object
+  nameWithType.vb: Object
+  fullName.vb: Object
+  name.vb: Object
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: Sharpy.Slice.#ctor*
+  commentId: Overload:Sharpy.Slice.#ctor
+  href: Sharpy.Slice.html#Sharpy_Slice__ctor_System_Int32_System_Int32_System_Int32_
+  name: Slice
+  nameWithType: Slice.Slice
+  fullName: Sharpy.Slice.Slice
+  nameWithType.vb: Slice.New
+  fullName.vb: Sharpy.Slice.New
+  name.vb: New
+- uid: System.Int32
+  commentId: T:System.Int32
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.int32
+  name: int
+  nameWithType: int
+  fullName: int
+  nameWithType.vb: Integer
+  fullName.vb: Integer
+  name.vb: Integer
+- uid: Sharpy.Slice.Len*
+  commentId: Overload:Sharpy.Slice.Len
+  href: Sharpy.Slice.html#Sharpy_Slice_Len_System_Int32_System_Int32_System_Int32_
+  name: Len
+  nameWithType: Slice.Len
+  fullName: Sharpy.Slice.Len
+- uid: System.UInt32
+  commentId: T:System.UInt32
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.uint32
+  name: uint
+  nameWithType: uint
+  fullName: uint
+  nameWithType.vb: UInteger
+  fullName.vb: UInteger
+  name.vb: UInteger
+- uid: Sharpy.Slice.__Len__*
+  commentId: Overload:Sharpy.Slice.__Len__
+  href: Sharpy.Slice.html#Sharpy_Slice___Len__
+  name: __Len__
+  nameWithType: Slice.__Len__
+  fullName: Sharpy.Slice.__Len__
+- uid: Sharpy.Collections.Interfaces.Sized.__Len__
+  commentId: M:Sharpy.Collections.Interfaces.Sized.__Len__
+  parent: Sharpy.Collections.Interfaces.Sized
+  href: Sharpy.Collections.Interfaces.Sized.html#Sharpy_Collections_Interfaces_Sized___Len__
+  name: __Len__()
+  nameWithType: Sized.__Len__()
+  fullName: Sharpy.Collections.Interfaces.Sized.__Len__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.Sized.__Len__
+    name: __Len__
+    href: Sharpy.Collections.Interfaces.Sized.html#Sharpy_Collections_Interfaces_Sized___Len__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.Sized.__Len__
+    name: __Len__
+    href: Sharpy.Collections.Interfaces.Sized.html#Sharpy_Collections_Interfaces_Sized___Len__
+  - name: (
+  - name: )

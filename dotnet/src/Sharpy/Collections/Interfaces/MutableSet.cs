@@ -26,12 +26,16 @@ namespace Sharpy.Collections.Interfaces
 
     public interface MutableSet<S, T> : MutableSet<T>, Set<S, T>
     {
+        /// <inheritdoc/>
         void __IOr__(S other);
 
+        /// <inheritdoc/>
         void __IAnd__(S other);
 
+        /// <inheritdoc/>
         void __IXOr__(S other);
 
+        /// <inheritdoc/>
         void __ISub__(S other);
     }
 }

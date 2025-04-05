@@ -2,6 +2,7 @@ namespace Sharpy
 {
     public sealed partial class List<T>
     {
+        /// <inheritdoc/>
         public void __IAdd__(List<T> other)
         {
             if (other is null)

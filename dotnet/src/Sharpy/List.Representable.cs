@@ -4,6 +4,7 @@ namespace Sharpy
 {
     public sealed partial class List<T>
     {
+        /// <inheritdoc/>
         public override string __Repr__()
         {
             var builder = new StringBuilder();

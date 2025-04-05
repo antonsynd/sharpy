@@ -2,6 +2,7 @@ namespace Sharpy
 {
     public sealed partial class Set<T>
     {
+        /// <inheritdoc/>
         public bool __Eq__(Set<T> other)
         {
             if (other is null)
@@ -12,6 +13,7 @@ namespace Sharpy
             return _set.SetEquals(other._set);
         }
 
+        /// <inheritdoc/>
         public bool __Eq__(Collections.Interfaces.Set<T> other)
         {
             uint numElems = 0;
@@ -27,6 +29,7 @@ namespace Sharpy
             return numElems == _set.Count;
         }
 
+        /// <inheritdoc/>
         public override bool __Eq__(Object other)
         {
             if (other is Set<T> set)

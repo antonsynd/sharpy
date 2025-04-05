@@ -10,7 +10,7 @@ namespace Sharpy.Collections.Interfaces
         /// not exist then this raises a <see cref="KeyError"/>.
         /// </summary>
         /// <remarks>
-        /// Should call <see cref="__GetItem__()"/> underneath.
+        /// Should call <see cref="__GetItem__(K)"/> underneath.
         /// </remarks>
         V this[K key] { get; }
 
@@ -51,10 +51,10 @@ namespace Sharpy.Collections.Interfaces
 
         /// <summary>
         /// Gets the value with the given key, if it exists. If it doesn't
-        /// exist, it returns <see cref="null"/>.
+        /// exist, it returns <see langword="null"/>.
         /// </summary>
         /// <remarks>
-        /// Internally, this should call <see cref="__GetItem__()"/>, unless
+        /// Internally, this should call <see cref="__GetItem__(K)"/>, unless
         /// the class is sealed, in which case it doesn't matter.
         /// </remarks>
         V? Get(K key);
@@ -64,14 +64,19 @@ namespace Sharpy.Collections.Interfaces
         /// exist, it returns the given default value.
         /// </summary>
         /// <remarks>
-        /// Internally, this should call <see cref="__GetItem__()"/>, unless
+        /// Internally, this should call <see cref="__GetItem__(K)"/>, unless
         /// the class is sealed, in which case it doesn't matter.
         /// </remarks>
         V Get(K key, V @default);
     }
 
+    /// <summary>
+    /// Interface for read-only mappings as a curiously recursive template,
+    /// with methods dealing directly with the given mapping type.
+    /// </summary>
     public interface Mapping<M, K, V> : Mapping<K, V> where K : notnull
     {
+        /// <inheritdoc/>
         M __Or__(M other);
     }
 }

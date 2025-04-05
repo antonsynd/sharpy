@@ -5,7 +5,7 @@ namespace Sharpy
     /// <summary>
     /// An object representing a stream of data. Repeated calls to the
     /// iterator’s <see cref="__Next__()"/> method (or passing it to the
-    /// built-in function <see cref="Next()"/>) return successive items in the
+    /// built-in function <see cref="Next(Iterator&lt;T&gt;)"/>) return successive items in the
     /// stream. When no more data are available, a <see cref="StopIteration"/>
     /// exception is raised instead. At this point, the iterator object is
     /// exhausted and any further calls to its <see cref="__Next__()"/> method
@@ -17,7 +17,7 @@ namespace Sharpy
     /// and may be used in most places where other iterables are accepted. One
     /// notable exception is code which attempts multiple iteration passes. A
     /// container object (such as a list) produces a fresh new iterator each
-    /// time you pass it to the <see cref="Iter()"/> function or use it in a
+    /// time you pass it to the <see cref="Iter(Iterable&lt;T&gt;)"/> function or use it in a
     /// <c>for</c> loop. Attempting this with an iterator will just return the
     /// same exhausted iterator object used in the previous iteration pass,
     /// making it appear like an empty container.

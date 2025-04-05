@@ -2,6 +2,7 @@ namespace Sharpy
 {
     public sealed partial class Set<T>
     {
+        /// <inheritdoc/>
         public bool IsDisjoint(Set<T> other)
         {
             if (other is null)
@@ -13,6 +14,7 @@ namespace Sharpy
             return !_set.Overlaps(other._set);
         }
 
+        /// <inheritdoc/>
         public Set<T> __And__(Set<T> other)
         {
             if (other is null)
@@ -33,6 +35,7 @@ namespace Sharpy
             return result;
         }
 
+        /// <inheritdoc/>
         public Set<T> __Or__(Set<T> other)
         {
             if (other is null)
@@ -70,6 +73,7 @@ namespace Sharpy
             return result;
         }
 
+        /// <inheritdoc/>
         public Set<T> __RSub__(Set<T> other)
         {
             if (other is null)
@@ -90,6 +94,7 @@ namespace Sharpy
             return result;
         }
 
+        /// <inheritdoc/>
         public Set<T> __Sub__(Set<T> other)
         {
             if (other is null)
@@ -110,6 +115,7 @@ namespace Sharpy
             return result;
         }
 
+        /// <inheritdoc/>
         public Set<T> __XOr__(Set<T> other)
         {
             if (other is null)
@@ -138,6 +144,7 @@ namespace Sharpy
             return result;
         }
 
+        /// <inheritdoc/>
         public Collections.Interfaces.Set<T> __And__(Collections.Interfaces.Set<T> other)
         {
             if (other is null)
@@ -158,31 +165,37 @@ namespace Sharpy
             return result;
         }
 
+        /// <inheritdoc/>
         public Collections.Interfaces.Set<T> __Or__(Collections.Interfaces.Set<T> other)
         {
             throw new NotImplementedException();
         }
 
+        /// <inheritdoc/>
         public Collections.Interfaces.Set<T> __Sub__(Collections.Interfaces.Set<T> other)
         {
             throw new NotImplementedException();
         }
 
+        /// <inheritdoc/>
         public Collections.Interfaces.Set<T> __RSub__(Collections.Interfaces.Set<T> other)
         {
             throw new NotImplementedException();
         }
 
+        /// <inheritdoc/>
         public Collections.Interfaces.Set<T> __XOr__(Collections.Interfaces.Set<T> other)
         {
             throw new NotImplementedException();
         }
 
+        /// <inheritdoc/>
         public Collections.Interfaces.Set<T> __ROr__(Collections.Interfaces.Set<T> other)
         {
             throw new NotImplementedException();
         }
 
+        /// <inheritdoc/>
         public bool IsDisjoint(Collections.Interfaces.Set<T> other)
         {
             if (other is null)

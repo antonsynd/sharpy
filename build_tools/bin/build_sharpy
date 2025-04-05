@@ -22,6 +22,7 @@ DATA_DIR: Path = ROOT_DIR / "data"
 
 CSHARP_ROOT_DIR: Path = ROOT_DIR / "dotnet"
 CSHARP_SRC_DIR: Path = ROOT_DIR / "dotnet/src/Sharpy"
+CSHARP_DOCS_DIR: Path = ROOT_DIR / "dotnet/docs"
 CSHARP_TEST_DIR: Path = ROOT_DIR / "dotnet/src/Sharpy.Tests"
 
 
@@ -247,7 +248,7 @@ def docs(args: argparse.Namespace, rest: Sequence[str]) -> None:
     get_logger().info("Generating documentation...")
 
     try:
-        subprocess.run(["docfx", str(CSHARP_ROOT_DIR / "docfx.json")])
+        subprocess.run(["docfx", str(CSHARP_DOCS_DIR / "docfx.json")])
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
