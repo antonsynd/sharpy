@@ -1,5 +1,3 @@
-using Sharpy.Collections.Interfaces;
-
 namespace Sharpy
 {
     public sealed partial class Set<T>

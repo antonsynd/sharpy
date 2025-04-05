@@ -24,7 +24,7 @@ namespace Sharpy.Collections.Interfaces
         void Append(T x);
 
         /// <remarks>
-        /// Iterable<T> extends IEnumerable<T>.
+        /// Iterable&lt;T&gt; extends IEnumerable&lt;T&gt;.
         /// </remarks>
         void Extend(IEnumerable<T> enumerable);
 

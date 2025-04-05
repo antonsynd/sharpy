@@ -37,7 +37,7 @@ namespace Sharpy
 
         /// <remarks>
         /// For collection initializers.
-        /// </summary>
+        /// </remarks>
         public void Add(T item) => _list.Add(item);
 
         /// <summary>

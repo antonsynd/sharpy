@@ -4,12 +4,35 @@ namespace Sharpy
     {
         public bool __Ge__(Set<T> other)
         {
-            return __Eq__(other) || !__Lt__(other);
+            if (other is null)
+            {
+                throw new TypeError("'NoneType' object is not iterable");
+            }
+
+            return _set.IsSupersetOf(other._set);
         }
 
         public bool __Ge__(Collections.Interfaces.Set<T> other)
         {
-            return __Eq__(other) || !__Lt__(other);
+            if (other is null)
+            {
+                throw new TypeError("'NoneType' object is not iterable");
+            }
+
+            var numElems = _set.Count;
+            uint otherNumElems = 0;
+
+            foreach (var x in other)
+            {
+                ++otherNumElems;
+
+                if (!_set.Contains(x))
+                {
+                    return false;
+                }
+            }
+
+            return otherNumElems <= numElems;
         }
     }
 }
