@@ -11,6 +11,7 @@ items:
   - Sharpy.Set`1.Add(`0)
   - Sharpy.Set`1.Clear
   - Sharpy.Set`1.CompareTo(Sharpy.Collections.Interfaces.Set{`0})
+  - Sharpy.Set`1.CompareTo(Sharpy.Set{`0})
   - Sharpy.Set`1.Contains(`0)
   - Sharpy.Set`1.Copy
   - Sharpy.Set`1.Difference(Sharpy.Set{`0})
@@ -94,10 +95,10 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: 'public sealed class Set<T> : Object, Equatable<Object>, Inequatable<Object>, IEquatable<Object>, StrConvertible, Representable, BoolConvertible, Identifiable, MutableSet<Set<T>, T>, MutableSet<T>, Set<Set<T>, T>, Set<T>, Collection<T>, Container<T>, Iterable<T>, IEnumerable<T>, IEnumerable, Sized, Inequatable<Set<T>>, Comparable<Set<T>>, LessThanOrEquatable<Set<T>>, LessThanComparable<Set<T>>, GreaterThanOrEquatable<Set<T>>, GreaterThanComparable<Set<T>>, IComparable<Set<T>>, Equatable<Set<T>>, Hashable, IEquatable<Set<T>>'
+    content: 'public sealed class Set<T> : Object, Equatable<Object>, Inequatable<Object>, IEquatable<Object>, StrConvertible, Representable, BoolConvertible, Identifiable, MutableSet<Set<T>, T>, MutableSet<T>, Set<Set<T>, T>, Set<T>, Collection<T>, Container<T>, Iterable<T>, IEnumerable<T>, IEnumerable, Sized, Inequatable<Set<T>>, Comparable<Set<T>>, LessThanOrEquatable<Set<T>>, LessThanComparable<Set<T>>, GreaterThanOrEquatable<Set<T>>, GreaterThanComparable<Set<T>>, IComparable<Set<T>>, Equatable<Set<T>>, Hashable, IEquatable<Set<T>>, IComparable<Set<T>>'
     typeParameters:
     - id: T
-    content.vb: Public NotInheritable Class [Set](Of T) Inherits Object Implements Equatable(Of Object), Inequatable(Of Object), IEquatable(Of Object), StrConvertible, Representable, BoolConvertible, Identifiable, MutableSet(Of Set(Of T), T), MutableSet(Of T), Set(Of Set(Of T), T), Set(Of T), Collection(Of T), Container(Of T), Iterable(Of T), IEnumerable(Of T), IEnumerable, Sized, Inequatable(Of Set(Of T)), Comparable(Of Set(Of T)), LessThanOrEquatable(Of Set(Of T)), LessThanComparable(Of Set(Of T)), GreaterThanOrEquatable(Of Set(Of T)), GreaterThanComparable(Of Set(Of T)), IComparable(Of Set(Of T)), Equatable(Of Set(Of T)), Hashable, IEquatable(Of Set(Of T))
+    content.vb: Public NotInheritable Class [Set](Of T) Inherits Object Implements Equatable(Of Object), Inequatable(Of Object), IEquatable(Of Object), StrConvertible, Representable, BoolConvertible, Identifiable, MutableSet(Of Set(Of T), T), MutableSet(Of T), Set(Of Set(Of T), T), Set(Of T), Collection(Of T), Container(Of T), Iterable(Of T), IEnumerable(Of T), IEnumerable, Sized, Inequatable(Of Set(Of T)), Comparable(Of Set(Of T)), LessThanOrEquatable(Of Set(Of T)), LessThanComparable(Of Set(Of T)), GreaterThanOrEquatable(Of Set(Of T)), GreaterThanComparable(Of Set(Of T)), IComparable(Of Set(Of T)), Equatable(Of Set(Of T)), Hashable, IEquatable(Of Set(Of T)), IComparable(Of Set(Of T))
   inheritance:
   - System.Object
   - Sharpy.Object
@@ -129,6 +130,7 @@ items:
   - Sharpy.Equatable{Sharpy.Collections.Interfaces.Set{{T}}}
   - Sharpy.Hashable
   - System.IEquatable{Sharpy.Collections.Interfaces.Set{{T}}}
+  - System.IComparable{Sharpy.Set`1}
   inheritedMembers:
   - Sharpy.Object.__Eq__(System.Object)
   - Sharpy.Object.__Id__
@@ -887,6 +889,49 @@ items:
   nameWithType.vb: Set(Of T).CompareTo(Set(Of T))
   fullName.vb: Sharpy.Set(Of T).CompareTo(Sharpy.Collections.Interfaces.Set(Of T))
   name.vb: CompareTo(Set(Of T))
+- uid: Sharpy.Set`1.CompareTo(Sharpy.Set{`0})
+  commentId: M:Sharpy.Set`1.CompareTo(Sharpy.Set{`0})
+  id: CompareTo(Sharpy.Set{`0})
+  parent: Sharpy.Set`1
+  langs:
+  - csharp
+  - vb
+  name: CompareTo(Set<T>?)
+  nameWithType: Set<T>.CompareTo(Set<T>?)
+  fullName: Sharpy.Set<T>.CompareTo(Sharpy.Set<T>?)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Set.IComparable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: CompareTo
+    path: ../src/Sharpy/Set.IComparable.cs
+    startLine: 31
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: Compares the current instance with another object of the same type and returns an integer that indicates whether the current instance precedes, follows, or occurs in the same position in the sort order as the other object.
+  example: []
+  syntax:
+    content: public int CompareTo(Set<T>? other)
+    parameters:
+    - id: other
+      type: Sharpy.Set`1
+      description: An object to compare with this instance.
+    return:
+      type: System.Int32
+      description: >-
+        A value that indicates the relative order of the objects being compared. The return value has these meanings:  
+
+         <table><thead><tr><th class="term"> Value</th><th class="description"> Meaning</th></tr></thead><tbody><tr><td class="term"> Less than zero</td><td class="description"> This instance precedes <code class="paramref">other</code> in the sort order.</td></tr><tr><td class="term"> Zero</td><td class="description"> This instance occurs in the same position in the sort order as <code class="paramref">other</code>.</td></tr><tr><td class="term"> Greater than zero</td><td class="description"> This instance follows <code class="paramref">other</code> in the sort order.</td></tr></tbody></table>
+    content.vb: Public Function CompareTo(other As [Set](Of T)) As Integer
+  overload: Sharpy.Set`1.CompareTo*
+  implements:
+  - System.IComparable{Sharpy.Set`1}.CompareTo(Sharpy.Set{{T}})
+  nameWithType.vb: Set(Of T).CompareTo(Set(Of T))
+  fullName.vb: Sharpy.Set(Of T).CompareTo(Sharpy.Set(Of T))
+  name.vb: CompareTo(Set(Of T))
 - uid: Sharpy.Set`1.GetEnumerator
   commentId: M:Sharpy.Set`1.GetEnumerator
   id: GetEnumerator
@@ -1444,7 +1489,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __IAnd__
     path: ../src/Sharpy/Set.MutableSet.cs
-    startLine: 44
+    startLine: 47
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1479,7 +1524,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __IXOr__
     path: ../src/Sharpy/Set.MutableSet.cs
-    startLine: 50
+    startLine: 54
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1514,7 +1559,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __ISub__
     path: ../src/Sharpy/Set.MutableSet.cs
-    startLine: 56
+    startLine: 61
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1549,7 +1594,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __IAnd__
     path: ../src/Sharpy/Set.MutableSet.cs
-    startLine: 62
+    startLine: 68
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1584,7 +1629,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __IOr__
     path: ../src/Sharpy/Set.MutableSet.cs
-    startLine: 68
+    startLine: 74
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1619,7 +1664,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __ISub__
     path: ../src/Sharpy/Set.MutableSet.cs
-    startLine: 74
+    startLine: 80
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1654,7 +1699,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __IXOr__
     path: ../src/Sharpy/Set.MutableSet.cs
-    startLine: 80
+    startLine: 86
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -3436,6 +3481,47 @@ references:
   - name: T
   - name: )
   - name: )
+- uid: System.IComparable{Sharpy.Set`1}
+  commentId: T:System.IComparable{Sharpy.Set`1}
+  parent: System
+  definition: System.IComparable`1
+  href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
+  name: IComparable<Set<T>>
+  nameWithType: IComparable<Set<T>>
+  fullName: System.IComparable<Sharpy.Set<T>>
+  nameWithType.vb: IComparable(Of Set(Of T))
+  fullName.vb: System.IComparable(Of Sharpy.Set(Of T))
+  name.vb: IComparable(Of Set(Of T))
+  spec.csharp:
+  - uid: System.IComparable`1
+    name: IComparable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
+  - name: <
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: System.IComparable`1
+    name: IComparable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
 - uid: Sharpy.Object.__Eq__(System.Object)
   commentId: M:Sharpy.Object.__Eq__(System.Object)
   parent: Sharpy.Object
@@ -4929,6 +5015,45 @@ references:
     href: https://learn.microsoft.com/dotnet/api/system.icomparable-1.compareto
   - name: (
   - name: T
+  - name: )
+- uid: System.IComparable{Sharpy.Set`1}.CompareTo(Sharpy.Set{{T}})
+  commentId: M:System.IComparable{Sharpy.Set`1}.CompareTo(Sharpy.Set{`0})
+  parent: System.IComparable{Sharpy.Set`1}
+  definition: System.IComparable`1.CompareTo(`0)
+  href: https://learn.microsoft.com/dotnet/api/system.icomparable-1.compareto
+  name: CompareTo(Set<T>)
+  nameWithType: IComparable<Set<T>>.CompareTo(Set<T>)
+  fullName: System.IComparable<Sharpy.Set<T>>.CompareTo(Sharpy.Set<T>)
+  nameWithType.vb: IComparable(Of Set(Of T)).CompareTo(Set(Of T))
+  fullName.vb: System.IComparable(Of Sharpy.Set(Of T)).CompareTo(Sharpy.Set(Of T))
+  name.vb: CompareTo(Set(Of T))
+  spec.csharp:
+  - uid: System.IComparable{Sharpy.Set`1}.CompareTo(Sharpy.Set{`0})
+    name: CompareTo
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1.compareto
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: System.IComparable{Sharpy.Set`1}.CompareTo(Sharpy.Set{`0})
+    name: CompareTo
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1.compareto
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
   - name: )
 - uid: Sharpy.Set`1.GetEnumerator*
   commentId: Overload:Sharpy.Set`1.GetEnumerator

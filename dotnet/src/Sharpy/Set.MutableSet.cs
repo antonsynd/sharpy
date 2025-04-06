@@ -38,49 +38,55 @@ namespace Sharpy
         /// <inheritdoc/>
         public void __IOr__(Collections.Interfaces.Set<T> other)
         {
-            throw new NotImplementedException();
+            foreach (var item in other)
+            {
+                _set.Add(item);
+            }
         }
 
         /// <inheritdoc/>
         public void __IAnd__(Collections.Interfaces.Set<T> other)
         {
-            throw new NotImplementedException();
+            var otherSet = new HashSet<T>(other);
+            _set.IntersectWith(otherSet);
         }
 
         /// <inheritdoc/>
         public void __IXOr__(Collections.Interfaces.Set<T> other)
         {
-            throw new NotImplementedException();
+            var otherSet = new HashSet<T>(other);
+            _set.SymmetricExceptWith(otherSet);
         }
 
         /// <inheritdoc/>
         public void __ISub__(Collections.Interfaces.Set<T> other)
         {
-            throw new NotImplementedException();
+            var otherSet = new HashSet<T>(other);
+            _set.ExceptWith(otherSet);
         }
 
         /// <inheritdoc/>
         public void __IAnd__(Set<T> other)
         {
-            throw new NotImplementedException();
+            _set.IntersectWith(other._set);
         }
 
         /// <inheritdoc/>
         public void __IOr__(Set<T> other)
         {
-            throw new NotImplementedException();
+            _set.UnionWith(other._set);
         }
 
         /// <inheritdoc/>
         public void __ISub__(Set<T> other)
         {
-            throw new NotImplementedException();
+            _set.ExceptWith(other._set);
         }
 
         /// <inheritdoc/>
         public void __IXOr__(Set<T> other)
         {
-            throw new NotImplementedException();
+            _set.SymmetricExceptWith(other._set);
         }
     }
 }
