@@ -1,0 +1,103 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.IAddable`2
+  commentId: T:Sharpy.IAddable`2
+  id: IAddable`2
+  parent: Sharpy
+  children:
+  - Sharpy.IAddable`2.__Add__(`1)
+  langs:
+  - csharp
+  - vb
+  name: IAddable<T, U>
+  nameWithType: IAddable<T, U>
+  fullName: Sharpy.IAddable<T, U>
+  type: Interface
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IAddable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IAddable
+    path: ../src/Sharpy/IAddable.cs
+    startLine: 2
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public interface IAddable<T, U>
+    typeParameters:
+    - id: T
+    - id: U
+    content.vb: Public Interface IAddable(Of T, U)
+  nameWithType.vb: IAddable(Of T, U)
+  fullName.vb: Sharpy.IAddable(Of T, U)
+  name.vb: IAddable(Of T, U)
+- uid: Sharpy.IAddable`2.__Add__(`1)
+  commentId: M:Sharpy.IAddable`2.__Add__(`1)
+  id: __Add__(`1)
+  parent: Sharpy.IAddable`2
+  langs:
+  - csharp
+  - vb
+  name: __Add__(U)
+  nameWithType: IAddable<T, U>.__Add__(U)
+  fullName: Sharpy.IAddable<T, U>.__Add__(U)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IAddable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Add__
+    path: ../src/Sharpy/IAddable.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: T __Add__(U other)
+    parameters:
+    - id: other
+      type: '{U}'
+    return:
+      type: '{T}'
+    content.vb: Function __Add__(other As U) As T
+  overload: Sharpy.IAddable`2.__Add__*
+  nameWithType.vb: IAddable(Of T, U).__Add__(U)
+  fullName.vb: Sharpy.IAddable(Of T, U).__Add__(U)
+references:
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: Sharpy.IAddable`2.__Add__*
+  commentId: Overload:Sharpy.IAddable`2.__Add__
+  href: Sharpy.IAddable-2.html#Sharpy_IAddable_2___Add____1_
+  name: __Add__
+  nameWithType: IAddable<T, U>.__Add__
+  fullName: Sharpy.IAddable<T, U>.__Add__
+  nameWithType.vb: IAddable(Of T, U).__Add__
+  fullName.vb: Sharpy.IAddable(Of T, U).__Add__
+- uid: '{U}'
+  commentId: '!:U'
+  definition: U
+  name: U
+  nameWithType: U
+  fullName: U
+- uid: '{T}'
+  commentId: '!:T'
+  definition: T
+  name: T
+  nameWithType: T
+  fullName: T
+- uid: U
+  name: U
+  nameWithType: U
+  fullName: U
+- uid: T
+  name: T
+  nameWithType: T
+  fullName: T

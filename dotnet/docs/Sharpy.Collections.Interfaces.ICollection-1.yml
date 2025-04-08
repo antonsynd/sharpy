@@ -1,0 +1,477 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.Collections.Interfaces.ICollection`1
+  commentId: T:Sharpy.Collections.Interfaces.ICollection`1
+  id: ICollection`1
+  parent: Sharpy.Collections.Interfaces
+  children: []
+  langs:
+  - csharp
+  - vb
+  name: ICollection<T>
+  nameWithType: ICollection<T>
+  fullName: Sharpy.Collections.Interfaces.ICollection<T>
+  type: Interface
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Collections/Interfaces/ICollection.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: ICollection
+    path: ../src/Sharpy/Collections/Interfaces/ICollection.cs
+    startLine: 5
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Collections.Interfaces
+  summary: Interface for sized iterable container classes.
+  example: []
+  syntax:
+    content: 'public interface ICollection<T> : IContainer<T>, IIterable<T>, IEnumerable<T>, IEnumerable, ISized'
+    typeParameters:
+    - id: T
+    content.vb: Public Interface ICollection(Of T) Inherits IContainer(Of T), IIterable(Of T), IEnumerable(Of T), IEnumerable, ISized
+  inheritedMembers:
+  - Sharpy.Collections.Interfaces.IContainer{{T}}.__Contains__({T})
+  - Sharpy.Collections.Interfaces.IContainer{{T}}.Contains({T})
+  - Sharpy.Collections.Interfaces.IIterable{{T}}.__Iter__
+  - System.Collections.Generic.IEnumerable{{T}}.GetEnumerator
+  - Sharpy.Collections.Interfaces.ISized.__Len__
+  nameWithType.vb: ICollection(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.ICollection(Of T)
+  name.vb: ICollection(Of T)
+references:
+- uid: Sharpy.Collections.Interfaces
+  commentId: N:Sharpy.Collections.Interfaces
+  href: Sharpy.html
+  name: Sharpy.Collections.Interfaces
+  nameWithType: Sharpy.Collections.Interfaces
+  fullName: Sharpy.Collections.Interfaces
+  spec.csharp:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+  spec.vb:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+- uid: Sharpy.Collections.Interfaces.IContainer{{T}}.__Contains__({T})
+  commentId: M:Sharpy.Collections.Interfaces.IContainer{`0}.__Contains__(`0)
+  parent: Sharpy.Collections.Interfaces.IContainer{{T}}
+  definition: Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
+  href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1___Contains____0_
+  name: __Contains__(T)
+  nameWithType: IContainer<T>.__Contains__(T)
+  fullName: Sharpy.Collections.Interfaces.IContainer<T>.__Contains__(T)
+  nameWithType.vb: IContainer(Of T).__Contains__(T)
+  fullName.vb: Sharpy.Collections.Interfaces.IContainer(Of T).__Contains__(T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IContainer{`0}.__Contains__(`0)
+    name: __Contains__
+    href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1___Contains____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IContainer{`0}.__Contains__(`0)
+    name: __Contains__
+    href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1___Contains____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IContainer{{T}}.Contains({T})
+  commentId: M:Sharpy.Collections.Interfaces.IContainer{`0}.Contains(`0)
+  parent: Sharpy.Collections.Interfaces.IContainer{{T}}
+  definition: Sharpy.Collections.Interfaces.IContainer`1.Contains(`0)
+  href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1_Contains__0_
+  name: Contains(T)
+  nameWithType: IContainer<T>.Contains(T)
+  fullName: Sharpy.Collections.Interfaces.IContainer<T>.Contains(T)
+  nameWithType.vb: IContainer(Of T).Contains(T)
+  fullName.vb: Sharpy.Collections.Interfaces.IContainer(Of T).Contains(T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IContainer{`0}.Contains(`0)
+    name: Contains
+    href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1_Contains__0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IContainer{`0}.Contains(`0)
+    name: Contains
+    href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1_Contains__0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IIterable{{T}}.__Iter__
+  commentId: M:Sharpy.Collections.Interfaces.IIterable{`0}.__Iter__
+  parent: Sharpy.Collections.Interfaces.IIterable{{T}}
+  definition: Sharpy.Collections.Interfaces.IIterable`1.__Iter__
+  href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
+  name: __Iter__()
+  nameWithType: IIterable<T>.__Iter__()
+  fullName: Sharpy.Collections.Interfaces.IIterable<T>.__Iter__()
+  nameWithType.vb: IIterable(Of T).__Iter__()
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of T).__Iter__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IIterable{`0}.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IIterable{`0}.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
+  - name: (
+  - name: )
+- uid: System.Collections.Generic.IEnumerable{{T}}.GetEnumerator
+  commentId: M:System.Collections.Generic.IEnumerable{`0}.GetEnumerator
+  parent: System.Collections.Generic.IEnumerable{{T}}
+  definition: System.Collections.Generic.IEnumerable`1.GetEnumerator
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  name: GetEnumerator()
+  nameWithType: IEnumerable<T>.GetEnumerator()
+  fullName: System.Collections.Generic.IEnumerable<T>.GetEnumerator()
+  nameWithType.vb: IEnumerable(Of T).GetEnumerator()
+  fullName.vb: System.Collections.Generic.IEnumerable(Of T).GetEnumerator()
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable{`0}.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable{`0}.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.ISized.__Len__
+  commentId: M:Sharpy.Collections.Interfaces.ISized.__Len__
+  parent: Sharpy.Collections.Interfaces.ISized
+  href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized___Len__
+  name: __Len__()
+  nameWithType: ISized.__Len__()
+  fullName: Sharpy.Collections.Interfaces.ISized.__Len__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.ISized.__Len__
+    name: __Len__
+    href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized___Len__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.ISized.__Len__
+    name: __Len__
+    href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized___Len__
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
+  commentId: M:Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
+  href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1___Contains____0_
+  name: __Contains__(T)
+  nameWithType: IContainer<T>.__Contains__(T)
+  fullName: Sharpy.Collections.Interfaces.IContainer<T>.__Contains__(T)
+  nameWithType.vb: IContainer(Of T).__Contains__(T)
+  fullName.vb: Sharpy.Collections.Interfaces.IContainer(Of T).__Contains__(T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
+    name: __Contains__
+    href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1___Contains____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
+    name: __Contains__
+    href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1___Contains____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IContainer{{T}}
+  commentId: T:Sharpy.Collections.Interfaces.IContainer{`0}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.IContainer`1
+  href: Sharpy.Collections.Interfaces.IContainer-1.html
+  name: IContainer<T>
+  nameWithType: IContainer<T>
+  fullName: Sharpy.Collections.Interfaces.IContainer<T>
+  nameWithType.vb: IContainer(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.IContainer(Of T)
+  name.vb: IContainer(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IContainer`1
+    name: IContainer
+    href: Sharpy.Collections.Interfaces.IContainer-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IContainer`1
+    name: IContainer
+    href: Sharpy.Collections.Interfaces.IContainer-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IContainer`1.Contains(`0)
+  commentId: M:Sharpy.Collections.Interfaces.IContainer`1.Contains(`0)
+  href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1_Contains__0_
+  name: Contains(T)
+  nameWithType: IContainer<T>.Contains(T)
+  fullName: Sharpy.Collections.Interfaces.IContainer<T>.Contains(T)
+  nameWithType.vb: IContainer(Of T).Contains(T)
+  fullName.vb: Sharpy.Collections.Interfaces.IContainer(Of T).Contains(T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IContainer`1.Contains(`0)
+    name: Contains
+    href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1_Contains__0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IContainer`1.Contains(`0)
+    name: Contains
+    href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1_Contains__0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IIterable`1.__Iter__
+  commentId: M:Sharpy.Collections.Interfaces.IIterable`1.__Iter__
+  href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
+  name: __Iter__()
+  nameWithType: IIterable<T>.__Iter__()
+  fullName: Sharpy.Collections.Interfaces.IIterable<T>.__Iter__()
+  nameWithType.vb: IIterable(Of T).__Iter__()
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of T).__Iter__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IIterable`1.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IIterable`1.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IIterable{{T}}
+  commentId: T:Sharpy.Collections.Interfaces.IIterable{``0}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.IIterable`1
+  href: Sharpy.Collections.Interfaces.IIterable-1.html
+  name: IIterable<T>
+  nameWithType: IIterable<T>
+  fullName: Sharpy.Collections.Interfaces.IIterable<T>
+  nameWithType.vb: IIterable(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of T)
+  name.vb: IIterable(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic.IEnumerable`1.GetEnumerator
+  commentId: M:System.Collections.Generic.IEnumerable`1.GetEnumerator
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  name: GetEnumerator()
+  nameWithType: IEnumerable<T>.GetEnumerator()
+  fullName: System.Collections.Generic.IEnumerable<T>.GetEnumerator()
+  nameWithType.vb: IEnumerable(Of T).GetEnumerator()
+  fullName.vb: System.Collections.Generic.IEnumerable(Of T).GetEnumerator()
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable`1.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable`1.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+- uid: System.Collections.Generic.IEnumerable{{T}}
+  commentId: T:System.Collections.Generic.IEnumerable{`0}
+  parent: System.Collections.Generic
+  definition: System.Collections.Generic.IEnumerable`1
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  name: IEnumerable<T>
+  nameWithType: IEnumerable<T>
+  fullName: System.Collections.Generic.IEnumerable<T>
+  nameWithType.vb: IEnumerable(Of T)
+  fullName.vb: System.Collections.Generic.IEnumerable(Of T)
+  name.vb: IEnumerable(Of T)
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.ISized
+  commentId: T:Sharpy.Collections.Interfaces.ISized
+  parent: Sharpy.Collections.Interfaces
+  href: Sharpy.Collections.Interfaces.ISized.html
+  name: ISized
+  nameWithType: ISized
+  fullName: Sharpy.Collections.Interfaces.ISized
+- uid: Sharpy.Collections.Interfaces.IContainer`1
+  commentId: T:Sharpy.Collections.Interfaces.IContainer`1
+  href: Sharpy.Collections.Interfaces.IContainer-1.html
+  name: IContainer<T>
+  nameWithType: IContainer<T>
+  fullName: Sharpy.Collections.Interfaces.IContainer<T>
+  nameWithType.vb: IContainer(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.IContainer(Of T)
+  name.vb: IContainer(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IContainer`1
+    name: IContainer
+    href: Sharpy.Collections.Interfaces.IContainer-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IContainer`1
+    name: IContainer
+    href: Sharpy.Collections.Interfaces.IContainer-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IIterable`1
+  commentId: T:Sharpy.Collections.Interfaces.IIterable`1
+  href: Sharpy.Collections.Interfaces.IIterable-1.html
+  name: IIterable<T>
+  nameWithType: IIterable<T>
+  fullName: Sharpy.Collections.Interfaces.IIterable<T>
+  nameWithType.vb: IIterable(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of T)
+  name.vb: IIterable(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic.IEnumerable`1
+  commentId: T:System.Collections.Generic.IEnumerable`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  name: IEnumerable<T>
+  nameWithType: IEnumerable<T>
+  fullName: System.Collections.Generic.IEnumerable<T>
+  nameWithType.vb: IEnumerable(Of T)
+  fullName.vb: System.Collections.Generic.IEnumerable(Of T)
+  name.vb: IEnumerable(Of T)
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic
+  commentId: N:System.Collections.Generic
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Collections.Generic
+  nameWithType: System.Collections.Generic
+  fullName: System.Collections.Generic
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic

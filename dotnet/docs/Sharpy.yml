@@ -4,43 +4,43 @@ items:
   commentId: N:Sharpy
   id: Sharpy
   children:
-  - Sharpy.Addable`1
-  - Sharpy.Addable`2
-  - Sharpy.BoolConvertible
   - Sharpy.Bytes
-  - Sharpy.Comparable`1
   - Sharpy.DictKeyView`2
   - Sharpy.Dict`2
-  - Sharpy.Equatable
-  - Sharpy.Equatable`1
-  - Sharpy.GreaterThanComparable`1
-  - Sharpy.GreaterThanOrEquatable`1
-  - Sharpy.Hashable
-  - Sharpy.Identifiable
+  - Sharpy.IAddable`1
+  - Sharpy.IAddable`2
+  - Sharpy.IBoolConvertible
+  - Sharpy.IComparable`1
+  - Sharpy.IEquatable
+  - Sharpy.IEquatable`1
+  - Sharpy.IGreaterThanComparable`1
+  - Sharpy.IGreaterThanOrEquatable`1
+  - Sharpy.IHashable
+  - Sharpy.IIdentifiable
+  - Sharpy.IInequatable`1
+  - Sharpy.IInplaceAddable`1
+  - Sharpy.IInplaceMultipliable`1
+  - Sharpy.ILessThanComparable`1
+  - Sharpy.ILessThanOrEquatable`1
+  - Sharpy.IMultipliable`2
+  - Sharpy.IRepresentable
+  - Sharpy.IRightAddable`1
+  - Sharpy.IRightAddable`2
+  - Sharpy.IRightMultipliable`2
+  - Sharpy.IStrConvertible
   - Sharpy.IndexError
-  - Sharpy.Inequatable`1
-  - Sharpy.InplaceAddable`1
-  - Sharpy.InplaceMultipliable`1
   - Sharpy.Iterator`1
   - Sharpy.KeyError
-  - Sharpy.LessThanComparable`1
-  - Sharpy.LessThanOrEquatable`1
   - Sharpy.ListIterator`1
   - Sharpy.ListReverseIterator`1
   - Sharpy.List`1
-  - Sharpy.Multipliable`2
   - Sharpy.Object
   - Sharpy.Operator
   - Sharpy.Optional`1
-  - Sharpy.Representable
-  - Sharpy.RightAddable`1
-  - Sharpy.RightAddable`2
-  - Sharpy.RightMultipliable`2
   - Sharpy.Set`1
   - Sharpy.Slice
   - Sharpy.StopIteration
   - Sharpy.Str
-  - Sharpy.StrConvertible
   - Sharpy.TypeError
   - Sharpy.ValueError
   - Sharpy.__Exports
@@ -54,75 +54,12 @@ items:
   assemblies:
   - Sharpy
 references:
-- uid: Sharpy.Addable`2
-  commentId: T:Sharpy.Addable`2
-  href: Sharpy.Addable-2.html
-  name: Addable<T, U>
-  nameWithType: Addable<T, U>
-  fullName: Sharpy.Addable<T, U>
-  nameWithType.vb: Addable(Of T, U)
-  fullName.vb: Sharpy.Addable(Of T, U)
-  name.vb: Addable(Of T, U)
-  spec.csharp:
-  - uid: Sharpy.Addable`2
-    name: Addable
-    href: Sharpy.Addable-2.html
-  - name: <
-  - name: T
-  - name: ','
-  - name: " "
-  - name: U
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.Addable`2
-    name: Addable
-    href: Sharpy.Addable-2.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: ','
-  - name: " "
-  - name: U
-  - name: )
-- uid: Sharpy.Addable`1
-  commentId: T:Sharpy.Addable`1
-  href: Sharpy.Addable-1.html
-  name: Addable<T>
-  nameWithType: Addable<T>
-  fullName: Sharpy.Addable<T>
-  nameWithType.vb: Addable(Of T)
-  fullName.vb: Sharpy.Addable(Of T)
-  name.vb: Addable(Of T)
-  spec.csharp:
-  - uid: Sharpy.Addable`1
-    name: Addable
-    href: Sharpy.Addable-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.Addable`1
-    name: Addable
-    href: Sharpy.Addable-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
 - uid: Sharpy.__Exports
   commentId: T:Sharpy.__Exports
   href: Sharpy.__Exports.html
   name: __Exports
   nameWithType: __Exports
   fullName: Sharpy.__Exports
-- uid: Sharpy.BoolConvertible
-  commentId: T:Sharpy.BoolConvertible
-  parent: Sharpy
-  href: Sharpy.BoolConvertible.html
-  name: BoolConvertible
-  nameWithType: BoolConvertible
-  fullName: Sharpy.BoolConvertible
 - uid: Sharpy.Bytes
   commentId: T:Sharpy.Bytes
   parent: Sharpy
@@ -130,31 +67,6 @@ references:
   name: Bytes
   nameWithType: Bytes
   fullName: Sharpy.Bytes
-- uid: Sharpy.Comparable`1
-  commentId: T:Sharpy.Comparable`1
-  href: Sharpy.Comparable-1.html
-  name: Comparable<T>
-  nameWithType: Comparable<T>
-  fullName: Sharpy.Comparable<T>
-  nameWithType.vb: Comparable(Of T)
-  fullName.vb: Sharpy.Comparable(Of T)
-  name.vb: Comparable(Of T)
-  spec.csharp:
-  - uid: Sharpy.Comparable`1
-    name: Comparable
-    href: Sharpy.Comparable-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.Comparable`1
-    name: Comparable
-    href: Sharpy.Comparable-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
 - uid: Sharpy.Dict`2
   commentId: T:Sharpy.Dict`2
   parent: Sharpy
@@ -219,183 +131,422 @@ references:
   - name: " "
   - name: V
   - name: )
-- uid: Sharpy.Equatable
-  commentId: T:Sharpy.Equatable
-  parent: Sharpy
-  href: Sharpy.Equatable.html
-  name: Equatable
-  nameWithType: Equatable
-  fullName: Sharpy.Equatable
-- uid: Sharpy.Equatable`1
-  commentId: T:Sharpy.Equatable`1
-  href: Sharpy.Equatable-1.html
-  name: Equatable<T>
-  nameWithType: Equatable<T>
-  fullName: Sharpy.Equatable<T>
-  nameWithType.vb: Equatable(Of T)
-  fullName.vb: Sharpy.Equatable(Of T)
-  name.vb: Equatable(Of T)
+- uid: Sharpy.IAddable`2
+  commentId: T:Sharpy.IAddable`2
+  href: Sharpy.IAddable-2.html
+  name: IAddable<T, U>
+  nameWithType: IAddable<T, U>
+  fullName: Sharpy.IAddable<T, U>
+  nameWithType.vb: IAddable(Of T, U)
+  fullName.vb: Sharpy.IAddable(Of T, U)
+  name.vb: IAddable(Of T, U)
   spec.csharp:
-  - uid: Sharpy.Equatable`1
-    name: Equatable
-    href: Sharpy.Equatable-1.html
+  - uid: Sharpy.IAddable`2
+    name: IAddable
+    href: Sharpy.IAddable-2.html
+  - name: <
+  - name: T
+  - name: ','
+  - name: " "
+  - name: U
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IAddable`2
+    name: IAddable
+    href: Sharpy.IAddable-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: ','
+  - name: " "
+  - name: U
+  - name: )
+- uid: Sharpy.IAddable`1
+  commentId: T:Sharpy.IAddable`1
+  href: Sharpy.IAddable-1.html
+  name: IAddable<T>
+  nameWithType: IAddable<T>
+  fullName: Sharpy.IAddable<T>
+  nameWithType.vb: IAddable(Of T)
+  fullName.vb: Sharpy.IAddable(Of T)
+  name.vb: IAddable(Of T)
+  spec.csharp:
+  - uid: Sharpy.IAddable`1
+    name: IAddable
+    href: Sharpy.IAddable-1.html
   - name: <
   - name: T
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Equatable`1
-    name: Equatable
-    href: Sharpy.Equatable-1.html
+  - uid: Sharpy.IAddable`1
+    name: IAddable
+    href: Sharpy.IAddable-1.html
   - name: (
   - name: Of
   - name: " "
   - name: T
   - name: )
-- uid: Sharpy.GreaterThanComparable`1
-  commentId: T:Sharpy.GreaterThanComparable`1
-  href: Sharpy.GreaterThanComparable-1.html
-  name: GreaterThanComparable<T>
-  nameWithType: GreaterThanComparable<T>
-  fullName: Sharpy.GreaterThanComparable<T>
-  nameWithType.vb: GreaterThanComparable(Of T)
-  fullName.vb: Sharpy.GreaterThanComparable(Of T)
-  name.vb: GreaterThanComparable(Of T)
+- uid: Sharpy.IBoolConvertible
+  commentId: T:Sharpy.IBoolConvertible
+  parent: Sharpy
+  href: Sharpy.IBoolConvertible.html
+  name: IBoolConvertible
+  nameWithType: IBoolConvertible
+  fullName: Sharpy.IBoolConvertible
+- uid: Sharpy.IComparable`1
+  commentId: T:Sharpy.IComparable`1
+  href: Sharpy.IComparable-1.html
+  name: IComparable<T>
+  nameWithType: IComparable<T>
+  fullName: Sharpy.IComparable<T>
+  nameWithType.vb: IComparable(Of T)
+  fullName.vb: Sharpy.IComparable(Of T)
+  name.vb: IComparable(Of T)
   spec.csharp:
-  - uid: Sharpy.GreaterThanComparable`1
-    name: GreaterThanComparable
-    href: Sharpy.GreaterThanComparable-1.html
+  - uid: Sharpy.IComparable`1
+    name: IComparable
+    href: Sharpy.IComparable-1.html
   - name: <
   - name: T
   - name: '>'
   spec.vb:
-  - uid: Sharpy.GreaterThanComparable`1
-    name: GreaterThanComparable
-    href: Sharpy.GreaterThanComparable-1.html
+  - uid: Sharpy.IComparable`1
+    name: IComparable
+    href: Sharpy.IComparable-1.html
   - name: (
   - name: Of
   - name: " "
   - name: T
   - name: )
-- uid: Sharpy.GreaterThanOrEquatable`1
-  commentId: T:Sharpy.GreaterThanOrEquatable`1
-  href: Sharpy.GreaterThanOrEquatable-1.html
-  name: GreaterThanOrEquatable<T>
-  nameWithType: GreaterThanOrEquatable<T>
-  fullName: Sharpy.GreaterThanOrEquatable<T>
-  nameWithType.vb: GreaterThanOrEquatable(Of T)
-  fullName.vb: Sharpy.GreaterThanOrEquatable(Of T)
-  name.vb: GreaterThanOrEquatable(Of T)
+- uid: Sharpy.IEquatable
+  commentId: T:Sharpy.IEquatable
+  parent: Sharpy
+  href: Sharpy.IEquatable.html
+  name: IEquatable
+  nameWithType: IEquatable
+  fullName: Sharpy.IEquatable
+- uid: Sharpy.IEquatable`1
+  commentId: T:Sharpy.IEquatable`1
+  href: Sharpy.IEquatable-1.html
+  name: IEquatable<T>
+  nameWithType: IEquatable<T>
+  fullName: Sharpy.IEquatable<T>
+  nameWithType.vb: IEquatable(Of T)
+  fullName.vb: Sharpy.IEquatable(Of T)
+  name.vb: IEquatable(Of T)
   spec.csharp:
-  - uid: Sharpy.GreaterThanOrEquatable`1
-    name: GreaterThanOrEquatable
-    href: Sharpy.GreaterThanOrEquatable-1.html
+  - uid: Sharpy.IEquatable`1
+    name: IEquatable
+    href: Sharpy.IEquatable-1.html
   - name: <
   - name: T
   - name: '>'
   spec.vb:
-  - uid: Sharpy.GreaterThanOrEquatable`1
-    name: GreaterThanOrEquatable
-    href: Sharpy.GreaterThanOrEquatable-1.html
+  - uid: Sharpy.IEquatable`1
+    name: IEquatable
+    href: Sharpy.IEquatable-1.html
   - name: (
   - name: Of
   - name: " "
   - name: T
   - name: )
-- uid: Sharpy.Hashable
-  commentId: T:Sharpy.Hashable
+- uid: Sharpy.IGreaterThanComparable`1
+  commentId: T:Sharpy.IGreaterThanComparable`1
+  href: Sharpy.IGreaterThanComparable-1.html
+  name: IGreaterThanComparable<T>
+  nameWithType: IGreaterThanComparable<T>
+  fullName: Sharpy.IGreaterThanComparable<T>
+  nameWithType.vb: IGreaterThanComparable(Of T)
+  fullName.vb: Sharpy.IGreaterThanComparable(Of T)
+  name.vb: IGreaterThanComparable(Of T)
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanComparable`1
+    name: IGreaterThanComparable
+    href: Sharpy.IGreaterThanComparable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IGreaterThanComparable`1
+    name: IGreaterThanComparable
+    href: Sharpy.IGreaterThanComparable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanOrEquatable`1
+  commentId: T:Sharpy.IGreaterThanOrEquatable`1
+  href: Sharpy.IGreaterThanOrEquatable-1.html
+  name: IGreaterThanOrEquatable<T>
+  nameWithType: IGreaterThanOrEquatable<T>
+  fullName: Sharpy.IGreaterThanOrEquatable<T>
+  nameWithType.vb: IGreaterThanOrEquatable(Of T)
+  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of T)
+  name.vb: IGreaterThanOrEquatable(Of T)
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanOrEquatable`1
+    name: IGreaterThanOrEquatable
+    href: Sharpy.IGreaterThanOrEquatable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IGreaterThanOrEquatable`1
+    name: IGreaterThanOrEquatable
+    href: Sharpy.IGreaterThanOrEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IHashable
+  commentId: T:Sharpy.IHashable
   parent: Sharpy
-  href: Sharpy.Hashable.html
-  name: Hashable
-  nameWithType: Hashable
-  fullName: Sharpy.Hashable
-- uid: Sharpy.Identifiable
-  commentId: T:Sharpy.Identifiable
+  href: Sharpy.IHashable.html
+  name: IHashable
+  nameWithType: IHashable
+  fullName: Sharpy.IHashable
+- uid: Sharpy.IIdentifiable
+  commentId: T:Sharpy.IIdentifiable
   parent: Sharpy
-  href: Sharpy.Identifiable.html
-  name: Identifiable
-  nameWithType: Identifiable
-  fullName: Sharpy.Identifiable
+  href: Sharpy.IIdentifiable.html
+  name: IIdentifiable
+  nameWithType: IIdentifiable
+  fullName: Sharpy.IIdentifiable
+- uid: Sharpy.IInequatable`1
+  commentId: T:Sharpy.IInequatable`1
+  href: Sharpy.IInequatable-1.html
+  name: IInequatable<T>
+  nameWithType: IInequatable<T>
+  fullName: Sharpy.IInequatable<T>
+  nameWithType.vb: IInequatable(Of T)
+  fullName.vb: Sharpy.IInequatable(Of T)
+  name.vb: IInequatable(Of T)
+  spec.csharp:
+  - uid: Sharpy.IInequatable`1
+    name: IInequatable
+    href: Sharpy.IInequatable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IInequatable`1
+    name: IInequatable
+    href: Sharpy.IInequatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IInplaceAddable`1
+  commentId: T:Sharpy.IInplaceAddable`1
+  href: Sharpy.IInplaceAddable-1.html
+  name: IInplaceAddable<T>
+  nameWithType: IInplaceAddable<T>
+  fullName: Sharpy.IInplaceAddable<T>
+  nameWithType.vb: IInplaceAddable(Of T)
+  fullName.vb: Sharpy.IInplaceAddable(Of T)
+  name.vb: IInplaceAddable(Of T)
+  spec.csharp:
+  - uid: Sharpy.IInplaceAddable`1
+    name: IInplaceAddable
+    href: Sharpy.IInplaceAddable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IInplaceAddable`1
+    name: IInplaceAddable
+    href: Sharpy.IInplaceAddable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IInplaceMultipliable`1
+  commentId: T:Sharpy.IInplaceMultipliable`1
+  href: Sharpy.IInplaceMultipliable-1.html
+  name: IInplaceMultipliable<T>
+  nameWithType: IInplaceMultipliable<T>
+  fullName: Sharpy.IInplaceMultipliable<T>
+  nameWithType.vb: IInplaceMultipliable(Of T)
+  fullName.vb: Sharpy.IInplaceMultipliable(Of T)
+  name.vb: IInplaceMultipliable(Of T)
+  spec.csharp:
+  - uid: Sharpy.IInplaceMultipliable`1
+    name: IInplaceMultipliable
+    href: Sharpy.IInplaceMultipliable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IInplaceMultipliable`1
+    name: IInplaceMultipliable
+    href: Sharpy.IInplaceMultipliable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.ILessThanComparable`1
+  commentId: T:Sharpy.ILessThanComparable`1
+  href: Sharpy.ILessThanComparable-1.html
+  name: ILessThanComparable<T>
+  nameWithType: ILessThanComparable<T>
+  fullName: Sharpy.ILessThanComparable<T>
+  nameWithType.vb: ILessThanComparable(Of T)
+  fullName.vb: Sharpy.ILessThanComparable(Of T)
+  name.vb: ILessThanComparable(Of T)
+  spec.csharp:
+  - uid: Sharpy.ILessThanComparable`1
+    name: ILessThanComparable
+    href: Sharpy.ILessThanComparable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.ILessThanComparable`1
+    name: ILessThanComparable
+    href: Sharpy.ILessThanComparable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.ILessThanOrEquatable`1
+  commentId: T:Sharpy.ILessThanOrEquatable`1
+  href: Sharpy.ILessThanOrEquatable-1.html
+  name: ILessThanOrEquatable<T>
+  nameWithType: ILessThanOrEquatable<T>
+  fullName: Sharpy.ILessThanOrEquatable<T>
+  nameWithType.vb: ILessThanOrEquatable(Of T)
+  fullName.vb: Sharpy.ILessThanOrEquatable(Of T)
+  name.vb: ILessThanOrEquatable(Of T)
+  spec.csharp:
+  - uid: Sharpy.ILessThanOrEquatable`1
+    name: ILessThanOrEquatable
+    href: Sharpy.ILessThanOrEquatable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.ILessThanOrEquatable`1
+    name: ILessThanOrEquatable
+    href: Sharpy.ILessThanOrEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
 - uid: Sharpy.IndexError
   commentId: T:Sharpy.IndexError
   href: Sharpy.IndexError.html
   name: IndexError
   nameWithType: IndexError
   fullName: Sharpy.IndexError
-- uid: Sharpy.Inequatable`1
-  commentId: T:Sharpy.Inequatable`1
-  href: Sharpy.Inequatable-1.html
-  name: Inequatable<T>
-  nameWithType: Inequatable<T>
-  fullName: Sharpy.Inequatable<T>
-  nameWithType.vb: Inequatable(Of T)
-  fullName.vb: Sharpy.Inequatable(Of T)
-  name.vb: Inequatable(Of T)
+- uid: Sharpy.IRepresentable
+  commentId: T:Sharpy.IRepresentable
+  parent: Sharpy
+  href: Sharpy.IRepresentable.html
+  name: IRepresentable
+  nameWithType: IRepresentable
+  fullName: Sharpy.IRepresentable
+- uid: Sharpy.IRightAddable`2
+  commentId: T:Sharpy.IRightAddable`2
+  href: Sharpy.IRightAddable-2.html
+  name: IRightAddable<T, U>
+  nameWithType: IRightAddable<T, U>
+  fullName: Sharpy.IRightAddable<T, U>
+  nameWithType.vb: IRightAddable(Of T, U)
+  fullName.vb: Sharpy.IRightAddable(Of T, U)
+  name.vb: IRightAddable(Of T, U)
   spec.csharp:
-  - uid: Sharpy.Inequatable`1
-    name: Inequatable
-    href: Sharpy.Inequatable-1.html
+  - uid: Sharpy.IRightAddable`2
+    name: IRightAddable
+    href: Sharpy.IRightAddable-2.html
+  - name: <
+  - name: T
+  - name: ','
+  - name: " "
+  - name: U
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IRightAddable`2
+    name: IRightAddable
+    href: Sharpy.IRightAddable-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: ','
+  - name: " "
+  - name: U
+  - name: )
+- uid: Sharpy.IRightAddable`1
+  commentId: T:Sharpy.IRightAddable`1
+  href: Sharpy.IRightAddable-1.html
+  name: IRightAddable<T>
+  nameWithType: IRightAddable<T>
+  fullName: Sharpy.IRightAddable<T>
+  nameWithType.vb: IRightAddable(Of T)
+  fullName.vb: Sharpy.IRightAddable(Of T)
+  name.vb: IRightAddable(Of T)
+  spec.csharp:
+  - uid: Sharpy.IRightAddable`1
+    name: IRightAddable
+    href: Sharpy.IRightAddable-1.html
   - name: <
   - name: T
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Inequatable`1
-    name: Inequatable
-    href: Sharpy.Inequatable-1.html
+  - uid: Sharpy.IRightAddable`1
+    name: IRightAddable
+    href: Sharpy.IRightAddable-1.html
   - name: (
   - name: Of
   - name: " "
   - name: T
   - name: )
-- uid: Sharpy.InplaceAddable`1
-  commentId: T:Sharpy.InplaceAddable`1
-  href: Sharpy.InplaceAddable-1.html
-  name: InplaceAddable<T>
-  nameWithType: InplaceAddable<T>
-  fullName: Sharpy.InplaceAddable<T>
-  nameWithType.vb: InplaceAddable(Of T)
-  fullName.vb: Sharpy.InplaceAddable(Of T)
-  name.vb: InplaceAddable(Of T)
+- uid: Sharpy.IRightMultipliable`2
+  commentId: T:Sharpy.IRightMultipliable`2
+  href: Sharpy.IRightMultipliable-2.html
+  name: IRightMultipliable<T, U>
+  nameWithType: IRightMultipliable<T, U>
+  fullName: Sharpy.IRightMultipliable<T, U>
+  nameWithType.vb: IRightMultipliable(Of T, U)
+  fullName.vb: Sharpy.IRightMultipliable(Of T, U)
+  name.vb: IRightMultipliable(Of T, U)
   spec.csharp:
-  - uid: Sharpy.InplaceAddable`1
-    name: InplaceAddable
-    href: Sharpy.InplaceAddable-1.html
+  - uid: Sharpy.IRightMultipliable`2
+    name: IRightMultipliable
+    href: Sharpy.IRightMultipliable-2.html
   - name: <
   - name: T
+  - name: ','
+  - name: " "
+  - name: U
   - name: '>'
   spec.vb:
-  - uid: Sharpy.InplaceAddable`1
-    name: InplaceAddable
-    href: Sharpy.InplaceAddable-1.html
+  - uid: Sharpy.IRightMultipliable`2
+    name: IRightMultipliable
+    href: Sharpy.IRightMultipliable-2.html
   - name: (
   - name: Of
   - name: " "
   - name: T
-  - name: )
-- uid: Sharpy.InplaceMultipliable`1
-  commentId: T:Sharpy.InplaceMultipliable`1
-  href: Sharpy.InplaceMultipliable-1.html
-  name: InplaceMultipliable<T>
-  nameWithType: InplaceMultipliable<T>
-  fullName: Sharpy.InplaceMultipliable<T>
-  nameWithType.vb: InplaceMultipliable(Of T)
-  fullName.vb: Sharpy.InplaceMultipliable(Of T)
-  name.vb: InplaceMultipliable(Of T)
-  spec.csharp:
-  - uid: Sharpy.InplaceMultipliable`1
-    name: InplaceMultipliable
-    href: Sharpy.InplaceMultipliable-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.InplaceMultipliable`1
-    name: InplaceMultipliable
-    href: Sharpy.InplaceMultipliable-1.html
-  - name: (
-  - name: Of
+  - name: ','
   - name: " "
-  - name: T
+  - name: U
   - name: )
+- uid: Sharpy.IStrConvertible
+  commentId: T:Sharpy.IStrConvertible
+  parent: Sharpy
+  href: Sharpy.IStrConvertible.html
+  name: IStrConvertible
+  nameWithType: IStrConvertible
+  fullName: Sharpy.IStrConvertible
 - uid: Sharpy.Iterator`1
   commentId: T:Sharpy.Iterator`1
   parent: Sharpy
@@ -428,56 +579,6 @@ references:
   name: KeyError
   nameWithType: KeyError
   fullName: Sharpy.KeyError
-- uid: Sharpy.LessThanComparable`1
-  commentId: T:Sharpy.LessThanComparable`1
-  href: Sharpy.LessThanComparable-1.html
-  name: LessThanComparable<T>
-  nameWithType: LessThanComparable<T>
-  fullName: Sharpy.LessThanComparable<T>
-  nameWithType.vb: LessThanComparable(Of T)
-  fullName.vb: Sharpy.LessThanComparable(Of T)
-  name.vb: LessThanComparable(Of T)
-  spec.csharp:
-  - uid: Sharpy.LessThanComparable`1
-    name: LessThanComparable
-    href: Sharpy.LessThanComparable-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.LessThanComparable`1
-    name: LessThanComparable
-    href: Sharpy.LessThanComparable-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
-- uid: Sharpy.LessThanOrEquatable`1
-  commentId: T:Sharpy.LessThanOrEquatable`1
-  href: Sharpy.LessThanOrEquatable-1.html
-  name: LessThanOrEquatable<T>
-  nameWithType: LessThanOrEquatable<T>
-  fullName: Sharpy.LessThanOrEquatable<T>
-  nameWithType.vb: LessThanOrEquatable(Of T)
-  fullName.vb: Sharpy.LessThanOrEquatable(Of T)
-  name.vb: LessThanOrEquatable(Of T)
-  spec.csharp:
-  - uid: Sharpy.LessThanOrEquatable`1
-    name: LessThanOrEquatable
-    href: Sharpy.LessThanOrEquatable-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.LessThanOrEquatable`1
-    name: LessThanOrEquatable
-    href: Sharpy.LessThanOrEquatable-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
 - uid: Sharpy.List`1
   commentId: T:Sharpy.List`1
   parent: Sharpy
@@ -554,19 +655,19 @@ references:
   - name: " "
   - name: T
   - name: )
-- uid: Sharpy.Multipliable`2
-  commentId: T:Sharpy.Multipliable`2
-  href: Sharpy.Multipliable-2.html
-  name: Multipliable<T, U>
-  nameWithType: Multipliable<T, U>
-  fullName: Sharpy.Multipliable<T, U>
-  nameWithType.vb: Multipliable(Of T, U)
-  fullName.vb: Sharpy.Multipliable(Of T, U)
-  name.vb: Multipliable(Of T, U)
+- uid: Sharpy.IMultipliable`2
+  commentId: T:Sharpy.IMultipliable`2
+  href: Sharpy.IMultipliable-2.html
+  name: IMultipliable<T, U>
+  nameWithType: IMultipliable<T, U>
+  fullName: Sharpy.IMultipliable<T, U>
+  nameWithType.vb: IMultipliable(Of T, U)
+  fullName.vb: Sharpy.IMultipliable(Of T, U)
+  name.vb: IMultipliable(Of T, U)
   spec.csharp:
-  - uid: Sharpy.Multipliable`2
-    name: Multipliable
-    href: Sharpy.Multipliable-2.html
+  - uid: Sharpy.IMultipliable`2
+    name: IMultipliable
+    href: Sharpy.IMultipliable-2.html
   - name: <
   - name: T
   - name: ','
@@ -574,9 +675,9 @@ references:
   - name: U
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Multipliable`2
-    name: Multipliable
-    href: Sharpy.Multipliable-2.html
+  - uid: Sharpy.IMultipliable`2
+    name: IMultipliable
+    href: Sharpy.IMultipliable-2.html
   - name: (
   - name: Of
   - name: " "
@@ -624,100 +725,6 @@ references:
   - name: " "
   - name: T
   - name: )
-- uid: Sharpy.Representable
-  commentId: T:Sharpy.Representable
-  parent: Sharpy
-  href: Sharpy.Representable.html
-  name: Representable
-  nameWithType: Representable
-  fullName: Sharpy.Representable
-- uid: Sharpy.RightAddable`2
-  commentId: T:Sharpy.RightAddable`2
-  href: Sharpy.RightAddable-2.html
-  name: RightAddable<T, U>
-  nameWithType: RightAddable<T, U>
-  fullName: Sharpy.RightAddable<T, U>
-  nameWithType.vb: RightAddable(Of T, U)
-  fullName.vb: Sharpy.RightAddable(Of T, U)
-  name.vb: RightAddable(Of T, U)
-  spec.csharp:
-  - uid: Sharpy.RightAddable`2
-    name: RightAddable
-    href: Sharpy.RightAddable-2.html
-  - name: <
-  - name: T
-  - name: ','
-  - name: " "
-  - name: U
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.RightAddable`2
-    name: RightAddable
-    href: Sharpy.RightAddable-2.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: ','
-  - name: " "
-  - name: U
-  - name: )
-- uid: Sharpy.RightAddable`1
-  commentId: T:Sharpy.RightAddable`1
-  href: Sharpy.RightAddable-1.html
-  name: RightAddable<T>
-  nameWithType: RightAddable<T>
-  fullName: Sharpy.RightAddable<T>
-  nameWithType.vb: RightAddable(Of T)
-  fullName.vb: Sharpy.RightAddable(Of T)
-  name.vb: RightAddable(Of T)
-  spec.csharp:
-  - uid: Sharpy.RightAddable`1
-    name: RightAddable
-    href: Sharpy.RightAddable-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.RightAddable`1
-    name: RightAddable
-    href: Sharpy.RightAddable-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
-- uid: Sharpy.RightMultipliable`2
-  commentId: T:Sharpy.RightMultipliable`2
-  href: Sharpy.RightMultipliable-2.html
-  name: RightMultipliable<T, U>
-  nameWithType: RightMultipliable<T, U>
-  fullName: Sharpy.RightMultipliable<T, U>
-  nameWithType.vb: RightMultipliable(Of T, U)
-  fullName.vb: Sharpy.RightMultipliable(Of T, U)
-  name.vb: RightMultipliable(Of T, U)
-  spec.csharp:
-  - uid: Sharpy.RightMultipliable`2
-    name: RightMultipliable
-    href: Sharpy.RightMultipliable-2.html
-  - name: <
-  - name: T
-  - name: ','
-  - name: " "
-  - name: U
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.RightMultipliable`2
-    name: RightMultipliable
-    href: Sharpy.RightMultipliable-2.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: ','
-  - name: " "
-  - name: U
-  - name: )
 - uid: Sharpy.Set`1
   commentId: T:Sharpy.Set`1
   parent: Sharpy
@@ -764,13 +771,6 @@ references:
   name: Str
   nameWithType: Str
   fullName: Sharpy.Str
-- uid: Sharpy.StrConvertible
-  commentId: T:Sharpy.StrConvertible
-  parent: Sharpy
-  href: Sharpy.StrConvertible.html
-  name: StrConvertible
-  nameWithType: StrConvertible
-  fullName: Sharpy.StrConvertible
 - uid: Sharpy.TypeError
   commentId: T:Sharpy.TypeError
   href: Sharpy.TypeError.html

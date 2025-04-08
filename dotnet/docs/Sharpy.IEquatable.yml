@@ -1,0 +1,289 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.IEquatable
+  commentId: T:Sharpy.IEquatable
+  id: IEquatable
+  parent: Sharpy
+  children:
+  - Sharpy.IEquatable.Equals(System.Object)
+  - Sharpy.IEquatable.__Eq__(System.Object)
+  langs:
+  - csharp
+  - vb
+  name: IEquatable
+  nameWithType: IEquatable
+  fullName: Sharpy.IEquatable
+  type: Interface
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IEquatable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IEquatable
+    path: ../src/Sharpy/IEquatable.cs
+    startLine: 9
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    This interface defines objects that can be checked for equality via
+
+    the <code>__Eq__</code> method. Equality in Sharpy is not the same as
+
+    reference equality (except for <xref href="Sharpy.Object" data-throw-if-not-resolved="false"></xref>). All Sharpy
+
+    objects implement this interface. This is the non-generic version of
+
+    the <xref href="Sharpy.IEquatable%601" data-throw-if-not-resolved="false"></xref> interface.
+  example: []
+  syntax:
+    content: 'public interface IEquatable : IHashable'
+    content.vb: Public Interface IEquatable Inherits IHashable
+  inheritedMembers:
+  - Sharpy.IHashable.__Hash__
+- uid: Sharpy.IEquatable.Equals(System.Object)
+  commentId: M:Sharpy.IEquatable.Equals(System.Object)
+  id: Equals(System.Object)
+  parent: Sharpy.IEquatable
+  langs:
+  - csharp
+  - vb
+  name: Equals(object?)
+  nameWithType: IEquatable.Equals(object?)
+  fullName: Sharpy.IEquatable.Equals(object?)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IEquatable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Equals
+    path: ../src/Sharpy/IEquatable.cs
+    startLine: 16
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  remarks: >-
+    This should delegate to <xref href="Sharpy.IEquatable.__Eq__(System.Object)" data-throw-if-not-resolved="false"></xref>. All C# (and
+
+    therefore Sharpy) objects declare this by existing because they
+
+    all subclass <xref href="System.Object" data-throw-if-not-resolved="false"></xref> which implements this.
+  example: []
+  syntax:
+    content: bool Equals(object? other)
+    parameters:
+    - id: other
+      type: System.Object
+    return:
+      type: System.Boolean
+    content.vb: Function Equals(other As Object) As Boolean
+  overload: Sharpy.IEquatable.Equals*
+  nameWithType.vb: IEquatable.Equals(Object)
+  fullName.vb: Sharpy.IEquatable.Equals(Object)
+  name.vb: Equals(Object)
+- uid: Sharpy.IEquatable.__Eq__(System.Object)
+  commentId: M:Sharpy.IEquatable.__Eq__(System.Object)
+  id: __Eq__(System.Object)
+  parent: Sharpy.IEquatable
+  langs:
+  - csharp
+  - vb
+  name: __Eq__(object)
+  nameWithType: IEquatable.__Eq__(object)
+  fullName: Sharpy.IEquatable.__Eq__(object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IEquatable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Eq__
+    path: ../src/Sharpy/IEquatable.cs
+    startLine: 22
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  remarks: >-
+    This should delegate to <xref href="Sharpy.IEquatable%601.__Eq__(%600)" data-throw-if-not-resolved="false"></xref>
+
+    when possible.
+  example: []
+  syntax:
+    content: bool __Eq__(object other)
+    parameters:
+    - id: other
+      type: System.Object
+    return:
+      type: System.Boolean
+    content.vb: Function __Eq__(other As Object) As Boolean
+  overload: Sharpy.IEquatable.__Eq__*
+  nameWithType.vb: IEquatable.__Eq__(Object)
+  fullName.vb: Sharpy.IEquatable.__Eq__(Object)
+  name.vb: __Eq__(Object)
+references:
+- uid: Sharpy.Object
+  commentId: T:Sharpy.Object
+  parent: Sharpy
+  href: Sharpy.Object.html
+  name: Object
+  nameWithType: Object
+  fullName: Sharpy.Object
+- uid: Sharpy.IEquatable`1
+  commentId: T:Sharpy.IEquatable`1
+  href: Sharpy.IEquatable-1.html
+  name: IEquatable<T>
+  nameWithType: IEquatable<T>
+  fullName: Sharpy.IEquatable<T>
+  nameWithType.vb: IEquatable(Of T)
+  fullName.vb: Sharpy.IEquatable(Of T)
+  name.vb: IEquatable(Of T)
+  spec.csharp:
+  - uid: Sharpy.IEquatable`1
+    name: IEquatable
+    href: Sharpy.IEquatable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IEquatable`1
+    name: IEquatable
+    href: Sharpy.IEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: Sharpy.IHashable.__Hash__
+  commentId: M:Sharpy.IHashable.__Hash__
+  parent: Sharpy.IHashable
+  href: Sharpy.IHashable.html#Sharpy_IHashable___Hash__
+  name: __Hash__()
+  nameWithType: IHashable.__Hash__()
+  fullName: Sharpy.IHashable.__Hash__()
+  spec.csharp:
+  - uid: Sharpy.IHashable.__Hash__
+    name: __Hash__
+    href: Sharpy.IHashable.html#Sharpy_IHashable___Hash__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IHashable.__Hash__
+    name: __Hash__
+    href: Sharpy.IHashable.html#Sharpy_IHashable___Hash__
+  - name: (
+  - name: )
+- uid: Sharpy.IHashable
+  commentId: T:Sharpy.IHashable
+  parent: Sharpy
+  href: Sharpy.IHashable.html
+  name: IHashable
+  nameWithType: IHashable
+  fullName: Sharpy.IHashable
+- uid: Sharpy.IEquatable.__Eq__(System.Object)
+  commentId: M:Sharpy.IEquatable.__Eq__(System.Object)
+  parent: Sharpy.IEquatable
+  isExternal: true
+  href: Sharpy.IEquatable.html#Sharpy_IEquatable___Eq___System_Object_
+  name: __Eq__(object)
+  nameWithType: IEquatable.__Eq__(object)
+  fullName: Sharpy.IEquatable.__Eq__(object)
+  nameWithType.vb: IEquatable.__Eq__(Object)
+  fullName.vb: Sharpy.IEquatable.__Eq__(Object)
+  name.vb: __Eq__(Object)
+  spec.csharp:
+  - uid: Sharpy.IEquatable.__Eq__(System.Object)
+    name: __Eq__
+    href: Sharpy.IEquatable.html#Sharpy_IEquatable___Eq___System_Object_
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IEquatable.__Eq__(System.Object)
+    name: __Eq__
+    href: Sharpy.IEquatable.html#Sharpy_IEquatable___Eq___System_Object_
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object
+  commentId: T:System.Object
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object
+  name: object
+  nameWithType: object
+  fullName: object
+  nameWithType.vb: Object
+  fullName.vb: Object
+  name.vb: Object
+- uid: Sharpy.IEquatable.Equals*
+  commentId: Overload:Sharpy.IEquatable.Equals
+  href: Sharpy.IEquatable.html#Sharpy_IEquatable_Equals_System_Object_
+  name: Equals
+  nameWithType: IEquatable.Equals
+  fullName: Sharpy.IEquatable.Equals
+- uid: System.Boolean
+  commentId: T:System.Boolean
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.boolean
+  name: bool
+  nameWithType: bool
+  fullName: bool
+  nameWithType.vb: Boolean
+  fullName.vb: Boolean
+  name.vb: Boolean
+- uid: Sharpy.IEquatable
+  commentId: T:Sharpy.IEquatable
+  parent: Sharpy
+  href: Sharpy.IEquatable.html
+  name: IEquatable
+  nameWithType: IEquatable
+  fullName: Sharpy.IEquatable
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: Sharpy.IEquatable`1.__Eq__(`0)
+  commentId: M:Sharpy.IEquatable`1.__Eq__(`0)
+  href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+  name: __Eq__(T)
+  nameWithType: IEquatable<T>.__Eq__(T)
+  fullName: Sharpy.IEquatable<T>.__Eq__(T)
+  nameWithType.vb: IEquatable(Of T).__Eq__(T)
+  fullName.vb: Sharpy.IEquatable(Of T).__Eq__(T)
+  spec.csharp:
+  - uid: Sharpy.IEquatable`1.__Eq__(`0)
+    name: __Eq__
+    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IEquatable`1.__Eq__(`0)
+    name: __Eq__
+    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.IEquatable.__Eq__*
+  commentId: Overload:Sharpy.IEquatable.__Eq__
+  href: Sharpy.IEquatable.html#Sharpy_IEquatable___Eq___System_Object_
+  name: __Eq__
+  nameWithType: IEquatable.__Eq__
+  fullName: Sharpy.IEquatable.__Eq__

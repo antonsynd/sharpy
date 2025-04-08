@@ -17,12 +17,12 @@ items:
   type: Class
   source:
     remote:
-      path: dotnet/src/Sharpy/Iterator/Iterator.Iterable.cs
+      path: dotnet/src/Sharpy/Iterator/Iterator.IIterable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Iterator
-    path: ../src/Sharpy/Iterator/Iterator.Iterable.cs
-    startLine: 4
+    path: ../src/Sharpy/Iterator/Iterator.IIterable.cs
+    startLine: 2
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -51,7 +51,7 @@ items:
 
     container object (such as a list) produces a fresh new iterator each
 
-    time you pass it to the Iter(Iterable&lt;T&gt;) function or use it in a
+    time you pass it to the Iter(IIterable&lt;T&gt;) function or use it in a
 
     <code>for</code> loop. Attempting this with an iterator will just return the
 
@@ -60,17 +60,17 @@ items:
     making it appear like an empty container.
   example: []
   syntax:
-    content: 'public abstract class Iterator<T> : Iterable<T>, IEnumerable<T>, IEnumerable'
+    content: 'public abstract class Iterator<T> : IIterable<T>, IEnumerable<T>, IEnumerable'
     typeParameters:
     - id: T
-    content.vb: Public MustInherit Class Iterator(Of T) Implements Iterable(Of T), IEnumerable(Of T), IEnumerable
+    content.vb: Public MustInherit Class Iterator(Of T) Implements IIterable(Of T), IEnumerable(Of T), IEnumerable
   inheritance:
   - System.Object
   derivedClasses:
   - Sharpy.ListIterator`1
   - Sharpy.ListReverseIterator`1
   implements:
-  - Sharpy.Collections.Interfaces.Iterable{{T}}
+  - Sharpy.Collections.Interfaces.IIterable{{T}}
   - System.Collections.Generic.IEnumerable{{T}}
   - System.Collections.IEnumerable
   inheritedMembers:
@@ -137,7 +137,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: GetEnumerator
     path: ../src/Sharpy/Iterator/Iterator.IEnumerable.cs
-    startLine: 8
+    startLine: 7
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -167,12 +167,12 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Iterator/Iterator.Iterable.cs
+      path: dotnet/src/Sharpy/Iterator/Iterator.IIterable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Iter__
-    path: ../src/Sharpy/Iterator/Iterator.Iterable.cs
-    startLine: 11
+    path: ../src/Sharpy/Iterator/Iterator.IIterable.cs
+    startLine: 9
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -190,7 +190,7 @@ items:
     content.vb: Public Overridable Function __Iter__() As Iterator(Of T)
   overload: Sharpy.Iterator`1.__Iter__*
   implements:
-  - Sharpy.Collections.Interfaces.Iterable{{T}}.__Iter__
+  - Sharpy.Collections.Interfaces.IIterable{{T}}.__Iter__
   nameWithType.vb: Iterator(Of T).__Iter__()
   fullName.vb: Sharpy.Iterator(Of T).__Iter__()
 references:
@@ -257,28 +257,28 @@ references:
   nameWithType.vb: Object
   fullName.vb: Object
   name.vb: Object
-- uid: Sharpy.Collections.Interfaces.Iterable{{T}}
-  commentId: T:Sharpy.Collections.Interfaces.Iterable{``0}
+- uid: Sharpy.Collections.Interfaces.IIterable{{T}}
+  commentId: T:Sharpy.Collections.Interfaces.IIterable{``0}
   parent: Sharpy.Collections.Interfaces
-  definition: Sharpy.Collections.Interfaces.Iterable`1
-  href: Sharpy.Collections.Interfaces.Iterable-1.html
-  name: Iterable<T>
-  nameWithType: Iterable<T>
-  fullName: Sharpy.Collections.Interfaces.Iterable<T>
-  nameWithType.vb: Iterable(Of T)
-  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T)
-  name.vb: Iterable(Of T)
+  definition: Sharpy.Collections.Interfaces.IIterable`1
+  href: Sharpy.Collections.Interfaces.IIterable-1.html
+  name: IIterable<T>
+  nameWithType: IIterable<T>
+  fullName: Sharpy.Collections.Interfaces.IIterable<T>
+  nameWithType.vb: IIterable(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of T)
+  name.vb: IIterable(Of T)
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.Iterable`1
-    name: Iterable
-    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
   - name: <
   - name: T
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.Iterable`1
-    name: Iterable
-    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
   - name: (
   - name: Of
   - name: " "
@@ -547,26 +547,26 @@ references:
   name: System
   nameWithType: System
   fullName: System
-- uid: Sharpy.Collections.Interfaces.Iterable`1
-  commentId: T:Sharpy.Collections.Interfaces.Iterable`1
-  href: Sharpy.Collections.Interfaces.Iterable-1.html
-  name: Iterable<T>
-  nameWithType: Iterable<T>
-  fullName: Sharpy.Collections.Interfaces.Iterable<T>
-  nameWithType.vb: Iterable(Of T)
-  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T)
-  name.vb: Iterable(Of T)
+- uid: Sharpy.Collections.Interfaces.IIterable`1
+  commentId: T:Sharpy.Collections.Interfaces.IIterable`1
+  href: Sharpy.Collections.Interfaces.IIterable-1.html
+  name: IIterable<T>
+  nameWithType: IIterable<T>
+  fullName: Sharpy.Collections.Interfaces.IIterable<T>
+  nameWithType.vb: IIterable(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of T)
+  name.vb: IIterable(Of T)
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.Iterable`1
-    name: Iterable
-    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
   - name: <
   - name: T
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.Iterable`1
-    name: Iterable
-    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
   - name: (
   - name: Of
   - name: " "
@@ -832,26 +832,26 @@ references:
   fullName: Sharpy.Iterator<T>.__Iter__
   nameWithType.vb: Iterator(Of T).__Iter__
   fullName.vb: Sharpy.Iterator(Of T).__Iter__
-- uid: Sharpy.Collections.Interfaces.Iterable{{T}}.__Iter__
-  commentId: M:Sharpy.Collections.Interfaces.Iterable{`0}.__Iter__
-  parent: Sharpy.Collections.Interfaces.Iterable{{T}}
-  definition: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
-  href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+- uid: Sharpy.Collections.Interfaces.IIterable{{T}}.__Iter__
+  commentId: M:Sharpy.Collections.Interfaces.IIterable{`0}.__Iter__
+  parent: Sharpy.Collections.Interfaces.IIterable{{T}}
+  definition: Sharpy.Collections.Interfaces.IIterable`1.__Iter__
+  href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
   name: __Iter__()
-  nameWithType: Iterable<T>.__Iter__()
-  fullName: Sharpy.Collections.Interfaces.Iterable<T>.__Iter__()
-  nameWithType.vb: Iterable(Of T).__Iter__()
-  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T).__Iter__()
+  nameWithType: IIterable<T>.__Iter__()
+  fullName: Sharpy.Collections.Interfaces.IIterable<T>.__Iter__()
+  nameWithType.vb: IIterable(Of T).__Iter__()
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of T).__Iter__()
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.Iterable{`0}.__Iter__
+  - uid: Sharpy.Collections.Interfaces.IIterable{`0}.__Iter__
     name: __Iter__
-    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+    href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
   - name: (
   - name: )
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.Iterable{`0}.__Iter__
+  - uid: Sharpy.Collections.Interfaces.IIterable{`0}.__Iter__
     name: __Iter__
-    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+    href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
   - name: (
   - name: )
 - uid: Sharpy.Iterator`1
@@ -880,23 +880,23 @@ references:
   - name: " "
   - name: T
   - name: )
-- uid: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
-  commentId: M:Sharpy.Collections.Interfaces.Iterable`1.__Iter__
-  href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+- uid: Sharpy.Collections.Interfaces.IIterable`1.__Iter__
+  commentId: M:Sharpy.Collections.Interfaces.IIterable`1.__Iter__
+  href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
   name: __Iter__()
-  nameWithType: Iterable<T>.__Iter__()
-  fullName: Sharpy.Collections.Interfaces.Iterable<T>.__Iter__()
-  nameWithType.vb: Iterable(Of T).__Iter__()
-  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T).__Iter__()
+  nameWithType: IIterable<T>.__Iter__()
+  fullName: Sharpy.Collections.Interfaces.IIterable<T>.__Iter__()
+  nameWithType.vb: IIterable(Of T).__Iter__()
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of T).__Iter__()
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+  - uid: Sharpy.Collections.Interfaces.IIterable`1.__Iter__
     name: __Iter__
-    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+    href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
   - name: (
   - name: )
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+  - uid: Sharpy.Collections.Interfaces.IIterable`1.__Iter__
     name: __Iter__
-    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+    href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
   - name: (
   - name: )

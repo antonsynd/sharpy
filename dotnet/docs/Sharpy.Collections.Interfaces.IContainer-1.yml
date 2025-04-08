@@ -1,0 +1,217 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.Collections.Interfaces.IContainer`1
+  commentId: T:Sharpy.Collections.Interfaces.IContainer`1
+  id: IContainer`1
+  parent: Sharpy.Collections.Interfaces
+  children:
+  - Sharpy.Collections.Interfaces.IContainer`1.Contains(`0)
+  - Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
+  langs:
+  - csharp
+  - vb
+  name: IContainer<T>
+  nameWithType: IContainer<T>
+  fullName: Sharpy.Collections.Interfaces.IContainer<T>
+  type: Interface
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Collections/Interfaces/IContainer.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IContainer
+    path: ../src/Sharpy/Collections/Interfaces/IContainer.cs
+    startLine: 6
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Collections.Interfaces
+  summary: >-
+    Interface for classes that provide the <xref href="Sharpy.Collections.Interfaces.IContainer%601.__Contains__(%600)" data-throw-if-not-resolved="false"></xref>
+
+    method.
+  example: []
+  syntax:
+    content: public interface IContainer<T>
+    typeParameters:
+    - id: T
+    content.vb: Public Interface IContainer(Of T)
+  nameWithType.vb: IContainer(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.IContainer(Of T)
+  name.vb: IContainer(Of T)
+- uid: Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
+  commentId: M:Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
+  id: __Contains__(`0)
+  parent: Sharpy.Collections.Interfaces.IContainer`1
+  langs:
+  - csharp
+  - vb
+  name: __Contains__(T)
+  nameWithType: IContainer<T>.__Contains__(T)
+  fullName: Sharpy.Collections.Interfaces.IContainer<T>.__Contains__(T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Collections/Interfaces/IContainer.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Contains__
+    path: ../src/Sharpy/Collections/Interfaces/IContainer.cs
+    startLine: 16
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Collections.Interfaces
+  summary: >-
+    Called to implement membership test operators. Should return
+
+    <code>true</code> if item is in self, <code>false</code> otherwise.
+  remarks: >-
+    For mapping objects, this should consider the keys of the mapping
+
+    rather than the values or the key-item pairs.
+  example: []
+  syntax:
+    content: bool __Contains__(T x)
+    parameters:
+    - id: x
+      type: '{T}'
+    return:
+      type: System.Boolean
+    content.vb: Function __Contains__(x As T) As Boolean
+  overload: Sharpy.Collections.Interfaces.IContainer`1.__Contains__*
+  nameWithType.vb: IContainer(Of T).__Contains__(T)
+  fullName.vb: Sharpy.Collections.Interfaces.IContainer(Of T).__Contains__(T)
+- uid: Sharpy.Collections.Interfaces.IContainer`1.Contains(`0)
+  commentId: M:Sharpy.Collections.Interfaces.IContainer`1.Contains(`0)
+  id: Contains(`0)
+  parent: Sharpy.Collections.Interfaces.IContainer`1
+  langs:
+  - csharp
+  - vb
+  name: Contains(T)
+  nameWithType: IContainer<T>.Contains(T)
+  fullName: Sharpy.Collections.Interfaces.IContainer<T>.Contains(T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Collections/Interfaces/IContainer.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Contains
+    path: ../src/Sharpy/Collections/Interfaces/IContainer.cs
+    startLine: 22
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Collections.Interfaces
+  remarks: >-
+    In subclasses, this must call <xref href="Sharpy.Collections.Interfaces.IContainer%601.__Contains__(%600)" data-throw-if-not-resolved="false"></xref> to
+
+    correctly implement <code>x in y</code> behavior.
+  example: []
+  syntax:
+    content: bool Contains(T x)
+    parameters:
+    - id: x
+      type: '{T}'
+    return:
+      type: System.Boolean
+    content.vb: Function Contains(x As T) As Boolean
+  overload: Sharpy.Collections.Interfaces.IContainer`1.Contains*
+  nameWithType.vb: IContainer(Of T).Contains(T)
+  fullName.vb: Sharpy.Collections.Interfaces.IContainer(Of T).Contains(T)
+references:
+- uid: Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
+  commentId: M:Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
+  href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1___Contains____0_
+  name: __Contains__(T)
+  nameWithType: IContainer<T>.__Contains__(T)
+  fullName: Sharpy.Collections.Interfaces.IContainer<T>.__Contains__(T)
+  nameWithType.vb: IContainer(Of T).__Contains__(T)
+  fullName.vb: Sharpy.Collections.Interfaces.IContainer(Of T).__Contains__(T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
+    name: __Contains__
+    href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1___Contains____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
+    name: __Contains__
+    href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1___Contains____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces
+  commentId: N:Sharpy.Collections.Interfaces
+  href: Sharpy.html
+  name: Sharpy.Collections.Interfaces
+  nameWithType: Sharpy.Collections.Interfaces
+  fullName: Sharpy.Collections.Interfaces
+  spec.csharp:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+  spec.vb:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+- uid: Sharpy.Collections.Interfaces.IContainer`1.__Contains__*
+  commentId: Overload:Sharpy.Collections.Interfaces.IContainer`1.__Contains__
+  href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1___Contains____0_
+  name: __Contains__
+  nameWithType: IContainer<T>.__Contains__
+  fullName: Sharpy.Collections.Interfaces.IContainer<T>.__Contains__
+  nameWithType.vb: IContainer(Of T).__Contains__
+  fullName.vb: Sharpy.Collections.Interfaces.IContainer(Of T).__Contains__
+- uid: '{T}'
+  commentId: '!:T'
+  definition: T
+  name: T
+  nameWithType: T
+  fullName: T
+- uid: System.Boolean
+  commentId: T:System.Boolean
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.boolean
+  name: bool
+  nameWithType: bool
+  fullName: bool
+  nameWithType.vb: Boolean
+  fullName.vb: Boolean
+  name.vb: Boolean
+- uid: T
+  name: T
+  nameWithType: T
+  fullName: T
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: Sharpy.Collections.Interfaces.IContainer`1.Contains*
+  commentId: Overload:Sharpy.Collections.Interfaces.IContainer`1.Contains
+  href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1_Contains__0_
+  name: Contains
+  nameWithType: IContainer<T>.Contains
+  fullName: Sharpy.Collections.Interfaces.IContainer<T>.Contains
+  nameWithType.vb: IContainer(Of T).Contains
+  fullName.vb: Sharpy.Collections.Interfaces.IContainer(Of T).Contains

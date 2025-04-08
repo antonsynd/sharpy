@@ -1,0 +1,116 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.IStrConvertible
+  commentId: T:Sharpy.IStrConvertible
+  id: IStrConvertible
+  parent: Sharpy
+  children:
+  - Sharpy.IStrConvertible.__Str__
+  langs:
+  - csharp
+  - vb
+  name: IStrConvertible
+  nameWithType: IStrConvertible
+  fullName: Sharpy.IStrConvertible
+  type: Interface
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IStrConvertible.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IStrConvertible
+    path: ../src/Sharpy/IStrConvertible.cs
+    startLine: 2
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: 'public interface IStrConvertible : IRepresentable'
+    content.vb: Public Interface IStrConvertible Inherits IRepresentable
+  inheritedMembers:
+  - Sharpy.IRepresentable.__Repr__
+- uid: Sharpy.IStrConvertible.__Str__
+  commentId: M:Sharpy.IStrConvertible.__Str__
+  id: __Str__
+  parent: Sharpy.IStrConvertible
+  langs:
+  - csharp
+  - vb
+  name: __Str__()
+  nameWithType: IStrConvertible.__Str__()
+  fullName: Sharpy.IStrConvertible.__Str__()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IStrConvertible.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Str__
+    path: ../src/Sharpy/IStrConvertible.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: string __Str__()
+    return:
+      type: System.String
+    content.vb: Function __Str__() As String
+  overload: Sharpy.IStrConvertible.__Str__*
+references:
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: Sharpy.IRepresentable.__Repr__
+  commentId: M:Sharpy.IRepresentable.__Repr__
+  parent: Sharpy.IRepresentable
+  href: Sharpy.IRepresentable.html#Sharpy_IRepresentable___Repr__
+  name: __Repr__()
+  nameWithType: IRepresentable.__Repr__()
+  fullName: Sharpy.IRepresentable.__Repr__()
+  spec.csharp:
+  - uid: Sharpy.IRepresentable.__Repr__
+    name: __Repr__
+    href: Sharpy.IRepresentable.html#Sharpy_IRepresentable___Repr__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IRepresentable.__Repr__
+    name: __Repr__
+    href: Sharpy.IRepresentable.html#Sharpy_IRepresentable___Repr__
+  - name: (
+  - name: )
+- uid: Sharpy.IRepresentable
+  commentId: T:Sharpy.IRepresentable
+  parent: Sharpy
+  href: Sharpy.IRepresentable.html
+  name: IRepresentable
+  nameWithType: IRepresentable
+  fullName: Sharpy.IRepresentable
+- uid: Sharpy.IStrConvertible.__Str__*
+  commentId: Overload:Sharpy.IStrConvertible.__Str__
+  href: Sharpy.IStrConvertible.html#Sharpy_IStrConvertible___Str__
+  name: __Str__
+  nameWithType: IStrConvertible.__Str__
+  fullName: Sharpy.IStrConvertible.__Str__
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System

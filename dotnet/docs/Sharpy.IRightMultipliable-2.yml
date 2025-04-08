@@ -1,0 +1,103 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.IRightMultipliable`2
+  commentId: T:Sharpy.IRightMultipliable`2
+  id: IRightMultipliable`2
+  parent: Sharpy
+  children:
+  - Sharpy.IRightMultipliable`2.__RMul__(`1)
+  langs:
+  - csharp
+  - vb
+  name: IRightMultipliable<T, U>
+  nameWithType: IRightMultipliable<T, U>
+  fullName: Sharpy.IRightMultipliable<T, U>
+  type: Interface
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IRightMultipliable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IRightMultipliable
+    path: ../src/Sharpy/IRightMultipliable.cs
+    startLine: 2
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public interface IRightMultipliable<T, U>
+    typeParameters:
+    - id: T
+    - id: U
+    content.vb: Public Interface IRightMultipliable(Of T, U)
+  nameWithType.vb: IRightMultipliable(Of T, U)
+  fullName.vb: Sharpy.IRightMultipliable(Of T, U)
+  name.vb: IRightMultipliable(Of T, U)
+- uid: Sharpy.IRightMultipliable`2.__RMul__(`1)
+  commentId: M:Sharpy.IRightMultipliable`2.__RMul__(`1)
+  id: __RMul__(`1)
+  parent: Sharpy.IRightMultipliable`2
+  langs:
+  - csharp
+  - vb
+  name: __RMul__(U)
+  nameWithType: IRightMultipliable<T, U>.__RMul__(U)
+  fullName: Sharpy.IRightMultipliable<T, U>.__RMul__(U)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IRightMultipliable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __RMul__
+    path: ../src/Sharpy/IRightMultipliable.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: T __RMul__(U other)
+    parameters:
+    - id: other
+      type: '{U}'
+    return:
+      type: '{T}'
+    content.vb: Function __RMul__(other As U) As T
+  overload: Sharpy.IRightMultipliable`2.__RMul__*
+  nameWithType.vb: IRightMultipliable(Of T, U).__RMul__(U)
+  fullName.vb: Sharpy.IRightMultipliable(Of T, U).__RMul__(U)
+references:
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: Sharpy.IRightMultipliable`2.__RMul__*
+  commentId: Overload:Sharpy.IRightMultipliable`2.__RMul__
+  href: Sharpy.IRightMultipliable-2.html#Sharpy_IRightMultipliable_2___RMul____1_
+  name: __RMul__
+  nameWithType: IRightMultipliable<T, U>.__RMul__
+  fullName: Sharpy.IRightMultipliable<T, U>.__RMul__
+  nameWithType.vb: IRightMultipliable(Of T, U).__RMul__
+  fullName.vb: Sharpy.IRightMultipliable(Of T, U).__RMul__
+- uid: '{U}'
+  commentId: '!:U'
+  definition: U
+  name: U
+  nameWithType: U
+  fullName: U
+- uid: '{T}'
+  commentId: '!:T'
+  definition: T
+  name: T
+  nameWithType: T
+  fullName: T
+- uid: U
+  name: U
+  nameWithType: U
+  fullName: U
+- uid: T
+  name: T
+  nameWithType: T
+  fullName: T

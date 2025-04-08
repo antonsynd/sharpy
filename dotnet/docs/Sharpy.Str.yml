@@ -35,12 +35,12 @@ items:
   - Sharpy.Str.IsSpace
   - Sharpy.Str.IsTitle
   - Sharpy.Str.IsUpper
-  - Sharpy.Str.Join(Sharpy.Collections.Interfaces.Iterable{System.String})
+  - Sharpy.Str.Join(Sharpy.Collections.Interfaces.IIterable{System.String})
   - Sharpy.Str.LJust(System.UInt32,System.String)
   - Sharpy.Str.LStrip(System.String)
   - Sharpy.Str.Lower
-  - Sharpy.Str.MakeTrans(Sharpy.Collections.Interfaces.Mapping{System.String,System.String})
-  - Sharpy.Str.MakeTrans(Sharpy.Collections.Interfaces.Mapping{System.UInt32,System.String})
+  - Sharpy.Str.MakeTrans(Sharpy.Collections.Interfaces.IMapping{System.String,System.String})
+  - Sharpy.Str.MakeTrans(Sharpy.Collections.Interfaces.IMapping{System.UInt32,System.String})
   - Sharpy.Str.MakeTrans(System.String,System.String)
   - Sharpy.Str.MakeTrans(System.String,System.String,System.String)
   - Sharpy.Str.Partition(System.String)
@@ -1323,16 +1323,16 @@ items:
       type: System.Boolean
     content.vb: Public Function IsUpper() As Boolean
   overload: Sharpy.Str.IsUpper*
-- uid: Sharpy.Str.Join(Sharpy.Collections.Interfaces.Iterable{System.String})
-  commentId: M:Sharpy.Str.Join(Sharpy.Collections.Interfaces.Iterable{System.String})
-  id: Join(Sharpy.Collections.Interfaces.Iterable{System.String})
+- uid: Sharpy.Str.Join(Sharpy.Collections.Interfaces.IIterable{System.String})
+  commentId: M:Sharpy.Str.Join(Sharpy.Collections.Interfaces.IIterable{System.String})
+  id: Join(Sharpy.Collections.Interfaces.IIterable{System.String})
   parent: Sharpy.Str
   langs:
   - csharp
   - vb
-  name: Join(Iterable<string>)
-  nameWithType: Str.Join(Iterable<string>)
-  fullName: Sharpy.Str.Join(Sharpy.Collections.Interfaces.Iterable<string>)
+  name: Join(IIterable<string>)
+  nameWithType: Str.Join(IIterable<string>)
+  fullName: Sharpy.Str.Join(Sharpy.Collections.Interfaces.IIterable<string>)
   type: Method
   source:
     remote:
@@ -1346,17 +1346,17 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public string Join(Iterable<string> iterable)
+    content: public string Join(IIterable<string> iterable)
     parameters:
     - id: iterable
-      type: Sharpy.Collections.Interfaces.Iterable{System.String}
+      type: Sharpy.Collections.Interfaces.IIterable{System.String}
     return:
       type: System.String
-    content.vb: Public Function Join(iterable As Iterable(Of String)) As String
+    content.vb: Public Function Join(iterable As IIterable(Of String)) As String
   overload: Sharpy.Str.Join*
-  nameWithType.vb: Str.Join(Iterable(Of String))
-  fullName.vb: Sharpy.Str.Join(Sharpy.Collections.Interfaces.Iterable(Of String))
-  name.vb: Join(Iterable(Of String))
+  nameWithType.vb: Str.Join(IIterable(Of String))
+  fullName.vb: Sharpy.Str.Join(Sharpy.Collections.Interfaces.IIterable(Of String))
+  name.vb: Join(IIterable(Of String))
 - uid: Sharpy.Str.LJust(System.UInt32,System.String)
   commentId: M:Sharpy.Str.LJust(System.UInt32,System.String)
   id: LJust(System.UInt32,System.String)
@@ -1451,16 +1451,16 @@ items:
   nameWithType.vb: Str.LStrip(String)
   fullName.vb: Sharpy.Str.LStrip(String)
   name.vb: LStrip(String)
-- uid: Sharpy.Str.MakeTrans(Sharpy.Collections.Interfaces.Mapping{System.String,System.String})
-  commentId: M:Sharpy.Str.MakeTrans(Sharpy.Collections.Interfaces.Mapping{System.String,System.String})
-  id: MakeTrans(Sharpy.Collections.Interfaces.Mapping{System.String,System.String})
+- uid: Sharpy.Str.MakeTrans(Sharpy.Collections.Interfaces.IMapping{System.String,System.String})
+  commentId: M:Sharpy.Str.MakeTrans(Sharpy.Collections.Interfaces.IMapping{System.String,System.String})
+  id: MakeTrans(Sharpy.Collections.Interfaces.IMapping{System.String,System.String})
   parent: Sharpy.Str
   langs:
   - csharp
   - vb
-  name: MakeTrans(Mapping<string, string?>)
-  nameWithType: Str.MakeTrans(Mapping<string, string?>)
-  fullName: Sharpy.Str.MakeTrans(Sharpy.Collections.Interfaces.Mapping<string, string?>)
+  name: MakeTrans(IMapping<string, string?>)
+  nameWithType: Str.MakeTrans(IMapping<string, string?>)
+  fullName: Sharpy.Str.MakeTrans(Sharpy.Collections.Interfaces.IMapping<string, string?>)
   type: Method
   source:
     remote:
@@ -1474,25 +1474,25 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public void MakeTrans(Mapping<string, string?> mapping)
+    content: public void MakeTrans(IMapping<string, string?> mapping)
     parameters:
     - id: mapping
-      type: Sharpy.Collections.Interfaces.Mapping{System.String,System.String}
-    content.vb: Public Sub MakeTrans(mapping As Mapping(Of String, String))
+      type: Sharpy.Collections.Interfaces.IMapping{System.String,System.String}
+    content.vb: Public Sub MakeTrans(mapping As IMapping(Of String, String))
   overload: Sharpy.Str.MakeTrans*
-  nameWithType.vb: Str.MakeTrans(Mapping(Of String, String))
-  fullName.vb: Sharpy.Str.MakeTrans(Sharpy.Collections.Interfaces.Mapping(Of String, String))
-  name.vb: MakeTrans(Mapping(Of String, String))
-- uid: Sharpy.Str.MakeTrans(Sharpy.Collections.Interfaces.Mapping{System.UInt32,System.String})
-  commentId: M:Sharpy.Str.MakeTrans(Sharpy.Collections.Interfaces.Mapping{System.UInt32,System.String})
-  id: MakeTrans(Sharpy.Collections.Interfaces.Mapping{System.UInt32,System.String})
+  nameWithType.vb: Str.MakeTrans(IMapping(Of String, String))
+  fullName.vb: Sharpy.Str.MakeTrans(Sharpy.Collections.Interfaces.IMapping(Of String, String))
+  name.vb: MakeTrans(IMapping(Of String, String))
+- uid: Sharpy.Str.MakeTrans(Sharpy.Collections.Interfaces.IMapping{System.UInt32,System.String})
+  commentId: M:Sharpy.Str.MakeTrans(Sharpy.Collections.Interfaces.IMapping{System.UInt32,System.String})
+  id: MakeTrans(Sharpy.Collections.Interfaces.IMapping{System.UInt32,System.String})
   parent: Sharpy.Str
   langs:
   - csharp
   - vb
-  name: MakeTrans(Mapping<uint, string?>)
-  nameWithType: Str.MakeTrans(Mapping<uint, string?>)
-  fullName: Sharpy.Str.MakeTrans(Sharpy.Collections.Interfaces.Mapping<uint, string?>)
+  name: MakeTrans(IMapping<uint, string?>)
+  nameWithType: Str.MakeTrans(IMapping<uint, string?>)
+  fullName: Sharpy.Str.MakeTrans(Sharpy.Collections.Interfaces.IMapping<uint, string?>)
   type: Method
   source:
     remote:
@@ -1506,15 +1506,15 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public void MakeTrans(Mapping<uint, string?> mapping)
+    content: public void MakeTrans(IMapping<uint, string?> mapping)
     parameters:
     - id: mapping
-      type: Sharpy.Collections.Interfaces.Mapping{System.UInt32,System.String}
-    content.vb: Public Sub MakeTrans(mapping As Mapping(Of UInteger, String))
+      type: Sharpy.Collections.Interfaces.IMapping{System.UInt32,System.String}
+    content.vb: Public Sub MakeTrans(mapping As IMapping(Of UInteger, String))
   overload: Sharpy.Str.MakeTrans*
-  nameWithType.vb: Str.MakeTrans(Mapping(Of UInteger, String))
-  fullName.vb: Sharpy.Str.MakeTrans(Sharpy.Collections.Interfaces.Mapping(Of UInteger, String))
-  name.vb: MakeTrans(Mapping(Of UInteger, String))
+  nameWithType.vb: Str.MakeTrans(IMapping(Of UInteger, String))
+  fullName.vb: Sharpy.Str.MakeTrans(Sharpy.Collections.Interfaces.IMapping(Of UInteger, String))
+  name.vb: MakeTrans(IMapping(Of UInteger, String))
 - uid: Sharpy.Str.MakeTrans(System.String,System.String)
   commentId: M:Sharpy.Str.MakeTrans(System.String,System.String)
   id: MakeTrans(System.String,System.String)
@@ -2912,25 +2912,25 @@ references:
   fullName: Sharpy.Str.IsUpper
 - uid: Sharpy.Str.Join*
   commentId: Overload:Sharpy.Str.Join
-  href: Sharpy.Str.html#Sharpy_Str_Join_Sharpy_Collections_Interfaces_Iterable_System_String__
+  href: Sharpy.Str.html#Sharpy_Str_Join_Sharpy_Collections_Interfaces_IIterable_System_String__
   name: Join
   nameWithType: Str.Join
   fullName: Sharpy.Str.Join
-- uid: Sharpy.Collections.Interfaces.Iterable{System.String}
-  commentId: T:Sharpy.Collections.Interfaces.Iterable{System.String}
+- uid: Sharpy.Collections.Interfaces.IIterable{System.String}
+  commentId: T:Sharpy.Collections.Interfaces.IIterable{System.String}
   parent: Sharpy.Collections.Interfaces
-  definition: Sharpy.Collections.Interfaces.Iterable`1
-  href: Sharpy.Collections.Interfaces.Iterable-1.html
-  name: Iterable<string>
-  nameWithType: Iterable<string>
-  fullName: Sharpy.Collections.Interfaces.Iterable<string>
-  nameWithType.vb: Iterable(Of String)
-  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of String)
-  name.vb: Iterable(Of String)
+  definition: Sharpy.Collections.Interfaces.IIterable`1
+  href: Sharpy.Collections.Interfaces.IIterable-1.html
+  name: IIterable<string>
+  nameWithType: IIterable<string>
+  fullName: Sharpy.Collections.Interfaces.IIterable<string>
+  nameWithType.vb: IIterable(Of String)
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of String)
+  name.vb: IIterable(Of String)
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.Iterable`1
-    name: Iterable
-    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
   - name: <
   - uid: System.String
     name: string
@@ -2938,9 +2938,9 @@ references:
     href: https://learn.microsoft.com/dotnet/api/system.string
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.Iterable`1
-    name: Iterable
-    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
   - name: (
   - name: Of
   - name: " "
@@ -2949,26 +2949,26 @@ references:
     isExternal: true
     href: https://learn.microsoft.com/dotnet/api/system.string
   - name: )
-- uid: Sharpy.Collections.Interfaces.Iterable`1
-  commentId: T:Sharpy.Collections.Interfaces.Iterable`1
-  href: Sharpy.Collections.Interfaces.Iterable-1.html
-  name: Iterable<T>
-  nameWithType: Iterable<T>
-  fullName: Sharpy.Collections.Interfaces.Iterable<T>
-  nameWithType.vb: Iterable(Of T)
-  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T)
-  name.vb: Iterable(Of T)
+- uid: Sharpy.Collections.Interfaces.IIterable`1
+  commentId: T:Sharpy.Collections.Interfaces.IIterable`1
+  href: Sharpy.Collections.Interfaces.IIterable-1.html
+  name: IIterable<T>
+  nameWithType: IIterable<T>
+  fullName: Sharpy.Collections.Interfaces.IIterable<T>
+  nameWithType.vb: IIterable(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of T)
+  name.vb: IIterable(Of T)
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.Iterable`1
-    name: Iterable
-    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
   - name: <
   - name: T
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.Iterable`1
-    name: Iterable
-    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
   - name: (
   - name: Of
   - name: " "
@@ -3024,25 +3024,25 @@ references:
   fullName: Sharpy.Str.LStrip
 - uid: Sharpy.Str.MakeTrans*
   commentId: Overload:Sharpy.Str.MakeTrans
-  href: Sharpy.Str.html#Sharpy_Str_MakeTrans_Sharpy_Collections_Interfaces_Mapping_System_String_System_String__
+  href: Sharpy.Str.html#Sharpy_Str_MakeTrans_Sharpy_Collections_Interfaces_IMapping_System_String_System_String__
   name: MakeTrans
   nameWithType: Str.MakeTrans
   fullName: Sharpy.Str.MakeTrans
-- uid: Sharpy.Collections.Interfaces.Mapping{System.String,System.String}
-  commentId: T:Sharpy.Collections.Interfaces.Mapping{System.String,System.String}
+- uid: Sharpy.Collections.Interfaces.IMapping{System.String,System.String}
+  commentId: T:Sharpy.Collections.Interfaces.IMapping{System.String,System.String}
   parent: Sharpy.Collections.Interfaces
-  definition: Sharpy.Collections.Interfaces.Mapping`2
-  href: Sharpy.Collections.Interfaces.Mapping-2.html
-  name: Mapping<string, string>
-  nameWithType: Mapping<string, string>
-  fullName: Sharpy.Collections.Interfaces.Mapping<string, string>
-  nameWithType.vb: Mapping(Of String, String)
-  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of String, String)
-  name.vb: Mapping(Of String, String)
+  definition: Sharpy.Collections.Interfaces.IMapping`2
+  href: Sharpy.Collections.Interfaces.IMapping-2.html
+  name: IMapping<string, string>
+  nameWithType: IMapping<string, string>
+  fullName: Sharpy.Collections.Interfaces.IMapping<string, string>
+  nameWithType.vb: IMapping(Of String, String)
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of String, String)
+  name.vb: IMapping(Of String, String)
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.Mapping`2
-    name: Mapping
-    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - uid: Sharpy.Collections.Interfaces.IMapping`2
+    name: IMapping
+    href: Sharpy.Collections.Interfaces.IMapping-2.html
   - name: <
   - uid: System.String
     name: string
@@ -3056,9 +3056,9 @@ references:
     href: https://learn.microsoft.com/dotnet/api/system.string
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.Mapping`2
-    name: Mapping
-    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - uid: Sharpy.Collections.Interfaces.IMapping`2
+    name: IMapping
+    href: Sharpy.Collections.Interfaces.IMapping-2.html
   - name: (
   - name: Of
   - name: " "
@@ -3073,20 +3073,20 @@ references:
     isExternal: true
     href: https://learn.microsoft.com/dotnet/api/system.string
   - name: )
-- uid: Sharpy.Collections.Interfaces.Mapping`2
-  commentId: T:Sharpy.Collections.Interfaces.Mapping`2
+- uid: Sharpy.Collections.Interfaces.IMapping`2
+  commentId: T:Sharpy.Collections.Interfaces.IMapping`2
   parent: Sharpy.Collections.Interfaces
-  href: Sharpy.Collections.Interfaces.Mapping-2.html
-  name: Mapping<K, V>
-  nameWithType: Mapping<K, V>
-  fullName: Sharpy.Collections.Interfaces.Mapping<K, V>
-  nameWithType.vb: Mapping(Of K, V)
-  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of K, V)
-  name.vb: Mapping(Of K, V)
+  href: Sharpy.Collections.Interfaces.IMapping-2.html
+  name: IMapping<K, V>
+  nameWithType: IMapping<K, V>
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>
+  nameWithType.vb: IMapping(Of K, V)
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V)
+  name.vb: IMapping(Of K, V)
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.Mapping`2
-    name: Mapping
-    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - uid: Sharpy.Collections.Interfaces.IMapping`2
+    name: IMapping
+    href: Sharpy.Collections.Interfaces.IMapping-2.html
   - name: <
   - name: K
   - name: ','
@@ -3094,9 +3094,9 @@ references:
   - name: V
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.Mapping`2
-    name: Mapping
-    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - uid: Sharpy.Collections.Interfaces.IMapping`2
+    name: IMapping
+    href: Sharpy.Collections.Interfaces.IMapping-2.html
   - name: (
   - name: Of
   - name: " "
@@ -3105,21 +3105,21 @@ references:
   - name: " "
   - name: V
   - name: )
-- uid: Sharpy.Collections.Interfaces.Mapping{System.UInt32,System.String}
-  commentId: T:Sharpy.Collections.Interfaces.Mapping{System.UInt32,System.String}
+- uid: Sharpy.Collections.Interfaces.IMapping{System.UInt32,System.String}
+  commentId: T:Sharpy.Collections.Interfaces.IMapping{System.UInt32,System.String}
   parent: Sharpy.Collections.Interfaces
-  definition: Sharpy.Collections.Interfaces.Mapping`2
-  href: Sharpy.Collections.Interfaces.Mapping-2.html
-  name: Mapping<uint, string>
-  nameWithType: Mapping<uint, string>
-  fullName: Sharpy.Collections.Interfaces.Mapping<uint, string>
-  nameWithType.vb: Mapping(Of UInteger, String)
-  fullName.vb: Sharpy.Collections.Interfaces.Mapping(Of UInteger, String)
-  name.vb: Mapping(Of UInteger, String)
+  definition: Sharpy.Collections.Interfaces.IMapping`2
+  href: Sharpy.Collections.Interfaces.IMapping-2.html
+  name: IMapping<uint, string>
+  nameWithType: IMapping<uint, string>
+  fullName: Sharpy.Collections.Interfaces.IMapping<uint, string>
+  nameWithType.vb: IMapping(Of UInteger, String)
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of UInteger, String)
+  name.vb: IMapping(Of UInteger, String)
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.Mapping`2
-    name: Mapping
-    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - uid: Sharpy.Collections.Interfaces.IMapping`2
+    name: IMapping
+    href: Sharpy.Collections.Interfaces.IMapping-2.html
   - name: <
   - uid: System.UInt32
     name: uint
@@ -3133,9 +3133,9 @@ references:
     href: https://learn.microsoft.com/dotnet/api/system.string
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.Mapping`2
-    name: Mapping
-    href: Sharpy.Collections.Interfaces.Mapping-2.html
+  - uid: Sharpy.Collections.Interfaces.IMapping`2
+    name: IMapping
+    href: Sharpy.Collections.Interfaces.IMapping-2.html
   - name: (
   - name: Of
   - name: " "

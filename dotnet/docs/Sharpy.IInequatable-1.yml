@@ -1,0 +1,463 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.IInequatable`1
+  commentId: T:Sharpy.IInequatable`1
+  id: IInequatable`1
+  parent: Sharpy
+  children:
+  - Sharpy.IInequatable`1.__Ne__(System.Object)
+  - Sharpy.IInequatable`1.__Ne__(`0)
+  langs:
+  - csharp
+  - vb
+  name: IInequatable<T>
+  nameWithType: IInequatable<T>
+  fullName: Sharpy.IInequatable<T>
+  type: Interface
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IInequatable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IInequatable
+    path: ../src/Sharpy/IInequatable.cs
+    startLine: 2
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: 'public interface IInequatable<T> : IEquatable<T>, IEquatable, IHashable, IEquatable<T>'
+    typeParameters:
+    - id: T
+    content.vb: Public Interface IInequatable(Of T) Inherits IEquatable(Of T), IEquatable, IHashable, IEquatable(Of T)
+  inheritedMembers:
+  - Sharpy.IEquatable{{T}}.__Eq__({T})
+  - Sharpy.IEquatable.Equals(System.Object)
+  - Sharpy.IEquatable.__Eq__(System.Object)
+  - Sharpy.IHashable.__Hash__
+  - System.IEquatable{{T}}.Equals({T})
+  nameWithType.vb: IInequatable(Of T)
+  fullName.vb: Sharpy.IInequatable(Of T)
+  name.vb: IInequatable(Of T)
+- uid: Sharpy.IInequatable`1.__Ne__(`0)
+  commentId: M:Sharpy.IInequatable`1.__Ne__(`0)
+  id: __Ne__(`0)
+  parent: Sharpy.IInequatable`1
+  langs:
+  - csharp
+  - vb
+  name: __Ne__(T)
+  nameWithType: IInequatable<T>.__Ne__(T)
+  fullName: Sharpy.IInequatable<T>.__Ne__(T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IInequatable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Ne__
+    path: ../src/Sharpy/IInequatable.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: bool __Ne__(T other)
+    parameters:
+    - id: other
+      type: '{T}'
+    return:
+      type: System.Boolean
+    content.vb: Function __Ne__(other As T) As Boolean
+  overload: Sharpy.IInequatable`1.__Ne__*
+  nameWithType.vb: IInequatable(Of T).__Ne__(T)
+  fullName.vb: Sharpy.IInequatable(Of T).__Ne__(T)
+- uid: Sharpy.IInequatable`1.__Ne__(System.Object)
+  commentId: M:Sharpy.IInequatable`1.__Ne__(System.Object)
+  id: __Ne__(System.Object)
+  parent: Sharpy.IInequatable`1
+  langs:
+  - csharp
+  - vb
+  name: __Ne__(object)
+  nameWithType: IInequatable<T>.__Ne__(object)
+  fullName: Sharpy.IInequatable<T>.__Ne__(object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IInequatable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Ne__
+    path: ../src/Sharpy/IInequatable.cs
+    startLine: 6
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: bool __Ne__(object other)
+    parameters:
+    - id: other
+      type: System.Object
+    return:
+      type: System.Boolean
+    content.vb: Function __Ne__(other As Object) As Boolean
+  overload: Sharpy.IInequatable`1.__Ne__*
+  nameWithType.vb: IInequatable(Of T).__Ne__(Object)
+  fullName.vb: Sharpy.IInequatable(Of T).__Ne__(Object)
+  name.vb: __Ne__(Object)
+references:
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: Sharpy.IEquatable{{T}}.__Eq__({T})
+  commentId: M:Sharpy.IEquatable{`0}.__Eq__(`0)
+  parent: Sharpy.IEquatable{{T}}
+  definition: Sharpy.IEquatable`1.__Eq__(`0)
+  href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+  name: __Eq__(T)
+  nameWithType: IEquatable<T>.__Eq__(T)
+  fullName: Sharpy.IEquatable<T>.__Eq__(T)
+  nameWithType.vb: IEquatable(Of T).__Eq__(T)
+  fullName.vb: Sharpy.IEquatable(Of T).__Eq__(T)
+  spec.csharp:
+  - uid: Sharpy.IEquatable{`0}.__Eq__(`0)
+    name: __Eq__
+    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IEquatable{`0}.__Eq__(`0)
+    name: __Eq__
+    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.IEquatable.Equals(System.Object)
+  commentId: M:Sharpy.IEquatable.Equals(System.Object)
+  parent: Sharpy.IEquatable
+  isExternal: true
+  href: Sharpy.IEquatable.html#Sharpy_IEquatable_Equals_System_Object_
+  name: Equals(object)
+  nameWithType: IEquatable.Equals(object)
+  fullName: Sharpy.IEquatable.Equals(object)
+  nameWithType.vb: IEquatable.Equals(Object)
+  fullName.vb: Sharpy.IEquatable.Equals(Object)
+  name.vb: Equals(Object)
+  spec.csharp:
+  - uid: Sharpy.IEquatable.Equals(System.Object)
+    name: Equals
+    href: Sharpy.IEquatable.html#Sharpy_IEquatable_Equals_System_Object_
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IEquatable.Equals(System.Object)
+    name: Equals
+    href: Sharpy.IEquatable.html#Sharpy_IEquatable_Equals_System_Object_
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: Sharpy.IEquatable.__Eq__(System.Object)
+  commentId: M:Sharpy.IEquatable.__Eq__(System.Object)
+  parent: Sharpy.IEquatable
+  isExternal: true
+  href: Sharpy.IEquatable.html#Sharpy_IEquatable___Eq___System_Object_
+  name: __Eq__(object)
+  nameWithType: IEquatable.__Eq__(object)
+  fullName: Sharpy.IEquatable.__Eq__(object)
+  nameWithType.vb: IEquatable.__Eq__(Object)
+  fullName.vb: Sharpy.IEquatable.__Eq__(Object)
+  name.vb: __Eq__(Object)
+  spec.csharp:
+  - uid: Sharpy.IEquatable.__Eq__(System.Object)
+    name: __Eq__
+    href: Sharpy.IEquatable.html#Sharpy_IEquatable___Eq___System_Object_
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IEquatable.__Eq__(System.Object)
+    name: __Eq__
+    href: Sharpy.IEquatable.html#Sharpy_IEquatable___Eq___System_Object_
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: Sharpy.IHashable.__Hash__
+  commentId: M:Sharpy.IHashable.__Hash__
+  parent: Sharpy.IHashable
+  href: Sharpy.IHashable.html#Sharpy_IHashable___Hash__
+  name: __Hash__()
+  nameWithType: IHashable.__Hash__()
+  fullName: Sharpy.IHashable.__Hash__()
+  spec.csharp:
+  - uid: Sharpy.IHashable.__Hash__
+    name: __Hash__
+    href: Sharpy.IHashable.html#Sharpy_IHashable___Hash__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IHashable.__Hash__
+    name: __Hash__
+    href: Sharpy.IHashable.html#Sharpy_IHashable___Hash__
+  - name: (
+  - name: )
+- uid: System.IEquatable{{T}}.Equals({T})
+  commentId: M:System.IEquatable{`0}.Equals(`0)
+  parent: System.IEquatable{{T}}
+  definition: System.IEquatable`1.Equals(`0)
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
+  name: Equals(T)
+  nameWithType: IEquatable<T>.Equals(T)
+  fullName: System.IEquatable<T>.Equals(T)
+  nameWithType.vb: IEquatable(Of T).Equals(T)
+  fullName.vb: System.IEquatable(Of T).Equals(T)
+  spec.csharp:
+  - uid: System.IEquatable{`0}.Equals(`0)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: System.IEquatable{`0}.Equals(`0)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.IEquatable`1.__Eq__(`0)
+  commentId: M:Sharpy.IEquatable`1.__Eq__(`0)
+  href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+  name: __Eq__(T)
+  nameWithType: IEquatable<T>.__Eq__(T)
+  fullName: Sharpy.IEquatable<T>.__Eq__(T)
+  nameWithType.vb: IEquatable(Of T).__Eq__(T)
+  fullName.vb: Sharpy.IEquatable(Of T).__Eq__(T)
+  spec.csharp:
+  - uid: Sharpy.IEquatable`1.__Eq__(`0)
+    name: __Eq__
+    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IEquatable`1.__Eq__(`0)
+    name: __Eq__
+    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.IEquatable{{T}}
+  commentId: T:Sharpy.IEquatable{`0}
+  parent: Sharpy
+  definition: Sharpy.IEquatable`1
+  href: Sharpy.IEquatable-1.html
+  name: IEquatable<T>
+  nameWithType: IEquatable<T>
+  fullName: Sharpy.IEquatable<T>
+  nameWithType.vb: IEquatable(Of T)
+  fullName.vb: Sharpy.IEquatable(Of T)
+  name.vb: IEquatable(Of T)
+  spec.csharp:
+  - uid: Sharpy.IEquatable`1
+    name: IEquatable
+    href: Sharpy.IEquatable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IEquatable`1
+    name: IEquatable
+    href: Sharpy.IEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IEquatable
+  commentId: T:Sharpy.IEquatable
+  parent: Sharpy
+  href: Sharpy.IEquatable.html
+  name: IEquatable
+  nameWithType: IEquatable
+  fullName: Sharpy.IEquatable
+- uid: Sharpy.IHashable
+  commentId: T:Sharpy.IHashable
+  parent: Sharpy
+  href: Sharpy.IHashable.html
+  name: IHashable
+  nameWithType: IHashable
+  fullName: Sharpy.IHashable
+- uid: System.IEquatable`1.Equals(`0)
+  commentId: M:System.IEquatable`1.Equals(`0)
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
+  name: Equals(T)
+  nameWithType: IEquatable<T>.Equals(T)
+  fullName: System.IEquatable<T>.Equals(T)
+  nameWithType.vb: IEquatable(Of T).Equals(T)
+  fullName.vb: System.IEquatable(Of T).Equals(T)
+  spec.csharp:
+  - uid: System.IEquatable`1.Equals(`0)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: System.IEquatable`1.Equals(`0)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
+  - name: (
+  - name: T
+  - name: )
+- uid: System.IEquatable{{T}}
+  commentId: T:System.IEquatable{`0}
+  parent: System
+  definition: System.IEquatable`1
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  name: IEquatable<T>
+  nameWithType: IEquatable<T>
+  fullName: System.IEquatable<T>
+  nameWithType.vb: IEquatable(Of T)
+  fullName.vb: System.IEquatable(Of T)
+  name.vb: IEquatable(Of T)
+  spec.csharp:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IEquatable`1
+  commentId: T:Sharpy.IEquatable`1
+  href: Sharpy.IEquatable-1.html
+  name: IEquatable<T>
+  nameWithType: IEquatable<T>
+  fullName: Sharpy.IEquatable<T>
+  nameWithType.vb: IEquatable(Of T)
+  fullName.vb: Sharpy.IEquatable(Of T)
+  name.vb: IEquatable(Of T)
+  spec.csharp:
+  - uid: Sharpy.IEquatable`1
+    name: IEquatable
+    href: Sharpy.IEquatable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IEquatable`1
+    name: IEquatable
+    href: Sharpy.IEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.IEquatable`1
+  commentId: T:System.IEquatable`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  name: IEquatable<T>
+  nameWithType: IEquatable<T>
+  fullName: System.IEquatable<T>
+  nameWithType.vb: IEquatable(Of T)
+  fullName.vb: System.IEquatable(Of T)
+  name.vb: IEquatable(Of T)
+  spec.csharp:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: Sharpy.IInequatable`1.__Ne__*
+  commentId: Overload:Sharpy.IInequatable`1.__Ne__
+  href: Sharpy.IInequatable-1.html#Sharpy_IInequatable_1___Ne____0_
+  name: __Ne__
+  nameWithType: IInequatable<T>.__Ne__
+  fullName: Sharpy.IInequatable<T>.__Ne__
+  nameWithType.vb: IInequatable(Of T).__Ne__
+  fullName.vb: Sharpy.IInequatable(Of T).__Ne__
+- uid: '{T}'
+  commentId: '!:T'
+  definition: T
+  name: T
+  nameWithType: T
+  fullName: T
+- uid: System.Boolean
+  commentId: T:System.Boolean
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.boolean
+  name: bool
+  nameWithType: bool
+  fullName: bool
+  nameWithType.vb: Boolean
+  fullName.vb: Boolean
+  name.vb: Boolean
+- uid: T
+  name: T
+  nameWithType: T
+  fullName: T
+- uid: System.Object
+  commentId: T:System.Object
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object
+  name: object
+  nameWithType: object
+  fullName: object
+  nameWithType.vb: Object
+  fullName.vb: Object
+  name.vb: Object

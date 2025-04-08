@@ -1,0 +1,1105 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.Collections.Interfaces.IMapping`3
+  commentId: T:Sharpy.Collections.Interfaces.IMapping`3
+  id: IMapping`3
+  parent: Sharpy.Collections.Interfaces
+  children:
+  - Sharpy.Collections.Interfaces.IMapping`3.__Or__(`0)
+  langs:
+  - csharp
+  - vb
+  name: IMapping<M, K, V>
+  nameWithType: IMapping<M, K, V>
+  fullName: Sharpy.Collections.Interfaces.IMapping<M, K, V>
+  type: Interface
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Collections/Interfaces/IMapping.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IMapping
+    path: ../src/Sharpy/Collections/Interfaces/IMapping.cs
+    startLine: 76
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Collections.Interfaces
+  summary: >-
+    Interface for read-only mappings as a curiously recursive template,
+
+    with methods dealing directly with the given mapping type.
+  example: []
+  syntax:
+    content: 'public interface IMapping<M, K, V> : IMapping<K, V>, ICollection<K>, IContainer<K>, IIterable<K>, IEnumerable<K>, IEnumerable, ISized where K : notnull'
+    typeParameters:
+    - id: M
+    - id: K
+    - id: V
+    content.vb: Public Interface IMapping(Of M, K, V) Inherits IMapping(Of K, V), ICollection(Of K), IContainer(Of K), IIterable(Of K), IEnumerable(Of K), IEnumerable, ISized
+  inheritedMembers:
+  - Sharpy.Collections.Interfaces.IMapping{{K},{V}}.Item({K})
+  - Sharpy.Collections.Interfaces.IMapping{{K},{V}}.__GetItem__({K})
+  - Sharpy.Collections.Interfaces.IMapping{{K},{V}}.__Or__(Sharpy.Collections.Interfaces.IMapping{{K},{V}})
+  - Sharpy.Collections.Interfaces.IMapping{{K},{V}}.__Or__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{{K},{V}}})
+  - Sharpy.Collections.Interfaces.IMapping{{K},{V}}.Keys
+  - Sharpy.Collections.Interfaces.IMapping{{K},{V}}.Items
+  - Sharpy.Collections.Interfaces.IMapping{{K},{V}}.Values
+  - Sharpy.Collections.Interfaces.IMapping{{K},{V}}.Get({K})
+  - Sharpy.Collections.Interfaces.IMapping{{K},{V}}.Get({K},{V})
+  - Sharpy.Collections.Interfaces.IContainer{{K}}.__Contains__({K})
+  - Sharpy.Collections.Interfaces.IContainer{{K}}.Contains({K})
+  - Sharpy.Collections.Interfaces.IIterable{{K}}.__Iter__
+  - System.Collections.Generic.IEnumerable{{K}}.GetEnumerator
+  - Sharpy.Collections.Interfaces.ISized.__Len__
+  nameWithType.vb: IMapping(Of M, K, V)
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of M, K, V)
+  name.vb: IMapping(Of M, K, V)
+- uid: Sharpy.Collections.Interfaces.IMapping`3.__Or__(`0)
+  commentId: M:Sharpy.Collections.Interfaces.IMapping`3.__Or__(`0)
+  id: __Or__(`0)
+  parent: Sharpy.Collections.Interfaces.IMapping`3
+  langs:
+  - csharp
+  - vb
+  name: __Or__(M)
+  nameWithType: IMapping<M, K, V>.__Or__(M)
+  fullName: Sharpy.Collections.Interfaces.IMapping<M, K, V>.__Or__(M)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Collections/Interfaces/IMapping.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Or__
+    path: ../src/Sharpy/Collections/Interfaces/IMapping.cs
+    startLine: 79
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Collections.Interfaces
+  example: []
+  syntax:
+    content: M __Or__(M other)
+    parameters:
+    - id: other
+      type: '{M}'
+    return:
+      type: '{M}'
+    content.vb: Function __Or__(other As M) As M
+  overload: Sharpy.Collections.Interfaces.IMapping`3.__Or__*
+  nameWithType.vb: IMapping(Of M, K, V).__Or__(M)
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of M, K, V).__Or__(M)
+references:
+- uid: Sharpy.Collections.Interfaces
+  commentId: N:Sharpy.Collections.Interfaces
+  href: Sharpy.html
+  name: Sharpy.Collections.Interfaces
+  nameWithType: Sharpy.Collections.Interfaces
+  fullName: Sharpy.Collections.Interfaces
+  spec.csharp:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+  spec.vb:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+- uid: Sharpy.Collections.Interfaces.IMapping{{K},{V}}.Item({K})
+  commentId: P:Sharpy.Collections.Interfaces.IMapping{`0,`1}.Item(`0)
+  parent: Sharpy.Collections.Interfaces.IMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.IMapping`2.Item(`0)
+  href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Item__0_
+  name: this[K]
+  nameWithType: IMapping<K, V>.this[K]
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>.this[K]
+  nameWithType.vb: IMapping(Of K, V).this[](K)
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V).this[](K)
+  name.vb: this[](K)
+  spec.csharp:
+  - name: this
+  - name: '['
+  - name: K
+  - name: ']'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMapping{`0,`1}.Item(`0)
+    name: this[]
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Item__0_
+  - name: (
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMapping{{K},{V}}.__GetItem__({K})
+  commentId: M:Sharpy.Collections.Interfaces.IMapping{`0,`1}.__GetItem__(`0)
+  parent: Sharpy.Collections.Interfaces.IMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.IMapping`2.__GetItem__(`0)
+  href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2___GetItem____0_
+  name: __GetItem__(K)
+  nameWithType: IMapping<K, V>.__GetItem__(K)
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>.__GetItem__(K)
+  nameWithType.vb: IMapping(Of K, V).__GetItem__(K)
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V).__GetItem__(K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMapping{`0,`1}.__GetItem__(`0)
+    name: __GetItem__
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2___GetItem____0_
+  - name: (
+  - name: K
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMapping{`0,`1}.__GetItem__(`0)
+    name: __GetItem__
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2___GetItem____0_
+  - name: (
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMapping{{K},{V}}.__Or__(Sharpy.Collections.Interfaces.IMapping{{K},{V}})
+  commentId: M:Sharpy.Collections.Interfaces.IMapping{`0,`1}.__Or__(Sharpy.Collections.Interfaces.IMapping{`0,`1})
+  parent: Sharpy.Collections.Interfaces.IMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.IMapping`2.__Or__(Sharpy.Collections.Interfaces.IMapping{`0,`1})
+  href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2___Or___Sharpy_Collections_Interfaces_IMapping__0__1__
+  name: __Or__(IMapping<K, V>)
+  nameWithType: IMapping<K, V>.__Or__(IMapping<K, V>)
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>.__Or__(Sharpy.Collections.Interfaces.IMapping<K, V>)
+  nameWithType.vb: IMapping(Of K, V).__Or__(IMapping(Of K, V))
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V).__Or__(Sharpy.Collections.Interfaces.IMapping(Of K, V))
+  name.vb: __Or__(IMapping(Of K, V))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMapping{`0,`1}.__Or__(Sharpy.Collections.Interfaces.IMapping{`0,`1})
+    name: __Or__
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2___Or___Sharpy_Collections_Interfaces_IMapping__0__1__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.IMapping`2
+    name: IMapping
+    href: Sharpy.Collections.Interfaces.IMapping-2.html
+  - name: <
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMapping{`0,`1}.__Or__(Sharpy.Collections.Interfaces.IMapping{`0,`1})
+    name: __Or__
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2___Or___Sharpy_Collections_Interfaces_IMapping__0__1__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.IMapping`2
+    name: IMapping
+    href: Sharpy.Collections.Interfaces.IMapping-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMapping{{K},{V}}.__Or__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{{K},{V}}})
+  commentId: M:Sharpy.Collections.Interfaces.IMapping{`0,`1}.__Or__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})
+  parent: Sharpy.Collections.Interfaces.IMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.IMapping`2.__Or__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})
+  href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2___Or___Sharpy_Collections_Interfaces_IIterable_System_ValueTuple__0__1___
+  name: __Or__(IIterable<(K, V)>)
+  nameWithType: IMapping<K, V>.__Or__(IIterable<(K, V)>)
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>.__Or__(Sharpy.Collections.Interfaces.IIterable<(K, V)>)
+  nameWithType.vb: IMapping(Of K, V).__Or__(IIterable(Of (K, V)))
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V).__Or__(Sharpy.Collections.Interfaces.IIterable(Of (K, V)))
+  name.vb: __Or__(IIterable(Of (K, V)))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMapping{`0,`1}.__Or__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})
+    name: __Or__
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2___Or___Sharpy_Collections_Interfaces_IIterable_System_ValueTuple__0__1___
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
+  - name: <
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMapping{`0,`1}.__Or__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})
+    name: __Or__
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2___Or___Sharpy_Collections_Interfaces_IIterable_System_ValueTuple__0__1___
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMapping{{K},{V}}.Keys
+  commentId: M:Sharpy.Collections.Interfaces.IMapping{`0,`1}.Keys
+  parent: Sharpy.Collections.Interfaces.IMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.IMapping`2.Keys
+  href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Keys
+  name: Keys()
+  nameWithType: IMapping<K, V>.Keys()
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>.Keys()
+  nameWithType.vb: IMapping(Of K, V).Keys()
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V).Keys()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMapping{`0,`1}.Keys
+    name: Keys
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Keys
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMapping{`0,`1}.Keys
+    name: Keys
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Keys
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMapping{{K},{V}}.Items
+  commentId: M:Sharpy.Collections.Interfaces.IMapping{`0,`1}.Items
+  parent: Sharpy.Collections.Interfaces.IMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.IMapping`2.Items
+  href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Items
+  name: Items()
+  nameWithType: IMapping<K, V>.Items()
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>.Items()
+  nameWithType.vb: IMapping(Of K, V).Items()
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V).Items()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMapping{`0,`1}.Items
+    name: Items
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Items
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMapping{`0,`1}.Items
+    name: Items
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Items
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMapping{{K},{V}}.Values
+  commentId: M:Sharpy.Collections.Interfaces.IMapping{`0,`1}.Values
+  parent: Sharpy.Collections.Interfaces.IMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.IMapping`2.Values
+  href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Values
+  name: Values()
+  nameWithType: IMapping<K, V>.Values()
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>.Values()
+  nameWithType.vb: IMapping(Of K, V).Values()
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V).Values()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMapping{`0,`1}.Values
+    name: Values
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Values
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMapping{`0,`1}.Values
+    name: Values
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Values
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMapping{{K},{V}}.Get({K})
+  commentId: M:Sharpy.Collections.Interfaces.IMapping{`0,`1}.Get(`0)
+  parent: Sharpy.Collections.Interfaces.IMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.IMapping`2.Get(`0)
+  href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Get__0_
+  name: Get(K)
+  nameWithType: IMapping<K, V>.Get(K)
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>.Get(K)
+  nameWithType.vb: IMapping(Of K, V).Get(K)
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V).Get(K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMapping{`0,`1}.Get(`0)
+    name: Get
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Get__0_
+  - name: (
+  - name: K
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMapping{`0,`1}.Get(`0)
+    name: Get
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Get__0_
+  - name: (
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMapping{{K},{V}}.Get({K},{V})
+  commentId: M:Sharpy.Collections.Interfaces.IMapping{`0,`1}.Get(`0,`1)
+  parent: Sharpy.Collections.Interfaces.IMapping{{K},{V}}
+  definition: Sharpy.Collections.Interfaces.IMapping`2.Get(`0,`1)
+  href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Get__0__1_
+  name: Get(K, V)
+  nameWithType: IMapping<K, V>.Get(K, V)
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>.Get(K, V)
+  nameWithType.vb: IMapping(Of K, V).Get(K, V)
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V).Get(K, V)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMapping{`0,`1}.Get(`0,`1)
+    name: Get
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Get__0__1_
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMapping{`0,`1}.Get(`0,`1)
+    name: Get
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Get__0__1_
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IContainer{{K}}.__Contains__({K})
+  commentId: M:Sharpy.Collections.Interfaces.IContainer{`0}.__Contains__(`0)
+  parent: Sharpy.Collections.Interfaces.IContainer{{K}}
+  definition: Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
+  href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1___Contains____0_
+  name: __Contains__(K)
+  nameWithType: IContainer<K>.__Contains__(K)
+  fullName: Sharpy.Collections.Interfaces.IContainer<K>.__Contains__(K)
+  nameWithType.vb: IContainer(Of K).__Contains__(K)
+  fullName.vb: Sharpy.Collections.Interfaces.IContainer(Of K).__Contains__(K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IContainer{`0}.__Contains__(`0)
+    name: __Contains__
+    href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1___Contains____0_
+  - name: (
+  - name: K
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IContainer{`0}.__Contains__(`0)
+    name: __Contains__
+    href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1___Contains____0_
+  - name: (
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IContainer{{K}}.Contains({K})
+  commentId: M:Sharpy.Collections.Interfaces.IContainer{`0}.Contains(`0)
+  parent: Sharpy.Collections.Interfaces.IContainer{{K}}
+  definition: Sharpy.Collections.Interfaces.IContainer`1.Contains(`0)
+  href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1_Contains__0_
+  name: Contains(K)
+  nameWithType: IContainer<K>.Contains(K)
+  fullName: Sharpy.Collections.Interfaces.IContainer<K>.Contains(K)
+  nameWithType.vb: IContainer(Of K).Contains(K)
+  fullName.vb: Sharpy.Collections.Interfaces.IContainer(Of K).Contains(K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IContainer{`0}.Contains(`0)
+    name: Contains
+    href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1_Contains__0_
+  - name: (
+  - name: K
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IContainer{`0}.Contains(`0)
+    name: Contains
+    href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1_Contains__0_
+  - name: (
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IIterable{{K}}.__Iter__
+  commentId: M:Sharpy.Collections.Interfaces.IIterable{`0}.__Iter__
+  parent: Sharpy.Collections.Interfaces.IIterable{{K}}
+  definition: Sharpy.Collections.Interfaces.IIterable`1.__Iter__
+  href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
+  name: __Iter__()
+  nameWithType: IIterable<K>.__Iter__()
+  fullName: Sharpy.Collections.Interfaces.IIterable<K>.__Iter__()
+  nameWithType.vb: IIterable(Of K).__Iter__()
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of K).__Iter__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IIterable{`0}.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IIterable{`0}.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
+  - name: (
+  - name: )
+- uid: System.Collections.Generic.IEnumerable{{K}}.GetEnumerator
+  commentId: M:System.Collections.Generic.IEnumerable{`0}.GetEnumerator
+  parent: System.Collections.Generic.IEnumerable{{K}}
+  definition: System.Collections.Generic.IEnumerable`1.GetEnumerator
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  name: GetEnumerator()
+  nameWithType: IEnumerable<K>.GetEnumerator()
+  fullName: System.Collections.Generic.IEnumerable<K>.GetEnumerator()
+  nameWithType.vb: IEnumerable(Of K).GetEnumerator()
+  fullName.vb: System.Collections.Generic.IEnumerable(Of K).GetEnumerator()
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable{`0}.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable{`0}.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.ISized.__Len__
+  commentId: M:Sharpy.Collections.Interfaces.ISized.__Len__
+  parent: Sharpy.Collections.Interfaces.ISized
+  href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized___Len__
+  name: __Len__()
+  nameWithType: ISized.__Len__()
+  fullName: Sharpy.Collections.Interfaces.ISized.__Len__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.ISized.__Len__
+    name: __Len__
+    href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized___Len__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.ISized.__Len__
+    name: __Len__
+    href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized___Len__
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMapping`2.Item(`0)
+  commentId: P:Sharpy.Collections.Interfaces.IMapping`2.Item(`0)
+  href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Item__0_
+  name: this[K]
+  nameWithType: IMapping<K, V>.this[K]
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>.this[K]
+  nameWithType.vb: IMapping(Of K, V).this[](K)
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V).this[](K)
+  name.vb: this[](K)
+  spec.csharp:
+  - name: this
+  - name: '['
+  - name: K
+  - name: ']'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2.Item(`0)
+    name: this[]
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Item__0_
+  - name: (
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMapping{{K},{V}}
+  commentId: T:Sharpy.Collections.Interfaces.IMapping{`0,`1}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.IMapping`2
+  href: Sharpy.Collections.Interfaces.IMapping-2.html
+  name: IMapping<K, V>
+  nameWithType: IMapping<K, V>
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>
+  nameWithType.vb: IMapping(Of K, V)
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V)
+  name.vb: IMapping(Of K, V)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2
+    name: IMapping
+    href: Sharpy.Collections.Interfaces.IMapping-2.html
+  - name: <
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2
+    name: IMapping
+    href: Sharpy.Collections.Interfaces.IMapping-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMapping`2.__GetItem__(`0)
+  commentId: M:Sharpy.Collections.Interfaces.IMapping`2.__GetItem__(`0)
+  href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2___GetItem____0_
+  name: __GetItem__(K)
+  nameWithType: IMapping<K, V>.__GetItem__(K)
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>.__GetItem__(K)
+  nameWithType.vb: IMapping(Of K, V).__GetItem__(K)
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V).__GetItem__(K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2.__GetItem__(`0)
+    name: __GetItem__
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2___GetItem____0_
+  - name: (
+  - name: K
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2.__GetItem__(`0)
+    name: __GetItem__
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2___GetItem____0_
+  - name: (
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMapping`2.__Or__(Sharpy.Collections.Interfaces.IMapping{`0,`1})
+  commentId: M:Sharpy.Collections.Interfaces.IMapping`2.__Or__(Sharpy.Collections.Interfaces.IMapping{`0,`1})
+  href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2___Or___Sharpy_Collections_Interfaces_IMapping__0__1__
+  name: __Or__(IMapping<K, V>)
+  nameWithType: IMapping<K, V>.__Or__(IMapping<K, V>)
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>.__Or__(Sharpy.Collections.Interfaces.IMapping<K, V>)
+  nameWithType.vb: IMapping(Of K, V).__Or__(IMapping(Of K, V))
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V).__Or__(Sharpy.Collections.Interfaces.IMapping(Of K, V))
+  name.vb: __Or__(IMapping(Of K, V))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2.__Or__(Sharpy.Collections.Interfaces.IMapping{`0,`1})
+    name: __Or__
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2___Or___Sharpy_Collections_Interfaces_IMapping__0__1__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.IMapping`2
+    name: IMapping
+    href: Sharpy.Collections.Interfaces.IMapping-2.html
+  - name: <
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2.__Or__(Sharpy.Collections.Interfaces.IMapping{`0,`1})
+    name: __Or__
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2___Or___Sharpy_Collections_Interfaces_IMapping__0__1__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.IMapping`2
+    name: IMapping
+    href: Sharpy.Collections.Interfaces.IMapping-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMapping`2.__Or__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})
+  commentId: M:Sharpy.Collections.Interfaces.IMapping`2.__Or__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})
+  href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2___Or___Sharpy_Collections_Interfaces_IIterable_System_ValueTuple__0__1___
+  name: __Or__(IIterable<(K, V)>)
+  nameWithType: IMapping<K, V>.__Or__(IIterable<(K, V)>)
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>.__Or__(Sharpy.Collections.Interfaces.IIterable<(K, V)>)
+  nameWithType.vb: IMapping(Of K, V).__Or__(IIterable(Of (K, V)))
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V).__Or__(Sharpy.Collections.Interfaces.IIterable(Of (K, V)))
+  name.vb: __Or__(IIterable(Of (K, V)))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2.__Or__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})
+    name: __Or__
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2___Or___Sharpy_Collections_Interfaces_IIterable_System_ValueTuple__0__1___
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
+  - name: <
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2.__Or__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})
+    name: __Or__
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2___Or___Sharpy_Collections_Interfaces_IIterable_System_ValueTuple__0__1___
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMapping`2.Keys
+  commentId: M:Sharpy.Collections.Interfaces.IMapping`2.Keys
+  href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Keys
+  name: Keys()
+  nameWithType: IMapping<K, V>.Keys()
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>.Keys()
+  nameWithType.vb: IMapping(Of K, V).Keys()
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V).Keys()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2.Keys
+    name: Keys
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Keys
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2.Keys
+    name: Keys
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Keys
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMapping`2.Items
+  commentId: M:Sharpy.Collections.Interfaces.IMapping`2.Items
+  href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Items
+  name: Items()
+  nameWithType: IMapping<K, V>.Items()
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>.Items()
+  nameWithType.vb: IMapping(Of K, V).Items()
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V).Items()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2.Items
+    name: Items
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Items
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2.Items
+    name: Items
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Items
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMapping`2.Values
+  commentId: M:Sharpy.Collections.Interfaces.IMapping`2.Values
+  href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Values
+  name: Values()
+  nameWithType: IMapping<K, V>.Values()
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>.Values()
+  nameWithType.vb: IMapping(Of K, V).Values()
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V).Values()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2.Values
+    name: Values
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Values
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2.Values
+    name: Values
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Values
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMapping`2.Get(`0)
+  commentId: M:Sharpy.Collections.Interfaces.IMapping`2.Get(`0)
+  href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Get__0_
+  name: Get(K)
+  nameWithType: IMapping<K, V>.Get(K)
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>.Get(K)
+  nameWithType.vb: IMapping(Of K, V).Get(K)
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V).Get(K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2.Get(`0)
+    name: Get
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Get__0_
+  - name: (
+  - name: K
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2.Get(`0)
+    name: Get
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Get__0_
+  - name: (
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMapping`2.Get(`0,`1)
+  commentId: M:Sharpy.Collections.Interfaces.IMapping`2.Get(`0,`1)
+  href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Get__0__1_
+  name: Get(K, V)
+  nameWithType: IMapping<K, V>.Get(K, V)
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>.Get(K, V)
+  nameWithType.vb: IMapping(Of K, V).Get(K, V)
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V).Get(K, V)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2.Get(`0,`1)
+    name: Get
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Get__0__1_
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2.Get(`0,`1)
+    name: Get
+    href: Sharpy.Collections.Interfaces.IMapping-2.html#Sharpy_Collections_Interfaces_IMapping_2_Get__0__1_
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
+  commentId: M:Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
+  href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1___Contains____0_
+  name: __Contains__(T)
+  nameWithType: IContainer<T>.__Contains__(T)
+  fullName: Sharpy.Collections.Interfaces.IContainer<T>.__Contains__(T)
+  nameWithType.vb: IContainer(Of T).__Contains__(T)
+  fullName.vb: Sharpy.Collections.Interfaces.IContainer(Of T).__Contains__(T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
+    name: __Contains__
+    href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1___Contains____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
+    name: __Contains__
+    href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1___Contains____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IContainer{{K}}
+  commentId: T:Sharpy.Collections.Interfaces.IContainer{`0}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.IContainer`1
+  href: Sharpy.Collections.Interfaces.IContainer-1.html
+  name: IContainer<K>
+  nameWithType: IContainer<K>
+  fullName: Sharpy.Collections.Interfaces.IContainer<K>
+  nameWithType.vb: IContainer(Of K)
+  fullName.vb: Sharpy.Collections.Interfaces.IContainer(Of K)
+  name.vb: IContainer(Of K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IContainer`1
+    name: IContainer
+    href: Sharpy.Collections.Interfaces.IContainer-1.html
+  - name: <
+  - name: K
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IContainer`1
+    name: IContainer
+    href: Sharpy.Collections.Interfaces.IContainer-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IContainer`1.Contains(`0)
+  commentId: M:Sharpy.Collections.Interfaces.IContainer`1.Contains(`0)
+  href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1_Contains__0_
+  name: Contains(T)
+  nameWithType: IContainer<T>.Contains(T)
+  fullName: Sharpy.Collections.Interfaces.IContainer<T>.Contains(T)
+  nameWithType.vb: IContainer(Of T).Contains(T)
+  fullName.vb: Sharpy.Collections.Interfaces.IContainer(Of T).Contains(T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IContainer`1.Contains(`0)
+    name: Contains
+    href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1_Contains__0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IContainer`1.Contains(`0)
+    name: Contains
+    href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1_Contains__0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IIterable`1.__Iter__
+  commentId: M:Sharpy.Collections.Interfaces.IIterable`1.__Iter__
+  href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
+  name: __Iter__()
+  nameWithType: IIterable<T>.__Iter__()
+  fullName: Sharpy.Collections.Interfaces.IIterable<T>.__Iter__()
+  nameWithType.vb: IIterable(Of T).__Iter__()
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of T).__Iter__()
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IIterable`1.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IIterable`1.__Iter__
+    name: __Iter__
+    href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
+  - name: (
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IIterable{{K}}
+  commentId: T:Sharpy.Collections.Interfaces.IIterable{`0}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.IIterable`1
+  href: Sharpy.Collections.Interfaces.IIterable-1.html
+  name: IIterable<K>
+  nameWithType: IIterable<K>
+  fullName: Sharpy.Collections.Interfaces.IIterable<K>
+  nameWithType.vb: IIterable(Of K)
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of K)
+  name.vb: IIterable(Of K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
+  - name: <
+  - name: K
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: )
+- uid: System.Collections.Generic.IEnumerable`1.GetEnumerator
+  commentId: M:System.Collections.Generic.IEnumerable`1.GetEnumerator
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  name: GetEnumerator()
+  nameWithType: IEnumerable<T>.GetEnumerator()
+  fullName: System.Collections.Generic.IEnumerable<T>.GetEnumerator()
+  nameWithType.vb: IEnumerable(Of T).GetEnumerator()
+  fullName.vb: System.Collections.Generic.IEnumerable(Of T).GetEnumerator()
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable`1.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable`1.GetEnumerator
+    name: GetEnumerator
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
+  - name: (
+  - name: )
+- uid: System.Collections.Generic.IEnumerable{{K}}
+  commentId: T:System.Collections.Generic.IEnumerable{`0}
+  parent: System.Collections.Generic
+  definition: System.Collections.Generic.IEnumerable`1
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  name: IEnumerable<K>
+  nameWithType: IEnumerable<K>
+  fullName: System.Collections.Generic.IEnumerable<K>
+  nameWithType.vb: IEnumerable(Of K)
+  fullName.vb: System.Collections.Generic.IEnumerable(Of K)
+  name.vb: IEnumerable(Of K)
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: <
+  - name: K
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.ISized
+  commentId: T:Sharpy.Collections.Interfaces.ISized
+  parent: Sharpy.Collections.Interfaces
+  href: Sharpy.Collections.Interfaces.ISized.html
+  name: ISized
+  nameWithType: ISized
+  fullName: Sharpy.Collections.Interfaces.ISized
+- uid: Sharpy.Collections.Interfaces.IMapping`2
+  commentId: T:Sharpy.Collections.Interfaces.IMapping`2
+  parent: Sharpy.Collections.Interfaces
+  href: Sharpy.Collections.Interfaces.IMapping-2.html
+  name: IMapping<K, V>
+  nameWithType: IMapping<K, V>
+  fullName: Sharpy.Collections.Interfaces.IMapping<K, V>
+  nameWithType.vb: IMapping(Of K, V)
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V)
+  name.vb: IMapping(Of K, V)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2
+    name: IMapping
+    href: Sharpy.Collections.Interfaces.IMapping-2.html
+  - name: <
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMapping`2
+    name: IMapping
+    href: Sharpy.Collections.Interfaces.IMapping-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IContainer`1
+  commentId: T:Sharpy.Collections.Interfaces.IContainer`1
+  href: Sharpy.Collections.Interfaces.IContainer-1.html
+  name: IContainer<T>
+  nameWithType: IContainer<T>
+  fullName: Sharpy.Collections.Interfaces.IContainer<T>
+  nameWithType.vb: IContainer(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.IContainer(Of T)
+  name.vb: IContainer(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IContainer`1
+    name: IContainer
+    href: Sharpy.Collections.Interfaces.IContainer-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IContainer`1
+    name: IContainer
+    href: Sharpy.Collections.Interfaces.IContainer-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IIterable`1
+  commentId: T:Sharpy.Collections.Interfaces.IIterable`1
+  href: Sharpy.Collections.Interfaces.IIterable-1.html
+  name: IIterable<T>
+  nameWithType: IIterable<T>
+  fullName: Sharpy.Collections.Interfaces.IIterable<T>
+  nameWithType.vb: IIterable(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of T)
+  name.vb: IIterable(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic.IEnumerable`1
+  commentId: T:System.Collections.Generic.IEnumerable`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  name: IEnumerable<T>
+  nameWithType: IEnumerable<T>
+  fullName: System.Collections.Generic.IEnumerable<T>
+  nameWithType.vb: IEnumerable(Of T)
+  fullName.vb: System.Collections.Generic.IEnumerable(Of T)
+  name.vb: IEnumerable(Of T)
+  spec.csharp:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.IEnumerable`1
+    name: IEnumerable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic
+  commentId: N:System.Collections.Generic
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Collections.Generic
+  nameWithType: System.Collections.Generic
+  fullName: System.Collections.Generic
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+- uid: Sharpy.Collections.Interfaces.IMapping`3.__Or__*
+  commentId: Overload:Sharpy.Collections.Interfaces.IMapping`3.__Or__
+  href: Sharpy.Collections.Interfaces.IMapping-3.html#Sharpy_Collections_Interfaces_IMapping_3___Or____0_
+  name: __Or__
+  nameWithType: IMapping<M, K, V>.__Or__
+  fullName: Sharpy.Collections.Interfaces.IMapping<M, K, V>.__Or__
+  nameWithType.vb: IMapping(Of M, K, V).__Or__
+  fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of M, K, V).__Or__
+- uid: '{M}'
+  commentId: '!:M'
+  definition: M
+  name: M
+  nameWithType: M
+  fullName: M
+- uid: M
+  name: M
+  nameWithType: M
+  fullName: M

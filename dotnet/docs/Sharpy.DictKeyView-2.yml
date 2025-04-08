@@ -45,20 +45,20 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: 'public sealed class DictKeyView<K, V> : KeysView<K>, MappingView<K>, Iterable<K>, IEnumerable<K>, IEnumerable, Sized where K : notnull'
+    content: 'public sealed class DictKeyView<K, V> : IKeysView<K>, IMappingView<K>, IIterable<K>, IEnumerable<K>, IEnumerable, ISized where K : notnull'
     typeParameters:
     - id: K
     - id: V
-    content.vb: Public NotInheritable Class DictKeyView(Of K, V) Implements KeysView(Of K), MappingView(Of K), Iterable(Of K), IEnumerable(Of K), IEnumerable, Sized
+    content.vb: Public NotInheritable Class DictKeyView(Of K, V) Implements IKeysView(Of K), IMappingView(Of K), IIterable(Of K), IEnumerable(Of K), IEnumerable, ISized
   inheritance:
   - System.Object
   implements:
-  - Sharpy.Collections.Interfaces.KeysView{{K}}
-  - Sharpy.Collections.Interfaces.MappingView{{K}}
-  - Sharpy.Collections.Interfaces.Iterable{{K}}
+  - Sharpy.Collections.Interfaces.IKeysView{{K}}
+  - Sharpy.Collections.Interfaces.IMappingView{{K}}
+  - Sharpy.Collections.Interfaces.IIterable{{K}}
   - System.Collections.Generic.IEnumerable{{K}}
   - System.Collections.IEnumerable
-  - Sharpy.Collections.Interfaces.Sized
+  - Sharpy.Collections.Interfaces.ISized
   inheritedMembers:
   - System.Object.Equals(System.Object)
   - System.Object.Equals(System.Object,System.Object)
@@ -452,7 +452,7 @@ items:
     content.vb: Public Function __Iter__() As Iterator(Of K)
   overload: Sharpy.DictKeyView`2.__Iter__*
   implements:
-  - Sharpy.Collections.Interfaces.Iterable{{K}}.__Iter__
+  - Sharpy.Collections.Interfaces.IIterable{{K}}.__Iter__
   nameWithType.vb: DictKeyView(Of K, V).__Iter__()
   fullName.vb: Sharpy.DictKeyView(Of K, V).__Iter__()
 - uid: Sharpy.DictKeyView`2.__Len__
@@ -486,7 +486,7 @@ items:
     content.vb: Public Function __Len__() As UInteger
   overload: Sharpy.DictKeyView`2.__Len__*
   implements:
-  - Sharpy.Collections.Interfaces.Sized.__Len__
+  - Sharpy.Collections.Interfaces.ISized.__Len__
   nameWithType.vb: DictKeyView(Of K, V).__Len__()
   fullName.vb: Sharpy.DictKeyView(Of K, V).__Len__()
 - uid: Sharpy.DictKeyView`2.__Le__(Sharpy.Set{`0})
@@ -815,82 +815,82 @@ references:
   nameWithType.vb: Object
   fullName.vb: Object
   name.vb: Object
-- uid: Sharpy.Collections.Interfaces.KeysView{{K}}
-  commentId: T:Sharpy.Collections.Interfaces.KeysView{`0}
+- uid: Sharpy.Collections.Interfaces.IKeysView{{K}}
+  commentId: T:Sharpy.Collections.Interfaces.IKeysView{`0}
   parent: Sharpy.Collections.Interfaces
-  definition: Sharpy.Collections.Interfaces.KeysView`1
-  href: Sharpy.Collections.Interfaces.KeysView-1.html
-  name: KeysView<K>
-  nameWithType: KeysView<K>
-  fullName: Sharpy.Collections.Interfaces.KeysView<K>
-  nameWithType.vb: KeysView(Of K)
-  fullName.vb: Sharpy.Collections.Interfaces.KeysView(Of K)
-  name.vb: KeysView(Of K)
+  definition: Sharpy.Collections.Interfaces.IKeysView`1
+  href: Sharpy.Collections.Interfaces.IKeysView-1.html
+  name: IKeysView<K>
+  nameWithType: IKeysView<K>
+  fullName: Sharpy.Collections.Interfaces.IKeysView<K>
+  nameWithType.vb: IKeysView(Of K)
+  fullName.vb: Sharpy.Collections.Interfaces.IKeysView(Of K)
+  name.vb: IKeysView(Of K)
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.KeysView`1
-    name: KeysView
-    href: Sharpy.Collections.Interfaces.KeysView-1.html
+  - uid: Sharpy.Collections.Interfaces.IKeysView`1
+    name: IKeysView
+    href: Sharpy.Collections.Interfaces.IKeysView-1.html
   - name: <
   - name: K
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.KeysView`1
-    name: KeysView
-    href: Sharpy.Collections.Interfaces.KeysView-1.html
+  - uid: Sharpy.Collections.Interfaces.IKeysView`1
+    name: IKeysView
+    href: Sharpy.Collections.Interfaces.IKeysView-1.html
   - name: (
   - name: Of
   - name: " "
   - name: K
   - name: )
-- uid: Sharpy.Collections.Interfaces.MappingView{{K}}
-  commentId: T:Sharpy.Collections.Interfaces.MappingView{`0}
+- uid: Sharpy.Collections.Interfaces.IMappingView{{K}}
+  commentId: T:Sharpy.Collections.Interfaces.IMappingView{`0}
   parent: Sharpy.Collections.Interfaces
-  definition: Sharpy.Collections.Interfaces.MappingView`1
-  href: Sharpy.Collections.Interfaces.MappingView-1.html
-  name: MappingView<K>
-  nameWithType: MappingView<K>
-  fullName: Sharpy.Collections.Interfaces.MappingView<K>
-  nameWithType.vb: MappingView(Of K)
-  fullName.vb: Sharpy.Collections.Interfaces.MappingView(Of K)
-  name.vb: MappingView(Of K)
+  definition: Sharpy.Collections.Interfaces.IMappingView`1
+  href: Sharpy.Collections.Interfaces.IMappingView-1.html
+  name: IMappingView<K>
+  nameWithType: IMappingView<K>
+  fullName: Sharpy.Collections.Interfaces.IMappingView<K>
+  nameWithType.vb: IMappingView(Of K)
+  fullName.vb: Sharpy.Collections.Interfaces.IMappingView(Of K)
+  name.vb: IMappingView(Of K)
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.MappingView`1
-    name: MappingView
-    href: Sharpy.Collections.Interfaces.MappingView-1.html
+  - uid: Sharpy.Collections.Interfaces.IMappingView`1
+    name: IMappingView
+    href: Sharpy.Collections.Interfaces.IMappingView-1.html
   - name: <
   - name: K
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.MappingView`1
-    name: MappingView
-    href: Sharpy.Collections.Interfaces.MappingView-1.html
+  - uid: Sharpy.Collections.Interfaces.IMappingView`1
+    name: IMappingView
+    href: Sharpy.Collections.Interfaces.IMappingView-1.html
   - name: (
   - name: Of
   - name: " "
   - name: K
   - name: )
-- uid: Sharpy.Collections.Interfaces.Iterable{{K}}
-  commentId: T:Sharpy.Collections.Interfaces.Iterable{`0}
+- uid: Sharpy.Collections.Interfaces.IIterable{{K}}
+  commentId: T:Sharpy.Collections.Interfaces.IIterable{`0}
   parent: Sharpy.Collections.Interfaces
-  definition: Sharpy.Collections.Interfaces.Iterable`1
-  href: Sharpy.Collections.Interfaces.Iterable-1.html
-  name: Iterable<K>
-  nameWithType: Iterable<K>
-  fullName: Sharpy.Collections.Interfaces.Iterable<K>
-  nameWithType.vb: Iterable(Of K)
-  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of K)
-  name.vb: Iterable(Of K)
+  definition: Sharpy.Collections.Interfaces.IIterable`1
+  href: Sharpy.Collections.Interfaces.IIterable-1.html
+  name: IIterable<K>
+  nameWithType: IIterable<K>
+  fullName: Sharpy.Collections.Interfaces.IIterable<K>
+  nameWithType.vb: IIterable(Of K)
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of K)
+  name.vb: IIterable(Of K)
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.Iterable`1
-    name: Iterable
-    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
   - name: <
   - name: K
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.Iterable`1
-    name: Iterable
-    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
   - name: (
   - name: Of
   - name: " "
@@ -933,13 +933,13 @@ references:
   name: IEnumerable
   nameWithType: IEnumerable
   fullName: System.Collections.IEnumerable
-- uid: Sharpy.Collections.Interfaces.Sized
-  commentId: T:Sharpy.Collections.Interfaces.Sized
+- uid: Sharpy.Collections.Interfaces.ISized
+  commentId: T:Sharpy.Collections.Interfaces.ISized
   parent: Sharpy.Collections.Interfaces
-  href: Sharpy.Collections.Interfaces.Sized.html
-  name: Sized
-  nameWithType: Sized
-  fullName: Sharpy.Collections.Interfaces.Sized
+  href: Sharpy.Collections.Interfaces.ISized.html
+  name: ISized
+  nameWithType: ISized
+  fullName: Sharpy.Collections.Interfaces.ISized
 - uid: System.Object.Equals(System.Object)
   commentId: M:System.Object.Equals(System.Object)
   parent: System.Object
@@ -1142,26 +1142,26 @@ references:
   name: System
   nameWithType: System
   fullName: System
-- uid: Sharpy.Collections.Interfaces.KeysView`1
-  commentId: T:Sharpy.Collections.Interfaces.KeysView`1
-  href: Sharpy.Collections.Interfaces.KeysView-1.html
-  name: KeysView<T>
-  nameWithType: KeysView<T>
-  fullName: Sharpy.Collections.Interfaces.KeysView<T>
-  nameWithType.vb: KeysView(Of T)
-  fullName.vb: Sharpy.Collections.Interfaces.KeysView(Of T)
-  name.vb: KeysView(Of T)
+- uid: Sharpy.Collections.Interfaces.IKeysView`1
+  commentId: T:Sharpy.Collections.Interfaces.IKeysView`1
+  href: Sharpy.Collections.Interfaces.IKeysView-1.html
+  name: IKeysView<T>
+  nameWithType: IKeysView<T>
+  fullName: Sharpy.Collections.Interfaces.IKeysView<T>
+  nameWithType.vb: IKeysView(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.IKeysView(Of T)
+  name.vb: IKeysView(Of T)
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.KeysView`1
-    name: KeysView
-    href: Sharpy.Collections.Interfaces.KeysView-1.html
+  - uid: Sharpy.Collections.Interfaces.IKeysView`1
+    name: IKeysView
+    href: Sharpy.Collections.Interfaces.IKeysView-1.html
   - name: <
   - name: T
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.KeysView`1
-    name: KeysView
-    href: Sharpy.Collections.Interfaces.KeysView-1.html
+  - uid: Sharpy.Collections.Interfaces.IKeysView`1
+    name: IKeysView
+    href: Sharpy.Collections.Interfaces.IKeysView-1.html
   - name: (
   - name: Of
   - name: " "
@@ -1197,51 +1197,51 @@ references:
   - uid: Sharpy.Collections.Interfaces
     name: Interfaces
     href: Sharpy.Collections.Interfaces.html
-- uid: Sharpy.Collections.Interfaces.MappingView`1
-  commentId: T:Sharpy.Collections.Interfaces.MappingView`1
-  href: Sharpy.Collections.Interfaces.MappingView-1.html
-  name: MappingView<T>
-  nameWithType: MappingView<T>
-  fullName: Sharpy.Collections.Interfaces.MappingView<T>
-  nameWithType.vb: MappingView(Of T)
-  fullName.vb: Sharpy.Collections.Interfaces.MappingView(Of T)
-  name.vb: MappingView(Of T)
+- uid: Sharpy.Collections.Interfaces.IMappingView`1
+  commentId: T:Sharpy.Collections.Interfaces.IMappingView`1
+  href: Sharpy.Collections.Interfaces.IMappingView-1.html
+  name: IMappingView<T>
+  nameWithType: IMappingView<T>
+  fullName: Sharpy.Collections.Interfaces.IMappingView<T>
+  nameWithType.vb: IMappingView(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.IMappingView(Of T)
+  name.vb: IMappingView(Of T)
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.MappingView`1
-    name: MappingView
-    href: Sharpy.Collections.Interfaces.MappingView-1.html
+  - uid: Sharpy.Collections.Interfaces.IMappingView`1
+    name: IMappingView
+    href: Sharpy.Collections.Interfaces.IMappingView-1.html
   - name: <
   - name: T
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.MappingView`1
-    name: MappingView
-    href: Sharpy.Collections.Interfaces.MappingView-1.html
+  - uid: Sharpy.Collections.Interfaces.IMappingView`1
+    name: IMappingView
+    href: Sharpy.Collections.Interfaces.IMappingView-1.html
   - name: (
   - name: Of
   - name: " "
   - name: T
   - name: )
-- uid: Sharpy.Collections.Interfaces.Iterable`1
-  commentId: T:Sharpy.Collections.Interfaces.Iterable`1
-  href: Sharpy.Collections.Interfaces.Iterable-1.html
-  name: Iterable<T>
-  nameWithType: Iterable<T>
-  fullName: Sharpy.Collections.Interfaces.Iterable<T>
-  nameWithType.vb: Iterable(Of T)
-  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T)
-  name.vb: Iterable(Of T)
+- uid: Sharpy.Collections.Interfaces.IIterable`1
+  commentId: T:Sharpy.Collections.Interfaces.IIterable`1
+  href: Sharpy.Collections.Interfaces.IIterable-1.html
+  name: IIterable<T>
+  nameWithType: IIterable<T>
+  fullName: Sharpy.Collections.Interfaces.IIterable<T>
+  nameWithType.vb: IIterable(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of T)
+  name.vb: IIterable(Of T)
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.Iterable`1
-    name: Iterable
-    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
   - name: <
   - name: T
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.Iterable`1
-    name: Iterable
-    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
   - name: (
   - name: Of
   - name: " "
@@ -1642,26 +1642,26 @@ references:
   fullName: Sharpy.DictKeyView<K, V>.__Iter__
   nameWithType.vb: DictKeyView(Of K, V).__Iter__
   fullName.vb: Sharpy.DictKeyView(Of K, V).__Iter__
-- uid: Sharpy.Collections.Interfaces.Iterable{{K}}.__Iter__
-  commentId: M:Sharpy.Collections.Interfaces.Iterable{`0}.__Iter__
-  parent: Sharpy.Collections.Interfaces.Iterable{{K}}
-  definition: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
-  href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+- uid: Sharpy.Collections.Interfaces.IIterable{{K}}.__Iter__
+  commentId: M:Sharpy.Collections.Interfaces.IIterable{`0}.__Iter__
+  parent: Sharpy.Collections.Interfaces.IIterable{{K}}
+  definition: Sharpy.Collections.Interfaces.IIterable`1.__Iter__
+  href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
   name: __Iter__()
-  nameWithType: Iterable<K>.__Iter__()
-  fullName: Sharpy.Collections.Interfaces.Iterable<K>.__Iter__()
-  nameWithType.vb: Iterable(Of K).__Iter__()
-  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of K).__Iter__()
+  nameWithType: IIterable<K>.__Iter__()
+  fullName: Sharpy.Collections.Interfaces.IIterable<K>.__Iter__()
+  nameWithType.vb: IIterable(Of K).__Iter__()
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of K).__Iter__()
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.Iterable{`0}.__Iter__
+  - uid: Sharpy.Collections.Interfaces.IIterable{`0}.__Iter__
     name: __Iter__
-    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+    href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
   - name: (
   - name: )
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.Iterable{`0}.__Iter__
+  - uid: Sharpy.Collections.Interfaces.IIterable{`0}.__Iter__
     name: __Iter__
-    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+    href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
   - name: (
   - name: )
 - uid: Sharpy.Iterator{{K}}
@@ -1691,24 +1691,24 @@ references:
   - name: " "
   - name: K
   - name: )
-- uid: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
-  commentId: M:Sharpy.Collections.Interfaces.Iterable`1.__Iter__
-  href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+- uid: Sharpy.Collections.Interfaces.IIterable`1.__Iter__
+  commentId: M:Sharpy.Collections.Interfaces.IIterable`1.__Iter__
+  href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
   name: __Iter__()
-  nameWithType: Iterable<T>.__Iter__()
-  fullName: Sharpy.Collections.Interfaces.Iterable<T>.__Iter__()
-  nameWithType.vb: Iterable(Of T).__Iter__()
-  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T).__Iter__()
+  nameWithType: IIterable<T>.__Iter__()
+  fullName: Sharpy.Collections.Interfaces.IIterable<T>.__Iter__()
+  nameWithType.vb: IIterable(Of T).__Iter__()
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of T).__Iter__()
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+  - uid: Sharpy.Collections.Interfaces.IIterable`1.__Iter__
     name: __Iter__
-    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+    href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
   - name: (
   - name: )
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.Iterable`1.__Iter__
+  - uid: Sharpy.Collections.Interfaces.IIterable`1.__Iter__
     name: __Iter__
-    href: Sharpy.Collections.Interfaces.Iterable-1.html#Sharpy_Collections_Interfaces_Iterable_1___Iter__
+    href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__
   - name: (
   - name: )
 - uid: Sharpy.DictKeyView`2.__Len__*
@@ -1719,23 +1719,23 @@ references:
   fullName: Sharpy.DictKeyView<K, V>.__Len__
   nameWithType.vb: DictKeyView(Of K, V).__Len__
   fullName.vb: Sharpy.DictKeyView(Of K, V).__Len__
-- uid: Sharpy.Collections.Interfaces.Sized.__Len__
-  commentId: M:Sharpy.Collections.Interfaces.Sized.__Len__
-  parent: Sharpy.Collections.Interfaces.Sized
-  href: Sharpy.Collections.Interfaces.Sized.html#Sharpy_Collections_Interfaces_Sized___Len__
+- uid: Sharpy.Collections.Interfaces.ISized.__Len__
+  commentId: M:Sharpy.Collections.Interfaces.ISized.__Len__
+  parent: Sharpy.Collections.Interfaces.ISized
+  href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized___Len__
   name: __Len__()
-  nameWithType: Sized.__Len__()
-  fullName: Sharpy.Collections.Interfaces.Sized.__Len__()
+  nameWithType: ISized.__Len__()
+  fullName: Sharpy.Collections.Interfaces.ISized.__Len__()
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.Sized.__Len__
+  - uid: Sharpy.Collections.Interfaces.ISized.__Len__
     name: __Len__
-    href: Sharpy.Collections.Interfaces.Sized.html#Sharpy_Collections_Interfaces_Sized___Len__
+    href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized___Len__
   - name: (
   - name: )
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.Sized.__Len__
+  - uid: Sharpy.Collections.Interfaces.ISized.__Len__
     name: __Len__
-    href: Sharpy.Collections.Interfaces.Sized.html#Sharpy_Collections_Interfaces_Sized___Len__
+    href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized___Len__
   - name: (
   - name: )
 - uid: System.UInt32

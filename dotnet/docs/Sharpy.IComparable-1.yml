@@ -1,0 +1,859 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.IComparable`1
+  commentId: T:Sharpy.IComparable`1
+  id: IComparable`1
+  parent: Sharpy
+  children: []
+  langs:
+  - csharp
+  - vb
+  name: IComparable<T>
+  nameWithType: IComparable<T>
+  fullName: Sharpy.IComparable<T>
+  type: Interface
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IComparable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IComparable
+    path: ../src/Sharpy/IComparable.cs
+    startLine: 2
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: 'public interface IComparable<T> : ILessThanOrEquatable<T>, ILessThanComparable<T>, IGreaterThanOrEquatable<T>, IGreaterThanComparable<T>, IComparable<T>, IEquatable<T>, IEquatable, IHashable, IEquatable<T>'
+    typeParameters:
+    - id: T
+    content.vb: Public Interface IComparable(Of T) Inherits ILessThanOrEquatable(Of T), ILessThanComparable(Of T), IGreaterThanOrEquatable(Of T), IGreaterThanComparable(Of T), IComparable(Of T), IEquatable(Of T), IEquatable, IHashable, IEquatable(Of T)
+  inheritedMembers:
+  - Sharpy.ILessThanOrEquatable{{T}}.__Le__({T})
+  - Sharpy.ILessThanComparable{{T}}.__Lt__({T})
+  - Sharpy.IGreaterThanOrEquatable{{T}}.__Ge__({T})
+  - Sharpy.IGreaterThanComparable{{T}}.__Gt__({T})
+  - System.IComparable{{T}}.CompareTo({T})
+  - Sharpy.IEquatable{{T}}.__Eq__({T})
+  - Sharpy.IEquatable.Equals(System.Object)
+  - Sharpy.IEquatable.__Eq__(System.Object)
+  - Sharpy.IHashable.__Hash__
+  - System.IEquatable{{T}}.Equals({T})
+  nameWithType.vb: IComparable(Of T)
+  fullName.vb: Sharpy.IComparable(Of T)
+  name.vb: IComparable(Of T)
+references:
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: Sharpy.ILessThanOrEquatable{{T}}.__Le__({T})
+  commentId: M:Sharpy.ILessThanOrEquatable{`0}.__Le__(`0)
+  parent: Sharpy.ILessThanOrEquatable{{T}}
+  definition: Sharpy.ILessThanOrEquatable`1.__Le__(`0)
+  href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1___Le____0_
+  name: __Le__(T)
+  nameWithType: ILessThanOrEquatable<T>.__Le__(T)
+  fullName: Sharpy.ILessThanOrEquatable<T>.__Le__(T)
+  nameWithType.vb: ILessThanOrEquatable(Of T).__Le__(T)
+  fullName.vb: Sharpy.ILessThanOrEquatable(Of T).__Le__(T)
+  spec.csharp:
+  - uid: Sharpy.ILessThanOrEquatable{`0}.__Le__(`0)
+    name: __Le__
+    href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1___Le____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.ILessThanOrEquatable{`0}.__Le__(`0)
+    name: __Le__
+    href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1___Le____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.ILessThanComparable{{T}}.__Lt__({T})
+  commentId: M:Sharpy.ILessThanComparable{`0}.__Lt__(`0)
+  parent: Sharpy.ILessThanComparable{{T}}
+  definition: Sharpy.ILessThanComparable`1.__Lt__(`0)
+  href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1___Lt____0_
+  name: __Lt__(T)
+  nameWithType: ILessThanComparable<T>.__Lt__(T)
+  fullName: Sharpy.ILessThanComparable<T>.__Lt__(T)
+  nameWithType.vb: ILessThanComparable(Of T).__Lt__(T)
+  fullName.vb: Sharpy.ILessThanComparable(Of T).__Lt__(T)
+  spec.csharp:
+  - uid: Sharpy.ILessThanComparable{`0}.__Lt__(`0)
+    name: __Lt__
+    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1___Lt____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.ILessThanComparable{`0}.__Lt__(`0)
+    name: __Lt__
+    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1___Lt____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanOrEquatable{{T}}.__Ge__({T})
+  commentId: M:Sharpy.IGreaterThanOrEquatable{`0}.__Ge__(`0)
+  parent: Sharpy.IGreaterThanOrEquatable{{T}}
+  definition: Sharpy.IGreaterThanOrEquatable`1.__Ge__(`0)
+  href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1___Ge____0_
+  name: __Ge__(T)
+  nameWithType: IGreaterThanOrEquatable<T>.__Ge__(T)
+  fullName: Sharpy.IGreaterThanOrEquatable<T>.__Ge__(T)
+  nameWithType.vb: IGreaterThanOrEquatable(Of T).__Ge__(T)
+  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of T).__Ge__(T)
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanOrEquatable{`0}.__Ge__(`0)
+    name: __Ge__
+    href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1___Ge____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IGreaterThanOrEquatable{`0}.__Ge__(`0)
+    name: __Ge__
+    href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1___Ge____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanComparable{{T}}.__Gt__({T})
+  commentId: M:Sharpy.IGreaterThanComparable{`0}.__Gt__(`0)
+  parent: Sharpy.IGreaterThanComparable{{T}}
+  definition: Sharpy.IGreaterThanComparable`1.__Gt__(`0)
+  href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1___Gt____0_
+  name: __Gt__(T)
+  nameWithType: IGreaterThanComparable<T>.__Gt__(T)
+  fullName: Sharpy.IGreaterThanComparable<T>.__Gt__(T)
+  nameWithType.vb: IGreaterThanComparable(Of T).__Gt__(T)
+  fullName.vb: Sharpy.IGreaterThanComparable(Of T).__Gt__(T)
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanComparable{`0}.__Gt__(`0)
+    name: __Gt__
+    href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1___Gt____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IGreaterThanComparable{`0}.__Gt__(`0)
+    name: __Gt__
+    href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1___Gt____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: System.IComparable{{T}}.CompareTo({T})
+  commentId: M:System.IComparable{`0}.CompareTo(`0)
+  parent: System.IComparable{{T}}
+  definition: System.IComparable`1.CompareTo(`0)
+  href: https://learn.microsoft.com/dotnet/api/system.icomparable-1.compareto
+  name: CompareTo(T)
+  nameWithType: IComparable<T>.CompareTo(T)
+  fullName: System.IComparable<T>.CompareTo(T)
+  nameWithType.vb: IComparable(Of T).CompareTo(T)
+  fullName.vb: System.IComparable(Of T).CompareTo(T)
+  spec.csharp:
+  - uid: System.IComparable{`0}.CompareTo(`0)
+    name: CompareTo
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1.compareto
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: System.IComparable{`0}.CompareTo(`0)
+    name: CompareTo
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1.compareto
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.IEquatable{{T}}.__Eq__({T})
+  commentId: M:Sharpy.IEquatable{`0}.__Eq__(`0)
+  parent: Sharpy.IEquatable{{T}}
+  definition: Sharpy.IEquatable`1.__Eq__(`0)
+  href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+  name: __Eq__(T)
+  nameWithType: IEquatable<T>.__Eq__(T)
+  fullName: Sharpy.IEquatable<T>.__Eq__(T)
+  nameWithType.vb: IEquatable(Of T).__Eq__(T)
+  fullName.vb: Sharpy.IEquatable(Of T).__Eq__(T)
+  spec.csharp:
+  - uid: Sharpy.IEquatable{`0}.__Eq__(`0)
+    name: __Eq__
+    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IEquatable{`0}.__Eq__(`0)
+    name: __Eq__
+    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.IEquatable.Equals(System.Object)
+  commentId: M:Sharpy.IEquatable.Equals(System.Object)
+  parent: Sharpy.IEquatable
+  isExternal: true
+  href: Sharpy.IEquatable.html#Sharpy_IEquatable_Equals_System_Object_
+  name: Equals(object)
+  nameWithType: IEquatable.Equals(object)
+  fullName: Sharpy.IEquatable.Equals(object)
+  nameWithType.vb: IEquatable.Equals(Object)
+  fullName.vb: Sharpy.IEquatable.Equals(Object)
+  name.vb: Equals(Object)
+  spec.csharp:
+  - uid: Sharpy.IEquatable.Equals(System.Object)
+    name: Equals
+    href: Sharpy.IEquatable.html#Sharpy_IEquatable_Equals_System_Object_
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IEquatable.Equals(System.Object)
+    name: Equals
+    href: Sharpy.IEquatable.html#Sharpy_IEquatable_Equals_System_Object_
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: Sharpy.IEquatable.__Eq__(System.Object)
+  commentId: M:Sharpy.IEquatable.__Eq__(System.Object)
+  parent: Sharpy.IEquatable
+  isExternal: true
+  href: Sharpy.IEquatable.html#Sharpy_IEquatable___Eq___System_Object_
+  name: __Eq__(object)
+  nameWithType: IEquatable.__Eq__(object)
+  fullName: Sharpy.IEquatable.__Eq__(object)
+  nameWithType.vb: IEquatable.__Eq__(Object)
+  fullName.vb: Sharpy.IEquatable.__Eq__(Object)
+  name.vb: __Eq__(Object)
+  spec.csharp:
+  - uid: Sharpy.IEquatable.__Eq__(System.Object)
+    name: __Eq__
+    href: Sharpy.IEquatable.html#Sharpy_IEquatable___Eq___System_Object_
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IEquatable.__Eq__(System.Object)
+    name: __Eq__
+    href: Sharpy.IEquatable.html#Sharpy_IEquatable___Eq___System_Object_
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: Sharpy.IHashable.__Hash__
+  commentId: M:Sharpy.IHashable.__Hash__
+  parent: Sharpy.IHashable
+  href: Sharpy.IHashable.html#Sharpy_IHashable___Hash__
+  name: __Hash__()
+  nameWithType: IHashable.__Hash__()
+  fullName: Sharpy.IHashable.__Hash__()
+  spec.csharp:
+  - uid: Sharpy.IHashable.__Hash__
+    name: __Hash__
+    href: Sharpy.IHashable.html#Sharpy_IHashable___Hash__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IHashable.__Hash__
+    name: __Hash__
+    href: Sharpy.IHashable.html#Sharpy_IHashable___Hash__
+  - name: (
+  - name: )
+- uid: System.IEquatable{{T}}.Equals({T})
+  commentId: M:System.IEquatable{`0}.Equals(`0)
+  parent: System.IEquatable{{T}}
+  definition: System.IEquatable`1.Equals(`0)
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
+  name: Equals(T)
+  nameWithType: IEquatable<T>.Equals(T)
+  fullName: System.IEquatable<T>.Equals(T)
+  nameWithType.vb: IEquatable(Of T).Equals(T)
+  fullName.vb: System.IEquatable(Of T).Equals(T)
+  spec.csharp:
+  - uid: System.IEquatable{`0}.Equals(`0)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: System.IEquatable{`0}.Equals(`0)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.ILessThanOrEquatable`1.__Le__(`0)
+  commentId: M:Sharpy.ILessThanOrEquatable`1.__Le__(`0)
+  href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1___Le____0_
+  name: __Le__(T)
+  nameWithType: ILessThanOrEquatable<T>.__Le__(T)
+  fullName: Sharpy.ILessThanOrEquatable<T>.__Le__(T)
+  nameWithType.vb: ILessThanOrEquatable(Of T).__Le__(T)
+  fullName.vb: Sharpy.ILessThanOrEquatable(Of T).__Le__(T)
+  spec.csharp:
+  - uid: Sharpy.ILessThanOrEquatable`1.__Le__(`0)
+    name: __Le__
+    href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1___Le____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.ILessThanOrEquatable`1.__Le__(`0)
+    name: __Le__
+    href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1___Le____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.ILessThanOrEquatable{{T}}
+  commentId: T:Sharpy.ILessThanOrEquatable{`0}
+  parent: Sharpy
+  definition: Sharpy.ILessThanOrEquatable`1
+  href: Sharpy.ILessThanOrEquatable-1.html
+  name: ILessThanOrEquatable<T>
+  nameWithType: ILessThanOrEquatable<T>
+  fullName: Sharpy.ILessThanOrEquatable<T>
+  nameWithType.vb: ILessThanOrEquatable(Of T)
+  fullName.vb: Sharpy.ILessThanOrEquatable(Of T)
+  name.vb: ILessThanOrEquatable(Of T)
+  spec.csharp:
+  - uid: Sharpy.ILessThanOrEquatable`1
+    name: ILessThanOrEquatable
+    href: Sharpy.ILessThanOrEquatable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.ILessThanOrEquatable`1
+    name: ILessThanOrEquatable
+    href: Sharpy.ILessThanOrEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.ILessThanComparable`1.__Lt__(`0)
+  commentId: M:Sharpy.ILessThanComparable`1.__Lt__(`0)
+  href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1___Lt____0_
+  name: __Lt__(T)
+  nameWithType: ILessThanComparable<T>.__Lt__(T)
+  fullName: Sharpy.ILessThanComparable<T>.__Lt__(T)
+  nameWithType.vb: ILessThanComparable(Of T).__Lt__(T)
+  fullName.vb: Sharpy.ILessThanComparable(Of T).__Lt__(T)
+  spec.csharp:
+  - uid: Sharpy.ILessThanComparable`1.__Lt__(`0)
+    name: __Lt__
+    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1___Lt____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.ILessThanComparable`1.__Lt__(`0)
+    name: __Lt__
+    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1___Lt____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.ILessThanComparable{{T}}
+  commentId: T:Sharpy.ILessThanComparable{`0}
+  parent: Sharpy
+  definition: Sharpy.ILessThanComparable`1
+  href: Sharpy.ILessThanComparable-1.html
+  name: ILessThanComparable<T>
+  nameWithType: ILessThanComparable<T>
+  fullName: Sharpy.ILessThanComparable<T>
+  nameWithType.vb: ILessThanComparable(Of T)
+  fullName.vb: Sharpy.ILessThanComparable(Of T)
+  name.vb: ILessThanComparable(Of T)
+  spec.csharp:
+  - uid: Sharpy.ILessThanComparable`1
+    name: ILessThanComparable
+    href: Sharpy.ILessThanComparable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.ILessThanComparable`1
+    name: ILessThanComparable
+    href: Sharpy.ILessThanComparable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanOrEquatable`1.__Ge__(`0)
+  commentId: M:Sharpy.IGreaterThanOrEquatable`1.__Ge__(`0)
+  href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1___Ge____0_
+  name: __Ge__(T)
+  nameWithType: IGreaterThanOrEquatable<T>.__Ge__(T)
+  fullName: Sharpy.IGreaterThanOrEquatable<T>.__Ge__(T)
+  nameWithType.vb: IGreaterThanOrEquatable(Of T).__Ge__(T)
+  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of T).__Ge__(T)
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanOrEquatable`1.__Ge__(`0)
+    name: __Ge__
+    href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1___Ge____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IGreaterThanOrEquatable`1.__Ge__(`0)
+    name: __Ge__
+    href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1___Ge____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanOrEquatable{{T}}
+  commentId: T:Sharpy.IGreaterThanOrEquatable{`0}
+  parent: Sharpy
+  definition: Sharpy.IGreaterThanOrEquatable`1
+  href: Sharpy.IGreaterThanOrEquatable-1.html
+  name: IGreaterThanOrEquatable<T>
+  nameWithType: IGreaterThanOrEquatable<T>
+  fullName: Sharpy.IGreaterThanOrEquatable<T>
+  nameWithType.vb: IGreaterThanOrEquatable(Of T)
+  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of T)
+  name.vb: IGreaterThanOrEquatable(Of T)
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanOrEquatable`1
+    name: IGreaterThanOrEquatable
+    href: Sharpy.IGreaterThanOrEquatable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IGreaterThanOrEquatable`1
+    name: IGreaterThanOrEquatable
+    href: Sharpy.IGreaterThanOrEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanComparable`1.__Gt__(`0)
+  commentId: M:Sharpy.IGreaterThanComparable`1.__Gt__(`0)
+  href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1___Gt____0_
+  name: __Gt__(T)
+  nameWithType: IGreaterThanComparable<T>.__Gt__(T)
+  fullName: Sharpy.IGreaterThanComparable<T>.__Gt__(T)
+  nameWithType.vb: IGreaterThanComparable(Of T).__Gt__(T)
+  fullName.vb: Sharpy.IGreaterThanComparable(Of T).__Gt__(T)
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanComparable`1.__Gt__(`0)
+    name: __Gt__
+    href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1___Gt____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IGreaterThanComparable`1.__Gt__(`0)
+    name: __Gt__
+    href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1___Gt____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanComparable{{T}}
+  commentId: T:Sharpy.IGreaterThanComparable{`0}
+  parent: Sharpy
+  definition: Sharpy.IGreaterThanComparable`1
+  href: Sharpy.IGreaterThanComparable-1.html
+  name: IGreaterThanComparable<T>
+  nameWithType: IGreaterThanComparable<T>
+  fullName: Sharpy.IGreaterThanComparable<T>
+  nameWithType.vb: IGreaterThanComparable(Of T)
+  fullName.vb: Sharpy.IGreaterThanComparable(Of T)
+  name.vb: IGreaterThanComparable(Of T)
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanComparable`1
+    name: IGreaterThanComparable
+    href: Sharpy.IGreaterThanComparable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IGreaterThanComparable`1
+    name: IGreaterThanComparable
+    href: Sharpy.IGreaterThanComparable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.IComparable`1.CompareTo(`0)
+  commentId: M:System.IComparable`1.CompareTo(`0)
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.icomparable-1.compareto
+  name: CompareTo(T)
+  nameWithType: IComparable<T>.CompareTo(T)
+  fullName: System.IComparable<T>.CompareTo(T)
+  nameWithType.vb: IComparable(Of T).CompareTo(T)
+  fullName.vb: System.IComparable(Of T).CompareTo(T)
+  spec.csharp:
+  - uid: System.IComparable`1.CompareTo(`0)
+    name: CompareTo
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1.compareto
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: System.IComparable`1.CompareTo(`0)
+    name: CompareTo
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1.compareto
+  - name: (
+  - name: T
+  - name: )
+- uid: System.IComparable{{T}}
+  commentId: T:System.IComparable{`0}
+  parent: System
+  definition: System.IComparable`1
+  href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
+  name: IComparable<T>
+  nameWithType: IComparable<T>
+  fullName: System.IComparable<T>
+  nameWithType.vb: IComparable(Of T)
+  fullName.vb: System.IComparable(Of T)
+  name.vb: IComparable(Of T)
+  spec.csharp:
+  - uid: System.IComparable`1
+    name: IComparable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.IComparable`1
+    name: IComparable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IEquatable`1.__Eq__(`0)
+  commentId: M:Sharpy.IEquatable`1.__Eq__(`0)
+  href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+  name: __Eq__(T)
+  nameWithType: IEquatable<T>.__Eq__(T)
+  fullName: Sharpy.IEquatable<T>.__Eq__(T)
+  nameWithType.vb: IEquatable(Of T).__Eq__(T)
+  fullName.vb: Sharpy.IEquatable(Of T).__Eq__(T)
+  spec.csharp:
+  - uid: Sharpy.IEquatable`1.__Eq__(`0)
+    name: __Eq__
+    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IEquatable`1.__Eq__(`0)
+    name: __Eq__
+    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.IEquatable{{T}}
+  commentId: T:Sharpy.IEquatable{`0}
+  parent: Sharpy
+  definition: Sharpy.IEquatable`1
+  href: Sharpy.IEquatable-1.html
+  name: IEquatable<T>
+  nameWithType: IEquatable<T>
+  fullName: Sharpy.IEquatable<T>
+  nameWithType.vb: IEquatable(Of T)
+  fullName.vb: Sharpy.IEquatable(Of T)
+  name.vb: IEquatable(Of T)
+  spec.csharp:
+  - uid: Sharpy.IEquatable`1
+    name: IEquatable
+    href: Sharpy.IEquatable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IEquatable`1
+    name: IEquatable
+    href: Sharpy.IEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IEquatable
+  commentId: T:Sharpy.IEquatable
+  parent: Sharpy
+  href: Sharpy.IEquatable.html
+  name: IEquatable
+  nameWithType: IEquatable
+  fullName: Sharpy.IEquatable
+- uid: Sharpy.IHashable
+  commentId: T:Sharpy.IHashable
+  parent: Sharpy
+  href: Sharpy.IHashable.html
+  name: IHashable
+  nameWithType: IHashable
+  fullName: Sharpy.IHashable
+- uid: System.IEquatable`1.Equals(`0)
+  commentId: M:System.IEquatable`1.Equals(`0)
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
+  name: Equals(T)
+  nameWithType: IEquatable<T>.Equals(T)
+  fullName: System.IEquatable<T>.Equals(T)
+  nameWithType.vb: IEquatable(Of T).Equals(T)
+  fullName.vb: System.IEquatable(Of T).Equals(T)
+  spec.csharp:
+  - uid: System.IEquatable`1.Equals(`0)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: System.IEquatable`1.Equals(`0)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
+  - name: (
+  - name: T
+  - name: )
+- uid: System.IEquatable{{T}}
+  commentId: T:System.IEquatable{`0}
+  parent: System
+  definition: System.IEquatable`1
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  name: IEquatable<T>
+  nameWithType: IEquatable<T>
+  fullName: System.IEquatable<T>
+  nameWithType.vb: IEquatable(Of T)
+  fullName.vb: System.IEquatable(Of T)
+  name.vb: IEquatable(Of T)
+  spec.csharp:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.ILessThanOrEquatable`1
+  commentId: T:Sharpy.ILessThanOrEquatable`1
+  href: Sharpy.ILessThanOrEquatable-1.html
+  name: ILessThanOrEquatable<T>
+  nameWithType: ILessThanOrEquatable<T>
+  fullName: Sharpy.ILessThanOrEquatable<T>
+  nameWithType.vb: ILessThanOrEquatable(Of T)
+  fullName.vb: Sharpy.ILessThanOrEquatable(Of T)
+  name.vb: ILessThanOrEquatable(Of T)
+  spec.csharp:
+  - uid: Sharpy.ILessThanOrEquatable`1
+    name: ILessThanOrEquatable
+    href: Sharpy.ILessThanOrEquatable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.ILessThanOrEquatable`1
+    name: ILessThanOrEquatable
+    href: Sharpy.ILessThanOrEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.ILessThanComparable`1
+  commentId: T:Sharpy.ILessThanComparable`1
+  href: Sharpy.ILessThanComparable-1.html
+  name: ILessThanComparable<T>
+  nameWithType: ILessThanComparable<T>
+  fullName: Sharpy.ILessThanComparable<T>
+  nameWithType.vb: ILessThanComparable(Of T)
+  fullName.vb: Sharpy.ILessThanComparable(Of T)
+  name.vb: ILessThanComparable(Of T)
+  spec.csharp:
+  - uid: Sharpy.ILessThanComparable`1
+    name: ILessThanComparable
+    href: Sharpy.ILessThanComparable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.ILessThanComparable`1
+    name: ILessThanComparable
+    href: Sharpy.ILessThanComparable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanOrEquatable`1
+  commentId: T:Sharpy.IGreaterThanOrEquatable`1
+  href: Sharpy.IGreaterThanOrEquatable-1.html
+  name: IGreaterThanOrEquatable<T>
+  nameWithType: IGreaterThanOrEquatable<T>
+  fullName: Sharpy.IGreaterThanOrEquatable<T>
+  nameWithType.vb: IGreaterThanOrEquatable(Of T)
+  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of T)
+  name.vb: IGreaterThanOrEquatable(Of T)
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanOrEquatable`1
+    name: IGreaterThanOrEquatable
+    href: Sharpy.IGreaterThanOrEquatable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IGreaterThanOrEquatable`1
+    name: IGreaterThanOrEquatable
+    href: Sharpy.IGreaterThanOrEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanComparable`1
+  commentId: T:Sharpy.IGreaterThanComparable`1
+  href: Sharpy.IGreaterThanComparable-1.html
+  name: IGreaterThanComparable<T>
+  nameWithType: IGreaterThanComparable<T>
+  fullName: Sharpy.IGreaterThanComparable<T>
+  nameWithType.vb: IGreaterThanComparable(Of T)
+  fullName.vb: Sharpy.IGreaterThanComparable(Of T)
+  name.vb: IGreaterThanComparable(Of T)
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanComparable`1
+    name: IGreaterThanComparable
+    href: Sharpy.IGreaterThanComparable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IGreaterThanComparable`1
+    name: IGreaterThanComparable
+    href: Sharpy.IGreaterThanComparable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.IComparable`1
+  commentId: T:System.IComparable`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
+  name: IComparable<T>
+  nameWithType: IComparable<T>
+  fullName: System.IComparable<T>
+  nameWithType.vb: IComparable(Of T)
+  fullName.vb: System.IComparable(Of T)
+  name.vb: IComparable(Of T)
+  spec.csharp:
+  - uid: System.IComparable`1
+    name: IComparable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.IComparable`1
+    name: IComparable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: Sharpy.IEquatable`1
+  commentId: T:Sharpy.IEquatable`1
+  href: Sharpy.IEquatable-1.html
+  name: IEquatable<T>
+  nameWithType: IEquatable<T>
+  fullName: Sharpy.IEquatable<T>
+  nameWithType.vb: IEquatable(Of T)
+  fullName.vb: Sharpy.IEquatable(Of T)
+  name.vb: IEquatable(Of T)
+  spec.csharp:
+  - uid: Sharpy.IEquatable`1
+    name: IEquatable
+    href: Sharpy.IEquatable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IEquatable`1
+    name: IEquatable
+    href: Sharpy.IEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.IEquatable`1
+  commentId: T:System.IEquatable`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  name: IEquatable<T>
+  nameWithType: IEquatable<T>
+  fullName: System.IEquatable<T>
+  nameWithType.vb: IEquatable(Of T)
+  fullName.vb: System.IEquatable(Of T)
+  name.vb: IEquatable(Of T)
+  spec.csharp:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )

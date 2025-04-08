@@ -30,10 +30,10 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: 'public readonly struct Slice : Sized'
-    content.vb: Public Structure Slice Implements Sized
+    content: 'public readonly struct Slice : ISized'
+    content.vb: Public Structure Slice Implements ISized
   implements:
-  - Sharpy.Collections.Interfaces.Sized
+  - Sharpy.Collections.Interfaces.ISized
   inheritedMembers:
   - System.ValueType.Equals(System.Object)
   - System.ValueType.GetHashCode
@@ -227,7 +227,7 @@ items:
     content.vb: Public Function __Len__() As UInteger
   overload: Sharpy.Slice.__Len__*
   implements:
-  - Sharpy.Collections.Interfaces.Sized.__Len__
+  - Sharpy.Collections.Interfaces.ISized.__Len__
 references:
 - uid: Sharpy
   commentId: N:Sharpy
@@ -235,13 +235,13 @@ references:
   name: Sharpy
   nameWithType: Sharpy
   fullName: Sharpy
-- uid: Sharpy.Collections.Interfaces.Sized
-  commentId: T:Sharpy.Collections.Interfaces.Sized
+- uid: Sharpy.Collections.Interfaces.ISized
+  commentId: T:Sharpy.Collections.Interfaces.ISized
   parent: Sharpy.Collections.Interfaces
-  href: Sharpy.Collections.Interfaces.Sized.html
-  name: Sized
-  nameWithType: Sized
-  fullName: Sharpy.Collections.Interfaces.Sized
+  href: Sharpy.Collections.Interfaces.ISized.html
+  name: ISized
+  nameWithType: ISized
+  fullName: Sharpy.Collections.Interfaces.ISized
 - uid: System.ValueType.Equals(System.Object)
   commentId: M:System.ValueType.Equals(System.Object)
   parent: System.ValueType
@@ -532,22 +532,22 @@ references:
   name: __Len__
   nameWithType: Slice.__Len__
   fullName: Sharpy.Slice.__Len__
-- uid: Sharpy.Collections.Interfaces.Sized.__Len__
-  commentId: M:Sharpy.Collections.Interfaces.Sized.__Len__
-  parent: Sharpy.Collections.Interfaces.Sized
-  href: Sharpy.Collections.Interfaces.Sized.html#Sharpy_Collections_Interfaces_Sized___Len__
+- uid: Sharpy.Collections.Interfaces.ISized.__Len__
+  commentId: M:Sharpy.Collections.Interfaces.ISized.__Len__
+  parent: Sharpy.Collections.Interfaces.ISized
+  href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized___Len__
   name: __Len__()
-  nameWithType: Sized.__Len__()
-  fullName: Sharpy.Collections.Interfaces.Sized.__Len__()
+  nameWithType: ISized.__Len__()
+  fullName: Sharpy.Collections.Interfaces.ISized.__Len__()
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.Sized.__Len__
+  - uid: Sharpy.Collections.Interfaces.ISized.__Len__
     name: __Len__
-    href: Sharpy.Collections.Interfaces.Sized.html#Sharpy_Collections_Interfaces_Sized___Len__
+    href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized___Len__
   - name: (
   - name: )
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.Sized.__Len__
+  - uid: Sharpy.Collections.Interfaces.ISized.__Len__
     name: __Len__
-    href: Sharpy.Collections.Interfaces.Sized.html#Sharpy_Collections_Interfaces_Sized___Len__
+    href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized___Len__
   - name: (
   - name: )

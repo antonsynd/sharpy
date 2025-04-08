@@ -1,0 +1,90 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.IInplaceMultipliable`1
+  commentId: T:Sharpy.IInplaceMultipliable`1
+  id: IInplaceMultipliable`1
+  parent: Sharpy
+  children:
+  - Sharpy.IInplaceMultipliable`1.__IMul__(`0)
+  langs:
+  - csharp
+  - vb
+  name: IInplaceMultipliable<T>
+  nameWithType: IInplaceMultipliable<T>
+  fullName: Sharpy.IInplaceMultipliable<T>
+  type: Interface
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IInplaceMultipliable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IInplaceMultipliable
+    path: ../src/Sharpy/IInplaceMultipliable.cs
+    startLine: 2
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public interface IInplaceMultipliable<T>
+    typeParameters:
+    - id: T
+    content.vb: Public Interface IInplaceMultipliable(Of T)
+  nameWithType.vb: IInplaceMultipliable(Of T)
+  fullName.vb: Sharpy.IInplaceMultipliable(Of T)
+  name.vb: IInplaceMultipliable(Of T)
+- uid: Sharpy.IInplaceMultipliable`1.__IMul__(`0)
+  commentId: M:Sharpy.IInplaceMultipliable`1.__IMul__(`0)
+  id: __IMul__(`0)
+  parent: Sharpy.IInplaceMultipliable`1
+  langs:
+  - csharp
+  - vb
+  name: __IMul__(T)
+  nameWithType: IInplaceMultipliable<T>.__IMul__(T)
+  fullName: Sharpy.IInplaceMultipliable<T>.__IMul__(T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IInplaceMultipliable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __IMul__
+    path: ../src/Sharpy/IInplaceMultipliable.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: void __IMul__(T other)
+    parameters:
+    - id: other
+      type: '{T}'
+    content.vb: Sub __IMul__(other As T)
+  overload: Sharpy.IInplaceMultipliable`1.__IMul__*
+  nameWithType.vb: IInplaceMultipliable(Of T).__IMul__(T)
+  fullName.vb: Sharpy.IInplaceMultipliable(Of T).__IMul__(T)
+references:
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: Sharpy.IInplaceMultipliable`1.__IMul__*
+  commentId: Overload:Sharpy.IInplaceMultipliable`1.__IMul__
+  href: Sharpy.IInplaceMultipliable-1.html#Sharpy_IInplaceMultipliable_1___IMul____0_
+  name: __IMul__
+  nameWithType: IInplaceMultipliable<T>.__IMul__
+  fullName: Sharpy.IInplaceMultipliable<T>.__IMul__
+  nameWithType.vb: IInplaceMultipliable(Of T).__IMul__
+  fullName.vb: Sharpy.IInplaceMultipliable(Of T).__IMul__
+- uid: '{T}'
+  commentId: '!:T'
+  definition: T
+  name: T
+  nameWithType: T
+  fullName: T
+- uid: T
+  name: T
+  nameWithType: T
+  fullName: T

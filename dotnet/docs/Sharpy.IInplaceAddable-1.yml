@@ -1,0 +1,90 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.IInplaceAddable`1
+  commentId: T:Sharpy.IInplaceAddable`1
+  id: IInplaceAddable`1
+  parent: Sharpy
+  children:
+  - Sharpy.IInplaceAddable`1.__IAdd__(`0)
+  langs:
+  - csharp
+  - vb
+  name: IInplaceAddable<T>
+  nameWithType: IInplaceAddable<T>
+  fullName: Sharpy.IInplaceAddable<T>
+  type: Interface
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IInplaceAddable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IInplaceAddable
+    path: ../src/Sharpy/IInplaceAddable.cs
+    startLine: 2
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public interface IInplaceAddable<T>
+    typeParameters:
+    - id: T
+    content.vb: Public Interface IInplaceAddable(Of T)
+  nameWithType.vb: IInplaceAddable(Of T)
+  fullName.vb: Sharpy.IInplaceAddable(Of T)
+  name.vb: IInplaceAddable(Of T)
+- uid: Sharpy.IInplaceAddable`1.__IAdd__(`0)
+  commentId: M:Sharpy.IInplaceAddable`1.__IAdd__(`0)
+  id: __IAdd__(`0)
+  parent: Sharpy.IInplaceAddable`1
+  langs:
+  - csharp
+  - vb
+  name: __IAdd__(T)
+  nameWithType: IInplaceAddable<T>.__IAdd__(T)
+  fullName: Sharpy.IInplaceAddable<T>.__IAdd__(T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IInplaceAddable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __IAdd__
+    path: ../src/Sharpy/IInplaceAddable.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: void __IAdd__(T other)
+    parameters:
+    - id: other
+      type: '{T}'
+    content.vb: Sub __IAdd__(other As T)
+  overload: Sharpy.IInplaceAddable`1.__IAdd__*
+  nameWithType.vb: IInplaceAddable(Of T).__IAdd__(T)
+  fullName.vb: Sharpy.IInplaceAddable(Of T).__IAdd__(T)
+references:
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: Sharpy.IInplaceAddable`1.__IAdd__*
+  commentId: Overload:Sharpy.IInplaceAddable`1.__IAdd__
+  href: Sharpy.IInplaceAddable-1.html#Sharpy_IInplaceAddable_1___IAdd____0_
+  name: __IAdd__
+  nameWithType: IInplaceAddable<T>.__IAdd__
+  fullName: Sharpy.IInplaceAddable<T>.__IAdd__
+  nameWithType.vb: IInplaceAddable(Of T).__IAdd__
+  fullName.vb: Sharpy.IInplaceAddable(Of T).__IAdd__
+- uid: '{T}'
+  commentId: '!:T'
+  definition: T
+  name: T
+  nameWithType: T
+  fullName: T
+- uid: T
+  name: T
+  nameWithType: T
+  fullName: T

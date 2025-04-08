@@ -5,7 +5,7 @@ items:
   id: __Exports
   parent: Sharpy
   children:
-  - Sharpy.__Exports.Bool(Sharpy.BoolConvertible)
+  - Sharpy.__Exports.Bool(Sharpy.IBoolConvertible)
   - Sharpy.__Exports.Bool(Sharpy.Object)
   - Sharpy.__Exports.Bool(System.Boolean)
   - Sharpy.__Exports.Bool(System.Byte)
@@ -21,23 +21,23 @@ items:
   - Sharpy.__Exports.Bool(System.UInt16)
   - Sharpy.__Exports.Bool(System.UInt32)
   - Sharpy.__Exports.Bool(System.UInt64)
-  - Sharpy.__Exports.Iter``1(Sharpy.Collections.Interfaces.Iterable{``0})
-  - Sharpy.__Exports.Len(Sharpy.Collections.Interfaces.Sized)
+  - Sharpy.__Exports.Iter``1(Sharpy.Collections.Interfaces.IIterable{``0})
+  - Sharpy.__Exports.Len(Sharpy.Collections.Interfaces.ISized)
   - Sharpy.__Exports.Len(System.String)
-  - Sharpy.__Exports.Max``1(Sharpy.Collections.Interfaces.Iterable{``0})
-  - Sharpy.__Exports.Max``2(Sharpy.Collections.Interfaces.Iterable{``0},System.Func{``0,``1})
-  - Sharpy.__Exports.Min``1(Sharpy.Collections.Interfaces.Iterable{``0})
-  - Sharpy.__Exports.Min``2(Sharpy.Collections.Interfaces.Iterable{``0},System.Func{``0,``1})
+  - Sharpy.__Exports.Max``1(Sharpy.Collections.Interfaces.IIterable{``0})
+  - Sharpy.__Exports.Max``2(Sharpy.Collections.Interfaces.IIterable{``0},System.Func{``0,``1})
+  - Sharpy.__Exports.Min``1(Sharpy.Collections.Interfaces.IIterable{``0})
+  - Sharpy.__Exports.Min``2(Sharpy.Collections.Interfaces.IIterable{``0},System.Func{``0,``1})
   - Sharpy.__Exports.Next``1(Sharpy.Iterator{``0})
   - Sharpy.__Exports.None``1
   - Sharpy.__Exports.Print(Sharpy.Object,System.UInt32,System.Boolean)
   - Sharpy.__Exports.Print(System.Object,System.UInt32,System.Boolean)
   - Sharpy.__Exports.Repr(Sharpy.Object)
   - Sharpy.__Exports.Repr(System.Object)
-  - Sharpy.__Exports.Reversed``1(Sharpy.Collections.Interfaces.Reversible{``0})
+  - Sharpy.__Exports.Reversed``1(Sharpy.Collections.Interfaces.IReversible{``0})
   - Sharpy.__Exports.Some``1(``0)
   - Sharpy.__Exports.Str(System.Object)
-  - Sharpy.__Exports.Sum``1(Sharpy.Collections.Interfaces.Iterable{``0})
+  - Sharpy.__Exports.Sum``1(Sharpy.Collections.Interfaces.IIterable{``0})
   langs:
   - csharp
   - vb
@@ -542,16 +542,16 @@ items:
       type: System.Boolean
     content.vb: Public Shared Function Bool(obj As [Object]) As Boolean
   overload: Sharpy.__Exports.Bool*
-- uid: Sharpy.__Exports.Bool(Sharpy.BoolConvertible)
-  commentId: M:Sharpy.__Exports.Bool(Sharpy.BoolConvertible)
-  id: Bool(Sharpy.BoolConvertible)
+- uid: Sharpy.__Exports.Bool(Sharpy.IBoolConvertible)
+  commentId: M:Sharpy.__Exports.Bool(Sharpy.IBoolConvertible)
+  id: Bool(Sharpy.IBoolConvertible)
   parent: Sharpy.__Exports
   langs:
   - csharp
   - vb
-  name: Bool(BoolConvertible)
-  nameWithType: __Exports.Bool(BoolConvertible)
-  fullName: Sharpy.__Exports.Bool(Sharpy.BoolConvertible)
+  name: Bool(IBoolConvertible)
+  nameWithType: __Exports.Bool(IBoolConvertible)
+  fullName: Sharpy.__Exports.Bool(Sharpy.IBoolConvertible)
   type: Method
   source:
     remote:
@@ -565,13 +565,13 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public static bool Bool(BoolConvertible b)
+    content: public static bool Bool(IBoolConvertible b)
     parameters:
     - id: b
-      type: Sharpy.BoolConvertible
+      type: Sharpy.IBoolConvertible
     return:
       type: System.Boolean
-    content.vb: Public Shared Function Bool(b As BoolConvertible) As Boolean
+    content.vb: Public Shared Function Bool(b As IBoolConvertible) As Boolean
   overload: Sharpy.__Exports.Bool*
 - uid: Sharpy.__Exports.Bool(System.Object)
   commentId: M:Sharpy.__Exports.Bool(System.Object)
@@ -607,16 +607,16 @@ items:
   nameWithType.vb: __Exports.Bool(Object)
   fullName.vb: Sharpy.__Exports.Bool(Object)
   name.vb: Bool(Object)
-- uid: Sharpy.__Exports.Iter``1(Sharpy.Collections.Interfaces.Iterable{``0})
-  commentId: M:Sharpy.__Exports.Iter``1(Sharpy.Collections.Interfaces.Iterable{``0})
-  id: Iter``1(Sharpy.Collections.Interfaces.Iterable{``0})
+- uid: Sharpy.__Exports.Iter``1(Sharpy.Collections.Interfaces.IIterable{``0})
+  commentId: M:Sharpy.__Exports.Iter``1(Sharpy.Collections.Interfaces.IIterable{``0})
+  id: Iter``1(Sharpy.Collections.Interfaces.IIterable{``0})
   parent: Sharpy.__Exports
   langs:
   - csharp
   - vb
-  name: Iter<T>(Iterable<T>)
-  nameWithType: __Exports.Iter<T>(Iterable<T>)
-  fullName: Sharpy.__Exports.Iter<T>(Sharpy.Collections.Interfaces.Iterable<T>)
+  name: Iter<T>(IIterable<T>)
+  nameWithType: __Exports.Iter<T>(IIterable<T>)
+  fullName: Sharpy.__Exports.Iter<T>(Sharpy.Collections.Interfaces.IIterable<T>)
   type: Method
   source:
     remote:
@@ -630,29 +630,29 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public static Iterator<T> Iter<T>(Iterable<T> iterable)
+    content: public static Iterator<T> Iter<T>(IIterable<T> iterable)
     parameters:
     - id: iterable
-      type: Sharpy.Collections.Interfaces.Iterable{{T}}
+      type: Sharpy.Collections.Interfaces.IIterable{{T}}
     typeParameters:
     - id: T
     return:
       type: Sharpy.Iterator{{T}}
-    content.vb: Public Shared Function Iter(Of T)(iterable As Iterable(Of T)) As Iterator(Of T)
+    content.vb: Public Shared Function Iter(Of T)(iterable As IIterable(Of T)) As Iterator(Of T)
   overload: Sharpy.__Exports.Iter*
-  nameWithType.vb: __Exports.Iter(Of T)(Iterable(Of T))
-  fullName.vb: Sharpy.__Exports.Iter(Of T)(Sharpy.Collections.Interfaces.Iterable(Of T))
-  name.vb: Iter(Of T)(Iterable(Of T))
-- uid: Sharpy.__Exports.Len(Sharpy.Collections.Interfaces.Sized)
-  commentId: M:Sharpy.__Exports.Len(Sharpy.Collections.Interfaces.Sized)
-  id: Len(Sharpy.Collections.Interfaces.Sized)
+  nameWithType.vb: __Exports.Iter(Of T)(IIterable(Of T))
+  fullName.vb: Sharpy.__Exports.Iter(Of T)(Sharpy.Collections.Interfaces.IIterable(Of T))
+  name.vb: Iter(Of T)(IIterable(Of T))
+- uid: Sharpy.__Exports.Len(Sharpy.Collections.Interfaces.ISized)
+  commentId: M:Sharpy.__Exports.Len(Sharpy.Collections.Interfaces.ISized)
+  id: Len(Sharpy.Collections.Interfaces.ISized)
   parent: Sharpy.__Exports
   langs:
   - csharp
   - vb
-  name: Len(Sized)
-  nameWithType: __Exports.Len(Sized)
-  fullName: Sharpy.__Exports.Len(Sharpy.Collections.Interfaces.Sized)
+  name: Len(ISized)
+  nameWithType: __Exports.Len(ISized)
+  fullName: Sharpy.__Exports.Len(Sharpy.Collections.Interfaces.ISized)
   type: Method
   source:
     remote:
@@ -673,13 +673,13 @@ items:
     or a collection (such as a dictionary, set, or frozen set).
   example: []
   syntax:
-    content: public static uint Len(Sized sized)
+    content: public static uint Len(ISized sized)
     parameters:
     - id: sized
-      type: Sharpy.Collections.Interfaces.Sized
+      type: Sharpy.Collections.Interfaces.ISized
     return:
       type: System.UInt32
-    content.vb: Public Shared Function Len(sized As Sized) As UInteger
+    content.vb: Public Shared Function Len(sized As ISized) As UInteger
   overload: Sharpy.__Exports.Len*
 - uid: Sharpy.__Exports.Len(System.String)
   commentId: M:Sharpy.__Exports.Len(System.String)
@@ -715,16 +715,16 @@ items:
   nameWithType.vb: __Exports.Len(String)
   fullName.vb: Sharpy.__Exports.Len(String)
   name.vb: Len(String)
-- uid: Sharpy.__Exports.Max``1(Sharpy.Collections.Interfaces.Iterable{``0})
-  commentId: M:Sharpy.__Exports.Max``1(Sharpy.Collections.Interfaces.Iterable{``0})
-  id: Max``1(Sharpy.Collections.Interfaces.Iterable{``0})
+- uid: Sharpy.__Exports.Max``1(Sharpy.Collections.Interfaces.IIterable{``0})
+  commentId: M:Sharpy.__Exports.Max``1(Sharpy.Collections.Interfaces.IIterable{``0})
+  id: Max``1(Sharpy.Collections.Interfaces.IIterable{``0})
   parent: Sharpy.__Exports
   langs:
   - csharp
   - vb
-  name: Max<T>(Iterable<T>)
-  nameWithType: __Exports.Max<T>(Iterable<T>)
-  fullName: Sharpy.__Exports.Max<T>(Sharpy.Collections.Interfaces.Iterable<T>)
+  name: Max<T>(IIterable<T>)
+  nameWithType: __Exports.Max<T>(IIterable<T>)
+  fullName: Sharpy.__Exports.Max<T>(Sharpy.Collections.Interfaces.IIterable<T>)
   type: Method
   source:
     remote:
@@ -738,29 +738,29 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public static T? Max<T>(Iterable<T> iterable)
+    content: public static T? Max<T>(IIterable<T> iterable)
     parameters:
     - id: iterable
-      type: Sharpy.Collections.Interfaces.Iterable{{T}}
+      type: Sharpy.Collections.Interfaces.IIterable{{T}}
     typeParameters:
     - id: T
     return:
       type: '{T}'
-    content.vb: Public Shared Function Max(Of T)(iterable As Iterable(Of T)) As T
+    content.vb: Public Shared Function Max(Of T)(iterable As IIterable(Of T)) As T
   overload: Sharpy.__Exports.Max*
-  nameWithType.vb: __Exports.Max(Of T)(Iterable(Of T))
-  fullName.vb: Sharpy.__Exports.Max(Of T)(Sharpy.Collections.Interfaces.Iterable(Of T))
-  name.vb: Max(Of T)(Iterable(Of T))
-- uid: Sharpy.__Exports.Max``2(Sharpy.Collections.Interfaces.Iterable{``0},System.Func{``0,``1})
-  commentId: M:Sharpy.__Exports.Max``2(Sharpy.Collections.Interfaces.Iterable{``0},System.Func{``0,``1})
-  id: Max``2(Sharpy.Collections.Interfaces.Iterable{``0},System.Func{``0,``1})
+  nameWithType.vb: __Exports.Max(Of T)(IIterable(Of T))
+  fullName.vb: Sharpy.__Exports.Max(Of T)(Sharpy.Collections.Interfaces.IIterable(Of T))
+  name.vb: Max(Of T)(IIterable(Of T))
+- uid: Sharpy.__Exports.Max``2(Sharpy.Collections.Interfaces.IIterable{``0},System.Func{``0,``1})
+  commentId: M:Sharpy.__Exports.Max``2(Sharpy.Collections.Interfaces.IIterable{``0},System.Func{``0,``1})
+  id: Max``2(Sharpy.Collections.Interfaces.IIterable{``0},System.Func{``0,``1})
   parent: Sharpy.__Exports
   langs:
   - csharp
   - vb
-  name: Max<T, TKey>(Iterable<T>, Func<T, TKey>)
-  nameWithType: __Exports.Max<T, TKey>(Iterable<T>, Func<T, TKey>)
-  fullName: Sharpy.__Exports.Max<T, TKey>(Sharpy.Collections.Interfaces.Iterable<T>, System.Func<T, TKey>)
+  name: Max<T, TKey>(IIterable<T>, Func<T, TKey>)
+  nameWithType: __Exports.Max<T, TKey>(IIterable<T>, Func<T, TKey>)
+  fullName: Sharpy.__Exports.Max<T, TKey>(Sharpy.Collections.Interfaces.IIterable<T>, System.Func<T, TKey>)
   type: Method
   source:
     remote:
@@ -774,10 +774,10 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public static T? Max<T, TKey>(Iterable<T> iterable, Func<T, TKey> key)
+    content: public static T? Max<T, TKey>(IIterable<T> iterable, Func<T, TKey> key)
     parameters:
     - id: iterable
-      type: Sharpy.Collections.Interfaces.Iterable{{T}}
+      type: Sharpy.Collections.Interfaces.IIterable{{T}}
     - id: key
       type: System.Func{{T},{TKey}}
     typeParameters:
@@ -785,21 +785,21 @@ items:
     - id: TKey
     return:
       type: '{T}'
-    content.vb: Public Shared Function Max(Of T, TKey)(iterable As Iterable(Of T), key As Func(Of T, TKey)) As T
+    content.vb: Public Shared Function Max(Of T, TKey)(iterable As IIterable(Of T), key As Func(Of T, TKey)) As T
   overload: Sharpy.__Exports.Max*
-  nameWithType.vb: __Exports.Max(Of T, TKey)(Iterable(Of T), Func(Of T, TKey))
-  fullName.vb: Sharpy.__Exports.Max(Of T, TKey)(Sharpy.Collections.Interfaces.Iterable(Of T), System.Func(Of T, TKey))
-  name.vb: Max(Of T, TKey)(Iterable(Of T), Func(Of T, TKey))
-- uid: Sharpy.__Exports.Min``1(Sharpy.Collections.Interfaces.Iterable{``0})
-  commentId: M:Sharpy.__Exports.Min``1(Sharpy.Collections.Interfaces.Iterable{``0})
-  id: Min``1(Sharpy.Collections.Interfaces.Iterable{``0})
+  nameWithType.vb: __Exports.Max(Of T, TKey)(IIterable(Of T), Func(Of T, TKey))
+  fullName.vb: Sharpy.__Exports.Max(Of T, TKey)(Sharpy.Collections.Interfaces.IIterable(Of T), System.Func(Of T, TKey))
+  name.vb: Max(Of T, TKey)(IIterable(Of T), Func(Of T, TKey))
+- uid: Sharpy.__Exports.Min``1(Sharpy.Collections.Interfaces.IIterable{``0})
+  commentId: M:Sharpy.__Exports.Min``1(Sharpy.Collections.Interfaces.IIterable{``0})
+  id: Min``1(Sharpy.Collections.Interfaces.IIterable{``0})
   parent: Sharpy.__Exports
   langs:
   - csharp
   - vb
-  name: Min<T>(Iterable<T>)
-  nameWithType: __Exports.Min<T>(Iterable<T>)
-  fullName: Sharpy.__Exports.Min<T>(Sharpy.Collections.Interfaces.Iterable<T>)
+  name: Min<T>(IIterable<T>)
+  nameWithType: __Exports.Min<T>(IIterable<T>)
+  fullName: Sharpy.__Exports.Min<T>(Sharpy.Collections.Interfaces.IIterable<T>)
   type: Method
   source:
     remote:
@@ -813,29 +813,29 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public static T Min<T>(Iterable<T> iterable)
+    content: public static T Min<T>(IIterable<T> iterable)
     parameters:
     - id: iterable
-      type: Sharpy.Collections.Interfaces.Iterable{{T}}
+      type: Sharpy.Collections.Interfaces.IIterable{{T}}
     typeParameters:
     - id: T
     return:
       type: '{T}'
-    content.vb: Public Shared Function Min(Of T)(iterable As Iterable(Of T)) As T
+    content.vb: Public Shared Function Min(Of T)(iterable As IIterable(Of T)) As T
   overload: Sharpy.__Exports.Min*
-  nameWithType.vb: __Exports.Min(Of T)(Iterable(Of T))
-  fullName.vb: Sharpy.__Exports.Min(Of T)(Sharpy.Collections.Interfaces.Iterable(Of T))
-  name.vb: Min(Of T)(Iterable(Of T))
-- uid: Sharpy.__Exports.Min``2(Sharpy.Collections.Interfaces.Iterable{``0},System.Func{``0,``1})
-  commentId: M:Sharpy.__Exports.Min``2(Sharpy.Collections.Interfaces.Iterable{``0},System.Func{``0,``1})
-  id: Min``2(Sharpy.Collections.Interfaces.Iterable{``0},System.Func{``0,``1})
+  nameWithType.vb: __Exports.Min(Of T)(IIterable(Of T))
+  fullName.vb: Sharpy.__Exports.Min(Of T)(Sharpy.Collections.Interfaces.IIterable(Of T))
+  name.vb: Min(Of T)(IIterable(Of T))
+- uid: Sharpy.__Exports.Min``2(Sharpy.Collections.Interfaces.IIterable{``0},System.Func{``0,``1})
+  commentId: M:Sharpy.__Exports.Min``2(Sharpy.Collections.Interfaces.IIterable{``0},System.Func{``0,``1})
+  id: Min``2(Sharpy.Collections.Interfaces.IIterable{``0},System.Func{``0,``1})
   parent: Sharpy.__Exports
   langs:
   - csharp
   - vb
-  name: Min<T, TKey>(Iterable<T>, Func<T, TKey>)
-  nameWithType: __Exports.Min<T, TKey>(Iterable<T>, Func<T, TKey>)
-  fullName: Sharpy.__Exports.Min<T, TKey>(Sharpy.Collections.Interfaces.Iterable<T>, System.Func<T, TKey>)
+  name: Min<T, TKey>(IIterable<T>, Func<T, TKey>)
+  nameWithType: __Exports.Min<T, TKey>(IIterable<T>, Func<T, TKey>)
+  fullName: Sharpy.__Exports.Min<T, TKey>(Sharpy.Collections.Interfaces.IIterable<T>, System.Func<T, TKey>)
   type: Method
   source:
     remote:
@@ -849,10 +849,10 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public static T Min<T, TKey>(Iterable<T> iterable, Func<T, TKey> key)
+    content: public static T Min<T, TKey>(IIterable<T> iterable, Func<T, TKey> key)
     parameters:
     - id: iterable
-      type: Sharpy.Collections.Interfaces.Iterable{{T}}
+      type: Sharpy.Collections.Interfaces.IIterable{{T}}
     - id: key
       type: System.Func{{T},{TKey}}
     typeParameters:
@@ -860,11 +860,11 @@ items:
     - id: TKey
     return:
       type: '{T}'
-    content.vb: Public Shared Function Min(Of T, TKey)(iterable As Iterable(Of T), key As Func(Of T, TKey)) As T
+    content.vb: Public Shared Function Min(Of T, TKey)(iterable As IIterable(Of T), key As Func(Of T, TKey)) As T
   overload: Sharpy.__Exports.Min*
-  nameWithType.vb: __Exports.Min(Of T, TKey)(Iterable(Of T), Func(Of T, TKey))
-  fullName.vb: Sharpy.__Exports.Min(Of T, TKey)(Sharpy.Collections.Interfaces.Iterable(Of T), System.Func(Of T, TKey))
-  name.vb: Min(Of T, TKey)(Iterable(Of T), Func(Of T, TKey))
+  nameWithType.vb: __Exports.Min(Of T, TKey)(IIterable(Of T), Func(Of T, TKey))
+  fullName.vb: Sharpy.__Exports.Min(Of T, TKey)(Sharpy.Collections.Interfaces.IIterable(Of T), System.Func(Of T, TKey))
+  name.vb: Min(Of T, TKey)(IIterable(Of T), Func(Of T, TKey))
 - uid: Sharpy.__Exports.Next``1(Sharpy.Iterator{``0})
   commentId: M:Sharpy.__Exports.Next``1(Sharpy.Iterator{``0})
   id: Next``1(Sharpy.Iterator{``0})
@@ -1095,16 +1095,16 @@ items:
   nameWithType.vb: __Exports.Repr(Object)
   fullName.vb: Sharpy.__Exports.Repr(Object)
   name.vb: Repr(Object)
-- uid: Sharpy.__Exports.Reversed``1(Sharpy.Collections.Interfaces.Reversible{``0})
-  commentId: M:Sharpy.__Exports.Reversed``1(Sharpy.Collections.Interfaces.Reversible{``0})
-  id: Reversed``1(Sharpy.Collections.Interfaces.Reversible{``0})
+- uid: Sharpy.__Exports.Reversed``1(Sharpy.Collections.Interfaces.IReversible{``0})
+  commentId: M:Sharpy.__Exports.Reversed``1(Sharpy.Collections.Interfaces.IReversible{``0})
+  id: Reversed``1(Sharpy.Collections.Interfaces.IReversible{``0})
   parent: Sharpy.__Exports
   langs:
   - csharp
   - vb
-  name: Reversed<T>(Reversible<T>)
-  nameWithType: __Exports.Reversed<T>(Reversible<T>)
-  fullName: Sharpy.__Exports.Reversed<T>(Sharpy.Collections.Interfaces.Reversible<T>)
+  name: Reversed<T>(IReversible<T>)
+  nameWithType: __Exports.Reversed<T>(IReversible<T>)
+  fullName: Sharpy.__Exports.Reversed<T>(Sharpy.Collections.Interfaces.IReversible<T>)
   type: Method
   source:
     remote:
@@ -1118,19 +1118,19 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public static Iterator<T> Reversed<T>(Reversible<T> reversible)
+    content: public static Iterator<T> Reversed<T>(IReversible<T> reversible)
     parameters:
     - id: reversible
-      type: Sharpy.Collections.Interfaces.Reversible{{T}}
+      type: Sharpy.Collections.Interfaces.IReversible{{T}}
     typeParameters:
     - id: T
     return:
       type: Sharpy.Iterator{{T}}
-    content.vb: Public Shared Function Reversed(Of T)(reversible As Reversible(Of T)) As Iterator(Of T)
+    content.vb: Public Shared Function Reversed(Of T)(reversible As IReversible(Of T)) As Iterator(Of T)
   overload: Sharpy.__Exports.Reversed*
-  nameWithType.vb: __Exports.Reversed(Of T)(Reversible(Of T))
-  fullName.vb: Sharpy.__Exports.Reversed(Of T)(Sharpy.Collections.Interfaces.Reversible(Of T))
-  name.vb: Reversed(Of T)(Reversible(Of T))
+  nameWithType.vb: __Exports.Reversed(Of T)(IReversible(Of T))
+  fullName.vb: Sharpy.__Exports.Reversed(Of T)(Sharpy.Collections.Interfaces.IReversible(Of T))
+  name.vb: Reversed(Of T)(IReversible(Of T))
 - uid: Sharpy.__Exports.Some``1(``0)
   commentId: M:Sharpy.__Exports.Some``1(``0)
   id: Some``1(``0)
@@ -1206,16 +1206,16 @@ items:
   nameWithType.vb: __Exports.Str(Object)
   fullName.vb: Sharpy.__Exports.Str(Object)
   name.vb: Str(Object)
-- uid: Sharpy.__Exports.Sum``1(Sharpy.Collections.Interfaces.Iterable{``0})
-  commentId: M:Sharpy.__Exports.Sum``1(Sharpy.Collections.Interfaces.Iterable{``0})
-  id: Sum``1(Sharpy.Collections.Interfaces.Iterable{``0})
+- uid: Sharpy.__Exports.Sum``1(Sharpy.Collections.Interfaces.IIterable{``0})
+  commentId: M:Sharpy.__Exports.Sum``1(Sharpy.Collections.Interfaces.IIterable{``0})
+  id: Sum``1(Sharpy.Collections.Interfaces.IIterable{``0})
   parent: Sharpy.__Exports
   langs:
   - csharp
   - vb
-  name: Sum<T>(Iterable<T>)
-  nameWithType: __Exports.Sum<T>(Iterable<T>)
-  fullName: Sharpy.__Exports.Sum<T>(Sharpy.Collections.Interfaces.Iterable<T>)
+  name: Sum<T>(IIterable<T>)
+  nameWithType: __Exports.Sum<T>(IIterable<T>)
+  fullName: Sharpy.__Exports.Sum<T>(Sharpy.Collections.Interfaces.IIterable<T>)
   type: Method
   source:
     remote:
@@ -1229,19 +1229,19 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: 'public static T Sum<T>(Iterable<T> iterable) where T : Addable<T, T>'
+    content: 'public static T Sum<T>(IIterable<T> iterable) where T : IAddable<T, T>'
     parameters:
     - id: iterable
-      type: Sharpy.Collections.Interfaces.Iterable{{T}}
+      type: Sharpy.Collections.Interfaces.IIterable{{T}}
     typeParameters:
     - id: T
     return:
       type: '{T}'
-    content.vb: Public Shared Function Sum(Of T As Addable(Of T, T))(iterable As Iterable(Of T)) As T
+    content.vb: Public Shared Function Sum(Of T As IAddable(Of T, T))(iterable As IIterable(Of T)) As T
   overload: Sharpy.__Exports.Sum*
-  nameWithType.vb: __Exports.Sum(Of T)(Iterable(Of T))
-  fullName.vb: Sharpy.__Exports.Sum(Of T)(Sharpy.Collections.Interfaces.Iterable(Of T))
-  name.vb: Sum(Of T)(Iterable(Of T))
+  nameWithType.vb: __Exports.Sum(Of T)(IIterable(Of T))
+  fullName.vb: Sharpy.__Exports.Sum(Of T)(Sharpy.Collections.Interfaces.IIterable(Of T))
+  name.vb: Sum(Of T)(IIterable(Of T))
 references:
 - uid: Sharpy
   commentId: N:Sharpy
@@ -1642,41 +1642,41 @@ references:
   name: Object
   nameWithType: Object
   fullName: Sharpy.Object
-- uid: Sharpy.BoolConvertible
-  commentId: T:Sharpy.BoolConvertible
+- uid: Sharpy.IBoolConvertible
+  commentId: T:Sharpy.IBoolConvertible
   parent: Sharpy
-  href: Sharpy.BoolConvertible.html
-  name: BoolConvertible
-  nameWithType: BoolConvertible
-  fullName: Sharpy.BoolConvertible
+  href: Sharpy.IBoolConvertible.html
+  name: IBoolConvertible
+  nameWithType: IBoolConvertible
+  fullName: Sharpy.IBoolConvertible
 - uid: Sharpy.__Exports.Iter*
   commentId: Overload:Sharpy.__Exports.Iter
-  href: Sharpy.__Exports.html#Sharpy___Exports_Iter__1_Sharpy_Collections_Interfaces_Iterable___0__
+  href: Sharpy.__Exports.html#Sharpy___Exports_Iter__1_Sharpy_Collections_Interfaces_IIterable___0__
   name: Iter
   nameWithType: __Exports.Iter
   fullName: Sharpy.__Exports.Iter
-- uid: Sharpy.Collections.Interfaces.Iterable{{T}}
-  commentId: T:Sharpy.Collections.Interfaces.Iterable{``0}
+- uid: Sharpy.Collections.Interfaces.IIterable{{T}}
+  commentId: T:Sharpy.Collections.Interfaces.IIterable{``0}
   parent: Sharpy.Collections.Interfaces
-  definition: Sharpy.Collections.Interfaces.Iterable`1
-  href: Sharpy.Collections.Interfaces.Iterable-1.html
-  name: Iterable<T>
-  nameWithType: Iterable<T>
-  fullName: Sharpy.Collections.Interfaces.Iterable<T>
-  nameWithType.vb: Iterable(Of T)
-  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T)
-  name.vb: Iterable(Of T)
+  definition: Sharpy.Collections.Interfaces.IIterable`1
+  href: Sharpy.Collections.Interfaces.IIterable-1.html
+  name: IIterable<T>
+  nameWithType: IIterable<T>
+  fullName: Sharpy.Collections.Interfaces.IIterable<T>
+  nameWithType.vb: IIterable(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of T)
+  name.vb: IIterable(Of T)
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.Iterable`1
-    name: Iterable
-    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
   - name: <
   - name: T
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.Iterable`1
-    name: Iterable
-    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
   - name: (
   - name: Of
   - name: " "
@@ -1709,26 +1709,26 @@ references:
   - name: " "
   - name: T
   - name: )
-- uid: Sharpy.Collections.Interfaces.Iterable`1
-  commentId: T:Sharpy.Collections.Interfaces.Iterable`1
-  href: Sharpy.Collections.Interfaces.Iterable-1.html
-  name: Iterable<T>
-  nameWithType: Iterable<T>
-  fullName: Sharpy.Collections.Interfaces.Iterable<T>
-  nameWithType.vb: Iterable(Of T)
-  fullName.vb: Sharpy.Collections.Interfaces.Iterable(Of T)
-  name.vb: Iterable(Of T)
+- uid: Sharpy.Collections.Interfaces.IIterable`1
+  commentId: T:Sharpy.Collections.Interfaces.IIterable`1
+  href: Sharpy.Collections.Interfaces.IIterable-1.html
+  name: IIterable<T>
+  nameWithType: IIterable<T>
+  fullName: Sharpy.Collections.Interfaces.IIterable<T>
+  nameWithType.vb: IIterable(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of T)
+  name.vb: IIterable(Of T)
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.Iterable`1
-    name: Iterable
-    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
   - name: <
   - name: T
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.Iterable`1
-    name: Iterable
-    href: Sharpy.Collections.Interfaces.Iterable-1.html
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
   - name: (
   - name: Of
   - name: " "
@@ -1792,20 +1792,20 @@ references:
   - name: )
 - uid: Sharpy.__Exports.Len*
   commentId: Overload:Sharpy.__Exports.Len
-  href: Sharpy.__Exports.html#Sharpy___Exports_Len_Sharpy_Collections_Interfaces_Sized_
+  href: Sharpy.__Exports.html#Sharpy___Exports_Len_Sharpy_Collections_Interfaces_ISized_
   name: Len
   nameWithType: __Exports.Len
   fullName: Sharpy.__Exports.Len
-- uid: Sharpy.Collections.Interfaces.Sized
-  commentId: T:Sharpy.Collections.Interfaces.Sized
+- uid: Sharpy.Collections.Interfaces.ISized
+  commentId: T:Sharpy.Collections.Interfaces.ISized
   parent: Sharpy.Collections.Interfaces
-  href: Sharpy.Collections.Interfaces.Sized.html
-  name: Sized
-  nameWithType: Sized
-  fullName: Sharpy.Collections.Interfaces.Sized
+  href: Sharpy.Collections.Interfaces.ISized.html
+  name: ISized
+  nameWithType: ISized
+  fullName: Sharpy.Collections.Interfaces.ISized
 - uid: Sharpy.__Exports.Max*
   commentId: Overload:Sharpy.__Exports.Max
-  href: Sharpy.__Exports.html#Sharpy___Exports_Max__1_Sharpy_Collections_Interfaces_Iterable___0__
+  href: Sharpy.__Exports.html#Sharpy___Exports_Max__1_Sharpy_Collections_Interfaces_IIterable___0__
   name: Max
   nameWithType: __Exports.Max
   fullName: Sharpy.__Exports.Max
@@ -1890,7 +1890,7 @@ references:
   - name: )
 - uid: Sharpy.__Exports.Min*
   commentId: Overload:Sharpy.__Exports.Min
-  href: Sharpy.__Exports.html#Sharpy___Exports_Min__1_Sharpy_Collections_Interfaces_Iterable___0__
+  href: Sharpy.__Exports.html#Sharpy___Exports_Min__1_Sharpy_Collections_Interfaces_IIterable___0__
   name: Min
   nameWithType: __Exports.Min
   fullName: Sharpy.__Exports.Min
@@ -1992,57 +1992,57 @@ references:
   fullName: Sharpy.__Exports.Repr
 - uid: Sharpy.__Exports.Reversed*
   commentId: Overload:Sharpy.__Exports.Reversed
-  href: Sharpy.__Exports.html#Sharpy___Exports_Reversed__1_Sharpy_Collections_Interfaces_Reversible___0__
+  href: Sharpy.__Exports.html#Sharpy___Exports_Reversed__1_Sharpy_Collections_Interfaces_IReversible___0__
   name: Reversed
   nameWithType: __Exports.Reversed
   fullName: Sharpy.__Exports.Reversed
-- uid: Sharpy.Collections.Interfaces.Reversible{{T}}
-  commentId: T:Sharpy.Collections.Interfaces.Reversible{``0}
+- uid: Sharpy.Collections.Interfaces.IReversible{{T}}
+  commentId: T:Sharpy.Collections.Interfaces.IReversible{``0}
   parent: Sharpy.Collections.Interfaces
-  definition: Sharpy.Collections.Interfaces.Reversible`1
-  href: Sharpy.Collections.Interfaces.Reversible-1.html
-  name: Reversible<T>
-  nameWithType: Reversible<T>
-  fullName: Sharpy.Collections.Interfaces.Reversible<T>
-  nameWithType.vb: Reversible(Of T)
-  fullName.vb: Sharpy.Collections.Interfaces.Reversible(Of T)
-  name.vb: Reversible(Of T)
+  definition: Sharpy.Collections.Interfaces.IReversible`1
+  href: Sharpy.Collections.Interfaces.IReversible-1.html
+  name: IReversible<T>
+  nameWithType: IReversible<T>
+  fullName: Sharpy.Collections.Interfaces.IReversible<T>
+  nameWithType.vb: IReversible(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.IReversible(Of T)
+  name.vb: IReversible(Of T)
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.Reversible`1
-    name: Reversible
-    href: Sharpy.Collections.Interfaces.Reversible-1.html
+  - uid: Sharpy.Collections.Interfaces.IReversible`1
+    name: IReversible
+    href: Sharpy.Collections.Interfaces.IReversible-1.html
   - name: <
   - name: T
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.Reversible`1
-    name: Reversible
-    href: Sharpy.Collections.Interfaces.Reversible-1.html
+  - uid: Sharpy.Collections.Interfaces.IReversible`1
+    name: IReversible
+    href: Sharpy.Collections.Interfaces.IReversible-1.html
   - name: (
   - name: Of
   - name: " "
   - name: T
   - name: )
-- uid: Sharpy.Collections.Interfaces.Reversible`1
-  commentId: T:Sharpy.Collections.Interfaces.Reversible`1
-  href: Sharpy.Collections.Interfaces.Reversible-1.html
-  name: Reversible<T>
-  nameWithType: Reversible<T>
-  fullName: Sharpy.Collections.Interfaces.Reversible<T>
-  nameWithType.vb: Reversible(Of T)
-  fullName.vb: Sharpy.Collections.Interfaces.Reversible(Of T)
-  name.vb: Reversible(Of T)
+- uid: Sharpy.Collections.Interfaces.IReversible`1
+  commentId: T:Sharpy.Collections.Interfaces.IReversible`1
+  href: Sharpy.Collections.Interfaces.IReversible-1.html
+  name: IReversible<T>
+  nameWithType: IReversible<T>
+  fullName: Sharpy.Collections.Interfaces.IReversible<T>
+  nameWithType.vb: IReversible(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.IReversible(Of T)
+  name.vb: IReversible(Of T)
   spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.Reversible`1
-    name: Reversible
-    href: Sharpy.Collections.Interfaces.Reversible-1.html
+  - uid: Sharpy.Collections.Interfaces.IReversible`1
+    name: IReversible
+    href: Sharpy.Collections.Interfaces.IReversible-1.html
   - name: <
   - name: T
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Collections.Interfaces.Reversible`1
-    name: Reversible
-    href: Sharpy.Collections.Interfaces.Reversible-1.html
+  - uid: Sharpy.Collections.Interfaces.IReversible`1
+    name: IReversible
+    href: Sharpy.Collections.Interfaces.IReversible-1.html
   - name: (
   - name: Of
   - name: " "
@@ -2069,7 +2069,7 @@ references:
   fullName: Sharpy.Str
 - uid: Sharpy.__Exports.Sum*
   commentId: Overload:Sharpy.__Exports.Sum
-  href: Sharpy.__Exports.html#Sharpy___Exports_Sum__1_Sharpy_Collections_Interfaces_Iterable___0__
+  href: Sharpy.__Exports.html#Sharpy___Exports_Sum__1_Sharpy_Collections_Interfaces_IIterable___0__
   name: Sum
   nameWithType: __Exports.Sum
   fullName: Sharpy.__Exports.Sum

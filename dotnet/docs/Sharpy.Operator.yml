@@ -65,10 +65,10 @@ items:
   assemblies:
   - Sharpy
   namespace: Sharpy
-  summary: Compares two <xref href="Sharpy.Equatable%601" data-throw-if-not-resolved="false"></xref> objects for equality.
+  summary: Compares two <xref href="Sharpy.IEquatable%601" data-throw-if-not-resolved="false"></xref> objects for equality.
   example: []
   syntax:
-    content: 'public static bool Eq<T>(T left, T right) where T : Equatable<T>'
+    content: 'public static bool Eq<T>(T left, T right) where T : IEquatable<T>'
     parameters:
     - id: left
       type: '{T}'
@@ -82,7 +82,7 @@ items:
     return:
       type: System.Boolean
       description: True if the objects are equal, false otherwise.
-    content.vb: Public Shared Function Eq(Of T As Equatable(Of T))(left As T, right As T) As Boolean
+    content.vb: Public Shared Function Eq(Of T As IEquatable(Of T))(left As T, right As T) As Boolean
   overload: Sharpy.Operator.Eq*
   nameWithType.vb: Operator.Eq(Of T)(T, T)
   fullName.vb: Sharpy.Operator.Eq(Of T)(T, T)
@@ -220,7 +220,7 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: 'public static bool Lt<T>(T left, T right) where T : LessThanComparable<T>'
+    content: 'public static bool Lt<T>(T left, T right) where T : ILessThanComparable<T>'
     parameters:
     - id: left
       type: '{T}'
@@ -230,7 +230,7 @@ items:
     - id: T
     return:
       type: System.Boolean
-    content.vb: Public Shared Function Lt(Of T As LessThanComparable(Of T))(left As T, right As T) As Boolean
+    content.vb: Public Shared Function Lt(Of T As ILessThanComparable(Of T))(left As T, right As T) As Boolean
   overload: Sharpy.Operator.Lt*
   nameWithType.vb: Operator.Lt(Of T)(T, T)
   fullName.vb: Sharpy.Operator.Lt(Of T)(T, T)
@@ -258,7 +258,7 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: 'public static bool __Ne__<T>(T left, T right) where T : Inequatable<T>'
+    content: 'public static bool __Ne__<T>(T left, T right) where T : IInequatable<T>'
     parameters:
     - id: left
       type: '{T}'
@@ -268,7 +268,7 @@ items:
     - id: T
     return:
       type: System.Boolean
-    content.vb: Public Shared Function __Ne__(Of T As Inequatable(Of T))(left As T, right As T) As Boolean
+    content.vb: Public Shared Function __Ne__(Of T As IInequatable(Of T))(left As T, right As T) As Boolean
   overload: Sharpy.Operator.__Ne__*
   nameWithType.vb: Operator.__Ne__(Of T)(T, T)
   fullName.vb: Sharpy.Operator.__Ne__(Of T)(T, T)
@@ -553,26 +553,26 @@ references:
   name: System
   nameWithType: System
   fullName: System
-- uid: Sharpy.Equatable`1
-  commentId: T:Sharpy.Equatable`1
-  href: Sharpy.Equatable-1.html
-  name: Equatable<T>
-  nameWithType: Equatable<T>
-  fullName: Sharpy.Equatable<T>
-  nameWithType.vb: Equatable(Of T)
-  fullName.vb: Sharpy.Equatable(Of T)
-  name.vb: Equatable(Of T)
+- uid: Sharpy.IEquatable`1
+  commentId: T:Sharpy.IEquatable`1
+  href: Sharpy.IEquatable-1.html
+  name: IEquatable<T>
+  nameWithType: IEquatable<T>
+  fullName: Sharpy.IEquatable<T>
+  nameWithType.vb: IEquatable(Of T)
+  fullName.vb: Sharpy.IEquatable(Of T)
+  name.vb: IEquatable(Of T)
   spec.csharp:
-  - uid: Sharpy.Equatable`1
-    name: Equatable
-    href: Sharpy.Equatable-1.html
+  - uid: Sharpy.IEquatable`1
+    name: IEquatable
+    href: Sharpy.IEquatable-1.html
   - name: <
   - name: T
   - name: '>'
   spec.vb:
-  - uid: Sharpy.Equatable`1
-    name: Equatable
-    href: Sharpy.Equatable-1.html
+  - uid: Sharpy.IEquatable`1
+    name: IEquatable
+    href: Sharpy.IEquatable-1.html
   - name: (
   - name: Of
   - name: " "
