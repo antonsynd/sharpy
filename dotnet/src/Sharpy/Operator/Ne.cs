@@ -2,7 +2,7 @@ namespace Sharpy
 {
     public static partial class Operator
     {
-        public static bool __Ne__<T>(T left, T right) where T : Inequatable<T>
+        public static bool __Ne__<T>(T left, T right) where T : IInequatable<T>
         {
             return left?.__Ne__(right) ?? right is null;
         }

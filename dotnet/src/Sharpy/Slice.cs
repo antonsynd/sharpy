@@ -2,7 +2,7 @@ using Sharpy.Collections.Interfaces;
 
 namespace Sharpy
 {
-    public readonly partial struct Slice(int start, int end, int step = 1) : Sized
+    public readonly partial struct Slice(int start, int end, int step = 1) : ISized
     {
         public readonly int start = start;
         public readonly int end = end;

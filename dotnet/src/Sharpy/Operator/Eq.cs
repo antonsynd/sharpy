@@ -3,13 +3,13 @@ namespace Sharpy
     public static partial class Operator
     {
         /// <summary>
-        /// Compares two <see cref="Equatable&lt;T&gt;"/> objects for equality.
+        /// Compares two <see cref="IEquatable&lt;T&gt;"/> objects for equality.
         /// </summary>
         /// <param name="left">The left object.</param>
         /// <param name="right">The right object.</param>
         /// <returns>True if the objects are equal, false otherwise.</returns>
         /// <typeparam name="T">The type of the objects being compared.</typeparam>
-        public static bool Eq<T>(T left, T right) where T : Equatable<T>
+        public static bool Eq<T>(T left, T right) where T : IEquatable<T>
         {
             return left?.__Eq__(right) ?? right is null;
         }

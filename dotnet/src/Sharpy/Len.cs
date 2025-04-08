@@ -9,7 +9,7 @@ namespace Sharpy
         /// may be a sequence (such as a string, bytes, tuple, list, or range)
         /// or a collection (such as a dictionary, set, or frozen set).
         /// </summary>
-        public static uint Len(Sized sized)
+        public static uint Len(ISized sized)
         {
             if (sized is null)
             {

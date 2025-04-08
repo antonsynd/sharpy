@@ -3,7 +3,7 @@ using Sharpy.Collections.Interfaces;
 
 namespace Sharpy
 {
-    public sealed partial class DictKeyView<K, V> : KeysView<K> where K : notnull
+    public sealed partial class DictKeyView<K, V> : IKeysView<K> where K : notnull
     {
         private readonly Dictionary<K, V>.KeyCollection _keys;
 

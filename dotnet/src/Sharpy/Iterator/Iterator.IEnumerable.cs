@@ -1,9 +1,8 @@
 using System.Collections;
-using Sharpy.Collections.Interfaces;
 
 namespace Sharpy
 {
-    public abstract partial class Iterator<T> : Iterable<T>
+    public abstract partial class Iterator<T>
     {
         /// <inheritdoc/>
         public IEnumerator<T> GetEnumerator()

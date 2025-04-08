@@ -77,7 +77,7 @@ namespace Sharpy
             return obj?.__Bool__() ?? false;
         }
 
-        public static bool Bool(BoolConvertible b)
+        public static bool Bool(IBoolConvertible b)
         {
             return b?.__Bool__() ?? false;
         }
@@ -96,7 +96,7 @@ namespace Sharpy
                 return Bool(o);
             }
 
-            if (obj is BoolConvertible b)
+            if (obj is IBoolConvertible b)
             {
                 return Bool(b);
             }

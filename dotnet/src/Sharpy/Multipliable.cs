@@ -1,6 +1,6 @@
 namespace Sharpy
 {
-    public interface Multipliable<T, U>
+    public interface IMultipliable<T, U>
     {
         T __Mul__(U other);
     }

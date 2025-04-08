@@ -8,7 +8,7 @@ namespace Sharpy
         {
             // Prefer __Lt__(). __Gt__() is never used for equality or
             // sorting by design.
-            if (typeof(T).IsAssignableTo(typeof(LessThanComparable<T>)))
+            if (typeof(T).IsAssignableTo(typeof(ILessThanComparable<T>)))
             {
                 return LessThanComparableAdapter.IsLessThan;
             }
@@ -42,7 +42,7 @@ namespace Sharpy
                     throw new TypeError("'<' not supported for instances of 'NoneType'");
                 }
 
-                return (lhs as LessThanComparable<T>)?.__Lt__(rhs) ?? false;
+                return (lhs as ILessThanComparable<T>)?.__Lt__(rhs) ?? false;
             }
         }
 

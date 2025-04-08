@@ -6,25 +6,25 @@ namespace Sharpy
 
         private static IComparer<T> CreateComparer()
         {
-            if (typeof(Comparable<T>).IsAssignableFrom(typeof(T)) ||
-                typeof(LessThanOrEquatable<T>).IsAssignableFrom(typeof(T)) ||
-            (typeof(LessThanComparable<T>).IsAssignableFrom(typeof(T)) && typeof(Equatable<T>).IsAssignableFrom(typeof(T))))
+            if (typeof(IComparable<T>).IsAssignableFrom(typeof(T)) ||
+                typeof(ILessThanOrEquatable<T>).IsAssignableFrom(typeof(T)) ||
+            (typeof(ILessThanComparable<T>).IsAssignableFrom(typeof(T)) && typeof(IEquatable<T>).IsAssignableFrom(typeof(T))))
             {
                 return new LessThanOrEquatableComparer();
             }
 
-            if (typeof(GreaterThanOrEquatable<T>).IsAssignableFrom(typeof(T)) ||
-            (typeof(GreaterThanComparable<T>).IsAssignableFrom(typeof(T)) && typeof(Equatable<T>).IsAssignableFrom(typeof(T))))
+            if (typeof(IGreaterThanOrEquatable<T>).IsAssignableFrom(typeof(T)) ||
+            (typeof(IGreaterThanComparable<T>).IsAssignableFrom(typeof(T)) && typeof(IEquatable<T>).IsAssignableFrom(typeof(T))))
             {
                 return new GreaterThanOrEquatableComparer();
             }
 
-            if (typeof(LessThanComparable<T>).IsAssignableFrom(typeof(T)))
+            if (typeof(ILessThanComparable<T>).IsAssignableFrom(typeof(T)))
             {
                 return new LessThanComparableComparer();
             }
 
-            if (typeof(GreaterThanComparable<T>).IsAssignableFrom(typeof(T)))
+            if (typeof(IGreaterThanComparable<T>).IsAssignableFrom(typeof(T)))
             {
                 return new GreaterThanComparableComparer();
             }
@@ -58,7 +58,7 @@ namespace Sharpy
                     throw new TypeError("'<' not supported for instances of 'NoneType'");
                 }
 
-                var xlt = (LessThanComparable<T>)x;
+                var xlt = (ILessThanComparable<T>)x;
 
                 // x is less than y
                 if (xlt.__Lt__(y))
@@ -66,7 +66,7 @@ namespace Sharpy
                     return -1;
                 }
 
-                var ylt = (LessThanComparable<T>)y;
+                var ylt = (ILessThanComparable<T>)y;
 
                 // y is less than x, so x is greater than y
                 if (ylt.__Lt__(x))
@@ -95,8 +95,8 @@ namespace Sharpy
                     throw new TypeError("'<' not supported for instances of 'NoneType'");
                 }
 
-                var xeq = (Equatable<T>)x;
-                var xlt = (LessThanComparable<T>)x;
+                var xeq = (IEquatable<T>)x;
+                var xlt = (ILessThanComparable<T>)x;
 
                 // Both are equal
                 if (xeq.__Eq__(y))
@@ -131,7 +131,7 @@ namespace Sharpy
                     throw new TypeError("'>' not supported for instances of 'NoneType'");
                 }
 
-                var xgt = (GreaterThanComparable<T>)x;
+                var xgt = (IGreaterThanComparable<T>)x;
 
                 // x is greater than y
                 if (xgt.__Gt__(y))
@@ -139,7 +139,7 @@ namespace Sharpy
                     return -1;
                 }
 
-                var ygt = (GreaterThanComparable<T>)y;
+                var ygt = (IGreaterThanComparable<T>)y;
 
                 // y is greater than x, so x is less than y
                 if (ygt.__Gt__(x))
@@ -167,8 +167,8 @@ namespace Sharpy
                     throw new TypeError("'>' not supported for instances of 'NoneType'");
                 }
 
-                var xeq = (Equatable<T>)x;
-                var xlt = (GreaterThanComparable<T>)x;
+                var xeq = (IEquatable<T>)x;
+                var xlt = (IGreaterThanComparable<T>)x;
 
                 // Both are equal
                 if (xeq.__Eq__(y))

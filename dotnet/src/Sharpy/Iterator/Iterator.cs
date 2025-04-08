@@ -17,12 +17,12 @@ namespace Sharpy
     /// and may be used in most places where other iterables are accepted. One
     /// notable exception is code which attempts multiple iteration passes. A
     /// container object (such as a list) produces a fresh new iterator each
-    /// time you pass it to the <see cref="Iter(Iterable&lt;T&gt;)"/> function or use it in a
+    /// time you pass it to the <see cref="Iter(IIterable&lt;T&gt;)"/> function or use it in a
     /// <c>for</c> loop. Attempting this with an iterator will just return the
     /// same exhausted iterator object used in the previous iteration pass,
     /// making it appear like an empty container.
     /// </remarks>
-    public abstract partial class Iterator<T> : Iterable<T>
+    public abstract partial class Iterator<T> : IIterable<T>
     {
         /// <summary>
         /// Return the next item from the iterator. If there are no further

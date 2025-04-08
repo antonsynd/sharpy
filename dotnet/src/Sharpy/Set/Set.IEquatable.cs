@@ -3,14 +3,41 @@ namespace Sharpy
     public sealed partial class Set<T>
     {
         /// <inheritdoc/>
-        public bool Equals(Collections.Interfaces.Set<T>? other)
+        public bool __Eq__(Set<T> other)
         {
             if (other is null)
             {
                 return false;
             }
 
-            return __Eq__(other);
+            return _set.SetEquals(other._set);
+        }
+
+        /// <inheritdoc/>
+        public bool __Eq__(Collections.Interfaces.ISet<T> other)
+        {
+            uint numElems = 0;
+
+            foreach (var x in other)
+            {
+                if (_set.Contains(x))
+                {
+                    numElems++;
+                }
+            }
+
+            return numElems == _set.Count;
+        }
+
+        /// <inheritdoc/>
+        public override bool __Eq__(Object other)
+        {
+            if (other is Set<T> set)
+            {
+                return __Eq__(set);
+            }
+
+            return false;
         }
     }
 }

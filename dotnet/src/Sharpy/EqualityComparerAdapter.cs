@@ -8,7 +8,7 @@ namespace Sharpy
 
         private static IEqualityComparer<T> CreateComparer()
         {
-            if (typeof(T).IsAssignableTo(typeof(Equatable<T>)))
+            if (typeof(T).IsAssignableTo(typeof(IEquatable<T>)))
             {
                 return new EquatableEqualityComparer();
             }
@@ -35,7 +35,7 @@ namespace Sharpy
                     return false;
                 }
 
-                return ((Equatable<T>)x).__Eq__(y);
+                return ((IEquatable<T>)x).__Eq__(y);
             }
 
             public int GetHashCode([DisallowNull] T obj)
@@ -45,7 +45,7 @@ namespace Sharpy
                     throw new TypeError("'NoneType' is not hashable");
                 }
 
-                return ((Equatable<T>)obj).__Hash__();
+                return ((IEquatable<T>)obj).__Hash__();
             }
         }
 

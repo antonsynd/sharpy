@@ -4,7 +4,7 @@ namespace Sharpy
 {
     public static partial class __Exports
     {
-        public static Iterator<T> Iter<T>(Iterable<T> iterable)
+        public static Iterator<T> Iter<T>(IIterable<T> iterable)
         {
             if (iterable is null)
             {

@@ -4,7 +4,7 @@ namespace Sharpy
 {
     public static partial class __Exports
     {
-        public static Iterator<T> Reversed<T>(Reversible<T> reversible)
+        public static Iterator<T> Reversed<T>(IReversible<T> reversible)
         {
             if (reversible is null)
             {

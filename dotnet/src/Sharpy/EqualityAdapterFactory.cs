@@ -7,14 +7,14 @@ namespace Sharpy
         private static Func<T?, T?, bool> GetAdapter()
         {
             // Prefer __Eq__()
-            if (typeof(T).IsAssignableTo(typeof(Equatable<T>)))
+            if (typeof(T).IsAssignableTo(typeof(IEquatable<T>)))
             {
                 return EquatableAdapter.AreEqual;
             }
 
             // Otherwise use __Lt__(). __Gt__() is never used for equality
             // or sorting by design.
-            if (typeof(T).IsAssignableTo(typeof(LessThanComparable<T>)))
+            if (typeof(T).IsAssignableTo(typeof(ILessThanComparable<T>)))
             {
                 return LessThanComparableAdapter.AreEqual;
             }
@@ -46,7 +46,7 @@ namespace Sharpy
                     return false;
                 }
 
-                return (lhs as Equatable<T>)?.__Eq__(rhs) ?? false;
+                return (lhs as IEquatable<T>)?.__Eq__(rhs) ?? false;
             }
         }
 
@@ -69,7 +69,7 @@ namespace Sharpy
                 }
 
                 // Neither is less than the other, so they are equal
-                return !((LessThanComparable<T>)lhs).__Lt__(rhs) && !((LessThanComparable<T>)rhs).__Lt__(lhs);
+                return !((ILessThanComparable<T>)lhs).__Lt__(rhs) && !((ILessThanComparable<T>)rhs).__Lt__(lhs);
             }
         }
 

@@ -3,7 +3,7 @@ namespace Sharpy
     public sealed partial class Set<T>
     {
         /// <inheritdoc/>
-        public int CompareTo(Collections.Interfaces.Set<T>? other)
+        public int CompareTo(Collections.Interfaces.ISet<T>? other)
         {
             if (other is null)
             {

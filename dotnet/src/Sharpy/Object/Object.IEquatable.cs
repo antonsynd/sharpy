@@ -1,18 +1,33 @@
 namespace Sharpy
 {
-    public partial class Object
+    public abstract partial class Object
     {
         /// <remarks>
-        /// Not virtual to prevent subclasses from overriding this.
+        /// By default, returns whether this and other refer to the same object
+        /// via <see cref="object.ReferenceEquals(object, object)"/> with a fallback to
+        /// <see cref="__Id__()"/>.
         /// </remarks>
-        public bool Equals(Object? obj)
+        public virtual bool __Eq__(Object other)
         {
-            if (obj is null)
+            if (other is null)
             {
                 return false;
             }
 
-            return __Eq__(obj);
+            return ReferenceEquals(this, other) || __Id__() == other.__Id__();
+        }
+
+        /// <inheritdoc/>
+        public virtual bool __Eq__(object other)
+        {
+            if (other is Object obj)
+            {
+                return __Eq__(obj);
+            }
+
+            // NOTE: Do NOT call Equals() because it will result in an infinite
+            // loop as Equals() ultimately references __Eq__()
+            return ReferenceEquals(this, other);
         }
     }
 }

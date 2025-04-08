@@ -233,7 +233,7 @@ namespace Sharpy
             return false;
         }
 
-        public string Join(Iterable<string> iterable)
+        public string Join(IIterable<string> iterable)
         {
             return _s;
         }
@@ -251,11 +251,11 @@ namespace Sharpy
         {
         }
 
-        public void MakeTrans(Mapping<string, string?> mapping)
+        public void MakeTrans(IMapping<string, string?> mapping)
         {
         }
 
-        public void MakeTrans(Mapping<uint, string?> mapping)
+        public void MakeTrans(IMapping<uint, string?> mapping)
         {
         }
 

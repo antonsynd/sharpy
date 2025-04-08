@@ -2,7 +2,7 @@ namespace Sharpy
 {
     public static partial class Operator
     {
-        public static bool Lt<T>(T left, T right) where T : LessThanComparable<T>
+        public static bool Lt<T>(T left, T right) where T : ILessThanComparable<T>
         {
             if (ReferenceEquals(left, right))
             {

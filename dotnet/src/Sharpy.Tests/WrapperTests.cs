@@ -33,7 +33,7 @@ namespace Sharpy.Tests
         public void Wrapper_Bool_Convertible()
         {
             // If/when/then
-            typeof(Wrapper<int>).IsAssignableTo(typeof(BoolConvertible)).Should().BeTrue();
+            typeof(Wrapper<int>).IsAssignableTo(typeof(IBoolConvertible)).Should().BeTrue();
 
             // If
             var wrapper = new Wrapper<int>(1);
@@ -58,7 +58,7 @@ namespace Sharpy.Tests
         public void Wrapper_Hashable()
         {
             // If
-            typeof(Wrapper<int>).IsAssignableTo(typeof(Hashable)).Should().BeTrue();
+            typeof(Wrapper<int>).IsAssignableTo(typeof(IHashable)).Should().BeTrue();
             var wrapper0 = new Wrapper<int>(0);
             var wrapper1 = new Wrapper<int>(1);
 
@@ -72,8 +72,8 @@ namespace Sharpy.Tests
         public void Wrapper_Equatable()
         {
             // If
-            typeof(Wrapper<int>).IsAssignableTo(typeof(Equatable<Object>)).Should().BeTrue();
-            typeof(Wrapper<int>).IsAssignableTo(typeof(Equatable<Wrapper<int>>)).Should().BeTrue();
+            typeof(Wrapper<int>).IsAssignableTo(typeof(IEquatable<Object>)).Should().BeTrue();
+            typeof(Wrapper<int>).IsAssignableTo(typeof(IEquatable<Wrapper<int>>)).Should().BeTrue();
             var wrapper0 = new Wrapper<int>(0);
             var wrapper1_0 = new Wrapper<int>(1);
             var wrapper1_1 = new Wrapper<int>(1);
@@ -99,8 +99,8 @@ namespace Sharpy.Tests
         public void Wrapper_Inequatable()
         {
             // If
-            typeof(Wrapper<int>).IsAssignableTo(typeof(Inequatable<Object>)).Should().BeTrue();
-            typeof(Wrapper<int>).IsAssignableTo(typeof(Inequatable<Wrapper<int>>)).Should().BeTrue();
+            typeof(Wrapper<int>).IsAssignableTo(typeof(IInequatable<Object>)).Should().BeTrue();
+            typeof(Wrapper<int>).IsAssignableTo(typeof(IInequatable<Wrapper<int>>)).Should().BeTrue();
             var wrapper0 = new Wrapper<int>(0);
             var wrapper1_0 = new Wrapper<int>(1);
             var wrapper1_1 = new Wrapper<int>(1);
@@ -155,7 +155,7 @@ namespace Sharpy.Tests
         public void Wrapper_Identifiable()
         {
             // If
-            typeof(Wrapper<int>).IsAssignableTo(typeof(Identifiable)).Should().BeTrue();
+            typeof(Wrapper<int>).IsAssignableTo(typeof(IIdentifiable)).Should().BeTrue();
             var wrapper0 = new Wrapper<int>(0);
             var wrapper1 = new Wrapper<int>(1);
 
@@ -169,7 +169,7 @@ namespace Sharpy.Tests
         public void Wrapper_Representable()
         {
             // If
-            typeof(Wrapper<int>).IsAssignableTo(typeof(Representable)).Should().BeTrue();
+            typeof(Wrapper<int>).IsAssignableTo(typeof(IRepresentable)).Should().BeTrue();
             var wrapper0 = new Wrapper<int>(0);
             var wrapper1 = new Wrapper<int>(1);
 
@@ -182,7 +182,7 @@ namespace Sharpy.Tests
         public void Wrapper_StrConvertible()
         {
             // If
-            typeof(Wrapper<int>).IsAssignableTo(typeof(StrConvertible)).Should().BeTrue();
+            typeof(Wrapper<int>).IsAssignableTo(typeof(IStrConvertible)).Should().BeTrue();
             var wrapper0 = new Wrapper<int>(0);
             var wrapper1 = new Wrapper<int>(1);
 

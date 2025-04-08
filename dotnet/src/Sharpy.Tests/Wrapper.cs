@@ -1,6 +1,6 @@
 namespace Sharpy.Tests
 {
-    public class Wrapper<T>(T value) : Object, Equatable<Wrapper<T>>, Inequatable<Wrapper<T>>
+    public class Wrapper<T>(T value) : Object, IEquatable<Wrapper<T>>, IInequatable<Wrapper<T>>
     {
         private static uint _id;
 

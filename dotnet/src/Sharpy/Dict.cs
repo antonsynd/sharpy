@@ -4,7 +4,7 @@ using Sharpy.Collections.Interfaces;
 
 namespace Sharpy
 {
-    public sealed partial class Dict<K, V> : Object, MutableMapping<K, V> where K : notnull
+    public sealed partial class Dict<K, V> : Object, IMutableMapping<K, V> where K : notnull
     {
         private readonly Dictionary<K, V> _dict;
 
@@ -13,7 +13,7 @@ namespace Sharpy
             _dict = [];
         }
 
-        public Dict(Mapping<K, V> mapping) : this()
+        public Dict(IMapping<K, V> mapping) : this()
         {
             if (mapping is null)
             {
@@ -21,7 +21,7 @@ namespace Sharpy
             }
         }
 
-        public Dict(Iterable<(K, V)> iterable) : this()
+        public Dict(IIterable<(K, V)> iterable) : this()
         {
             if (iterable is null)
             {
@@ -83,12 +83,12 @@ namespace Sharpy
             }
         }
 
-        public ItemsView<K, V> Items()
+        public IItemsView<K, V> Items()
         {
             throw new NotImplementedException();
         }
 
-        public KeysView<K> Keys()
+        public IKeysView<K> Keys()
         {
             return new DictKeyView<K, V>(_dict.Keys);
         }
@@ -131,7 +131,7 @@ namespace Sharpy
             return _dict[key] = @default;
         }
 
-        public void Update(Mapping<K, V> other)
+        public void Update(IMapping<K, V> other)
         {
             foreach (var key in other.Keys())
             {
@@ -139,7 +139,7 @@ namespace Sharpy
             }
         }
 
-        public void Update(Iterable<(K, V)> other)
+        public void Update(IIterable<(K, V)> other)
         {
             foreach (var (key, value) in other)
             {
@@ -147,7 +147,7 @@ namespace Sharpy
             }
         }
 
-        public ValuesView<V> Values()
+        public IValuesView<V> Values()
         {
             throw new NotImplementedException();
         }
@@ -258,7 +258,7 @@ namespace Sharpy
             Update(other);
         }
 
-        public Mapping<K, V> __Or__(Mapping<K, V> other)
+        public IMapping<K, V> __Or__(IMapping<K, V> other)
         {
             var newDict = Copy();
             newDict.Update(other);
@@ -266,12 +266,12 @@ namespace Sharpy
             return newDict;
         }
 
-        public void __IOr__(Mapping<K, V> other)
+        public void __IOr__(IMapping<K, V> other)
         {
             Update(other);
         }
 
-        public Mapping<K, V> __Or__(Iterable<(K, V)> other)
+        public IMapping<K, V> __Or__(IIterable<(K, V)> other)
         {
             var newDict = Copy();
             newDict.Update(other);
@@ -279,7 +279,7 @@ namespace Sharpy
             return newDict;
         }
 
-        public void __IOr__(Iterable<(K, V)> other)
+        public void __IOr__(IIterable<(K, V)> other)
         {
             Update(other);
         }
