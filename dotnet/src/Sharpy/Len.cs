@@ -2,7 +2,7 @@ using Sharpy.Collections.Interfaces;
 
 namespace Sharpy
 {
-    public static partial class Builtins
+    public static partial class __Exports
     {
         /// <summary>
         /// Return the length (the number of items) of an object. The argument

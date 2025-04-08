@@ -1,2 +1,2 @@
-global using static Sharpy.Builtins;
-global using static Sharpy.Sys.Builtins;
+global using static Sharpy.__Exports;
+global using static Sharpy.Sys.__Exports;

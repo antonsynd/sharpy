@@ -15,11 +15,11 @@ items:
   type: Class
   source:
     remote:
-      path: dotnet/src/Sharpy/ListIterator.Iterator.cs
+      path: dotnet/src/Sharpy/ListIterator/ListIterator.Iterator.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: ListIterator
-    path: ../src/Sharpy/ListIterator.Iterator.cs
+    path: ../src/Sharpy/ListIterator/ListIterator.Iterator.cs
     startLine: 2
   assemblies:
   - Sharpy
@@ -61,11 +61,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/ListIterator.Iterator.cs
+      path: dotnet/src/Sharpy/ListIterator/ListIterator.Iterator.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Next__
-    path: ../src/Sharpy/ListIterator.Iterator.cs
+    path: ../src/Sharpy/ListIterator/ListIterator.Iterator.cs
     startLine: 5
   assemblies:
   - Sharpy

@@ -1,8 +1,8 @@
 namespace Sharpy
 {
-    public static partial class Internals
+    public static partial class Operator
     {
-        public static bool __Lt__<T>(T left, T right) where T : LessThanComparable<T>
+        public static bool Lt<T>(T left, T right) where T : LessThanComparable<T>
         {
             if (ReferenceEquals(left, right))
             {
@@ -16,10 +16,5 @@ namespace Sharpy
 
             return left.__Lt__(right);
         }
-
-        // public static bool __Lt__<U>(T left, T right) where T : Comparable<T>
-        // {
-        //     left.
-        // }
     }
 }

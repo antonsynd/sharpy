@@ -66,16 +66,17 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: 'public sealed class Dict<K, V> : Object, Equatable<Object>, Hashable, Inequatable<Object>, IEquatable<Object>, StrConvertible, Representable, BoolConvertible, Identifiable, MutableMapping<K, V>, Mapping<K, V>, Collection<K>, Container<K>, Iterable<K>, IEnumerable<K>, IEnumerable, Sized where K : notnull'
+    content: 'public sealed class Dict<K, V> : Object, Equatable<Object>, Equatable, Hashable, Inequatable<Object>, IEquatable<Object>, StrConvertible, Representable, BoolConvertible, Identifiable, MutableMapping<K, V>, Mapping<K, V>, Collection<K>, Container<K>, Iterable<K>, IEnumerable<K>, IEnumerable, Sized where K : notnull'
     typeParameters:
     - id: K
     - id: V
-    content.vb: Public NotInheritable Class Dict(Of K, V) Inherits Object Implements Equatable(Of Object), Hashable, Inequatable(Of Object), IEquatable(Of Object), StrConvertible, Representable, BoolConvertible, Identifiable, MutableMapping(Of K, V), Mapping(Of K, V), Collection(Of K), Container(Of K), Iterable(Of K), IEnumerable(Of K), IEnumerable, Sized
+    content.vb: Public NotInheritable Class Dict(Of K, V) Inherits Object Implements Equatable(Of Object), Equatable, Hashable, Inequatable(Of Object), IEquatable(Of Object), StrConvertible, Representable, BoolConvertible, Identifiable, MutableMapping(Of K, V), Mapping(Of K, V), Collection(Of K), Container(Of K), Iterable(Of K), IEnumerable(Of K), IEnumerable, Sized
   inheritance:
   - System.Object
   - Sharpy.Object
   implements:
   - Sharpy.Equatable{Sharpy.Object}
+  - Sharpy.Equatable
   - Sharpy.Hashable
   - Sharpy.Inequatable{Sharpy.Object}
   - System.IEquatable{Sharpy.Object}
@@ -1739,6 +1740,13 @@ references:
     name: Object
     href: Sharpy.Object.html
   - name: )
+- uid: Sharpy.Equatable
+  commentId: T:Sharpy.Equatable
+  parent: Sharpy
+  href: Sharpy.Equatable.html
+  name: Equatable
+  nameWithType: Equatable
+  fullName: Sharpy.Equatable
 - uid: Sharpy.Hashable
   commentId: T:Sharpy.Hashable
   parent: Sharpy

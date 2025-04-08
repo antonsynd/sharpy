@@ -17,11 +17,11 @@ items:
   type: Class
   source:
     remote:
-      path: dotnet/src/Sharpy/Iterator.Iterable.cs
+      path: dotnet/src/Sharpy/Iterator/Iterator.Iterable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Iterator
-    path: ../src/Sharpy/Iterator.Iterable.cs
+    path: ../src/Sharpy/Iterator/Iterator.Iterable.cs
     startLine: 4
   assemblies:
   - Sharpy
@@ -97,11 +97,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Iterator.cs
+      path: dotnet/src/Sharpy/Iterator/Iterator.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Next__
-    path: ../src/Sharpy/Iterator.cs
+    path: ../src/Sharpy/Iterator/Iterator.cs
     startLine: 30
   assemblies:
   - Sharpy
@@ -132,11 +132,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Iterator.IEnumerable.cs
+      path: dotnet/src/Sharpy/Iterator/Iterator.IEnumerable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: GetEnumerator
-    path: ../src/Sharpy/Iterator.IEnumerable.cs
+    path: ../src/Sharpy/Iterator/Iterator.IEnumerable.cs
     startLine: 8
   assemblies:
   - Sharpy
@@ -167,11 +167,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Iterator.Iterable.cs
+      path: dotnet/src/Sharpy/Iterator/Iterator.Iterable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Iter__
-    path: ../src/Sharpy/Iterator.Iterable.cs
+    path: ../src/Sharpy/Iterator/Iterator.Iterable.cs
     startLine: 11
   assemblies:
   - Sharpy

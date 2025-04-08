@@ -85,20 +85,20 @@ items:
   type: Class
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Sized.cs
+      path: dotnet/src/Sharpy/Set/Set.Sized.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Set
-    path: ../src/Sharpy/Set.Sized.cs
+    path: ../src/Sharpy/Set/Set.Sized.cs
     startLine: 2
   assemblies:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: 'public sealed class Set<T> : Object, Equatable<Object>, Inequatable<Object>, IEquatable<Object>, StrConvertible, Representable, BoolConvertible, Identifiable, MutableSet<Set<T>, T>, MutableSet<T>, Set<Set<T>, T>, Set<T>, Collection<T>, Container<T>, Iterable<T>, IEnumerable<T>, IEnumerable, Sized, Inequatable<Set<T>>, Comparable<Set<T>>, LessThanOrEquatable<Set<T>>, LessThanComparable<Set<T>>, GreaterThanOrEquatable<Set<T>>, GreaterThanComparable<Set<T>>, IComparable<Set<T>>, Equatable<Set<T>>, Hashable, IEquatable<Set<T>>, IComparable<Set<T>>'
+    content: 'public sealed class Set<T> : Object, Equatable<Object>, Inequatable<Object>, IEquatable<Object>, StrConvertible, Representable, BoolConvertible, Identifiable, MutableSet<Set<T>, T>, MutableSet<T>, Set<Set<T>, T>, Set<T>, Collection<T>, Container<T>, Iterable<T>, IEnumerable<T>, IEnumerable, Sized, Inequatable<Set<T>>, Comparable<Set<T>>, LessThanOrEquatable<Set<T>>, LessThanComparable<Set<T>>, GreaterThanOrEquatable<Set<T>>, GreaterThanComparable<Set<T>>, IComparable<Set<T>>, Equatable<Set<T>>, Equatable, Hashable, IEquatable<Set<T>>, IComparable<Set<T>>'
     typeParameters:
     - id: T
-    content.vb: Public NotInheritable Class [Set](Of T) Inherits Object Implements Equatable(Of Object), Inequatable(Of Object), IEquatable(Of Object), StrConvertible, Representable, BoolConvertible, Identifiable, MutableSet(Of Set(Of T), T), MutableSet(Of T), Set(Of Set(Of T), T), Set(Of T), Collection(Of T), Container(Of T), Iterable(Of T), IEnumerable(Of T), IEnumerable, Sized, Inequatable(Of Set(Of T)), Comparable(Of Set(Of T)), LessThanOrEquatable(Of Set(Of T)), LessThanComparable(Of Set(Of T)), GreaterThanOrEquatable(Of Set(Of T)), GreaterThanComparable(Of Set(Of T)), IComparable(Of Set(Of T)), Equatable(Of Set(Of T)), Hashable, IEquatable(Of Set(Of T)), IComparable(Of Set(Of T))
+    content.vb: Public NotInheritable Class [Set](Of T) Inherits Object Implements Equatable(Of Object), Inequatable(Of Object), IEquatable(Of Object), StrConvertible, Representable, BoolConvertible, Identifiable, MutableSet(Of Set(Of T), T), MutableSet(Of T), Set(Of Set(Of T), T), Set(Of T), Collection(Of T), Container(Of T), Iterable(Of T), IEnumerable(Of T), IEnumerable, Sized, Inequatable(Of Set(Of T)), Comparable(Of Set(Of T)), LessThanOrEquatable(Of Set(Of T)), LessThanComparable(Of Set(Of T)), GreaterThanOrEquatable(Of Set(Of T)), GreaterThanComparable(Of Set(Of T)), IComparable(Of Set(Of T)), Equatable(Of Set(Of T)), Equatable, Hashable, IEquatable(Of Set(Of T)), IComparable(Of Set(Of T))
   inheritance:
   - System.Object
   - Sharpy.Object
@@ -128,6 +128,7 @@ items:
   - Sharpy.GreaterThanComparable{Sharpy.Collections.Interfaces.Set{{T}}}
   - System.IComparable{Sharpy.Collections.Interfaces.Set{{T}}}
   - Sharpy.Equatable{Sharpy.Collections.Interfaces.Set{{T}}}
+  - Sharpy.Equatable
   - Sharpy.Hashable
   - System.IEquatable{Sharpy.Collections.Interfaces.Set{{T}}}
   - System.IComparable{Sharpy.Set`1}
@@ -161,11 +162,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Container.cs
+      path: dotnet/src/Sharpy/Set/Set.Container.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Contains
-    path: ../src/Sharpy/Set.Container.cs
+    path: ../src/Sharpy/Set/Set.Container.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -201,11 +202,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Container.cs
+      path: dotnet/src/Sharpy/Set/Set.Container.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Contains__
-    path: ../src/Sharpy/Set.Container.cs
+    path: ../src/Sharpy/Set/Set.Container.cs
     startLine: 11
   assemblies:
   - Sharpy
@@ -245,11 +246,11 @@ items:
   type: Constructor
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.cs
+      path: dotnet/src/Sharpy/Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
-    path: ../src/Sharpy/Set.cs
+    path: ../src/Sharpy/Set/Set.cs
     startLine: 8
   assemblies:
   - Sharpy
@@ -274,11 +275,11 @@ items:
   type: Constructor
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.cs
+      path: dotnet/src/Sharpy/Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
-    path: ../src/Sharpy/Set.cs
+    path: ../src/Sharpy/Set/Set.cs
     startLine: 13
   assemblies:
   - Sharpy
@@ -306,11 +307,11 @@ items:
   type: Constructor
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.cs
+      path: dotnet/src/Sharpy/Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
-    path: ../src/Sharpy/Set.cs
+    path: ../src/Sharpy/Set/Set.cs
     startLine: 18
   assemblies:
   - Sharpy
@@ -338,11 +339,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.cs
+      path: dotnet/src/Sharpy/Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Copy
-    path: ../src/Sharpy/Set.cs
+    path: ../src/Sharpy/Set/Set.cs
     startLine: 31
   assemblies:
   - Sharpy
@@ -368,11 +369,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.cs
+      path: dotnet/src/Sharpy/Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: IsSubset
-    path: ../src/Sharpy/Set.cs
+    path: ../src/Sharpy/Set/Set.cs
     startLine: 40
   assemblies:
   - Sharpy
@@ -402,11 +403,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.cs
+      path: dotnet/src/Sharpy/Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: IsSuperset
-    path: ../src/Sharpy/Set.cs
+    path: ../src/Sharpy/Set/Set.cs
     startLine: 45
   assemblies:
   - Sharpy
@@ -436,11 +437,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.cs
+      path: dotnet/src/Sharpy/Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Union
-    path: ../src/Sharpy/Set.cs
+    path: ../src/Sharpy/Set/Set.cs
     startLine: 50
   assemblies:
   - Sharpy
@@ -470,11 +471,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.cs
+      path: dotnet/src/Sharpy/Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Intersection
-    path: ../src/Sharpy/Set.cs
+    path: ../src/Sharpy/Set/Set.cs
     startLine: 55
   assemblies:
   - Sharpy
@@ -504,11 +505,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.cs
+      path: dotnet/src/Sharpy/Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Difference
-    path: ../src/Sharpy/Set.cs
+    path: ../src/Sharpy/Set/Set.cs
     startLine: 60
   assemblies:
   - Sharpy
@@ -538,11 +539,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.cs
+      path: dotnet/src/Sharpy/Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: SymmetricDifference
-    path: ../src/Sharpy/Set.cs
+    path: ../src/Sharpy/Set/Set.cs
     startLine: 65
   assemblies:
   - Sharpy
@@ -572,11 +573,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.cs
+      path: dotnet/src/Sharpy/Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: ToHashSet
-    path: ../src/Sharpy/Set.cs
+    path: ../src/Sharpy/Set/Set.cs
     startLine: 70
   assemblies:
   - Sharpy
@@ -602,11 +603,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Equatable.cs
+      path: dotnet/src/Sharpy/Set/Set.Equatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
-    path: ../src/Sharpy/Set.Equatable.cs
+    path: ../src/Sharpy/Set/Set.Equatable.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -637,15 +638,16 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Equatable.cs
+      path: dotnet/src/Sharpy/Set/Set.Equatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
-    path: ../src/Sharpy/Set.Equatable.cs
+    path: ../src/Sharpy/Set/Set.Equatable.cs
     startLine: 16
   assemblies:
   - Sharpy
   namespace: Sharpy
+  remarks: This defines equality between two objects of the same type.
   example: []
   syntax:
     content: public bool __Eq__(Set<T> other)
@@ -674,11 +676,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Equatable.cs
+      path: dotnet/src/Sharpy/Set/Set.Equatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
-    path: ../src/Sharpy/Set.Equatable.cs
+    path: ../src/Sharpy/Set/Set.Equatable.cs
     startLine: 32
   assemblies:
   - Sharpy
@@ -715,11 +717,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.GreaterThanComparable.cs
+      path: dotnet/src/Sharpy/Set/Set.GreaterThanComparable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Gt__
-    path: ../src/Sharpy/Set.GreaterThanComparable.cs
+    path: ../src/Sharpy/Set/Set.GreaterThanComparable.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -750,11 +752,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.GreaterThanComparable.cs
+      path: dotnet/src/Sharpy/Set/Set.GreaterThanComparable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Gt__
-    path: ../src/Sharpy/Set.GreaterThanComparable.cs
+    path: ../src/Sharpy/Set/Set.GreaterThanComparable.cs
     startLine: 16
   assemblies:
   - Sharpy
@@ -787,11 +789,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.GreaterThanOrEquatable.cs
+      path: dotnet/src/Sharpy/Set/Set.GreaterThanOrEquatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Ge__
-    path: ../src/Sharpy/Set.GreaterThanOrEquatable.cs
+    path: ../src/Sharpy/Set/Set.GreaterThanOrEquatable.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -822,11 +824,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.GreaterThanOrEquatable.cs
+      path: dotnet/src/Sharpy/Set/Set.GreaterThanOrEquatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Ge__
-    path: ../src/Sharpy/Set.GreaterThanOrEquatable.cs
+    path: ../src/Sharpy/Set/Set.GreaterThanOrEquatable.cs
     startLine: 16
   assemblies:
   - Sharpy
@@ -859,11 +861,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.IComparable.cs
+      path: dotnet/src/Sharpy/Set/Set.IComparable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: CompareTo
-    path: ../src/Sharpy/Set.IComparable.cs
+    path: ../src/Sharpy/Set/Set.IComparable.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -902,11 +904,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.IComparable.cs
+      path: dotnet/src/Sharpy/Set/Set.IComparable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: CompareTo
-    path: ../src/Sharpy/Set.IComparable.cs
+    path: ../src/Sharpy/Set/Set.IComparable.cs
     startLine: 31
   assemblies:
   - Sharpy
@@ -945,11 +947,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.IEnumerable.cs
+      path: dotnet/src/Sharpy/Set/Set.IEnumerable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: GetEnumerator
-    path: ../src/Sharpy/Set.IEnumerable.cs
+    path: ../src/Sharpy/Set/Set.IEnumerable.cs
     startLine: 7
   assemblies:
   - Sharpy
@@ -980,11 +982,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.IEquatable.cs
+      path: dotnet/src/Sharpy/Set/Set.IEquatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Equals
-    path: ../src/Sharpy/Set.IEquatable.cs
+    path: ../src/Sharpy/Set/Set.IEquatable.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -1020,11 +1022,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Inequatable.cs
+      path: dotnet/src/Sharpy/Set/Set.Inequatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Ne__
-    path: ../src/Sharpy/Set.Inequatable.cs
+    path: ../src/Sharpy/Set/Set.Inequatable.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -1055,11 +1057,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Inequatable.cs
+      path: dotnet/src/Sharpy/Set/Set.Inequatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Ne__
-    path: ../src/Sharpy/Set.Inequatable.cs
+    path: ../src/Sharpy/Set/Set.Inequatable.cs
     startLine: 11
   assemblies:
   - Sharpy
@@ -1092,11 +1094,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Iterable.cs
+      path: dotnet/src/Sharpy/Set/Set.Iterable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Iter__
-    path: ../src/Sharpy/Set.Iterable.cs
+    path: ../src/Sharpy/Set/Set.Iterable.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -1139,11 +1141,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.LessThanComparable.cs
+      path: dotnet/src/Sharpy/Set/Set.LessThanComparable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Lt__
-    path: ../src/Sharpy/Set.LessThanComparable.cs
+    path: ../src/Sharpy/Set/Set.LessThanComparable.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -1174,11 +1176,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.LessThanComparable.cs
+      path: dotnet/src/Sharpy/Set/Set.LessThanComparable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Lt__
-    path: ../src/Sharpy/Set.LessThanComparable.cs
+    path: ../src/Sharpy/Set/Set.LessThanComparable.cs
     startLine: 16
   assemblies:
   - Sharpy
@@ -1211,11 +1213,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.LessThanOrEquatable.cs
+      path: dotnet/src/Sharpy/Set/Set.LessThanOrEquatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Le__
-    path: ../src/Sharpy/Set.LessThanOrEquatable.cs
+    path: ../src/Sharpy/Set/Set.LessThanOrEquatable.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -1246,11 +1248,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.LessThanOrEquatable.cs
+      path: dotnet/src/Sharpy/Set/Set.LessThanOrEquatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Le__
-    path: ../src/Sharpy/Set.LessThanOrEquatable.cs
+    path: ../src/Sharpy/Set/Set.LessThanOrEquatable.cs
     startLine: 16
   assemblies:
   - Sharpy
@@ -1283,11 +1285,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.MutableSet.cs
+      path: dotnet/src/Sharpy/Set/Set.MutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Add
-    path: ../src/Sharpy/Set.MutableSet.cs
+    path: ../src/Sharpy/Set/Set.MutableSet.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -1317,11 +1319,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.MutableSet.cs
+      path: dotnet/src/Sharpy/Set/Set.MutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Discard
-    path: ../src/Sharpy/Set.MutableSet.cs
+    path: ../src/Sharpy/Set/Set.MutableSet.cs
     startLine: 11
   assemblies:
   - Sharpy
@@ -1351,11 +1353,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.MutableSet.cs
+      path: dotnet/src/Sharpy/Set/Set.MutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Clear
-    path: ../src/Sharpy/Set.MutableSet.cs
+    path: ../src/Sharpy/Set/Set.MutableSet.cs
     startLine: 17
   assemblies:
   - Sharpy
@@ -1382,11 +1384,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.MutableSet.cs
+      path: dotnet/src/Sharpy/Set/Set.MutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Pop
-    path: ../src/Sharpy/Set.MutableSet.cs
+    path: ../src/Sharpy/Set/Set.MutableSet.cs
     startLine: 23
   assemblies:
   - Sharpy
@@ -1415,11 +1417,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.MutableSet.cs
+      path: dotnet/src/Sharpy/Set/Set.MutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Remove
-    path: ../src/Sharpy/Set.MutableSet.cs
+    path: ../src/Sharpy/Set/Set.MutableSet.cs
     startLine: 29
   assemblies:
   - Sharpy
@@ -1449,11 +1451,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.MutableSet.cs
+      path: dotnet/src/Sharpy/Set/Set.MutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __IOr__
-    path: ../src/Sharpy/Set.MutableSet.cs
+    path: ../src/Sharpy/Set/Set.MutableSet.cs
     startLine: 38
   assemblies:
   - Sharpy
@@ -1484,11 +1486,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.MutableSet.cs
+      path: dotnet/src/Sharpy/Set/Set.MutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __IAnd__
-    path: ../src/Sharpy/Set.MutableSet.cs
+    path: ../src/Sharpy/Set/Set.MutableSet.cs
     startLine: 47
   assemblies:
   - Sharpy
@@ -1519,11 +1521,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.MutableSet.cs
+      path: dotnet/src/Sharpy/Set/Set.MutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __IXOr__
-    path: ../src/Sharpy/Set.MutableSet.cs
+    path: ../src/Sharpy/Set/Set.MutableSet.cs
     startLine: 54
   assemblies:
   - Sharpy
@@ -1554,11 +1556,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.MutableSet.cs
+      path: dotnet/src/Sharpy/Set/Set.MutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __ISub__
-    path: ../src/Sharpy/Set.MutableSet.cs
+    path: ../src/Sharpy/Set/Set.MutableSet.cs
     startLine: 61
   assemblies:
   - Sharpy
@@ -1589,11 +1591,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.MutableSet.cs
+      path: dotnet/src/Sharpy/Set/Set.MutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __IAnd__
-    path: ../src/Sharpy/Set.MutableSet.cs
+    path: ../src/Sharpy/Set/Set.MutableSet.cs
     startLine: 68
   assemblies:
   - Sharpy
@@ -1624,11 +1626,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.MutableSet.cs
+      path: dotnet/src/Sharpy/Set/Set.MutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __IOr__
-    path: ../src/Sharpy/Set.MutableSet.cs
+    path: ../src/Sharpy/Set/Set.MutableSet.cs
     startLine: 74
   assemblies:
   - Sharpy
@@ -1659,11 +1661,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.MutableSet.cs
+      path: dotnet/src/Sharpy/Set/Set.MutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __ISub__
-    path: ../src/Sharpy/Set.MutableSet.cs
+    path: ../src/Sharpy/Set/Set.MutableSet.cs
     startLine: 80
   assemblies:
   - Sharpy
@@ -1694,11 +1696,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.MutableSet.cs
+      path: dotnet/src/Sharpy/Set/Set.MutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __IXOr__
-    path: ../src/Sharpy/Set.MutableSet.cs
+    path: ../src/Sharpy/Set/Set.MutableSet.cs
     startLine: 86
   assemblies:
   - Sharpy
@@ -1729,11 +1731,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Object.cs
+      path: dotnet/src/Sharpy/Set/Set.Object.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Bool__
-    path: ../src/Sharpy/Set.Object.cs
+    path: ../src/Sharpy/Set/Set.Object.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -1767,11 +1769,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Object.cs
+      path: dotnet/src/Sharpy/Set/Set.Object.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Hash__
-    path: ../src/Sharpy/Set.Object.cs
+    path: ../src/Sharpy/Set/Set.Object.cs
     startLine: 11
   assemblies:
   - Sharpy
@@ -1802,11 +1804,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.operators.cs
+      path: dotnet/src/Sharpy/Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Equality
-    path: ../src/Sharpy/Set.operators.cs
+    path: ../src/Sharpy/Set/Set.operators.cs
     startLine: 4
   assemblies:
   - Sharpy
@@ -1838,11 +1840,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.operators.cs
+      path: dotnet/src/Sharpy/Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Inequality
-    path: ../src/Sharpy/Set.operators.cs
+    path: ../src/Sharpy/Set/Set.operators.cs
     startLine: 9
   assemblies:
   - Sharpy
@@ -1874,11 +1876,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.operators.cs
+      path: dotnet/src/Sharpy/Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_LessThan
-    path: ../src/Sharpy/Set.operators.cs
+    path: ../src/Sharpy/Set/Set.operators.cs
     startLine: 14
   assemblies:
   - Sharpy
@@ -1910,11 +1912,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.operators.cs
+      path: dotnet/src/Sharpy/Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_GreaterThan
-    path: ../src/Sharpy/Set.operators.cs
+    path: ../src/Sharpy/Set/Set.operators.cs
     startLine: 19
   assemblies:
   - Sharpy
@@ -1946,11 +1948,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.operators.cs
+      path: dotnet/src/Sharpy/Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_LessThanOrEqual
-    path: ../src/Sharpy/Set.operators.cs
+    path: ../src/Sharpy/Set/Set.operators.cs
     startLine: 24
   assemblies:
   - Sharpy
@@ -1982,11 +1984,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.operators.cs
+      path: dotnet/src/Sharpy/Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_GreaterThanOrEqual
-    path: ../src/Sharpy/Set.operators.cs
+    path: ../src/Sharpy/Set/Set.operators.cs
     startLine: 29
   assemblies:
   - Sharpy
@@ -2018,11 +2020,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.operators.cs
+      path: dotnet/src/Sharpy/Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_BitwiseOr
-    path: ../src/Sharpy/Set.operators.cs
+    path: ../src/Sharpy/Set/Set.operators.cs
     startLine: 34
   assemblies:
   - Sharpy
@@ -2054,11 +2056,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.operators.cs
+      path: dotnet/src/Sharpy/Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_BitwiseAnd
-    path: ../src/Sharpy/Set.operators.cs
+    path: ../src/Sharpy/Set/Set.operators.cs
     startLine: 39
   assemblies:
   - Sharpy
@@ -2090,11 +2092,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.operators.cs
+      path: dotnet/src/Sharpy/Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_ExclusiveOr
-    path: ../src/Sharpy/Set.operators.cs
+    path: ../src/Sharpy/Set/Set.operators.cs
     startLine: 44
   assemblies:
   - Sharpy
@@ -2126,11 +2128,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.operators.cs
+      path: dotnet/src/Sharpy/Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Subtraction
-    path: ../src/Sharpy/Set.operators.cs
+    path: ../src/Sharpy/Set/Set.operators.cs
     startLine: 49
   assemblies:
   - Sharpy
@@ -2162,11 +2164,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Set.cs
+      path: dotnet/src/Sharpy/Set/Set.Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: IsDisjoint
-    path: ../src/Sharpy/Set.Set.cs
+    path: ../src/Sharpy/Set/Set.Set.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -2199,11 +2201,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Set.cs
+      path: dotnet/src/Sharpy/Set/Set.Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __And__
-    path: ../src/Sharpy/Set.Set.cs
+    path: ../src/Sharpy/Set/Set.Set.cs
     startLine: 17
   assemblies:
   - Sharpy
@@ -2236,11 +2238,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Set.cs
+      path: dotnet/src/Sharpy/Set/Set.Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Or__
-    path: ../src/Sharpy/Set.Set.cs
+    path: ../src/Sharpy/Set/Set.Set.cs
     startLine: 38
   assemblies:
   - Sharpy
@@ -2273,11 +2275,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Set.cs
+      path: dotnet/src/Sharpy/Set/Set.Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __ROr__
-    path: ../src/Sharpy/Set.Set.cs
+    path: ../src/Sharpy/Set/Set.Set.cs
     startLine: 58
   assemblies:
   - Sharpy
@@ -2311,11 +2313,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Set.cs
+      path: dotnet/src/Sharpy/Set/Set.Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __RSub__
-    path: ../src/Sharpy/Set.Set.cs
+    path: ../src/Sharpy/Set/Set.Set.cs
     startLine: 76
   assemblies:
   - Sharpy
@@ -2348,11 +2350,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Set.cs
+      path: dotnet/src/Sharpy/Set/Set.Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Sub__
-    path: ../src/Sharpy/Set.Set.cs
+    path: ../src/Sharpy/Set/Set.Set.cs
     startLine: 97
   assemblies:
   - Sharpy
@@ -2385,11 +2387,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Set.cs
+      path: dotnet/src/Sharpy/Set/Set.Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __XOr__
-    path: ../src/Sharpy/Set.Set.cs
+    path: ../src/Sharpy/Set/Set.Set.cs
     startLine: 118
   assemblies:
   - Sharpy
@@ -2422,11 +2424,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Set.cs
+      path: dotnet/src/Sharpy/Set/Set.Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __And__
-    path: ../src/Sharpy/Set.Set.cs
+    path: ../src/Sharpy/Set/Set.Set.cs
     startLine: 147
   assemblies:
   - Sharpy
@@ -2459,11 +2461,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Set.cs
+      path: dotnet/src/Sharpy/Set/Set.Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Or__
-    path: ../src/Sharpy/Set.Set.cs
+    path: ../src/Sharpy/Set/Set.Set.cs
     startLine: 168
   assemblies:
   - Sharpy
@@ -2496,11 +2498,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Set.cs
+      path: dotnet/src/Sharpy/Set/Set.Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Sub__
-    path: ../src/Sharpy/Set.Set.cs
+    path: ../src/Sharpy/Set/Set.Set.cs
     startLine: 174
   assemblies:
   - Sharpy
@@ -2533,11 +2535,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Set.cs
+      path: dotnet/src/Sharpy/Set/Set.Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __RSub__
-    path: ../src/Sharpy/Set.Set.cs
+    path: ../src/Sharpy/Set/Set.Set.cs
     startLine: 180
   assemblies:
   - Sharpy
@@ -2570,11 +2572,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Set.cs
+      path: dotnet/src/Sharpy/Set/Set.Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __XOr__
-    path: ../src/Sharpy/Set.Set.cs
+    path: ../src/Sharpy/Set/Set.Set.cs
     startLine: 186
   assemblies:
   - Sharpy
@@ -2607,11 +2609,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Set.cs
+      path: dotnet/src/Sharpy/Set/Set.Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __ROr__
-    path: ../src/Sharpy/Set.Set.cs
+    path: ../src/Sharpy/Set/Set.Set.cs
     startLine: 192
   assemblies:
   - Sharpy
@@ -2644,11 +2646,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Set.cs
+      path: dotnet/src/Sharpy/Set/Set.Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: IsDisjoint
-    path: ../src/Sharpy/Set.Set.cs
+    path: ../src/Sharpy/Set/Set.Set.cs
     startLine: 198
   assemblies:
   - Sharpy
@@ -2681,11 +2683,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set.Sized.cs
+      path: dotnet/src/Sharpy/Set/Set.Sized.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Len__
-    path: ../src/Sharpy/Set.Sized.cs
+    path: ../src/Sharpy/Set/Set.Sized.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -3433,6 +3435,13 @@ references:
   - name: T
   - name: )
   - name: )
+- uid: Sharpy.Equatable
+  commentId: T:Sharpy.Equatable
+  parent: Sharpy
+  href: Sharpy.Equatable.html
+  name: Equatable
+  nameWithType: Equatable
+  fullName: Sharpy.Equatable
 - uid: Sharpy.Hashable
   commentId: T:Sharpy.Hashable
   parent: Sharpy

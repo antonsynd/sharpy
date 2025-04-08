@@ -1,6 +1,6 @@
 namespace Sharpy
 {
-    public static partial class Builtins
+    public static partial class __Exports
     {
         public static bool Bool(bool b)
         {

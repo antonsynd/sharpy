@@ -31,25 +31,26 @@ items:
   type: Class
   source:
     remote:
-      path: dotnet/src/Sharpy/Optional.Object.cs
+      path: dotnet/src/Sharpy/Optional/Optional.Object.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Optional
-    path: ../src/Sharpy/Optional.Object.cs
+    path: ../src/Sharpy/Optional/Optional.Object.cs
     startLine: 2
   assemblies:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: 'public sealed class Optional<T> : Object, Equatable<Object>, Hashable, Inequatable<Object>, IEquatable<Object>, StrConvertible, Representable, BoolConvertible, Identifiable where T : notnull'
+    content: 'public sealed class Optional<T> : Object, Equatable<Object>, Equatable, Hashable, Inequatable<Object>, IEquatable<Object>, StrConvertible, Representable, BoolConvertible, Identifiable where T : notnull'
     typeParameters:
     - id: T
-    content.vb: Public NotInheritable Class [Optional](Of T) Inherits Object Implements Equatable(Of Object), Hashable, Inequatable(Of Object), IEquatable(Of Object), StrConvertible, Representable, BoolConvertible, Identifiable
+    content.vb: Public NotInheritable Class [Optional](Of T) Inherits Object Implements Equatable(Of Object), Equatable, Hashable, Inequatable(Of Object), IEquatable(Of Object), StrConvertible, Representable, BoolConvertible, Identifiable
   inheritance:
   - System.Object
   - Sharpy.Object
   implements:
   - Sharpy.Equatable{Sharpy.Object}
+  - Sharpy.Equatable
   - Sharpy.Hashable
   - Sharpy.Inequatable{Sharpy.Object}
   - System.IEquatable{Sharpy.Object}
@@ -87,11 +88,11 @@ items:
   type: Constructor
   source:
     remote:
-      path: dotnet/src/Sharpy/Optional.cs
+      path: dotnet/src/Sharpy/Optional/Optional.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
-    path: ../src/Sharpy/Optional.cs
+    path: ../src/Sharpy/Optional/Optional.cs
     startLine: 8
   assemblies:
   - Sharpy
@@ -116,11 +117,11 @@ items:
   type: Constructor
   source:
     remote:
-      path: dotnet/src/Sharpy/Optional.cs
+      path: dotnet/src/Sharpy/Optional/Optional.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
-    path: ../src/Sharpy/Optional.cs
+    path: ../src/Sharpy/Optional/Optional.cs
     startLine: 10
   assemblies:
   - Sharpy
@@ -148,11 +149,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Optional.cs
+      path: dotnet/src/Sharpy/Optional/Optional.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: GetValue
-    path: ../src/Sharpy/Optional.cs
+    path: ../src/Sharpy/Optional/Optional.cs
     startLine: 12
   assemblies:
   - Sharpy
@@ -178,11 +179,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Optional.cs
+      path: dotnet/src/Sharpy/Optional/Optional.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: SetValue
-    path: ../src/Sharpy/Optional.cs
+    path: ../src/Sharpy/Optional/Optional.cs
     startLine: 22
   assemblies:
   - Sharpy
@@ -210,11 +211,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Optional.cs
+      path: dotnet/src/Sharpy/Optional/Optional.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: HasValue
-    path: ../src/Sharpy/Optional.cs
+    path: ../src/Sharpy/Optional/Optional.cs
     startLine: 27
   assemblies:
   - Sharpy
@@ -240,11 +241,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Optional.cs
+      path: dotnet/src/Sharpy/Optional/Optional.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Reset
-    path: ../src/Sharpy/Optional.cs
+    path: ../src/Sharpy/Optional/Optional.cs
     startLine: 32
   assemblies:
   - Sharpy
@@ -268,11 +269,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Optional.cs
+      path: dotnet/src/Sharpy/Optional/Optional.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_True
-    path: ../src/Sharpy/Optional.cs
+    path: ../src/Sharpy/Optional/Optional.cs
     startLine: 37
   assemblies:
   - Sharpy
@@ -302,11 +303,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Optional.cs
+      path: dotnet/src/Sharpy/Optional/Optional.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_False
-    path: ../src/Sharpy/Optional.cs
+    path: ../src/Sharpy/Optional/Optional.cs
     startLine: 42
   assemblies:
   - Sharpy
@@ -336,11 +337,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Optional.cs
+      path: dotnet/src/Sharpy/Optional/Optional.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Implicit
-    path: ../src/Sharpy/Optional.cs
+    path: ../src/Sharpy/Optional/Optional.cs
     startLine: 47
   assemblies:
   - Sharpy
@@ -370,11 +371,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Optional.cs
+      path: dotnet/src/Sharpy/Optional/Optional.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Equality
-    path: ../src/Sharpy/Optional.cs
+    path: ../src/Sharpy/Optional/Optional.cs
     startLine: 52
   assemblies:
   - Sharpy
@@ -406,11 +407,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Optional.cs
+      path: dotnet/src/Sharpy/Optional/Optional.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Inequality
-    path: ../src/Sharpy/Optional.cs
+    path: ../src/Sharpy/Optional/Optional.cs
     startLine: 57
   assemblies:
   - Sharpy
@@ -442,11 +443,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Optional.cs
+      path: dotnet/src/Sharpy/Optional/Optional.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Equality
-    path: ../src/Sharpy/Optional.cs
+    path: ../src/Sharpy/Optional/Optional.cs
     startLine: 65
   assemblies:
   - Sharpy
@@ -480,11 +481,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Optional.cs
+      path: dotnet/src/Sharpy/Optional/Optional.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Inequality
-    path: ../src/Sharpy/Optional.cs
+    path: ../src/Sharpy/Optional/Optional.cs
     startLine: 70
   assemblies:
   - Sharpy
@@ -516,11 +517,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Optional.Object.cs
+      path: dotnet/src/Sharpy/Optional/Optional.Object.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Bool__
-    path: ../src/Sharpy/Optional.Object.cs
+    path: ../src/Sharpy/Optional/Optional.Object.cs
     startLine: 4
   assemblies:
   - Sharpy
@@ -554,11 +555,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Optional.Object.cs
+      path: dotnet/src/Sharpy/Optional/Optional.Object.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
-    path: ../src/Sharpy/Optional.Object.cs
+    path: ../src/Sharpy/Optional/Optional.Object.cs
     startLine: 15
   assemblies:
   - Sharpy
@@ -589,11 +590,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Optional.Object.cs
+      path: dotnet/src/Sharpy/Optional/Optional.Object.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
-    path: ../src/Sharpy/Optional.Object.cs
+    path: ../src/Sharpy/Optional/Optional.Object.cs
     startLine: 25
   assemblies:
   - Sharpy
@@ -623,11 +624,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Optional.Object.cs
+      path: dotnet/src/Sharpy/Optional/Optional.Object.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Repr__
-    path: ../src/Sharpy/Optional.Object.cs
+    path: ../src/Sharpy/Optional/Optional.Object.cs
     startLine: 35
   assemblies:
   - Sharpy
@@ -703,6 +704,13 @@ references:
     name: Object
     href: Sharpy.Object.html
   - name: )
+- uid: Sharpy.Equatable
+  commentId: T:Sharpy.Equatable
+  parent: Sharpy
+  href: Sharpy.Equatable.html
+  name: Equatable
+  nameWithType: Equatable
+  fullName: Sharpy.Equatable
 - uid: Sharpy.Hashable
   commentId: T:Sharpy.Hashable
   parent: Sharpy

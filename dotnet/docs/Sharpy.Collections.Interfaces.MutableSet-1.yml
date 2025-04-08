@@ -35,10 +35,10 @@ items:
   summary: Interface for mutable sets.
   example: []
   syntax:
-    content: 'public interface MutableSet<T> : Set<T>, Collection<T>, Container<T>, Iterable<T>, IEnumerable<T>, IEnumerable, Sized, Inequatable<Set<T>>, Comparable<Set<T>>, LessThanOrEquatable<Set<T>>, LessThanComparable<Set<T>>, GreaterThanOrEquatable<Set<T>>, GreaterThanComparable<Set<T>>, IComparable<Set<T>>, Equatable<Set<T>>, Hashable, IEquatable<Set<T>>'
+    content: 'public interface MutableSet<T> : Set<T>, Collection<T>, Container<T>, Iterable<T>, IEnumerable<T>, IEnumerable, Sized, Inequatable<Set<T>>, Comparable<Set<T>>, LessThanOrEquatable<Set<T>>, LessThanComparable<Set<T>>, GreaterThanOrEquatable<Set<T>>, GreaterThanComparable<Set<T>>, IComparable<Set<T>>, Equatable<Set<T>>, Equatable, Hashable, IEquatable<Set<T>>'
     typeParameters:
     - id: T
-    content.vb: Public Interface MutableSet(Of T) Inherits Set(Of T), Collection(Of T), Container(Of T), Iterable(Of T), IEnumerable(Of T), IEnumerable, Sized, Inequatable(Of Set(Of T)), Comparable(Of Set(Of T)), LessThanOrEquatable(Of Set(Of T)), LessThanComparable(Of Set(Of T)), GreaterThanOrEquatable(Of Set(Of T)), GreaterThanComparable(Of Set(Of T)), IComparable(Of Set(Of T)), Equatable(Of Set(Of T)), Hashable, IEquatable(Of Set(Of T))
+    content.vb: Public Interface MutableSet(Of T) Inherits Set(Of T), Collection(Of T), Container(Of T), Iterable(Of T), IEnumerable(Of T), IEnumerable, Sized, Inequatable(Of Set(Of T)), Comparable(Of Set(Of T)), LessThanOrEquatable(Of Set(Of T)), LessThanComparable(Of Set(Of T)), GreaterThanOrEquatable(Of Set(Of T)), GreaterThanComparable(Of Set(Of T)), IComparable(Of Set(Of T)), Equatable(Of Set(Of T)), Equatable, Hashable, IEquatable(Of Set(Of T))
   inheritedMembers:
   - Sharpy.Collections.Interfaces.Set{{T}}.__And__(Sharpy.Collections.Interfaces.Set{{T}})
   - Sharpy.Collections.Interfaces.Set{{T}}.__Or__(Sharpy.Collections.Interfaces.Set{{T}})
@@ -59,9 +59,9 @@ items:
   - Sharpy.GreaterThanOrEquatable{Sharpy.Collections.Interfaces.Set{{T}}}.__Ge__(Sharpy.Collections.Interfaces.Set{{T}})
   - Sharpy.GreaterThanComparable{Sharpy.Collections.Interfaces.Set{{T}}}.__Gt__(Sharpy.Collections.Interfaces.Set{{T}})
   - System.IComparable{Sharpy.Collections.Interfaces.Set{{T}}}.CompareTo(Sharpy.Collections.Interfaces.Set{{T}})
-  - Sharpy.Equatable{Sharpy.Collections.Interfaces.Set{{T}}}.Equals(System.Object)
-  - Sharpy.Equatable{Sharpy.Collections.Interfaces.Set{{T}}}.__Eq__(System.Object)
   - Sharpy.Equatable{Sharpy.Collections.Interfaces.Set{{T}}}.__Eq__(Sharpy.Collections.Interfaces.Set{{T}})
+  - Sharpy.Equatable.Equals(System.Object)
+  - Sharpy.Equatable.__Eq__(System.Object)
   - Sharpy.Hashable.__Hash__
   - System.IEquatable{Sharpy.Collections.Interfaces.Set{{T}}}.Equals(Sharpy.Collections.Interfaces.Set{{T}})
   nameWithType.vb: MutableSet(Of T)
@@ -1004,68 +1004,6 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.Equatable{Sharpy.Collections.Interfaces.Set{{T}}}.Equals(System.Object)
-  commentId: M:Sharpy.Equatable{Sharpy.Collections.Interfaces.Set{`0}}.Equals(System.Object)
-  parent: Sharpy.Equatable{Sharpy.Collections.Interfaces.Set{{T}}}
-  definition: Sharpy.Equatable`1.Equals(System.Object)
-  href: Sharpy.Equatable-1.html#Sharpy_Equatable_1_Equals_System_Object_
-  name: Equals(object)
-  nameWithType: Equatable<Set<T>>.Equals(object)
-  fullName: Sharpy.Equatable<Sharpy.Collections.Interfaces.Set<T>>.Equals(object)
-  nameWithType.vb: Equatable(Of Set(Of T)).Equals(Object)
-  fullName.vb: Sharpy.Equatable(Of Sharpy.Collections.Interfaces.Set(Of T)).Equals(Object)
-  name.vb: Equals(Object)
-  spec.csharp:
-  - uid: Sharpy.Equatable{Sharpy.Collections.Interfaces.Set{`0}}.Equals(System.Object)
-    name: Equals
-    href: Sharpy.Equatable-1.html#Sharpy_Equatable_1_Equals_System_Object_
-  - name: (
-  - uid: System.Object
-    name: object
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.object
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Equatable{Sharpy.Collections.Interfaces.Set{`0}}.Equals(System.Object)
-    name: Equals
-    href: Sharpy.Equatable-1.html#Sharpy_Equatable_1_Equals_System_Object_
-  - name: (
-  - uid: System.Object
-    name: Object
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.object
-  - name: )
-- uid: Sharpy.Equatable{Sharpy.Collections.Interfaces.Set{{T}}}.__Eq__(System.Object)
-  commentId: M:Sharpy.Equatable{Sharpy.Collections.Interfaces.Set{`0}}.__Eq__(System.Object)
-  parent: Sharpy.Equatable{Sharpy.Collections.Interfaces.Set{{T}}}
-  definition: Sharpy.Equatable`1.__Eq__(System.Object)
-  href: Sharpy.Equatable-1.html#Sharpy_Equatable_1___Eq___System_Object_
-  name: __Eq__(object)
-  nameWithType: Equatable<Set<T>>.__Eq__(object)
-  fullName: Sharpy.Equatable<Sharpy.Collections.Interfaces.Set<T>>.__Eq__(object)
-  nameWithType.vb: Equatable(Of Set(Of T)).__Eq__(Object)
-  fullName.vb: Sharpy.Equatable(Of Sharpy.Collections.Interfaces.Set(Of T)).__Eq__(Object)
-  name.vb: __Eq__(Object)
-  spec.csharp:
-  - uid: Sharpy.Equatable{Sharpy.Collections.Interfaces.Set{`0}}.__Eq__(System.Object)
-    name: __Eq__
-    href: Sharpy.Equatable-1.html#Sharpy_Equatable_1___Eq___System_Object_
-  - name: (
-  - uid: System.Object
-    name: object
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.object
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Equatable{Sharpy.Collections.Interfaces.Set{`0}}.__Eq__(System.Object)
-    name: __Eq__
-    href: Sharpy.Equatable-1.html#Sharpy_Equatable_1___Eq___System_Object_
-  - name: (
-  - uid: System.Object
-    name: Object
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.object
-  - name: )
 - uid: Sharpy.Equatable{Sharpy.Collections.Interfaces.Set{{T}}}.__Eq__(Sharpy.Collections.Interfaces.Set{{T}})
   commentId: M:Sharpy.Equatable{Sharpy.Collections.Interfaces.Set{`0}}.__Eq__(Sharpy.Collections.Interfaces.Set{`0})
   parent: Sharpy.Equatable{Sharpy.Collections.Interfaces.Set{{T}}}
@@ -1102,6 +1040,68 @@ references:
   - name: " "
   - name: T
   - name: )
+  - name: )
+- uid: Sharpy.Equatable.Equals(System.Object)
+  commentId: M:Sharpy.Equatable.Equals(System.Object)
+  parent: Sharpy.Equatable
+  isExternal: true
+  href: Sharpy.Equatable.html#Sharpy_Equatable_Equals_System_Object_
+  name: Equals(object)
+  nameWithType: Equatable.Equals(object)
+  fullName: Sharpy.Equatable.Equals(object)
+  nameWithType.vb: Equatable.Equals(Object)
+  fullName.vb: Sharpy.Equatable.Equals(Object)
+  name.vb: Equals(Object)
+  spec.csharp:
+  - uid: Sharpy.Equatable.Equals(System.Object)
+    name: Equals
+    href: Sharpy.Equatable.html#Sharpy_Equatable_Equals_System_Object_
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Equatable.Equals(System.Object)
+    name: Equals
+    href: Sharpy.Equatable.html#Sharpy_Equatable_Equals_System_Object_
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: Sharpy.Equatable.__Eq__(System.Object)
+  commentId: M:Sharpy.Equatable.__Eq__(System.Object)
+  parent: Sharpy.Equatable
+  isExternal: true
+  href: Sharpy.Equatable.html#Sharpy_Equatable___Eq___System_Object_
+  name: __Eq__(object)
+  nameWithType: Equatable.__Eq__(object)
+  fullName: Sharpy.Equatable.__Eq__(object)
+  nameWithType.vb: Equatable.__Eq__(Object)
+  fullName.vb: Sharpy.Equatable.__Eq__(Object)
+  name.vb: __Eq__(Object)
+  spec.csharp:
+  - uid: Sharpy.Equatable.__Eq__(System.Object)
+    name: __Eq__
+    href: Sharpy.Equatable.html#Sharpy_Equatable___Eq___System_Object_
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Equatable.__Eq__(System.Object)
+    name: __Eq__
+    href: Sharpy.Equatable.html#Sharpy_Equatable___Eq___System_Object_
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
   - name: )
 - uid: Sharpy.Hashable.__Hash__
   commentId: M:Sharpy.Hashable.__Hash__
@@ -2011,35 +2011,27 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.Equatable`1.Equals(System.Object)
-  commentId: M:Sharpy.Equatable`1.Equals(System.Object)
-  isExternal: true
-  href: Sharpy.Equatable-1.html#Sharpy_Equatable_1_Equals_System_Object_
-  name: Equals(object)
-  nameWithType: Equatable<T>.Equals(object)
-  fullName: Sharpy.Equatable<T>.Equals(object)
-  nameWithType.vb: Equatable(Of T).Equals(Object)
-  fullName.vb: Sharpy.Equatable(Of T).Equals(Object)
-  name.vb: Equals(Object)
+- uid: Sharpy.Equatable`1.__Eq__(`0)
+  commentId: M:Sharpy.Equatable`1.__Eq__(`0)
+  href: Sharpy.Equatable-1.html#Sharpy_Equatable_1___Eq____0_
+  name: __Eq__(T)
+  nameWithType: Equatable<T>.__Eq__(T)
+  fullName: Sharpy.Equatable<T>.__Eq__(T)
+  nameWithType.vb: Equatable(Of T).__Eq__(T)
+  fullName.vb: Sharpy.Equatable(Of T).__Eq__(T)
   spec.csharp:
-  - uid: Sharpy.Equatable`1.Equals(System.Object)
-    name: Equals
-    href: Sharpy.Equatable-1.html#Sharpy_Equatable_1_Equals_System_Object_
+  - uid: Sharpy.Equatable`1.__Eq__(`0)
+    name: __Eq__
+    href: Sharpy.Equatable-1.html#Sharpy_Equatable_1___Eq____0_
   - name: (
-  - uid: System.Object
-    name: object
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: T
   - name: )
   spec.vb:
-  - uid: Sharpy.Equatable`1.Equals(System.Object)
-    name: Equals
-    href: Sharpy.Equatable-1.html#Sharpy_Equatable_1_Equals_System_Object_
+  - uid: Sharpy.Equatable`1.__Eq__(`0)
+    name: __Eq__
+    href: Sharpy.Equatable-1.html#Sharpy_Equatable_1___Eq____0_
   - name: (
-  - uid: System.Object
-    name: Object
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: T
   - name: )
 - uid: Sharpy.Equatable{Sharpy.Collections.Interfaces.Set{{T}}}
   commentId: T:Sharpy.Equatable{Sharpy.Collections.Interfaces.Set{`0}}
@@ -2080,58 +2072,13 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.Equatable`1.__Eq__(System.Object)
-  commentId: M:Sharpy.Equatable`1.__Eq__(System.Object)
-  isExternal: true
-  href: Sharpy.Equatable-1.html#Sharpy_Equatable_1___Eq___System_Object_
-  name: __Eq__(object)
-  nameWithType: Equatable<T>.__Eq__(object)
-  fullName: Sharpy.Equatable<T>.__Eq__(object)
-  nameWithType.vb: Equatable(Of T).__Eq__(Object)
-  fullName.vb: Sharpy.Equatable(Of T).__Eq__(Object)
-  name.vb: __Eq__(Object)
-  spec.csharp:
-  - uid: Sharpy.Equatable`1.__Eq__(System.Object)
-    name: __Eq__
-    href: Sharpy.Equatable-1.html#Sharpy_Equatable_1___Eq___System_Object_
-  - name: (
-  - uid: System.Object
-    name: object
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.object
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Equatable`1.__Eq__(System.Object)
-    name: __Eq__
-    href: Sharpy.Equatable-1.html#Sharpy_Equatable_1___Eq___System_Object_
-  - name: (
-  - uid: System.Object
-    name: Object
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.object
-  - name: )
-- uid: Sharpy.Equatable`1.__Eq__(`0)
-  commentId: M:Sharpy.Equatable`1.__Eq__(`0)
-  href: Sharpy.Equatable-1.html#Sharpy_Equatable_1___Eq____0_
-  name: __Eq__(T)
-  nameWithType: Equatable<T>.__Eq__(T)
-  fullName: Sharpy.Equatable<T>.__Eq__(T)
-  nameWithType.vb: Equatable(Of T).__Eq__(T)
-  fullName.vb: Sharpy.Equatable(Of T).__Eq__(T)
-  spec.csharp:
-  - uid: Sharpy.Equatable`1.__Eq__(`0)
-    name: __Eq__
-    href: Sharpy.Equatable-1.html#Sharpy_Equatable_1___Eq____0_
-  - name: (
-  - name: T
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Equatable`1.__Eq__(`0)
-    name: __Eq__
-    href: Sharpy.Equatable-1.html#Sharpy_Equatable_1___Eq____0_
-  - name: (
-  - name: T
-  - name: )
+- uid: Sharpy.Equatable
+  commentId: T:Sharpy.Equatable
+  parent: Sharpy
+  href: Sharpy.Equatable.html
+  name: Equatable
+  nameWithType: Equatable
+  fullName: Sharpy.Equatable
 - uid: Sharpy.Hashable
   commentId: T:Sharpy.Hashable
   parent: Sharpy

@@ -13,9 +13,6 @@ items:
   - uid: Sharpy.BoolConvertible
     name: BoolConvertible
     type: Interface
-  - uid: Sharpy.Builtins
-    name: Builtins
-    type: Class
   - uid: Sharpy.Bytes
     name: Bytes
     type: Struct
@@ -28,6 +25,9 @@ items:
   - uid: Sharpy.Dict`2
     name: Dict<K, V>
     type: Class
+  - uid: Sharpy.Equatable
+    name: Equatable
+    type: Interface
   - uid: Sharpy.Equatable`1
     name: Equatable<T>
     type: Interface
@@ -55,9 +55,6 @@ items:
   - uid: Sharpy.InplaceMultipliable`1
     name: InplaceMultipliable<T>
     type: Interface
-  - uid: Sharpy.Internals
-    name: Internals
-    type: Class
   - uid: Sharpy.Iterator`1
     name: Iterator<T>
     type: Class
@@ -84,6 +81,9 @@ items:
     type: Interface
   - uid: Sharpy.Object
     name: Object
+    type: Class
+  - uid: Sharpy.Operator
+    name: Operator
     type: Class
   - uid: Sharpy.Optional`1
     name: Optional<T>
@@ -120,6 +120,9 @@ items:
     type: Class
   - uid: Sharpy.ValueError
     name: ValueError
+    type: Class
+  - uid: Sharpy.__Exports
+    name: __Exports
     type: Class
 - uid: Sharpy.Collections.Interfaces
   name: Sharpy.Collections.Interfaces
@@ -192,7 +195,7 @@ items:
   name: Sharpy.Sys
   type: Namespace
   items:
-  - uid: Sharpy.Sys.Builtins
-    name: Builtins
+  - uid: Sharpy.Sys.__Exports
+    name: __Exports
     type: Class
 memberLayout: SamePage

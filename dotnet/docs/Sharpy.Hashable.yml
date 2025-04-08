@@ -20,10 +20,15 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Hashable
     path: ../src/Sharpy/Hashable.cs
-    startLine: 2
+    startLine: 6
   assemblies:
   - Sharpy
   namespace: Sharpy
+  summary: >-
+    This interface defines hashable objects whose hashes can be obtained
+
+    via the <code>__Hash__</code> method.
+  example: []
   syntax:
     content: public interface Hashable
     content.vb: Public Interface Hashable
@@ -45,14 +50,20 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Hash__
     path: ../src/Sharpy/Hashable.cs
-    startLine: 4
+    startLine: 13
   assemblies:
   - Sharpy
   namespace: Sharpy
+  summary: >-
+    This method should return the hash of the object. In Sharpy,
+
+    objects that have the same hash are not guaranteed to be equal.
+  example: []
   syntax:
     content: int __Hash__()
     return:
       type: System.Int32
+      description: The hash of the object.
     content.vb: Function __Hash__() As Integer
   overload: Sharpy.Hashable.__Hash__*
 references:

@@ -2,7 +2,7 @@ using Sharpy.Collections.Interfaces;
 
 namespace Sharpy
 {
-    public static partial class Builtins
+    public static partial class __Exports
     {
         public static Str Str(object x)
         {

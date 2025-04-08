@@ -7,11 +7,11 @@ items:
   - Sharpy.Addable`1
   - Sharpy.Addable`2
   - Sharpy.BoolConvertible
-  - Sharpy.Builtins
   - Sharpy.Bytes
   - Sharpy.Comparable`1
   - Sharpy.DictKeyView`2
   - Sharpy.Dict`2
+  - Sharpy.Equatable
   - Sharpy.Equatable`1
   - Sharpy.GreaterThanComparable`1
   - Sharpy.GreaterThanOrEquatable`1
@@ -21,7 +21,6 @@ items:
   - Sharpy.Inequatable`1
   - Sharpy.InplaceAddable`1
   - Sharpy.InplaceMultipliable`1
-  - Sharpy.Internals
   - Sharpy.Iterator`1
   - Sharpy.KeyError
   - Sharpy.LessThanComparable`1
@@ -31,6 +30,7 @@ items:
   - Sharpy.List`1
   - Sharpy.Multipliable`2
   - Sharpy.Object
+  - Sharpy.Operator
   - Sharpy.Optional`1
   - Sharpy.Representable
   - Sharpy.RightAddable`1
@@ -43,6 +43,7 @@ items:
   - Sharpy.StrConvertible
   - Sharpy.TypeError
   - Sharpy.ValueError
+  - Sharpy.__Exports
   langs:
   - csharp
   - vb
@@ -109,12 +110,12 @@ references:
   - name: " "
   - name: T
   - name: )
-- uid: Sharpy.Builtins
-  commentId: T:Sharpy.Builtins
-  href: Sharpy.Builtins.html
-  name: Builtins
-  nameWithType: Builtins
-  fullName: Sharpy.Builtins
+- uid: Sharpy.__Exports
+  commentId: T:Sharpy.__Exports
+  href: Sharpy.__Exports.html
+  name: __Exports
+  nameWithType: __Exports
+  fullName: Sharpy.__Exports
 - uid: Sharpy.BoolConvertible
   commentId: T:Sharpy.BoolConvertible
   parent: Sharpy
@@ -218,6 +219,13 @@ references:
   - name: " "
   - name: V
   - name: )
+- uid: Sharpy.Equatable
+  commentId: T:Sharpy.Equatable
+  parent: Sharpy
+  href: Sharpy.Equatable.html
+  name: Equatable
+  nameWithType: Equatable
+  fullName: Sharpy.Equatable
 - uid: Sharpy.Equatable`1
   commentId: T:Sharpy.Equatable`1
   href: Sharpy.Equatable-1.html
@@ -584,6 +592,12 @@ references:
   name: Object
   nameWithType: Object
   fullName: Sharpy.Object
+- uid: Sharpy.Operator
+  commentId: T:Sharpy.Operator
+  href: Sharpy.Operator.html
+  name: Operator
+  nameWithType: Operator
+  fullName: Sharpy.Operator
 - uid: Sharpy.Optional`1
   commentId: T:Sharpy.Optional`1
   parent: Sharpy
@@ -769,12 +783,6 @@ references:
   name: ValueError
   nameWithType: ValueError
   fullName: Sharpy.ValueError
-- uid: Sharpy.Internals
-  commentId: T:Sharpy.Internals
-  href: Sharpy.Internals.html
-  name: Internals
-  nameWithType: Internals
-  fullName: Sharpy.Internals
 - uid: Sharpy
   commentId: N:Sharpy
   href: Sharpy.html

@@ -10,7 +10,7 @@ namespace Sharpy
         /// </remarks>
         public static bool operator ==(List<T> left, List<T> right)
         {
-            return Internals.__Eq__(left, right);
+            return Operator.Eq(left, right);
         }
 
         public static bool operator !=(List<T> left, List<T> right)

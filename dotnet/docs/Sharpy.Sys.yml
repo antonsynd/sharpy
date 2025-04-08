@@ -4,7 +4,7 @@ items:
   commentId: N:Sharpy.Sys
   id: Sharpy.Sys
   children:
-  - Sharpy.Sys.Builtins
+  - Sharpy.Sys.__Exports
   langs:
   - csharp
   - vb
@@ -15,9 +15,9 @@ items:
   assemblies:
   - Sharpy
 references:
-- uid: Sharpy.Sys.Builtins
-  commentId: T:Sharpy.Sys.Builtins
-  href: Sharpy.Sys.Builtins.html
-  name: Builtins
-  nameWithType: Builtins
-  fullName: Sharpy.Sys.Builtins
+- uid: Sharpy.Sys.__Exports
+  commentId: T:Sharpy.Sys.__Exports
+  href: Sharpy.Sys.__Exports.html
+  name: __Exports
+  nameWithType: __Exports
+  fullName: Sharpy.Sys.__Exports
