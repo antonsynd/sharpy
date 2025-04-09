@@ -1,6 +1,6 @@
 namespace Sharpy.Sys
 {
-    public sealed partial class __Exports
+    public sealed partial class Exports
     {
         public const uint Stddev = 0;
         public const uint Stdout = 1;

@@ -1,6 +1,6 @@
 namespace Sharpy
 {
-    public static partial class Operator
+    public static partial class Exports
     {
         public static bool Lt<T>(T left, T right) where T : ILessThanComparable<T>
         {

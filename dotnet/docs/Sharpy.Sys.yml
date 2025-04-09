@@ -4,7 +4,7 @@ items:
   commentId: N:Sharpy.Sys
   id: Sharpy.Sys
   children:
-  - Sharpy.Sys.__Exports
+  - Sharpy.Sys.Exports
   langs:
   - csharp
   - vb
@@ -15,9 +15,9 @@ items:
   assemblies:
   - Sharpy
 references:
-- uid: Sharpy.Sys.__Exports
-  commentId: T:Sharpy.Sys.__Exports
-  href: Sharpy.Sys.__Exports.html
-  name: __Exports
-  nameWithType: __Exports
-  fullName: Sharpy.Sys.__Exports
+- uid: Sharpy.Sys.Exports
+  commentId: T:Sharpy.Sys.Exports
+  href: Sharpy.Sys.Exports.html
+  name: Exports
+  nameWithType: Exports
+  fullName: Sharpy.Sys.Exports

@@ -13,6 +13,9 @@ items:
   - uid: Sharpy.Dict`2
     name: Dict<K, V>
     type: Class
+  - uid: Sharpy.Exports
+    name: Exports
+    type: Class
   - uid: Sharpy.IAddable`1
     name: IAddable<T>
     type: Interface
@@ -97,9 +100,6 @@ items:
   - uid: Sharpy.Object
     name: Object
     type: Class
-  - uid: Sharpy.Operator
-    name: Operator
-    type: Class
   - uid: Sharpy.Optional`1
     name: Optional<T>
     type: Class
@@ -120,9 +120,6 @@ items:
     type: Class
   - uid: Sharpy.ValueError
     name: ValueError
-    type: Class
-  - uid: Sharpy.__Exports
-    name: __Exports
     type: Class
 - uid: Sharpy.Collections.Interfaces
   name: Sharpy.Collections.Interfaces
@@ -191,11 +188,18 @@ items:
   - uid: Sharpy.Collections.Interfaces.IValuesView`1
     name: IValuesView<T>
     type: Interface
+- uid: Sharpy.Operator
+  name: Sharpy.Operator
+  type: Namespace
+  items:
+  - uid: Sharpy.Operator.Exports
+    name: Exports
+    type: Class
 - uid: Sharpy.Sys
   name: Sharpy.Sys
   type: Namespace
   items:
-  - uid: Sharpy.Sys.__Exports
-    name: __Exports
+  - uid: Sharpy.Sys.Exports
+    name: Exports
     type: Class
 memberLayout: SamePage

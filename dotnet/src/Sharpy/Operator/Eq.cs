@@ -1,6 +1,6 @@
-namespace Sharpy
+namespace Sharpy.Operator
 {
-    public static partial class Operator
+    public static partial class Exports
     {
         /// <summary>
         /// Compares two <see cref="IEquatable&lt;T&gt;"/> objects for equality.

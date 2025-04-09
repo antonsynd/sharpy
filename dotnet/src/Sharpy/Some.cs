@@ -1,6 +1,6 @@
 namespace Sharpy
 {
-    public static partial class __Exports
+    public static partial class Exports
     {
         /// <summary>
         /// Allows for code like <c>var opt = Some(5);</c> instead of

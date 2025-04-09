@@ -1,6 +1,6 @@
 namespace Sharpy
 {
-    public static partial class __Exports
+    public static partial class Exports
     {
         public static bool Bool(bool b)
         {

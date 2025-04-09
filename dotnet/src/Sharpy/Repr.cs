@@ -1,6 +1,6 @@
 namespace Sharpy
 {
-    public static partial class __Exports
+    public static partial class Exports
     {
         /// <summary>
         /// Return a string containing a printable representation of an object.

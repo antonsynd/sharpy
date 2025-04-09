@@ -2,7 +2,7 @@ using Sharpy.Collections.Interfaces;
 
 namespace Sharpy
 {
-    public static partial class __Exports
+    public static partial class Exports
     {
         public static Iterator<T> Iter<T>(IIterable<T> iterable)
         {

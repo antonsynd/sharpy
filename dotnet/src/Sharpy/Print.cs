@@ -1,6 +1,6 @@
 namespace Sharpy
 {
-    public static partial class __Exports
+    public static partial class Exports
     {
         public static void Print(Object? obj, uint file = Stdout, bool flush = false)
         {

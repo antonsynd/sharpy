@@ -7,6 +7,7 @@ items:
   - Sharpy.Bytes
   - Sharpy.DictKeyView`2
   - Sharpy.Dict`2
+  - Sharpy.Exports
   - Sharpy.IAddable`1
   - Sharpy.IAddable`2
   - Sharpy.IBoolConvertible
@@ -35,7 +36,6 @@ items:
   - Sharpy.ListReverseIterator`1
   - Sharpy.List`1
   - Sharpy.Object
-  - Sharpy.Operator
   - Sharpy.Optional`1
   - Sharpy.Set`1
   - Sharpy.Slice
@@ -43,7 +43,6 @@ items:
   - Sharpy.Str
   - Sharpy.TypeError
   - Sharpy.ValueError
-  - Sharpy.__Exports
   langs:
   - csharp
   - vb
@@ -54,12 +53,12 @@ items:
   assemblies:
   - Sharpy
 references:
-- uid: Sharpy.__Exports
-  commentId: T:Sharpy.__Exports
-  href: Sharpy.__Exports.html
-  name: __Exports
-  nameWithType: __Exports
-  fullName: Sharpy.__Exports
+- uid: Sharpy.Exports
+  commentId: T:Sharpy.Exports
+  href: Sharpy.Exports.html
+  name: Exports
+  nameWithType: Exports
+  fullName: Sharpy.Exports
 - uid: Sharpy.Bytes
   commentId: T:Sharpy.Bytes
   parent: Sharpy
@@ -693,12 +692,6 @@ references:
   name: Object
   nameWithType: Object
   fullName: Sharpy.Object
-- uid: Sharpy.Operator
-  commentId: T:Sharpy.Operator
-  href: Sharpy.Operator.html
-  name: Operator
-  nameWithType: Operator
-  fullName: Sharpy.Operator
 - uid: Sharpy.Optional`1
   commentId: T:Sharpy.Optional`1
   parent: Sharpy
