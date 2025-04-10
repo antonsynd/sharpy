@@ -10,8 +10,6 @@ items:
   - Sharpy.Set`1.#ctor(System.Collections.Generic.IEnumerable{`0})
   - Sharpy.Set`1.Add(`0)
   - Sharpy.Set`1.Clear
-  - Sharpy.Set`1.CompareTo(Sharpy.Collections.Interfaces.ISet{`0})
-  - Sharpy.Set`1.CompareTo(Sharpy.Set{`0})
   - Sharpy.Set`1.Contains(`0)
   - Sharpy.Set`1.Copy
   - Sharpy.Set`1.Difference(Sharpy.Set{`0})
@@ -71,12 +69,14 @@ items:
   - Sharpy.Set`1.op_BitwiseOr(Sharpy.Set{`0},Sharpy.Set{`0})
   - Sharpy.Set`1.op_Equality(Sharpy.Set{`0},Sharpy.Set{`0})
   - Sharpy.Set`1.op_ExclusiveOr(Sharpy.Set{`0},Sharpy.Set{`0})
+  - Sharpy.Set`1.op_False(Sharpy.Set{`0})
   - Sharpy.Set`1.op_GreaterThan(Sharpy.Set{`0},Sharpy.Set{`0})
   - Sharpy.Set`1.op_GreaterThanOrEqual(Sharpy.Set{`0},Sharpy.Set{`0})
   - Sharpy.Set`1.op_Inequality(Sharpy.Set{`0},Sharpy.Set{`0})
   - Sharpy.Set`1.op_LessThan(Sharpy.Set{`0},Sharpy.Set{`0})
   - Sharpy.Set`1.op_LessThanOrEqual(Sharpy.Set{`0},Sharpy.Set{`0})
   - Sharpy.Set`1.op_Subtraction(Sharpy.Set{`0},Sharpy.Set{`0})
+  - Sharpy.Set`1.op_True(Sharpy.Set{`0})
   langs:
   - csharp
   - vb
@@ -86,20 +86,20 @@ items:
   type: Class
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.operators.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Set
-    path: ../src/Sharpy/Set/Set.operators.cs
+    path: ../src/Sharpy/Partial.Set/Set.operators.cs
     startLine: 2
   assemblies:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: 'public sealed class Set<T> : Object, IInequatable<Object>, IEquatable<Object>, IEquatable<Object>, IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSet<Set<T>, T>, IMutableSet<T>, ISet<Set<T>, T>, ISet<T>, ICollection<T>, IContainer<T>, IIterable<T>, IEnumerable<T>, IEnumerable, ISized, IInequatable<Set<T>>, IComparable<Set<T>>, ILessThanOrEquatable<Set<T>>, ILessThanComparable<Set<T>>, IGreaterThanOrEquatable<Set<T>>, IGreaterThanComparable<Set<T>>, IComparable<Set<T>>, IEquatable<Set<T>>, IEquatable, IHashable, IEquatable<Set<T>>'
+    content: 'public sealed class Set<T> : Object, IInequatable<Object>, IEquatable<Object>, IEquatable<Object>, IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSet<Set<T>, T>, IMutableSet<T>, ISet<Set<T>, T>, ISet<T>, ICollection<T>, IContainer<T>, IIterable<T>, IEnumerable<T>, IEnumerable, ISized, IInequatable<Set<T>>, ILessThanOrEquatable<Set<T>>, ILessThanComparable<Set<T>>, IGreaterThanOrEquatable<Set<T>>, IGreaterThanComparable<Set<T>>, IEquatable<Set<T>>, IEquatable<Set<T>>, ILessThanOrEquatable<ISet<T>>, ILessThanComparable<ISet<T>>, IGreaterThanOrEquatable<ISet<T>>, IGreaterThanComparable<ISet<T>>, IEquatable<ISet<T>>, IEquatable, IHashable, IEquatable<ISet<T>>'
     typeParameters:
     - id: T
-    content.vb: Public NotInheritable Class [Set](Of T) Inherits Object Implements IInequatable(Of Object), IEquatable(Of Object), IEquatable(Of Object), IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSet(Of Set(Of T), T), IMutableSet(Of T), ISet(Of Set(Of T), T), ISet(Of T), ICollection(Of T), IContainer(Of T), IIterable(Of T), IEnumerable(Of T), IEnumerable, ISized, IInequatable(Of Set(Of T)), IComparable(Of Set(Of T)), ILessThanOrEquatable(Of Set(Of T)), ILessThanComparable(Of Set(Of T)), IGreaterThanOrEquatable(Of Set(Of T)), IGreaterThanComparable(Of Set(Of T)), IComparable(Of Set(Of T)), IEquatable(Of Set(Of T)), IEquatable, IHashable, IEquatable(Of Set(Of T))
+    content.vb: Public NotInheritable Class [Set](Of T) Inherits Object Implements IInequatable(Of Object), IEquatable(Of Object), IEquatable(Of Object), IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSet(Of Set(Of T), T), IMutableSet(Of T), ISet(Of Set(Of T), T), ISet(Of T), ICollection(Of T), IContainer(Of T), IIterable(Of T), IEnumerable(Of T), IEnumerable, ISized, IInequatable(Of Set(Of T)), ILessThanOrEquatable(Of Set(Of T)), ILessThanComparable(Of Set(Of T)), IGreaterThanOrEquatable(Of Set(Of T)), IGreaterThanComparable(Of Set(Of T)), IEquatable(Of Set(Of T)), IEquatable(Of Set(Of T)), ILessThanOrEquatable(Of ISet(Of T)), ILessThanComparable(Of ISet(Of T)), IGreaterThanOrEquatable(Of ISet(Of T)), IGreaterThanComparable(Of ISet(Of T)), IEquatable(Of ISet(Of T)), IEquatable, IHashable, IEquatable(Of ISet(Of T))
   inheritance:
   - System.Object
   - Sharpy.Object
@@ -122,16 +122,20 @@ items:
   - System.Collections.IEnumerable
   - Sharpy.Collections.Interfaces.ISized
   - Sharpy.IInequatable{Sharpy.Set`1}
-  - Sharpy.IComparable{Sharpy.Set`1}
   - Sharpy.ILessThanOrEquatable{Sharpy.Set`1}
   - Sharpy.ILessThanComparable{Sharpy.Set`1}
   - Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}
   - Sharpy.IGreaterThanComparable{Sharpy.Set`1}
-  - System.IComparable{Sharpy.Set`1}
   - Sharpy.IEquatable{Sharpy.Set`1}
+  - System.IEquatable{Sharpy.Set`1}
+  - Sharpy.ILessThanOrEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  - Sharpy.ILessThanComparable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  - Sharpy.IGreaterThanOrEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  - Sharpy.IGreaterThanComparable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  - Sharpy.IEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
   - Sharpy.IEquatable
   - Sharpy.IHashable
-  - System.IEquatable{Sharpy.Set`1}
+  - System.IEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
   inheritedMembers:
   - Sharpy.Object.Equals(Sharpy.Object)
   - Sharpy.Object.__Eq__(System.Object)
@@ -162,12 +166,12 @@ items:
   type: Constructor
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
-    path: ../src/Sharpy/Set/Set.cs
-    startLine: 8
+    path: ../src/Sharpy/Partial.Set/Set.cs
+    startLine: 12
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -191,12 +195,12 @@ items:
   type: Constructor
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
-    path: ../src/Sharpy/Set/Set.cs
-    startLine: 13
+    path: ../src/Sharpy/Partial.Set/Set.cs
+    startLine: 17
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -223,12 +227,12 @@ items:
   type: Constructor
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
-    path: ../src/Sharpy/Set/Set.cs
-    startLine: 18
+    path: ../src/Sharpy/Partial.Set/Set.cs
+    startLine: 22
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -255,12 +259,12 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Copy
-    path: ../src/Sharpy/Set/Set.cs
-    startLine: 31
+    path: ../src/Sharpy/Partial.Set/Set.cs
+    startLine: 35
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -285,12 +289,12 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: IsSubset
-    path: ../src/Sharpy/Set/Set.cs
-    startLine: 40
+    path: ../src/Sharpy/Partial.Set/Set.cs
+    startLine: 44
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -319,12 +323,12 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: IsSuperset
-    path: ../src/Sharpy/Set/Set.cs
-    startLine: 45
+    path: ../src/Sharpy/Partial.Set/Set.cs
+    startLine: 49
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -353,12 +357,12 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Union
-    path: ../src/Sharpy/Set/Set.cs
-    startLine: 50
+    path: ../src/Sharpy/Partial.Set/Set.cs
+    startLine: 54
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -387,12 +391,12 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Intersection
-    path: ../src/Sharpy/Set/Set.cs
-    startLine: 55
+    path: ../src/Sharpy/Partial.Set/Set.cs
+    startLine: 59
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -421,12 +425,12 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Difference
-    path: ../src/Sharpy/Set/Set.cs
-    startLine: 60
+    path: ../src/Sharpy/Partial.Set/Set.cs
+    startLine: 64
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -455,12 +459,12 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: SymmetricDifference
-    path: ../src/Sharpy/Set/Set.cs
-    startLine: 65
+    path: ../src/Sharpy/Partial.Set/Set.cs
+    startLine: 69
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -489,12 +493,12 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: ToHashSet
-    path: ../src/Sharpy/Set/Set.cs
-    startLine: 70
+    path: ../src/Sharpy/Partial.Set/Set.cs
+    startLine: 74
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -519,11 +523,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.DotNet.IEquatable.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.DotNet.IEquatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Equals
-    path: ../src/Sharpy/Set/Set.DotNet.IEquatable.cs
+    path: ../src/Sharpy/Partial.Set/Set.DotNet.IEquatable.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -559,106 +563,33 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.DotNet.IEquatable.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.DotNet.IEquatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Equals
-    path: ../src/Sharpy/Set/Set.DotNet.IEquatable.cs
+    path: ../src/Sharpy/Partial.Set/Set.DotNet.IEquatable.cs
     startLine: 16
   assemblies:
   - Sharpy
   namespace: Sharpy
+  summary: Indicates whether the current object is equal to another object of the same type.
   example: []
   syntax:
     content: public bool Equals(ISet<T>? other)
     parameters:
     - id: other
       type: Sharpy.Collections.Interfaces.ISet{{T}}
+      description: An object to compare with this object.
     return:
       type: System.Boolean
+      description: <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if the current object is equal to the <code class="paramref">other</code> parameter; otherwise, <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.
     content.vb: Public Function Equals(other As ISet(Of T)) As Boolean
   overload: Sharpy.Set`1.Equals*
+  implements:
+  - System.IEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}.Equals(Sharpy.Collections.Interfaces.ISet{{T}})
   nameWithType.vb: Set(Of T).Equals(ISet(Of T))
   fullName.vb: Sharpy.Set(Of T).Equals(Sharpy.Collections.Interfaces.ISet(Of T))
   name.vb: Equals(ISet(Of T))
-- uid: Sharpy.Set`1.CompareTo(Sharpy.Collections.Interfaces.ISet{`0})
-  commentId: M:Sharpy.Set`1.CompareTo(Sharpy.Collections.Interfaces.ISet{`0})
-  id: CompareTo(Sharpy.Collections.Interfaces.ISet{`0})
-  parent: Sharpy.Set`1
-  langs:
-  - csharp
-  - vb
-  name: CompareTo(ISet<T>?)
-  nameWithType: Set<T>.CompareTo(ISet<T>?)
-  fullName: Sharpy.Set<T>.CompareTo(Sharpy.Collections.Interfaces.ISet<T>?)
-  type: Method
-  source:
-    remote:
-      path: dotnet/src/Sharpy/Set/Set.IComparable.cs
-      branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
-    id: CompareTo
-    path: ../src/Sharpy/Set/Set.IComparable.cs
-    startLine: 5
-  assemblies:
-  - Sharpy
-  namespace: Sharpy
-  example: []
-  syntax:
-    content: public int CompareTo(ISet<T>? other)
-    parameters:
-    - id: other
-      type: Sharpy.Collections.Interfaces.ISet{{T}}
-    return:
-      type: System.Int32
-    content.vb: Public Function CompareTo(other As ISet(Of T)) As Integer
-  overload: Sharpy.Set`1.CompareTo*
-  nameWithType.vb: Set(Of T).CompareTo(ISet(Of T))
-  fullName.vb: Sharpy.Set(Of T).CompareTo(Sharpy.Collections.Interfaces.ISet(Of T))
-  name.vb: CompareTo(ISet(Of T))
-- uid: Sharpy.Set`1.CompareTo(Sharpy.Set{`0})
-  commentId: M:Sharpy.Set`1.CompareTo(Sharpy.Set{`0})
-  id: CompareTo(Sharpy.Set{`0})
-  parent: Sharpy.Set`1
-  langs:
-  - csharp
-  - vb
-  name: CompareTo(Set<T>?)
-  nameWithType: Set<T>.CompareTo(Set<T>?)
-  fullName: Sharpy.Set<T>.CompareTo(Sharpy.Set<T>?)
-  type: Method
-  source:
-    remote:
-      path: dotnet/src/Sharpy/Set/Set.IComparable.cs
-      branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
-    id: CompareTo
-    path: ../src/Sharpy/Set/Set.IComparable.cs
-    startLine: 31
-  assemblies:
-  - Sharpy
-  namespace: Sharpy
-  summary: Compares the current instance with another object of the same type and returns an integer that indicates whether the current instance precedes, follows, or occurs in the same position in the sort order as the other object.
-  example: []
-  syntax:
-    content: public int CompareTo(Set<T>? other)
-    parameters:
-    - id: other
-      type: Sharpy.Set`1
-      description: An object to compare with this instance.
-    return:
-      type: System.Int32
-      description: >-
-        A value that indicates the relative order of the objects being compared. The return value has these meanings:  
-
-         <table><thead><tr><th class="term"> Value</th><th class="description"> Meaning</th></tr></thead><tbody><tr><td class="term"> Less than zero</td><td class="description"> This instance precedes <code class="paramref">other</code> in the sort order.</td></tr><tr><td class="term"> Zero</td><td class="description"> This instance occurs in the same position in the sort order as <code class="paramref">other</code>.</td></tr><tr><td class="term"> Greater than zero</td><td class="description"> This instance follows <code class="paramref">other</code> in the sort order.</td></tr></tbody></table>
-    content.vb: Public Function CompareTo(other As [Set](Of T)) As Integer
-  overload: Sharpy.Set`1.CompareTo*
-  implements:
-  - System.IComparable{Sharpy.Set`1}.CompareTo(Sharpy.Set{{T}})
-  nameWithType.vb: Set(Of T).CompareTo(Set(Of T))
-  fullName.vb: Sharpy.Set(Of T).CompareTo(Sharpy.Set(Of T))
-  name.vb: CompareTo(Set(Of T))
 - uid: Sharpy.Set`1.Contains(`0)
   commentId: M:Sharpy.Set`1.Contains(`0)
   id: Contains(`0)
@@ -672,11 +603,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IContainer.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IContainer.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Contains
-    path: ../src/Sharpy/Set/Set.IContainer.cs
+    path: ../src/Sharpy/Partial.Set/Set.IContainer.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -712,11 +643,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IContainer.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IContainer.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Contains__
-    path: ../src/Sharpy/Set/Set.IContainer.cs
+    path: ../src/Sharpy/Partial.Set/Set.IContainer.cs
     startLine: 11
   assemblies:
   - Sharpy
@@ -756,11 +687,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IEnumerable.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IEnumerable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: GetEnumerator
-    path: ../src/Sharpy/Set/Set.IEnumerable.cs
+    path: ../src/Sharpy/Partial.Set/Set.IEnumerable.cs
     startLine: 7
   assemblies:
   - Sharpy
@@ -791,11 +722,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IEquatable.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IEquatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
-    path: ../src/Sharpy/Set/Set.IEquatable.cs
+    path: ../src/Sharpy/Partial.Set/Set.IEquatable.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -829,15 +760,16 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IEquatable.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IEquatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
-    path: ../src/Sharpy/Set/Set.IEquatable.cs
+    path: ../src/Sharpy/Partial.Set/Set.IEquatable.cs
     startLine: 16
   assemblies:
   - Sharpy
   namespace: Sharpy
+  remarks: This defines equality between two objects of the same type.
   example: []
   syntax:
     content: public bool __Eq__(ISet<T> other)
@@ -848,6 +780,8 @@ items:
       type: System.Boolean
     content.vb: Public Function __Eq__(other As ISet(Of T)) As Boolean
   overload: Sharpy.Set`1.__Eq__*
+  implements:
+  - Sharpy.IEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}.__Eq__(Sharpy.Collections.Interfaces.ISet{{T}})
   nameWithType.vb: Set(Of T).__Eq__(ISet(Of T))
   fullName.vb: Sharpy.Set(Of T).__Eq__(Sharpy.Collections.Interfaces.ISet(Of T))
   name.vb: __Eq__(ISet(Of T))
@@ -864,12 +798,12 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IEquatable.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IEquatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
-    path: ../src/Sharpy/Set/Set.IEquatable.cs
-    startLine: 32
+    path: ../src/Sharpy/Partial.Set/Set.IEquatable.cs
+    startLine: 34
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -905,11 +839,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IGreaterThanComparable.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IGreaterThanComparable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Gt__
-    path: ../src/Sharpy/Set/Set.IGreaterThanComparable.cs
+    path: ../src/Sharpy/Partial.Set/Set.IGreaterThanComparable.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -942,11 +876,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IGreaterThanComparable.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IGreaterThanComparable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Gt__
-    path: ../src/Sharpy/Set/Set.IGreaterThanComparable.cs
+    path: ../src/Sharpy/Partial.Set/Set.IGreaterThanComparable.cs
     startLine: 16
   assemblies:
   - Sharpy
@@ -961,6 +895,8 @@ items:
       type: System.Boolean
     content.vb: Public Function __Gt__(other As ISet(Of T)) As Boolean
   overload: Sharpy.Set`1.__Gt__*
+  implements:
+  - Sharpy.IGreaterThanComparable{Sharpy.Collections.Interfaces.ISet{{T}}}.__Gt__(Sharpy.Collections.Interfaces.ISet{{T}})
   nameWithType.vb: Set(Of T).__Gt__(ISet(Of T))
   fullName.vb: Sharpy.Set(Of T).__Gt__(Sharpy.Collections.Interfaces.ISet(Of T))
   name.vb: __Gt__(ISet(Of T))
@@ -977,11 +913,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IGreaterThanOrEquatable.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IGreaterThanOrEquatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Ge__
-    path: ../src/Sharpy/Set/Set.IGreaterThanOrEquatable.cs
+    path: ../src/Sharpy/Partial.Set/Set.IGreaterThanOrEquatable.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -1014,11 +950,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IGreaterThanOrEquatable.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IGreaterThanOrEquatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Ge__
-    path: ../src/Sharpy/Set/Set.IGreaterThanOrEquatable.cs
+    path: ../src/Sharpy/Partial.Set/Set.IGreaterThanOrEquatable.cs
     startLine: 16
   assemblies:
   - Sharpy
@@ -1033,6 +969,8 @@ items:
       type: System.Boolean
     content.vb: Public Function __Ge__(other As ISet(Of T)) As Boolean
   overload: Sharpy.Set`1.__Ge__*
+  implements:
+  - Sharpy.IGreaterThanOrEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}.__Ge__(Sharpy.Collections.Interfaces.ISet{{T}})
   nameWithType.vb: Set(Of T).__Ge__(ISet(Of T))
   fullName.vb: Sharpy.Set(Of T).__Ge__(Sharpy.Collections.Interfaces.ISet(Of T))
   name.vb: __Ge__(ISet(Of T))
@@ -1049,11 +987,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IInequatable.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IInequatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Ne__
-    path: ../src/Sharpy/Set/Set.IInequatable.cs
+    path: ../src/Sharpy/Partial.Set/Set.IInequatable.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -1086,11 +1024,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IInequatable.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IInequatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Ne__
-    path: ../src/Sharpy/Set/Set.IInequatable.cs
+    path: ../src/Sharpy/Partial.Set/Set.IInequatable.cs
     startLine: 11
   assemblies:
   - Sharpy
@@ -1121,11 +1059,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IIterable.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IIterable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Iter__
-    path: ../src/Sharpy/Set/Set.IIterable.cs
+    path: ../src/Sharpy/Partial.Set/Set.IIterable.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -1168,11 +1106,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.ILessThanComparable.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.ILessThanComparable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Lt__
-    path: ../src/Sharpy/Set/Set.ILessThanComparable.cs
+    path: ../src/Sharpy/Partial.Set/Set.ILessThanComparable.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -1205,11 +1143,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.ILessThanComparable.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.ILessThanComparable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Lt__
-    path: ../src/Sharpy/Set/Set.ILessThanComparable.cs
+    path: ../src/Sharpy/Partial.Set/Set.ILessThanComparable.cs
     startLine: 16
   assemblies:
   - Sharpy
@@ -1224,6 +1162,8 @@ items:
       type: System.Boolean
     content.vb: Public Function __Lt__(other As ISet(Of T)) As Boolean
   overload: Sharpy.Set`1.__Lt__*
+  implements:
+  - Sharpy.ILessThanComparable{Sharpy.Collections.Interfaces.ISet{{T}}}.__Lt__(Sharpy.Collections.Interfaces.ISet{{T}})
   nameWithType.vb: Set(Of T).__Lt__(ISet(Of T))
   fullName.vb: Sharpy.Set(Of T).__Lt__(Sharpy.Collections.Interfaces.ISet(Of T))
   name.vb: __Lt__(ISet(Of T))
@@ -1240,11 +1180,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.ILessThanOrEquatable.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.ILessThanOrEquatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Le__
-    path: ../src/Sharpy/Set/Set.ILessThanOrEquatable.cs
+    path: ../src/Sharpy/Partial.Set/Set.ILessThanOrEquatable.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -1277,11 +1217,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.ILessThanOrEquatable.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.ILessThanOrEquatable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Le__
-    path: ../src/Sharpy/Set/Set.ILessThanOrEquatable.cs
+    path: ../src/Sharpy/Partial.Set/Set.ILessThanOrEquatable.cs
     startLine: 16
   assemblies:
   - Sharpy
@@ -1296,6 +1236,8 @@ items:
       type: System.Boolean
     content.vb: Public Function __Le__(other As ISet(Of T)) As Boolean
   overload: Sharpy.Set`1.__Le__*
+  implements:
+  - Sharpy.ILessThanOrEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}.__Le__(Sharpy.Collections.Interfaces.ISet{{T}})
   nameWithType.vb: Set(Of T).__Le__(ISet(Of T))
   fullName.vb: Sharpy.Set(Of T).__Le__(Sharpy.Collections.Interfaces.ISet(Of T))
   name.vb: __Le__(ISet(Of T))
@@ -1312,11 +1254,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IMutableSet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IMutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Add
-    path: ../src/Sharpy/Set/Set.IMutableSet.cs
+    path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -1346,11 +1288,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IMutableSet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IMutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Discard
-    path: ../src/Sharpy/Set/Set.IMutableSet.cs
+    path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
     startLine: 11
   assemblies:
   - Sharpy
@@ -1380,11 +1322,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IMutableSet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IMutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Clear
-    path: ../src/Sharpy/Set/Set.IMutableSet.cs
+    path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
     startLine: 17
   assemblies:
   - Sharpy
@@ -1411,11 +1353,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IMutableSet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IMutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Pop
-    path: ../src/Sharpy/Set/Set.IMutableSet.cs
+    path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
     startLine: 23
   assemblies:
   - Sharpy
@@ -1444,11 +1386,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IMutableSet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IMutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Remove
-    path: ../src/Sharpy/Set/Set.IMutableSet.cs
+    path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
     startLine: 29
   assemblies:
   - Sharpy
@@ -1478,11 +1420,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IMutableSet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IMutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __IOr__
-    path: ../src/Sharpy/Set/Set.IMutableSet.cs
+    path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
     startLine: 38
   assemblies:
   - Sharpy
@@ -1511,11 +1453,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IMutableSet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IMutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __IAnd__
-    path: ../src/Sharpy/Set/Set.IMutableSet.cs
+    path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
     startLine: 47
   assemblies:
   - Sharpy
@@ -1544,11 +1486,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IMutableSet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IMutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __IXOr__
-    path: ../src/Sharpy/Set/Set.IMutableSet.cs
+    path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
     startLine: 54
   assemblies:
   - Sharpy
@@ -1577,11 +1519,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IMutableSet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IMutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __ISub__
-    path: ../src/Sharpy/Set/Set.IMutableSet.cs
+    path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
     startLine: 61
   assemblies:
   - Sharpy
@@ -1610,11 +1552,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IMutableSet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IMutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __IAnd__
-    path: ../src/Sharpy/Set/Set.IMutableSet.cs
+    path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
     startLine: 68
   assemblies:
   - Sharpy
@@ -1646,11 +1588,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IMutableSet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IMutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __IOr__
-    path: ../src/Sharpy/Set/Set.IMutableSet.cs
+    path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
     startLine: 74
   assemblies:
   - Sharpy
@@ -1682,11 +1624,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IMutableSet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IMutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __ISub__
-    path: ../src/Sharpy/Set/Set.IMutableSet.cs
+    path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
     startLine: 80
   assemblies:
   - Sharpy
@@ -1718,11 +1660,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.IMutableSet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.IMutableSet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __IXOr__
-    path: ../src/Sharpy/Set/Set.IMutableSet.cs
+    path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
     startLine: 86
   assemblies:
   - Sharpy
@@ -1754,11 +1696,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.ISet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.ISet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: IsDisjoint
-    path: ../src/Sharpy/Set/Set.ISet.cs
+    path: ../src/Sharpy/Partial.Set/Set.ISet.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -1791,11 +1733,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.ISet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.ISet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __And__
-    path: ../src/Sharpy/Set/Set.ISet.cs
+    path: ../src/Sharpy/Partial.Set/Set.ISet.cs
     startLine: 17
   assemblies:
   - Sharpy
@@ -1828,11 +1770,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.ISet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.ISet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Or__
-    path: ../src/Sharpy/Set/Set.ISet.cs
+    path: ../src/Sharpy/Partial.Set/Set.ISet.cs
     startLine: 38
   assemblies:
   - Sharpy
@@ -1865,11 +1807,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.ISet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.ISet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __ROr__
-    path: ../src/Sharpy/Set/Set.ISet.cs
+    path: ../src/Sharpy/Partial.Set/Set.ISet.cs
     startLine: 58
   assemblies:
   - Sharpy
@@ -1903,11 +1845,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.ISet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.ISet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __RSub__
-    path: ../src/Sharpy/Set/Set.ISet.cs
+    path: ../src/Sharpy/Partial.Set/Set.ISet.cs
     startLine: 76
   assemblies:
   - Sharpy
@@ -1940,11 +1882,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.ISet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.ISet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Sub__
-    path: ../src/Sharpy/Set/Set.ISet.cs
+    path: ../src/Sharpy/Partial.Set/Set.ISet.cs
     startLine: 97
   assemblies:
   - Sharpy
@@ -1977,11 +1919,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.ISet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.ISet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __XOr__
-    path: ../src/Sharpy/Set/Set.ISet.cs
+    path: ../src/Sharpy/Partial.Set/Set.ISet.cs
     startLine: 118
   assemblies:
   - Sharpy
@@ -2014,11 +1956,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.ISet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.ISet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __And__
-    path: ../src/Sharpy/Set/Set.ISet.cs
+    path: ../src/Sharpy/Partial.Set/Set.ISet.cs
     startLine: 147
   assemblies:
   - Sharpy
@@ -2051,11 +1993,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.ISet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.ISet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Or__
-    path: ../src/Sharpy/Set/Set.ISet.cs
+    path: ../src/Sharpy/Partial.Set/Set.ISet.cs
     startLine: 168
   assemblies:
   - Sharpy
@@ -2088,12 +2030,12 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.ISet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.ISet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Sub__
-    path: ../src/Sharpy/Set/Set.ISet.cs
-    startLine: 174
+    path: ../src/Sharpy/Partial.Set/Set.ISet.cs
+    startLine: 181
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2125,12 +2067,12 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.ISet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.ISet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __RSub__
-    path: ../src/Sharpy/Set/Set.ISet.cs
-    startLine: 180
+    path: ../src/Sharpy/Partial.Set/Set.ISet.cs
+    startLine: 199
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2162,12 +2104,12 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.ISet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.ISet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __XOr__
-    path: ../src/Sharpy/Set/Set.ISet.cs
-    startLine: 186
+    path: ../src/Sharpy/Partial.Set/Set.ISet.cs
+    startLine: 217
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2199,12 +2141,12 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.ISet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.ISet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __ROr__
-    path: ../src/Sharpy/Set/Set.ISet.cs
-    startLine: 192
+    path: ../src/Sharpy/Partial.Set/Set.ISet.cs
+    startLine: 245
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2236,12 +2178,12 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.ISet.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.ISet.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: IsDisjoint
-    path: ../src/Sharpy/Set/Set.ISet.cs
-    startLine: 198
+    path: ../src/Sharpy/Partial.Set/Set.ISet.cs
+    startLine: 254
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2273,11 +2215,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.ISized.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.ISized.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Len__
-    path: ../src/Sharpy/Set/Set.ISized.cs
+    path: ../src/Sharpy/Partial.Set/Set.ISized.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -2307,11 +2249,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.Object.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.Object.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Bool__
-    path: ../src/Sharpy/Set/Set.Object.cs
+    path: ../src/Sharpy/Partial.Set/Set.Object.cs
     startLine: 5
   assemblies:
   - Sharpy
@@ -2345,11 +2287,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.Object.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.Object.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Hash__
-    path: ../src/Sharpy/Set/Set.Object.cs
+    path: ../src/Sharpy/Partial.Set/Set.Object.cs
     startLine: 11
   assemblies:
   - Sharpy
@@ -2380,11 +2322,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.operators.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Equality
-    path: ../src/Sharpy/Set/Set.operators.cs
+    path: ../src/Sharpy/Partial.Set/Set.operators.cs
     startLine: 4
   assemblies:
   - Sharpy
@@ -2416,11 +2358,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.operators.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Inequality
-    path: ../src/Sharpy/Set/Set.operators.cs
+    path: ../src/Sharpy/Partial.Set/Set.operators.cs
     startLine: 9
   assemblies:
   - Sharpy
@@ -2452,11 +2394,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.operators.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_LessThan
-    path: ../src/Sharpy/Set/Set.operators.cs
+    path: ../src/Sharpy/Partial.Set/Set.operators.cs
     startLine: 14
   assemblies:
   - Sharpy
@@ -2488,11 +2430,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.operators.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_GreaterThan
-    path: ../src/Sharpy/Set/Set.operators.cs
+    path: ../src/Sharpy/Partial.Set/Set.operators.cs
     startLine: 19
   assemblies:
   - Sharpy
@@ -2524,11 +2466,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.operators.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_LessThanOrEqual
-    path: ../src/Sharpy/Set/Set.operators.cs
+    path: ../src/Sharpy/Partial.Set/Set.operators.cs
     startLine: 24
   assemblies:
   - Sharpy
@@ -2560,11 +2502,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.operators.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_GreaterThanOrEqual
-    path: ../src/Sharpy/Set/Set.operators.cs
+    path: ../src/Sharpy/Partial.Set/Set.operators.cs
     startLine: 29
   assemblies:
   - Sharpy
@@ -2596,11 +2538,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.operators.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_BitwiseOr
-    path: ../src/Sharpy/Set/Set.operators.cs
+    path: ../src/Sharpy/Partial.Set/Set.operators.cs
     startLine: 34
   assemblies:
   - Sharpy
@@ -2632,11 +2574,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.operators.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_BitwiseAnd
-    path: ../src/Sharpy/Set/Set.operators.cs
+    path: ../src/Sharpy/Partial.Set/Set.operators.cs
     startLine: 39
   assemblies:
   - Sharpy
@@ -2668,11 +2610,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.operators.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_ExclusiveOr
-    path: ../src/Sharpy/Set/Set.operators.cs
+    path: ../src/Sharpy/Partial.Set/Set.operators.cs
     startLine: 44
   assemblies:
   - Sharpy
@@ -2704,11 +2646,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Set/Set.operators.cs
+      path: dotnet/src/Sharpy/Partial.Set/Set.operators.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Subtraction
-    path: ../src/Sharpy/Set/Set.operators.cs
+    path: ../src/Sharpy/Partial.Set/Set.operators.cs
     startLine: 49
   assemblies:
   - Sharpy
@@ -2727,6 +2669,74 @@ items:
   nameWithType.vb: Set(Of T).-(Set(Of T), Set(Of T))
   fullName.vb: Sharpy.Set(Of T).-(Sharpy.Set(Of T), Sharpy.Set(Of T))
   name.vb: -(Set(Of T), Set(Of T))
+- uid: Sharpy.Set`1.op_True(Sharpy.Set{`0})
+  commentId: M:Sharpy.Set`1.op_True(Sharpy.Set{`0})
+  id: op_True(Sharpy.Set{`0})
+  parent: Sharpy.Set`1
+  langs:
+  - csharp
+  - vb
+  name: operator true(Set<T>)
+  nameWithType: Set<T>.operator true(Set<T>)
+  fullName: Sharpy.Set<T>.operator true(Sharpy.Set<T>)
+  type: Operator
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Set/Set.operators.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: op_True
+    path: ../src/Sharpy/Partial.Set/Set.operators.cs
+    startLine: 54
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static bool operator true(Set<T> set)
+    parameters:
+    - id: set
+      type: Sharpy.Set`1
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Operator IsTrue([set] As [Set](Of T)) As Boolean
+  overload: Sharpy.Set`1.op_True*
+  nameWithType.vb: Set(Of T).IsTrue(Set(Of T))
+  fullName.vb: Sharpy.Set(Of T).IsTrue(Sharpy.Set(Of T))
+  name.vb: IsTrue(Set(Of T))
+- uid: Sharpy.Set`1.op_False(Sharpy.Set{`0})
+  commentId: M:Sharpy.Set`1.op_False(Sharpy.Set{`0})
+  id: op_False(Sharpy.Set{`0})
+  parent: Sharpy.Set`1
+  langs:
+  - csharp
+  - vb
+  name: operator false(Set<T>)
+  nameWithType: Set<T>.operator false(Set<T>)
+  fullName: Sharpy.Set<T>.operator false(Sharpy.Set<T>)
+  type: Operator
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Set/Set.operators.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: op_False
+    path: ../src/Sharpy/Partial.Set/Set.operators.cs
+    startLine: 59
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static bool operator false(Set<T> set)
+    parameters:
+    - id: set
+      type: Sharpy.Set`1
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Operator IsFalse([set] As [Set](Of T)) As Boolean
+  overload: Sharpy.Set`1.op_False*
+  nameWithType.vb: Set(Of T).IsFalse(Set(Of T))
+  fullName.vb: Sharpy.Set(Of T).IsFalse(Sharpy.Set(Of T))
+  name.vb: IsFalse(Set(Of T))
 references:
 - uid: Sharpy
   commentId: N:Sharpy
@@ -3183,45 +3193,6 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.IComparable{Sharpy.Set`1}
-  commentId: T:Sharpy.IComparable{Sharpy.Set`1}
-  parent: Sharpy
-  definition: Sharpy.IComparable`1
-  href: Sharpy.IComparable-1.html
-  name: IComparable<Set<T>>
-  nameWithType: IComparable<Set<T>>
-  fullName: Sharpy.IComparable<Sharpy.Set<T>>
-  nameWithType.vb: IComparable(Of Set(Of T))
-  fullName.vb: Sharpy.IComparable(Of Sharpy.Set(Of T))
-  name.vb: IComparable(Of Set(Of T))
-  spec.csharp:
-  - uid: Sharpy.IComparable`1
-    name: IComparable
-    href: Sharpy.IComparable-1.html
-  - name: <
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.IComparable`1
-    name: IComparable
-    href: Sharpy.IComparable-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
-  - name: )
 - uid: Sharpy.ILessThanOrEquatable{Sharpy.Set`1}
   commentId: T:Sharpy.ILessThanOrEquatable{Sharpy.Set`1}
   parent: Sharpy
@@ -3378,47 +3349,6 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: System.IComparable{Sharpy.Set`1}
-  commentId: T:System.IComparable{Sharpy.Set`1}
-  parent: System
-  definition: System.IComparable`1
-  href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
-  name: IComparable<Set<T>>
-  nameWithType: IComparable<Set<T>>
-  fullName: System.IComparable<Sharpy.Set<T>>
-  nameWithType.vb: IComparable(Of Set(Of T))
-  fullName.vb: System.IComparable(Of Sharpy.Set(Of T))
-  name.vb: IComparable(Of Set(Of T))
-  spec.csharp:
-  - uid: System.IComparable`1
-    name: IComparable
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
-  - name: <
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: '>'
-  spec.vb:
-  - uid: System.IComparable`1
-    name: IComparable
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
-  - name: (
-  - name: Of
-  - name: " "
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
-  - name: )
 - uid: Sharpy.IEquatable{Sharpy.Set`1}
   commentId: T:Sharpy.IEquatable{Sharpy.Set`1}
   parent: Sharpy
@@ -3458,20 +3388,6 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.IEquatable
-  commentId: T:Sharpy.IEquatable
-  parent: Sharpy
-  href: Sharpy.IEquatable.html
-  name: IEquatable
-  nameWithType: IEquatable
-  fullName: Sharpy.IEquatable
-- uid: Sharpy.IHashable
-  commentId: T:Sharpy.IHashable
-  parent: Sharpy
-  href: Sharpy.IHashable.html
-  name: IHashable
-  nameWithType: IHashable
-  fullName: Sharpy.IHashable
 - uid: System.IEquatable{Sharpy.Set`1}
   commentId: T:System.IEquatable{Sharpy.Set`1}
   parent: System
@@ -3507,6 +3423,256 @@ references:
   - uid: Sharpy.Set`1
     name: Set
     href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.ILessThanOrEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  commentId: T:Sharpy.ILessThanOrEquatable{Sharpy.Collections.Interfaces.ISet{`0}}
+  parent: Sharpy
+  definition: Sharpy.ILessThanOrEquatable`1
+  href: Sharpy.ILessThanOrEquatable-1.html
+  name: ILessThanOrEquatable<ISet<T>>
+  nameWithType: ILessThanOrEquatable<ISet<T>>
+  fullName: Sharpy.ILessThanOrEquatable<Sharpy.Collections.Interfaces.ISet<T>>
+  nameWithType.vb: ILessThanOrEquatable(Of ISet(Of T))
+  fullName.vb: Sharpy.ILessThanOrEquatable(Of Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: ILessThanOrEquatable(Of ISet(Of T))
+  spec.csharp:
+  - uid: Sharpy.ILessThanOrEquatable`1
+    name: ILessThanOrEquatable
+    href: Sharpy.ILessThanOrEquatable-1.html
+  - name: <
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.ILessThanOrEquatable`1
+    name: ILessThanOrEquatable
+    href: Sharpy.ILessThanOrEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.ILessThanComparable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  commentId: T:Sharpy.ILessThanComparable{Sharpy.Collections.Interfaces.ISet{`0}}
+  parent: Sharpy
+  definition: Sharpy.ILessThanComparable`1
+  href: Sharpy.ILessThanComparable-1.html
+  name: ILessThanComparable<ISet<T>>
+  nameWithType: ILessThanComparable<ISet<T>>
+  fullName: Sharpy.ILessThanComparable<Sharpy.Collections.Interfaces.ISet<T>>
+  nameWithType.vb: ILessThanComparable(Of ISet(Of T))
+  fullName.vb: Sharpy.ILessThanComparable(Of Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: ILessThanComparable(Of ISet(Of T))
+  spec.csharp:
+  - uid: Sharpy.ILessThanComparable`1
+    name: ILessThanComparable
+    href: Sharpy.ILessThanComparable-1.html
+  - name: <
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.ILessThanComparable`1
+    name: ILessThanComparable
+    href: Sharpy.ILessThanComparable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  commentId: T:Sharpy.IGreaterThanOrEquatable{Sharpy.Collections.Interfaces.ISet{`0}}
+  parent: Sharpy
+  definition: Sharpy.IGreaterThanOrEquatable`1
+  href: Sharpy.IGreaterThanOrEquatable-1.html
+  name: IGreaterThanOrEquatable<ISet<T>>
+  nameWithType: IGreaterThanOrEquatable<ISet<T>>
+  fullName: Sharpy.IGreaterThanOrEquatable<Sharpy.Collections.Interfaces.ISet<T>>
+  nameWithType.vb: IGreaterThanOrEquatable(Of ISet(Of T))
+  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: IGreaterThanOrEquatable(Of ISet(Of T))
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanOrEquatable`1
+    name: IGreaterThanOrEquatable
+    href: Sharpy.IGreaterThanOrEquatable-1.html
+  - name: <
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IGreaterThanOrEquatable`1
+    name: IGreaterThanOrEquatable
+    href: Sharpy.IGreaterThanOrEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IGreaterThanComparable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  commentId: T:Sharpy.IGreaterThanComparable{Sharpy.Collections.Interfaces.ISet{`0}}
+  parent: Sharpy
+  definition: Sharpy.IGreaterThanComparable`1
+  href: Sharpy.IGreaterThanComparable-1.html
+  name: IGreaterThanComparable<ISet<T>>
+  nameWithType: IGreaterThanComparable<ISet<T>>
+  fullName: Sharpy.IGreaterThanComparable<Sharpy.Collections.Interfaces.ISet<T>>
+  nameWithType.vb: IGreaterThanComparable(Of ISet(Of T))
+  fullName.vb: Sharpy.IGreaterThanComparable(Of Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: IGreaterThanComparable(Of ISet(Of T))
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanComparable`1
+    name: IGreaterThanComparable
+    href: Sharpy.IGreaterThanComparable-1.html
+  - name: <
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IGreaterThanComparable`1
+    name: IGreaterThanComparable
+    href: Sharpy.IGreaterThanComparable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  commentId: T:Sharpy.IEquatable{Sharpy.Collections.Interfaces.ISet{`0}}
+  parent: Sharpy
+  definition: Sharpy.IEquatable`1
+  href: Sharpy.IEquatable-1.html
+  name: IEquatable<ISet<T>>
+  nameWithType: IEquatable<ISet<T>>
+  fullName: Sharpy.IEquatable<Sharpy.Collections.Interfaces.ISet<T>>
+  nameWithType.vb: IEquatable(Of ISet(Of T))
+  fullName.vb: Sharpy.IEquatable(Of Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: IEquatable(Of ISet(Of T))
+  spec.csharp:
+  - uid: Sharpy.IEquatable`1
+    name: IEquatable
+    href: Sharpy.IEquatable-1.html
+  - name: <
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IEquatable`1
+    name: IEquatable
+    href: Sharpy.IEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IEquatable
+  commentId: T:Sharpy.IEquatable
+  parent: Sharpy
+  href: Sharpy.IEquatable.html
+  name: IEquatable
+  nameWithType: IEquatable
+  fullName: Sharpy.IEquatable
+- uid: Sharpy.IHashable
+  commentId: T:Sharpy.IHashable
+  parent: Sharpy
+  href: Sharpy.IHashable.html
+  name: IHashable
+  nameWithType: IHashable
+  fullName: Sharpy.IHashable
+- uid: System.IEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  commentId: T:System.IEquatable{Sharpy.Collections.Interfaces.ISet{`0}}
+  parent: System
+  definition: System.IEquatable`1
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  name: IEquatable<ISet<T>>
+  nameWithType: IEquatable<ISet<T>>
+  fullName: System.IEquatable<Sharpy.Collections.Interfaces.ISet<T>>
+  nameWithType.vb: IEquatable(Of ISet(Of T))
+  fullName.vb: System.IEquatable(Of Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: IEquatable(Of ISet(Of T))
+  spec.csharp:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: <
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
   - name: (
   - name: Of
   - name: " "
@@ -4260,31 +4426,6 @@ references:
     name: Collections
     isExternal: true
     href: https://learn.microsoft.com/dotnet/api/system.collections
-- uid: Sharpy.IComparable`1
-  commentId: T:Sharpy.IComparable`1
-  href: Sharpy.IComparable-1.html
-  name: IComparable<T>
-  nameWithType: IComparable<T>
-  fullName: Sharpy.IComparable<T>
-  nameWithType.vb: IComparable(Of T)
-  fullName.vb: Sharpy.IComparable(Of T)
-  name.vb: IComparable(Of T)
-  spec.csharp:
-  - uid: Sharpy.IComparable`1
-    name: IComparable
-    href: Sharpy.IComparable-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.IComparable`1
-    name: IComparable
-    href: Sharpy.IComparable-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
 - uid: Sharpy.ILessThanOrEquatable`1
   commentId: T:Sharpy.ILessThanOrEquatable`1
   href: Sharpy.ILessThanOrEquatable-1.html
@@ -4380,34 +4521,6 @@ references:
   - uid: Sharpy.IGreaterThanComparable`1
     name: IGreaterThanComparable
     href: Sharpy.IGreaterThanComparable-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
-- uid: System.IComparable`1
-  commentId: T:System.IComparable`1
-  isExternal: true
-  href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
-  name: IComparable<T>
-  nameWithType: IComparable<T>
-  fullName: System.IComparable<T>
-  nameWithType.vb: IComparable(Of T)
-  fullName.vb: System.IComparable(Of T)
-  name.vb: IComparable(Of T)
-  spec.csharp:
-  - uid: System.IComparable`1
-    name: IComparable
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
-  - name: <
-  - name: T
-  - name: '>'
-  spec.vb:
-  - uid: System.IComparable`1
-    name: IComparable
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
   - name: (
   - name: Of
   - name: " "
@@ -4652,88 +4765,44 @@ references:
   - name: (
   - name: T
   - name: )
-- uid: Sharpy.Set`1.CompareTo*
-  commentId: Overload:Sharpy.Set`1.CompareTo
-  href: Sharpy.Set-1.html#Sharpy_Set_1_CompareTo_Sharpy_Collections_Interfaces_ISet__0__
-  name: CompareTo
-  nameWithType: Set<T>.CompareTo
-  fullName: Sharpy.Set<T>.CompareTo
-  nameWithType.vb: Set(Of T).CompareTo
-  fullName.vb: Sharpy.Set(Of T).CompareTo
-- uid: System.Int32
-  commentId: T:System.Int32
-  parent: System
-  isExternal: true
-  href: https://learn.microsoft.com/dotnet/api/system.int32
-  name: int
-  nameWithType: int
-  fullName: int
-  nameWithType.vb: Integer
-  fullName.vb: Integer
-  name.vb: Integer
-- uid: System.IComparable{Sharpy.Set`1}.CompareTo(Sharpy.Set{{T}})
-  commentId: M:System.IComparable{Sharpy.Set`1}.CompareTo(Sharpy.Set{`0})
-  parent: System.IComparable{Sharpy.Set`1}
-  definition: System.IComparable`1.CompareTo(`0)
-  href: https://learn.microsoft.com/dotnet/api/system.icomparable-1.compareto
-  name: CompareTo(Set<T>)
-  nameWithType: IComparable<Set<T>>.CompareTo(Set<T>)
-  fullName: System.IComparable<Sharpy.Set<T>>.CompareTo(Sharpy.Set<T>)
-  nameWithType.vb: IComparable(Of Set(Of T)).CompareTo(Set(Of T))
-  fullName.vb: System.IComparable(Of Sharpy.Set(Of T)).CompareTo(Sharpy.Set(Of T))
-  name.vb: CompareTo(Set(Of T))
+- uid: System.IEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}.Equals(Sharpy.Collections.Interfaces.ISet{{T}})
+  commentId: M:System.IEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.Equals(Sharpy.Collections.Interfaces.ISet{`0})
+  parent: System.IEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  definition: System.IEquatable`1.Equals(`0)
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
+  name: Equals(ISet<T>)
+  nameWithType: IEquatable<ISet<T>>.Equals(ISet<T>)
+  fullName: System.IEquatable<Sharpy.Collections.Interfaces.ISet<T>>.Equals(Sharpy.Collections.Interfaces.ISet<T>)
+  nameWithType.vb: IEquatable(Of ISet(Of T)).Equals(ISet(Of T))
+  fullName.vb: System.IEquatable(Of Sharpy.Collections.Interfaces.ISet(Of T)).Equals(Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: Equals(ISet(Of T))
   spec.csharp:
-  - uid: System.IComparable{Sharpy.Set`1}.CompareTo(Sharpy.Set{`0})
-    name: CompareTo
+  - uid: System.IEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.Equals(Sharpy.Collections.Interfaces.ISet{`0})
+    name: Equals
     isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1.compareto
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
   - name: (
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
   - name: <
   - name: T
   - name: '>'
   - name: )
   spec.vb:
-  - uid: System.IComparable{Sharpy.Set`1}.CompareTo(Sharpy.Set{`0})
-    name: CompareTo
+  - uid: System.IEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.Equals(Sharpy.Collections.Interfaces.ISet{`0})
+    name: Equals
     isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1.compareto
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
   - name: (
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
   - name: (
   - name: Of
   - name: " "
   - name: T
   - name: )
-  - name: )
-- uid: System.IComparable`1.CompareTo(`0)
-  commentId: M:System.IComparable`1.CompareTo(`0)
-  isExternal: true
-  href: https://learn.microsoft.com/dotnet/api/system.icomparable-1.compareto
-  name: CompareTo(T)
-  nameWithType: IComparable<T>.CompareTo(T)
-  fullName: System.IComparable<T>.CompareTo(T)
-  nameWithType.vb: IComparable(Of T).CompareTo(T)
-  fullName.vb: System.IComparable(Of T).CompareTo(T)
-  spec.csharp:
-  - uid: System.IComparable`1.CompareTo(`0)
-    name: CompareTo
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1.compareto
-  - name: (
-  - name: T
-  - name: )
-  spec.vb:
-  - uid: System.IComparable`1.CompareTo(`0)
-    name: CompareTo
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1.compareto
-  - name: (
-  - name: T
   - name: )
 - uid: Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
   commentId: M:Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
@@ -5032,6 +5101,43 @@ references:
   - name: (
   - name: T
   - name: )
+- uid: Sharpy.IEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}.__Eq__(Sharpy.Collections.Interfaces.ISet{{T}})
+  commentId: M:Sharpy.IEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.__Eq__(Sharpy.Collections.Interfaces.ISet{`0})
+  parent: Sharpy.IEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  definition: Sharpy.IEquatable`1.__Eq__(`0)
+  href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+  name: __Eq__(ISet<T>)
+  nameWithType: IEquatable<ISet<T>>.__Eq__(ISet<T>)
+  fullName: Sharpy.IEquatable<Sharpy.Collections.Interfaces.ISet<T>>.__Eq__(Sharpy.Collections.Interfaces.ISet<T>)
+  nameWithType.vb: IEquatable(Of ISet(Of T)).__Eq__(ISet(Of T))
+  fullName.vb: Sharpy.IEquatable(Of Sharpy.Collections.Interfaces.ISet(Of T)).__Eq__(Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: __Eq__(ISet(Of T))
+  spec.csharp:
+  - uid: Sharpy.IEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.__Eq__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __Eq__
+    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.__Eq__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __Eq__
+    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
 - uid: Sharpy.Object.__Eq__(Sharpy.Object)
   commentId: M:Sharpy.Object.__Eq__(Sharpy.Object)
   parent: Sharpy.Object
@@ -5124,6 +5230,43 @@ references:
   - name: (
   - name: T
   - name: )
+- uid: Sharpy.IGreaterThanComparable{Sharpy.Collections.Interfaces.ISet{{T}}}.__Gt__(Sharpy.Collections.Interfaces.ISet{{T}})
+  commentId: M:Sharpy.IGreaterThanComparable{Sharpy.Collections.Interfaces.ISet{`0}}.__Gt__(Sharpy.Collections.Interfaces.ISet{`0})
+  parent: Sharpy.IGreaterThanComparable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  definition: Sharpy.IGreaterThanComparable`1.__Gt__(`0)
+  href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1___Gt____0_
+  name: __Gt__(ISet<T>)
+  nameWithType: IGreaterThanComparable<ISet<T>>.__Gt__(ISet<T>)
+  fullName: Sharpy.IGreaterThanComparable<Sharpy.Collections.Interfaces.ISet<T>>.__Gt__(Sharpy.Collections.Interfaces.ISet<T>)
+  nameWithType.vb: IGreaterThanComparable(Of ISet(Of T)).__Gt__(ISet(Of T))
+  fullName.vb: Sharpy.IGreaterThanComparable(Of Sharpy.Collections.Interfaces.ISet(Of T)).__Gt__(Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: __Gt__(ISet(Of T))
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanComparable{Sharpy.Collections.Interfaces.ISet{`0}}.__Gt__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __Gt__
+    href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1___Gt____0_
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IGreaterThanComparable{Sharpy.Collections.Interfaces.ISet{`0}}.__Gt__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __Gt__
+    href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1___Gt____0_
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
 - uid: Sharpy.Set`1.__Ge__*
   commentId: Overload:Sharpy.Set`1.__Ge__
   href: Sharpy.Set-1.html#Sharpy_Set_1___Ge___Sharpy_Set__0__
@@ -5190,6 +5333,43 @@ references:
     href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1___Ge____0_
   - name: (
   - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}.__Ge__(Sharpy.Collections.Interfaces.ISet{{T}})
+  commentId: M:Sharpy.IGreaterThanOrEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.__Ge__(Sharpy.Collections.Interfaces.ISet{`0})
+  parent: Sharpy.IGreaterThanOrEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  definition: Sharpy.IGreaterThanOrEquatable`1.__Ge__(`0)
+  href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1___Ge____0_
+  name: __Ge__(ISet<T>)
+  nameWithType: IGreaterThanOrEquatable<ISet<T>>.__Ge__(ISet<T>)
+  fullName: Sharpy.IGreaterThanOrEquatable<Sharpy.Collections.Interfaces.ISet<T>>.__Ge__(Sharpy.Collections.Interfaces.ISet<T>)
+  nameWithType.vb: IGreaterThanOrEquatable(Of ISet(Of T)).__Ge__(ISet(Of T))
+  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of Sharpy.Collections.Interfaces.ISet(Of T)).__Ge__(Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: __Ge__(ISet(Of T))
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.__Ge__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __Ge__
+    href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1___Ge____0_
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.__Ge__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __Ge__
+    href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1___Ge____0_
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
   - name: )
 - uid: Sharpy.Set`1.__Ne__*
   commentId: Overload:Sharpy.Set`1.__Ne__
@@ -5428,6 +5608,43 @@ references:
   - name: (
   - name: T
   - name: )
+- uid: Sharpy.ILessThanComparable{Sharpy.Collections.Interfaces.ISet{{T}}}.__Lt__(Sharpy.Collections.Interfaces.ISet{{T}})
+  commentId: M:Sharpy.ILessThanComparable{Sharpy.Collections.Interfaces.ISet{`0}}.__Lt__(Sharpy.Collections.Interfaces.ISet{`0})
+  parent: Sharpy.ILessThanComparable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  definition: Sharpy.ILessThanComparable`1.__Lt__(`0)
+  href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1___Lt____0_
+  name: __Lt__(ISet<T>)
+  nameWithType: ILessThanComparable<ISet<T>>.__Lt__(ISet<T>)
+  fullName: Sharpy.ILessThanComparable<Sharpy.Collections.Interfaces.ISet<T>>.__Lt__(Sharpy.Collections.Interfaces.ISet<T>)
+  nameWithType.vb: ILessThanComparable(Of ISet(Of T)).__Lt__(ISet(Of T))
+  fullName.vb: Sharpy.ILessThanComparable(Of Sharpy.Collections.Interfaces.ISet(Of T)).__Lt__(Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: __Lt__(ISet(Of T))
+  spec.csharp:
+  - uid: Sharpy.ILessThanComparable{Sharpy.Collections.Interfaces.ISet{`0}}.__Lt__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __Lt__
+    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1___Lt____0_
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.ILessThanComparable{Sharpy.Collections.Interfaces.ISet{`0}}.__Lt__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __Lt__
+    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1___Lt____0_
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
 - uid: Sharpy.Set`1.__Le__*
   commentId: Overload:Sharpy.Set`1.__Le__
   href: Sharpy.Set-1.html#Sharpy_Set_1___Le___Sharpy_Set__0__
@@ -5494,6 +5711,43 @@ references:
     href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1___Le____0_
   - name: (
   - name: T
+  - name: )
+- uid: Sharpy.ILessThanOrEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}.__Le__(Sharpy.Collections.Interfaces.ISet{{T}})
+  commentId: M:Sharpy.ILessThanOrEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.__Le__(Sharpy.Collections.Interfaces.ISet{`0})
+  parent: Sharpy.ILessThanOrEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  definition: Sharpy.ILessThanOrEquatable`1.__Le__(`0)
+  href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1___Le____0_
+  name: __Le__(ISet<T>)
+  nameWithType: ILessThanOrEquatable<ISet<T>>.__Le__(ISet<T>)
+  fullName: Sharpy.ILessThanOrEquatable<Sharpy.Collections.Interfaces.ISet<T>>.__Le__(Sharpy.Collections.Interfaces.ISet<T>)
+  nameWithType.vb: ILessThanOrEquatable(Of ISet(Of T)).__Le__(ISet(Of T))
+  fullName.vb: Sharpy.ILessThanOrEquatable(Of Sharpy.Collections.Interfaces.ISet(Of T)).__Le__(Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: __Le__(ISet(Of T))
+  spec.csharp:
+  - uid: Sharpy.ILessThanOrEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.__Le__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __Le__
+    href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1___Le____0_
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.ILessThanOrEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.__Le__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __Le__
+    href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1___Le____0_
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
   - name: )
 - uid: Sharpy.Set`1.Add*
   commentId: Overload:Sharpy.Set`1.Add
@@ -7421,6 +7675,17 @@ references:
     href: Sharpy.IHashable.html#Sharpy_IHashable___Hash__
   - name: (
   - name: )
+- uid: System.Int32
+  commentId: T:System.Int32
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.int32
+  name: int
+  nameWithType: int
+  fullName: int
+  nameWithType.vb: Integer
+  fullName.vb: Integer
+  name.vb: Integer
 - uid: Sharpy.Set`1.op_Equality*
   commentId: Overload:Sharpy.Set`1.op_Equality
   href: Sharpy.Set-1.html#Sharpy_Set_1_op_Equality_Sharpy_Set__0__Sharpy_Set__0__
@@ -7571,3 +7836,27 @@ references:
   - uid: Sharpy.Set`1.op_Subtraction*
     name: '-'
     href: Sharpy.Set-1.html#Sharpy_Set_1_op_Subtraction_Sharpy_Set__0__Sharpy_Set__0__
+- uid: Sharpy.Set`1.op_True*
+  commentId: Overload:Sharpy.Set`1.op_True
+  name: operator true
+  nameWithType: Set<T>.operator true
+  fullName: Sharpy.Set<T>.operator true
+  nameWithType.vb: Set(Of T).IsTrue
+  fullName.vb: Sharpy.Set(Of T).IsTrue
+  name.vb: IsTrue
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - name: "true"
+- uid: Sharpy.Set`1.op_False*
+  commentId: Overload:Sharpy.Set`1.op_False
+  name: operator false
+  nameWithType: Set<T>.operator false
+  fullName: Sharpy.Set<T>.operator false
+  nameWithType.vb: Set(Of T).IsFalse
+  fullName.vb: Sharpy.Set(Of T).IsFalse
+  name.vb: IsFalse
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - name: "false"

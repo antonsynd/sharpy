@@ -25,9 +25,6 @@ items:
   - uid: Sharpy.IBoolConvertible
     name: IBoolConvertible
     type: Interface
-  - uid: Sharpy.IComparable`1
-    name: IComparable<T>
-    type: Interface
   - uid: Sharpy.IEquatable
     name: IEquatable
     type: Interface
@@ -102,6 +99,9 @@ items:
     type: Class
   - uid: Sharpy.Optional`1
     name: Optional<T>
+    type: Class
+  - uid: Sharpy.SetIterator`1
+    name: SetIterator<T>
     type: Class
   - uid: Sharpy.Set`1
     name: Set<T>

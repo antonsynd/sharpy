@@ -16,5 +16,7 @@ namespace Sharpy
 
             return left.__Ge__(right);
         }
+
+        public static bool __Ge__<T>(T left, T right) where T : IGreaterThanOrEquatable<T> => Ge(left, right);
     }
 }

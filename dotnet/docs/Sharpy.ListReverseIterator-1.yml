@@ -15,11 +15,11 @@ items:
   type: Class
   source:
     remote:
-      path: dotnet/src/Sharpy/ListReverseIterator.Iterator.cs
+      path: dotnet/src/Sharpy/Partial.ListReverseIterator/ListReverseIterator.IIterator.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: ListReverseIterator
-    path: ../src/Sharpy/ListReverseIterator.Iterator.cs
+    path: ../src/Sharpy/Partial.ListReverseIterator/ListReverseIterator.IIterator.cs
     startLine: 2
   assemblies:
   - Sharpy
@@ -61,11 +61,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/ListReverseIterator.Iterator.cs
+      path: dotnet/src/Sharpy/Partial.ListReverseIterator/ListReverseIterator.IIterator.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Next__
-    path: ../src/Sharpy/ListReverseIterator.Iterator.cs
+    path: ../src/Sharpy/Partial.ListReverseIterator/ListReverseIterator.IIterator.cs
     startLine: 5
   assemblies:
   - Sharpy

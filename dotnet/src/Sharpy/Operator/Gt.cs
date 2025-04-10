@@ -16,5 +16,7 @@ namespace Sharpy
 
             return left.__Gt__(right);
         }
+
+        public static bool __Gt__<T>(T left, T right) where T : IGreaterThanComparable<T> => Gt(left, right);
     }
 }

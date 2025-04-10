@@ -16,5 +16,7 @@ namespace Sharpy
 
             return left.__Le__(right);
         }
+
+        public static bool __Le__<T>(T left, T right) where T : ILessThanOrEquatable<T> => Le(left, right);
     }
 }

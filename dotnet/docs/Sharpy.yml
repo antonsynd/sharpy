@@ -11,7 +11,6 @@ items:
   - Sharpy.IAddable`1
   - Sharpy.IAddable`2
   - Sharpy.IBoolConvertible
-  - Sharpy.IComparable`1
   - Sharpy.IEquatable
   - Sharpy.IEquatable`1
   - Sharpy.IGreaterThanComparable`1
@@ -37,6 +36,7 @@ items:
   - Sharpy.List`1
   - Sharpy.Object
   - Sharpy.Optional`1
+  - Sharpy.SetIterator`1
   - Sharpy.Set`1
   - Sharpy.Slice
   - Sharpy.StopIteration
@@ -193,31 +193,6 @@ references:
   name: IBoolConvertible
   nameWithType: IBoolConvertible
   fullName: Sharpy.IBoolConvertible
-- uid: Sharpy.IComparable`1
-  commentId: T:Sharpy.IComparable`1
-  href: Sharpy.IComparable-1.html
-  name: IComparable<T>
-  nameWithType: IComparable<T>
-  fullName: Sharpy.IComparable<T>
-  nameWithType.vb: IComparable(Of T)
-  fullName.vb: Sharpy.IComparable(Of T)
-  name.vb: IComparable(Of T)
-  spec.csharp:
-  - uid: Sharpy.IComparable`1
-    name: IComparable
-    href: Sharpy.IComparable-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.IComparable`1
-    name: IComparable
-    href: Sharpy.IComparable-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
 - uid: Sharpy.IEquatable
   commentId: T:Sharpy.IEquatable
   parent: Sharpy
@@ -439,6 +414,37 @@ references:
   - name: " "
   - name: T
   - name: )
+- uid: Sharpy.IMultipliable`2
+  commentId: T:Sharpy.IMultipliable`2
+  href: Sharpy.IMultipliable-2.html
+  name: IMultipliable<T, U>
+  nameWithType: IMultipliable<T, U>
+  fullName: Sharpy.IMultipliable<T, U>
+  nameWithType.vb: IMultipliable(Of T, U)
+  fullName.vb: Sharpy.IMultipliable(Of T, U)
+  name.vb: IMultipliable(Of T, U)
+  spec.csharp:
+  - uid: Sharpy.IMultipliable`2
+    name: IMultipliable
+    href: Sharpy.IMultipliable-2.html
+  - name: <
+  - name: T
+  - name: ','
+  - name: " "
+  - name: U
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IMultipliable`2
+    name: IMultipliable
+    href: Sharpy.IMultipliable-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: ','
+  - name: " "
+  - name: U
+  - name: )
 - uid: Sharpy.IndexError
   commentId: T:Sharpy.IndexError
   href: Sharpy.IndexError.html
@@ -546,6 +552,12 @@ references:
   name: IStrConvertible
   nameWithType: IStrConvertible
   fullName: Sharpy.IStrConvertible
+- uid: Sharpy.KeyError
+  commentId: T:Sharpy.KeyError
+  href: Sharpy.KeyError.html
+  name: KeyError
+  nameWithType: KeyError
+  fullName: Sharpy.KeyError
 - uid: Sharpy.Iterator`1
   commentId: T:Sharpy.Iterator`1
   parent: Sharpy
@@ -572,12 +584,6 @@ references:
   - name: " "
   - name: T
   - name: )
-- uid: Sharpy.KeyError
-  commentId: T:Sharpy.KeyError
-  href: Sharpy.KeyError.html
-  name: KeyError
-  nameWithType: KeyError
-  fullName: Sharpy.KeyError
 - uid: Sharpy.List`1
   commentId: T:Sharpy.List`1
   parent: Sharpy
@@ -654,37 +660,6 @@ references:
   - name: " "
   - name: T
   - name: )
-- uid: Sharpy.IMultipliable`2
-  commentId: T:Sharpy.IMultipliable`2
-  href: Sharpy.IMultipliable-2.html
-  name: IMultipliable<T, U>
-  nameWithType: IMultipliable<T, U>
-  fullName: Sharpy.IMultipliable<T, U>
-  nameWithType.vb: IMultipliable(Of T, U)
-  fullName.vb: Sharpy.IMultipliable(Of T, U)
-  name.vb: IMultipliable(Of T, U)
-  spec.csharp:
-  - uid: Sharpy.IMultipliable`2
-    name: IMultipliable
-    href: Sharpy.IMultipliable-2.html
-  - name: <
-  - name: T
-  - name: ','
-  - name: " "
-  - name: U
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.IMultipliable`2
-    name: IMultipliable
-    href: Sharpy.IMultipliable-2.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: ','
-  - name: " "
-  - name: U
-  - name: )
 - uid: Sharpy.Object
   commentId: T:Sharpy.Object
   parent: Sharpy
@@ -744,6 +719,38 @@ references:
   - name: " "
   - name: T
   - name: )
+- uid: Sharpy.SetIterator`1
+  commentId: T:Sharpy.SetIterator`1
+  href: Sharpy.SetIterator-1.html
+  name: SetIterator<T>
+  nameWithType: SetIterator<T>
+  fullName: Sharpy.SetIterator<T>
+  nameWithType.vb: SetIterator(Of T)
+  fullName.vb: Sharpy.SetIterator(Of T)
+  name.vb: SetIterator(Of T)
+  spec.csharp:
+  - uid: Sharpy.SetIterator`1
+    name: SetIterator
+    href: Sharpy.SetIterator-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.SetIterator`1
+    name: SetIterator
+    href: Sharpy.SetIterator-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Str
+  commentId: T:Sharpy.Str
+  parent: Sharpy
+  href: Sharpy.Str.html
+  name: Str
+  nameWithType: Str
+  fullName: Sharpy.Str
 - uid: Sharpy.Slice
   commentId: T:Sharpy.Slice
   parent: Sharpy
@@ -757,13 +764,6 @@ references:
   name: StopIteration
   nameWithType: StopIteration
   fullName: Sharpy.StopIteration
-- uid: Sharpy.Str
-  commentId: T:Sharpy.Str
-  parent: Sharpy
-  href: Sharpy.Str.html
-  name: Str
-  nameWithType: Str
-  fullName: Sharpy.Str
 - uid: Sharpy.TypeError
   commentId: T:Sharpy.TypeError
   href: Sharpy.TypeError.html

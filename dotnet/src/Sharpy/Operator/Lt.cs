@@ -16,5 +16,7 @@ namespace Sharpy
 
             return left.__Lt__(right);
         }
+
+        public static bool __Lt__<T>(T left, T right) where T : ILessThanComparable<T> => Lt(left, right);
     }
 }

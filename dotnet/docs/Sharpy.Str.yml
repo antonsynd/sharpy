@@ -83,11 +83,11 @@ items:
   type: Struct
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.Sized.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.Sized.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Str
-    path: ../src/Sharpy/Str/Str.Sized.cs
+    path: ../src/Sharpy/Partial.Str/Str.Sized.cs
     startLine: 4
   assemblies:
   - Sharpy
@@ -117,11 +117,11 @@ items:
   type: Constructor
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 20
   assemblies:
   - Sharpy
@@ -146,11 +146,11 @@ items:
   type: Constructor
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 25
   assemblies:
   - Sharpy
@@ -178,11 +178,11 @@ items:
   type: Constructor
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 35
   assemblies:
   - Sharpy
@@ -217,11 +217,11 @@ items:
   type: Constructor
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 40
   assemblies:
   - Sharpy
@@ -253,11 +253,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Implicit
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 48
   assemblies:
   - Sharpy
@@ -289,11 +289,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Implicit
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 56
   assemblies:
   - Sharpy
@@ -325,11 +325,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Equality
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 61
   assemblies:
   - Sharpy
@@ -361,11 +361,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Inequality
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 66
   assemblies:
   - Sharpy
@@ -397,11 +397,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Equality
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 71
   assemblies:
   - Sharpy
@@ -433,11 +433,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Inequality
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 76
   assemblies:
   - Sharpy
@@ -469,11 +469,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Equality
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 81
   assemblies:
   - Sharpy
@@ -505,11 +505,11 @@ items:
   type: Operator
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Inequality
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 86
   assemblies:
   - Sharpy
@@ -541,11 +541,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Equals
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 91
   assemblies:
   - Sharpy
@@ -580,11 +580,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: GetHashCode
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 105
   assemblies:
   - Sharpy
@@ -614,11 +614,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: ToString
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 110
   assemblies:
   - Sharpy
@@ -646,11 +646,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Capitalize
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 115
   assemblies:
   - Sharpy
@@ -674,11 +674,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: CaseFold
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 130
   assemblies:
   - Sharpy
@@ -702,11 +702,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Center
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 135
   assemblies:
   - Sharpy
@@ -738,11 +738,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Count
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 140
   assemblies:
   - Sharpy
@@ -776,11 +776,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Encode
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 145
   assemblies:
   - Sharpy
@@ -812,11 +812,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: EndsWith
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 150
   assemblies:
   - Sharpy
@@ -848,11 +848,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: ExpandTabs
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 155
   assemblies:
   - Sharpy
@@ -884,11 +884,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Find
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 160
   assemblies:
   - Sharpy
@@ -920,11 +920,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Format
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 165
   assemblies:
   - Sharpy
@@ -956,11 +956,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: FormatMap
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 170
   assemblies:
   - Sharpy
@@ -992,11 +992,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Index
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 175
   assemblies:
   - Sharpy
@@ -1028,11 +1028,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: IsAlnum
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 180
   assemblies:
   - Sharpy
@@ -1056,11 +1056,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: IsAlpha
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 185
   assemblies:
   - Sharpy
@@ -1084,11 +1084,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: IsAscii
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 190
   assemblies:
   - Sharpy
@@ -1112,11 +1112,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: IsDecimal
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 195
   assemblies:
   - Sharpy
@@ -1140,11 +1140,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: IsIdentifier
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 200
   assemblies:
   - Sharpy
@@ -1168,11 +1168,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: IsLower
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 205
   assemblies:
   - Sharpy
@@ -1196,11 +1196,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: IsNumeric
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 210
   assemblies:
   - Sharpy
@@ -1224,11 +1224,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: IsPrintable
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 215
   assemblies:
   - Sharpy
@@ -1252,11 +1252,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: IsSpace
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 220
   assemblies:
   - Sharpy
@@ -1280,11 +1280,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: IsTitle
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 225
   assemblies:
   - Sharpy
@@ -1308,11 +1308,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: IsUpper
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 230
   assemblies:
   - Sharpy
@@ -1336,11 +1336,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Join
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 235
   assemblies:
   - Sharpy
@@ -1370,11 +1370,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: LJust
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 240
   assemblies:
   - Sharpy
@@ -1404,11 +1404,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Lower
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 244
   assemblies:
   - Sharpy
@@ -1432,11 +1432,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: LStrip
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 249
   assemblies:
   - Sharpy
@@ -1464,11 +1464,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: MakeTrans
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 253
   assemblies:
   - Sharpy
@@ -1496,11 +1496,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: MakeTrans
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 257
   assemblies:
   - Sharpy
@@ -1528,11 +1528,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: MakeTrans
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 261
   assemblies:
   - Sharpy
@@ -1562,11 +1562,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: MakeTrans
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 265
   assemblies:
   - Sharpy
@@ -1598,11 +1598,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Partition
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 269
   assemblies:
   - Sharpy
@@ -1630,11 +1630,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: RemovePrefix
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 273
   assemblies:
   - Sharpy
@@ -1662,11 +1662,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: RemoveSuffix
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 277
   assemblies:
   - Sharpy
@@ -1694,11 +1694,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Replace
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 281
   assemblies:
   - Sharpy
@@ -1730,11 +1730,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: RFind
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 285
   assemblies:
   - Sharpy
@@ -1766,11 +1766,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: RIndex
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 289
   assemblies:
   - Sharpy
@@ -1802,11 +1802,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: RJust
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 293
   assemblies:
   - Sharpy
@@ -1836,11 +1836,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: RPartition
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 297
   assemblies:
   - Sharpy
@@ -1868,11 +1868,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: RSplit
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 301
   assemblies:
   - Sharpy
@@ -1902,11 +1902,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: RStrip
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 305
   assemblies:
   - Sharpy
@@ -1934,11 +1934,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Split
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 309
   assemblies:
   - Sharpy
@@ -1968,11 +1968,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: SplitLines
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 313
   assemblies:
   - Sharpy
@@ -2000,11 +2000,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: StartsWith
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 317
   assemblies:
   - Sharpy
@@ -2036,11 +2036,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Strip
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 321
   assemblies:
   - Sharpy
@@ -2068,11 +2068,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: SwapCase
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 325
   assemblies:
   - Sharpy
@@ -2094,11 +2094,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Title
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 329
   assemblies:
   - Sharpy
@@ -2120,11 +2120,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Translate
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 333
   assemblies:
   - Sharpy
@@ -2152,11 +2152,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Upper
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 337
   assemblies:
   - Sharpy
@@ -2180,11 +2180,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: ZFill
-    path: ../src/Sharpy/Str/Str.cs
+    path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 342
   assemblies:
   - Sharpy
@@ -2212,11 +2212,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.Sequence.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.Sequence.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __GetItem__
-    path: ../src/Sharpy/Str/Str.Sequence.cs
+    path: ../src/Sharpy/Partial.Str/Str.Sequence.cs
     startLine: 4
   assemblies:
   - Sharpy
@@ -2246,11 +2246,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.Sequence.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.Sequence.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __GetItem__
-    path: ../src/Sharpy/Str/Str.Sequence.cs
+    path: ../src/Sharpy/Partial.Str/Str.Sequence.cs
     startLine: 10
   assemblies:
   - Sharpy
@@ -2277,11 +2277,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.Sequence.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.Sequence.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Count
-    path: ../src/Sharpy/Str/Str.Sequence.cs
+    path: ../src/Sharpy/Partial.Str/Str.Sequence.cs
     startLine: 30
   assemblies:
   - Sharpy
@@ -2310,11 +2310,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.Sequence.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.Sequence.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Index
-    path: ../src/Sharpy/Str/Str.Sequence.cs
+    path: ../src/Sharpy/Partial.Str/Str.Sequence.cs
     startLine: 47
   assemblies:
   - Sharpy
@@ -2365,11 +2365,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Str/Str.Sized.cs
+      path: dotnet/src/Sharpy/Partial.Str/Str.Sized.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Len__
-    path: ../src/Sharpy/Str/Str.Sized.cs
+    path: ../src/Sharpy/Partial.Str/Str.Sized.cs
     startLine: 9
   assemblies:
   - Sharpy

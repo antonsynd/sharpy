@@ -15,11 +15,11 @@ items:
   type: Interface
   source:
     remote:
-      path: dotnet/src/Sharpy/Multipliable.cs
+      path: dotnet/src/Sharpy/IMultipliable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: IMultipliable
-    path: ../src/Sharpy/Multipliable.cs
+    path: ../src/Sharpy/IMultipliable.cs
     startLine: 2
   assemblies:
   - Sharpy
@@ -46,11 +46,11 @@ items:
   type: Method
   source:
     remote:
-      path: dotnet/src/Sharpy/Multipliable.cs
+      path: dotnet/src/Sharpy/IMultipliable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: __Mul__
-    path: ../src/Sharpy/Multipliable.cs
+    path: ../src/Sharpy/IMultipliable.cs
     startLine: 4
   assemblies:
   - Sharpy

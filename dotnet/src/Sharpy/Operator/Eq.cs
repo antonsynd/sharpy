@@ -34,7 +34,7 @@ namespace Sharpy.Operator
             return left?.Equals(right) ?? right is null;
         }
 
-        public static bool __Eq__<T>(T left, T right) => Eq(left, right);
+        public static bool __Eq__<T>(T left, T right) where T : IEquatable<T> => Eq(left, right);
         public static bool __Eq__(object left, object right) => Eq(left, right);
     }
 }
