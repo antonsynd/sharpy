@@ -4,7 +4,7 @@ namespace Sharpy
     {
         public static bool operator ==(Set<T> left, Set<T> right)
         {
-            return left.__Eq__(right);
+            return Operator.Exports.Eq(left, right);
         }
 
         public static bool operator !=(Set<T> left, Set<T> right)
@@ -50,6 +50,16 @@ namespace Sharpy
         public static Set<T> operator -(Set<T> left, Set<T> right)
         {
             return left.__Sub__(right);
+        }
+
+        public static bool operator true(Set<T> set)
+        {
+            return set?.__Bool__() ?? false;
+        }
+
+        public static bool operator false(Set<T> set)
+        {
+            return !(set?.__Bool__() ?? false);
         }
     }
 }

@@ -5,8 +5,7 @@ namespace Sharpy
         /// <inheritdoc/>
         public Iterator<T> __Iter__()
         {
-            // return new SetIterator<T>(_set);
-            return null;
+            return new SetIterator<T>(this);
         }
     }
 }

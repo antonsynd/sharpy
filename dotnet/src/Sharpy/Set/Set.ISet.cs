@@ -28,7 +28,7 @@ namespace Sharpy
             {
                 if (other._set.Contains(item))
                 {
-                    result.Add(item);
+                    result._set.Add(item);
                 }
             }
 
@@ -47,7 +47,7 @@ namespace Sharpy
 
             foreach (var item in other._set)
             {
-                result.Add(item);
+                result._set.Add(item);
             }
 
             return result;
@@ -67,7 +67,7 @@ namespace Sharpy
 
             foreach (var item in _set)
             {
-                result.Add(item);
+                result._set.Add(item);
             }
 
             return result;
@@ -87,7 +87,7 @@ namespace Sharpy
             {
                 if (!_set.Contains(item))
                 {
-                    result.Add(item);
+                    result._set.Add(item);
                 }
             }
 
@@ -108,7 +108,7 @@ namespace Sharpy
             {
                 if (!other._set.Contains(item))
                 {
-                    result.Add(item);
+                    result._set.Add(item);
                 }
             }
 
@@ -129,7 +129,7 @@ namespace Sharpy
             {
                 if (!other._set.Contains(item))
                 {
-                    result.Add(item);
+                    result._set.Add(item);
                 }
             }
 
@@ -156,9 +156,9 @@ namespace Sharpy
 
             foreach (var item in _set)
             {
-                if (other.Contains(item))
+                if (other.__Contains__(item))
                 {
-                    result.Add(item);
+                    result._set.Add(item);
                 }
             }
 
@@ -168,31 +168,87 @@ namespace Sharpy
         /// <inheritdoc/>
         public Collections.Interfaces.ISet<T> __Or__(Collections.Interfaces.ISet<T> other)
         {
-            throw new NotImplementedException();
+            var result = new Set<T>(this);
+
+            foreach (var item in other)
+            {
+                result._set.Add(item);
+            }
+
+            return result;
         }
 
         /// <inheritdoc/>
         public Collections.Interfaces.ISet<T> __Sub__(Collections.Interfaces.ISet<T> other)
         {
-            throw new NotImplementedException();
+            var result = new Set<T>();
+
+            foreach (var elem in _set)
+            {
+                if (other.__Contains__(elem))
+                {
+                    continue;
+                }
+
+                result._set.Add(elem);
+            }
+
+            return result;
         }
 
         /// <inheritdoc/>
         public Collections.Interfaces.ISet<T> __RSub__(Collections.Interfaces.ISet<T> other)
         {
-            throw new NotImplementedException();
+            var result = new Set<T>();
+
+            foreach (var elem in other)
+            {
+                if (_set.Contains(elem))
+                {
+                    continue;
+                }
+
+                result._set.Add(elem);
+            }
+
+            return result;
         }
 
         /// <inheritdoc/>
         public Collections.Interfaces.ISet<T> __XOr__(Collections.Interfaces.ISet<T> other)
         {
-            throw new NotImplementedException();
+            var result = new Set<T>();
+
+            foreach (var elem in _set)
+            {
+                if (other.__Contains__(elem))
+                {
+                    continue;
+                }
+
+                result._set.Add(elem);
+            }
+
+            foreach (var elem in other)
+            {
+                if (_set.Contains(elem))
+                {
+                    continue;
+                }
+
+                result._set.Add(elem);
+            }
+
+            return result;
         }
 
         /// <inheritdoc/>
         public Collections.Interfaces.ISet<T> __ROr__(Collections.Interfaces.ISet<T> other)
         {
-            throw new NotImplementedException();
+            var result = new Set<T>(other);
+            result._set.UnionWith(_set);
+
+            return result;
         }
 
         /// <inheritdoc/>

@@ -2,7 +2,11 @@ using Sharpy.Collections.Interfaces;
 
 namespace Sharpy
 {
-    public sealed partial class Set<T> : Object, IMutableSet<Set<T>, T>, IComparable<Set<T>>
+    public sealed partial class Set<T>
+        : Object, IMutableSet<Set<T>, T>,
+          ILessThanOrEquatable<Set<T>>, IGreaterThanOrEquatable<Set<T>>,
+          ILessThanOrEquatable<Collections.Interfaces.ISet<T>>,
+          IGreaterThanOrEquatable<Collections.Interfaces.ISet<T>>
     {
         private readonly HashSet<T> _set;
 

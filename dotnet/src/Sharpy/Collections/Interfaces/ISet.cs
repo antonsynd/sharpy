@@ -3,7 +3,7 @@ namespace Sharpy.Collections.Interfaces
     /// <summary>
     /// Interface for read-only sets.
     /// </summary>
-    public interface ISet<T> : ICollection<T>, IEquatable<Set<T>>, IInequatable<Set<T>>, IComparable<Set<T>>
+    public interface ISet<T> : ICollection<T>, IEquatable<Set<T>>, IInequatable<Set<T>>
     {
         ISet<T> __And__(ISet<T> other);
 

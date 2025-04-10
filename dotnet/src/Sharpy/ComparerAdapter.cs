@@ -6,8 +6,7 @@ namespace Sharpy
 
         private static IComparer<T> CreateComparer()
         {
-            if (typeof(IComparable<T>).IsAssignableFrom(typeof(T)) ||
-                typeof(ILessThanOrEquatable<T>).IsAssignableFrom(typeof(T)) ||
+            if (typeof(ILessThanOrEquatable<T>).IsAssignableFrom(typeof(T)) ||
             (typeof(ILessThanComparable<T>).IsAssignableFrom(typeof(T)) && typeof(IEquatable<T>).IsAssignableFrom(typeof(T))))
             {
                 return new LessThanOrEquatableComparer();

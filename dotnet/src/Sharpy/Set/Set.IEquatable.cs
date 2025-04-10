@@ -20,10 +20,12 @@ namespace Sharpy
 
             foreach (var x in other)
             {
-                if (_set.Contains(x))
+                if (!_set.Contains(x))
                 {
-                    numElems++;
+                    return false;
                 }
+
+                ++numElems;
             }
 
             return numElems == _set.Count;

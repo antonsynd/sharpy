@@ -1550,7 +1550,7 @@ items:
   - Sharpy
   namespace: Sharpy
   summary: >-
-    Called (if present) by the Reversed(IReversible&lt;T&gt;) built-in to
+    Called (if present) by the Exports.Reversed(IReversible&lt;T&gt;) built-in to
 
     implement reverse iteration. It should return a new
 
