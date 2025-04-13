@@ -1,13 +1,12 @@
-namespace Sharpy
+namespace Sharpy;
+
+public sealed partial class List<T>
 {
-    public sealed partial class List<T>
+    /// <summary>
+    /// Returns the number of items in the list.
+    /// </summary>
+    public uint __Len__()
     {
-        /// <summary>
-        /// Returns the number of items in the list.
-        /// </summary>
-        public uint __Len__()
-        {
-            return (uint)_list.Count;
-        }
+        return (uint)_list.Count;
     }
 }

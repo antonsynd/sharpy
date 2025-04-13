@@ -1,11 +1,10 @@
-namespace Sharpy
+namespace Sharpy;
+
+public sealed partial class Set<T>
 {
-    public sealed partial class Set<T>
+    /// <inheritdoc/>
+    public uint __Len__()
     {
-        /// <inheritdoc/>
-        public uint __Len__()
-        {
-            return (uint)_set.Count;
-        }
+        return (uint)_set.Count;
     }
 }

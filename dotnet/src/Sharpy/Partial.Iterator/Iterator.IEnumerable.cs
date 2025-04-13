@@ -1,32 +1,31 @@
 using System.Collections;
 
-namespace Sharpy
+namespace Sharpy;
+
+public abstract partial class Iterator<T>
 {
-    public abstract partial class Iterator<T>
+    /// <inheritdoc/>
+    public IEnumerator<T> GetEnumerator()
     {
-        /// <inheritdoc/>
-        public IEnumerator<T> GetEnumerator()
+        while (true)
         {
-            while (true)
+            T nextValue;
+
+            try
             {
-                T nextValue;
-
-                try
-                {
-                    nextValue = __Next__();
-                }
-                catch (StopIteration)
-                {
-                    break;
-                }
-
-                yield return nextValue;
+                nextValue = __Next__();
             }
-        }
+            catch (StopIteration)
+            {
+                break;
+            }
 
-        /// <remarks>
-        /// Type-erased version of <see cref="GetEnumerator()"/>.
-        /// </remarks>
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+            yield return nextValue;
+        }
     }
+
+    /// <remarks>
+    /// Type-erased version of <see cref="GetEnumerator()"/>.
+    /// </remarks>
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }

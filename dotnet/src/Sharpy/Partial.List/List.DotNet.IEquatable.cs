@@ -1,16 +1,14 @@
-namespace Sharpy
+namespace Sharpy;
+public sealed partial class List<T>
 {
-    public sealed partial class List<T>
+    /// <inheritdoc/>
+    public bool Equals(List<T>? other)
     {
-        /// <inheritdoc/>
-        public bool Equals(List<T>? other)
+        if (other is null)
         {
-            if (other is null)
-            {
-                return false;
-            }
-
-            return __Eq__(other);
+            return false;
         }
+
+        return __Eq__(other);
     }
 }

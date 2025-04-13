@@ -1,6 +1,5 @@
-namespace Sharpy
+namespace Sharpy;
+
+public class ValueError(string message) : Exception(message)
 {
-    public class ValueError(string message) : Exception(message)
-    {
-    }
 }

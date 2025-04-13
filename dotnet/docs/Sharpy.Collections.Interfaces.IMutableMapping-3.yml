@@ -21,7 +21,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IMutableMapping
     path: ../src/Sharpy/Collections/Interfaces/IMutableMapping.cs
-    startLine: 90
+    startLine: 94
   assemblies:
   - Sharpy
   namespace: Sharpy.Collections.Interfaces
@@ -86,7 +86,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __IOr__
     path: ../src/Sharpy/Collections/Interfaces/IMutableMapping.cs
-    startLine: 93
+    startLine: 97
   assemblies:
   - Sharpy
   namespace: Sharpy.Collections.Interfaces
@@ -118,7 +118,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Update
     path: ../src/Sharpy/Collections/Interfaces/IMutableMapping.cs
-    startLine: 96
+    startLine: 100
   assemblies:
   - Sharpy
   namespace: Sharpy.Collections.Interfaces

@@ -1,7 +1,6 @@
-namespace Sharpy
+namespace Sharpy;
+
+public readonly struct Bytes(byte[] data)
 {
-    public readonly struct Bytes(byte[] data)
-    {
-        private readonly byte[] _data = data;
-    }
+    private readonly byte[] _data = data;
 }

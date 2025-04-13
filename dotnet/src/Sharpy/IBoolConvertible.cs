@@ -1,7 +1,6 @@
-namespace Sharpy
+namespace Sharpy;
+
+public interface IBoolConvertible
 {
-    public interface IBoolConvertible
-    {
-        bool __Bool__();
-    }
+    bool __Bool__();
 }

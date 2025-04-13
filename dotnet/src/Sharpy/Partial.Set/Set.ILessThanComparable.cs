@@ -1,46 +1,45 @@
-namespace Sharpy
+namespace Sharpy;
+
+public sealed partial class Set<T>
 {
-    public sealed partial class Set<T>
+    /// <inheritdoc/>
+    public bool __Lt__(Set<T> other)
     {
-        /// <inheritdoc/>
-        public bool __Lt__(Set<T> other)
+        if (other is null)
         {
-            if (other is null)
-            {
-                throw new TypeError("'NoneType' object is not iterable");
-            }
-
-            return _set.IsProperSubsetOf(other._set);
+            throw new TypeError("'NoneType' object is not iterable");
         }
 
-        /// <inheritdoc/>
-        public bool __Lt__(Collections.Interfaces.ISet<T> other)
+        return _set.IsProperSubsetOf(other._set);
+    }
+
+    /// <inheritdoc/>
+    public bool __Lt__(Collections.Interfaces.ISet<T> other)
+    {
+        if (other is null)
         {
-            if (other is null)
-            {
-                throw new TypeError("'NoneType' object is not iterable");
-            }
-
-            var numElems = _set.Count;
-            uint otherNumElems = 0;
-
-            if (numElems >= otherNumElems)
-            {
-                return false;
-            }
-
-            foreach (var x in other)
-            {
-                // TODO: It is possible that the other is implemented
-                // incorrectly and has multiple copies of the same element,
-                // in which case, we should check if we've seen it before.
-                if (_set.Contains(x))
-                {
-                    --numElems;
-                }
-            }
-
-            return numElems == 0;
+            throw new TypeError("'NoneType' object is not iterable");
         }
+
+        var numElems = _set.Count;
+        uint otherNumElems = 0;
+
+        if (numElems >= otherNumElems)
+        {
+            return false;
+        }
+
+        foreach (var x in other)
+        {
+            // TODO: It is possible that the other is implemented
+            // incorrectly and has multiple copies of the same element,
+            // in which case, we should check if we've seen it before.
+            if (_set.Contains(x))
+            {
+                --numElems;
+            }
+        }
+
+        return numElems == 0;
     }
 }

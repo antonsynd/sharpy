@@ -1,9 +1,8 @@
 using Xunit;
 using FluentAssertions;
 
-namespace Sharpy.Tests
+namespace Sharpy.Tests;
+
+public class Str_Tests
 {
-    public class Str_Tests
-    {
-    }
 }

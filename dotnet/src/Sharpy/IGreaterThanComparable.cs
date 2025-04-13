@@ -1,7 +1,6 @@
-namespace Sharpy
+namespace Sharpy;
+
+public interface IGreaterThanComparable<T>
 {
-    public interface IGreaterThanComparable<T>
-    {
-        bool __Gt__(T other);
-    }
+    bool __Gt__(T other);
 }

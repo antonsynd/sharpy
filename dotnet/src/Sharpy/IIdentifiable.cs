@@ -1,7 +1,6 @@
-namespace Sharpy
+namespace Sharpy;
+
+public interface IIdentifiable
 {
-    public interface IIdentifiable
-    {
-        int __Id__();
-    }
+    int __Id__();
 }

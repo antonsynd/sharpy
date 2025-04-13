@@ -1,7 +1,6 @@
-namespace Sharpy
+namespace Sharpy;
+
+public interface ILessThanComparable<T>
 {
-    public interface ILessThanComparable<T>
-    {
-        bool __Lt__(T other);
-    }
+    bool __Lt__(T other);
 }

@@ -1,27 +1,26 @@
-using Sharpy.Collections.Interfaces;
+namespace Sharpy;
 
-namespace Sharpy
+using Collections.Interfaces;
+
+public static partial class Exports
 {
-    public static partial class Exports
+    /// <summary>
+    /// Return the length (the number of items) of an object. The argument
+    /// may be a sequence (such as a string, bytes, tuple, list, or range)
+    /// or a collection (such as a dictionary, set, or frozen set).
+    /// </summary>
+    public static uint Len(ISized sized)
     {
-        /// <summary>
-        /// Return the length (the number of items) of an object. The argument
-        /// may be a sequence (such as a string, bytes, tuple, list, or range)
-        /// or a collection (such as a dictionary, set, or frozen set).
-        /// </summary>
-        public static uint Len(ISized sized)
+        if (sized is null)
         {
-            if (sized is null)
-            {
-                throw new TypeError("Len() sized argument cannot be None");
-            }
-
-            return sized.__Len__();
+            throw new TypeError("Len() sized argument cannot be None");
         }
 
-        public static uint Len(string s)
-        {
-            return (uint)s.Length;
-        }
+        return sized.__Len__();
+    }
+
+    public static uint Len(string s)
+    {
+        return (uint)s.Length;
     }
 }

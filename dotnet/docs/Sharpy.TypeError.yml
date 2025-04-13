@@ -20,7 +20,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: TypeError
     path: ../src/Sharpy/TypeError.cs
-    startLine: 2
+    startLine: 1
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -68,7 +68,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/TypeError.cs
-    startLine: 2
+    startLine: 1
   assemblies:
   - Sharpy
   namespace: Sharpy

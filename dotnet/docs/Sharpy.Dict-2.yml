@@ -61,7 +61,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Dict
     path: ../src/Sharpy/Dict.cs
-    startLine: 6
+    startLine: 5
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -126,7 +126,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Dict.cs
-    startLine: 10
+    startLine: 9
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -155,7 +155,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Dict.cs
-    startLine: 15
+    startLine: 14
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -187,7 +187,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Dict.cs
-    startLine: 23
+    startLine: 22
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -219,7 +219,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Copy
     path: ../src/Sharpy/Dict.cs
-    startLine: 34
+    startLine: 33
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -251,7 +251,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Clear
     path: ../src/Sharpy/Dict.cs
-    startLine: 47
+    startLine: 46
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -283,7 +283,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Contains
     path: ../src/Sharpy/Dict.cs
-    startLine: 52
+    startLine: 51
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -323,7 +323,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Get
     path: ../src/Sharpy/Dict.cs
-    startLine: 57
+    startLine: 56
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -367,7 +367,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Get
     path: ../src/Sharpy/Dict.cs
-    startLine: 67
+    startLine: 66
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -413,7 +413,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: GetEnumerator
     path: ../src/Sharpy/Dict.cs
-    startLine: 77
+    startLine: 76
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -448,7 +448,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Items
     path: ../src/Sharpy/Dict.cs
-    startLine: 85
+    startLine: 84
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -485,7 +485,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Keys
     path: ../src/Sharpy/Dict.cs
-    startLine: 90
+    startLine: 89
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -519,7 +519,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Pop
     path: ../src/Sharpy/Dict.cs
-    startLine: 95
+    startLine: 94
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -559,7 +559,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Pop
     path: ../src/Sharpy/Dict.cs
-    startLine: 105
+    startLine: 104
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -601,7 +601,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: PopItem
     path: ../src/Sharpy/Dict.cs
-    startLine: 115
+    startLine: 114
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -642,7 +642,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: SetDefault
     path: ../src/Sharpy/Dict.cs
-    startLine: 123
+    startLine: 122
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -684,7 +684,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Update
     path: ../src/Sharpy/Dict.cs
-    startLine: 133
+    startLine: 132
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -727,7 +727,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Update
     path: ../src/Sharpy/Dict.cs
-    startLine: 141
+    startLine: 140
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -772,7 +772,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Values
     path: ../src/Sharpy/Dict.cs
-    startLine: 149
+    startLine: 148
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -806,7 +806,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Contains__
     path: ../src/Sharpy/Dict.cs
-    startLine: 154
+    startLine: 153
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -850,7 +850,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __DelItem__
     path: ../src/Sharpy/Dict.cs
-    startLine: 159
+    startLine: 158
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -888,7 +888,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __GetItem__
     path: ../src/Sharpy/Dict.cs
-    startLine: 167
+    startLine: 166
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -928,7 +928,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Iter__
     path: ../src/Sharpy/Dict.cs
-    startLine: 177
+    startLine: 176
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -975,7 +975,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Dict.cs
-    startLine: 182
+    startLine: 181
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1014,7 +1014,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Len__
     path: ../src/Sharpy/Dict.cs
-    startLine: 188
+    startLine: 187
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1048,7 +1048,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/Dict.cs
-    startLine: 193
+    startLine: 192
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1089,7 +1089,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/Dict.cs
-    startLine: 203
+    startLine: 202
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1123,7 +1123,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __SetItem__
     path: ../src/Sharpy/Dict.cs
-    startLine: 232
+    startLine: 231
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1160,7 +1160,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: ToDictionary
     path: ../src/Sharpy/Dict.cs
-    startLine: 242
+    startLine: 241
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1190,7 +1190,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Or__
     path: ../src/Sharpy/Dict.cs
-    startLine: 247
+    startLine: 246
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1224,7 +1224,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __IOr__
     path: ../src/Sharpy/Dict.cs
-    startLine: 255
+    startLine: 254
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1256,7 +1256,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Or__
     path: ../src/Sharpy/Dict.cs
-    startLine: 260
+    startLine: 259
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1297,7 +1297,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __IOr__
     path: ../src/Sharpy/Dict.cs
-    startLine: 268
+    startLine: 267
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1336,7 +1336,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Or__
     path: ../src/Sharpy/Dict.cs
-    startLine: 273
+    startLine: 272
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1379,7 +1379,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __IOr__
     path: ../src/Sharpy/Dict.cs
-    startLine: 281
+    startLine: 280
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1418,7 +1418,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_BitwiseOr
     path: ../src/Sharpy/Dict.cs
-    startLine: 286
+    startLine: 285
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1454,7 +1454,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Equality
     path: ../src/Sharpy/Dict.cs
-    startLine: 291
+    startLine: 290
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1490,7 +1490,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Inequality
     path: ../src/Sharpy/Dict.cs
-    startLine: 306
+    startLine: 305
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1526,7 +1526,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Hash__
     path: ../src/Sharpy/Dict.cs
-    startLine: 311
+    startLine: 310
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1559,7 +1559,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Repr__
     path: ../src/Sharpy/Dict.cs
-    startLine: 320
+    startLine: 319
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1596,7 +1596,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Bool__
     path: ../src/Sharpy/Dict.cs
-    startLine: 345
+    startLine: 344
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1634,7 +1634,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_True
     path: ../src/Sharpy/Dict.cs
-    startLine: 350
+    startLine: 349
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1668,7 +1668,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_False
     path: ../src/Sharpy/Dict.cs
-    startLine: 355
+    startLine: 354
   assemblies:
   - Sharpy
   namespace: Sharpy

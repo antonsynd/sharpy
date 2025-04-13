@@ -1,21 +1,20 @@
-namespace Sharpy
+namespace Sharpy;
+
+public sealed partial class ListIterator<T>
 {
-    public sealed partial class ListIterator<T>
+    /// <inheritdoc/>
+    public override T __Next__()
     {
-        /// <inheritdoc/>
-        public override T __Next__()
+        if (_index < _list.__Len__())
         {
-            if (_index < _list.__Len__())
-            {
 
-                var res = _list[(int)_index];
+            var res = _list[(int)_index];
 
-                ++_index;
+            ++_index;
 
-                return res;
-            }
-
-            throw new StopIteration();
+            return res;
         }
+
+        throw new StopIteration();
     }
 }

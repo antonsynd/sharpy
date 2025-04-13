@@ -41,7 +41,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Object
     path: ../src/Sharpy/Partial.Object/Object.operators.cs
-    startLine: 2
+    startLine: 1
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -607,7 +607,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Equality
     path: ../src/Sharpy/Partial.Object/Object.operators.cs
-    startLine: 7
+    startLine: 6
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -645,7 +645,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Inequality
     path: ../src/Sharpy/Partial.Object/Object.operators.cs
-    startLine: 20
+    startLine: 19
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -683,7 +683,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Equality
     path: ../src/Sharpy/Partial.Object/Object.operators.cs
-    startLine: 31
+    startLine: 30
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -728,7 +728,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Inequality
     path: ../src/Sharpy/Partial.Object/Object.operators.cs
-    startLine: 42
+    startLine: 41
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -773,7 +773,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Equality
     path: ../src/Sharpy/Partial.Object/Object.operators.cs
-    startLine: 51
+    startLine: 50
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -814,7 +814,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Inequality
     path: ../src/Sharpy/Partial.Object/Object.operators.cs
-    startLine: 60
+    startLine: 59
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -855,7 +855,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_True
     path: ../src/Sharpy/Partial.Object/Object.operators.cs
-    startLine: 68
+    startLine: 67
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -891,7 +891,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_False
     path: ../src/Sharpy/Partial.Object/Object.operators.cs
-    startLine: 77
+    startLine: 76
   assemblies:
   - Sharpy
   namespace: Sharpy

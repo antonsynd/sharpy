@@ -1,18 +1,17 @@
+namespace Sharpy;
+
 using System.Collections;
 
-namespace Sharpy
+public sealed partial class Set<T>
 {
-    public sealed partial class Set<T>
+    /// <inheritdoc/>
+    public IEnumerator<T> GetEnumerator()
     {
-        /// <inheritdoc/>
-        public IEnumerator<T> GetEnumerator()
+        foreach (var elem in _set)
         {
-            foreach (var elem in _set)
-            {
-                yield return elem;
-            }
+            yield return elem;
         }
-
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }

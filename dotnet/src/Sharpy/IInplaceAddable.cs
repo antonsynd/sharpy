@@ -1,7 +1,6 @@
-namespace Sharpy
+namespace Sharpy;
+
+public interface IInplaceAddable<T>
 {
-    public interface IInplaceAddable<T>
-    {
-        void __IAdd__(T other);
-    }
+    void __IAdd__(T other);
 }

@@ -1,7 +1,6 @@
-namespace Sharpy
+namespace Sharpy;
+
+public interface IInplaceMultipliable<T>
 {
-    public interface IInplaceMultipliable<T>
-    {
-        void __IMul__(T other);
-    }
+    void __IMul__(T other);
 }

@@ -1,58 +1,57 @@
-using Sharpy.Collections.Interfaces;
+namespace Sharpy;
 
-namespace Sharpy
+using Collections.Interfaces;
+
+public static partial class Exports
 {
-    public static partial class Exports
+    public static T? Max<T>(IIterable<T> iterable)
     {
-        public static T? Max<T>(IIterable<T> iterable)
+        return Max(iterable, value => value);
+    }
+
+    public static T? Max<T, TKey>(IIterable<T> iterable, Func<T, TKey> key)
+    {
+        if (iterable is null)
         {
-            return Max(iterable, value => value);
+            throw new TypeError("'NoneType' object is not iterable");
         }
 
-        public static T? Max<T, TKey>(IIterable<T> iterable, Func<T, TKey> key)
+        if (key is null)
         {
-            if (iterable is null)
+            throw new TypeError("Max() key argument cannot be None");
+        }
+
+        bool iterableIsEmpty = true;
+        T? biggest = default;
+
+        foreach (var elem in iterable)
+        {
+            if (elem is null)
             {
-                throw new TypeError("'NoneType' object is not iterable");
-            }
-
-            if (key is null)
-            {
-                throw new TypeError("Max() key argument cannot be None");
-            }
-
-            bool iterableIsEmpty = true;
-            T? biggest = default;
-
-            foreach (var elem in iterable)
-            {
-                if (elem is null)
-                {
-                    throw new TypeError("'<' not supported for instances of 'NoneType'");
-                }
-
-                if (biggest is null || iterableIsEmpty)
-                {
-                    biggest = elem;
-                    iterableIsEmpty = false;
-
-                    continue;
-                }
-
-                if (LessThanAdapterFactory<TKey>.IsLessThan(key(biggest), key(elem)))
-                {
-                    biggest = elem;
-                }
-
-                // No-op, these are equivalent, no need to do anything
+                throw new TypeError("'<' not supported for instances of 'NoneType'");
             }
 
             if (biggest is null || iterableIsEmpty)
             {
-                throw new ValueError("Max() iterable argument is empty");
+                biggest = elem;
+                iterableIsEmpty = false;
+
+                continue;
             }
 
-            return biggest;
+            if (LessThanAdapterFactory<TKey>.IsLessThan(key(biggest), key(elem)))
+            {
+                biggest = elem;
+            }
+
+            // No-op, these are equivalent, no need to do anything
         }
+
+        if (biggest is null || iterableIsEmpty)
+        {
+            throw new ValueError("Max() iterable argument is empty");
+        }
+
+        return biggest;
     }
 }

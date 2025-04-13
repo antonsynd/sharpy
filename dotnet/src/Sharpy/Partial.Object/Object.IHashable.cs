@@ -1,13 +1,12 @@
-namespace Sharpy
+namespace Sharpy;
+
+public abstract partial class Object
 {
-    public abstract partial class Object
+    /// <remarks>
+    /// By default, returns <see cref="object.GetHashCode()"/>.
+    /// </remarks>
+    public virtual int __Hash__()
     {
-        /// <remarks>
-        /// By default, returns <see cref="object.GetHashCode()"/>.
-        /// </remarks>
-        public virtual int __Hash__()
-        {
-            return base.GetHashCode();
-        }
+        return base.GetHashCode();
     }
 }

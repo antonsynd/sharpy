@@ -1,6 +1,4 @@
-namespace Sharpy
+namespace Sharpy;
+public class TypeError(string message) : Exception(message)
 {
-    public class TypeError(string message) : Exception(message)
-    {
-    }
 }

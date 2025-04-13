@@ -26,7 +26,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: ISet
     path: ../src/Sharpy/Collections/Interfaces/ISet.cs
-    startLine: 22
+    startLine: 30
   assemblies:
   - Sharpy
   namespace: Sharpy.Collections.Interfaces
@@ -77,7 +77,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __And__
     path: ../src/Sharpy/Collections/Interfaces/ISet.cs
-    startLine: 24
+    startLine: 32
   assemblies:
   - Sharpy
   namespace: Sharpy.Collections.Interfaces
@@ -110,7 +110,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Or__
     path: ../src/Sharpy/Collections/Interfaces/ISet.cs
-    startLine: 26
+    startLine: 34
   assemblies:
   - Sharpy
   namespace: Sharpy.Collections.Interfaces
@@ -143,7 +143,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Sub__
     path: ../src/Sharpy/Collections/Interfaces/ISet.cs
-    startLine: 28
+    startLine: 36
   assemblies:
   - Sharpy
   namespace: Sharpy.Collections.Interfaces
@@ -176,7 +176,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __RSub__
     path: ../src/Sharpy/Collections/Interfaces/ISet.cs
-    startLine: 30
+    startLine: 38
   assemblies:
   - Sharpy
   namespace: Sharpy.Collections.Interfaces
@@ -209,7 +209,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __XOr__
     path: ../src/Sharpy/Collections/Interfaces/ISet.cs
-    startLine: 32
+    startLine: 40
   assemblies:
   - Sharpy
   namespace: Sharpy.Collections.Interfaces
@@ -242,7 +242,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __ROr__
     path: ../src/Sharpy/Collections/Interfaces/ISet.cs
-    startLine: 34
+    startLine: 42
   assemblies:
   - Sharpy
   namespace: Sharpy.Collections.Interfaces
@@ -275,7 +275,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IsDisjoint
     path: ../src/Sharpy/Collections/Interfaces/ISet.cs
-    startLine: 36
+    startLine: 44
   assemblies:
   - Sharpy
   namespace: Sharpy.Collections.Interfaces

@@ -20,7 +20,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IMapping
     path: ../src/Sharpy/Collections/Interfaces/IMapping.cs
-    startLine: 76
+    startLine: 80
   assemblies:
   - Sharpy
   namespace: Sharpy.Collections.Interfaces
@@ -72,7 +72,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Or__
     path: ../src/Sharpy/Collections/Interfaces/IMapping.cs
-    startLine: 79
+    startLine: 83
   assemblies:
   - Sharpy
   namespace: Sharpy.Collections.Interfaces

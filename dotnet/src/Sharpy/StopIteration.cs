@@ -1,4 +1,3 @@
-namespace Sharpy
-{
-    public class StopIteration() : Exception { }
-}
+namespace Sharpy;
+
+public class StopIteration() : Exception { }

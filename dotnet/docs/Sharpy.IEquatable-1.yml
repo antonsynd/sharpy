@@ -20,7 +20,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IEquatable
     path: ../src/Sharpy/IEquatable.cs
-    startLine: 31
+    startLine: 35
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -63,7 +63,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/IEquatable.cs
-    startLine: 36
+    startLine: 40
   assemblies:
   - Sharpy
   namespace: Sharpy

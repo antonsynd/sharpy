@@ -1,76 +1,75 @@
 using System.Text;
 
-namespace Sharpy
+namespace Sharpy;
+
+public sealed partial class ByteArray : Object
 {
-    public sealed partial class ByteArray : Object
+    public override bool __Bool__()
     {
-        public override bool __Bool__()
-        {
-            if (_data == null) {
-                return false;
-            }
-
-            if (_data.Length == 0) {
-                return false;
-            }
-
-            foreach (var b in _data) {
-                if (b > 0) {
-                    return true;
-                }
-            }
-
+        if (_data == null) {
             return false;
         }
 
-        public override bool __Eq__(Object obj)
-        {
-            if (obj is ByteArray other)
-            {
-                return __Eq__(other);
-            }
-
+        if (_data.Length == 0) {
             return false;
         }
 
-        public override int __Hash__()
-        {
-            if (_data == null) {
-                return 0;
+        foreach (var b in _data) {
+            if (b > 0) {
+                return true;
             }
-
-            var hash = new HashCode();
-
-            foreach (var b in _data) {
-                hash.Add(b);
-            }
-
-            return hash.ToHashCode();
         }
 
-        public override string __Repr__()
+        return false;
+    }
+
+    public override bool __Eq__(Object obj)
+    {
+        if (obj is ByteArray other)
         {
-            var builder = new StringBuilder();
-            builder.Append('[');
+            return __Eq__(other);
+        }
 
-            uint i = 1;
-            var numElems = _data.Length;
+        return false;
+    }
 
-            foreach (var item in _data)
+    public override int __Hash__()
+    {
+        if (_data == null) {
+            return 0;
+        }
+
+        var hash = new HashCode();
+
+        foreach (var b in _data) {
+            hash.Add(b);
+        }
+
+        return hash.ToHashCode();
+    }
+
+    public override string __Repr__()
+    {
+        var builder = new StringBuilder();
+        builder.Append('[');
+
+        uint i = 1;
+        var numElems = _data.Length;
+
+        foreach (var item in _data)
+        {
+            builder.Append(Repr(item));
+
+            if (i < numElems)
             {
-                builder.Append(Repr(item));
-
-                if (i < numElems)
-                {
-                    builder.Append(", ");
-                }
-
-                ++i;
+                builder.Append(", ");
             }
 
-            builder.Append(']');
-
-            return builder.ToString();
+            ++i;
         }
+
+        builder.Append(']');
+
+        return builder.ToString();
     }
 }

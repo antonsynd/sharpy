@@ -1,45 +1,44 @@
-namespace Sharpy
+namespace Sharpy;
+
+public sealed partial class Set<T>
 {
-    public sealed partial class Set<T>
+    /// <inheritdoc/>
+    public bool __Eq__(Set<T> other)
     {
-        /// <inheritdoc/>
-        public bool __Eq__(Set<T> other)
+        if (other is null)
         {
-            if (other is null)
+            return false;
+        }
+
+        return _set.SetEquals(other._set);
+    }
+
+    /// <inheritdoc/>
+    public bool __Eq__(Collections.Interfaces.ISet<T> other)
+    {
+        uint numElems = 0;
+
+        foreach (var x in other)
+        {
+            if (!_set.Contains(x))
             {
                 return false;
             }
 
-            return _set.SetEquals(other._set);
+            ++numElems;
         }
 
-        /// <inheritdoc/>
-        public bool __Eq__(Collections.Interfaces.ISet<T> other)
+        return numElems == _set.Count;
+    }
+
+    /// <inheritdoc/>
+    public override bool __Eq__(Object other)
+    {
+        if (other is Set<T> set)
         {
-            uint numElems = 0;
-
-            foreach (var x in other)
-            {
-                if (!_set.Contains(x))
-                {
-                    return false;
-                }
-
-                ++numElems;
-            }
-
-            return numElems == _set.Count;
+            return __Eq__(set);
         }
 
-        /// <inheritdoc/>
-        public override bool __Eq__(Object other)
-        {
-            if (other is Set<T> set)
-            {
-                return __Eq__(set);
-            }
-
-            return false;
-        }
+        return false;
     }
 }

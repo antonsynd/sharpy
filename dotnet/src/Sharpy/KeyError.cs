@@ -1,6 +1,5 @@
-namespace Sharpy
+namespace Sharpy;
+
+public class KeyError(string message) : Exception(message)
 {
-    public class KeyError(string message) : Exception(message)
-    {
-    }
 }

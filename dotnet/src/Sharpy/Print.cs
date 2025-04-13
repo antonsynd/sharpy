@@ -1,36 +1,35 @@
-namespace Sharpy
+namespace Sharpy;
+
+public static partial class Exports
 {
-    public static partial class Exports
+    public static void Print(Object? obj, uint file = Stdout, bool flush = false)
     {
-        public static void Print(Object? obj, uint file = Stdout, bool flush = false)
-        {
-            var result = obj?.__Str__() ?? "None";
+        var result = obj?.__Str__() ?? "None";
 
-            _Print(result, file, flush);
+        _Print(result, file, flush);
+    }
+
+    public static void Print(object? obj, uint file = Stdout, bool flush = false)
+    {
+        var result = obj?.ToString() ?? "None";
+
+        _Print(result, file, flush);
+    }
+
+    private static void _Print(string s, uint file = Stdout, bool flush = false)
+    {
+        if (file == Stddev)
+        {
+            return;
         }
 
-        public static void Print(object? obj, uint file = Stdout, bool flush = false)
+        var textWriter = file == Stdout ? Console.Out : Console.Error;
+
+        textWriter.WriteLine(s);
+
+        if (flush)
         {
-            var result = obj?.ToString() ?? "None";
-
-            _Print(result, file, flush);
-        }
-
-        private static void _Print(string s, uint file = Stdout, bool flush = false)
-        {
-            if (file == Stddev)
-            {
-                return;
-            }
-
-            var textWriter = file == Stdout ? Console.Out : Console.Error;
-
-            textWriter.WriteLine(s);
-
-            if (flush)
-            {
-                textWriter.Flush();
-            }
+            textWriter.Flush();
         }
     }
 }

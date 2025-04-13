@@ -1,12 +1,11 @@
 using System.Numerics;
 using Sharpy.Collections.Interfaces;
 
-namespace Sharpy
+namespace Sharpy;
+
+public sealed partial class ByteArray
 {
-    public sealed partial class ByteArray
-    {
-        public uint __Len__() {
-            return _numBytes;
-        }
+    public uint __Len__() {
+        return _numBytes;
     }
 }

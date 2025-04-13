@@ -1,7 +1,6 @@
-namespace Sharpy
+namespace Sharpy;
+
+public interface IStrConvertible : IRepresentable
 {
-    public interface IStrConvertible : IRepresentable
-    {
-        string __Str__();
-    }
+    string __Str__();
 }

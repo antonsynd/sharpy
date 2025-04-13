@@ -1,97 +1,96 @@
 using Xunit;
 using FluentAssertions;
 
-namespace Sharpy.Tests
+namespace Sharpy.Tests;
+
+public partial class List_Tests
 {
-    public partial class List_Tests
+    [Fact]
+    public void List_Native_Equality_Same_Object()
     {
-        [Fact]
-        public void List_Native_Equality_Same_Object()
-        {
-            // If
-            List<int> l = [1, 3, 5, 7];
-            var copy = l;
+        // If
+        List<int> l = [1, 3, 5, 7];
+        var copy = l;
 
-            // When/then
-            (l == copy).Should().BeTrue();
-        }
+        // When/then
+        (l == copy).Should().BeTrue();
+    }
 
-        [Fact]
-        public void List_Equality_Same_Object()
-        {
-            // If
-            List<int> l = [1, 3, 5, 7];
-            var copy = l;
+    [Fact]
+    public void List_Equality_Same_Object()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        var copy = l;
 
-            // When/then
-            copy.Should().Equal(l);
-        }
+        // When/then
+        copy.Should().Equal(l);
+    }
 
-        [Fact]
-        public void List_Native_Inequality_Same_Object()
-        {
-            // If
-            List<int> l = [1, 3, 5, 7];
-            var copy = l;
+    [Fact]
+    public void List_Native_Inequality_Same_Object()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        var copy = l;
 
-            // When/then
-            (l != copy).Should().BeFalse();
-        }
+        // When/then
+        (l != copy).Should().BeFalse();
+    }
 
-        [Fact]
-        public void List_Equality_And_Inequality_Different_Object()
-        {
-            // If
-            List<int> l = [1, 3, 5, 7];
-            List<int> m = [1, 3, 5, 7, 9];
+    [Fact]
+    public void List_Equality_And_Inequality_Different_Object()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        List<int> m = [1, 3, 5, 7, 9];
 
-            // When/then
-            l.Should().NotEqual(m);
+        // When/then
+        l.Should().NotEqual(m);
 
-            // When
-            m.Pop();
+        // When
+        m.Pop();
 
-            // Then
-            l.Should().Equal(m);
-        }
+        // Then
+        l.Should().Equal(m);
+    }
 
-        [Fact]
-        public void List_Native_Equality_And_Inequality_Different_Object()
-        {
-            // If
-            List<int> l = [1, 3, 5, 7];
-            List<int> m = [1, 3, 5, 7, 9];
+    [Fact]
+    public void List_Native_Equality_And_Inequality_Different_Object()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        List<int> m = [1, 3, 5, 7, 9];
 
-            // When/then
-            (l == m).Should().BeFalse();
+        // When/then
+        (l == m).Should().BeFalse();
 
-            // When
-            m.Pop();
+        // When
+        m.Pop();
 
-            // Then
-            (l == m).Should().BeTrue();
-        }
+        // Then
+        (l == m).Should().BeTrue();
+    }
 
-        [Fact]
-        public void List_Native_Equality_Different_Type()
-        {
-            // If
-            List<int> l = [1, 3, 5, 7];
-            List<double> m = [1.0, 3.0, 5.0, 7.0];
+    [Fact]
+    public void List_Native_Equality_Different_Type()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        List<double> m = [1.0, 3.0, 5.0, 7.0];
 
-            // When/then
-            (l == m).Should().BeFalse();
-        }
+        // When/then
+        (l == m).Should().BeFalse();
+    }
 
-        [Fact]
-        public void List_Equality_Different_Type()
-        {
-            // If
-            List<int> l = [1, 3, 5, 7];
-            List<double> m = [1.0, 3.0, 5.0, 7.0];
+    [Fact]
+    public void List_Equality_Different_Type()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        List<double> m = [1.0, 3.0, 5.0, 7.0];
 
-            // When/then
-            l.Equals(m).Should().BeFalse();
-        }
+        // When/then
+        l.Equals(m).Should().BeFalse();
     }
 }

@@ -1,11 +1,10 @@
-namespace Sharpy
+namespace Sharpy;
+
+public sealed partial class Set<T>
 {
-    public sealed partial class Set<T>
+    /// <inheritdoc/>
+    public Iterator<T> __Iter__()
     {
-        /// <inheritdoc/>
-        public Iterator<T> __Iter__()
-        {
-            return new SetIterator<T>(this);
-        }
+        return new SetIterator<T>(this);
     }
 }

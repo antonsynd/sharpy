@@ -1,10 +1,9 @@
-namespace Sharpy
+namespace Sharpy;
+
+public readonly partial struct Slice
 {
-    public readonly partial struct Slice
+    public uint __Len__()
     {
-        public uint __Len__()
-        {
-            return Len(start, end, step);
-        }
+        return Len(start, end, step);
     }
 }

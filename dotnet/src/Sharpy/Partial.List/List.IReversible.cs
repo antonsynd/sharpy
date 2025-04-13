@@ -1,11 +1,10 @@
-namespace Sharpy
+namespace Sharpy;
+
+public sealed partial class List<T>
 {
-    public sealed partial class List<T>
+    /// <inheritdoc/>
+    public Iterator<T> __Reversed__()
     {
-        /// <inheritdoc/>
-        public Iterator<T> __Reversed__()
-        {
-            return new ListReverseIterator<T>(this);
-        }
+        return new ListReverseIterator<T>(this);
     }
 }

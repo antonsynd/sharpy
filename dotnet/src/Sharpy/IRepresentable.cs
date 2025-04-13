@@ -1,7 +1,6 @@
-namespace Sharpy
+namespace Sharpy;
+
+public interface IRepresentable
 {
-    public interface IRepresentable
-    {
-        string __Repr__();
-    }
+    string __Repr__();
 }

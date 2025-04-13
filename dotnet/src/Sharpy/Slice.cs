@@ -1,23 +1,22 @@
-using Sharpy.Collections.Interfaces;
+namespace Sharpy;
 
-namespace Sharpy
+using Collections.Interfaces;
+
+public readonly partial struct Slice(int start, int end, int step = 1) : ISized
 {
-    public readonly partial struct Slice(int start, int end, int step = 1) : ISized
+    public readonly int start = start;
+    public readonly int end = end;
+    public readonly int step = step;
+
+    public static uint Len(int start, int end, int step)
     {
-        public readonly int start = start;
-        public readonly int end = end;
-        public readonly int step = step;
+        // Efficient ceil division (from ChatGPT)
+        var length = end - start;
+        return (uint)((length + step - 1) / step);
+    }
 
-        public static uint Len(int start, int end, int step)
-        {
-            // Efficient ceil division (from ChatGPT)
-            var length = end - start;
-            return (uint)((length + step - 1) / step);
-        }
-
-        internal static (uint, uint) Normalize(int start, int end, uint max)
-        {
-            return (Index.Normalize(start, max, true, false), Index.Normalize(end, max, true, false));
-        }
+    internal static (uint, uint) Normalize(int start, int end, uint max)
+    {
+        return (Index.Normalize(start, max, true, false), Index.Normalize(end, max, true, false));
     }
 }

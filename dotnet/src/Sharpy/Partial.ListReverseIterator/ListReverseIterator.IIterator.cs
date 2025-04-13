@@ -1,21 +1,20 @@
-namespace Sharpy
+namespace Sharpy;
+
+public sealed partial class ListReverseIterator<T>
 {
-    public sealed partial class ListReverseIterator<T>
+    /// <inheritdoc/>
+    public override T __Next__()
     {
-        /// <inheritdoc/>
-        public override T __Next__()
+        if (_index < _list.__Len__())
         {
-            if (_index < _list.__Len__())
-            {
 
-                var res = _list[(int)(_list.__Len__() - _index - 1)];
+            var res = _list[(int)(_list.__Len__() - _index - 1)];
 
-                ++_index;
+            ++_index;
 
-                return res;
-            }
-
-            throw new StopIteration();
+            return res;
         }
+
+        throw new StopIteration();
     }
 }

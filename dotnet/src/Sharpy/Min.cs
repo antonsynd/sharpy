@@ -1,58 +1,57 @@
-using Sharpy.Collections.Interfaces;
+namespace Sharpy;
 
-namespace Sharpy
+using Collections.Interfaces;
+
+public static partial class Exports
 {
-    public static partial class Exports
+    public static T Min<T>(IIterable<T> iterable)
     {
-        public static T Min<T>(IIterable<T> iterable)
+        return Min(iterable, value => value);
+    }
+
+    public static T Min<T, TKey>(IIterable<T> iterable, Func<T, TKey> key)
+    {
+        if (iterable is null)
         {
-            return Min(iterable, value => value);
+            throw new TypeError("'NoneType' object is not iterable");
         }
 
-        public static T Min<T, TKey>(IIterable<T> iterable, Func<T, TKey> key)
+        if (key is null)
         {
-            if (iterable is null)
+            throw new TypeError("Min() key argument cannot be None");
+        }
+
+        bool iterableIsEmpty = true;
+        T? smallest = default;
+
+        foreach (var elem in iterable)
+        {
+            if (elem is null)
             {
-                throw new TypeError("'NoneType' object is not iterable");
-            }
-
-            if (key is null)
-            {
-                throw new TypeError("Min() key argument cannot be None");
-            }
-
-            bool iterableIsEmpty = true;
-            T? smallest = default;
-
-            foreach (var elem in iterable)
-            {
-                if (elem is null)
-                {
-                    throw new TypeError("'<' not supported for instances of 'NoneType'");
-                }
-
-                if (smallest is null || iterableIsEmpty)
-                {
-                    smallest = elem;
-                    iterableIsEmpty = false;
-
-                    continue;
-                }
-
-                if (LessThanAdapterFactory<TKey>.IsLessThan(key(elem), key(smallest)))
-                {
-                    smallest = elem;
-                }
-
-                // No-op, these are equivalent, no need to do anything
+                throw new TypeError("'<' not supported for instances of 'NoneType'");
             }
 
             if (smallest is null || iterableIsEmpty)
             {
-                throw new ValueError("Min() iterable argument is empty");
+                smallest = elem;
+                iterableIsEmpty = false;
+
+                continue;
             }
 
-            return smallest;
+            if (LessThanAdapterFactory<TKey>.IsLessThan(key(elem), key(smallest)))
+            {
+                smallest = elem;
+            }
+
+            // No-op, these are equivalent, no need to do anything
         }
+
+        if (smallest is null || iterableIsEmpty)
+        {
+            throw new ValueError("Min() iterable argument is empty");
+        }
+
+        return smallest;
     }
 }

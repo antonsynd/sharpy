@@ -1,15 +1,14 @@
-namespace Sharpy
-{
-    public static partial class Exports
-    {
-        public static T Next<T>(Iterator<T> iterator)
-        {
-            if (iterator is null)
-            {
-                throw new TypeError("Next() iterator argument cannot be None");
-            }
+namespace Sharpy;
 
-            return iterator.__Next__();
+public static partial class Exports
+{
+    public static T Next<T>(Iterator<T> iterator)
+    {
+        if (iterator is null)
+        {
+            throw new TypeError("Next() iterator argument cannot be None");
         }
+
+        return iterator.__Next__();
     }
 }
