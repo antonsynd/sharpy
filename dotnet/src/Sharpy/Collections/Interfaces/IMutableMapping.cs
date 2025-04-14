@@ -72,7 +72,7 @@ public interface IMutableMapping<K, V> : IMapping<K, V> where K : notnull
     /// </summary>
     /// <remarks>
     /// Internally should call
-    /// <see cref="__IOr__(IIterable&lt;(K, V)&gt;)"/> if the class is
+    /// <see cref="__IOr__(IIterable&lt;System.ValueTuple{K, V}&gt;)"/> if the class is
     /// not sealed.
     /// </remarks>
     void Update(IIterable<(K, V)> other);

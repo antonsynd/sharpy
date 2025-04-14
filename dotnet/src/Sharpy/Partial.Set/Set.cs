@@ -4,9 +4,7 @@ using Collections.Interfaces;
 
 public sealed partial class Set<T>
     : Object, IMutableSet<Set<T>, T>,
-      ILessThanOrEquatable<Set<T>>, IGreaterThanOrEquatable<Set<T>>,
-      ILessThanOrEquatable<Collections.Interfaces.ISet<T>>,
-      IGreaterThanOrEquatable<Collections.Interfaces.ISet<T>>
+      ILessThanOrEquatable<Set<T>>, IGreaterThanOrEquatable<Set<T>>
 {
     private readonly HashSet<T> _set;
 

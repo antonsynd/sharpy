@@ -43,7 +43,7 @@ public interface ISequence<T> : ICollection<T>, IReversible<T>, IAddable<ISequen
     /// Returns the number of times the given element appears in the
     /// sequence as evaluated by Sharpy's equality resolution.
     /// </summary>
-    uint Count(T x);
+    new uint Count(T x);
 
     /// <summary>
     /// Returns the index of the first occurrence of the given element in

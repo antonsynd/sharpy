@@ -3,7 +3,7 @@ namespace Sharpy.Collections.Interfaces;
 /// <summary>
 /// Interface for read-only sets.
 /// </summary>
-public interface ISet<T> : ICollection<T>, IEquatable<ISet<T>>, IInequatable<ISet<T>>, ILessThanOrEquatable<ISet<T>>, IGreaterThanOrEquatable<ISet<T>>
+public interface ISet<T> : ICollection<T>, IEquatable<ISet<T>>, IInequatable<ISet<T>>
 {
     ISet<T> __And__(ISet<T> other);
 
@@ -20,7 +20,7 @@ public interface ISet<T> : ICollection<T>, IEquatable<ISet<T>>, IInequatable<ISe
     bool IsDisjoint(ISet<T> other);
 }
 
-public interface ISet<S, T> : ISet<T> where S : ISet<S, T>
+public interface ISet<S, T> : ISet<T> where S : ISet<S, T>, ILessThanOrEquatable<S>, IGreaterThanOrEquatable<S>
 {
     S __And__(S other);
 
@@ -40,7 +40,7 @@ public interface ISet<S, T> : ISet<T> where S : ISet<S, T>
 
     static abstract S operator |(S left, S right);
 
-    static abstract ISet<T> operator -(S left, S right);
+    static abstract S operator -(S left, S right);
 
-    static abstract ISet<T> operator ^(S left, S right);
+    static abstract S operator ^(S left, S right);
 }
