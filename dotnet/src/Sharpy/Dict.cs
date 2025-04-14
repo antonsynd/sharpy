@@ -1,7 +1,10 @@
 namespace Sharpy;
+
 using System.Collections;
 using System.Text;
+
 using Collections.Interfaces;
+using Operator;
 
 public sealed partial class Dict<K, V> : Object, IMutableMapping<K, V> where K : notnull
 {
@@ -220,7 +223,7 @@ public sealed partial class Dict<K, V> : Object, IMutableMapping<K, V> where K :
                 return false;
             }
 
-            if (!EqualityAdapterFactory<V>.AreEqual(kv.Value, value))
+            if (!Operator.Exports.Eq(kv.Value, value))
             {
                 return false;
             }

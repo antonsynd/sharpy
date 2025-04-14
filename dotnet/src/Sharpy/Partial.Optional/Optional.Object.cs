@@ -1,5 +1,7 @@
 namespace Sharpy;
 
+using Operator;
+
 public sealed partial class Optional<T>
 {
     public override bool __Bool__()
@@ -30,7 +32,7 @@ public sealed partial class Optional<T>
             return false;
         }
 
-        return EqualityAdapterFactory<T>.AreEqual((T?)_value, (T?)other._value);
+        return Operator.Exports.Eq((T?)_value, (T?)other._value);
     }
 
     public override string __Repr__()

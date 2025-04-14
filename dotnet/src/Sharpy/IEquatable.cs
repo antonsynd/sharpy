@@ -14,7 +14,15 @@ public interface IEquatable : IHashable
     /// therefore Sharpy) objects declare this by existing because they
     /// all subclass <see cref="object"/> which implements this.
     /// </remarks>
-    bool Equals(object? other);
+    bool Equals(object? other)
+    {
+        if (other is null)
+        {
+            return false;
+        }
+
+        return __Eq__(other);
+    }
 
     /// <remarks>
     /// This should delegate to <see cref="IEquatable&lt;T&gt;.__Eq__(T)"/>
@@ -36,6 +44,18 @@ public interface IEquatable<T> : IEquatable, System.IEquatable<T> where T : IEqu
     /// </remarks>
     bool __Eq__(T other);
 
+    new bool __Eq__(object other)
+    {
+        if (other is T obj)
+        {
+            return __Eq__(obj);
+        }
+
+        // NOTE: Do NOT call Equals() because it will result in an infinite
+        // loop as Equals() ultimately references __Eq__()
+        return ReferenceEquals(this, other);
+    }
+
     static virtual bool operator ==(T left, T right)
     {
         return left?.__Eq__(right) ?? right is null;
@@ -48,12 +68,7 @@ public interface IEquatable<T> : IEquatable, System.IEquatable<T> where T : IEqu
 
     static virtual bool operator ==(T left, object right)
     {
-        if (right is T tRight)
-        {
-            return left == tRight;
-        }
-
-        return false;
+        return left?.__Eq__(right) ?? right is null;
     }
 
     static virtual bool operator !=(T left, object right)
@@ -63,12 +78,7 @@ public interface IEquatable<T> : IEquatable, System.IEquatable<T> where T : IEqu
 
     static virtual bool operator ==(object left, T right)
     {
-        if (left is T tLeft)
-        {
-            return tLeft == right;
-        }
-
-        return false;
+        return right?.__Eq__(right) ?? left is null;
     }
 
     static virtual bool operator !=(object left, T right)

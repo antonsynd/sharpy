@@ -11,16 +11,56 @@ public static partial class Exports
     /// <typeparam name="T">The type of the objects being compared.</typeparam>
     public static bool Eq<T>(T left, T right) where T : IEquatable<T>
     {
+        if (ReferenceEquals(left, right))
+        {
+            return true;
+        }
+
         return left?.__Eq__(right) ?? right is null;
+    }
+
+    public static bool Eq(Object left, Object right)
+    {
+        if (ReferenceEquals(left, right))
+        {
+            return true;
+        }
+
+        return left?.__Eq__(right) ?? right is null;
+    }
+
+    public static bool Eq<T>(IComparable<T> left, T right)
+    {
+        if (ReferenceEquals(left, right))
+        {
+            return true;
+        }
+
+        return left?.CompareTo(right) == 0;
+    }
+
+    public static bool Eq(IComparable left, object right)
+    {
+        if (ReferenceEquals(left, right))
+        {
+            return true;
+        }
+
+        return left?.CompareTo(right) == 0;
     }
 
     public static bool Eq(object left, object right)
     {
+        if (ReferenceEquals(left, right))
+        {
+            return true;
+        }
+
         if (left is Object objLeft)
         {
             if (right is Object objRight)
             {
-                // Delegate to generic version above
+                // Delegate to Object version above
                 return Eq(objLeft, objRight);
             }
 
@@ -35,5 +75,12 @@ public static partial class Exports
     }
 
     public static bool __Eq__<T>(T left, T right) where T : IEquatable<T> => Eq(left, right);
+
+    public static bool __Eq__(Object left, Object right) => Eq(left, right);
+
+    public static bool __Eq__<T>(IComparable<T> left, T right) => Eq(left, right);
+
+    public static bool __Eq__(IComparable left, object right) => Eq(left, right);
+
     public static bool __Eq__(object left, object right) => Eq(left, right);
 }

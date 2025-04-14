@@ -1,19 +1,20 @@
 namespace Sharpy;
 
 using Collections.Interfaces;
+using Operator;
 
 public static partial class Exports
 {
-    public static T Min<T>(IIterable<T> iterable)
+    public static T Min<T>(IIterable<T> iterable) where T : ILessThanComparable<T>
     {
         return Min(iterable, value => value);
     }
 
-    public static T Min<T, TKey>(IIterable<T> iterable, Func<T, TKey> key)
+    public static T Min<T, TKey>(IIterable<T> iterable, Func<T, TKey> key) where TKey : ILessThanComparable<TKey>
     {
         if (iterable is null)
         {
-            throw new TypeError("'NoneType' object is not iterable");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
         if (key is null)
@@ -28,7 +29,7 @@ public static partial class Exports
         {
             if (elem is null)
             {
-                throw new TypeError("'<' not supported for instances of 'NoneType'");
+                throw TypeError.OpNotSupported("<", "NoneType");
             }
 
             if (smallest is null || iterableIsEmpty)
@@ -39,7 +40,7 @@ public static partial class Exports
                 continue;
             }
 
-            if (LessThanAdapterFactory<TKey>.IsLessThan(key(elem), key(smallest)))
+            if (Operator.Exports.Lt(key(elem), key(smallest)))
             {
                 smallest = elem;
             }

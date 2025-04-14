@@ -1,5 +1,7 @@
 namespace Sharpy;
 
+using Operator;
+
 public sealed partial class List<T>
 {
     /// <inheritdoc/>
@@ -31,7 +33,7 @@ public sealed partial class List<T>
             var leftElem = _list[(int)i];
             var rightElem = other._list[(int)i];
 
-            if (!EqualityAdapterFactory<T>.AreEqual(leftElem, rightElem))
+            if (!Operator.Exports.Eq(leftElem, rightElem))
             {
                 return false;
             }

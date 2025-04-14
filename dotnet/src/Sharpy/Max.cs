@@ -1,19 +1,20 @@
 namespace Sharpy;
 
 using Collections.Interfaces;
+using Operator;
 
 public static partial class Exports
 {
-    public static T? Max<T>(IIterable<T> iterable)
+    public static T Max<T>(IIterable<T> iterable) where T : ILessThanComparable<T>
     {
         return Max(iterable, value => value);
     }
 
-    public static T? Max<T, TKey>(IIterable<T> iterable, Func<T, TKey> key)
+    public static T Max<T, TKey>(IIterable<T> iterable, Func<T, TKey> key) where TKey : ILessThanComparable<TKey>
     {
         if (iterable is null)
         {
-            throw new TypeError("'NoneType' object is not iterable");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
         if (key is null)
@@ -28,7 +29,7 @@ public static partial class Exports
         {
             if (elem is null)
             {
-                throw new TypeError("'<' not supported for instances of 'NoneType'");
+                throw TypeError.OpNotSupported("<", "NoneType");
             }
 
             if (biggest is null || iterableIsEmpty)
@@ -39,7 +40,7 @@ public static partial class Exports
                 continue;
             }
 
-            if (LessThanAdapterFactory<TKey>.IsLessThan(key(biggest), key(elem)))
+            if (Operator.Exports.Lt(key(biggest), key(elem)))
             {
                 biggest = elem;
             }
