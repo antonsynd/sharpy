@@ -3,7 +3,7 @@ namespace Sharpy.Collections.Interfaces;
 /// <summary>
 /// Interface for read-only sets.
 /// </summary>
-public interface ISet<T> : ICollection<T>, IEquatable<Set<T>>, IInequatable<Set<T>>
+public interface ISet<T> : ICollection<T>, IEquatable<ISet<T>>, IInequatable<ISet<T>>, ILessThanOrEquatable<ISet<T>>, IGreaterThanOrEquatable<ISet<T>>
 {
     ISet<T> __And__(ISet<T> other);
 
@@ -18,17 +18,9 @@ public interface ISet<T> : ICollection<T>, IEquatable<Set<T>>, IInequatable<Set<
     ISet<T> __ROr__(ISet<T> other);
 
     bool IsDisjoint(ISet<T> other);
-
-    // static abstract ISet<T> operator &(ISet<T> left, ISet<T> right);
-
-    // static abstract ISet<T> operator |(ISet<T> left, ISet<T> right);
-
-    // static abstract ISet<T> operator -(ISet<T> left, ISet<T> right);
-
-    // static abstract ISet<T> operator ^(ISet<T> left, ISet<T> right);
 }
 
-public interface ISet<S, T> : ISet<T>
+public interface ISet<S, T> : ISet<T> where S : ISet<S, T>
 {
     S __And__(S other);
 
@@ -44,11 +36,11 @@ public interface ISet<S, T> : ISet<T>
 
     bool IsDisjoint(S other);
 
-    // static abstract S operator &(S left, S right);
+    static abstract S operator &(S left, S right);
 
-    // static abstract S operator |(S left, S right);
+    static abstract S operator |(S left, S right);
 
-    // static abstract S operator -(S left, S right);
+    static abstract ISet<T> operator -(S left, S right);
 
-    // static abstract S operator ^(S left, S right);
+    static abstract ISet<T> operator ^(S left, S right);
 }

@@ -7,11 +7,15 @@ public static partial class Exports
         return left.__Add__(right);
     }
 
-    public static T Add<T, U>(T left, U right) where T : IAddable<T, U>
+    public static TSum Add<TLeft, TRight, TSum>(TLeft left, TRight right)
+        where TLeft : IAddable<TLeft, TRight, TSum>
+        where TRight : IAddable<TLeft, TRight, TSum>
+        where TSum : IAddable<TLeft, TRight, TSum>
     {
         return left.__Add__(right);
     }
 
     public static T __Add__<T>(T left, T right) where T : IAddable<T> => Add<T>(left, right);
-    public static T __Add__<T, U>(T left, U right) where T : IAddable<T, U> => Add(left, right);
+
+    public static TSum __Add__<TLeft, TRight, TSum>(TLeft left, TRight right) => Add(left, right);
 }

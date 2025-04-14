@@ -1,10 +1,23 @@
 namespace Sharpy;
 
-public interface IAddable<T, U>
+public interface IAddable<TLeft, TRight, TSum>
+    where TLeft : IAddable<TLeft, TRight, TSum>
+    where TRight : IAddable<TLeft, TRight, TSum>
+    where TSum : IAddable<TLeft, TRight, TSum>
 {
-    T __Add__(U other);
+    TSum __Add__(TRight other);
+
+    static virtual TSum operator +(TLeft left, TRight right)
+    {
+        if (left is null || right is null)
+        {
+            throw new TypeError("'+' is not supported for objects of type 'NoneType'");
+        }
+
+        return left.__Add__(right);
+    }
 }
 
-public interface IAddable<T> : IAddable<T, T>
+public interface IAddable<T> : IAddable<T, T, T> where T : IAddable<T, T, T>
 {
 }

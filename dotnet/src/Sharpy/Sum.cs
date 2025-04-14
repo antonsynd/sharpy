@@ -4,7 +4,7 @@ using Collections.Interfaces;
 
 public static partial class Exports
 {
-    public static T Sum<T>(IIterable<T> iterable) where T : IAddable<T, T>
+    public static T Sum<T>(IIterable<T> iterable) where T : IAddable<T, T, T>
     {
         if (iterable is null)
         {

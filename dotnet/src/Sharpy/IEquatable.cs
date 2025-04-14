@@ -21,10 +21,6 @@ public interface IEquatable : IHashable
     /// when possible.
     /// </remarks>
     bool __Eq__(object other);
-
-    // static abstract bool operator ==(object left, object right);
-
-    // static abstract bool operator ==(Object left, Object right);
 }
 
 /// <summary>
@@ -33,12 +29,50 @@ public interface IEquatable : IHashable
 /// This is the generic version of the <see cref="IEquatable"/> interface.
 /// </summary>
 /// <typeparam name="T"></typeparam>
-public interface IEquatable<T> : IEquatable, System.IEquatable<T>
+public interface IEquatable<T> : IEquatable, System.IEquatable<T> where T : IEquatable<T>
 {
     /// <remarks>
     /// This defines equality between two objects of the same type.
     /// </remarks>
     bool __Eq__(T other);
 
-    // static abstract bool operator ==(T left, T right);
+    static virtual bool operator ==(T left, T right)
+    {
+        return left?.__Eq__(right) ?? right is null;
+    }
+
+    static virtual bool operator !=(T left, T right)
+    {
+        return !(left == right);
+    }
+
+    static virtual bool operator ==(T left, object right)
+    {
+        if (right is T tRight)
+        {
+            return left == tRight;
+        }
+
+        return false;
+    }
+
+    static virtual bool operator !=(T left, object right)
+    {
+        return !(left == right);
+    }
+
+    static virtual bool operator ==(object left, T right)
+    {
+        if (left is T tLeft)
+        {
+            return tLeft == right;
+        }
+
+        return false;
+    }
+
+    static virtual bool operator !=(object left, T right)
+    {
+        return !(left == right);
+    }
 }
