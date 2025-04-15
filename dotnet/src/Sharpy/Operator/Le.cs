@@ -49,7 +49,7 @@ public static partial class Exports
 
     public static bool __Le__<T>(T left, T right) where T : ILessThanOrEquatable<T> => Le(left, right);
 
-    public static bool __Le__<T>(IComparable<T> left, IComparable<T> right) => Le(left, right);
+    public static bool __Le__<T>(IComparable<T> left, T right) => Le(left, right);
 
-    public static bool __Le__<T>(IComparable left, IComparable right) => Le(left, right);
+    public static bool __Le__<T>(IComparable left, object right) => Le(left, right);
 }

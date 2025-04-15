@@ -49,7 +49,7 @@ public static partial class Exports
 
     public static bool __Lt__<T>(T left, T right) where T : ILessThanComparable<T> => Lt(left, right);
 
-    public static bool __Lt__<T>(IComparable<T> left, IComparable<T> right) => Lt(left, right);
+    public static bool __Lt__<T>(IComparable<T> left, T right) => Lt(left, right);
 
-    public static bool __Lt__<T>(IComparable left, IComparable right) => Lt(left, right);
+    public static bool __Lt__<T>(IComparable left, object right) => Lt(left, right);
 }
