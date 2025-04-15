@@ -87,6 +87,7 @@ def create_parser() -> argparse.ArgumentParser:
         "setup", help="Downloads resources and generates required code."
     )
     build_parser = subparsers.add_parser("build", help="Builds the package.")
+    build_parser.add_argument("project", type=str, default="all", choices=("all", "lib", "tests"))
     build_parser.add_argument("--release", action="store_true")
     clean_parser = subparsers.add_parser("clean", help="Cleans up intermediate objects.")
     install_parser = subparsers.add_parser("install", help="TODO: No-op")
@@ -124,18 +125,31 @@ def get_targets(args: argparse.Namespace) -> AbstractSet[str]:
 
 def build(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
     check_for_expected_resources()
-    build_stdlib(release=release)
+
+    if args.project in {"all", "lib"}:
+        build_lib(release=release)
+
+    if args.project in {"all", "tests"}:
+        build_tests(release=release)
 
 
-def build_stdlib(release: bool) -> None:
+def build_lib(release: bool) -> None:
     build_type: str = "Release" if release else "Debug"
 
     try:
         get_logger().info(f"Building standard library with {build_type.lower()} configuration...")
-        subprocess.run(["dotnet", "build", "-c", build_type, str(CSHARP_SRC_DIR)])
+        subprocess.run(["dotnet", "build", "-c", build_type, str(CSHARP_SRC_DIR)], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Encountered error {e}", file=sys.stderr)
+        sys.exit(1)
 
+
+def build_tests(release: bool) -> None:
+    build_type: str = "Release" if release else "Debug"
+
+    try:
         get_logger().info(f"Building tests with {build_type.lower()} configuration...")
-        subprocess.run(["dotnet", "build", "-c", build_type, str(CSHARP_TEST_DIR)])
+        subprocess.run(["dotnet", "build", "-c", build_type, str(CSHARP_TEST_DIR)], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -154,13 +168,17 @@ def setup(args: argparse.Namespace, rest: Sequence[str]) -> None:
         os.chdir(RESOURCE_DIR)
 
         get_logger().info("Fixing grammar...")
-        subprocess.run([sys.executable, str(RESOURCE_DIR / "transformGrammar.py")])
+        subprocess.run([sys.executable, str(RESOURCE_DIR / "transformGrammar.py")], check=True)
 
         get_logger().info("Generating lexer...")
-        subprocess.run(["antlr", "-Dlanguage=Python3", str(RESOURCE_DIR / "PythonLexer.g4")])
+        subprocess.run(
+            ["antlr", "-Dlanguage=Python3", str(RESOURCE_DIR / "PythonLexer.g4")], check=True
+        )
 
         get_logger().info("Generating parser...")
-        subprocess.run(["antlr", "-Dlanguage=Python3", str(RESOURCE_DIR / "PythonParser.g4")])
+        subprocess.run(
+            ["antlr", "-Dlanguage=Python3", str(RESOURCE_DIR / "PythonParser.g4")], check=True
+        )
 
         get_logger().info("Generating visitor...")
         subprocess.run(
@@ -169,7 +187,8 @@ def setup(args: argparse.Namespace, rest: Sequence[str]) -> None:
                 "-visitor",
                 "-Dlanguage=Python3",
                 str(RESOURCE_DIR / "PythonParser.g4"),
-            ]
+            ],
+            check=True,
         )
 
     except subprocess.CalledProcessError as e:
@@ -248,7 +267,7 @@ def docs(args: argparse.Namespace, rest: Sequence[str]) -> None:
     get_logger().info("Generating documentation...")
 
     try:
-        subprocess.run(["docfx", str(CSHARP_DOCS_DIR / "docfx.json")])
+        subprocess.run(["docfx", str(CSHARP_DOCS_DIR / "docfx.json")], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -273,7 +292,9 @@ def format_with_black() -> None:
     get_logger().info("Formatting with black...")
 
     try:
-        subprocess.run(["black", str(PYTHON_SRC_DIR), str(PYTHON_TEST_DIR), str(TOOLS_DIR)])
+        subprocess.run(
+            ["black", str(PYTHON_SRC_DIR), str(PYTHON_TEST_DIR), str(TOOLS_DIR)], check=True
+        )
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -283,7 +304,9 @@ def format_with_isort() -> None:
     get_logger().info("Formatting with isort...")
 
     try:
-        subprocess.run(["isort", str(PYTHON_SRC_DIR), str(PYTHON_TEST_DIR), str(TOOLS_DIR)])
+        subprocess.run(
+            ["isort", str(PYTHON_SRC_DIR), str(PYTHON_TEST_DIR), str(TOOLS_DIR)], check=True
+        )
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -300,7 +323,8 @@ def format_with_dotnet_format() -> None:
                 "-v",
                 "detailed",
                 str(CSHARP_SRC_DIR / "Sharpy.csproj"),
-            ]
+            ],
+            check=True,
         )
 
         get_logger().info("Formatting test files with dotnet-format...")
@@ -312,7 +336,8 @@ def format_with_dotnet_format() -> None:
                 "-v",
                 "detailed",
                 str(CSHARP_TEST_DIR / "Sharpy.Tests.csproj"),
-            ]
+            ],
+            check=True,
         )
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
@@ -327,7 +352,7 @@ def run(args: argparse.Namespace, rest: Sequence[str]) -> None:
     run_env["PYTHONPATH"] = ":".join([existing_python_path, str(PYTHON_SRC_DIR), str(RESOURCE_DIR)])
 
     try:
-        subprocess.run(rest, env=run_env)
+        subprocess.run(rest, env=run_env, check=True)
     except subprocess.CalledProcessError as e:
         get_logger().error(f"Encountered error {e}")
         sys.exit(1)
@@ -340,7 +365,7 @@ def test(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
         get_logger().info("Running tests with pytest...")
 
         try:
-            subprocess.run(["pytest", str(PYTHON_TEST_DIR), *rest])
+            subprocess.run(["pytest", str(PYTHON_TEST_DIR), *rest], check=True)
         except subprocess.CalledProcessError as e:
             get_logger().error(f"Encountered error {e}")
             sys.exit(1)
@@ -350,7 +375,9 @@ def test(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
 
         get_logger().info(f"Running tests with dotnet with {build_type.lower()} configuration...")
         try:
-            subprocess.run(["dotnet", "test", "-c", build_type, str(CSHARP_TEST_DIR), *rest])
+            subprocess.run(
+                ["dotnet", "test", "-c", build_type, str(CSHARP_TEST_DIR), *rest], check=True
+            )
         except subprocess.CalledProcessError as e:
             get_logger().error(f"Encountered error {e}")
             sys.exit(1)
