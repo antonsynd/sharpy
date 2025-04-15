@@ -8,7 +8,7 @@ public static partial class Exports
     {
         if (reversible is null)
         {
-            throw new TypeError("Reversed() reversible argument cannot be None");
+            throw TypeError.ArgNone("reversed", "reversible");
         }
 
         return reversible.__Reversed__();

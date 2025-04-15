@@ -13,7 +13,7 @@ public static partial class Exports
     {
         if (sized is null)
         {
-            throw new TypeError("Len() sized argument cannot be None");
+            throw TypeError.ArgNone("len", "sized");
         }
 
         return sized.__Len__();

@@ -1,8 +1,8 @@
 namespace Sharpy;
 
-public interface IRightAddable<T, U>
+public interface IRightAddable<TSum, TAugend>
 {
-    T __RAdd__(U other);
+    TSum __RAdd__(TAugend other);
 }
 
 public interface IRightAddable<T> : IRightAddable<T, T>

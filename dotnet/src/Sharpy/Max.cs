@@ -19,7 +19,7 @@ public static partial class Exports
 
         if (key is null)
         {
-            throw new TypeError("Max() key argument cannot be None");
+            throw TypeError.ArgNone("max", "key");
         }
 
         bool iterableIsEmpty = true;

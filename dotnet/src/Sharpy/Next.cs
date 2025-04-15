@@ -6,7 +6,7 @@ public static partial class Exports
     {
         if (iterator is null)
         {
-            throw new TypeError("Next() iterator argument cannot be None");
+            throw TypeError.ArgNone("next", "iterator");
         }
 
         return iterator.__Next__();

@@ -4,11 +4,11 @@ using Collections.Interfaces;
 
 public static partial class Exports
 {
-    public static T Sum<T>(IIterable<T> iterable) where T : IAddable<T, T, T>
+    public static T Sum<T>(IIterable<T> iterable) where T : IAddable<T>
     {
         if (iterable is null)
         {
-            throw new TypeError("Sum() iterable argument cannot be None");
+            throw TypeError.ArgNone("sum", "iterable");
         }
 
         var iterator = iterable.__Iter__();

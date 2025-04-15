@@ -1,6 +1,6 @@
 namespace Sharpy;
 
-public interface IRightMultipliable<T, U>
+public interface IRightMultipliable<TProduct, TMultiplicand>
 {
-    T __RMul__(U other);
+    TProduct __RMul__(TMultiplicand other);
 }

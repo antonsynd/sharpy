@@ -19,7 +19,7 @@ public static partial class Exports
 
         if (key is null)
         {
-            throw new TypeError("Min() key argument cannot be None");
+            throw TypeError.ArgNone("min", "key");
         }
 
         bool iterableIsEmpty = true;
