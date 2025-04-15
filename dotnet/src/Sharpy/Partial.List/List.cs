@@ -6,10 +6,15 @@ using Collections.Interfaces;
 /// A list of elements.
 /// </summary>
 public sealed partial class List<T>
-    : Object, IMutableSequence<List<T>, T>, IEquatable<List<T>>,
-      IAddable<List<T>>, IRightAddable<List<T>>,
-      IInplaceAddable<List<T>>, IMultipliable<List<T>, int>,
-      IInplaceMultipliable<int>, IRightMultipliable<List<T>, int>
+    : Object,
+      IMutableSequence<List<T>, T>,
+      IEquatable<List<T>>,
+      IAddable<List<T>>,
+      IRightAddable<List<T>>,
+      IInplaceAddable<List<T>>,
+      IMultipliable<List<T>, int>,
+      IInplaceMultipliable<int>,
+      IRightMultipliable<List<T>, int>
 {
     private System.Collections.Generic.List<T> _list;
 

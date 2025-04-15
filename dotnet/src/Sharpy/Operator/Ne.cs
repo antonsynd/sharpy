@@ -4,7 +4,8 @@ public static partial class Exports
 {
     public static bool Ne<T>(T left, T right) where T : IInequatable<T>
     {
-        if (ReferenceEquals(left, right)) {
+        if (ReferenceEquals(left, right))
+        {
             return false;
         }
 
