@@ -733,12 +733,12 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Max
     path: ../src/Sharpy/Max.cs
-    startLine: 6
+    startLine: 7
   assemblies:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public static T? Max<T>(IIterable<T> iterable)
+    content: public static T Max<T>(IIterable<T> iterable)
     parameters:
     - id: iterable
       type: Sharpy.Collections.Interfaces.IIterable{{T}}
@@ -769,12 +769,12 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Max
     path: ../src/Sharpy/Max.cs
-    startLine: 11
+    startLine: 12
   assemblies:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public static T? Max<T, TKey>(IIterable<T> iterable, Func<T, TKey> key)
+    content: public static T Max<T, TKey>(IIterable<T> iterable, Func<T, TKey> key)
     parameters:
     - id: iterable
       type: Sharpy.Collections.Interfaces.IIterable{{T}}
@@ -808,7 +808,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Min
     path: ../src/Sharpy/Min.cs
-    startLine: 6
+    startLine: 7
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -844,7 +844,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Min
     path: ../src/Sharpy/Min.cs
-    startLine: 11
+    startLine: 12
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1229,7 +1229,7 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: 'public static T Sum<T>(IIterable<T> iterable) where T : IAddable<T, T>'
+    content: 'public static T Sum<T>(IIterable<T> iterable) where T : IAddable<T>'
     parameters:
     - id: iterable
       type: Sharpy.Collections.Interfaces.IIterable{{T}}
@@ -1237,7 +1237,7 @@ items:
     - id: T
     return:
       type: '{T}'
-    content.vb: Public Shared Function Sum(Of T As IAddable(Of T, T))(iterable As IIterable(Of T)) As T
+    content.vb: Public Shared Function Sum(Of T As IAddable(Of T))(iterable As IIterable(Of T)) As T
   overload: Sharpy.Exports.Sum*
   nameWithType.vb: Exports.Sum(Of T)(IIterable(Of T))
   fullName.vb: Sharpy.Exports.Sum(Of T)(Sharpy.Collections.Interfaces.IIterable(Of T))

@@ -9,9 +9,9 @@ items:
   langs:
   - csharp
   - vb
-  name: IRightAddable<T, U>
-  nameWithType: IRightAddable<T, U>
-  fullName: Sharpy.IRightAddable<T, U>
+  name: IRightAddable<TSum, TAugend>
+  nameWithType: IRightAddable<TSum, TAugend>
+  fullName: Sharpy.IRightAddable<TSum, TAugend>
   type: Interface
   source:
     remote:
@@ -25,14 +25,14 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public interface IRightAddable<T, U>
+    content: public interface IRightAddable<TSum, TAugend>
     typeParameters:
-    - id: T
-    - id: U
-    content.vb: Public Interface IRightAddable(Of T, U)
-  nameWithType.vb: IRightAddable(Of T, U)
-  fullName.vb: Sharpy.IRightAddable(Of T, U)
-  name.vb: IRightAddable(Of T, U)
+    - id: TSum
+    - id: TAugend
+    content.vb: Public Interface IRightAddable(Of TSum, TAugend)
+  nameWithType.vb: IRightAddable(Of TSum, TAugend)
+  fullName.vb: Sharpy.IRightAddable(Of TSum, TAugend)
+  name.vb: IRightAddable(Of TSum, TAugend)
 - uid: Sharpy.IRightAddable`2.__RAdd__(`1)
   commentId: M:Sharpy.IRightAddable`2.__RAdd__(`1)
   id: __RAdd__(`1)
@@ -40,9 +40,9 @@ items:
   langs:
   - csharp
   - vb
-  name: __RAdd__(U)
-  nameWithType: IRightAddable<T, U>.__RAdd__(U)
-  fullName: Sharpy.IRightAddable<T, U>.__RAdd__(U)
+  name: __RAdd__(TAugend)
+  nameWithType: IRightAddable<TSum, TAugend>.__RAdd__(TAugend)
+  fullName: Sharpy.IRightAddable<TSum, TAugend>.__RAdd__(TAugend)
   type: Method
   source:
     remote:
@@ -56,16 +56,16 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: T __RAdd__(U other)
+    content: TSum __RAdd__(TAugend other)
     parameters:
     - id: other
-      type: '{U}'
+      type: '{TAugend}'
     return:
-      type: '{T}'
-    content.vb: Function __RAdd__(other As U) As T
+      type: '{TSum}'
+    content.vb: Function __RAdd__(other As TAugend) As TSum
   overload: Sharpy.IRightAddable`2.__RAdd__*
-  nameWithType.vb: IRightAddable(Of T, U).__RAdd__(U)
-  fullName.vb: Sharpy.IRightAddable(Of T, U).__RAdd__(U)
+  nameWithType.vb: IRightAddable(Of TSum, TAugend).__RAdd__(TAugend)
+  fullName.vb: Sharpy.IRightAddable(Of TSum, TAugend).__RAdd__(TAugend)
 references:
 - uid: Sharpy
   commentId: N:Sharpy
@@ -77,27 +77,27 @@ references:
   commentId: Overload:Sharpy.IRightAddable`2.__RAdd__
   href: Sharpy.IRightAddable-2.html#Sharpy_IRightAddable_2___RAdd____1_
   name: __RAdd__
-  nameWithType: IRightAddable<T, U>.__RAdd__
-  fullName: Sharpy.IRightAddable<T, U>.__RAdd__
-  nameWithType.vb: IRightAddable(Of T, U).__RAdd__
-  fullName.vb: Sharpy.IRightAddable(Of T, U).__RAdd__
-- uid: '{U}'
-  commentId: '!:U'
-  definition: U
-  name: U
-  nameWithType: U
-  fullName: U
-- uid: '{T}'
-  commentId: '!:T'
-  definition: T
-  name: T
-  nameWithType: T
-  fullName: T
-- uid: U
-  name: U
-  nameWithType: U
-  fullName: U
-- uid: T
-  name: T
-  nameWithType: T
-  fullName: T
+  nameWithType: IRightAddable<TSum, TAugend>.__RAdd__
+  fullName: Sharpy.IRightAddable<TSum, TAugend>.__RAdd__
+  nameWithType.vb: IRightAddable(Of TSum, TAugend).__RAdd__
+  fullName.vb: Sharpy.IRightAddable(Of TSum, TAugend).__RAdd__
+- uid: '{TAugend}'
+  commentId: '!:TAugend'
+  definition: TAugend
+  name: TAugend
+  nameWithType: TAugend
+  fullName: TAugend
+- uid: '{TSum}'
+  commentId: '!:TSum'
+  definition: TSum
+  name: TSum
+  nameWithType: TSum
+  fullName: TSum
+- uid: TAugend
+  name: TAugend
+  nameWithType: TAugend
+  fullName: TAugend
+- uid: TSum
+  name: TSum
+  nameWithType: TSum
+  fullName: TSum

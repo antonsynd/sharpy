@@ -34,6 +34,8 @@ items:
   - Sharpy.Collections.Interfaces.IIterable{{T}}.__Iter__
   - System.Collections.Generic.IEnumerable{{T}}.GetEnumerator
   - Sharpy.Collections.Interfaces.ISized.__Len__
+  - Sharpy.Collections.Interfaces.ISized.Length
+  - Sharpy.Collections.Interfaces.ISized.Count
   nameWithType.vb: IValuesView(Of T)
   fullName.vb: Sharpy.Collections.Interfaces.IValuesView(Of T)
   name.vb: IValuesView(Of T)
@@ -133,6 +135,20 @@ references:
     href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized___Len__
   - name: (
   - name: )
+- uid: Sharpy.Collections.Interfaces.ISized.Length
+  commentId: P:Sharpy.Collections.Interfaces.ISized.Length
+  parent: Sharpy.Collections.Interfaces.ISized
+  href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized_Length
+  name: Length
+  nameWithType: ISized.Length
+  fullName: Sharpy.Collections.Interfaces.ISized.Length
+- uid: Sharpy.Collections.Interfaces.ISized.Count
+  commentId: P:Sharpy.Collections.Interfaces.ISized.Count
+  parent: Sharpy.Collections.Interfaces.ISized
+  href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized_Count
+  name: Count
+  nameWithType: ISized.Count
+  fullName: Sharpy.Collections.Interfaces.ISized.Count
 - uid: Sharpy.Collections.Interfaces.IIterable`1.__Iter__
   commentId: M:Sharpy.Collections.Interfaces.IIterable`1.__Iter__
   href: Sharpy.Collections.Interfaces.IIterable-1.html#Sharpy_Collections_Interfaces_IIterable_1___Iter__

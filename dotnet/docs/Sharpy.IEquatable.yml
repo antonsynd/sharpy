@@ -100,12 +100,12 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/IEquatable.cs
-    startLine: 22
+    startLine: 30
   assemblies:
   - Sharpy
   namespace: Sharpy
   remarks: >-
-    This should delegate to <xref href="Sharpy.IEquatable%601.__Eq__(%600)" data-throw-if-not-resolved="false"></xref>
+    This should delegate to IEquatable&lt;T&gt;.__Eq__(T)
 
     when possible.
   example: []
@@ -259,28 +259,6 @@ references:
   name: System
   nameWithType: System
   fullName: System
-- uid: Sharpy.IEquatable`1.__Eq__(`0)
-  commentId: M:Sharpy.IEquatable`1.__Eq__(`0)
-  href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
-  name: __Eq__(T)
-  nameWithType: IEquatable<T>.__Eq__(T)
-  fullName: Sharpy.IEquatable<T>.__Eq__(T)
-  nameWithType.vb: IEquatable(Of T).__Eq__(T)
-  fullName.vb: Sharpy.IEquatable(Of T).__Eq__(T)
-  spec.csharp:
-  - uid: Sharpy.IEquatable`1.__Eq__(`0)
-    name: __Eq__
-    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
-  - name: (
-  - name: T
-  - name: )
-  spec.vb:
-  - uid: Sharpy.IEquatable`1.__Eq__(`0)
-    name: __Eq__
-    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
-  - name: (
-  - name: T
-  - name: )
 - uid: Sharpy.IEquatable.__Eq__*
   commentId: Overload:Sharpy.IEquatable.__Eq__
   href: Sharpy.IEquatable.html#Sharpy_IEquatable___Eq___System_Object_

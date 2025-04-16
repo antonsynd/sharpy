@@ -19,17 +19,17 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IAddable
     path: ../src/Sharpy/IAddable.cs
-    startLine: 7
+    startLine: 39
   assemblies:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: 'public interface IAddable<T> : IAddable<T, T>'
+    content: 'public interface IAddable<T> : IAddable<T, T, T> where T : IAddable<T, T, T>'
     typeParameters:
     - id: T
-    content.vb: Public Interface IAddable(Of T) Inherits IAddable(Of T, T)
+    content.vb: Public Interface IAddable(Of T As IAddable(Of T, T, T)) Inherits IAddable(Of T, T, T)
   inheritedMembers:
-  - Sharpy.IAddable{{T},{T}}.__Add__({T})
+  - Sharpy.IAddable{{T},{T},{T}}.__Add__({T})
   nameWithType.vb: IAddable(Of T)
   fullName.vb: Sharpy.IAddable(Of T)
   name.vb: IAddable(Of T)
@@ -40,113 +40,125 @@ references:
   name: Sharpy
   nameWithType: Sharpy
   fullName: Sharpy
-- uid: Sharpy.IAddable{{T},{T}}.__Add__({T})
-  commentId: M:Sharpy.IAddable{`0,`0}.__Add__(`0)
-  parent: Sharpy.IAddable{{T},{T}}
-  definition: Sharpy.IAddable`2.__Add__(`1)
-  href: Sharpy.IAddable-2.html#Sharpy_IAddable_2___Add____1_
+- uid: Sharpy.IAddable{{T},{T},{T}}.__Add__({T})
+  commentId: M:Sharpy.IAddable{`0,`0,`0}.__Add__(`0)
+  parent: Sharpy.IAddable{{T},{T},{T}}
+  definition: Sharpy.IAddable`3.__Add__(`1)
+  href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
   name: __Add__(T)
-  nameWithType: IAddable<T, T>.__Add__(T)
-  fullName: Sharpy.IAddable<T, T>.__Add__(T)
-  nameWithType.vb: IAddable(Of T, T).__Add__(T)
-  fullName.vb: Sharpy.IAddable(Of T, T).__Add__(T)
+  nameWithType: IAddable<T, T, T>.__Add__(T)
+  fullName: Sharpy.IAddable<T, T, T>.__Add__(T)
+  nameWithType.vb: IAddable(Of T, T, T).__Add__(T)
+  fullName.vb: Sharpy.IAddable(Of T, T, T).__Add__(T)
   spec.csharp:
-  - uid: Sharpy.IAddable{`0,`0}.__Add__(`0)
+  - uid: Sharpy.IAddable{`0,`0,`0}.__Add__(`0)
     name: __Add__
-    href: Sharpy.IAddable-2.html#Sharpy_IAddable_2___Add____1_
+    href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
   - name: (
   - name: T
   - name: )
   spec.vb:
-  - uid: Sharpy.IAddable{`0,`0}.__Add__(`0)
+  - uid: Sharpy.IAddable{`0,`0,`0}.__Add__(`0)
     name: __Add__
-    href: Sharpy.IAddable-2.html#Sharpy_IAddable_2___Add____1_
+    href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
   - name: (
   - name: T
   - name: )
-- uid: Sharpy.IAddable`2.__Add__(`1)
-  commentId: M:Sharpy.IAddable`2.__Add__(`1)
-  href: Sharpy.IAddable-2.html#Sharpy_IAddable_2___Add____1_
-  name: __Add__(U)
-  nameWithType: IAddable<T, U>.__Add__(U)
-  fullName: Sharpy.IAddable<T, U>.__Add__(U)
-  nameWithType.vb: IAddable(Of T, U).__Add__(U)
-  fullName.vb: Sharpy.IAddable(Of T, U).__Add__(U)
+- uid: Sharpy.IAddable`3.__Add__(`1)
+  commentId: M:Sharpy.IAddable`3.__Add__(`1)
+  href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
+  name: __Add__(TRight)
+  nameWithType: IAddable<TLeft, TRight, TSum>.__Add__(TRight)
+  fullName: Sharpy.IAddable<TLeft, TRight, TSum>.__Add__(TRight)
+  nameWithType.vb: IAddable(Of TLeft, TRight, TSum).__Add__(TRight)
+  fullName.vb: Sharpy.IAddable(Of TLeft, TRight, TSum).__Add__(TRight)
   spec.csharp:
-  - uid: Sharpy.IAddable`2.__Add__(`1)
+  - uid: Sharpy.IAddable`3.__Add__(`1)
     name: __Add__
-    href: Sharpy.IAddable-2.html#Sharpy_IAddable_2___Add____1_
+    href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
   - name: (
-  - name: U
+  - name: TRight
   - name: )
   spec.vb:
-  - uid: Sharpy.IAddable`2.__Add__(`1)
+  - uid: Sharpy.IAddable`3.__Add__(`1)
     name: __Add__
-    href: Sharpy.IAddable-2.html#Sharpy_IAddable_2___Add____1_
+    href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
   - name: (
-  - name: U
+  - name: TRight
   - name: )
-- uid: Sharpy.IAddable{{T},{T}}
-  commentId: T:Sharpy.IAddable{`0,`0}
+- uid: Sharpy.IAddable{{T},{T},{T}}
+  commentId: T:Sharpy.IAddable{`0,`0,`0}
   parent: Sharpy
-  definition: Sharpy.IAddable`2
-  href: Sharpy.IAddable-2.html
-  name: IAddable<T, T>
-  nameWithType: IAddable<T, T>
-  fullName: Sharpy.IAddable<T, T>
-  nameWithType.vb: IAddable(Of T, T)
-  fullName.vb: Sharpy.IAddable(Of T, T)
-  name.vb: IAddable(Of T, T)
+  definition: Sharpy.IAddable`3
+  href: Sharpy.IAddable-3.html
+  name: IAddable<T, T, T>
+  nameWithType: IAddable<T, T, T>
+  fullName: Sharpy.IAddable<T, T, T>
+  nameWithType.vb: IAddable(Of T, T, T)
+  fullName.vb: Sharpy.IAddable(Of T, T, T)
+  name.vb: IAddable(Of T, T, T)
   spec.csharp:
-  - uid: Sharpy.IAddable`2
+  - uid: Sharpy.IAddable`3
     name: IAddable
-    href: Sharpy.IAddable-2.html
+    href: Sharpy.IAddable-3.html
   - name: <
+  - name: T
+  - name: ','
+  - name: " "
   - name: T
   - name: ','
   - name: " "
   - name: T
   - name: '>'
   spec.vb:
-  - uid: Sharpy.IAddable`2
+  - uid: Sharpy.IAddable`3
     name: IAddable
-    href: Sharpy.IAddable-2.html
+    href: Sharpy.IAddable-3.html
   - name: (
   - name: Of
+  - name: " "
+  - name: T
+  - name: ','
   - name: " "
   - name: T
   - name: ','
   - name: " "
   - name: T
   - name: )
-- uid: Sharpy.IAddable`2
-  commentId: T:Sharpy.IAddable`2
-  href: Sharpy.IAddable-2.html
-  name: IAddable<T, U>
-  nameWithType: IAddable<T, U>
-  fullName: Sharpy.IAddable<T, U>
-  nameWithType.vb: IAddable(Of T, U)
-  fullName.vb: Sharpy.IAddable(Of T, U)
-  name.vb: IAddable(Of T, U)
+- uid: Sharpy.IAddable`3
+  commentId: T:Sharpy.IAddable`3
+  href: Sharpy.IAddable-3.html
+  name: IAddable<TLeft, TRight, TSum>
+  nameWithType: IAddable<TLeft, TRight, TSum>
+  fullName: Sharpy.IAddable<TLeft, TRight, TSum>
+  nameWithType.vb: IAddable(Of TLeft, TRight, TSum)
+  fullName.vb: Sharpy.IAddable(Of TLeft, TRight, TSum)
+  name.vb: IAddable(Of TLeft, TRight, TSum)
   spec.csharp:
-  - uid: Sharpy.IAddable`2
+  - uid: Sharpy.IAddable`3
     name: IAddable
-    href: Sharpy.IAddable-2.html
+    href: Sharpy.IAddable-3.html
   - name: <
-  - name: T
+  - name: TLeft
   - name: ','
   - name: " "
-  - name: U
+  - name: TRight
+  - name: ','
+  - name: " "
+  - name: TSum
   - name: '>'
   spec.vb:
-  - uid: Sharpy.IAddable`2
+  - uid: Sharpy.IAddable`3
     name: IAddable
-    href: Sharpy.IAddable-2.html
+    href: Sharpy.IAddable-3.html
   - name: (
   - name: Of
   - name: " "
-  - name: T
+  - name: TLeft
   - name: ','
   - name: " "
-  - name: U
+  - name: TRight
+  - name: ','
+  - name: " "
+  - name: TSum
   - name: )

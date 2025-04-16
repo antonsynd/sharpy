@@ -61,22 +61,24 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Dict
     path: ../src/Sharpy/Dict.cs
-    startLine: 5
+    startLine: 8
   assemblies:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: 'public sealed class Dict<K, V> : Object, IInequatable<Object>, IEquatable<Object>, IEquatable, IHashable, IEquatable<Object>, IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableMapping<K, V>, IMapping<K, V>, ICollection<K>, IContainer<K>, IIterable<K>, IEnumerable<K>, IEnumerable, ISized where K : notnull'
+    content: 'public sealed class Dict<K, V> : Object, IInequatable<Object>, IInequatableWith<Object>, IEquatable<Object>, IEquatableWith<Object>, IEquatable, IHashable, IEquatable<Object>, IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableMapping<K, V>, IMapping<K, V>, ICollection<K>, IContainer<K>, IIterable<K>, IEnumerable<K>, IEnumerable, ISized where K : notnull'
     typeParameters:
     - id: K
     - id: V
-    content.vb: Public NotInheritable Class Dict(Of K, V) Inherits Object Implements IInequatable(Of Object), IEquatable(Of Object), IEquatable, IHashable, IEquatable(Of Object), IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableMapping(Of K, V), IMapping(Of K, V), ICollection(Of K), IContainer(Of K), IIterable(Of K), IEnumerable(Of K), IEnumerable, ISized
+    content.vb: Public NotInheritable Class Dict(Of K, V) Inherits Object Implements IInequatable(Of Object), IInequatableWith(Of Object), IEquatable(Of Object), IEquatableWith(Of Object), IEquatable, IHashable, IEquatable(Of Object), IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableMapping(Of K, V), IMapping(Of K, V), ICollection(Of K), IContainer(Of K), IIterable(Of K), IEnumerable(Of K), IEnumerable, ISized
   inheritance:
   - System.Object
   - Sharpy.Object
   implements:
   - Sharpy.IInequatable{Sharpy.Object}
+  - Sharpy.IInequatableWith{Sharpy.Object}
   - Sharpy.IEquatable{Sharpy.Object}
+  - Sharpy.IEquatableWith{Sharpy.Object}
   - Sharpy.IEquatable
   - Sharpy.IHashable
   - System.IEquatable{Sharpy.Object}
@@ -126,7 +128,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Dict.cs
-    startLine: 9
+    startLine: 12
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -155,7 +157,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Dict.cs
-    startLine: 14
+    startLine: 17
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -187,7 +189,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Dict.cs
-    startLine: 22
+    startLine: 25
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -219,7 +221,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Copy
     path: ../src/Sharpy/Dict.cs
-    startLine: 33
+    startLine: 36
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -251,7 +253,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Clear
     path: ../src/Sharpy/Dict.cs
-    startLine: 46
+    startLine: 49
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -283,7 +285,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Contains
     path: ../src/Sharpy/Dict.cs
-    startLine: 51
+    startLine: 54
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -323,7 +325,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Get
     path: ../src/Sharpy/Dict.cs
-    startLine: 56
+    startLine: 59
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -367,7 +369,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Get
     path: ../src/Sharpy/Dict.cs
-    startLine: 66
+    startLine: 69
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -413,7 +415,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: GetEnumerator
     path: ../src/Sharpy/Dict.cs
-    startLine: 76
+    startLine: 79
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -448,7 +450,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Items
     path: ../src/Sharpy/Dict.cs
-    startLine: 84
+    startLine: 87
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -485,7 +487,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Keys
     path: ../src/Sharpy/Dict.cs
-    startLine: 89
+    startLine: 92
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -519,7 +521,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Pop
     path: ../src/Sharpy/Dict.cs
-    startLine: 94
+    startLine: 97
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -559,7 +561,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Pop
     path: ../src/Sharpy/Dict.cs
-    startLine: 104
+    startLine: 107
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -601,7 +603,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: PopItem
     path: ../src/Sharpy/Dict.cs
-    startLine: 114
+    startLine: 117
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -642,7 +644,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: SetDefault
     path: ../src/Sharpy/Dict.cs
-    startLine: 122
+    startLine: 125
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -684,7 +686,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Update
     path: ../src/Sharpy/Dict.cs
-    startLine: 132
+    startLine: 135
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -727,7 +729,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Update
     path: ../src/Sharpy/Dict.cs
-    startLine: 140
+    startLine: 143
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -738,7 +740,7 @@ items:
   remarks: >-
     Internally should call
 
-    __IOr__(IIterable&lt;(K, V)&gt;) if the class is
+    <xref href="Sharpy.Collections.Interfaces.IMutableMapping%602.__IOr__(Sharpy.Collections.Interfaces.IIterable%7bSystem.ValueTuple%7b%600%2c%601%7d%7d)" data-throw-if-not-resolved="false"></xref> if the class is
 
     not sealed.
   example: []
@@ -772,7 +774,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Values
     path: ../src/Sharpy/Dict.cs
-    startLine: 148
+    startLine: 151
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -806,7 +808,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Contains__
     path: ../src/Sharpy/Dict.cs
-    startLine: 153
+    startLine: 156
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -850,7 +852,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __DelItem__
     path: ../src/Sharpy/Dict.cs
-    startLine: 158
+    startLine: 161
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -888,7 +890,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __GetItem__
     path: ../src/Sharpy/Dict.cs
-    startLine: 166
+    startLine: 169
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -928,7 +930,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Iter__
     path: ../src/Sharpy/Dict.cs
-    startLine: 176
+    startLine: 179
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -975,7 +977,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Dict.cs
-    startLine: 181
+    startLine: 184
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1014,7 +1016,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Len__
     path: ../src/Sharpy/Dict.cs
-    startLine: 187
+    startLine: 190
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1048,7 +1050,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/Dict.cs
-    startLine: 192
+    startLine: 195
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1089,7 +1091,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/Dict.cs
-    startLine: 202
+    startLine: 205
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1123,7 +1125,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __SetItem__
     path: ../src/Sharpy/Dict.cs
-    startLine: 231
+    startLine: 234
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1160,7 +1162,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: ToDictionary
     path: ../src/Sharpy/Dict.cs
-    startLine: 241
+    startLine: 244
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1190,7 +1192,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Or__
     path: ../src/Sharpy/Dict.cs
-    startLine: 246
+    startLine: 249
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1224,7 +1226,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __IOr__
     path: ../src/Sharpy/Dict.cs
-    startLine: 254
+    startLine: 257
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1256,7 +1258,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Or__
     path: ../src/Sharpy/Dict.cs
-    startLine: 259
+    startLine: 262
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1297,7 +1299,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __IOr__
     path: ../src/Sharpy/Dict.cs
-    startLine: 267
+    startLine: 270
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1336,7 +1338,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Or__
     path: ../src/Sharpy/Dict.cs
-    startLine: 272
+    startLine: 275
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1379,7 +1381,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __IOr__
     path: ../src/Sharpy/Dict.cs
-    startLine: 280
+    startLine: 283
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1418,7 +1420,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_BitwiseOr
     path: ../src/Sharpy/Dict.cs
-    startLine: 285
+    startLine: 288
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1454,7 +1456,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Equality
     path: ../src/Sharpy/Dict.cs
-    startLine: 290
+    startLine: 293
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1490,7 +1492,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Inequality
     path: ../src/Sharpy/Dict.cs
-    startLine: 305
+    startLine: 308
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1526,7 +1528,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Hash__
     path: ../src/Sharpy/Dict.cs
-    startLine: 310
+    startLine: 313
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1559,7 +1561,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Repr__
     path: ../src/Sharpy/Dict.cs
-    startLine: 319
+    startLine: 322
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1596,7 +1598,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Bool__
     path: ../src/Sharpy/Dict.cs
-    startLine: 344
+    startLine: 347
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1634,7 +1636,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_True
     path: ../src/Sharpy/Dict.cs
-    startLine: 349
+    startLine: 352
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1668,7 +1670,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_False
     path: ../src/Sharpy/Dict.cs
-    startLine: 354
+    startLine: 357
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1740,6 +1742,37 @@ references:
     name: Object
     href: Sharpy.Object.html
   - name: )
+- uid: Sharpy.IInequatableWith{Sharpy.Object}
+  commentId: T:Sharpy.IInequatableWith{Sharpy.Object}
+  parent: Sharpy
+  definition: Sharpy.IInequatableWith`1
+  href: Sharpy.IInequatableWith-1.html
+  name: IInequatableWith<Object>
+  nameWithType: IInequatableWith<Object>
+  fullName: Sharpy.IInequatableWith<Sharpy.Object>
+  nameWithType.vb: IInequatableWith(Of Object)
+  fullName.vb: Sharpy.IInequatableWith(Of Sharpy.Object)
+  name.vb: IInequatableWith(Of Object)
+  spec.csharp:
+  - uid: Sharpy.IInequatableWith`1
+    name: IInequatableWith
+    href: Sharpy.IInequatableWith-1.html
+  - name: <
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IInequatableWith`1
+    name: IInequatableWith
+    href: Sharpy.IInequatableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: )
 - uid: Sharpy.IEquatable{Sharpy.Object}
   commentId: T:Sharpy.IEquatable{Sharpy.Object}
   parent: Sharpy
@@ -1764,6 +1797,37 @@ references:
   - uid: Sharpy.IEquatable`1
     name: IEquatable
     href: Sharpy.IEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: )
+- uid: Sharpy.IEquatableWith{Sharpy.Object}
+  commentId: T:Sharpy.IEquatableWith{Sharpy.Object}
+  parent: Sharpy
+  definition: Sharpy.IEquatableWith`1
+  href: Sharpy.IEquatableWith-1.html
+  name: IEquatableWith<Object>
+  nameWithType: IEquatableWith<Object>
+  fullName: Sharpy.IEquatableWith<Sharpy.Object>
+  nameWithType.vb: IEquatableWith(Of Object)
+  fullName.vb: Sharpy.IEquatableWith(Of Sharpy.Object)
+  name.vb: IEquatableWith(Of Object)
+  spec.csharp:
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith
+    href: Sharpy.IEquatableWith-1.html
+  - name: <
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith
+    href: Sharpy.IEquatableWith-1.html
   - name: (
   - name: Of
   - name: " "
@@ -2402,6 +2466,31 @@ references:
   - name: " "
   - name: T
   - name: )
+- uid: Sharpy.IInequatableWith`1
+  commentId: T:Sharpy.IInequatableWith`1
+  href: Sharpy.IInequatableWith-1.html
+  name: IInequatableWith<T>
+  nameWithType: IInequatableWith<T>
+  fullName: Sharpy.IInequatableWith<T>
+  nameWithType.vb: IInequatableWith(Of T)
+  fullName.vb: Sharpy.IInequatableWith(Of T)
+  name.vb: IInequatableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.IInequatableWith`1
+    name: IInequatableWith
+    href: Sharpy.IInequatableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IInequatableWith`1
+    name: IInequatableWith
+    href: Sharpy.IInequatableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
 - uid: Sharpy.IEquatable`1
   commentId: T:Sharpy.IEquatable`1
   href: Sharpy.IEquatable-1.html
@@ -2422,6 +2511,31 @@ references:
   - uid: Sharpy.IEquatable`1
     name: IEquatable
     href: Sharpy.IEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IEquatableWith`1
+  commentId: T:Sharpy.IEquatableWith`1
+  href: Sharpy.IEquatableWith-1.html
+  name: IEquatableWith<T>
+  nameWithType: IEquatableWith<T>
+  fullName: Sharpy.IEquatableWith<T>
+  nameWithType.vb: IEquatableWith(Of T)
+  fullName.vb: Sharpy.IEquatableWith(Of T)
+  name.vb: IEquatableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith
+    href: Sharpy.IEquatableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith
+    href: Sharpy.IEquatableWith-1.html
   - name: (
   - name: Of
   - name: " "
@@ -3846,6 +3960,51 @@ references:
   - name: V
   - name: )
   - name: )
+- uid: Sharpy.Collections.Interfaces.IMutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})
+  commentId: M:Sharpy.Collections.Interfaces.IMutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})
+  href: Sharpy.Collections.Interfaces.IMutableMapping-2.html#Sharpy_Collections_Interfaces_IMutableMapping_2___IOr___Sharpy_Collections_Interfaces_IIterable_System_ValueTuple__0__1___
+  name: __IOr__(IIterable<(K, V)>)
+  nameWithType: IMutableMapping<K, V>.__IOr__(IIterable<(K, V)>)
+  fullName: Sharpy.Collections.Interfaces.IMutableMapping<K, V>.__IOr__(Sharpy.Collections.Interfaces.IIterable<(K, V)>)
+  nameWithType.vb: IMutableMapping(Of K, V).__IOr__(IIterable(Of (K, V)))
+  fullName.vb: Sharpy.Collections.Interfaces.IMutableMapping(Of K, V).__IOr__(Sharpy.Collections.Interfaces.IIterable(Of (K, V)))
+  name.vb: __IOr__(IIterable(Of (K, V)))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})
+    name: __IOr__
+    href: Sharpy.Collections.Interfaces.IMutableMapping-2.html#Sharpy_Collections_Interfaces_IMutableMapping_2___IOr___Sharpy_Collections_Interfaces_IIterable_System_ValueTuple__0__1___
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
+  - name: <
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})
+    name: __IOr__
+    href: Sharpy.Collections.Interfaces.IMutableMapping-2.html#Sharpy_Collections_Interfaces_IMutableMapping_2___IOr___Sharpy_Collections_Interfaces_IIterable_System_ValueTuple__0__1___
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: (
+  - name: K
+  - name: ','
+  - name: " "
+  - name: V
+  - name: )
+  - name: )
+  - name: )
 - uid: Sharpy.Collections.Interfaces.IMutableMapping{{K},{V}}.Update(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{{K},{V}}})
   commentId: M:Sharpy.Collections.Interfaces.IMutableMapping{`0,`1}.Update(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})
   parent: Sharpy.Collections.Interfaces.IMutableMapping{{K},{V}}
@@ -4837,51 +4996,6 @@ references:
   - name: )
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.IMutableMapping{`0,`1}.__IOr__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})
-    name: __IOr__
-    href: Sharpy.Collections.Interfaces.IMutableMapping-2.html#Sharpy_Collections_Interfaces_IMutableMapping_2___IOr___Sharpy_Collections_Interfaces_IIterable_System_ValueTuple__0__1___
-  - name: (
-  - uid: Sharpy.Collections.Interfaces.IIterable`1
-    name: IIterable
-    href: Sharpy.Collections.Interfaces.IIterable-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: (
-  - name: K
-  - name: ','
-  - name: " "
-  - name: V
-  - name: )
-  - name: )
-  - name: )
-- uid: Sharpy.Collections.Interfaces.IMutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})
-  commentId: M:Sharpy.Collections.Interfaces.IMutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})
-  href: Sharpy.Collections.Interfaces.IMutableMapping-2.html#Sharpy_Collections_Interfaces_IMutableMapping_2___IOr___Sharpy_Collections_Interfaces_IIterable_System_ValueTuple__0__1___
-  name: __IOr__(IIterable<(K, V)>)
-  nameWithType: IMutableMapping<K, V>.__IOr__(IIterable<(K, V)>)
-  fullName: Sharpy.Collections.Interfaces.IMutableMapping<K, V>.__IOr__(Sharpy.Collections.Interfaces.IIterable<(K, V)>)
-  nameWithType.vb: IMutableMapping(Of K, V).__IOr__(IIterable(Of (K, V)))
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableMapping(Of K, V).__IOr__(Sharpy.Collections.Interfaces.IIterable(Of (K, V)))
-  name.vb: __IOr__(IIterable(Of (K, V)))
-  spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.IMutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})
-    name: __IOr__
-    href: Sharpy.Collections.Interfaces.IMutableMapping-2.html#Sharpy_Collections_Interfaces_IMutableMapping_2___IOr___Sharpy_Collections_Interfaces_IIterable_System_ValueTuple__0__1___
-  - name: (
-  - uid: Sharpy.Collections.Interfaces.IIterable`1
-    name: IIterable
-    href: Sharpy.Collections.Interfaces.IIterable-1.html
-  - name: <
-  - name: (
-  - name: K
-  - name: ','
-  - name: " "
-  - name: V
-  - name: )
-  - name: '>'
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Collections.Interfaces.IMutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})
     name: __IOr__
     href: Sharpy.Collections.Interfaces.IMutableMapping-2.html#Sharpy_Collections_Interfaces_IMutableMapping_2___IOr___Sharpy_Collections_Interfaces_IIterable_System_ValueTuple__0__1___
   - name: (

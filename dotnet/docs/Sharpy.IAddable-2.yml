@@ -6,12 +6,13 @@ items:
   parent: Sharpy
   children:
   - Sharpy.IAddable`2.__Add__(`1)
+  - Sharpy.IAddable`2.op_Addition(`0,`1)
   langs:
   - csharp
   - vb
-  name: IAddable<T, U>
-  nameWithType: IAddable<T, U>
-  fullName: Sharpy.IAddable<T, U>
+  name: IAddable<TAugend, TAddend>
+  nameWithType: IAddable<TAugend, TAddend>
+  fullName: Sharpy.IAddable<TAugend, TAddend>
   type: Interface
   source:
     remote:
@@ -20,19 +21,28 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IAddable
     path: ../src/Sharpy/IAddable.cs
-    startLine: 2
+    startLine: 24
   assemblies:
   - Sharpy
   namespace: Sharpy
+  summary: >-
+    An interface defining an augmentation operator, where the left operand
+
+    is the element to be augmented (increased) and the right operand is the
+
+    amount of augumentation or something to be included in the other element.
+  example: []
   syntax:
-    content: public interface IAddable<T, U>
+    content: 'public interface IAddable<TAugend, TAddend> where TAugend : IAddable<TAugend, TAddend>'
     typeParameters:
-    - id: T
-    - id: U
-    content.vb: Public Interface IAddable(Of T, U)
-  nameWithType.vb: IAddable(Of T, U)
-  fullName.vb: Sharpy.IAddable(Of T, U)
-  name.vb: IAddable(Of T, U)
+    - id: TAugend
+      description: The type that gets augmented (the "augend").
+    - id: TAddend
+      description: The type that indicates the amount of augmentation or what is being included in the "augend".
+    content.vb: Public Interface IAddable(Of TAugend As IAddable(Of TAugend, TAddend), TAddend)
+  nameWithType.vb: IAddable(Of TAugend, TAddend)
+  fullName.vb: Sharpy.IAddable(Of TAugend, TAddend)
+  name.vb: IAddable(Of TAugend, TAddend)
 - uid: Sharpy.IAddable`2.__Add__(`1)
   commentId: M:Sharpy.IAddable`2.__Add__(`1)
   id: __Add__(`1)
@@ -40,9 +50,9 @@ items:
   langs:
   - csharp
   - vb
-  name: __Add__(U)
-  nameWithType: IAddable<T, U>.__Add__(U)
-  fullName: Sharpy.IAddable<T, U>.__Add__(U)
+  name: __Add__(TAddend)
+  nameWithType: IAddable<TAugend, TAddend>.__Add__(TAddend)
+  fullName: Sharpy.IAddable<TAugend, TAddend>.__Add__(TAddend)
   type: Method
   source:
     remote:
@@ -51,21 +61,57 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Add__
     path: ../src/Sharpy/IAddable.cs
-    startLine: 4
+    startLine: 26
   assemblies:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: T __Add__(U other)
+    content: TAugend __Add__(TAddend other)
     parameters:
     - id: other
-      type: '{U}'
+      type: '{TAddend}'
     return:
-      type: '{T}'
-    content.vb: Function __Add__(other As U) As T
+      type: '{TAugend}'
+    content.vb: Function __Add__(other As TAddend) As TAugend
   overload: Sharpy.IAddable`2.__Add__*
-  nameWithType.vb: IAddable(Of T, U).__Add__(U)
-  fullName.vb: Sharpy.IAddable(Of T, U).__Add__(U)
+  nameWithType.vb: IAddable(Of TAugend, TAddend).__Add__(TAddend)
+  fullName.vb: Sharpy.IAddable(Of TAugend, TAddend).__Add__(TAddend)
+- uid: Sharpy.IAddable`2.op_Addition(`0,`1)
+  commentId: M:Sharpy.IAddable`2.op_Addition(`0,`1)
+  id: op_Addition(`0,`1)
+  parent: Sharpy.IAddable`2
+  langs:
+  - csharp
+  - vb
+  name: operator +(TAugend, TAddend)
+  nameWithType: IAddable<TAugend, TAddend>.operator +(TAugend, TAddend)
+  fullName: Sharpy.IAddable<TAugend, TAddend>.operator +(TAugend, TAddend)
+  type: Operator
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IAddable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: op_Addition
+    path: ../src/Sharpy/IAddable.cs
+    startLine: 28
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static TAugend operator +(TAugend left, TAddend right)
+    parameters:
+    - id: left
+      type: '{TAugend}'
+    - id: right
+      type: '{TAddend}'
+    return:
+      type: '{TAugend}'
+    content.vb: Public Shared Operator +(left As TAugend, right As TAddend) As TAugend
+  overload: Sharpy.IAddable`2.op_Addition*
+  nameWithType.vb: IAddable(Of TAugend, TAddend).+(TAugend, TAddend)
+  fullName.vb: Sharpy.IAddable(Of TAugend, TAddend).+(TAugend, TAddend)
+  name.vb: +(TAugend, TAddend)
 references:
 - uid: Sharpy
   commentId: N:Sharpy
@@ -77,27 +123,42 @@ references:
   commentId: Overload:Sharpy.IAddable`2.__Add__
   href: Sharpy.IAddable-2.html#Sharpy_IAddable_2___Add____1_
   name: __Add__
-  nameWithType: IAddable<T, U>.__Add__
-  fullName: Sharpy.IAddable<T, U>.__Add__
-  nameWithType.vb: IAddable(Of T, U).__Add__
-  fullName.vb: Sharpy.IAddable(Of T, U).__Add__
-- uid: '{U}'
-  commentId: '!:U'
-  definition: U
-  name: U
-  nameWithType: U
-  fullName: U
-- uid: '{T}'
-  commentId: '!:T'
-  definition: T
-  name: T
-  nameWithType: T
-  fullName: T
-- uid: U
-  name: U
-  nameWithType: U
-  fullName: U
-- uid: T
-  name: T
-  nameWithType: T
-  fullName: T
+  nameWithType: IAddable<TAugend, TAddend>.__Add__
+  fullName: Sharpy.IAddable<TAugend, TAddend>.__Add__
+  nameWithType.vb: IAddable(Of TAugend, TAddend).__Add__
+  fullName.vb: Sharpy.IAddable(Of TAugend, TAddend).__Add__
+- uid: '{TAddend}'
+  commentId: '!:TAddend'
+  definition: TAddend
+  name: TAddend
+  nameWithType: TAddend
+  fullName: TAddend
+- uid: '{TAugend}'
+  commentId: '!:TAugend'
+  definition: TAugend
+  name: TAugend
+  nameWithType: TAugend
+  fullName: TAugend
+- uid: TAddend
+  name: TAddend
+  nameWithType: TAddend
+  fullName: TAddend
+- uid: TAugend
+  name: TAugend
+  nameWithType: TAugend
+  fullName: TAugend
+- uid: Sharpy.IAddable`2.op_Addition*
+  commentId: Overload:Sharpy.IAddable`2.op_Addition
+  href: Sharpy.IAddable-2.html#Sharpy_IAddable_2_op_Addition__0__1_
+  name: operator +
+  nameWithType: IAddable<TAugend, TAddend>.operator +
+  fullName: Sharpy.IAddable<TAugend, TAddend>.operator +
+  nameWithType.vb: IAddable(Of TAugend, TAddend).+
+  fullName.vb: Sharpy.IAddable(Of TAugend, TAddend).+
+  name.vb: +
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IAddable`2.op_Addition*
+    name: +
+    href: Sharpy.IAddable-2.html#Sharpy_IAddable_2_op_Addition__0__1_

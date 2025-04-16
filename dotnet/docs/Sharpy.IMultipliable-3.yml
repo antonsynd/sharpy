@@ -1,0 +1,166 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.IMultipliable`3
+  commentId: T:Sharpy.IMultipliable`3
+  id: IMultipliable`3
+  parent: Sharpy
+  children:
+  - Sharpy.IMultipliable`3.__Mul__(`1)
+  - Sharpy.IMultipliable`3.op_Multiply(`0,`1)
+  langs:
+  - csharp
+  - vb
+  name: IMultipliable<TMultiplicand, TMultiplier, TProduct>
+  nameWithType: IMultipliable<TMultiplicand, TMultiplier, TProduct>
+  fullName: Sharpy.IMultipliable<TMultiplicand, TMultiplier, TProduct>
+  type: Interface
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IMultipliable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IMultipliable
+    path: ../src/Sharpy/IMultipliable.cs
+    startLine: 2
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: 'public interface IMultipliable<TMultiplicand, TMultiplier, TProduct> where TMultiplicand : IMultipliable<TMultiplicand, TMultiplier, TProduct>'
+    typeParameters:
+    - id: TMultiplicand
+    - id: TMultiplier
+    - id: TProduct
+    content.vb: Public Interface IMultipliable(Of TMultiplicand As IMultipliable(Of TMultiplicand, TMultiplier, TProduct), TMultiplier, TProduct)
+  nameWithType.vb: IMultipliable(Of TMultiplicand, TMultiplier, TProduct)
+  fullName.vb: Sharpy.IMultipliable(Of TMultiplicand, TMultiplier, TProduct)
+  name.vb: IMultipliable(Of TMultiplicand, TMultiplier, TProduct)
+- uid: Sharpy.IMultipliable`3.__Mul__(`1)
+  commentId: M:Sharpy.IMultipliable`3.__Mul__(`1)
+  id: __Mul__(`1)
+  parent: Sharpy.IMultipliable`3
+  langs:
+  - csharp
+  - vb
+  name: __Mul__(TMultiplier)
+  nameWithType: IMultipliable<TMultiplicand, TMultiplier, TProduct>.__Mul__(TMultiplier)
+  fullName: Sharpy.IMultipliable<TMultiplicand, TMultiplier, TProduct>.__Mul__(TMultiplier)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IMultipliable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Mul__
+    path: ../src/Sharpy/IMultipliable.cs
+    startLine: 5
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: TProduct __Mul__(TMultiplier other)
+    parameters:
+    - id: other
+      type: '{TMultiplier}'
+    return:
+      type: '{TProduct}'
+    content.vb: Function __Mul__(other As TMultiplier) As TProduct
+  overload: Sharpy.IMultipliable`3.__Mul__*
+  nameWithType.vb: IMultipliable(Of TMultiplicand, TMultiplier, TProduct).__Mul__(TMultiplier)
+  fullName.vb: Sharpy.IMultipliable(Of TMultiplicand, TMultiplier, TProduct).__Mul__(TMultiplier)
+- uid: Sharpy.IMultipliable`3.op_Multiply(`0,`1)
+  commentId: M:Sharpy.IMultipliable`3.op_Multiply(`0,`1)
+  id: op_Multiply(`0,`1)
+  parent: Sharpy.IMultipliable`3
+  langs:
+  - csharp
+  - vb
+  name: operator *(TMultiplicand, TMultiplier)
+  nameWithType: IMultipliable<TMultiplicand, TMultiplier, TProduct>.operator *(TMultiplicand, TMultiplier)
+  fullName: Sharpy.IMultipliable<TMultiplicand, TMultiplier, TProduct>.operator *(TMultiplicand, TMultiplier)
+  type: Operator
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IMultipliable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: op_Multiply
+    path: ../src/Sharpy/IMultipliable.cs
+    startLine: 7
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static TProduct operator *(TMultiplicand left, TMultiplier right)
+    parameters:
+    - id: left
+      type: '{TMultiplicand}'
+    - id: right
+      type: '{TMultiplier}'
+    return:
+      type: '{TProduct}'
+    content.vb: Public Shared Operator *(left As TMultiplicand, right As TMultiplier) As TProduct
+  overload: Sharpy.IMultipliable`3.op_Multiply*
+  nameWithType.vb: IMultipliable(Of TMultiplicand, TMultiplier, TProduct).*(TMultiplicand, TMultiplier)
+  fullName.vb: Sharpy.IMultipliable(Of TMultiplicand, TMultiplier, TProduct).*(TMultiplicand, TMultiplier)
+  name.vb: '*(TMultiplicand, TMultiplier)'
+references:
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: Sharpy.IMultipliable`3.__Mul__*
+  commentId: Overload:Sharpy.IMultipliable`3.__Mul__
+  href: Sharpy.IMultipliable-3.html#Sharpy_IMultipliable_3___Mul____1_
+  name: __Mul__
+  nameWithType: IMultipliable<TMultiplicand, TMultiplier, TProduct>.__Mul__
+  fullName: Sharpy.IMultipliable<TMultiplicand, TMultiplier, TProduct>.__Mul__
+  nameWithType.vb: IMultipliable(Of TMultiplicand, TMultiplier, TProduct).__Mul__
+  fullName.vb: Sharpy.IMultipliable(Of TMultiplicand, TMultiplier, TProduct).__Mul__
+- uid: '{TMultiplier}'
+  commentId: '!:TMultiplier'
+  definition: TMultiplier
+  name: TMultiplier
+  nameWithType: TMultiplier
+  fullName: TMultiplier
+- uid: '{TProduct}'
+  commentId: '!:TProduct'
+  definition: TProduct
+  name: TProduct
+  nameWithType: TProduct
+  fullName: TProduct
+- uid: TMultiplier
+  name: TMultiplier
+  nameWithType: TMultiplier
+  fullName: TMultiplier
+- uid: TProduct
+  name: TProduct
+  nameWithType: TProduct
+  fullName: TProduct
+- uid: Sharpy.IMultipliable`3.op_Multiply*
+  commentId: Overload:Sharpy.IMultipliable`3.op_Multiply
+  href: Sharpy.IMultipliable-3.html#Sharpy_IMultipliable_3_op_Multiply__0__1_
+  name: operator *
+  nameWithType: IMultipliable<TMultiplicand, TMultiplier, TProduct>.operator *
+  fullName: Sharpy.IMultipliable<TMultiplicand, TMultiplier, TProduct>.operator *
+  nameWithType.vb: IMultipliable(Of TMultiplicand, TMultiplier, TProduct).*
+  fullName.vb: Sharpy.IMultipliable(Of TMultiplicand, TMultiplier, TProduct).*
+  name.vb: '*'
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IMultipliable`3.op_Multiply*
+    name: '*'
+    href: Sharpy.IMultipliable-3.html#Sharpy_IMultipliable_3_op_Multiply__0__1_
+- uid: '{TMultiplicand}'
+  commentId: '!:TMultiplicand'
+  definition: TMultiplicand
+  name: TMultiplicand
+  nameWithType: TMultiplicand
+  fullName: TMultiplicand
+- uid: TMultiplicand
+  name: TMultiplicand
+  nameWithType: TMultiplicand
+  fullName: TMultiplicand

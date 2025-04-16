@@ -20,7 +20,10 @@ items:
     name: IAddable<T>
     type: Interface
   - uid: Sharpy.IAddable`2
-    name: IAddable<T, U>
+    name: IAddable<TAugend, TAddend>
+    type: Interface
+  - uid: Sharpy.IAddable`3
+    name: IAddable<TLeft, TRight, TSum>
     type: Interface
   - uid: Sharpy.IBoolConvertible
     name: IBoolConvertible
@@ -28,11 +31,20 @@ items:
   - uid: Sharpy.IEquatable
     name: IEquatable
     type: Interface
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith<T>
+    type: Interface
   - uid: Sharpy.IEquatable`1
     name: IEquatable<T>
     type: Interface
+  - uid: Sharpy.IGreaterThanComparableWith`1
+    name: IGreaterThanComparableWith<T>
+    type: Interface
   - uid: Sharpy.IGreaterThanComparable`1
     name: IGreaterThanComparable<T>
+    type: Interface
+  - uid: Sharpy.IGreaterThanOrEquatableWith`1
+    name: IGreaterThanOrEquatableWith<T>
     type: Interface
   - uid: Sharpy.IGreaterThanOrEquatable`1
     name: IGreaterThanOrEquatable<T>
@@ -43,6 +55,9 @@ items:
   - uid: Sharpy.IIdentifiable
     name: IIdentifiable
     type: Interface
+  - uid: Sharpy.IInequatableWith`1
+    name: IInequatableWith<T>
+    type: Interface
   - uid: Sharpy.IInequatable`1
     name: IInequatable<T>
     type: Interface
@@ -52,14 +67,26 @@ items:
   - uid: Sharpy.IInplaceMultipliable`1
     name: IInplaceMultipliable<T>
     type: Interface
+  - uid: Sharpy.ILessThanComparableWith`1
+    name: ILessThanComparableWith<T>
+    type: Interface
   - uid: Sharpy.ILessThanComparable`1
     name: ILessThanComparable<T>
+    type: Interface
+  - uid: Sharpy.ILessThanOrEquatableWith`1
+    name: ILessThanOrEquatableWith<T>
     type: Interface
   - uid: Sharpy.ILessThanOrEquatable`1
     name: ILessThanOrEquatable<T>
     type: Interface
+  - uid: Sharpy.IMultipliable`1
+    name: IMultipliable<T>
+    type: Interface
   - uid: Sharpy.IMultipliable`2
-    name: IMultipliable<T, U>
+    name: IMultipliable<TMultiplicand, TMultipilier>
+    type: Interface
+  - uid: Sharpy.IMultipliable`3
+    name: IMultipliable<TMultiplicand, TMultiplier, TProduct>
     type: Interface
   - uid: Sharpy.IRepresentable
     name: IRepresentable
@@ -68,10 +95,10 @@ items:
     name: IRightAddable<T>
     type: Interface
   - uid: Sharpy.IRightAddable`2
-    name: IRightAddable<T, U>
+    name: IRightAddable<TSum, TAugend>
     type: Interface
   - uid: Sharpy.IRightMultipliable`2
-    name: IRightMultipliable<T, U>
+    name: IRightMultipliable<TProduct, TMultiplicand>
     type: Interface
   - uid: Sharpy.IStrConvertible
     name: IStrConvertible

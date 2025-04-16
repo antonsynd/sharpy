@@ -9,9 +9,9 @@ items:
   langs:
   - csharp
   - vb
-  name: IRightMultipliable<T, U>
-  nameWithType: IRightMultipliable<T, U>
-  fullName: Sharpy.IRightMultipliable<T, U>
+  name: IRightMultipliable<TProduct, TMultiplicand>
+  nameWithType: IRightMultipliable<TProduct, TMultiplicand>
+  fullName: Sharpy.IRightMultipliable<TProduct, TMultiplicand>
   type: Interface
   source:
     remote:
@@ -25,14 +25,14 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public interface IRightMultipliable<T, U>
+    content: public interface IRightMultipliable<TProduct, TMultiplicand>
     typeParameters:
-    - id: T
-    - id: U
-    content.vb: Public Interface IRightMultipliable(Of T, U)
-  nameWithType.vb: IRightMultipliable(Of T, U)
-  fullName.vb: Sharpy.IRightMultipliable(Of T, U)
-  name.vb: IRightMultipliable(Of T, U)
+    - id: TProduct
+    - id: TMultiplicand
+    content.vb: Public Interface IRightMultipliable(Of TProduct, TMultiplicand)
+  nameWithType.vb: IRightMultipliable(Of TProduct, TMultiplicand)
+  fullName.vb: Sharpy.IRightMultipliable(Of TProduct, TMultiplicand)
+  name.vb: IRightMultipliable(Of TProduct, TMultiplicand)
 - uid: Sharpy.IRightMultipliable`2.__RMul__(`1)
   commentId: M:Sharpy.IRightMultipliable`2.__RMul__(`1)
   id: __RMul__(`1)
@@ -40,9 +40,9 @@ items:
   langs:
   - csharp
   - vb
-  name: __RMul__(U)
-  nameWithType: IRightMultipliable<T, U>.__RMul__(U)
-  fullName: Sharpy.IRightMultipliable<T, U>.__RMul__(U)
+  name: __RMul__(TMultiplicand)
+  nameWithType: IRightMultipliable<TProduct, TMultiplicand>.__RMul__(TMultiplicand)
+  fullName: Sharpy.IRightMultipliable<TProduct, TMultiplicand>.__RMul__(TMultiplicand)
   type: Method
   source:
     remote:
@@ -56,16 +56,16 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: T __RMul__(U other)
+    content: TProduct __RMul__(TMultiplicand other)
     parameters:
     - id: other
-      type: '{U}'
+      type: '{TMultiplicand}'
     return:
-      type: '{T}'
-    content.vb: Function __RMul__(other As U) As T
+      type: '{TProduct}'
+    content.vb: Function __RMul__(other As TMultiplicand) As TProduct
   overload: Sharpy.IRightMultipliable`2.__RMul__*
-  nameWithType.vb: IRightMultipliable(Of T, U).__RMul__(U)
-  fullName.vb: Sharpy.IRightMultipliable(Of T, U).__RMul__(U)
+  nameWithType.vb: IRightMultipliable(Of TProduct, TMultiplicand).__RMul__(TMultiplicand)
+  fullName.vb: Sharpy.IRightMultipliable(Of TProduct, TMultiplicand).__RMul__(TMultiplicand)
 references:
 - uid: Sharpy
   commentId: N:Sharpy
@@ -77,27 +77,27 @@ references:
   commentId: Overload:Sharpy.IRightMultipliable`2.__RMul__
   href: Sharpy.IRightMultipliable-2.html#Sharpy_IRightMultipliable_2___RMul____1_
   name: __RMul__
-  nameWithType: IRightMultipliable<T, U>.__RMul__
-  fullName: Sharpy.IRightMultipliable<T, U>.__RMul__
-  nameWithType.vb: IRightMultipliable(Of T, U).__RMul__
-  fullName.vb: Sharpy.IRightMultipliable(Of T, U).__RMul__
-- uid: '{U}'
-  commentId: '!:U'
-  definition: U
-  name: U
-  nameWithType: U
-  fullName: U
-- uid: '{T}'
-  commentId: '!:T'
-  definition: T
-  name: T
-  nameWithType: T
-  fullName: T
-- uid: U
-  name: U
-  nameWithType: U
-  fullName: U
-- uid: T
-  name: T
-  nameWithType: T
-  fullName: T
+  nameWithType: IRightMultipliable<TProduct, TMultiplicand>.__RMul__
+  fullName: Sharpy.IRightMultipliable<TProduct, TMultiplicand>.__RMul__
+  nameWithType.vb: IRightMultipliable(Of TProduct, TMultiplicand).__RMul__
+  fullName.vb: Sharpy.IRightMultipliable(Of TProduct, TMultiplicand).__RMul__
+- uid: '{TMultiplicand}'
+  commentId: '!:TMultiplicand'
+  definition: TMultiplicand
+  name: TMultiplicand
+  nameWithType: TMultiplicand
+  fullName: TMultiplicand
+- uid: '{TProduct}'
+  commentId: '!:TProduct'
+  definition: TProduct
+  name: TProduct
+  nameWithType: TProduct
+  fullName: TProduct
+- uid: TMultiplicand
+  name: TMultiplicand
+  nameWithType: TMultiplicand
+  fullName: TMultiplicand
+- uid: TProduct
+  name: TProduct
+  nameWithType: TProduct
+  fullName: TProduct

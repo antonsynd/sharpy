@@ -7,25 +7,83 @@ items:
   children:
   - Sharpy.Operator.Exports.Add``1(``0,``0)
   - Sharpy.Operator.Exports.Add``2(``0,``1)
+  - Sharpy.Operator.Exports.Add``3(``0,``1)
+  - Sharpy.Operator.Exports.Eq(Sharpy.Object,Sharpy.Object)
+  - Sharpy.Operator.Exports.Eq(System.IComparable,System.Object)
   - Sharpy.Operator.Exports.Eq(System.Object,System.Object)
+  - Sharpy.Operator.Exports.Eq``1(System.IComparable{``0},``0)
   - Sharpy.Operator.Exports.Eq``1(``0,``0)
+  - Sharpy.Operator.Exports.Ge(System.IComparable,System.Object)
+  - Sharpy.Operator.Exports.Ge``1(Sharpy.IGreaterThanOrEquatableWith{``0},``0)
+  - Sharpy.Operator.Exports.Ge``1(System.IComparable{``0},``0)
   - Sharpy.Operator.Exports.Ge``1(``0,``0)
+  - Sharpy.Operator.Exports.Gt(System.IComparable,System.Object)
+  - Sharpy.Operator.Exports.Gt``1(Sharpy.IGreaterThanComparableWith{``0},``0)
+  - Sharpy.Operator.Exports.Gt``1(System.IComparable{``0},``0)
   - Sharpy.Operator.Exports.Gt``1(``0,``0)
+  - Sharpy.Operator.Exports.IAdd``1(Sharpy.IInplaceAddable{``0},``0)
+  - Sharpy.Operator.Exports.IAdd``2(``0@,``1)
+  - Sharpy.Operator.Exports.IMul``1(Sharpy.IInplaceMultipliable{``0},``0)
+  - Sharpy.Operator.Exports.IMul``2(``0@,``1)
+  - Sharpy.Operator.Exports.Is(System.Object,System.Object)
+  - Sharpy.Operator.Exports.IsNot(System.Object,System.Object)
+  - Sharpy.Operator.Exports.Le(System.IComparable,System.Object)
+  - Sharpy.Operator.Exports.Le``1(Sharpy.ILessThanOrEquatableWith{``0},``0)
+  - Sharpy.Operator.Exports.Le``1(System.IComparable{``0},``0)
   - Sharpy.Operator.Exports.Le``1(``0,``0)
+  - Sharpy.Operator.Exports.Lt(System.IComparable,System.Object)
+  - Sharpy.Operator.Exports.Lt``1(Sharpy.ILessThanComparableWith{``0},``0)
+  - Sharpy.Operator.Exports.Lt``1(System.IComparable{``0},``0)
   - Sharpy.Operator.Exports.Lt``1(``0,``0)
+  - Sharpy.Operator.Exports.Mul``1(``0,``0)
   - Sharpy.Operator.Exports.Mul``2(``0,``1)
+  - Sharpy.Operator.Exports.Mul``3(``0,``1)
+  - Sharpy.Operator.Exports.Ne(Sharpy.Object,Sharpy.Object)
+  - Sharpy.Operator.Exports.Ne(System.IComparable,System.Object)
   - Sharpy.Operator.Exports.Ne(System.Object,System.Object)
+  - Sharpy.Operator.Exports.Ne``1(System.IComparable{``0},``0)
   - Sharpy.Operator.Exports.Ne``1(``0,``0)
+  - Sharpy.Operator.Exports.Not(Sharpy.Collections.Interfaces.ISized)
+  - Sharpy.Operator.Exports.Not(Sharpy.IBoolConvertible)
+  - Sharpy.Operator.Exports.Not(Sharpy.Object)
+  - Sharpy.Operator.Exports.Truth(Sharpy.Collections.Interfaces.ISized)
+  - Sharpy.Operator.Exports.Truth(Sharpy.IBoolConvertible)
+  - Sharpy.Operator.Exports.Truth(Sharpy.Object)
   - Sharpy.Operator.Exports.__Add__``1(``0,``0)
   - Sharpy.Operator.Exports.__Add__``2(``0,``1)
+  - Sharpy.Operator.Exports.__Add__``3(``0,``1)
+  - Sharpy.Operator.Exports.__Eq__(Sharpy.Object,Sharpy.Object)
+  - Sharpy.Operator.Exports.__Eq__(System.IComparable,System.Object)
   - Sharpy.Operator.Exports.__Eq__(System.Object,System.Object)
+  - Sharpy.Operator.Exports.__Eq__``1(System.IComparable{``0},``0)
   - Sharpy.Operator.Exports.__Eq__``1(``0,``0)
+  - Sharpy.Operator.Exports.__Ge__``1(Sharpy.IGreaterThanOrEquatableWith{``0},``0)
+  - Sharpy.Operator.Exports.__Ge__``1(System.IComparable,System.Object)
+  - Sharpy.Operator.Exports.__Ge__``1(System.IComparable{``0},``0)
   - Sharpy.Operator.Exports.__Ge__``1(``0,``0)
+  - Sharpy.Operator.Exports.__Gt__``1(Sharpy.IGreaterThanComparableWith{``0},``0)
+  - Sharpy.Operator.Exports.__Gt__``1(System.IComparable,System.Object)
+  - Sharpy.Operator.Exports.__Gt__``1(System.IComparable{``0},``0)
   - Sharpy.Operator.Exports.__Gt__``1(``0,``0)
+  - Sharpy.Operator.Exports.__IAdd__``1(Sharpy.IInplaceAddable{``0},``0)
+  - Sharpy.Operator.Exports.__IAdd__``2(``0@,``1)
+  - Sharpy.Operator.Exports.__IMul__``1(Sharpy.IInplaceMultipliable{``0},``0)
+  - Sharpy.Operator.Exports.__IMul__``2(``0@,``1)
+  - Sharpy.Operator.Exports.__Le__``1(Sharpy.ILessThanOrEquatableWith{``0},``0)
+  - Sharpy.Operator.Exports.__Le__``1(System.IComparable,System.Object)
+  - Sharpy.Operator.Exports.__Le__``1(System.IComparable{``0},``0)
   - Sharpy.Operator.Exports.__Le__``1(``0,``0)
+  - Sharpy.Operator.Exports.__Lt__``1(Sharpy.ILessThanComparableWith{``0},``0)
+  - Sharpy.Operator.Exports.__Lt__``1(System.IComparable,System.Object)
+  - Sharpy.Operator.Exports.__Lt__``1(System.IComparable{``0},``0)
   - Sharpy.Operator.Exports.__Lt__``1(``0,``0)
+  - Sharpy.Operator.Exports.__Mul__``1(``0,``0)
   - Sharpy.Operator.Exports.__Mul__``2(``0,``1)
+  - Sharpy.Operator.Exports.__Mul__``3(``0,``1)
+  - Sharpy.Operator.Exports.__Ne__(Sharpy.Object,Sharpy.Object)
+  - Sharpy.Operator.Exports.__Ne__(System.IComparable,System.Object)
   - Sharpy.Operator.Exports.__Ne__(System.Object,System.Object)
+  - Sharpy.Operator.Exports.__Ne__``1(System.IComparable{``0},``0)
   - Sharpy.Operator.Exports.__Ne__``1(``0,``0)
   langs:
   - csharp
@@ -36,12 +94,12 @@ items:
   type: Class
   source:
     remote:
-      path: dotnet/src/Sharpy/Operator/Ne.cs
+      path: dotnet/src/Sharpy/Operator/Truth.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
     id: Exports
-    path: ../src/Sharpy/Operator/Ne.cs
-    startLine: 2
+    path: ../src/Sharpy/Operator/Truth.cs
+    startLine: 4
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
@@ -103,9 +161,9 @@ items:
   langs:
   - csharp
   - vb
-  name: Add<T, U>(T, U)
-  nameWithType: Exports.Add<T, U>(T, U)
-  fullName: Sharpy.Operator.Exports.Add<T, U>(T, U)
+  name: Add<TAugend, TAddend>(TAugend, TAddend)
+  nameWithType: Exports.Add<TAugend, TAddend>(TAugend, TAddend)
+  fullName: Sharpy.Operator.Exports.Add<TAugend, TAddend>(TAugend, TAddend)
   type: Method
   source:
     remote:
@@ -119,22 +177,62 @@ items:
   - Sharpy
   namespace: Sharpy.Operator
   syntax:
-    content: 'public static T Add<T, U>(T left, U right) where T : IAddable<T, U>'
+    content: 'public static TAugend Add<TAugend, TAddend>(TAugend left, TAddend right) where TAugend : IAddable<TAugend, TAddend>'
     parameters:
     - id: left
-      type: '{T}'
+      type: '{TAugend}'
     - id: right
-      type: '{U}'
+      type: '{TAddend}'
     typeParameters:
-    - id: T
-    - id: U
+    - id: TAugend
+    - id: TAddend
     return:
-      type: '{T}'
-    content.vb: Public Shared Function Add(Of T As IAddable(Of T, U), U)(left As T, right As U) As T
+      type: '{TAugend}'
+    content.vb: Public Shared Function Add(Of TAugend As IAddable(Of TAugend, TAddend), TAddend)(left As TAugend, right As TAddend) As TAugend
   overload: Sharpy.Operator.Exports.Add*
-  nameWithType.vb: Exports.Add(Of T, U)(T, U)
-  fullName.vb: Sharpy.Operator.Exports.Add(Of T, U)(T, U)
-  name.vb: Add(Of T, U)(T, U)
+  nameWithType.vb: Exports.Add(Of TAugend, TAddend)(TAugend, TAddend)
+  fullName.vb: Sharpy.Operator.Exports.Add(Of TAugend, TAddend)(TAugend, TAddend)
+  name.vb: Add(Of TAugend, TAddend)(TAugend, TAddend)
+- uid: Sharpy.Operator.Exports.Add``3(``0,``1)
+  commentId: M:Sharpy.Operator.Exports.Add``3(``0,``1)
+  id: Add``3(``0,``1)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Add<TLeft, TRight, TSum>(TLeft, TRight)
+  nameWithType: Exports.Add<TLeft, TRight, TSum>(TLeft, TRight)
+  fullName: Sharpy.Operator.Exports.Add<TLeft, TRight, TSum>(TLeft, TRight)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Add.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Add
+    path: ../src/Sharpy/Operator/Add.cs
+    startLine: 15
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: 'public static TSum Add<TLeft, TRight, TSum>(TLeft left, TRight right) where TLeft : IAddable<TLeft, TRight, TSum>'
+    parameters:
+    - id: left
+      type: '{TLeft}'
+    - id: right
+      type: '{TRight}'
+    typeParameters:
+    - id: TLeft
+    - id: TRight
+    - id: TSum
+    return:
+      type: '{TSum}'
+    content.vb: Public Shared Function Add(Of TLeft As IAddable(Of TLeft, TRight, TSum), TRight, TSum)(left As TLeft, right As TRight) As TSum
+  overload: Sharpy.Operator.Exports.Add*
+  nameWithType.vb: Exports.Add(Of TLeft, TRight, TSum)(TLeft, TRight)
+  fullName.vb: Sharpy.Operator.Exports.Add(Of TLeft, TRight, TSum)(TLeft, TRight)
+  name.vb: Add(Of TLeft, TRight, TSum)(TLeft, TRight)
 - uid: Sharpy.Operator.Exports.__Add__``1(``0,``0)
   commentId: M:Sharpy.Operator.Exports.__Add__``1(``0,``0)
   id: __Add__``1(``0,``0)
@@ -153,7 +251,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Add__
     path: ../src/Sharpy/Operator/Add.cs
-    startLine: 14
+    startLine: 21
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
@@ -180,9 +278,9 @@ items:
   langs:
   - csharp
   - vb
-  name: __Add__<T, U>(T, U)
-  nameWithType: Exports.__Add__<T, U>(T, U)
-  fullName: Sharpy.Operator.Exports.__Add__<T, U>(T, U)
+  name: __Add__<TAugend, TAddend>(TAugend, TAddend)
+  nameWithType: Exports.__Add__<TAugend, TAddend>(TAugend, TAddend)
+  fullName: Sharpy.Operator.Exports.__Add__<TAugend, TAddend>(TAugend, TAddend)
   type: Method
   source:
     remote:
@@ -191,27 +289,67 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Add__
     path: ../src/Sharpy/Operator/Add.cs
-    startLine: 15
+    startLine: 23
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
   syntax:
-    content: 'public static T __Add__<T, U>(T left, U right) where T : IAddable<T, U>'
+    content: 'public static TAugend __Add__<TAugend, TAddend>(TAugend left, TAddend right) where TAugend : IAddable<TAugend, TAddend>'
     parameters:
     - id: left
-      type: '{T}'
+      type: '{TAugend}'
     - id: right
-      type: '{U}'
+      type: '{TAddend}'
     typeParameters:
-    - id: T
-    - id: U
+    - id: TAugend
+    - id: TAddend
     return:
-      type: '{T}'
-    content.vb: Public Shared Function __Add__(Of T As IAddable(Of T, U), U)(left As T, right As U) As T
+      type: '{TAugend}'
+    content.vb: Public Shared Function __Add__(Of TAugend As IAddable(Of TAugend, TAddend), TAddend)(left As TAugend, right As TAddend) As TAugend
   overload: Sharpy.Operator.Exports.__Add__*
-  nameWithType.vb: Exports.__Add__(Of T, U)(T, U)
-  fullName.vb: Sharpy.Operator.Exports.__Add__(Of T, U)(T, U)
-  name.vb: __Add__(Of T, U)(T, U)
+  nameWithType.vb: Exports.__Add__(Of TAugend, TAddend)(TAugend, TAddend)
+  fullName.vb: Sharpy.Operator.Exports.__Add__(Of TAugend, TAddend)(TAugend, TAddend)
+  name.vb: __Add__(Of TAugend, TAddend)(TAugend, TAddend)
+- uid: Sharpy.Operator.Exports.__Add__``3(``0,``1)
+  commentId: M:Sharpy.Operator.Exports.__Add__``3(``0,``1)
+  id: __Add__``3(``0,``1)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Add__<TLeft, TRight, TSum>(TLeft, TRight)
+  nameWithType: Exports.__Add__<TLeft, TRight, TSum>(TLeft, TRight)
+  fullName: Sharpy.Operator.Exports.__Add__<TLeft, TRight, TSum>(TLeft, TRight)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Add.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Add__
+    path: ../src/Sharpy/Operator/Add.cs
+    startLine: 27
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: 'public static TSum __Add__<TLeft, TRight, TSum>(TLeft left, TRight right) where TLeft : IAddable<TLeft, TRight, TSum>'
+    parameters:
+    - id: left
+      type: '{TLeft}'
+    - id: right
+      type: '{TRight}'
+    typeParameters:
+    - id: TLeft
+    - id: TRight
+    - id: TSum
+    return:
+      type: '{TSum}'
+    content.vb: Public Shared Function __Add__(Of TLeft As IAddable(Of TLeft, TRight, TSum), TRight, TSum)(left As TLeft, right As TRight) As TSum
+  overload: Sharpy.Operator.Exports.__Add__*
+  nameWithType.vb: Exports.__Add__(Of TLeft, TRight, TSum)(TLeft, TRight)
+  fullName.vb: Sharpy.Operator.Exports.__Add__(Of TLeft, TRight, TSum)(TLeft, TRight)
+  name.vb: __Add__(Of TLeft, TRight, TSum)(TLeft, TRight)
 - uid: Sharpy.Operator.Exports.Eq``1(``0,``0)
   commentId: M:Sharpy.Operator.Exports.Eq``1(``0,``0)
   id: Eq``1(``0,``0)
@@ -256,6 +394,113 @@ items:
   nameWithType.vb: Exports.Eq(Of T)(T, T)
   fullName.vb: Sharpy.Operator.Exports.Eq(Of T)(T, T)
   name.vb: Eq(Of T)(T, T)
+- uid: Sharpy.Operator.Exports.Eq(Sharpy.Object,Sharpy.Object)
+  commentId: M:Sharpy.Operator.Exports.Eq(Sharpy.Object,Sharpy.Object)
+  id: Eq(Sharpy.Object,Sharpy.Object)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Eq(Object, Object)
+  nameWithType: Exports.Eq(Object, Object)
+  fullName: Sharpy.Operator.Exports.Eq(Sharpy.Object, Sharpy.Object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Eq.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Eq
+    path: ../src/Sharpy/Operator/Eq.cs
+    startLine: 21
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Eq(Object left, Object right)
+    parameters:
+    - id: left
+      type: Sharpy.Object
+    - id: right
+      type: Sharpy.Object
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Eq(left As [Object], right As [Object]) As Boolean
+  overload: Sharpy.Operator.Exports.Eq*
+- uid: Sharpy.Operator.Exports.Eq``1(System.IComparable{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.Eq``1(System.IComparable{``0},``0)
+  id: Eq``1(System.IComparable{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Eq<T>(IComparable<T>, T)
+  nameWithType: Exports.Eq<T>(IComparable<T>, T)
+  fullName: Sharpy.Operator.Exports.Eq<T>(System.IComparable<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Eq.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Eq
+    path: ../src/Sharpy/Operator/Eq.cs
+    startLine: 31
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Eq<T>(IComparable<T> left, T right)
+    parameters:
+    - id: left
+      type: System.IComparable{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Eq(Of T)(left As IComparable(Of T), right As T) As Boolean
+  overload: Sharpy.Operator.Exports.Eq*
+  nameWithType.vb: Exports.Eq(Of T)(IComparable(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.Eq(Of T)(System.IComparable(Of T), T)
+  name.vb: Eq(Of T)(IComparable(Of T), T)
+- uid: Sharpy.Operator.Exports.Eq(System.IComparable,System.Object)
+  commentId: M:Sharpy.Operator.Exports.Eq(System.IComparable,System.Object)
+  id: Eq(System.IComparable,System.Object)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Eq(IComparable, object)
+  nameWithType: Exports.Eq(IComparable, object)
+  fullName: Sharpy.Operator.Exports.Eq(System.IComparable, object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Eq.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Eq
+    path: ../src/Sharpy/Operator/Eq.cs
+    startLine: 41
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Eq(IComparable left, object right)
+    parameters:
+    - id: left
+      type: System.IComparable
+    - id: right
+      type: System.Object
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Eq(left As IComparable, right As Object) As Boolean
+  overload: Sharpy.Operator.Exports.Eq*
+  nameWithType.vb: Exports.Eq(IComparable, Object)
+  fullName.vb: Sharpy.Operator.Exports.Eq(System.IComparable, Object)
+  name.vb: Eq(IComparable, Object)
 - uid: Sharpy.Operator.Exports.Eq(System.Object,System.Object)
   commentId: M:Sharpy.Operator.Exports.Eq(System.Object,System.Object)
   id: Eq(System.Object,System.Object)
@@ -274,7 +519,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Eq
     path: ../src/Sharpy/Operator/Eq.cs
-    startLine: 16
+    startLine: 51
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
@@ -310,7 +555,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/Operator/Eq.cs
-    startLine: 36
+    startLine: 76
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
@@ -330,6 +575,113 @@ items:
   nameWithType.vb: Exports.__Eq__(Of T)(T, T)
   fullName.vb: Sharpy.Operator.Exports.__Eq__(Of T)(T, T)
   name.vb: __Eq__(Of T)(T, T)
+- uid: Sharpy.Operator.Exports.__Eq__(Sharpy.Object,Sharpy.Object)
+  commentId: M:Sharpy.Operator.Exports.__Eq__(Sharpy.Object,Sharpy.Object)
+  id: __Eq__(Sharpy.Object,Sharpy.Object)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Eq__(Object, Object)
+  nameWithType: Exports.__Eq__(Object, Object)
+  fullName: Sharpy.Operator.Exports.__Eq__(Sharpy.Object, Sharpy.Object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Eq.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Eq__
+    path: ../src/Sharpy/Operator/Eq.cs
+    startLine: 78
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool __Eq__(Object left, Object right)
+    parameters:
+    - id: left
+      type: Sharpy.Object
+    - id: right
+      type: Sharpy.Object
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function __Eq__(left As [Object], right As [Object]) As Boolean
+  overload: Sharpy.Operator.Exports.__Eq__*
+- uid: Sharpy.Operator.Exports.__Eq__``1(System.IComparable{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.__Eq__``1(System.IComparable{``0},``0)
+  id: __Eq__``1(System.IComparable{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Eq__<T>(IComparable<T>, T)
+  nameWithType: Exports.__Eq__<T>(IComparable<T>, T)
+  fullName: Sharpy.Operator.Exports.__Eq__<T>(System.IComparable<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Eq.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Eq__
+    path: ../src/Sharpy/Operator/Eq.cs
+    startLine: 80
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool __Eq__<T>(IComparable<T> left, T right)
+    parameters:
+    - id: left
+      type: System.IComparable{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function __Eq__(Of T)(left As IComparable(Of T), right As T) As Boolean
+  overload: Sharpy.Operator.Exports.__Eq__*
+  nameWithType.vb: Exports.__Eq__(Of T)(IComparable(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.__Eq__(Of T)(System.IComparable(Of T), T)
+  name.vb: __Eq__(Of T)(IComparable(Of T), T)
+- uid: Sharpy.Operator.Exports.__Eq__(System.IComparable,System.Object)
+  commentId: M:Sharpy.Operator.Exports.__Eq__(System.IComparable,System.Object)
+  id: __Eq__(System.IComparable,System.Object)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Eq__(IComparable, object)
+  nameWithType: Exports.__Eq__(IComparable, object)
+  fullName: Sharpy.Operator.Exports.__Eq__(System.IComparable, object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Eq.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Eq__
+    path: ../src/Sharpy/Operator/Eq.cs
+    startLine: 82
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool __Eq__(IComparable left, object right)
+    parameters:
+    - id: left
+      type: System.IComparable
+    - id: right
+      type: System.Object
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function __Eq__(left As IComparable, right As Object) As Boolean
+  overload: Sharpy.Operator.Exports.__Eq__*
+  nameWithType.vb: Exports.__Eq__(IComparable, Object)
+  fullName.vb: Sharpy.Operator.Exports.__Eq__(System.IComparable, Object)
+  name.vb: __Eq__(IComparable, Object)
 - uid: Sharpy.Operator.Exports.__Eq__(System.Object,System.Object)
   commentId: M:Sharpy.Operator.Exports.__Eq__(System.Object,System.Object)
   id: __Eq__(System.Object,System.Object)
@@ -348,7 +700,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/Operator/Eq.cs
-    startLine: 37
+    startLine: 84
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
@@ -366,6 +718,118 @@ items:
   nameWithType.vb: Exports.__Eq__(Object, Object)
   fullName.vb: Sharpy.Operator.Exports.__Eq__(Object, Object)
   name.vb: __Eq__(Object, Object)
+- uid: Sharpy.Operator.Exports.Ge``1(Sharpy.IGreaterThanOrEquatableWith{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.Ge``1(Sharpy.IGreaterThanOrEquatableWith{``0},``0)
+  id: Ge``1(Sharpy.IGreaterThanOrEquatableWith{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Ge<T>(IGreaterThanOrEquatableWith<T>, T)
+  nameWithType: Exports.Ge<T>(IGreaterThanOrEquatableWith<T>, T)
+  fullName: Sharpy.Operator.Exports.Ge<T>(Sharpy.IGreaterThanOrEquatableWith<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Ge.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Ge
+    path: ../src/Sharpy/Operator/Ge.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Ge<T>(IGreaterThanOrEquatableWith<T> left, T right)
+    parameters:
+    - id: left
+      type: Sharpy.IGreaterThanOrEquatableWith{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Ge(Of T)(left As IGreaterThanOrEquatableWith(Of T), right As T) As Boolean
+  overload: Sharpy.Operator.Exports.Ge*
+  nameWithType.vb: Exports.Ge(Of T)(IGreaterThanOrEquatableWith(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.Ge(Of T)(Sharpy.IGreaterThanOrEquatableWith(Of T), T)
+  name.vb: Ge(Of T)(IGreaterThanOrEquatableWith(Of T), T)
+- uid: Sharpy.Operator.Exports.Ge``1(System.IComparable{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.Ge``1(System.IComparable{``0},``0)
+  id: Ge``1(System.IComparable{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Ge<T>(IComparable<T>, T)
+  nameWithType: Exports.Ge<T>(IComparable<T>, T)
+  fullName: Sharpy.Operator.Exports.Ge<T>(System.IComparable<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Ge.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Ge
+    path: ../src/Sharpy/Operator/Ge.cs
+    startLine: 19
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Ge<T>(IComparable<T> left, T right)
+    parameters:
+    - id: left
+      type: System.IComparable{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Ge(Of T)(left As IComparable(Of T), right As T) As Boolean
+  overload: Sharpy.Operator.Exports.Ge*
+  nameWithType.vb: Exports.Ge(Of T)(IComparable(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.Ge(Of T)(System.IComparable(Of T), T)
+  name.vb: Ge(Of T)(IComparable(Of T), T)
+- uid: Sharpy.Operator.Exports.Ge(System.IComparable,System.Object)
+  commentId: M:Sharpy.Operator.Exports.Ge(System.IComparable,System.Object)
+  id: Ge(System.IComparable,System.Object)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Ge(IComparable, object)
+  nameWithType: Exports.Ge(IComparable, object)
+  fullName: Sharpy.Operator.Exports.Ge(System.IComparable, object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Ge.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Ge
+    path: ../src/Sharpy/Operator/Ge.cs
+    startLine: 34
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Ge(IComparable left, object right)
+    parameters:
+    - id: left
+      type: System.IComparable
+    - id: right
+      type: System.Object
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Ge(left As IComparable, right As Object) As Boolean
+  overload: Sharpy.Operator.Exports.Ge*
+  nameWithType.vb: Exports.Ge(IComparable, Object)
+  fullName.vb: Sharpy.Operator.Exports.Ge(System.IComparable, Object)
+  name.vb: Ge(IComparable, Object)
 - uid: Sharpy.Operator.Exports.Ge``1(``0,``0)
   commentId: M:Sharpy.Operator.Exports.Ge``1(``0,``0)
   id: Ge``1(``0,``0)
@@ -384,12 +848,12 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Ge
     path: ../src/Sharpy/Operator/Ge.cs
-    startLine: 4
+    startLine: 49
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
   syntax:
-    content: 'public static bool Ge<T>(T left, T right) where T : IGreaterThanOrEquatable<T>'
+    content: public static bool Ge<T>(T left, T right)
     parameters:
     - id: left
       type: '{T}'
@@ -399,11 +863,125 @@ items:
     - id: T
     return:
       type: System.Boolean
-    content.vb: Public Shared Function Ge(Of T As IGreaterThanOrEquatable(Of T))(left As T, right As T) As Boolean
+    content.vb: Public Shared Function Ge(Of T)(left As T, right As T) As Boolean
   overload: Sharpy.Operator.Exports.Ge*
   nameWithType.vb: Exports.Ge(Of T)(T, T)
   fullName.vb: Sharpy.Operator.Exports.Ge(Of T)(T, T)
   name.vb: Ge(Of T)(T, T)
+- uid: Sharpy.Operator.Exports.__Ge__``1(Sharpy.IGreaterThanOrEquatableWith{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.__Ge__``1(Sharpy.IGreaterThanOrEquatableWith{``0},``0)
+  id: __Ge__``1(Sharpy.IGreaterThanOrEquatableWith{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Ge__<T>(IGreaterThanOrEquatableWith<T>, T)
+  nameWithType: Exports.__Ge__<T>(IGreaterThanOrEquatableWith<T>, T)
+  fullName: Sharpy.Operator.Exports.__Ge__<T>(Sharpy.IGreaterThanOrEquatableWith<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Ge.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Ge__
+    path: ../src/Sharpy/Operator/Ge.cs
+    startLine: 79
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool __Ge__<T>(IGreaterThanOrEquatableWith<T> left, T right)
+    parameters:
+    - id: left
+      type: Sharpy.IGreaterThanOrEquatableWith{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function __Ge__(Of T)(left As IGreaterThanOrEquatableWith(Of T), right As T) As Boolean
+  overload: Sharpy.Operator.Exports.__Ge__*
+  nameWithType.vb: Exports.__Ge__(Of T)(IGreaterThanOrEquatableWith(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.__Ge__(Of T)(Sharpy.IGreaterThanOrEquatableWith(Of T), T)
+  name.vb: __Ge__(Of T)(IGreaterThanOrEquatableWith(Of T), T)
+- uid: Sharpy.Operator.Exports.__Ge__``1(System.IComparable{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.__Ge__``1(System.IComparable{``0},``0)
+  id: __Ge__``1(System.IComparable{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Ge__<T>(IComparable<T>, T)
+  nameWithType: Exports.__Ge__<T>(IComparable<T>, T)
+  fullName: Sharpy.Operator.Exports.__Ge__<T>(System.IComparable<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Ge.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Ge__
+    path: ../src/Sharpy/Operator/Ge.cs
+    startLine: 81
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool __Ge__<T>(IComparable<T> left, T right)
+    parameters:
+    - id: left
+      type: System.IComparable{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function __Ge__(Of T)(left As IComparable(Of T), right As T) As Boolean
+  overload: Sharpy.Operator.Exports.__Ge__*
+  nameWithType.vb: Exports.__Ge__(Of T)(IComparable(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.__Ge__(Of T)(System.IComparable(Of T), T)
+  name.vb: __Ge__(Of T)(IComparable(Of T), T)
+- uid: Sharpy.Operator.Exports.__Ge__``1(System.IComparable,System.Object)
+  commentId: M:Sharpy.Operator.Exports.__Ge__``1(System.IComparable,System.Object)
+  id: __Ge__``1(System.IComparable,System.Object)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Ge__<T>(IComparable, object)
+  nameWithType: Exports.__Ge__<T>(IComparable, object)
+  fullName: Sharpy.Operator.Exports.__Ge__<T>(System.IComparable, object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Ge.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Ge__
+    path: ../src/Sharpy/Operator/Ge.cs
+    startLine: 83
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool __Ge__<T>(IComparable left, object right)
+    parameters:
+    - id: left
+      type: System.IComparable
+    - id: right
+      type: System.Object
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function __Ge__(Of T)(left As IComparable, right As Object) As Boolean
+  overload: Sharpy.Operator.Exports.__Ge__*
+  nameWithType.vb: Exports.__Ge__(Of T)(IComparable, Object)
+  fullName.vb: Sharpy.Operator.Exports.__Ge__(Of T)(System.IComparable, Object)
+  name.vb: __Ge__(Of T)(IComparable, Object)
 - uid: Sharpy.Operator.Exports.__Ge__``1(``0,``0)
   commentId: M:Sharpy.Operator.Exports.__Ge__``1(``0,``0)
   id: __Ge__``1(``0,``0)
@@ -422,12 +1000,12 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Ge__
     path: ../src/Sharpy/Operator/Ge.cs
-    startLine: 19
+    startLine: 85
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
   syntax:
-    content: 'public static bool __Ge__<T>(T left, T right) where T : IGreaterThanOrEquatable<T>'
+    content: public static bool __Ge__<T>(T left, T right)
     parameters:
     - id: left
       type: '{T}'
@@ -437,11 +1015,123 @@ items:
     - id: T
     return:
       type: System.Boolean
-    content.vb: Public Shared Function __Ge__(Of T As IGreaterThanOrEquatable(Of T))(left As T, right As T) As Boolean
+    content.vb: Public Shared Function __Ge__(Of T)(left As T, right As T) As Boolean
   overload: Sharpy.Operator.Exports.__Ge__*
   nameWithType.vb: Exports.__Ge__(Of T)(T, T)
   fullName.vb: Sharpy.Operator.Exports.__Ge__(Of T)(T, T)
   name.vb: __Ge__(Of T)(T, T)
+- uid: Sharpy.Operator.Exports.Gt``1(Sharpy.IGreaterThanComparableWith{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.Gt``1(Sharpy.IGreaterThanComparableWith{``0},``0)
+  id: Gt``1(Sharpy.IGreaterThanComparableWith{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Gt<T>(IGreaterThanComparableWith<T>, T)
+  nameWithType: Exports.Gt<T>(IGreaterThanComparableWith<T>, T)
+  fullName: Sharpy.Operator.Exports.Gt<T>(Sharpy.IGreaterThanComparableWith<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Gt.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Gt
+    path: ../src/Sharpy/Operator/Gt.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Gt<T>(IGreaterThanComparableWith<T> left, T right)
+    parameters:
+    - id: left
+      type: Sharpy.IGreaterThanComparableWith{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Gt(Of T)(left As IGreaterThanComparableWith(Of T), right As T) As Boolean
+  overload: Sharpy.Operator.Exports.Gt*
+  nameWithType.vb: Exports.Gt(Of T)(IGreaterThanComparableWith(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.Gt(Of T)(Sharpy.IGreaterThanComparableWith(Of T), T)
+  name.vb: Gt(Of T)(IGreaterThanComparableWith(Of T), T)
+- uid: Sharpy.Operator.Exports.Gt``1(System.IComparable{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.Gt``1(System.IComparable{``0},``0)
+  id: Gt``1(System.IComparable{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Gt<T>(IComparable<T>, T)
+  nameWithType: Exports.Gt<T>(IComparable<T>, T)
+  fullName: Sharpy.Operator.Exports.Gt<T>(System.IComparable<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Gt.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Gt
+    path: ../src/Sharpy/Operator/Gt.cs
+    startLine: 19
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Gt<T>(IComparable<T> left, T right)
+    parameters:
+    - id: left
+      type: System.IComparable{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Gt(Of T)(left As IComparable(Of T), right As T) As Boolean
+  overload: Sharpy.Operator.Exports.Gt*
+  nameWithType.vb: Exports.Gt(Of T)(IComparable(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.Gt(Of T)(System.IComparable(Of T), T)
+  name.vb: Gt(Of T)(IComparable(Of T), T)
+- uid: Sharpy.Operator.Exports.Gt(System.IComparable,System.Object)
+  commentId: M:Sharpy.Operator.Exports.Gt(System.IComparable,System.Object)
+  id: Gt(System.IComparable,System.Object)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Gt(IComparable, object)
+  nameWithType: Exports.Gt(IComparable, object)
+  fullName: Sharpy.Operator.Exports.Gt(System.IComparable, object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Gt.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Gt
+    path: ../src/Sharpy/Operator/Gt.cs
+    startLine: 34
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Gt(IComparable left, object right)
+    parameters:
+    - id: left
+      type: System.IComparable
+    - id: right
+      type: System.Object
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Gt(left As IComparable, right As Object) As Boolean
+  overload: Sharpy.Operator.Exports.Gt*
+  nameWithType.vb: Exports.Gt(IComparable, Object)
+  fullName.vb: Sharpy.Operator.Exports.Gt(System.IComparable, Object)
+  name.vb: Gt(IComparable, Object)
 - uid: Sharpy.Operator.Exports.Gt``1(``0,``0)
   commentId: M:Sharpy.Operator.Exports.Gt``1(``0,``0)
   id: Gt``1(``0,``0)
@@ -460,12 +1150,12 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Gt
     path: ../src/Sharpy/Operator/Gt.cs
-    startLine: 3
+    startLine: 49
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
   syntax:
-    content: 'public static bool Gt<T>(T left, T right) where T : IGreaterThanComparable<T>'
+    content: public static bool Gt<T>(T left, T right)
     parameters:
     - id: left
       type: '{T}'
@@ -475,11 +1165,125 @@ items:
     - id: T
     return:
       type: System.Boolean
-    content.vb: Public Shared Function Gt(Of T As IGreaterThanComparable(Of T))(left As T, right As T) As Boolean
+    content.vb: Public Shared Function Gt(Of T)(left As T, right As T) As Boolean
   overload: Sharpy.Operator.Exports.Gt*
   nameWithType.vb: Exports.Gt(Of T)(T, T)
   fullName.vb: Sharpy.Operator.Exports.Gt(Of T)(T, T)
   name.vb: Gt(Of T)(T, T)
+- uid: Sharpy.Operator.Exports.__Gt__``1(Sharpy.IGreaterThanComparableWith{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.__Gt__``1(Sharpy.IGreaterThanComparableWith{``0},``0)
+  id: __Gt__``1(Sharpy.IGreaterThanComparableWith{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Gt__<T>(IGreaterThanComparableWith<T>, T)
+  nameWithType: Exports.__Gt__<T>(IGreaterThanComparableWith<T>, T)
+  fullName: Sharpy.Operator.Exports.__Gt__<T>(Sharpy.IGreaterThanComparableWith<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Gt.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Gt__
+    path: ../src/Sharpy/Operator/Gt.cs
+    startLine: 79
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool __Gt__<T>(IGreaterThanComparableWith<T> left, T right)
+    parameters:
+    - id: left
+      type: Sharpy.IGreaterThanComparableWith{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function __Gt__(Of T)(left As IGreaterThanComparableWith(Of T), right As T) As Boolean
+  overload: Sharpy.Operator.Exports.__Gt__*
+  nameWithType.vb: Exports.__Gt__(Of T)(IGreaterThanComparableWith(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.__Gt__(Of T)(Sharpy.IGreaterThanComparableWith(Of T), T)
+  name.vb: __Gt__(Of T)(IGreaterThanComparableWith(Of T), T)
+- uid: Sharpy.Operator.Exports.__Gt__``1(System.IComparable{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.__Gt__``1(System.IComparable{``0},``0)
+  id: __Gt__``1(System.IComparable{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Gt__<T>(IComparable<T>, T)
+  nameWithType: Exports.__Gt__<T>(IComparable<T>, T)
+  fullName: Sharpy.Operator.Exports.__Gt__<T>(System.IComparable<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Gt.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Gt__
+    path: ../src/Sharpy/Operator/Gt.cs
+    startLine: 81
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool __Gt__<T>(IComparable<T> left, T right)
+    parameters:
+    - id: left
+      type: System.IComparable{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function __Gt__(Of T)(left As IComparable(Of T), right As T) As Boolean
+  overload: Sharpy.Operator.Exports.__Gt__*
+  nameWithType.vb: Exports.__Gt__(Of T)(IComparable(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.__Gt__(Of T)(System.IComparable(Of T), T)
+  name.vb: __Gt__(Of T)(IComparable(Of T), T)
+- uid: Sharpy.Operator.Exports.__Gt__``1(System.IComparable,System.Object)
+  commentId: M:Sharpy.Operator.Exports.__Gt__``1(System.IComparable,System.Object)
+  id: __Gt__``1(System.IComparable,System.Object)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Gt__<T>(IComparable, object)
+  nameWithType: Exports.__Gt__<T>(IComparable, object)
+  fullName: Sharpy.Operator.Exports.__Gt__<T>(System.IComparable, object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Gt.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Gt__
+    path: ../src/Sharpy/Operator/Gt.cs
+    startLine: 83
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool __Gt__<T>(IComparable left, object right)
+    parameters:
+    - id: left
+      type: System.IComparable
+    - id: right
+      type: System.Object
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function __Gt__(Of T)(left As IComparable, right As Object) As Boolean
+  overload: Sharpy.Operator.Exports.__Gt__*
+  nameWithType.vb: Exports.__Gt__(Of T)(IComparable, Object)
+  fullName.vb: Sharpy.Operator.Exports.__Gt__(Of T)(System.IComparable, Object)
+  name.vb: __Gt__(Of T)(IComparable, Object)
 - uid: Sharpy.Operator.Exports.__Gt__``1(``0,``0)
   commentId: M:Sharpy.Operator.Exports.__Gt__``1(``0,``0)
   id: __Gt__``1(``0,``0)
@@ -498,12 +1302,12 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Gt__
     path: ../src/Sharpy/Operator/Gt.cs
-    startLine: 18
+    startLine: 85
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
   syntax:
-    content: 'public static bool __Gt__<T>(T left, T right) where T : IGreaterThanComparable<T>'
+    content: public static bool __Gt__<T>(T left, T right)
     parameters:
     - id: left
       type: '{T}'
@@ -513,11 +1317,487 @@ items:
     - id: T
     return:
       type: System.Boolean
-    content.vb: Public Shared Function __Gt__(Of T As IGreaterThanComparable(Of T))(left As T, right As T) As Boolean
+    content.vb: Public Shared Function __Gt__(Of T)(left As T, right As T) As Boolean
   overload: Sharpy.Operator.Exports.__Gt__*
   nameWithType.vb: Exports.__Gt__(Of T)(T, T)
   fullName.vb: Sharpy.Operator.Exports.__Gt__(Of T)(T, T)
   name.vb: __Gt__(Of T)(T, T)
+- uid: Sharpy.Operator.Exports.IAdd``1(Sharpy.IInplaceAddable{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.IAdd``1(Sharpy.IInplaceAddable{``0},``0)
+  id: IAdd``1(Sharpy.IInplaceAddable{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: IAdd<T>(IInplaceAddable<T>, T)
+  nameWithType: Exports.IAdd<T>(IInplaceAddable<T>, T)
+  fullName: Sharpy.Operator.Exports.IAdd<T>(Sharpy.IInplaceAddable<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/IAdd.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IAdd
+    path: ../src/Sharpy/Operator/IAdd.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static void IAdd<T>(IInplaceAddable<T> left, T right)
+    parameters:
+    - id: left
+      type: Sharpy.IInplaceAddable{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    content.vb: Public Shared Sub IAdd(Of T)(left As IInplaceAddable(Of T), right As T)
+  overload: Sharpy.Operator.Exports.IAdd*
+  nameWithType.vb: Exports.IAdd(Of T)(IInplaceAddable(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.IAdd(Of T)(Sharpy.IInplaceAddable(Of T), T)
+  name.vb: IAdd(Of T)(IInplaceAddable(Of T), T)
+- uid: Sharpy.Operator.Exports.IAdd``2(``0@,``1)
+  commentId: M:Sharpy.Operator.Exports.IAdd``2(``0@,``1)
+  id: IAdd``2(``0@,``1)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: IAdd<TAugend, TAddend>(ref TAugend, TAddend)
+  nameWithType: Exports.IAdd<TAugend, TAddend>(ref TAugend, TAddend)
+  fullName: Sharpy.Operator.Exports.IAdd<TAugend, TAddend>(ref TAugend, TAddend)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/IAdd.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IAdd
+    path: ../src/Sharpy/Operator/IAdd.cs
+    startLine: 9
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: 'public static void IAdd<TAugend, TAddend>(ref TAugend left, TAddend right) where TAugend : IAddable<TAugend, TAddend>'
+    parameters:
+    - id: left
+      type: '{TAugend}'
+    - id: right
+      type: '{TAddend}'
+    typeParameters:
+    - id: TAugend
+    - id: TAddend
+    content.vb: Public Shared Sub IAdd(Of TAugend As IAddable(Of TAugend, TAddend), TAddend)(left As TAugend, right As TAddend)
+  overload: Sharpy.Operator.Exports.IAdd*
+  nameWithType.vb: Exports.IAdd(Of TAugend, TAddend)(TAugend, TAddend)
+  fullName.vb: Sharpy.Operator.Exports.IAdd(Of TAugend, TAddend)(TAugend, TAddend)
+  name.vb: IAdd(Of TAugend, TAddend)(TAugend, TAddend)
+- uid: Sharpy.Operator.Exports.__IAdd__``1(Sharpy.IInplaceAddable{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.__IAdd__``1(Sharpy.IInplaceAddable{``0},``0)
+  id: __IAdd__``1(Sharpy.IInplaceAddable{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __IAdd__<T>(IInplaceAddable<T>, T)
+  nameWithType: Exports.__IAdd__<T>(IInplaceAddable<T>, T)
+  fullName: Sharpy.Operator.Exports.__IAdd__<T>(Sharpy.IInplaceAddable<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/IAdd.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __IAdd__
+    path: ../src/Sharpy/Operator/IAdd.cs
+    startLine: 15
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static void __IAdd__<T>(IInplaceAddable<T> left, T right)
+    parameters:
+    - id: left
+      type: Sharpy.IInplaceAddable{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    content.vb: Public Shared Sub __IAdd__(Of T)(left As IInplaceAddable(Of T), right As T)
+  overload: Sharpy.Operator.Exports.__IAdd__*
+  nameWithType.vb: Exports.__IAdd__(Of T)(IInplaceAddable(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.__IAdd__(Of T)(Sharpy.IInplaceAddable(Of T), T)
+  name.vb: __IAdd__(Of T)(IInplaceAddable(Of T), T)
+- uid: Sharpy.Operator.Exports.__IAdd__``2(``0@,``1)
+  commentId: M:Sharpy.Operator.Exports.__IAdd__``2(``0@,``1)
+  id: __IAdd__``2(``0@,``1)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __IAdd__<TAugend, TAddend>(ref TAugend, TAddend)
+  nameWithType: Exports.__IAdd__<TAugend, TAddend>(ref TAugend, TAddend)
+  fullName: Sharpy.Operator.Exports.__IAdd__<TAugend, TAddend>(ref TAugend, TAddend)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/IAdd.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __IAdd__
+    path: ../src/Sharpy/Operator/IAdd.cs
+    startLine: 17
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: 'public static void __IAdd__<TAugend, TAddend>(ref TAugend left, TAddend right) where TAugend : IAddable<TAugend, TAddend>'
+    parameters:
+    - id: left
+      type: '{TAugend}'
+    - id: right
+      type: '{TAddend}'
+    typeParameters:
+    - id: TAugend
+    - id: TAddend
+    content.vb: Public Shared Sub __IAdd__(Of TAugend As IAddable(Of TAugend, TAddend), TAddend)(left As TAugend, right As TAddend)
+  overload: Sharpy.Operator.Exports.__IAdd__*
+  nameWithType.vb: Exports.__IAdd__(Of TAugend, TAddend)(TAugend, TAddend)
+  fullName.vb: Sharpy.Operator.Exports.__IAdd__(Of TAugend, TAddend)(TAugend, TAddend)
+  name.vb: __IAdd__(Of TAugend, TAddend)(TAugend, TAddend)
+- uid: Sharpy.Operator.Exports.IMul``1(Sharpy.IInplaceMultipliable{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.IMul``1(Sharpy.IInplaceMultipliable{``0},``0)
+  id: IMul``1(Sharpy.IInplaceMultipliable{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: IMul<T>(IInplaceMultipliable<T>, T)
+  nameWithType: Exports.IMul<T>(IInplaceMultipliable<T>, T)
+  fullName: Sharpy.Operator.Exports.IMul<T>(Sharpy.IInplaceMultipliable<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/IMul.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IMul
+    path: ../src/Sharpy/Operator/IMul.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static void IMul<T>(IInplaceMultipliable<T> left, T right)
+    parameters:
+    - id: left
+      type: Sharpy.IInplaceMultipliable{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    content.vb: Public Shared Sub IMul(Of T)(left As IInplaceMultipliable(Of T), right As T)
+  overload: Sharpy.Operator.Exports.IMul*
+  nameWithType.vb: Exports.IMul(Of T)(IInplaceMultipliable(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.IMul(Of T)(Sharpy.IInplaceMultipliable(Of T), T)
+  name.vb: IMul(Of T)(IInplaceMultipliable(Of T), T)
+- uid: Sharpy.Operator.Exports.IMul``2(``0@,``1)
+  commentId: M:Sharpy.Operator.Exports.IMul``2(``0@,``1)
+  id: IMul``2(``0@,``1)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: IMul<TMultiplicand, TMultiplier>(ref TMultiplicand, TMultiplier)
+  nameWithType: Exports.IMul<TMultiplicand, TMultiplier>(ref TMultiplicand, TMultiplier)
+  fullName: Sharpy.Operator.Exports.IMul<TMultiplicand, TMultiplier>(ref TMultiplicand, TMultiplier)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/IMul.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IMul
+    path: ../src/Sharpy/Operator/IMul.cs
+    startLine: 9
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: 'public static void IMul<TMultiplicand, TMultiplier>(ref TMultiplicand left, TMultiplier right) where TMultiplicand : IMultipliable<TMultiplicand, TMultiplier>'
+    parameters:
+    - id: left
+      type: '{TMultiplicand}'
+    - id: right
+      type: '{TMultiplier}'
+    typeParameters:
+    - id: TMultiplicand
+    - id: TMultiplier
+    content.vb: Public Shared Sub IMul(Of TMultiplicand As IMultipliable(Of TMultiplicand, TMultiplier), TMultiplier)(left As TMultiplicand, right As TMultiplier)
+  overload: Sharpy.Operator.Exports.IMul*
+  nameWithType.vb: Exports.IMul(Of TMultiplicand, TMultiplier)(TMultiplicand, TMultiplier)
+  fullName.vb: Sharpy.Operator.Exports.IMul(Of TMultiplicand, TMultiplier)(TMultiplicand, TMultiplier)
+  name.vb: IMul(Of TMultiplicand, TMultiplier)(TMultiplicand, TMultiplier)
+- uid: Sharpy.Operator.Exports.__IMul__``1(Sharpy.IInplaceMultipliable{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.__IMul__``1(Sharpy.IInplaceMultipliable{``0},``0)
+  id: __IMul__``1(Sharpy.IInplaceMultipliable{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __IMul__<T>(IInplaceMultipliable<T>, T)
+  nameWithType: Exports.__IMul__<T>(IInplaceMultipliable<T>, T)
+  fullName: Sharpy.Operator.Exports.__IMul__<T>(Sharpy.IInplaceMultipliable<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/IMul.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __IMul__
+    path: ../src/Sharpy/Operator/IMul.cs
+    startLine: 15
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static void __IMul__<T>(IInplaceMultipliable<T> left, T right)
+    parameters:
+    - id: left
+      type: Sharpy.IInplaceMultipliable{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    content.vb: Public Shared Sub __IMul__(Of T)(left As IInplaceMultipliable(Of T), right As T)
+  overload: Sharpy.Operator.Exports.__IMul__*
+  nameWithType.vb: Exports.__IMul__(Of T)(IInplaceMultipliable(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.__IMul__(Of T)(Sharpy.IInplaceMultipliable(Of T), T)
+  name.vb: __IMul__(Of T)(IInplaceMultipliable(Of T), T)
+- uid: Sharpy.Operator.Exports.__IMul__``2(``0@,``1)
+  commentId: M:Sharpy.Operator.Exports.__IMul__``2(``0@,``1)
+  id: __IMul__``2(``0@,``1)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __IMul__<TMultiplicand, TMultiplier>(ref TMultiplicand, TMultiplier)
+  nameWithType: Exports.__IMul__<TMultiplicand, TMultiplier>(ref TMultiplicand, TMultiplier)
+  fullName: Sharpy.Operator.Exports.__IMul__<TMultiplicand, TMultiplier>(ref TMultiplicand, TMultiplier)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/IMul.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __IMul__
+    path: ../src/Sharpy/Operator/IMul.cs
+    startLine: 17
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: 'public static void __IMul__<TMultiplicand, TMultiplier>(ref TMultiplicand left, TMultiplier right) where TMultiplicand : IMultipliable<TMultiplicand, TMultiplier>'
+    parameters:
+    - id: left
+      type: '{TMultiplicand}'
+    - id: right
+      type: '{TMultiplier}'
+    typeParameters:
+    - id: TMultiplicand
+    - id: TMultiplier
+    content.vb: Public Shared Sub __IMul__(Of TMultiplicand As IMultipliable(Of TMultiplicand, TMultiplier), TMultiplier)(left As TMultiplicand, right As TMultiplier)
+  overload: Sharpy.Operator.Exports.__IMul__*
+  nameWithType.vb: Exports.__IMul__(Of TMultiplicand, TMultiplier)(TMultiplicand, TMultiplier)
+  fullName.vb: Sharpy.Operator.Exports.__IMul__(Of TMultiplicand, TMultiplier)(TMultiplicand, TMultiplier)
+  name.vb: __IMul__(Of TMultiplicand, TMultiplier)(TMultiplicand, TMultiplier)
+- uid: Sharpy.Operator.Exports.Is(System.Object,System.Object)
+  commentId: M:Sharpy.Operator.Exports.Is(System.Object,System.Object)
+  id: Is(System.Object,System.Object)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Is(object, object)
+  nameWithType: Exports.Is(object, object)
+  fullName: Sharpy.Operator.Exports.Is(object, object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Is.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Is
+    path: ../src/Sharpy/Operator/Is.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Is(object left, object right)
+    parameters:
+    - id: left
+      type: System.Object
+    - id: right
+      type: System.Object
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function [Is](left As Object, right As Object) As Boolean
+  overload: Sharpy.Operator.Exports.Is*
+  nameWithType.vb: Exports.Is(Object, Object)
+  fullName.vb: Sharpy.Operator.Exports.Is(Object, Object)
+  name.vb: Is(Object, Object)
+- uid: Sharpy.Operator.Exports.IsNot(System.Object,System.Object)
+  commentId: M:Sharpy.Operator.Exports.IsNot(System.Object,System.Object)
+  id: IsNot(System.Object,System.Object)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: IsNot(object, object)
+  nameWithType: Exports.IsNot(object, object)
+  fullName: Sharpy.Operator.Exports.IsNot(object, object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/IsNot.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IsNot
+    path: ../src/Sharpy/Operator/IsNot.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool IsNot(object left, object right)
+    parameters:
+    - id: left
+      type: System.Object
+    - id: right
+      type: System.Object
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function [IsNot](left As Object, right As Object) As Boolean
+  overload: Sharpy.Operator.Exports.IsNot*
+  nameWithType.vb: Exports.IsNot(Object, Object)
+  fullName.vb: Sharpy.Operator.Exports.IsNot(Object, Object)
+  name.vb: IsNot(Object, Object)
+- uid: Sharpy.Operator.Exports.Le``1(Sharpy.ILessThanOrEquatableWith{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.Le``1(Sharpy.ILessThanOrEquatableWith{``0},``0)
+  id: Le``1(Sharpy.ILessThanOrEquatableWith{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Le<T>(ILessThanOrEquatableWith<T>, T)
+  nameWithType: Exports.Le<T>(ILessThanOrEquatableWith<T>, T)
+  fullName: Sharpy.Operator.Exports.Le<T>(Sharpy.ILessThanOrEquatableWith<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Le.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Le
+    path: ../src/Sharpy/Operator/Le.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Le<T>(ILessThanOrEquatableWith<T> left, T right)
+    parameters:
+    - id: left
+      type: Sharpy.ILessThanOrEquatableWith{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Le(Of T)(left As ILessThanOrEquatableWith(Of T), right As T) As Boolean
+  overload: Sharpy.Operator.Exports.Le*
+  nameWithType.vb: Exports.Le(Of T)(ILessThanOrEquatableWith(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.Le(Of T)(Sharpy.ILessThanOrEquatableWith(Of T), T)
+  name.vb: Le(Of T)(ILessThanOrEquatableWith(Of T), T)
+- uid: Sharpy.Operator.Exports.Le``1(System.IComparable{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.Le``1(System.IComparable{``0},``0)
+  id: Le``1(System.IComparable{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Le<T>(IComparable<T>, T)
+  nameWithType: Exports.Le<T>(IComparable<T>, T)
+  fullName: Sharpy.Operator.Exports.Le<T>(System.IComparable<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Le.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Le
+    path: ../src/Sharpy/Operator/Le.cs
+    startLine: 19
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Le<T>(IComparable<T> left, T right)
+    parameters:
+    - id: left
+      type: System.IComparable{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Le(Of T)(left As IComparable(Of T), right As T) As Boolean
+  overload: Sharpy.Operator.Exports.Le*
+  nameWithType.vb: Exports.Le(Of T)(IComparable(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.Le(Of T)(System.IComparable(Of T), T)
+  name.vb: Le(Of T)(IComparable(Of T), T)
+- uid: Sharpy.Operator.Exports.Le(System.IComparable,System.Object)
+  commentId: M:Sharpy.Operator.Exports.Le(System.IComparable,System.Object)
+  id: Le(System.IComparable,System.Object)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Le(IComparable, object)
+  nameWithType: Exports.Le(IComparable, object)
+  fullName: Sharpy.Operator.Exports.Le(System.IComparable, object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Le.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Le
+    path: ../src/Sharpy/Operator/Le.cs
+    startLine: 34
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Le(IComparable left, object right)
+    parameters:
+    - id: left
+      type: System.IComparable
+    - id: right
+      type: System.Object
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Le(left As IComparable, right As Object) As Boolean
+  overload: Sharpy.Operator.Exports.Le*
+  nameWithType.vb: Exports.Le(IComparable, Object)
+  fullName.vb: Sharpy.Operator.Exports.Le(System.IComparable, Object)
+  name.vb: Le(IComparable, Object)
 - uid: Sharpy.Operator.Exports.Le``1(``0,``0)
   commentId: M:Sharpy.Operator.Exports.Le``1(``0,``0)
   id: Le``1(``0,``0)
@@ -536,12 +1816,12 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Le
     path: ../src/Sharpy/Operator/Le.cs
-    startLine: 3
+    startLine: 49
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
   syntax:
-    content: 'public static bool Le<T>(T left, T right) where T : ILessThanOrEquatable<T>'
+    content: public static bool Le<T>(T left, T right)
     parameters:
     - id: left
       type: '{T}'
@@ -551,11 +1831,125 @@ items:
     - id: T
     return:
       type: System.Boolean
-    content.vb: Public Shared Function Le(Of T As ILessThanOrEquatable(Of T))(left As T, right As T) As Boolean
+    content.vb: Public Shared Function Le(Of T)(left As T, right As T) As Boolean
   overload: Sharpy.Operator.Exports.Le*
   nameWithType.vb: Exports.Le(Of T)(T, T)
   fullName.vb: Sharpy.Operator.Exports.Le(Of T)(T, T)
   name.vb: Le(Of T)(T, T)
+- uid: Sharpy.Operator.Exports.__Le__``1(Sharpy.ILessThanOrEquatableWith{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.__Le__``1(Sharpy.ILessThanOrEquatableWith{``0},``0)
+  id: __Le__``1(Sharpy.ILessThanOrEquatableWith{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Le__<T>(ILessThanOrEquatableWith<T>, T)
+  nameWithType: Exports.__Le__<T>(ILessThanOrEquatableWith<T>, T)
+  fullName: Sharpy.Operator.Exports.__Le__<T>(Sharpy.ILessThanOrEquatableWith<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Le.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Le__
+    path: ../src/Sharpy/Operator/Le.cs
+    startLine: 79
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool __Le__<T>(ILessThanOrEquatableWith<T> left, T right)
+    parameters:
+    - id: left
+      type: Sharpy.ILessThanOrEquatableWith{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function __Le__(Of T)(left As ILessThanOrEquatableWith(Of T), right As T) As Boolean
+  overload: Sharpy.Operator.Exports.__Le__*
+  nameWithType.vb: Exports.__Le__(Of T)(ILessThanOrEquatableWith(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.__Le__(Of T)(Sharpy.ILessThanOrEquatableWith(Of T), T)
+  name.vb: __Le__(Of T)(ILessThanOrEquatableWith(Of T), T)
+- uid: Sharpy.Operator.Exports.__Le__``1(System.IComparable{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.__Le__``1(System.IComparable{``0},``0)
+  id: __Le__``1(System.IComparable{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Le__<T>(IComparable<T>, T)
+  nameWithType: Exports.__Le__<T>(IComparable<T>, T)
+  fullName: Sharpy.Operator.Exports.__Le__<T>(System.IComparable<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Le.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Le__
+    path: ../src/Sharpy/Operator/Le.cs
+    startLine: 81
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool __Le__<T>(IComparable<T> left, T right)
+    parameters:
+    - id: left
+      type: System.IComparable{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function __Le__(Of T)(left As IComparable(Of T), right As T) As Boolean
+  overload: Sharpy.Operator.Exports.__Le__*
+  nameWithType.vb: Exports.__Le__(Of T)(IComparable(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.__Le__(Of T)(System.IComparable(Of T), T)
+  name.vb: __Le__(Of T)(IComparable(Of T), T)
+- uid: Sharpy.Operator.Exports.__Le__``1(System.IComparable,System.Object)
+  commentId: M:Sharpy.Operator.Exports.__Le__``1(System.IComparable,System.Object)
+  id: __Le__``1(System.IComparable,System.Object)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Le__<T>(IComparable, object)
+  nameWithType: Exports.__Le__<T>(IComparable, object)
+  fullName: Sharpy.Operator.Exports.__Le__<T>(System.IComparable, object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Le.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Le__
+    path: ../src/Sharpy/Operator/Le.cs
+    startLine: 83
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool __Le__<T>(IComparable left, object right)
+    parameters:
+    - id: left
+      type: System.IComparable
+    - id: right
+      type: System.Object
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function __Le__(Of T)(left As IComparable, right As Object) As Boolean
+  overload: Sharpy.Operator.Exports.__Le__*
+  nameWithType.vb: Exports.__Le__(Of T)(IComparable, Object)
+  fullName.vb: Sharpy.Operator.Exports.__Le__(Of T)(System.IComparable, Object)
+  name.vb: __Le__(Of T)(IComparable, Object)
 - uid: Sharpy.Operator.Exports.__Le__``1(``0,``0)
   commentId: M:Sharpy.Operator.Exports.__Le__``1(``0,``0)
   id: __Le__``1(``0,``0)
@@ -574,12 +1968,12 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Le__
     path: ../src/Sharpy/Operator/Le.cs
-    startLine: 18
+    startLine: 85
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
   syntax:
-    content: 'public static bool __Le__<T>(T left, T right) where T : ILessThanOrEquatable<T>'
+    content: public static bool __Le__<T>(T left, T right)
     parameters:
     - id: left
       type: '{T}'
@@ -589,11 +1983,123 @@ items:
     - id: T
     return:
       type: System.Boolean
-    content.vb: Public Shared Function __Le__(Of T As ILessThanOrEquatable(Of T))(left As T, right As T) As Boolean
+    content.vb: Public Shared Function __Le__(Of T)(left As T, right As T) As Boolean
   overload: Sharpy.Operator.Exports.__Le__*
   nameWithType.vb: Exports.__Le__(Of T)(T, T)
   fullName.vb: Sharpy.Operator.Exports.__Le__(Of T)(T, T)
   name.vb: __Le__(Of T)(T, T)
+- uid: Sharpy.Operator.Exports.Lt``1(Sharpy.ILessThanComparableWith{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.Lt``1(Sharpy.ILessThanComparableWith{``0},``0)
+  id: Lt``1(Sharpy.ILessThanComparableWith{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Lt<T>(ILessThanComparableWith<T>, T)
+  nameWithType: Exports.Lt<T>(ILessThanComparableWith<T>, T)
+  fullName: Sharpy.Operator.Exports.Lt<T>(Sharpy.ILessThanComparableWith<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Lt.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Lt
+    path: ../src/Sharpy/Operator/Lt.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Lt<T>(ILessThanComparableWith<T> left, T right)
+    parameters:
+    - id: left
+      type: Sharpy.ILessThanComparableWith{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Lt(Of T)(left As ILessThanComparableWith(Of T), right As T) As Boolean
+  overload: Sharpy.Operator.Exports.Lt*
+  nameWithType.vb: Exports.Lt(Of T)(ILessThanComparableWith(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.Lt(Of T)(Sharpy.ILessThanComparableWith(Of T), T)
+  name.vb: Lt(Of T)(ILessThanComparableWith(Of T), T)
+- uid: Sharpy.Operator.Exports.Lt``1(System.IComparable{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.Lt``1(System.IComparable{``0},``0)
+  id: Lt``1(System.IComparable{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Lt<T>(IComparable<T>, T)
+  nameWithType: Exports.Lt<T>(IComparable<T>, T)
+  fullName: Sharpy.Operator.Exports.Lt<T>(System.IComparable<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Lt.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Lt
+    path: ../src/Sharpy/Operator/Lt.cs
+    startLine: 19
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Lt<T>(IComparable<T> left, T right)
+    parameters:
+    - id: left
+      type: System.IComparable{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Lt(Of T)(left As IComparable(Of T), right As T) As Boolean
+  overload: Sharpy.Operator.Exports.Lt*
+  nameWithType.vb: Exports.Lt(Of T)(IComparable(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.Lt(Of T)(System.IComparable(Of T), T)
+  name.vb: Lt(Of T)(IComparable(Of T), T)
+- uid: Sharpy.Operator.Exports.Lt(System.IComparable,System.Object)
+  commentId: M:Sharpy.Operator.Exports.Lt(System.IComparable,System.Object)
+  id: Lt(System.IComparable,System.Object)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Lt(IComparable, object)
+  nameWithType: Exports.Lt(IComparable, object)
+  fullName: Sharpy.Operator.Exports.Lt(System.IComparable, object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Lt.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Lt
+    path: ../src/Sharpy/Operator/Lt.cs
+    startLine: 34
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Lt(IComparable left, object right)
+    parameters:
+    - id: left
+      type: System.IComparable
+    - id: right
+      type: System.Object
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Lt(left As IComparable, right As Object) As Boolean
+  overload: Sharpy.Operator.Exports.Lt*
+  nameWithType.vb: Exports.Lt(IComparable, Object)
+  fullName.vb: Sharpy.Operator.Exports.Lt(System.IComparable, Object)
+  name.vb: Lt(IComparable, Object)
 - uid: Sharpy.Operator.Exports.Lt``1(``0,``0)
   commentId: M:Sharpy.Operator.Exports.Lt``1(``0,``0)
   id: Lt``1(``0,``0)
@@ -612,12 +2118,12 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Lt
     path: ../src/Sharpy/Operator/Lt.cs
-    startLine: 4
+    startLine: 49
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
   syntax:
-    content: 'public static bool Lt<T>(T left, T right) where T : ILessThanComparable<T>'
+    content: public static bool Lt<T>(T left, T right)
     parameters:
     - id: left
       type: '{T}'
@@ -627,11 +2133,125 @@ items:
     - id: T
     return:
       type: System.Boolean
-    content.vb: Public Shared Function Lt(Of T As ILessThanComparable(Of T))(left As T, right As T) As Boolean
+    content.vb: Public Shared Function Lt(Of T)(left As T, right As T) As Boolean
   overload: Sharpy.Operator.Exports.Lt*
   nameWithType.vb: Exports.Lt(Of T)(T, T)
   fullName.vb: Sharpy.Operator.Exports.Lt(Of T)(T, T)
   name.vb: Lt(Of T)(T, T)
+- uid: Sharpy.Operator.Exports.__Lt__``1(Sharpy.ILessThanComparableWith{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.__Lt__``1(Sharpy.ILessThanComparableWith{``0},``0)
+  id: __Lt__``1(Sharpy.ILessThanComparableWith{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Lt__<T>(ILessThanComparableWith<T>, T)
+  nameWithType: Exports.__Lt__<T>(ILessThanComparableWith<T>, T)
+  fullName: Sharpy.Operator.Exports.__Lt__<T>(Sharpy.ILessThanComparableWith<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Lt.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Lt__
+    path: ../src/Sharpy/Operator/Lt.cs
+    startLine: 79
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool __Lt__<T>(ILessThanComparableWith<T> left, T right)
+    parameters:
+    - id: left
+      type: Sharpy.ILessThanComparableWith{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function __Lt__(Of T)(left As ILessThanComparableWith(Of T), right As T) As Boolean
+  overload: Sharpy.Operator.Exports.__Lt__*
+  nameWithType.vb: Exports.__Lt__(Of T)(ILessThanComparableWith(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.__Lt__(Of T)(Sharpy.ILessThanComparableWith(Of T), T)
+  name.vb: __Lt__(Of T)(ILessThanComparableWith(Of T), T)
+- uid: Sharpy.Operator.Exports.__Lt__``1(System.IComparable{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.__Lt__``1(System.IComparable{``0},``0)
+  id: __Lt__``1(System.IComparable{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Lt__<T>(IComparable<T>, T)
+  nameWithType: Exports.__Lt__<T>(IComparable<T>, T)
+  fullName: Sharpy.Operator.Exports.__Lt__<T>(System.IComparable<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Lt.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Lt__
+    path: ../src/Sharpy/Operator/Lt.cs
+    startLine: 81
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool __Lt__<T>(IComparable<T> left, T right)
+    parameters:
+    - id: left
+      type: System.IComparable{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function __Lt__(Of T)(left As IComparable(Of T), right As T) As Boolean
+  overload: Sharpy.Operator.Exports.__Lt__*
+  nameWithType.vb: Exports.__Lt__(Of T)(IComparable(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.__Lt__(Of T)(System.IComparable(Of T), T)
+  name.vb: __Lt__(Of T)(IComparable(Of T), T)
+- uid: Sharpy.Operator.Exports.__Lt__``1(System.IComparable,System.Object)
+  commentId: M:Sharpy.Operator.Exports.__Lt__``1(System.IComparable,System.Object)
+  id: __Lt__``1(System.IComparable,System.Object)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Lt__<T>(IComparable, object)
+  nameWithType: Exports.__Lt__<T>(IComparable, object)
+  fullName: Sharpy.Operator.Exports.__Lt__<T>(System.IComparable, object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Lt.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Lt__
+    path: ../src/Sharpy/Operator/Lt.cs
+    startLine: 83
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool __Lt__<T>(IComparable left, object right)
+    parameters:
+    - id: left
+      type: System.IComparable
+    - id: right
+      type: System.Object
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function __Lt__(Of T)(left As IComparable, right As Object) As Boolean
+  overload: Sharpy.Operator.Exports.__Lt__*
+  nameWithType.vb: Exports.__Lt__(Of T)(IComparable, Object)
+  fullName.vb: Sharpy.Operator.Exports.__Lt__(Of T)(System.IComparable, Object)
+  name.vb: __Lt__(Of T)(IComparable, Object)
 - uid: Sharpy.Operator.Exports.__Lt__``1(``0,``0)
   commentId: M:Sharpy.Operator.Exports.__Lt__``1(``0,``0)
   id: __Lt__``1(``0,``0)
@@ -650,12 +2270,12 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Lt__
     path: ../src/Sharpy/Operator/Lt.cs
-    startLine: 19
+    startLine: 85
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
   syntax:
-    content: 'public static bool __Lt__<T>(T left, T right) where T : ILessThanComparable<T>'
+    content: public static bool __Lt__<T>(T left, T right)
     parameters:
     - id: left
       type: '{T}'
@@ -665,21 +2285,21 @@ items:
     - id: T
     return:
       type: System.Boolean
-    content.vb: Public Shared Function __Lt__(Of T As ILessThanComparable(Of T))(left As T, right As T) As Boolean
+    content.vb: Public Shared Function __Lt__(Of T)(left As T, right As T) As Boolean
   overload: Sharpy.Operator.Exports.__Lt__*
   nameWithType.vb: Exports.__Lt__(Of T)(T, T)
   fullName.vb: Sharpy.Operator.Exports.__Lt__(Of T)(T, T)
   name.vb: __Lt__(Of T)(T, T)
-- uid: Sharpy.Operator.Exports.Mul``2(``0,``1)
-  commentId: M:Sharpy.Operator.Exports.Mul``2(``0,``1)
-  id: Mul``2(``0,``1)
+- uid: Sharpy.Operator.Exports.Mul``1(``0,``0)
+  commentId: M:Sharpy.Operator.Exports.Mul``1(``0,``0)
+  id: Mul``1(``0,``0)
   parent: Sharpy.Operator.Exports
   langs:
   - csharp
   - vb
-  name: Mul<T, U>(T, U)
-  nameWithType: Exports.Mul<T, U>(T, U)
-  fullName: Sharpy.Operator.Exports.Mul<T, U>(T, U)
+  name: Mul<T>(T, T)
+  nameWithType: Exports.Mul<T>(T, T)
+  fullName: Sharpy.Operator.Exports.Mul<T>(T, T)
   type: Method
   source:
     remote:
@@ -693,32 +2313,110 @@ items:
   - Sharpy
   namespace: Sharpy.Operator
   syntax:
-    content: 'public static T Mul<T, U>(T left, U right) where T : IMultipliable<T, U>'
+    content: 'public static T Mul<T>(T left, T right) where T : IMultipliable<T>'
     parameters:
     - id: left
       type: '{T}'
     - id: right
-      type: '{U}'
+      type: '{T}'
     typeParameters:
     - id: T
-    - id: U
     return:
       type: '{T}'
-    content.vb: Public Shared Function Mul(Of T As IMultipliable(Of T, U), U)(left As T, right As U) As T
+    content.vb: Public Shared Function Mul(Of T As IMultipliable(Of T))(left As T, right As T) As T
   overload: Sharpy.Operator.Exports.Mul*
-  nameWithType.vb: Exports.Mul(Of T, U)(T, U)
-  fullName.vb: Sharpy.Operator.Exports.Mul(Of T, U)(T, U)
-  name.vb: Mul(Of T, U)(T, U)
-- uid: Sharpy.Operator.Exports.__Mul__``2(``0,``1)
-  commentId: M:Sharpy.Operator.Exports.__Mul__``2(``0,``1)
-  id: __Mul__``2(``0,``1)
+  nameWithType.vb: Exports.Mul(Of T)(T, T)
+  fullName.vb: Sharpy.Operator.Exports.Mul(Of T)(T, T)
+  name.vb: Mul(Of T)(T, T)
+- uid: Sharpy.Operator.Exports.Mul``2(``0,``1)
+  commentId: M:Sharpy.Operator.Exports.Mul``2(``0,``1)
+  id: Mul``2(``0,``1)
   parent: Sharpy.Operator.Exports
   langs:
   - csharp
   - vb
-  name: __Mul__<T, U>(T, U)
-  nameWithType: Exports.__Mul__<T, U>(T, U)
-  fullName: Sharpy.Operator.Exports.__Mul__<T, U>(T, U)
+  name: Mul<TMultiplicand, TMultiplier>(TMultiplicand, TMultiplier)
+  nameWithType: Exports.Mul<TMultiplicand, TMultiplier>(TMultiplicand, TMultiplier)
+  fullName: Sharpy.Operator.Exports.Mul<TMultiplicand, TMultiplier>(TMultiplicand, TMultiplier)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Mul.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Mul
+    path: ../src/Sharpy/Operator/Mul.cs
+    startLine: 8
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: 'public static TMultiplicand Mul<TMultiplicand, TMultiplier>(TMultiplicand left, TMultiplier right) where TMultiplicand : IMultipliable<TMultiplicand, TMultiplier>'
+    parameters:
+    - id: left
+      type: '{TMultiplicand}'
+    - id: right
+      type: '{TMultiplier}'
+    typeParameters:
+    - id: TMultiplicand
+    - id: TMultiplier
+    return:
+      type: '{TMultiplicand}'
+    content.vb: Public Shared Function Mul(Of TMultiplicand As IMultipliable(Of TMultiplicand, TMultiplier), TMultiplier)(left As TMultiplicand, right As TMultiplier) As TMultiplicand
+  overload: Sharpy.Operator.Exports.Mul*
+  nameWithType.vb: Exports.Mul(Of TMultiplicand, TMultiplier)(TMultiplicand, TMultiplier)
+  fullName.vb: Sharpy.Operator.Exports.Mul(Of TMultiplicand, TMultiplier)(TMultiplicand, TMultiplier)
+  name.vb: Mul(Of TMultiplicand, TMultiplier)(TMultiplicand, TMultiplier)
+- uid: Sharpy.Operator.Exports.Mul``3(``0,``1)
+  commentId: M:Sharpy.Operator.Exports.Mul``3(``0,``1)
+  id: Mul``3(``0,``1)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Mul<TMultiplicand, TMultiplier, TProduct>(TMultiplicand, TMultiplier)
+  nameWithType: Exports.Mul<TMultiplicand, TMultiplier, TProduct>(TMultiplicand, TMultiplier)
+  fullName: Sharpy.Operator.Exports.Mul<TMultiplicand, TMultiplier, TProduct>(TMultiplicand, TMultiplier)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Mul.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Mul
+    path: ../src/Sharpy/Operator/Mul.cs
+    startLine: 14
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: 'public static TProduct Mul<TMultiplicand, TMultiplier, TProduct>(TMultiplicand left, TMultiplier right) where TMultiplicand : IMultipliable<TMultiplicand, TMultiplier, TProduct>'
+    parameters:
+    - id: left
+      type: '{TMultiplicand}'
+    - id: right
+      type: '{TMultiplier}'
+    typeParameters:
+    - id: TMultiplicand
+    - id: TMultiplier
+    - id: TProduct
+    return:
+      type: '{TProduct}'
+    content.vb: Public Shared Function Mul(Of TMultiplicand As IMultipliable(Of TMultiplicand, TMultiplier, TProduct), TMultiplier, TProduct)(left As TMultiplicand, right As TMultiplier) As TProduct
+  overload: Sharpy.Operator.Exports.Mul*
+  nameWithType.vb: Exports.Mul(Of TMultiplicand, TMultiplier, TProduct)(TMultiplicand, TMultiplier)
+  fullName.vb: Sharpy.Operator.Exports.Mul(Of TMultiplicand, TMultiplier, TProduct)(TMultiplicand, TMultiplier)
+  name.vb: Mul(Of TMultiplicand, TMultiplier, TProduct)(TMultiplicand, TMultiplier)
+- uid: Sharpy.Operator.Exports.__Mul__``1(``0,``0)
+  commentId: M:Sharpy.Operator.Exports.__Mul__``1(``0,``0)
+  id: __Mul__``1(``0,``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Mul__<T>(T, T)
+  nameWithType: Exports.__Mul__<T>(T, T)
+  fullName: Sharpy.Operator.Exports.__Mul__<T>(T, T)
   type: Method
   source:
     remote:
@@ -727,27 +2425,105 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Mul__
     path: ../src/Sharpy/Operator/Mul.cs
-    startLine: 8
+    startLine: 20
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
   syntax:
-    content: 'public static T __Mul__<T, U>(T left, U right) where T : IMultipliable<T, U>'
+    content: 'public static T __Mul__<T>(T left, T right) where T : IMultipliable<T>'
     parameters:
     - id: left
       type: '{T}'
     - id: right
-      type: '{U}'
+      type: '{T}'
     typeParameters:
     - id: T
-    - id: U
     return:
       type: '{T}'
-    content.vb: Public Shared Function __Mul__(Of T As IMultipliable(Of T, U), U)(left As T, right As U) As T
+    content.vb: Public Shared Function __Mul__(Of T As IMultipliable(Of T))(left As T, right As T) As T
   overload: Sharpy.Operator.Exports.__Mul__*
-  nameWithType.vb: Exports.__Mul__(Of T, U)(T, U)
-  fullName.vb: Sharpy.Operator.Exports.__Mul__(Of T, U)(T, U)
-  name.vb: __Mul__(Of T, U)(T, U)
+  nameWithType.vb: Exports.__Mul__(Of T)(T, T)
+  fullName.vb: Sharpy.Operator.Exports.__Mul__(Of T)(T, T)
+  name.vb: __Mul__(Of T)(T, T)
+- uid: Sharpy.Operator.Exports.__Mul__``2(``0,``1)
+  commentId: M:Sharpy.Operator.Exports.__Mul__``2(``0,``1)
+  id: __Mul__``2(``0,``1)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Mul__<TMultiplicand, TMultiplier>(TMultiplicand, TMultiplier)
+  nameWithType: Exports.__Mul__<TMultiplicand, TMultiplier>(TMultiplicand, TMultiplier)
+  fullName: Sharpy.Operator.Exports.__Mul__<TMultiplicand, TMultiplier>(TMultiplicand, TMultiplier)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Mul.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Mul__
+    path: ../src/Sharpy/Operator/Mul.cs
+    startLine: 22
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: 'public static TMultiplicand __Mul__<TMultiplicand, TMultiplier>(TMultiplicand left, TMultiplier right) where TMultiplicand : IMultipliable<TMultiplicand, TMultiplier>'
+    parameters:
+    - id: left
+      type: '{TMultiplicand}'
+    - id: right
+      type: '{TMultiplier}'
+    typeParameters:
+    - id: TMultiplicand
+    - id: TMultiplier
+    return:
+      type: '{TMultiplicand}'
+    content.vb: Public Shared Function __Mul__(Of TMultiplicand As IMultipliable(Of TMultiplicand, TMultiplier), TMultiplier)(left As TMultiplicand, right As TMultiplier) As TMultiplicand
+  overload: Sharpy.Operator.Exports.__Mul__*
+  nameWithType.vb: Exports.__Mul__(Of TMultiplicand, TMultiplier)(TMultiplicand, TMultiplier)
+  fullName.vb: Sharpy.Operator.Exports.__Mul__(Of TMultiplicand, TMultiplier)(TMultiplicand, TMultiplier)
+  name.vb: __Mul__(Of TMultiplicand, TMultiplier)(TMultiplicand, TMultiplier)
+- uid: Sharpy.Operator.Exports.__Mul__``3(``0,``1)
+  commentId: M:Sharpy.Operator.Exports.__Mul__``3(``0,``1)
+  id: __Mul__``3(``0,``1)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Mul__<TMultiplicand, TMultiplier, TProduct>(TMultiplicand, TMultiplier)
+  nameWithType: Exports.__Mul__<TMultiplicand, TMultiplier, TProduct>(TMultiplicand, TMultiplier)
+  fullName: Sharpy.Operator.Exports.__Mul__<TMultiplicand, TMultiplier, TProduct>(TMultiplicand, TMultiplier)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Mul.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Mul__
+    path: ../src/Sharpy/Operator/Mul.cs
+    startLine: 26
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: 'public static TProduct __Mul__<TMultiplicand, TMultiplier, TProduct>(TMultiplicand left, TMultiplier right) where TMultiplicand : IMultipliable<TMultiplicand, TMultiplier, TProduct>'
+    parameters:
+    - id: left
+      type: '{TMultiplicand}'
+    - id: right
+      type: '{TMultiplier}'
+    typeParameters:
+    - id: TMultiplicand
+    - id: TMultiplier
+    - id: TProduct
+    return:
+      type: '{TProduct}'
+    content.vb: Public Shared Function __Mul__(Of TMultiplicand As IMultipliable(Of TMultiplicand, TMultiplier, TProduct), TMultiplier, TProduct)(left As TMultiplicand, right As TMultiplier) As TProduct
+  overload: Sharpy.Operator.Exports.__Mul__*
+  nameWithType.vb: Exports.__Mul__(Of TMultiplicand, TMultiplier, TProduct)(TMultiplicand, TMultiplier)
+  fullName.vb: Sharpy.Operator.Exports.__Mul__(Of TMultiplicand, TMultiplier, TProduct)(TMultiplicand, TMultiplier)
+  name.vb: __Mul__(Of TMultiplicand, TMultiplier, TProduct)(TMultiplicand, TMultiplier)
 - uid: Sharpy.Operator.Exports.Ne``1(``0,``0)
   commentId: M:Sharpy.Operator.Exports.Ne``1(``0,``0)
   id: Ne``1(``0,``0)
@@ -786,6 +2562,113 @@ items:
   nameWithType.vb: Exports.Ne(Of T)(T, T)
   fullName.vb: Sharpy.Operator.Exports.Ne(Of T)(T, T)
   name.vb: Ne(Of T)(T, T)
+- uid: Sharpy.Operator.Exports.Ne(Sharpy.Object,Sharpy.Object)
+  commentId: M:Sharpy.Operator.Exports.Ne(Sharpy.Object,Sharpy.Object)
+  id: Ne(Sharpy.Object,Sharpy.Object)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Ne(Object, Object)
+  nameWithType: Exports.Ne(Object, Object)
+  fullName: Sharpy.Operator.Exports.Ne(Sharpy.Object, Sharpy.Object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Ne.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Ne
+    path: ../src/Sharpy/Operator/Ne.cs
+    startLine: 14
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Ne(Object left, Object right)
+    parameters:
+    - id: left
+      type: Sharpy.Object
+    - id: right
+      type: Sharpy.Object
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Ne(left As [Object], right As [Object]) As Boolean
+  overload: Sharpy.Operator.Exports.Ne*
+- uid: Sharpy.Operator.Exports.Ne``1(System.IComparable{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.Ne``1(System.IComparable{``0},``0)
+  id: Ne``1(System.IComparable{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Ne<T>(IComparable<T>, T)
+  nameWithType: Exports.Ne<T>(IComparable<T>, T)
+  fullName: Sharpy.Operator.Exports.Ne<T>(System.IComparable<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Ne.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Ne
+    path: ../src/Sharpy/Operator/Ne.cs
+    startLine: 24
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Ne<T>(IComparable<T> left, T right)
+    parameters:
+    - id: left
+      type: System.IComparable{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Ne(Of T)(left As IComparable(Of T), right As T) As Boolean
+  overload: Sharpy.Operator.Exports.Ne*
+  nameWithType.vb: Exports.Ne(Of T)(IComparable(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.Ne(Of T)(System.IComparable(Of T), T)
+  name.vb: Ne(Of T)(IComparable(Of T), T)
+- uid: Sharpy.Operator.Exports.Ne(System.IComparable,System.Object)
+  commentId: M:Sharpy.Operator.Exports.Ne(System.IComparable,System.Object)
+  id: Ne(System.IComparable,System.Object)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Ne(IComparable, object)
+  nameWithType: Exports.Ne(IComparable, object)
+  fullName: Sharpy.Operator.Exports.Ne(System.IComparable, object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Ne.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Ne
+    path: ../src/Sharpy/Operator/Ne.cs
+    startLine: 34
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Ne(IComparable left, object right)
+    parameters:
+    - id: left
+      type: System.IComparable
+    - id: right
+      type: System.Object
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Ne(left As IComparable, right As Object) As Boolean
+  overload: Sharpy.Operator.Exports.Ne*
+  nameWithType.vb: Exports.Ne(IComparable, Object)
+  fullName.vb: Sharpy.Operator.Exports.Ne(System.IComparable, Object)
+  name.vb: Ne(IComparable, Object)
 - uid: Sharpy.Operator.Exports.Ne(System.Object,System.Object)
   commentId: M:Sharpy.Operator.Exports.Ne(System.Object,System.Object)
   id: Ne(System.Object,System.Object)
@@ -804,7 +2687,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Ne
     path: ../src/Sharpy/Operator/Ne.cs
-    startLine: 9
+    startLine: 44
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
@@ -840,7 +2723,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Ne__
     path: ../src/Sharpy/Operator/Ne.cs
-    startLine: 14
+    startLine: 49
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
@@ -860,6 +2743,113 @@ items:
   nameWithType.vb: Exports.__Ne__(Of T)(T, T)
   fullName.vb: Sharpy.Operator.Exports.__Ne__(Of T)(T, T)
   name.vb: __Ne__(Of T)(T, T)
+- uid: Sharpy.Operator.Exports.__Ne__(Sharpy.Object,Sharpy.Object)
+  commentId: M:Sharpy.Operator.Exports.__Ne__(Sharpy.Object,Sharpy.Object)
+  id: __Ne__(Sharpy.Object,Sharpy.Object)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Ne__(Object, Object)
+  nameWithType: Exports.__Ne__(Object, Object)
+  fullName: Sharpy.Operator.Exports.__Ne__(Sharpy.Object, Sharpy.Object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Ne.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Ne__
+    path: ../src/Sharpy/Operator/Ne.cs
+    startLine: 51
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool __Ne__(Object left, Object right)
+    parameters:
+    - id: left
+      type: Sharpy.Object
+    - id: right
+      type: Sharpy.Object
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function __Ne__(left As [Object], right As [Object]) As Boolean
+  overload: Sharpy.Operator.Exports.__Ne__*
+- uid: Sharpy.Operator.Exports.__Ne__``1(System.IComparable{``0},``0)
+  commentId: M:Sharpy.Operator.Exports.__Ne__``1(System.IComparable{``0},``0)
+  id: __Ne__``1(System.IComparable{``0},``0)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Ne__<T>(IComparable<T>, T)
+  nameWithType: Exports.__Ne__<T>(IComparable<T>, T)
+  fullName: Sharpy.Operator.Exports.__Ne__<T>(System.IComparable<T>, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Ne.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Ne__
+    path: ../src/Sharpy/Operator/Ne.cs
+    startLine: 53
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool __Ne__<T>(IComparable<T> left, T right)
+    parameters:
+    - id: left
+      type: System.IComparable{{T}}
+    - id: right
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function __Ne__(Of T)(left As IComparable(Of T), right As T) As Boolean
+  overload: Sharpy.Operator.Exports.__Ne__*
+  nameWithType.vb: Exports.__Ne__(Of T)(IComparable(Of T), T)
+  fullName.vb: Sharpy.Operator.Exports.__Ne__(Of T)(System.IComparable(Of T), T)
+  name.vb: __Ne__(Of T)(IComparable(Of T), T)
+- uid: Sharpy.Operator.Exports.__Ne__(System.IComparable,System.Object)
+  commentId: M:Sharpy.Operator.Exports.__Ne__(System.IComparable,System.Object)
+  id: __Ne__(System.IComparable,System.Object)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: __Ne__(IComparable, object)
+  nameWithType: Exports.__Ne__(IComparable, object)
+  fullName: Sharpy.Operator.Exports.__Ne__(System.IComparable, object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Ne.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Ne__
+    path: ../src/Sharpy/Operator/Ne.cs
+    startLine: 55
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool __Ne__(IComparable left, object right)
+    parameters:
+    - id: left
+      type: System.IComparable
+    - id: right
+      type: System.Object
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function __Ne__(left As IComparable, right As Object) As Boolean
+  overload: Sharpy.Operator.Exports.__Ne__*
+  nameWithType.vb: Exports.__Ne__(IComparable, Object)
+  fullName.vb: Sharpy.Operator.Exports.__Ne__(System.IComparable, Object)
+  name.vb: __Ne__(IComparable, Object)
 - uid: Sharpy.Operator.Exports.__Ne__(System.Object,System.Object)
   commentId: M:Sharpy.Operator.Exports.__Ne__(System.Object,System.Object)
   id: __Ne__(System.Object,System.Object)
@@ -878,7 +2868,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Ne__
     path: ../src/Sharpy/Operator/Ne.cs
-    startLine: 15
+    startLine: 57
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
@@ -896,6 +2886,192 @@ items:
   nameWithType.vb: Exports.__Ne__(Object, Object)
   fullName.vb: Sharpy.Operator.Exports.__Ne__(Object, Object)
   name.vb: __Ne__(Object, Object)
+- uid: Sharpy.Operator.Exports.Not(Sharpy.IBoolConvertible)
+  commentId: M:Sharpy.Operator.Exports.Not(Sharpy.IBoolConvertible)
+  id: Not(Sharpy.IBoolConvertible)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Not(IBoolConvertible)
+  nameWithType: Exports.Not(IBoolConvertible)
+  fullName: Sharpy.Operator.Exports.Not(Sharpy.IBoolConvertible)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Not.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Not
+    path: ../src/Sharpy/Operator/Not.cs
+    startLine: 6
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Not(IBoolConvertible boolConvertible)
+    parameters:
+    - id: boolConvertible
+      type: Sharpy.IBoolConvertible
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function [Not](boolConvertible As IBoolConvertible) As Boolean
+  overload: Sharpy.Operator.Exports.Not*
+- uid: Sharpy.Operator.Exports.Not(Sharpy.Collections.Interfaces.ISized)
+  commentId: M:Sharpy.Operator.Exports.Not(Sharpy.Collections.Interfaces.ISized)
+  id: Not(Sharpy.Collections.Interfaces.ISized)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Not(ISized)
+  nameWithType: Exports.Not(ISized)
+  fullName: Sharpy.Operator.Exports.Not(Sharpy.Collections.Interfaces.ISized)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Not.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Not
+    path: ../src/Sharpy/Operator/Not.cs
+    startLine: 11
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Not(ISized sized)
+    parameters:
+    - id: sized
+      type: Sharpy.Collections.Interfaces.ISized
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function [Not](sized As ISized) As Boolean
+  overload: Sharpy.Operator.Exports.Not*
+- uid: Sharpy.Operator.Exports.Not(Sharpy.Object)
+  commentId: M:Sharpy.Operator.Exports.Not(Sharpy.Object)
+  id: Not(Sharpy.Object)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Not(Object)
+  nameWithType: Exports.Not(Object)
+  fullName: Sharpy.Operator.Exports.Not(Sharpy.Object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Not.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Not
+    path: ../src/Sharpy/Operator/Not.cs
+    startLine: 16
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Not(Object obj)
+    parameters:
+    - id: obj
+      type: Sharpy.Object
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function [Not](obj As [Object]) As Boolean
+  overload: Sharpy.Operator.Exports.Not*
+- uid: Sharpy.Operator.Exports.Truth(Sharpy.IBoolConvertible)
+  commentId: M:Sharpy.Operator.Exports.Truth(Sharpy.IBoolConvertible)
+  id: Truth(Sharpy.IBoolConvertible)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Truth(IBoolConvertible)
+  nameWithType: Exports.Truth(IBoolConvertible)
+  fullName: Sharpy.Operator.Exports.Truth(Sharpy.IBoolConvertible)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Truth.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Truth
+    path: ../src/Sharpy/Operator/Truth.cs
+    startLine: 6
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Truth(IBoolConvertible boolConvertible)
+    parameters:
+    - id: boolConvertible
+      type: Sharpy.IBoolConvertible
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Truth(boolConvertible As IBoolConvertible) As Boolean
+  overload: Sharpy.Operator.Exports.Truth*
+- uid: Sharpy.Operator.Exports.Truth(Sharpy.Collections.Interfaces.ISized)
+  commentId: M:Sharpy.Operator.Exports.Truth(Sharpy.Collections.Interfaces.ISized)
+  id: Truth(Sharpy.Collections.Interfaces.ISized)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Truth(ISized)
+  nameWithType: Exports.Truth(ISized)
+  fullName: Sharpy.Operator.Exports.Truth(Sharpy.Collections.Interfaces.ISized)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Truth.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Truth
+    path: ../src/Sharpy/Operator/Truth.cs
+    startLine: 11
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Truth(ISized sized)
+    parameters:
+    - id: sized
+      type: Sharpy.Collections.Interfaces.ISized
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Truth(sized As ISized) As Boolean
+  overload: Sharpy.Operator.Exports.Truth*
+- uid: Sharpy.Operator.Exports.Truth(Sharpy.Object)
+  commentId: M:Sharpy.Operator.Exports.Truth(Sharpy.Object)
+  id: Truth(Sharpy.Object)
+  parent: Sharpy.Operator.Exports
+  langs:
+  - csharp
+  - vb
+  name: Truth(Object)
+  nameWithType: Exports.Truth(Object)
+  fullName: Sharpy.Operator.Exports.Truth(Sharpy.Object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Operator/Truth.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Truth
+    path: ../src/Sharpy/Operator/Truth.cs
+    startLine: 16
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Operator
+  syntax:
+    content: public static bool Truth(Object obj)
+    parameters:
+    - id: obj
+      type: Sharpy.Object
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Function Truth(obj As [Object]) As Boolean
+  overload: Sharpy.Operator.Exports.Truth*
 references:
 - uid: Sharpy.Operator
   commentId: N:Sharpy.Operator
@@ -1172,16 +3348,56 @@ references:
   name: T
   nameWithType: T
   fullName: T
-- uid: '{U}'
-  commentId: '!:U'
-  definition: U
-  name: U
-  nameWithType: U
-  fullName: U
-- uid: U
-  name: U
-  nameWithType: U
-  fullName: U
+- uid: '{TAugend}'
+  commentId: '!:TAugend'
+  definition: TAugend
+  name: TAugend
+  nameWithType: TAugend
+  fullName: TAugend
+- uid: '{TAddend}'
+  commentId: '!:TAddend'
+  definition: TAddend
+  name: TAddend
+  nameWithType: TAddend
+  fullName: TAddend
+- uid: TAugend
+  name: TAugend
+  nameWithType: TAugend
+  fullName: TAugend
+- uid: TAddend
+  name: TAddend
+  nameWithType: TAddend
+  fullName: TAddend
+- uid: '{TLeft}'
+  commentId: '!:TLeft'
+  definition: TLeft
+  name: TLeft
+  nameWithType: TLeft
+  fullName: TLeft
+- uid: '{TRight}'
+  commentId: '!:TRight'
+  definition: TRight
+  name: TRight
+  nameWithType: TRight
+  fullName: TRight
+- uid: '{TSum}'
+  commentId: '!:TSum'
+  definition: TSum
+  name: TSum
+  nameWithType: TSum
+  fullName: TSum
+- uid: TLeft
+  name: TLeft
+  nameWithType: TLeft
+  fullName: TLeft
+- uid: TRight
+  name: TRight
+  nameWithType: TRight
+  fullName: TRight
+- uid: TSum
+  name: TSum
+  nameWithType: TSum
+  fullName: TSum
 - uid: Sharpy.Operator.Exports.__Add__*
   commentId: Overload:Sharpy.Operator.Exports.__Add__
   href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports___Add____1___0___0_
@@ -1230,6 +3446,84 @@ references:
   nameWithType.vb: Boolean
   fullName.vb: Boolean
   name.vb: Boolean
+- uid: Sharpy.Object
+  commentId: T:Sharpy.Object
+  parent: Sharpy
+  href: Sharpy.Object.html
+  name: Object
+  nameWithType: Object
+  fullName: Sharpy.Object
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: System.IComparable{{T}}
+  commentId: T:System.IComparable{``0}
+  parent: System
+  definition: System.IComparable`1
+  href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
+  name: IComparable<T>
+  nameWithType: IComparable<T>
+  fullName: System.IComparable<T>
+  nameWithType.vb: IComparable(Of T)
+  fullName.vb: System.IComparable(Of T)
+  name.vb: IComparable(Of T)
+  spec.csharp:
+  - uid: System.IComparable`1
+    name: IComparable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.IComparable`1
+    name: IComparable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.IComparable`1
+  commentId: T:System.IComparable`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
+  name: IComparable<T>
+  nameWithType: IComparable<T>
+  fullName: System.IComparable<T>
+  nameWithType.vb: IComparable(Of T)
+  fullName.vb: System.IComparable(Of T)
+  name.vb: IComparable(Of T)
+  spec.csharp:
+  - uid: System.IComparable`1
+    name: IComparable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.IComparable`1
+    name: IComparable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.icomparable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.IComparable
+  commentId: T:System.IComparable
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.icomparable
+  name: IComparable
+  nameWithType: IComparable
+  fullName: System.IComparable
 - uid: Sharpy.Operator.Exports.__Eq__*
   commentId: Overload:Sharpy.Operator.Exports.__Eq__
   href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports___Eq____1___0___0_
@@ -1238,61 +3532,439 @@ references:
   fullName: Sharpy.Operator.Exports.__Eq__
 - uid: Sharpy.Operator.Exports.Ge*
   commentId: Overload:Sharpy.Operator.Exports.Ge
-  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports_Ge__1___0___0_
+  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports_Ge__1_Sharpy_IGreaterThanOrEquatableWith___0____0_
   name: Ge
   nameWithType: Exports.Ge
   fullName: Sharpy.Operator.Exports.Ge
+- uid: Sharpy.IGreaterThanOrEquatableWith{{T}}
+  commentId: T:Sharpy.IGreaterThanOrEquatableWith{`0}
+  parent: Sharpy
+  definition: Sharpy.IGreaterThanOrEquatableWith`1
+  href: Sharpy.IGreaterThanOrEquatableWith-1.html
+  name: IGreaterThanOrEquatableWith<T>
+  nameWithType: IGreaterThanOrEquatableWith<T>
+  fullName: Sharpy.IGreaterThanOrEquatableWith<T>
+  nameWithType.vb: IGreaterThanOrEquatableWith(Of T)
+  fullName.vb: Sharpy.IGreaterThanOrEquatableWith(Of T)
+  name.vb: IGreaterThanOrEquatableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanOrEquatableWith`1
+    name: IGreaterThanOrEquatableWith
+    href: Sharpy.IGreaterThanOrEquatableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IGreaterThanOrEquatableWith`1
+    name: IGreaterThanOrEquatableWith
+    href: Sharpy.IGreaterThanOrEquatableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanOrEquatableWith`1
+  commentId: T:Sharpy.IGreaterThanOrEquatableWith`1
+  href: Sharpy.IGreaterThanOrEquatableWith-1.html
+  name: IGreaterThanOrEquatableWith<T>
+  nameWithType: IGreaterThanOrEquatableWith<T>
+  fullName: Sharpy.IGreaterThanOrEquatableWith<T>
+  nameWithType.vb: IGreaterThanOrEquatableWith(Of T)
+  fullName.vb: Sharpy.IGreaterThanOrEquatableWith(Of T)
+  name.vb: IGreaterThanOrEquatableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanOrEquatableWith`1
+    name: IGreaterThanOrEquatableWith
+    href: Sharpy.IGreaterThanOrEquatableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IGreaterThanOrEquatableWith`1
+    name: IGreaterThanOrEquatableWith
+    href: Sharpy.IGreaterThanOrEquatableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
 - uid: Sharpy.Operator.Exports.__Ge__*
   commentId: Overload:Sharpy.Operator.Exports.__Ge__
-  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports___Ge____1___0___0_
+  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports___Ge____1_Sharpy_IGreaterThanOrEquatableWith___0____0_
   name: __Ge__
   nameWithType: Exports.__Ge__
   fullName: Sharpy.Operator.Exports.__Ge__
 - uid: Sharpy.Operator.Exports.Gt*
   commentId: Overload:Sharpy.Operator.Exports.Gt
-  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports_Gt__1___0___0_
+  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports_Gt__1_Sharpy_IGreaterThanComparableWith___0____0_
   name: Gt
   nameWithType: Exports.Gt
   fullName: Sharpy.Operator.Exports.Gt
+- uid: Sharpy.IGreaterThanComparableWith{{T}}
+  commentId: T:Sharpy.IGreaterThanComparableWith{`0}
+  parent: Sharpy
+  definition: Sharpy.IGreaterThanComparableWith`1
+  href: Sharpy.IGreaterThanComparableWith-1.html
+  name: IGreaterThanComparableWith<T>
+  nameWithType: IGreaterThanComparableWith<T>
+  fullName: Sharpy.IGreaterThanComparableWith<T>
+  nameWithType.vb: IGreaterThanComparableWith(Of T)
+  fullName.vb: Sharpy.IGreaterThanComparableWith(Of T)
+  name.vb: IGreaterThanComparableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanComparableWith`1
+    name: IGreaterThanComparableWith
+    href: Sharpy.IGreaterThanComparableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IGreaterThanComparableWith`1
+    name: IGreaterThanComparableWith
+    href: Sharpy.IGreaterThanComparableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanComparableWith`1
+  commentId: T:Sharpy.IGreaterThanComparableWith`1
+  href: Sharpy.IGreaterThanComparableWith-1.html
+  name: IGreaterThanComparableWith<T>
+  nameWithType: IGreaterThanComparableWith<T>
+  fullName: Sharpy.IGreaterThanComparableWith<T>
+  nameWithType.vb: IGreaterThanComparableWith(Of T)
+  fullName.vb: Sharpy.IGreaterThanComparableWith(Of T)
+  name.vb: IGreaterThanComparableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanComparableWith`1
+    name: IGreaterThanComparableWith
+    href: Sharpy.IGreaterThanComparableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IGreaterThanComparableWith`1
+    name: IGreaterThanComparableWith
+    href: Sharpy.IGreaterThanComparableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
 - uid: Sharpy.Operator.Exports.__Gt__*
   commentId: Overload:Sharpy.Operator.Exports.__Gt__
-  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports___Gt____1___0___0_
+  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports___Gt____1_Sharpy_IGreaterThanComparableWith___0____0_
   name: __Gt__
   nameWithType: Exports.__Gt__
   fullName: Sharpy.Operator.Exports.__Gt__
+- uid: Sharpy.Operator.Exports.IAdd*
+  commentId: Overload:Sharpy.Operator.Exports.IAdd
+  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports_IAdd__1_Sharpy_IInplaceAddable___0____0_
+  name: IAdd
+  nameWithType: Exports.IAdd
+  fullName: Sharpy.Operator.Exports.IAdd
+- uid: Sharpy.IInplaceAddable{{T}}
+  commentId: T:Sharpy.IInplaceAddable{``0}
+  parent: Sharpy
+  definition: Sharpy.IInplaceAddable`1
+  href: Sharpy.IInplaceAddable-1.html
+  name: IInplaceAddable<T>
+  nameWithType: IInplaceAddable<T>
+  fullName: Sharpy.IInplaceAddable<T>
+  nameWithType.vb: IInplaceAddable(Of T)
+  fullName.vb: Sharpy.IInplaceAddable(Of T)
+  name.vb: IInplaceAddable(Of T)
+  spec.csharp:
+  - uid: Sharpy.IInplaceAddable`1
+    name: IInplaceAddable
+    href: Sharpy.IInplaceAddable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IInplaceAddable`1
+    name: IInplaceAddable
+    href: Sharpy.IInplaceAddable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IInplaceAddable`1
+  commentId: T:Sharpy.IInplaceAddable`1
+  href: Sharpy.IInplaceAddable-1.html
+  name: IInplaceAddable<T>
+  nameWithType: IInplaceAddable<T>
+  fullName: Sharpy.IInplaceAddable<T>
+  nameWithType.vb: IInplaceAddable(Of T)
+  fullName.vb: Sharpy.IInplaceAddable(Of T)
+  name.vb: IInplaceAddable(Of T)
+  spec.csharp:
+  - uid: Sharpy.IInplaceAddable`1
+    name: IInplaceAddable
+    href: Sharpy.IInplaceAddable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IInplaceAddable`1
+    name: IInplaceAddable
+    href: Sharpy.IInplaceAddable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Operator.Exports.__IAdd__*
+  commentId: Overload:Sharpy.Operator.Exports.__IAdd__
+  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports___IAdd____1_Sharpy_IInplaceAddable___0____0_
+  name: __IAdd__
+  nameWithType: Exports.__IAdd__
+  fullName: Sharpy.Operator.Exports.__IAdd__
+- uid: Sharpy.Operator.Exports.IMul*
+  commentId: Overload:Sharpy.Operator.Exports.IMul
+  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports_IMul__1_Sharpy_IInplaceMultipliable___0____0_
+  name: IMul
+  nameWithType: Exports.IMul
+  fullName: Sharpy.Operator.Exports.IMul
+- uid: Sharpy.IInplaceMultipliable{{T}}
+  commentId: T:Sharpy.IInplaceMultipliable{``0}
+  parent: Sharpy
+  definition: Sharpy.IInplaceMultipliable`1
+  href: Sharpy.IInplaceMultipliable-1.html
+  name: IInplaceMultipliable<T>
+  nameWithType: IInplaceMultipliable<T>
+  fullName: Sharpy.IInplaceMultipliable<T>
+  nameWithType.vb: IInplaceMultipliable(Of T)
+  fullName.vb: Sharpy.IInplaceMultipliable(Of T)
+  name.vb: IInplaceMultipliable(Of T)
+  spec.csharp:
+  - uid: Sharpy.IInplaceMultipliable`1
+    name: IInplaceMultipliable
+    href: Sharpy.IInplaceMultipliable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IInplaceMultipliable`1
+    name: IInplaceMultipliable
+    href: Sharpy.IInplaceMultipliable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IInplaceMultipliable`1
+  commentId: T:Sharpy.IInplaceMultipliable`1
+  href: Sharpy.IInplaceMultipliable-1.html
+  name: IInplaceMultipliable<T>
+  nameWithType: IInplaceMultipliable<T>
+  fullName: Sharpy.IInplaceMultipliable<T>
+  nameWithType.vb: IInplaceMultipliable(Of T)
+  fullName.vb: Sharpy.IInplaceMultipliable(Of T)
+  name.vb: IInplaceMultipliable(Of T)
+  spec.csharp:
+  - uid: Sharpy.IInplaceMultipliable`1
+    name: IInplaceMultipliable
+    href: Sharpy.IInplaceMultipliable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IInplaceMultipliable`1
+    name: IInplaceMultipliable
+    href: Sharpy.IInplaceMultipliable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: '{TMultiplicand}'
+  commentId: '!:TMultiplicand'
+  definition: TMultiplicand
+  name: TMultiplicand
+  nameWithType: TMultiplicand
+  fullName: TMultiplicand
+- uid: '{TMultiplier}'
+  commentId: '!:TMultiplier'
+  definition: TMultiplier
+  name: TMultiplier
+  nameWithType: TMultiplier
+  fullName: TMultiplier
+- uid: TMultiplicand
+  name: TMultiplicand
+  nameWithType: TMultiplicand
+  fullName: TMultiplicand
+- uid: TMultiplier
+  name: TMultiplier
+  nameWithType: TMultiplier
+  fullName: TMultiplier
+- uid: Sharpy.Operator.Exports.__IMul__*
+  commentId: Overload:Sharpy.Operator.Exports.__IMul__
+  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports___IMul____1_Sharpy_IInplaceMultipliable___0____0_
+  name: __IMul__
+  nameWithType: Exports.__IMul__
+  fullName: Sharpy.Operator.Exports.__IMul__
+- uid: Sharpy.Operator.Exports.Is*
+  commentId: Overload:Sharpy.Operator.Exports.Is
+  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports_Is_System_Object_System_Object_
+  name: Is
+  nameWithType: Exports.Is
+  fullName: Sharpy.Operator.Exports.Is
+- uid: Sharpy.Operator.Exports.IsNot*
+  commentId: Overload:Sharpy.Operator.Exports.IsNot
+  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports_IsNot_System_Object_System_Object_
+  name: IsNot
+  nameWithType: Exports.IsNot
+  fullName: Sharpy.Operator.Exports.IsNot
 - uid: Sharpy.Operator.Exports.Le*
   commentId: Overload:Sharpy.Operator.Exports.Le
-  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports_Le__1___0___0_
+  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports_Le__1_Sharpy_ILessThanOrEquatableWith___0____0_
   name: Le
   nameWithType: Exports.Le
   fullName: Sharpy.Operator.Exports.Le
+- uid: Sharpy.ILessThanOrEquatableWith{{T}}
+  commentId: T:Sharpy.ILessThanOrEquatableWith{`0}
+  parent: Sharpy
+  definition: Sharpy.ILessThanOrEquatableWith`1
+  href: Sharpy.ILessThanOrEquatableWith-1.html
+  name: ILessThanOrEquatableWith<T>
+  nameWithType: ILessThanOrEquatableWith<T>
+  fullName: Sharpy.ILessThanOrEquatableWith<T>
+  nameWithType.vb: ILessThanOrEquatableWith(Of T)
+  fullName.vb: Sharpy.ILessThanOrEquatableWith(Of T)
+  name.vb: ILessThanOrEquatableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.ILessThanOrEquatableWith`1
+    name: ILessThanOrEquatableWith
+    href: Sharpy.ILessThanOrEquatableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.ILessThanOrEquatableWith`1
+    name: ILessThanOrEquatableWith
+    href: Sharpy.ILessThanOrEquatableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.ILessThanOrEquatableWith`1
+  commentId: T:Sharpy.ILessThanOrEquatableWith`1
+  href: Sharpy.ILessThanOrEquatableWith-1.html
+  name: ILessThanOrEquatableWith<T>
+  nameWithType: ILessThanOrEquatableWith<T>
+  fullName: Sharpy.ILessThanOrEquatableWith<T>
+  nameWithType.vb: ILessThanOrEquatableWith(Of T)
+  fullName.vb: Sharpy.ILessThanOrEquatableWith(Of T)
+  name.vb: ILessThanOrEquatableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.ILessThanOrEquatableWith`1
+    name: ILessThanOrEquatableWith
+    href: Sharpy.ILessThanOrEquatableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.ILessThanOrEquatableWith`1
+    name: ILessThanOrEquatableWith
+    href: Sharpy.ILessThanOrEquatableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
 - uid: Sharpy.Operator.Exports.__Le__*
   commentId: Overload:Sharpy.Operator.Exports.__Le__
-  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports___Le____1___0___0_
+  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports___Le____1_Sharpy_ILessThanOrEquatableWith___0____0_
   name: __Le__
   nameWithType: Exports.__Le__
   fullName: Sharpy.Operator.Exports.__Le__
 - uid: Sharpy.Operator.Exports.Lt*
   commentId: Overload:Sharpy.Operator.Exports.Lt
-  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports_Lt__1___0___0_
+  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports_Lt__1_Sharpy_ILessThanComparableWith___0____0_
   name: Lt
   nameWithType: Exports.Lt
   fullName: Sharpy.Operator.Exports.Lt
+- uid: Sharpy.ILessThanComparableWith{{T}}
+  commentId: T:Sharpy.ILessThanComparableWith{`0}
+  parent: Sharpy
+  definition: Sharpy.ILessThanComparableWith`1
+  href: Sharpy.ILessThanComparableWith-1.html
+  name: ILessThanComparableWith<T>
+  nameWithType: ILessThanComparableWith<T>
+  fullName: Sharpy.ILessThanComparableWith<T>
+  nameWithType.vb: ILessThanComparableWith(Of T)
+  fullName.vb: Sharpy.ILessThanComparableWith(Of T)
+  name.vb: ILessThanComparableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.ILessThanComparableWith`1
+    name: ILessThanComparableWith
+    href: Sharpy.ILessThanComparableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.ILessThanComparableWith`1
+    name: ILessThanComparableWith
+    href: Sharpy.ILessThanComparableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.ILessThanComparableWith`1
+  commentId: T:Sharpy.ILessThanComparableWith`1
+  href: Sharpy.ILessThanComparableWith-1.html
+  name: ILessThanComparableWith<T>
+  nameWithType: ILessThanComparableWith<T>
+  fullName: Sharpy.ILessThanComparableWith<T>
+  nameWithType.vb: ILessThanComparableWith(Of T)
+  fullName.vb: Sharpy.ILessThanComparableWith(Of T)
+  name.vb: ILessThanComparableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.ILessThanComparableWith`1
+    name: ILessThanComparableWith
+    href: Sharpy.ILessThanComparableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.ILessThanComparableWith`1
+    name: ILessThanComparableWith
+    href: Sharpy.ILessThanComparableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
 - uid: Sharpy.Operator.Exports.__Lt__*
   commentId: Overload:Sharpy.Operator.Exports.__Lt__
-  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports___Lt____1___0___0_
+  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports___Lt____1_Sharpy_ILessThanComparableWith___0____0_
   name: __Lt__
   nameWithType: Exports.__Lt__
   fullName: Sharpy.Operator.Exports.__Lt__
 - uid: Sharpy.Operator.Exports.Mul*
   commentId: Overload:Sharpy.Operator.Exports.Mul
-  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports_Mul__2___0___1_
+  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports_Mul__1___0___0_
   name: Mul
   nameWithType: Exports.Mul
   fullName: Sharpy.Operator.Exports.Mul
+- uid: '{TProduct}'
+  commentId: '!:TProduct'
+  definition: TProduct
+  name: TProduct
+  nameWithType: TProduct
+  fullName: TProduct
+- uid: TProduct
+  name: TProduct
+  nameWithType: TProduct
+  fullName: TProduct
 - uid: Sharpy.Operator.Exports.__Mul__*
   commentId: Overload:Sharpy.Operator.Exports.__Mul__
-  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports___Mul____2___0___1_
+  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports___Mul____1___0___0_
   name: __Mul__
   nameWithType: Exports.__Mul__
   fullName: Sharpy.Operator.Exports.__Mul__
@@ -1308,3 +3980,59 @@ references:
   name: __Ne__
   nameWithType: Exports.__Ne__
   fullName: Sharpy.Operator.Exports.__Ne__
+- uid: Sharpy.Operator.Exports.Not*
+  commentId: Overload:Sharpy.Operator.Exports.Not
+  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports_Not_Sharpy_IBoolConvertible_
+  name: Not
+  nameWithType: Exports.Not
+  fullName: Sharpy.Operator.Exports.Not
+- uid: Sharpy.IBoolConvertible
+  commentId: T:Sharpy.IBoolConvertible
+  parent: Sharpy
+  href: Sharpy.IBoolConvertible.html
+  name: IBoolConvertible
+  nameWithType: IBoolConvertible
+  fullName: Sharpy.IBoolConvertible
+- uid: Sharpy.Collections.Interfaces.ISized
+  commentId: T:Sharpy.Collections.Interfaces.ISized
+  parent: Sharpy.Collections.Interfaces
+  href: Sharpy.Collections.Interfaces.ISized.html
+  name: ISized
+  nameWithType: ISized
+  fullName: Sharpy.Collections.Interfaces.ISized
+- uid: Sharpy.Collections.Interfaces
+  commentId: N:Sharpy.Collections.Interfaces
+  href: Sharpy.html
+  name: Sharpy.Collections.Interfaces
+  nameWithType: Sharpy.Collections.Interfaces
+  fullName: Sharpy.Collections.Interfaces
+  spec.csharp:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+  spec.vb:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+- uid: Sharpy.Operator.Exports.Truth*
+  commentId: Overload:Sharpy.Operator.Exports.Truth
+  href: Sharpy.Operator.Exports.html#Sharpy_Operator_Exports_Truth_Sharpy_IBoolConvertible_
+  name: Truth
+  nameWithType: Exports.Truth
+  fullName: Sharpy.Operator.Exports.Truth

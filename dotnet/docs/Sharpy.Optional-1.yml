@@ -36,21 +36,23 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Optional
     path: ../src/Sharpy/Partial.Optional/Optional.Object.cs
-    startLine: 2
+    startLine: 4
   assemblies:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: 'public sealed class Optional<T> : Object, IInequatable<Object>, IEquatable<Object>, IEquatable, IHashable, IEquatable<Object>, IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable where T : notnull'
+    content: 'public sealed class Optional<T> : Object, IInequatable<Object>, IInequatableWith<Object>, IEquatable<Object>, IEquatableWith<Object>, IEquatable, IHashable, IEquatable<Object>, IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable where T : notnull'
     typeParameters:
     - id: T
-    content.vb: Public NotInheritable Class [Optional](Of T) Inherits Object Implements IInequatable(Of Object), IEquatable(Of Object), IEquatable, IHashable, IEquatable(Of Object), IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable
+    content.vb: Public NotInheritable Class [Optional](Of T) Inherits Object Implements IInequatable(Of Object), IInequatableWith(Of Object), IEquatable(Of Object), IEquatableWith(Of Object), IEquatable, IHashable, IEquatable(Of Object), IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable
   inheritance:
   - System.Object
   - Sharpy.Object
   implements:
   - Sharpy.IInequatable{Sharpy.Object}
+  - Sharpy.IInequatableWith{Sharpy.Object}
   - Sharpy.IEquatable{Sharpy.Object}
+  - Sharpy.IEquatableWith{Sharpy.Object}
   - Sharpy.IEquatable
   - Sharpy.IHashable
   - System.IEquatable{Sharpy.Object}
@@ -522,7 +524,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Bool__
     path: ../src/Sharpy/Partial.Optional/Optional.Object.cs
-    startLine: 4
+    startLine: 6
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -560,17 +562,24 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/Partial.Optional/Optional.Object.cs
-    startLine: 15
+    startLine: 17
   assemblies:
   - Sharpy
   namespace: Sharpy
+  remarks: >-
+    Unlike other <xref href="Sharpy.Object" data-throw-if-not-resolved="false"></xref> types, optionals are equivalent
+
+    if they hold the same value.
+  example: []
   syntax:
     content: public override bool __Eq__(Object? other)
     parameters:
     - id: other
       type: Sharpy.Object
+      description: ''
     return:
       type: System.Boolean
+      description: ''
     content.vb: Public Overrides Function __Eq__(other As [Object]) As Boolean
   overridden: Sharpy.Object.__Eq__(Sharpy.Object)
   overload: Sharpy.Optional`1.__Eq__*
@@ -595,7 +604,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/Partial.Optional/Optional.Object.cs
-    startLine: 25
+    startLine: 27
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -629,7 +638,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Repr__
     path: ../src/Sharpy/Partial.Optional/Optional.Object.cs
-    startLine: 35
+    startLine: 37
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -704,6 +713,37 @@ references:
     name: Object
     href: Sharpy.Object.html
   - name: )
+- uid: Sharpy.IInequatableWith{Sharpy.Object}
+  commentId: T:Sharpy.IInequatableWith{Sharpy.Object}
+  parent: Sharpy
+  definition: Sharpy.IInequatableWith`1
+  href: Sharpy.IInequatableWith-1.html
+  name: IInequatableWith<Object>
+  nameWithType: IInequatableWith<Object>
+  fullName: Sharpy.IInequatableWith<Sharpy.Object>
+  nameWithType.vb: IInequatableWith(Of Object)
+  fullName.vb: Sharpy.IInequatableWith(Of Sharpy.Object)
+  name.vb: IInequatableWith(Of Object)
+  spec.csharp:
+  - uid: Sharpy.IInequatableWith`1
+    name: IInequatableWith
+    href: Sharpy.IInequatableWith-1.html
+  - name: <
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IInequatableWith`1
+    name: IInequatableWith
+    href: Sharpy.IInequatableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: )
 - uid: Sharpy.IEquatable{Sharpy.Object}
   commentId: T:Sharpy.IEquatable{Sharpy.Object}
   parent: Sharpy
@@ -728,6 +768,37 @@ references:
   - uid: Sharpy.IEquatable`1
     name: IEquatable
     href: Sharpy.IEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: )
+- uid: Sharpy.IEquatableWith{Sharpy.Object}
+  commentId: T:Sharpy.IEquatableWith{Sharpy.Object}
+  parent: Sharpy
+  definition: Sharpy.IEquatableWith`1
+  href: Sharpy.IEquatableWith-1.html
+  name: IEquatableWith<Object>
+  nameWithType: IEquatableWith<Object>
+  fullName: Sharpy.IEquatableWith<Sharpy.Object>
+  nameWithType.vb: IEquatableWith(Of Object)
+  fullName.vb: Sharpy.IEquatableWith(Of Sharpy.Object)
+  name.vb: IEquatableWith(Of Object)
+  spec.csharp:
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith
+    href: Sharpy.IEquatableWith-1.html
+  - name: <
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith
+    href: Sharpy.IEquatableWith-1.html
   - name: (
   - name: Of
   - name: " "
@@ -1194,6 +1265,31 @@ references:
   - name: " "
   - name: T
   - name: )
+- uid: Sharpy.IInequatableWith`1
+  commentId: T:Sharpy.IInequatableWith`1
+  href: Sharpy.IInequatableWith-1.html
+  name: IInequatableWith<T>
+  nameWithType: IInequatableWith<T>
+  fullName: Sharpy.IInequatableWith<T>
+  nameWithType.vb: IInequatableWith(Of T)
+  fullName.vb: Sharpy.IInequatableWith(Of T)
+  name.vb: IInequatableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.IInequatableWith`1
+    name: IInequatableWith
+    href: Sharpy.IInequatableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IInequatableWith`1
+    name: IInequatableWith
+    href: Sharpy.IInequatableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
 - uid: Sharpy.IEquatable`1
   commentId: T:Sharpy.IEquatable`1
   href: Sharpy.IEquatable-1.html
@@ -1214,6 +1310,31 @@ references:
   - uid: Sharpy.IEquatable`1
     name: IEquatable
     href: Sharpy.IEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IEquatableWith`1
+  commentId: T:Sharpy.IEquatableWith`1
+  href: Sharpy.IEquatableWith-1.html
+  name: IEquatableWith<T>
+  nameWithType: IEquatableWith<T>
+  fullName: Sharpy.IEquatableWith<T>
+  nameWithType.vb: IEquatableWith(Of T)
+  fullName.vb: Sharpy.IEquatableWith(Of T)
+  name.vb: IEquatableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith
+    href: Sharpy.IEquatableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith
+    href: Sharpy.IEquatableWith-1.html
   - name: (
   - name: Of
   - name: " "

@@ -67,24 +67,24 @@ references:
 - uid: Sharpy.IRightAddable`2.__RAdd__(`1)
   commentId: M:Sharpy.IRightAddable`2.__RAdd__(`1)
   href: Sharpy.IRightAddable-2.html#Sharpy_IRightAddable_2___RAdd____1_
-  name: __RAdd__(U)
-  nameWithType: IRightAddable<T, U>.__RAdd__(U)
-  fullName: Sharpy.IRightAddable<T, U>.__RAdd__(U)
-  nameWithType.vb: IRightAddable(Of T, U).__RAdd__(U)
-  fullName.vb: Sharpy.IRightAddable(Of T, U).__RAdd__(U)
+  name: __RAdd__(TAugend)
+  nameWithType: IRightAddable<TSum, TAugend>.__RAdd__(TAugend)
+  fullName: Sharpy.IRightAddable<TSum, TAugend>.__RAdd__(TAugend)
+  nameWithType.vb: IRightAddable(Of TSum, TAugend).__RAdd__(TAugend)
+  fullName.vb: Sharpy.IRightAddable(Of TSum, TAugend).__RAdd__(TAugend)
   spec.csharp:
   - uid: Sharpy.IRightAddable`2.__RAdd__(`1)
     name: __RAdd__
     href: Sharpy.IRightAddable-2.html#Sharpy_IRightAddable_2___RAdd____1_
   - name: (
-  - name: U
+  - name: TAugend
   - name: )
   spec.vb:
   - uid: Sharpy.IRightAddable`2.__RAdd__(`1)
     name: __RAdd__
     href: Sharpy.IRightAddable-2.html#Sharpy_IRightAddable_2___RAdd____1_
   - name: (
-  - name: U
+  - name: TAugend
   - name: )
 - uid: Sharpy.IRightAddable{{T},{T}}
   commentId: T:Sharpy.IRightAddable{`0,`0}
@@ -122,21 +122,21 @@ references:
 - uid: Sharpy.IRightAddable`2
   commentId: T:Sharpy.IRightAddable`2
   href: Sharpy.IRightAddable-2.html
-  name: IRightAddable<T, U>
-  nameWithType: IRightAddable<T, U>
-  fullName: Sharpy.IRightAddable<T, U>
-  nameWithType.vb: IRightAddable(Of T, U)
-  fullName.vb: Sharpy.IRightAddable(Of T, U)
-  name.vb: IRightAddable(Of T, U)
+  name: IRightAddable<TSum, TAugend>
+  nameWithType: IRightAddable<TSum, TAugend>
+  fullName: Sharpy.IRightAddable<TSum, TAugend>
+  nameWithType.vb: IRightAddable(Of TSum, TAugend)
+  fullName.vb: Sharpy.IRightAddable(Of TSum, TAugend)
+  name.vb: IRightAddable(Of TSum, TAugend)
   spec.csharp:
   - uid: Sharpy.IRightAddable`2
     name: IRightAddable
     href: Sharpy.IRightAddable-2.html
   - name: <
-  - name: T
+  - name: TSum
   - name: ','
   - name: " "
-  - name: U
+  - name: TAugend
   - name: '>'
   spec.vb:
   - uid: Sharpy.IRightAddable`2
@@ -145,8 +145,8 @@ references:
   - name: (
   - name: Of
   - name: " "
-  - name: T
+  - name: TSum
   - name: ','
   - name: " "
-  - name: U
+  - name: TAugend
   - name: )

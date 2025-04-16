@@ -5,7 +5,10 @@ items:
   id: ILessThanComparable`1
   parent: Sharpy
   children:
-  - Sharpy.ILessThanComparable`1.__Lt__(`0)
+  - Sharpy.ILessThanComparable`1.op_GreaterThan(`0,`0)
+  - Sharpy.ILessThanComparable`1.op_GreaterThanOrEqual(`0,`0)
+  - Sharpy.ILessThanComparable`1.op_LessThan(`0,`0)
+  - Sharpy.ILessThanComparable`1.op_LessThanOrEqual(`0,`0)
   langs:
   - csharp
   - vb
@@ -20,51 +23,164 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: ILessThanComparable
     path: ../src/Sharpy/ILessThanComparable.cs
-    startLine: 2
+    startLine: 7
   assemblies:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public interface ILessThanComparable<T>
+    content: 'public interface ILessThanComparable<T> : ILessThanComparableWith<T> where T : ILessThanComparable<T>'
     typeParameters:
     - id: T
-    content.vb: Public Interface ILessThanComparable(Of T)
+    content.vb: Public Interface ILessThanComparable(Of T As ILessThanComparable(Of T)) Inherits ILessThanComparableWith(Of T)
+  inheritedMembers:
+  - Sharpy.ILessThanComparableWith{{T}}.__Lt__({T})
   nameWithType.vb: ILessThanComparable(Of T)
   fullName.vb: Sharpy.ILessThanComparable(Of T)
   name.vb: ILessThanComparable(Of T)
-- uid: Sharpy.ILessThanComparable`1.__Lt__(`0)
-  commentId: M:Sharpy.ILessThanComparable`1.__Lt__(`0)
-  id: __Lt__(`0)
+- uid: Sharpy.ILessThanComparable`1.op_LessThan(`0,`0)
+  commentId: M:Sharpy.ILessThanComparable`1.op_LessThan(`0,`0)
+  id: op_LessThan(`0,`0)
   parent: Sharpy.ILessThanComparable`1
   langs:
   - csharp
   - vb
-  name: __Lt__(T)
-  nameWithType: ILessThanComparable<T>.__Lt__(T)
-  fullName: Sharpy.ILessThanComparable<T>.__Lt__(T)
-  type: Method
+  name: operator <(T, T)
+  nameWithType: ILessThanComparable<T>.operator <(T, T)
+  fullName: Sharpy.ILessThanComparable<T>.operator <(T, T)
+  type: Operator
   source:
     remote:
       path: dotnet/src/Sharpy/ILessThanComparable.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
-    id: __Lt__
+    id: op_LessThan
     path: ../src/Sharpy/ILessThanComparable.cs
-    startLine: 4
+    startLine: 9
   assemblies:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: bool __Lt__(T other)
+    content: public static bool operator <(T left, T right)
     parameters:
-    - id: other
+    - id: left
+      type: '{T}'
+    - id: right
       type: '{T}'
     return:
       type: System.Boolean
-    content.vb: Function __Lt__(other As T) As Boolean
-  overload: Sharpy.ILessThanComparable`1.__Lt__*
-  nameWithType.vb: ILessThanComparable(Of T).__Lt__(T)
-  fullName.vb: Sharpy.ILessThanComparable(Of T).__Lt__(T)
+    content.vb: Public Shared Operator <(left As T, right As T) As Boolean
+  overload: Sharpy.ILessThanComparable`1.op_LessThan*
+  nameWithType.vb: ILessThanComparable(Of T).<(T, T)
+  fullName.vb: Sharpy.ILessThanComparable(Of T).<(T, T)
+  name.vb: <(T, T)
+- uid: Sharpy.ILessThanComparable`1.op_LessThanOrEqual(`0,`0)
+  commentId: M:Sharpy.ILessThanComparable`1.op_LessThanOrEqual(`0,`0)
+  id: op_LessThanOrEqual(`0,`0)
+  parent: Sharpy.ILessThanComparable`1
+  langs:
+  - csharp
+  - vb
+  name: operator <=(T, T)
+  nameWithType: ILessThanComparable<T>.operator <=(T, T)
+  fullName: Sharpy.ILessThanComparable<T>.operator <=(T, T)
+  type: Operator
+  source:
+    remote:
+      path: dotnet/src/Sharpy/ILessThanComparable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: op_LessThanOrEqual
+    path: ../src/Sharpy/ILessThanComparable.cs
+    startLine: 19
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static abstract bool operator <=(T left, T right)
+    parameters:
+    - id: left
+      type: '{T}'
+    - id: right
+      type: '{T}'
+    return:
+      type: System.Boolean
+    content.vb: Public Shared MustInherit Operator <=(left As T, right As T) As Boolean
+  overload: Sharpy.ILessThanComparable`1.op_LessThanOrEqual*
+  nameWithType.vb: ILessThanComparable(Of T).<=(T, T)
+  fullName.vb: Sharpy.ILessThanComparable(Of T).<=(T, T)
+  name.vb: <=(T, T)
+- uid: Sharpy.ILessThanComparable`1.op_GreaterThan(`0,`0)
+  commentId: M:Sharpy.ILessThanComparable`1.op_GreaterThan(`0,`0)
+  id: op_GreaterThan(`0,`0)
+  parent: Sharpy.ILessThanComparable`1
+  langs:
+  - csharp
+  - vb
+  name: operator >(T, T)
+  nameWithType: ILessThanComparable<T>.operator >(T, T)
+  fullName: Sharpy.ILessThanComparable<T>.operator >(T, T)
+  type: Operator
+  source:
+    remote:
+      path: dotnet/src/Sharpy/ILessThanComparable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: op_GreaterThan
+    path: ../src/Sharpy/ILessThanComparable.cs
+    startLine: 21
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static abstract bool operator >(T left, T right)
+    parameters:
+    - id: left
+      type: '{T}'
+    - id: right
+      type: '{T}'
+    return:
+      type: System.Boolean
+    content.vb: Public Shared MustInherit Operator >(left As T, right As T) As Boolean
+  overload: Sharpy.ILessThanComparable`1.op_GreaterThan*
+  nameWithType.vb: ILessThanComparable(Of T).>(T, T)
+  fullName.vb: Sharpy.ILessThanComparable(Of T).>(T, T)
+  name.vb: '>(T, T)'
+- uid: Sharpy.ILessThanComparable`1.op_GreaterThanOrEqual(`0,`0)
+  commentId: M:Sharpy.ILessThanComparable`1.op_GreaterThanOrEqual(`0,`0)
+  id: op_GreaterThanOrEqual(`0,`0)
+  parent: Sharpy.ILessThanComparable`1
+  langs:
+  - csharp
+  - vb
+  name: operator >=(T, T)
+  nameWithType: ILessThanComparable<T>.operator >=(T, T)
+  fullName: Sharpy.ILessThanComparable<T>.operator >=(T, T)
+  type: Operator
+  source:
+    remote:
+      path: dotnet/src/Sharpy/ILessThanComparable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: op_GreaterThanOrEqual
+    path: ../src/Sharpy/ILessThanComparable.cs
+    startLine: 23
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static bool operator >=(T left, T right)
+    parameters:
+    - id: left
+      type: '{T}'
+    - id: right
+      type: '{T}'
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Operator >=(left As T, right As T) As Boolean
+  overload: Sharpy.ILessThanComparable`1.op_GreaterThanOrEqual*
+  nameWithType.vb: ILessThanComparable(Of T).>=(T, T)
+  fullName.vb: Sharpy.ILessThanComparable(Of T).>=(T, T)
+  name.vb: '>=(T, T)'
 references:
 - uid: Sharpy
   commentId: N:Sharpy
@@ -72,14 +188,119 @@ references:
   name: Sharpy
   nameWithType: Sharpy
   fullName: Sharpy
-- uid: Sharpy.ILessThanComparable`1.__Lt__*
-  commentId: Overload:Sharpy.ILessThanComparable`1.__Lt__
-  href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1___Lt____0_
-  name: __Lt__
-  nameWithType: ILessThanComparable<T>.__Lt__
-  fullName: Sharpy.ILessThanComparable<T>.__Lt__
-  nameWithType.vb: ILessThanComparable(Of T).__Lt__
-  fullName.vb: Sharpy.ILessThanComparable(Of T).__Lt__
+- uid: Sharpy.ILessThanComparableWith{{T}}.__Lt__({T})
+  commentId: M:Sharpy.ILessThanComparableWith{`0}.__Lt__(`0)
+  parent: Sharpy.ILessThanComparableWith{{T}}
+  definition: Sharpy.ILessThanComparableWith`1.__Lt__(`0)
+  href: Sharpy.ILessThanComparableWith-1.html#Sharpy_ILessThanComparableWith_1___Lt____0_
+  name: __Lt__(T)
+  nameWithType: ILessThanComparableWith<T>.__Lt__(T)
+  fullName: Sharpy.ILessThanComparableWith<T>.__Lt__(T)
+  nameWithType.vb: ILessThanComparableWith(Of T).__Lt__(T)
+  fullName.vb: Sharpy.ILessThanComparableWith(Of T).__Lt__(T)
+  spec.csharp:
+  - uid: Sharpy.ILessThanComparableWith{`0}.__Lt__(`0)
+    name: __Lt__
+    href: Sharpy.ILessThanComparableWith-1.html#Sharpy_ILessThanComparableWith_1___Lt____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.ILessThanComparableWith{`0}.__Lt__(`0)
+    name: __Lt__
+    href: Sharpy.ILessThanComparableWith-1.html#Sharpy_ILessThanComparableWith_1___Lt____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.ILessThanComparableWith`1.__Lt__(`0)
+  commentId: M:Sharpy.ILessThanComparableWith`1.__Lt__(`0)
+  href: Sharpy.ILessThanComparableWith-1.html#Sharpy_ILessThanComparableWith_1___Lt____0_
+  name: __Lt__(T)
+  nameWithType: ILessThanComparableWith<T>.__Lt__(T)
+  fullName: Sharpy.ILessThanComparableWith<T>.__Lt__(T)
+  nameWithType.vb: ILessThanComparableWith(Of T).__Lt__(T)
+  fullName.vb: Sharpy.ILessThanComparableWith(Of T).__Lt__(T)
+  spec.csharp:
+  - uid: Sharpy.ILessThanComparableWith`1.__Lt__(`0)
+    name: __Lt__
+    href: Sharpy.ILessThanComparableWith-1.html#Sharpy_ILessThanComparableWith_1___Lt____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.ILessThanComparableWith`1.__Lt__(`0)
+    name: __Lt__
+    href: Sharpy.ILessThanComparableWith-1.html#Sharpy_ILessThanComparableWith_1___Lt____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.ILessThanComparableWith{{T}}
+  commentId: T:Sharpy.ILessThanComparableWith{`0}
+  parent: Sharpy
+  definition: Sharpy.ILessThanComparableWith`1
+  href: Sharpy.ILessThanComparableWith-1.html
+  name: ILessThanComparableWith<T>
+  nameWithType: ILessThanComparableWith<T>
+  fullName: Sharpy.ILessThanComparableWith<T>
+  nameWithType.vb: ILessThanComparableWith(Of T)
+  fullName.vb: Sharpy.ILessThanComparableWith(Of T)
+  name.vb: ILessThanComparableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.ILessThanComparableWith`1
+    name: ILessThanComparableWith
+    href: Sharpy.ILessThanComparableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.ILessThanComparableWith`1
+    name: ILessThanComparableWith
+    href: Sharpy.ILessThanComparableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.ILessThanComparableWith`1
+  commentId: T:Sharpy.ILessThanComparableWith`1
+  href: Sharpy.ILessThanComparableWith-1.html
+  name: ILessThanComparableWith<T>
+  nameWithType: ILessThanComparableWith<T>
+  fullName: Sharpy.ILessThanComparableWith<T>
+  nameWithType.vb: ILessThanComparableWith(Of T)
+  fullName.vb: Sharpy.ILessThanComparableWith(Of T)
+  name.vb: ILessThanComparableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.ILessThanComparableWith`1
+    name: ILessThanComparableWith
+    href: Sharpy.ILessThanComparableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.ILessThanComparableWith`1
+    name: ILessThanComparableWith
+    href: Sharpy.ILessThanComparableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.ILessThanComparable`1.op_LessThan*
+  commentId: Overload:Sharpy.ILessThanComparable`1.op_LessThan
+  href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_LessThan__0__0_
+  name: operator <
+  nameWithType: ILessThanComparable<T>.operator <
+  fullName: Sharpy.ILessThanComparable<T>.operator <
+  nameWithType.vb: ILessThanComparable(Of T).<
+  fullName.vb: Sharpy.ILessThanComparable(Of T).<
+  name.vb: <
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.ILessThanComparable`1.op_LessThan*
+    name: <
+    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_LessThan__0__0_
 - uid: '{T}'
   commentId: '!:T'
   definition: T
@@ -108,3 +329,48 @@ references:
   name: System
   nameWithType: System
   fullName: System
+- uid: Sharpy.ILessThanComparable`1.op_LessThanOrEqual*
+  commentId: Overload:Sharpy.ILessThanComparable`1.op_LessThanOrEqual
+  href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_LessThanOrEqual__0__0_
+  name: operator <=
+  nameWithType: ILessThanComparable<T>.operator <=
+  fullName: Sharpy.ILessThanComparable<T>.operator <=
+  nameWithType.vb: ILessThanComparable(Of T).<=
+  fullName.vb: Sharpy.ILessThanComparable(Of T).<=
+  name.vb: <=
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.ILessThanComparable`1.op_LessThanOrEqual*
+    name: <=
+    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_LessThanOrEqual__0__0_
+- uid: Sharpy.ILessThanComparable`1.op_GreaterThan*
+  commentId: Overload:Sharpy.ILessThanComparable`1.op_GreaterThan
+  href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_GreaterThan__0__0_
+  name: operator >
+  nameWithType: ILessThanComparable<T>.operator >
+  fullName: Sharpy.ILessThanComparable<T>.operator >
+  nameWithType.vb: ILessThanComparable(Of T).>
+  fullName.vb: Sharpy.ILessThanComparable(Of T).>
+  name.vb: '>'
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.ILessThanComparable`1.op_GreaterThan*
+    name: '>'
+    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_GreaterThan__0__0_
+- uid: Sharpy.ILessThanComparable`1.op_GreaterThanOrEqual*
+  commentId: Overload:Sharpy.ILessThanComparable`1.op_GreaterThanOrEqual
+  href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_GreaterThanOrEqual__0__0_
+  name: operator >=
+  nameWithType: ILessThanComparable<T>.operator >=
+  fullName: Sharpy.ILessThanComparable<T>.operator >=
+  nameWithType.vb: ILessThanComparable(Of T).>=
+  fullName.vb: Sharpy.ILessThanComparable(Of T).>=
+  name.vb: '>='
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.ILessThanComparable`1.op_GreaterThanOrEqual*
+    name: '>='
+    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_GreaterThanOrEqual__0__0_

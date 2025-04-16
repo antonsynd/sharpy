@@ -47,9 +47,41 @@ public static partial class Exports
         return left.CompareTo(right) >= 0;
     }
 
-    public static bool __Ge__<T>(T left, T right) where T : IGreaterThanOrEquatable<T> => Ge(left, right);
+    public static bool Ge<T>(T left, T right)
+    {
+        if (ReferenceEquals(left, right))
+        {
+            return false;
+        }
+
+        if (left is null || right is null)
+        {
+            throw TypeError.OpNotSupported("<", "NoneType");
+        }
+
+        if (typeof(T).IsAssignableTo(typeof(IGreaterThanOrEquatableWith<T>)))
+        {
+            return Ge((IGreaterThanOrEquatableWith<T>)left, right);
+        }
+
+        if (typeof(T).IsAssignableTo(typeof(IComparable<T>)))
+        {
+            return Ge((IComparable<T>)left, right);
+        }
+
+        if (typeof(T).IsAssignableTo(typeof(IComparable)))
+        {
+            return Ge((IComparable)left, right);
+        }
+
+        throw TypeError.OpNotSupported("<", typeof(T).Name);
+    }
+
+    public static bool __Ge__<T>(IGreaterThanOrEquatableWith<T> left, T right) => Ge(left, right);
 
     public static bool __Ge__<T>(IComparable<T> left, T right) => Ge(left, right);
 
     public static bool __Ge__<T>(IComparable left, object right) => Ge(left, right);
+
+    public static bool __Ge__<T>(T left, T right) => Ge(left, right);
 }

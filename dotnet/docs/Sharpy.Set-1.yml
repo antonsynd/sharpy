@@ -96,16 +96,18 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: 'public sealed class Set<T> : Object, IInequatable<Object>, IEquatable<Object>, IEquatable<Object>, IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSet<Set<T>, T>, IMutableSet<T>, ISet<Set<T>, T>, ISet<T>, ICollection<T>, IContainer<T>, IIterable<T>, IEnumerable<T>, IEnumerable, ISized, IInequatable<Set<T>>, ILessThanOrEquatable<Set<T>>, ILessThanComparable<Set<T>>, IGreaterThanOrEquatable<Set<T>>, IGreaterThanComparable<Set<T>>, IEquatable<Set<T>>, IEquatable<Set<T>>, ILessThanOrEquatable<ISet<T>>, ILessThanComparable<ISet<T>>, IGreaterThanOrEquatable<ISet<T>>, IGreaterThanComparable<ISet<T>>, IEquatable<ISet<T>>, IEquatable, IHashable, IEquatable<ISet<T>>'
+    content: 'public sealed class Set<T> : Object, IInequatable<Object>, IInequatableWith<Object>, IEquatable<Object>, IEquatableWith<Object>, IEquatable<Object>, IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSet<Set<T>, T>, IMutableSet<T>, ISet<Set<T>, T>, ISet<T>, ICollection<T>, IContainer<T>, IIterable<T>, IEnumerable<T>, IEnumerable, ISized, IInequatable<ISet<T>>, IInequatableWith<ISet<T>>, IEquatable<ISet<T>>, IEquatableWith<ISet<T>>, IEquatable<ISet<T>>, ILessThanOrEquatable<Set<T>>, ILessThanOrEquatableWith<Set<T>>, ILessThanComparable<Set<T>>, ILessThanComparableWith<Set<T>>, IGreaterThanOrEquatable<Set<T>>, IGreaterThanOrEquatableWith<Set<T>>, IGreaterThanComparable<Set<T>>, IGreaterThanComparableWith<Set<T>>, IEquatable<Set<T>>, IEquatableWith<Set<T>>, IEquatable, IHashable, IEquatable<Set<T>>'
     typeParameters:
     - id: T
-    content.vb: Public NotInheritable Class [Set](Of T) Inherits Object Implements IInequatable(Of Object), IEquatable(Of Object), IEquatable(Of Object), IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSet(Of Set(Of T), T), IMutableSet(Of T), ISet(Of Set(Of T), T), ISet(Of T), ICollection(Of T), IContainer(Of T), IIterable(Of T), IEnumerable(Of T), IEnumerable, ISized, IInequatable(Of Set(Of T)), ILessThanOrEquatable(Of Set(Of T)), ILessThanComparable(Of Set(Of T)), IGreaterThanOrEquatable(Of Set(Of T)), IGreaterThanComparable(Of Set(Of T)), IEquatable(Of Set(Of T)), IEquatable(Of Set(Of T)), ILessThanOrEquatable(Of ISet(Of T)), ILessThanComparable(Of ISet(Of T)), IGreaterThanOrEquatable(Of ISet(Of T)), IGreaterThanComparable(Of ISet(Of T)), IEquatable(Of ISet(Of T)), IEquatable, IHashable, IEquatable(Of ISet(Of T))
+    content.vb: Public NotInheritable Class [Set](Of T) Inherits Object Implements IInequatable(Of Object), IInequatableWith(Of Object), IEquatable(Of Object), IEquatableWith(Of Object), IEquatable(Of Object), IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSet(Of Set(Of T), T), IMutableSet(Of T), ISet(Of Set(Of T), T), ISet(Of T), ICollection(Of T), IContainer(Of T), IIterable(Of T), IEnumerable(Of T), IEnumerable, ISized, IInequatable(Of ISet(Of T)), IInequatableWith(Of ISet(Of T)), IEquatable(Of ISet(Of T)), IEquatableWith(Of ISet(Of T)), IEquatable(Of ISet(Of T)), ILessThanOrEquatable(Of Set(Of T)), ILessThanOrEquatableWith(Of Set(Of T)), ILessThanComparable(Of Set(Of T)), ILessThanComparableWith(Of Set(Of T)), IGreaterThanOrEquatable(Of Set(Of T)), IGreaterThanOrEquatableWith(Of Set(Of T)), IGreaterThanComparable(Of Set(Of T)), IGreaterThanComparableWith(Of Set(Of T)), IEquatable(Of Set(Of T)), IEquatableWith(Of Set(Of T)), IEquatable, IHashable, IEquatable(Of Set(Of T))
   inheritance:
   - System.Object
   - Sharpy.Object
   implements:
   - Sharpy.IInequatable{Sharpy.Object}
+  - Sharpy.IInequatableWith{Sharpy.Object}
   - Sharpy.IEquatable{Sharpy.Object}
+  - Sharpy.IEquatableWith{Sharpy.Object}
   - System.IEquatable{Sharpy.Object}
   - Sharpy.IStrConvertible
   - Sharpy.IRepresentable
@@ -121,21 +123,24 @@ items:
   - System.Collections.Generic.IEnumerable{{T}}
   - System.Collections.IEnumerable
   - Sharpy.Collections.Interfaces.ISized
-  - Sharpy.IInequatable{Sharpy.Set`1}
-  - Sharpy.ILessThanOrEquatable{Sharpy.Set`1}
-  - Sharpy.ILessThanComparable{Sharpy.Set`1}
-  - Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}
-  - Sharpy.IGreaterThanComparable{Sharpy.Set`1}
-  - Sharpy.IEquatable{Sharpy.Set`1}
-  - System.IEquatable{Sharpy.Set`1}
-  - Sharpy.ILessThanOrEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
-  - Sharpy.ILessThanComparable{Sharpy.Collections.Interfaces.ISet{{T}}}
-  - Sharpy.IGreaterThanOrEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
-  - Sharpy.IGreaterThanComparable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  - Sharpy.IInequatable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  - Sharpy.IInequatableWith{Sharpy.Collections.Interfaces.ISet{{T}}}
   - Sharpy.IEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  - Sharpy.IEquatableWith{Sharpy.Collections.Interfaces.ISet{{T}}}
+  - System.IEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  - Sharpy.ILessThanOrEquatable{Sharpy.Set`1}
+  - Sharpy.ILessThanOrEquatableWith{Sharpy.Set`1}
+  - Sharpy.ILessThanComparable{Sharpy.Set`1}
+  - Sharpy.ILessThanComparableWith{Sharpy.Set`1}
+  - Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}
+  - Sharpy.IGreaterThanOrEquatableWith{Sharpy.Set`1}
+  - Sharpy.IGreaterThanComparable{Sharpy.Set`1}
+  - Sharpy.IGreaterThanComparableWith{Sharpy.Set`1}
+  - Sharpy.IEquatable{Sharpy.Set`1}
+  - Sharpy.IEquatableWith{Sharpy.Set`1}
   - Sharpy.IEquatable
   - Sharpy.IHashable
-  - System.IEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  - System.IEquatable{Sharpy.Set`1}
   inheritedMembers:
   - Sharpy.Object.Equals(Sharpy.Object)
   - Sharpy.Object.__Eq__(System.Object)
@@ -171,7 +176,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Partial.Set/Set.cs
-    startLine: 12
+    startLine: 10
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -200,7 +205,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Partial.Set/Set.cs
-    startLine: 17
+    startLine: 15
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -232,7 +237,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Partial.Set/Set.cs
-    startLine: 22
+    startLine: 20
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -264,7 +269,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Copy
     path: ../src/Sharpy/Partial.Set/Set.cs
-    startLine: 35
+    startLine: 33
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -294,7 +299,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IsSubset
     path: ../src/Sharpy/Partial.Set/Set.cs
-    startLine: 44
+    startLine: 42
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -328,7 +333,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IsSuperset
     path: ../src/Sharpy/Partial.Set/Set.cs
-    startLine: 49
+    startLine: 47
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -362,7 +367,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Union
     path: ../src/Sharpy/Partial.Set/Set.cs
-    startLine: 54
+    startLine: 52
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -396,7 +401,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Intersection
     path: ../src/Sharpy/Partial.Set/Set.cs
-    startLine: 59
+    startLine: 57
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -430,7 +435,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Difference
     path: ../src/Sharpy/Partial.Set/Set.cs
-    startLine: 64
+    startLine: 62
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -464,7 +469,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: SymmetricDifference
     path: ../src/Sharpy/Partial.Set/Set.cs
-    startLine: 69
+    startLine: 67
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -498,7 +503,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: ToHashSet
     path: ../src/Sharpy/Partial.Set/Set.cs
-    startLine: 74
+    startLine: 72
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -743,7 +748,7 @@ items:
     content.vb: Public Function __Eq__(other As [Set](Of T)) As Boolean
   overload: Sharpy.Set`1.__Eq__*
   implements:
-  - Sharpy.IEquatable{Sharpy.Set`1}.__Eq__(Sharpy.Set{{T}})
+  - Sharpy.IEquatableWith{Sharpy.Set`1}.__Eq__(Sharpy.Set{{T}})
   nameWithType.vb: Set(Of T).__Eq__(Set(Of T))
   fullName.vb: Sharpy.Set(Of T).__Eq__(Sharpy.Set(Of T))
   name.vb: __Eq__(Set(Of T))
@@ -781,7 +786,7 @@ items:
     content.vb: Public Function __Eq__(other As ISet(Of T)) As Boolean
   overload: Sharpy.Set`1.__Eq__*
   implements:
-  - Sharpy.IEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}.__Eq__(Sharpy.Collections.Interfaces.ISet{{T}})
+  - Sharpy.IEquatableWith{Sharpy.Collections.Interfaces.ISet{{T}}}.__Eq__(Sharpy.Collections.Interfaces.ISet{{T}})
   nameWithType.vb: Set(Of T).__Eq__(ISet(Of T))
   fullName.vb: Sharpy.Set(Of T).__Eq__(Sharpy.Collections.Interfaces.ISet(Of T))
   name.vb: __Eq__(ISet(Of T))
@@ -859,7 +864,7 @@ items:
     content.vb: Public Function __Gt__(other As [Set](Of T)) As Boolean
   overload: Sharpy.Set`1.__Gt__*
   implements:
-  - Sharpy.IGreaterThanComparable{Sharpy.Set`1}.__Gt__(Sharpy.Set{{T}})
+  - Sharpy.IGreaterThanComparableWith{Sharpy.Set`1}.__Gt__(Sharpy.Set{{T}})
   nameWithType.vb: Set(Of T).__Gt__(Set(Of T))
   fullName.vb: Sharpy.Set(Of T).__Gt__(Sharpy.Set(Of T))
   name.vb: __Gt__(Set(Of T))
@@ -895,8 +900,6 @@ items:
       type: System.Boolean
     content.vb: Public Function __Gt__(other As ISet(Of T)) As Boolean
   overload: Sharpy.Set`1.__Gt__*
-  implements:
-  - Sharpy.IGreaterThanComparable{Sharpy.Collections.Interfaces.ISet{{T}}}.__Gt__(Sharpy.Collections.Interfaces.ISet{{T}})
   nameWithType.vb: Set(Of T).__Gt__(ISet(Of T))
   fullName.vb: Sharpy.Set(Of T).__Gt__(Sharpy.Collections.Interfaces.ISet(Of T))
   name.vb: __Gt__(ISet(Of T))
@@ -933,7 +936,7 @@ items:
     content.vb: Public Function __Ge__(other As [Set](Of T)) As Boolean
   overload: Sharpy.Set`1.__Ge__*
   implements:
-  - Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.__Ge__(Sharpy.Set{{T}})
+  - Sharpy.IGreaterThanOrEquatableWith{Sharpy.Set`1}.__Ge__(Sharpy.Set{{T}})
   nameWithType.vb: Set(Of T).__Ge__(Set(Of T))
   fullName.vb: Sharpy.Set(Of T).__Ge__(Sharpy.Set(Of T))
   name.vb: __Ge__(Set(Of T))
@@ -969,8 +972,6 @@ items:
       type: System.Boolean
     content.vb: Public Function __Ge__(other As ISet(Of T)) As Boolean
   overload: Sharpy.Set`1.__Ge__*
-  implements:
-  - Sharpy.IGreaterThanOrEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}.__Ge__(Sharpy.Collections.Interfaces.ISet{{T}})
   nameWithType.vb: Set(Of T).__Ge__(ISet(Of T))
   fullName.vb: Sharpy.Set(Of T).__Ge__(Sharpy.Collections.Interfaces.ISet(Of T))
   name.vb: __Ge__(ISet(Of T))
@@ -1006,8 +1007,6 @@ items:
       type: System.Boolean
     content.vb: Public Function __Ne__(other As [Set](Of T)) As Boolean
   overload: Sharpy.Set`1.__Ne__*
-  implements:
-  - Sharpy.IInequatable{Sharpy.Set`1}.__Ne__(Sharpy.Set{{T}})
   nameWithType.vb: Set(Of T).__Ne__(Set(Of T))
   fullName.vb: Sharpy.Set(Of T).__Ne__(Sharpy.Set(Of T))
   name.vb: __Ne__(Set(Of T))
@@ -1043,6 +1042,8 @@ items:
       type: System.Boolean
     content.vb: Public Function __Ne__(other As ISet(Of T)) As Boolean
   overload: Sharpy.Set`1.__Ne__*
+  implements:
+  - Sharpy.IInequatableWith{Sharpy.Collections.Interfaces.ISet{{T}}}.__Ne__(Sharpy.Collections.Interfaces.ISet{{T}})
   nameWithType.vb: Set(Of T).__Ne__(ISet(Of T))
   fullName.vb: Sharpy.Set(Of T).__Ne__(Sharpy.Collections.Interfaces.ISet(Of T))
   name.vb: __Ne__(ISet(Of T))
@@ -1126,7 +1127,7 @@ items:
     content.vb: Public Function __Lt__(other As [Set](Of T)) As Boolean
   overload: Sharpy.Set`1.__Lt__*
   implements:
-  - Sharpy.ILessThanComparable{Sharpy.Set`1}.__Lt__(Sharpy.Set{{T}})
+  - Sharpy.ILessThanComparableWith{Sharpy.Set`1}.__Lt__(Sharpy.Set{{T}})
   nameWithType.vb: Set(Of T).__Lt__(Set(Of T))
   fullName.vb: Sharpy.Set(Of T).__Lt__(Sharpy.Set(Of T))
   name.vb: __Lt__(Set(Of T))
@@ -1162,8 +1163,6 @@ items:
       type: System.Boolean
     content.vb: Public Function __Lt__(other As ISet(Of T)) As Boolean
   overload: Sharpy.Set`1.__Lt__*
-  implements:
-  - Sharpy.ILessThanComparable{Sharpy.Collections.Interfaces.ISet{{T}}}.__Lt__(Sharpy.Collections.Interfaces.ISet{{T}})
   nameWithType.vb: Set(Of T).__Lt__(ISet(Of T))
   fullName.vb: Sharpy.Set(Of T).__Lt__(Sharpy.Collections.Interfaces.ISet(Of T))
   name.vb: __Lt__(ISet(Of T))
@@ -1200,7 +1199,7 @@ items:
     content.vb: Public Function __Le__(other As [Set](Of T)) As Boolean
   overload: Sharpy.Set`1.__Le__*
   implements:
-  - Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.__Le__(Sharpy.Set{{T}})
+  - Sharpy.ILessThanOrEquatableWith{Sharpy.Set`1}.__Le__(Sharpy.Set{{T}})
   nameWithType.vb: Set(Of T).__Le__(Set(Of T))
   fullName.vb: Sharpy.Set(Of T).__Le__(Sharpy.Set(Of T))
   name.vb: __Le__(Set(Of T))
@@ -1236,8 +1235,6 @@ items:
       type: System.Boolean
     content.vb: Public Function __Le__(other As ISet(Of T)) As Boolean
   overload: Sharpy.Set`1.__Le__*
-  implements:
-  - Sharpy.ILessThanOrEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}.__Le__(Sharpy.Collections.Interfaces.ISet{{T}})
   nameWithType.vb: Set(Of T).__Le__(ISet(Of T))
   fullName.vb: Sharpy.Set(Of T).__Le__(Sharpy.Collections.Interfaces.ISet(Of T))
   name.vb: __Le__(ISet(Of T))
@@ -1437,6 +1434,8 @@ items:
       type: Sharpy.Collections.Interfaces.ISet{{T}}
     content.vb: Public Sub __IOr__(other As ISet(Of T))
   overload: Sharpy.Set`1.__IOr__*
+  implements:
+  - Sharpy.Collections.Interfaces.IMutableSet{{T}}.__IOr__(Sharpy.Collections.Interfaces.ISet{{T}})
   nameWithType.vb: Set(Of T).__IOr__(ISet(Of T))
   fullName.vb: Sharpy.Set(Of T).__IOr__(Sharpy.Collections.Interfaces.ISet(Of T))
   name.vb: __IOr__(ISet(Of T))
@@ -1470,6 +1469,8 @@ items:
       type: Sharpy.Collections.Interfaces.ISet{{T}}
     content.vb: Public Sub __IAnd__(other As ISet(Of T))
   overload: Sharpy.Set`1.__IAnd__*
+  implements:
+  - Sharpy.Collections.Interfaces.IMutableSet{{T}}.__IAnd__(Sharpy.Collections.Interfaces.ISet{{T}})
   nameWithType.vb: Set(Of T).__IAnd__(ISet(Of T))
   fullName.vb: Sharpy.Set(Of T).__IAnd__(Sharpy.Collections.Interfaces.ISet(Of T))
   name.vb: __IAnd__(ISet(Of T))
@@ -1503,6 +1504,8 @@ items:
       type: Sharpy.Collections.Interfaces.ISet{{T}}
     content.vb: Public Sub __IXOr__(other As ISet(Of T))
   overload: Sharpy.Set`1.__IXOr__*
+  implements:
+  - Sharpy.Collections.Interfaces.IMutableSet{{T}}.__IXOr__(Sharpy.Collections.Interfaces.ISet{{T}})
   nameWithType.vb: Set(Of T).__IXOr__(ISet(Of T))
   fullName.vb: Sharpy.Set(Of T).__IXOr__(Sharpy.Collections.Interfaces.ISet(Of T))
   name.vb: __IXOr__(ISet(Of T))
@@ -1536,6 +1539,8 @@ items:
       type: Sharpy.Collections.Interfaces.ISet{{T}}
     content.vb: Public Sub __ISub__(other As ISet(Of T))
   overload: Sharpy.Set`1.__ISub__*
+  implements:
+  - Sharpy.Collections.Interfaces.IMutableSet{{T}}.__ISub__(Sharpy.Collections.Interfaces.ISet{{T}})
   nameWithType.vb: Set(Of T).__ISub__(ISet(Of T))
   fullName.vb: Sharpy.Set(Of T).__ISub__(Sharpy.Collections.Interfaces.ISet(Of T))
   name.vb: __ISub__(ISet(Of T))
@@ -1571,7 +1576,6 @@ items:
   overload: Sharpy.Set`1.__IAnd__*
   implements:
   - Sharpy.Collections.Interfaces.IMutableSet{Sharpy.Set`1,{T}}.__IAnd__(Sharpy.Set{{T}})
-  - Sharpy.Collections.Interfaces.IMutableSet{{T}}.__IAnd__(Sharpy.Set{{T}})
   nameWithType.vb: Set(Of T).__IAnd__(Set(Of T))
   fullName.vb: Sharpy.Set(Of T).__IAnd__(Sharpy.Set(Of T))
   name.vb: __IAnd__(Set(Of T))
@@ -1607,7 +1611,6 @@ items:
   overload: Sharpy.Set`1.__IOr__*
   implements:
   - Sharpy.Collections.Interfaces.IMutableSet{Sharpy.Set`1,{T}}.__IOr__(Sharpy.Set{{T}})
-  - Sharpy.Collections.Interfaces.IMutableSet{{T}}.__IOr__(Sharpy.Set{{T}})
   nameWithType.vb: Set(Of T).__IOr__(Set(Of T))
   fullName.vb: Sharpy.Set(Of T).__IOr__(Sharpy.Set(Of T))
   name.vb: __IOr__(Set(Of T))
@@ -1643,7 +1646,6 @@ items:
   overload: Sharpy.Set`1.__ISub__*
   implements:
   - Sharpy.Collections.Interfaces.IMutableSet{Sharpy.Set`1,{T}}.__ISub__(Sharpy.Set{{T}})
-  - Sharpy.Collections.Interfaces.IMutableSet{{T}}.__ISub__(Sharpy.Set{{T}})
   nameWithType.vb: Set(Of T).__ISub__(Set(Of T))
   fullName.vb: Sharpy.Set(Of T).__ISub__(Sharpy.Set(Of T))
   name.vb: __ISub__(Set(Of T))
@@ -1679,7 +1681,6 @@ items:
   overload: Sharpy.Set`1.__IXOr__*
   implements:
   - Sharpy.Collections.Interfaces.IMutableSet{Sharpy.Set`1,{T}}.__IXOr__(Sharpy.Set{{T}})
-  - Sharpy.Collections.Interfaces.IMutableSet{{T}}.__IXOr__(Sharpy.Set{{T}})
   nameWithType.vb: Set(Of T).__IXOr__(Set(Of T))
   fullName.vb: Sharpy.Set(Of T).__IXOr__(Sharpy.Set(Of T))
   name.vb: __IXOr__(Set(Of T))
@@ -2331,6 +2332,7 @@ items:
   assemblies:
   - Sharpy
   namespace: Sharpy
+  example: []
   syntax:
     content: public static bool operator ==(Set<T> left, Set<T> right)
     parameters:
@@ -2342,6 +2344,8 @@ items:
       type: System.Boolean
     content.vb: Public Shared Operator =(left As [Set](Of T), right As [Set](Of T)) As Boolean
   overload: Sharpy.Set`1.op_Equality*
+  implements:
+  - Sharpy.IEquatable{Sharpy.Set`1}.op_Equality(Sharpy.Set{{T}},Sharpy.Set{{T}})
   nameWithType.vb: Set(Of T).=(Set(Of T), Set(Of T))
   fullName.vb: Sharpy.Set(Of T).=(Sharpy.Set(Of T), Sharpy.Set(Of T))
   name.vb: =(Set(Of T), Set(Of T))
@@ -2367,6 +2371,7 @@ items:
   assemblies:
   - Sharpy
   namespace: Sharpy
+  example: []
   syntax:
     content: public static bool operator !=(Set<T> left, Set<T> right)
     parameters:
@@ -2378,6 +2383,8 @@ items:
       type: System.Boolean
     content.vb: Public Shared Operator <>(left As [Set](Of T), right As [Set](Of T)) As Boolean
   overload: Sharpy.Set`1.op_Inequality*
+  implements:
+  - Sharpy.IEquatable{Sharpy.Set`1}.op_Inequality(Sharpy.Set{{T}},Sharpy.Set{{T}})
   nameWithType.vb: Set(Of T).<>(Set(Of T), Set(Of T))
   fullName.vb: Sharpy.Set(Of T).<>(Sharpy.Set(Of T), Sharpy.Set(Of T))
   name.vb: <>(Set(Of T), Set(Of T))
@@ -2403,6 +2410,7 @@ items:
   assemblies:
   - Sharpy
   namespace: Sharpy
+  example: []
   syntax:
     content: public static bool operator <(Set<T> left, Set<T> right)
     parameters:
@@ -2414,6 +2422,11 @@ items:
       type: System.Boolean
     content.vb: Public Shared Operator <(left As [Set](Of T), right As [Set](Of T)) As Boolean
   overload: Sharpy.Set`1.op_LessThan*
+  implements:
+  - Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.op_LessThan(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  - Sharpy.ILessThanComparable{Sharpy.Set`1}.op_LessThan(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  - Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.op_LessThan(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  - Sharpy.IGreaterThanComparable{Sharpy.Set`1}.op_LessThan(Sharpy.Set{{T}},Sharpy.Set{{T}})
   nameWithType.vb: Set(Of T).<(Set(Of T), Set(Of T))
   fullName.vb: Sharpy.Set(Of T).<(Sharpy.Set(Of T), Sharpy.Set(Of T))
   name.vb: <(Set(Of T), Set(Of T))
@@ -2439,6 +2452,7 @@ items:
   assemblies:
   - Sharpy
   namespace: Sharpy
+  example: []
   syntax:
     content: public static bool operator >(Set<T> left, Set<T> right)
     parameters:
@@ -2450,6 +2464,11 @@ items:
       type: System.Boolean
     content.vb: Public Shared Operator >(left As [Set](Of T), right As [Set](Of T)) As Boolean
   overload: Sharpy.Set`1.op_GreaterThan*
+  implements:
+  - Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.op_GreaterThan(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  - Sharpy.ILessThanComparable{Sharpy.Set`1}.op_GreaterThan(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  - Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.op_GreaterThan(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  - Sharpy.IGreaterThanComparable{Sharpy.Set`1}.op_GreaterThan(Sharpy.Set{{T}},Sharpy.Set{{T}})
   nameWithType.vb: Set(Of T).>(Set(Of T), Set(Of T))
   fullName.vb: Sharpy.Set(Of T).>(Sharpy.Set(Of T), Sharpy.Set(Of T))
   name.vb: '>(Set(Of T), Set(Of T))'
@@ -2475,6 +2494,7 @@ items:
   assemblies:
   - Sharpy
   namespace: Sharpy
+  example: []
   syntax:
     content: public static bool operator <=(Set<T> left, Set<T> right)
     parameters:
@@ -2486,6 +2506,11 @@ items:
       type: System.Boolean
     content.vb: Public Shared Operator <=(left As [Set](Of T), right As [Set](Of T)) As Boolean
   overload: Sharpy.Set`1.op_LessThanOrEqual*
+  implements:
+  - Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.op_LessThanOrEqual(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  - Sharpy.ILessThanComparable{Sharpy.Set`1}.op_LessThanOrEqual(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  - Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.op_LessThanOrEqual(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  - Sharpy.IGreaterThanComparable{Sharpy.Set`1}.op_LessThanOrEqual(Sharpy.Set{{T}},Sharpy.Set{{T}})
   nameWithType.vb: Set(Of T).<=(Set(Of T), Set(Of T))
   fullName.vb: Sharpy.Set(Of T).<=(Sharpy.Set(Of T), Sharpy.Set(Of T))
   name.vb: <=(Set(Of T), Set(Of T))
@@ -2511,6 +2536,7 @@ items:
   assemblies:
   - Sharpy
   namespace: Sharpy
+  example: []
   syntax:
     content: public static bool operator >=(Set<T> left, Set<T> right)
     parameters:
@@ -2522,6 +2548,11 @@ items:
       type: System.Boolean
     content.vb: Public Shared Operator >=(left As [Set](Of T), right As [Set](Of T)) As Boolean
   overload: Sharpy.Set`1.op_GreaterThanOrEqual*
+  implements:
+  - Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.op_GreaterThanOrEqual(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  - Sharpy.ILessThanComparable{Sharpy.Set`1}.op_GreaterThanOrEqual(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  - Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.op_GreaterThanOrEqual(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  - Sharpy.IGreaterThanComparable{Sharpy.Set`1}.op_GreaterThanOrEqual(Sharpy.Set{{T}},Sharpy.Set{{T}})
   nameWithType.vb: Set(Of T).>=(Set(Of T), Set(Of T))
   fullName.vb: Sharpy.Set(Of T).>=(Sharpy.Set(Of T), Sharpy.Set(Of T))
   name.vb: '>=(Set(Of T), Set(Of T))'
@@ -2547,6 +2578,7 @@ items:
   assemblies:
   - Sharpy
   namespace: Sharpy
+  example: []
   syntax:
     content: public static Set<T> operator |(Set<T> left, Set<T> right)
     parameters:
@@ -2558,6 +2590,8 @@ items:
       type: Sharpy.Set`1
     content.vb: Public Shared Operator Or(left As [Set](Of T), right As [Set](Of T)) As [Set](Of T)
   overload: Sharpy.Set`1.op_BitwiseOr*
+  implements:
+  - Sharpy.Collections.Interfaces.ISet{Sharpy.Set`1,{T}}.op_BitwiseOr(Sharpy.Set{{T}},Sharpy.Set{{T}})
   nameWithType.vb: Set(Of T).Or(Set(Of T), Set(Of T))
   fullName.vb: Sharpy.Set(Of T).Or(Sharpy.Set(Of T), Sharpy.Set(Of T))
   name.vb: Or(Set(Of T), Set(Of T))
@@ -2583,6 +2617,7 @@ items:
   assemblies:
   - Sharpy
   namespace: Sharpy
+  example: []
   syntax:
     content: public static Set<T> operator &(Set<T> left, Set<T> right)
     parameters:
@@ -2594,6 +2629,8 @@ items:
       type: Sharpy.Set`1
     content.vb: Public Shared Operator And(left As [Set](Of T), right As [Set](Of T)) As [Set](Of T)
   overload: Sharpy.Set`1.op_BitwiseAnd*
+  implements:
+  - Sharpy.Collections.Interfaces.ISet{Sharpy.Set`1,{T}}.op_BitwiseAnd(Sharpy.Set{{T}},Sharpy.Set{{T}})
   nameWithType.vb: Set(Of T).And(Set(Of T), Set(Of T))
   fullName.vb: Sharpy.Set(Of T).And(Sharpy.Set(Of T), Sharpy.Set(Of T))
   name.vb: And(Set(Of T), Set(Of T))
@@ -2619,6 +2656,7 @@ items:
   assemblies:
   - Sharpy
   namespace: Sharpy
+  example: []
   syntax:
     content: public static Set<T> operator ^(Set<T> left, Set<T> right)
     parameters:
@@ -2630,6 +2668,8 @@ items:
       type: Sharpy.Set`1
     content.vb: Public Shared Operator Xor(left As [Set](Of T), right As [Set](Of T)) As [Set](Of T)
   overload: Sharpy.Set`1.op_ExclusiveOr*
+  implements:
+  - Sharpy.Collections.Interfaces.ISet{Sharpy.Set`1,{T}}.op_ExclusiveOr(Sharpy.Set{{T}},Sharpy.Set{{T}})
   nameWithType.vb: Set(Of T).Xor(Set(Of T), Set(Of T))
   fullName.vb: Sharpy.Set(Of T).Xor(Sharpy.Set(Of T), Sharpy.Set(Of T))
   name.vb: Xor(Set(Of T), Set(Of T))
@@ -2655,6 +2695,7 @@ items:
   assemblies:
   - Sharpy
   namespace: Sharpy
+  example: []
   syntax:
     content: public static Set<T> operator -(Set<T> left, Set<T> right)
     parameters:
@@ -2666,6 +2707,8 @@ items:
       type: Sharpy.Set`1
     content.vb: Public Shared Operator -(left As [Set](Of T), right As [Set](Of T)) As [Set](Of T)
   overload: Sharpy.Set`1.op_Subtraction*
+  implements:
+  - Sharpy.Collections.Interfaces.ISet{Sharpy.Set`1,{T}}.op_Subtraction(Sharpy.Set{{T}},Sharpy.Set{{T}})
   nameWithType.vb: Set(Of T).-(Set(Of T), Set(Of T))
   fullName.vb: Sharpy.Set(Of T).-(Sharpy.Set(Of T), Sharpy.Set(Of T))
   name.vb: -(Set(Of T), Set(Of T))
@@ -2793,6 +2836,37 @@ references:
     name: Object
     href: Sharpy.Object.html
   - name: )
+- uid: Sharpy.IInequatableWith{Sharpy.Object}
+  commentId: T:Sharpy.IInequatableWith{Sharpy.Object}
+  parent: Sharpy
+  definition: Sharpy.IInequatableWith`1
+  href: Sharpy.IInequatableWith-1.html
+  name: IInequatableWith<Object>
+  nameWithType: IInequatableWith<Object>
+  fullName: Sharpy.IInequatableWith<Sharpy.Object>
+  nameWithType.vb: IInequatableWith(Of Object)
+  fullName.vb: Sharpy.IInequatableWith(Of Sharpy.Object)
+  name.vb: IInequatableWith(Of Object)
+  spec.csharp:
+  - uid: Sharpy.IInequatableWith`1
+    name: IInequatableWith
+    href: Sharpy.IInequatableWith-1.html
+  - name: <
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IInequatableWith`1
+    name: IInequatableWith
+    href: Sharpy.IInequatableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: )
 - uid: Sharpy.IEquatable{Sharpy.Object}
   commentId: T:Sharpy.IEquatable{Sharpy.Object}
   parent: Sharpy
@@ -2817,6 +2891,37 @@ references:
   - uid: Sharpy.IEquatable`1
     name: IEquatable
     href: Sharpy.IEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: )
+- uid: Sharpy.IEquatableWith{Sharpy.Object}
+  commentId: T:Sharpy.IEquatableWith{Sharpy.Object}
+  parent: Sharpy
+  definition: Sharpy.IEquatableWith`1
+  href: Sharpy.IEquatableWith-1.html
+  name: IEquatableWith<Object>
+  nameWithType: IEquatableWith<Object>
+  fullName: Sharpy.IEquatableWith<Sharpy.Object>
+  nameWithType.vb: IEquatableWith(Of Object)
+  fullName.vb: Sharpy.IEquatableWith(Of Sharpy.Object)
+  name.vb: IEquatableWith(Of Object)
+  spec.csharp:
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith
+    href: Sharpy.IEquatableWith-1.html
+  - name: <
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith
+    href: Sharpy.IEquatableWith-1.html
   - name: (
   - name: Of
   - name: " "
@@ -3154,25 +3259,25 @@ references:
   name: ISized
   nameWithType: ISized
   fullName: Sharpy.Collections.Interfaces.ISized
-- uid: Sharpy.IInequatable{Sharpy.Set`1}
-  commentId: T:Sharpy.IInequatable{Sharpy.Set`1}
+- uid: Sharpy.IInequatable{Sharpy.Collections.Interfaces.ISet{{T}}}
+  commentId: T:Sharpy.IInequatable{Sharpy.Collections.Interfaces.ISet{`0}}
   parent: Sharpy
   definition: Sharpy.IInequatable`1
   href: Sharpy.IInequatable-1.html
-  name: IInequatable<Set<T>>
-  nameWithType: IInequatable<Set<T>>
-  fullName: Sharpy.IInequatable<Sharpy.Set<T>>
-  nameWithType.vb: IInequatable(Of Set(Of T))
-  fullName.vb: Sharpy.IInequatable(Of Sharpy.Set(Of T))
-  name.vb: IInequatable(Of Set(Of T))
+  name: IInequatable<ISet<T>>
+  nameWithType: IInequatable<ISet<T>>
+  fullName: Sharpy.IInequatable<Sharpy.Collections.Interfaces.ISet<T>>
+  nameWithType.vb: IInequatable(Of ISet(Of T))
+  fullName.vb: Sharpy.IInequatable(Of Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: IInequatable(Of ISet(Of T))
   spec.csharp:
   - uid: Sharpy.IInequatable`1
     name: IInequatable
     href: Sharpy.IInequatable-1.html
   - name: <
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
   - name: <
   - name: T
   - name: '>'
@@ -3184,281 +3289,6 @@ references:
   - name: (
   - name: Of
   - name: " "
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
-  - name: )
-- uid: Sharpy.ILessThanOrEquatable{Sharpy.Set`1}
-  commentId: T:Sharpy.ILessThanOrEquatable{Sharpy.Set`1}
-  parent: Sharpy
-  definition: Sharpy.ILessThanOrEquatable`1
-  href: Sharpy.ILessThanOrEquatable-1.html
-  name: ILessThanOrEquatable<Set<T>>
-  nameWithType: ILessThanOrEquatable<Set<T>>
-  fullName: Sharpy.ILessThanOrEquatable<Sharpy.Set<T>>
-  nameWithType.vb: ILessThanOrEquatable(Of Set(Of T))
-  fullName.vb: Sharpy.ILessThanOrEquatable(Of Sharpy.Set(Of T))
-  name.vb: ILessThanOrEquatable(Of Set(Of T))
-  spec.csharp:
-  - uid: Sharpy.ILessThanOrEquatable`1
-    name: ILessThanOrEquatable
-    href: Sharpy.ILessThanOrEquatable-1.html
-  - name: <
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.ILessThanOrEquatable`1
-    name: ILessThanOrEquatable
-    href: Sharpy.ILessThanOrEquatable-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
-  - name: )
-- uid: Sharpy.ILessThanComparable{Sharpy.Set`1}
-  commentId: T:Sharpy.ILessThanComparable{Sharpy.Set`1}
-  parent: Sharpy
-  definition: Sharpy.ILessThanComparable`1
-  href: Sharpy.ILessThanComparable-1.html
-  name: ILessThanComparable<Set<T>>
-  nameWithType: ILessThanComparable<Set<T>>
-  fullName: Sharpy.ILessThanComparable<Sharpy.Set<T>>
-  nameWithType.vb: ILessThanComparable(Of Set(Of T))
-  fullName.vb: Sharpy.ILessThanComparable(Of Sharpy.Set(Of T))
-  name.vb: ILessThanComparable(Of Set(Of T))
-  spec.csharp:
-  - uid: Sharpy.ILessThanComparable`1
-    name: ILessThanComparable
-    href: Sharpy.ILessThanComparable-1.html
-  - name: <
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.ILessThanComparable`1
-    name: ILessThanComparable
-    href: Sharpy.ILessThanComparable-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
-  - name: )
-- uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}
-  commentId: T:Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}
-  parent: Sharpy
-  definition: Sharpy.IGreaterThanOrEquatable`1
-  href: Sharpy.IGreaterThanOrEquatable-1.html
-  name: IGreaterThanOrEquatable<Set<T>>
-  nameWithType: IGreaterThanOrEquatable<Set<T>>
-  fullName: Sharpy.IGreaterThanOrEquatable<Sharpy.Set<T>>
-  nameWithType.vb: IGreaterThanOrEquatable(Of Set(Of T))
-  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of Sharpy.Set(Of T))
-  name.vb: IGreaterThanOrEquatable(Of Set(Of T))
-  spec.csharp:
-  - uid: Sharpy.IGreaterThanOrEquatable`1
-    name: IGreaterThanOrEquatable
-    href: Sharpy.IGreaterThanOrEquatable-1.html
-  - name: <
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.IGreaterThanOrEquatable`1
-    name: IGreaterThanOrEquatable
-    href: Sharpy.IGreaterThanOrEquatable-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
-  - name: )
-- uid: Sharpy.IGreaterThanComparable{Sharpy.Set`1}
-  commentId: T:Sharpy.IGreaterThanComparable{Sharpy.Set`1}
-  parent: Sharpy
-  definition: Sharpy.IGreaterThanComparable`1
-  href: Sharpy.IGreaterThanComparable-1.html
-  name: IGreaterThanComparable<Set<T>>
-  nameWithType: IGreaterThanComparable<Set<T>>
-  fullName: Sharpy.IGreaterThanComparable<Sharpy.Set<T>>
-  nameWithType.vb: IGreaterThanComparable(Of Set(Of T))
-  fullName.vb: Sharpy.IGreaterThanComparable(Of Sharpy.Set(Of T))
-  name.vb: IGreaterThanComparable(Of Set(Of T))
-  spec.csharp:
-  - uid: Sharpy.IGreaterThanComparable`1
-    name: IGreaterThanComparable
-    href: Sharpy.IGreaterThanComparable-1.html
-  - name: <
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.IGreaterThanComparable`1
-    name: IGreaterThanComparable
-    href: Sharpy.IGreaterThanComparable-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
-  - name: )
-- uid: Sharpy.IEquatable{Sharpy.Set`1}
-  commentId: T:Sharpy.IEquatable{Sharpy.Set`1}
-  parent: Sharpy
-  definition: Sharpy.IEquatable`1
-  href: Sharpy.IEquatable-1.html
-  name: IEquatable<Set<T>>
-  nameWithType: IEquatable<Set<T>>
-  fullName: Sharpy.IEquatable<Sharpy.Set<T>>
-  nameWithType.vb: IEquatable(Of Set(Of T))
-  fullName.vb: Sharpy.IEquatable(Of Sharpy.Set(Of T))
-  name.vb: IEquatable(Of Set(Of T))
-  spec.csharp:
-  - uid: Sharpy.IEquatable`1
-    name: IEquatable
-    href: Sharpy.IEquatable-1.html
-  - name: <
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.IEquatable`1
-    name: IEquatable
-    href: Sharpy.IEquatable-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
-  - name: )
-- uid: System.IEquatable{Sharpy.Set`1}
-  commentId: T:System.IEquatable{Sharpy.Set`1}
-  parent: System
-  definition: System.IEquatable`1
-  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
-  name: IEquatable<Set<T>>
-  nameWithType: IEquatable<Set<T>>
-  fullName: System.IEquatable<Sharpy.Set<T>>
-  nameWithType.vb: IEquatable(Of Set(Of T))
-  fullName.vb: System.IEquatable(Of Sharpy.Set(Of T))
-  name.vb: IEquatable(Of Set(Of T))
-  spec.csharp:
-  - uid: System.IEquatable`1
-    name: IEquatable
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
-  - name: <
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: '>'
-  spec.vb:
-  - uid: System.IEquatable`1
-    name: IEquatable
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
-  - name: (
-  - name: Of
-  - name: " "
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
-  - name: )
-- uid: Sharpy.ILessThanOrEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
-  commentId: T:Sharpy.ILessThanOrEquatable{Sharpy.Collections.Interfaces.ISet{`0}}
-  parent: Sharpy
-  definition: Sharpy.ILessThanOrEquatable`1
-  href: Sharpy.ILessThanOrEquatable-1.html
-  name: ILessThanOrEquatable<ISet<T>>
-  nameWithType: ILessThanOrEquatable<ISet<T>>
-  fullName: Sharpy.ILessThanOrEquatable<Sharpy.Collections.Interfaces.ISet<T>>
-  nameWithType.vb: ILessThanOrEquatable(Of ISet(Of T))
-  fullName.vb: Sharpy.ILessThanOrEquatable(Of Sharpy.Collections.Interfaces.ISet(Of T))
-  name.vb: ILessThanOrEquatable(Of ISet(Of T))
-  spec.csharp:
-  - uid: Sharpy.ILessThanOrEquatable`1
-    name: ILessThanOrEquatable
-    href: Sharpy.ILessThanOrEquatable-1.html
-  - name: <
-  - uid: Sharpy.Collections.Interfaces.ISet`1
-    name: ISet
-    href: Sharpy.Collections.Interfaces.ISet-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.ILessThanOrEquatable`1
-    name: ILessThanOrEquatable
-    href: Sharpy.ILessThanOrEquatable-1.html
-  - name: (
-  - name: Of
-  - name: " "
   - uid: Sharpy.Collections.Interfaces.ISet`1
     name: ISet
     href: Sharpy.Collections.Interfaces.ISet-1.html
@@ -3468,21 +3298,21 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.ILessThanComparable{Sharpy.Collections.Interfaces.ISet{{T}}}
-  commentId: T:Sharpy.ILessThanComparable{Sharpy.Collections.Interfaces.ISet{`0}}
+- uid: Sharpy.IInequatableWith{Sharpy.Collections.Interfaces.ISet{{T}}}
+  commentId: T:Sharpy.IInequatableWith{Sharpy.Collections.Interfaces.ISet{`0}}
   parent: Sharpy
-  definition: Sharpy.ILessThanComparable`1
-  href: Sharpy.ILessThanComparable-1.html
-  name: ILessThanComparable<ISet<T>>
-  nameWithType: ILessThanComparable<ISet<T>>
-  fullName: Sharpy.ILessThanComparable<Sharpy.Collections.Interfaces.ISet<T>>
-  nameWithType.vb: ILessThanComparable(Of ISet(Of T))
-  fullName.vb: Sharpy.ILessThanComparable(Of Sharpy.Collections.Interfaces.ISet(Of T))
-  name.vb: ILessThanComparable(Of ISet(Of T))
+  definition: Sharpy.IInequatableWith`1
+  href: Sharpy.IInequatableWith-1.html
+  name: IInequatableWith<ISet<T>>
+  nameWithType: IInequatableWith<ISet<T>>
+  fullName: Sharpy.IInequatableWith<Sharpy.Collections.Interfaces.ISet<T>>
+  nameWithType.vb: IInequatableWith(Of ISet(Of T))
+  fullName.vb: Sharpy.IInequatableWith(Of Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: IInequatableWith(Of ISet(Of T))
   spec.csharp:
-  - uid: Sharpy.ILessThanComparable`1
-    name: ILessThanComparable
-    href: Sharpy.ILessThanComparable-1.html
+  - uid: Sharpy.IInequatableWith`1
+    name: IInequatableWith
+    href: Sharpy.IInequatableWith-1.html
   - name: <
   - uid: Sharpy.Collections.Interfaces.ISet`1
     name: ISet
@@ -3492,87 +3322,9 @@ references:
   - name: '>'
   - name: '>'
   spec.vb:
-  - uid: Sharpy.ILessThanComparable`1
-    name: ILessThanComparable
-    href: Sharpy.ILessThanComparable-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - uid: Sharpy.Collections.Interfaces.ISet`1
-    name: ISet
-    href: Sharpy.Collections.Interfaces.ISet-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
-  - name: )
-- uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
-  commentId: T:Sharpy.IGreaterThanOrEquatable{Sharpy.Collections.Interfaces.ISet{`0}}
-  parent: Sharpy
-  definition: Sharpy.IGreaterThanOrEquatable`1
-  href: Sharpy.IGreaterThanOrEquatable-1.html
-  name: IGreaterThanOrEquatable<ISet<T>>
-  nameWithType: IGreaterThanOrEquatable<ISet<T>>
-  fullName: Sharpy.IGreaterThanOrEquatable<Sharpy.Collections.Interfaces.ISet<T>>
-  nameWithType.vb: IGreaterThanOrEquatable(Of ISet(Of T))
-  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of Sharpy.Collections.Interfaces.ISet(Of T))
-  name.vb: IGreaterThanOrEquatable(Of ISet(Of T))
-  spec.csharp:
-  - uid: Sharpy.IGreaterThanOrEquatable`1
-    name: IGreaterThanOrEquatable
-    href: Sharpy.IGreaterThanOrEquatable-1.html
-  - name: <
-  - uid: Sharpy.Collections.Interfaces.ISet`1
-    name: ISet
-    href: Sharpy.Collections.Interfaces.ISet-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.IGreaterThanOrEquatable`1
-    name: IGreaterThanOrEquatable
-    href: Sharpy.IGreaterThanOrEquatable-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - uid: Sharpy.Collections.Interfaces.ISet`1
-    name: ISet
-    href: Sharpy.Collections.Interfaces.ISet-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
-  - name: )
-- uid: Sharpy.IGreaterThanComparable{Sharpy.Collections.Interfaces.ISet{{T}}}
-  commentId: T:Sharpy.IGreaterThanComparable{Sharpy.Collections.Interfaces.ISet{`0}}
-  parent: Sharpy
-  definition: Sharpy.IGreaterThanComparable`1
-  href: Sharpy.IGreaterThanComparable-1.html
-  name: IGreaterThanComparable<ISet<T>>
-  nameWithType: IGreaterThanComparable<ISet<T>>
-  fullName: Sharpy.IGreaterThanComparable<Sharpy.Collections.Interfaces.ISet<T>>
-  nameWithType.vb: IGreaterThanComparable(Of ISet(Of T))
-  fullName.vb: Sharpy.IGreaterThanComparable(Of Sharpy.Collections.Interfaces.ISet(Of T))
-  name.vb: IGreaterThanComparable(Of ISet(Of T))
-  spec.csharp:
-  - uid: Sharpy.IGreaterThanComparable`1
-    name: IGreaterThanComparable
-    href: Sharpy.IGreaterThanComparable-1.html
-  - name: <
-  - uid: Sharpy.Collections.Interfaces.ISet`1
-    name: ISet
-    href: Sharpy.Collections.Interfaces.ISet-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: '>'
-  spec.vb:
-  - uid: Sharpy.IGreaterThanComparable`1
-    name: IGreaterThanComparable
-    href: Sharpy.IGreaterThanComparable-1.html
+  - uid: Sharpy.IInequatableWith`1
+    name: IInequatableWith
+    href: Sharpy.IInequatableWith-1.html
   - name: (
   - name: Of
   - name: " "
@@ -3624,20 +3376,45 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.IEquatable
-  commentId: T:Sharpy.IEquatable
+- uid: Sharpy.IEquatableWith{Sharpy.Collections.Interfaces.ISet{{T}}}
+  commentId: T:Sharpy.IEquatableWith{Sharpy.Collections.Interfaces.ISet{`0}}
   parent: Sharpy
-  href: Sharpy.IEquatable.html
-  name: IEquatable
-  nameWithType: IEquatable
-  fullName: Sharpy.IEquatable
-- uid: Sharpy.IHashable
-  commentId: T:Sharpy.IHashable
-  parent: Sharpy
-  href: Sharpy.IHashable.html
-  name: IHashable
-  nameWithType: IHashable
-  fullName: Sharpy.IHashable
+  definition: Sharpy.IEquatableWith`1
+  href: Sharpy.IEquatableWith-1.html
+  name: IEquatableWith<ISet<T>>
+  nameWithType: IEquatableWith<ISet<T>>
+  fullName: Sharpy.IEquatableWith<Sharpy.Collections.Interfaces.ISet<T>>
+  nameWithType.vb: IEquatableWith(Of ISet(Of T))
+  fullName.vb: Sharpy.IEquatableWith(Of Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: IEquatableWith(Of ISet(Of T))
+  spec.csharp:
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith
+    href: Sharpy.IEquatableWith-1.html
+  - name: <
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith
+    href: Sharpy.IEquatableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
 - uid: System.IEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
   commentId: T:System.IEquatable{Sharpy.Collections.Interfaces.ISet{`0}}
   parent: System
@@ -3673,6 +3450,451 @@ references:
   - uid: Sharpy.Collections.Interfaces.ISet`1
     name: ISet
     href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.ILessThanOrEquatable{Sharpy.Set`1}
+  commentId: T:Sharpy.ILessThanOrEquatable{Sharpy.Set`1}
+  parent: Sharpy
+  definition: Sharpy.ILessThanOrEquatable`1
+  href: Sharpy.ILessThanOrEquatable-1.html
+  name: ILessThanOrEquatable<Set<T>>
+  nameWithType: ILessThanOrEquatable<Set<T>>
+  fullName: Sharpy.ILessThanOrEquatable<Sharpy.Set<T>>
+  nameWithType.vb: ILessThanOrEquatable(Of Set(Of T))
+  fullName.vb: Sharpy.ILessThanOrEquatable(Of Sharpy.Set(Of T))
+  name.vb: ILessThanOrEquatable(Of Set(Of T))
+  spec.csharp:
+  - uid: Sharpy.ILessThanOrEquatable`1
+    name: ILessThanOrEquatable
+    href: Sharpy.ILessThanOrEquatable-1.html
+  - name: <
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.ILessThanOrEquatable`1
+    name: ILessThanOrEquatable
+    href: Sharpy.ILessThanOrEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.ILessThanOrEquatableWith{Sharpy.Set`1}
+  commentId: T:Sharpy.ILessThanOrEquatableWith{Sharpy.Set`1}
+  parent: Sharpy
+  definition: Sharpy.ILessThanOrEquatableWith`1
+  href: Sharpy.ILessThanOrEquatableWith-1.html
+  name: ILessThanOrEquatableWith<Set<T>>
+  nameWithType: ILessThanOrEquatableWith<Set<T>>
+  fullName: Sharpy.ILessThanOrEquatableWith<Sharpy.Set<T>>
+  nameWithType.vb: ILessThanOrEquatableWith(Of Set(Of T))
+  fullName.vb: Sharpy.ILessThanOrEquatableWith(Of Sharpy.Set(Of T))
+  name.vb: ILessThanOrEquatableWith(Of Set(Of T))
+  spec.csharp:
+  - uid: Sharpy.ILessThanOrEquatableWith`1
+    name: ILessThanOrEquatableWith
+    href: Sharpy.ILessThanOrEquatableWith-1.html
+  - name: <
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.ILessThanOrEquatableWith`1
+    name: ILessThanOrEquatableWith
+    href: Sharpy.ILessThanOrEquatableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.ILessThanComparable{Sharpy.Set`1}
+  commentId: T:Sharpy.ILessThanComparable{Sharpy.Set`1}
+  parent: Sharpy
+  definition: Sharpy.ILessThanComparable`1
+  href: Sharpy.ILessThanComparable-1.html
+  name: ILessThanComparable<Set<T>>
+  nameWithType: ILessThanComparable<Set<T>>
+  fullName: Sharpy.ILessThanComparable<Sharpy.Set<T>>
+  nameWithType.vb: ILessThanComparable(Of Set(Of T))
+  fullName.vb: Sharpy.ILessThanComparable(Of Sharpy.Set(Of T))
+  name.vb: ILessThanComparable(Of Set(Of T))
+  spec.csharp:
+  - uid: Sharpy.ILessThanComparable`1
+    name: ILessThanComparable
+    href: Sharpy.ILessThanComparable-1.html
+  - name: <
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.ILessThanComparable`1
+    name: ILessThanComparable
+    href: Sharpy.ILessThanComparable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.ILessThanComparableWith{Sharpy.Set`1}
+  commentId: T:Sharpy.ILessThanComparableWith{Sharpy.Set`1}
+  parent: Sharpy
+  definition: Sharpy.ILessThanComparableWith`1
+  href: Sharpy.ILessThanComparableWith-1.html
+  name: ILessThanComparableWith<Set<T>>
+  nameWithType: ILessThanComparableWith<Set<T>>
+  fullName: Sharpy.ILessThanComparableWith<Sharpy.Set<T>>
+  nameWithType.vb: ILessThanComparableWith(Of Set(Of T))
+  fullName.vb: Sharpy.ILessThanComparableWith(Of Sharpy.Set(Of T))
+  name.vb: ILessThanComparableWith(Of Set(Of T))
+  spec.csharp:
+  - uid: Sharpy.ILessThanComparableWith`1
+    name: ILessThanComparableWith
+    href: Sharpy.ILessThanComparableWith-1.html
+  - name: <
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.ILessThanComparableWith`1
+    name: ILessThanComparableWith
+    href: Sharpy.ILessThanComparableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}
+  commentId: T:Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}
+  parent: Sharpy
+  definition: Sharpy.IGreaterThanOrEquatable`1
+  href: Sharpy.IGreaterThanOrEquatable-1.html
+  name: IGreaterThanOrEquatable<Set<T>>
+  nameWithType: IGreaterThanOrEquatable<Set<T>>
+  fullName: Sharpy.IGreaterThanOrEquatable<Sharpy.Set<T>>
+  nameWithType.vb: IGreaterThanOrEquatable(Of Set(Of T))
+  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of Sharpy.Set(Of T))
+  name.vb: IGreaterThanOrEquatable(Of Set(Of T))
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanOrEquatable`1
+    name: IGreaterThanOrEquatable
+    href: Sharpy.IGreaterThanOrEquatable-1.html
+  - name: <
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IGreaterThanOrEquatable`1
+    name: IGreaterThanOrEquatable
+    href: Sharpy.IGreaterThanOrEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IGreaterThanOrEquatableWith{Sharpy.Set`1}
+  commentId: T:Sharpy.IGreaterThanOrEquatableWith{Sharpy.Set`1}
+  parent: Sharpy
+  definition: Sharpy.IGreaterThanOrEquatableWith`1
+  href: Sharpy.IGreaterThanOrEquatableWith-1.html
+  name: IGreaterThanOrEquatableWith<Set<T>>
+  nameWithType: IGreaterThanOrEquatableWith<Set<T>>
+  fullName: Sharpy.IGreaterThanOrEquatableWith<Sharpy.Set<T>>
+  nameWithType.vb: IGreaterThanOrEquatableWith(Of Set(Of T))
+  fullName.vb: Sharpy.IGreaterThanOrEquatableWith(Of Sharpy.Set(Of T))
+  name.vb: IGreaterThanOrEquatableWith(Of Set(Of T))
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanOrEquatableWith`1
+    name: IGreaterThanOrEquatableWith
+    href: Sharpy.IGreaterThanOrEquatableWith-1.html
+  - name: <
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IGreaterThanOrEquatableWith`1
+    name: IGreaterThanOrEquatableWith
+    href: Sharpy.IGreaterThanOrEquatableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IGreaterThanComparable{Sharpy.Set`1}
+  commentId: T:Sharpy.IGreaterThanComparable{Sharpy.Set`1}
+  parent: Sharpy
+  definition: Sharpy.IGreaterThanComparable`1
+  href: Sharpy.IGreaterThanComparable-1.html
+  name: IGreaterThanComparable<Set<T>>
+  nameWithType: IGreaterThanComparable<Set<T>>
+  fullName: Sharpy.IGreaterThanComparable<Sharpy.Set<T>>
+  nameWithType.vb: IGreaterThanComparable(Of Set(Of T))
+  fullName.vb: Sharpy.IGreaterThanComparable(Of Sharpy.Set(Of T))
+  name.vb: IGreaterThanComparable(Of Set(Of T))
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanComparable`1
+    name: IGreaterThanComparable
+    href: Sharpy.IGreaterThanComparable-1.html
+  - name: <
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IGreaterThanComparable`1
+    name: IGreaterThanComparable
+    href: Sharpy.IGreaterThanComparable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IGreaterThanComparableWith{Sharpy.Set`1}
+  commentId: T:Sharpy.IGreaterThanComparableWith{Sharpy.Set`1}
+  parent: Sharpy
+  definition: Sharpy.IGreaterThanComparableWith`1
+  href: Sharpy.IGreaterThanComparableWith-1.html
+  name: IGreaterThanComparableWith<Set<T>>
+  nameWithType: IGreaterThanComparableWith<Set<T>>
+  fullName: Sharpy.IGreaterThanComparableWith<Sharpy.Set<T>>
+  nameWithType.vb: IGreaterThanComparableWith(Of Set(Of T))
+  fullName.vb: Sharpy.IGreaterThanComparableWith(Of Sharpy.Set(Of T))
+  name.vb: IGreaterThanComparableWith(Of Set(Of T))
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanComparableWith`1
+    name: IGreaterThanComparableWith
+    href: Sharpy.IGreaterThanComparableWith-1.html
+  - name: <
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IGreaterThanComparableWith`1
+    name: IGreaterThanComparableWith
+    href: Sharpy.IGreaterThanComparableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IEquatable{Sharpy.Set`1}
+  commentId: T:Sharpy.IEquatable{Sharpy.Set`1}
+  parent: Sharpy
+  definition: Sharpy.IEquatable`1
+  href: Sharpy.IEquatable-1.html
+  name: IEquatable<Set<T>>
+  nameWithType: IEquatable<Set<T>>
+  fullName: Sharpy.IEquatable<Sharpy.Set<T>>
+  nameWithType.vb: IEquatable(Of Set(Of T))
+  fullName.vb: Sharpy.IEquatable(Of Sharpy.Set(Of T))
+  name.vb: IEquatable(Of Set(Of T))
+  spec.csharp:
+  - uid: Sharpy.IEquatable`1
+    name: IEquatable
+    href: Sharpy.IEquatable-1.html
+  - name: <
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IEquatable`1
+    name: IEquatable
+    href: Sharpy.IEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IEquatableWith{Sharpy.Set`1}
+  commentId: T:Sharpy.IEquatableWith{Sharpy.Set`1}
+  parent: Sharpy
+  definition: Sharpy.IEquatableWith`1
+  href: Sharpy.IEquatableWith-1.html
+  name: IEquatableWith<Set<T>>
+  nameWithType: IEquatableWith<Set<T>>
+  fullName: Sharpy.IEquatableWith<Sharpy.Set<T>>
+  nameWithType.vb: IEquatableWith(Of Set(Of T))
+  fullName.vb: Sharpy.IEquatableWith(Of Sharpy.Set(Of T))
+  name.vb: IEquatableWith(Of Set(Of T))
+  spec.csharp:
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith
+    href: Sharpy.IEquatableWith-1.html
+  - name: <
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith
+    href: Sharpy.IEquatableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IEquatable
+  commentId: T:Sharpy.IEquatable
+  parent: Sharpy
+  href: Sharpy.IEquatable.html
+  name: IEquatable
+  nameWithType: IEquatable
+  fullName: Sharpy.IEquatable
+- uid: Sharpy.IHashable
+  commentId: T:Sharpy.IHashable
+  parent: Sharpy
+  href: Sharpy.IHashable.html
+  name: IHashable
+  nameWithType: IHashable
+  fullName: Sharpy.IHashable
+- uid: System.IEquatable{Sharpy.Set`1}
+  commentId: T:System.IEquatable{Sharpy.Set`1}
+  parent: System
+  definition: System.IEquatable`1
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  name: IEquatable<Set<T>>
+  nameWithType: IEquatable<Set<T>>
+  fullName: System.IEquatable<Sharpy.Set<T>>
+  nameWithType.vb: IEquatable(Of Set(Of T))
+  fullName.vb: System.IEquatable(Of Sharpy.Set(Of T))
+  name.vb: IEquatable(Of Set(Of T))
+  spec.csharp:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: <
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
   - name: (
   - name: Of
   - name: " "
@@ -4063,6 +4285,31 @@ references:
   - name: " "
   - name: T
   - name: )
+- uid: Sharpy.IInequatableWith`1
+  commentId: T:Sharpy.IInequatableWith`1
+  href: Sharpy.IInequatableWith-1.html
+  name: IInequatableWith<T>
+  nameWithType: IInequatableWith<T>
+  fullName: Sharpy.IInequatableWith<T>
+  nameWithType.vb: IInequatableWith(Of T)
+  fullName.vb: Sharpy.IInequatableWith(Of T)
+  name.vb: IInequatableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.IInequatableWith`1
+    name: IInequatableWith
+    href: Sharpy.IInequatableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IInequatableWith`1
+    name: IInequatableWith
+    href: Sharpy.IInequatableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
 - uid: Sharpy.IEquatable`1
   commentId: T:Sharpy.IEquatable`1
   href: Sharpy.IEquatable-1.html
@@ -4083,6 +4330,31 @@ references:
   - uid: Sharpy.IEquatable`1
     name: IEquatable
     href: Sharpy.IEquatable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IEquatableWith`1
+  commentId: T:Sharpy.IEquatableWith`1
+  href: Sharpy.IEquatableWith-1.html
+  name: IEquatableWith<T>
+  nameWithType: IEquatableWith<T>
+  fullName: Sharpy.IEquatableWith<T>
+  nameWithType.vb: IEquatableWith(Of T)
+  fullName.vb: Sharpy.IEquatableWith(Of T)
+  name.vb: IEquatableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith
+    href: Sharpy.IEquatableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith
+    href: Sharpy.IEquatableWith-1.html
   - name: (
   - name: Of
   - name: " "
@@ -4451,6 +4723,31 @@ references:
   - name: " "
   - name: T
   - name: )
+- uid: Sharpy.ILessThanOrEquatableWith`1
+  commentId: T:Sharpy.ILessThanOrEquatableWith`1
+  href: Sharpy.ILessThanOrEquatableWith-1.html
+  name: ILessThanOrEquatableWith<T>
+  nameWithType: ILessThanOrEquatableWith<T>
+  fullName: Sharpy.ILessThanOrEquatableWith<T>
+  nameWithType.vb: ILessThanOrEquatableWith(Of T)
+  fullName.vb: Sharpy.ILessThanOrEquatableWith(Of T)
+  name.vb: ILessThanOrEquatableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.ILessThanOrEquatableWith`1
+    name: ILessThanOrEquatableWith
+    href: Sharpy.ILessThanOrEquatableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.ILessThanOrEquatableWith`1
+    name: ILessThanOrEquatableWith
+    href: Sharpy.ILessThanOrEquatableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
 - uid: Sharpy.ILessThanComparable`1
   commentId: T:Sharpy.ILessThanComparable`1
   href: Sharpy.ILessThanComparable-1.html
@@ -4471,6 +4768,31 @@ references:
   - uid: Sharpy.ILessThanComparable`1
     name: ILessThanComparable
     href: Sharpy.ILessThanComparable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.ILessThanComparableWith`1
+  commentId: T:Sharpy.ILessThanComparableWith`1
+  href: Sharpy.ILessThanComparableWith-1.html
+  name: ILessThanComparableWith<T>
+  nameWithType: ILessThanComparableWith<T>
+  fullName: Sharpy.ILessThanComparableWith<T>
+  nameWithType.vb: ILessThanComparableWith(Of T)
+  fullName.vb: Sharpy.ILessThanComparableWith(Of T)
+  name.vb: ILessThanComparableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.ILessThanComparableWith`1
+    name: ILessThanComparableWith
+    href: Sharpy.ILessThanComparableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.ILessThanComparableWith`1
+    name: ILessThanComparableWith
+    href: Sharpy.ILessThanComparableWith-1.html
   - name: (
   - name: Of
   - name: " "
@@ -4501,6 +4823,31 @@ references:
   - name: " "
   - name: T
   - name: )
+- uid: Sharpy.IGreaterThanOrEquatableWith`1
+  commentId: T:Sharpy.IGreaterThanOrEquatableWith`1
+  href: Sharpy.IGreaterThanOrEquatableWith-1.html
+  name: IGreaterThanOrEquatableWith<T>
+  nameWithType: IGreaterThanOrEquatableWith<T>
+  fullName: Sharpy.IGreaterThanOrEquatableWith<T>
+  nameWithType.vb: IGreaterThanOrEquatableWith(Of T)
+  fullName.vb: Sharpy.IGreaterThanOrEquatableWith(Of T)
+  name.vb: IGreaterThanOrEquatableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanOrEquatableWith`1
+    name: IGreaterThanOrEquatableWith
+    href: Sharpy.IGreaterThanOrEquatableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IGreaterThanOrEquatableWith`1
+    name: IGreaterThanOrEquatableWith
+    href: Sharpy.IGreaterThanOrEquatableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
 - uid: Sharpy.IGreaterThanComparable`1
   commentId: T:Sharpy.IGreaterThanComparable`1
   href: Sharpy.IGreaterThanComparable-1.html
@@ -4521,6 +4868,31 @@ references:
   - uid: Sharpy.IGreaterThanComparable`1
     name: IGreaterThanComparable
     href: Sharpy.IGreaterThanComparable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanComparableWith`1
+  commentId: T:Sharpy.IGreaterThanComparableWith`1
+  href: Sharpy.IGreaterThanComparableWith-1.html
+  name: IGreaterThanComparableWith<T>
+  nameWithType: IGreaterThanComparableWith<T>
+  fullName: Sharpy.IGreaterThanComparableWith<T>
+  nameWithType.vb: IGreaterThanComparableWith(Of T)
+  fullName.vb: Sharpy.IGreaterThanComparableWith(Of T)
+  name.vb: IGreaterThanComparableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.IGreaterThanComparableWith`1
+    name: IGreaterThanComparableWith
+    href: Sharpy.IGreaterThanComparableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IGreaterThanComparableWith`1
+    name: IGreaterThanComparableWith
+    href: Sharpy.IGreaterThanComparableWith-1.html
   - name: (
   - name: Of
   - name: " "
@@ -5042,21 +5414,21 @@ references:
   fullName: Sharpy.Set<T>.__Eq__
   nameWithType.vb: Set(Of T).__Eq__
   fullName.vb: Sharpy.Set(Of T).__Eq__
-- uid: Sharpy.IEquatable{Sharpy.Set`1}.__Eq__(Sharpy.Set{{T}})
-  commentId: M:Sharpy.IEquatable{Sharpy.Set`1}.__Eq__(Sharpy.Set{`0})
-  parent: Sharpy.IEquatable{Sharpy.Set`1}
-  definition: Sharpy.IEquatable`1.__Eq__(`0)
-  href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+- uid: Sharpy.IEquatableWith{Sharpy.Set`1}.__Eq__(Sharpy.Set{{T}})
+  commentId: M:Sharpy.IEquatableWith{Sharpy.Set`1}.__Eq__(Sharpy.Set{`0})
+  parent: Sharpy.IEquatableWith{Sharpy.Set`1}
+  definition: Sharpy.IEquatableWith`1.__Eq__(`0)
+  href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq____0_
   name: __Eq__(Set<T>)
-  nameWithType: IEquatable<Set<T>>.__Eq__(Set<T>)
-  fullName: Sharpy.IEquatable<Sharpy.Set<T>>.__Eq__(Sharpy.Set<T>)
-  nameWithType.vb: IEquatable(Of Set(Of T)).__Eq__(Set(Of T))
-  fullName.vb: Sharpy.IEquatable(Of Sharpy.Set(Of T)).__Eq__(Sharpy.Set(Of T))
+  nameWithType: IEquatableWith<Set<T>>.__Eq__(Set<T>)
+  fullName: Sharpy.IEquatableWith<Sharpy.Set<T>>.__Eq__(Sharpy.Set<T>)
+  nameWithType.vb: IEquatableWith(Of Set(Of T)).__Eq__(Set(Of T))
+  fullName.vb: Sharpy.IEquatableWith(Of Sharpy.Set(Of T)).__Eq__(Sharpy.Set(Of T))
   name.vb: __Eq__(Set(Of T))
   spec.csharp:
-  - uid: Sharpy.IEquatable{Sharpy.Set`1}.__Eq__(Sharpy.Set{`0})
+  - uid: Sharpy.IEquatableWith{Sharpy.Set`1}.__Eq__(Sharpy.Set{`0})
     name: __Eq__
-    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+    href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq____0_
   - name: (
   - uid: Sharpy.Set`1
     name: Set
@@ -5066,9 +5438,9 @@ references:
   - name: '>'
   - name: )
   spec.vb:
-  - uid: Sharpy.IEquatable{Sharpy.Set`1}.__Eq__(Sharpy.Set{`0})
+  - uid: Sharpy.IEquatableWith{Sharpy.Set`1}.__Eq__(Sharpy.Set{`0})
     name: __Eq__
-    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+    href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq____0_
   - name: (
   - uid: Sharpy.Set`1
     name: Set
@@ -5079,43 +5451,43 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.IEquatable`1.__Eq__(`0)
-  commentId: M:Sharpy.IEquatable`1.__Eq__(`0)
-  href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+- uid: Sharpy.IEquatableWith`1.__Eq__(`0)
+  commentId: M:Sharpy.IEquatableWith`1.__Eq__(`0)
+  href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq____0_
   name: __Eq__(T)
-  nameWithType: IEquatable<T>.__Eq__(T)
-  fullName: Sharpy.IEquatable<T>.__Eq__(T)
-  nameWithType.vb: IEquatable(Of T).__Eq__(T)
-  fullName.vb: Sharpy.IEquatable(Of T).__Eq__(T)
+  nameWithType: IEquatableWith<T>.__Eq__(T)
+  fullName: Sharpy.IEquatableWith<T>.__Eq__(T)
+  nameWithType.vb: IEquatableWith(Of T).__Eq__(T)
+  fullName.vb: Sharpy.IEquatableWith(Of T).__Eq__(T)
   spec.csharp:
-  - uid: Sharpy.IEquatable`1.__Eq__(`0)
+  - uid: Sharpy.IEquatableWith`1.__Eq__(`0)
     name: __Eq__
-    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+    href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq____0_
   - name: (
   - name: T
   - name: )
   spec.vb:
-  - uid: Sharpy.IEquatable`1.__Eq__(`0)
+  - uid: Sharpy.IEquatableWith`1.__Eq__(`0)
     name: __Eq__
-    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+    href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq____0_
   - name: (
   - name: T
   - name: )
-- uid: Sharpy.IEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}.__Eq__(Sharpy.Collections.Interfaces.ISet{{T}})
-  commentId: M:Sharpy.IEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.__Eq__(Sharpy.Collections.Interfaces.ISet{`0})
-  parent: Sharpy.IEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
-  definition: Sharpy.IEquatable`1.__Eq__(`0)
-  href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+- uid: Sharpy.IEquatableWith{Sharpy.Collections.Interfaces.ISet{{T}}}.__Eq__(Sharpy.Collections.Interfaces.ISet{{T}})
+  commentId: M:Sharpy.IEquatableWith{Sharpy.Collections.Interfaces.ISet{`0}}.__Eq__(Sharpy.Collections.Interfaces.ISet{`0})
+  parent: Sharpy.IEquatableWith{Sharpy.Collections.Interfaces.ISet{{T}}}
+  definition: Sharpy.IEquatableWith`1.__Eq__(`0)
+  href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq____0_
   name: __Eq__(ISet<T>)
-  nameWithType: IEquatable<ISet<T>>.__Eq__(ISet<T>)
-  fullName: Sharpy.IEquatable<Sharpy.Collections.Interfaces.ISet<T>>.__Eq__(Sharpy.Collections.Interfaces.ISet<T>)
-  nameWithType.vb: IEquatable(Of ISet(Of T)).__Eq__(ISet(Of T))
-  fullName.vb: Sharpy.IEquatable(Of Sharpy.Collections.Interfaces.ISet(Of T)).__Eq__(Sharpy.Collections.Interfaces.ISet(Of T))
+  nameWithType: IEquatableWith<ISet<T>>.__Eq__(ISet<T>)
+  fullName: Sharpy.IEquatableWith<Sharpy.Collections.Interfaces.ISet<T>>.__Eq__(Sharpy.Collections.Interfaces.ISet<T>)
+  nameWithType.vb: IEquatableWith(Of ISet(Of T)).__Eq__(ISet(Of T))
+  fullName.vb: Sharpy.IEquatableWith(Of Sharpy.Collections.Interfaces.ISet(Of T)).__Eq__(Sharpy.Collections.Interfaces.ISet(Of T))
   name.vb: __Eq__(ISet(Of T))
   spec.csharp:
-  - uid: Sharpy.IEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.__Eq__(Sharpy.Collections.Interfaces.ISet{`0})
+  - uid: Sharpy.IEquatableWith{Sharpy.Collections.Interfaces.ISet{`0}}.__Eq__(Sharpy.Collections.Interfaces.ISet{`0})
     name: __Eq__
-    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+    href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq____0_
   - name: (
   - uid: Sharpy.Collections.Interfaces.ISet`1
     name: ISet
@@ -5125,9 +5497,9 @@ references:
   - name: '>'
   - name: )
   spec.vb:
-  - uid: Sharpy.IEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.__Eq__(Sharpy.Collections.Interfaces.ISet{`0})
+  - uid: Sharpy.IEquatableWith{Sharpy.Collections.Interfaces.ISet{`0}}.__Eq__(Sharpy.Collections.Interfaces.ISet{`0})
     name: __Eq__
-    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1___Eq____0_
+    href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq____0_
   - name: (
   - uid: Sharpy.Collections.Interfaces.ISet`1
     name: ISet
@@ -5171,21 +5543,21 @@ references:
   fullName: Sharpy.Set<T>.__Gt__
   nameWithType.vb: Set(Of T).__Gt__
   fullName.vb: Sharpy.Set(Of T).__Gt__
-- uid: Sharpy.IGreaterThanComparable{Sharpy.Set`1}.__Gt__(Sharpy.Set{{T}})
-  commentId: M:Sharpy.IGreaterThanComparable{Sharpy.Set`1}.__Gt__(Sharpy.Set{`0})
-  parent: Sharpy.IGreaterThanComparable{Sharpy.Set`1}
-  definition: Sharpy.IGreaterThanComparable`1.__Gt__(`0)
-  href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1___Gt____0_
+- uid: Sharpy.IGreaterThanComparableWith{Sharpy.Set`1}.__Gt__(Sharpy.Set{{T}})
+  commentId: M:Sharpy.IGreaterThanComparableWith{Sharpy.Set`1}.__Gt__(Sharpy.Set{`0})
+  parent: Sharpy.IGreaterThanComparableWith{Sharpy.Set`1}
+  definition: Sharpy.IGreaterThanComparableWith`1.__Gt__(`0)
+  href: Sharpy.IGreaterThanComparableWith-1.html#Sharpy_IGreaterThanComparableWith_1___Gt____0_
   name: __Gt__(Set<T>)
-  nameWithType: IGreaterThanComparable<Set<T>>.__Gt__(Set<T>)
-  fullName: Sharpy.IGreaterThanComparable<Sharpy.Set<T>>.__Gt__(Sharpy.Set<T>)
-  nameWithType.vb: IGreaterThanComparable(Of Set(Of T)).__Gt__(Set(Of T))
-  fullName.vb: Sharpy.IGreaterThanComparable(Of Sharpy.Set(Of T)).__Gt__(Sharpy.Set(Of T))
+  nameWithType: IGreaterThanComparableWith<Set<T>>.__Gt__(Set<T>)
+  fullName: Sharpy.IGreaterThanComparableWith<Sharpy.Set<T>>.__Gt__(Sharpy.Set<T>)
+  nameWithType.vb: IGreaterThanComparableWith(Of Set(Of T)).__Gt__(Set(Of T))
+  fullName.vb: Sharpy.IGreaterThanComparableWith(Of Sharpy.Set(Of T)).__Gt__(Sharpy.Set(Of T))
   name.vb: __Gt__(Set(Of T))
   spec.csharp:
-  - uid: Sharpy.IGreaterThanComparable{Sharpy.Set`1}.__Gt__(Sharpy.Set{`0})
+  - uid: Sharpy.IGreaterThanComparableWith{Sharpy.Set`1}.__Gt__(Sharpy.Set{`0})
     name: __Gt__
-    href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1___Gt____0_
+    href: Sharpy.IGreaterThanComparableWith-1.html#Sharpy_IGreaterThanComparableWith_1___Gt____0_
   - name: (
   - uid: Sharpy.Set`1
     name: Set
@@ -5195,9 +5567,9 @@ references:
   - name: '>'
   - name: )
   spec.vb:
-  - uid: Sharpy.IGreaterThanComparable{Sharpy.Set`1}.__Gt__(Sharpy.Set{`0})
+  - uid: Sharpy.IGreaterThanComparableWith{Sharpy.Set`1}.__Gt__(Sharpy.Set{`0})
     name: __Gt__
-    href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1___Gt____0_
+    href: Sharpy.IGreaterThanComparableWith-1.html#Sharpy_IGreaterThanComparableWith_1___Gt____0_
   - name: (
   - uid: Sharpy.Set`1
     name: Set
@@ -5208,64 +5580,27 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.IGreaterThanComparable`1.__Gt__(`0)
-  commentId: M:Sharpy.IGreaterThanComparable`1.__Gt__(`0)
-  href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1___Gt____0_
+- uid: Sharpy.IGreaterThanComparableWith`1.__Gt__(`0)
+  commentId: M:Sharpy.IGreaterThanComparableWith`1.__Gt__(`0)
+  href: Sharpy.IGreaterThanComparableWith-1.html#Sharpy_IGreaterThanComparableWith_1___Gt____0_
   name: __Gt__(T)
-  nameWithType: IGreaterThanComparable<T>.__Gt__(T)
-  fullName: Sharpy.IGreaterThanComparable<T>.__Gt__(T)
-  nameWithType.vb: IGreaterThanComparable(Of T).__Gt__(T)
-  fullName.vb: Sharpy.IGreaterThanComparable(Of T).__Gt__(T)
+  nameWithType: IGreaterThanComparableWith<T>.__Gt__(T)
+  fullName: Sharpy.IGreaterThanComparableWith<T>.__Gt__(T)
+  nameWithType.vb: IGreaterThanComparableWith(Of T).__Gt__(T)
+  fullName.vb: Sharpy.IGreaterThanComparableWith(Of T).__Gt__(T)
   spec.csharp:
-  - uid: Sharpy.IGreaterThanComparable`1.__Gt__(`0)
+  - uid: Sharpy.IGreaterThanComparableWith`1.__Gt__(`0)
     name: __Gt__
-    href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1___Gt____0_
+    href: Sharpy.IGreaterThanComparableWith-1.html#Sharpy_IGreaterThanComparableWith_1___Gt____0_
   - name: (
   - name: T
   - name: )
   spec.vb:
-  - uid: Sharpy.IGreaterThanComparable`1.__Gt__(`0)
+  - uid: Sharpy.IGreaterThanComparableWith`1.__Gt__(`0)
     name: __Gt__
-    href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1___Gt____0_
+    href: Sharpy.IGreaterThanComparableWith-1.html#Sharpy_IGreaterThanComparableWith_1___Gt____0_
   - name: (
   - name: T
-  - name: )
-- uid: Sharpy.IGreaterThanComparable{Sharpy.Collections.Interfaces.ISet{{T}}}.__Gt__(Sharpy.Collections.Interfaces.ISet{{T}})
-  commentId: M:Sharpy.IGreaterThanComparable{Sharpy.Collections.Interfaces.ISet{`0}}.__Gt__(Sharpy.Collections.Interfaces.ISet{`0})
-  parent: Sharpy.IGreaterThanComparable{Sharpy.Collections.Interfaces.ISet{{T}}}
-  definition: Sharpy.IGreaterThanComparable`1.__Gt__(`0)
-  href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1___Gt____0_
-  name: __Gt__(ISet<T>)
-  nameWithType: IGreaterThanComparable<ISet<T>>.__Gt__(ISet<T>)
-  fullName: Sharpy.IGreaterThanComparable<Sharpy.Collections.Interfaces.ISet<T>>.__Gt__(Sharpy.Collections.Interfaces.ISet<T>)
-  nameWithType.vb: IGreaterThanComparable(Of ISet(Of T)).__Gt__(ISet(Of T))
-  fullName.vb: Sharpy.IGreaterThanComparable(Of Sharpy.Collections.Interfaces.ISet(Of T)).__Gt__(Sharpy.Collections.Interfaces.ISet(Of T))
-  name.vb: __Gt__(ISet(Of T))
-  spec.csharp:
-  - uid: Sharpy.IGreaterThanComparable{Sharpy.Collections.Interfaces.ISet{`0}}.__Gt__(Sharpy.Collections.Interfaces.ISet{`0})
-    name: __Gt__
-    href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1___Gt____0_
-  - name: (
-  - uid: Sharpy.Collections.Interfaces.ISet`1
-    name: ISet
-    href: Sharpy.Collections.Interfaces.ISet-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: )
-  spec.vb:
-  - uid: Sharpy.IGreaterThanComparable{Sharpy.Collections.Interfaces.ISet{`0}}.__Gt__(Sharpy.Collections.Interfaces.ISet{`0})
-    name: __Gt__
-    href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1___Gt____0_
-  - name: (
-  - uid: Sharpy.Collections.Interfaces.ISet`1
-    name: ISet
-    href: Sharpy.Collections.Interfaces.ISet-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
   - name: )
 - uid: Sharpy.Set`1.__Ge__*
   commentId: Overload:Sharpy.Set`1.__Ge__
@@ -5275,21 +5610,21 @@ references:
   fullName: Sharpy.Set<T>.__Ge__
   nameWithType.vb: Set(Of T).__Ge__
   fullName.vb: Sharpy.Set(Of T).__Ge__
-- uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.__Ge__(Sharpy.Set{{T}})
-  commentId: M:Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.__Ge__(Sharpy.Set{`0})
-  parent: Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}
-  definition: Sharpy.IGreaterThanOrEquatable`1.__Ge__(`0)
-  href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1___Ge____0_
+- uid: Sharpy.IGreaterThanOrEquatableWith{Sharpy.Set`1}.__Ge__(Sharpy.Set{{T}})
+  commentId: M:Sharpy.IGreaterThanOrEquatableWith{Sharpy.Set`1}.__Ge__(Sharpy.Set{`0})
+  parent: Sharpy.IGreaterThanOrEquatableWith{Sharpy.Set`1}
+  definition: Sharpy.IGreaterThanOrEquatableWith`1.__Ge__(`0)
+  href: Sharpy.IGreaterThanOrEquatableWith-1.html#Sharpy_IGreaterThanOrEquatableWith_1___Ge____0_
   name: __Ge__(Set<T>)
-  nameWithType: IGreaterThanOrEquatable<Set<T>>.__Ge__(Set<T>)
-  fullName: Sharpy.IGreaterThanOrEquatable<Sharpy.Set<T>>.__Ge__(Sharpy.Set<T>)
-  nameWithType.vb: IGreaterThanOrEquatable(Of Set(Of T)).__Ge__(Set(Of T))
-  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of Sharpy.Set(Of T)).__Ge__(Sharpy.Set(Of T))
+  nameWithType: IGreaterThanOrEquatableWith<Set<T>>.__Ge__(Set<T>)
+  fullName: Sharpy.IGreaterThanOrEquatableWith<Sharpy.Set<T>>.__Ge__(Sharpy.Set<T>)
+  nameWithType.vb: IGreaterThanOrEquatableWith(Of Set(Of T)).__Ge__(Set(Of T))
+  fullName.vb: Sharpy.IGreaterThanOrEquatableWith(Of Sharpy.Set(Of T)).__Ge__(Sharpy.Set(Of T))
   name.vb: __Ge__(Set(Of T))
   spec.csharp:
-  - uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.__Ge__(Sharpy.Set{`0})
+  - uid: Sharpy.IGreaterThanOrEquatableWith{Sharpy.Set`1}.__Ge__(Sharpy.Set{`0})
     name: __Ge__
-    href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1___Ge____0_
+    href: Sharpy.IGreaterThanOrEquatableWith-1.html#Sharpy_IGreaterThanOrEquatableWith_1___Ge____0_
   - name: (
   - uid: Sharpy.Set`1
     name: Set
@@ -5299,9 +5634,9 @@ references:
   - name: '>'
   - name: )
   spec.vb:
-  - uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.__Ge__(Sharpy.Set{`0})
+  - uid: Sharpy.IGreaterThanOrEquatableWith{Sharpy.Set`1}.__Ge__(Sharpy.Set{`0})
     name: __Ge__
-    href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1___Ge____0_
+    href: Sharpy.IGreaterThanOrEquatableWith-1.html#Sharpy_IGreaterThanOrEquatableWith_1___Ge____0_
   - name: (
   - uid: Sharpy.Set`1
     name: Set
@@ -5312,64 +5647,27 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.IGreaterThanOrEquatable`1.__Ge__(`0)
-  commentId: M:Sharpy.IGreaterThanOrEquatable`1.__Ge__(`0)
-  href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1___Ge____0_
+- uid: Sharpy.IGreaterThanOrEquatableWith`1.__Ge__(`0)
+  commentId: M:Sharpy.IGreaterThanOrEquatableWith`1.__Ge__(`0)
+  href: Sharpy.IGreaterThanOrEquatableWith-1.html#Sharpy_IGreaterThanOrEquatableWith_1___Ge____0_
   name: __Ge__(T)
-  nameWithType: IGreaterThanOrEquatable<T>.__Ge__(T)
-  fullName: Sharpy.IGreaterThanOrEquatable<T>.__Ge__(T)
-  nameWithType.vb: IGreaterThanOrEquatable(Of T).__Ge__(T)
-  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of T).__Ge__(T)
+  nameWithType: IGreaterThanOrEquatableWith<T>.__Ge__(T)
+  fullName: Sharpy.IGreaterThanOrEquatableWith<T>.__Ge__(T)
+  nameWithType.vb: IGreaterThanOrEquatableWith(Of T).__Ge__(T)
+  fullName.vb: Sharpy.IGreaterThanOrEquatableWith(Of T).__Ge__(T)
   spec.csharp:
-  - uid: Sharpy.IGreaterThanOrEquatable`1.__Ge__(`0)
+  - uid: Sharpy.IGreaterThanOrEquatableWith`1.__Ge__(`0)
     name: __Ge__
-    href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1___Ge____0_
+    href: Sharpy.IGreaterThanOrEquatableWith-1.html#Sharpy_IGreaterThanOrEquatableWith_1___Ge____0_
   - name: (
   - name: T
   - name: )
   spec.vb:
-  - uid: Sharpy.IGreaterThanOrEquatable`1.__Ge__(`0)
+  - uid: Sharpy.IGreaterThanOrEquatableWith`1.__Ge__(`0)
     name: __Ge__
-    href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1___Ge____0_
+    href: Sharpy.IGreaterThanOrEquatableWith-1.html#Sharpy_IGreaterThanOrEquatableWith_1___Ge____0_
   - name: (
   - name: T
-  - name: )
-- uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}.__Ge__(Sharpy.Collections.Interfaces.ISet{{T}})
-  commentId: M:Sharpy.IGreaterThanOrEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.__Ge__(Sharpy.Collections.Interfaces.ISet{`0})
-  parent: Sharpy.IGreaterThanOrEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
-  definition: Sharpy.IGreaterThanOrEquatable`1.__Ge__(`0)
-  href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1___Ge____0_
-  name: __Ge__(ISet<T>)
-  nameWithType: IGreaterThanOrEquatable<ISet<T>>.__Ge__(ISet<T>)
-  fullName: Sharpy.IGreaterThanOrEquatable<Sharpy.Collections.Interfaces.ISet<T>>.__Ge__(Sharpy.Collections.Interfaces.ISet<T>)
-  nameWithType.vb: IGreaterThanOrEquatable(Of ISet(Of T)).__Ge__(ISet(Of T))
-  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of Sharpy.Collections.Interfaces.ISet(Of T)).__Ge__(Sharpy.Collections.Interfaces.ISet(Of T))
-  name.vb: __Ge__(ISet(Of T))
-  spec.csharp:
-  - uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.__Ge__(Sharpy.Collections.Interfaces.ISet{`0})
-    name: __Ge__
-    href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1___Ge____0_
-  - name: (
-  - uid: Sharpy.Collections.Interfaces.ISet`1
-    name: ISet
-    href: Sharpy.Collections.Interfaces.ISet-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: )
-  spec.vb:
-  - uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.__Ge__(Sharpy.Collections.Interfaces.ISet{`0})
-    name: __Ge__
-    href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1___Ge____0_
-  - name: (
-  - uid: Sharpy.Collections.Interfaces.ISet`1
-    name: ISet
-    href: Sharpy.Collections.Interfaces.ISet-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
   - name: )
 - uid: Sharpy.Set`1.__Ne__*
   commentId: Overload:Sharpy.Set`1.__Ne__
@@ -5379,62 +5677,62 @@ references:
   fullName: Sharpy.Set<T>.__Ne__
   nameWithType.vb: Set(Of T).__Ne__
   fullName.vb: Sharpy.Set(Of T).__Ne__
-- uid: Sharpy.IInequatable{Sharpy.Set`1}.__Ne__(Sharpy.Set{{T}})
-  commentId: M:Sharpy.IInequatable{Sharpy.Set`1}.__Ne__(Sharpy.Set{`0})
-  parent: Sharpy.IInequatable{Sharpy.Set`1}
-  definition: Sharpy.IInequatable`1.__Ne__(`0)
-  href: Sharpy.IInequatable-1.html#Sharpy_IInequatable_1___Ne____0_
-  name: __Ne__(Set<T>)
-  nameWithType: IInequatable<Set<T>>.__Ne__(Set<T>)
-  fullName: Sharpy.IInequatable<Sharpy.Set<T>>.__Ne__(Sharpy.Set<T>)
-  nameWithType.vb: IInequatable(Of Set(Of T)).__Ne__(Set(Of T))
-  fullName.vb: Sharpy.IInequatable(Of Sharpy.Set(Of T)).__Ne__(Sharpy.Set(Of T))
-  name.vb: __Ne__(Set(Of T))
+- uid: Sharpy.IInequatableWith{Sharpy.Collections.Interfaces.ISet{{T}}}.__Ne__(Sharpy.Collections.Interfaces.ISet{{T}})
+  commentId: M:Sharpy.IInequatableWith{Sharpy.Collections.Interfaces.ISet{`0}}.__Ne__(Sharpy.Collections.Interfaces.ISet{`0})
+  parent: Sharpy.IInequatableWith{Sharpy.Collections.Interfaces.ISet{{T}}}
+  definition: Sharpy.IInequatableWith`1.__Ne__(`0)
+  href: Sharpy.IInequatableWith-1.html#Sharpy_IInequatableWith_1___Ne____0_
+  name: __Ne__(ISet<T>)
+  nameWithType: IInequatableWith<ISet<T>>.__Ne__(ISet<T>)
+  fullName: Sharpy.IInequatableWith<Sharpy.Collections.Interfaces.ISet<T>>.__Ne__(Sharpy.Collections.Interfaces.ISet<T>)
+  nameWithType.vb: IInequatableWith(Of ISet(Of T)).__Ne__(ISet(Of T))
+  fullName.vb: Sharpy.IInequatableWith(Of Sharpy.Collections.Interfaces.ISet(Of T)).__Ne__(Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: __Ne__(ISet(Of T))
   spec.csharp:
-  - uid: Sharpy.IInequatable{Sharpy.Set`1}.__Ne__(Sharpy.Set{`0})
+  - uid: Sharpy.IInequatableWith{Sharpy.Collections.Interfaces.ISet{`0}}.__Ne__(Sharpy.Collections.Interfaces.ISet{`0})
     name: __Ne__
-    href: Sharpy.IInequatable-1.html#Sharpy_IInequatable_1___Ne____0_
+    href: Sharpy.IInequatableWith-1.html#Sharpy_IInequatableWith_1___Ne____0_
   - name: (
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
   - name: <
   - name: T
   - name: '>'
   - name: )
   spec.vb:
-  - uid: Sharpy.IInequatable{Sharpy.Set`1}.__Ne__(Sharpy.Set{`0})
+  - uid: Sharpy.IInequatableWith{Sharpy.Collections.Interfaces.ISet{`0}}.__Ne__(Sharpy.Collections.Interfaces.ISet{`0})
     name: __Ne__
-    href: Sharpy.IInequatable-1.html#Sharpy_IInequatable_1___Ne____0_
+    href: Sharpy.IInequatableWith-1.html#Sharpy_IInequatableWith_1___Ne____0_
   - name: (
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
   - name: (
   - name: Of
   - name: " "
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.IInequatable`1.__Ne__(`0)
-  commentId: M:Sharpy.IInequatable`1.__Ne__(`0)
-  href: Sharpy.IInequatable-1.html#Sharpy_IInequatable_1___Ne____0_
+- uid: Sharpy.IInequatableWith`1.__Ne__(`0)
+  commentId: M:Sharpy.IInequatableWith`1.__Ne__(`0)
+  href: Sharpy.IInequatableWith-1.html#Sharpy_IInequatableWith_1___Ne____0_
   name: __Ne__(T)
-  nameWithType: IInequatable<T>.__Ne__(T)
-  fullName: Sharpy.IInequatable<T>.__Ne__(T)
-  nameWithType.vb: IInequatable(Of T).__Ne__(T)
-  fullName.vb: Sharpy.IInequatable(Of T).__Ne__(T)
+  nameWithType: IInequatableWith<T>.__Ne__(T)
+  fullName: Sharpy.IInequatableWith<T>.__Ne__(T)
+  nameWithType.vb: IInequatableWith(Of T).__Ne__(T)
+  fullName.vb: Sharpy.IInequatableWith(Of T).__Ne__(T)
   spec.csharp:
-  - uid: Sharpy.IInequatable`1.__Ne__(`0)
+  - uid: Sharpy.IInequatableWith`1.__Ne__(`0)
     name: __Ne__
-    href: Sharpy.IInequatable-1.html#Sharpy_IInequatable_1___Ne____0_
+    href: Sharpy.IInequatableWith-1.html#Sharpy_IInequatableWith_1___Ne____0_
   - name: (
   - name: T
   - name: )
   spec.vb:
-  - uid: Sharpy.IInequatable`1.__Ne__(`0)
+  - uid: Sharpy.IInequatableWith`1.__Ne__(`0)
     name: __Ne__
-    href: Sharpy.IInequatable-1.html#Sharpy_IInequatable_1___Ne____0_
+    href: Sharpy.IInequatableWith-1.html#Sharpy_IInequatableWith_1___Ne____0_
   - name: (
   - name: T
   - name: )
@@ -5549,21 +5847,21 @@ references:
   fullName: Sharpy.Set<T>.__Lt__
   nameWithType.vb: Set(Of T).__Lt__
   fullName.vb: Sharpy.Set(Of T).__Lt__
-- uid: Sharpy.ILessThanComparable{Sharpy.Set`1}.__Lt__(Sharpy.Set{{T}})
-  commentId: M:Sharpy.ILessThanComparable{Sharpy.Set`1}.__Lt__(Sharpy.Set{`0})
-  parent: Sharpy.ILessThanComparable{Sharpy.Set`1}
-  definition: Sharpy.ILessThanComparable`1.__Lt__(`0)
-  href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1___Lt____0_
+- uid: Sharpy.ILessThanComparableWith{Sharpy.Set`1}.__Lt__(Sharpy.Set{{T}})
+  commentId: M:Sharpy.ILessThanComparableWith{Sharpy.Set`1}.__Lt__(Sharpy.Set{`0})
+  parent: Sharpy.ILessThanComparableWith{Sharpy.Set`1}
+  definition: Sharpy.ILessThanComparableWith`1.__Lt__(`0)
+  href: Sharpy.ILessThanComparableWith-1.html#Sharpy_ILessThanComparableWith_1___Lt____0_
   name: __Lt__(Set<T>)
-  nameWithType: ILessThanComparable<Set<T>>.__Lt__(Set<T>)
-  fullName: Sharpy.ILessThanComparable<Sharpy.Set<T>>.__Lt__(Sharpy.Set<T>)
-  nameWithType.vb: ILessThanComparable(Of Set(Of T)).__Lt__(Set(Of T))
-  fullName.vb: Sharpy.ILessThanComparable(Of Sharpy.Set(Of T)).__Lt__(Sharpy.Set(Of T))
+  nameWithType: ILessThanComparableWith<Set<T>>.__Lt__(Set<T>)
+  fullName: Sharpy.ILessThanComparableWith<Sharpy.Set<T>>.__Lt__(Sharpy.Set<T>)
+  nameWithType.vb: ILessThanComparableWith(Of Set(Of T)).__Lt__(Set(Of T))
+  fullName.vb: Sharpy.ILessThanComparableWith(Of Sharpy.Set(Of T)).__Lt__(Sharpy.Set(Of T))
   name.vb: __Lt__(Set(Of T))
   spec.csharp:
-  - uid: Sharpy.ILessThanComparable{Sharpy.Set`1}.__Lt__(Sharpy.Set{`0})
+  - uid: Sharpy.ILessThanComparableWith{Sharpy.Set`1}.__Lt__(Sharpy.Set{`0})
     name: __Lt__
-    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1___Lt____0_
+    href: Sharpy.ILessThanComparableWith-1.html#Sharpy_ILessThanComparableWith_1___Lt____0_
   - name: (
   - uid: Sharpy.Set`1
     name: Set
@@ -5573,9 +5871,9 @@ references:
   - name: '>'
   - name: )
   spec.vb:
-  - uid: Sharpy.ILessThanComparable{Sharpy.Set`1}.__Lt__(Sharpy.Set{`0})
+  - uid: Sharpy.ILessThanComparableWith{Sharpy.Set`1}.__Lt__(Sharpy.Set{`0})
     name: __Lt__
-    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1___Lt____0_
+    href: Sharpy.ILessThanComparableWith-1.html#Sharpy_ILessThanComparableWith_1___Lt____0_
   - name: (
   - uid: Sharpy.Set`1
     name: Set
@@ -5586,64 +5884,27 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.ILessThanComparable`1.__Lt__(`0)
-  commentId: M:Sharpy.ILessThanComparable`1.__Lt__(`0)
-  href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1___Lt____0_
+- uid: Sharpy.ILessThanComparableWith`1.__Lt__(`0)
+  commentId: M:Sharpy.ILessThanComparableWith`1.__Lt__(`0)
+  href: Sharpy.ILessThanComparableWith-1.html#Sharpy_ILessThanComparableWith_1___Lt____0_
   name: __Lt__(T)
-  nameWithType: ILessThanComparable<T>.__Lt__(T)
-  fullName: Sharpy.ILessThanComparable<T>.__Lt__(T)
-  nameWithType.vb: ILessThanComparable(Of T).__Lt__(T)
-  fullName.vb: Sharpy.ILessThanComparable(Of T).__Lt__(T)
+  nameWithType: ILessThanComparableWith<T>.__Lt__(T)
+  fullName: Sharpy.ILessThanComparableWith<T>.__Lt__(T)
+  nameWithType.vb: ILessThanComparableWith(Of T).__Lt__(T)
+  fullName.vb: Sharpy.ILessThanComparableWith(Of T).__Lt__(T)
   spec.csharp:
-  - uid: Sharpy.ILessThanComparable`1.__Lt__(`0)
+  - uid: Sharpy.ILessThanComparableWith`1.__Lt__(`0)
     name: __Lt__
-    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1___Lt____0_
+    href: Sharpy.ILessThanComparableWith-1.html#Sharpy_ILessThanComparableWith_1___Lt____0_
   - name: (
   - name: T
   - name: )
   spec.vb:
-  - uid: Sharpy.ILessThanComparable`1.__Lt__(`0)
+  - uid: Sharpy.ILessThanComparableWith`1.__Lt__(`0)
     name: __Lt__
-    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1___Lt____0_
+    href: Sharpy.ILessThanComparableWith-1.html#Sharpy_ILessThanComparableWith_1___Lt____0_
   - name: (
   - name: T
-  - name: )
-- uid: Sharpy.ILessThanComparable{Sharpy.Collections.Interfaces.ISet{{T}}}.__Lt__(Sharpy.Collections.Interfaces.ISet{{T}})
-  commentId: M:Sharpy.ILessThanComparable{Sharpy.Collections.Interfaces.ISet{`0}}.__Lt__(Sharpy.Collections.Interfaces.ISet{`0})
-  parent: Sharpy.ILessThanComparable{Sharpy.Collections.Interfaces.ISet{{T}}}
-  definition: Sharpy.ILessThanComparable`1.__Lt__(`0)
-  href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1___Lt____0_
-  name: __Lt__(ISet<T>)
-  nameWithType: ILessThanComparable<ISet<T>>.__Lt__(ISet<T>)
-  fullName: Sharpy.ILessThanComparable<Sharpy.Collections.Interfaces.ISet<T>>.__Lt__(Sharpy.Collections.Interfaces.ISet<T>)
-  nameWithType.vb: ILessThanComparable(Of ISet(Of T)).__Lt__(ISet(Of T))
-  fullName.vb: Sharpy.ILessThanComparable(Of Sharpy.Collections.Interfaces.ISet(Of T)).__Lt__(Sharpy.Collections.Interfaces.ISet(Of T))
-  name.vb: __Lt__(ISet(Of T))
-  spec.csharp:
-  - uid: Sharpy.ILessThanComparable{Sharpy.Collections.Interfaces.ISet{`0}}.__Lt__(Sharpy.Collections.Interfaces.ISet{`0})
-    name: __Lt__
-    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1___Lt____0_
-  - name: (
-  - uid: Sharpy.Collections.Interfaces.ISet`1
-    name: ISet
-    href: Sharpy.Collections.Interfaces.ISet-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: )
-  spec.vb:
-  - uid: Sharpy.ILessThanComparable{Sharpy.Collections.Interfaces.ISet{`0}}.__Lt__(Sharpy.Collections.Interfaces.ISet{`0})
-    name: __Lt__
-    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1___Lt____0_
-  - name: (
-  - uid: Sharpy.Collections.Interfaces.ISet`1
-    name: ISet
-    href: Sharpy.Collections.Interfaces.ISet-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
   - name: )
 - uid: Sharpy.Set`1.__Le__*
   commentId: Overload:Sharpy.Set`1.__Le__
@@ -5653,21 +5914,21 @@ references:
   fullName: Sharpy.Set<T>.__Le__
   nameWithType.vb: Set(Of T).__Le__
   fullName.vb: Sharpy.Set(Of T).__Le__
-- uid: Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.__Le__(Sharpy.Set{{T}})
-  commentId: M:Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.__Le__(Sharpy.Set{`0})
-  parent: Sharpy.ILessThanOrEquatable{Sharpy.Set`1}
-  definition: Sharpy.ILessThanOrEquatable`1.__Le__(`0)
-  href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1___Le____0_
+- uid: Sharpy.ILessThanOrEquatableWith{Sharpy.Set`1}.__Le__(Sharpy.Set{{T}})
+  commentId: M:Sharpy.ILessThanOrEquatableWith{Sharpy.Set`1}.__Le__(Sharpy.Set{`0})
+  parent: Sharpy.ILessThanOrEquatableWith{Sharpy.Set`1}
+  definition: Sharpy.ILessThanOrEquatableWith`1.__Le__(`0)
+  href: Sharpy.ILessThanOrEquatableWith-1.html#Sharpy_ILessThanOrEquatableWith_1___Le____0_
   name: __Le__(Set<T>)
-  nameWithType: ILessThanOrEquatable<Set<T>>.__Le__(Set<T>)
-  fullName: Sharpy.ILessThanOrEquatable<Sharpy.Set<T>>.__Le__(Sharpy.Set<T>)
-  nameWithType.vb: ILessThanOrEquatable(Of Set(Of T)).__Le__(Set(Of T))
-  fullName.vb: Sharpy.ILessThanOrEquatable(Of Sharpy.Set(Of T)).__Le__(Sharpy.Set(Of T))
+  nameWithType: ILessThanOrEquatableWith<Set<T>>.__Le__(Set<T>)
+  fullName: Sharpy.ILessThanOrEquatableWith<Sharpy.Set<T>>.__Le__(Sharpy.Set<T>)
+  nameWithType.vb: ILessThanOrEquatableWith(Of Set(Of T)).__Le__(Set(Of T))
+  fullName.vb: Sharpy.ILessThanOrEquatableWith(Of Sharpy.Set(Of T)).__Le__(Sharpy.Set(Of T))
   name.vb: __Le__(Set(Of T))
   spec.csharp:
-  - uid: Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.__Le__(Sharpy.Set{`0})
+  - uid: Sharpy.ILessThanOrEquatableWith{Sharpy.Set`1}.__Le__(Sharpy.Set{`0})
     name: __Le__
-    href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1___Le____0_
+    href: Sharpy.ILessThanOrEquatableWith-1.html#Sharpy_ILessThanOrEquatableWith_1___Le____0_
   - name: (
   - uid: Sharpy.Set`1
     name: Set
@@ -5677,9 +5938,9 @@ references:
   - name: '>'
   - name: )
   spec.vb:
-  - uid: Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.__Le__(Sharpy.Set{`0})
+  - uid: Sharpy.ILessThanOrEquatableWith{Sharpy.Set`1}.__Le__(Sharpy.Set{`0})
     name: __Le__
-    href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1___Le____0_
+    href: Sharpy.ILessThanOrEquatableWith-1.html#Sharpy_ILessThanOrEquatableWith_1___Le____0_
   - name: (
   - uid: Sharpy.Set`1
     name: Set
@@ -5690,64 +5951,27 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.ILessThanOrEquatable`1.__Le__(`0)
-  commentId: M:Sharpy.ILessThanOrEquatable`1.__Le__(`0)
-  href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1___Le____0_
+- uid: Sharpy.ILessThanOrEquatableWith`1.__Le__(`0)
+  commentId: M:Sharpy.ILessThanOrEquatableWith`1.__Le__(`0)
+  href: Sharpy.ILessThanOrEquatableWith-1.html#Sharpy_ILessThanOrEquatableWith_1___Le____0_
   name: __Le__(T)
-  nameWithType: ILessThanOrEquatable<T>.__Le__(T)
-  fullName: Sharpy.ILessThanOrEquatable<T>.__Le__(T)
-  nameWithType.vb: ILessThanOrEquatable(Of T).__Le__(T)
-  fullName.vb: Sharpy.ILessThanOrEquatable(Of T).__Le__(T)
+  nameWithType: ILessThanOrEquatableWith<T>.__Le__(T)
+  fullName: Sharpy.ILessThanOrEquatableWith<T>.__Le__(T)
+  nameWithType.vb: ILessThanOrEquatableWith(Of T).__Le__(T)
+  fullName.vb: Sharpy.ILessThanOrEquatableWith(Of T).__Le__(T)
   spec.csharp:
-  - uid: Sharpy.ILessThanOrEquatable`1.__Le__(`0)
+  - uid: Sharpy.ILessThanOrEquatableWith`1.__Le__(`0)
     name: __Le__
-    href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1___Le____0_
+    href: Sharpy.ILessThanOrEquatableWith-1.html#Sharpy_ILessThanOrEquatableWith_1___Le____0_
   - name: (
   - name: T
   - name: )
   spec.vb:
-  - uid: Sharpy.ILessThanOrEquatable`1.__Le__(`0)
+  - uid: Sharpy.ILessThanOrEquatableWith`1.__Le__(`0)
     name: __Le__
-    href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1___Le____0_
+    href: Sharpy.ILessThanOrEquatableWith-1.html#Sharpy_ILessThanOrEquatableWith_1___Le____0_
   - name: (
   - name: T
-  - name: )
-- uid: Sharpy.ILessThanOrEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}.__Le__(Sharpy.Collections.Interfaces.ISet{{T}})
-  commentId: M:Sharpy.ILessThanOrEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.__Le__(Sharpy.Collections.Interfaces.ISet{`0})
-  parent: Sharpy.ILessThanOrEquatable{Sharpy.Collections.Interfaces.ISet{{T}}}
-  definition: Sharpy.ILessThanOrEquatable`1.__Le__(`0)
-  href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1___Le____0_
-  name: __Le__(ISet<T>)
-  nameWithType: ILessThanOrEquatable<ISet<T>>.__Le__(ISet<T>)
-  fullName: Sharpy.ILessThanOrEquatable<Sharpy.Collections.Interfaces.ISet<T>>.__Le__(Sharpy.Collections.Interfaces.ISet<T>)
-  nameWithType.vb: ILessThanOrEquatable(Of ISet(Of T)).__Le__(ISet(Of T))
-  fullName.vb: Sharpy.ILessThanOrEquatable(Of Sharpy.Collections.Interfaces.ISet(Of T)).__Le__(Sharpy.Collections.Interfaces.ISet(Of T))
-  name.vb: __Le__(ISet(Of T))
-  spec.csharp:
-  - uid: Sharpy.ILessThanOrEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.__Le__(Sharpy.Collections.Interfaces.ISet{`0})
-    name: __Le__
-    href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1___Le____0_
-  - name: (
-  - uid: Sharpy.Collections.Interfaces.ISet`1
-    name: ISet
-    href: Sharpy.Collections.Interfaces.ISet-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: )
-  spec.vb:
-  - uid: Sharpy.ILessThanOrEquatable{Sharpy.Collections.Interfaces.ISet{`0}}.__Le__(Sharpy.Collections.Interfaces.ISet{`0})
-    name: __Le__
-    href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1___Le____0_
-  - name: (
-  - uid: Sharpy.Collections.Interfaces.ISet`1
-    name: ISet
-    href: Sharpy.Collections.Interfaces.ISet-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
   - name: )
 - uid: Sharpy.Set`1.Add*
   commentId: Overload:Sharpy.Set`1.Add
@@ -6019,6 +6243,78 @@ references:
   fullName: Sharpy.Set<T>.__IOr__
   nameWithType.vb: Set(Of T).__IOr__
   fullName.vb: Sharpy.Set(Of T).__IOr__
+- uid: Sharpy.Collections.Interfaces.IMutableSet{{T}}.__IOr__(Sharpy.Collections.Interfaces.ISet{{T}})
+  commentId: M:Sharpy.Collections.Interfaces.IMutableSet{`0}.__IOr__(Sharpy.Collections.Interfaces.ISet{`0})
+  parent: Sharpy.Collections.Interfaces.IMutableSet{{T}}
+  definition: Sharpy.Collections.Interfaces.IMutableSet`1.__IOr__(Sharpy.Collections.Interfaces.ISet{`0})
+  href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IOr___Sharpy_Collections_Interfaces_ISet__0__
+  name: __IOr__(ISet<T>)
+  nameWithType: IMutableSet<T>.__IOr__(ISet<T>)
+  fullName: Sharpy.Collections.Interfaces.IMutableSet<T>.__IOr__(Sharpy.Collections.Interfaces.ISet<T>)
+  nameWithType.vb: IMutableSet(Of T).__IOr__(ISet(Of T))
+  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of T).__IOr__(Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: __IOr__(ISet(Of T))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMutableSet{`0}.__IOr__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __IOr__
+    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IOr___Sharpy_Collections_Interfaces_ISet__0__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMutableSet{`0}.__IOr__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __IOr__
+    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IOr___Sharpy_Collections_Interfaces_ISet__0__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMutableSet`1.__IOr__(Sharpy.Collections.Interfaces.ISet{`0})
+  commentId: M:Sharpy.Collections.Interfaces.IMutableSet`1.__IOr__(Sharpy.Collections.Interfaces.ISet{`0})
+  href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IOr___Sharpy_Collections_Interfaces_ISet__0__
+  name: __IOr__(ISet<T>)
+  nameWithType: IMutableSet<T>.__IOr__(ISet<T>)
+  fullName: Sharpy.Collections.Interfaces.IMutableSet<T>.__IOr__(Sharpy.Collections.Interfaces.ISet<T>)
+  nameWithType.vb: IMutableSet(Of T).__IOr__(ISet(Of T))
+  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of T).__IOr__(Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: __IOr__(ISet(Of T))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMutableSet`1.__IOr__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __IOr__
+    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IOr___Sharpy_Collections_Interfaces_ISet__0__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMutableSet`1.__IOr__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __IOr__
+    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IOr___Sharpy_Collections_Interfaces_ISet__0__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
 - uid: Sharpy.Set`1.__IAnd__*
   commentId: Overload:Sharpy.Set`1.__IAnd__
   href: Sharpy.Set-1.html#Sharpy_Set_1___IAnd___Sharpy_Collections_Interfaces_ISet__0__
@@ -6027,6 +6323,78 @@ references:
   fullName: Sharpy.Set<T>.__IAnd__
   nameWithType.vb: Set(Of T).__IAnd__
   fullName.vb: Sharpy.Set(Of T).__IAnd__
+- uid: Sharpy.Collections.Interfaces.IMutableSet{{T}}.__IAnd__(Sharpy.Collections.Interfaces.ISet{{T}})
+  commentId: M:Sharpy.Collections.Interfaces.IMutableSet{`0}.__IAnd__(Sharpy.Collections.Interfaces.ISet{`0})
+  parent: Sharpy.Collections.Interfaces.IMutableSet{{T}}
+  definition: Sharpy.Collections.Interfaces.IMutableSet`1.__IAnd__(Sharpy.Collections.Interfaces.ISet{`0})
+  href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IAnd___Sharpy_Collections_Interfaces_ISet__0__
+  name: __IAnd__(ISet<T>)
+  nameWithType: IMutableSet<T>.__IAnd__(ISet<T>)
+  fullName: Sharpy.Collections.Interfaces.IMutableSet<T>.__IAnd__(Sharpy.Collections.Interfaces.ISet<T>)
+  nameWithType.vb: IMutableSet(Of T).__IAnd__(ISet(Of T))
+  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of T).__IAnd__(Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: __IAnd__(ISet(Of T))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMutableSet{`0}.__IAnd__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __IAnd__
+    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IAnd___Sharpy_Collections_Interfaces_ISet__0__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMutableSet{`0}.__IAnd__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __IAnd__
+    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IAnd___Sharpy_Collections_Interfaces_ISet__0__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMutableSet`1.__IAnd__(Sharpy.Collections.Interfaces.ISet{`0})
+  commentId: M:Sharpy.Collections.Interfaces.IMutableSet`1.__IAnd__(Sharpy.Collections.Interfaces.ISet{`0})
+  href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IAnd___Sharpy_Collections_Interfaces_ISet__0__
+  name: __IAnd__(ISet<T>)
+  nameWithType: IMutableSet<T>.__IAnd__(ISet<T>)
+  fullName: Sharpy.Collections.Interfaces.IMutableSet<T>.__IAnd__(Sharpy.Collections.Interfaces.ISet<T>)
+  nameWithType.vb: IMutableSet(Of T).__IAnd__(ISet(Of T))
+  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of T).__IAnd__(Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: __IAnd__(ISet(Of T))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMutableSet`1.__IAnd__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __IAnd__
+    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IAnd___Sharpy_Collections_Interfaces_ISet__0__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMutableSet`1.__IAnd__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __IAnd__
+    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IAnd___Sharpy_Collections_Interfaces_ISet__0__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
 - uid: Sharpy.Set`1.__IXOr__*
   commentId: Overload:Sharpy.Set`1.__IXOr__
   href: Sharpy.Set-1.html#Sharpy_Set_1___IXOr___Sharpy_Collections_Interfaces_ISet__0__
@@ -6035,6 +6403,78 @@ references:
   fullName: Sharpy.Set<T>.__IXOr__
   nameWithType.vb: Set(Of T).__IXOr__
   fullName.vb: Sharpy.Set(Of T).__IXOr__
+- uid: Sharpy.Collections.Interfaces.IMutableSet{{T}}.__IXOr__(Sharpy.Collections.Interfaces.ISet{{T}})
+  commentId: M:Sharpy.Collections.Interfaces.IMutableSet{`0}.__IXOr__(Sharpy.Collections.Interfaces.ISet{`0})
+  parent: Sharpy.Collections.Interfaces.IMutableSet{{T}}
+  definition: Sharpy.Collections.Interfaces.IMutableSet`1.__IXOr__(Sharpy.Collections.Interfaces.ISet{`0})
+  href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IXOr___Sharpy_Collections_Interfaces_ISet__0__
+  name: __IXOr__(ISet<T>)
+  nameWithType: IMutableSet<T>.__IXOr__(ISet<T>)
+  fullName: Sharpy.Collections.Interfaces.IMutableSet<T>.__IXOr__(Sharpy.Collections.Interfaces.ISet<T>)
+  nameWithType.vb: IMutableSet(Of T).__IXOr__(ISet(Of T))
+  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of T).__IXOr__(Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: __IXOr__(ISet(Of T))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMutableSet{`0}.__IXOr__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __IXOr__
+    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IXOr___Sharpy_Collections_Interfaces_ISet__0__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMutableSet{`0}.__IXOr__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __IXOr__
+    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IXOr___Sharpy_Collections_Interfaces_ISet__0__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMutableSet`1.__IXOr__(Sharpy.Collections.Interfaces.ISet{`0})
+  commentId: M:Sharpy.Collections.Interfaces.IMutableSet`1.__IXOr__(Sharpy.Collections.Interfaces.ISet{`0})
+  href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IXOr___Sharpy_Collections_Interfaces_ISet__0__
+  name: __IXOr__(ISet<T>)
+  nameWithType: IMutableSet<T>.__IXOr__(ISet<T>)
+  fullName: Sharpy.Collections.Interfaces.IMutableSet<T>.__IXOr__(Sharpy.Collections.Interfaces.ISet<T>)
+  nameWithType.vb: IMutableSet(Of T).__IXOr__(ISet(Of T))
+  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of T).__IXOr__(Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: __IXOr__(ISet(Of T))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMutableSet`1.__IXOr__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __IXOr__
+    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IXOr___Sharpy_Collections_Interfaces_ISet__0__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMutableSet`1.__IXOr__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __IXOr__
+    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IXOr___Sharpy_Collections_Interfaces_ISet__0__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
 - uid: Sharpy.Set`1.__ISub__*
   commentId: Overload:Sharpy.Set`1.__ISub__
   href: Sharpy.Set-1.html#Sharpy_Set_1___ISub___Sharpy_Collections_Interfaces_ISet__0__
@@ -6043,6 +6483,78 @@ references:
   fullName: Sharpy.Set<T>.__ISub__
   nameWithType.vb: Set(Of T).__ISub__
   fullName.vb: Sharpy.Set(Of T).__ISub__
+- uid: Sharpy.Collections.Interfaces.IMutableSet{{T}}.__ISub__(Sharpy.Collections.Interfaces.ISet{{T}})
+  commentId: M:Sharpy.Collections.Interfaces.IMutableSet{`0}.__ISub__(Sharpy.Collections.Interfaces.ISet{`0})
+  parent: Sharpy.Collections.Interfaces.IMutableSet{{T}}
+  definition: Sharpy.Collections.Interfaces.IMutableSet`1.__ISub__(Sharpy.Collections.Interfaces.ISet{`0})
+  href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___ISub___Sharpy_Collections_Interfaces_ISet__0__
+  name: __ISub__(ISet<T>)
+  nameWithType: IMutableSet<T>.__ISub__(ISet<T>)
+  fullName: Sharpy.Collections.Interfaces.IMutableSet<T>.__ISub__(Sharpy.Collections.Interfaces.ISet<T>)
+  nameWithType.vb: IMutableSet(Of T).__ISub__(ISet(Of T))
+  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of T).__ISub__(Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: __ISub__(ISet(Of T))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMutableSet{`0}.__ISub__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __ISub__
+    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___ISub___Sharpy_Collections_Interfaces_ISet__0__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMutableSet{`0}.__ISub__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __ISub__
+    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___ISub___Sharpy_Collections_Interfaces_ISet__0__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IMutableSet`1.__ISub__(Sharpy.Collections.Interfaces.ISet{`0})
+  commentId: M:Sharpy.Collections.Interfaces.IMutableSet`1.__ISub__(Sharpy.Collections.Interfaces.ISet{`0})
+  href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___ISub___Sharpy_Collections_Interfaces_ISet__0__
+  name: __ISub__(ISet<T>)
+  nameWithType: IMutableSet<T>.__ISub__(ISet<T>)
+  fullName: Sharpy.Collections.Interfaces.IMutableSet<T>.__ISub__(Sharpy.Collections.Interfaces.ISet<T>)
+  nameWithType.vb: IMutableSet(Of T).__ISub__(ISet(Of T))
+  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of T).__ISub__(Sharpy.Collections.Interfaces.ISet(Of T))
+  name.vb: __ISub__(ISet(Of T))
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IMutableSet`1.__ISub__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __ISub__
+    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___ISub___Sharpy_Collections_Interfaces_ISet__0__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IMutableSet`1.__ISub__(Sharpy.Collections.Interfaces.ISet{`0})
+    name: __ISub__
+    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___ISub___Sharpy_Collections_Interfaces_ISet__0__
+  - name: (
+  - uid: Sharpy.Collections.Interfaces.ISet`1
+    name: ISet
+    href: Sharpy.Collections.Interfaces.ISet-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
 - uid: Sharpy.Collections.Interfaces.IMutableSet{Sharpy.Set`1,{T}}.__IAnd__(Sharpy.Set{{T}})
   commentId: M:Sharpy.Collections.Interfaces.IMutableSet{Sharpy.Set`1,`0}.__IAnd__(Sharpy.Set{`0})
   parent: Sharpy.Collections.Interfaces.IMutableSet{Sharpy.Set`1,{T}}
@@ -6080,43 +6592,6 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.Collections.Interfaces.IMutableSet{{T}}.__IAnd__(Sharpy.Set{{T}})
-  commentId: M:Sharpy.Collections.Interfaces.IMutableSet{`0}.__IAnd__(Sharpy.Set{`0})
-  parent: Sharpy.Collections.Interfaces.IMutableSet{{T}}
-  definition: Sharpy.Collections.Interfaces.IMutableSet`1.__IAnd__(Sharpy.Set{`0})
-  href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IAnd___Sharpy_Set__0__
-  name: __IAnd__(Set<T>)
-  nameWithType: IMutableSet<T>.__IAnd__(Set<T>)
-  fullName: Sharpy.Collections.Interfaces.IMutableSet<T>.__IAnd__(Sharpy.Set<T>)
-  nameWithType.vb: IMutableSet(Of T).__IAnd__(Set(Of T))
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of T).__IAnd__(Sharpy.Set(Of T))
-  name.vb: __IAnd__(Set(Of T))
-  spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet{`0}.__IAnd__(Sharpy.Set{`0})
-    name: __IAnd__
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IAnd___Sharpy_Set__0__
-  - name: (
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet{`0}.__IAnd__(Sharpy.Set{`0})
-    name: __IAnd__
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IAnd___Sharpy_Set__0__
-  - name: (
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
-  - name: )
 - uid: Sharpy.Collections.Interfaces.IMutableSet`2.__IAnd__(`0)
   commentId: M:Sharpy.Collections.Interfaces.IMutableSet`2.__IAnd__(`0)
   href: Sharpy.Collections.Interfaces.IMutableSet-2.html#Sharpy_Collections_Interfaces_IMutableSet_2___IAnd____0_
@@ -6138,41 +6613,6 @@ references:
     href: Sharpy.Collections.Interfaces.IMutableSet-2.html#Sharpy_Collections_Interfaces_IMutableSet_2___IAnd____0_
   - name: (
   - name: S
-  - name: )
-- uid: Sharpy.Collections.Interfaces.IMutableSet`1.__IAnd__(Sharpy.Set{`0})
-  commentId: M:Sharpy.Collections.Interfaces.IMutableSet`1.__IAnd__(Sharpy.Set{`0})
-  href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IAnd___Sharpy_Set__0__
-  name: __IAnd__(Set<T>)
-  nameWithType: IMutableSet<T>.__IAnd__(Set<T>)
-  fullName: Sharpy.Collections.Interfaces.IMutableSet<T>.__IAnd__(Sharpy.Set<T>)
-  nameWithType.vb: IMutableSet(Of T).__IAnd__(Set(Of T))
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of T).__IAnd__(Sharpy.Set(Of T))
-  name.vb: __IAnd__(Set(Of T))
-  spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet`1.__IAnd__(Sharpy.Set{`0})
-    name: __IAnd__
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IAnd___Sharpy_Set__0__
-  - name: (
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet`1.__IAnd__(Sharpy.Set{`0})
-    name: __IAnd__
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IAnd___Sharpy_Set__0__
-  - name: (
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
   - name: )
 - uid: Sharpy.Collections.Interfaces.IMutableSet{Sharpy.Set`1,{T}}.__IOr__(Sharpy.Set{{T}})
   commentId: M:Sharpy.Collections.Interfaces.IMutableSet{Sharpy.Set`1,`0}.__IOr__(Sharpy.Set{`0})
@@ -6211,43 +6651,6 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.Collections.Interfaces.IMutableSet{{T}}.__IOr__(Sharpy.Set{{T}})
-  commentId: M:Sharpy.Collections.Interfaces.IMutableSet{`0}.__IOr__(Sharpy.Set{`0})
-  parent: Sharpy.Collections.Interfaces.IMutableSet{{T}}
-  definition: Sharpy.Collections.Interfaces.IMutableSet`1.__IOr__(Sharpy.Set{`0})
-  href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IOr___Sharpy_Set__0__
-  name: __IOr__(Set<T>)
-  nameWithType: IMutableSet<T>.__IOr__(Set<T>)
-  fullName: Sharpy.Collections.Interfaces.IMutableSet<T>.__IOr__(Sharpy.Set<T>)
-  nameWithType.vb: IMutableSet(Of T).__IOr__(Set(Of T))
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of T).__IOr__(Sharpy.Set(Of T))
-  name.vb: __IOr__(Set(Of T))
-  spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet{`0}.__IOr__(Sharpy.Set{`0})
-    name: __IOr__
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IOr___Sharpy_Set__0__
-  - name: (
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet{`0}.__IOr__(Sharpy.Set{`0})
-    name: __IOr__
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IOr___Sharpy_Set__0__
-  - name: (
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
-  - name: )
 - uid: Sharpy.Collections.Interfaces.IMutableSet`2.__IOr__(`0)
   commentId: M:Sharpy.Collections.Interfaces.IMutableSet`2.__IOr__(`0)
   href: Sharpy.Collections.Interfaces.IMutableSet-2.html#Sharpy_Collections_Interfaces_IMutableSet_2___IOr____0_
@@ -6269,41 +6672,6 @@ references:
     href: Sharpy.Collections.Interfaces.IMutableSet-2.html#Sharpy_Collections_Interfaces_IMutableSet_2___IOr____0_
   - name: (
   - name: S
-  - name: )
-- uid: Sharpy.Collections.Interfaces.IMutableSet`1.__IOr__(Sharpy.Set{`0})
-  commentId: M:Sharpy.Collections.Interfaces.IMutableSet`1.__IOr__(Sharpy.Set{`0})
-  href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IOr___Sharpy_Set__0__
-  name: __IOr__(Set<T>)
-  nameWithType: IMutableSet<T>.__IOr__(Set<T>)
-  fullName: Sharpy.Collections.Interfaces.IMutableSet<T>.__IOr__(Sharpy.Set<T>)
-  nameWithType.vb: IMutableSet(Of T).__IOr__(Set(Of T))
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of T).__IOr__(Sharpy.Set(Of T))
-  name.vb: __IOr__(Set(Of T))
-  spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet`1.__IOr__(Sharpy.Set{`0})
-    name: __IOr__
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IOr___Sharpy_Set__0__
-  - name: (
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet`1.__IOr__(Sharpy.Set{`0})
-    name: __IOr__
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IOr___Sharpy_Set__0__
-  - name: (
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
   - name: )
 - uid: Sharpy.Collections.Interfaces.IMutableSet{Sharpy.Set`1,{T}}.__ISub__(Sharpy.Set{{T}})
   commentId: M:Sharpy.Collections.Interfaces.IMutableSet{Sharpy.Set`1,`0}.__ISub__(Sharpy.Set{`0})
@@ -6342,43 +6710,6 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.Collections.Interfaces.IMutableSet{{T}}.__ISub__(Sharpy.Set{{T}})
-  commentId: M:Sharpy.Collections.Interfaces.IMutableSet{`0}.__ISub__(Sharpy.Set{`0})
-  parent: Sharpy.Collections.Interfaces.IMutableSet{{T}}
-  definition: Sharpy.Collections.Interfaces.IMutableSet`1.__ISub__(Sharpy.Set{`0})
-  href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___ISub___Sharpy_Set__0__
-  name: __ISub__(Set<T>)
-  nameWithType: IMutableSet<T>.__ISub__(Set<T>)
-  fullName: Sharpy.Collections.Interfaces.IMutableSet<T>.__ISub__(Sharpy.Set<T>)
-  nameWithType.vb: IMutableSet(Of T).__ISub__(Set(Of T))
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of T).__ISub__(Sharpy.Set(Of T))
-  name.vb: __ISub__(Set(Of T))
-  spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet{`0}.__ISub__(Sharpy.Set{`0})
-    name: __ISub__
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___ISub___Sharpy_Set__0__
-  - name: (
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet{`0}.__ISub__(Sharpy.Set{`0})
-    name: __ISub__
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___ISub___Sharpy_Set__0__
-  - name: (
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
-  - name: )
 - uid: Sharpy.Collections.Interfaces.IMutableSet`2.__ISub__(`0)
   commentId: M:Sharpy.Collections.Interfaces.IMutableSet`2.__ISub__(`0)
   href: Sharpy.Collections.Interfaces.IMutableSet-2.html#Sharpy_Collections_Interfaces_IMutableSet_2___ISub____0_
@@ -6400,41 +6731,6 @@ references:
     href: Sharpy.Collections.Interfaces.IMutableSet-2.html#Sharpy_Collections_Interfaces_IMutableSet_2___ISub____0_
   - name: (
   - name: S
-  - name: )
-- uid: Sharpy.Collections.Interfaces.IMutableSet`1.__ISub__(Sharpy.Set{`0})
-  commentId: M:Sharpy.Collections.Interfaces.IMutableSet`1.__ISub__(Sharpy.Set{`0})
-  href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___ISub___Sharpy_Set__0__
-  name: __ISub__(Set<T>)
-  nameWithType: IMutableSet<T>.__ISub__(Set<T>)
-  fullName: Sharpy.Collections.Interfaces.IMutableSet<T>.__ISub__(Sharpy.Set<T>)
-  nameWithType.vb: IMutableSet(Of T).__ISub__(Set(Of T))
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of T).__ISub__(Sharpy.Set(Of T))
-  name.vb: __ISub__(Set(Of T))
-  spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet`1.__ISub__(Sharpy.Set{`0})
-    name: __ISub__
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___ISub___Sharpy_Set__0__
-  - name: (
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet`1.__ISub__(Sharpy.Set{`0})
-    name: __ISub__
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___ISub___Sharpy_Set__0__
-  - name: (
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
   - name: )
 - uid: Sharpy.Collections.Interfaces.IMutableSet{Sharpy.Set`1,{T}}.__IXOr__(Sharpy.Set{{T}})
   commentId: M:Sharpy.Collections.Interfaces.IMutableSet{Sharpy.Set`1,`0}.__IXOr__(Sharpy.Set{`0})
@@ -6473,43 +6769,6 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.Collections.Interfaces.IMutableSet{{T}}.__IXOr__(Sharpy.Set{{T}})
-  commentId: M:Sharpy.Collections.Interfaces.IMutableSet{`0}.__IXOr__(Sharpy.Set{`0})
-  parent: Sharpy.Collections.Interfaces.IMutableSet{{T}}
-  definition: Sharpy.Collections.Interfaces.IMutableSet`1.__IXOr__(Sharpy.Set{`0})
-  href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IXOr___Sharpy_Set__0__
-  name: __IXOr__(Set<T>)
-  nameWithType: IMutableSet<T>.__IXOr__(Set<T>)
-  fullName: Sharpy.Collections.Interfaces.IMutableSet<T>.__IXOr__(Sharpy.Set<T>)
-  nameWithType.vb: IMutableSet(Of T).__IXOr__(Set(Of T))
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of T).__IXOr__(Sharpy.Set(Of T))
-  name.vb: __IXOr__(Set(Of T))
-  spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet{`0}.__IXOr__(Sharpy.Set{`0})
-    name: __IXOr__
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IXOr___Sharpy_Set__0__
-  - name: (
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet{`0}.__IXOr__(Sharpy.Set{`0})
-    name: __IXOr__
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IXOr___Sharpy_Set__0__
-  - name: (
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
-  - name: )
 - uid: Sharpy.Collections.Interfaces.IMutableSet`2.__IXOr__(`0)
   commentId: M:Sharpy.Collections.Interfaces.IMutableSet`2.__IXOr__(`0)
   href: Sharpy.Collections.Interfaces.IMutableSet-2.html#Sharpy_Collections_Interfaces_IMutableSet_2___IXOr____0_
@@ -6531,41 +6790,6 @@ references:
     href: Sharpy.Collections.Interfaces.IMutableSet-2.html#Sharpy_Collections_Interfaces_IMutableSet_2___IXOr____0_
   - name: (
   - name: S
-  - name: )
-- uid: Sharpy.Collections.Interfaces.IMutableSet`1.__IXOr__(Sharpy.Set{`0})
-  commentId: M:Sharpy.Collections.Interfaces.IMutableSet`1.__IXOr__(Sharpy.Set{`0})
-  href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IXOr___Sharpy_Set__0__
-  name: __IXOr__(Set<T>)
-  nameWithType: IMutableSet<T>.__IXOr__(Set<T>)
-  fullName: Sharpy.Collections.Interfaces.IMutableSet<T>.__IXOr__(Sharpy.Set<T>)
-  nameWithType.vb: IMutableSet(Of T).__IXOr__(Set(Of T))
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of T).__IXOr__(Sharpy.Set(Of T))
-  name.vb: __IXOr__(Set(Of T))
-  spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet`1.__IXOr__(Sharpy.Set{`0})
-    name: __IXOr__
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IXOr___Sharpy_Set__0__
-  - name: (
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: <
-  - name: T
-  - name: '>'
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet`1.__IXOr__(Sharpy.Set{`0})
-    name: __IXOr__
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1___IXOr___Sharpy_Set__0__
-  - name: (
-  - uid: Sharpy.Set`1
-    name: Set
-    href: Sharpy.Set-1.html
-  - name: (
-  - name: Of
-  - name: " "
-  - name: T
-  - name: )
   - name: )
 - uid: Sharpy.Set`1.IsDisjoint*
   commentId: Overload:Sharpy.Set`1.IsDisjoint
@@ -7701,6 +7925,90 @@ references:
   - uid: Sharpy.Set`1.op_Equality*
     name: ==
     href: Sharpy.Set-1.html#Sharpy_Set_1_op_Equality_Sharpy_Set__0__Sharpy_Set__0__
+- uid: Sharpy.IEquatable{Sharpy.Set`1}.op_Equality(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.IEquatable{Sharpy.Set`1}.op_Equality(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.IEquatable{Sharpy.Set`1}
+  definition: Sharpy.IEquatable`1.op_Equality(`0,`0)
+  href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1_op_Equality__0__0_
+  name: operator ==(Set<T>, Set<T>)
+  nameWithType: IEquatable<Set<T>>.operator ==(Set<T>, Set<T>)
+  fullName: Sharpy.IEquatable<Sharpy.Set<T>>.operator ==(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: IEquatable(Of Set(Of T)).=(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.IEquatable(Of Sharpy.Set(Of T)).=(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: =(Set(Of T), Set(Of T))
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IEquatable{Sharpy.Set`1}.op_Equality(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: ==
+    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1_op_Equality__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: =
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IEquatable`1.op_Equality(`0,`0)
+  commentId: M:Sharpy.IEquatable`1.op_Equality(`0,`0)
+  href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1_op_Equality__0__0_
+  name: operator ==(T, T)
+  nameWithType: IEquatable<T>.operator ==(T, T)
+  fullName: Sharpy.IEquatable<T>.operator ==(T, T)
+  nameWithType.vb: IEquatable(Of T).=(T, T)
+  fullName.vb: Sharpy.IEquatable(Of T).=(T, T)
+  name.vb: =(T, T)
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IEquatable`1.op_Equality(`0,`0)
+    name: ==
+    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1_op_Equality__0__0_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+  spec.vb:
+  - name: =
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
 - uid: Sharpy.Set`1.op_Inequality*
   commentId: Overload:Sharpy.Set`1.op_Inequality
   href: Sharpy.Set-1.html#Sharpy_Set_1_op_Inequality_Sharpy_Set__0__Sharpy_Set__0__
@@ -7716,6 +8024,90 @@ references:
   - uid: Sharpy.Set`1.op_Inequality*
     name: '!='
     href: Sharpy.Set-1.html#Sharpy_Set_1_op_Inequality_Sharpy_Set__0__Sharpy_Set__0__
+- uid: Sharpy.IEquatable{Sharpy.Set`1}.op_Inequality(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.IEquatable{Sharpy.Set`1}.op_Inequality(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.IEquatable{Sharpy.Set`1}
+  definition: Sharpy.IEquatable`1.op_Inequality(`0,`0)
+  href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1_op_Inequality__0__0_
+  name: operator !=(Set<T>, Set<T>)
+  nameWithType: IEquatable<Set<T>>.operator !=(Set<T>, Set<T>)
+  fullName: Sharpy.IEquatable<Sharpy.Set<T>>.operator !=(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: IEquatable(Of Set(Of T)).<>(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.IEquatable(Of Sharpy.Set(Of T)).<>(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: <>(Set(Of T), Set(Of T))
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IEquatable{Sharpy.Set`1}.op_Inequality(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: '!='
+    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1_op_Inequality__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: <>
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IEquatable`1.op_Inequality(`0,`0)
+  commentId: M:Sharpy.IEquatable`1.op_Inequality(`0,`0)
+  href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1_op_Inequality__0__0_
+  name: operator !=(T, T)
+  nameWithType: IEquatable<T>.operator !=(T, T)
+  fullName: Sharpy.IEquatable<T>.operator !=(T, T)
+  nameWithType.vb: IEquatable(Of T).<>(T, T)
+  fullName.vb: Sharpy.IEquatable(Of T).<>(T, T)
+  name.vb: <>(T, T)
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IEquatable`1.op_Inequality(`0,`0)
+    name: '!='
+    href: Sharpy.IEquatable-1.html#Sharpy_IEquatable_1_op_Inequality__0__0_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+  spec.vb:
+  - name: <>
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
 - uid: Sharpy.Set`1.op_LessThan*
   commentId: Overload:Sharpy.Set`1.op_LessThan
   href: Sharpy.Set-1.html#Sharpy_Set_1_op_LessThan_Sharpy_Set__0__Sharpy_Set__0__
@@ -7731,6 +8123,342 @@ references:
   - uid: Sharpy.Set`1.op_LessThan*
     name: <
     href: Sharpy.Set-1.html#Sharpy_Set_1_op_LessThan_Sharpy_Set__0__Sharpy_Set__0__
+- uid: Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.op_LessThan(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.op_LessThan(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.ILessThanOrEquatable{Sharpy.Set`1}
+  definition: Sharpy.ILessThanOrEquatable`1.op_LessThan(`0,`0)
+  href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1_op_LessThan__0__0_
+  name: operator <(Set<T>, Set<T>)
+  nameWithType: ILessThanOrEquatable<Set<T>>.operator <(Set<T>, Set<T>)
+  fullName: Sharpy.ILessThanOrEquatable<Sharpy.Set<T>>.operator <(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: ILessThanOrEquatable(Of Set(Of T)).<(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.ILessThanOrEquatable(Of Sharpy.Set(Of T)).<(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: <(Set(Of T), Set(Of T))
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.op_LessThan(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: <
+    href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1_op_LessThan__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: <
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.ILessThanComparable{Sharpy.Set`1}.op_LessThan(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.ILessThanComparable{Sharpy.Set`1}.op_LessThan(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.ILessThanComparable{Sharpy.Set`1}
+  definition: Sharpy.ILessThanComparable`1.op_LessThan(`0,`0)
+  href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_LessThan__0__0_
+  name: operator <(Set<T>, Set<T>)
+  nameWithType: ILessThanComparable<Set<T>>.operator <(Set<T>, Set<T>)
+  fullName: Sharpy.ILessThanComparable<Sharpy.Set<T>>.operator <(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: ILessThanComparable(Of Set(Of T)).<(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.ILessThanComparable(Of Sharpy.Set(Of T)).<(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: <(Set(Of T), Set(Of T))
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.ILessThanComparable{Sharpy.Set`1}.op_LessThan(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: <
+    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_LessThan__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: <
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.op_LessThan(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.op_LessThan(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}
+  definition: Sharpy.IGreaterThanOrEquatable`1.op_LessThan(`0,`0)
+  href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1_op_LessThan__0__0_
+  name: operator <(Set<T>, Set<T>)
+  nameWithType: IGreaterThanOrEquatable<Set<T>>.operator <(Set<T>, Set<T>)
+  fullName: Sharpy.IGreaterThanOrEquatable<Sharpy.Set<T>>.operator <(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: IGreaterThanOrEquatable(Of Set(Of T)).<(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of Sharpy.Set(Of T)).<(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: <(Set(Of T), Set(Of T))
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.op_LessThan(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: <
+    href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1_op_LessThan__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: <
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IGreaterThanComparable{Sharpy.Set`1}.op_LessThan(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.IGreaterThanComparable{Sharpy.Set`1}.op_LessThan(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.IGreaterThanComparable{Sharpy.Set`1}
+  definition: Sharpy.IGreaterThanComparable`1.op_LessThan(`0,`0)
+  href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1_op_LessThan__0__0_
+  name: operator <(Set<T>, Set<T>)
+  nameWithType: IGreaterThanComparable<Set<T>>.operator <(Set<T>, Set<T>)
+  fullName: Sharpy.IGreaterThanComparable<Sharpy.Set<T>>.operator <(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: IGreaterThanComparable(Of Set(Of T)).<(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.IGreaterThanComparable(Of Sharpy.Set(Of T)).<(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: <(Set(Of T), Set(Of T))
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IGreaterThanComparable{Sharpy.Set`1}.op_LessThan(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: <
+    href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1_op_LessThan__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: <
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.ILessThanOrEquatable`1.op_LessThan(`0,`0)
+  commentId: M:Sharpy.ILessThanOrEquatable`1.op_LessThan(`0,`0)
+  href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1_op_LessThan__0__0_
+  name: operator <(T, T)
+  nameWithType: ILessThanOrEquatable<T>.operator <(T, T)
+  fullName: Sharpy.ILessThanOrEquatable<T>.operator <(T, T)
+  nameWithType.vb: ILessThanOrEquatable(Of T).<(T, T)
+  fullName.vb: Sharpy.ILessThanOrEquatable(Of T).<(T, T)
+  name.vb: <(T, T)
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.ILessThanOrEquatable`1.op_LessThan(`0,`0)
+    name: <
+    href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1_op_LessThan__0__0_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+  spec.vb:
+  - name: <
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.ILessThanComparable`1.op_LessThan(`0,`0)
+  commentId: M:Sharpy.ILessThanComparable`1.op_LessThan(`0,`0)
+  href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_LessThan__0__0_
+  name: operator <(T, T)
+  nameWithType: ILessThanComparable<T>.operator <(T, T)
+  fullName: Sharpy.ILessThanComparable<T>.operator <(T, T)
+  nameWithType.vb: ILessThanComparable(Of T).<(T, T)
+  fullName.vb: Sharpy.ILessThanComparable(Of T).<(T, T)
+  name.vb: <(T, T)
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.ILessThanComparable`1.op_LessThan(`0,`0)
+    name: <
+    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_LessThan__0__0_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+  spec.vb:
+  - name: <
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanOrEquatable`1.op_LessThan(`0,`0)
+  commentId: M:Sharpy.IGreaterThanOrEquatable`1.op_LessThan(`0,`0)
+  href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1_op_LessThan__0__0_
+  name: operator <(T, T)
+  nameWithType: IGreaterThanOrEquatable<T>.operator <(T, T)
+  fullName: Sharpy.IGreaterThanOrEquatable<T>.operator <(T, T)
+  nameWithType.vb: IGreaterThanOrEquatable(Of T).<(T, T)
+  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of T).<(T, T)
+  name.vb: <(T, T)
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IGreaterThanOrEquatable`1.op_LessThan(`0,`0)
+    name: <
+    href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1_op_LessThan__0__0_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+  spec.vb:
+  - name: <
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanComparable`1.op_LessThan(`0,`0)
+  commentId: M:Sharpy.IGreaterThanComparable`1.op_LessThan(`0,`0)
+  href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1_op_LessThan__0__0_
+  name: operator <(T, T)
+  nameWithType: IGreaterThanComparable<T>.operator <(T, T)
+  fullName: Sharpy.IGreaterThanComparable<T>.operator <(T, T)
+  nameWithType.vb: IGreaterThanComparable(Of T).<(T, T)
+  fullName.vb: Sharpy.IGreaterThanComparable(Of T).<(T, T)
+  name.vb: <(T, T)
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IGreaterThanComparable`1.op_LessThan(`0,`0)
+    name: <
+    href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1_op_LessThan__0__0_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+  spec.vb:
+  - name: <
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
 - uid: Sharpy.Set`1.op_GreaterThan*
   commentId: Overload:Sharpy.Set`1.op_GreaterThan
   href: Sharpy.Set-1.html#Sharpy_Set_1_op_GreaterThan_Sharpy_Set__0__Sharpy_Set__0__
@@ -7746,6 +8474,342 @@ references:
   - uid: Sharpy.Set`1.op_GreaterThan*
     name: '>'
     href: Sharpy.Set-1.html#Sharpy_Set_1_op_GreaterThan_Sharpy_Set__0__Sharpy_Set__0__
+- uid: Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.op_GreaterThan(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.op_GreaterThan(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.ILessThanOrEquatable{Sharpy.Set`1}
+  definition: Sharpy.ILessThanOrEquatable`1.op_GreaterThan(`0,`0)
+  href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1_op_GreaterThan__0__0_
+  name: operator >(Set<T>, Set<T>)
+  nameWithType: ILessThanOrEquatable<Set<T>>.operator >(Set<T>, Set<T>)
+  fullName: Sharpy.ILessThanOrEquatable<Sharpy.Set<T>>.operator >(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: ILessThanOrEquatable(Of Set(Of T)).>(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.ILessThanOrEquatable(Of Sharpy.Set(Of T)).>(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: '>(Set(Of T), Set(Of T))'
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.op_GreaterThan(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: '>'
+    href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1_op_GreaterThan__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: '>'
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.ILessThanComparable{Sharpy.Set`1}.op_GreaterThan(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.ILessThanComparable{Sharpy.Set`1}.op_GreaterThan(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.ILessThanComparable{Sharpy.Set`1}
+  definition: Sharpy.ILessThanComparable`1.op_GreaterThan(`0,`0)
+  href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_GreaterThan__0__0_
+  name: operator >(Set<T>, Set<T>)
+  nameWithType: ILessThanComparable<Set<T>>.operator >(Set<T>, Set<T>)
+  fullName: Sharpy.ILessThanComparable<Sharpy.Set<T>>.operator >(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: ILessThanComparable(Of Set(Of T)).>(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.ILessThanComparable(Of Sharpy.Set(Of T)).>(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: '>(Set(Of T), Set(Of T))'
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.ILessThanComparable{Sharpy.Set`1}.op_GreaterThan(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: '>'
+    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_GreaterThan__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: '>'
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.op_GreaterThan(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.op_GreaterThan(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}
+  definition: Sharpy.IGreaterThanOrEquatable`1.op_GreaterThan(`0,`0)
+  href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1_op_GreaterThan__0__0_
+  name: operator >(Set<T>, Set<T>)
+  nameWithType: IGreaterThanOrEquatable<Set<T>>.operator >(Set<T>, Set<T>)
+  fullName: Sharpy.IGreaterThanOrEquatable<Sharpy.Set<T>>.operator >(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: IGreaterThanOrEquatable(Of Set(Of T)).>(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of Sharpy.Set(Of T)).>(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: '>(Set(Of T), Set(Of T))'
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.op_GreaterThan(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: '>'
+    href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1_op_GreaterThan__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: '>'
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IGreaterThanComparable{Sharpy.Set`1}.op_GreaterThan(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.IGreaterThanComparable{Sharpy.Set`1}.op_GreaterThan(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.IGreaterThanComparable{Sharpy.Set`1}
+  definition: Sharpy.IGreaterThanComparable`1.op_GreaterThan(`0,`0)
+  href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1_op_GreaterThan__0__0_
+  name: operator >(Set<T>, Set<T>)
+  nameWithType: IGreaterThanComparable<Set<T>>.operator >(Set<T>, Set<T>)
+  fullName: Sharpy.IGreaterThanComparable<Sharpy.Set<T>>.operator >(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: IGreaterThanComparable(Of Set(Of T)).>(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.IGreaterThanComparable(Of Sharpy.Set(Of T)).>(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: '>(Set(Of T), Set(Of T))'
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IGreaterThanComparable{Sharpy.Set`1}.op_GreaterThan(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: '>'
+    href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1_op_GreaterThan__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: '>'
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.ILessThanOrEquatable`1.op_GreaterThan(`0,`0)
+  commentId: M:Sharpy.ILessThanOrEquatable`1.op_GreaterThan(`0,`0)
+  href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1_op_GreaterThan__0__0_
+  name: operator >(T, T)
+  nameWithType: ILessThanOrEquatable<T>.operator >(T, T)
+  fullName: Sharpy.ILessThanOrEquatable<T>.operator >(T, T)
+  nameWithType.vb: ILessThanOrEquatable(Of T).>(T, T)
+  fullName.vb: Sharpy.ILessThanOrEquatable(Of T).>(T, T)
+  name.vb: '>(T, T)'
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.ILessThanOrEquatable`1.op_GreaterThan(`0,`0)
+    name: '>'
+    href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1_op_GreaterThan__0__0_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+  spec.vb:
+  - name: '>'
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.ILessThanComparable`1.op_GreaterThan(`0,`0)
+  commentId: M:Sharpy.ILessThanComparable`1.op_GreaterThan(`0,`0)
+  href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_GreaterThan__0__0_
+  name: operator >(T, T)
+  nameWithType: ILessThanComparable<T>.operator >(T, T)
+  fullName: Sharpy.ILessThanComparable<T>.operator >(T, T)
+  nameWithType.vb: ILessThanComparable(Of T).>(T, T)
+  fullName.vb: Sharpy.ILessThanComparable(Of T).>(T, T)
+  name.vb: '>(T, T)'
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.ILessThanComparable`1.op_GreaterThan(`0,`0)
+    name: '>'
+    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_GreaterThan__0__0_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+  spec.vb:
+  - name: '>'
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanOrEquatable`1.op_GreaterThan(`0,`0)
+  commentId: M:Sharpy.IGreaterThanOrEquatable`1.op_GreaterThan(`0,`0)
+  href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1_op_GreaterThan__0__0_
+  name: operator >(T, T)
+  nameWithType: IGreaterThanOrEquatable<T>.operator >(T, T)
+  fullName: Sharpy.IGreaterThanOrEquatable<T>.operator >(T, T)
+  nameWithType.vb: IGreaterThanOrEquatable(Of T).>(T, T)
+  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of T).>(T, T)
+  name.vb: '>(T, T)'
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IGreaterThanOrEquatable`1.op_GreaterThan(`0,`0)
+    name: '>'
+    href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1_op_GreaterThan__0__0_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+  spec.vb:
+  - name: '>'
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanComparable`1.op_GreaterThan(`0,`0)
+  commentId: M:Sharpy.IGreaterThanComparable`1.op_GreaterThan(`0,`0)
+  href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1_op_GreaterThan__0__0_
+  name: operator >(T, T)
+  nameWithType: IGreaterThanComparable<T>.operator >(T, T)
+  fullName: Sharpy.IGreaterThanComparable<T>.operator >(T, T)
+  nameWithType.vb: IGreaterThanComparable(Of T).>(T, T)
+  fullName.vb: Sharpy.IGreaterThanComparable(Of T).>(T, T)
+  name.vb: '>(T, T)'
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IGreaterThanComparable`1.op_GreaterThan(`0,`0)
+    name: '>'
+    href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1_op_GreaterThan__0__0_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+  spec.vb:
+  - name: '>'
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
 - uid: Sharpy.Set`1.op_LessThanOrEqual*
   commentId: Overload:Sharpy.Set`1.op_LessThanOrEqual
   href: Sharpy.Set-1.html#Sharpy_Set_1_op_LessThanOrEqual_Sharpy_Set__0__Sharpy_Set__0__
@@ -7761,6 +8825,342 @@ references:
   - uid: Sharpy.Set`1.op_LessThanOrEqual*
     name: <=
     href: Sharpy.Set-1.html#Sharpy_Set_1_op_LessThanOrEqual_Sharpy_Set__0__Sharpy_Set__0__
+- uid: Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.op_LessThanOrEqual(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.op_LessThanOrEqual(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.ILessThanOrEquatable{Sharpy.Set`1}
+  definition: Sharpy.ILessThanOrEquatable`1.op_LessThanOrEqual(`0,`0)
+  href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1_op_LessThanOrEqual__0__0_
+  name: operator <=(Set<T>, Set<T>)
+  nameWithType: ILessThanOrEquatable<Set<T>>.operator <=(Set<T>, Set<T>)
+  fullName: Sharpy.ILessThanOrEquatable<Sharpy.Set<T>>.operator <=(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: ILessThanOrEquatable(Of Set(Of T)).<=(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.ILessThanOrEquatable(Of Sharpy.Set(Of T)).<=(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: <=(Set(Of T), Set(Of T))
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.op_LessThanOrEqual(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: <=
+    href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1_op_LessThanOrEqual__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: <=
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.ILessThanComparable{Sharpy.Set`1}.op_LessThanOrEqual(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.ILessThanComparable{Sharpy.Set`1}.op_LessThanOrEqual(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.ILessThanComparable{Sharpy.Set`1}
+  definition: Sharpy.ILessThanComparable`1.op_LessThanOrEqual(`0,`0)
+  href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_LessThanOrEqual__0__0_
+  name: operator <=(Set<T>, Set<T>)
+  nameWithType: ILessThanComparable<Set<T>>.operator <=(Set<T>, Set<T>)
+  fullName: Sharpy.ILessThanComparable<Sharpy.Set<T>>.operator <=(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: ILessThanComparable(Of Set(Of T)).<=(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.ILessThanComparable(Of Sharpy.Set(Of T)).<=(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: <=(Set(Of T), Set(Of T))
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.ILessThanComparable{Sharpy.Set`1}.op_LessThanOrEqual(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: <=
+    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_LessThanOrEqual__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: <=
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.op_LessThanOrEqual(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.op_LessThanOrEqual(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}
+  definition: Sharpy.IGreaterThanOrEquatable`1.op_LessThanOrEqual(`0,`0)
+  href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1_op_LessThanOrEqual__0__0_
+  name: operator <=(Set<T>, Set<T>)
+  nameWithType: IGreaterThanOrEquatable<Set<T>>.operator <=(Set<T>, Set<T>)
+  fullName: Sharpy.IGreaterThanOrEquatable<Sharpy.Set<T>>.operator <=(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: IGreaterThanOrEquatable(Of Set(Of T)).<=(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of Sharpy.Set(Of T)).<=(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: <=(Set(Of T), Set(Of T))
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.op_LessThanOrEqual(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: <=
+    href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1_op_LessThanOrEqual__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: <=
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IGreaterThanComparable{Sharpy.Set`1}.op_LessThanOrEqual(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.IGreaterThanComparable{Sharpy.Set`1}.op_LessThanOrEqual(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.IGreaterThanComparable{Sharpy.Set`1}
+  definition: Sharpy.IGreaterThanComparable`1.op_LessThanOrEqual(`0,`0)
+  href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1_op_LessThanOrEqual__0__0_
+  name: operator <=(Set<T>, Set<T>)
+  nameWithType: IGreaterThanComparable<Set<T>>.operator <=(Set<T>, Set<T>)
+  fullName: Sharpy.IGreaterThanComparable<Sharpy.Set<T>>.operator <=(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: IGreaterThanComparable(Of Set(Of T)).<=(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.IGreaterThanComparable(Of Sharpy.Set(Of T)).<=(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: <=(Set(Of T), Set(Of T))
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IGreaterThanComparable{Sharpy.Set`1}.op_LessThanOrEqual(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: <=
+    href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1_op_LessThanOrEqual__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: <=
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.ILessThanOrEquatable`1.op_LessThanOrEqual(`0,`0)
+  commentId: M:Sharpy.ILessThanOrEquatable`1.op_LessThanOrEqual(`0,`0)
+  href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1_op_LessThanOrEqual__0__0_
+  name: operator <=(T, T)
+  nameWithType: ILessThanOrEquatable<T>.operator <=(T, T)
+  fullName: Sharpy.ILessThanOrEquatable<T>.operator <=(T, T)
+  nameWithType.vb: ILessThanOrEquatable(Of T).<=(T, T)
+  fullName.vb: Sharpy.ILessThanOrEquatable(Of T).<=(T, T)
+  name.vb: <=(T, T)
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.ILessThanOrEquatable`1.op_LessThanOrEqual(`0,`0)
+    name: <=
+    href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1_op_LessThanOrEqual__0__0_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+  spec.vb:
+  - name: <=
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.ILessThanComparable`1.op_LessThanOrEqual(`0,`0)
+  commentId: M:Sharpy.ILessThanComparable`1.op_LessThanOrEqual(`0,`0)
+  href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_LessThanOrEqual__0__0_
+  name: operator <=(T, T)
+  nameWithType: ILessThanComparable<T>.operator <=(T, T)
+  fullName: Sharpy.ILessThanComparable<T>.operator <=(T, T)
+  nameWithType.vb: ILessThanComparable(Of T).<=(T, T)
+  fullName.vb: Sharpy.ILessThanComparable(Of T).<=(T, T)
+  name.vb: <=(T, T)
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.ILessThanComparable`1.op_LessThanOrEqual(`0,`0)
+    name: <=
+    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_LessThanOrEqual__0__0_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+  spec.vb:
+  - name: <=
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanOrEquatable`1.op_LessThanOrEqual(`0,`0)
+  commentId: M:Sharpy.IGreaterThanOrEquatable`1.op_LessThanOrEqual(`0,`0)
+  href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1_op_LessThanOrEqual__0__0_
+  name: operator <=(T, T)
+  nameWithType: IGreaterThanOrEquatable<T>.operator <=(T, T)
+  fullName: Sharpy.IGreaterThanOrEquatable<T>.operator <=(T, T)
+  nameWithType.vb: IGreaterThanOrEquatable(Of T).<=(T, T)
+  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of T).<=(T, T)
+  name.vb: <=(T, T)
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IGreaterThanOrEquatable`1.op_LessThanOrEqual(`0,`0)
+    name: <=
+    href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1_op_LessThanOrEqual__0__0_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+  spec.vb:
+  - name: <=
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanComparable`1.op_LessThanOrEqual(`0,`0)
+  commentId: M:Sharpy.IGreaterThanComparable`1.op_LessThanOrEqual(`0,`0)
+  href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1_op_LessThanOrEqual__0__0_
+  name: operator <=(T, T)
+  nameWithType: IGreaterThanComparable<T>.operator <=(T, T)
+  fullName: Sharpy.IGreaterThanComparable<T>.operator <=(T, T)
+  nameWithType.vb: IGreaterThanComparable(Of T).<=(T, T)
+  fullName.vb: Sharpy.IGreaterThanComparable(Of T).<=(T, T)
+  name.vb: <=(T, T)
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IGreaterThanComparable`1.op_LessThanOrEqual(`0,`0)
+    name: <=
+    href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1_op_LessThanOrEqual__0__0_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+  spec.vb:
+  - name: <=
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
 - uid: Sharpy.Set`1.op_GreaterThanOrEqual*
   commentId: Overload:Sharpy.Set`1.op_GreaterThanOrEqual
   href: Sharpy.Set-1.html#Sharpy_Set_1_op_GreaterThanOrEqual_Sharpy_Set__0__Sharpy_Set__0__
@@ -7776,6 +9176,342 @@ references:
   - uid: Sharpy.Set`1.op_GreaterThanOrEqual*
     name: '>='
     href: Sharpy.Set-1.html#Sharpy_Set_1_op_GreaterThanOrEqual_Sharpy_Set__0__Sharpy_Set__0__
+- uid: Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.op_GreaterThanOrEqual(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.op_GreaterThanOrEqual(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.ILessThanOrEquatable{Sharpy.Set`1}
+  definition: Sharpy.ILessThanOrEquatable`1.op_GreaterThanOrEqual(`0,`0)
+  href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1_op_GreaterThanOrEqual__0__0_
+  name: operator >=(Set<T>, Set<T>)
+  nameWithType: ILessThanOrEquatable<Set<T>>.operator >=(Set<T>, Set<T>)
+  fullName: Sharpy.ILessThanOrEquatable<Sharpy.Set<T>>.operator >=(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: ILessThanOrEquatable(Of Set(Of T)).>=(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.ILessThanOrEquatable(Of Sharpy.Set(Of T)).>=(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: '>=(Set(Of T), Set(Of T))'
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.ILessThanOrEquatable{Sharpy.Set`1}.op_GreaterThanOrEqual(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: '>='
+    href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1_op_GreaterThanOrEqual__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: '>='
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.ILessThanComparable{Sharpy.Set`1}.op_GreaterThanOrEqual(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.ILessThanComparable{Sharpy.Set`1}.op_GreaterThanOrEqual(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.ILessThanComparable{Sharpy.Set`1}
+  definition: Sharpy.ILessThanComparable`1.op_GreaterThanOrEqual(`0,`0)
+  href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_GreaterThanOrEqual__0__0_
+  name: operator >=(Set<T>, Set<T>)
+  nameWithType: ILessThanComparable<Set<T>>.operator >=(Set<T>, Set<T>)
+  fullName: Sharpy.ILessThanComparable<Sharpy.Set<T>>.operator >=(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: ILessThanComparable(Of Set(Of T)).>=(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.ILessThanComparable(Of Sharpy.Set(Of T)).>=(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: '>=(Set(Of T), Set(Of T))'
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.ILessThanComparable{Sharpy.Set`1}.op_GreaterThanOrEqual(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: '>='
+    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_GreaterThanOrEqual__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: '>='
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.op_GreaterThanOrEqual(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.op_GreaterThanOrEqual(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}
+  definition: Sharpy.IGreaterThanOrEquatable`1.op_GreaterThanOrEqual(`0,`0)
+  href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1_op_GreaterThanOrEqual__0__0_
+  name: operator >=(Set<T>, Set<T>)
+  nameWithType: IGreaterThanOrEquatable<Set<T>>.operator >=(Set<T>, Set<T>)
+  fullName: Sharpy.IGreaterThanOrEquatable<Sharpy.Set<T>>.operator >=(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: IGreaterThanOrEquatable(Of Set(Of T)).>=(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of Sharpy.Set(Of T)).>=(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: '>=(Set(Of T), Set(Of T))'
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IGreaterThanOrEquatable{Sharpy.Set`1}.op_GreaterThanOrEqual(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: '>='
+    href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1_op_GreaterThanOrEqual__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: '>='
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IGreaterThanComparable{Sharpy.Set`1}.op_GreaterThanOrEqual(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.IGreaterThanComparable{Sharpy.Set`1}.op_GreaterThanOrEqual(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.IGreaterThanComparable{Sharpy.Set`1}
+  definition: Sharpy.IGreaterThanComparable`1.op_GreaterThanOrEqual(`0,`0)
+  href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1_op_GreaterThanOrEqual__0__0_
+  name: operator >=(Set<T>, Set<T>)
+  nameWithType: IGreaterThanComparable<Set<T>>.operator >=(Set<T>, Set<T>)
+  fullName: Sharpy.IGreaterThanComparable<Sharpy.Set<T>>.operator >=(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: IGreaterThanComparable(Of Set(Of T)).>=(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.IGreaterThanComparable(Of Sharpy.Set(Of T)).>=(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: '>=(Set(Of T), Set(Of T))'
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IGreaterThanComparable{Sharpy.Set`1}.op_GreaterThanOrEqual(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: '>='
+    href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1_op_GreaterThanOrEqual__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: '>='
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.ILessThanOrEquatable`1.op_GreaterThanOrEqual(`0,`0)
+  commentId: M:Sharpy.ILessThanOrEquatable`1.op_GreaterThanOrEqual(`0,`0)
+  href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1_op_GreaterThanOrEqual__0__0_
+  name: operator >=(T, T)
+  nameWithType: ILessThanOrEquatable<T>.operator >=(T, T)
+  fullName: Sharpy.ILessThanOrEquatable<T>.operator >=(T, T)
+  nameWithType.vb: ILessThanOrEquatable(Of T).>=(T, T)
+  fullName.vb: Sharpy.ILessThanOrEquatable(Of T).>=(T, T)
+  name.vb: '>=(T, T)'
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.ILessThanOrEquatable`1.op_GreaterThanOrEqual(`0,`0)
+    name: '>='
+    href: Sharpy.ILessThanOrEquatable-1.html#Sharpy_ILessThanOrEquatable_1_op_GreaterThanOrEqual__0__0_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+  spec.vb:
+  - name: '>='
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.ILessThanComparable`1.op_GreaterThanOrEqual(`0,`0)
+  commentId: M:Sharpy.ILessThanComparable`1.op_GreaterThanOrEqual(`0,`0)
+  href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_GreaterThanOrEqual__0__0_
+  name: operator >=(T, T)
+  nameWithType: ILessThanComparable<T>.operator >=(T, T)
+  fullName: Sharpy.ILessThanComparable<T>.operator >=(T, T)
+  nameWithType.vb: ILessThanComparable(Of T).>=(T, T)
+  fullName.vb: Sharpy.ILessThanComparable(Of T).>=(T, T)
+  name.vb: '>=(T, T)'
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.ILessThanComparable`1.op_GreaterThanOrEqual(`0,`0)
+    name: '>='
+    href: Sharpy.ILessThanComparable-1.html#Sharpy_ILessThanComparable_1_op_GreaterThanOrEqual__0__0_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+  spec.vb:
+  - name: '>='
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanOrEquatable`1.op_GreaterThanOrEqual(`0,`0)
+  commentId: M:Sharpy.IGreaterThanOrEquatable`1.op_GreaterThanOrEqual(`0,`0)
+  href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1_op_GreaterThanOrEqual__0__0_
+  name: operator >=(T, T)
+  nameWithType: IGreaterThanOrEquatable<T>.operator >=(T, T)
+  fullName: Sharpy.IGreaterThanOrEquatable<T>.operator >=(T, T)
+  nameWithType.vb: IGreaterThanOrEquatable(Of T).>=(T, T)
+  fullName.vb: Sharpy.IGreaterThanOrEquatable(Of T).>=(T, T)
+  name.vb: '>=(T, T)'
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IGreaterThanOrEquatable`1.op_GreaterThanOrEqual(`0,`0)
+    name: '>='
+    href: Sharpy.IGreaterThanOrEquatable-1.html#Sharpy_IGreaterThanOrEquatable_1_op_GreaterThanOrEqual__0__0_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+  spec.vb:
+  - name: '>='
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.IGreaterThanComparable`1.op_GreaterThanOrEqual(`0,`0)
+  commentId: M:Sharpy.IGreaterThanComparable`1.op_GreaterThanOrEqual(`0,`0)
+  href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1_op_GreaterThanOrEqual__0__0_
+  name: operator >=(T, T)
+  nameWithType: IGreaterThanComparable<T>.operator >=(T, T)
+  fullName: Sharpy.IGreaterThanComparable<T>.operator >=(T, T)
+  nameWithType.vb: IGreaterThanComparable(Of T).>=(T, T)
+  fullName.vb: Sharpy.IGreaterThanComparable(Of T).>=(T, T)
+  name.vb: '>=(T, T)'
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IGreaterThanComparable`1.op_GreaterThanOrEqual(`0,`0)
+    name: '>='
+    href: Sharpy.IGreaterThanComparable-1.html#Sharpy_IGreaterThanComparable_1_op_GreaterThanOrEqual__0__0_
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
+  spec.vb:
+  - name: '>='
+  - name: (
+  - name: T
+  - name: ','
+  - name: " "
+  - name: T
+  - name: )
 - uid: Sharpy.Set`1.op_BitwiseOr*
   commentId: Overload:Sharpy.Set`1.op_BitwiseOr
   href: Sharpy.Set-1.html#Sharpy_Set_1_op_BitwiseOr_Sharpy_Set__0__Sharpy_Set__0__
@@ -7791,6 +9527,90 @@ references:
   - uid: Sharpy.Set`1.op_BitwiseOr*
     name: '|'
     href: Sharpy.Set-1.html#Sharpy_Set_1_op_BitwiseOr_Sharpy_Set__0__Sharpy_Set__0__
+- uid: Sharpy.Collections.Interfaces.ISet{Sharpy.Set`1,{T}}.op_BitwiseOr(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.Collections.Interfaces.ISet{Sharpy.Set`1,`0}.op_BitwiseOr(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.Collections.Interfaces.ISet{Sharpy.Set`1,{T}}
+  definition: Sharpy.Collections.Interfaces.ISet`2.op_BitwiseOr(`0,`0)
+  href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_BitwiseOr__0__0_
+  name: operator |(Set<T>, Set<T>)
+  nameWithType: ISet<Set<T>, T>.operator |(Set<T>, Set<T>)
+  fullName: Sharpy.Collections.Interfaces.ISet<Sharpy.Set<T>, T>.operator |(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: ISet(Of Set(Of T), T).Or(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of Sharpy.Set(Of T), T).Or(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: Or(Set(Of T), Set(Of T))
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISet{Sharpy.Set`1,`0}.op_BitwiseOr(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: '|'
+    href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_BitwiseOr__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: Or
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.ISet`2.op_BitwiseOr(`0,`0)
+  commentId: M:Sharpy.Collections.Interfaces.ISet`2.op_BitwiseOr(`0,`0)
+  href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_BitwiseOr__0__0_
+  name: operator |(S, S)
+  nameWithType: ISet<S, T>.operator |(S, S)
+  fullName: Sharpy.Collections.Interfaces.ISet<S, T>.operator |(S, S)
+  nameWithType.vb: ISet(Of S, T).Or(S, S)
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of S, T).Or(S, S)
+  name.vb: Or(S, S)
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISet`2.op_BitwiseOr(`0,`0)
+    name: '|'
+    href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_BitwiseOr__0__0_
+  - name: (
+  - name: S
+  - name: ','
+  - name: " "
+  - name: S
+  - name: )
+  spec.vb:
+  - name: Or
+  - name: (
+  - name: S
+  - name: ','
+  - name: " "
+  - name: S
+  - name: )
 - uid: Sharpy.Set`1.op_BitwiseAnd*
   commentId: Overload:Sharpy.Set`1.op_BitwiseAnd
   href: Sharpy.Set-1.html#Sharpy_Set_1_op_BitwiseAnd_Sharpy_Set__0__Sharpy_Set__0__
@@ -7806,6 +9626,90 @@ references:
   - uid: Sharpy.Set`1.op_BitwiseAnd*
     name: '&'
     href: Sharpy.Set-1.html#Sharpy_Set_1_op_BitwiseAnd_Sharpy_Set__0__Sharpy_Set__0__
+- uid: Sharpy.Collections.Interfaces.ISet{Sharpy.Set`1,{T}}.op_BitwiseAnd(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.Collections.Interfaces.ISet{Sharpy.Set`1,`0}.op_BitwiseAnd(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.Collections.Interfaces.ISet{Sharpy.Set`1,{T}}
+  definition: Sharpy.Collections.Interfaces.ISet`2.op_BitwiseAnd(`0,`0)
+  href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_BitwiseAnd__0__0_
+  name: operator &(Set<T>, Set<T>)
+  nameWithType: ISet<Set<T>, T>.operator &(Set<T>, Set<T>)
+  fullName: Sharpy.Collections.Interfaces.ISet<Sharpy.Set<T>, T>.operator &(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: ISet(Of Set(Of T), T).And(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of Sharpy.Set(Of T), T).And(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: And(Set(Of T), Set(Of T))
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISet{Sharpy.Set`1,`0}.op_BitwiseAnd(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: '&'
+    href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_BitwiseAnd__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: And
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.ISet`2.op_BitwiseAnd(`0,`0)
+  commentId: M:Sharpy.Collections.Interfaces.ISet`2.op_BitwiseAnd(`0,`0)
+  href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_BitwiseAnd__0__0_
+  name: operator &(S, S)
+  nameWithType: ISet<S, T>.operator &(S, S)
+  fullName: Sharpy.Collections.Interfaces.ISet<S, T>.operator &(S, S)
+  nameWithType.vb: ISet(Of S, T).And(S, S)
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of S, T).And(S, S)
+  name.vb: And(S, S)
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISet`2.op_BitwiseAnd(`0,`0)
+    name: '&'
+    href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_BitwiseAnd__0__0_
+  - name: (
+  - name: S
+  - name: ','
+  - name: " "
+  - name: S
+  - name: )
+  spec.vb:
+  - name: And
+  - name: (
+  - name: S
+  - name: ','
+  - name: " "
+  - name: S
+  - name: )
 - uid: Sharpy.Set`1.op_ExclusiveOr*
   commentId: Overload:Sharpy.Set`1.op_ExclusiveOr
   href: Sharpy.Set-1.html#Sharpy_Set_1_op_ExclusiveOr_Sharpy_Set__0__Sharpy_Set__0__
@@ -7821,6 +9725,90 @@ references:
   - uid: Sharpy.Set`1.op_ExclusiveOr*
     name: ^
     href: Sharpy.Set-1.html#Sharpy_Set_1_op_ExclusiveOr_Sharpy_Set__0__Sharpy_Set__0__
+- uid: Sharpy.Collections.Interfaces.ISet{Sharpy.Set`1,{T}}.op_ExclusiveOr(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.Collections.Interfaces.ISet{Sharpy.Set`1,`0}.op_ExclusiveOr(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.Collections.Interfaces.ISet{Sharpy.Set`1,{T}}
+  definition: Sharpy.Collections.Interfaces.ISet`2.op_ExclusiveOr(`0,`0)
+  href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_ExclusiveOr__0__0_
+  name: operator ^(Set<T>, Set<T>)
+  nameWithType: ISet<Set<T>, T>.operator ^(Set<T>, Set<T>)
+  fullName: Sharpy.Collections.Interfaces.ISet<Sharpy.Set<T>, T>.operator ^(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: ISet(Of Set(Of T), T).Xor(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of Sharpy.Set(Of T), T).Xor(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: Xor(Set(Of T), Set(Of T))
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISet{Sharpy.Set`1,`0}.op_ExclusiveOr(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: ^
+    href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_ExclusiveOr__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: Xor
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.ISet`2.op_ExclusiveOr(`0,`0)
+  commentId: M:Sharpy.Collections.Interfaces.ISet`2.op_ExclusiveOr(`0,`0)
+  href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_ExclusiveOr__0__0_
+  name: operator ^(S, S)
+  nameWithType: ISet<S, T>.operator ^(S, S)
+  fullName: Sharpy.Collections.Interfaces.ISet<S, T>.operator ^(S, S)
+  nameWithType.vb: ISet(Of S, T).Xor(S, S)
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of S, T).Xor(S, S)
+  name.vb: Xor(S, S)
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISet`2.op_ExclusiveOr(`0,`0)
+    name: ^
+    href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_ExclusiveOr__0__0_
+  - name: (
+  - name: S
+  - name: ','
+  - name: " "
+  - name: S
+  - name: )
+  spec.vb:
+  - name: Xor
+  - name: (
+  - name: S
+  - name: ','
+  - name: " "
+  - name: S
+  - name: )
 - uid: Sharpy.Set`1.op_Subtraction*
   commentId: Overload:Sharpy.Set`1.op_Subtraction
   href: Sharpy.Set-1.html#Sharpy_Set_1_op_Subtraction_Sharpy_Set__0__Sharpy_Set__0__
@@ -7836,6 +9824,90 @@ references:
   - uid: Sharpy.Set`1.op_Subtraction*
     name: '-'
     href: Sharpy.Set-1.html#Sharpy_Set_1_op_Subtraction_Sharpy_Set__0__Sharpy_Set__0__
+- uid: Sharpy.Collections.Interfaces.ISet{Sharpy.Set`1,{T}}.op_Subtraction(Sharpy.Set{{T}},Sharpy.Set{{T}})
+  commentId: M:Sharpy.Collections.Interfaces.ISet{Sharpy.Set`1,`0}.op_Subtraction(Sharpy.Set{`0},Sharpy.Set{`0})
+  parent: Sharpy.Collections.Interfaces.ISet{Sharpy.Set`1,{T}}
+  definition: Sharpy.Collections.Interfaces.ISet`2.op_Subtraction(`0,`0)
+  href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_Subtraction__0__0_
+  name: operator -(Set<T>, Set<T>)
+  nameWithType: ISet<Set<T>, T>.operator -(Set<T>, Set<T>)
+  fullName: Sharpy.Collections.Interfaces.ISet<Sharpy.Set<T>, T>.operator -(Sharpy.Set<T>, Sharpy.Set<T>)
+  nameWithType.vb: ISet(Of Set(Of T), T).-(Set(Of T), Set(Of T))
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of Sharpy.Set(Of T), T).-(Sharpy.Set(Of T), Sharpy.Set(Of T))
+  name.vb: -(Set(Of T), Set(Of T))
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISet{Sharpy.Set`1,`0}.op_Subtraction(Sharpy.Set{`0},Sharpy.Set{`0})
+    name: '-'
+    href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_Subtraction__0__0_
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: '-'
+  - name: (
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Set`1
+    name: Set
+    href: Sharpy.Set-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.Collections.Interfaces.ISet`2.op_Subtraction(`0,`0)
+  commentId: M:Sharpy.Collections.Interfaces.ISet`2.op_Subtraction(`0,`0)
+  href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_Subtraction__0__0_
+  name: operator -(S, S)
+  nameWithType: ISet<S, T>.operator -(S, S)
+  fullName: Sharpy.Collections.Interfaces.ISet<S, T>.operator -(S, S)
+  nameWithType.vb: ISet(Of S, T).-(S, S)
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of S, T).-(S, S)
+  name.vb: -(S, S)
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISet`2.op_Subtraction(`0,`0)
+    name: '-'
+    href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_Subtraction__0__0_
+  - name: (
+  - name: S
+  - name: ','
+  - name: " "
+  - name: S
+  - name: )
+  spec.vb:
+  - name: '-'
+  - name: (
+  - name: S
+  - name: ','
+  - name: " "
+  - name: S
+  - name: )
 - uid: Sharpy.Set`1.op_True*
   commentId: Overload:Sharpy.Set`1.op_True
   name: operator true

@@ -28,11 +28,11 @@ items:
   - Sharpy
   namespace: Sharpy.Collections.Interfaces
   syntax:
-    content: 'public interface IMutableSequence<S, T> : IMutableSequence<T>, IInplaceAddable<ISequence<T>>, ISequence<S, T>, ISequence<T>, ICollection<T>, IContainer<T>, ISized, IReversible<T>, IIterable<T>, IEnumerable<T>, IEnumerable, IAddable<ISequence<T>>, IAddable<ISequence<T>, ISequence<T>>, IRightAddable<ISequence<T>>, IRightAddable<ISequence<T>, ISequence<T>>'
+    content: 'public interface IMutableSequence<S, T> : IMutableSequence<T>, IInplaceAddable<ISequence<T>>, ISequence<S, T>, ISequence<T>, ICollection<T>, IContainer<T>, ISized, IReversible<T>, IIterable<T>, IEnumerable<T>, IEnumerable, IAddable<ISequence<T>>, IAddable<ISequence<T>, ISequence<T>, ISequence<T>>, IRightAddable<ISequence<T>>, IRightAddable<ISequence<T>, ISequence<T>>'
     typeParameters:
     - id: S
     - id: T
-    content.vb: Public Interface IMutableSequence(Of S, T) Inherits IMutableSequence(Of T), IInplaceAddable(Of ISequence(Of T)), ISequence(Of S, T), ISequence(Of T), ICollection(Of T), IContainer(Of T), ISized, IReversible(Of T), IIterable(Of T), IEnumerable(Of T), IEnumerable, IAddable(Of ISequence(Of T)), IAddable(Of ISequence(Of T), ISequence(Of T)), IRightAddable(Of ISequence(Of T)), IRightAddable(Of ISequence(Of T), ISequence(Of T))
+    content.vb: Public Interface IMutableSequence(Of S, T) Inherits IMutableSequence(Of T), IInplaceAddable(Of ISequence(Of T)), ISequence(Of S, T), ISequence(Of T), ICollection(Of T), IContainer(Of T), ISized, IReversible(Of T), IIterable(Of T), IEnumerable(Of T), IEnumerable, IAddable(Of ISequence(Of T)), IAddable(Of ISequence(Of T), ISequence(Of T), ISequence(Of T)), IRightAddable(Of ISequence(Of T)), IRightAddable(Of ISequence(Of T), ISequence(Of T))
   inheritedMembers:
   - Sharpy.Collections.Interfaces.IMutableSequence{{T}}.Append({T})
   - Sharpy.Collections.Interfaces.IMutableSequence{{T}}.Extend(System.Collections.Generic.IEnumerable{{T}})
@@ -56,10 +56,12 @@ items:
   - Sharpy.Collections.Interfaces.IContainer{{T}}.__Contains__({T})
   - Sharpy.Collections.Interfaces.IContainer{{T}}.Contains({T})
   - Sharpy.Collections.Interfaces.ISized.__Len__
+  - Sharpy.Collections.Interfaces.ISized.Length
+  - Sharpy.Collections.Interfaces.ISized.Count
   - Sharpy.Collections.Interfaces.IReversible{{T}}.__Reversed__
   - Sharpy.Collections.Interfaces.IIterable{{T}}.__Iter__
   - System.Collections.Generic.IEnumerable{{T}}.GetEnumerator
-  - Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}.__Add__(Sharpy.Collections.Interfaces.ISequence{{T}})
+  - Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}.__Add__(Sharpy.Collections.Interfaces.ISequence{{T}})
   - Sharpy.IRightAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}.__RAdd__(Sharpy.Collections.Interfaces.ISequence{{T}})
   nameWithType.vb: IMutableSequence(Of S, T)
   fullName.vb: Sharpy.Collections.Interfaces.IMutableSequence(Of S, T)
@@ -952,6 +954,20 @@ references:
     href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized___Len__
   - name: (
   - name: )
+- uid: Sharpy.Collections.Interfaces.ISized.Length
+  commentId: P:Sharpy.Collections.Interfaces.ISized.Length
+  parent: Sharpy.Collections.Interfaces.ISized
+  href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized_Length
+  name: Length
+  nameWithType: ISized.Length
+  fullName: Sharpy.Collections.Interfaces.ISized.Length
+- uid: Sharpy.Collections.Interfaces.ISized.Count
+  commentId: P:Sharpy.Collections.Interfaces.ISized.Count
+  parent: Sharpy.Collections.Interfaces.ISized
+  href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized_Count
+  name: Count
+  nameWithType: ISized.Count
+  fullName: Sharpy.Collections.Interfaces.ISized.Count
 - uid: Sharpy.Collections.Interfaces.IReversible{{T}}.__Reversed__
   commentId: M:Sharpy.Collections.Interfaces.IReversible{`0}.__Reversed__
   parent: Sharpy.Collections.Interfaces.IReversible{{T}}
@@ -1020,21 +1036,21 @@ references:
     href: https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1.getenumerator
   - name: (
   - name: )
-- uid: Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}.__Add__(Sharpy.Collections.Interfaces.ISequence{{T}})
-  commentId: M:Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}.__Add__(Sharpy.Collections.Interfaces.ISequence{`0})
-  parent: Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
-  definition: Sharpy.IAddable`2.__Add__(`1)
-  href: Sharpy.IAddable-2.html#Sharpy_IAddable_2___Add____1_
+- uid: Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}.__Add__(Sharpy.Collections.Interfaces.ISequence{{T}})
+  commentId: M:Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}.__Add__(Sharpy.Collections.Interfaces.ISequence{`0})
+  parent: Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
+  definition: Sharpy.IAddable`3.__Add__(`1)
+  href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
   name: __Add__(ISequence<T>)
-  nameWithType: IAddable<ISequence<T>, ISequence<T>>.__Add__(ISequence<T>)
-  fullName: Sharpy.IAddable<Sharpy.Collections.Interfaces.ISequence<T>, Sharpy.Collections.Interfaces.ISequence<T>>.__Add__(Sharpy.Collections.Interfaces.ISequence<T>)
-  nameWithType.vb: IAddable(Of ISequence(Of T), ISequence(Of T)).__Add__(ISequence(Of T))
-  fullName.vb: Sharpy.IAddable(Of Sharpy.Collections.Interfaces.ISequence(Of T), Sharpy.Collections.Interfaces.ISequence(Of T)).__Add__(Sharpy.Collections.Interfaces.ISequence(Of T))
+  nameWithType: IAddable<ISequence<T>, ISequence<T>, ISequence<T>>.__Add__(ISequence<T>)
+  fullName: Sharpy.IAddable<Sharpy.Collections.Interfaces.ISequence<T>, Sharpy.Collections.Interfaces.ISequence<T>, Sharpy.Collections.Interfaces.ISequence<T>>.__Add__(Sharpy.Collections.Interfaces.ISequence<T>)
+  nameWithType.vb: IAddable(Of ISequence(Of T), ISequence(Of T), ISequence(Of T)).__Add__(ISequence(Of T))
+  fullName.vb: Sharpy.IAddable(Of Sharpy.Collections.Interfaces.ISequence(Of T), Sharpy.Collections.Interfaces.ISequence(Of T), Sharpy.Collections.Interfaces.ISequence(Of T)).__Add__(Sharpy.Collections.Interfaces.ISequence(Of T))
   name.vb: __Add__(ISequence(Of T))
   spec.csharp:
-  - uid: Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}.__Add__(Sharpy.Collections.Interfaces.ISequence{`0})
+  - uid: Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}.__Add__(Sharpy.Collections.Interfaces.ISequence{`0})
     name: __Add__
-    href: Sharpy.IAddable-2.html#Sharpy_IAddable_2___Add____1_
+    href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
   - name: (
   - uid: Sharpy.Collections.Interfaces.ISequence`1
     name: ISequence
@@ -1044,9 +1060,9 @@ references:
   - name: '>'
   - name: )
   spec.vb:
-  - uid: Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}.__Add__(Sharpy.Collections.Interfaces.ISequence{`0})
+  - uid: Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}.__Add__(Sharpy.Collections.Interfaces.ISequence{`0})
     name: __Add__
-    href: Sharpy.IAddable-2.html#Sharpy_IAddable_2___Add____1_
+    href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
   - name: (
   - uid: Sharpy.Collections.Interfaces.ISequence`1
     name: ISequence
@@ -2035,44 +2051,52 @@ references:
   - name: " "
   - name: T
   - name: )
-- uid: Sharpy.IAddable`2.__Add__(`1)
-  commentId: M:Sharpy.IAddable`2.__Add__(`1)
-  href: Sharpy.IAddable-2.html#Sharpy_IAddable_2___Add____1_
-  name: __Add__(U)
-  nameWithType: IAddable<T, U>.__Add__(U)
-  fullName: Sharpy.IAddable<T, U>.__Add__(U)
-  nameWithType.vb: IAddable(Of T, U).__Add__(U)
-  fullName.vb: Sharpy.IAddable(Of T, U).__Add__(U)
+- uid: Sharpy.IAddable`3.__Add__(`1)
+  commentId: M:Sharpy.IAddable`3.__Add__(`1)
+  href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
+  name: __Add__(TRight)
+  nameWithType: IAddable<TLeft, TRight, TSum>.__Add__(TRight)
+  fullName: Sharpy.IAddable<TLeft, TRight, TSum>.__Add__(TRight)
+  nameWithType.vb: IAddable(Of TLeft, TRight, TSum).__Add__(TRight)
+  fullName.vb: Sharpy.IAddable(Of TLeft, TRight, TSum).__Add__(TRight)
   spec.csharp:
-  - uid: Sharpy.IAddable`2.__Add__(`1)
+  - uid: Sharpy.IAddable`3.__Add__(`1)
     name: __Add__
-    href: Sharpy.IAddable-2.html#Sharpy_IAddable_2___Add____1_
+    href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
   - name: (
-  - name: U
+  - name: TRight
   - name: )
   spec.vb:
-  - uid: Sharpy.IAddable`2.__Add__(`1)
+  - uid: Sharpy.IAddable`3.__Add__(`1)
     name: __Add__
-    href: Sharpy.IAddable-2.html#Sharpy_IAddable_2___Add____1_
+    href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
   - name: (
-  - name: U
+  - name: TRight
   - name: )
-- uid: Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
-  commentId: T:Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}
+- uid: Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
+  commentId: T:Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}
   parent: Sharpy
-  definition: Sharpy.IAddable`2
-  href: Sharpy.IAddable-2.html
-  name: IAddable<ISequence<T>, ISequence<T>>
-  nameWithType: IAddable<ISequence<T>, ISequence<T>>
-  fullName: Sharpy.IAddable<Sharpy.Collections.Interfaces.ISequence<T>, Sharpy.Collections.Interfaces.ISequence<T>>
-  nameWithType.vb: IAddable(Of ISequence(Of T), ISequence(Of T))
-  fullName.vb: Sharpy.IAddable(Of Sharpy.Collections.Interfaces.ISequence(Of T), Sharpy.Collections.Interfaces.ISequence(Of T))
-  name.vb: IAddable(Of ISequence(Of T), ISequence(Of T))
+  definition: Sharpy.IAddable`3
+  href: Sharpy.IAddable-3.html
+  name: IAddable<ISequence<T>, ISequence<T>, ISequence<T>>
+  nameWithType: IAddable<ISequence<T>, ISequence<T>, ISequence<T>>
+  fullName: Sharpy.IAddable<Sharpy.Collections.Interfaces.ISequence<T>, Sharpy.Collections.Interfaces.ISequence<T>, Sharpy.Collections.Interfaces.ISequence<T>>
+  nameWithType.vb: IAddable(Of ISequence(Of T), ISequence(Of T), ISequence(Of T))
+  fullName.vb: Sharpy.IAddable(Of Sharpy.Collections.Interfaces.ISequence(Of T), Sharpy.Collections.Interfaces.ISequence(Of T), Sharpy.Collections.Interfaces.ISequence(Of T))
+  name.vb: IAddable(Of ISequence(Of T), ISequence(Of T), ISequence(Of T))
   spec.csharp:
-  - uid: Sharpy.IAddable`2
+  - uid: Sharpy.IAddable`3
     name: IAddable
-    href: Sharpy.IAddable-2.html
+    href: Sharpy.IAddable-3.html
   - name: <
+  - uid: Sharpy.Collections.Interfaces.ISequence`1
+    name: ISequence
+    href: Sharpy.Collections.Interfaces.ISequence-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
   - uid: Sharpy.Collections.Interfaces.ISequence`1
     name: ISequence
     href: Sharpy.Collections.Interfaces.ISequence-1.html
@@ -2089,11 +2113,21 @@ references:
   - name: '>'
   - name: '>'
   spec.vb:
-  - uid: Sharpy.IAddable`2
+  - uid: Sharpy.IAddable`3
     name: IAddable
-    href: Sharpy.IAddable-2.html
+    href: Sharpy.IAddable-3.html
   - name: (
   - name: Of
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISequence`1
+    name: ISequence
+    href: Sharpy.Collections.Interfaces.ISequence-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
   - name: " "
   - uid: Sharpy.Collections.Interfaces.ISequence`1
     name: ISequence
@@ -2117,24 +2151,24 @@ references:
 - uid: Sharpy.IRightAddable`2.__RAdd__(`1)
   commentId: M:Sharpy.IRightAddable`2.__RAdd__(`1)
   href: Sharpy.IRightAddable-2.html#Sharpy_IRightAddable_2___RAdd____1_
-  name: __RAdd__(U)
-  nameWithType: IRightAddable<T, U>.__RAdd__(U)
-  fullName: Sharpy.IRightAddable<T, U>.__RAdd__(U)
-  nameWithType.vb: IRightAddable(Of T, U).__RAdd__(U)
-  fullName.vb: Sharpy.IRightAddable(Of T, U).__RAdd__(U)
+  name: __RAdd__(TAugend)
+  nameWithType: IRightAddable<TSum, TAugend>.__RAdd__(TAugend)
+  fullName: Sharpy.IRightAddable<TSum, TAugend>.__RAdd__(TAugend)
+  nameWithType.vb: IRightAddable(Of TSum, TAugend).__RAdd__(TAugend)
+  fullName.vb: Sharpy.IRightAddable(Of TSum, TAugend).__RAdd__(TAugend)
   spec.csharp:
   - uid: Sharpy.IRightAddable`2.__RAdd__(`1)
     name: __RAdd__
     href: Sharpy.IRightAddable-2.html#Sharpy_IRightAddable_2___RAdd____1_
   - name: (
-  - name: U
+  - name: TAugend
   - name: )
   spec.vb:
   - uid: Sharpy.IRightAddable`2.__RAdd__(`1)
     name: __RAdd__
     href: Sharpy.IRightAddable-2.html#Sharpy_IRightAddable_2___RAdd____1_
   - name: (
-  - name: U
+  - name: TAugend
   - name: )
 - uid: Sharpy.IRightAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
   commentId: T:Sharpy.IRightAddable{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}
@@ -2447,55 +2481,61 @@ references:
     name: Generic
     isExternal: true
     href: https://learn.microsoft.com/dotnet/api/system.collections.generic
-- uid: Sharpy.IAddable`2
-  commentId: T:Sharpy.IAddable`2
-  href: Sharpy.IAddable-2.html
-  name: IAddable<T, U>
-  nameWithType: IAddable<T, U>
-  fullName: Sharpy.IAddable<T, U>
-  nameWithType.vb: IAddable(Of T, U)
-  fullName.vb: Sharpy.IAddable(Of T, U)
-  name.vb: IAddable(Of T, U)
+- uid: Sharpy.IAddable`3
+  commentId: T:Sharpy.IAddable`3
+  href: Sharpy.IAddable-3.html
+  name: IAddable<TLeft, TRight, TSum>
+  nameWithType: IAddable<TLeft, TRight, TSum>
+  fullName: Sharpy.IAddable<TLeft, TRight, TSum>
+  nameWithType.vb: IAddable(Of TLeft, TRight, TSum)
+  fullName.vb: Sharpy.IAddable(Of TLeft, TRight, TSum)
+  name.vb: IAddable(Of TLeft, TRight, TSum)
   spec.csharp:
-  - uid: Sharpy.IAddable`2
+  - uid: Sharpy.IAddable`3
     name: IAddable
-    href: Sharpy.IAddable-2.html
+    href: Sharpy.IAddable-3.html
   - name: <
-  - name: T
+  - name: TLeft
   - name: ','
   - name: " "
-  - name: U
+  - name: TRight
+  - name: ','
+  - name: " "
+  - name: TSum
   - name: '>'
   spec.vb:
-  - uid: Sharpy.IAddable`2
+  - uid: Sharpy.IAddable`3
     name: IAddable
-    href: Sharpy.IAddable-2.html
+    href: Sharpy.IAddable-3.html
   - name: (
   - name: Of
   - name: " "
-  - name: T
+  - name: TLeft
   - name: ','
   - name: " "
-  - name: U
+  - name: TRight
+  - name: ','
+  - name: " "
+  - name: TSum
   - name: )
 - uid: Sharpy.IRightAddable`2
   commentId: T:Sharpy.IRightAddable`2
   href: Sharpy.IRightAddable-2.html
-  name: IRightAddable<T, U>
-  nameWithType: IRightAddable<T, U>
-  fullName: Sharpy.IRightAddable<T, U>
-  nameWithType.vb: IRightAddable(Of T, U)
-  fullName.vb: Sharpy.IRightAddable(Of T, U)
-  name.vb: IRightAddable(Of T, U)
+  name: IRightAddable<TSum, TAugend>
+  nameWithType: IRightAddable<TSum, TAugend>
+  fullName: Sharpy.IRightAddable<TSum, TAugend>
+  nameWithType.vb: IRightAddable(Of TSum, TAugend)
+  fullName.vb: Sharpy.IRightAddable(Of TSum, TAugend)
+  name.vb: IRightAddable(Of TSum, TAugend)
   spec.csharp:
   - uid: Sharpy.IRightAddable`2
     name: IRightAddable
     href: Sharpy.IRightAddable-2.html
   - name: <
-  - name: T
+  - name: TSum
   - name: ','
   - name: " "
-  - name: U
+  - name: TAugend
   - name: '>'
   spec.vb:
   - uid: Sharpy.IRightAddable`2
@@ -2504,10 +2544,10 @@ references:
   - name: (
   - name: Of
   - name: " "
-  - name: T
+  - name: TSum
   - name: ','
   - name: " "
-  - name: U
+  - name: TAugend
   - name: )
 - uid: Sharpy.IndexError
   commentId: T:Sharpy.IndexError

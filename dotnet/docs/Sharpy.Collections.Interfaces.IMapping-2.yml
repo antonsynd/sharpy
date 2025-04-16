@@ -46,6 +46,8 @@ items:
   - Sharpy.Collections.Interfaces.IIterable{{K}}.__Iter__
   - System.Collections.Generic.IEnumerable{{K}}.GetEnumerator
   - Sharpy.Collections.Interfaces.ISized.__Len__
+  - Sharpy.Collections.Interfaces.ISized.Length
+  - Sharpy.Collections.Interfaces.ISized.Count
   nameWithType.vb: IMapping(Of K, V)
   fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of K, V)
   name.vb: IMapping(Of K, V)
@@ -536,6 +538,20 @@ references:
     href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized___Len__
   - name: (
   - name: )
+- uid: Sharpy.Collections.Interfaces.ISized.Length
+  commentId: P:Sharpy.Collections.Interfaces.ISized.Length
+  parent: Sharpy.Collections.Interfaces.ISized
+  href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized_Length
+  name: Length
+  nameWithType: ISized.Length
+  fullName: Sharpy.Collections.Interfaces.ISized.Length
+- uid: Sharpy.Collections.Interfaces.ISized.Count
+  commentId: P:Sharpy.Collections.Interfaces.ISized.Count
+  parent: Sharpy.Collections.Interfaces.ISized
+  href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized_Count
+  name: Count
+  nameWithType: ISized.Count
+  fullName: Sharpy.Collections.Interfaces.ISized.Count
 - uid: Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
   commentId: M:Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
   href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1___Contains____0_

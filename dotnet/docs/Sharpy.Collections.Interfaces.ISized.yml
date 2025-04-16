@@ -5,6 +5,8 @@ items:
   id: ISized
   parent: Sharpy.Collections.Interfaces
   children:
+  - Sharpy.Collections.Interfaces.ISized.Count
+  - Sharpy.Collections.Interfaces.ISized.Length
   - Sharpy.Collections.Interfaces.ISized.__Len__
   langs:
   - csharp
@@ -59,6 +61,64 @@ items:
       type: System.UInt32
     content.vb: Function __Len__() As UInteger
   overload: Sharpy.Collections.Interfaces.ISized.__Len__*
+- uid: Sharpy.Collections.Interfaces.ISized.Length
+  commentId: P:Sharpy.Collections.Interfaces.ISized.Length
+  id: Length
+  parent: Sharpy.Collections.Interfaces.ISized
+  langs:
+  - csharp
+  - vb
+  name: Length
+  nameWithType: ISized.Length
+  fullName: Sharpy.Collections.Interfaces.ISized.Length
+  type: Property
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Collections/Interfaces/ISized.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Length
+    path: ../src/Sharpy/Collections/Interfaces/ISized.cs
+    startLine: 12
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Collections.Interfaces
+  syntax:
+    content: int Length { get; }
+    parameters: []
+    return:
+      type: System.Int32
+    content.vb: ReadOnly Property Length As Integer
+  overload: Sharpy.Collections.Interfaces.ISized.Length*
+- uid: Sharpy.Collections.Interfaces.ISized.Count
+  commentId: P:Sharpy.Collections.Interfaces.ISized.Count
+  id: Count
+  parent: Sharpy.Collections.Interfaces.ISized
+  langs:
+  - csharp
+  - vb
+  name: Count
+  nameWithType: ISized.Count
+  fullName: Sharpy.Collections.Interfaces.ISized.Count
+  type: Property
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Collections/Interfaces/ISized.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Count
+    path: ../src/Sharpy/Collections/Interfaces/ISized.cs
+    startLine: 20
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Collections.Interfaces
+  syntax:
+    content: int Count { get; }
+    parameters: []
+    return:
+      type: System.Int32
+    content.vb: ReadOnly Property Count As Integer
+  overload: Sharpy.Collections.Interfaces.ISized.Count*
 references:
 - uid: Sharpy.Collections.Interfaces.ISized.__Len__
   commentId: M:Sharpy.Collections.Interfaces.ISized.__Len__
@@ -140,3 +200,26 @@ references:
   name: System
   nameWithType: System
   fullName: System
+- uid: Sharpy.Collections.Interfaces.ISized.Length*
+  commentId: Overload:Sharpy.Collections.Interfaces.ISized.Length
+  href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized_Length
+  name: Length
+  nameWithType: ISized.Length
+  fullName: Sharpy.Collections.Interfaces.ISized.Length
+- uid: System.Int32
+  commentId: T:System.Int32
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.int32
+  name: int
+  nameWithType: int
+  fullName: int
+  nameWithType.vb: Integer
+  fullName.vb: Integer
+  name.vb: Integer
+- uid: Sharpy.Collections.Interfaces.ISized.Count*
+  commentId: Overload:Sharpy.Collections.Interfaces.ISized.Count
+  href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized_Count
+  name: Count
+  nameWithType: ISized.Count
+  fullName: Sharpy.Collections.Interfaces.ISized.Count
