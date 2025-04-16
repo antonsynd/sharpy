@@ -1,9 +1,12 @@
 namespace Sharpy;
 
-public interface IGreaterThanOrEquatable<T> : IGreaterThanComparable<T>, IEquatable<T> where T : IGreaterThanOrEquatable<T>
+public interface IGreaterThanOrEquatableWith<T> : IGreaterThanComparableWith<T>, IEquatableWith<T>
 {
     bool __Ge__(T other);
+}
 
+public interface IGreaterThanOrEquatable<T> : IGreaterThanOrEquatableWith<T>, IGreaterThanComparable<T>, IEquatable<T> where T : IGreaterThanOrEquatable<T>
+{
     static virtual bool operator >=(T left, T right)
     {
         if (left is null || right is null)

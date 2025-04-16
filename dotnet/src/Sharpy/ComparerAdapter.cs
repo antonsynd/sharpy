@@ -6,24 +6,24 @@ internal static class ComparerAdapter<T>
 
     private static IComparer<T> CreateComparer()
     {
-        if (typeof(ILessThanOrEquatable<T>).IsAssignableFrom(typeof(T)) ||
-        (typeof(ILessThanComparable<T>).IsAssignableFrom(typeof(T)) && typeof(IEquatable<T>).IsAssignableFrom(typeof(T))))
+        if (typeof(ILessThanOrEquatableWith<T>).IsAssignableFrom(typeof(T)) ||
+        (typeof(ILessThanComparableWith<T>).IsAssignableFrom(typeof(T)) && typeof(IEquatableWith<T>).IsAssignableFrom(typeof(T))))
         {
             return new LessThanOrEquatableComparer();
         }
 
-        if (typeof(IGreaterThanOrEquatable<T>).IsAssignableFrom(typeof(T)) ||
-        (typeof(IGreaterThanComparable<T>).IsAssignableFrom(typeof(T)) && typeof(IEquatable<T>).IsAssignableFrom(typeof(T))))
+        if (typeof(IGreaterThanOrEquatableWith<T>).IsAssignableFrom(typeof(T)) ||
+        (typeof(IGreaterThanComparableWith<T>).IsAssignableFrom(typeof(T)) && typeof(IEquatableWith<T>).IsAssignableFrom(typeof(T))))
         {
             return new GreaterThanOrEquatableComparer();
         }
 
-        if (typeof(ILessThanComparable<T>).IsAssignableFrom(typeof(T)))
+        if (typeof(ILessThanComparableWith<T>).IsAssignableFrom(typeof(T)))
         {
             return new LessThanComparableComparer();
         }
 
-        if (typeof(IGreaterThanComparable<T>).IsAssignableFrom(typeof(T)))
+        if (typeof(IGreaterThanComparableWith<T>).IsAssignableFrom(typeof(T)))
         {
             return new GreaterThanComparableComparer();
         }
@@ -57,7 +57,7 @@ internal static class ComparerAdapter<T>
                 throw new TypeError("'<' not supported for instances of 'NoneType'");
             }
 
-            var xlt = (ILessThanComparable<T>)x;
+            var xlt = (ILessThanComparableWith<T>)x;
 
             // x is less than y
             if (xlt.__Lt__(y))
@@ -65,7 +65,7 @@ internal static class ComparerAdapter<T>
                 return -1;
             }
 
-            var ylt = (ILessThanComparable<T>)y;
+            var ylt = (ILessThanComparableWith<T>)y;
 
             // y is less than x, so x is greater than y
             if (ylt.__Lt__(x))
@@ -94,8 +94,8 @@ internal static class ComparerAdapter<T>
                 throw new TypeError("'<' not supported for instances of 'NoneType'");
             }
 
-            var xeq = (IEquatable<T>)x;
-            var xlt = (ILessThanComparable<T>)x;
+            var xeq = (IEquatableWith<T>)x;
+            var xlt = (ILessThanComparableWith<T>)x;
 
             // Both are equal
             if (xeq.__Eq__(y))
@@ -130,7 +130,7 @@ internal static class ComparerAdapter<T>
                 throw new TypeError("'>' not supported for instances of 'NoneType'");
             }
 
-            var xgt = (IGreaterThanComparable<T>)x;
+            var xgt = (IGreaterThanComparableWith<T>)x;
 
             // x is greater than y
             if (xgt.__Gt__(y))
@@ -138,7 +138,7 @@ internal static class ComparerAdapter<T>
                 return -1;
             }
 
-            var ygt = (IGreaterThanComparable<T>)y;
+            var ygt = (IGreaterThanComparableWith<T>)y;
 
             // y is greater than x, so x is less than y
             if (ygt.__Gt__(x))
@@ -166,8 +166,8 @@ internal static class ComparerAdapter<T>
                 throw new TypeError("'>' not supported for instances of 'NoneType'");
             }
 
-            var xeq = (IEquatable<T>)x;
-            var xlt = (IGreaterThanComparable<T>)x;
+            var xeq = (IEquatableWith<T>)x;
+            var xlt = (IGreaterThanComparableWith<T>)x;
 
             // Both are equal
             if (xeq.__Eq__(y))

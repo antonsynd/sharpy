@@ -2,7 +2,7 @@ namespace Sharpy.Operator;
 
 public static partial class Exports
 {
-    public static bool Lt<T>(T left, T right) where T : ILessThanComparable<T>
+    public static bool Lt<T>(ILessThanComparableWith<T> left, T right)
     {
         if (ReferenceEquals(left, right))
         {

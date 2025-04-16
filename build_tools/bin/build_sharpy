@@ -126,10 +126,12 @@ def get_targets(args: argparse.Namespace) -> AbstractSet[str]:
 def build(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
     check_for_expected_resources()
 
-    if args.project in {"all", "lib"}:
+    argdict: Mapping[str, str] = vars(args)
+
+    if "project" not in argdict or argdict["project"] in {"all", "lib"}:
         build_lib(release=release)
 
-    if args.project in {"all", "tests"}:
+    if "project" not in argdict or argdict["project"] in {"all", "tests"}:
         build_tests(release=release)
 
 

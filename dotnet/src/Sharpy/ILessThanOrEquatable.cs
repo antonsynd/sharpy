@@ -1,14 +1,17 @@
 namespace Sharpy;
 
-public interface ILessThanOrEquatable<T> : ILessThanComparable<T>, IEquatable<T> where T : ILessThanOrEquatable<T>
+public interface ILessThanOrEquatableWith<T> : ILessThanComparableWith<T>
 {
     bool __Le__(T other);
+}
 
+public interface ILessThanOrEquatable<T> : ILessThanOrEquatableWith<T>, ILessThanComparable<T>, IEquatable<T> where T : ILessThanOrEquatable<T>
+{
     static virtual bool operator <=(T left, T right)
     {
         if (left is null || right is null)
         {
-            throw new TypeError("'<' is not supported for objects of 'NoneType'");
+            throw TypeError.OpNotSupported("<", "NoneType");
         }
 
         return left.__Le__(right);
@@ -23,7 +26,7 @@ public interface ILessThanOrEquatable<T> : ILessThanComparable<T>, IEquatable<T>
     {
         if (left is null || right is null)
         {
-            throw new TypeError("'<' is not supported for objects of 'NoneType'");
+            throw TypeError.OpNotSupported("<", "NoneType");
         }
 
         return left.__Lt__(right);

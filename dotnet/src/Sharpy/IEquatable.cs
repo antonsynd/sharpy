@@ -31,13 +31,7 @@ public interface IEquatable : IHashable
     bool __Eq__(object other);
 }
 
-/// <summary>
-/// This interface defines objects that can be checked for equality via
-/// the <c>__Eq__</c> method. All Sharpy objects implement this interface.
-/// This is the generic version of the <see cref="IEquatable"/> interface.
-/// </summary>
-/// <typeparam name="T"></typeparam>
-public interface IEquatable<T> : IEquatable, System.IEquatable<T> where T : IEquatable<T>
+public interface IEquatableWith<T> : IEquatable, System.IEquatable<T>
 {
     /// <remarks>
     /// This defines equality between two objects of the same type.
@@ -55,7 +49,16 @@ public interface IEquatable<T> : IEquatable, System.IEquatable<T> where T : IEqu
         // loop as Equals() ultimately references __Eq__()
         return ReferenceEquals(this, other);
     }
+}
 
+/// <summary>
+/// This interface defines objects that can be checked for equality via
+/// the <c>__Eq__</c> method. All Sharpy objects implement this interface.
+/// This is the generic version of the <see cref="IEquatable"/> interface.
+/// </summary>
+/// <typeparam name="T"></typeparam>
+public interface IEquatable<T> : IEquatableWith<T> where T : IEquatable<T>
+{
     static virtual bool operator ==(T left, T right)
     {
         return left?.__Eq__(right) ?? right is null;

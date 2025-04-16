@@ -1,10 +1,10 @@
 namespace Sharpy;
 
-public interface IInequatable<T> : IEquatable<T> where T : IEquatable<T>, IInequatable<T>
+public interface IInequatableWith<T> : IEquatableWith<T>
 {
     bool __Ne__(T other)
     {
-        return ((IEquatable<T>)this)?.__Eq__(other) ?? other is null;
+        return ((IEquatableWith<T>)this)?.__Eq__(other) ?? other is null;
     }
 
     bool __Ne__(object other)
@@ -16,7 +16,10 @@ public interface IInequatable<T> : IEquatable<T> where T : IEquatable<T>, IInequ
 
         return false;
     }
+}
 
+public interface IInequatable<T> : IInequatableWith<T>, IEquatable<T> where T : IEquatable<T>, IInequatable<T>
+{
     static virtual bool operator ==(T left, T right)
     {
         return ((IEquatable<T>)left)?.__Eq__(right) ?? right is null;

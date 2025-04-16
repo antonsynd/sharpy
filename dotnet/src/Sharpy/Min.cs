@@ -5,12 +5,12 @@ using Operator;
 
 public static partial class Exports
 {
-    public static T Min<T>(IIterable<T> iterable) where T : ILessThanComparable<T>
+    public static T Min<T>(IIterable<T> iterable)
     {
         return Min(iterable, value => value);
     }
 
-    public static T Min<T, TKey>(IIterable<T> iterable, Func<T, TKey> key) where TKey : ILessThanComparable<TKey>
+    public static T Min<T, TKey>(IIterable<T> iterable, Func<T, TKey> key)
     {
         if (iterable is null)
         {
