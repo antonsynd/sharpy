@@ -1,0 +1,23 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.Itertools
+  commentId: N:Sharpy.Itertools
+  id: Sharpy.Itertools
+  children:
+  - Sharpy.Itertools.Exports
+  langs:
+  - csharp
+  - vb
+  name: Sharpy.Itertools
+  nameWithType: Sharpy.Itertools
+  fullName: Sharpy.Itertools
+  type: Namespace
+  assemblies:
+  - Sharpy
+references:
+- uid: Sharpy.Itertools.Exports
+  commentId: T:Sharpy.Itertools.Exports
+  href: Sharpy.Itertools.Exports.html
+  name: Exports
+  nameWithType: Exports
+  fullName: Sharpy.Itertools.Exports

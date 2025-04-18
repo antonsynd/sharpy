@@ -221,6 +221,13 @@ items:
   - uid: Sharpy.Collections.Interfaces.IValuesView`1
     name: IValuesView<T>
     type: Interface
+- uid: Sharpy.Itertools
+  name: Sharpy.Itertools
+  type: Namespace
+  items:
+  - uid: Sharpy.Itertools.Exports
+    name: Exports
+    type: Class
 - uid: Sharpy.Operator
   name: Sharpy.Operator
   type: Namespace
