@@ -133,6 +133,9 @@ items:
   - uid: Sharpy.Optional`1
     name: Optional<T>
     type: Class
+  - uid: Sharpy.PrintArguments`1
+    name: PrintArguments<T>
+    type: Class
   - uid: Sharpy.SetIterator`1
     name: SetIterator<T>
     type: Class

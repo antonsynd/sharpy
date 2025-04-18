@@ -31,6 +31,8 @@ items:
   - Sharpy.Exports.Next``1(Sharpy.Iterator{``0})
   - Sharpy.Exports.None``1
   - Sharpy.Exports.Print(Sharpy.Object,System.UInt32,System.Boolean)
+  - Sharpy.Exports.Print(Sharpy.PrintArguments{Sharpy.Object},System.UInt32,System.Boolean)
+  - Sharpy.Exports.Print(Sharpy.PrintArguments{System.Object},System.UInt32,System.Boolean)
   - Sharpy.Exports.Print(System.Object,System.UInt32,System.Boolean)
   - Sharpy.Exports.Repr(Sharpy.Object)
   - Sharpy.Exports.Repr(System.Object)
@@ -1004,6 +1006,42 @@ items:
   nameWithType.vb: Exports.Print(Object, UInteger, Boolean)
   fullName.vb: Sharpy.Exports.Print(Sharpy.Object, UInteger, Boolean)
   name.vb: Print(Object, UInteger, Boolean)
+- uid: Sharpy.Exports.Print(Sharpy.PrintArguments{Sharpy.Object},System.UInt32,System.Boolean)
+  commentId: M:Sharpy.Exports.Print(Sharpy.PrintArguments{Sharpy.Object},System.UInt32,System.Boolean)
+  id: Print(Sharpy.PrintArguments{Sharpy.Object},System.UInt32,System.Boolean)
+  parent: Sharpy.Exports
+  langs:
+  - csharp
+  - vb
+  name: Print(PrintArguments<Object?>, uint, bool)
+  nameWithType: Exports.Print(PrintArguments<Object?>, uint, bool)
+  fullName: Sharpy.Exports.Print(Sharpy.PrintArguments<Sharpy.Object?>, uint, bool)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Print.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Print
+    path: ../src/Sharpy/Print.cs
+    startLine: 11
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static void Print(PrintArguments<Object?> args, uint file = 1, bool flush = false)
+    parameters:
+    - id: args
+      type: Sharpy.PrintArguments{Sharpy.Object}
+    - id: file
+      type: System.UInt32
+    - id: flush
+      type: System.Boolean
+    content.vb: Public Shared Sub Print(args As PrintArguments(Of [Object]), file As UInteger = 1, flush As Boolean = False)
+  overload: Sharpy.Exports.Print*
+  nameWithType.vb: Exports.Print(PrintArguments(Of Object), UInteger, Boolean)
+  fullName.vb: Sharpy.Exports.Print(Sharpy.PrintArguments(Of Sharpy.Object), UInteger, Boolean)
+  name.vb: Print(PrintArguments(Of Object), UInteger, Boolean)
 - uid: Sharpy.Exports.Print(System.Object,System.UInt32,System.Boolean)
   commentId: M:Sharpy.Exports.Print(System.Object,System.UInt32,System.Boolean)
   id: Print(System.Object,System.UInt32,System.Boolean)
@@ -1022,7 +1060,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Print
     path: ../src/Sharpy/Print.cs
-    startLine: 11
+    startLine: 26
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1040,6 +1078,42 @@ items:
   nameWithType.vb: Exports.Print(Object, UInteger, Boolean)
   fullName.vb: Sharpy.Exports.Print(Object, UInteger, Boolean)
   name.vb: Print(Object, UInteger, Boolean)
+- uid: Sharpy.Exports.Print(Sharpy.PrintArguments{System.Object},System.UInt32,System.Boolean)
+  commentId: M:Sharpy.Exports.Print(Sharpy.PrintArguments{System.Object},System.UInt32,System.Boolean)
+  id: Print(Sharpy.PrintArguments{System.Object},System.UInt32,System.Boolean)
+  parent: Sharpy.Exports
+  langs:
+  - csharp
+  - vb
+  name: Print(PrintArguments<object?>, uint, bool)
+  nameWithType: Exports.Print(PrintArguments<object?>, uint, bool)
+  fullName: Sharpy.Exports.Print(Sharpy.PrintArguments<object?>, uint, bool)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Print.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Print
+    path: ../src/Sharpy/Print.cs
+    startLine: 33
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static void Print(PrintArguments<object?> args, uint file = 1, bool flush = false)
+    parameters:
+    - id: args
+      type: Sharpy.PrintArguments{System.Object}
+    - id: file
+      type: System.UInt32
+    - id: flush
+      type: System.Boolean
+    content.vb: Public Shared Sub Print(args As PrintArguments(Of Object), file As UInteger = 1, flush As Boolean = False)
+  overload: Sharpy.Exports.Print*
+  nameWithType.vb: Exports.Print(PrintArguments(Of Object), UInteger, Boolean)
+  fullName.vb: Sharpy.Exports.Print(Sharpy.PrintArguments(Of Object), UInteger, Boolean)
+  name.vb: Print(PrintArguments(Of Object), UInteger, Boolean)
 - uid: Sharpy.Exports.Repr(Sharpy.Object)
   commentId: M:Sharpy.Exports.Repr(Sharpy.Object)
   id: Repr(Sharpy.Object)
@@ -1978,6 +2052,95 @@ references:
   name: Print
   nameWithType: Exports.Print
   fullName: Sharpy.Exports.Print
+- uid: Sharpy.PrintArguments{Sharpy.Object}
+  commentId: T:Sharpy.PrintArguments{Sharpy.Object}
+  parent: Sharpy
+  definition: Sharpy.PrintArguments`1
+  href: Sharpy.PrintArguments-1.html
+  name: PrintArguments<Object>
+  nameWithType: PrintArguments<Object>
+  fullName: Sharpy.PrintArguments<Sharpy.Object>
+  nameWithType.vb: PrintArguments(Of Object)
+  fullName.vb: Sharpy.PrintArguments(Of Sharpy.Object)
+  name.vb: PrintArguments(Of Object)
+  spec.csharp:
+  - uid: Sharpy.PrintArguments`1
+    name: PrintArguments
+    href: Sharpy.PrintArguments-1.html
+  - name: <
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.PrintArguments`1
+    name: PrintArguments
+    href: Sharpy.PrintArguments-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: )
+- uid: Sharpy.PrintArguments`1
+  commentId: T:Sharpy.PrintArguments`1
+  href: Sharpy.PrintArguments-1.html
+  name: PrintArguments<T>
+  nameWithType: PrintArguments<T>
+  fullName: Sharpy.PrintArguments<T>
+  nameWithType.vb: PrintArguments(Of T)
+  fullName.vb: Sharpy.PrintArguments(Of T)
+  name.vb: PrintArguments(Of T)
+  spec.csharp:
+  - uid: Sharpy.PrintArguments`1
+    name: PrintArguments
+    href: Sharpy.PrintArguments-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.PrintArguments`1
+    name: PrintArguments
+    href: Sharpy.PrintArguments-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.PrintArguments{System.Object}
+  commentId: T:Sharpy.PrintArguments{System.Object}
+  parent: Sharpy
+  definition: Sharpy.PrintArguments`1
+  href: Sharpy.PrintArguments-1.html
+  name: PrintArguments<object>
+  nameWithType: PrintArguments<object>
+  fullName: Sharpy.PrintArguments<object>
+  nameWithType.vb: PrintArguments(Of Object)
+  fullName.vb: Sharpy.PrintArguments(Of Object)
+  name.vb: PrintArguments(Of Object)
+  spec.csharp:
+  - uid: Sharpy.PrintArguments`1
+    name: PrintArguments
+    href: Sharpy.PrintArguments-1.html
+  - name: <
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.PrintArguments`1
+    name: PrintArguments
+    href: Sharpy.PrintArguments-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
 - uid: Sharpy.Object.__Repr__
   commentId: M:Sharpy.Object.__Repr__
   parent: Sharpy.Object

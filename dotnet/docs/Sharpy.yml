@@ -47,6 +47,7 @@ items:
   - Sharpy.List`1
   - Sharpy.Object
   - Sharpy.Optional`1
+  - Sharpy.PrintArguments`1
   - Sharpy.SetIterator`1
   - Sharpy.Set`1
   - Sharpy.Slice
@@ -1073,6 +1074,31 @@ references:
   name: Str
   nameWithType: Str
   fullName: Sharpy.Str
+- uid: Sharpy.PrintArguments`1
+  commentId: T:Sharpy.PrintArguments`1
+  href: Sharpy.PrintArguments-1.html
+  name: PrintArguments<T>
+  nameWithType: PrintArguments<T>
+  fullName: Sharpy.PrintArguments<T>
+  nameWithType.vb: PrintArguments(Of T)
+  fullName.vb: Sharpy.PrintArguments(Of T)
+  name.vb: PrintArguments(Of T)
+  spec.csharp:
+  - uid: Sharpy.PrintArguments`1
+    name: PrintArguments
+    href: Sharpy.PrintArguments-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.PrintArguments`1
+    name: PrintArguments
+    href: Sharpy.PrintArguments-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
 - uid: Sharpy.Slice
   commentId: T:Sharpy.Slice
   parent: Sharpy

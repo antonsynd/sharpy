@@ -21,7 +21,8 @@ file class CountIterator<T> : Iterator<T> where T : INumber<T>
         _step = step;
     }
 
-    public override T __Next__() {
+    public override T __Next__()
+    {
         var res = _current;
 
         _current += _step;

@@ -27,16 +27,21 @@ file class CycleIterator<T> : Iterator<T>
         _iteratorEmpty = false;
     }
 
-    public override T __Next__() {
+    public override T __Next__()
+    {
         // Iterate through the iterator first, saving each item as we go along
-        if (!_iteratorEmpty) {
-            try {
+        if (!_iteratorEmpty)
+        {
+            try
+            {
                 var res = _iterator.__Next__();
 
                 _saved.Append(res);
 
                 return res;
-            } catch (StopIteration e) {
+            }
+            catch (StopIteration e)
+            {
                 _iteratorEmpty = true;
             }
         }
@@ -44,12 +49,14 @@ file class CycleIterator<T> : Iterator<T>
         var numSaved = _saved.__Len__();
 
         // Nothing saved means nothing to iterate through
-        if (numSaved == 0) {
+        if (numSaved == 0)
+        {
             throw new StopIteration();
         }
 
         // Cycle back to the front
-        if (_currentIndex >= numSaved) {
+        if (_currentIndex >= numSaved)
+        {
             _currentIndex = 0;
         }
 

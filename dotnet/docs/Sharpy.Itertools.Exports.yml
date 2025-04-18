@@ -5,6 +5,8 @@ items:
   id: Exports
   parent: Sharpy.Itertools
   children:
+  - Sharpy.Itertools.Exports.Count``1(``0,``0)
+  - Sharpy.Itertools.Exports.Cycle``1(Sharpy.Collections.Interfaces.IIterable{``0})
   - Sharpy.Itertools.Exports.Repeat``1(``0)
   - Sharpy.Itertools.Exports.Repeat``1(``0,System.UInt32)
   langs:
@@ -38,6 +40,80 @@ items:
   - System.Object.MemberwiseClone
   - System.Object.ReferenceEquals(System.Object,System.Object)
   - System.Object.ToString
+- uid: Sharpy.Itertools.Exports.Count``1(``0,``0)
+  commentId: M:Sharpy.Itertools.Exports.Count``1(``0,``0)
+  id: Count``1(``0,``0)
+  parent: Sharpy.Itertools.Exports
+  langs:
+  - csharp
+  - vb
+  name: Count<T>(T, T)
+  nameWithType: Exports.Count<T>(T, T)
+  fullName: Sharpy.Itertools.Exports.Count<T>(T, T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Itertools/Count.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Count
+    path: ../src/Sharpy/Itertools/Count.cs
+    startLine: 6
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Itertools
+  syntax:
+    content: 'public static Iterator<T> Count<T>(T start, T step) where T : INumber<T>'
+    parameters:
+    - id: start
+      type: '{T}'
+    - id: step
+      type: '{T}'
+    typeParameters:
+    - id: T
+    return:
+      type: Sharpy.Iterator{{T}}
+    content.vb: Public Shared Function Count(Of T As INumber(Of T))(start As T, [step] As T) As Iterator(Of T)
+  overload: Sharpy.Itertools.Exports.Count*
+  nameWithType.vb: Exports.Count(Of T)(T, T)
+  fullName.vb: Sharpy.Itertools.Exports.Count(Of T)(T, T)
+  name.vb: Count(Of T)(T, T)
+- uid: Sharpy.Itertools.Exports.Cycle``1(Sharpy.Collections.Interfaces.IIterable{``0})
+  commentId: M:Sharpy.Itertools.Exports.Cycle``1(Sharpy.Collections.Interfaces.IIterable{``0})
+  id: Cycle``1(Sharpy.Collections.Interfaces.IIterable{``0})
+  parent: Sharpy.Itertools.Exports
+  langs:
+  - csharp
+  - vb
+  name: Cycle<T>(IIterable<T>)
+  nameWithType: Exports.Cycle<T>(IIterable<T>)
+  fullName: Sharpy.Itertools.Exports.Cycle<T>(Sharpy.Collections.Interfaces.IIterable<T>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Itertools/Cycle.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Cycle
+    path: ../src/Sharpy/Itertools/Cycle.cs
+    startLine: 6
+  assemblies:
+  - Sharpy
+  namespace: Sharpy.Itertools
+  syntax:
+    content: public static Iterator<T> Cycle<T>(IIterable<T> iterable)
+    parameters:
+    - id: iterable
+      type: Sharpy.Collections.Interfaces.IIterable{{T}}
+    typeParameters:
+    - id: T
+    return:
+      type: Sharpy.Iterator{{T}}
+    content.vb: Public Shared Function Cycle(Of T)(iterable As IIterable(Of T)) As Iterator(Of T)
+  overload: Sharpy.Itertools.Exports.Cycle*
+  nameWithType.vb: Exports.Cycle(Of T)(IIterable(Of T))
+  fullName.vb: Sharpy.Itertools.Exports.Cycle(Of T)(Sharpy.Collections.Interfaces.IIterable(Of T))
+  name.vb: Cycle(Of T)(IIterable(Of T))
 - uid: Sharpy.Itertools.Exports.Repeat``1(``0)
   commentId: M:Sharpy.Itertools.Exports.Repeat``1(``0)
   id: Repeat``1(``0)
@@ -372,12 +448,12 @@ references:
   name: System
   nameWithType: System
   fullName: System
-- uid: Sharpy.Itertools.Exports.Repeat*
-  commentId: Overload:Sharpy.Itertools.Exports.Repeat
-  href: Sharpy.Itertools.Exports.html#Sharpy_Itertools_Exports_Repeat__1___0_
-  name: Repeat
-  nameWithType: Exports.Repeat
-  fullName: Sharpy.Itertools.Exports.Repeat
+- uid: Sharpy.Itertools.Exports.Count*
+  commentId: Overload:Sharpy.Itertools.Exports.Count
+  href: Sharpy.Itertools.Exports.html#Sharpy_Itertools_Exports_Count__1___0___0_
+  name: Count
+  nameWithType: Exports.Count
+  fullName: Sharpy.Itertools.Exports.Count
 - uid: '{T}'
   commentId: '!:T'
   definition: T
@@ -447,6 +523,100 @@ references:
   name: Sharpy
   nameWithType: Sharpy
   fullName: Sharpy
+- uid: Sharpy.Itertools.Exports.Cycle*
+  commentId: Overload:Sharpy.Itertools.Exports.Cycle
+  href: Sharpy.Itertools.Exports.html#Sharpy_Itertools_Exports_Cycle__1_Sharpy_Collections_Interfaces_IIterable___0__
+  name: Cycle
+  nameWithType: Exports.Cycle
+  fullName: Sharpy.Itertools.Exports.Cycle
+- uid: Sharpy.Collections.Interfaces.IIterable{{T}}
+  commentId: T:Sharpy.Collections.Interfaces.IIterable{``0}
+  parent: Sharpy.Collections.Interfaces
+  definition: Sharpy.Collections.Interfaces.IIterable`1
+  href: Sharpy.Collections.Interfaces.IIterable-1.html
+  name: IIterable<T>
+  nameWithType: IIterable<T>
+  fullName: Sharpy.Collections.Interfaces.IIterable<T>
+  nameWithType.vb: IIterable(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of T)
+  name.vb: IIterable(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces.IIterable`1
+  commentId: T:Sharpy.Collections.Interfaces.IIterable`1
+  href: Sharpy.Collections.Interfaces.IIterable-1.html
+  name: IIterable<T>
+  nameWithType: IIterable<T>
+  fullName: Sharpy.Collections.Interfaces.IIterable<T>
+  nameWithType.vb: IIterable(Of T)
+  fullName.vb: Sharpy.Collections.Interfaces.IIterable(Of T)
+  name.vb: IIterable(Of T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.IIterable`1
+    name: IIterable
+    href: Sharpy.Collections.Interfaces.IIterable-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Collections.Interfaces
+  commentId: N:Sharpy.Collections.Interfaces
+  href: Sharpy.html
+  name: Sharpy.Collections.Interfaces
+  nameWithType: Sharpy.Collections.Interfaces
+  fullName: Sharpy.Collections.Interfaces
+  spec.csharp:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+  spec.vb:
+  - uid: Sharpy
+    name: Sharpy
+    href: Sharpy.html
+  - name: .
+  - uid: Sharpy.Collections
+    name: Collections
+    href: Sharpy.Collections.html
+  - name: .
+  - uid: Sharpy.Collections.Interfaces
+    name: Interfaces
+    href: Sharpy.Collections.Interfaces.html
+- uid: Sharpy.Itertools.Exports.Repeat*
+  commentId: Overload:Sharpy.Itertools.Exports.Repeat
+  href: Sharpy.Itertools.Exports.html#Sharpy_Itertools_Exports_Repeat__1___0_
+  name: Repeat
+  nameWithType: Exports.Repeat
+  fullName: Sharpy.Itertools.Exports.Repeat
 - uid: System.UInt32
   commentId: T:System.UInt32
   parent: System
