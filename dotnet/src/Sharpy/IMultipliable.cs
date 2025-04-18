@@ -16,7 +16,7 @@ public interface IMultipliableWith<TMultiplier, TProduct>
 /// something (the multiplier) producing a result (the product) with native
 /// operator support.
 /// </summary>
-/// <typeparam name="TMultiplicannd">The multiplicand (what is being
+/// <typeparam name="TMultiplicand">The multiplicand (what is being
 /// multiplied).</typeparam>
 /// <typeparam name="TMultiplier">The multiplier (i.e. the factor).</typeparam>
 /// <typeparam name="TProduct">The product.</typeparam>
