@@ -105,7 +105,7 @@ items:
   - Sharpy
   namespace: Sharpy
   remarks: >-
-    This should delegate to IEquatable&lt;T&gt;.__Eq__(T)
+    This should delegate to <xref href="Sharpy.IEquatableWith%601.__Eq__(%600)" data-throw-if-not-resolved="false"></xref>
 
     when possible.
   example: []
@@ -259,6 +259,28 @@ references:
   name: System
   nameWithType: System
   fullName: System
+- uid: Sharpy.IEquatableWith`1.__Eq__(`0)
+  commentId: M:Sharpy.IEquatableWith`1.__Eq__(`0)
+  href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq____0_
+  name: __Eq__(T)
+  nameWithType: IEquatableWith<T>.__Eq__(T)
+  fullName: Sharpy.IEquatableWith<T>.__Eq__(T)
+  nameWithType.vb: IEquatableWith(Of T).__Eq__(T)
+  fullName.vb: Sharpy.IEquatableWith(Of T).__Eq__(T)
+  spec.csharp:
+  - uid: Sharpy.IEquatableWith`1.__Eq__(`0)
+    name: __Eq__
+    href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IEquatableWith`1.__Eq__(`0)
+    name: __Eq__
+    href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq____0_
+  - name: (
+  - name: T
+  - name: )
 - uid: Sharpy.IEquatable.__Eq__*
   commentId: Overload:Sharpy.IEquatable.__Eq__
   href: Sharpy.IEquatable.html#Sharpy_IEquatable___Eq___System_Object_

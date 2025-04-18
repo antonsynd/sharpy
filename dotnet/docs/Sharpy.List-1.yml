@@ -80,10 +80,10 @@ items:
   summary: A list of elements.
   example: []
   syntax:
-    content: 'public sealed class List<T> : Object, IInequatable<Object>, IInequatableWith<Object>, IEquatable<Object>, IEquatableWith<Object>, IEquatable<Object>, IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSequence<List<T>, T>, IMutableSequence<T>, IInplaceAddable<ISequence<T>>, ISequence<List<T>, T>, ISequence<T>, ICollection<T>, IContainer<T>, ISized, IReversible<T>, IIterable<T>, IEnumerable<T>, IEnumerable, IAddable<ISequence<T>>, IAddable<ISequence<T>, ISequence<T>, ISequence<T>>, IRightAddable<ISequence<T>>, IRightAddable<ISequence<T>, ISequence<T>>, IEquatable<List<T>>, IEquatableWith<List<T>>, IEquatable, IHashable, IEquatable<List<T>>, IAddable<List<T>>, IAddable<List<T>, List<T>, List<T>>, IRightAddable<List<T>>, IRightAddable<List<T>, List<T>>, IInplaceAddable<List<T>>, IMultipliable<List<T>, int>, IMultipliable<List<T>, int, List<T>>, IInplaceMultipliable<int>, IRightMultipliable<List<T>, int>'
+    content: 'public sealed class List<T> : Object, IInequatable<Object>, IInequatableWith<Object>, IEquatable<Object>, IEquatableWith<Object>, IEquatable<Object>, IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSequence<List<T>, T>, IMutableSequence<T>, IInplaceAddable<ISequence<T>>, ISequence<List<T>, T>, ISequence<T>, ICollection<T>, IContainer<T>, ISized, IReversible<T>, IIterable<T>, IEnumerable<T>, IEnumerable, IAddable<ISequence<T>>, IAddable<ISequence<T>, ISequence<T>, ISequence<T>>, IAddableWith<ISequence<T>, ISequence<T>>, IRightAddable<ISequence<T>>, IRightAddable<ISequence<T>, ISequence<T>>, IEquatable<List<T>>, IEquatableWith<List<T>>, IEquatable, IHashable, IEquatable<List<T>>, IAddable<List<T>>, IAddable<List<T>, List<T>, List<T>>, IAddableWith<List<T>, List<T>>, IRightAddable<List<T>>, IRightAddable<List<T>, List<T>>, IInplaceAddable<List<T>>, IMultipliable<List<T>, int>, IMultipliable<List<T>, int, List<T>>, IMultipliableWith<int, List<T>>, IInplaceMultipliable<int>, IRightMultipliable<List<T>, int>'
     typeParameters:
     - id: T
-    content.vb: Public NotInheritable Class List(Of T) Inherits Object Implements IInequatable(Of Object), IInequatableWith(Of Object), IEquatable(Of Object), IEquatableWith(Of Object), IEquatable(Of Object), IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSequence(Of List(Of T), T), IMutableSequence(Of T), IInplaceAddable(Of ISequence(Of T)), ISequence(Of List(Of T), T), ISequence(Of T), ICollection(Of T), IContainer(Of T), ISized, IReversible(Of T), IIterable(Of T), IEnumerable(Of T), IEnumerable, IAddable(Of ISequence(Of T)), IAddable(Of ISequence(Of T), ISequence(Of T), ISequence(Of T)), IRightAddable(Of ISequence(Of T)), IRightAddable(Of ISequence(Of T), ISequence(Of T)), IEquatable(Of List(Of T)), IEquatableWith(Of List(Of T)), IEquatable, IHashable, IEquatable(Of List(Of T)), IAddable(Of List(Of T)), IAddable(Of List(Of T), List(Of T), List(Of T)), IRightAddable(Of List(Of T)), IRightAddable(Of List(Of T), List(Of T)), IInplaceAddable(Of List(Of T)), IMultipliable(Of List(Of T), Integer), IMultipliable(Of List(Of T), Integer, List(Of T)), IInplaceMultipliable(Of Integer), IRightMultipliable(Of List(Of T), Integer)
+    content.vb: Public NotInheritable Class List(Of T) Inherits Object Implements IInequatable(Of Object), IInequatableWith(Of Object), IEquatable(Of Object), IEquatableWith(Of Object), IEquatable(Of Object), IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSequence(Of List(Of T), T), IMutableSequence(Of T), IInplaceAddable(Of ISequence(Of T)), ISequence(Of List(Of T), T), ISequence(Of T), ICollection(Of T), IContainer(Of T), ISized, IReversible(Of T), IIterable(Of T), IEnumerable(Of T), IEnumerable, IAddable(Of ISequence(Of T)), IAddable(Of ISequence(Of T), ISequence(Of T), ISequence(Of T)), IAddableWith(Of ISequence(Of T), ISequence(Of T)), IRightAddable(Of ISequence(Of T)), IRightAddable(Of ISequence(Of T), ISequence(Of T)), IEquatable(Of List(Of T)), IEquatableWith(Of List(Of T)), IEquatable, IHashable, IEquatable(Of List(Of T)), IAddable(Of List(Of T)), IAddable(Of List(Of T), List(Of T), List(Of T)), IAddableWith(Of List(Of T), List(Of T)), IRightAddable(Of List(Of T)), IRightAddable(Of List(Of T), List(Of T)), IInplaceAddable(Of List(Of T)), IMultipliable(Of List(Of T), Integer), IMultipliable(Of List(Of T), Integer, List(Of T)), IMultipliableWith(Of Integer, List(Of T)), IInplaceMultipliable(Of Integer), IRightMultipliable(Of List(Of T), Integer)
   inheritance:
   - System.Object
   - Sharpy.Object
@@ -111,6 +111,7 @@ items:
   - System.Collections.IEnumerable
   - Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{{T}}}
   - Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
+  - Sharpy.IAddableWith{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
   - Sharpy.IRightAddable{Sharpy.Collections.Interfaces.ISequence{{T}}}
   - Sharpy.IRightAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
   - Sharpy.IEquatable{Sharpy.List`1}
@@ -120,11 +121,13 @@ items:
   - System.IEquatable{Sharpy.List`1}
   - Sharpy.IAddable{Sharpy.List`1}
   - Sharpy.IAddable{Sharpy.List`1,Sharpy.List`1,Sharpy.List`1}
+  - Sharpy.IAddableWith{Sharpy.List`1,Sharpy.List`1}
   - Sharpy.IRightAddable{Sharpy.List`1}
   - Sharpy.IRightAddable{Sharpy.List`1,Sharpy.List`1}
   - Sharpy.IInplaceAddable{Sharpy.List`1}
   - Sharpy.IMultipliable{Sharpy.List`1,System.Int32}
   - Sharpy.IMultipliable{Sharpy.List`1,System.Int32,Sharpy.List`1}
+  - Sharpy.IMultipliableWith{System.Int32,Sharpy.List`1}
   - Sharpy.IInplaceMultipliable{System.Int32}
   - Sharpy.IRightMultipliable{Sharpy.List`1,System.Int32}
   inheritedMembers:
@@ -406,7 +409,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Equals
     path: ../src/Sharpy/Partial.List/List.DotNet.IEquatable.cs
-    startLine: 4
+    startLine: 5
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -446,7 +449,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Add__
     path: ../src/Sharpy/Partial.List/List.IAddable.cs
-    startLine: 4
+    startLine: 5
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -461,7 +464,7 @@ items:
     content.vb: Public Function __Add__(other As List(Of T)) As List(Of T)
   overload: Sharpy.List`1.__Add__*
   implements:
-  - Sharpy.IAddable{Sharpy.List`1,Sharpy.List`1,Sharpy.List`1}.__Add__(Sharpy.List{{T}})
+  - Sharpy.IAddableWith{Sharpy.List`1,Sharpy.List`1}.__Add__(Sharpy.List{{T}})
   nameWithType.vb: List(Of T).__Add__(List(Of T))
   fullName.vb: Sharpy.List(Of T).__Add__(Sharpy.List(Of T))
   name.vb: __Add__(List(Of T))
@@ -483,7 +486,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Bool__
     path: ../src/Sharpy/Partial.List/List.IBoolConvertible.cs
-    startLine: 4
+    startLine: 5
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -521,7 +524,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Contains__
     path: ../src/Sharpy/Partial.List/List.IContainer.cs
-    startLine: 6
+    startLine: 7
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -558,7 +561,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Contains
     path: ../src/Sharpy/Partial.List/List.IContainer.cs
-    startLine: 14
+    startLine: 15
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -876,7 +879,7 @@ items:
     content.vb: Public Function __Mul__(i As Integer) As List(Of T)
   overload: Sharpy.List`1.__Mul__*
   implements:
-  - Sharpy.IMultipliable{Sharpy.List`1,System.Int32,Sharpy.List`1}.__Mul__(System.Int32)
+  - Sharpy.IMultipliableWith{System.Int32,Sharpy.List`1}.__Mul__(System.Int32)
   nameWithType.vb: List(Of T).__Mul__(Integer)
   fullName.vb: Sharpy.List(Of T).__Mul__(Integer)
   name.vb: __Mul__(Integer)
@@ -898,7 +901,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
-    startLine: 6
+    startLine: 7
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -943,7 +946,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
-    startLine: 13
+    startLine: 14
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -989,7 +992,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
-    startLine: 20
+    startLine: 21
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1031,7 +1034,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Append
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
-    startLine: 41
+    startLine: 42
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1066,7 +1069,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Extend
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
-    startLine: 50
+    startLine: 51
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1105,7 +1108,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Clear
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
-    startLine: 63
+    startLine: 64
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1137,7 +1140,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Insert
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
-    startLine: 74
+    startLine: 75
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1182,7 +1185,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Pop
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
-    startLine: 85
+    startLine: 86
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1227,7 +1230,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Remove
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
-    startLine: 111
+    startLine: 112
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1265,7 +1268,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Reverse
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
-    startLine: 122
+    startLine: 123
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1297,7 +1300,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __IAdd__
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
-    startLine: 128
+    startLine: 129
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1332,7 +1335,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __SetItem__
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
-    startLine: 139
+    startLine: 140
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1369,7 +1372,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __DelItem__
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
-    startLine: 155
+    startLine: 156
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1404,7 +1407,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __DelItem__
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
-    startLine: 161
+    startLine: 162
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1438,7 +1441,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __SetItem__
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
-    startLine: 216
+    startLine: 217
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1475,7 +1478,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __SetItem__
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
-    startLine: 223
+    startLine: 224
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1664,7 +1667,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Add__
     path: ../src/Sharpy/Partial.List/List.ISequence.cs
-    startLine: 16
+    startLine: 17
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1679,7 +1682,7 @@ items:
     content.vb: Public Function __Add__(other As ISequence(Of T)) As ISequence(Of T)
   overload: Sharpy.List`1.__Add__*
   implements:
-  - Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}.__Add__(Sharpy.Collections.Interfaces.ISequence{{T}})
+  - Sharpy.IAddableWith{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}.__Add__(Sharpy.Collections.Interfaces.ISequence{{T}})
   nameWithType.vb: List(Of T).__Add__(ISequence(Of T))
   fullName.vb: Sharpy.List(Of T).__Add__(Sharpy.Collections.Interfaces.ISequence(Of T))
   name.vb: __Add__(ISequence(Of T))
@@ -1701,7 +1704,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __RAdd__
     path: ../src/Sharpy/Partial.List/List.ISequence.cs
-    startLine: 29
+    startLine: 30
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1738,7 +1741,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __GetItem__
     path: ../src/Sharpy/Partial.List/List.ISequence.cs
-    startLine: 42
+    startLine: 43
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1781,7 +1784,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __GetItem__
     path: ../src/Sharpy/Partial.List/List.ISequence.cs
-    startLine: 49
+    startLine: 50
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1829,7 +1832,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Count
     path: ../src/Sharpy/Partial.List/List.ISequence.cs
-    startLine: 72
+    startLine: 73
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1866,7 +1869,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Index
     path: ../src/Sharpy/Partial.List/List.ISequence.cs
-    startLine: 94
+    startLine: 95
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2866,6 +2869,63 @@ references:
   - name: T
   - name: )
   - name: )
+- uid: Sharpy.IAddableWith{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
+  commentId: T:Sharpy.IAddableWith{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}
+  parent: Sharpy
+  definition: Sharpy.IAddableWith`2
+  href: Sharpy.IAddableWith-2.html
+  name: IAddableWith<ISequence<T>, ISequence<T>>
+  nameWithType: IAddableWith<ISequence<T>, ISequence<T>>
+  fullName: Sharpy.IAddableWith<Sharpy.Collections.Interfaces.ISequence<T>, Sharpy.Collections.Interfaces.ISequence<T>>
+  nameWithType.vb: IAddableWith(Of ISequence(Of T), ISequence(Of T))
+  fullName.vb: Sharpy.IAddableWith(Of Sharpy.Collections.Interfaces.ISequence(Of T), Sharpy.Collections.Interfaces.ISequence(Of T))
+  name.vb: IAddableWith(Of ISequence(Of T), ISequence(Of T))
+  spec.csharp:
+  - uid: Sharpy.IAddableWith`2
+    name: IAddableWith
+    href: Sharpy.IAddableWith-2.html
+  - name: <
+  - uid: Sharpy.Collections.Interfaces.ISequence`1
+    name: ISequence
+    href: Sharpy.Collections.Interfaces.ISequence-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISequence`1
+    name: ISequence
+    href: Sharpy.Collections.Interfaces.ISequence-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IAddableWith`2
+    name: IAddableWith
+    href: Sharpy.IAddableWith-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISequence`1
+    name: ISequence
+    href: Sharpy.Collections.Interfaces.ISequence-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISequence`1
+    name: ISequence
+    href: Sharpy.Collections.Interfaces.ISequence-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
 - uid: Sharpy.IRightAddable{Sharpy.Collections.Interfaces.ISequence{{T}}}
   commentId: T:Sharpy.IRightAddable{Sharpy.Collections.Interfaces.ISequence{`0}}
   parent: Sharpy
@@ -3209,6 +3269,63 @@ references:
   - name: T
   - name: )
   - name: )
+- uid: Sharpy.IAddableWith{Sharpy.List`1,Sharpy.List`1}
+  commentId: T:Sharpy.IAddableWith{Sharpy.List`1,Sharpy.List`1}
+  parent: Sharpy
+  definition: Sharpy.IAddableWith`2
+  href: Sharpy.IAddableWith-2.html
+  name: IAddableWith<List<T>, List<T>>
+  nameWithType: IAddableWith<List<T>, List<T>>
+  fullName: Sharpy.IAddableWith<Sharpy.List<T>, Sharpy.List<T>>
+  nameWithType.vb: IAddableWith(Of List(Of T), List(Of T))
+  fullName.vb: Sharpy.IAddableWith(Of Sharpy.List(Of T), Sharpy.List(Of T))
+  name.vb: IAddableWith(Of List(Of T), List(Of T))
+  spec.csharp:
+  - uid: Sharpy.IAddableWith`2
+    name: IAddableWith
+    href: Sharpy.IAddableWith-2.html
+  - name: <
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IAddableWith`2
+    name: IAddableWith
+    href: Sharpy.IAddableWith-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
 - uid: Sharpy.IRightAddable{Sharpy.List`1}
   commentId: T:Sharpy.IRightAddable{Sharpy.List`1}
   parent: Sharpy
@@ -3448,6 +3565,57 @@ references:
   - name: T
   - name: )
   - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: Integer
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: ','
+  - name: " "
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IMultipliableWith{System.Int32,Sharpy.List`1}
+  commentId: T:Sharpy.IMultipliableWith{System.Int32,Sharpy.List`1}
+  parent: Sharpy
+  definition: Sharpy.IMultipliableWith`2
+  href: Sharpy.IMultipliableWith-2.html
+  name: IMultipliableWith<int, List<T>>
+  nameWithType: IMultipliableWith<int, List<T>>
+  fullName: Sharpy.IMultipliableWith<int, Sharpy.List<T>>
+  nameWithType.vb: IMultipliableWith(Of Integer, List(Of T))
+  fullName.vb: Sharpy.IMultipliableWith(Of Integer, Sharpy.List(Of T))
+  name.vb: IMultipliableWith(Of Integer, List(Of T))
+  spec.csharp:
+  - uid: Sharpy.IMultipliableWith`2
+    name: IMultipliableWith
+    href: Sharpy.IMultipliableWith-2.html
+  - name: <
+  - uid: System.Int32
+    name: int
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: ','
+  - name: " "
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IMultipliableWith`2
+    name: IMultipliableWith
+    href: Sharpy.IMultipliableWith-2.html
+  - name: (
+  - name: Of
   - name: " "
   - uid: System.Int32
     name: Integer
@@ -4405,21 +4573,21 @@ references:
 - uid: Sharpy.IAddable`3
   commentId: T:Sharpy.IAddable`3
   href: Sharpy.IAddable-3.html
-  name: IAddable<TLeft, TRight, TSum>
-  nameWithType: IAddable<TLeft, TRight, TSum>
-  fullName: Sharpy.IAddable<TLeft, TRight, TSum>
-  nameWithType.vb: IAddable(Of TLeft, TRight, TSum)
-  fullName.vb: Sharpy.IAddable(Of TLeft, TRight, TSum)
-  name.vb: IAddable(Of TLeft, TRight, TSum)
+  name: IAddable<TAugend, TAddend, TSum>
+  nameWithType: IAddable<TAugend, TAddend, TSum>
+  fullName: Sharpy.IAddable<TAugend, TAddend, TSum>
+  nameWithType.vb: IAddable(Of TAugend, TAddend, TSum)
+  fullName.vb: Sharpy.IAddable(Of TAugend, TAddend, TSum)
+  name.vb: IAddable(Of TAugend, TAddend, TSum)
   spec.csharp:
   - uid: Sharpy.IAddable`3
     name: IAddable
     href: Sharpy.IAddable-3.html
   - name: <
-  - name: TLeft
+  - name: TAugend
   - name: ','
   - name: " "
-  - name: TRight
+  - name: TAddend
   - name: ','
   - name: " "
   - name: TSum
@@ -4431,10 +4599,41 @@ references:
   - name: (
   - name: Of
   - name: " "
-  - name: TLeft
+  - name: TAugend
   - name: ','
   - name: " "
-  - name: TRight
+  - name: TAddend
+  - name: ','
+  - name: " "
+  - name: TSum
+  - name: )
+- uid: Sharpy.IAddableWith`2
+  commentId: T:Sharpy.IAddableWith`2
+  href: Sharpy.IAddableWith-2.html
+  name: IAddableWith<TAddend, TSum>
+  nameWithType: IAddableWith<TAddend, TSum>
+  fullName: Sharpy.IAddableWith<TAddend, TSum>
+  nameWithType.vb: IAddableWith(Of TAddend, TSum)
+  fullName.vb: Sharpy.IAddableWith(Of TAddend, TSum)
+  name.vb: IAddableWith(Of TAddend, TSum)
+  spec.csharp:
+  - uid: Sharpy.IAddableWith`2
+    name: IAddableWith
+    href: Sharpy.IAddableWith-2.html
+  - name: <
+  - name: TAddend
+  - name: ','
+  - name: " "
+  - name: TSum
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IAddableWith`2
+    name: IAddableWith
+    href: Sharpy.IAddableWith-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TAddend
   - name: ','
   - name: " "
   - name: TSum
@@ -4557,6 +4756,37 @@ references:
   - name: " "
   - name: TMultiplicand
   - name: ','
+  - name: " "
+  - name: TMultiplier
+  - name: ','
+  - name: " "
+  - name: TProduct
+  - name: )
+- uid: Sharpy.IMultipliableWith`2
+  commentId: T:Sharpy.IMultipliableWith`2
+  href: Sharpy.IMultipliableWith-2.html
+  name: IMultipliableWith<TMultiplier, TProduct>
+  nameWithType: IMultipliableWith<TMultiplier, TProduct>
+  fullName: Sharpy.IMultipliableWith<TMultiplier, TProduct>
+  nameWithType.vb: IMultipliableWith(Of TMultiplier, TProduct)
+  fullName.vb: Sharpy.IMultipliableWith(Of TMultiplier, TProduct)
+  name.vb: IMultipliableWith(Of TMultiplier, TProduct)
+  spec.csharp:
+  - uid: Sharpy.IMultipliableWith`2
+    name: IMultipliableWith
+    href: Sharpy.IMultipliableWith-2.html
+  - name: <
+  - name: TMultiplier
+  - name: ','
+  - name: " "
+  - name: TProduct
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IMultipliableWith`2
+    name: IMultipliableWith
+    href: Sharpy.IMultipliableWith-2.html
+  - name: (
+  - name: Of
   - name: " "
   - name: TMultiplier
   - name: ','
@@ -4913,21 +5143,21 @@ references:
   fullName: Sharpy.List<T>.__Add__
   nameWithType.vb: List(Of T).__Add__
   fullName.vb: Sharpy.List(Of T).__Add__
-- uid: Sharpy.IAddable{Sharpy.List`1,Sharpy.List`1,Sharpy.List`1}.__Add__(Sharpy.List{{T}})
-  commentId: M:Sharpy.IAddable{Sharpy.List`1,Sharpy.List`1,Sharpy.List`1}.__Add__(Sharpy.List{`0})
-  parent: Sharpy.IAddable{Sharpy.List`1,Sharpy.List`1,Sharpy.List`1}
-  definition: Sharpy.IAddable`3.__Add__(`1)
-  href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
+- uid: Sharpy.IAddableWith{Sharpy.List`1,Sharpy.List`1}.__Add__(Sharpy.List{{T}})
+  commentId: M:Sharpy.IAddableWith{Sharpy.List`1,Sharpy.List`1}.__Add__(Sharpy.List{`0})
+  parent: Sharpy.IAddableWith{Sharpy.List`1,Sharpy.List`1}
+  definition: Sharpy.IAddableWith`2.__Add__(`0)
+  href: Sharpy.IAddableWith-2.html#Sharpy_IAddableWith_2___Add____0_
   name: __Add__(List<T>)
-  nameWithType: IAddable<List<T>, List<T>, List<T>>.__Add__(List<T>)
-  fullName: Sharpy.IAddable<Sharpy.List<T>, Sharpy.List<T>, Sharpy.List<T>>.__Add__(Sharpy.List<T>)
-  nameWithType.vb: IAddable(Of List(Of T), List(Of T), List(Of T)).__Add__(List(Of T))
-  fullName.vb: Sharpy.IAddable(Of Sharpy.List(Of T), Sharpy.List(Of T), Sharpy.List(Of T)).__Add__(Sharpy.List(Of T))
+  nameWithType: IAddableWith<List<T>, List<T>>.__Add__(List<T>)
+  fullName: Sharpy.IAddableWith<Sharpy.List<T>, Sharpy.List<T>>.__Add__(Sharpy.List<T>)
+  nameWithType.vb: IAddableWith(Of List(Of T), List(Of T)).__Add__(List(Of T))
+  fullName.vb: Sharpy.IAddableWith(Of Sharpy.List(Of T), Sharpy.List(Of T)).__Add__(Sharpy.List(Of T))
   name.vb: __Add__(List(Of T))
   spec.csharp:
-  - uid: Sharpy.IAddable{Sharpy.List`1,Sharpy.List`1,Sharpy.List`1}.__Add__(Sharpy.List{`0})
+  - uid: Sharpy.IAddableWith{Sharpy.List`1,Sharpy.List`1}.__Add__(Sharpy.List{`0})
     name: __Add__
-    href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
+    href: Sharpy.IAddableWith-2.html#Sharpy_IAddableWith_2___Add____0_
   - name: (
   - uid: Sharpy.List`1
     name: List
@@ -4937,9 +5167,9 @@ references:
   - name: '>'
   - name: )
   spec.vb:
-  - uid: Sharpy.IAddable{Sharpy.List`1,Sharpy.List`1,Sharpy.List`1}.__Add__(Sharpy.List{`0})
+  - uid: Sharpy.IAddableWith{Sharpy.List`1,Sharpy.List`1}.__Add__(Sharpy.List{`0})
     name: __Add__
-    href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
+    href: Sharpy.IAddableWith-2.html#Sharpy_IAddableWith_2___Add____0_
   - name: (
   - uid: Sharpy.List`1
     name: List
@@ -4950,27 +5180,27 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.IAddable`3.__Add__(`1)
-  commentId: M:Sharpy.IAddable`3.__Add__(`1)
-  href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
-  name: __Add__(TRight)
-  nameWithType: IAddable<TLeft, TRight, TSum>.__Add__(TRight)
-  fullName: Sharpy.IAddable<TLeft, TRight, TSum>.__Add__(TRight)
-  nameWithType.vb: IAddable(Of TLeft, TRight, TSum).__Add__(TRight)
-  fullName.vb: Sharpy.IAddable(Of TLeft, TRight, TSum).__Add__(TRight)
+- uid: Sharpy.IAddableWith`2.__Add__(`0)
+  commentId: M:Sharpy.IAddableWith`2.__Add__(`0)
+  href: Sharpy.IAddableWith-2.html#Sharpy_IAddableWith_2___Add____0_
+  name: __Add__(TAddend)
+  nameWithType: IAddableWith<TAddend, TSum>.__Add__(TAddend)
+  fullName: Sharpy.IAddableWith<TAddend, TSum>.__Add__(TAddend)
+  nameWithType.vb: IAddableWith(Of TAddend, TSum).__Add__(TAddend)
+  fullName.vb: Sharpy.IAddableWith(Of TAddend, TSum).__Add__(TAddend)
   spec.csharp:
-  - uid: Sharpy.IAddable`3.__Add__(`1)
+  - uid: Sharpy.IAddableWith`2.__Add__(`0)
     name: __Add__
-    href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
+    href: Sharpy.IAddableWith-2.html#Sharpy_IAddableWith_2___Add____0_
   - name: (
-  - name: TRight
+  - name: TAddend
   - name: )
   spec.vb:
-  - uid: Sharpy.IAddable`3.__Add__(`1)
+  - uid: Sharpy.IAddableWith`2.__Add__(`0)
     name: __Add__
-    href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
+    href: Sharpy.IAddableWith-2.html#Sharpy_IAddableWith_2___Add____0_
   - name: (
-  - name: TRight
+  - name: TAddend
   - name: )
 - uid: Sharpy.Object.__Bool__
   commentId: M:Sharpy.Object.__Bool__
@@ -5631,21 +5861,21 @@ references:
   fullName: Sharpy.List<T>.__Mul__
   nameWithType.vb: List(Of T).__Mul__
   fullName.vb: Sharpy.List(Of T).__Mul__
-- uid: Sharpy.IMultipliable{Sharpy.List`1,System.Int32,Sharpy.List`1}.__Mul__(System.Int32)
-  commentId: M:Sharpy.IMultipliable{Sharpy.List`1,System.Int32,Sharpy.List`1}.__Mul__(System.Int32)
-  parent: Sharpy.IMultipliable{Sharpy.List`1,System.Int32,Sharpy.List`1}
-  definition: Sharpy.IMultipliable`3.__Mul__(`1)
-  href: Sharpy.IMultipliable-3.html#Sharpy_IMultipliable_3___Mul____1_
+- uid: Sharpy.IMultipliableWith{System.Int32,Sharpy.List`1}.__Mul__(System.Int32)
+  commentId: M:Sharpy.IMultipliableWith{System.Int32,Sharpy.List`1}.__Mul__(System.Int32)
+  parent: Sharpy.IMultipliableWith{System.Int32,Sharpy.List`1}
+  definition: Sharpy.IMultipliableWith`2.__Mul__(`0)
+  href: Sharpy.IMultipliableWith-2.html#Sharpy_IMultipliableWith_2___Mul____0_
   name: __Mul__(int)
-  nameWithType: IMultipliable<List<T>, int, List<T>>.__Mul__(int)
-  fullName: Sharpy.IMultipliable<Sharpy.List<T>, int, Sharpy.List<T>>.__Mul__(int)
-  nameWithType.vb: IMultipliable(Of List(Of T), Integer, List(Of T)).__Mul__(Integer)
-  fullName.vb: Sharpy.IMultipliable(Of Sharpy.List(Of T), Integer, Sharpy.List(Of T)).__Mul__(Integer)
+  nameWithType: IMultipliableWith<int, List<T>>.__Mul__(int)
+  fullName: Sharpy.IMultipliableWith<int, Sharpy.List<T>>.__Mul__(int)
+  nameWithType.vb: IMultipliableWith(Of Integer, List(Of T)).__Mul__(Integer)
+  fullName.vb: Sharpy.IMultipliableWith(Of Integer, Sharpy.List(Of T)).__Mul__(Integer)
   name.vb: __Mul__(Integer)
   spec.csharp:
-  - uid: Sharpy.IMultipliable{Sharpy.List`1,System.Int32,Sharpy.List`1}.__Mul__(System.Int32)
+  - uid: Sharpy.IMultipliableWith{System.Int32,Sharpy.List`1}.__Mul__(System.Int32)
     name: __Mul__
-    href: Sharpy.IMultipliable-3.html#Sharpy_IMultipliable_3___Mul____1_
+    href: Sharpy.IMultipliableWith-2.html#Sharpy_IMultipliableWith_2___Mul____0_
   - name: (
   - uid: System.Int32
     name: int
@@ -5653,34 +5883,34 @@ references:
     href: https://learn.microsoft.com/dotnet/api/system.int32
   - name: )
   spec.vb:
-  - uid: Sharpy.IMultipliable{Sharpy.List`1,System.Int32,Sharpy.List`1}.__Mul__(System.Int32)
+  - uid: Sharpy.IMultipliableWith{System.Int32,Sharpy.List`1}.__Mul__(System.Int32)
     name: __Mul__
-    href: Sharpy.IMultipliable-3.html#Sharpy_IMultipliable_3___Mul____1_
+    href: Sharpy.IMultipliableWith-2.html#Sharpy_IMultipliableWith_2___Mul____0_
   - name: (
   - uid: System.Int32
     name: Integer
     isExternal: true
     href: https://learn.microsoft.com/dotnet/api/system.int32
   - name: )
-- uid: Sharpy.IMultipliable`3.__Mul__(`1)
-  commentId: M:Sharpy.IMultipliable`3.__Mul__(`1)
-  href: Sharpy.IMultipliable-3.html#Sharpy_IMultipliable_3___Mul____1_
+- uid: Sharpy.IMultipliableWith`2.__Mul__(`0)
+  commentId: M:Sharpy.IMultipliableWith`2.__Mul__(`0)
+  href: Sharpy.IMultipliableWith-2.html#Sharpy_IMultipliableWith_2___Mul____0_
   name: __Mul__(TMultiplier)
-  nameWithType: IMultipliable<TMultiplicand, TMultiplier, TProduct>.__Mul__(TMultiplier)
-  fullName: Sharpy.IMultipliable<TMultiplicand, TMultiplier, TProduct>.__Mul__(TMultiplier)
-  nameWithType.vb: IMultipliable(Of TMultiplicand, TMultiplier, TProduct).__Mul__(TMultiplier)
-  fullName.vb: Sharpy.IMultipliable(Of TMultiplicand, TMultiplier, TProduct).__Mul__(TMultiplier)
+  nameWithType: IMultipliableWith<TMultiplier, TProduct>.__Mul__(TMultiplier)
+  fullName: Sharpy.IMultipliableWith<TMultiplier, TProduct>.__Mul__(TMultiplier)
+  nameWithType.vb: IMultipliableWith(Of TMultiplier, TProduct).__Mul__(TMultiplier)
+  fullName.vb: Sharpy.IMultipliableWith(Of TMultiplier, TProduct).__Mul__(TMultiplier)
   spec.csharp:
-  - uid: Sharpy.IMultipliable`3.__Mul__(`1)
+  - uid: Sharpy.IMultipliableWith`2.__Mul__(`0)
     name: __Mul__
-    href: Sharpy.IMultipliable-3.html#Sharpy_IMultipliable_3___Mul____1_
+    href: Sharpy.IMultipliableWith-2.html#Sharpy_IMultipliableWith_2___Mul____0_
   - name: (
   - name: TMultiplier
   - name: )
   spec.vb:
-  - uid: Sharpy.IMultipliable`3.__Mul__(`1)
+  - uid: Sharpy.IMultipliableWith`2.__Mul__(`0)
     name: __Mul__
-    href: Sharpy.IMultipliable-3.html#Sharpy_IMultipliable_3___Mul____1_
+    href: Sharpy.IMultipliableWith-2.html#Sharpy_IMultipliableWith_2___Mul____0_
   - name: (
   - name: TMultiplier
   - name: )
@@ -7320,21 +7550,21 @@ references:
   - name: (
   - name: TMultiplicand
   - name: )
-- uid: Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}.__Add__(Sharpy.Collections.Interfaces.ISequence{{T}})
-  commentId: M:Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}.__Add__(Sharpy.Collections.Interfaces.ISequence{`0})
-  parent: Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
-  definition: Sharpy.IAddable`3.__Add__(`1)
-  href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
+- uid: Sharpy.IAddableWith{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}.__Add__(Sharpy.Collections.Interfaces.ISequence{{T}})
+  commentId: M:Sharpy.IAddableWith{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}.__Add__(Sharpy.Collections.Interfaces.ISequence{`0})
+  parent: Sharpy.IAddableWith{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
+  definition: Sharpy.IAddableWith`2.__Add__(`0)
+  href: Sharpy.IAddableWith-2.html#Sharpy_IAddableWith_2___Add____0_
   name: __Add__(ISequence<T>)
-  nameWithType: IAddable<ISequence<T>, ISequence<T>, ISequence<T>>.__Add__(ISequence<T>)
-  fullName: Sharpy.IAddable<Sharpy.Collections.Interfaces.ISequence<T>, Sharpy.Collections.Interfaces.ISequence<T>, Sharpy.Collections.Interfaces.ISequence<T>>.__Add__(Sharpy.Collections.Interfaces.ISequence<T>)
-  nameWithType.vb: IAddable(Of ISequence(Of T), ISequence(Of T), ISequence(Of T)).__Add__(ISequence(Of T))
-  fullName.vb: Sharpy.IAddable(Of Sharpy.Collections.Interfaces.ISequence(Of T), Sharpy.Collections.Interfaces.ISequence(Of T), Sharpy.Collections.Interfaces.ISequence(Of T)).__Add__(Sharpy.Collections.Interfaces.ISequence(Of T))
+  nameWithType: IAddableWith<ISequence<T>, ISequence<T>>.__Add__(ISequence<T>)
+  fullName: Sharpy.IAddableWith<Sharpy.Collections.Interfaces.ISequence<T>, Sharpy.Collections.Interfaces.ISequence<T>>.__Add__(Sharpy.Collections.Interfaces.ISequence<T>)
+  nameWithType.vb: IAddableWith(Of ISequence(Of T), ISequence(Of T)).__Add__(ISequence(Of T))
+  fullName.vb: Sharpy.IAddableWith(Of Sharpy.Collections.Interfaces.ISequence(Of T), Sharpy.Collections.Interfaces.ISequence(Of T)).__Add__(Sharpy.Collections.Interfaces.ISequence(Of T))
   name.vb: __Add__(ISequence(Of T))
   spec.csharp:
-  - uid: Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}.__Add__(Sharpy.Collections.Interfaces.ISequence{`0})
+  - uid: Sharpy.IAddableWith{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}.__Add__(Sharpy.Collections.Interfaces.ISequence{`0})
     name: __Add__
-    href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
+    href: Sharpy.IAddableWith-2.html#Sharpy_IAddableWith_2___Add____0_
   - name: (
   - uid: Sharpy.Collections.Interfaces.ISequence`1
     name: ISequence
@@ -7344,9 +7574,9 @@ references:
   - name: '>'
   - name: )
   spec.vb:
-  - uid: Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}.__Add__(Sharpy.Collections.Interfaces.ISequence{`0})
+  - uid: Sharpy.IAddableWith{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}.__Add__(Sharpy.Collections.Interfaces.ISequence{`0})
     name: __Add__
-    href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
+    href: Sharpy.IAddableWith-2.html#Sharpy_IAddableWith_2___Add____0_
   - name: (
   - uid: Sharpy.Collections.Interfaces.ISequence`1
     name: ISequence
@@ -8024,12 +8254,12 @@ references:
 - uid: Sharpy.IAddable`3.op_Addition(`0,`1)
   commentId: M:Sharpy.IAddable`3.op_Addition(`0,`1)
   href: Sharpy.IAddable-3.html#Sharpy_IAddable_3_op_Addition__0__1_
-  name: operator +(TLeft, TRight)
-  nameWithType: IAddable<TLeft, TRight, TSum>.operator +(TLeft, TRight)
-  fullName: Sharpy.IAddable<TLeft, TRight, TSum>.operator +(TLeft, TRight)
-  nameWithType.vb: IAddable(Of TLeft, TRight, TSum).+(TLeft, TRight)
-  fullName.vb: Sharpy.IAddable(Of TLeft, TRight, TSum).+(TLeft, TRight)
-  name.vb: +(TLeft, TRight)
+  name: operator +(TAugend, TAddend)
+  nameWithType: IAddable<TAugend, TAddend, TSum>.operator +(TAugend, TAddend)
+  fullName: Sharpy.IAddable<TAugend, TAddend, TSum>.operator +(TAugend, TAddend)
+  nameWithType.vb: IAddable(Of TAugend, TAddend, TSum).+(TAugend, TAddend)
+  fullName.vb: Sharpy.IAddable(Of TAugend, TAddend, TSum).+(TAugend, TAddend)
+  name.vb: +(TAugend, TAddend)
   spec.csharp:
   - name: operator
   - name: " "
@@ -8037,18 +8267,18 @@ references:
     name: +
     href: Sharpy.IAddable-3.html#Sharpy_IAddable_3_op_Addition__0__1_
   - name: (
-  - name: TLeft
+  - name: TAugend
   - name: ','
   - name: " "
-  - name: TRight
+  - name: TAddend
   - name: )
   spec.vb:
   - name: +
   - name: (
-  - name: TLeft
+  - name: TAugend
   - name: ','
   - name: " "
-  - name: TRight
+  - name: TAddend
   - name: )
 - uid: Sharpy.List`1.op_Multiply*
   commentId: Overload:Sharpy.List`1.op_Multiply

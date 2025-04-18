@@ -122,7 +122,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 19
+    startLine: 20
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -151,7 +151,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 24
+    startLine: 25
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -183,7 +183,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 34
+    startLine: 35
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -222,7 +222,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 39
+    startLine: 40
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -258,7 +258,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Implicit
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 47
+    startLine: 48
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -294,7 +294,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Implicit
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 55
+    startLine: 56
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -330,7 +330,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Equality
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 60
+    startLine: 61
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -366,7 +366,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Inequality
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 65
+    startLine: 66
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -402,7 +402,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Equality
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 70
+    startLine: 71
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -438,7 +438,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Inequality
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 75
+    startLine: 76
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -474,7 +474,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Equality
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 80
+    startLine: 81
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -510,7 +510,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Inequality
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 85
+    startLine: 86
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -546,7 +546,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Equals
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 90
+    startLine: 91
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -585,7 +585,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: GetHashCode
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 104
+    startLine: 105
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -619,7 +619,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: ToString
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 109
+    startLine: 110
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -651,7 +651,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Capitalize
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 114
+    startLine: 115
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -679,7 +679,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: CaseFold
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 129
+    startLine: 130
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -707,7 +707,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Center
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 134
+    startLine: 135
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -743,7 +743,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Count
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 139
+    startLine: 140
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -781,7 +781,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Encode
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 144
+    startLine: 145
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -817,7 +817,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: EndsWith
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 149
+    startLine: 150
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -853,7 +853,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: ExpandTabs
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 154
+    startLine: 155
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -889,7 +889,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Find
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 159
+    startLine: 160
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -925,7 +925,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Format
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 164
+    startLine: 165
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -961,7 +961,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: FormatMap
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 169
+    startLine: 170
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -997,7 +997,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Index
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 174
+    startLine: 175
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1033,7 +1033,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IsAlnum
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 179
+    startLine: 180
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1061,7 +1061,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IsAlpha
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 184
+    startLine: 185
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1089,7 +1089,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IsAscii
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 189
+    startLine: 190
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1117,7 +1117,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IsDecimal
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 194
+    startLine: 195
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1145,7 +1145,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IsIdentifier
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 199
+    startLine: 200
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1173,7 +1173,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IsLower
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 204
+    startLine: 205
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1201,7 +1201,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IsNumeric
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 209
+    startLine: 210
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1229,7 +1229,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IsPrintable
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 214
+    startLine: 215
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1257,7 +1257,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IsSpace
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 219
+    startLine: 220
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1285,7 +1285,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IsTitle
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 224
+    startLine: 225
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1313,7 +1313,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IsUpper
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 229
+    startLine: 230
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1341,7 +1341,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Join
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 234
+    startLine: 235
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1375,7 +1375,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: LJust
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 239
+    startLine: 240
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1409,7 +1409,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Lower
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 243
+    startLine: 244
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1437,7 +1437,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: LStrip
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 248
+    startLine: 249
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1469,7 +1469,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: MakeTrans
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 252
+    startLine: 253
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1501,7 +1501,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: MakeTrans
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 256
+    startLine: 257
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1533,7 +1533,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: MakeTrans
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 260
+    startLine: 261
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1567,7 +1567,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: MakeTrans
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 264
+    startLine: 265
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1603,7 +1603,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Partition
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 268
+    startLine: 269
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1635,7 +1635,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: RemovePrefix
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 272
+    startLine: 273
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1667,7 +1667,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: RemoveSuffix
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 276
+    startLine: 277
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1699,7 +1699,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Replace
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 280
+    startLine: 281
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1735,7 +1735,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: RFind
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 284
+    startLine: 285
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1771,7 +1771,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: RIndex
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 288
+    startLine: 289
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1807,7 +1807,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: RJust
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 292
+    startLine: 293
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1841,7 +1841,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: RPartition
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 296
+    startLine: 297
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1873,7 +1873,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: RSplit
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 300
+    startLine: 301
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1907,7 +1907,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: RStrip
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 304
+    startLine: 305
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1939,7 +1939,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Split
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 308
+    startLine: 309
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1973,7 +1973,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: SplitLines
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 312
+    startLine: 313
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2005,7 +2005,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: StartsWith
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 316
+    startLine: 317
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2041,7 +2041,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Strip
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 320
+    startLine: 321
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2073,7 +2073,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: SwapCase
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 324
+    startLine: 325
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2099,7 +2099,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Title
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 328
+    startLine: 329
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2125,7 +2125,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Translate
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 332
+    startLine: 333
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2157,7 +2157,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Upper
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 336
+    startLine: 337
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2185,7 +2185,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: ZFill
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 341
+    startLine: 342
   assemblies:
   - Sharpy
   namespace: Sharpy

@@ -1,4 +1,5 @@
 namespace Sharpy;
+
 public abstract partial class Object
 {
     /// <remarks>

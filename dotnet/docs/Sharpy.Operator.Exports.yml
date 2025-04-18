@@ -2308,7 +2308,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Mul
     path: ../src/Sharpy/Operator/Mul.cs
-    startLine: 3
+    startLine: 4
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
@@ -2346,7 +2346,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Mul
     path: ../src/Sharpy/Operator/Mul.cs
-    startLine: 8
+    startLine: 9
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
@@ -2385,7 +2385,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Mul
     path: ../src/Sharpy/Operator/Mul.cs
-    startLine: 14
+    startLine: 15
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
@@ -2425,7 +2425,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Mul__
     path: ../src/Sharpy/Operator/Mul.cs
-    startLine: 20
+    startLine: 21
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
@@ -2463,7 +2463,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Mul__
     path: ../src/Sharpy/Operator/Mul.cs
-    startLine: 22
+    startLine: 23
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator
@@ -2502,7 +2502,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Mul__
     path: ../src/Sharpy/Operator/Mul.cs
-    startLine: 26
+    startLine: 27
   assemblies:
   - Sharpy
   namespace: Sharpy.Operator

@@ -19,7 +19,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IValuesView
     path: ../src/Sharpy/Collections/Interfaces/IValuesView.cs
-    startLine: 4
+    startLine: 5
   assemblies:
   - Sharpy
   namespace: Sharpy.Collections.Interfaces

@@ -1,4 +1,5 @@
 namespace Sharpy;
+
 public sealed partial class List<T>
 {
     /// <inheritdoc/>

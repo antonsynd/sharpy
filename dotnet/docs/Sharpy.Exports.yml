@@ -952,7 +952,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Str
     path: ../src/Sharpy/Partial.Str/Str.cs
-    startLine: 5
+    startLine: 6
   assemblies:
   - Sharpy
   namespace: Sharpy

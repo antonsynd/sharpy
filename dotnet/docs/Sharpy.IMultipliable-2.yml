@@ -19,18 +19,25 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IMultipliable
     path: ../src/Sharpy/IMultipliable.cs
-    startLine: 18
+    startLine: 44
   assemblies:
   - Sharpy
   namespace: Sharpy
+  summary: >-
+    An interface for a type (the multiplicand) that can be multiplied with
+
+    something (the multiplier) producing a result (the product) with native
+
+    operator support, where the result is of the same type as the multiplicand.
+  example: []
   syntax:
-    content: 'public interface IMultipliable<TMultiplicand, TMultipilier> : IMultipliable<TMultiplicand, TMultipilier, TMultiplicand> where TMultiplicand : IMultipliable<TMultiplicand, TMultipilier, TMultiplicand>'
+    content: 'public interface IMultipliable<TMultiplicand, TMultipilier> : IMultipliable<TMultiplicand, TMultipilier, TMultiplicand>, IMultipliableWith<TMultipilier, TMultiplicand> where TMultiplicand : IMultipliable<TMultiplicand, TMultipilier, TMultiplicand>'
     typeParameters:
     - id: TMultiplicand
     - id: TMultipilier
-    content.vb: Public Interface IMultipliable(Of TMultiplicand As IMultipliable(Of TMultiplicand, TMultipilier, TMultiplicand), TMultipilier) Inherits IMultipliable(Of TMultiplicand, TMultipilier, TMultiplicand)
+    content.vb: Public Interface IMultipliable(Of TMultiplicand As IMultipliable(Of TMultiplicand, TMultipilier, TMultiplicand), TMultipilier) Inherits IMultipliable(Of TMultiplicand, TMultipilier, TMultiplicand), IMultipliableWith(Of TMultipilier, TMultiplicand)
   inheritedMembers:
-  - Sharpy.IMultipliable{{TMultiplicand},{TMultipilier},{TMultiplicand}}.__Mul__({TMultipilier})
+  - Sharpy.IMultipliableWith{{TMultipilier},{TMultiplicand}}.__Mul__({TMultipilier})
   nameWithType.vb: IMultipliable(Of TMultiplicand, TMultipilier)
   fullName.vb: Sharpy.IMultipliable(Of TMultiplicand, TMultipilier)
   name.vb: IMultipliable(Of TMultiplicand, TMultipilier)
@@ -41,122 +48,110 @@ references:
   name: Sharpy
   nameWithType: Sharpy
   fullName: Sharpy
-- uid: Sharpy.IMultipliable{{TMultiplicand},{TMultipilier},{TMultiplicand}}.__Mul__({TMultipilier})
-  commentId: M:Sharpy.IMultipliable{`0,`1,`0}.__Mul__(`1)
-  parent: Sharpy.IMultipliable{{TMultiplicand},{TMultipilier},{TMultiplicand}}
-  definition: Sharpy.IMultipliable`3.__Mul__(`1)
-  href: Sharpy.IMultipliable-3.html#Sharpy_IMultipliable_3___Mul____1_
+- uid: Sharpy.IMultipliableWith{{TMultipilier},{TMultiplicand}}.__Mul__({TMultipilier})
+  commentId: M:Sharpy.IMultipliableWith{`1,`0}.__Mul__(`1)
+  parent: Sharpy.IMultipliableWith{{TMultipilier},{TMultiplicand}}
+  definition: Sharpy.IMultipliableWith`2.__Mul__(`0)
+  href: Sharpy.IMultipliableWith-2.html#Sharpy_IMultipliableWith_2___Mul____0_
   name: __Mul__(TMultipilier)
-  nameWithType: IMultipliable<TMultiplicand, TMultipilier, TMultiplicand>.__Mul__(TMultipilier)
-  fullName: Sharpy.IMultipliable<TMultiplicand, TMultipilier, TMultiplicand>.__Mul__(TMultipilier)
-  nameWithType.vb: IMultipliable(Of TMultiplicand, TMultipilier, TMultiplicand).__Mul__(TMultipilier)
-  fullName.vb: Sharpy.IMultipliable(Of TMultiplicand, TMultipilier, TMultiplicand).__Mul__(TMultipilier)
+  nameWithType: IMultipliableWith<TMultipilier, TMultiplicand>.__Mul__(TMultipilier)
+  fullName: Sharpy.IMultipliableWith<TMultipilier, TMultiplicand>.__Mul__(TMultipilier)
+  nameWithType.vb: IMultipliableWith(Of TMultipilier, TMultiplicand).__Mul__(TMultipilier)
+  fullName.vb: Sharpy.IMultipliableWith(Of TMultipilier, TMultiplicand).__Mul__(TMultipilier)
   spec.csharp:
-  - uid: Sharpy.IMultipliable{`0,`1,`0}.__Mul__(`1)
+  - uid: Sharpy.IMultipliableWith{`1,`0}.__Mul__(`1)
     name: __Mul__
-    href: Sharpy.IMultipliable-3.html#Sharpy_IMultipliable_3___Mul____1_
+    href: Sharpy.IMultipliableWith-2.html#Sharpy_IMultipliableWith_2___Mul____0_
   - name: (
   - name: TMultipilier
   - name: )
   spec.vb:
-  - uid: Sharpy.IMultipliable{`0,`1,`0}.__Mul__(`1)
+  - uid: Sharpy.IMultipliableWith{`1,`0}.__Mul__(`1)
     name: __Mul__
-    href: Sharpy.IMultipliable-3.html#Sharpy_IMultipliable_3___Mul____1_
+    href: Sharpy.IMultipliableWith-2.html#Sharpy_IMultipliableWith_2___Mul____0_
   - name: (
   - name: TMultipilier
   - name: )
-- uid: Sharpy.IMultipliable`3.__Mul__(`1)
-  commentId: M:Sharpy.IMultipliable`3.__Mul__(`1)
-  href: Sharpy.IMultipliable-3.html#Sharpy_IMultipliable_3___Mul____1_
+- uid: Sharpy.IMultipliableWith`2.__Mul__(`0)
+  commentId: M:Sharpy.IMultipliableWith`2.__Mul__(`0)
+  href: Sharpy.IMultipliableWith-2.html#Sharpy_IMultipliableWith_2___Mul____0_
   name: __Mul__(TMultiplier)
-  nameWithType: IMultipliable<TMultiplicand, TMultiplier, TProduct>.__Mul__(TMultiplier)
-  fullName: Sharpy.IMultipliable<TMultiplicand, TMultiplier, TProduct>.__Mul__(TMultiplier)
-  nameWithType.vb: IMultipliable(Of TMultiplicand, TMultiplier, TProduct).__Mul__(TMultiplier)
-  fullName.vb: Sharpy.IMultipliable(Of TMultiplicand, TMultiplier, TProduct).__Mul__(TMultiplier)
+  nameWithType: IMultipliableWith<TMultiplier, TProduct>.__Mul__(TMultiplier)
+  fullName: Sharpy.IMultipliableWith<TMultiplier, TProduct>.__Mul__(TMultiplier)
+  nameWithType.vb: IMultipliableWith(Of TMultiplier, TProduct).__Mul__(TMultiplier)
+  fullName.vb: Sharpy.IMultipliableWith(Of TMultiplier, TProduct).__Mul__(TMultiplier)
   spec.csharp:
-  - uid: Sharpy.IMultipliable`3.__Mul__(`1)
+  - uid: Sharpy.IMultipliableWith`2.__Mul__(`0)
     name: __Mul__
-    href: Sharpy.IMultipliable-3.html#Sharpy_IMultipliable_3___Mul____1_
+    href: Sharpy.IMultipliableWith-2.html#Sharpy_IMultipliableWith_2___Mul____0_
   - name: (
   - name: TMultiplier
   - name: )
   spec.vb:
-  - uid: Sharpy.IMultipliable`3.__Mul__(`1)
+  - uid: Sharpy.IMultipliableWith`2.__Mul__(`0)
     name: __Mul__
-    href: Sharpy.IMultipliable-3.html#Sharpy_IMultipliable_3___Mul____1_
+    href: Sharpy.IMultipliableWith-2.html#Sharpy_IMultipliableWith_2___Mul____0_
   - name: (
   - name: TMultiplier
   - name: )
-- uid: Sharpy.IMultipliable{{TMultiplicand},{TMultipilier},{TMultiplicand}}
-  commentId: T:Sharpy.IMultipliable{`0,`1,`0}
+- uid: Sharpy.IMultipliableWith{{TMultipilier},{TMultiplicand}}
+  commentId: T:Sharpy.IMultipliableWith{`1,`0}
   parent: Sharpy
-  definition: Sharpy.IMultipliable`3
-  href: Sharpy.IMultipliable-3.html
-  name: IMultipliable<TMultiplicand, TMultipilier, TMultiplicand>
-  nameWithType: IMultipliable<TMultiplicand, TMultipilier, TMultiplicand>
-  fullName: Sharpy.IMultipliable<TMultiplicand, TMultipilier, TMultiplicand>
-  nameWithType.vb: IMultipliable(Of TMultiplicand, TMultipilier, TMultiplicand)
-  fullName.vb: Sharpy.IMultipliable(Of TMultiplicand, TMultipilier, TMultiplicand)
-  name.vb: IMultipliable(Of TMultiplicand, TMultipilier, TMultiplicand)
+  definition: Sharpy.IMultipliableWith`2
+  href: Sharpy.IMultipliableWith-2.html
+  name: IMultipliableWith<TMultipilier, TMultiplicand>
+  nameWithType: IMultipliableWith<TMultipilier, TMultiplicand>
+  fullName: Sharpy.IMultipliableWith<TMultipilier, TMultiplicand>
+  nameWithType.vb: IMultipliableWith(Of TMultipilier, TMultiplicand)
+  fullName.vb: Sharpy.IMultipliableWith(Of TMultipilier, TMultiplicand)
+  name.vb: IMultipliableWith(Of TMultipilier, TMultiplicand)
   spec.csharp:
-  - uid: Sharpy.IMultipliable`3
-    name: IMultipliable
-    href: Sharpy.IMultipliable-3.html
+  - uid: Sharpy.IMultipliableWith`2
+    name: IMultipliableWith
+    href: Sharpy.IMultipliableWith-2.html
   - name: <
-  - name: TMultiplicand
-  - name: ','
-  - name: " "
   - name: TMultipilier
   - name: ','
   - name: " "
   - name: TMultiplicand
   - name: '>'
   spec.vb:
-  - uid: Sharpy.IMultipliable`3
-    name: IMultipliable
-    href: Sharpy.IMultipliable-3.html
+  - uid: Sharpy.IMultipliableWith`2
+    name: IMultipliableWith
+    href: Sharpy.IMultipliableWith-2.html
   - name: (
   - name: Of
-  - name: " "
-  - name: TMultiplicand
-  - name: ','
   - name: " "
   - name: TMultipilier
   - name: ','
   - name: " "
   - name: TMultiplicand
   - name: )
-- uid: Sharpy.IMultipliable`3
-  commentId: T:Sharpy.IMultipliable`3
-  href: Sharpy.IMultipliable-3.html
-  name: IMultipliable<TMultiplicand, TMultiplier, TProduct>
-  nameWithType: IMultipliable<TMultiplicand, TMultiplier, TProduct>
-  fullName: Sharpy.IMultipliable<TMultiplicand, TMultiplier, TProduct>
-  nameWithType.vb: IMultipliable(Of TMultiplicand, TMultiplier, TProduct)
-  fullName.vb: Sharpy.IMultipliable(Of TMultiplicand, TMultiplier, TProduct)
-  name.vb: IMultipliable(Of TMultiplicand, TMultiplier, TProduct)
+- uid: Sharpy.IMultipliableWith`2
+  commentId: T:Sharpy.IMultipliableWith`2
+  href: Sharpy.IMultipliableWith-2.html
+  name: IMultipliableWith<TMultiplier, TProduct>
+  nameWithType: IMultipliableWith<TMultiplier, TProduct>
+  fullName: Sharpy.IMultipliableWith<TMultiplier, TProduct>
+  nameWithType.vb: IMultipliableWith(Of TMultiplier, TProduct)
+  fullName.vb: Sharpy.IMultipliableWith(Of TMultiplier, TProduct)
+  name.vb: IMultipliableWith(Of TMultiplier, TProduct)
   spec.csharp:
-  - uid: Sharpy.IMultipliable`3
-    name: IMultipliable
-    href: Sharpy.IMultipliable-3.html
+  - uid: Sharpy.IMultipliableWith`2
+    name: IMultipliableWith
+    href: Sharpy.IMultipliableWith-2.html
   - name: <
-  - name: TMultiplicand
-  - name: ','
-  - name: " "
   - name: TMultiplier
   - name: ','
   - name: " "
   - name: TProduct
   - name: '>'
   spec.vb:
-  - uid: Sharpy.IMultipliable`3
-    name: IMultipliable
-    href: Sharpy.IMultipliable-3.html
+  - uid: Sharpy.IMultipliableWith`2
+    name: IMultipliableWith
+    href: Sharpy.IMultipliableWith-2.html
   - name: (
   - name: Of
-  - name: " "
-  - name: TMultiplicand
-  - name: ','
   - name: " "
   - name: TMultiplier
   - name: ','

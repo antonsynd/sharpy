@@ -1,6 +1,6 @@
 namespace Sharpy;
-using Collections.Interfaces;
 
+using Collections.Interfaces;
 
 /// <summary>
 /// A list of elements.

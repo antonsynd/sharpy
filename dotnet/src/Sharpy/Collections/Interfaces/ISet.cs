@@ -36,11 +36,23 @@ public interface ISet<S, T> : ISet<T> where S : ISet<S, T>, ILessThanOrEquatable
 
     bool IsDisjoint(S other);
 
-    static abstract S operator &(S left, S right);
+    static virtual S operator &(S left, S right)
+    {
+        return left.__And__(right);
+    }
 
-    static abstract S operator |(S left, S right);
+    static virtual S operator |(S left, S right)
+    {
+        return left.__Or__(right);
+    }
 
-    static abstract S operator -(S left, S right);
+    static virtual S operator -(S left, S right)
+    {
+        return left.__Sub__(right);
+    }
 
-    static abstract S operator ^(S left, S right);
+    static virtual S operator ^(S left, S right)
+    {
+        return left.__XOr__(right);
+    }
 }

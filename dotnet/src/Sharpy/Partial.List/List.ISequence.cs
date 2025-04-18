@@ -1,4 +1,5 @@
 namespace Sharpy;
+
 using Collections.Interfaces;
 
 public sealed partial class List<T>

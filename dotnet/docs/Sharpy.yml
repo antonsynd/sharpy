@@ -8,6 +8,7 @@ items:
   - Sharpy.DictKeyView`2
   - Sharpy.Dict`2
   - Sharpy.Exports
+  - Sharpy.IAddableWith`2
   - Sharpy.IAddable`1
   - Sharpy.IAddable`2
   - Sharpy.IAddable`3
@@ -29,6 +30,7 @@ items:
   - Sharpy.ILessThanComparable`1
   - Sharpy.ILessThanOrEquatableWith`1
   - Sharpy.ILessThanOrEquatable`1
+  - Sharpy.IMultipliableWith`2
   - Sharpy.IMultipliable`1
   - Sharpy.IMultipliable`2
   - Sharpy.IMultipliable`3
@@ -139,24 +141,55 @@ references:
   - name: " "
   - name: V
   - name: )
+- uid: Sharpy.IAddableWith`2
+  commentId: T:Sharpy.IAddableWith`2
+  href: Sharpy.IAddableWith-2.html
+  name: IAddableWith<TAddend, TSum>
+  nameWithType: IAddableWith<TAddend, TSum>
+  fullName: Sharpy.IAddableWith<TAddend, TSum>
+  nameWithType.vb: IAddableWith(Of TAddend, TSum)
+  fullName.vb: Sharpy.IAddableWith(Of TAddend, TSum)
+  name.vb: IAddableWith(Of TAddend, TSum)
+  spec.csharp:
+  - uid: Sharpy.IAddableWith`2
+    name: IAddableWith
+    href: Sharpy.IAddableWith-2.html
+  - name: <
+  - name: TAddend
+  - name: ','
+  - name: " "
+  - name: TSum
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IAddableWith`2
+    name: IAddableWith
+    href: Sharpy.IAddableWith-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TAddend
+  - name: ','
+  - name: " "
+  - name: TSum
+  - name: )
 - uid: Sharpy.IAddable`3
   commentId: T:Sharpy.IAddable`3
   href: Sharpy.IAddable-3.html
-  name: IAddable<TLeft, TRight, TSum>
-  nameWithType: IAddable<TLeft, TRight, TSum>
-  fullName: Sharpy.IAddable<TLeft, TRight, TSum>
-  nameWithType.vb: IAddable(Of TLeft, TRight, TSum)
-  fullName.vb: Sharpy.IAddable(Of TLeft, TRight, TSum)
-  name.vb: IAddable(Of TLeft, TRight, TSum)
+  name: IAddable<TAugend, TAddend, TSum>
+  nameWithType: IAddable<TAugend, TAddend, TSum>
+  fullName: Sharpy.IAddable<TAugend, TAddend, TSum>
+  nameWithType.vb: IAddable(Of TAugend, TAddend, TSum)
+  fullName.vb: Sharpy.IAddable(Of TAugend, TAddend, TSum)
+  name.vb: IAddable(Of TAugend, TAddend, TSum)
   spec.csharp:
   - uid: Sharpy.IAddable`3
     name: IAddable
     href: Sharpy.IAddable-3.html
   - name: <
-  - name: TLeft
+  - name: TAugend
   - name: ','
   - name: " "
-  - name: TRight
+  - name: TAddend
   - name: ','
   - name: " "
   - name: TSum
@@ -168,10 +201,10 @@ references:
   - name: (
   - name: Of
   - name: " "
-  - name: TLeft
+  - name: TAugend
   - name: ','
   - name: " "
-  - name: TRight
+  - name: TAddend
   - name: ','
   - name: " "
   - name: TSum
@@ -609,6 +642,37 @@ references:
   - name: Of
   - name: " "
   - name: T
+  - name: )
+- uid: Sharpy.IMultipliableWith`2
+  commentId: T:Sharpy.IMultipliableWith`2
+  href: Sharpy.IMultipliableWith-2.html
+  name: IMultipliableWith<TMultiplier, TProduct>
+  nameWithType: IMultipliableWith<TMultiplier, TProduct>
+  fullName: Sharpy.IMultipliableWith<TMultiplier, TProduct>
+  nameWithType.vb: IMultipliableWith(Of TMultiplier, TProduct)
+  fullName.vb: Sharpy.IMultipliableWith(Of TMultiplier, TProduct)
+  name.vb: IMultipliableWith(Of TMultiplier, TProduct)
+  spec.csharp:
+  - uid: Sharpy.IMultipliableWith`2
+    name: IMultipliableWith
+    href: Sharpy.IMultipliableWith-2.html
+  - name: <
+  - name: TMultiplier
+  - name: ','
+  - name: " "
+  - name: TProduct
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IMultipliableWith`2
+    name: IMultipliableWith
+    href: Sharpy.IMultipliableWith-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TMultiplier
+  - name: ','
+  - name: " "
+  - name: TProduct
   - name: )
 - uid: Sharpy.IMultipliable`3
   commentId: T:Sharpy.IMultipliable`3

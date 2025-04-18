@@ -22,7 +22,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Iterator
     path: ../src/Sharpy/Partial.Iterator/Iterator.IIterable.cs
-    startLine: 1
+    startLine: 2
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -173,7 +173,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Iter__
     path: ../src/Sharpy/Partial.Iterator/Iterator.IIterable.cs
-    startLine: 8
+    startLine: 9
   assemblies:
   - Sharpy
   namespace: Sharpy

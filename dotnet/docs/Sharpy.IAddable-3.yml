@@ -5,14 +5,13 @@ items:
   id: IAddable`3
   parent: Sharpy
   children:
-  - Sharpy.IAddable`3.__Add__(`1)
   - Sharpy.IAddable`3.op_Addition(`0,`1)
   langs:
   - csharp
   - vb
-  name: IAddable<TLeft, TRight, TSum>
-  nameWithType: IAddable<TLeft, TRight, TSum>
-  fullName: Sharpy.IAddable<TLeft, TRight, TSum>
+  name: IAddable<TAugend, TAddend, TSum>
+  nameWithType: IAddable<TAugend, TAddend, TSum>
+  fullName: Sharpy.IAddable<TAugend, TAddend, TSum>
   type: Interface
   source:
     remote:
@@ -21,53 +20,36 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IAddable
     path: ../src/Sharpy/IAddable.cs
-    startLine: 2
+    startLine: 25
   assemblies:
   - Sharpy
   namespace: Sharpy
+  summary: >-
+    An interface for a type (the augend) that can be augmented (or added to)
+
+    with something (the addende) producing a sum (the result, which may be
+
+    the modified augend itself. This version has native operator support.
+  example: []
   syntax:
-    content: 'public interface IAddable<TLeft, TRight, TSum> where TLeft : IAddable<TLeft, TRight, TSum>'
+    content: 'public interface IAddable<TAugend, TAddend, TSum> : IAddableWith<TAddend, TSum> where TAugend : IAddable<TAugend, TAddend, TSum>'
     typeParameters:
-    - id: TLeft
-    - id: TRight
+    - id: TAugend
+      description: >-
+        The augend (the thing to add something to, or the
+            thing that is increased or augmented).
+    - id: TAddend
+      description: >-
+        The addend (the increase or thing to
+            add/insert).
     - id: TSum
-    content.vb: Public Interface IAddable(Of TLeft As IAddable(Of TLeft, TRight, TSum), TRight, TSum)
-  nameWithType.vb: IAddable(Of TLeft, TRight, TSum)
-  fullName.vb: Sharpy.IAddable(Of TLeft, TRight, TSum)
-  name.vb: IAddable(Of TLeft, TRight, TSum)
-- uid: Sharpy.IAddable`3.__Add__(`1)
-  commentId: M:Sharpy.IAddable`3.__Add__(`1)
-  id: __Add__(`1)
-  parent: Sharpy.IAddable`3
-  langs:
-  - csharp
-  - vb
-  name: __Add__(TRight)
-  nameWithType: IAddable<TLeft, TRight, TSum>.__Add__(TRight)
-  fullName: Sharpy.IAddable<TLeft, TRight, TSum>.__Add__(TRight)
-  type: Method
-  source:
-    remote:
-      path: dotnet/src/Sharpy/IAddable.cs
-      branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
-    id: __Add__
-    path: ../src/Sharpy/IAddable.cs
-    startLine: 4
-  assemblies:
-  - Sharpy
-  namespace: Sharpy
-  syntax:
-    content: TSum __Add__(TRight other)
-    parameters:
-    - id: other
-      type: '{TRight}'
-    return:
-      type: '{TSum}'
-    content.vb: Function __Add__(other As TRight) As TSum
-  overload: Sharpy.IAddable`3.__Add__*
-  nameWithType.vb: IAddable(Of TLeft, TRight, TSum).__Add__(TRight)
-  fullName.vb: Sharpy.IAddable(Of TLeft, TRight, TSum).__Add__(TRight)
+      description: The sum.
+    content.vb: Public Interface IAddable(Of TAugend As IAddable(Of TAugend, TAddend, TSum), TAddend, TSum) Inherits IAddableWith(Of TAddend, TSum)
+  inheritedMembers:
+  - Sharpy.IAddableWith{{TAddend},{TSum}}.__Add__({TAddend})
+  nameWithType.vb: IAddable(Of TAugend, TAddend, TSum)
+  fullName.vb: Sharpy.IAddable(Of TAugend, TAddend, TSum)
+  name.vb: IAddable(Of TAugend, TAddend, TSum)
 - uid: Sharpy.IAddable`3.op_Addition(`0,`1)
   commentId: M:Sharpy.IAddable`3.op_Addition(`0,`1)
   id: op_Addition(`0,`1)
@@ -75,9 +57,9 @@ items:
   langs:
   - csharp
   - vb
-  name: operator +(TLeft, TRight)
-  nameWithType: IAddable<TLeft, TRight, TSum>.operator +(TLeft, TRight)
-  fullName: Sharpy.IAddable<TLeft, TRight, TSum>.operator +(TLeft, TRight)
+  name: operator +(TAugend, TAddend)
+  nameWithType: IAddable<TAugend, TAddend, TSum>.operator +(TAugend, TAddend)
+  fullName: Sharpy.IAddable<TAugend, TAddend, TSum>.operator +(TAugend, TAddend)
   type: Operator
   source:
     remote:
@@ -86,24 +68,24 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Addition
     path: ../src/Sharpy/IAddable.cs
-    startLine: 6
+    startLine: 28
   assemblies:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public static TSum operator +(TLeft left, TRight right)
+    content: public static TSum operator +(TAugend left, TAddend right)
     parameters:
     - id: left
-      type: '{TLeft}'
+      type: '{TAugend}'
     - id: right
-      type: '{TRight}'
+      type: '{TAddend}'
     return:
       type: '{TSum}'
-    content.vb: Public Shared Operator +(left As TLeft, right As TRight) As TSum
+    content.vb: Public Shared Operator +(left As TAugend, right As TAddend) As TSum
   overload: Sharpy.IAddable`3.op_Addition*
-  nameWithType.vb: IAddable(Of TLeft, TRight, TSum).+(TLeft, TRight)
-  fullName.vb: Sharpy.IAddable(Of TLeft, TRight, TSum).+(TLeft, TRight)
-  name.vb: +(TLeft, TRight)
+  nameWithType.vb: IAddable(Of TAugend, TAddend, TSum).+(TAugend, TAddend)
+  fullName.vb: Sharpy.IAddable(Of TAugend, TAddend, TSum).+(TAugend, TAddend)
+  name.vb: +(TAugend, TAddend)
 references:
 - uid: Sharpy
   commentId: N:Sharpy
@@ -111,42 +93,124 @@ references:
   name: Sharpy
   nameWithType: Sharpy
   fullName: Sharpy
-- uid: Sharpy.IAddable`3.__Add__*
-  commentId: Overload:Sharpy.IAddable`3.__Add__
-  href: Sharpy.IAddable-3.html#Sharpy_IAddable_3___Add____1_
-  name: __Add__
-  nameWithType: IAddable<TLeft, TRight, TSum>.__Add__
-  fullName: Sharpy.IAddable<TLeft, TRight, TSum>.__Add__
-  nameWithType.vb: IAddable(Of TLeft, TRight, TSum).__Add__
-  fullName.vb: Sharpy.IAddable(Of TLeft, TRight, TSum).__Add__
-- uid: '{TRight}'
-  commentId: '!:TRight'
-  definition: TRight
-  name: TRight
-  nameWithType: TRight
-  fullName: TRight
-- uid: '{TSum}'
-  commentId: '!:TSum'
-  definition: TSum
-  name: TSum
-  nameWithType: TSum
-  fullName: TSum
-- uid: TRight
-  name: TRight
-  nameWithType: TRight
-  fullName: TRight
-- uid: TSum
-  name: TSum
-  nameWithType: TSum
-  fullName: TSum
+- uid: Sharpy.IAddableWith{{TAddend},{TSum}}.__Add__({TAddend})
+  commentId: M:Sharpy.IAddableWith{`1,`2}.__Add__(`1)
+  parent: Sharpy.IAddableWith{{TAddend},{TSum}}
+  definition: Sharpy.IAddableWith`2.__Add__(`0)
+  href: Sharpy.IAddableWith-2.html#Sharpy_IAddableWith_2___Add____0_
+  name: __Add__(TAddend)
+  nameWithType: IAddableWith<TAddend, TSum>.__Add__(TAddend)
+  fullName: Sharpy.IAddableWith<TAddend, TSum>.__Add__(TAddend)
+  nameWithType.vb: IAddableWith(Of TAddend, TSum).__Add__(TAddend)
+  fullName.vb: Sharpy.IAddableWith(Of TAddend, TSum).__Add__(TAddend)
+  spec.csharp:
+  - uid: Sharpy.IAddableWith{`1,`2}.__Add__(`1)
+    name: __Add__
+    href: Sharpy.IAddableWith-2.html#Sharpy_IAddableWith_2___Add____0_
+  - name: (
+  - name: TAddend
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IAddableWith{`1,`2}.__Add__(`1)
+    name: __Add__
+    href: Sharpy.IAddableWith-2.html#Sharpy_IAddableWith_2___Add____0_
+  - name: (
+  - name: TAddend
+  - name: )
+- uid: Sharpy.IAddableWith`2.__Add__(`0)
+  commentId: M:Sharpy.IAddableWith`2.__Add__(`0)
+  href: Sharpy.IAddableWith-2.html#Sharpy_IAddableWith_2___Add____0_
+  name: __Add__(TAddend)
+  nameWithType: IAddableWith<TAddend, TSum>.__Add__(TAddend)
+  fullName: Sharpy.IAddableWith<TAddend, TSum>.__Add__(TAddend)
+  nameWithType.vb: IAddableWith(Of TAddend, TSum).__Add__(TAddend)
+  fullName.vb: Sharpy.IAddableWith(Of TAddend, TSum).__Add__(TAddend)
+  spec.csharp:
+  - uid: Sharpy.IAddableWith`2.__Add__(`0)
+    name: __Add__
+    href: Sharpy.IAddableWith-2.html#Sharpy_IAddableWith_2___Add____0_
+  - name: (
+  - name: TAddend
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IAddableWith`2.__Add__(`0)
+    name: __Add__
+    href: Sharpy.IAddableWith-2.html#Sharpy_IAddableWith_2___Add____0_
+  - name: (
+  - name: TAddend
+  - name: )
+- uid: Sharpy.IAddableWith{{TAddend},{TSum}}
+  commentId: T:Sharpy.IAddableWith{`1,`2}
+  parent: Sharpy
+  definition: Sharpy.IAddableWith`2
+  href: Sharpy.IAddableWith-2.html
+  name: IAddableWith<TAddend, TSum>
+  nameWithType: IAddableWith<TAddend, TSum>
+  fullName: Sharpy.IAddableWith<TAddend, TSum>
+  nameWithType.vb: IAddableWith(Of TAddend, TSum)
+  fullName.vb: Sharpy.IAddableWith(Of TAddend, TSum)
+  name.vb: IAddableWith(Of TAddend, TSum)
+  spec.csharp:
+  - uid: Sharpy.IAddableWith`2
+    name: IAddableWith
+    href: Sharpy.IAddableWith-2.html
+  - name: <
+  - name: TAddend
+  - name: ','
+  - name: " "
+  - name: TSum
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IAddableWith`2
+    name: IAddableWith
+    href: Sharpy.IAddableWith-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TAddend
+  - name: ','
+  - name: " "
+  - name: TSum
+  - name: )
+- uid: Sharpy.IAddableWith`2
+  commentId: T:Sharpy.IAddableWith`2
+  href: Sharpy.IAddableWith-2.html
+  name: IAddableWith<TAddend, TSum>
+  nameWithType: IAddableWith<TAddend, TSum>
+  fullName: Sharpy.IAddableWith<TAddend, TSum>
+  nameWithType.vb: IAddableWith(Of TAddend, TSum)
+  fullName.vb: Sharpy.IAddableWith(Of TAddend, TSum)
+  name.vb: IAddableWith(Of TAddend, TSum)
+  spec.csharp:
+  - uid: Sharpy.IAddableWith`2
+    name: IAddableWith
+    href: Sharpy.IAddableWith-2.html
+  - name: <
+  - name: TAddend
+  - name: ','
+  - name: " "
+  - name: TSum
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IAddableWith`2
+    name: IAddableWith
+    href: Sharpy.IAddableWith-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TAddend
+  - name: ','
+  - name: " "
+  - name: TSum
+  - name: )
 - uid: Sharpy.IAddable`3.op_Addition*
   commentId: Overload:Sharpy.IAddable`3.op_Addition
   href: Sharpy.IAddable-3.html#Sharpy_IAddable_3_op_Addition__0__1_
   name: operator +
-  nameWithType: IAddable<TLeft, TRight, TSum>.operator +
-  fullName: Sharpy.IAddable<TLeft, TRight, TSum>.operator +
-  nameWithType.vb: IAddable(Of TLeft, TRight, TSum).+
-  fullName.vb: Sharpy.IAddable(Of TLeft, TRight, TSum).+
+  nameWithType: IAddable<TAugend, TAddend, TSum>.operator +
+  fullName: Sharpy.IAddable<TAugend, TAddend, TSum>.operator +
+  nameWithType.vb: IAddable(Of TAugend, TAddend, TSum).+
+  fullName.vb: Sharpy.IAddable(Of TAugend, TAddend, TSum).+
   name.vb: +
   spec.csharp:
   - name: operator
@@ -154,13 +218,33 @@ references:
   - uid: Sharpy.IAddable`3.op_Addition*
     name: +
     href: Sharpy.IAddable-3.html#Sharpy_IAddable_3_op_Addition__0__1_
-- uid: '{TLeft}'
-  commentId: '!:TLeft'
-  definition: TLeft
-  name: TLeft
-  nameWithType: TLeft
-  fullName: TLeft
-- uid: TLeft
-  name: TLeft
-  nameWithType: TLeft
-  fullName: TLeft
+- uid: '{TAugend}'
+  commentId: '!:TAugend'
+  definition: TAugend
+  name: TAugend
+  nameWithType: TAugend
+  fullName: TAugend
+- uid: '{TAddend}'
+  commentId: '!:TAddend'
+  definition: TAddend
+  name: TAddend
+  nameWithType: TAddend
+  fullName: TAddend
+- uid: '{TSum}'
+  commentId: '!:TSum'
+  definition: TSum
+  name: TSum
+  nameWithType: TSum
+  fullName: TSum
+- uid: TAugend
+  name: TAugend
+  nameWithType: TAugend
+  fullName: TAugend
+- uid: TAddend
+  name: TAddend
+  nameWithType: TAddend
+  fullName: TAddend
+- uid: TSum
+  name: TSum
+  nameWithType: TSum
+  fullName: TSum

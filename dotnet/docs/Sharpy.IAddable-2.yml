@@ -21,7 +21,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IAddable
     path: ../src/Sharpy/IAddable.cs
-    startLine: 24
+    startLine: 48
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -36,9 +36,13 @@ items:
     content: 'public interface IAddable<TAugend, TAddend> where TAugend : IAddable<TAugend, TAddend>'
     typeParameters:
     - id: TAugend
-      description: The type that gets augmented (the "augend").
+      description: >-
+        The type that gets augmented
+            (the "augend").
     - id: TAddend
-      description: The type that indicates the amount of augmentation or what is being included in the "augend".
+      description: >-
+        The type that indicates the amount of
+            augmentation or what is being included in the "augend".
     content.vb: Public Interface IAddable(Of TAugend As IAddable(Of TAugend, TAddend), TAddend)
   nameWithType.vb: IAddable(Of TAugend, TAddend)
   fullName.vb: Sharpy.IAddable(Of TAugend, TAddend)
@@ -61,7 +65,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Add__
     path: ../src/Sharpy/IAddable.cs
-    startLine: 26
+    startLine: 50
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -94,7 +98,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Addition
     path: ../src/Sharpy/IAddable.cs
-    startLine: 28
+    startLine: 52
   assemblies:
   - Sharpy
   namespace: Sharpy

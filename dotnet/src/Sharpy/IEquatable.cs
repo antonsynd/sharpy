@@ -25,7 +25,7 @@ public interface IEquatable : IHashable
     }
 
     /// <remarks>
-    /// This should delegate to <see cref="IEquatable&lt;T&gt;.__Eq__(T)"/>
+    /// This should delegate to <see cref="IEquatableWith&lt;T&gt;.__Eq__(T)"/>
     /// when possible.
     /// </remarks>
     bool __Eq__(object other);

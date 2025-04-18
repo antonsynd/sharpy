@@ -1,4 +1,5 @@
 namespace Sharpy.Operator;
+
 public static partial class Exports
 {
     public static T Mul<T>(T left, T right) where T : IMultipliable<T>

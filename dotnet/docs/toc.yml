@@ -16,6 +16,9 @@ items:
   - uid: Sharpy.Exports
     name: Exports
     type: Class
+  - uid: Sharpy.IAddableWith`2
+    name: IAddableWith<TAddend, TSum>
+    type: Interface
   - uid: Sharpy.IAddable`1
     name: IAddable<T>
     type: Interface
@@ -23,7 +26,7 @@ items:
     name: IAddable<TAugend, TAddend>
     type: Interface
   - uid: Sharpy.IAddable`3
-    name: IAddable<TLeft, TRight, TSum>
+    name: IAddable<TAugend, TAddend, TSum>
     type: Interface
   - uid: Sharpy.IBoolConvertible
     name: IBoolConvertible
@@ -78,6 +81,9 @@ items:
     type: Interface
   - uid: Sharpy.ILessThanOrEquatable`1
     name: ILessThanOrEquatable<T>
+    type: Interface
+  - uid: Sharpy.IMultipliableWith`2
+    name: IMultipliableWith<TMultiplier, TProduct>
     type: Interface
   - uid: Sharpy.IMultipliable`1
     name: IMultipliable<T>
