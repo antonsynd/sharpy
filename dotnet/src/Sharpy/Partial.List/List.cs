@@ -41,7 +41,8 @@ public sealed partial class List<T>
     }
 
     /// <remarks>
-    /// For collection initializers.
+    /// For collection initializers. Also a part of the
+    /// System.Collections.Generic.ICollection interface.
     /// </remarks>
     public void Add(T item) => _list.Add(item);
 

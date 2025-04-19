@@ -359,4 +359,51 @@ public sealed partial class Dict<K, V> : Object, IMutableMapping<K, V> where K :
     {
         return !(dict?.__Bool__() ?? false);
     }
+
+    public bool IsReadOnly
+    {
+        get
+        {
+            return false;
+        }
+    }
+
+    public void Add(K key)
+    {
+        if (_dict.ContainsKey(key))
+        {
+            return;
+        }
+
+        _dict[key] = default(V);
+    }
+
+    bool System.Collections.Generic.ICollection<K>.Remove(K key)
+    {
+        return _dict.Remove(key);
+    }
+
+    public void CopyTo(K[] array, int arrayIndex)
+    {
+        if (array is null)
+        {
+            throw new ArgumentNullException("array cannot be null");
+        }
+
+        if (arrayIndex < 0)
+        {
+            throw new ArgumentOutOfRangeException("arrayIndex cannot be less than 0");
+        }
+
+        if (array.Length - arrayIndex < _dict.Keys.Count)
+        {
+            throw new ArgumentException("Number of keys is greater than the available space in the array");
+        }
+
+        foreach (var key in _dict.Keys)
+        {
+            array[arrayIndex] = key;
+            ++arrayIndex;
+        }
+    }
 }

@@ -12,12 +12,14 @@ items:
   - Sharpy.List`1.Clear
   - Sharpy.List`1.Contains(`0)
   - Sharpy.List`1.Copy
+  - Sharpy.List`1.CopyTo(`0[],System.Int32)
   - Sharpy.List`1.Count(`0)
   - Sharpy.List`1.Equals(Sharpy.List{`0})
   - Sharpy.List`1.Extend(System.Collections.Generic.IEnumerable{`0})
   - Sharpy.List`1.GetEnumerator
   - Sharpy.List`1.Index(`0,System.Int32,System.Int32)
   - Sharpy.List`1.Insert(System.Int32,`0)
+  - Sharpy.List`1.IsReadOnly
   - Sharpy.List`1.Item(System.Int32)
   - Sharpy.List`1.Item(System.Int32,System.Int32)
   - Sharpy.List`1.Item(System.Int32,System.Int32,System.Int32)
@@ -80,10 +82,10 @@ items:
   summary: A list of elements.
   example: []
   syntax:
-    content: 'public sealed class List<T> : Object, IInequatable<Object>, IInequatableWith<Object>, IEquatable<Object>, IEquatableWith<Object>, IEquatable<Object>, IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSequence<List<T>, T>, IMutableSequence<T>, IInplaceAddable<ISequence<T>>, ISequence<List<T>, T>, ISequence<T>, ICollection<T>, IContainer<T>, ISized, IReversible<T>, IIterable<T>, IEnumerable<T>, IEnumerable, IAddable<ISequence<T>>, IAddable<ISequence<T>, ISequence<T>, ISequence<T>>, IAddableWith<ISequence<T>, ISequence<T>>, IRightAddable<ISequence<T>>, IRightAddable<ISequence<T>, ISequence<T>>, IEquatable<List<T>>, IEquatableWith<List<T>>, IEquatable, IHashable, IEquatable<List<T>>, IAddable<List<T>>, IAddable<List<T>, List<T>, List<T>>, IAddableWith<List<T>, List<T>>, IRightAddable<List<T>>, IRightAddable<List<T>, List<T>>, IInplaceAddable<List<T>>, IMultipliable<List<T>, int>, IMultipliable<List<T>, int, List<T>>, IMultipliableWith<int, List<T>>, IInplaceMultipliable<int>, IRightMultipliable<List<T>, int>'
+    content: 'public sealed class List<T> : Object, IInequatable<Object>, IInequatableWith<Object>, IEquatable<Object>, IEquatableWith<Object>, IEquatable<Object>, IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSequence<List<T>, T>, IMutableSequence<T>, IInplaceAddable<ISequence<T>>, ISequence<List<T>, T>, ISequence<T>, ICollection<T>, IContainer<T>, ISized, ICollection<T>, IReversible<T>, IIterable<T>, IEnumerable<T>, IEnumerable, IAddable<ISequence<T>>, IAddable<ISequence<T>, ISequence<T>, ISequence<T>>, IAddableWith<ISequence<T>, ISequence<T>>, IRightAddable<ISequence<T>>, IRightAddable<ISequence<T>, ISequence<T>>, IEquatable<List<T>>, IEquatableWith<List<T>>, IEquatable, IHashable, IEquatable<List<T>>, IAddable<List<T>>, IAddable<List<T>, List<T>, List<T>>, IAddableWith<List<T>, List<T>>, IRightAddable<List<T>>, IRightAddable<List<T>, List<T>>, IInplaceAddable<List<T>>, IMultipliable<List<T>, int>, IMultipliable<List<T>, int, List<T>>, IMultipliableWith<int, List<T>>, IInplaceMultipliable<int>, IRightMultipliable<List<T>, int>'
     typeParameters:
     - id: T
-    content.vb: Public NotInheritable Class List(Of T) Inherits Object Implements IInequatable(Of Object), IInequatableWith(Of Object), IEquatable(Of Object), IEquatableWith(Of Object), IEquatable(Of Object), IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSequence(Of List(Of T), T), IMutableSequence(Of T), IInplaceAddable(Of ISequence(Of T)), ISequence(Of List(Of T), T), ISequence(Of T), ICollection(Of T), IContainer(Of T), ISized, IReversible(Of T), IIterable(Of T), IEnumerable(Of T), IEnumerable, IAddable(Of ISequence(Of T)), IAddable(Of ISequence(Of T), ISequence(Of T), ISequence(Of T)), IAddableWith(Of ISequence(Of T), ISequence(Of T)), IRightAddable(Of ISequence(Of T)), IRightAddable(Of ISequence(Of T), ISequence(Of T)), IEquatable(Of List(Of T)), IEquatableWith(Of List(Of T)), IEquatable, IHashable, IEquatable(Of List(Of T)), IAddable(Of List(Of T)), IAddable(Of List(Of T), List(Of T), List(Of T)), IAddableWith(Of List(Of T), List(Of T)), IRightAddable(Of List(Of T)), IRightAddable(Of List(Of T), List(Of T)), IInplaceAddable(Of List(Of T)), IMultipliable(Of List(Of T), Integer), IMultipliable(Of List(Of T), Integer, List(Of T)), IMultipliableWith(Of Integer, List(Of T)), IInplaceMultipliable(Of Integer), IRightMultipliable(Of List(Of T), Integer)
+    content.vb: Public NotInheritable Class List(Of T) Inherits Object Implements IInequatable(Of Object), IInequatableWith(Of Object), IEquatable(Of Object), IEquatableWith(Of Object), IEquatable(Of Object), IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSequence(Of List(Of T), T), IMutableSequence(Of T), IInplaceAddable(Of ISequence(Of T)), ISequence(Of List(Of T), T), ISequence(Of T), ICollection(Of T), IContainer(Of T), ISized, ICollection(Of T), IReversible(Of T), IIterable(Of T), IEnumerable(Of T), IEnumerable, IAddable(Of ISequence(Of T)), IAddable(Of ISequence(Of T), ISequence(Of T), ISequence(Of T)), IAddableWith(Of ISequence(Of T), ISequence(Of T)), IRightAddable(Of ISequence(Of T)), IRightAddable(Of ISequence(Of T), ISequence(Of T)), IEquatable(Of List(Of T)), IEquatableWith(Of List(Of T)), IEquatable, IHashable, IEquatable(Of List(Of T)), IAddable(Of List(Of T)), IAddable(Of List(Of T), List(Of T), List(Of T)), IAddableWith(Of List(Of T), List(Of T)), IRightAddable(Of List(Of T)), IRightAddable(Of List(Of T), List(Of T)), IInplaceAddable(Of List(Of T)), IMultipliable(Of List(Of T), Integer), IMultipliable(Of List(Of T), Integer, List(Of T)), IMultipliableWith(Of Integer, List(Of T)), IInplaceMultipliable(Of Integer), IRightMultipliable(Of List(Of T), Integer)
   inheritance:
   - System.Object
   - Sharpy.Object
@@ -105,6 +107,7 @@ items:
   - Sharpy.Collections.Interfaces.ICollection{{T}}
   - Sharpy.Collections.Interfaces.IContainer{{T}}
   - Sharpy.Collections.Interfaces.ISized
+  - System.Collections.Generic.ICollection{{T}}
   - Sharpy.Collections.Interfaces.IReversible{{T}}
   - Sharpy.Collections.Interfaces.IIterable{{T}}
   - System.Collections.Generic.IEnumerable{{T}}
@@ -232,11 +235,14 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Add
     path: ../src/Sharpy/Partial.List/List.cs
-    startLine: 45
+    startLine: 46
   assemblies:
   - Sharpy
   namespace: Sharpy
-  remarks: For collection initializers.
+  remarks: >-
+    For collection initializers. Also a part of the
+
+    System.Collections.Generic.ICollection interface.
   example: []
   syntax:
     content: public void Add(T item)
@@ -245,6 +251,8 @@ items:
       type: '{T}'
     content.vb: Public Sub Add(item As T)
   overload: Sharpy.List`1.Add*
+  implements:
+  - System.Collections.Generic.ICollection{{T}}.Add({T})
   nameWithType.vb: List(Of T).Add(T)
   fullName.vb: Sharpy.List(Of T).Add(T)
 - uid: Sharpy.List`1.Copy
@@ -265,7 +273,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Copy
     path: ../src/Sharpy/Partial.List/List.cs
-    startLine: 50
+    startLine: 51
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -297,7 +305,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Sort
     path: ../src/Sharpy/Partial.List/List.cs
-    startLine: 66
+    startLine: 67
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -335,7 +343,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Sort
     path: ../src/Sharpy/Partial.List/List.cs
-    startLine: 78
+    startLine: 79
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -377,7 +385,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: ToList
     path: ../src/Sharpy/Partial.List/List.cs
-    startLine: 98
+    startLine: 99
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -391,6 +399,92 @@ items:
   overload: Sharpy.List`1.ToList*
   nameWithType.vb: List(Of T).ToList()
   fullName.vb: Sharpy.List(Of T).ToList()
+- uid: Sharpy.List`1.IsReadOnly
+  commentId: P:Sharpy.List`1.IsReadOnly
+  id: IsReadOnly
+  parent: Sharpy.List`1
+  langs:
+  - csharp
+  - vb
+  name: IsReadOnly
+  nameWithType: List<T>.IsReadOnly
+  fullName: Sharpy.List<T>.IsReadOnly
+  type: Property
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.List/List.DotNet.ICollection.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IsReadOnly
+    path: ../src/Sharpy/Partial.List/List.DotNet.ICollection.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: Gets a value indicating whether the <xref href="System.Collections.Generic.ICollection%601" data-throw-if-not-resolved="false"></xref> is read-only.
+  example: []
+  syntax:
+    content: public bool IsReadOnly { get; }
+    parameters: []
+    return:
+      type: System.Boolean
+      description: <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if the <xref href="System.Collections.Generic.ICollection%601" data-throw-if-not-resolved="false"></xref> is read-only; otherwise, <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.
+    content.vb: Public ReadOnly Property IsReadOnly As Boolean
+  overload: Sharpy.List`1.IsReadOnly*
+  implements:
+  - System.Collections.Generic.ICollection{{T}}.IsReadOnly
+  nameWithType.vb: List(Of T).IsReadOnly
+  fullName.vb: Sharpy.List(Of T).IsReadOnly
+- uid: Sharpy.List`1.CopyTo(`0[],System.Int32)
+  commentId: M:Sharpy.List`1.CopyTo(`0[],System.Int32)
+  id: CopyTo(`0[],System.Int32)
+  parent: Sharpy.List`1
+  langs:
+  - csharp
+  - vb
+  name: CopyTo(T[], int)
+  nameWithType: List<T>.CopyTo(T[], int)
+  fullName: Sharpy.List<T>.CopyTo(T[], int)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.List/List.DotNet.ICollection.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: CopyTo
+    path: ../src/Sharpy/Partial.List/List.DotNet.ICollection.cs
+    startLine: 17
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: Copies the elements of the <xref href="System.Collections.Generic.ICollection%601" data-throw-if-not-resolved="false"></xref> to an <xref href="System.Array" data-throw-if-not-resolved="false"></xref>, starting at a particular <xref href="System.Array" data-throw-if-not-resolved="false"></xref> index.
+  example: []
+  syntax:
+    content: public void CopyTo(T[] array, int arrayIndex)
+    parameters:
+    - id: array
+      type: '{T}[]'
+      description: The one-dimensional <xref href="System.Array" data-throw-if-not-resolved="false"></xref> that is the destination of the elements copied from <xref href="System.Collections.Generic.ICollection%601" data-throw-if-not-resolved="false"></xref>. The <xref href="System.Array" data-throw-if-not-resolved="false"></xref> must have zero-based indexing.
+    - id: arrayIndex
+      type: System.Int32
+      description: The zero-based index in <code class="paramref">array</code> at which copying begins.
+    content.vb: Public Sub CopyTo(array As T(), arrayIndex As Integer)
+  overload: Sharpy.List`1.CopyTo*
+  exceptions:
+  - type: System.ArgumentNullException
+    commentId: T:System.ArgumentNullException
+    description: <code class="paramref">array</code> is <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a>.
+  - type: System.ArgumentOutOfRangeException
+    commentId: T:System.ArgumentOutOfRangeException
+    description: <code class="paramref">arrayIndex</code> is less than 0.
+  - type: System.ArgumentException
+    commentId: T:System.ArgumentException
+    description: The number of elements in the source <xref href="System.Collections.Generic.ICollection%601" data-throw-if-not-resolved="false"></xref> is greater than the available space from <code class="paramref">arrayIndex</code> to the end of the destination <code class="paramref">array</code>.
+  implements:
+  - System.Collections.Generic.ICollection{{T}}.CopyTo({T}[],System.Int32)
+  nameWithType.vb: List(Of T).CopyTo(T(), Integer)
+  fullName.vb: Sharpy.List(Of T).CopyTo(T(), Integer)
+  name.vb: CopyTo(T(), Integer)
 - uid: Sharpy.List`1.Equals(Sharpy.List{`0})
   commentId: M:Sharpy.List`1.Equals(Sharpy.List{`0})
   id: Equals(Sharpy.List{`0})
@@ -578,6 +672,7 @@ items:
   overload: Sharpy.List`1.Contains*
   implements:
   - Sharpy.Collections.Interfaces.IContainer{{T}}.Contains({T})
+  - System.Collections.Generic.ICollection{{T}}.Contains({T})
   nameWithType.vb: List(Of T).Contains(T)
   fullName.vb: Sharpy.List(Of T).Contains(T)
 - uid: Sharpy.List`1.GetEnumerator
@@ -1120,6 +1215,7 @@ items:
   overload: Sharpy.List`1.Clear*
   implements:
   - Sharpy.Collections.Interfaces.IMutableSequence{{T}}.Clear
+  - System.Collections.Generic.ICollection{{T}}.Clear
   nameWithType.vb: List(Of T).Clear()
   fullName.vb: Sharpy.List(Of T).Clear()
 - uid: Sharpy.List`1.Insert(System.Int32,`0)
@@ -2664,6 +2760,35 @@ references:
   name: ISized
   nameWithType: ISized
   fullName: Sharpy.Collections.Interfaces.ISized
+- uid: System.Collections.Generic.ICollection{{T}}
+  commentId: T:System.Collections.Generic.ICollection{`0}
+  parent: System.Collections.Generic
+  definition: System.Collections.Generic.ICollection`1
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1
+  name: ICollection<T>
+  nameWithType: ICollection<T>
+  fullName: System.Collections.Generic.ICollection<T>
+  nameWithType.vb: ICollection(Of T)
+  fullName.vb: System.Collections.Generic.ICollection(Of T)
+  name.vb: ICollection(Of T)
+  spec.csharp:
+  - uid: System.Collections.Generic.ICollection`1
+    name: ICollection
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.ICollection`1
+    name: ICollection
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
 - uid: Sharpy.Collections.Interfaces.IReversible{{T}}
   commentId: T:Sharpy.Collections.Interfaces.IReversible{``0}
   parent: Sharpy.Collections.Interfaces
@@ -4403,6 +4528,71 @@ references:
   - name: " "
   - name: T
   - name: )
+- uid: System.Collections.Generic.ICollection`1
+  commentId: T:System.Collections.Generic.ICollection`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1
+  name: ICollection<T>
+  nameWithType: ICollection<T>
+  fullName: System.Collections.Generic.ICollection<T>
+  nameWithType.vb: ICollection(Of T)
+  fullName.vb: System.Collections.Generic.ICollection(Of T)
+  name.vb: ICollection(Of T)
+  spec.csharp:
+  - uid: System.Collections.Generic.ICollection`1
+    name: ICollection
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.Collections.Generic.ICollection`1
+    name: ICollection
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.Collections.Generic
+  commentId: N:System.Collections.Generic
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System.Collections.Generic
+  nameWithType: System.Collections.Generic
+  fullName: System.Collections.Generic
+  spec.csharp:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
+  spec.vb:
+  - uid: System
+    name: System
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system
+  - name: .
+  - uid: System.Collections
+    name: Collections
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections
+  - name: .
+  - uid: System.Collections.Generic
+    name: Generic
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
 - uid: Sharpy.Collections.Interfaces.IReversible`1
   commentId: T:Sharpy.Collections.Interfaces.IReversible`1
   href: Sharpy.Collections.Interfaces.IReversible-1.html
@@ -4481,43 +4671,6 @@ references:
   - name: " "
   - name: T
   - name: )
-- uid: System.Collections.Generic
-  commentId: N:System.Collections.Generic
-  isExternal: true
-  href: https://learn.microsoft.com/dotnet/api/system
-  name: System.Collections.Generic
-  nameWithType: System.Collections.Generic
-  fullName: System.Collections.Generic
-  spec.csharp:
-  - uid: System
-    name: System
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system
-  - name: .
-  - uid: System.Collections
-    name: Collections
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.collections
-  - name: .
-  - uid: System.Collections.Generic
-    name: Generic
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
-  spec.vb:
-  - uid: System
-    name: System
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system
-  - name: .
-  - uid: System.Collections
-    name: Collections
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.collections
-  - name: .
-  - uid: System.Collections.Generic
-    name: Generic
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.collections.generic
 - uid: System.Collections
   commentId: N:System.Collections
   isExternal: true
@@ -4866,12 +5019,63 @@ references:
   fullName: Sharpy.List<T>.Add
   nameWithType.vb: List(Of T).Add
   fullName.vb: Sharpy.List(Of T).Add
+- uid: System.Collections.Generic.ICollection{{T}}.Add({T})
+  commentId: M:System.Collections.Generic.ICollection{`0}.Add(`0)
+  parent: System.Collections.Generic.ICollection{{T}}
+  definition: System.Collections.Generic.ICollection`1.Add(`0)
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.add
+  name: Add(T)
+  nameWithType: ICollection<T>.Add(T)
+  fullName: System.Collections.Generic.ICollection<T>.Add(T)
+  nameWithType.vb: ICollection(Of T).Add(T)
+  fullName.vb: System.Collections.Generic.ICollection(Of T).Add(T)
+  spec.csharp:
+  - uid: System.Collections.Generic.ICollection{`0}.Add(`0)
+    name: Add
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.add
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: System.Collections.Generic.ICollection{`0}.Add(`0)
+    name: Add
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.add
+  - name: (
+  - name: T
+  - name: )
 - uid: '{T}'
   commentId: '!:T'
   definition: T
   name: T
   nameWithType: T
   fullName: T
+- uid: System.Collections.Generic.ICollection`1.Add(`0)
+  commentId: M:System.Collections.Generic.ICollection`1.Add(`0)
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.add
+  name: Add(T)
+  nameWithType: ICollection<T>.Add(T)
+  fullName: System.Collections.Generic.ICollection<T>.Add(T)
+  nameWithType.vb: ICollection(Of T).Add(T)
+  fullName.vb: System.Collections.Generic.ICollection(Of T).Add(T)
+  spec.csharp:
+  - uid: System.Collections.Generic.ICollection`1.Add(`0)
+    name: Add
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.add
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: System.Collections.Generic.ICollection`1.Add(`0)
+    name: Add
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.add
+  - name: (
+  - name: T
+  - name: )
 - uid: T
   name: T
   nameWithType: T
@@ -5062,6 +5266,181 @@ references:
   - name: Of
   - name: " "
   - name: T
+  - name: )
+- uid: Sharpy.List`1.IsReadOnly*
+  commentId: Overload:Sharpy.List`1.IsReadOnly
+  href: Sharpy.List-1.html#Sharpy_List_1_IsReadOnly
+  name: IsReadOnly
+  nameWithType: List<T>.IsReadOnly
+  fullName: Sharpy.List<T>.IsReadOnly
+  nameWithType.vb: List(Of T).IsReadOnly
+  fullName.vb: Sharpy.List(Of T).IsReadOnly
+- uid: System.Collections.Generic.ICollection{{T}}.IsReadOnly
+  commentId: P:System.Collections.Generic.ICollection{`0}.IsReadOnly
+  parent: System.Collections.Generic.ICollection{{T}}
+  definition: System.Collections.Generic.ICollection`1.IsReadOnly
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.isreadonly
+  name: IsReadOnly
+  nameWithType: ICollection<T>.IsReadOnly
+  fullName: System.Collections.Generic.ICollection<T>.IsReadOnly
+  nameWithType.vb: ICollection(Of T).IsReadOnly
+  fullName.vb: System.Collections.Generic.ICollection(Of T).IsReadOnly
+- uid: System.Collections.Generic.ICollection`1.IsReadOnly
+  commentId: P:System.Collections.Generic.ICollection`1.IsReadOnly
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.isreadonly
+  name: IsReadOnly
+  nameWithType: ICollection<T>.IsReadOnly
+  fullName: System.Collections.Generic.ICollection<T>.IsReadOnly
+  nameWithType.vb: ICollection(Of T).IsReadOnly
+  fullName.vb: System.Collections.Generic.ICollection(Of T).IsReadOnly
+- uid: System.Array
+  commentId: T:System.Array
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.array
+  name: Array
+  nameWithType: Array
+  fullName: System.Array
+- uid: System.ArgumentNullException
+  commentId: T:System.ArgumentNullException
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.argumentnullexception
+  name: ArgumentNullException
+  nameWithType: ArgumentNullException
+  fullName: System.ArgumentNullException
+- uid: System.ArgumentOutOfRangeException
+  commentId: T:System.ArgumentOutOfRangeException
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.argumentoutofrangeexception
+  name: ArgumentOutOfRangeException
+  nameWithType: ArgumentOutOfRangeException
+  fullName: System.ArgumentOutOfRangeException
+- uid: System.ArgumentException
+  commentId: T:System.ArgumentException
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.argumentexception
+  name: ArgumentException
+  nameWithType: ArgumentException
+  fullName: System.ArgumentException
+- uid: Sharpy.List`1.CopyTo*
+  commentId: Overload:Sharpy.List`1.CopyTo
+  href: Sharpy.List-1.html#Sharpy_List_1_CopyTo__0___System_Int32_
+  name: CopyTo
+  nameWithType: List<T>.CopyTo
+  fullName: Sharpy.List<T>.CopyTo
+  nameWithType.vb: List(Of T).CopyTo
+  fullName.vb: Sharpy.List(Of T).CopyTo
+- uid: System.Collections.Generic.ICollection{{T}}.CopyTo({T}[],System.Int32)
+  commentId: M:System.Collections.Generic.ICollection{`0}.CopyTo(`0[],System.Int32)
+  parent: System.Collections.Generic.ICollection{{T}}
+  definition: System.Collections.Generic.ICollection`1.CopyTo(`0[],System.Int32)
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.copyto
+  name: CopyTo(T[], int)
+  nameWithType: ICollection<T>.CopyTo(T[], int)
+  fullName: System.Collections.Generic.ICollection<T>.CopyTo(T[], int)
+  nameWithType.vb: ICollection(Of T).CopyTo(T(), Integer)
+  fullName.vb: System.Collections.Generic.ICollection(Of T).CopyTo(T(), Integer)
+  name.vb: CopyTo(T(), Integer)
+  spec.csharp:
+  - uid: System.Collections.Generic.ICollection{`0}.CopyTo(`0[],System.Int32)
+    name: CopyTo
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.copyto
+  - name: (
+  - name: T
+  - name: '['
+  - name: ']'
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: int
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: )
+  spec.vb:
+  - uid: System.Collections.Generic.ICollection{`0}.CopyTo(`0[],System.Int32)
+    name: CopyTo
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.copyto
+  - name: (
+  - name: T
+  - name: (
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: Integer
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: )
+- uid: '{T}[]'
+  isExternal: true
+  name: T[]
+  nameWithType: T[]
+  fullName: T[]
+  nameWithType.vb: T()
+  fullName.vb: T()
+  name.vb: T()
+  spec.csharp:
+  - name: T
+  - name: '['
+  - name: ']'
+  spec.vb:
+  - name: T
+  - name: (
+  - name: )
+- uid: System.Int32
+  commentId: T:System.Int32
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.int32
+  name: int
+  nameWithType: int
+  fullName: int
+  nameWithType.vb: Integer
+  fullName.vb: Integer
+  name.vb: Integer
+- uid: System.Collections.Generic.ICollection`1.CopyTo(`0[],System.Int32)
+  commentId: M:System.Collections.Generic.ICollection`1.CopyTo(`0[],System.Int32)
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.copyto
+  name: CopyTo(T[], int)
+  nameWithType: ICollection<T>.CopyTo(T[], int)
+  fullName: System.Collections.Generic.ICollection<T>.CopyTo(T[], int)
+  nameWithType.vb: ICollection(Of T).CopyTo(T(), Integer)
+  fullName.vb: System.Collections.Generic.ICollection(Of T).CopyTo(T(), Integer)
+  name.vb: CopyTo(T(), Integer)
+  spec.csharp:
+  - uid: System.Collections.Generic.ICollection`1.CopyTo(`0[],System.Int32)
+    name: CopyTo
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.copyto
+  - name: (
+  - name: T
+  - name: '['
+  - name: ']'
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: int
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: )
+  spec.vb:
+  - uid: System.Collections.Generic.ICollection`1.CopyTo(`0[],System.Int32)
+    name: CopyTo
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.copyto
+  - name: (
+  - name: T
+  - name: (
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: Integer
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
   - name: )
 - uid: Sharpy.List`1.Equals*
   commentId: Overload:Sharpy.List`1.Equals
@@ -5315,6 +5694,32 @@ references:
   - name: (
   - name: T
   - name: )
+- uid: System.Collections.Generic.ICollection{{T}}.Contains({T})
+  commentId: M:System.Collections.Generic.ICollection{`0}.Contains(`0)
+  parent: System.Collections.Generic.ICollection{{T}}
+  definition: System.Collections.Generic.ICollection`1.Contains(`0)
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.contains
+  name: Contains(T)
+  nameWithType: ICollection<T>.Contains(T)
+  fullName: System.Collections.Generic.ICollection<T>.Contains(T)
+  nameWithType.vb: ICollection(Of T).Contains(T)
+  fullName.vb: System.Collections.Generic.ICollection(Of T).Contains(T)
+  spec.csharp:
+  - uid: System.Collections.Generic.ICollection{`0}.Contains(`0)
+    name: Contains
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.contains
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: System.Collections.Generic.ICollection{`0}.Contains(`0)
+    name: Contains
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.contains
+  - name: (
+  - name: T
+  - name: )
 - uid: Sharpy.Collections.Interfaces.IContainer`1.Contains(`0)
   commentId: M:Sharpy.Collections.Interfaces.IContainer`1.Contains(`0)
   href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1_Contains__0_
@@ -5334,6 +5739,31 @@ references:
   - uid: Sharpy.Collections.Interfaces.IContainer`1.Contains(`0)
     name: Contains
     href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1_Contains__0_
+  - name: (
+  - name: T
+  - name: )
+- uid: System.Collections.Generic.ICollection`1.Contains(`0)
+  commentId: M:System.Collections.Generic.ICollection`1.Contains(`0)
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.contains
+  name: Contains(T)
+  nameWithType: ICollection<T>.Contains(T)
+  fullName: System.Collections.Generic.ICollection<T>.Contains(T)
+  nameWithType.vb: ICollection(Of T).Contains(T)
+  fullName.vb: System.Collections.Generic.ICollection(Of T).Contains(T)
+  spec.csharp:
+  - uid: System.Collections.Generic.ICollection`1.Contains(`0)
+    name: Contains
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.contains
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: System.Collections.Generic.ICollection`1.Contains(`0)
+    name: Contains
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.contains
   - name: (
   - name: T
   - name: )
@@ -5611,17 +6041,6 @@ references:
     href: Sharpy.IHashable.html#Sharpy_IHashable___Hash__
   - name: (
   - name: )
-- uid: System.Int32
-  commentId: T:System.Int32
-  parent: System
-  isExternal: true
-  href: https://learn.microsoft.com/dotnet/api/system.int32
-  name: int
-  nameWithType: int
-  fullName: int
-  nameWithType.vb: Integer
-  fullName.vb: Integer
-  name.vb: Integer
 - uid: Sharpy.List`1.__IAdd__*
   commentId: Overload:Sharpy.List`1.__IAdd__
   href: Sharpy.List-1.html#Sharpy_List_1___IAdd___Sharpy_List__0__
@@ -6641,6 +7060,30 @@ references:
     href: Sharpy.Collections.Interfaces.IMutableSequence-1.html#Sharpy_Collections_Interfaces_IMutableSequence_1_Clear
   - name: (
   - name: )
+- uid: System.Collections.Generic.ICollection{{T}}.Clear
+  commentId: M:System.Collections.Generic.ICollection{`0}.Clear
+  parent: System.Collections.Generic.ICollection{{T}}
+  definition: System.Collections.Generic.ICollection`1.Clear
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.clear
+  name: Clear()
+  nameWithType: ICollection<T>.Clear()
+  fullName: System.Collections.Generic.ICollection<T>.Clear()
+  nameWithType.vb: ICollection(Of T).Clear()
+  fullName.vb: System.Collections.Generic.ICollection(Of T).Clear()
+  spec.csharp:
+  - uid: System.Collections.Generic.ICollection{`0}.Clear
+    name: Clear
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.clear
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Collections.Generic.ICollection{`0}.Clear
+    name: Clear
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.clear
+  - name: (
+  - name: )
 - uid: Sharpy.Collections.Interfaces.IMutableSequence`1.Clear
   commentId: M:Sharpy.Collections.Interfaces.IMutableSequence`1.Clear
   href: Sharpy.Collections.Interfaces.IMutableSequence-1.html#Sharpy_Collections_Interfaces_IMutableSequence_1_Clear
@@ -6659,6 +7102,29 @@ references:
   - uid: Sharpy.Collections.Interfaces.IMutableSequence`1.Clear
     name: Clear
     href: Sharpy.Collections.Interfaces.IMutableSequence-1.html#Sharpy_Collections_Interfaces_IMutableSequence_1_Clear
+  - name: (
+  - name: )
+- uid: System.Collections.Generic.ICollection`1.Clear
+  commentId: M:System.Collections.Generic.ICollection`1.Clear
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.clear
+  name: Clear()
+  nameWithType: ICollection<T>.Clear()
+  fullName: System.Collections.Generic.ICollection<T>.Clear()
+  nameWithType.vb: ICollection(Of T).Clear()
+  fullName.vb: System.Collections.Generic.ICollection(Of T).Clear()
+  spec.csharp:
+  - uid: System.Collections.Generic.ICollection`1.Clear
+    name: Clear
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.clear
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Collections.Generic.ICollection`1.Clear
+    name: Clear
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.clear
   - name: (
   - name: )
 - uid: Sharpy.List`1.Insert*

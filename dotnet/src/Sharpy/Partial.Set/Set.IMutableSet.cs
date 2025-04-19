@@ -2,7 +2,10 @@ namespace Sharpy;
 
 public sealed partial class Set<T>
 {
-    /// <inheritdoc/>
+    /// <remarks>
+    /// For initializer literals and part of
+    /// System.Collections.Generic.ICollection interface.
+    /// </remarks>
     public void Add(T x)
     {
         _set.Add(x);
