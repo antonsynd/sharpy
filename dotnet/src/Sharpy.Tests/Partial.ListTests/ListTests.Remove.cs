@@ -13,6 +13,7 @@ public partial class List_Tests
 
         // When/then
         FluentActions.Invoking(() => l.Remove(3)).Should().Throw<ValueError>();
+        ((System.Collections.Generic.ICollection<int>)l).Remove(3).Should().BeFalse();
     }
 
     [Fact]
@@ -23,6 +24,7 @@ public partial class List_Tests
 
         // When/then
         FluentActions.Invoking(() => l.Remove(3)).Should().Throw<ValueError>();
+        ((System.Collections.Generic.ICollection<int>)l).Remove(3).Should().BeFalse();
     }
 
     [Fact]
@@ -39,6 +41,19 @@ public partial class List_Tests
         DotNetList<int> expected = [1, 5, 7];
 
         actual.Should().Equal(expected);
+    }
+
+    [Fact]
+    public void List_DotNet_Remove_Present_Once()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+
+        // When/then
+        ((System.Collections.Generic.ICollection<int>)l).Remove(3).Should().BeTrue();
+
+        var actual = l.ToList();
+        DotNetList<int> expected = [1, 5, 7];
     }
 
     [Fact]
@@ -59,6 +74,22 @@ public partial class List_Tests
     }
 
     [Fact]
+    public void List_DotNet_Remove_Present_Once_Object_Equal()
+    {
+        // If
+        List<IntWrapper> l = [1, 3, 5, 7];
+
+        // When/then
+        var second_elem = l[1];
+        ((System.Collections.Generic.ICollection<IntWrapper>)l).Remove(second_elem).Should().BeTrue();
+
+        var actual = l.ToList();
+        DotNetList<IntWrapper> expected = [1, 5, 7];
+
+        actual.Should().Equal(expected);
+    }
+
+    [Fact]
     public void List_Remove_Present_Once_Object_Not_Equal()
     {
         // If
@@ -68,6 +99,7 @@ public partial class List_Tests
 
         // When/then
         FluentActions.Invoking(() => l.Remove(i)).Should().Throw<ValueError>();
+        ((System.Collections.Generic.ICollection<IntWrapper>)l).Remove(i).Should().BeFalse();
     }
 
     [Fact]
@@ -80,6 +112,7 @@ public partial class List_Tests
 
         // When/then
         FluentActions.Invoking(() => l.Remove(i)).Should().Throw<ValueError>();
+        ((System.Collections.Generic.ICollection<IntIdentityWrapper>)l).Remove(i).Should().BeFalse();
     }
 
     [Fact]
@@ -92,6 +125,21 @@ public partial class List_Tests
         l.Remove(3);
 
         // Then
+        var actual = l.ToList();
+        DotNetList<int> expected = [1, 5, 7, 3];
+
+        actual.Should().Equal(expected);
+    }
+
+    [Fact]
+    public void List_DotNet_Remove_Present_More_Than_Once()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7, 3];
+
+        // When/then
+        ((System.Collections.Generic.ICollection<int>)l).Remove(3).Should().BeTrue();
+
         var actual = l.ToList();
         DotNetList<int> expected = [1, 5, 7, 3];
 
@@ -116,6 +164,22 @@ public partial class List_Tests
     }
 
     [Fact]
+    public void List_DotNet_Remove_Present_More_Than_Once_Object_Same()
+    {
+        // If
+        List<IntWrapper> l = [1, 3, 5, 7, 3];
+
+        // When/then
+        var second_elem = l[1];
+        ((System.Collections.Generic.ICollection<IntWrapper>)l).Remove(second_elem).Should().BeTrue();
+
+        var actual = l.ToList();
+        DotNetList<IntWrapper> expected = [1, 5, 7, 3];
+
+        actual.Should().Equal(expected);
+    }
+
+    [Fact]
     public void List_Remove_Present_More_Than_Once_Object_Equality_Last()
     {
         // If
@@ -126,6 +190,22 @@ public partial class List_Tests
         l.Remove(last_elem);
 
         // Then
+        var actual = l.ToList();
+        DotNetList<IntWrapper> expected = [1, 5, 7, 3];
+
+        actual.Should().Equal(expected);
+    }
+
+    [Fact]
+    public void List_DotNet_Remove_Present_More_Than_Once_Object_Equality_Last()
+    {
+        // If
+        List<IntWrapper> l = [1, 3, 5, 7, 3];
+
+        // When/then
+        var last_elem = l[-1];
+        ((System.Collections.Generic.ICollection<IntWrapper>)l).Remove(last_elem).Should().BeTrue();
+
         var actual = l.ToList();
         DotNetList<IntWrapper> expected = [1, 5, 7, 3];
 
@@ -151,6 +231,23 @@ public partial class List_Tests
     }
 
     [Fact]
+    public void List_DotNet_Remove_Present_More_Than_Once_Object_Identity_Last()
+    {
+        // If
+        List<IntIdentityWrapper> source = [1, 3, 5, 7, 3];
+        List<IntIdentityWrapper> l = source.Copy();
+
+        // When/then
+        var last_elem = l[-1];
+        ((System.Collections.Generic.ICollection<IntIdentityWrapper>)l).Remove(last_elem).Should().BeTrue();
+
+        var actual = l.ToList();
+        DotNetList<IntIdentityWrapper> expected = [.. source[0, -1]];
+
+        actual.Should().Equal(expected);
+    }
+
+    [Fact]
     public void List_Remove_Present_More_Than_Once_Object_Identity_Not_Same()
     {
         // If
@@ -158,6 +255,7 @@ public partial class List_Tests
 
         // When/then
         FluentActions.Invoking(() => l.Remove(new IntIdentityWrapper(3))).Should().Throw<ValueError>();
+        ((System.Collections.Generic.ICollection<IntIdentityWrapper>)l).Remove(new IntIdentityWrapper(3)).Should().BeFalse();
     }
 
     [Fact]
@@ -177,6 +275,21 @@ public partial class List_Tests
     }
 
     [Fact]
+    public void List_DotNet_Remove_At_End()
+    {
+        // If
+        List<int> l = [1, 5, 7, 3];
+
+        // When/then
+        ((System.Collections.Generic.ICollection<int>)l).Remove(3).Should().BeTrue();
+
+        var actual = l.ToList();
+        DotNetList<int> expected = [1, 5, 7];
+
+        actual.Should().Equal(expected);
+    }
+
+    [Fact]
     public void List_Remove_At_End_Object_Same()
     {
         // If
@@ -187,6 +300,22 @@ public partial class List_Tests
         l.Remove(last_elem);
 
         // Then
+        var actual = l.ToList();
+        DotNetList<IntWrapper> expected = [1, 5, 7];
+
+        actual.Should().Equal(expected);
+    }
+
+    [Fact]
+    public void List_DotNet_Remove_At_End_Object_Same()
+    {
+        // If
+        List<IntWrapper> l = [1, 5, 7, 3];
+
+        // When/then
+        var last_elem = l[-1];
+        ((System.Collections.Generic.ICollection<IntWrapper>)l).Remove(last_elem).Should().BeTrue();
+
         var actual = l.ToList();
         DotNetList<IntWrapper> expected = [1, 5, 7];
 
@@ -212,6 +341,23 @@ public partial class List_Tests
     }
 
     [Fact]
+    public void List_DotNet_Remove_At_End_Object_Equality_Not_Same()
+    {
+        // If
+        List<IntWrapper> l = [1, 5, 7, 3];
+
+        // When/then
+        IntWrapper i = 3;
+
+        ((System.Collections.Generic.ICollection<IntWrapper>)l).Remove(i).Should().BeTrue();
+
+        var actual = l.ToList();
+        DotNetList<IntWrapper> expected = [1, 5, 7];
+
+        actual.Should().Equal(expected);
+    }
+
+    [Fact]
     public void List_Remove_At_End_Object_Identity_Not_Same()
     {
         // If
@@ -221,5 +367,6 @@ public partial class List_Tests
 
         // When/then
         FluentActions.Invoking(() => l.Remove(i)).Should().Throw<ValueError>();
+        ((System.Collections.Generic.ICollection<IntIdentityWrapper>)l).Remove(i).Should().BeFalse();
     }
 }

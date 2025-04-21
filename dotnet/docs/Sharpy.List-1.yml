@@ -82,10 +82,10 @@ items:
   summary: A list of elements.
   example: []
   syntax:
-    content: 'public sealed class List<T> : Object, IInequatable<Object>, IInequatableWith<Object>, IEquatable<Object>, IEquatableWith<Object>, IEquatable<Object>, IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSequence<List<T>, T>, IMutableSequence<T>, IInplaceAddable<ISequence<T>>, ISequence<List<T>, T>, ISequence<T>, ICollection<T>, IContainer<T>, ISized, ICollection<T>, IReversible<T>, IIterable<T>, IEnumerable<T>, IEnumerable, IAddable<ISequence<T>>, IAddable<ISequence<T>, ISequence<T>, ISequence<T>>, IAddableWith<ISequence<T>, ISequence<T>>, IRightAddable<ISequence<T>>, IRightAddable<ISequence<T>, ISequence<T>>, IEquatable<List<T>>, IEquatableWith<List<T>>, IEquatable, IHashable, IEquatable<List<T>>, IAddable<List<T>>, IAddable<List<T>, List<T>, List<T>>, IAddableWith<List<T>, List<T>>, IRightAddable<List<T>>, IRightAddable<List<T>, List<T>>, IInplaceAddable<List<T>>, IMultipliable<List<T>, int>, IMultipliable<List<T>, int, List<T>>, IMultipliableWith<int, List<T>>, IInplaceMultipliable<int>, IRightMultipliable<List<T>, int>'
+    content: 'public sealed class List<T> : Object, IInequatable<Object>, IInequatableWith<Object>, IEquatable<Object>, IEquatableWith<Object>, IEquatable<Object>, IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSequence<List<T>, T>, IMutableSequence<T>, IInplaceAddable<ISequence<T>>, ISequence<List<T>, T>, ISequence<T>, ICollection<T>, IContainer<T>, ISized, ICollection<T>, IReversible<T>, IIterable<T>, IEnumerable<T>, IEnumerable, IAddable<ISequence<T>>, IAddable<ISequence<T>, ISequence<T>, ISequence<T>>, IAddableWith<ISequence<T>, ISequence<T>>, IRightAddable<ISequence<T>>, IRightAddable<ISequence<T>, ISequence<T>>, IEquatable<List<T>>, IEquatableWith<List<T>>, IEquatable, IHashable, IEquatable<List<T>>, IAddable<List<T>>, IAddable<List<T>, List<T>, List<T>>, IAddableWith<List<T>, List<T>>, IRightAddable<List<T>>, IRightAddable<List<T>, List<T>>, IInplaceAddable<List<T>>, IMultipliable<List<T>, int>, IMultipliable<List<T>, int, List<T>>, IMultipliableWith<int, List<T>>, IInplaceMultipliable<int>, IRightMultipliable<List<T>, int>, IRightMultipliableWith<List<T>, int>'
     typeParameters:
     - id: T
-    content.vb: Public NotInheritable Class List(Of T) Inherits Object Implements IInequatable(Of Object), IInequatableWith(Of Object), IEquatable(Of Object), IEquatableWith(Of Object), IEquatable(Of Object), IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSequence(Of List(Of T), T), IMutableSequence(Of T), IInplaceAddable(Of ISequence(Of T)), ISequence(Of List(Of T), T), ISequence(Of T), ICollection(Of T), IContainer(Of T), ISized, ICollection(Of T), IReversible(Of T), IIterable(Of T), IEnumerable(Of T), IEnumerable, IAddable(Of ISequence(Of T)), IAddable(Of ISequence(Of T), ISequence(Of T), ISequence(Of T)), IAddableWith(Of ISequence(Of T), ISequence(Of T)), IRightAddable(Of ISequence(Of T)), IRightAddable(Of ISequence(Of T), ISequence(Of T)), IEquatable(Of List(Of T)), IEquatableWith(Of List(Of T)), IEquatable, IHashable, IEquatable(Of List(Of T)), IAddable(Of List(Of T)), IAddable(Of List(Of T), List(Of T), List(Of T)), IAddableWith(Of List(Of T), List(Of T)), IRightAddable(Of List(Of T)), IRightAddable(Of List(Of T), List(Of T)), IInplaceAddable(Of List(Of T)), IMultipliable(Of List(Of T), Integer), IMultipliable(Of List(Of T), Integer, List(Of T)), IMultipliableWith(Of Integer, List(Of T)), IInplaceMultipliable(Of Integer), IRightMultipliable(Of List(Of T), Integer)
+    content.vb: Public NotInheritable Class List(Of T) Inherits Object Implements IInequatable(Of Object), IInequatableWith(Of Object), IEquatable(Of Object), IEquatableWith(Of Object), IEquatable(Of Object), IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSequence(Of List(Of T), T), IMutableSequence(Of T), IInplaceAddable(Of ISequence(Of T)), ISequence(Of List(Of T), T), ISequence(Of T), ICollection(Of T), IContainer(Of T), ISized, ICollection(Of T), IReversible(Of T), IIterable(Of T), IEnumerable(Of T), IEnumerable, IAddable(Of ISequence(Of T)), IAddable(Of ISequence(Of T), ISequence(Of T), ISequence(Of T)), IAddableWith(Of ISequence(Of T), ISequence(Of T)), IRightAddable(Of ISequence(Of T)), IRightAddable(Of ISequence(Of T), ISequence(Of T)), IEquatable(Of List(Of T)), IEquatableWith(Of List(Of T)), IEquatable, IHashable, IEquatable(Of List(Of T)), IAddable(Of List(Of T)), IAddable(Of List(Of T), List(Of T), List(Of T)), IAddableWith(Of List(Of T), List(Of T)), IRightAddable(Of List(Of T)), IRightAddable(Of List(Of T), List(Of T)), IInplaceAddable(Of List(Of T)), IMultipliable(Of List(Of T), Integer), IMultipliable(Of List(Of T), Integer, List(Of T)), IMultipliableWith(Of Integer, List(Of T)), IInplaceMultipliable(Of Integer), IRightMultipliable(Of List(Of T), Integer), IRightMultipliableWith(Of List(Of T), Integer)
   inheritance:
   - System.Object
   - Sharpy.Object
@@ -133,6 +133,7 @@ items:
   - Sharpy.IMultipliableWith{System.Int32,Sharpy.List`1}
   - Sharpy.IInplaceMultipliable{System.Int32}
   - Sharpy.IRightMultipliable{Sharpy.List`1,System.Int32}
+  - Sharpy.IRightMultipliableWith{Sharpy.List`1,System.Int32}
   inheritedMembers:
   - Sharpy.Object.Equals(Sharpy.Object)
   - Sharpy.Object.__Eq__(System.Object)
@@ -1741,7 +1742,7 @@ items:
     content.vb: Public Function __RMul__(i As Integer) As List(Of T)
   overload: Sharpy.List`1.__RMul__*
   implements:
-  - Sharpy.IRightMultipliable{Sharpy.List`1,System.Int32}.__RMul__(System.Int32)
+  - Sharpy.IRightMultipliableWith{Sharpy.List`1,System.Int32}.__RMul__(System.Int32)
   nameWithType.vb: List(Of T).__RMul__(Integer)
   fullName.vb: Sharpy.List(Of T).__RMul__(Integer)
   name.vb: __RMul__(Integer)
@@ -3841,6 +3842,57 @@ references:
     isExternal: true
     href: https://learn.microsoft.com/dotnet/api/system.int32
   - name: )
+- uid: Sharpy.IRightMultipliableWith{Sharpy.List`1,System.Int32}
+  commentId: T:Sharpy.IRightMultipliableWith{Sharpy.List`1,System.Int32}
+  parent: Sharpy
+  definition: Sharpy.IRightMultipliableWith`2
+  href: Sharpy.IRightMultipliableWith-2.html
+  name: IRightMultipliableWith<List<T>, int>
+  nameWithType: IRightMultipliableWith<List<T>, int>
+  fullName: Sharpy.IRightMultipliableWith<Sharpy.List<T>, int>
+  nameWithType.vb: IRightMultipliableWith(Of List(Of T), Integer)
+  fullName.vb: Sharpy.IRightMultipliableWith(Of Sharpy.List(Of T), Integer)
+  name.vb: IRightMultipliableWith(Of List(Of T), Integer)
+  spec.csharp:
+  - uid: Sharpy.IRightMultipliableWith`2
+    name: IRightMultipliableWith
+    href: Sharpy.IRightMultipliableWith-2.html
+  - name: <
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: int
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IRightMultipliableWith`2
+    name: IRightMultipliableWith
+    href: Sharpy.IRightMultipliableWith-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: Integer
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: )
 - uid: Sharpy.Object.Equals(Sharpy.Object)
   commentId: M:Sharpy.Object.Equals(Sharpy.Object)
   parent: Sharpy.Object
@@ -4974,21 +5026,21 @@ references:
 - uid: Sharpy.IRightMultipliable`2
   commentId: T:Sharpy.IRightMultipliable`2
   href: Sharpy.IRightMultipliable-2.html
-  name: IRightMultipliable<TProduct, TMultiplicand>
-  nameWithType: IRightMultipliable<TProduct, TMultiplicand>
-  fullName: Sharpy.IRightMultipliable<TProduct, TMultiplicand>
-  nameWithType.vb: IRightMultipliable(Of TProduct, TMultiplicand)
-  fullName.vb: Sharpy.IRightMultipliable(Of TProduct, TMultiplicand)
-  name.vb: IRightMultipliable(Of TProduct, TMultiplicand)
+  name: IRightMultipliable<TMultiplicand, TMultiplier>
+  nameWithType: IRightMultipliable<TMultiplicand, TMultiplier>
+  fullName: Sharpy.IRightMultipliable<TMultiplicand, TMultiplier>
+  nameWithType.vb: IRightMultipliable(Of TMultiplicand, TMultiplier)
+  fullName.vb: Sharpy.IRightMultipliable(Of TMultiplicand, TMultiplier)
+  name.vb: IRightMultipliable(Of TMultiplicand, TMultiplier)
   spec.csharp:
   - uid: Sharpy.IRightMultipliable`2
     name: IRightMultipliable
     href: Sharpy.IRightMultipliable-2.html
   - name: <
-  - name: TProduct
+  - name: TMultiplicand
   - name: ','
   - name: " "
-  - name: TMultiplicand
+  - name: TMultiplier
   - name: '>'
   spec.vb:
   - uid: Sharpy.IRightMultipliable`2
@@ -4997,10 +5049,41 @@ references:
   - name: (
   - name: Of
   - name: " "
+  - name: TMultiplicand
+  - name: ','
+  - name: " "
+  - name: TMultiplier
+  - name: )
+- uid: Sharpy.IRightMultipliableWith`2
+  commentId: T:Sharpy.IRightMultipliableWith`2
+  href: Sharpy.IRightMultipliableWith-2.html
+  name: IRightMultipliableWith<TProduct, TMultiplier>
+  nameWithType: IRightMultipliableWith<TProduct, TMultiplier>
+  fullName: Sharpy.IRightMultipliableWith<TProduct, TMultiplier>
+  nameWithType.vb: IRightMultipliableWith(Of TProduct, TMultiplier)
+  fullName.vb: Sharpy.IRightMultipliableWith(Of TProduct, TMultiplier)
+  name.vb: IRightMultipliableWith(Of TProduct, TMultiplier)
+  spec.csharp:
+  - uid: Sharpy.IRightMultipliableWith`2
+    name: IRightMultipliableWith
+    href: Sharpy.IRightMultipliableWith-2.html
+  - name: <
   - name: TProduct
   - name: ','
   - name: " "
-  - name: TMultiplicand
+  - name: TMultiplier
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IRightMultipliableWith`2
+    name: IRightMultipliableWith
+    href: Sharpy.IRightMultipliableWith-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TProduct
+  - name: ','
+  - name: " "
+  - name: TMultiplier
   - name: )
 - uid: Sharpy.List`1.#ctor*
   commentId: Overload:Sharpy.List`1.#ctor
@@ -7963,21 +8046,21 @@ references:
   fullName: Sharpy.List<T>.__RMul__
   nameWithType.vb: List(Of T).__RMul__
   fullName.vb: Sharpy.List(Of T).__RMul__
-- uid: Sharpy.IRightMultipliable{Sharpy.List`1,System.Int32}.__RMul__(System.Int32)
-  commentId: M:Sharpy.IRightMultipliable{Sharpy.List`1,System.Int32}.__RMul__(System.Int32)
-  parent: Sharpy.IRightMultipliable{Sharpy.List`1,System.Int32}
-  definition: Sharpy.IRightMultipliable`2.__RMul__(`1)
-  href: Sharpy.IRightMultipliable-2.html#Sharpy_IRightMultipliable_2___RMul____1_
+- uid: Sharpy.IRightMultipliableWith{Sharpy.List`1,System.Int32}.__RMul__(System.Int32)
+  commentId: M:Sharpy.IRightMultipliableWith{Sharpy.List`1,System.Int32}.__RMul__(System.Int32)
+  parent: Sharpy.IRightMultipliableWith{Sharpy.List`1,System.Int32}
+  definition: Sharpy.IRightMultipliableWith`2.__RMul__(`1)
+  href: Sharpy.IRightMultipliableWith-2.html#Sharpy_IRightMultipliableWith_2___RMul____1_
   name: __RMul__(int)
-  nameWithType: IRightMultipliable<List<T>, int>.__RMul__(int)
-  fullName: Sharpy.IRightMultipliable<Sharpy.List<T>, int>.__RMul__(int)
-  nameWithType.vb: IRightMultipliable(Of List(Of T), Integer).__RMul__(Integer)
-  fullName.vb: Sharpy.IRightMultipliable(Of Sharpy.List(Of T), Integer).__RMul__(Integer)
+  nameWithType: IRightMultipliableWith<List<T>, int>.__RMul__(int)
+  fullName: Sharpy.IRightMultipliableWith<Sharpy.List<T>, int>.__RMul__(int)
+  nameWithType.vb: IRightMultipliableWith(Of List(Of T), Integer).__RMul__(Integer)
+  fullName.vb: Sharpy.IRightMultipliableWith(Of Sharpy.List(Of T), Integer).__RMul__(Integer)
   name.vb: __RMul__(Integer)
   spec.csharp:
-  - uid: Sharpy.IRightMultipliable{Sharpy.List`1,System.Int32}.__RMul__(System.Int32)
+  - uid: Sharpy.IRightMultipliableWith{Sharpy.List`1,System.Int32}.__RMul__(System.Int32)
     name: __RMul__
-    href: Sharpy.IRightMultipliable-2.html#Sharpy_IRightMultipliable_2___RMul____1_
+    href: Sharpy.IRightMultipliableWith-2.html#Sharpy_IRightMultipliableWith_2___RMul____1_
   - name: (
   - uid: System.Int32
     name: int
@@ -7985,36 +8068,36 @@ references:
     href: https://learn.microsoft.com/dotnet/api/system.int32
   - name: )
   spec.vb:
-  - uid: Sharpy.IRightMultipliable{Sharpy.List`1,System.Int32}.__RMul__(System.Int32)
+  - uid: Sharpy.IRightMultipliableWith{Sharpy.List`1,System.Int32}.__RMul__(System.Int32)
     name: __RMul__
-    href: Sharpy.IRightMultipliable-2.html#Sharpy_IRightMultipliable_2___RMul____1_
+    href: Sharpy.IRightMultipliableWith-2.html#Sharpy_IRightMultipliableWith_2___RMul____1_
   - name: (
   - uid: System.Int32
     name: Integer
     isExternal: true
     href: https://learn.microsoft.com/dotnet/api/system.int32
   - name: )
-- uid: Sharpy.IRightMultipliable`2.__RMul__(`1)
-  commentId: M:Sharpy.IRightMultipliable`2.__RMul__(`1)
-  href: Sharpy.IRightMultipliable-2.html#Sharpy_IRightMultipliable_2___RMul____1_
-  name: __RMul__(TMultiplicand)
-  nameWithType: IRightMultipliable<TProduct, TMultiplicand>.__RMul__(TMultiplicand)
-  fullName: Sharpy.IRightMultipliable<TProduct, TMultiplicand>.__RMul__(TMultiplicand)
-  nameWithType.vb: IRightMultipliable(Of TProduct, TMultiplicand).__RMul__(TMultiplicand)
-  fullName.vb: Sharpy.IRightMultipliable(Of TProduct, TMultiplicand).__RMul__(TMultiplicand)
+- uid: Sharpy.IRightMultipliableWith`2.__RMul__(`1)
+  commentId: M:Sharpy.IRightMultipliableWith`2.__RMul__(`1)
+  href: Sharpy.IRightMultipliableWith-2.html#Sharpy_IRightMultipliableWith_2___RMul____1_
+  name: __RMul__(TMultiplier)
+  nameWithType: IRightMultipliableWith<TProduct, TMultiplier>.__RMul__(TMultiplier)
+  fullName: Sharpy.IRightMultipliableWith<TProduct, TMultiplier>.__RMul__(TMultiplier)
+  nameWithType.vb: IRightMultipliableWith(Of TProduct, TMultiplier).__RMul__(TMultiplier)
+  fullName.vb: Sharpy.IRightMultipliableWith(Of TProduct, TMultiplier).__RMul__(TMultiplier)
   spec.csharp:
-  - uid: Sharpy.IRightMultipliable`2.__RMul__(`1)
+  - uid: Sharpy.IRightMultipliableWith`2.__RMul__(`1)
     name: __RMul__
-    href: Sharpy.IRightMultipliable-2.html#Sharpy_IRightMultipliable_2___RMul____1_
+    href: Sharpy.IRightMultipliableWith-2.html#Sharpy_IRightMultipliableWith_2___RMul____1_
   - name: (
-  - name: TMultiplicand
+  - name: TMultiplier
   - name: )
   spec.vb:
-  - uid: Sharpy.IRightMultipliable`2.__RMul__(`1)
+  - uid: Sharpy.IRightMultipliableWith`2.__RMul__(`1)
     name: __RMul__
-    href: Sharpy.IRightMultipliable-2.html#Sharpy_IRightMultipliable_2___RMul____1_
+    href: Sharpy.IRightMultipliableWith-2.html#Sharpy_IRightMultipliableWith_2___RMul____1_
   - name: (
-  - name: TMultiplicand
+  - name: TMultiplier
   - name: )
 - uid: Sharpy.IAddableWith{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}.__Add__(Sharpy.Collections.Interfaces.ISequence{{T}})
   commentId: M:Sharpy.IAddableWith{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}.__Add__(Sharpy.Collections.Interfaces.ISequence{`0})

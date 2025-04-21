@@ -1,0 +1,103 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.IRightMultipliableWith`2
+  commentId: T:Sharpy.IRightMultipliableWith`2
+  id: IRightMultipliableWith`2
+  parent: Sharpy
+  children:
+  - Sharpy.IRightMultipliableWith`2.__RMul__(`1)
+  langs:
+  - csharp
+  - vb
+  name: IRightMultipliableWith<TProduct, TMultiplier>
+  nameWithType: IRightMultipliableWith<TProduct, TMultiplier>
+  fullName: Sharpy.IRightMultipliableWith<TProduct, TMultiplier>
+  type: Interface
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IRightMultipliable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IRightMultipliableWith
+    path: ../src/Sharpy/IRightMultipliable.cs
+    startLine: 2
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public interface IRightMultipliableWith<TProduct, TMultiplier>
+    typeParameters:
+    - id: TProduct
+    - id: TMultiplier
+    content.vb: Public Interface IRightMultipliableWith(Of TProduct, TMultiplier)
+  nameWithType.vb: IRightMultipliableWith(Of TProduct, TMultiplier)
+  fullName.vb: Sharpy.IRightMultipliableWith(Of TProduct, TMultiplier)
+  name.vb: IRightMultipliableWith(Of TProduct, TMultiplier)
+- uid: Sharpy.IRightMultipliableWith`2.__RMul__(`1)
+  commentId: M:Sharpy.IRightMultipliableWith`2.__RMul__(`1)
+  id: __RMul__(`1)
+  parent: Sharpy.IRightMultipliableWith`2
+  langs:
+  - csharp
+  - vb
+  name: __RMul__(TMultiplier)
+  nameWithType: IRightMultipliableWith<TProduct, TMultiplier>.__RMul__(TMultiplier)
+  fullName: Sharpy.IRightMultipliableWith<TProduct, TMultiplier>.__RMul__(TMultiplier)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IRightMultipliable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __RMul__
+    path: ../src/Sharpy/IRightMultipliable.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: TProduct __RMul__(TMultiplier other)
+    parameters:
+    - id: other
+      type: '{TMultiplier}'
+    return:
+      type: '{TProduct}'
+    content.vb: Function __RMul__(other As TMultiplier) As TProduct
+  overload: Sharpy.IRightMultipliableWith`2.__RMul__*
+  nameWithType.vb: IRightMultipliableWith(Of TProduct, TMultiplier).__RMul__(TMultiplier)
+  fullName.vb: Sharpy.IRightMultipliableWith(Of TProduct, TMultiplier).__RMul__(TMultiplier)
+references:
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: Sharpy.IRightMultipliableWith`2.__RMul__*
+  commentId: Overload:Sharpy.IRightMultipliableWith`2.__RMul__
+  href: Sharpy.IRightMultipliableWith-2.html#Sharpy_IRightMultipliableWith_2___RMul____1_
+  name: __RMul__
+  nameWithType: IRightMultipliableWith<TProduct, TMultiplier>.__RMul__
+  fullName: Sharpy.IRightMultipliableWith<TProduct, TMultiplier>.__RMul__
+  nameWithType.vb: IRightMultipliableWith(Of TProduct, TMultiplier).__RMul__
+  fullName.vb: Sharpy.IRightMultipliableWith(Of TProduct, TMultiplier).__RMul__
+- uid: '{TMultiplier}'
+  commentId: '!:TMultiplier'
+  definition: TMultiplier
+  name: TMultiplier
+  nameWithType: TMultiplier
+  fullName: TMultiplier
+- uid: '{TProduct}'
+  commentId: '!:TProduct'
+  definition: TProduct
+  name: TProduct
+  nameWithType: TProduct
+  fullName: TProduct
+- uid: TMultiplier
+  name: TMultiplier
+  nameWithType: TMultiplier
+  fullName: TMultiplier
+- uid: TProduct
+  name: TProduct
+  nameWithType: TProduct
+  fullName: TProduct

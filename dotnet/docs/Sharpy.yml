@@ -37,7 +37,9 @@ items:
   - Sharpy.IRepresentable
   - Sharpy.IRightAddable`1
   - Sharpy.IRightAddable`2
+  - Sharpy.IRightMultipliableWith`2
   - Sharpy.IRightMultipliable`2
+  - Sharpy.IRightMultipliable`3
   - Sharpy.IStrConvertible
   - Sharpy.IndexError
   - Sharpy.Iterator`1
@@ -837,24 +839,92 @@ references:
   - name: " "
   - name: T
   - name: )
+- uid: Sharpy.IRightMultipliableWith`2
+  commentId: T:Sharpy.IRightMultipliableWith`2
+  href: Sharpy.IRightMultipliableWith-2.html
+  name: IRightMultipliableWith<TProduct, TMultiplier>
+  nameWithType: IRightMultipliableWith<TProduct, TMultiplier>
+  fullName: Sharpy.IRightMultipliableWith<TProduct, TMultiplier>
+  nameWithType.vb: IRightMultipliableWith(Of TProduct, TMultiplier)
+  fullName.vb: Sharpy.IRightMultipliableWith(Of TProduct, TMultiplier)
+  name.vb: IRightMultipliableWith(Of TProduct, TMultiplier)
+  spec.csharp:
+  - uid: Sharpy.IRightMultipliableWith`2
+    name: IRightMultipliableWith
+    href: Sharpy.IRightMultipliableWith-2.html
+  - name: <
+  - name: TProduct
+  - name: ','
+  - name: " "
+  - name: TMultiplier
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IRightMultipliableWith`2
+    name: IRightMultipliableWith
+    href: Sharpy.IRightMultipliableWith-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TProduct
+  - name: ','
+  - name: " "
+  - name: TMultiplier
+  - name: )
+- uid: Sharpy.IRightMultipliable`3
+  commentId: T:Sharpy.IRightMultipliable`3
+  href: Sharpy.IRightMultipliable-3.html
+  name: IRightMultipliable<TMultiplicand, TMultiplier, TProduct>
+  nameWithType: IRightMultipliable<TMultiplicand, TMultiplier, TProduct>
+  fullName: Sharpy.IRightMultipliable<TMultiplicand, TMultiplier, TProduct>
+  nameWithType.vb: IRightMultipliable(Of TMultiplicand, TMultiplier, TProduct)
+  fullName.vb: Sharpy.IRightMultipliable(Of TMultiplicand, TMultiplier, TProduct)
+  name.vb: IRightMultipliable(Of TMultiplicand, TMultiplier, TProduct)
+  spec.csharp:
+  - uid: Sharpy.IRightMultipliable`3
+    name: IRightMultipliable
+    href: Sharpy.IRightMultipliable-3.html
+  - name: <
+  - name: TMultiplicand
+  - name: ','
+  - name: " "
+  - name: TMultiplier
+  - name: ','
+  - name: " "
+  - name: TProduct
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IRightMultipliable`3
+    name: IRightMultipliable
+    href: Sharpy.IRightMultipliable-3.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TMultiplicand
+  - name: ','
+  - name: " "
+  - name: TMultiplier
+  - name: ','
+  - name: " "
+  - name: TProduct
+  - name: )
 - uid: Sharpy.IRightMultipliable`2
   commentId: T:Sharpy.IRightMultipliable`2
   href: Sharpy.IRightMultipliable-2.html
-  name: IRightMultipliable<TProduct, TMultiplicand>
-  nameWithType: IRightMultipliable<TProduct, TMultiplicand>
-  fullName: Sharpy.IRightMultipliable<TProduct, TMultiplicand>
-  nameWithType.vb: IRightMultipliable(Of TProduct, TMultiplicand)
-  fullName.vb: Sharpy.IRightMultipliable(Of TProduct, TMultiplicand)
-  name.vb: IRightMultipliable(Of TProduct, TMultiplicand)
+  name: IRightMultipliable<TMultiplicand, TMultiplier>
+  nameWithType: IRightMultipliable<TMultiplicand, TMultiplier>
+  fullName: Sharpy.IRightMultipliable<TMultiplicand, TMultiplier>
+  nameWithType.vb: IRightMultipliable(Of TMultiplicand, TMultiplier)
+  fullName.vb: Sharpy.IRightMultipliable(Of TMultiplicand, TMultiplier)
+  name.vb: IRightMultipliable(Of TMultiplicand, TMultiplier)
   spec.csharp:
   - uid: Sharpy.IRightMultipliable`2
     name: IRightMultipliable
     href: Sharpy.IRightMultipliable-2.html
   - name: <
-  - name: TProduct
+  - name: TMultiplicand
   - name: ','
   - name: " "
-  - name: TMultiplicand
+  - name: TMultiplier
   - name: '>'
   spec.vb:
   - uid: Sharpy.IRightMultipliable`2
@@ -863,10 +933,10 @@ references:
   - name: (
   - name: Of
   - name: " "
-  - name: TProduct
+  - name: TMultiplicand
   - name: ','
   - name: " "
-  - name: TMultiplicand
+  - name: TMultiplier
   - name: )
 - uid: Sharpy.IStrConvertible
   commentId: T:Sharpy.IStrConvertible

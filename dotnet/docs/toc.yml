@@ -103,8 +103,14 @@ items:
   - uid: Sharpy.IRightAddable`2
     name: IRightAddable<TSum, TAugend>
     type: Interface
+  - uid: Sharpy.IRightMultipliableWith`2
+    name: IRightMultipliableWith<TProduct, TMultiplier>
+    type: Interface
   - uid: Sharpy.IRightMultipliable`2
-    name: IRightMultipliable<TProduct, TMultiplicand>
+    name: IRightMultipliable<TMultiplicand, TMultiplier>
+    type: Interface
+  - uid: Sharpy.IRightMultipliable`3
+    name: IRightMultipliable<TMultiplicand, TMultiplier, TProduct>
     type: Interface
   - uid: Sharpy.IStrConvertible
     name: IStrConvertible
