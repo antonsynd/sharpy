@@ -53,8 +53,10 @@ def main() -> None:
         clean(args=args, rest=rest)
     elif command == "install":
         install(args=args, rest=rest)
-    elif command == "docs":
+    elif command == "docs" or command == "build-docs":
         docs(args=args, rest=rest)
+    elif command == "view-docs":
+        view_docs(args=args, rest=rest)
     elif command == "format":
         format(args=args, rest=rest)
     elif command == "debug":
@@ -110,7 +112,8 @@ def create_parser() -> argparse.ArgumentParser:
     test_parser.add_argument(
         "--target", action="append", choices=("cs", "csharp", "py", "python"), default=None
     )
-    docs_parser = subparsers.add_parser("docs", help="Generates documentation.")
+    build_docs_parser = subparsers.add_parser("build-docs", aliases=["docs"], help="Generates documentation.")
+    view_docs_parser = subparsers.add_parser("view-docs", help="Starts the documentation server for viewing.")
     help_parser = subparsers.add_parser("help", help="Prints this help message.")
 
     return parser
@@ -270,6 +273,15 @@ def docs(args: argparse.Namespace, rest: Sequence[str]) -> None:
 
     try:
         subprocess.run(["docfx", str(CSHARP_DOCS_DIR / "docfx.json")], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Encountered error {e}", file=sys.stderr)
+        sys.exit(1)
+
+def view_docs(args: argparse.Namespace, rest: Sequence[str]) -> None:
+    get_logger().info("Starting documentation server...")
+
+    try:
+        subprocess.run(["docfx", "serve", str(CSHARP_DOCS_DIR / "_site")], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
