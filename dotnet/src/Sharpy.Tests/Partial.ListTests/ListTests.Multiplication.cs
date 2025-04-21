@@ -236,4 +236,62 @@ public partial class List_Tests
 
         actual.Should().Equal(expected);
     }
+
+    [Fact]
+    public void List_Right_Multiplication_Operator_Negative_Dunder()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+
+        // When
+        var product = l.__RMul__(-1);
+
+        // Then
+        Len(product).Should().Be(0);
+    }
+
+    [Fact]
+    public void List_Right_Multiplication_Operator_Zero_Dunder()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+
+        // When
+        var product = l.__RMul__(0);
+
+        // Then
+        Len(product).Should().Be(0);
+    }
+
+    [Fact]
+    public void List_Right_Multiplication_Operator_One_Dunder()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+
+        // When
+        var product = l.__RMul__(1);
+
+        // Then
+        var actual = product.ToList();
+        DotNetList<int> expected = [1, 3, 5, 7];
+
+        actual.Should().Equal(expected);
+    }
+
+    [Fact]
+    public void List_Right_Multiplication_Operator_More_Than_One_Dunder()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+
+        // When
+        var product = l.__RMul__(3);
+
+        // Then
+        var actual = product.ToList();
+        DotNetList<int> expected = [1, 3, 5, 7, 1, 3, 5, 7, 1, 3, 5, 7];
+
+        actual.Should().Equal(expected);
+    }
 }
