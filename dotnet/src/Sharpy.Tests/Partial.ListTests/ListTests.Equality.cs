@@ -6,177 +6,44 @@ namespace Sharpy.Tests;
 public partial class List_Tests
 {
     [Fact]
-    public void List_Native_Equality_Same_Object()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        var listRef = l;
-
-        // When/then
-        (l == listRef).Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_Native_Equality_Same_Object_Cast()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        Object o = l;
-
-        // When/then
-        (l == o).Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_Native_Equality_Same_Object_Cast_Reverse()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        Object o = l;
-
-        // When/then
-        (o == l).Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_Native_Equality_Same_DotNet_Object_Cast()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        object o = l;
-
-        // When/then
-        (l == o).Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_Native_Equality_Same_DotNet_Object_Cast_Reverse()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        object o = l;
-
-        // When/then
-        (o == l).Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_Native_Equality_Null()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-
-        // When/then
-        (l == null).Should().BeFalse();
-    }
-
-    [Fact]
-    public void List_Native_Equality_Null_Object_Cast()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        Object o = l;
-
-        // When/then
-        (o == null).Should().BeFalse();
-    }
-
-    [Fact]
-    public void List_Native_Equality_Null_DotNet_Object_Cast()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        object o = l;
-
-        // When/then
-        (o == null).Should().BeFalse();
-    }
-
-    [Fact]
-    public void List_Native_Equality_Null_Reverse()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-
-        // When/then
-        ((List<int>)null == l).Should().BeFalse();
-    }
-
-    [Fact]
-    public void List_Native_Equality_Null_Object_Cast_Reverse()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        Object o = l;
-
-        // When/then
-        ((Object)null == o).Should().BeFalse();
-    }
-
-    [Fact]
-    public void List_Native_Equality_Null_DotNet_Object_Cast_Reverse()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        object o = l;
-
-        // When/then
-        (null == o).Should().BeFalse();
-    }
-
-    [Fact]
     public void List_Equality_Same_Object()
     {
         // If
         List<int> l = [1, 3, 5, 7];
         var listRef = l;
+        Object objectRef = l;
+        object objRef = l;
 
         // When/then
-        listRef.Equals(l).Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_Equality_Same_Object_Cast()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        Object listRef = l;
-
-        // When/then
-        listRef.Equals(l).Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_Equality_Same_Object_Cast_Reverse()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        Object listRef = l;
-
-        // When/then
+        (l == listRef).Should().BeTrue();
+        (l == objectRef).Should().BeTrue();
+        (l == objRef).Should().BeTrue();
         l.Equals(listRef).Should().BeTrue();
+        l.Equals(objectRef).Should().BeTrue();
+        l.Equals(objRef).Should().BeTrue();
+        l.__Eq__(listRef).Should().BeTrue();
+        l.__Eq__(objectRef).Should().BeTrue();
+        l.__Eq__(objRef).Should().BeTrue();
     }
 
     [Fact]
-    public void List_Equality_Same_DotNet_Object_Cast()
+    public void List_Equality_Same_Object_Reverse()
     {
         // If
         List<int> l = [1, 3, 5, 7];
-        object listRef = l;
+        var listRef = l;
+        Object objectRef = l;
+        object objRef = l;
 
         // When/then
-        listRef.Should().Be(l);
-    }
-
-    [Fact]
-    public void List_Equality_Same_DotNet_Object_Cast_Reverse()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        object listRef = l;
-
-        // When/then
-        l.Equals(listRef).Should().BeTrue();
+        (listRef == l).Should().BeTrue();
+        (objectRef == l).Should().BeTrue();
+        (objRef == l).Should().BeTrue();
+        listRef.Equals(l).Should().BeTrue();
+        objectRef.Equals(l).Should().BeTrue();
+        objRef.Equals(l).Should().BeTrue();
+        listRef.__Eq__(l).Should().BeTrue();
+        objectRef.__Eq__(l).Should().BeTrue();
     }
 
     [Fact]
@@ -186,226 +53,211 @@ public partial class List_Tests
         List<int> l = [1, 3, 5, 7];
 
         // When/then
+        (l == (List<int>)null).Should().BeFalse();
+        (l == (Object)null).Should().BeFalse();
+        (l == (object)null).Should().BeFalse();
         l.Equals((List<int>)null).Should().BeFalse();
+        l.Equals((Object)null).Should().BeFalse();
+        l.Equals((object)null).Should().BeFalse();
+        l.__Eq__((List<int>)null).Should().BeFalse();
+        l.__Eq__((Object)null).Should().BeFalse();
+        l.__Eq__((object)null).Should().BeFalse();
     }
 
     [Fact]
-    public void List_Native_Inequality_Same_Object()
+    public void List_Equality_Null_Reverse()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+
+        // When/then
+        ((List<int>)null == l).Should().BeFalse();
+        ((Object)null == l).Should().BeFalse();
+        ((object)null == l).Should().BeFalse();
+    }
+
+    [Fact]
+    public void List_Inequality_Same_Object()
     {
         // If
         List<int> l = [1, 3, 5, 7];
         var listRef = l;
+        Object objectRef = l;
+        object objRef = l;
 
         // When/then
         (l != listRef).Should().BeFalse();
+        (l != objectRef).Should().BeFalse();
+        (l != objRef).Should().BeFalse();
+        l.__Ne__(listRef).Should().BeFalse();
+        l.__Ne__(objectRef).Should().BeFalse();
+        l.__Ne__(objRef).Should().BeFalse();
     }
 
     [Fact]
-    public void List_Native_Inequality_Same_Object_Cast()
+    public void List_Inequality_Same_Object_Reverse()
     {
         // If
         List<int> l = [1, 3, 5, 7];
-        Object o = l;
+        var listRef = l;
+        Object objectRef = l;
+        object objRef = l;
 
-        // When/then
-        (l != o).Should().BeFalse();
+        (listRef != l).Should().BeFalse();
+        (objectRef != l).Should().BeFalse();
+        (objRef != l).Should().BeFalse();
+        listRef.__Ne__(l).Should().BeFalse();
+        objectRef.__Ne__(l).Should().BeFalse();
     }
 
     [Fact]
-    public void List_Native_Inequality_Same_Object_Cast_Reverse()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        Object o = l;
-
-        // When/then
-        (o != l).Should().BeFalse();
-    }
-
-    [Fact]
-    public void List_Native_Inequality_Same_Object_DotNet_Cast()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        object o = l;
-
-        // When/then
-        (l != o).Should().BeFalse();
-    }
-
-    [Fact]
-    public void List_Native_Inequality_Same_Object_DotNet_Cast_Reverse()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        object o = l;
-
-        // When/then
-        (o != l).Should().BeFalse();
-    }
-
-    [Fact]
-    public void List_Native_Inequality_Null()
+    public void List_Inequality_Null()
     {
         // If
         List<int> l = [1, 3, 5, 7];
 
         // When/then
-        (l != null).Should().BeTrue();
+        (l != (List<int>)null).Should().BeTrue();
+        (l != (Object)null).Should().BeTrue();
+        (l != (object)null).Should().BeTrue();
+        l.__Ne__((List<int>)null).Should().BeTrue();
+        l.__Ne__((Object)null).Should().BeTrue();
+        l.__Ne__((object)null).Should().BeTrue();
     }
 
     [Fact]
-    public void List_Native_Inequality_Null_Object_Cast()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        Object o = l;
-
-        // When/then
-        (o != null).Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_Native_Inequality_Null_DotNet_Object_Cast()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        object o = l;
-
-        // When/then
-        (o != null).Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_Native_Inequality_Null_Reverse()
+    public void List_Inequality_Null_Reverse()
     {
         // If
         List<int> l = [1, 3, 5, 7];
 
-        // When/then
         ((List<int>)null != l).Should().BeTrue();
+        ((Object)null != l).Should().BeTrue();
+        ((object)null != l).Should().BeTrue();
     }
 
     [Fact]
-    public void List_Native_Inequality_Null_Object_Cast_Reverse()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        Object o = l;
-
-        // When/then
-        ((Object)null != o).Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_Native_Inequality_Null_DotNet_Object_Cast_Reverse()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        object o = l;
-
-        // When/then
-        (null != o).Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_Equality_And_Inequality_Different_Object_Cast()
+    public void List_Native_Equality_Different_Object()
     {
         // If
         List<int> l = [1, 3, 5, 7];
         List<int> m = [1, 3, 5, 7, 9];
-        Object o = m;
-
-        // When/then
-        l.Equals(o).Should().BeFalse();
-
-        // When
-        m.Pop();
-
-        // Then
-        l.Equals(o).Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_Equality_And_Inequality_Different_Object_Cast_Reverse()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        List<int> m = [1, 3, 5, 7, 9];
-        Object o = m;
-
-        // When/then
-        o.Equals(l).Should().BeFalse();
-
-        // When
-        m.Pop();
-
-        // Then
-        o.Equals(l).Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_Equality_And_Inequality_Different_DotNet_Object_Cast()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        List<int> m = [1, 3, 5, 7, 9];
-        object o = m;
-
-        // When/then
-        l.Equals(o).Should().BeFalse();
-
-        // When
-        m.Pop();
-
-        // Then
-        l.Equals(o).Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_Equality_And_Inequality_Different_DotNet_Object_Cast_Reverse()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        List<int> m = [1, 3, 5, 7, 9];
-        object o = m;
-
-        // When/then
-        o.Equals(l).Should().BeFalse();
-
-        // When
-        m.Pop();
-
-        // Then
-        o.Equals(l).Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_Native_Equality_And_Inequality_Different_Object()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        List<int> m = [1, 3, 5, 7, 9];
+        Object objectRef = m;
+        object objRef = m;
 
         // When/then
         (l == m).Should().BeFalse();
+        (l == objectRef).Should().BeFalse();
+        (l == objRef).Should().BeFalse();
+        l.Equals(m).Should().BeFalse();
+        l.Equals(objectRef).Should().BeFalse();
+        l.Equals(objRef).Should().BeFalse();
+        l.__Eq__(m).Should().BeFalse();
+        l.__Eq__(objectRef).Should().BeFalse();
+        l.__Eq__(objRef).Should().BeFalse();
 
         // When
         m.Pop();
 
         // Then
         (l == m).Should().BeTrue();
+        (l == objectRef).Should().BeTrue();
+        (l == objRef).Should().BeTrue();
+        l.Equals(m).Should().BeTrue();
+        l.Equals(objectRef).Should().BeTrue();
+        l.Equals(objRef).Should().BeTrue();
+        l.__Eq__(m).Should().BeTrue();
+        l.__Eq__(objectRef).Should().BeTrue();
+        l.__Eq__(objRef).Should().BeTrue();
     }
 
     [Fact]
-    public void List_Native_Equality_Different_Type()
+    public void List_Native_Equality_Different_Object_Reverse()
     {
         // If
         List<int> l = [1, 3, 5, 7];
-        List<double> m = [1.0, 3.0, 5.0, 7.0];
+        List<int> m = [1, 3, 5, 7, 9];
+        Object objectRef = m;
+        object objRef = m;
 
         // When/then
-        (l == m).Should().BeFalse();
+        (m == l).Should().BeFalse();
+        (objectRef == l).Should().BeFalse();
+        (objRef == l).Should().BeFalse();
+        m.Equals(l).Should().BeFalse();
+        objectRef.Equals(l).Should().BeFalse();
+        objRef.Equals(l).Should().BeFalse();
+        m.__Eq__(l).Should().BeFalse();
+        objectRef.__Eq__(l).Should().BeFalse();
+
+        // When
+        m.Pop();
+
+        // Then
+        (m == l).Should().BeTrue();
+        (objectRef == l).Should().BeTrue();
+        (objRef == l).Should().BeTrue();
+        m.Equals(l).Should().BeTrue();
+        objectRef.Equals(l).Should().BeTrue();
+        l.Equals(objRef).Should().BeTrue();
+        m.__Eq__(l).Should().BeTrue();
+        objectRef.__Eq__(l).Should().BeTrue();
+    }
+
+    [Fact]
+    public void List_Inequality_Different_Object()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        List<int> m = [1, 3, 5, 7, 9];
+        Object objectRef = m;
+        object objRef = m;
+
+        // When/then
+        (l != m).Should().BeTrue();
+        (l != objectRef).Should().BeTrue();
+        (l != objRef).Should().BeTrue();
+        l.__Ne__(m).Should().BeTrue();
+        l.__Ne__(objectRef).Should().BeTrue();
+        l.__Ne__(objRef).Should().BeTrue();
+
+        // When
+        m.Pop();
+
+        // Then
+        (l != m).Should().BeFalse();
+        (l != objectRef).Should().BeFalse();
+        (l != objRef).Should().BeFalse();
+        l.__Ne__(m).Should().BeFalse();
+        l.__Ne__(objectRef).Should().BeFalse();
+        l.__Ne__(objRef).Should().BeFalse();
+    }
+
+    [Fact]
+    public void List_Inequality_Different_Object_Reverse()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        List<int> m = [1, 3, 5, 7, 9];
+        Object objectRef = m;
+        object objRef = m;
+
+        // When/then
+        (m != l).Should().BeTrue();
+        (objectRef != l).Should().BeTrue();
+        (objRef != l).Should().BeTrue();
+        m.__Ne__(l).Should().BeTrue();
+        objectRef.__Ne__(l).Should().BeTrue();
+
+        // When
+        m.Pop();
+
+        // Then
+        (m != l).Should().BeFalse();
+        (objectRef != l).Should().BeFalse();
+        (objRef != l).Should().BeFalse();
+        m.__Ne__(l).Should().BeFalse();
+        objectRef.__Ne__(l).Should().BeFalse();
     }
 
     [Fact]
@@ -414,150 +266,73 @@ public partial class List_Tests
         // If
         List<int> l = [1, 3, 5, 7];
         List<double> m = [1.0, 3.0, 5.0, 7.0];
+        Object objectRef = m;
+        object objRef = m;
 
         // When/then
+        (l == m).Should().BeFalse();
+        (l == objectRef).Should().BeFalse();
+        (l == objRef).Should().BeFalse();
         l.Equals(m).Should().BeFalse();
-    }
-
-    [Fact]
-    public void List_Native_Equality_Different_Type_Null()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-
-        // When/then
-        (l == (List<double>)null).Should().BeFalse();
-    }
-
-    [Fact]
-    public void List_Native_Equality_Different_Type_Null_Reverse()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-
-        // When/then
-        ((List<double>)null == l).Should().BeFalse();
-    }
-
-    [Fact]
-    public void List_Equality_Different_Type_Null()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        List<double> m = [1.0, 3.0, 5.0, 7.0];
-
-        // When/then
-        l.Equals((List<double>)null).Should().BeFalse();
-    }
-
-    [Fact]
-    public void List_Native_Inequality_Different_Type_Null()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-
-        // When/then
-        (l != (List<double>)null).Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_Native_Inequality_Different_Type_Null_Reverse()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-
-        // When/then
-        ((List<double>)null != l).Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_Equality_Dunder_Same_Object()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        var listRef = l;
-
-        // When/then
-        l.__Eq__(listRef).Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_Equality_Dunder_Null()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-
-        // When/then
-        l.__Eq__(null).Should().BeFalse();
-    }
-
-    [Fact]
-    public void List_Inequality_Dunder_Same_Object()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        var listRef = l;
-
-        // When/then
-        l.__Ne__(listRef).Should().BeFalse();
-    }
-
-    [Fact]
-    public void List_Inequality_Dunder_Null()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-
-        // When/then
-        l.__Ne__(null).Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_Equality_And_Inequality_Dunder_Different_Object()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-        List<int> m = [1, 3, 5, 7, 9];
-
-        // When/then
+        l.Equals(objectRef).Should().BeFalse();
+        l.Equals(objRef).Should().BeFalse();
         l.__Eq__(m).Should().BeFalse();
-
-        // When
-        m.Pop();
-
-        // Then
-        l.__Eq__(m).Should().BeTrue();
+        l.__Eq__(objectRef).Should().BeFalse();
+        l.__Eq__(objRef).Should().BeFalse();
     }
 
     [Fact]
-    public void List_Equality_Dunder_Different_Type()
+    public void List_Equality_Different_Type_Reverse()
     {
         // If
         List<int> l = [1, 3, 5, 7];
         List<double> m = [1.0, 3.0, 5.0, 7.0];
+        Object objectRef = m;
+        object objRef = m;
 
         // When/then
-        l.__Eq__(m).Should().BeFalse();
+        (m == l).Should().BeFalse();
+        (objectRef == l).Should().BeFalse();
+        (objRef == l).Should().BeFalse();
+        m.Equals(l).Should().BeFalse();
+        objectRef.Equals(l).Should().BeFalse();
+        objRef.Equals(l).Should().BeFalse();
+        m.__Eq__(l).Should().BeFalse();
+        objectRef.__Eq__(l).Should().BeFalse();
     }
 
     [Fact]
-    public void List_Inequality_Dunder_Different_Type()
+    public void List_Inequality_Different_Type()
     {
         // If
         List<int> l = [1, 3, 5, 7];
         List<double> m = [1.0, 3.0, 5.0, 7.0];
+        Object objectRef = m;
+        object objRef = m;
 
         // When/then
+        (l != m).Should().BeTrue();
+        (l != objectRef).Should().BeTrue();
+        (l != objRef).Should().BeTrue();
         l.__Ne__(m).Should().BeTrue();
+        l.__Ne__(objectRef).Should().BeTrue();
+        l.__Ne__(objRef).Should().BeTrue();
     }
 
     [Fact]
-    public void List_Equality_Dunder_Different_Type_Null()
+    public void List_Inequality_Different_Type_Reverse()
     {
         // If
         List<int> l = [1, 3, 5, 7];
+        List<double> m = [1.0, 3.0, 5.0, 7.0];
+        Object objectRef = m;
+        object objRef = m;
 
         // When/then
-        l.__Ne__((List<double>)null).Should().BeTrue();
+        (m != l).Should().BeTrue();
+        (objectRef != l).Should().BeTrue();
+        (objRef != l).Should().BeTrue();
+        m.__Ne__(l).Should().BeTrue();
+        objectRef.__Ne__(l).Should().BeTrue();
     }
 }
