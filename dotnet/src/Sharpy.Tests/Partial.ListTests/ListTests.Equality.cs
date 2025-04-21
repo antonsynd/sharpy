@@ -10,10 +10,54 @@ public partial class List_Tests
     {
         // If
         List<int> l = [1, 3, 5, 7];
-        var copy = l;
+        var listRef = l;
 
         // When/then
-        (l == copy).Should().BeTrue();
+        (l == listRef).Should().BeTrue();
+    }
+
+    [Fact]
+    public void List_Native_Equality_Same_Object_Cast()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        Object o = l;
+
+        // When/then
+        (l == o).Should().BeTrue();
+    }
+
+    [Fact]
+    public void List_Native_Equality_Same_Object_Cast_Reverse()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        Object o = l;
+
+        // When/then
+        (o == l).Should().BeTrue();
+    }
+
+    [Fact]
+    public void List_Native_Equality_Same_DotNet_Object_Cast()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        object o = l;
+
+        // When/then
+        (l == o).Should().BeTrue();
+    }
+
+    [Fact]
+    public void List_Native_Equality_Same_DotNet_Object_Cast_Reverse()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        object o = l;
+
+        // When/then
+        (o == l).Should().BeTrue();
     }
 
     [Fact]
@@ -27,6 +71,28 @@ public partial class List_Tests
     }
 
     [Fact]
+    public void List_Native_Equality_Null_Object_Cast()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        Object o = l;
+
+        // When/then
+        (o == null).Should().BeFalse();
+    }
+
+    [Fact]
+    public void List_Native_Equality_Null_DotNet_Object_Cast()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        object o = l;
+
+        // When/then
+        (o == null).Should().BeFalse();
+    }
+
+    [Fact]
     public void List_Native_Equality_Null_Reverse()
     {
         // If
@@ -37,18 +103,82 @@ public partial class List_Tests
     }
 
     [Fact]
+    public void List_Native_Equality_Null_Object_Cast_Reverse()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        Object o = l;
+
+        // When/then
+        ((Object)null == o).Should().BeFalse();
+    }
+
+    [Fact]
+    public void List_Native_Equality_Null_DotNet_Object_Cast_Reverse()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        object o = l;
+
+        // When/then
+        (null == o).Should().BeFalse();
+    }
+
+    [Fact]
     public void List_Equality_Same_Object()
     {
         // If
         List<int> l = [1, 3, 5, 7];
-        var copy = l;
+        var listRef = l;
 
         // When/then
-        copy.Should().Equal(l);
+        listRef.Equals(l).Should().BeTrue();
     }
 
-    // NOTE: This test is no-op because FluentAssertions does not allow
-    // a null argument to NotEqual()
+    [Fact]
+    public void List_Equality_Same_Object_Cast()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        Object listRef = l;
+
+        // When/then
+        listRef.Equals(l).Should().BeTrue();
+    }
+
+    [Fact]
+    public void List_Equality_Same_Object_Cast_Reverse()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        Object listRef = l;
+
+        // When/then
+        l.Equals(listRef).Should().BeTrue();
+    }
+
+    [Fact]
+    public void List_Equality_Same_DotNet_Object_Cast()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        object listRef = l;
+
+        // When/then
+        listRef.Should().Be(l);
+    }
+
+    [Fact]
+    public void List_Equality_Same_DotNet_Object_Cast_Reverse()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        object listRef = l;
+
+        // When/then
+        l.Equals(listRef).Should().BeTrue();
+    }
+
     [Fact]
     public void List_Equality_Null()
     {
@@ -56,7 +186,7 @@ public partial class List_Tests
         List<int> l = [1, 3, 5, 7];
 
         // When/then
-        // l.Should().NotEqual((List<int>)null);
+        l.Equals((List<int>)null).Should().BeFalse();
     }
 
     [Fact]
@@ -64,10 +194,54 @@ public partial class List_Tests
     {
         // If
         List<int> l = [1, 3, 5, 7];
-        var copy = l;
+        var listRef = l;
 
         // When/then
-        (l != copy).Should().BeFalse();
+        (l != listRef).Should().BeFalse();
+    }
+
+    [Fact]
+    public void List_Native_Inequality_Same_Object_Cast()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        Object o = l;
+
+        // When/then
+        (l != o).Should().BeFalse();
+    }
+
+    [Fact]
+    public void List_Native_Inequality_Same_Object_Cast_Reverse()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        Object o = l;
+
+        // When/then
+        (o != l).Should().BeFalse();
+    }
+
+    [Fact]
+    public void List_Native_Inequality_Same_Object_DotNet_Cast()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        object o = l;
+
+        // When/then
+        (l != o).Should().BeFalse();
+    }
+
+    [Fact]
+    public void List_Native_Inequality_Same_Object_DotNet_Cast_Reverse()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        object o = l;
+
+        // When/then
+        (o != l).Should().BeFalse();
     }
 
     [Fact]
@@ -81,6 +255,28 @@ public partial class List_Tests
     }
 
     [Fact]
+    public void List_Native_Inequality_Null_Object_Cast()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        Object o = l;
+
+        // When/then
+        (o != null).Should().BeTrue();
+    }
+
+    [Fact]
+    public void List_Native_Inequality_Null_DotNet_Object_Cast()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        object o = l;
+
+        // When/then
+        (o != null).Should().BeTrue();
+    }
+
+    [Fact]
     public void List_Native_Inequality_Null_Reverse()
     {
         // If
@@ -91,20 +287,97 @@ public partial class List_Tests
     }
 
     [Fact]
-    public void List_Equality_And_Inequality_Different_Object()
+    public void List_Native_Inequality_Null_Object_Cast_Reverse()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        Object o = l;
+
+        // When/then
+        ((Object)null != o).Should().BeTrue();
+    }
+
+    [Fact]
+    public void List_Native_Inequality_Null_DotNet_Object_Cast_Reverse()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        object o = l;
+
+        // When/then
+        (null != o).Should().BeTrue();
+    }
+
+    [Fact]
+    public void List_Equality_And_Inequality_Different_Object_Cast()
     {
         // If
         List<int> l = [1, 3, 5, 7];
         List<int> m = [1, 3, 5, 7, 9];
+        Object o = m;
 
         // When/then
-        l.Should().NotEqual(m);
+        l.Equals(o).Should().BeFalse();
 
         // When
         m.Pop();
 
         // Then
-        l.Should().Equal(m);
+        l.Equals(o).Should().BeTrue();
+    }
+
+    [Fact]
+    public void List_Equality_And_Inequality_Different_Object_Cast_Reverse()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        List<int> m = [1, 3, 5, 7, 9];
+        Object o = m;
+
+        // When/then
+        o.Equals(l).Should().BeFalse();
+
+        // When
+        m.Pop();
+
+        // Then
+        o.Equals(l).Should().BeTrue();
+    }
+
+    [Fact]
+    public void List_Equality_And_Inequality_Different_DotNet_Object_Cast()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        List<int> m = [1, 3, 5, 7, 9];
+        object o = m;
+
+        // When/then
+        l.Equals(o).Should().BeFalse();
+
+        // When
+        m.Pop();
+
+        // Then
+        l.Equals(o).Should().BeTrue();
+    }
+
+    [Fact]
+    public void List_Equality_And_Inequality_Different_DotNet_Object_Cast_Reverse()
+    {
+        // If
+        List<int> l = [1, 3, 5, 7];
+        List<int> m = [1, 3, 5, 7, 9];
+        object o = m;
+
+        // When/then
+        o.Equals(l).Should().BeFalse();
+
+        // When
+        m.Pop();
+
+        // Then
+        o.Equals(l).Should().BeTrue();
     }
 
     [Fact]
@@ -202,10 +475,10 @@ public partial class List_Tests
     {
         // If
         List<int> l = [1, 3, 5, 7];
-        var copy = l;
+        var listRef = l;
 
         // When/then
-        l.__Eq__(copy).Should().BeTrue();
+        l.__Eq__(listRef).Should().BeTrue();
     }
 
     [Fact]
@@ -223,10 +496,10 @@ public partial class List_Tests
     {
         // If
         List<int> l = [1, 3, 5, 7];
-        var copy = l;
+        var listRef = l;
 
         // When/then
-        l.__Ne__(copy).Should().BeFalse();
+        l.__Ne__(listRef).Should().BeFalse();
     }
 
     [Fact]
