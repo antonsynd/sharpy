@@ -1,6 +1,20 @@
 namespace Sharpy;
 
-public interface IRightMultipliable<TProduct, TMultiplicand>
+public interface IRightMultipliableWith<TProduct, TMultiplier>
 {
-    TProduct __RMul__(TMultiplicand other);
+    TProduct __RMul__(TMultiplier other);
+}
+
+public interface IRightMultipliable<TMultiplicand, TMultiplier, TProduct> : IRightMultipliableWith<TProduct, TMultiplier>
+    where TMultiplicand : IRightMultipliable<TMultiplicand, TMultiplier, TProduct>
+{
+    static virtual TProduct operator *(TMultiplier left, TMultiplicand right)
+    {
+        return right.__RMul__(left);
+    }
+}
+
+public interface IRightMultipliable<TMultiplicand, TMultiplier> : IRightMultipliableWith<TMultiplicand, TMultiplier>
+    where TMultiplicand : IRightMultipliable<TMultiplicand, TMultiplier>
+{
 }
