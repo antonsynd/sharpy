@@ -10,7 +10,7 @@ public sealed partial class List<T>
     /// </remarks>
     public static bool operator ==(List<T> left, List<T> right)
     {
-        return left.__Eq__(right);
+        return left?.__Eq__(right) ?? right is null;
     }
 
     public static bool operator !=(List<T> left, List<T> right)
