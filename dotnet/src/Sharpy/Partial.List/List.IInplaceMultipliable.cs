@@ -15,6 +15,8 @@ public sealed partial class List<T>
         var originalLength = _list.Count;
         _list.EnsureCapacity(originalLength * i);
 
+        --i;
+
         for (; i > 0; --i)
         {
             for (uint j = 0; j < originalLength; ++j)

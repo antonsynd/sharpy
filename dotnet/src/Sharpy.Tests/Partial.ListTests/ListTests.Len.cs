@@ -13,6 +13,7 @@ public partial class List_Tests
 
         // When/then
         Len(l).Should().Be(0);
+        l.__Len__().Should().Be(0);
     }
 
     [Fact]
@@ -23,5 +24,6 @@ public partial class List_Tests
 
         // When/then
         Len(l).Should().Be(4);
+        l.__Len__().Should().Be(4);
     }
 }
