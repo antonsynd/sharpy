@@ -53,7 +53,7 @@ public sealed partial class List<T>
     {
         if (enumerable is null)
         {
-            throw new TypeError("Extend() enumerable argument cannot be None");
+            throw TypeError.ArgNone("extend", "enumerable");
         }
 
         _list.AddRange(enumerable);
@@ -131,7 +131,7 @@ public sealed partial class List<T>
     {
         if (other is null)
         {
-            throw new TypeError("'NoneType' object is not iterable");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
         _list.AddRange(other);
@@ -142,7 +142,7 @@ public sealed partial class List<T>
     {
         if (other is null)
         {
-            throw new TypeError("'NoneType' object is not iterable");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
         __SetItem__(slice, [.. other]);
@@ -226,7 +226,7 @@ public sealed partial class List<T>
     {
         if (other is null)
         {
-            throw new TypeError("must assign iterable (not \"NoneType\") to extended slice");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
         if (slice.step == 0)

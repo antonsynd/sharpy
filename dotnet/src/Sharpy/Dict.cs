@@ -19,7 +19,7 @@ public sealed partial class Dict<K, V> : Object, IMutableMapping<K, V> where K :
     {
         if (mapping is null)
         {
-            throw new TypeError("'NoneType' object is not iterable");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
     }
 
@@ -27,7 +27,7 @@ public sealed partial class Dict<K, V> : Object, IMutableMapping<K, V> where K :
     {
         if (iterable is null)
         {
-            throw new TypeError("'NoneType' object is not iterable");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
     }
 

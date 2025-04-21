@@ -38,7 +38,7 @@ internal static class ComparerAdapter<T>
             return new UntypedIComparableComparer();
         }
 
-        throw new TypeError($"'<' not supported for instances of ${typeof(T).Name}");
+        throw TypeError.OpNotSupported("<", typeof(T).Name);
     }
 
     private class LessThanComparableComparer : IComparer<T>
@@ -54,7 +54,7 @@ internal static class ComparerAdapter<T>
             // x is less than y
             if (x is null || y is null)
             {
-                throw new TypeError("'<' not supported for instances of 'NoneType'");
+                throw TypeError.OpNotSupported("<", "NoneType");
             }
 
             var xlt = (ILessThanComparableWith<T>)x;
@@ -91,7 +91,7 @@ internal static class ComparerAdapter<T>
             // x is less than y
             if (x is null || y is null)
             {
-                throw new TypeError("'<' not supported for instances of 'NoneType'");
+                throw TypeError.OpNotSupported("<", "NoneType");
             }
 
             var xeq = (IEquatableWith<T>)x;
@@ -127,7 +127,7 @@ internal static class ComparerAdapter<T>
 
             if (x is null || y is null)
             {
-                throw new TypeError("'>' not supported for instances of 'NoneType'");
+                throw TypeError.OpNotSupported(">", "NoneType");
             }
 
             var xgt = (IGreaterThanComparableWith<T>)x;
@@ -163,7 +163,7 @@ internal static class ComparerAdapter<T>
 
             if (x is null || y is null)
             {
-                throw new TypeError("'>' not supported for instances of 'NoneType'");
+                throw TypeError.OpNotSupported(">", "NoneType");
             }
 
             var xeq = (IEquatableWith<T>)x;
@@ -199,7 +199,7 @@ internal static class ComparerAdapter<T>
 
             if (x is null || y is null)
             {
-                throw new TypeError("'<' not supported for instances of 'NoneType'");
+                throw TypeError.OpNotSupported(">", "NoneType");
             }
 
             return ((IComparable<T>)x).CompareTo(y);
@@ -218,7 +218,7 @@ internal static class ComparerAdapter<T>
 
             if (x is null || y is null)
             {
-                throw new TypeError("'<' not supported for instances of 'NoneType'");
+                throw TypeError.OpNotSupported(">", "NoneType");
             }
 
             return ((IComparable)x).CompareTo(y);

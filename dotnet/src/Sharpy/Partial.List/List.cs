@@ -34,7 +34,7 @@ public sealed partial class List<T>
     {
         if (enumerable is null)
         {
-            throw new TypeError("'NoneType' object is not iterable");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
         _list.AddRange(enumerable);
@@ -81,7 +81,7 @@ public sealed partial class List<T>
     {
         if (key is null)
         {
-            throw new TypeError("Sort() key argument cannot be None");
+            throw TypeError.ArgNone("sort", "key");
         }
 
         // use https://learn.microsoft.com/en-us/dotnet/api/system.linq.enumerable.orderby?view=net-9.0&redirectedfrom=MSDN#System_Linq_Enumerable_OrderBy__2_System_Collections_Generic_IEnumerable___0__System_Func___0___1__

@@ -8,7 +8,7 @@ public static partial class Exports
     {
         if (iterable is null)
         {
-            throw new TypeError("'NoneType' object is not iterable");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
         return iterable.__Iter__();

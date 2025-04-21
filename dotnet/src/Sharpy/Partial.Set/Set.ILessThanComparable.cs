@@ -7,7 +7,7 @@ public sealed partial class Set<T>
     {
         if (other is null)
         {
-            throw new TypeError("'NoneType' object is not iterable");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
         return _set.IsProperSubsetOf(other._set);
@@ -18,7 +18,7 @@ public sealed partial class Set<T>
     {
         if (other is null)
         {
-            throw new TypeError("'NoneType' object is not iterable");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
         var numElems = _set.Count;

@@ -8,7 +8,7 @@ public sealed partial class Set<T>
         if (other is null)
         {
             // Not actually true here, but whatever
-            throw new TypeError("'NoneType' object is not iterable");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
         return !_set.Overlaps(other._set);
@@ -19,7 +19,7 @@ public sealed partial class Set<T>
     {
         if (other is null)
         {
-            throw new TypeError("'NoneType' object is not iterable");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
         var result = new Set<T>();
@@ -40,7 +40,7 @@ public sealed partial class Set<T>
     {
         if (other is null)
         {
-            throw new TypeError("'NoneType' object is not iterable");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
         var result = new Set<T>(_set);
@@ -60,7 +60,7 @@ public sealed partial class Set<T>
     {
         if (other is null)
         {
-            throw new TypeError("'NoneType' object is not iterable");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
         var result = new Set<T>(other._set);
@@ -78,7 +78,7 @@ public sealed partial class Set<T>
     {
         if (other is null)
         {
-            throw new TypeError("'NoneType' object is not iterable");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
         var result = new Set<T>();
@@ -99,7 +99,7 @@ public sealed partial class Set<T>
     {
         if (other is null)
         {
-            throw new TypeError("'NoneType' object is not iterable");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
         var result = new Set<T>();
@@ -120,7 +120,7 @@ public sealed partial class Set<T>
     {
         if (other is null)
         {
-            throw new TypeError("'NoneType' object is not iterable");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
         var result = new Set<T>();
@@ -149,7 +149,7 @@ public sealed partial class Set<T>
     {
         if (other is null)
         {
-            throw new TypeError("'NoneType' object is not iterable");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
         var result = new Set<T>();
@@ -257,7 +257,7 @@ public sealed partial class Set<T>
         if (other is null)
         {
             // Not actually true here, but whatever
-            throw new TypeError("'NoneType' object is not iterable");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
         foreach (var item in other)

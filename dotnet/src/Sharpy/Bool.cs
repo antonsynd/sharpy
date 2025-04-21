@@ -166,6 +166,6 @@ public static partial class Exports
             return Bool(@float);
         }
 
-        throw new TypeError($"{obj.GetType().Name} is not convertible to bool");
+        throw TypeError.IsNotInterface(obj.GetType().Name, "convertible to bool");
     }
 }

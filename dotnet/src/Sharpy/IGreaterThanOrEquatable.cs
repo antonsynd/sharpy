@@ -11,7 +11,7 @@ public interface IGreaterThanOrEquatable<T> : IGreaterThanOrEquatableWith<T>, IG
     {
         if (left is null || right is null)
         {
-            throw new TypeError("'<' is not supported for objects of 'NoneType'");
+            throw TypeError.OpNotSupported(">", "NoneType");
         }
 
         return left.__Ge__(right);
@@ -31,7 +31,7 @@ public interface IGreaterThanOrEquatable<T> : IGreaterThanOrEquatableWith<T>, IG
     {
         if (left is null || right is null)
         {
-            throw new TypeError("'<' is not supported for objects of 'NoneType'");
+            throw TypeError.OpNotSupported(">", "NoneType");
         }
 
         return left.__Gt__(right);

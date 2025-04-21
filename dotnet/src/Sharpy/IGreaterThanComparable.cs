@@ -11,7 +11,7 @@ public interface IGreaterThanComparable<T> : IGreaterThanComparableWith<T> where
     {
         if (left is null || right is null)
         {
-            throw new TypeError("'<' is not supported for objects of 'NoneType'");
+            throw TypeError.OpNotSupported(">", "NoneType");
         }
 
         return left.__Gt__(right);

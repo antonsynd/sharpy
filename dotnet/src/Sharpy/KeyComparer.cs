@@ -21,7 +21,7 @@ file class KeyComparer<T, TKey>(Func<T, TKey> key) : IComparer<T>
 
         if (x is null || y is null)
         {
-            throw new TypeError("'<' not supported for instances of 'NoneType'");
+            throw TypeError.OpNotSupported("<", "NoneType");
         }
 
         return ComparerAdapter<TKey>.Instance.Compare(_key(x), _key(y));

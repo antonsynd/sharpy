@@ -10,7 +10,7 @@ public static partial class Exports
     {
         if (value is null)
         {
-            throw new TypeError("Some() value argument cannot be None");
+            throw TypeError.ArgNone("some", "value");
         }
 
         return new Optional<T>(value);

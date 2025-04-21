@@ -22,7 +22,7 @@ public sealed partial class Set<T>
     {
         if (enumerable is null)
         {
-            throw new TypeError("'NoneType' object is not iterable");
+            throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
         foreach (var x in enumerable)
