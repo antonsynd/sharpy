@@ -13,6 +13,7 @@ public partial class List_Tests
 
         // When/then
         l.Contains(1).Should().BeFalse();
+        l.__Contains__(1).Should().BeFalse();
     }
 
     [Fact]
@@ -23,6 +24,7 @@ public partial class List_Tests
 
         // When/then
         l.Contains(4).Should().BeFalse();
+        l.__Contains__(4).Should().BeFalse();
     }
 
     [Fact]
@@ -33,35 +35,6 @@ public partial class List_Tests
 
         // When/then
         l.Contains(5).Should().BeTrue();
-    }
-
-    [Fact]
-    public void List_Contains_Dunder_Empty()
-    {
-        // If
-        var l = new List<int>();
-
-        // When/then
-        l.__Contains__(1).Should().BeFalse();
-    }
-
-    [Fact]
-    public void List_Contains_Dunder_Not_Actually_In()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-
-        // When/then
-        l.__Contains__(4).Should().BeFalse();
-    }
-
-    [Fact]
-    public void List_Contains_Dunder_Actually_In()
-    {
-        // If
-        List<int> l = [1, 3, 5, 7];
-
-        // When/then
         l.__Contains__(5).Should().BeTrue();
     }
 }
