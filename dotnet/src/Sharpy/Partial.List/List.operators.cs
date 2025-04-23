@@ -22,7 +22,7 @@ public sealed partial class List<T>
     {
         if (left is null)
         {
-            throw new TypeError($"can only concatenate List<${typeof(T).Name}> (not \"NoneType\") to List<${typeof(T).Name}");
+            throw TypeError.CanOnlyNot("concatenate", $"List<{typeof(T).Name}>", "NoneType", "to", $"List<{typeof(T).Name}>");
         }
 
         return left.__Add__(right);
@@ -32,7 +32,7 @@ public sealed partial class List<T>
     {
         if (left is null)
         {
-            throw new TypeError($"can only multiply List<${typeof(T).Name} (not \"NoneType\") with int");
+            throw TypeError.CanOnlyNot("multiply", $"List<{typeof(T).Name}>", "NoneType", "with", "int");
         }
 
         return left.__Mul__(i);
@@ -42,7 +42,7 @@ public sealed partial class List<T>
     {
         if (left is null)
         {
-            throw new TypeError($"can only multiply List<${typeof(T).Name} (not \"NoneType\") with int");
+            throw TypeError.CanOnlyNot("multiply", $"List<{typeof(T).Name}>", "NoneType", "with", "int");
         }
 
         return left.__RMul__(i);

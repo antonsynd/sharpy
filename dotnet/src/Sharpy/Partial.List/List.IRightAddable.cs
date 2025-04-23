@@ -7,7 +7,7 @@ public sealed partial class List<T>
     {
         if (other is null)
         {
-            throw new TypeError($"can only concatenate List<${typeof(T).Name}> (not \"NoneType\") to List<${typeof(T).Name}");
+            throw TypeError.CanOnlyNot("concatenate", $"List<{typeof(T).Name}>", "NoneType", "to", $"List<{typeof(T).Name}>");
         }
 
         var res = other.Copy();

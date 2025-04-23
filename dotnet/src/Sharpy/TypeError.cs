@@ -16,4 +16,9 @@ public class TypeError(string message) : Exception(message)
     {
         return new TypeError($"{method}() {arg} argument cannot be None");
     }
+
+    internal static TypeError CanOnlyNot(string verb, string typeA, string notType, string preposition, string typeB)
+    {
+        return new TypeError($"can only {verb} {typeA} (not \"{notType}\") {preposition} {typeB}");
+    }
 }
