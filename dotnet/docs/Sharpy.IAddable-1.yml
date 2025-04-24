@@ -19,7 +19,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IAddable
     path: ../src/Sharpy/IAddable.cs
-    startLine: 67
+    startLine: 70
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -29,10 +29,10 @@ items:
     of the same type.
   example: []
   syntax:
-    content: 'public interface IAddable<T> : IAddable<T, T, T>, IAddableWith<T, T> where T : IAddable<T, T, T>'
+    content: 'public interface IAddable<T> : IAddable<T, T>, IAddable<T, T, T>, IAddableWith<T, T> where T : IAddable<T, T>, IAddable<T, T, T>'
     typeParameters:
     - id: T
-    content.vb: Public Interface IAddable(Of T As IAddable(Of T, T, T)) Inherits IAddable(Of T, T, T), IAddableWith(Of T, T)
+    content.vb: Public Interface IAddable(Of T As {IAddable(Of T, T), IAddable(Of T, T, T)}) Inherits IAddable(Of T, T), IAddable(Of T, T, T), IAddableWith(Of T, T)
   inheritedMembers:
   - Sharpy.IAddableWith{{T},{T}}.__Add__({T})
   nameWithType.vb: IAddable(Of T)

@@ -34,11 +34,11 @@ items:
     with methods dealing directly with the given sequence type.
   example: []
   syntax:
-    content: 'public interface ISequence<TSequence, TItem> : ISequence<TItem>, ICollection<TItem>, IContainer<TItem>, ISized, ICollection<TItem>, IReversible<TItem>, IIterable<TItem>, IEnumerable<TItem>, IEnumerable, IAddable<ISequence<TItem>>, IAddable<ISequence<TItem>, ISequence<TItem>, ISequence<TItem>>, IAddableWith<ISequence<TItem>, ISequence<TItem>>, IRightAddable<ISequence<TItem>>, IRightAddable<ISequence<TItem>, ISequence<TItem>>'
+    content: 'public interface ISequence<TSequence, TItem> : ISequence<TItem>, ICollection<TItem>, IContainer<TItem>, ISized, ICollection<TItem>, IReversible<TItem>, IIterable<TItem>, IEnumerable<TItem>, IEnumerable, IAddable<ISequence<TItem>>, IAddable<ISequence<TItem>, ISequence<TItem>>, IAddable<ISequence<TItem>, ISequence<TItem>, ISequence<TItem>>, IAddableWith<ISequence<TItem>, ISequence<TItem>>, IRightAddable<ISequence<TItem>>, IRightAddable<ISequence<TItem>, ISequence<TItem>>'
     typeParameters:
     - id: TSequence
     - id: TItem
-    content.vb: Public Interface ISequence(Of TSequence, TItem) Inherits ISequence(Of TItem), ICollection(Of TItem), IContainer(Of TItem), ISized, ICollection(Of TItem), IReversible(Of TItem), IIterable(Of TItem), IEnumerable(Of TItem), IEnumerable, IAddable(Of ISequence(Of TItem)), IAddable(Of ISequence(Of TItem), ISequence(Of TItem), ISequence(Of TItem)), IAddableWith(Of ISequence(Of TItem), ISequence(Of TItem)), IRightAddable(Of ISequence(Of TItem)), IRightAddable(Of ISequence(Of TItem), ISequence(Of TItem))
+    content.vb: Public Interface ISequence(Of TSequence, TItem) Inherits ISequence(Of TItem), ICollection(Of TItem), IContainer(Of TItem), ISized, ICollection(Of TItem), IReversible(Of TItem), IIterable(Of TItem), IEnumerable(Of TItem), IEnumerable, IAddable(Of ISequence(Of TItem)), IAddable(Of ISequence(Of TItem), ISequence(Of TItem)), IAddable(Of ISequence(Of TItem), ISequence(Of TItem), ISequence(Of TItem)), IAddableWith(Of ISequence(Of TItem), ISequence(Of TItem)), IRightAddable(Of ISequence(Of TItem)), IRightAddable(Of ISequence(Of TItem), ISequence(Of TItem))
   inheritedMembers:
   - Sharpy.Collections.Interfaces.ISequence{{TItem}}.Item(System.Int32)
   - Sharpy.Collections.Interfaces.ISequence{{TItem}}.Item(System.Index)

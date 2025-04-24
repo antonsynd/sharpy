@@ -42,10 +42,10 @@ items:
   summary: Interface for mutable sequences.
   example: []
   syntax:
-    content: 'public interface IMutableSequence<T> : ISequence<T>, ICollection<T>, IContainer<T>, ISized, ICollection<T>, IReversible<T>, IIterable<T>, IEnumerable<T>, IEnumerable, IAddable<ISequence<T>>, IAddable<ISequence<T>, ISequence<T>, ISequence<T>>, IAddableWith<ISequence<T>, ISequence<T>>, IRightAddable<ISequence<T>>, IRightAddable<ISequence<T>, ISequence<T>>, IInplaceAddable<ISequence<T>>'
+    content: 'public interface IMutableSequence<T> : ISequence<T>, ICollection<T>, IContainer<T>, ISized, ICollection<T>, IReversible<T>, IIterable<T>, IEnumerable<T>, IEnumerable, IAddable<ISequence<T>>, IAddable<ISequence<T>, ISequence<T>>, IAddable<ISequence<T>, ISequence<T>, ISequence<T>>, IAddableWith<ISequence<T>, ISequence<T>>, IRightAddable<ISequence<T>>, IRightAddable<ISequence<T>, ISequence<T>>, IInplaceAddable<ISequence<T>>'
     typeParameters:
     - id: T
-    content.vb: Public Interface IMutableSequence(Of T) Inherits ISequence(Of T), ICollection(Of T), IContainer(Of T), ISized, ICollection(Of T), IReversible(Of T), IIterable(Of T), IEnumerable(Of T), IEnumerable, IAddable(Of ISequence(Of T)), IAddable(Of ISequence(Of T), ISequence(Of T), ISequence(Of T)), IAddableWith(Of ISequence(Of T), ISequence(Of T)), IRightAddable(Of ISequence(Of T)), IRightAddable(Of ISequence(Of T), ISequence(Of T)), IInplaceAddable(Of ISequence(Of T))
+    content.vb: Public Interface IMutableSequence(Of T) Inherits ISequence(Of T), ICollection(Of T), IContainer(Of T), ISized, ICollection(Of T), IReversible(Of T), IIterable(Of T), IEnumerable(Of T), IEnumerable, IAddable(Of ISequence(Of T)), IAddable(Of ISequence(Of T), ISequence(Of T)), IAddable(Of ISequence(Of T), ISequence(Of T), ISequence(Of T)), IAddableWith(Of ISequence(Of T), ISequence(Of T)), IRightAddable(Of ISequence(Of T)), IRightAddable(Of ISequence(Of T), ISequence(Of T)), IInplaceAddable(Of ISequence(Of T))
   inheritedMembers:
   - Sharpy.Collections.Interfaces.ISequence{{T}}.Count({T})
   - Sharpy.Collections.Interfaces.ISequence{{T}}.Index({T},System.Int32,System.Int32)

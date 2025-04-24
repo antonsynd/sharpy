@@ -68,7 +68,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Addition
     path: ../src/Sharpy/IAddable.cs
-    startLine: 28
+    startLine: 29
   assemblies:
   - Sharpy
   namespace: Sharpy

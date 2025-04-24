@@ -23,8 +23,9 @@ public interface IAddableWith<TAddend, TSum>
 /// <typeparam name="TAddend">The addend (the increase or thing to
 /// add/insert).</typeparam>
 /// <typeparam name="TSum">The sum.</typeparam>
-public interface IAddable<TAugend, TAddend, TSum> : IAddableWith<TAddend, TSum>
-    where TAugend : IAddable<TAugend, TAddend, TSum>
+public interface IAddable<TAugend, TAddend, TSum>
+    : IAddableWith<TAddend, TSum>
+      where TAugend : IAddable<TAugend, TAddend, TSum>
 {
     static virtual TSum operator +(TAugend left, TAddend right)
     {
@@ -46,9 +47,11 @@ public interface IAddable<TAugend, TAddend, TSum> : IAddableWith<TAddend, TSum>
 /// (the "augend").</typeparam>
 /// <typeparam name="TAddend">The type that indicates the amount of
 /// augmentation or what is being included in the "augend".</typeparam>
-public interface IAddable<TAugend, TAddend> where TAugend : IAddable<TAugend, TAddend>
+public interface IAddable<TAugend, TAddend>
+    : IAddableWith<TAddend, TAugend>
+      where TAugend : IAddable<TAugend, TAddend>
 {
-    TAugend __Add__(TAddend other);
+    // TAugend __Add__(TAddend other);
 
     static virtual TAugend operator +(TAugend left, TAddend right)
     {
@@ -65,6 +68,11 @@ public interface IAddable<TAugend, TAddend> where TAugend : IAddable<TAugend, TA
 /// An interface for a type that can be added to itself yielding a result
 /// of the same type.
 /// </summary>
-public interface IAddable<T> : IAddable<T, T, T> where T : IAddable<T, T, T>
+public interface IAddable<T>
+    : IAddable<T, T>,
+      IAddable<T, T, T>
+      where T
+        : IAddable<T, T>,
+          IAddable<T, T, T>
 {
 }
