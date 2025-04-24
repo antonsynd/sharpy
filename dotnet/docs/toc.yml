@@ -118,6 +118,9 @@ items:
   - uid: Sharpy.IndexError
     name: IndexError
     type: Class
+  - uid: Sharpy.IndexExtensions
+    name: IndexExtensions
+    type: Class
   - uid: Sharpy.Iterator`1
     name: Iterator<T>
     type: Class
@@ -141,6 +144,9 @@ items:
     type: Class
   - uid: Sharpy.PrintArguments`1
     name: PrintArguments<T>
+    type: Class
+  - uid: Sharpy.RangeExtensions
+    name: RangeExtensions
     type: Class
   - uid: Sharpy.SetIterator`1
     name: SetIterator<T>
@@ -201,13 +207,13 @@ items:
     name: IMutableSequence<T>
     type: Interface
   - uid: Sharpy.Collections.Interfaces.IMutableSequence`2
-    name: IMutableSequence<S, T>
+    name: IMutableSequence<TSequence, TItem>
     type: Interface
   - uid: Sharpy.Collections.Interfaces.IMutableSet`1
     name: IMutableSet<T>
     type: Interface
   - uid: Sharpy.Collections.Interfaces.IMutableSet`2
-    name: IMutableSet<S, T>
+    name: IMutableSet<TSet, TElement>
     type: Interface
   - uid: Sharpy.Collections.Interfaces.IReversible`1
     name: IReversible<T>
@@ -216,13 +222,13 @@ items:
     name: ISequence<T>
     type: Interface
   - uid: Sharpy.Collections.Interfaces.ISequence`2
-    name: ISequence<S, T>
+    name: ISequence<TSequence, TItem>
     type: Interface
   - uid: Sharpy.Collections.Interfaces.ISet`1
     name: ISet<T>
     type: Interface
   - uid: Sharpy.Collections.Interfaces.ISet`2
-    name: ISet<S, T>
+    name: ISet<TSet, TElement>
     type: Interface
   - uid: Sharpy.Collections.Interfaces.ISized
     name: ISized

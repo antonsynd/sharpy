@@ -3,7 +3,10 @@ namespace Sharpy.Collections.Interfaces;
 /// <summary>
 /// Interface for read-only sets.
 /// </summary>
-public interface ISet<T> : ICollection<T>, IEquatable<ISet<T>>, IInequatable<ISet<T>>
+public interface ISet<T>
+    : ICollection<T>,
+      IEquatable<ISet<T>>,
+      IInequatable<ISet<T>>
 {
     ISet<T> __And__(ISet<T> other);
 
@@ -20,38 +23,43 @@ public interface ISet<T> : ICollection<T>, IEquatable<ISet<T>>, IInequatable<ISe
     bool IsDisjoint(ISet<T> other);
 }
 
-public interface ISet<S, T> : ISet<T> where S : ISet<S, T>, ILessThanOrEquatable<S>, IGreaterThanOrEquatable<S>
+public interface ISet<TSet, TElement>
+    : ISet<TElement>
+      where TSet
+        : ISet<TSet, TElement>,
+          ILessThanOrEquatable<TSet>,
+          IGreaterThanOrEquatable<TSet>
 {
-    S __And__(S other);
+    TSet __And__(TSet other);
 
-    S __Or__(S other);
+    TSet __Or__(TSet other);
 
-    S __Sub__(S other);
+    TSet __Sub__(TSet other);
 
-    S __RSub__(S other);
+    TSet __RSub__(TSet other);
 
-    S __XOr__(S other);
+    TSet __XOr__(TSet other);
 
-    S __ROr__(S other);
+    TSet __ROr__(TSet other);
 
-    bool IsDisjoint(S other);
+    bool IsDisjoint(TSet other);
 
-    static virtual S operator &(S left, S right)
+    static virtual TSet operator &(TSet left, TSet right)
     {
         return left.__And__(right);
     }
 
-    static virtual S operator |(S left, S right)
+    static virtual TSet operator |(TSet left, TSet right)
     {
         return left.__Or__(right);
     }
 
-    static virtual S operator -(S left, S right)
+    static virtual TSet operator -(TSet left, TSet right)
     {
         return left.__Sub__(right);
     }
 
-    static virtual S operator ^(S left, S right)
+    static virtual TSet operator ^(TSet left, TSet right)
     {
         return left.__XOr__(right);
     }

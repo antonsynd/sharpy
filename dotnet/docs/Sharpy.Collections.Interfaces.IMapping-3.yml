@@ -46,17 +46,17 @@ items:
   - Sharpy.Collections.Interfaces.IMapping{{K},{V}}.Values
   - Sharpy.Collections.Interfaces.IMapping{{K},{V}}.Get({K})
   - Sharpy.Collections.Interfaces.IMapping{{K},{V}}.Get({K},{V})
-  - Sharpy.Collections.Interfaces.ICollection{{K}}.Count
+  - Sharpy.Collections.Interfaces.ICollection{{K}}.IsReadOnly
+  - Sharpy.Collections.Interfaces.ICollection{{K}}.Remove({K})
   - Sharpy.Collections.Interfaces.IContainer{{K}}.__Contains__({K})
   - Sharpy.Collections.Interfaces.IContainer{{K}}.Contains({K})
   - Sharpy.Collections.Interfaces.IIterable{{K}}.__Iter__
   - Sharpy.Collections.Interfaces.ISized.__Len__
   - Sharpy.Collections.Interfaces.ISized.Length
+  - Sharpy.Collections.Interfaces.ISized.Count
   - System.Collections.Generic.ICollection{{K}}.Add({K})
   - System.Collections.Generic.ICollection{{K}}.Clear
   - System.Collections.Generic.ICollection{{K}}.CopyTo({K}[],System.Int32)
-  - System.Collections.Generic.ICollection{{K}}.Remove({K})
-  - System.Collections.Generic.ICollection{{K}}.IsReadOnly
   - System.Collections.Generic.IEnumerable{{K}}.GetEnumerator
   nameWithType.vb: IMapping(Of M, K, V)
   fullName.vb: Sharpy.Collections.Interfaces.IMapping(Of M, K, V)
@@ -383,16 +383,40 @@ references:
   - name: " "
   - name: V
   - name: )
-- uid: Sharpy.Collections.Interfaces.ICollection{{K}}.Count
-  commentId: P:Sharpy.Collections.Interfaces.ICollection{`0}.Count
+- uid: Sharpy.Collections.Interfaces.ICollection{{K}}.IsReadOnly
+  commentId: P:Sharpy.Collections.Interfaces.ICollection{`0}.IsReadOnly
   parent: Sharpy.Collections.Interfaces.ICollection{{K}}
-  definition: Sharpy.Collections.Interfaces.ICollection`1.Count
-  href: Sharpy.Collections.Interfaces.ICollection-1.html#Sharpy_Collections_Interfaces_ICollection_1_Count
-  name: Count
-  nameWithType: ICollection<K>.Count
-  fullName: Sharpy.Collections.Interfaces.ICollection<K>.Count
-  nameWithType.vb: ICollection(Of K).Count
-  fullName.vb: Sharpy.Collections.Interfaces.ICollection(Of K).Count
+  definition: Sharpy.Collections.Interfaces.ICollection`1.IsReadOnly
+  href: Sharpy.Collections.Interfaces.ICollection-1.html#Sharpy_Collections_Interfaces_ICollection_1_IsReadOnly
+  name: IsReadOnly
+  nameWithType: ICollection<K>.IsReadOnly
+  fullName: Sharpy.Collections.Interfaces.ICollection<K>.IsReadOnly
+  nameWithType.vb: ICollection(Of K).IsReadOnly
+  fullName.vb: Sharpy.Collections.Interfaces.ICollection(Of K).IsReadOnly
+- uid: Sharpy.Collections.Interfaces.ICollection{{K}}.Remove({K})
+  commentId: M:Sharpy.Collections.Interfaces.ICollection{`0}.Remove(`0)
+  parent: Sharpy.Collections.Interfaces.ICollection{{K}}
+  definition: Sharpy.Collections.Interfaces.ICollection`1.Remove(`0)
+  href: Sharpy.Collections.Interfaces.ICollection-1.html#Sharpy_Collections_Interfaces_ICollection_1_Remove__0_
+  name: Remove(K)
+  nameWithType: ICollection<K>.Remove(K)
+  fullName: Sharpy.Collections.Interfaces.ICollection<K>.Remove(K)
+  nameWithType.vb: ICollection(Of K).Remove(K)
+  fullName.vb: Sharpy.Collections.Interfaces.ICollection(Of K).Remove(K)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.ICollection{`0}.Remove(`0)
+    name: Remove
+    href: Sharpy.Collections.Interfaces.ICollection-1.html#Sharpy_Collections_Interfaces_ICollection_1_Remove__0_
+  - name: (
+  - name: K
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.ICollection{`0}.Remove(`0)
+    name: Remove
+    href: Sharpy.Collections.Interfaces.ICollection-1.html#Sharpy_Collections_Interfaces_ICollection_1_Remove__0_
+  - name: (
+  - name: K
+  - name: )
 - uid: Sharpy.Collections.Interfaces.IContainer{{K}}.__Contains__({K})
   commentId: M:Sharpy.Collections.Interfaces.IContainer{`0}.__Contains__(`0)
   parent: Sharpy.Collections.Interfaces.IContainer{{K}}
@@ -489,6 +513,13 @@ references:
   name: Length
   nameWithType: ISized.Length
   fullName: Sharpy.Collections.Interfaces.ISized.Length
+- uid: Sharpy.Collections.Interfaces.ISized.Count
+  commentId: P:Sharpy.Collections.Interfaces.ISized.Count
+  parent: Sharpy.Collections.Interfaces.ISized
+  href: Sharpy.Collections.Interfaces.ISized.html#Sharpy_Collections_Interfaces_ISized_Count
+  name: Count
+  nameWithType: ISized.Count
+  fullName: Sharpy.Collections.Interfaces.ISized.Count
 - uid: System.Collections.Generic.ICollection{{K}}.Add({K})
   commentId: M:System.Collections.Generic.ICollection{`0}.Add(`0)
   parent: System.Collections.Generic.ICollection{{K}}
@@ -582,42 +613,6 @@ references:
     isExternal: true
     href: https://learn.microsoft.com/dotnet/api/system.int32
   - name: )
-- uid: System.Collections.Generic.ICollection{{K}}.Remove({K})
-  commentId: M:System.Collections.Generic.ICollection{`0}.Remove(`0)
-  parent: System.Collections.Generic.ICollection{{K}}
-  definition: System.Collections.Generic.ICollection`1.Remove(`0)
-  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.remove
-  name: Remove(K)
-  nameWithType: ICollection<K>.Remove(K)
-  fullName: System.Collections.Generic.ICollection<K>.Remove(K)
-  nameWithType.vb: ICollection(Of K).Remove(K)
-  fullName.vb: System.Collections.Generic.ICollection(Of K).Remove(K)
-  spec.csharp:
-  - uid: System.Collections.Generic.ICollection{`0}.Remove(`0)
-    name: Remove
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.remove
-  - name: (
-  - name: K
-  - name: )
-  spec.vb:
-  - uid: System.Collections.Generic.ICollection{`0}.Remove(`0)
-    name: Remove
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.remove
-  - name: (
-  - name: K
-  - name: )
-- uid: System.Collections.Generic.ICollection{{K}}.IsReadOnly
-  commentId: P:System.Collections.Generic.ICollection{`0}.IsReadOnly
-  parent: System.Collections.Generic.ICollection{{K}}
-  definition: System.Collections.Generic.ICollection`1.IsReadOnly
-  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.isreadonly
-  name: IsReadOnly
-  nameWithType: ICollection<K>.IsReadOnly
-  fullName: System.Collections.Generic.ICollection<K>.IsReadOnly
-  nameWithType.vb: ICollection(Of K).IsReadOnly
-  fullName.vb: System.Collections.Generic.ICollection(Of K).IsReadOnly
 - uid: System.Collections.Generic.IEnumerable{{K}}.GetEnumerator
   commentId: M:System.Collections.Generic.IEnumerable{`0}.GetEnumerator
   parent: System.Collections.Generic.IEnumerable{{K}}
@@ -914,14 +909,14 @@ references:
   - name: " "
   - name: V
   - name: )
-- uid: Sharpy.Collections.Interfaces.ICollection`1.Count
-  commentId: P:Sharpy.Collections.Interfaces.ICollection`1.Count
-  href: Sharpy.Collections.Interfaces.ICollection-1.html#Sharpy_Collections_Interfaces_ICollection_1_Count
-  name: Count
-  nameWithType: ICollection<T>.Count
-  fullName: Sharpy.Collections.Interfaces.ICollection<T>.Count
-  nameWithType.vb: ICollection(Of T).Count
-  fullName.vb: Sharpy.Collections.Interfaces.ICollection(Of T).Count
+- uid: Sharpy.Collections.Interfaces.ICollection`1.IsReadOnly
+  commentId: P:Sharpy.Collections.Interfaces.ICollection`1.IsReadOnly
+  href: Sharpy.Collections.Interfaces.ICollection-1.html#Sharpy_Collections_Interfaces_ICollection_1_IsReadOnly
+  name: IsReadOnly
+  nameWithType: ICollection<T>.IsReadOnly
+  fullName: Sharpy.Collections.Interfaces.ICollection<T>.IsReadOnly
+  nameWithType.vb: ICollection(Of T).IsReadOnly
+  fullName.vb: Sharpy.Collections.Interfaces.ICollection(Of T).IsReadOnly
 - uid: Sharpy.Collections.Interfaces.ICollection{{K}}
   commentId: T:Sharpy.Collections.Interfaces.ICollection{`0}
   parent: Sharpy.Collections.Interfaces
@@ -948,6 +943,28 @@ references:
   - name: Of
   - name: " "
   - name: K
+  - name: )
+- uid: Sharpy.Collections.Interfaces.ICollection`1.Remove(`0)
+  commentId: M:Sharpy.Collections.Interfaces.ICollection`1.Remove(`0)
+  href: Sharpy.Collections.Interfaces.ICollection-1.html#Sharpy_Collections_Interfaces_ICollection_1_Remove__0_
+  name: Remove(T)
+  nameWithType: ICollection<T>.Remove(T)
+  fullName: Sharpy.Collections.Interfaces.ICollection<T>.Remove(T)
+  nameWithType.vb: ICollection(Of T).Remove(T)
+  fullName.vb: Sharpy.Collections.Interfaces.ICollection(Of T).Remove(T)
+  spec.csharp:
+  - uid: Sharpy.Collections.Interfaces.ICollection`1.Remove(`0)
+    name: Remove
+    href: Sharpy.Collections.Interfaces.ICollection-1.html#Sharpy_Collections_Interfaces_ICollection_1_Remove__0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Collections.Interfaces.ICollection`1.Remove(`0)
+    name: Remove
+    href: Sharpy.Collections.Interfaces.ICollection-1.html#Sharpy_Collections_Interfaces_ICollection_1_Remove__0_
+  - name: (
+  - name: T
   - name: )
 - uid: Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
   commentId: M:Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
@@ -1193,40 +1210,6 @@ references:
     isExternal: true
     href: https://learn.microsoft.com/dotnet/api/system.int32
   - name: )
-- uid: System.Collections.Generic.ICollection`1.Remove(`0)
-  commentId: M:System.Collections.Generic.ICollection`1.Remove(`0)
-  isExternal: true
-  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.remove
-  name: Remove(T)
-  nameWithType: ICollection<T>.Remove(T)
-  fullName: System.Collections.Generic.ICollection<T>.Remove(T)
-  nameWithType.vb: ICollection(Of T).Remove(T)
-  fullName.vb: System.Collections.Generic.ICollection(Of T).Remove(T)
-  spec.csharp:
-  - uid: System.Collections.Generic.ICollection`1.Remove(`0)
-    name: Remove
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.remove
-  - name: (
-  - name: T
-  - name: )
-  spec.vb:
-  - uid: System.Collections.Generic.ICollection`1.Remove(`0)
-    name: Remove
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.remove
-  - name: (
-  - name: T
-  - name: )
-- uid: System.Collections.Generic.ICollection`1.IsReadOnly
-  commentId: P:System.Collections.Generic.ICollection`1.IsReadOnly
-  isExternal: true
-  href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.isreadonly
-  name: IsReadOnly
-  nameWithType: ICollection<T>.IsReadOnly
-  fullName: System.Collections.Generic.ICollection<T>.IsReadOnly
-  nameWithType.vb: ICollection(Of T).IsReadOnly
-  fullName.vb: System.Collections.Generic.ICollection(Of T).IsReadOnly
 - uid: System.Collections.Generic.IEnumerable`1.GetEnumerator
   commentId: M:System.Collections.Generic.IEnumerable`1.GetEnumerator
   isExternal: true

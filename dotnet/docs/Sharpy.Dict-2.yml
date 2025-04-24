@@ -261,14 +261,17 @@ items:
   assemblies:
   - Sharpy
   namespace: Sharpy
-  summary: Clears all key-value pairs from this mapping.
+  summary: Removes all items from the <xref href="System.Collections.Generic.ICollection%601" data-throw-if-not-resolved="false"></xref>.
   example: []
   syntax:
     content: public void Clear()
     content.vb: Public Sub Clear()
   overload: Sharpy.Dict`2.Clear*
+  exceptions:
+  - type: System.NotSupportedException
+    commentId: T:System.NotSupportedException
+    description: The <xref href="System.Collections.Generic.ICollection%601" data-throw-if-not-resolved="false"></xref> is read-only.
   implements:
-  - Sharpy.Collections.Interfaces.IMutableMapping{{K},{V}}.Clear
   - System.Collections.Generic.ICollection{{K}}.Clear
   nameWithType.vb: Dict(Of K, V).Clear()
   fullName.vb: Sharpy.Dict(Of K, V).Clear()
@@ -1714,17 +1717,16 @@ items:
   assemblies:
   - Sharpy
   namespace: Sharpy
-  summary: Gets a value indicating whether the <xref href="System.Collections.Generic.ICollection%601" data-throw-if-not-resolved="false"></xref> is read-only.
   example: []
   syntax:
     content: public bool IsReadOnly { get; }
     parameters: []
     return:
       type: System.Boolean
-      description: <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if the <xref href="System.Collections.Generic.ICollection%601" data-throw-if-not-resolved="false"></xref> is read-only; otherwise, <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.
     content.vb: Public ReadOnly Property IsReadOnly As Boolean
   overload: Sharpy.Dict`2.IsReadOnly*
   implements:
+  - Sharpy.Collections.Interfaces.ICollection{{K}}.IsReadOnly
   - System.Collections.Generic.ICollection{{K}}.IsReadOnly
   nameWithType.vb: Dict(Of K, V).IsReadOnly
   fullName.vb: Sharpy.Dict(Of K, V).IsReadOnly
@@ -3103,6 +3105,13 @@ references:
   - name: " "
   - name: V
   - name: )
+- uid: System.NotSupportedException
+  commentId: T:System.NotSupportedException
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.notsupportedexception
+  name: NotSupportedException
+  nameWithType: NotSupportedException
+  fullName: System.NotSupportedException
 - uid: Sharpy.Dict`2.Clear*
   commentId: Overload:Sharpy.Dict`2.Clear
   href: Sharpy.Dict-2.html#Sharpy_Dict_2_Clear
@@ -3111,28 +3120,6 @@ references:
   fullName: Sharpy.Dict<K, V>.Clear
   nameWithType.vb: Dict(Of K, V).Clear
   fullName.vb: Sharpy.Dict(Of K, V).Clear
-- uid: Sharpy.Collections.Interfaces.IMutableMapping{{K},{V}}.Clear
-  commentId: M:Sharpy.Collections.Interfaces.IMutableMapping{`0,`1}.Clear
-  parent: Sharpy.Collections.Interfaces.IMutableMapping{{K},{V}}
-  definition: Sharpy.Collections.Interfaces.IMutableMapping`2.Clear
-  href: Sharpy.Collections.Interfaces.IMutableMapping-2.html#Sharpy_Collections_Interfaces_IMutableMapping_2_Clear
-  name: Clear()
-  nameWithType: IMutableMapping<K, V>.Clear()
-  fullName: Sharpy.Collections.Interfaces.IMutableMapping<K, V>.Clear()
-  nameWithType.vb: IMutableMapping(Of K, V).Clear()
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableMapping(Of K, V).Clear()
-  spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.IMutableMapping{`0,`1}.Clear
-    name: Clear
-    href: Sharpy.Collections.Interfaces.IMutableMapping-2.html#Sharpy_Collections_Interfaces_IMutableMapping_2_Clear
-  - name: (
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Collections.Interfaces.IMutableMapping{`0,`1}.Clear
-    name: Clear
-    href: Sharpy.Collections.Interfaces.IMutableMapping-2.html#Sharpy_Collections_Interfaces_IMutableMapping_2_Clear
-  - name: (
-  - name: )
 - uid: System.Collections.Generic.ICollection{{K}}.Clear
   commentId: M:System.Collections.Generic.ICollection{`0}.Clear
   parent: System.Collections.Generic.ICollection{{K}}
@@ -3155,26 +3142,6 @@ references:
     name: Clear
     isExternal: true
     href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.clear
-  - name: (
-  - name: )
-- uid: Sharpy.Collections.Interfaces.IMutableMapping`2.Clear
-  commentId: M:Sharpy.Collections.Interfaces.IMutableMapping`2.Clear
-  href: Sharpy.Collections.Interfaces.IMutableMapping-2.html#Sharpy_Collections_Interfaces_IMutableMapping_2_Clear
-  name: Clear()
-  nameWithType: IMutableMapping<K, V>.Clear()
-  fullName: Sharpy.Collections.Interfaces.IMutableMapping<K, V>.Clear()
-  nameWithType.vb: IMutableMapping(Of K, V).Clear()
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableMapping(Of K, V).Clear()
-  spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.IMutableMapping`2.Clear
-    name: Clear
-    href: Sharpy.Collections.Interfaces.IMutableMapping-2.html#Sharpy_Collections_Interfaces_IMutableMapping_2_Clear
-  - name: (
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Collections.Interfaces.IMutableMapping`2.Clear
-    name: Clear
-    href: Sharpy.Collections.Interfaces.IMutableMapping-2.html#Sharpy_Collections_Interfaces_IMutableMapping_2_Clear
   - name: (
   - name: )
 - uid: System.Collections.Generic.ICollection`1.Clear
@@ -5503,6 +5470,16 @@ references:
   fullName: Sharpy.Dict<K, V>.IsReadOnly
   nameWithType.vb: Dict(Of K, V).IsReadOnly
   fullName.vb: Sharpy.Dict(Of K, V).IsReadOnly
+- uid: Sharpy.Collections.Interfaces.ICollection{{K}}.IsReadOnly
+  commentId: P:Sharpy.Collections.Interfaces.ICollection{`0}.IsReadOnly
+  parent: Sharpy.Collections.Interfaces.ICollection{{K}}
+  definition: Sharpy.Collections.Interfaces.ICollection`1.IsReadOnly
+  href: Sharpy.Collections.Interfaces.ICollection-1.html#Sharpy_Collections_Interfaces_ICollection_1_IsReadOnly
+  name: IsReadOnly
+  nameWithType: ICollection<K>.IsReadOnly
+  fullName: Sharpy.Collections.Interfaces.ICollection<K>.IsReadOnly
+  nameWithType.vb: ICollection(Of K).IsReadOnly
+  fullName.vb: Sharpy.Collections.Interfaces.ICollection(Of K).IsReadOnly
 - uid: System.Collections.Generic.ICollection{{K}}.IsReadOnly
   commentId: P:System.Collections.Generic.ICollection{`0}.IsReadOnly
   parent: System.Collections.Generic.ICollection{{K}}
@@ -5513,6 +5490,14 @@ references:
   fullName: System.Collections.Generic.ICollection<K>.IsReadOnly
   nameWithType.vb: ICollection(Of K).IsReadOnly
   fullName.vb: System.Collections.Generic.ICollection(Of K).IsReadOnly
+- uid: Sharpy.Collections.Interfaces.ICollection`1.IsReadOnly
+  commentId: P:Sharpy.Collections.Interfaces.ICollection`1.IsReadOnly
+  href: Sharpy.Collections.Interfaces.ICollection-1.html#Sharpy_Collections_Interfaces_ICollection_1_IsReadOnly
+  name: IsReadOnly
+  nameWithType: ICollection<T>.IsReadOnly
+  fullName: Sharpy.Collections.Interfaces.ICollection<T>.IsReadOnly
+  nameWithType.vb: ICollection(Of T).IsReadOnly
+  fullName.vb: Sharpy.Collections.Interfaces.ICollection(Of T).IsReadOnly
 - uid: System.Collections.Generic.ICollection`1.IsReadOnly
   commentId: P:System.Collections.Generic.ICollection`1.IsReadOnly
   isExternal: true
@@ -5522,13 +5507,6 @@ references:
   fullName: System.Collections.Generic.ICollection<T>.IsReadOnly
   nameWithType.vb: ICollection(Of T).IsReadOnly
   fullName.vb: System.Collections.Generic.ICollection(Of T).IsReadOnly
-- uid: System.NotSupportedException
-  commentId: T:System.NotSupportedException
-  isExternal: true
-  href: https://learn.microsoft.com/dotnet/api/system.notsupportedexception
-  name: NotSupportedException
-  nameWithType: NotSupportedException
-  fullName: System.NotSupportedException
 - uid: Sharpy.Dict`2.Add*
   commentId: Overload:Sharpy.Dict`2.Add
   href: Sharpy.Dict-2.html#Sharpy_Dict_2_Add__0_

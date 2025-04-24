@@ -17,11 +17,16 @@ public interface ICollection<T>
         }
     }
 
-    int Count
+    new bool IsReadOnly
     {
         get
         {
-            return (int)__Len__();
+            return true;
         }
+    }
+
+    new bool Remove(T item)
+    {
+        throw new NotSupportedException("cannot call remove() on a read-only collection");
     }
 }

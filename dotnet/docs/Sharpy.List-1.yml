@@ -422,17 +422,16 @@ items:
   assemblies:
   - Sharpy
   namespace: Sharpy
-  summary: Gets a value indicating whether the <xref href="System.Collections.Generic.ICollection%601" data-throw-if-not-resolved="false"></xref> is read-only.
   example: []
   syntax:
     content: public bool IsReadOnly { get; }
     parameters: []
     return:
       type: System.Boolean
-      description: <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if the <xref href="System.Collections.Generic.ICollection%601" data-throw-if-not-resolved="false"></xref> is read-only; otherwise, <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.
     content.vb: Public ReadOnly Property IsReadOnly As Boolean
   overload: Sharpy.List`1.IsReadOnly*
   implements:
+  - Sharpy.Collections.Interfaces.ICollection{{T}}.IsReadOnly
   - System.Collections.Generic.ICollection{{T}}.IsReadOnly
   nameWithType.vb: List(Of T).IsReadOnly
   fullName.vb: Sharpy.List(Of T).IsReadOnly
@@ -454,7 +453,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: CopyTo
     path: ../src/Sharpy/Partial.List/List.DotNet.ICollection.cs
-    startLine: 17
+    startLine: 22
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1018,7 +1017,6 @@ items:
     content.vb: Public Default Property this[](index As Integer) As T
   overload: Sharpy.List`1.Item*
   implements:
-  - Sharpy.Collections.Interfaces.IMutableSequence{Sharpy.List`1,{T}}.Item(System.Int32)
   - Sharpy.Collections.Interfaces.IMutableSequence{{T}}.Item(System.Int32)
   - Sharpy.Collections.Interfaces.ISequence{{T}}.Item(System.Int32)
   nameWithType.vb: List(Of T).this[](Integer)
@@ -1046,12 +1044,6 @@ items:
   assemblies:
   - Sharpy
   namespace: Sharpy
-  summary: >-
-    Returns the element at the given index. Supports negative indices
-
-    to get or set from the back. If the index is out of range, then
-
-    this raises an <xref href="Sharpy.IndexError" data-throw-if-not-resolved="false"></xref>.
   example: []
   syntax:
     content: public List<T> this[int start, int end] { get; set; }
@@ -1215,7 +1207,6 @@ items:
     content.vb: Public Sub Clear()
   overload: Sharpy.List`1.Clear*
   implements:
-  - Sharpy.Collections.Interfaces.IMutableSequence{{T}}.Clear
   - System.Collections.Generic.ICollection{{T}}.Clear
   nameWithType.vb: List(Of T).Clear()
   fullName.vb: Sharpy.List(Of T).Clear()
@@ -4364,21 +4355,21 @@ references:
 - uid: Sharpy.Collections.Interfaces.IMutableSequence`2
   commentId: T:Sharpy.Collections.Interfaces.IMutableSequence`2
   href: Sharpy.Collections.Interfaces.IMutableSequence-2.html
-  name: IMutableSequence<S, T>
-  nameWithType: IMutableSequence<S, T>
-  fullName: Sharpy.Collections.Interfaces.IMutableSequence<S, T>
-  nameWithType.vb: IMutableSequence(Of S, T)
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSequence(Of S, T)
-  name.vb: IMutableSequence(Of S, T)
+  name: IMutableSequence<TSequence, TItem>
+  nameWithType: IMutableSequence<TSequence, TItem>
+  fullName: Sharpy.Collections.Interfaces.IMutableSequence<TSequence, TItem>
+  nameWithType.vb: IMutableSequence(Of TSequence, TItem)
+  fullName.vb: Sharpy.Collections.Interfaces.IMutableSequence(Of TSequence, TItem)
+  name.vb: IMutableSequence(Of TSequence, TItem)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.IMutableSequence`2
     name: IMutableSequence
     href: Sharpy.Collections.Interfaces.IMutableSequence-2.html
   - name: <
-  - name: S
+  - name: TSequence
   - name: ','
   - name: " "
-  - name: T
+  - name: TItem
   - name: '>'
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.IMutableSequence`2
@@ -4387,10 +4378,10 @@ references:
   - name: (
   - name: Of
   - name: " "
-  - name: S
+  - name: TSequence
   - name: ','
   - name: " "
-  - name: T
+  - name: TItem
   - name: )
 - uid: Sharpy.Collections.Interfaces
   commentId: N:Sharpy.Collections.Interfaces
@@ -4476,21 +4467,21 @@ references:
 - uid: Sharpy.Collections.Interfaces.ISequence`2
   commentId: T:Sharpy.Collections.Interfaces.ISequence`2
   href: Sharpy.Collections.Interfaces.ISequence-2.html
-  name: ISequence<S, T>
-  nameWithType: ISequence<S, T>
-  fullName: Sharpy.Collections.Interfaces.ISequence<S, T>
-  nameWithType.vb: ISequence(Of S, T)
-  fullName.vb: Sharpy.Collections.Interfaces.ISequence(Of S, T)
-  name.vb: ISequence(Of S, T)
+  name: ISequence<TSequence, TItem>
+  nameWithType: ISequence<TSequence, TItem>
+  fullName: Sharpy.Collections.Interfaces.ISequence<TSequence, TItem>
+  nameWithType.vb: ISequence(Of TSequence, TItem)
+  fullName.vb: Sharpy.Collections.Interfaces.ISequence(Of TSequence, TItem)
+  name.vb: ISequence(Of TSequence, TItem)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.ISequence`2
     name: ISequence
     href: Sharpy.Collections.Interfaces.ISequence-2.html
   - name: <
-  - name: S
+  - name: TSequence
   - name: ','
   - name: " "
-  - name: T
+  - name: TItem
   - name: '>'
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.ISequence`2
@@ -4499,10 +4490,10 @@ references:
   - name: (
   - name: Of
   - name: " "
-  - name: S
+  - name: TSequence
   - name: ','
   - name: " "
-  - name: T
+  - name: TItem
   - name: )
 - uid: Sharpy.Collections.Interfaces.ISequence`1
   commentId: T:Sharpy.Collections.Interfaces.ISequence`1
@@ -5358,6 +5349,16 @@ references:
   fullName: Sharpy.List<T>.IsReadOnly
   nameWithType.vb: List(Of T).IsReadOnly
   fullName.vb: Sharpy.List(Of T).IsReadOnly
+- uid: Sharpy.Collections.Interfaces.ICollection{{T}}.IsReadOnly
+  commentId: P:Sharpy.Collections.Interfaces.ICollection{`0}.IsReadOnly
+  parent: Sharpy.Collections.Interfaces.ICollection{{T}}
+  definition: Sharpy.Collections.Interfaces.ICollection`1.IsReadOnly
+  href: Sharpy.Collections.Interfaces.ICollection-1.html#Sharpy_Collections_Interfaces_ICollection_1_IsReadOnly
+  name: IsReadOnly
+  nameWithType: ICollection<T>.IsReadOnly
+  fullName: Sharpy.Collections.Interfaces.ICollection<T>.IsReadOnly
+  nameWithType.vb: ICollection(Of T).IsReadOnly
+  fullName.vb: Sharpy.Collections.Interfaces.ICollection(Of T).IsReadOnly
 - uid: System.Collections.Generic.ICollection{{T}}.IsReadOnly
   commentId: P:System.Collections.Generic.ICollection{`0}.IsReadOnly
   parent: System.Collections.Generic.ICollection{{T}}
@@ -5368,6 +5369,14 @@ references:
   fullName: System.Collections.Generic.ICollection<T>.IsReadOnly
   nameWithType.vb: ICollection(Of T).IsReadOnly
   fullName.vb: System.Collections.Generic.ICollection(Of T).IsReadOnly
+- uid: Sharpy.Collections.Interfaces.ICollection`1.IsReadOnly
+  commentId: P:Sharpy.Collections.Interfaces.ICollection`1.IsReadOnly
+  href: Sharpy.Collections.Interfaces.ICollection-1.html#Sharpy_Collections_Interfaces_ICollection_1_IsReadOnly
+  name: IsReadOnly
+  nameWithType: ICollection<T>.IsReadOnly
+  fullName: Sharpy.Collections.Interfaces.ICollection<T>.IsReadOnly
+  nameWithType.vb: ICollection(Of T).IsReadOnly
+  fullName.vb: Sharpy.Collections.Interfaces.ICollection(Of T).IsReadOnly
 - uid: System.Collections.Generic.ICollection`1.IsReadOnly
   commentId: P:System.Collections.Generic.ICollection`1.IsReadOnly
   isExternal: true
@@ -6431,35 +6440,6 @@ references:
   nameWithType.vb: List(Of T).this[]
   fullName.vb: Sharpy.List(Of T).this[]
   name.vb: this[]
-- uid: Sharpy.Collections.Interfaces.IMutableSequence{Sharpy.List`1,{T}}.Item(System.Int32)
-  commentId: P:Sharpy.Collections.Interfaces.IMutableSequence{Sharpy.List`1,`0}.Item(System.Int32)
-  parent: Sharpy.Collections.Interfaces.IMutableSequence{Sharpy.List`1,{T}}
-  definition: Sharpy.Collections.Interfaces.IMutableSequence`2.Item(System.Int32)
-  href: https://learn.microsoft.com/dotnet/api/system.int32
-  name: this[int]
-  nameWithType: IMutableSequence<List<T>, T>.this[int]
-  fullName: Sharpy.Collections.Interfaces.IMutableSequence<Sharpy.List<T>, T>.this[int]
-  nameWithType.vb: IMutableSequence(Of List(Of T), T).this[](Integer)
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSequence(Of Sharpy.List(Of T), T).this[](Integer)
-  name.vb: this[](Integer)
-  spec.csharp:
-  - name: this
-  - name: '['
-  - uid: System.Int32
-    name: int
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.int32
-  - name: ']'
-  spec.vb:
-  - uid: Sharpy.Collections.Interfaces.IMutableSequence{Sharpy.List`1,`0}.Item(System.Int32)
-    name: this[]
-    href: Sharpy.Collections.Interfaces.IMutableSequence-2.html#Sharpy_Collections_Interfaces_IMutableSequence_2_Item_System_Int32_
-  - name: (
-  - uid: System.Int32
-    name: Integer
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.int32
-  - name: )
 - uid: Sharpy.Collections.Interfaces.IMutableSequence{{T}}.Item(System.Int32)
   commentId: P:Sharpy.Collections.Interfaces.IMutableSequence{`0}.Item(System.Int32)
   parent: Sharpy.Collections.Interfaces.IMutableSequence{{T}}
@@ -6512,34 +6492,6 @@ references:
   - uid: Sharpy.Collections.Interfaces.ISequence{`0}.Item(System.Int32)
     name: this[]
     href: Sharpy.Collections.Interfaces.ISequence-1.html#Sharpy_Collections_Interfaces_ISequence_1_Item_System_Int32_
-  - name: (
-  - uid: System.Int32
-    name: Integer
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.int32
-  - name: )
-- uid: Sharpy.Collections.Interfaces.IMutableSequence`2.Item(System.Int32)
-  commentId: P:Sharpy.Collections.Interfaces.IMutableSequence`2.Item(System.Int32)
-  isExternal: true
-  href: https://learn.microsoft.com/dotnet/api/system.int32
-  name: this[int]
-  nameWithType: IMutableSequence<S, T>.this[int]
-  fullName: Sharpy.Collections.Interfaces.IMutableSequence<S, T>.this[int]
-  nameWithType.vb: IMutableSequence(Of S, T).this[](Integer)
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSequence(Of S, T).this[](Integer)
-  name.vb: this[](Integer)
-  spec.csharp:
-  - name: this
-  - name: '['
-  - uid: System.Int32
-    name: int
-    isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.int32
-  - name: ']'
-  spec.vb:
-  - uid: Sharpy.Collections.Interfaces.IMutableSequence`2.Item(System.Int32)
-    name: this[]
-    href: Sharpy.Collections.Interfaces.IMutableSequence-2.html#Sharpy_Collections_Interfaces_IMutableSequence_2_Item_System_Int32_
   - name: (
   - uid: System.Int32
     name: Integer
@@ -6689,10 +6641,10 @@ references:
   isExternal: true
   href: https://learn.microsoft.com/dotnet/api/system.int32
   name: this[int, int]
-  nameWithType: IMutableSequence<S, T>.this[int, int]
-  fullName: Sharpy.Collections.Interfaces.IMutableSequence<S, T>.this[int, int]
-  nameWithType.vb: IMutableSequence(Of S, T).this[](Integer, Integer)
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSequence(Of S, T).this[](Integer, Integer)
+  nameWithType: IMutableSequence<TSequence, TItem>.this[int, int]
+  fullName: Sharpy.Collections.Interfaces.IMutableSequence<TSequence, TItem>.this[int, int]
+  nameWithType.vb: IMutableSequence(Of TSequence, TItem).this[](Integer, Integer)
+  fullName.vb: Sharpy.Collections.Interfaces.IMutableSequence(Of TSequence, TItem).this[](Integer, Integer)
   name.vb: this[](Integer, Integer)
   spec.csharp:
   - name: this
@@ -6729,10 +6681,10 @@ references:
   isExternal: true
   href: https://learn.microsoft.com/dotnet/api/system.int32
   name: this[int, int]
-  nameWithType: ISequence<S, T>.this[int, int]
-  fullName: Sharpy.Collections.Interfaces.ISequence<S, T>.this[int, int]
-  nameWithType.vb: ISequence(Of S, T).this[](Integer, Integer)
-  fullName.vb: Sharpy.Collections.Interfaces.ISequence(Of S, T).this[](Integer, Integer)
+  nameWithType: ISequence<TSequence, TItem>.this[int, int]
+  fullName: Sharpy.Collections.Interfaces.ISequence<TSequence, TItem>.this[int, int]
+  nameWithType.vb: ISequence(Of TSequence, TItem).this[](Integer, Integer)
+  fullName.vb: Sharpy.Collections.Interfaces.ISequence(Of TSequence, TItem).this[](Integer, Integer)
   name.vb: this[](Integer, Integer)
   spec.csharp:
   - name: this
@@ -6875,10 +6827,10 @@ references:
   isExternal: true
   href: https://learn.microsoft.com/dotnet/api/system.int32
   name: this[int, int, int]
-  nameWithType: IMutableSequence<S, T>.this[int, int, int]
-  fullName: Sharpy.Collections.Interfaces.IMutableSequence<S, T>.this[int, int, int]
-  nameWithType.vb: IMutableSequence(Of S, T).this[](Integer, Integer, Integer)
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSequence(Of S, T).this[](Integer, Integer, Integer)
+  nameWithType: IMutableSequence<TSequence, TItem>.this[int, int, int]
+  fullName: Sharpy.Collections.Interfaces.IMutableSequence<TSequence, TItem>.this[int, int, int]
+  nameWithType.vb: IMutableSequence(Of TSequence, TItem).this[](Integer, Integer, Integer)
+  fullName.vb: Sharpy.Collections.Interfaces.IMutableSequence(Of TSequence, TItem).this[](Integer, Integer, Integer)
   name.vb: this[](Integer, Integer, Integer)
   spec.csharp:
   - name: this
@@ -6927,10 +6879,10 @@ references:
   isExternal: true
   href: https://learn.microsoft.com/dotnet/api/system.int32
   name: this[int, int, int]
-  nameWithType: ISequence<S, T>.this[int, int, int]
-  fullName: Sharpy.Collections.Interfaces.ISequence<S, T>.this[int, int, int]
-  nameWithType.vb: ISequence(Of S, T).this[](Integer, Integer, Integer)
-  fullName.vb: Sharpy.Collections.Interfaces.ISequence(Of S, T).this[](Integer, Integer, Integer)
+  nameWithType: ISequence<TSequence, TItem>.this[int, int, int]
+  fullName: Sharpy.Collections.Interfaces.ISequence<TSequence, TItem>.this[int, int, int]
+  nameWithType.vb: ISequence(Of TSequence, TItem).this[](Integer, Integer, Integer)
+  fullName.vb: Sharpy.Collections.Interfaces.ISequence(Of TSequence, TItem).this[](Integer, Integer, Integer)
   name.vb: this[](Integer, Integer, Integer)
   spec.csharp:
   - name: this
@@ -7121,28 +7073,6 @@ references:
   fullName: Sharpy.List<T>.Clear
   nameWithType.vb: List(Of T).Clear
   fullName.vb: Sharpy.List(Of T).Clear
-- uid: Sharpy.Collections.Interfaces.IMutableSequence{{T}}.Clear
-  commentId: M:Sharpy.Collections.Interfaces.IMutableSequence{`0}.Clear
-  parent: Sharpy.Collections.Interfaces.IMutableSequence{{T}}
-  definition: Sharpy.Collections.Interfaces.IMutableSequence`1.Clear
-  href: Sharpy.Collections.Interfaces.IMutableSequence-1.html#Sharpy_Collections_Interfaces_IMutableSequence_1_Clear
-  name: Clear()
-  nameWithType: IMutableSequence<T>.Clear()
-  fullName: Sharpy.Collections.Interfaces.IMutableSequence<T>.Clear()
-  nameWithType.vb: IMutableSequence(Of T).Clear()
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSequence(Of T).Clear()
-  spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.IMutableSequence{`0}.Clear
-    name: Clear
-    href: Sharpy.Collections.Interfaces.IMutableSequence-1.html#Sharpy_Collections_Interfaces_IMutableSequence_1_Clear
-  - name: (
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Collections.Interfaces.IMutableSequence{`0}.Clear
-    name: Clear
-    href: Sharpy.Collections.Interfaces.IMutableSequence-1.html#Sharpy_Collections_Interfaces_IMutableSequence_1_Clear
-  - name: (
-  - name: )
 - uid: System.Collections.Generic.ICollection{{T}}.Clear
   commentId: M:System.Collections.Generic.ICollection{`0}.Clear
   parent: System.Collections.Generic.ICollection{{T}}
@@ -7165,26 +7095,6 @@ references:
     name: Clear
     isExternal: true
     href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.clear
-  - name: (
-  - name: )
-- uid: Sharpy.Collections.Interfaces.IMutableSequence`1.Clear
-  commentId: M:Sharpy.Collections.Interfaces.IMutableSequence`1.Clear
-  href: Sharpy.Collections.Interfaces.IMutableSequence-1.html#Sharpy_Collections_Interfaces_IMutableSequence_1_Clear
-  name: Clear()
-  nameWithType: IMutableSequence<T>.Clear()
-  fullName: Sharpy.Collections.Interfaces.IMutableSequence<T>.Clear()
-  nameWithType.vb: IMutableSequence(Of T).Clear()
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSequence(Of T).Clear()
-  spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.IMutableSequence`1.Clear
-    name: Clear
-    href: Sharpy.Collections.Interfaces.IMutableSequence-1.html#Sharpy_Collections_Interfaces_IMutableSequence_1_Clear
-  - name: (
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Collections.Interfaces.IMutableSequence`1.Clear
-    name: Clear
-    href: Sharpy.Collections.Interfaces.IMutableSequence-1.html#Sharpy_Collections_Interfaces_IMutableSequence_1_Clear
   - name: (
   - name: )
 - uid: System.Collections.Generic.ICollection`1.Clear
@@ -7854,11 +7764,11 @@ references:
 - uid: Sharpy.Collections.Interfaces.IMutableSequence`2.__SetItem__(Sharpy.Slice,`0)
   commentId: M:Sharpy.Collections.Interfaces.IMutableSequence`2.__SetItem__(Sharpy.Slice,`0)
   href: Sharpy.Collections.Interfaces.IMutableSequence-2.html#Sharpy_Collections_Interfaces_IMutableSequence_2___SetItem___Sharpy_Slice__0_
-  name: __SetItem__(Slice, S)
-  nameWithType: IMutableSequence<S, T>.__SetItem__(Slice, S)
-  fullName: Sharpy.Collections.Interfaces.IMutableSequence<S, T>.__SetItem__(Sharpy.Slice, S)
-  nameWithType.vb: IMutableSequence(Of S, T).__SetItem__(Slice, S)
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSequence(Of S, T).__SetItem__(Sharpy.Slice, S)
+  name: __SetItem__(Slice, TSequence)
+  nameWithType: IMutableSequence<TSequence, TItem>.__SetItem__(Slice, TSequence)
+  fullName: Sharpy.Collections.Interfaces.IMutableSequence<TSequence, TItem>.__SetItem__(Sharpy.Slice, TSequence)
+  nameWithType.vb: IMutableSequence(Of TSequence, TItem).__SetItem__(Slice, TSequence)
+  fullName.vb: Sharpy.Collections.Interfaces.IMutableSequence(Of TSequence, TItem).__SetItem__(Sharpy.Slice, TSequence)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.IMutableSequence`2.__SetItem__(Sharpy.Slice,`0)
     name: __SetItem__
@@ -7869,7 +7779,7 @@ references:
     href: Sharpy.Slice.html
   - name: ','
   - name: " "
-  - name: S
+  - name: TSequence
   - name: )
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.IMutableSequence`2.__SetItem__(Sharpy.Slice,`0)
@@ -7881,7 +7791,7 @@ references:
     href: Sharpy.Slice.html
   - name: ','
   - name: " "
-  - name: S
+  - name: TSequence
   - name: )
 - uid: Sharpy.Object.__Repr__
   commentId: M:Sharpy.Object.__Repr__
@@ -8274,10 +8184,10 @@ references:
   commentId: M:Sharpy.Collections.Interfaces.ISequence`2.__GetItem__(Sharpy.Slice)
   href: Sharpy.Collections.Interfaces.ISequence-2.html#Sharpy_Collections_Interfaces_ISequence_2___GetItem___Sharpy_Slice_
   name: __GetItem__(Slice)
-  nameWithType: ISequence<S, T>.__GetItem__(Slice)
-  fullName: Sharpy.Collections.Interfaces.ISequence<S, T>.__GetItem__(Sharpy.Slice)
-  nameWithType.vb: ISequence(Of S, T).__GetItem__(Slice)
-  fullName.vb: Sharpy.Collections.Interfaces.ISequence(Of S, T).__GetItem__(Sharpy.Slice)
+  nameWithType: ISequence<TSequence, TItem>.__GetItem__(Slice)
+  fullName: Sharpy.Collections.Interfaces.ISequence<TSequence, TItem>.__GetItem__(Sharpy.Slice)
+  nameWithType.vb: ISequence(Of TSequence, TItem).__GetItem__(Slice)
+  fullName.vb: Sharpy.Collections.Interfaces.ISequence(Of TSequence, TItem).__GetItem__(Sharpy.Slice)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.ISequence`2.__GetItem__(Sharpy.Slice)
     name: __GetItem__

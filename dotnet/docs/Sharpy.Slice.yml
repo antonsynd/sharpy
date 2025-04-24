@@ -6,6 +6,7 @@ items:
   parent: Sharpy
   children:
   - Sharpy.Slice.#ctor(System.Int32,System.Int32,System.Int32)
+  - Sharpy.Slice.FromRange(System.Range)
   - Sharpy.Slice.Len(System.Int32,System.Int32,System.Int32)
   - Sharpy.Slice.__Len__
   - Sharpy.Slice.end
@@ -196,6 +197,37 @@ items:
   nameWithType.vb: Slice.Len(Integer, Integer, Integer)
   fullName.vb: Sharpy.Slice.Len(Integer, Integer, Integer)
   name.vb: Len(Integer, Integer, Integer)
+- uid: Sharpy.Slice.FromRange(System.Range)
+  commentId: M:Sharpy.Slice.FromRange(System.Range)
+  id: FromRange(System.Range)
+  parent: Sharpy.Slice
+  langs:
+  - csharp
+  - vb
+  name: FromRange(Range)
+  nameWithType: Slice.FromRange(Range)
+  fullName: Sharpy.Slice.FromRange(System.Range)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Slice.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: FromRange
+    path: ../src/Sharpy/Slice.cs
+    startLine: 17
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static Slice FromRange(Range range)
+    parameters:
+    - id: range
+      type: System.Range
+    return:
+      type: Sharpy.Slice
+    content.vb: Public Shared Function FromRange(range As Range) As Slice
+  overload: Sharpy.Slice.FromRange*
 - uid: Sharpy.Slice.__Len__
   commentId: M:Sharpy.Slice.__Len__
   id: __Len__
@@ -526,6 +558,27 @@ references:
   nameWithType.vb: UInteger
   fullName.vb: UInteger
   name.vb: UInteger
+- uid: Sharpy.Slice.FromRange*
+  commentId: Overload:Sharpy.Slice.FromRange
+  href: Sharpy.Slice.html#Sharpy_Slice_FromRange_System_Range_
+  name: FromRange
+  nameWithType: Slice.FromRange
+  fullName: Sharpy.Slice.FromRange
+- uid: System.Range
+  commentId: T:System.Range
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.range
+  name: Range
+  nameWithType: Range
+  fullName: System.Range
+- uid: Sharpy.Slice
+  commentId: T:Sharpy.Slice
+  parent: Sharpy
+  href: Sharpy.Slice.html
+  name: Slice
+  nameWithType: Slice
+  fullName: Sharpy.Slice
 - uid: Sharpy.Slice.__Len__*
   commentId: Overload:Sharpy.Slice.__Len__
   href: Sharpy.Slice.html#Sharpy_Slice___Len__

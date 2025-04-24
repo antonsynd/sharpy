@@ -52,11 +52,6 @@ public interface IMutableMapping<K, V> : IMapping<K, V> where K : notnull
     (K, V) PopItem(bool last = false);
 
     /// <summary>
-    /// Clears all key-value pairs from this mapping.
-    /// </summary>
-    void Clear();
-
-    /// <summary>
     /// Updates this mapping with the pairs from the other mapping, with
     /// conflicting keys using the value from the other mapping.
     /// </summary>

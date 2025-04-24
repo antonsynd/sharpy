@@ -20,5 +20,8 @@ public interface IContainer<T>
     /// In subclasses, this must call <see cref="__Contains__(T)" /> to
     /// correctly implement <c>x in y</c> behavior.
     /// </remarks>
-    bool Contains(T x);
+    bool Contains(T x)
+    {
+        return __Contains__(x);
+    }
 }

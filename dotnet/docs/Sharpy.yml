@@ -42,6 +42,7 @@ items:
   - Sharpy.IRightMultipliable`3
   - Sharpy.IStrConvertible
   - Sharpy.IndexError
+  - Sharpy.IndexExtensions
   - Sharpy.Iterator`1
   - Sharpy.KeyError
   - Sharpy.ListIterator`1
@@ -50,6 +51,7 @@ items:
   - Sharpy.Object
   - Sharpy.Optional`1
   - Sharpy.PrintArguments`1
+  - Sharpy.RangeExtensions
   - Sharpy.SetIterator`1
   - Sharpy.Set`1
   - Sharpy.Slice
@@ -776,6 +778,12 @@ references:
   name: IndexError
   nameWithType: IndexError
   fullName: Sharpy.IndexError
+- uid: Sharpy.IndexExtensions
+  commentId: T:Sharpy.IndexExtensions
+  href: Sharpy.IndexExtensions.html
+  name: IndexExtensions
+  nameWithType: IndexExtensions
+  fullName: Sharpy.IndexExtensions
 - uid: Sharpy.IRepresentable
   commentId: T:Sharpy.IRepresentable
   parent: Sharpy
@@ -1169,6 +1177,12 @@ references:
   - name: " "
   - name: T
   - name: )
+- uid: Sharpy.RangeExtensions
+  commentId: T:Sharpy.RangeExtensions
+  href: Sharpy.RangeExtensions.html
+  name: RangeExtensions
+  nameWithType: RangeExtensions
+  fullName: Sharpy.RangeExtensions
 - uid: Sharpy.Slice
   commentId: T:Sharpy.Slice
   parent: Sharpy

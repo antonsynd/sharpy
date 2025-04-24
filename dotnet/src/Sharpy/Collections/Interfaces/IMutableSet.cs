@@ -5,15 +5,11 @@ namespace Sharpy.Collections.Interfaces;
 /// </summary>
 public interface IMutableSet<T> : ISet<T>
 {
-    void Add(T x);
-
     void Discard(T x);
-
-    void Clear();
 
     T Pop();
 
-    void Remove(T x);
+    new void Remove(T x);
 
     void __IOr__(ISet<T> other);
 
@@ -24,18 +20,23 @@ public interface IMutableSet<T> : ISet<T>
     void __ISub__(ISet<T> other);
 }
 
-public interface IMutableSet<S, T> : IMutableSet<T>, ISet<S, T>
-    where S : ISet<S, T>, ILessThanOrEquatable<S>, IGreaterThanOrEquatable<S>
+public interface IMutableSet<TSet, TElement>
+    : IMutableSet<TElement>,
+      ISet<TSet, TElement>
+      where TSet
+        : ISet<TSet, TElement>,
+          ILessThanOrEquatable<TSet>,
+          IGreaterThanOrEquatable<TSet>
 {
     /// <inheritdoc/>
-    void __IOr__(S other);
+    void __IOr__(TSet other);
 
     /// <inheritdoc/>
-    void __IAnd__(S other);
+    void __IAnd__(TSet other);
 
     /// <inheritdoc/>
-    void __IXOr__(S other);
+    void __IXOr__(TSet other);
 
     /// <inheritdoc/>
-    void __ISub__(S other);
+    void __ISub__(TSet other);
 }

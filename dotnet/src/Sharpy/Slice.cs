@@ -15,6 +15,11 @@ public readonly partial struct Slice(int start, int end, int step = 1) : ISized
         return (uint)((length + step - 1) / step);
     }
 
+    public static Slice FromRange(System.Range range)
+    {
+        return new Slice(range.Start.Value, range.End.Value);
+    }
+
     internal static (uint, uint) Normalize(int start, int end, uint max)
     {
         return (Index.Normalize(start, max, true, false), Index.Normalize(end, max, true, false));

@@ -540,17 +540,16 @@ items:
   assemblies:
   - Sharpy
   namespace: Sharpy
-  summary: Gets a value indicating whether the <xref href="System.Collections.Generic.ICollection%601" data-throw-if-not-resolved="false"></xref> is read-only.
   example: []
   syntax:
     content: public bool IsReadOnly { get; }
     parameters: []
     return:
       type: System.Boolean
-      description: <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if the <xref href="System.Collections.Generic.ICollection%601" data-throw-if-not-resolved="false"></xref> is read-only; otherwise, <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.
     content.vb: Public ReadOnly Property IsReadOnly As Boolean
   overload: Sharpy.Set`1.IsReadOnly*
   implements:
+  - Sharpy.Collections.Interfaces.ICollection{{T}}.IsReadOnly
   - System.Collections.Generic.ICollection{{T}}.IsReadOnly
   nameWithType.vb: Set(Of T).IsReadOnly
   fullName.vb: Sharpy.Set(Of T).IsReadOnly
@@ -572,7 +571,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: CopyTo
     path: ../src/Sharpy/Partial.Set/Set.DotNet.ICollection.cs
-    startLine: 17
+    startLine: 22
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1363,7 +1362,6 @@ items:
     content.vb: Public Sub Add(x As T)
   overload: Sharpy.Set`1.Add*
   implements:
-  - Sharpy.Collections.Interfaces.IMutableSet{{T}}.Add({T})
   - System.Collections.Generic.ICollection{{T}}.Add({T})
   nameWithType.vb: Set(Of T).Add(T)
   fullName.vb: Sharpy.Set(Of T).Add(T)
@@ -1423,13 +1421,17 @@ items:
   assemblies:
   - Sharpy
   namespace: Sharpy
+  summary: Removes all items from the <xref href="System.Collections.Generic.ICollection%601" data-throw-if-not-resolved="false"></xref>.
   example: []
   syntax:
     content: public void Clear()
     content.vb: Public Sub Clear()
   overload: Sharpy.Set`1.Clear*
+  exceptions:
+  - type: System.NotSupportedException
+    commentId: T:System.NotSupportedException
+    description: The <xref href="System.Collections.Generic.ICollection%601" data-throw-if-not-resolved="false"></xref> is read-only.
   implements:
-  - Sharpy.Collections.Interfaces.IMutableSet{{T}}.Clear
   - System.Collections.Generic.ICollection{{T}}.Clear
   nameWithType.vb: Set(Of T).Clear()
   fullName.vb: Sharpy.Set(Of T).Clear()
@@ -4516,21 +4518,21 @@ references:
 - uid: Sharpy.Collections.Interfaces.IMutableSet`2
   commentId: T:Sharpy.Collections.Interfaces.IMutableSet`2
   href: Sharpy.Collections.Interfaces.IMutableSet-2.html
-  name: IMutableSet<S, T>
-  nameWithType: IMutableSet<S, T>
-  fullName: Sharpy.Collections.Interfaces.IMutableSet<S, T>
-  nameWithType.vb: IMutableSet(Of S, T)
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of S, T)
-  name.vb: IMutableSet(Of S, T)
+  name: IMutableSet<TSet, TElement>
+  nameWithType: IMutableSet<TSet, TElement>
+  fullName: Sharpy.Collections.Interfaces.IMutableSet<TSet, TElement>
+  nameWithType.vb: IMutableSet(Of TSet, TElement)
+  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of TSet, TElement)
+  name.vb: IMutableSet(Of TSet, TElement)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.IMutableSet`2
     name: IMutableSet
     href: Sharpy.Collections.Interfaces.IMutableSet-2.html
   - name: <
-  - name: S
+  - name: TSet
   - name: ','
   - name: " "
-  - name: T
+  - name: TElement
   - name: '>'
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.IMutableSet`2
@@ -4539,10 +4541,10 @@ references:
   - name: (
   - name: Of
   - name: " "
-  - name: S
+  - name: TSet
   - name: ','
   - name: " "
-  - name: T
+  - name: TElement
   - name: )
 - uid: Sharpy.Collections.Interfaces
   commentId: N:Sharpy.Collections.Interfaces
@@ -4602,21 +4604,21 @@ references:
 - uid: Sharpy.Collections.Interfaces.ISet`2
   commentId: T:Sharpy.Collections.Interfaces.ISet`2
   href: Sharpy.Collections.Interfaces.ISet-2.html
-  name: ISet<S, T>
-  nameWithType: ISet<S, T>
-  fullName: Sharpy.Collections.Interfaces.ISet<S, T>
-  nameWithType.vb: ISet(Of S, T)
-  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of S, T)
-  name.vb: ISet(Of S, T)
+  name: ISet<TSet, TElement>
+  nameWithType: ISet<TSet, TElement>
+  fullName: Sharpy.Collections.Interfaces.ISet<TSet, TElement>
+  nameWithType.vb: ISet(Of TSet, TElement)
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of TSet, TElement)
+  name.vb: ISet(Of TSet, TElement)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.ISet`2
     name: ISet
     href: Sharpy.Collections.Interfaces.ISet-2.html
   - name: <
-  - name: S
+  - name: TSet
   - name: ','
   - name: " "
-  - name: T
+  - name: TElement
   - name: '>'
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.ISet`2
@@ -4625,10 +4627,10 @@ references:
   - name: (
   - name: Of
   - name: " "
-  - name: S
+  - name: TSet
   - name: ','
   - name: " "
-  - name: T
+  - name: TElement
   - name: )
 - uid: Sharpy.Collections.Interfaces.ISet`1
   commentId: T:Sharpy.Collections.Interfaces.ISet`1
@@ -5226,6 +5228,16 @@ references:
   fullName: Sharpy.Set<T>.IsReadOnly
   nameWithType.vb: Set(Of T).IsReadOnly
   fullName.vb: Sharpy.Set(Of T).IsReadOnly
+- uid: Sharpy.Collections.Interfaces.ICollection{{T}}.IsReadOnly
+  commentId: P:Sharpy.Collections.Interfaces.ICollection{`0}.IsReadOnly
+  parent: Sharpy.Collections.Interfaces.ICollection{{T}}
+  definition: Sharpy.Collections.Interfaces.ICollection`1.IsReadOnly
+  href: Sharpy.Collections.Interfaces.ICollection-1.html#Sharpy_Collections_Interfaces_ICollection_1_IsReadOnly
+  name: IsReadOnly
+  nameWithType: ICollection<T>.IsReadOnly
+  fullName: Sharpy.Collections.Interfaces.ICollection<T>.IsReadOnly
+  nameWithType.vb: ICollection(Of T).IsReadOnly
+  fullName.vb: Sharpy.Collections.Interfaces.ICollection(Of T).IsReadOnly
 - uid: System.Collections.Generic.ICollection{{T}}.IsReadOnly
   commentId: P:System.Collections.Generic.ICollection{`0}.IsReadOnly
   parent: System.Collections.Generic.ICollection{{T}}
@@ -5236,6 +5248,14 @@ references:
   fullName: System.Collections.Generic.ICollection<T>.IsReadOnly
   nameWithType.vb: ICollection(Of T).IsReadOnly
   fullName.vb: System.Collections.Generic.ICollection(Of T).IsReadOnly
+- uid: Sharpy.Collections.Interfaces.ICollection`1.IsReadOnly
+  commentId: P:Sharpy.Collections.Interfaces.ICollection`1.IsReadOnly
+  href: Sharpy.Collections.Interfaces.ICollection-1.html#Sharpy_Collections_Interfaces_ICollection_1_IsReadOnly
+  name: IsReadOnly
+  nameWithType: ICollection<T>.IsReadOnly
+  fullName: Sharpy.Collections.Interfaces.ICollection<T>.IsReadOnly
+  nameWithType.vb: ICollection(Of T).IsReadOnly
+  fullName.vb: Sharpy.Collections.Interfaces.ICollection(Of T).IsReadOnly
 - uid: System.Collections.Generic.ICollection`1.IsReadOnly
   commentId: P:System.Collections.Generic.ICollection`1.IsReadOnly
   isExternal: true
@@ -6360,30 +6380,6 @@ references:
   fullName: Sharpy.Set<T>.Add
   nameWithType.vb: Set(Of T).Add
   fullName.vb: Sharpy.Set(Of T).Add
-- uid: Sharpy.Collections.Interfaces.IMutableSet{{T}}.Add({T})
-  commentId: M:Sharpy.Collections.Interfaces.IMutableSet{`0}.Add(`0)
-  parent: Sharpy.Collections.Interfaces.IMutableSet{{T}}
-  definition: Sharpy.Collections.Interfaces.IMutableSet`1.Add(`0)
-  href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1_Add__0_
-  name: Add(T)
-  nameWithType: IMutableSet<T>.Add(T)
-  fullName: Sharpy.Collections.Interfaces.IMutableSet<T>.Add(T)
-  nameWithType.vb: IMutableSet(Of T).Add(T)
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of T).Add(T)
-  spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet{`0}.Add(`0)
-    name: Add
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1_Add__0_
-  - name: (
-  - name: T
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet{`0}.Add(`0)
-    name: Add
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1_Add__0_
-  - name: (
-  - name: T
-  - name: )
 - uid: System.Collections.Generic.ICollection{{T}}.Add({T})
   commentId: M:System.Collections.Generic.ICollection{`0}.Add(`0)
   parent: System.Collections.Generic.ICollection{{T}}
@@ -6407,28 +6403,6 @@ references:
     name: Add
     isExternal: true
     href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.add
-  - name: (
-  - name: T
-  - name: )
-- uid: Sharpy.Collections.Interfaces.IMutableSet`1.Add(`0)
-  commentId: M:Sharpy.Collections.Interfaces.IMutableSet`1.Add(`0)
-  href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1_Add__0_
-  name: Add(T)
-  nameWithType: IMutableSet<T>.Add(T)
-  fullName: Sharpy.Collections.Interfaces.IMutableSet<T>.Add(T)
-  nameWithType.vb: IMutableSet(Of T).Add(T)
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of T).Add(T)
-  spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet`1.Add(`0)
-    name: Add
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1_Add__0_
-  - name: (
-  - name: T
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet`1.Add(`0)
-    name: Add
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1_Add__0_
   - name: (
   - name: T
   - name: )
@@ -6511,6 +6485,13 @@ references:
   - name: (
   - name: T
   - name: )
+- uid: System.NotSupportedException
+  commentId: T:System.NotSupportedException
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.notsupportedexception
+  name: NotSupportedException
+  nameWithType: NotSupportedException
+  fullName: System.NotSupportedException
 - uid: Sharpy.Set`1.Clear*
   commentId: Overload:Sharpy.Set`1.Clear
   href: Sharpy.Set-1.html#Sharpy_Set_1_Clear
@@ -6519,28 +6500,6 @@ references:
   fullName: Sharpy.Set<T>.Clear
   nameWithType.vb: Set(Of T).Clear
   fullName.vb: Sharpy.Set(Of T).Clear
-- uid: Sharpy.Collections.Interfaces.IMutableSet{{T}}.Clear
-  commentId: M:Sharpy.Collections.Interfaces.IMutableSet{`0}.Clear
-  parent: Sharpy.Collections.Interfaces.IMutableSet{{T}}
-  definition: Sharpy.Collections.Interfaces.IMutableSet`1.Clear
-  href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1_Clear
-  name: Clear()
-  nameWithType: IMutableSet<T>.Clear()
-  fullName: Sharpy.Collections.Interfaces.IMutableSet<T>.Clear()
-  nameWithType.vb: IMutableSet(Of T).Clear()
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of T).Clear()
-  spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet{`0}.Clear
-    name: Clear
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1_Clear
-  - name: (
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet{`0}.Clear
-    name: Clear
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1_Clear
-  - name: (
-  - name: )
 - uid: System.Collections.Generic.ICollection{{T}}.Clear
   commentId: M:System.Collections.Generic.ICollection{`0}.Clear
   parent: System.Collections.Generic.ICollection{{T}}
@@ -6563,26 +6522,6 @@ references:
     name: Clear
     isExternal: true
     href: https://learn.microsoft.com/dotnet/api/system.collections.generic.icollection-1.clear
-  - name: (
-  - name: )
-- uid: Sharpy.Collections.Interfaces.IMutableSet`1.Clear
-  commentId: M:Sharpy.Collections.Interfaces.IMutableSet`1.Clear
-  href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1_Clear
-  name: Clear()
-  nameWithType: IMutableSet<T>.Clear()
-  fullName: Sharpy.Collections.Interfaces.IMutableSet<T>.Clear()
-  nameWithType.vb: IMutableSet(Of T).Clear()
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of T).Clear()
-  spec.csharp:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet`1.Clear
-    name: Clear
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1_Clear
-  - name: (
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Collections.Interfaces.IMutableSet`1.Clear
-    name: Clear
-    href: Sharpy.Collections.Interfaces.IMutableSet-1.html#Sharpy_Collections_Interfaces_IMutableSet_1_Clear
   - name: (
   - name: )
 - uid: System.Collections.Generic.ICollection`1.Clear
@@ -7072,24 +7011,24 @@ references:
 - uid: Sharpy.Collections.Interfaces.IMutableSet`2.__IAnd__(`0)
   commentId: M:Sharpy.Collections.Interfaces.IMutableSet`2.__IAnd__(`0)
   href: Sharpy.Collections.Interfaces.IMutableSet-2.html#Sharpy_Collections_Interfaces_IMutableSet_2___IAnd____0_
-  name: __IAnd__(S)
-  nameWithType: IMutableSet<S, T>.__IAnd__(S)
-  fullName: Sharpy.Collections.Interfaces.IMutableSet<S, T>.__IAnd__(S)
-  nameWithType.vb: IMutableSet(Of S, T).__IAnd__(S)
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of S, T).__IAnd__(S)
+  name: __IAnd__(TSet)
+  nameWithType: IMutableSet<TSet, TElement>.__IAnd__(TSet)
+  fullName: Sharpy.Collections.Interfaces.IMutableSet<TSet, TElement>.__IAnd__(TSet)
+  nameWithType.vb: IMutableSet(Of TSet, TElement).__IAnd__(TSet)
+  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of TSet, TElement).__IAnd__(TSet)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.IMutableSet`2.__IAnd__(`0)
     name: __IAnd__
     href: Sharpy.Collections.Interfaces.IMutableSet-2.html#Sharpy_Collections_Interfaces_IMutableSet_2___IAnd____0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.IMutableSet`2.__IAnd__(`0)
     name: __IAnd__
     href: Sharpy.Collections.Interfaces.IMutableSet-2.html#Sharpy_Collections_Interfaces_IMutableSet_2___IAnd____0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
 - uid: Sharpy.Collections.Interfaces.IMutableSet{Sharpy.Set`1,{T}}.__IOr__(Sharpy.Set{{T}})
   commentId: M:Sharpy.Collections.Interfaces.IMutableSet{Sharpy.Set`1,`0}.__IOr__(Sharpy.Set{`0})
@@ -7131,24 +7070,24 @@ references:
 - uid: Sharpy.Collections.Interfaces.IMutableSet`2.__IOr__(`0)
   commentId: M:Sharpy.Collections.Interfaces.IMutableSet`2.__IOr__(`0)
   href: Sharpy.Collections.Interfaces.IMutableSet-2.html#Sharpy_Collections_Interfaces_IMutableSet_2___IOr____0_
-  name: __IOr__(S)
-  nameWithType: IMutableSet<S, T>.__IOr__(S)
-  fullName: Sharpy.Collections.Interfaces.IMutableSet<S, T>.__IOr__(S)
-  nameWithType.vb: IMutableSet(Of S, T).__IOr__(S)
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of S, T).__IOr__(S)
+  name: __IOr__(TSet)
+  nameWithType: IMutableSet<TSet, TElement>.__IOr__(TSet)
+  fullName: Sharpy.Collections.Interfaces.IMutableSet<TSet, TElement>.__IOr__(TSet)
+  nameWithType.vb: IMutableSet(Of TSet, TElement).__IOr__(TSet)
+  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of TSet, TElement).__IOr__(TSet)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.IMutableSet`2.__IOr__(`0)
     name: __IOr__
     href: Sharpy.Collections.Interfaces.IMutableSet-2.html#Sharpy_Collections_Interfaces_IMutableSet_2___IOr____0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.IMutableSet`2.__IOr__(`0)
     name: __IOr__
     href: Sharpy.Collections.Interfaces.IMutableSet-2.html#Sharpy_Collections_Interfaces_IMutableSet_2___IOr____0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
 - uid: Sharpy.Collections.Interfaces.IMutableSet{Sharpy.Set`1,{T}}.__ISub__(Sharpy.Set{{T}})
   commentId: M:Sharpy.Collections.Interfaces.IMutableSet{Sharpy.Set`1,`0}.__ISub__(Sharpy.Set{`0})
@@ -7190,24 +7129,24 @@ references:
 - uid: Sharpy.Collections.Interfaces.IMutableSet`2.__ISub__(`0)
   commentId: M:Sharpy.Collections.Interfaces.IMutableSet`2.__ISub__(`0)
   href: Sharpy.Collections.Interfaces.IMutableSet-2.html#Sharpy_Collections_Interfaces_IMutableSet_2___ISub____0_
-  name: __ISub__(S)
-  nameWithType: IMutableSet<S, T>.__ISub__(S)
-  fullName: Sharpy.Collections.Interfaces.IMutableSet<S, T>.__ISub__(S)
-  nameWithType.vb: IMutableSet(Of S, T).__ISub__(S)
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of S, T).__ISub__(S)
+  name: __ISub__(TSet)
+  nameWithType: IMutableSet<TSet, TElement>.__ISub__(TSet)
+  fullName: Sharpy.Collections.Interfaces.IMutableSet<TSet, TElement>.__ISub__(TSet)
+  nameWithType.vb: IMutableSet(Of TSet, TElement).__ISub__(TSet)
+  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of TSet, TElement).__ISub__(TSet)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.IMutableSet`2.__ISub__(`0)
     name: __ISub__
     href: Sharpy.Collections.Interfaces.IMutableSet-2.html#Sharpy_Collections_Interfaces_IMutableSet_2___ISub____0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.IMutableSet`2.__ISub__(`0)
     name: __ISub__
     href: Sharpy.Collections.Interfaces.IMutableSet-2.html#Sharpy_Collections_Interfaces_IMutableSet_2___ISub____0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
 - uid: Sharpy.Collections.Interfaces.IMutableSet{Sharpy.Set`1,{T}}.__IXOr__(Sharpy.Set{{T}})
   commentId: M:Sharpy.Collections.Interfaces.IMutableSet{Sharpy.Set`1,`0}.__IXOr__(Sharpy.Set{`0})
@@ -7249,24 +7188,24 @@ references:
 - uid: Sharpy.Collections.Interfaces.IMutableSet`2.__IXOr__(`0)
   commentId: M:Sharpy.Collections.Interfaces.IMutableSet`2.__IXOr__(`0)
   href: Sharpy.Collections.Interfaces.IMutableSet-2.html#Sharpy_Collections_Interfaces_IMutableSet_2___IXOr____0_
-  name: __IXOr__(S)
-  nameWithType: IMutableSet<S, T>.__IXOr__(S)
-  fullName: Sharpy.Collections.Interfaces.IMutableSet<S, T>.__IXOr__(S)
-  nameWithType.vb: IMutableSet(Of S, T).__IXOr__(S)
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of S, T).__IXOr__(S)
+  name: __IXOr__(TSet)
+  nameWithType: IMutableSet<TSet, TElement>.__IXOr__(TSet)
+  fullName: Sharpy.Collections.Interfaces.IMutableSet<TSet, TElement>.__IXOr__(TSet)
+  nameWithType.vb: IMutableSet(Of TSet, TElement).__IXOr__(TSet)
+  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of TSet, TElement).__IXOr__(TSet)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.IMutableSet`2.__IXOr__(`0)
     name: __IXOr__
     href: Sharpy.Collections.Interfaces.IMutableSet-2.html#Sharpy_Collections_Interfaces_IMutableSet_2___IXOr____0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.IMutableSet`2.__IXOr__(`0)
     name: __IXOr__
     href: Sharpy.Collections.Interfaces.IMutableSet-2.html#Sharpy_Collections_Interfaces_IMutableSet_2___IXOr____0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
 - uid: Sharpy.Set`1.IsDisjoint*
   commentId: Overload:Sharpy.Set`1.IsDisjoint
@@ -7316,24 +7255,24 @@ references:
 - uid: Sharpy.Collections.Interfaces.ISet`2.IsDisjoint(`0)
   commentId: M:Sharpy.Collections.Interfaces.ISet`2.IsDisjoint(`0)
   href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_IsDisjoint__0_
-  name: IsDisjoint(S)
-  nameWithType: ISet<S, T>.IsDisjoint(S)
-  fullName: Sharpy.Collections.Interfaces.ISet<S, T>.IsDisjoint(S)
-  nameWithType.vb: ISet(Of S, T).IsDisjoint(S)
-  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of S, T).IsDisjoint(S)
+  name: IsDisjoint(TSet)
+  nameWithType: ISet<TSet, TElement>.IsDisjoint(TSet)
+  fullName: Sharpy.Collections.Interfaces.ISet<TSet, TElement>.IsDisjoint(TSet)
+  nameWithType.vb: ISet(Of TSet, TElement).IsDisjoint(TSet)
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of TSet, TElement).IsDisjoint(TSet)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.ISet`2.IsDisjoint(`0)
     name: IsDisjoint
     href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_IsDisjoint__0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.ISet`2.IsDisjoint(`0)
     name: IsDisjoint
     href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_IsDisjoint__0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
 - uid: Sharpy.Set`1.__And__*
   commentId: Overload:Sharpy.Set`1.__And__
@@ -7383,24 +7322,24 @@ references:
 - uid: Sharpy.Collections.Interfaces.ISet`2.__And__(`0)
   commentId: M:Sharpy.Collections.Interfaces.ISet`2.__And__(`0)
   href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2___And____0_
-  name: __And__(S)
-  nameWithType: ISet<S, T>.__And__(S)
-  fullName: Sharpy.Collections.Interfaces.ISet<S, T>.__And__(S)
-  nameWithType.vb: ISet(Of S, T).__And__(S)
-  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of S, T).__And__(S)
+  name: __And__(TSet)
+  nameWithType: ISet<TSet, TElement>.__And__(TSet)
+  fullName: Sharpy.Collections.Interfaces.ISet<TSet, TElement>.__And__(TSet)
+  nameWithType.vb: ISet(Of TSet, TElement).__And__(TSet)
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of TSet, TElement).__And__(TSet)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.ISet`2.__And__(`0)
     name: __And__
     href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2___And____0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.ISet`2.__And__(`0)
     name: __And__
     href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2___And____0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
 - uid: Sharpy.Set`1.__Or__*
   commentId: Overload:Sharpy.Set`1.__Or__
@@ -7450,24 +7389,24 @@ references:
 - uid: Sharpy.Collections.Interfaces.ISet`2.__Or__(`0)
   commentId: M:Sharpy.Collections.Interfaces.ISet`2.__Or__(`0)
   href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2___Or____0_
-  name: __Or__(S)
-  nameWithType: ISet<S, T>.__Or__(S)
-  fullName: Sharpy.Collections.Interfaces.ISet<S, T>.__Or__(S)
-  nameWithType.vb: ISet(Of S, T).__Or__(S)
-  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of S, T).__Or__(S)
+  name: __Or__(TSet)
+  nameWithType: ISet<TSet, TElement>.__Or__(TSet)
+  fullName: Sharpy.Collections.Interfaces.ISet<TSet, TElement>.__Or__(TSet)
+  nameWithType.vb: ISet(Of TSet, TElement).__Or__(TSet)
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of TSet, TElement).__Or__(TSet)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.ISet`2.__Or__(`0)
     name: __Or__
     href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2___Or____0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.ISet`2.__Or__(`0)
     name: __Or__
     href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2___Or____0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
 - uid: Sharpy.Set`1.__ROr__*
   commentId: Overload:Sharpy.Set`1.__ROr__
@@ -7517,24 +7456,24 @@ references:
 - uid: Sharpy.Collections.Interfaces.ISet`2.__ROr__(`0)
   commentId: M:Sharpy.Collections.Interfaces.ISet`2.__ROr__(`0)
   href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2___ROr____0_
-  name: __ROr__(S)
-  nameWithType: ISet<S, T>.__ROr__(S)
-  fullName: Sharpy.Collections.Interfaces.ISet<S, T>.__ROr__(S)
-  nameWithType.vb: ISet(Of S, T).__ROr__(S)
-  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of S, T).__ROr__(S)
+  name: __ROr__(TSet)
+  nameWithType: ISet<TSet, TElement>.__ROr__(TSet)
+  fullName: Sharpy.Collections.Interfaces.ISet<TSet, TElement>.__ROr__(TSet)
+  nameWithType.vb: ISet(Of TSet, TElement).__ROr__(TSet)
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of TSet, TElement).__ROr__(TSet)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.ISet`2.__ROr__(`0)
     name: __ROr__
     href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2___ROr____0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.ISet`2.__ROr__(`0)
     name: __ROr__
     href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2___ROr____0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
 - uid: Sharpy.Set`1.__RSub__*
   commentId: Overload:Sharpy.Set`1.__RSub__
@@ -7584,24 +7523,24 @@ references:
 - uid: Sharpy.Collections.Interfaces.ISet`2.__RSub__(`0)
   commentId: M:Sharpy.Collections.Interfaces.ISet`2.__RSub__(`0)
   href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2___RSub____0_
-  name: __RSub__(S)
-  nameWithType: ISet<S, T>.__RSub__(S)
-  fullName: Sharpy.Collections.Interfaces.ISet<S, T>.__RSub__(S)
-  nameWithType.vb: ISet(Of S, T).__RSub__(S)
-  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of S, T).__RSub__(S)
+  name: __RSub__(TSet)
+  nameWithType: ISet<TSet, TElement>.__RSub__(TSet)
+  fullName: Sharpy.Collections.Interfaces.ISet<TSet, TElement>.__RSub__(TSet)
+  nameWithType.vb: ISet(Of TSet, TElement).__RSub__(TSet)
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of TSet, TElement).__RSub__(TSet)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.ISet`2.__RSub__(`0)
     name: __RSub__
     href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2___RSub____0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.ISet`2.__RSub__(`0)
     name: __RSub__
     href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2___RSub____0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
 - uid: Sharpy.Set`1.__Sub__*
   commentId: Overload:Sharpy.Set`1.__Sub__
@@ -7651,24 +7590,24 @@ references:
 - uid: Sharpy.Collections.Interfaces.ISet`2.__Sub__(`0)
   commentId: M:Sharpy.Collections.Interfaces.ISet`2.__Sub__(`0)
   href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2___Sub____0_
-  name: __Sub__(S)
-  nameWithType: ISet<S, T>.__Sub__(S)
-  fullName: Sharpy.Collections.Interfaces.ISet<S, T>.__Sub__(S)
-  nameWithType.vb: ISet(Of S, T).__Sub__(S)
-  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of S, T).__Sub__(S)
+  name: __Sub__(TSet)
+  nameWithType: ISet<TSet, TElement>.__Sub__(TSet)
+  fullName: Sharpy.Collections.Interfaces.ISet<TSet, TElement>.__Sub__(TSet)
+  nameWithType.vb: ISet(Of TSet, TElement).__Sub__(TSet)
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of TSet, TElement).__Sub__(TSet)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.ISet`2.__Sub__(`0)
     name: __Sub__
     href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2___Sub____0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.ISet`2.__Sub__(`0)
     name: __Sub__
     href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2___Sub____0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
 - uid: Sharpy.Set`1.__XOr__*
   commentId: Overload:Sharpy.Set`1.__XOr__
@@ -7718,24 +7657,24 @@ references:
 - uid: Sharpy.Collections.Interfaces.ISet`2.__XOr__(`0)
   commentId: M:Sharpy.Collections.Interfaces.ISet`2.__XOr__(`0)
   href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2___XOr____0_
-  name: __XOr__(S)
-  nameWithType: ISet<S, T>.__XOr__(S)
-  fullName: Sharpy.Collections.Interfaces.ISet<S, T>.__XOr__(S)
-  nameWithType.vb: ISet(Of S, T).__XOr__(S)
-  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of S, T).__XOr__(S)
+  name: __XOr__(TSet)
+  nameWithType: ISet<TSet, TElement>.__XOr__(TSet)
+  fullName: Sharpy.Collections.Interfaces.ISet<TSet, TElement>.__XOr__(TSet)
+  nameWithType.vb: ISet(Of TSet, TElement).__XOr__(TSet)
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of TSet, TElement).__XOr__(TSet)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.ISet`2.__XOr__(`0)
     name: __XOr__
     href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2___XOr____0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.ISet`2.__XOr__(`0)
     name: __XOr__
     href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2___XOr____0_
   - name: (
-  - name: S
+  - name: TSet
   - name: )
 - uid: Sharpy.Collections.Interfaces.ISet{{T}}.__And__(Sharpy.Collections.Interfaces.ISet{{T}})
   commentId: M:Sharpy.Collections.Interfaces.ISet{`0}.__And__(Sharpy.Collections.Interfaces.ISet{`0})
@@ -10051,12 +9990,12 @@ references:
 - uid: Sharpy.Collections.Interfaces.ISet`2.op_BitwiseOr(`0,`0)
   commentId: M:Sharpy.Collections.Interfaces.ISet`2.op_BitwiseOr(`0,`0)
   href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_BitwiseOr__0__0_
-  name: operator |(S, S)
-  nameWithType: ISet<S, T>.operator |(S, S)
-  fullName: Sharpy.Collections.Interfaces.ISet<S, T>.operator |(S, S)
-  nameWithType.vb: ISet(Of S, T).Or(S, S)
-  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of S, T).Or(S, S)
-  name.vb: Or(S, S)
+  name: operator |(TSet, TSet)
+  nameWithType: ISet<TSet, TElement>.operator |(TSet, TSet)
+  fullName: Sharpy.Collections.Interfaces.ISet<TSet, TElement>.operator |(TSet, TSet)
+  nameWithType.vb: ISet(Of TSet, TElement).Or(TSet, TSet)
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of TSet, TElement).Or(TSet, TSet)
+  name.vb: Or(TSet, TSet)
   spec.csharp:
   - name: operator
   - name: " "
@@ -10064,18 +10003,18 @@ references:
     name: '|'
     href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_BitwiseOr__0__0_
   - name: (
-  - name: S
+  - name: TSet
   - name: ','
   - name: " "
-  - name: S
+  - name: TSet
   - name: )
   spec.vb:
   - name: Or
   - name: (
-  - name: S
+  - name: TSet
   - name: ','
   - name: " "
-  - name: S
+  - name: TSet
   - name: )
 - uid: Sharpy.Set`1.op_BitwiseAnd*
   commentId: Overload:Sharpy.Set`1.op_BitwiseAnd
@@ -10150,12 +10089,12 @@ references:
 - uid: Sharpy.Collections.Interfaces.ISet`2.op_BitwiseAnd(`0,`0)
   commentId: M:Sharpy.Collections.Interfaces.ISet`2.op_BitwiseAnd(`0,`0)
   href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_BitwiseAnd__0__0_
-  name: operator &(S, S)
-  nameWithType: ISet<S, T>.operator &(S, S)
-  fullName: Sharpy.Collections.Interfaces.ISet<S, T>.operator &(S, S)
-  nameWithType.vb: ISet(Of S, T).And(S, S)
-  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of S, T).And(S, S)
-  name.vb: And(S, S)
+  name: operator &(TSet, TSet)
+  nameWithType: ISet<TSet, TElement>.operator &(TSet, TSet)
+  fullName: Sharpy.Collections.Interfaces.ISet<TSet, TElement>.operator &(TSet, TSet)
+  nameWithType.vb: ISet(Of TSet, TElement).And(TSet, TSet)
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of TSet, TElement).And(TSet, TSet)
+  name.vb: And(TSet, TSet)
   spec.csharp:
   - name: operator
   - name: " "
@@ -10163,18 +10102,18 @@ references:
     name: '&'
     href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_BitwiseAnd__0__0_
   - name: (
-  - name: S
+  - name: TSet
   - name: ','
   - name: " "
-  - name: S
+  - name: TSet
   - name: )
   spec.vb:
   - name: And
   - name: (
-  - name: S
+  - name: TSet
   - name: ','
   - name: " "
-  - name: S
+  - name: TSet
   - name: )
 - uid: Sharpy.Set`1.op_ExclusiveOr*
   commentId: Overload:Sharpy.Set`1.op_ExclusiveOr
@@ -10249,12 +10188,12 @@ references:
 - uid: Sharpy.Collections.Interfaces.ISet`2.op_ExclusiveOr(`0,`0)
   commentId: M:Sharpy.Collections.Interfaces.ISet`2.op_ExclusiveOr(`0,`0)
   href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_ExclusiveOr__0__0_
-  name: operator ^(S, S)
-  nameWithType: ISet<S, T>.operator ^(S, S)
-  fullName: Sharpy.Collections.Interfaces.ISet<S, T>.operator ^(S, S)
-  nameWithType.vb: ISet(Of S, T).Xor(S, S)
-  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of S, T).Xor(S, S)
-  name.vb: Xor(S, S)
+  name: operator ^(TSet, TSet)
+  nameWithType: ISet<TSet, TElement>.operator ^(TSet, TSet)
+  fullName: Sharpy.Collections.Interfaces.ISet<TSet, TElement>.operator ^(TSet, TSet)
+  nameWithType.vb: ISet(Of TSet, TElement).Xor(TSet, TSet)
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of TSet, TElement).Xor(TSet, TSet)
+  name.vb: Xor(TSet, TSet)
   spec.csharp:
   - name: operator
   - name: " "
@@ -10262,18 +10201,18 @@ references:
     name: ^
     href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_ExclusiveOr__0__0_
   - name: (
-  - name: S
+  - name: TSet
   - name: ','
   - name: " "
-  - name: S
+  - name: TSet
   - name: )
   spec.vb:
   - name: Xor
   - name: (
-  - name: S
+  - name: TSet
   - name: ','
   - name: " "
-  - name: S
+  - name: TSet
   - name: )
 - uid: Sharpy.Set`1.op_Subtraction*
   commentId: Overload:Sharpy.Set`1.op_Subtraction
@@ -10348,12 +10287,12 @@ references:
 - uid: Sharpy.Collections.Interfaces.ISet`2.op_Subtraction(`0,`0)
   commentId: M:Sharpy.Collections.Interfaces.ISet`2.op_Subtraction(`0,`0)
   href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_Subtraction__0__0_
-  name: operator -(S, S)
-  nameWithType: ISet<S, T>.operator -(S, S)
-  fullName: Sharpy.Collections.Interfaces.ISet<S, T>.operator -(S, S)
-  nameWithType.vb: ISet(Of S, T).-(S, S)
-  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of S, T).-(S, S)
-  name.vb: -(S, S)
+  name: operator -(TSet, TSet)
+  nameWithType: ISet<TSet, TElement>.operator -(TSet, TSet)
+  fullName: Sharpy.Collections.Interfaces.ISet<TSet, TElement>.operator -(TSet, TSet)
+  nameWithType.vb: ISet(Of TSet, TElement).-(TSet, TSet)
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of TSet, TElement).-(TSet, TSet)
+  name.vb: -(TSet, TSet)
   spec.csharp:
   - name: operator
   - name: " "
@@ -10361,18 +10300,18 @@ references:
     name: '-'
     href: Sharpy.Collections.Interfaces.ISet-2.html#Sharpy_Collections_Interfaces_ISet_2_op_Subtraction__0__0_
   - name: (
-  - name: S
+  - name: TSet
   - name: ','
   - name: " "
-  - name: S
+  - name: TSet
   - name: )
   spec.vb:
   - name: '-'
   - name: (
-  - name: S
+  - name: TSet
   - name: ','
   - name: " "
-  - name: S
+  - name: TSet
   - name: )
 - uid: Sharpy.Set`1.op_True*
   commentId: Overload:Sharpy.Set`1.op_True

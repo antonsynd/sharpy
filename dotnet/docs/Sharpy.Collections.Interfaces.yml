@@ -357,21 +357,21 @@ references:
 - uid: Sharpy.Collections.Interfaces.IMutableSequence`2
   commentId: T:Sharpy.Collections.Interfaces.IMutableSequence`2
   href: Sharpy.Collections.Interfaces.IMutableSequence-2.html
-  name: IMutableSequence<S, T>
-  nameWithType: IMutableSequence<S, T>
-  fullName: Sharpy.Collections.Interfaces.IMutableSequence<S, T>
-  nameWithType.vb: IMutableSequence(Of S, T)
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSequence(Of S, T)
-  name.vb: IMutableSequence(Of S, T)
+  name: IMutableSequence<TSequence, TItem>
+  nameWithType: IMutableSequence<TSequence, TItem>
+  fullName: Sharpy.Collections.Interfaces.IMutableSequence<TSequence, TItem>
+  nameWithType.vb: IMutableSequence(Of TSequence, TItem)
+  fullName.vb: Sharpy.Collections.Interfaces.IMutableSequence(Of TSequence, TItem)
+  name.vb: IMutableSequence(Of TSequence, TItem)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.IMutableSequence`2
     name: IMutableSequence
     href: Sharpy.Collections.Interfaces.IMutableSequence-2.html
   - name: <
-  - name: S
+  - name: TSequence
   - name: ','
   - name: " "
-  - name: T
+  - name: TItem
   - name: '>'
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.IMutableSequence`2
@@ -380,10 +380,10 @@ references:
   - name: (
   - name: Of
   - name: " "
-  - name: S
+  - name: TSequence
   - name: ','
   - name: " "
-  - name: T
+  - name: TItem
   - name: )
 - uid: Sharpy.Collections.Interfaces.IMutableSet`1
   commentId: T:Sharpy.Collections.Interfaces.IMutableSet`1
@@ -413,21 +413,21 @@ references:
 - uid: Sharpy.Collections.Interfaces.IMutableSet`2
   commentId: T:Sharpy.Collections.Interfaces.IMutableSet`2
   href: Sharpy.Collections.Interfaces.IMutableSet-2.html
-  name: IMutableSet<S, T>
-  nameWithType: IMutableSet<S, T>
-  fullName: Sharpy.Collections.Interfaces.IMutableSet<S, T>
-  nameWithType.vb: IMutableSet(Of S, T)
-  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of S, T)
-  name.vb: IMutableSet(Of S, T)
+  name: IMutableSet<TSet, TElement>
+  nameWithType: IMutableSet<TSet, TElement>
+  fullName: Sharpy.Collections.Interfaces.IMutableSet<TSet, TElement>
+  nameWithType.vb: IMutableSet(Of TSet, TElement)
+  fullName.vb: Sharpy.Collections.Interfaces.IMutableSet(Of TSet, TElement)
+  name.vb: IMutableSet(Of TSet, TElement)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.IMutableSet`2
     name: IMutableSet
     href: Sharpy.Collections.Interfaces.IMutableSet-2.html
   - name: <
-  - name: S
+  - name: TSet
   - name: ','
   - name: " "
-  - name: T
+  - name: TElement
   - name: '>'
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.IMutableSet`2
@@ -436,10 +436,10 @@ references:
   - name: (
   - name: Of
   - name: " "
-  - name: S
+  - name: TSet
   - name: ','
   - name: " "
-  - name: T
+  - name: TElement
   - name: )
 - uid: Sharpy.Collections.Interfaces.IReversible`1
   commentId: T:Sharpy.Collections.Interfaces.IReversible`1
@@ -495,21 +495,21 @@ references:
 - uid: Sharpy.Collections.Interfaces.ISequence`2
   commentId: T:Sharpy.Collections.Interfaces.ISequence`2
   href: Sharpy.Collections.Interfaces.ISequence-2.html
-  name: ISequence<S, T>
-  nameWithType: ISequence<S, T>
-  fullName: Sharpy.Collections.Interfaces.ISequence<S, T>
-  nameWithType.vb: ISequence(Of S, T)
-  fullName.vb: Sharpy.Collections.Interfaces.ISequence(Of S, T)
-  name.vb: ISequence(Of S, T)
+  name: ISequence<TSequence, TItem>
+  nameWithType: ISequence<TSequence, TItem>
+  fullName: Sharpy.Collections.Interfaces.ISequence<TSequence, TItem>
+  nameWithType.vb: ISequence(Of TSequence, TItem)
+  fullName.vb: Sharpy.Collections.Interfaces.ISequence(Of TSequence, TItem)
+  name.vb: ISequence(Of TSequence, TItem)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.ISequence`2
     name: ISequence
     href: Sharpy.Collections.Interfaces.ISequence-2.html
   - name: <
-  - name: S
+  - name: TSequence
   - name: ','
   - name: " "
-  - name: T
+  - name: TItem
   - name: '>'
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.ISequence`2
@@ -518,10 +518,10 @@ references:
   - name: (
   - name: Of
   - name: " "
-  - name: S
+  - name: TSequence
   - name: ','
   - name: " "
-  - name: T
+  - name: TItem
   - name: )
 - uid: Sharpy.Collections.Interfaces.ISet`1
   commentId: T:Sharpy.Collections.Interfaces.ISet`1
@@ -552,21 +552,21 @@ references:
 - uid: Sharpy.Collections.Interfaces.ISet`2
   commentId: T:Sharpy.Collections.Interfaces.ISet`2
   href: Sharpy.Collections.Interfaces.ISet-2.html
-  name: ISet<S, T>
-  nameWithType: ISet<S, T>
-  fullName: Sharpy.Collections.Interfaces.ISet<S, T>
-  nameWithType.vb: ISet(Of S, T)
-  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of S, T)
-  name.vb: ISet(Of S, T)
+  name: ISet<TSet, TElement>
+  nameWithType: ISet<TSet, TElement>
+  fullName: Sharpy.Collections.Interfaces.ISet<TSet, TElement>
+  nameWithType.vb: ISet(Of TSet, TElement)
+  fullName.vb: Sharpy.Collections.Interfaces.ISet(Of TSet, TElement)
+  name.vb: ISet(Of TSet, TElement)
   spec.csharp:
   - uid: Sharpy.Collections.Interfaces.ISet`2
     name: ISet
     href: Sharpy.Collections.Interfaces.ISet-2.html
   - name: <
-  - name: S
+  - name: TSet
   - name: ','
   - name: " "
-  - name: T
+  - name: TElement
   - name: '>'
   spec.vb:
   - uid: Sharpy.Collections.Interfaces.ISet`2
@@ -575,10 +575,10 @@ references:
   - name: (
   - name: Of
   - name: " "
-  - name: S
+  - name: TSet
   - name: ','
   - name: " "
-  - name: T
+  - name: TElement
   - name: )
 - uid: Sharpy.Collections.Interfaces.ISized
   commentId: T:Sharpy.Collections.Interfaces.ISized

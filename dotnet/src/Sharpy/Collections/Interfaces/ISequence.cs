@@ -3,17 +3,48 @@ namespace Sharpy.Collections.Interfaces;
 /// <summary>
 /// Interface for read-only sequences.
 /// </summary>
-public interface ISequence<T> : ICollection<T>, IReversible<T>, IAddable<ISequence<T>>, IRightAddable<ISequence<T>>
+public interface ISequence<T>
+    : ICollection<T>,
+      IReversible<T>,
+      IAddable<ISequence<T>>,
+      IRightAddable<ISequence<T>>
 {
     /// <summary>
     /// Returns the item at the given index in the sequence. Supports negative
     /// indices to get or set from the back. If the index is out of range,
     /// then this raises an <see cref="IndexError"/>.
     /// </summary>
-    /// <remarks>
-    /// Should call <see cref="__GetItem__(Slice)"/> underneath.
-    /// </remarks>
-    T this[int index] { get; }
+    T this[int index]
+    {
+        get
+        {
+            return __GetItem__((int)Sharpy.Index.Normalize(index, __Len__(), false, false));
+        }
+    }
+
+    T this[System.Index index]
+    {
+        get
+        {
+            return __GetItem__((int)index.ToNormalizedUint32(__Len__(), false, false));
+        }
+    }
+
+    ISequence<T> this[System.Range range]
+    {
+        get
+        {
+            return __GetItem__(range.ToSlice(__Len__(), false));
+        }
+    }
+
+    ISequence<T> this[Slice slice]
+    {
+        get
+        {
+            return __GetItem__(slice);
+        }
+    }
 
     /// <summary>
     /// Returns the sub-sequence at the given start and end (exclusive) indices
@@ -24,7 +55,13 @@ public interface ISequence<T> : ICollection<T>, IReversible<T>, IAddable<ISequen
     /// <remarks>
     /// Should call <see cref="__GetItem__(Slice)"/> underneath.
     /// </remarks>
-    ISequence<T> this[int start, int end] { get; }
+    ISequence<T> this[int start, int end]
+    {
+        get
+        {
+            return __GetItem__(new Slice(start, end));
+        }
+    }
 
     /// <summary>
     /// Returns the sub-sequence at the given start and end (exclusive)
@@ -37,7 +74,13 @@ public interface ISequence<T> : ICollection<T>, IReversible<T>, IAddable<ISequen
     /// <remarks>
     /// Should call <see cref="__GetItem__(Slice)"/> underneath.
     /// </remarks>
-    ISequence<T> this[int start, int end, int step] { get; }
+    ISequence<T> this[int start, int end, int step]
+    {
+        get
+        {
+            return __GetItem__(new Slice(start, end, step));
+        }
+    }
 
     /// <summary>
     /// Returns the number of times the given element appears in the
@@ -72,8 +115,24 @@ public interface ISequence<T> : ICollection<T>, IReversible<T>, IAddable<ISequen
 /// Interface for read-only sequences as a curiously recursive template,
 /// with methods dealing directly with the given sequence type.
 /// </summary>
-public interface ISequence<S, T> : ISequence<T>
+public interface ISequence<TSequence, TItem> : ISequence<TItem>
 {
+    new TSequence this[System.Range range]
+    {
+        get
+        {
+            return __GetItem__(range.ToSlice(__Len__(), false));
+        }
+    }
+
+    new TSequence this[Slice slice]
+    {
+        get
+        {
+            return __GetItem__(slice);
+        }
+    }
+
     /// <summary>
     /// Returns the sub-sequence at the given start and end (exclusive) indices
     /// in the sequence. Supports negative indices to count from the back.
@@ -83,7 +142,13 @@ public interface ISequence<S, T> : ISequence<T>
     /// <remarks>
     /// Should call <see cref="__GetItem__(Slice)"/> underneath.
     /// </remarks>
-    new S this[int start, int end] { get; }
+    new TSequence this[int start, int end]
+    {
+        get
+        {
+            return __GetItem__(new Slice(start, end));
+        }
+    }
 
     /// <summary>
     /// Returns the sub-sequence at the given start and end (exclusive)
@@ -96,7 +161,13 @@ public interface ISequence<S, T> : ISequence<T>
     /// <remarks>
     /// Should call <see cref="__GetItem__(Slice)"/> underneath.
     /// </remarks>
-    new S this[int start, int end, int step] { get; }
+    new TSequence this[int start, int end, int step]
+    {
+        get
+        {
+            return __GetItem__(new Slice(start, end, step));
+        }
+    }
 
     /// <summary>
     /// Returns the sub-sequence at the given start and end (exclusive)
@@ -106,5 +177,5 @@ public interface ISequence<S, T> : ISequence<T>
     /// <see cref="IndexError"/>. If the step is less than 1, then an
     /// empty sequence is returned.
     /// </summary>
-    new S __GetItem__(Slice slice);
+    new TSequence __GetItem__(Slice slice);
 }
