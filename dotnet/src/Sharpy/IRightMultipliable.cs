@@ -5,8 +5,10 @@ public interface IRightMultipliableWith<TProduct, TMultiplier>
     TProduct __RMul__(TMultiplier other);
 }
 
-public interface IRightMultipliable<TMultiplicand, TMultiplier, TProduct> : IRightMultipliableWith<TProduct, TMultiplier>
-    where TMultiplicand : IRightMultipliable<TMultiplicand, TMultiplier, TProduct>
+public interface IRightMultipliable<TMultiplicand, TMultiplier, TProduct>
+    : IRightMultipliableWith<TProduct, TMultiplier>
+      where TMultiplicand
+        : IRightMultipliable<TMultiplicand, TMultiplier, TProduct>
 {
     static virtual TProduct operator *(TMultiplier left, TMultiplicand right)
     {
@@ -14,7 +16,10 @@ public interface IRightMultipliable<TMultiplicand, TMultiplier, TProduct> : IRig
     }
 }
 
-public interface IRightMultipliable<TMultiplicand, TMultiplier> : IRightMultipliableWith<TMultiplicand, TMultiplier>
-    where TMultiplicand : IRightMultipliable<TMultiplicand, TMultiplier>
+public interface IRightMultipliable<TMultiplicand, TMultiplier>
+    : IRightMultipliableWith<TMultiplicand, TMultiplier>,
+      IRightMultipliable<TMultiplicand, TMultiplier, TMultiplicand>
+      where TMultiplicand
+        : IRightMultipliable<TMultiplicand, TMultiplier>
 {
 }

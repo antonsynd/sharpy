@@ -1,0 +1,236 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.IRightAddable`3
+  commentId: T:Sharpy.IRightAddable`3
+  id: IRightAddable`3
+  parent: Sharpy
+  children:
+  - Sharpy.IRightAddable`3.op_Addition(`1,`0)
+  langs:
+  - csharp
+  - vb
+  name: IRightAddable<TAugend, TAddend, TSum>
+  nameWithType: IRightAddable<TAugend, TAddend, TSum>
+  fullName: Sharpy.IRightAddable<TAugend, TAddend, TSum>
+  type: Interface
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IRightAddable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IRightAddable
+    path: ../src/Sharpy/IRightAddable.cs
+    startLine: 7
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: 'public interface IRightAddable<TAugend, TAddend, TSum> : IRightAddableWith<TSum, TAddend> where TAugend : IRightAddable<TAugend, TAddend, TSum>'
+    typeParameters:
+    - id: TAugend
+    - id: TAddend
+    - id: TSum
+    content.vb: Public Interface IRightAddable(Of TAugend As IRightAddable(Of TAugend, TAddend, TSum), TAddend, TSum) Inherits IRightAddableWith(Of TSum, TAddend)
+  inheritedMembers:
+  - Sharpy.IRightAddableWith{{TSum},{TAddend}}.__RAdd__({TAddend})
+  nameWithType.vb: IRightAddable(Of TAugend, TAddend, TSum)
+  fullName.vb: Sharpy.IRightAddable(Of TAugend, TAddend, TSum)
+  name.vb: IRightAddable(Of TAugend, TAddend, TSum)
+- uid: Sharpy.IRightAddable`3.op_Addition(`1,`0)
+  commentId: M:Sharpy.IRightAddable`3.op_Addition(`1,`0)
+  id: op_Addition(`1,`0)
+  parent: Sharpy.IRightAddable`3
+  langs:
+  - csharp
+  - vb
+  name: operator +(TAddend, TAugend)
+  nameWithType: IRightAddable<TAugend, TAddend, TSum>.operator +(TAddend, TAugend)
+  fullName: Sharpy.IRightAddable<TAugend, TAddend, TSum>.operator +(TAddend, TAugend)
+  type: Operator
+  source:
+    remote:
+      path: dotnet/src/Sharpy/IRightAddable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: op_Addition
+    path: ../src/Sharpy/IRightAddable.cs
+    startLine: 12
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static TSum operator +(TAddend left, TAugend right)
+    parameters:
+    - id: left
+      type: '{TAddend}'
+    - id: right
+      type: '{TAugend}'
+    return:
+      type: '{TSum}'
+    content.vb: Public Shared Operator +(left As TAddend, right As TAugend) As TSum
+  overload: Sharpy.IRightAddable`3.op_Addition*
+  nameWithType.vb: IRightAddable(Of TAugend, TAddend, TSum).+(TAddend, TAugend)
+  fullName.vb: Sharpy.IRightAddable(Of TAugend, TAddend, TSum).+(TAddend, TAugend)
+  name.vb: +(TAddend, TAugend)
+references:
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: Sharpy.IRightAddableWith{{TSum},{TAddend}}.__RAdd__({TAddend})
+  commentId: M:Sharpy.IRightAddableWith{`2,`1}.__RAdd__(`1)
+  parent: Sharpy.IRightAddableWith{{TSum},{TAddend}}
+  definition: Sharpy.IRightAddableWith`2.__RAdd__(`1)
+  href: Sharpy.IRightAddableWith-2.html#Sharpy_IRightAddableWith_2___RAdd____1_
+  name: __RAdd__(TAddend)
+  nameWithType: IRightAddableWith<TSum, TAddend>.__RAdd__(TAddend)
+  fullName: Sharpy.IRightAddableWith<TSum, TAddend>.__RAdd__(TAddend)
+  nameWithType.vb: IRightAddableWith(Of TSum, TAddend).__RAdd__(TAddend)
+  fullName.vb: Sharpy.IRightAddableWith(Of TSum, TAddend).__RAdd__(TAddend)
+  spec.csharp:
+  - uid: Sharpy.IRightAddableWith{`2,`1}.__RAdd__(`1)
+    name: __RAdd__
+    href: Sharpy.IRightAddableWith-2.html#Sharpy_IRightAddableWith_2___RAdd____1_
+  - name: (
+  - name: TAddend
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IRightAddableWith{`2,`1}.__RAdd__(`1)
+    name: __RAdd__
+    href: Sharpy.IRightAddableWith-2.html#Sharpy_IRightAddableWith_2___RAdd____1_
+  - name: (
+  - name: TAddend
+  - name: )
+- uid: Sharpy.IRightAddableWith`2.__RAdd__(`1)
+  commentId: M:Sharpy.IRightAddableWith`2.__RAdd__(`1)
+  href: Sharpy.IRightAddableWith-2.html#Sharpy_IRightAddableWith_2___RAdd____1_
+  name: __RAdd__(TAddend)
+  nameWithType: IRightAddableWith<TSum, TAddend>.__RAdd__(TAddend)
+  fullName: Sharpy.IRightAddableWith<TSum, TAddend>.__RAdd__(TAddend)
+  nameWithType.vb: IRightAddableWith(Of TSum, TAddend).__RAdd__(TAddend)
+  fullName.vb: Sharpy.IRightAddableWith(Of TSum, TAddend).__RAdd__(TAddend)
+  spec.csharp:
+  - uid: Sharpy.IRightAddableWith`2.__RAdd__(`1)
+    name: __RAdd__
+    href: Sharpy.IRightAddableWith-2.html#Sharpy_IRightAddableWith_2___RAdd____1_
+  - name: (
+  - name: TAddend
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IRightAddableWith`2.__RAdd__(`1)
+    name: __RAdd__
+    href: Sharpy.IRightAddableWith-2.html#Sharpy_IRightAddableWith_2___RAdd____1_
+  - name: (
+  - name: TAddend
+  - name: )
+- uid: Sharpy.IRightAddableWith{{TSum},{TAddend}}
+  commentId: T:Sharpy.IRightAddableWith{`2,`1}
+  parent: Sharpy
+  definition: Sharpy.IRightAddableWith`2
+  href: Sharpy.IRightAddableWith-2.html
+  name: IRightAddableWith<TSum, TAddend>
+  nameWithType: IRightAddableWith<TSum, TAddend>
+  fullName: Sharpy.IRightAddableWith<TSum, TAddend>
+  nameWithType.vb: IRightAddableWith(Of TSum, TAddend)
+  fullName.vb: Sharpy.IRightAddableWith(Of TSum, TAddend)
+  name.vb: IRightAddableWith(Of TSum, TAddend)
+  spec.csharp:
+  - uid: Sharpy.IRightAddableWith`2
+    name: IRightAddableWith
+    href: Sharpy.IRightAddableWith-2.html
+  - name: <
+  - name: TSum
+  - name: ','
+  - name: " "
+  - name: TAddend
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IRightAddableWith`2
+    name: IRightAddableWith
+    href: Sharpy.IRightAddableWith-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TSum
+  - name: ','
+  - name: " "
+  - name: TAddend
+  - name: )
+- uid: Sharpy.IRightAddableWith`2
+  commentId: T:Sharpy.IRightAddableWith`2
+  href: Sharpy.IRightAddableWith-2.html
+  name: IRightAddableWith<TSum, TAddend>
+  nameWithType: IRightAddableWith<TSum, TAddend>
+  fullName: Sharpy.IRightAddableWith<TSum, TAddend>
+  nameWithType.vb: IRightAddableWith(Of TSum, TAddend)
+  fullName.vb: Sharpy.IRightAddableWith(Of TSum, TAddend)
+  name.vb: IRightAddableWith(Of TSum, TAddend)
+  spec.csharp:
+  - uid: Sharpy.IRightAddableWith`2
+    name: IRightAddableWith
+    href: Sharpy.IRightAddableWith-2.html
+  - name: <
+  - name: TSum
+  - name: ','
+  - name: " "
+  - name: TAddend
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IRightAddableWith`2
+    name: IRightAddableWith
+    href: Sharpy.IRightAddableWith-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TSum
+  - name: ','
+  - name: " "
+  - name: TAddend
+  - name: )
+- uid: Sharpy.IRightAddable`3.op_Addition*
+  commentId: Overload:Sharpy.IRightAddable`3.op_Addition
+  href: Sharpy.IRightAddable-3.html#Sharpy_IRightAddable_3_op_Addition__1__0_
+  name: operator +
+  nameWithType: IRightAddable<TAugend, TAddend, TSum>.operator +
+  fullName: Sharpy.IRightAddable<TAugend, TAddend, TSum>.operator +
+  nameWithType.vb: IRightAddable(Of TAugend, TAddend, TSum).+
+  fullName.vb: Sharpy.IRightAddable(Of TAugend, TAddend, TSum).+
+  name.vb: +
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IRightAddable`3.op_Addition*
+    name: +
+    href: Sharpy.IRightAddable-3.html#Sharpy_IRightAddable_3_op_Addition__1__0_
+- uid: '{TAddend}'
+  commentId: '!:TAddend'
+  definition: TAddend
+  name: TAddend
+  nameWithType: TAddend
+  fullName: TAddend
+- uid: '{TAugend}'
+  commentId: '!:TAugend'
+  definition: TAugend
+  name: TAugend
+  nameWithType: TAugend
+  fullName: TAugend
+- uid: '{TSum}'
+  commentId: '!:TSum'
+  definition: TSum
+  name: TSum
+  nameWithType: TSum
+  fullName: TSum
+- uid: TAddend
+  name: TAddend
+  nameWithType: TAddend
+  fullName: TAddend
+- uid: TAugend
+  name: TAugend
+  nameWithType: TAugend
+  fullName: TAugend
+- uid: TSum
+  name: TSum
+  nameWithType: TSum
+  fullName: TSum

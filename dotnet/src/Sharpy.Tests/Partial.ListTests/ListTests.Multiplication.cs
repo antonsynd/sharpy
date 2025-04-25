@@ -6,6 +6,18 @@ namespace Sharpy.Tests;
 public partial class List_Tests
 {
     [Fact]
+    public void List_Implements_Multiplication_Interfaces()
+    {
+        // If/when/then
+        (typeof(List<int>).IsAssignableTo(typeof(IMultipliableWith<int, List<int>>))).Should().BeTrue();
+        (typeof(List<int>).IsAssignableTo(typeof(IMultipliable<List<int>, int>))).Should().BeTrue();
+        (typeof(List<int>).IsAssignableTo(typeof(IMultipliable<List<int>, int, List<int>>))).Should().BeTrue();
+        (typeof(List<int>).IsAssignableTo(typeof(IInplaceMultipliable<int>))).Should().BeTrue();
+        (typeof(List<int>).IsAssignableTo(typeof(IRightMultipliable<List<int>, int>))).Should().BeTrue();
+        (typeof(List<int>).IsAssignableTo(typeof(IRightMultipliable<List<int>, int, List<int>>))).Should().BeTrue();
+    }
+
+    [Fact]
     public void List_Multiplication_Operator_Negative()
     {
         // If

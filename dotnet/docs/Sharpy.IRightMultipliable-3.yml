@@ -54,7 +54,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Multiply
     path: ../src/Sharpy/IRightMultipliable.cs
-    startLine: 10
+    startLine: 12
   assemblies:
   - Sharpy
   namespace: Sharpy

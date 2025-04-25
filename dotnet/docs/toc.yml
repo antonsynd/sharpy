@@ -97,11 +97,14 @@ items:
   - uid: Sharpy.IRepresentable
     name: IRepresentable
     type: Interface
+  - uid: Sharpy.IRightAddableWith`2
+    name: IRightAddableWith<TSum, TAddend>
+    type: Interface
   - uid: Sharpy.IRightAddable`1
     name: IRightAddable<T>
     type: Interface
-  - uid: Sharpy.IRightAddable`2
-    name: IRightAddable<TSum, TAugend>
+  - uid: Sharpy.IRightAddable`3
+    name: IRightAddable<TAugend, TAddend, TSum>
     type: Interface
   - uid: Sharpy.IRightMultipliableWith`2
     name: IRightMultipliableWith<TProduct, TMultiplier>

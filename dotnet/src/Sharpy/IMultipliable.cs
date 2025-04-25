@@ -20,8 +20,10 @@ public interface IMultipliableWith<TMultiplier, TProduct>
 /// multiplied).</typeparam>
 /// <typeparam name="TMultiplier">The multiplier (i.e. the factor).</typeparam>
 /// <typeparam name="TProduct">The product.</typeparam>
-public interface IMultipliable<TMultiplicand, TMultiplier, TProduct> : IMultipliableWith<TMultiplier, TProduct>
-    where TMultiplicand : IMultipliable<TMultiplicand, TMultiplier, TProduct>
+public interface IMultipliable<TMultiplicand, TMultiplier, TProduct>
+    : IMultipliableWith<TMultiplier, TProduct>
+      where TMultiplicand
+        : IMultipliable<TMultiplicand, TMultiplier, TProduct>
 {
     static virtual TProduct operator *(TMultiplicand left, TMultiplier right)
     {
@@ -42,8 +44,10 @@ public interface IMultipliable<TMultiplicand, TMultiplier, TProduct> : IMultipli
 /// <typeparam name="TMultiplicannd">The multiplicand (what is being
 /// multiplied), and also the type of the product (the result).</typeparam>
 /// <typeparam name="TMultiplier">The multiplier (i.e. the factor).</typeparam>
-public interface IMultipliable<TMultiplicand, TMultipilier> : IMultipliable<TMultiplicand, TMultipilier, TMultiplicand>
-    where TMultiplicand : IMultipliable<TMultiplicand, TMultipilier, TMultiplicand>
+public interface IMultipliable<TMultiplicand, TMultipilier>
+    : IMultipliable<TMultiplicand, TMultipilier, TMultiplicand>
+      where TMultiplicand
+        : IMultipliable<TMultiplicand, TMultipilier, TMultiplicand>
 {
 }
 
@@ -51,6 +55,9 @@ public interface IMultipliable<TMultiplicand, TMultipilier> : IMultipliable<TMul
 /// An interface for a type that can be multiplied by itself yielding a result
 /// of the same type.
 /// </summary>
-public interface IMultipliable<T> : IMultipliable<T, T, T> where T : IMultipliable<T, T, T>
+public interface IMultipliable<T>
+    : IMultipliable<T, T, T>
+      where T
+        : IMultipliable<T, T, T>
 {
 }

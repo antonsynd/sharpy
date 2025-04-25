@@ -19,16 +19,16 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: IRightMultipliable
     path: ../src/Sharpy/IRightMultipliable.cs
-    startLine: 16
+    startLine: 18
   assemblies:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: 'public interface IRightMultipliable<TMultiplicand, TMultiplier> : IRightMultipliableWith<TMultiplicand, TMultiplier> where TMultiplicand : IRightMultipliable<TMultiplicand, TMultiplier>'
+    content: 'public interface IRightMultipliable<TMultiplicand, TMultiplier> : IRightMultipliable<TMultiplicand, TMultiplier, TMultiplicand>, IRightMultipliableWith<TMultiplicand, TMultiplier> where TMultiplicand : IRightMultipliable<TMultiplicand, TMultiplier>'
     typeParameters:
     - id: TMultiplicand
     - id: TMultiplier
-    content.vb: Public Interface IRightMultipliable(Of TMultiplicand As IRightMultipliable(Of TMultiplicand, TMultiplier), TMultiplier) Inherits IRightMultipliableWith(Of TMultiplicand, TMultiplier)
+    content.vb: Public Interface IRightMultipliable(Of TMultiplicand As IRightMultipliable(Of TMultiplicand, TMultiplier), TMultiplier) Inherits IRightMultipliable(Of TMultiplicand, TMultiplier, TMultiplicand), IRightMultipliableWith(Of TMultiplicand, TMultiplier)
   inheritedMembers:
   - Sharpy.IRightMultipliableWith{{TMultiplicand},{TMultiplier}}.__RMul__({TMultiplier})
   nameWithType.vb: IRightMultipliable(Of TMultiplicand, TMultiplier)

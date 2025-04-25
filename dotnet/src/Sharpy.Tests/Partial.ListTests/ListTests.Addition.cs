@@ -14,6 +14,8 @@ public partial class List_Tests
         (typeof(List<int>).IsAssignableTo(typeof(IAddable<List<int>, List<int>>))).Should().BeTrue();
         (typeof(List<int>).IsAssignableTo(typeof(IAddable<List<int>, List<int>, List<int>>))).Should().BeTrue();
         (typeof(List<int>).IsAssignableTo(typeof(IInplaceAddable<List<int>>))).Should().BeTrue();
+        (typeof(List<int>).IsAssignableTo(typeof(IRightAddableWith<List<int>, List<int>>))).Should().BeTrue();
+        (typeof(List<int>).IsAssignableTo(typeof(IRightAddable<List<int>, List<int>, List<int>>))).Should().BeTrue();
         (typeof(List<int>).IsAssignableTo(typeof(IRightAddable<List<int>>))).Should().BeTrue();
     }
 

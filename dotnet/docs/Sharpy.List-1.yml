@@ -82,10 +82,10 @@ items:
   summary: A list of elements.
   example: []
   syntax:
-    content: 'public sealed class List<T> : Object, IInequatable<Object>, IInequatableWith<Object>, IEquatable<Object>, IEquatableWith<Object>, IEquatable<Object>, IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSequence<List<T>, T>, IMutableSequence<T>, IInplaceAddable<ISequence<T>>, ISequence<List<T>, T>, ISequence<T>, ICollection<T>, IContainer<T>, ISized, ICollection<T>, IReversible<T>, IIterable<T>, IEnumerable<T>, IEnumerable, IAddable<ISequence<T>>, IAddable<ISequence<T>, ISequence<T>>, IAddable<ISequence<T>, ISequence<T>, ISequence<T>>, IAddableWith<ISequence<T>, ISequence<T>>, IRightAddable<ISequence<T>>, IRightAddable<ISequence<T>, ISequence<T>>, IEquatable<List<T>>, IEquatableWith<List<T>>, IEquatable, IHashable, IEquatable<List<T>>, IAddable<List<T>>, IAddable<List<T>, List<T>>, IAddable<List<T>, List<T>, List<T>>, IAddableWith<List<T>, List<T>>, IRightAddable<List<T>>, IRightAddable<List<T>, List<T>>, IInplaceAddable<List<T>>, IMultipliable<List<T>, int>, IMultipliable<List<T>, int, List<T>>, IMultipliableWith<int, List<T>>, IInplaceMultipliable<int>, IRightMultipliable<List<T>, int>, IRightMultipliableWith<List<T>, int>'
+    content: 'public sealed class List<T> : Object, IInequatable<Object>, IInequatableWith<Object>, IEquatable<Object>, IEquatableWith<Object>, IEquatable<Object>, IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSequence<List<T>, T>, IMutableSequence<T>, IInplaceAddable<ISequence<T>>, ISequence<List<T>, T>, ISequence<T>, ICollection<T>, IContainer<T>, ISized, ICollection<T>, IReversible<T>, IIterable<T>, IEnumerable<T>, IEnumerable, IAddable<ISequence<T>>, IAddable<ISequence<T>, ISequence<T>>, IAddable<ISequence<T>, ISequence<T>, ISequence<T>>, IAddableWith<ISequence<T>, ISequence<T>>, IRightAddable<ISequence<T>>, IRightAddable<ISequence<T>, ISequence<T>, ISequence<T>>, IRightAddableWith<ISequence<T>, ISequence<T>>, IEquatable<List<T>>, IEquatableWith<List<T>>, IEquatable, IHashable, IEquatable<List<T>>, IAddable<List<T>>, IAddable<List<T>, List<T>>, IAddable<List<T>, List<T>, List<T>>, IAddableWith<List<T>, List<T>>, IRightAddable<List<T>>, IRightAddable<List<T>, List<T>, List<T>>, IRightAddableWith<List<T>, List<T>>, IInplaceAddable<List<T>>, IMultipliable<List<T>, int>, IMultipliable<List<T>, int, List<T>>, IMultipliableWith<int, List<T>>, IInplaceMultipliable<int>, IRightMultipliable<List<T>, int>, IRightMultipliable<List<T>, int, List<T>>, IRightMultipliableWith<List<T>, int>'
     typeParameters:
     - id: T
-    content.vb: Public NotInheritable Class List(Of T) Inherits Object Implements IInequatable(Of Object), IInequatableWith(Of Object), IEquatable(Of Object), IEquatableWith(Of Object), IEquatable(Of Object), IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSequence(Of List(Of T), T), IMutableSequence(Of T), IInplaceAddable(Of ISequence(Of T)), ISequence(Of List(Of T), T), ISequence(Of T), ICollection(Of T), IContainer(Of T), ISized, ICollection(Of T), IReversible(Of T), IIterable(Of T), IEnumerable(Of T), IEnumerable, IAddable(Of ISequence(Of T)), IAddable(Of ISequence(Of T), ISequence(Of T)), IAddable(Of ISequence(Of T), ISequence(Of T), ISequence(Of T)), IAddableWith(Of ISequence(Of T), ISequence(Of T)), IRightAddable(Of ISequence(Of T)), IRightAddable(Of ISequence(Of T), ISequence(Of T)), IEquatable(Of List(Of T)), IEquatableWith(Of List(Of T)), IEquatable, IHashable, IEquatable(Of List(Of T)), IAddable(Of List(Of T)), IAddable(Of List(Of T), List(Of T)), IAddable(Of List(Of T), List(Of T), List(Of T)), IAddableWith(Of List(Of T), List(Of T)), IRightAddable(Of List(Of T)), IRightAddable(Of List(Of T), List(Of T)), IInplaceAddable(Of List(Of T)), IMultipliable(Of List(Of T), Integer), IMultipliable(Of List(Of T), Integer, List(Of T)), IMultipliableWith(Of Integer, List(Of T)), IInplaceMultipliable(Of Integer), IRightMultipliable(Of List(Of T), Integer), IRightMultipliableWith(Of List(Of T), Integer)
+    content.vb: Public NotInheritable Class List(Of T) Inherits Object Implements IInequatable(Of Object), IInequatableWith(Of Object), IEquatable(Of Object), IEquatableWith(Of Object), IEquatable(Of Object), IStrConvertible, IRepresentable, IBoolConvertible, IIdentifiable, IMutableSequence(Of List(Of T), T), IMutableSequence(Of T), IInplaceAddable(Of ISequence(Of T)), ISequence(Of List(Of T), T), ISequence(Of T), ICollection(Of T), IContainer(Of T), ISized, ICollection(Of T), IReversible(Of T), IIterable(Of T), IEnumerable(Of T), IEnumerable, IAddable(Of ISequence(Of T)), IAddable(Of ISequence(Of T), ISequence(Of T)), IAddable(Of ISequence(Of T), ISequence(Of T), ISequence(Of T)), IAddableWith(Of ISequence(Of T), ISequence(Of T)), IRightAddable(Of ISequence(Of T)), IRightAddable(Of ISequence(Of T), ISequence(Of T), ISequence(Of T)), IRightAddableWith(Of ISequence(Of T), ISequence(Of T)), IEquatable(Of List(Of T)), IEquatableWith(Of List(Of T)), IEquatable, IHashable, IEquatable(Of List(Of T)), IAddable(Of List(Of T)), IAddable(Of List(Of T), List(Of T)), IAddable(Of List(Of T), List(Of T), List(Of T)), IAddableWith(Of List(Of T), List(Of T)), IRightAddable(Of List(Of T)), IRightAddable(Of List(Of T), List(Of T), List(Of T)), IRightAddableWith(Of List(Of T), List(Of T)), IInplaceAddable(Of List(Of T)), IMultipliable(Of List(Of T), Integer), IMultipliable(Of List(Of T), Integer, List(Of T)), IMultipliableWith(Of Integer, List(Of T)), IInplaceMultipliable(Of Integer), IRightMultipliable(Of List(Of T), Integer), IRightMultipliable(Of List(Of T), Integer, List(Of T)), IRightMultipliableWith(Of List(Of T), Integer)
   inheritance:
   - System.Object
   - Sharpy.Object
@@ -117,7 +117,8 @@ items:
   - Sharpy.IAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
   - Sharpy.IAddableWith{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
   - Sharpy.IRightAddable{Sharpy.Collections.Interfaces.ISequence{{T}}}
-  - Sharpy.IRightAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
+  - Sharpy.IRightAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
+  - Sharpy.IRightAddableWith{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
   - Sharpy.IEquatable{Sharpy.List`1}
   - Sharpy.IEquatableWith{Sharpy.List`1}
   - Sharpy.IEquatable
@@ -128,13 +129,15 @@ items:
   - Sharpy.IAddable{Sharpy.List`1,Sharpy.List`1,Sharpy.List`1}
   - Sharpy.IAddableWith{Sharpy.List`1,Sharpy.List`1}
   - Sharpy.IRightAddable{Sharpy.List`1}
-  - Sharpy.IRightAddable{Sharpy.List`1,Sharpy.List`1}
+  - Sharpy.IRightAddable{Sharpy.List`1,Sharpy.List`1,Sharpy.List`1}
+  - Sharpy.IRightAddableWith{Sharpy.List`1,Sharpy.List`1}
   - Sharpy.IInplaceAddable{Sharpy.List`1}
   - Sharpy.IMultipliable{Sharpy.List`1,System.Int32}
   - Sharpy.IMultipliable{Sharpy.List`1,System.Int32,Sharpy.List`1}
   - Sharpy.IMultipliableWith{System.Int32,Sharpy.List`1}
   - Sharpy.IInplaceMultipliable{System.Int32}
   - Sharpy.IRightMultipliable{Sharpy.List`1,System.Int32}
+  - Sharpy.IRightMultipliable{Sharpy.List`1,System.Int32,Sharpy.List`1}
   - Sharpy.IRightMultipliableWith{Sharpy.List`1,System.Int32}
   inheritedMembers:
   - Sharpy.Object.Equals(Sharpy.Object)
@@ -1698,7 +1701,7 @@ items:
     content.vb: Public Function __RAdd__(other As List(Of T)) As List(Of T)
   overload: Sharpy.List`1.__RAdd__*
   implements:
-  - Sharpy.IRightAddable{Sharpy.List`1,Sharpy.List`1}.__RAdd__(Sharpy.List{{T}})
+  - Sharpy.IRightAddableWith{Sharpy.List`1,Sharpy.List`1}.__RAdd__(Sharpy.List{{T}})
   nameWithType.vb: List(Of T).__RAdd__(List(Of T))
   fullName.vb: Sharpy.List(Of T).__RAdd__(Sharpy.List(Of T))
   name.vb: __RAdd__(List(Of T))
@@ -1809,7 +1812,7 @@ items:
     content.vb: Public Function __RAdd__(other As ISequence(Of T)) As ISequence(Of T)
   overload: Sharpy.List`1.__RAdd__*
   implements:
-  - Sharpy.IRightAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}.__RAdd__(Sharpy.Collections.Interfaces.ISequence{{T}})
+  - Sharpy.IRightAddableWith{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}.__RAdd__(Sharpy.Collections.Interfaces.ISequence{{T}})
   nameWithType.vb: List(Of T).__RAdd__(ISequence(Of T))
   fullName.vb: Sharpy.List(Of T).__RAdd__(Sharpy.Collections.Interfaces.ISequence(Of T))
   name.vb: __RAdd__(ISequence(Of T))
@@ -2155,6 +2158,7 @@ items:
   implements:
   - Sharpy.IAddable{Sharpy.List`1,Sharpy.List`1}.op_Addition(Sharpy.List{{T}},Sharpy.List{{T}})
   - Sharpy.IAddable{Sharpy.List`1,Sharpy.List`1,Sharpy.List`1}.op_Addition(Sharpy.List{{T}},Sharpy.List{{T}})
+  - Sharpy.IRightAddable{Sharpy.List`1,Sharpy.List`1,Sharpy.List`1}.op_Addition(Sharpy.List{{T}},Sharpy.List{{T}})
   nameWithType.vb: List(Of T).+(List(Of T), List(Of T))
   fullName.vb: Sharpy.List(Of T).+(Sharpy.List(Of T), Sharpy.List(Of T))
   name.vb: +(List(Of T), List(Of T))
@@ -2219,6 +2223,7 @@ items:
   assemblies:
   - Sharpy
   namespace: Sharpy
+  example: []
   syntax:
     content: public static List<T> operator *(int i, List<T> left)
     parameters:
@@ -2230,6 +2235,8 @@ items:
       type: Sharpy.List`1
     content.vb: Public Shared Operator *(i As Integer, left As List(Of T)) As List(Of T)
   overload: Sharpy.List`1.op_Multiply*
+  implements:
+  - Sharpy.IRightMultipliable{Sharpy.List`1,System.Int32,Sharpy.List`1}.op_Multiply(System.Int32,Sharpy.List{{T}})
   nameWithType.vb: List(Of T).*(Integer, List(Of T))
   fullName.vb: Sharpy.List(Of T).*(Integer, Sharpy.List(Of T))
   name.vb: '*(Integer, List(Of T))'
@@ -3142,21 +3149,96 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.IRightAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
-  commentId: T:Sharpy.IRightAddable{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}
+- uid: Sharpy.IRightAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
+  commentId: T:Sharpy.IRightAddable{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}
   parent: Sharpy
-  definition: Sharpy.IRightAddable`2
-  href: Sharpy.IRightAddable-2.html
-  name: IRightAddable<ISequence<T>, ISequence<T>>
-  nameWithType: IRightAddable<ISequence<T>, ISequence<T>>
-  fullName: Sharpy.IRightAddable<Sharpy.Collections.Interfaces.ISequence<T>, Sharpy.Collections.Interfaces.ISequence<T>>
-  nameWithType.vb: IRightAddable(Of ISequence(Of T), ISequence(Of T))
-  fullName.vb: Sharpy.IRightAddable(Of Sharpy.Collections.Interfaces.ISequence(Of T), Sharpy.Collections.Interfaces.ISequence(Of T))
-  name.vb: IRightAddable(Of ISequence(Of T), ISequence(Of T))
+  definition: Sharpy.IRightAddable`3
+  href: Sharpy.IRightAddable-3.html
+  name: IRightAddable<ISequence<T>, ISequence<T>, ISequence<T>>
+  nameWithType: IRightAddable<ISequence<T>, ISequence<T>, ISequence<T>>
+  fullName: Sharpy.IRightAddable<Sharpy.Collections.Interfaces.ISequence<T>, Sharpy.Collections.Interfaces.ISequence<T>, Sharpy.Collections.Interfaces.ISequence<T>>
+  nameWithType.vb: IRightAddable(Of ISequence(Of T), ISequence(Of T), ISequence(Of T))
+  fullName.vb: Sharpy.IRightAddable(Of Sharpy.Collections.Interfaces.ISequence(Of T), Sharpy.Collections.Interfaces.ISequence(Of T), Sharpy.Collections.Interfaces.ISequence(Of T))
+  name.vb: IRightAddable(Of ISequence(Of T), ISequence(Of T), ISequence(Of T))
   spec.csharp:
-  - uid: Sharpy.IRightAddable`2
+  - uid: Sharpy.IRightAddable`3
     name: IRightAddable
-    href: Sharpy.IRightAddable-2.html
+    href: Sharpy.IRightAddable-3.html
+  - name: <
+  - uid: Sharpy.Collections.Interfaces.ISequence`1
+    name: ISequence
+    href: Sharpy.Collections.Interfaces.ISequence-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISequence`1
+    name: ISequence
+    href: Sharpy.Collections.Interfaces.ISequence-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISequence`1
+    name: ISequence
+    href: Sharpy.Collections.Interfaces.ISequence-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IRightAddable`3
+    name: IRightAddable
+    href: Sharpy.IRightAddable-3.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISequence`1
+    name: ISequence
+    href: Sharpy.Collections.Interfaces.ISequence-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISequence`1
+    name: ISequence
+    href: Sharpy.Collections.Interfaces.ISequence-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.Collections.Interfaces.ISequence`1
+    name: ISequence
+    href: Sharpy.Collections.Interfaces.ISequence-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IRightAddableWith{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
+  commentId: T:Sharpy.IRightAddableWith{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}
+  parent: Sharpy
+  definition: Sharpy.IRightAddableWith`2
+  href: Sharpy.IRightAddableWith-2.html
+  name: IRightAddableWith<ISequence<T>, ISequence<T>>
+  nameWithType: IRightAddableWith<ISequence<T>, ISequence<T>>
+  fullName: Sharpy.IRightAddableWith<Sharpy.Collections.Interfaces.ISequence<T>, Sharpy.Collections.Interfaces.ISequence<T>>
+  nameWithType.vb: IRightAddableWith(Of ISequence(Of T), ISequence(Of T))
+  fullName.vb: Sharpy.IRightAddableWith(Of Sharpy.Collections.Interfaces.ISequence(Of T), Sharpy.Collections.Interfaces.ISequence(Of T))
+  name.vb: IRightAddableWith(Of ISequence(Of T), ISequence(Of T))
+  spec.csharp:
+  - uid: Sharpy.IRightAddableWith`2
+    name: IRightAddableWith
+    href: Sharpy.IRightAddableWith-2.html
   - name: <
   - uid: Sharpy.Collections.Interfaces.ISequence`1
     name: ISequence
@@ -3174,9 +3256,9 @@ references:
   - name: '>'
   - name: '>'
   spec.vb:
-  - uid: Sharpy.IRightAddable`2
-    name: IRightAddable
-    href: Sharpy.IRightAddable-2.html
+  - uid: Sharpy.IRightAddableWith`2
+    name: IRightAddableWith
+    href: Sharpy.IRightAddableWith-2.html
   - name: (
   - name: Of
   - name: " "
@@ -3599,21 +3681,96 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.IRightAddable{Sharpy.List`1,Sharpy.List`1}
-  commentId: T:Sharpy.IRightAddable{Sharpy.List`1,Sharpy.List`1}
+- uid: Sharpy.IRightAddable{Sharpy.List`1,Sharpy.List`1,Sharpy.List`1}
+  commentId: T:Sharpy.IRightAddable{Sharpy.List`1,Sharpy.List`1,Sharpy.List`1}
   parent: Sharpy
-  definition: Sharpy.IRightAddable`2
-  href: Sharpy.IRightAddable-2.html
-  name: IRightAddable<List<T>, List<T>>
-  nameWithType: IRightAddable<List<T>, List<T>>
-  fullName: Sharpy.IRightAddable<Sharpy.List<T>, Sharpy.List<T>>
-  nameWithType.vb: IRightAddable(Of List(Of T), List(Of T))
-  fullName.vb: Sharpy.IRightAddable(Of Sharpy.List(Of T), Sharpy.List(Of T))
-  name.vb: IRightAddable(Of List(Of T), List(Of T))
+  definition: Sharpy.IRightAddable`3
+  href: Sharpy.IRightAddable-3.html
+  name: IRightAddable<List<T>, List<T>, List<T>>
+  nameWithType: IRightAddable<List<T>, List<T>, List<T>>
+  fullName: Sharpy.IRightAddable<Sharpy.List<T>, Sharpy.List<T>, Sharpy.List<T>>
+  nameWithType.vb: IRightAddable(Of List(Of T), List(Of T), List(Of T))
+  fullName.vb: Sharpy.IRightAddable(Of Sharpy.List(Of T), Sharpy.List(Of T), Sharpy.List(Of T))
+  name.vb: IRightAddable(Of List(Of T), List(Of T), List(Of T))
   spec.csharp:
-  - uid: Sharpy.IRightAddable`2
+  - uid: Sharpy.IRightAddable`3
     name: IRightAddable
-    href: Sharpy.IRightAddable-2.html
+    href: Sharpy.IRightAddable-3.html
+  - name: <
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IRightAddable`3
+    name: IRightAddable
+    href: Sharpy.IRightAddable-3.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IRightAddableWith{Sharpy.List`1,Sharpy.List`1}
+  commentId: T:Sharpy.IRightAddableWith{Sharpy.List`1,Sharpy.List`1}
+  parent: Sharpy
+  definition: Sharpy.IRightAddableWith`2
+  href: Sharpy.IRightAddableWith-2.html
+  name: IRightAddableWith<List<T>, List<T>>
+  nameWithType: IRightAddableWith<List<T>, List<T>>
+  fullName: Sharpy.IRightAddableWith<Sharpy.List<T>, Sharpy.List<T>>
+  nameWithType.vb: IRightAddableWith(Of List(Of T), List(Of T))
+  fullName.vb: Sharpy.IRightAddableWith(Of Sharpy.List(Of T), Sharpy.List(Of T))
+  name.vb: IRightAddableWith(Of List(Of T), List(Of T))
+  spec.csharp:
+  - uid: Sharpy.IRightAddableWith`2
+    name: IRightAddableWith
+    href: Sharpy.IRightAddableWith-2.html
   - name: <
   - uid: Sharpy.List`1
     name: List
@@ -3631,9 +3788,9 @@ references:
   - name: '>'
   - name: '>'
   spec.vb:
-  - uid: Sharpy.IRightAddable`2
-    name: IRightAddable
-    href: Sharpy.IRightAddable-2.html
+  - uid: Sharpy.IRightAddableWith`2
+    name: IRightAddableWith
+    href: Sharpy.IRightAddableWith-2.html
   - name: (
   - name: Of
   - name: " "
@@ -3949,6 +4106,75 @@ references:
     name: Integer
     isExternal: true
     href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: )
+- uid: Sharpy.IRightMultipliable{Sharpy.List`1,System.Int32,Sharpy.List`1}
+  commentId: T:Sharpy.IRightMultipliable{Sharpy.List`1,System.Int32,Sharpy.List`1}
+  parent: Sharpy
+  definition: Sharpy.IRightMultipliable`3
+  href: Sharpy.IRightMultipliable-3.html
+  name: IRightMultipliable<List<T>, int, List<T>>
+  nameWithType: IRightMultipliable<List<T>, int, List<T>>
+  fullName: Sharpy.IRightMultipliable<Sharpy.List<T>, int, Sharpy.List<T>>
+  nameWithType.vb: IRightMultipliable(Of List(Of T), Integer, List(Of T))
+  fullName.vb: Sharpy.IRightMultipliable(Of Sharpy.List(Of T), Integer, Sharpy.List(Of T))
+  name.vb: IRightMultipliable(Of List(Of T), Integer, List(Of T))
+  spec.csharp:
+  - uid: Sharpy.IRightMultipliable`3
+    name: IRightMultipliable
+    href: Sharpy.IRightMultipliable-3.html
+  - name: <
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: int
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: ','
+  - name: " "
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IRightMultipliable`3
+    name: IRightMultipliable
+    href: Sharpy.IRightMultipliable-3.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: System.Int32
+    name: Integer
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: ','
+  - name: " "
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
   - name: )
 - uid: Sharpy.IRightMultipliableWith{Sharpy.List`1,System.Int32}
   commentId: T:Sharpy.IRightMultipliableWith{Sharpy.List`1,System.Int32}
@@ -5007,36 +5233,73 @@ references:
   - name: " "
   - name: T
   - name: )
-- uid: Sharpy.IRightAddable`2
-  commentId: T:Sharpy.IRightAddable`2
-  href: Sharpy.IRightAddable-2.html
-  name: IRightAddable<TSum, TAugend>
-  nameWithType: IRightAddable<TSum, TAugend>
-  fullName: Sharpy.IRightAddable<TSum, TAugend>
-  nameWithType.vb: IRightAddable(Of TSum, TAugend)
-  fullName.vb: Sharpy.IRightAddable(Of TSum, TAugend)
-  name.vb: IRightAddable(Of TSum, TAugend)
+- uid: Sharpy.IRightAddable`3
+  commentId: T:Sharpy.IRightAddable`3
+  href: Sharpy.IRightAddable-3.html
+  name: IRightAddable<TAugend, TAddend, TSum>
+  nameWithType: IRightAddable<TAugend, TAddend, TSum>
+  fullName: Sharpy.IRightAddable<TAugend, TAddend, TSum>
+  nameWithType.vb: IRightAddable(Of TAugend, TAddend, TSum)
+  fullName.vb: Sharpy.IRightAddable(Of TAugend, TAddend, TSum)
+  name.vb: IRightAddable(Of TAugend, TAddend, TSum)
   spec.csharp:
-  - uid: Sharpy.IRightAddable`2
+  - uid: Sharpy.IRightAddable`3
     name: IRightAddable
-    href: Sharpy.IRightAddable-2.html
+    href: Sharpy.IRightAddable-3.html
+  - name: <
+  - name: TAugend
+  - name: ','
+  - name: " "
+  - name: TAddend
+  - name: ','
+  - name: " "
+  - name: TSum
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IRightAddable`3
+    name: IRightAddable
+    href: Sharpy.IRightAddable-3.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TAugend
+  - name: ','
+  - name: " "
+  - name: TAddend
+  - name: ','
+  - name: " "
+  - name: TSum
+  - name: )
+- uid: Sharpy.IRightAddableWith`2
+  commentId: T:Sharpy.IRightAddableWith`2
+  href: Sharpy.IRightAddableWith-2.html
+  name: IRightAddableWith<TSum, TAddend>
+  nameWithType: IRightAddableWith<TSum, TAddend>
+  fullName: Sharpy.IRightAddableWith<TSum, TAddend>
+  nameWithType.vb: IRightAddableWith(Of TSum, TAddend)
+  fullName.vb: Sharpy.IRightAddableWith(Of TSum, TAddend)
+  name.vb: IRightAddableWith(Of TSum, TAddend)
+  spec.csharp:
+  - uid: Sharpy.IRightAddableWith`2
+    name: IRightAddableWith
+    href: Sharpy.IRightAddableWith-2.html
   - name: <
   - name: TSum
   - name: ','
   - name: " "
-  - name: TAugend
+  - name: TAddend
   - name: '>'
   spec.vb:
-  - uid: Sharpy.IRightAddable`2
-    name: IRightAddable
-    href: Sharpy.IRightAddable-2.html
+  - uid: Sharpy.IRightAddableWith`2
+    name: IRightAddableWith
+    href: Sharpy.IRightAddableWith-2.html
   - name: (
   - name: Of
   - name: " "
   - name: TSum
   - name: ','
   - name: " "
-  - name: TAugend
+  - name: TAddend
   - name: )
 - uid: Sharpy.IMultipliable`2
   commentId: T:Sharpy.IMultipliable`2
@@ -5192,6 +5455,43 @@ references:
   - name: ','
   - name: " "
   - name: TMultiplier
+  - name: )
+- uid: Sharpy.IRightMultipliable`3
+  commentId: T:Sharpy.IRightMultipliable`3
+  href: Sharpy.IRightMultipliable-3.html
+  name: IRightMultipliable<TMultiplicand, TMultiplier, TProduct>
+  nameWithType: IRightMultipliable<TMultiplicand, TMultiplier, TProduct>
+  fullName: Sharpy.IRightMultipliable<TMultiplicand, TMultiplier, TProduct>
+  nameWithType.vb: IRightMultipliable(Of TMultiplicand, TMultiplier, TProduct)
+  fullName.vb: Sharpy.IRightMultipliable(Of TMultiplicand, TMultiplier, TProduct)
+  name.vb: IRightMultipliable(Of TMultiplicand, TMultiplier, TProduct)
+  spec.csharp:
+  - uid: Sharpy.IRightMultipliable`3
+    name: IRightMultipliable
+    href: Sharpy.IRightMultipliable-3.html
+  - name: <
+  - name: TMultiplicand
+  - name: ','
+  - name: " "
+  - name: TMultiplier
+  - name: ','
+  - name: " "
+  - name: TProduct
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IRightMultipliable`3
+    name: IRightMultipliable
+    href: Sharpy.IRightMultipliable-3.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TMultiplicand
+  - name: ','
+  - name: " "
+  - name: TMultiplier
+  - name: ','
+  - name: " "
+  - name: TProduct
   - name: )
 - uid: Sharpy.IRightMultipliableWith`2
   commentId: T:Sharpy.IRightMultipliableWith`2
@@ -8037,21 +8337,21 @@ references:
   fullName: Sharpy.List<T>.__RAdd__
   nameWithType.vb: List(Of T).__RAdd__
   fullName.vb: Sharpy.List(Of T).__RAdd__
-- uid: Sharpy.IRightAddable{Sharpy.List`1,Sharpy.List`1}.__RAdd__(Sharpy.List{{T}})
-  commentId: M:Sharpy.IRightAddable{Sharpy.List`1,Sharpy.List`1}.__RAdd__(Sharpy.List{`0})
-  parent: Sharpy.IRightAddable{Sharpy.List`1,Sharpy.List`1}
-  definition: Sharpy.IRightAddable`2.__RAdd__(`1)
-  href: Sharpy.IRightAddable-2.html#Sharpy_IRightAddable_2___RAdd____1_
+- uid: Sharpy.IRightAddableWith{Sharpy.List`1,Sharpy.List`1}.__RAdd__(Sharpy.List{{T}})
+  commentId: M:Sharpy.IRightAddableWith{Sharpy.List`1,Sharpy.List`1}.__RAdd__(Sharpy.List{`0})
+  parent: Sharpy.IRightAddableWith{Sharpy.List`1,Sharpy.List`1}
+  definition: Sharpy.IRightAddableWith`2.__RAdd__(`1)
+  href: Sharpy.IRightAddableWith-2.html#Sharpy_IRightAddableWith_2___RAdd____1_
   name: __RAdd__(List<T>)
-  nameWithType: IRightAddable<List<T>, List<T>>.__RAdd__(List<T>)
-  fullName: Sharpy.IRightAddable<Sharpy.List<T>, Sharpy.List<T>>.__RAdd__(Sharpy.List<T>)
-  nameWithType.vb: IRightAddable(Of List(Of T), List(Of T)).__RAdd__(List(Of T))
-  fullName.vb: Sharpy.IRightAddable(Of Sharpy.List(Of T), Sharpy.List(Of T)).__RAdd__(Sharpy.List(Of T))
+  nameWithType: IRightAddableWith<List<T>, List<T>>.__RAdd__(List<T>)
+  fullName: Sharpy.IRightAddableWith<Sharpy.List<T>, Sharpy.List<T>>.__RAdd__(Sharpy.List<T>)
+  nameWithType.vb: IRightAddableWith(Of List(Of T), List(Of T)).__RAdd__(List(Of T))
+  fullName.vb: Sharpy.IRightAddableWith(Of Sharpy.List(Of T), Sharpy.List(Of T)).__RAdd__(Sharpy.List(Of T))
   name.vb: __RAdd__(List(Of T))
   spec.csharp:
-  - uid: Sharpy.IRightAddable{Sharpy.List`1,Sharpy.List`1}.__RAdd__(Sharpy.List{`0})
+  - uid: Sharpy.IRightAddableWith{Sharpy.List`1,Sharpy.List`1}.__RAdd__(Sharpy.List{`0})
     name: __RAdd__
-    href: Sharpy.IRightAddable-2.html#Sharpy_IRightAddable_2___RAdd____1_
+    href: Sharpy.IRightAddableWith-2.html#Sharpy_IRightAddableWith_2___RAdd____1_
   - name: (
   - uid: Sharpy.List`1
     name: List
@@ -8061,9 +8361,9 @@ references:
   - name: '>'
   - name: )
   spec.vb:
-  - uid: Sharpy.IRightAddable{Sharpy.List`1,Sharpy.List`1}.__RAdd__(Sharpy.List{`0})
+  - uid: Sharpy.IRightAddableWith{Sharpy.List`1,Sharpy.List`1}.__RAdd__(Sharpy.List{`0})
     name: __RAdd__
-    href: Sharpy.IRightAddable-2.html#Sharpy_IRightAddable_2___RAdd____1_
+    href: Sharpy.IRightAddableWith-2.html#Sharpy_IRightAddableWith_2___RAdd____1_
   - name: (
   - uid: Sharpy.List`1
     name: List
@@ -8074,27 +8374,27 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.IRightAddable`2.__RAdd__(`1)
-  commentId: M:Sharpy.IRightAddable`2.__RAdd__(`1)
-  href: Sharpy.IRightAddable-2.html#Sharpy_IRightAddable_2___RAdd____1_
-  name: __RAdd__(TAugend)
-  nameWithType: IRightAddable<TSum, TAugend>.__RAdd__(TAugend)
-  fullName: Sharpy.IRightAddable<TSum, TAugend>.__RAdd__(TAugend)
-  nameWithType.vb: IRightAddable(Of TSum, TAugend).__RAdd__(TAugend)
-  fullName.vb: Sharpy.IRightAddable(Of TSum, TAugend).__RAdd__(TAugend)
+- uid: Sharpy.IRightAddableWith`2.__RAdd__(`1)
+  commentId: M:Sharpy.IRightAddableWith`2.__RAdd__(`1)
+  href: Sharpy.IRightAddableWith-2.html#Sharpy_IRightAddableWith_2___RAdd____1_
+  name: __RAdd__(TAddend)
+  nameWithType: IRightAddableWith<TSum, TAddend>.__RAdd__(TAddend)
+  fullName: Sharpy.IRightAddableWith<TSum, TAddend>.__RAdd__(TAddend)
+  nameWithType.vb: IRightAddableWith(Of TSum, TAddend).__RAdd__(TAddend)
+  fullName.vb: Sharpy.IRightAddableWith(Of TSum, TAddend).__RAdd__(TAddend)
   spec.csharp:
-  - uid: Sharpy.IRightAddable`2.__RAdd__(`1)
+  - uid: Sharpy.IRightAddableWith`2.__RAdd__(`1)
     name: __RAdd__
-    href: Sharpy.IRightAddable-2.html#Sharpy_IRightAddable_2___RAdd____1_
+    href: Sharpy.IRightAddableWith-2.html#Sharpy_IRightAddableWith_2___RAdd____1_
   - name: (
-  - name: TAugend
+  - name: TAddend
   - name: )
   spec.vb:
-  - uid: Sharpy.IRightAddable`2.__RAdd__(`1)
+  - uid: Sharpy.IRightAddableWith`2.__RAdd__(`1)
     name: __RAdd__
-    href: Sharpy.IRightAddable-2.html#Sharpy_IRightAddable_2___RAdd____1_
+    href: Sharpy.IRightAddableWith-2.html#Sharpy_IRightAddableWith_2___RAdd____1_
   - name: (
-  - name: TAugend
+  - name: TAddend
   - name: )
 - uid: Sharpy.List`1.__RMul__*
   commentId: Overload:Sharpy.List`1.__RMul__
@@ -8194,21 +8494,21 @@ references:
   - name: T
   - name: )
   - name: )
-- uid: Sharpy.IRightAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}.__RAdd__(Sharpy.Collections.Interfaces.ISequence{{T}})
-  commentId: M:Sharpy.IRightAddable{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}.__RAdd__(Sharpy.Collections.Interfaces.ISequence{`0})
-  parent: Sharpy.IRightAddable{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
-  definition: Sharpy.IRightAddable`2.__RAdd__(`1)
-  href: Sharpy.IRightAddable-2.html#Sharpy_IRightAddable_2___RAdd____1_
+- uid: Sharpy.IRightAddableWith{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}.__RAdd__(Sharpy.Collections.Interfaces.ISequence{{T}})
+  commentId: M:Sharpy.IRightAddableWith{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}.__RAdd__(Sharpy.Collections.Interfaces.ISequence{`0})
+  parent: Sharpy.IRightAddableWith{Sharpy.Collections.Interfaces.ISequence{{T}},Sharpy.Collections.Interfaces.ISequence{{T}}}
+  definition: Sharpy.IRightAddableWith`2.__RAdd__(`1)
+  href: Sharpy.IRightAddableWith-2.html#Sharpy_IRightAddableWith_2___RAdd____1_
   name: __RAdd__(ISequence<T>)
-  nameWithType: IRightAddable<ISequence<T>, ISequence<T>>.__RAdd__(ISequence<T>)
-  fullName: Sharpy.IRightAddable<Sharpy.Collections.Interfaces.ISequence<T>, Sharpy.Collections.Interfaces.ISequence<T>>.__RAdd__(Sharpy.Collections.Interfaces.ISequence<T>)
-  nameWithType.vb: IRightAddable(Of ISequence(Of T), ISequence(Of T)).__RAdd__(ISequence(Of T))
-  fullName.vb: Sharpy.IRightAddable(Of Sharpy.Collections.Interfaces.ISequence(Of T), Sharpy.Collections.Interfaces.ISequence(Of T)).__RAdd__(Sharpy.Collections.Interfaces.ISequence(Of T))
+  nameWithType: IRightAddableWith<ISequence<T>, ISequence<T>>.__RAdd__(ISequence<T>)
+  fullName: Sharpy.IRightAddableWith<Sharpy.Collections.Interfaces.ISequence<T>, Sharpy.Collections.Interfaces.ISequence<T>>.__RAdd__(Sharpy.Collections.Interfaces.ISequence<T>)
+  nameWithType.vb: IRightAddableWith(Of ISequence(Of T), ISequence(Of T)).__RAdd__(ISequence(Of T))
+  fullName.vb: Sharpy.IRightAddableWith(Of Sharpy.Collections.Interfaces.ISequence(Of T), Sharpy.Collections.Interfaces.ISequence(Of T)).__RAdd__(Sharpy.Collections.Interfaces.ISequence(Of T))
   name.vb: __RAdd__(ISequence(Of T))
   spec.csharp:
-  - uid: Sharpy.IRightAddable{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}.__RAdd__(Sharpy.Collections.Interfaces.ISequence{`0})
+  - uid: Sharpy.IRightAddableWith{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}.__RAdd__(Sharpy.Collections.Interfaces.ISequence{`0})
     name: __RAdd__
-    href: Sharpy.IRightAddable-2.html#Sharpy_IRightAddable_2___RAdd____1_
+    href: Sharpy.IRightAddableWith-2.html#Sharpy_IRightAddableWith_2___RAdd____1_
   - name: (
   - uid: Sharpy.Collections.Interfaces.ISequence`1
     name: ISequence
@@ -8218,9 +8518,9 @@ references:
   - name: '>'
   - name: )
   spec.vb:
-  - uid: Sharpy.IRightAddable{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}.__RAdd__(Sharpy.Collections.Interfaces.ISequence{`0})
+  - uid: Sharpy.IRightAddableWith{Sharpy.Collections.Interfaces.ISequence{`0},Sharpy.Collections.Interfaces.ISequence{`0}}.__RAdd__(Sharpy.Collections.Interfaces.ISequence{`0})
     name: __RAdd__
-    href: Sharpy.IRightAddable-2.html#Sharpy_IRightAddable_2___RAdd____1_
+    href: Sharpy.IRightAddableWith-2.html#Sharpy_IRightAddableWith_2___RAdd____1_
   - name: (
   - uid: Sharpy.Collections.Interfaces.ISequence`1
     name: ISequence
@@ -8913,6 +9213,61 @@ references:
   - name: T
   - name: )
   - name: )
+- uid: Sharpy.IRightAddable{Sharpy.List`1,Sharpy.List`1,Sharpy.List`1}.op_Addition(Sharpy.List{{T}},Sharpy.List{{T}})
+  commentId: M:Sharpy.IRightAddable{Sharpy.List`1,Sharpy.List`1,Sharpy.List`1}.op_Addition(Sharpy.List{`0},Sharpy.List{`0})
+  parent: Sharpy.IRightAddable{Sharpy.List`1,Sharpy.List`1,Sharpy.List`1}
+  definition: Sharpy.IRightAddable`3.op_Addition(`1,`0)
+  href: Sharpy.IRightAddable-3.html#Sharpy_IRightAddable_3_op_Addition__1__0_
+  name: operator +(List<T>, List<T>)
+  nameWithType: IRightAddable<List<T>, List<T>, List<T>>.operator +(List<T>, List<T>)
+  fullName: Sharpy.IRightAddable<Sharpy.List<T>, Sharpy.List<T>, Sharpy.List<T>>.operator +(Sharpy.List<T>, Sharpy.List<T>)
+  nameWithType.vb: IRightAddable(Of List(Of T), List(Of T), List(Of T)).+(List(Of T), List(Of T))
+  fullName.vb: Sharpy.IRightAddable(Of Sharpy.List(Of T), Sharpy.List(Of T), Sharpy.List(Of T)).+(Sharpy.List(Of T), Sharpy.List(Of T))
+  name.vb: +(List(Of T), List(Of T))
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IRightAddable{Sharpy.List`1,Sharpy.List`1,Sharpy.List`1}.op_Addition(Sharpy.List{`0},Sharpy.List{`0})
+    name: +
+    href: Sharpy.IRightAddable-3.html#Sharpy_IRightAddable_3_op_Addition__1__0_
+  - name: (
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: ','
+  - name: " "
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: +
+  - name: (
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: ','
+  - name: " "
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
 - uid: Sharpy.IAddable`2.op_Addition(`0,`1)
   commentId: M:Sharpy.IAddable`2.op_Addition(`0,`1)
   href: Sharpy.IAddable-2.html#Sharpy_IAddable_2_op_Addition__0__1_
@@ -8970,6 +9325,35 @@ references:
   - name: ','
   - name: " "
   - name: TAddend
+  - name: )
+- uid: Sharpy.IRightAddable`3.op_Addition(`1,`0)
+  commentId: M:Sharpy.IRightAddable`3.op_Addition(`1,`0)
+  href: Sharpy.IRightAddable-3.html#Sharpy_IRightAddable_3_op_Addition__1__0_
+  name: operator +(TAddend, TAugend)
+  nameWithType: IRightAddable<TAugend, TAddend, TSum>.operator +(TAddend, TAugend)
+  fullName: Sharpy.IRightAddable<TAugend, TAddend, TSum>.operator +(TAddend, TAugend)
+  nameWithType.vb: IRightAddable(Of TAugend, TAddend, TSum).+(TAddend, TAugend)
+  fullName.vb: Sharpy.IRightAddable(Of TAugend, TAddend, TSum).+(TAddend, TAugend)
+  name.vb: +(TAddend, TAugend)
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IRightAddable`3.op_Addition(`1,`0)
+    name: +
+    href: Sharpy.IRightAddable-3.html#Sharpy_IRightAddable_3_op_Addition__1__0_
+  - name: (
+  - name: TAddend
+  - name: ','
+  - name: " "
+  - name: TAugend
+  - name: )
+  spec.vb:
+  - name: +
+  - name: (
+  - name: TAddend
+  - name: ','
+  - name: " "
+  - name: TAugend
   - name: )
 - uid: Sharpy.List`1.op_Multiply*
   commentId: Overload:Sharpy.List`1.op_Multiply
@@ -9063,6 +9447,84 @@ references:
   - name: ','
   - name: " "
   - name: TMultiplier
+  - name: )
+- uid: Sharpy.IRightMultipliable{Sharpy.List`1,System.Int32,Sharpy.List`1}.op_Multiply(System.Int32,Sharpy.List{{T}})
+  commentId: M:Sharpy.IRightMultipliable{Sharpy.List`1,System.Int32,Sharpy.List`1}.op_Multiply(System.Int32,Sharpy.List{`0})
+  parent: Sharpy.IRightMultipliable{Sharpy.List`1,System.Int32,Sharpy.List`1}
+  definition: Sharpy.IRightMultipliable`3.op_Multiply(`1,`0)
+  href: Sharpy.IRightMultipliable-3.html#Sharpy_IRightMultipliable_3_op_Multiply__1__0_
+  name: operator *(int, List<T>)
+  nameWithType: IRightMultipliable<List<T>, int, List<T>>.operator *(int, List<T>)
+  fullName: Sharpy.IRightMultipliable<Sharpy.List<T>, int, Sharpy.List<T>>.operator *(int, Sharpy.List<T>)
+  nameWithType.vb: IRightMultipliable(Of List(Of T), Integer, List(Of T)).*(Integer, List(Of T))
+  fullName.vb: Sharpy.IRightMultipliable(Of Sharpy.List(Of T), Integer, Sharpy.List(Of T)).*(Integer, Sharpy.List(Of T))
+  name.vb: '*(Integer, List(Of T))'
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IRightMultipliable{Sharpy.List`1,System.Int32,Sharpy.List`1}.op_Multiply(System.Int32,Sharpy.List{`0})
+    name: '*'
+    href: Sharpy.IRightMultipliable-3.html#Sharpy_IRightMultipliable_3_op_Multiply__1__0_
+  - name: (
+  - uid: System.Int32
+    name: int
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: ','
+  - name: " "
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  - name: )
+  spec.vb:
+  - name: '*'
+  - name: (
+  - uid: System.Int32
+    name: Integer
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.int32
+  - name: ','
+  - name: " "
+  - uid: Sharpy.List`1
+    name: List
+    href: Sharpy.List-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+  - name: )
+- uid: Sharpy.IRightMultipliable`3.op_Multiply(`1,`0)
+  commentId: M:Sharpy.IRightMultipliable`3.op_Multiply(`1,`0)
+  href: Sharpy.IRightMultipliable-3.html#Sharpy_IRightMultipliable_3_op_Multiply__1__0_
+  name: operator *(TMultiplier, TMultiplicand)
+  nameWithType: IRightMultipliable<TMultiplicand, TMultiplier, TProduct>.operator *(TMultiplier, TMultiplicand)
+  fullName: Sharpy.IRightMultipliable<TMultiplicand, TMultiplier, TProduct>.operator *(TMultiplier, TMultiplicand)
+  nameWithType.vb: IRightMultipliable(Of TMultiplicand, TMultiplier, TProduct).*(TMultiplier, TMultiplicand)
+  fullName.vb: Sharpy.IRightMultipliable(Of TMultiplicand, TMultiplier, TProduct).*(TMultiplier, TMultiplicand)
+  name.vb: '*(TMultiplier, TMultiplicand)'
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - uid: Sharpy.IRightMultipliable`3.op_Multiply(`1,`0)
+    name: '*'
+    href: Sharpy.IRightMultipliable-3.html#Sharpy_IRightMultipliable_3_op_Multiply__1__0_
+  - name: (
+  - name: TMultiplier
+  - name: ','
+  - name: " "
+  - name: TMultiplicand
+  - name: )
+  spec.vb:
+  - name: '*'
+  - name: (
+  - name: TMultiplier
+  - name: ','
+  - name: " "
+  - name: TMultiplicand
   - name: )
 - uid: Sharpy.List`1.op_True*
   commentId: Overload:Sharpy.List`1.op_True

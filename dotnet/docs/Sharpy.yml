@@ -35,8 +35,9 @@ items:
   - Sharpy.IMultipliable`2
   - Sharpy.IMultipliable`3
   - Sharpy.IRepresentable
+  - Sharpy.IRightAddableWith`2
   - Sharpy.IRightAddable`1
-  - Sharpy.IRightAddable`2
+  - Sharpy.IRightAddable`3
   - Sharpy.IRightMultipliableWith`2
   - Sharpy.IRightMultipliable`2
   - Sharpy.IRightMultipliable`3
@@ -791,36 +792,73 @@ references:
   name: IRepresentable
   nameWithType: IRepresentable
   fullName: Sharpy.IRepresentable
-- uid: Sharpy.IRightAddable`2
-  commentId: T:Sharpy.IRightAddable`2
-  href: Sharpy.IRightAddable-2.html
-  name: IRightAddable<TSum, TAugend>
-  nameWithType: IRightAddable<TSum, TAugend>
-  fullName: Sharpy.IRightAddable<TSum, TAugend>
-  nameWithType.vb: IRightAddable(Of TSum, TAugend)
-  fullName.vb: Sharpy.IRightAddable(Of TSum, TAugend)
-  name.vb: IRightAddable(Of TSum, TAugend)
+- uid: Sharpy.IRightAddableWith`2
+  commentId: T:Sharpy.IRightAddableWith`2
+  href: Sharpy.IRightAddableWith-2.html
+  name: IRightAddableWith<TSum, TAddend>
+  nameWithType: IRightAddableWith<TSum, TAddend>
+  fullName: Sharpy.IRightAddableWith<TSum, TAddend>
+  nameWithType.vb: IRightAddableWith(Of TSum, TAddend)
+  fullName.vb: Sharpy.IRightAddableWith(Of TSum, TAddend)
+  name.vb: IRightAddableWith(Of TSum, TAddend)
   spec.csharp:
-  - uid: Sharpy.IRightAddable`2
-    name: IRightAddable
-    href: Sharpy.IRightAddable-2.html
+  - uid: Sharpy.IRightAddableWith`2
+    name: IRightAddableWith
+    href: Sharpy.IRightAddableWith-2.html
   - name: <
   - name: TSum
   - name: ','
   - name: " "
-  - name: TAugend
+  - name: TAddend
   - name: '>'
   spec.vb:
-  - uid: Sharpy.IRightAddable`2
-    name: IRightAddable
-    href: Sharpy.IRightAddable-2.html
+  - uid: Sharpy.IRightAddableWith`2
+    name: IRightAddableWith
+    href: Sharpy.IRightAddableWith-2.html
   - name: (
   - name: Of
   - name: " "
   - name: TSum
   - name: ','
   - name: " "
+  - name: TAddend
+  - name: )
+- uid: Sharpy.IRightAddable`3
+  commentId: T:Sharpy.IRightAddable`3
+  href: Sharpy.IRightAddable-3.html
+  name: IRightAddable<TAugend, TAddend, TSum>
+  nameWithType: IRightAddable<TAugend, TAddend, TSum>
+  fullName: Sharpy.IRightAddable<TAugend, TAddend, TSum>
+  nameWithType.vb: IRightAddable(Of TAugend, TAddend, TSum)
+  fullName.vb: Sharpy.IRightAddable(Of TAugend, TAddend, TSum)
+  name.vb: IRightAddable(Of TAugend, TAddend, TSum)
+  spec.csharp:
+  - uid: Sharpy.IRightAddable`3
+    name: IRightAddable
+    href: Sharpy.IRightAddable-3.html
+  - name: <
   - name: TAugend
+  - name: ','
+  - name: " "
+  - name: TAddend
+  - name: ','
+  - name: " "
+  - name: TSum
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IRightAddable`3
+    name: IRightAddable
+    href: Sharpy.IRightAddable-3.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: TAugend
+  - name: ','
+  - name: " "
+  - name: TAddend
+  - name: ','
+  - name: " "
+  - name: TSum
   - name: )
 - uid: Sharpy.IRightAddable`1
   commentId: T:Sharpy.IRightAddable`1
