@@ -5,7 +5,7 @@ import sys
 from enum import Enum, auto
 from io import StringIO, TextIOBase
 from logging import Logger
-from typing import Mapping, MutableSequence, Optional, Sequence
+from typing import Mapping, MutableSequence, MutableSet, Optional, Sequence
 
 from sharpy.compiler_toolchain.formatter import Formatter
 
@@ -13,6 +13,8 @@ from sharpy.compiler_toolchain.formatter import Formatter
 TYPE_MAP: Mapping[str, str] = {
     "bool": "bool",
     "byte": "byte",
+    "bytearray": "Sharpy.ByteArray",
+    "bytes": "Sharpy.Bytes",
     "decimal": "decimal",
     "double": "double",
     "int": "int",
@@ -22,17 +24,118 @@ TYPE_MAP: Mapping[str, str] = {
     "object": "object",
     "sbyte": "sbyte",
     "short": "short",
-    "str": "string",
+    "str": "string",  # TODO
     "uint": "uint",
     "ulong": "ulong",
     "ushort": "ushort",
+    "list": "Sharpy.List",
+    "set": "Sharpy.Set",
+    "frozenset": "Sharpy.FrozenSet",
+    "dict": "Sharpy.Dict",
 }
 
 SINGLE_TEMPLATE_TYPE_MAP: Mapping[str, str] = {
     "list": "Sharpy.List",
+    "set": "Sharpy.Set",
+    "frozenset": "Sharpy.FrozenSet",
 }
 
-template_pattern = re.compile(r"(array|list|dict|tuple|Optional)\[(.+)\]")
+template_pattern = re.compile(r"(array|list|dict|tuple|set|Optional)\[(.+)\]")
+
+SHARPY_NAME_EXCEPTIONS: Mapping[str, str] = {
+    "__add__": "__Add__",  # operator+
+    "__mul__": "__Mul__",  # operator*
+    "__truediv__": "__TrueDiv__",  # operator/
+    "__floordiv__": "__FloorDiv__",  # operator/
+    "__sub__": "__Sub__",  # operator-
+    "__mod__": "__Mod__",  # operator%
+    "__pow__": "__Pow__",  # operator**
+    "__iadd__": "__IAdd__",
+    "__imul__": "__IMul__",
+    "__itruediv__": "__ITrueDiv__",
+    "__ifloordiv__": "__IFloorDiv__",
+    "__isub__": "__ISub__",
+    "__imod__": "__IMod__",
+    "__ipow__": "__IPOw__",
+    "__radd__": "__RAdd__",
+    "__rmul__": "__RMul__",
+    "__rsub__": "__RSub__",
+    "__rtruediv__": "__RTrueDiv__",
+    "__rfloordiv__": "__RFloorDiv__",
+    "__rmod__": "__RMod__",
+    "__rpow__": "__RPow__",
+    "__contains__": "__Contains__",  # Contains()
+    "__eq__": "__Eq__",  # operator== / Equals()
+    "__ne__": "__Ne__",  # operator!=
+    "__lt__": "__Lt__",  # operator<
+    "__le__": "__Le__",  # operator<=
+    "__gt__": "__Gt__",  # operator>
+    "__ge__": "__Ge__",  # operator>=
+    "__id__": "__Id__",
+    "__hash__": "__Hash__",  # GetHashCode()
+    "__iter__": "__Iter__",  # GetEnumerator()
+    "__next__": "__Next__",
+    "__str__": "__Str__",  # ToString()
+    "__bool__": "__Bool__",  # operator true/operator false
+    "__repr__": "__Repr__",  # ToString()
+    "__len__": "__Len__",  # Count/Size
+    "__call__": "TODO",
+    "__and__": "__And__",  # operator&&
+    "__or__": "__Or__",  # operator||
+    "__xor__": "__XOr__",  # operator^
+    "__lshift__": "__LShift__",  # operator<<
+    "__rshift__": "__RShift__",  # operator>>
+    "__invert__": "__Invert__",  # operator~
+    "__iand__": "__IAnd__",
+    "__ior__": "__IOr__",
+    "__ixor__": "__IXOr__",
+    "__ilshift__": "__ILShift__",
+    "__irshift__": "__IRShift__",
+    "__dir__": "NOT_SUPPORTED",
+    "__hasattr__": "NOT_SUPPORTED",
+    "__instancecheck__": "NOT_SUPPORTED",
+    "__subclasscheck__": "NOT_SUPPORTED",
+    "__getattribute__": "NOT_SUPPORTED",
+    "__getattr__": "NOT_SUPPORTED",
+    "__setattr__": "NOT_SUPPORTED",
+    "__delattr__": "NOT_SUPPORTED",
+    "__get__": "NOT_SUPPORTED",
+    "__set__": "NOT_SUPPORTED",
+    "__delete__": "NOT_SUPPORTED",
+    "__set_name__": "NOT_SUPPORTED",
+    "__getitem__": "__GetItem__",
+    "__setitem__": "__SetItem__",
+    "__delitem__": "__DelItem__",
+    "__reversed__": "__Reversed__",
+    "__enter__": "__Enter__",
+    "__exit__": "__Exit__",
+    "__int__": "__Int__",
+    "__index__": "__Index__",
+    "__abs__": "__Abs__",
+    "__aiter__": "__AIter__",
+    "__anext__": "__ANext__",
+    "__float__": "__Float__",
+    "__complex__": "__Complex__",
+    "__trunc__": "__Trunc__",
+    "__round__": "__Round__",
+    "__dict__": "NOT_SUPPORTED",
+    "__init__": "NOT_SUPPORTED",
+    "__init_subclass__": "NOT_SUPPORTED",
+    "__new__": "NOT_SUPPORTED",
+}
+
+
+def map_sharpy_name_to_cs_name(s: str) -> str:
+    if not s:
+        return ""
+
+    if s[0] == "@":
+        return s[1:]
+
+    if s in SINGLE_TEMPLATE_TYPE_MAP:
+        return SINGLE_TEMPLATE_TYPE_MAP[s]
+
+    "".join([x.title() for x in s.split("_")])
 
 
 def map_python_type_to_cs_type(s: str) -> str:
@@ -92,6 +195,8 @@ class CodegenContextType(Enum):
     CLASS_METHOD = auto()
     CLASS_NAME = auto()
 
+    TYPE_ANNOTATION = auto()
+
 
 class CodegenContext:
     def __init__(self, context_type: CodegenContextType):
@@ -146,6 +251,7 @@ class PythonToCSharp(ast.NodeVisitor):
 
         self._file_name: str = "anonymous.spy"
         self._context_stack: MutableSequence[CodegenContext] = []
+        self._context_set: MutableSet[CodegenContext] = set()
 
     def debug(self, *args) -> None:
         self._logger.debug(*args)
@@ -284,7 +390,9 @@ class PythonToCSharp(ast.NodeVisitor):
         self.source_line(node)
 
         self.append(CodegenDirective.ONELINE)
+        self._context_set.add(CodegenContextType.TYPE_ANNOTATION)
         self.visit(node.annotation)
+        self._context_set.remove(CodegenContextType.TYPE_ANNOTATION)
         self.visit(node.target)
         self.append("=")
         self.visit(node.value)
@@ -665,18 +773,16 @@ class PythonToCSharp(ast.NodeVisitor):
         self.debug("Lambda")
 
     def visit_List(self, node: ast.List):
-        self.debug("List")
         self.debug(f"List {node.ctx}")
         self.source_line(node)
 
-        # TODO: correctly infer type
-        self.append("new List<object> {")
+        self.append("[")
         if node.elts:
             for x in node.elts:
                 self.visit(x)
                 self.append(",")
 
-        self.append("}")
+        self.append("]")
 
     def visit_ListComp(self, node: ast.ListComp):
         self.debug("ListComp")
@@ -745,7 +851,10 @@ class PythonToCSharp(ast.NodeVisitor):
 
     def visit_Name(self, node: ast.Name):
         # TODO: node.ctx
-        self.append(node.id)
+        if CodegenContextType.TYPE_ANNOTATION in self._context_set:
+            self.append(map_python_type_to_cs_type(node.id))
+        else:
+            self.append(node.id)
 
     def visit_NameConstant(self, node: ast.NameConstant):
         self.debug("NameConstant")
@@ -805,7 +914,17 @@ class PythonToCSharp(ast.NodeVisitor):
         self.append(">>")
 
     def visit_Set(self, node: ast.Set):
-        self.debug("Set")
+        self.debug(f"Set {node}")
+        self.source_line(node)
+
+        # TODO: correctly infer type
+        self.append("[")
+        if node.elts:
+            for x in node.elts:
+                self.visit(x)
+                self.append(",")
+
+        self.append("]")
 
     def visit_SetComp(self, node: ast.SetComp):
         self.debug("SetComp")

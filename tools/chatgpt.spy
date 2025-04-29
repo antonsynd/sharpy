@@ -10,7 +10,7 @@ def main():
     # floating: float = 3.14
     # some_string: str = "hello"
     # boolean: bool = True
-    # none_type: Optional[bool] = None
+    # none_type: Optional[bool] = None  # TODO
     # complex_number: complex = 3 + 4j  # TODO
 
     # --- Expressions ---
@@ -33,36 +33,36 @@ def main():
     # ternary: str = "yes" if boolean else "no"
 
     # --- Data Structures ---
-    # list_example: list[int] = [1, 2, 3]
+    list_example: list[int] = [1, 2, 3]
     # tuple_example: tuple[int] = (1, 2, 3)
-    # set_example: set[int] = {1, 2, 3}
-    # dict_example: dict[str, int] = {"a": 1, "b": 2}
-    # list_comprehension: list[int] = [x * 2 for x in range(5)]
-    # dict_comprehension: dict[int, int] = {x: x**2 for x in range(5)}
-    # set_comprehension: set[int] = {x * 2 for x in range(5)}
-    # generator_expression = (x * 2 for x in range(5))
+    set_example: set[int] = {1, 2, 3}
+    # dict_example: dict[str, int] = {"a": 1, "b": 2}  # TODO
+    # list_comprehension: list[int] = [x * 2 for x in range(5)]  # TODO
+    # dict_comprehension: dict[int, int] = {x: x**2 for x in range(5)}  # TODO
+    # set_comprehension: set[int] = {x * 2 for x in range(5)}  # TODO
+    # generator_expression = (x * 2 for x in range(5))  # TODO
 
     # # --- Control Flow ---
-    if integer > 10:
-        result: str = "big"
-    elif integer == 10:
-        result: str = "ten"
-    else:
-        result: str = "small"
+    # if integer > 10:
+    #     result: str = "big"
+    # elif integer == 10:
+    #     result: str = "ten"
+    # else:
+    #     result: str = "small"
 
-    for i in range(5):
-        pass
+    # for i in range(5):
+    #     pass
 
-    while integer > 0:
-        integer -= 1
+    # while integer > 0:
+    #     integer -= 1
 
 
-# # --- Functions & Lambdas ---
-# def add(a: int, b: int) -> int:
+# --- Functions & Lambdas ---
+# def add(a: int, b: int) -> int:  # TODO
 #     return a + b
 
 
-# lambda_example = lambda x: x * 2
+# lambda_example = lambda x: x * 2  # TODO
 
 
 # # --- Classes & OOP ---
