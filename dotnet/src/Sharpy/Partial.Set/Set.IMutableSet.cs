@@ -26,8 +26,16 @@ public sealed partial class Set<T>
     /// <inheritdoc/>
     public T Pop()
     {
-        // TODO: Is this on purpose..?
-        throw new NotImplementedException();
+        if (_set.Count == 0)
+        {
+            throw new KeyError("pop from an empty set");
+        }
+
+        var last = ((IEnumerable<T>)_set).Last();
+
+        _set.Remove(last);
+
+        return last;
     }
 
     /// <inheritdoc/>
