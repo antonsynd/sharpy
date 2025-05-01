@@ -63,6 +63,7 @@ items:
   - Sharpy.Set`1.__ROr__(Sharpy.Set{`0})
   - Sharpy.Set`1.__RSub__(Sharpy.Collections.Interfaces.ISet{`0})
   - Sharpy.Set`1.__RSub__(Sharpy.Set{`0})
+  - Sharpy.Set`1.__Repr__
   - Sharpy.Set`1.__Sub__(Sharpy.Collections.Interfaces.ISet{`0})
   - Sharpy.Set`1.__Sub__(Sharpy.Set{`0})
   - Sharpy.Set`1.__XOr__(Sharpy.Collections.Interfaces.ISet{`0})
@@ -150,7 +151,6 @@ items:
   - Sharpy.Object.__Id__
   - Sharpy.Object.__Ne__(Sharpy.Object)
   - Sharpy.Object.__Ne__(System.Object)
-  - Sharpy.Object.__Repr__
   - Sharpy.Object.__Str__
   - Sharpy.Object.Equals(System.Object)
   - Sharpy.Object.GetHashCode
@@ -683,6 +683,44 @@ items:
   nameWithType.vb: Set(Of T).Equals(ISet(Of T))
   fullName.vb: Sharpy.Set(Of T).Equals(Sharpy.Collections.Interfaces.ISet(Of T))
   name.vb: Equals(ISet(Of T))
+- uid: Sharpy.Set`1.__Bool__
+  commentId: M:Sharpy.Set`1.__Bool__
+  id: __Bool__
+  parent: Sharpy.Set`1
+  langs:
+  - csharp
+  - vb
+  name: __Bool__()
+  nameWithType: Set<T>.__Bool__()
+  fullName: Sharpy.Set<T>.__Bool__()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Set/Set.IBoolConvertible.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Bool__
+    path: ../src/Sharpy/Partial.Set/Set.IBoolConvertible.cs
+    startLine: 5
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  remarks: >-
+    Unlike Python where all base objects are implicitly truthy, Sharpy
+
+    ones are not, to enforce custom implementations that are suitable
+
+    for the given subclass.
+  example: []
+  syntax:
+    content: public override bool __Bool__()
+    return:
+      type: System.Boolean
+    content.vb: Public Overrides Function __Bool__() As Boolean
+  overridden: Sharpy.Object.__Bool__
+  overload: Sharpy.Set`1.__Bool__*
+  nameWithType.vb: Set(Of T).__Bool__()
+  fullName.vb: Sharpy.Set(Of T).__Bool__()
 - uid: Sharpy.Set`1.Contains(`0)
   commentId: M:Sharpy.Set`1.Contains(`0)
   id: Contains(`0)
@@ -803,6 +841,47 @@ items:
   - System.Collections.Generic.IEnumerable{{T}}.GetEnumerator
   nameWithType.vb: Set(Of T).GetEnumerator()
   fullName.vb: Sharpy.Set(Of T).GetEnumerator()
+- uid: Sharpy.Set`1.__Eq__(Sharpy.Object)
+  commentId: M:Sharpy.Set`1.__Eq__(Sharpy.Object)
+  id: __Eq__(Sharpy.Object)
+  parent: Sharpy.Set`1
+  langs:
+  - csharp
+  - vb
+  name: __Eq__(Object)
+  nameWithType: Set<T>.__Eq__(Object)
+  fullName: Sharpy.Set<T>.__Eq__(Sharpy.Object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Set/Set.IEquatable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Eq__
+    path: ../src/Sharpy/Partial.Set/Set.IEquatable.cs
+    startLine: 5
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  remarks: >-
+    By default, returns whether this and other refer to the same object
+
+    via <xref href="System.Object.ReferenceEquals(System.Object%2cSystem.Object)" data-throw-if-not-resolved="false"></xref> with a fallback to
+
+    <xref href="Sharpy.Object.__Id__" data-throw-if-not-resolved="false"></xref>.
+  example: []
+  syntax:
+    content: public override bool __Eq__(Object obj)
+    parameters:
+    - id: obj
+      type: Sharpy.Object
+    return:
+      type: System.Boolean
+    content.vb: Public Overrides Function __Eq__(obj As [Object]) As Boolean
+  overridden: Sharpy.Object.__Eq__(Sharpy.Object)
+  overload: Sharpy.Set`1.__Eq__*
+  nameWithType.vb: Set(Of T).__Eq__(Object)
+  fullName.vb: Sharpy.Set(Of T).__Eq__(Sharpy.Object)
 - uid: Sharpy.Set`1.__Eq__(Sharpy.Set{`0})
   commentId: M:Sharpy.Set`1.__Eq__(Sharpy.Set{`0})
   id: __Eq__(Sharpy.Set{`0})
@@ -821,7 +900,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/Partial.Set/Set.IEquatable.cs
-    startLine: 5
+    startLine: 16
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -859,7 +938,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/Partial.Set/Set.IEquatable.cs
-    startLine: 16
+    startLine: 27
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -879,47 +958,6 @@ items:
   nameWithType.vb: Set(Of T).__Eq__(ISet(Of T))
   fullName.vb: Sharpy.Set(Of T).__Eq__(Sharpy.Collections.Interfaces.ISet(Of T))
   name.vb: __Eq__(ISet(Of T))
-- uid: Sharpy.Set`1.__Eq__(Sharpy.Object)
-  commentId: M:Sharpy.Set`1.__Eq__(Sharpy.Object)
-  id: __Eq__(Sharpy.Object)
-  parent: Sharpy.Set`1
-  langs:
-  - csharp
-  - vb
-  name: __Eq__(Object)
-  nameWithType: Set<T>.__Eq__(Object)
-  fullName: Sharpy.Set<T>.__Eq__(Sharpy.Object)
-  type: Method
-  source:
-    remote:
-      path: dotnet/src/Sharpy/Partial.Set/Set.IEquatable.cs
-      branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
-    id: __Eq__
-    path: ../src/Sharpy/Partial.Set/Set.IEquatable.cs
-    startLine: 34
-  assemblies:
-  - Sharpy
-  namespace: Sharpy
-  remarks: >-
-    By default, returns whether this and other refer to the same object
-
-    via <xref href="System.Object.ReferenceEquals(System.Object%2cSystem.Object)" data-throw-if-not-resolved="false"></xref> with a fallback to
-
-    <xref href="Sharpy.Object.__Id__" data-throw-if-not-resolved="false"></xref>.
-  example: []
-  syntax:
-    content: public override bool __Eq__(Object other)
-    parameters:
-    - id: other
-      type: Sharpy.Object
-    return:
-      type: System.Boolean
-    content.vb: Public Overrides Function __Eq__(other As [Object]) As Boolean
-  overridden: Sharpy.Object.__Eq__(Sharpy.Object)
-  overload: Sharpy.Set`1.__Eq__*
-  nameWithType.vb: Set(Of T).__Eq__(Object)
-  fullName.vb: Sharpy.Set(Of T).__Eq__(Sharpy.Object)
 - uid: Sharpy.Set`1.__Gt__(Sharpy.Set{`0})
   commentId: M:Sharpy.Set`1.__Gt__(Sharpy.Set{`0})
   id: __Gt__(Sharpy.Set{`0})
@@ -1064,6 +1102,41 @@ items:
   nameWithType.vb: Set(Of T).__Ge__(ISet(Of T))
   fullName.vb: Sharpy.Set(Of T).__Ge__(Sharpy.Collections.Interfaces.ISet(Of T))
   name.vb: __Ge__(ISet(Of T))
+- uid: Sharpy.Set`1.__Hash__
+  commentId: M:Sharpy.Set`1.__Hash__
+  id: __Hash__
+  parent: Sharpy.Set`1
+  langs:
+  - csharp
+  - vb
+  name: __Hash__()
+  nameWithType: Set<T>.__Hash__()
+  fullName: Sharpy.Set<T>.__Hash__()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Set/Set.IHashable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Hash__
+    path: ../src/Sharpy/Partial.Set/Set.IHashable.cs
+    startLine: 5
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  remarks: By default, returns <xref href="System.Object.GetHashCode" data-throw-if-not-resolved="false"></xref>.
+  example: []
+  syntax:
+    content: public override int __Hash__()
+    return:
+      type: System.Int32
+    content.vb: Public Overrides Function __Hash__() As Integer
+  overridden: Sharpy.Object.__Hash__
+  overload: Sharpy.Set`1.__Hash__*
+  implements:
+  - Sharpy.IHashable.__Hash__
+  nameWithType.vb: Set(Of T).__Hash__()
+  fullName.vb: Sharpy.Set(Of T).__Hash__()
 - uid: Sharpy.Set`1.__Ne__(Sharpy.Set{`0})
   commentId: M:Sharpy.Set`1.__Ne__(Sharpy.Set{`0})
   id: __Ne__(Sharpy.Set{`0})
@@ -1486,7 +1559,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Remove
     path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
-    startLine: 32
+    startLine: 42
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1520,7 +1593,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __IOr__
     path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
-    startLine: 41
+    startLine: 51
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1555,7 +1628,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __IAnd__
     path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
-    startLine: 50
+    startLine: 60
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1590,7 +1663,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __IXOr__
     path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
-    startLine: 57
+    startLine: 67
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1625,7 +1698,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __ISub__
     path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
-    startLine: 64
+    startLine: 74
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1660,7 +1733,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __IAnd__
     path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
-    startLine: 71
+    startLine: 81
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1695,7 +1768,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __IOr__
     path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
-    startLine: 77
+    startLine: 87
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1730,7 +1803,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __ISub__
     path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
-    startLine: 83
+    startLine: 93
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1765,7 +1838,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: __IXOr__
     path: ../src/Sharpy/Partial.Set/Set.IMutableSet.cs
-    startLine: 89
+    startLine: 99
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1782,6 +1855,43 @@ items:
   nameWithType.vb: Set(Of T).__IXOr__(Set(Of T))
   fullName.vb: Sharpy.Set(Of T).__IXOr__(Sharpy.Set(Of T))
   name.vb: __IXOr__(Set(Of T))
+- uid: Sharpy.Set`1.__Repr__
+  commentId: M:Sharpy.Set`1.__Repr__
+  id: __Repr__
+  parent: Sharpy.Set`1
+  langs:
+  - csharp
+  - vb
+  name: __Repr__()
+  nameWithType: Set<T>.__Repr__()
+  fullName: Sharpy.Set<T>.__Repr__()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Set/Set.IRepresentable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Repr__
+    path: ../src/Sharpy/Partial.Set/Set.IRepresentable.cs
+    startLine: 7
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    By default, returns a string containing the result of
+
+    <xref href="Sharpy.Object.__Id__" data-throw-if-not-resolved="false"></xref> in the form <code>"&lt;Object object with id {__Id__()}&gt;"</code>.
+  example: []
+  syntax:
+    content: public override string __Repr__()
+    return:
+      type: System.String
+      description: ''
+    content.vb: Public Overrides Function __Repr__() As String
+  overridden: Sharpy.Object.__Repr__
+  overload: Sharpy.Set`1.__Repr__*
+  nameWithType.vb: Set(Of T).__Repr__()
+  fullName.vb: Sharpy.Set(Of T).__Repr__()
 - uid: Sharpy.Set`1.IsDisjoint(Sharpy.Set{`0})
   commentId: M:Sharpy.Set`1.IsDisjoint(Sharpy.Set{`0})
   id: IsDisjoint(Sharpy.Set{`0})
@@ -2335,79 +2445,6 @@ items:
   - Sharpy.Collections.Interfaces.ISized.__Len__
   nameWithType.vb: Set(Of T).__Len__()
   fullName.vb: Sharpy.Set(Of T).__Len__()
-- uid: Sharpy.Set`1.__Bool__
-  commentId: M:Sharpy.Set`1.__Bool__
-  id: __Bool__
-  parent: Sharpy.Set`1
-  langs:
-  - csharp
-  - vb
-  name: __Bool__()
-  nameWithType: Set<T>.__Bool__()
-  fullName: Sharpy.Set<T>.__Bool__()
-  type: Method
-  source:
-    remote:
-      path: dotnet/src/Sharpy/Partial.Set/Set.Object.cs
-      branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
-    id: __Bool__
-    path: ../src/Sharpy/Partial.Set/Set.Object.cs
-    startLine: 5
-  assemblies:
-  - Sharpy
-  namespace: Sharpy
-  remarks: >-
-    Unlike Python where all base objects are implicitly truthy, Sharpy
-
-    ones are not, to enforce custom implementations that are suitable
-
-    for the given subclass.
-  example: []
-  syntax:
-    content: public override bool __Bool__()
-    return:
-      type: System.Boolean
-    content.vb: Public Overrides Function __Bool__() As Boolean
-  overridden: Sharpy.Object.__Bool__
-  overload: Sharpy.Set`1.__Bool__*
-  nameWithType.vb: Set(Of T).__Bool__()
-  fullName.vb: Sharpy.Set(Of T).__Bool__()
-- uid: Sharpy.Set`1.__Hash__
-  commentId: M:Sharpy.Set`1.__Hash__
-  id: __Hash__
-  parent: Sharpy.Set`1
-  langs:
-  - csharp
-  - vb
-  name: __Hash__()
-  nameWithType: Set<T>.__Hash__()
-  fullName: Sharpy.Set<T>.__Hash__()
-  type: Method
-  source:
-    remote:
-      path: dotnet/src/Sharpy/Partial.Set/Set.Object.cs
-      branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
-    id: __Hash__
-    path: ../src/Sharpy/Partial.Set/Set.Object.cs
-    startLine: 11
-  assemblies:
-  - Sharpy
-  namespace: Sharpy
-  remarks: By default, returns <xref href="System.Object.GetHashCode" data-throw-if-not-resolved="false"></xref>.
-  example: []
-  syntax:
-    content: public override int __Hash__()
-    return:
-      type: System.Int32
-    content.vb: Public Overrides Function __Hash__() As Integer
-  overridden: Sharpy.Object.__Hash__
-  overload: Sharpy.Set`1.__Hash__*
-  implements:
-  - Sharpy.IHashable.__Hash__
-  nameWithType.vb: Set(Of T).__Hash__()
-  fullName.vb: Sharpy.Set(Of T).__Hash__()
 - uid: Sharpy.Set`1.op_Equality(Sharpy.Set{`0},Sharpy.Set{`0})
   commentId: M:Sharpy.Set`1.op_Equality(Sharpy.Set{`0},Sharpy.Set{`0})
   id: op_Equality(Sharpy.Set{`0},Sharpy.Set{`0})
@@ -2426,10 +2463,18 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Equality
     path: ../src/Sharpy/Partial.Set/Set.operators.cs
-    startLine: 4
+    startLine: 10
   assemblies:
   - Sharpy
   namespace: Sharpy
+  remarks: >-
+    This returns true for both sets if they contain the same items,
+
+    even if they are not the actual same set reference. If the items
+
+    are Sharpy Objects, then <xref href="Sharpy.Object.__Eq__(Sharpy.Object)" data-throw-if-not-resolved="false"></xref> is used.
+
+    Otherwise, <xref href="System.Object.Equals(System.Object)" data-throw-if-not-resolved="false"></xref> is used.
   example: []
   syntax:
     content: public static bool operator ==(Set<T> left, Set<T> right)
@@ -2465,7 +2510,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Inequality
     path: ../src/Sharpy/Partial.Set/Set.operators.cs
-    startLine: 9
+    startLine: 15
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2504,7 +2549,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_LessThan
     path: ../src/Sharpy/Partial.Set/Set.operators.cs
-    startLine: 14
+    startLine: 20
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2546,7 +2591,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_GreaterThan
     path: ../src/Sharpy/Partial.Set/Set.operators.cs
-    startLine: 19
+    startLine: 25
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2588,7 +2633,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_LessThanOrEqual
     path: ../src/Sharpy/Partial.Set/Set.operators.cs
-    startLine: 24
+    startLine: 30
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2630,7 +2675,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_GreaterThanOrEqual
     path: ../src/Sharpy/Partial.Set/Set.operators.cs
-    startLine: 29
+    startLine: 35
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2672,7 +2717,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_BitwiseOr
     path: ../src/Sharpy/Partial.Set/Set.operators.cs
-    startLine: 34
+    startLine: 40
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2711,7 +2756,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_BitwiseAnd
     path: ../src/Sharpy/Partial.Set/Set.operators.cs
-    startLine: 39
+    startLine: 45
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2750,7 +2795,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_ExclusiveOr
     path: ../src/Sharpy/Partial.Set/Set.operators.cs
-    startLine: 44
+    startLine: 50
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2789,7 +2834,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Subtraction
     path: ../src/Sharpy/Partial.Set/Set.operators.cs
-    startLine: 49
+    startLine: 55
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2828,7 +2873,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_True
     path: ../src/Sharpy/Partial.Set/Set.operators.cs
-    startLine: 54
+    startLine: 60
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -2862,7 +2907,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_False
     path: ../src/Sharpy/Partial.Set/Set.operators.cs
-    startLine: 59
+    startLine: 65
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -4158,25 +4203,6 @@ references:
     name: Object
     isExternal: true
     href: https://learn.microsoft.com/dotnet/api/system.object
-  - name: )
-- uid: Sharpy.Object.__Repr__
-  commentId: M:Sharpy.Object.__Repr__
-  parent: Sharpy.Object
-  href: Sharpy.Object.html#Sharpy_Object___Repr__
-  name: __Repr__()
-  nameWithType: Object.__Repr__()
-  fullName: Sharpy.Object.__Repr__()
-  spec.csharp:
-  - uid: Sharpy.Object.__Repr__
-    name: __Repr__
-    href: Sharpy.Object.html#Sharpy_Object___Repr__
-  - name: (
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Object.__Repr__
-    name: __Repr__
-    href: Sharpy.Object.html#Sharpy_Object___Repr__
-  - name: (
   - name: )
 - uid: Sharpy.Object.__Str__
   commentId: M:Sharpy.Object.__Str__
@@ -5524,6 +5550,33 @@ references:
   - name: T
   - name: )
   - name: )
+- uid: Sharpy.Object.__Bool__
+  commentId: M:Sharpy.Object.__Bool__
+  parent: Sharpy.Object
+  href: Sharpy.Object.html#Sharpy_Object___Bool__
+  name: __Bool__()
+  nameWithType: Object.__Bool__()
+  fullName: Sharpy.Object.__Bool__()
+  spec.csharp:
+  - uid: Sharpy.Object.__Bool__
+    name: __Bool__
+    href: Sharpy.Object.html#Sharpy_Object___Bool__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Object.__Bool__
+    name: __Bool__
+    href: Sharpy.Object.html#Sharpy_Object___Bool__
+  - name: (
+  - name: )
+- uid: Sharpy.Set`1.__Bool__*
+  commentId: Overload:Sharpy.Set`1.__Bool__
+  href: Sharpy.Set-1.html#Sharpy_Set_1___Bool__
+  name: __Bool__
+  nameWithType: Set<T>.__Bool__
+  fullName: Sharpy.Set<T>.__Bool__
+  nameWithType.vb: Set(Of T).__Bool__
+  fullName.vb: Sharpy.Set(Of T).__Bool__
 - uid: Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
   commentId: M:Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)
   href: Sharpy.Collections.Interfaces.IContainer-1.html#Sharpy_Collections_Interfaces_IContainer_1___Contains____0_
@@ -5805,9 +5858,34 @@ references:
   - name: " "
   - name: T
   - name: )
+- uid: Sharpy.Object.__Eq__(Sharpy.Object)
+  commentId: M:Sharpy.Object.__Eq__(Sharpy.Object)
+  parent: Sharpy.Object
+  href: Sharpy.Object.html#Sharpy_Object___Eq___Sharpy_Object_
+  name: __Eq__(Object)
+  nameWithType: Object.__Eq__(Object)
+  fullName: Sharpy.Object.__Eq__(Sharpy.Object)
+  spec.csharp:
+  - uid: Sharpy.Object.__Eq__(Sharpy.Object)
+    name: __Eq__
+    href: Sharpy.Object.html#Sharpy_Object___Eq___Sharpy_Object_
+  - name: (
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Object.__Eq__(Sharpy.Object)
+    name: __Eq__
+    href: Sharpy.Object.html#Sharpy_Object___Eq___Sharpy_Object_
+  - name: (
+  - uid: Sharpy.Object
+    name: Object
+    href: Sharpy.Object.html
+  - name: )
 - uid: Sharpy.Set`1.__Eq__*
   commentId: Overload:Sharpy.Set`1.__Eq__
-  href: Sharpy.Set-1.html#Sharpy_Set_1___Eq___Sharpy_Set__0__
+  href: Sharpy.Set-1.html#Sharpy_Set_1___Eq___Sharpy_Object_
   name: __Eq__
   nameWithType: Set<T>.__Eq__
   fullName: Sharpy.Set<T>.__Eq__
@@ -5908,31 +5986,6 @@ references:
   - name: " "
   - name: T
   - name: )
-  - name: )
-- uid: Sharpy.Object.__Eq__(Sharpy.Object)
-  commentId: M:Sharpy.Object.__Eq__(Sharpy.Object)
-  parent: Sharpy.Object
-  href: Sharpy.Object.html#Sharpy_Object___Eq___Sharpy_Object_
-  name: __Eq__(Object)
-  nameWithType: Object.__Eq__(Object)
-  fullName: Sharpy.Object.__Eq__(Sharpy.Object)
-  spec.csharp:
-  - uid: Sharpy.Object.__Eq__(Sharpy.Object)
-    name: __Eq__
-    href: Sharpy.Object.html#Sharpy_Object___Eq___Sharpy_Object_
-  - name: (
-  - uid: Sharpy.Object
-    name: Object
-    href: Sharpy.Object.html
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Object.__Eq__(Sharpy.Object)
-    name: __Eq__
-    href: Sharpy.Object.html#Sharpy_Object___Eq___Sharpy_Object_
-  - name: (
-  - uid: Sharpy.Object
-    name: Object
-    href: Sharpy.Object.html
   - name: )
 - uid: Sharpy.Set`1.__Gt__*
   commentId: Overload:Sharpy.Set`1.__Gt__
@@ -6067,6 +6120,76 @@ references:
     href: Sharpy.IGreaterThanOrEquatableWith-1.html#Sharpy_IGreaterThanOrEquatableWith_1___Ge____0_
   - name: (
   - name: T
+  - name: )
+- uid: System.Object.GetHashCode
+  commentId: M:System.Object.GetHashCode
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  name: GetHashCode()
+  nameWithType: object.GetHashCode()
+  fullName: object.GetHashCode()
+  nameWithType.vb: Object.GetHashCode()
+  fullName.vb: Object.GetHashCode()
+  spec.csharp:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+  - name: (
+  - name: )
+- uid: Sharpy.Object.__Hash__
+  commentId: M:Sharpy.Object.__Hash__
+  parent: Sharpy.Object
+  href: Sharpy.Object.html#Sharpy_Object___Hash__
+  name: __Hash__()
+  nameWithType: Object.__Hash__()
+  fullName: Sharpy.Object.__Hash__()
+  spec.csharp:
+  - uid: Sharpy.Object.__Hash__
+    name: __Hash__
+    href: Sharpy.Object.html#Sharpy_Object___Hash__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Object.__Hash__
+    name: __Hash__
+    href: Sharpy.Object.html#Sharpy_Object___Hash__
+  - name: (
+  - name: )
+- uid: Sharpy.Set`1.__Hash__*
+  commentId: Overload:Sharpy.Set`1.__Hash__
+  href: Sharpy.Set-1.html#Sharpy_Set_1___Hash__
+  name: __Hash__
+  nameWithType: Set<T>.__Hash__
+  fullName: Sharpy.Set<T>.__Hash__
+  nameWithType.vb: Set(Of T).__Hash__
+  fullName.vb: Sharpy.Set(Of T).__Hash__
+- uid: Sharpy.IHashable.__Hash__
+  commentId: M:Sharpy.IHashable.__Hash__
+  parent: Sharpy.IHashable
+  href: Sharpy.IHashable.html#Sharpy_IHashable___Hash__
+  name: __Hash__()
+  nameWithType: IHashable.__Hash__()
+  fullName: Sharpy.IHashable.__Hash__()
+  spec.csharp:
+  - uid: Sharpy.IHashable.__Hash__
+    name: __Hash__
+    href: Sharpy.IHashable.html#Sharpy_IHashable___Hash__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IHashable.__Hash__
+    name: __Hash__
+    href: Sharpy.IHashable.html#Sharpy_IHashable___Hash__
+  - name: (
   - name: )
 - uid: Sharpy.Set`1.__Ne__*
   commentId: Overload:Sharpy.Set`1.__Ne__
@@ -7207,6 +7330,44 @@ references:
   - name: (
   - name: TSet
   - name: )
+- uid: Sharpy.Object.__Repr__
+  commentId: M:Sharpy.Object.__Repr__
+  parent: Sharpy.Object
+  href: Sharpy.Object.html#Sharpy_Object___Repr__
+  name: __Repr__()
+  nameWithType: Object.__Repr__()
+  fullName: Sharpy.Object.__Repr__()
+  spec.csharp:
+  - uid: Sharpy.Object.__Repr__
+    name: __Repr__
+    href: Sharpy.Object.html#Sharpy_Object___Repr__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.Object.__Repr__
+    name: __Repr__
+    href: Sharpy.Object.html#Sharpy_Object___Repr__
+  - name: (
+  - name: )
+- uid: Sharpy.Set`1.__Repr__*
+  commentId: Overload:Sharpy.Set`1.__Repr__
+  href: Sharpy.Set-1.html#Sharpy_Set_1___Repr__
+  name: __Repr__
+  nameWithType: Set<T>.__Repr__
+  fullName: Sharpy.Set<T>.__Repr__
+  nameWithType.vb: Set(Of T).__Repr__
+  fullName.vb: Sharpy.Set(Of T).__Repr__
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String
 - uid: Sharpy.Set`1.IsDisjoint*
   commentId: Overload:Sharpy.Set`1.IsDisjoint
   href: Sharpy.Set-1.html#Sharpy_Set_1_IsDisjoint_Sharpy_Set__0__
@@ -8218,102 +8379,38 @@ references:
   nameWithType.vb: UInteger
   fullName.vb: UInteger
   name.vb: UInteger
-- uid: Sharpy.Object.__Bool__
-  commentId: M:Sharpy.Object.__Bool__
-  parent: Sharpy.Object
-  href: Sharpy.Object.html#Sharpy_Object___Bool__
-  name: __Bool__()
-  nameWithType: Object.__Bool__()
-  fullName: Sharpy.Object.__Bool__()
-  spec.csharp:
-  - uid: Sharpy.Object.__Bool__
-    name: __Bool__
-    href: Sharpy.Object.html#Sharpy_Object___Bool__
-  - name: (
-  - name: )
-  spec.vb:
-  - uid: Sharpy.Object.__Bool__
-    name: __Bool__
-    href: Sharpy.Object.html#Sharpy_Object___Bool__
-  - name: (
-  - name: )
-- uid: Sharpy.Set`1.__Bool__*
-  commentId: Overload:Sharpy.Set`1.__Bool__
-  href: Sharpy.Set-1.html#Sharpy_Set_1___Bool__
-  name: __Bool__
-  nameWithType: Set<T>.__Bool__
-  fullName: Sharpy.Set<T>.__Bool__
-  nameWithType.vb: Set(Of T).__Bool__
-  fullName.vb: Sharpy.Set(Of T).__Bool__
-- uid: System.Object.GetHashCode
-  commentId: M:System.Object.GetHashCode
+- uid: System.Object.Equals(System.Object)
+  commentId: M:System.Object.Equals(System.Object)
   parent: System.Object
   isExternal: true
-  href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
-  name: GetHashCode()
-  nameWithType: object.GetHashCode()
-  fullName: object.GetHashCode()
-  nameWithType.vb: Object.GetHashCode()
-  fullName.vb: Object.GetHashCode()
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
+  name: Equals(object)
+  nameWithType: object.Equals(object)
+  fullName: object.Equals(object)
+  nameWithType.vb: Object.Equals(Object)
+  fullName.vb: Object.Equals(Object)
+  name.vb: Equals(Object)
   spec.csharp:
-  - uid: System.Object.GetHashCode
-    name: GetHashCode
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
     isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
   - name: (
-  - name: )
-  spec.vb:
-  - uid: System.Object.GetHashCode
-    name: GetHashCode
+  - uid: System.Object
+    name: object
     isExternal: true
-    href: https://learn.microsoft.com/dotnet/api/system.object.gethashcode
-  - name: (
-  - name: )
-- uid: Sharpy.Object.__Hash__
-  commentId: M:Sharpy.Object.__Hash__
-  parent: Sharpy.Object
-  href: Sharpy.Object.html#Sharpy_Object___Hash__
-  name: __Hash__()
-  nameWithType: Object.__Hash__()
-  fullName: Sharpy.Object.__Hash__()
-  spec.csharp:
-  - uid: Sharpy.Object.__Hash__
-    name: __Hash__
-    href: Sharpy.Object.html#Sharpy_Object___Hash__
-  - name: (
+    href: https://learn.microsoft.com/dotnet/api/system.object
   - name: )
   spec.vb:
-  - uid: Sharpy.Object.__Hash__
-    name: __Hash__
-    href: Sharpy.Object.html#Sharpy_Object___Hash__
+  - uid: System.Object.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)
   - name: (
-  - name: )
-- uid: Sharpy.Set`1.__Hash__*
-  commentId: Overload:Sharpy.Set`1.__Hash__
-  href: Sharpy.Set-1.html#Sharpy_Set_1___Hash__
-  name: __Hash__
-  nameWithType: Set<T>.__Hash__
-  fullName: Sharpy.Set<T>.__Hash__
-  nameWithType.vb: Set(Of T).__Hash__
-  fullName.vb: Sharpy.Set(Of T).__Hash__
-- uid: Sharpy.IHashable.__Hash__
-  commentId: M:Sharpy.IHashable.__Hash__
-  parent: Sharpy.IHashable
-  href: Sharpy.IHashable.html#Sharpy_IHashable___Hash__
-  name: __Hash__()
-  nameWithType: IHashable.__Hash__()
-  fullName: Sharpy.IHashable.__Hash__()
-  spec.csharp:
-  - uid: Sharpy.IHashable.__Hash__
-    name: __Hash__
-    href: Sharpy.IHashable.html#Sharpy_IHashable___Hash__
-  - name: (
-  - name: )
-  spec.vb:
-  - uid: Sharpy.IHashable.__Hash__
-    name: __Hash__
-    href: Sharpy.IHashable.html#Sharpy_IHashable___Hash__
-  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
   - name: )
 - uid: Sharpy.Set`1.op_Equality*
   commentId: Overload:Sharpy.Set`1.op_Equality

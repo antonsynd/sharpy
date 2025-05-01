@@ -31,6 +31,7 @@ public sealed partial class Set<T>
             throw new KeyError("pop from an empty set");
         }
 
+        // Unsure about the efficiency of this
         var last = ((IEnumerable<T>)_set).Last();
 
         _set.Remove(last);
