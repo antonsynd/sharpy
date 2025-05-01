@@ -1,7 +1,5 @@
 import ast
 import re
-import subprocess
-import sys
 from enum import Enum, auto
 from io import StringIO, TextIOBase
 from logging import Logger
