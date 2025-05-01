@@ -1,3 +1,6 @@
+# Local VSCode configs
+.vscode/launch.json
+
 # DocFX files
 _site/
 

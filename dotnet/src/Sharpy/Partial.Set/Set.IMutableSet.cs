@@ -26,6 +26,7 @@ public sealed partial class Set<T>
     /// <inheritdoc/>
     public T Pop()
     {
+        // TODO: Is this on purpose..?
         throw new NotImplementedException();
     }
 
