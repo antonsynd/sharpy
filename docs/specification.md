@@ -10,31 +10,38 @@
 This is a table of top-level Sharpy types and their Python and
 C#/CLI equivalents. This does not necessarily mean that the Sharpy
 type is the indicated CLI type at runtime (i.e. the
-implementation). For that, see the table below this one.
+implementation). For the actual runtime implementation, see the
+table below this one.
 
-| Sharpy | Python | C# | CLI | Notes |
+| Sharpy | Python equivalent | C# equivalent | CLI equivalent | Notes |
 | - | - | - | - | - |
-| `array[T]` | `list[T]` | `T[]` | `System.Array` | - |
+| `array[T]` | `list[T]` | `T[]` | `System.Array<T>` | - |
 | `bool` | `bool` | `bool` | `System.Boolean` | - |
 | `byte` | `int` | `byte` | `System.Byte` | - |
-| `bytearray` | `bytearray` | - | - | - |
+| `bytearray` | `bytearray` | `List<byte>` | `System.Collections.Generic.List<byte>` | - |
 | `bytes` | `bytes` | `byte[]` | `System.Array<byte>` | - |
-| `Func[(...), R]` | `Callable[(...), R]` | `Func<..., R>` or `Action<...>` | `System.Delegate` | `Action` used when `R` would be `void` in C# which in Sharpy is a lack of a return type. A type alias for a function type in Sharpy becomes a C# `delegate` type |
-| `char` | - | `char` | `System.Char` | - |
+| `complex` | `complex` | `Complex` | `System.Numerics.Complex` | - |
+| `char` | `int` | `char` | `System.Char` | - |
 | `decimal` | `float` | `decimal` | `System.Decimal` | - |
 | `dict[K, V]` | `dict[K, V]` | `OrderedDictionary<K, V>` | `Systems.Collections.Generic.OrderedDictionary<K, V>` | - |
 | `double` | `float` | `double` | `System.Double` | - |
+| `Ellipsis` | `Ellipsis` | - | - | - |
 | `enum` | `enum.Enum` | `enum` | `System.Enum` | - |
 | `Exception` | `Exception` | `Exception` | `System.Exception` | - |
 | `float` | `float` | `float` | `System.Single` | - |
+| `frozenset[T]` | `frozenset[T]` | `FrozenSet<T>` | `System.Collections.Frozen.FrozenSet<T>` | - |
+| `Func[(...), R]` | `Callable[(...), R]` | `Func<..., R>` or `Action<...>` | `System.Delegate` | `Action` used when `R` would be `void` in C# which in Sharpy is a lack of a return type. A type alias for a function type in Sharpy becomes a C# `delegate` type |
 | `int` | `int` | `int` | `System.Int32` | - |
 | `list[T]` | `list[T]` | `List<T>` | `System.Collections.Generic.List<T>` | - |
 | `long` | `int` | `long` | `System.Int64` | - |
+| `memoryview` | `memoryview` | - | - | - |
+| `None` | `None` | `void` | `System.Void` | As a type, only indicates the lack of a return value, rather than an untyped parameter or the `None` (`null`) literal |
 | `object` | `object` | `object` | `System.Object` | - |
 | `T?` or `Optional[T]` | `T` | `T?` | `System.Nullable<T>` | Both Sharpy syntaxes are accepted, but `T?` is preferred |
 | `sbyte` | `int` | `sbyte` | `System.SByte` | - |
 | `set[T]` | `set[T]` | `HashSet<T>` | `System.Collections.Generic.HashSet<T>` | - |
 | `short` | `int` | `short` | `System.Int16` | - |
+| `slice` | `slice` | `Slice` | `System.Slice` | - |
 | `str` | `str` | `string` | `System.String` | - |
 | `tuple[...]` | `tuple[...]` | `(...)` | `System.Tuple<...>` | - |
 | `uint` | `int` | `uint` | `System.UInt32` | - |
@@ -51,27 +58,42 @@ follows:
 | `byte` | `byte` | - |
 | `bytearray` | `Sharpy.ByteArray` | - |
 | `bytes` | `Sharpy.Bytes` | - |
-| `Func[(...), R]` | See note | Module-level functions are implemented as static member functions of a hidden static class called `__Exports__`. As expected, member functions are implemented as members of the class they belong to. |
 | `char` | `char` | - |
+| `complex` | `Sharpy.Complex` | - |
 | `decimal` | `decimal` | - |
 | `dict[K, V]` | `Sharpy.Dict<K, V>` | - |
 | `double` | `double` | - |
+| `Ellipsis` | `Sharpy.Ellipsis` | - |
 | `enum` | `enum` | - |
 | `Exception` | `Sharpy.Exception` | - |
 | `float` | `float` | - |
+| `frozenset[T]` | `Sharpy.FrozenSet<T>` | - |
+| `Func[(...), R]` | See note | Module-level functions are implemented as static member functions of a hidden static class called `__Exports__`. As expected, member functions are implemented as members of the class they belong to |
 | `int` | `int` | - |
 | `list[T]` | `Sharpy.List<T>` | - |
 | `long` | `long` | - |
+| `memoryview` | `Sharpy.MemoryView` | - |
+| `None` | `void` | As a type, only indicates a lack of a return value, rather than an untyped parameter or the `None` (`null`) literal |
 | `object` | `Sharpy.Object` | - |
 | `T?` | `T?` | - |
 | `sbyte` | `sbyte` | - |
 | `set[T]` | `Sharpy.Set<T>` | - |
 | `short` | `short` | - |
+| `slice` | `Sharpy.Slice` | - |
 | `str` | `Sharpy.Str` | - |
 | `tuple[...]` | `(...)` | - |
 | `uint` | `uint` | - |
 | `ulong` | `ulong` | - |
 | `ushort` | `ushort` | - |
+
+# Special literals
+
+| Sharpy | Python equivalent | C# equivalent | Notes |
+| - | - | - | - |
+| `...` | `...` | - | Ellipsis literal in slices |
+| `False` | `False` | `false` | - |
+| `None` | `None` | `null` | - |
+| `True` | `True` | `true` | - |
 
 # Classes and structs
 
