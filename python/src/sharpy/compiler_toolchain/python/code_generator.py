@@ -249,7 +249,7 @@ class PythonToCSharp(ast.NodeVisitor):
 
         self._file_name: str = "anonymous.spy"
         self._context_stack: MutableSequence[CodegenContext] = []
-        self._context_set: MutableSet[CodegenContext] = set()
+        self._context_set: MutableSet[CodegenContextType] = set()
 
     def debug(self, *args) -> None:
         self._logger.debug(*args)
@@ -263,7 +263,7 @@ class PythonToCSharp(ast.NodeVisitor):
     def warning(self, *args) -> None:
         self._logger.warning(*args)
 
-    def set_file_name(self, s: str) -> None:
+    def set_file_name(self, s: Optional[str]) -> None:
         self._file_name = s if s else "anonymous.spy"
 
     def peek_context_type(self) -> CodegenContextType:

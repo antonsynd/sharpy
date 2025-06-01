@@ -211,7 +211,7 @@ def resolve_name_component(s: str) -> str:
 
     # Dunder names typically have exceptional pascal case names, so
     # they are all handled in this way
-    match: re.Match[str] = dunder_name_pattern.match(s)
+    match: Optional[re.Match[str]] = dunder_name_pattern.match(s)
 
     if match:
         maybe_dunder_name: str = match.group(1)
