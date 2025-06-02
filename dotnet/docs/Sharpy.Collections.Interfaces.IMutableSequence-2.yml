@@ -21,7 +21,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: IMutableSequence
     path: ../src/Sharpy/Collections/Interfaces/IMutableSequence.cs
     startLine: 116
@@ -89,7 +89,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Collections/Interfaces/IMutableSequence.cs
     startLine: 120
@@ -125,7 +125,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Collections/Interfaces/IMutableSequence.cs
     startLine: 132
@@ -159,7 +159,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Collections/Interfaces/IMutableSequence.cs
     startLine: 145
@@ -198,7 +198,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Collections/Interfaces/IMutableSequence.cs
     startLine: 157
@@ -232,7 +232,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __SetItem__
     path: ../src/Sharpy/Collections/Interfaces/IMutableSequence.cs
     startLine: 170

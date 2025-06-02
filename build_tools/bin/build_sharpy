@@ -28,12 +28,10 @@ CSHARP_TEST_DIR: Path = ROOT_DIR / "dotnet/src/Sharpy.Tests"
 
 _expected_resources: Sequence[Path] = [
     RESOURCE_DIR / "PythonLexer.g4",
-    RESOURCE_DIR / "PythonParser.g4",
     RESOURCE_DIR / "PythonLexerBase.py",
-    RESOURCE_DIR / "PythonParserBase.py",
+    RESOURCE_DIR / "PythonParser.g4",
     RESOURCE_DIR / "PythonParserListener.py",
     RESOURCE_DIR / "PythonParserVisitor.py",
-    RESOURCE_DIR / "transformGrammar.py",
 ]
 
 
@@ -171,9 +169,6 @@ def setup(args: argparse.Namespace, rest: Sequence[str]) -> None:
         download_data_files()
 
         os.chdir(RESOURCE_DIR)
-
-        get_logger().info("Fixing grammar...")
-        subprocess.run([sys.executable, str(RESOURCE_DIR / "transformGrammar.py")], check=True)
 
         get_logger().info("Generating lexer...")
         subprocess.run(

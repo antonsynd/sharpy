@@ -19,7 +19,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISized.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: ISized
     path: ../src/Sharpy/Collections/Interfaces/ISized.cs
     startLine: 5
@@ -46,7 +46,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISized.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Len__
     path: ../src/Sharpy/Collections/Interfaces/ISized.cs
     startLine: 10
@@ -76,7 +76,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISized.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Length
     path: ../src/Sharpy/Collections/Interfaces/ISized.cs
     startLine: 12
@@ -105,7 +105,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISized.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Count
     path: ../src/Sharpy/Collections/Interfaces/ISized.cs
     startLine: 20

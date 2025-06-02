@@ -17,7 +17,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Bytes.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Bytes
     path: ../src/Sharpy/Bytes.cs
     startLine: 2
@@ -49,7 +49,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Bytes.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Bytes.cs
     startLine: 2

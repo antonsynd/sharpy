@@ -17,7 +17,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IBoolConvertible.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: IBoolConvertible
     path: ../src/Sharpy/IBoolConvertible.cs
     startLine: 2
@@ -42,7 +42,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IBoolConvertible.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Bool__
     path: ../src/Sharpy/IBoolConvertible.cs
     startLine: 4

@@ -17,7 +17,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/TypeError.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: TypeError
     path: ../src/Sharpy/TypeError.cs
     startLine: 2
@@ -65,7 +65,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/TypeError.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/TypeError.cs
     startLine: 2

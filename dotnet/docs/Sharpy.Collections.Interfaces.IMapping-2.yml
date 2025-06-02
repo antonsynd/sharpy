@@ -25,7 +25,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: IMapping
     path: ../src/Sharpy/Collections/Interfaces/IMapping.cs
     startLine: 5
@@ -71,7 +71,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Collections/Interfaces/IMapping.cs
     startLine: 14
@@ -111,7 +111,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __GetItem__
     path: ../src/Sharpy/Collections/Interfaces/IMapping.cs
     startLine: 20
@@ -149,7 +149,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Or__
     path: ../src/Sharpy/Collections/Interfaces/IMapping.cs
     startLine: 26
@@ -188,7 +188,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Or__
     path: ../src/Sharpy/Collections/Interfaces/IMapping.cs
     startLine: 33
@@ -229,7 +229,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Keys
     path: ../src/Sharpy/Collections/Interfaces/IMapping.cs
     startLine: 38
@@ -261,7 +261,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Items
     path: ../src/Sharpy/Collections/Interfaces/IMapping.cs
     startLine: 44
@@ -296,7 +296,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Values
     path: ../src/Sharpy/Collections/Interfaces/IMapping.cs
     startLine: 49
@@ -328,7 +328,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Get
     path: ../src/Sharpy/Collections/Interfaces/IMapping.cs
     startLine: 59
@@ -370,7 +370,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Get
     path: ../src/Sharpy/Collections/Interfaces/IMapping.cs
     startLine: 69

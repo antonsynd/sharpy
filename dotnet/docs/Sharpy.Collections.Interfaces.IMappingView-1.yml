@@ -16,7 +16,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMappingView.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: IMappingView
     path: ../src/Sharpy/Collections/Interfaces/IMappingView.cs
     startLine: 5

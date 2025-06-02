@@ -17,7 +17,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IInplaceMultipliable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: IInplaceMultipliable
     path: ../src/Sharpy/IInplaceMultipliable.cs
     startLine: 2
@@ -47,7 +47,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IInplaceMultipliable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __IMul__
     path: ../src/Sharpy/IInplaceMultipliable.cs
     startLine: 4

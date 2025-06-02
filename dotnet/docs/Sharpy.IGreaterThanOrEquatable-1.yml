@@ -20,7 +20,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IGreaterThanOrEquatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: IGreaterThanOrEquatable
     path: ../src/Sharpy/IGreaterThanOrEquatable.cs
     startLine: 7
@@ -58,7 +58,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IGreaterThanOrEquatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_GreaterThanOrEqual
     path: ../src/Sharpy/IGreaterThanOrEquatable.cs
     startLine: 9
@@ -94,7 +94,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IGreaterThanOrEquatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_LessThan
     path: ../src/Sharpy/IGreaterThanOrEquatable.cs
     startLine: 19
@@ -130,7 +130,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IGreaterThanOrEquatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_LessThanOrEqual
     path: ../src/Sharpy/IGreaterThanOrEquatable.cs
     startLine: 24
@@ -166,7 +166,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IGreaterThanOrEquatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_GreaterThan
     path: ../src/Sharpy/IGreaterThanOrEquatable.cs
     startLine: 29

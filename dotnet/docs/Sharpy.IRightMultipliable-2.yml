@@ -16,7 +16,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IRightMultipliable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: IRightMultipliable
     path: ../src/Sharpy/IRightMultipliable.cs
     startLine: 18

@@ -17,7 +17,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IHashable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: IHashable
     path: ../src/Sharpy/IHashable.cs
     startLine: 6
@@ -47,7 +47,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IHashable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Hash__
     path: ../src/Sharpy/IHashable.cs
     startLine: 13

@@ -19,7 +19,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Sys/Stdout.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Exports
     path: ../src/Sharpy/Sys/Stdout.cs
     startLine: 2
@@ -53,7 +53,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Sys/Stdout.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Stddev
     path: ../src/Sharpy/Sys/Stdout.cs
     startLine: 4
@@ -80,7 +80,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Sys/Stdout.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Stdout
     path: ../src/Sharpy/Sys/Stdout.cs
     startLine: 5
@@ -107,7 +107,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Sys/Stdout.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Stderr
     path: ../src/Sharpy/Sys/Stdout.cs
     startLine: 6

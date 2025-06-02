@@ -72,7 +72,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.operators.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: List
     path: ../src/Sharpy/Partial.List/List.operators.cs
     startLine: 2
@@ -170,7 +170,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Partial.List/List.cs
     startLine: 23
@@ -201,7 +201,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Partial.List/List.cs
     startLine: 32
@@ -238,7 +238,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Add
     path: ../src/Sharpy/Partial.List/List.cs
     startLine: 46
@@ -276,7 +276,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Copy
     path: ../src/Sharpy/Partial.List/List.cs
     startLine: 51
@@ -308,7 +308,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Sort
     path: ../src/Sharpy/Partial.List/List.cs
     startLine: 67
@@ -346,7 +346,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Sort
     path: ../src/Sharpy/Partial.List/List.cs
     startLine: 79
@@ -388,7 +388,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: ToList
     path: ../src/Sharpy/Partial.List/List.cs
     startLine: 99
@@ -420,7 +420,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.DotNet.ICollection.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: IsReadOnly
     path: ../src/Sharpy/Partial.List/List.DotNet.ICollection.cs
     startLine: 4
@@ -455,7 +455,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.DotNet.ICollection.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: CopyTo
     path: ../src/Sharpy/Partial.List/List.DotNet.ICollection.cs
     startLine: 22
@@ -505,7 +505,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.DotNet.IEquatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Equals
     path: ../src/Sharpy/Partial.List/List.DotNet.IEquatable.cs
     startLine: 5
@@ -545,7 +545,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IAddable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Add__
     path: ../src/Sharpy/Partial.List/List.IAddable.cs
     startLine: 5
@@ -582,7 +582,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IBoolConvertible.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Bool__
     path: ../src/Sharpy/Partial.List/List.IBoolConvertible.cs
     startLine: 5
@@ -620,7 +620,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IContainer.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Contains__
     path: ../src/Sharpy/Partial.List/List.IContainer.cs
     startLine: 7
@@ -657,7 +657,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IContainer.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Contains
     path: ../src/Sharpy/Partial.List/List.IContainer.cs
     startLine: 15
@@ -695,7 +695,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IEnumerable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: GetEnumerator
     path: ../src/Sharpy/Partial.List/List.IEnumerable.cs
     startLine: 7
@@ -730,7 +730,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IEquatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/Partial.List/List.IEquatable.cs
     startLine: 7
@@ -771,7 +771,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IEquatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/Partial.List/List.IEquatable.cs
     startLine: 18
@@ -809,7 +809,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IHashable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Hash__
     path: ../src/Sharpy/Partial.List/List.IHashable.cs
     startLine: 5
@@ -844,7 +844,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IInplaceAddable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __IAdd__
     path: ../src/Sharpy/Partial.List/List.IInplaceAddable.cs
     startLine: 5
@@ -879,7 +879,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IInplaceMultipliable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __IMul__
     path: ../src/Sharpy/Partial.List/List.IInplaceMultipliable.cs
     startLine: 5
@@ -914,7 +914,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IIterable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Iter__
     path: ../src/Sharpy/Partial.List/List.IIterable.cs
     startLine: 5
@@ -961,7 +961,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IMultipliable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Mul__
     path: ../src/Sharpy/Partial.List/List.IMultipliable.cs
     startLine: 5
@@ -998,7 +998,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
     startLine: 7
@@ -1042,7 +1042,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
     startLine: 14
@@ -1082,7 +1082,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
     startLine: 21
@@ -1124,7 +1124,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Append
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
     startLine: 42
@@ -1159,7 +1159,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Extend
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
     startLine: 51
@@ -1198,7 +1198,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Clear
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
     startLine: 64
@@ -1230,7 +1230,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Insert
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
     startLine: 75
@@ -1275,7 +1275,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Pop
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
     startLine: 86
@@ -1320,7 +1320,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Remove
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
     startLine: 112
@@ -1358,7 +1358,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Reverse
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
     startLine: 123
@@ -1390,7 +1390,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __IAdd__
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
     startLine: 129
@@ -1425,7 +1425,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __SetItem__
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
     startLine: 140
@@ -1462,7 +1462,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __DelItem__
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
     startLine: 156
@@ -1497,7 +1497,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __DelItem__
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
     startLine: 162
@@ -1531,7 +1531,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __SetItem__
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
     startLine: 217
@@ -1568,7 +1568,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IMutableSequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __SetItem__
     path: ../src/Sharpy/Partial.List/List.IMutableSequence.cs
     startLine: 224
@@ -1605,7 +1605,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IRepresentable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Repr__
     path: ../src/Sharpy/Partial.List/List.IRepresentable.cs
     startLine: 7
@@ -1642,7 +1642,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IReversible.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Reversed__
     path: ../src/Sharpy/Partial.List/List.IReversible.cs
     startLine: 5
@@ -1683,7 +1683,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IRightAddable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __RAdd__
     path: ../src/Sharpy/Partial.List/List.IRightAddable.cs
     startLine: 5
@@ -1720,7 +1720,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.IRightMultipliable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __RMul__
     path: ../src/Sharpy/Partial.List/List.IRightMultipliable.cs
     startLine: 5
@@ -1757,7 +1757,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.ISequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Add__
     path: ../src/Sharpy/Partial.List/List.ISequence.cs
     startLine: 17
@@ -1794,7 +1794,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.ISequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __RAdd__
     path: ../src/Sharpy/Partial.List/List.ISequence.cs
     startLine: 30
@@ -1831,7 +1831,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.ISequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __GetItem__
     path: ../src/Sharpy/Partial.List/List.ISequence.cs
     startLine: 43
@@ -1874,7 +1874,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.ISequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __GetItem__
     path: ../src/Sharpy/Partial.List/List.ISequence.cs
     startLine: 50
@@ -1922,7 +1922,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.ISequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Count
     path: ../src/Sharpy/Partial.List/List.ISequence.cs
     startLine: 73
@@ -1959,7 +1959,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.ISequence.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Index
     path: ../src/Sharpy/Partial.List/List.ISequence.cs
     startLine: 95
@@ -2016,7 +2016,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.ISized.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Len__
     path: ../src/Sharpy/Partial.List/List.ISized.cs
     startLine: 7
@@ -2050,7 +2050,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.operators.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Equality
     path: ../src/Sharpy/Partial.List/List.operators.cs
     startLine: 10
@@ -2097,7 +2097,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.operators.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Inequality
     path: ../src/Sharpy/Partial.List/List.operators.cs
     startLine: 15
@@ -2136,7 +2136,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.operators.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Addition
     path: ../src/Sharpy/Partial.List/List.operators.cs
     startLine: 20
@@ -2177,7 +2177,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.operators.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Multiply
     path: ../src/Sharpy/Partial.List/List.operators.cs
     startLine: 30
@@ -2216,7 +2216,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.operators.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Multiply
     path: ../src/Sharpy/Partial.List/List.operators.cs
     startLine: 40
@@ -2255,7 +2255,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.operators.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_True
     path: ../src/Sharpy/Partial.List/List.operators.cs
     startLine: 50
@@ -2289,7 +2289,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.List/List.operators.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_False
     path: ../src/Sharpy/Partial.List/List.operators.cs
     startLine: 55

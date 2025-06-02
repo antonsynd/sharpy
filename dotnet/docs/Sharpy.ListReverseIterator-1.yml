@@ -17,7 +17,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.ListReverseIterator/ListReverseIterator.IIterator.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: ListReverseIterator
     path: ../src/Sharpy/Partial.ListReverseIterator/ListReverseIterator.IIterator.cs
     startLine: 2
@@ -63,7 +63,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.ListReverseIterator/ListReverseIterator.IIterator.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Next__
     path: ../src/Sharpy/Partial.ListReverseIterator/ListReverseIterator.IIterator.cs
     startLine: 5

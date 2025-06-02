@@ -16,7 +16,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IValuesView.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: IValuesView
     path: ../src/Sharpy/Collections/Interfaces/IValuesView.cs
     startLine: 5

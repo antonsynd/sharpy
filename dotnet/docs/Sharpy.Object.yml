@@ -38,7 +38,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.operators.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Object
     path: ../src/Sharpy/Partial.Object/Object.operators.cs
     startLine: 2
@@ -92,7 +92,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Partial.Object/Object.cs
     startLine: 11
@@ -123,7 +123,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.DotNet.IEquatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Equals
     path: ../src/Sharpy/Partial.Object/Object.DotNet.IEquatable.cs
     startLine: 7
@@ -161,7 +161,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.IBoolConvertible.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Bool__
     path: ../src/Sharpy/Partial.Object/Object.IBoolConvertible.cs
     startLine: 9
@@ -198,7 +198,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.IEquatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/Partial.Object/Object.IEquatable.cs
     startLine: 9
@@ -238,7 +238,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.IEquatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/Partial.Object/Object.IEquatable.cs
     startLine: 20
@@ -276,7 +276,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.IHashable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Hash__
     path: ../src/Sharpy/Partial.Object/Object.IHashable.cs
     startLine: 7
@@ -308,7 +308,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.IIdentifiable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Id__
     path: ../src/Sharpy/Partial.Object/Object.IIdentifiable.cs
     startLine: 10
@@ -347,7 +347,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.IInequatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Ne__
     path: ../src/Sharpy/Partial.Object/Object.IInequatable.cs
     startLine: 7
@@ -382,7 +382,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.IInequatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Ne__
     path: ../src/Sharpy/Partial.Object/Object.IInequatable.cs
     startLine: 13
@@ -419,7 +419,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.IRepresentable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Repr__
     path: ../src/Sharpy/Partial.Object/Object.IRepresentable.cs
     startLine: 9
@@ -455,7 +455,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.IStrConvertible.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Str__
     path: ../src/Sharpy/Partial.Object/Object.IStrConvertible.cs
     startLine: 7
@@ -487,7 +487,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.object.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Equals
     path: ../src/Sharpy/Partial.Object/Object.object.cs
     startLine: 9
@@ -531,7 +531,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.object.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: GetHashCode
     path: ../src/Sharpy/Partial.Object/Object.object.cs
     startLine: 24
@@ -567,7 +567,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.object.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: ToString
     path: ../src/Sharpy/Partial.Object/Object.object.cs
     startLine: 34
@@ -603,7 +603,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.operators.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Equality
     path: ../src/Sharpy/Partial.Object/Object.operators.cs
     startLine: 7
@@ -644,7 +644,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.operators.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Inequality
     path: ../src/Sharpy/Partial.Object/Object.operators.cs
     startLine: 20
@@ -685,7 +685,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.operators.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Equality
     path: ../src/Sharpy/Partial.Object/Object.operators.cs
     startLine: 31
@@ -733,7 +733,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.operators.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Inequality
     path: ../src/Sharpy/Partial.Object/Object.operators.cs
     startLine: 42
@@ -781,7 +781,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.operators.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Equality
     path: ../src/Sharpy/Partial.Object/Object.operators.cs
     startLine: 51
@@ -825,7 +825,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.operators.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Inequality
     path: ../src/Sharpy/Partial.Object/Object.operators.cs
     startLine: 60
@@ -869,7 +869,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.operators.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_True
     path: ../src/Sharpy/Partial.Object/Object.operators.cs
     startLine: 68
@@ -905,7 +905,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Object/Object.operators.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_False
     path: ../src/Sharpy/Partial.Object/Object.operators.cs
     startLine: 77

@@ -18,7 +18,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IEquatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: IEquatableWith
     path: ../src/Sharpy/IEquatable.cs
     startLine: 33
@@ -52,7 +52,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IEquatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/IEquatable.cs
     startLine: 38
@@ -87,7 +87,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IEquatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/IEquatable.cs
     startLine: 40

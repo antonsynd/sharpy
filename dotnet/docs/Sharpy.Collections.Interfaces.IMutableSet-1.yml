@@ -23,7 +23,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableSet.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: IMutableSet
     path: ../src/Sharpy/Collections/Interfaces/IMutableSet.cs
     startLine: 5
@@ -81,7 +81,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableSet.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Discard
     path: ../src/Sharpy/Collections/Interfaces/IMutableSet.cs
     startLine: 7
@@ -112,7 +112,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableSet.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Pop
     path: ../src/Sharpy/Collections/Interfaces/IMutableSet.cs
     startLine: 9
@@ -142,7 +142,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableSet.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Remove
     path: ../src/Sharpy/Collections/Interfaces/IMutableSet.cs
     startLine: 11
@@ -173,7 +173,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableSet.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __IOr__
     path: ../src/Sharpy/Collections/Interfaces/IMutableSet.cs
     startLine: 13
@@ -205,7 +205,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableSet.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __IAnd__
     path: ../src/Sharpy/Collections/Interfaces/IMutableSet.cs
     startLine: 15
@@ -237,7 +237,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableSet.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __IXOr__
     path: ../src/Sharpy/Collections/Interfaces/IMutableSet.cs
     startLine: 17
@@ -269,7 +269,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableSet.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __ISub__
     path: ../src/Sharpy/Collections/Interfaces/IMutableSet.cs
     startLine: 19

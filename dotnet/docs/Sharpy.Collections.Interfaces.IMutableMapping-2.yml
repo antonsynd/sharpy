@@ -27,7 +27,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: IMutableMapping
     path: ../src/Sharpy/Collections/Interfaces/IMutableMapping.cs
     startLine: 5
@@ -82,7 +82,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Collections/Interfaces/IMutableMapping.cs
     startLine: 10
@@ -118,7 +118,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __SetItem__
     path: ../src/Sharpy/Collections/Interfaces/IMutableMapping.cs
     startLine: 15
@@ -153,7 +153,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __DelItem__
     path: ../src/Sharpy/Collections/Interfaces/IMutableMapping.cs
     startLine: 21
@@ -189,7 +189,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __IOr__
     path: ../src/Sharpy/Collections/Interfaces/IMutableMapping.cs
     startLine: 27
@@ -226,7 +226,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __IOr__
     path: ../src/Sharpy/Collections/Interfaces/IMutableMapping.cs
     startLine: 33
@@ -263,7 +263,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Pop
     path: ../src/Sharpy/Collections/Interfaces/IMutableMapping.cs
     startLine: 39
@@ -301,7 +301,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Pop
     path: ../src/Sharpy/Collections/Interfaces/IMutableMapping.cs
     startLine: 45
@@ -341,7 +341,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: PopItem
     path: ../src/Sharpy/Collections/Interfaces/IMutableMapping.cs
     startLine: 51
@@ -380,7 +380,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Update
     path: ../src/Sharpy/Collections/Interfaces/IMutableMapping.cs
     startLine: 61
@@ -421,7 +421,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Update
     path: ../src/Sharpy/Collections/Interfaces/IMutableMapping.cs
     startLine: 72
@@ -464,7 +464,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IMutableMapping.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: SetDefault
     path: ../src/Sharpy/Collections/Interfaces/IMutableMapping.cs
     startLine: 78

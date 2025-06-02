@@ -51,7 +51,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Sum.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Exports
     path: ../src/Sharpy/Sum.cs
     startLine: 4
@@ -86,7 +86,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Bool.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Bool
     path: ../src/Sharpy/Bool.cs
     startLine: 4
@@ -120,7 +120,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Bool.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Bool
     path: ../src/Sharpy/Bool.cs
     startLine: 9
@@ -154,7 +154,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Bool.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Bool
     path: ../src/Sharpy/Bool.cs
     startLine: 14
@@ -188,7 +188,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Bool.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Bool
     path: ../src/Sharpy/Bool.cs
     startLine: 19
@@ -222,7 +222,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Bool.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Bool
     path: ../src/Sharpy/Bool.cs
     startLine: 24
@@ -256,7 +256,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Bool.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Bool
     path: ../src/Sharpy/Bool.cs
     startLine: 29
@@ -290,7 +290,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Bool.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Bool
     path: ../src/Sharpy/Bool.cs
     startLine: 34
@@ -324,7 +324,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Bool.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Bool
     path: ../src/Sharpy/Bool.cs
     startLine: 39
@@ -358,7 +358,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Bool.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Bool
     path: ../src/Sharpy/Bool.cs
     startLine: 44
@@ -392,7 +392,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Bool.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Bool
     path: ../src/Sharpy/Bool.cs
     startLine: 49
@@ -426,7 +426,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Bool.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Bool
     path: ../src/Sharpy/Bool.cs
     startLine: 54
@@ -460,7 +460,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Bool.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Bool
     path: ../src/Sharpy/Bool.cs
     startLine: 59
@@ -494,7 +494,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Bool.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Bool
     path: ../src/Sharpy/Bool.cs
     startLine: 64
@@ -528,7 +528,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Bool.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Bool
     path: ../src/Sharpy/Bool.cs
     startLine: 74
@@ -559,7 +559,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Bool.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Bool
     path: ../src/Sharpy/Bool.cs
     startLine: 79
@@ -590,7 +590,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Bool.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Bool
     path: ../src/Sharpy/Bool.cs
     startLine: 84
@@ -624,7 +624,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Iter.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Iter
     path: ../src/Sharpy/Iter.cs
     startLine: 6
@@ -660,7 +660,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Len.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Len
     path: ../src/Sharpy/Len.cs
     startLine: 11
@@ -698,7 +698,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Len.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Len
     path: ../src/Sharpy/Len.cs
     startLine: 21
@@ -732,7 +732,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Max.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Max
     path: ../src/Sharpy/Max.cs
     startLine: 7
@@ -768,7 +768,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Max.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Max
     path: ../src/Sharpy/Max.cs
     startLine: 12
@@ -807,7 +807,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Min.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Min
     path: ../src/Sharpy/Min.cs
     startLine: 7
@@ -843,7 +843,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Min.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Min
     path: ../src/Sharpy/Min.cs
     startLine: 12
@@ -882,7 +882,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Next.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Next
     path: ../src/Sharpy/Next.cs
     startLine: 4
@@ -918,7 +918,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/None.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: None
     path: ../src/Sharpy/None.cs
     startLine: 4
@@ -951,7 +951,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Str/Str.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Str
     path: ../src/Sharpy/Partial.Str/Str.cs
     startLine: 6
@@ -985,7 +985,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Print.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Print
     path: ../src/Sharpy/Print.cs
     startLine: 4
@@ -1021,7 +1021,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Print.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Print
     path: ../src/Sharpy/Print.cs
     startLine: 11
@@ -1057,7 +1057,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Print.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Print
     path: ../src/Sharpy/Print.cs
     startLine: 26
@@ -1093,7 +1093,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Print.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Print
     path: ../src/Sharpy/Print.cs
     startLine: 33
@@ -1129,7 +1129,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Repr.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Repr
     path: ../src/Sharpy/Repr.cs
     startLine: 13
@@ -1173,7 +1173,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Repr.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Repr
     path: ../src/Sharpy/Repr.cs
     startLine: 27
@@ -1218,7 +1218,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Reversed.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Reversed
     path: ../src/Sharpy/Reversed.cs
     startLine: 6
@@ -1254,7 +1254,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Some.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Some
     path: ../src/Sharpy/Some.cs
     startLine: 8
@@ -1295,7 +1295,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Sum.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Sum
     path: ../src/Sharpy/Sum.cs
     startLine: 6

@@ -17,7 +17,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IStrConvertible.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: IStrConvertible
     path: ../src/Sharpy/IStrConvertible.cs
     startLine: 2
@@ -44,7 +44,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IStrConvertible.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Str__
     path: ../src/Sharpy/IStrConvertible.cs
     startLine: 4

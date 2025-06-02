@@ -17,7 +17,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IReversible.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: IReversible
     path: ../src/Sharpy/Collections/Interfaces/IReversible.cs
     startLine: 6
@@ -55,7 +55,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IReversible.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Reversed__
     path: ../src/Sharpy/Collections/Interfaces/IReversible.cs
     startLine: 14

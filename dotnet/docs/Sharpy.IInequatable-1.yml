@@ -22,7 +22,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IInequatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: IInequatable
     path: ../src/Sharpy/IInequatable.cs
     startLine: 20
@@ -60,7 +60,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IInequatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Equality
     path: ../src/Sharpy/IInequatable.cs
     startLine: 22
@@ -96,7 +96,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IInequatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Inequality
     path: ../src/Sharpy/IInequatable.cs
     startLine: 27
@@ -132,7 +132,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IInequatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Equality
     path: ../src/Sharpy/IInequatable.cs
     startLine: 32
@@ -168,7 +168,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IInequatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Inequality
     path: ../src/Sharpy/IInequatable.cs
     startLine: 42
@@ -204,7 +204,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IInequatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Equality
     path: ../src/Sharpy/IInequatable.cs
     startLine: 47
@@ -240,7 +240,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IInequatable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Inequality
     path: ../src/Sharpy/IInequatable.cs
     startLine: 57

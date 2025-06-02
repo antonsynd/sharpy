@@ -33,7 +33,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.Object.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Optional
     path: ../src/Sharpy/Partial.Optional/Optional.Object.cs
     startLine: 4
@@ -92,7 +92,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Partial.Optional/Optional.cs
     startLine: 8
@@ -121,7 +121,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Partial.Optional/Optional.cs
     startLine: 10
@@ -153,7 +153,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: GetValue
     path: ../src/Sharpy/Partial.Optional/Optional.cs
     startLine: 12
@@ -183,7 +183,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: SetValue
     path: ../src/Sharpy/Partial.Optional/Optional.cs
     startLine: 22
@@ -215,7 +215,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: HasValue
     path: ../src/Sharpy/Partial.Optional/Optional.cs
     startLine: 27
@@ -245,7 +245,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Reset
     path: ../src/Sharpy/Partial.Optional/Optional.cs
     startLine: 32
@@ -273,7 +273,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_True
     path: ../src/Sharpy/Partial.Optional/Optional.cs
     startLine: 37
@@ -307,7 +307,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_False
     path: ../src/Sharpy/Partial.Optional/Optional.cs
     startLine: 42
@@ -341,7 +341,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Implicit
     path: ../src/Sharpy/Partial.Optional/Optional.cs
     startLine: 47
@@ -375,7 +375,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Equality
     path: ../src/Sharpy/Partial.Optional/Optional.cs
     startLine: 52
@@ -411,7 +411,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Inequality
     path: ../src/Sharpy/Partial.Optional/Optional.cs
     startLine: 57
@@ -447,7 +447,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Equality
     path: ../src/Sharpy/Partial.Optional/Optional.cs
     startLine: 65
@@ -485,7 +485,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: op_Inequality
     path: ../src/Sharpy/Partial.Optional/Optional.cs
     startLine: 70
@@ -521,7 +521,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.Object.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Bool__
     path: ../src/Sharpy/Partial.Optional/Optional.Object.cs
     startLine: 6
@@ -559,7 +559,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.Object.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/Partial.Optional/Optional.Object.cs
     startLine: 17
@@ -601,7 +601,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.Object.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/Partial.Optional/Optional.Object.cs
     startLine: 27
@@ -635,7 +635,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.Object.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Repr__
     path: ../src/Sharpy/Partial.Optional/Optional.Object.cs
     startLine: 37

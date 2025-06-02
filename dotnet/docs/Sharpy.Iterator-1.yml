@@ -19,7 +19,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Iterator/Iterator.IIterable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: Iterator
     path: ../src/Sharpy/Partial.Iterator/Iterator.IIterable.cs
     startLine: 2
@@ -100,7 +100,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Iterator/Iterator.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Next__
     path: ../src/Sharpy/Partial.Iterator/Iterator.cs
     startLine: 30
@@ -135,7 +135,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Iterator/Iterator.IEnumerable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: GetEnumerator
     path: ../src/Sharpy/Partial.Iterator/Iterator.IEnumerable.cs
     startLine: 7
@@ -170,7 +170,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.Iterator/Iterator.IIterable.cs
       branch: mainline
-      repo: git@github.com:antonsynd/sharpy.git
+      repo: https://github.com/antonsynd/sharpy.git
     id: __Iter__
     path: ../src/Sharpy/Partial.Iterator/Iterator.IIterable.cs
     startLine: 9
