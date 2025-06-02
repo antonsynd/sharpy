@@ -99,7 +99,7 @@ follows:
 
 Sharpy has support for classes, but unlike Python, there is no
 multiple inheritance. Multiple inheritance is achieved via
-traits (see below).
+protocols (see below).
 
 ```Python
 class Foo(Bar):
@@ -107,8 +107,9 @@ class Foo(Bar):
 ```
 
 Unlike C#, only Sharpy-specific reference types derive from the
-Sharpy `object` base class (i.e. `Sharpy.Object`). Also, there are
-no static, sealed, or partial classes.
+Sharpy `object` base class (i.e. `Sharpy.Object`). The C# concept
+of a sealed class is done in Sharpy via the `@final` decorator.
+There are no static nor partial classes in Sharpy.
 
 Static functions are indicated with the `@static` decorator. There
 are also static members, like in C#, indicated in the same way.
@@ -121,29 +122,48 @@ struct Val:
     pass
 ```
 
-# Traits
+Sharpy structs do not inherit from `Sharpy.Object` and do not
+participate in inheritance, but they can implement protocols
+(see below).
 
-Sharpy implements traits which are the equivalent to C#'s interfaces.
+# Protocols
+
+Sharpy implements protocols which are the equivalent to C#'s
+protocols.
 
 ```Python
-trait Encodable:
+protocol Encodable:
     pass
 ```
 
-In a class or struct that implements traits and derives from
-a base class, the traits must follow the base class.
+In a class or struct that implements protocols and derives from
+a base class, the protocols must follow the base class.
 
 ```Python
 class Foo(Bar, Encodable):
     pass
 ```
 
+Protocols declare methods that a conforming must implement.
+
+```Python
+protocol Encodable:
+    decl encode(self) -> str
+
+    def encode_as_json(self) -> str:
+        return json.dumps(self.encode())
+```
+
+Methods with no implementation are introduced via a new keyword
+`decl`, without a closing colon. Those that have an implementation
+are introduced with `def` as is usually done for normal methods.
+
 # Access modifiers
 
 Access modifiers in Sharpy are indicated by the naming of the
 variable with a special prefix. This prefix is purely cosmetic and
 is stripped from the variable in the ABI. This applies to classes,
-structs, traits, and members.
+structs, protocols, and members.
 
 Sharpy only supports public, private, and protected access
 modifiers.
@@ -161,6 +181,22 @@ user to use the equivalent global function or operators.
 | N/A | - | `protected internal` | Accessible to anything in the project or the actual class and its derived classes, irrespective of whether it is project internal or external | - |
 | N/A | - | `private protected` | Accessible to the class and its derived classes within the project | - |
 | N/A | - | `file` | Accessible to only symbols in the current file | - |
+
+```Python
+# In the ABI, this class is "public Foo"
+class Foo:
+    # In the ABI, this method is "public void PublicMethod()"
+    def public_method(self) -> None:
+        pass
+
+    # In the ABI, this method is "protected void ProtectedMethod()"
+    def _protected_method(self) -> None:
+        pass
+
+    # In the ABI, this method is "private void PrivateMethod()"
+    def __private_method(self) -> None:
+        pass
+```
 
 # Delegates
 
