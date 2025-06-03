@@ -126,6 +126,48 @@ Sharpy structs do not inherit from `Sharpy.Object` and do not
 participate in inheritance, but they can implement protocols
 (see below).
 
+Classes and structs in Sharpy can have member variables, as well as
+functional properties (getters and setters).
+
+```Python
+class Foo:
+    _value: int
+
+    @property
+    def value(self) -> int:
+        return self._value
+
+    @value.setter
+    def value(self, v: int) -> None:
+        self._value = v
+```
+
+There is also a shorthand notation using the new keywords `get` and `set`:
+
+```Python
+class Foo:
+    _value: int
+
+    get value(self) -> int:
+        return self._value
+
+    set value(self, v: int) -> None:
+        self._value = v
+```
+
+Unlike Python, Sharpy allows overloading as in C#.
+
+Constructor methods are indicated with the dunder method `__init__`.
+Note that `__new__` is not used in Sharpy. It can still be invoked
+manually, however.
+
+```Python
+class Foo:
+    # Constructors do not return anything and have no return type
+    def __init__(self):
+        pass
+```
+
 # Protocols
 
 Sharpy implements protocols which are the equivalent to C#'s
@@ -148,7 +190,7 @@ Protocols declare methods that a conforming must implement.
 
 ```Python
 protocol Encodable:
-    decl encode(self) -> str
+    decl def encode(self) -> str
 
     def encode_as_json(self) -> str:
         return json.dumps(self.encode())
@@ -157,6 +199,14 @@ protocol Encodable:
 Methods with no implementation are introduced via a new keyword
 `decl`, without a closing colon. Those that have an implementation
 are introduced with `def` as is usually done for normal methods.
+
+Protocols can also declare/define getters and setters.
+
+```Python
+protocol Encodable:
+    decl get value(self) -> int
+    decl set value(self, v: int) -> None
+```
 
 # Access modifiers
 
