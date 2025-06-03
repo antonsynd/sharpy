@@ -216,7 +216,7 @@ is stripped from the variable in the ABI. This applies to classes,
 structs, protocols, and members.
 
 Sharpy only supports public, private, and protected access
-modifiers.
+modifiers. The C# modifiers `internal`, `protected internal`, `private protected`, and `file` do not exist in Sharpy.
 
 As an exception, Sharpy-recognized dunder methods are always
 public, however the compiler will issue a warning preferring the
@@ -261,37 +261,42 @@ symbols in the resulting binaries.
 
 The following is enforced for user-provided code.
 
-| Identifier type | Case | Compile-time conversion? |
+| Identifier type | Sharpy case convention | Compile-time conversion? |
 | - | - | - |
-| Module | `snake_case` | Yes |
+| Module | `snake_case` | Yes, to `PascalCase` |
 | Class | `PascalCase` | No |
 | Struct | `PascalCase` | No |
+| Members (variables, properties, methods) | `snake_case` | Yes, to `PascalCase` |
 | Enum | `PascalCase` | No |
-| Variable | `snake_case` or `camelCase` | Yes |
-| Function | `snake_case` or `PascalCase` | Yes |
+| Enum values | `CAPS_SNAKE_CASE` | Yes, to `PascalCase` |
+| Function | `snake_case` | Yes, to `PascalCase` |
+| Function parameters | `snake_case` | Yes, to `camelCase` |
+| Function body variables | `snake_case` | No |
 | Constants | `CAPS_SNAKE_CASE` | No |
 
 To allow Sharpy to access C# and CLI facets in an idiomatic way,
-the Sharpy compiler converts all snake case symbols to
-Pascal case. If there is an existing snake case symbol, the
-compiler throws an exception telling the user to resolve the
+the Sharpy compiler converts all symbols requiring compile-time
+conversion to the desired case. If there is an existing case variant,
+the compiler throws an exception telling the user to resolve the
 ambiguity.
 
-Any symbol in Sharpy can be prefixed with `@` to tell the compiler
-to not transform the name during resolution. This extends C#'s
-`@`, which indicates that a symbol name should be resolved as it
-is, even if it is a keyword.
+Any symbol in Sharpy can be prefixed with `$` to tell the compiler
+to not transform the name during resolution. This is equivalent to
+C#'s `@`, which indicates that a symbol name should be resolved as it
+is, even if it is a keyword. Sharpy `$` can also be used for the
+purpose of using keywords as identifiers.
 
-```
-# Exposed in binary as AddSomething()
+```Python
+# Exposed in ABI as AddSomething()
 def add_something():
     pass
 ```
 
-```
-import system.collections.abc
+```Python
+import foo_bar.abc
+import foo_bar.$abc
 
-new_hash_set()  # resolves to System.Collections.Abc.NewHashSet()
+new_hash_set()  # resolves to FooBar.Abc.NewHashSet()
 
-$new_hash_set()  # resolves to a local new_hash_set() function
+$new_hash_set()  # resolves to FooBar.abc.new_hash_set()
 ```
