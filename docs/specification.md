@@ -159,7 +159,7 @@ Unlike Python, Sharpy allows overloading as in C#.
 
 Constructor methods are indicated with the dunder method `__init__`.
 Note that `__new__` is not used in Sharpy. It can still be invoked
-manually, however.
+manually, however. Constructors are always public.
 
 ```Python
 class Foo:
@@ -294,10 +294,87 @@ def add_something():
 ```
 
 ```Python
-import foo_bar.abc
-import foo_bar.$abc
+from foo_bar.abc import *
 
-new_hash_set()  # resolves to FooBar.Abc.NewHashSet()
-
-$new_hash_set()  # resolves to FooBar.abc.new_hash_set()
+# resolves to FooBar.Abc.NewHashSet()
+new_hash_set()
 ```
+
+```Python
+from foo_bar.$abc import *
+
+# resolves to FooBar.abc.new_hash_set()
+$new_hash_set()
+```
+
+# Generics
+
+Classes, structs, and protocols can be made generic, accepting
+types as parameters. This makes them incompatible with other
+instantiations of that type, as in C#.
+
+Constraints on generics are specified as follows:
+
+```Python
+TODO
+```
+
+# Modules
+
+Sharpy has modules which are the equivalent of namespaces in C#. Modules
+can contain module-level functions, classes, protocols, structs, and
+constants.
+
+Because Sharpy transpiles to C# as of version 1.0, there are constraints
+on the representation.
+
+Module-level functions and constants are automatically placed in a
+public static class named `__Module__` as static members. This
+static class is internal to Sharpy and is automatically inferred by
+the compiler in Sharpy code, but not in C# code interfacing with Sharpy code.
+
+```Python
+# some_module.spy
+SOME_CONSTANT: int = 3
+```
+
+```C#
+// Equivalent C# code
+namespace SomeModule;
+
+public static class __Module__
+{
+    public static const int SOME_CONSTANT = 3;
+}
+```
+
+```Python
+# some_other_file.spy
+import some_module
+
+print(some_module.SOME_CONSTANT)
+```
+
+```C#
+// Equivalent C# code (C# 9+ with top-level statements)
+using Sharpy;
+using static Sharpy.__Module__;
+
+using SomeModule;
+
+Print(SomeModule.__Module__.SOME_CONSTANT);
+```
+
+# Program structure
+
+The entry point of a Sharpy program is either a file with top-level
+statements, or a single file with a top-level `main()` method.
+The `main()` method is transpiled into a static method `Main()`
+in an internally generated static class called `__Main__`.
+
+This takes advantage of C# 9+'s top-level statements file as an entry
+point.
+
+There is no idiom of checking for `__name__ == "__main__"` as there is
+in Python and in fact, the dunder variable `__name__` does not exist
+in Sharpy. Attempts to reference it will cause a compilation error.
