@@ -266,6 +266,7 @@ The following is enforced for user-provided code.
 | Module | `snake_case` | Yes, to `PascalCase` |
 | Class | `PascalCase` | No |
 | Struct | `PascalCase` | No |
+| Protocol | `PascalCase` | Yes, prefixed with `I` |
 | Members (variables, properties, methods) | `snake_case` | Yes, to `PascalCase` |
 | Enum | `PascalCase` | No |
 | Enum values | `CAPS_SNAKE_CASE` | Yes, to `PascalCase` |

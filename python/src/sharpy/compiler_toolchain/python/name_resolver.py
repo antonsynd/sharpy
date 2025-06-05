@@ -1,4 +1,5 @@
 import re
+from enum import Enum, auto
 from typing import AbstractSet, Mapping, Optional, Sequence, Tuple
 
 # Map of top-level Sharpy types to C# internal types.
@@ -224,5 +225,71 @@ def resolve_name_component(s: str) -> str:
     return snake_case_to_pascal_case(s)
 
 
+class NameType(Enum):
+    MODULE = auto()
+    CLASS = auto()
+    STRUCT = auto()
+    PROTOCOL = auto()
+    MEMBER = auto()
+    ENUM = auto()
+    ENUM_VALUE = auto()
+    FUNCTION = auto()
+    FUNCTION_PARAMETER = auto()
+    FUNCTION_VARIABLE = auto()
+    CONSTANT = auto()
+
+
+def resolve_name(s: str, name_type: NameType) -> str:
+    if not s:
+        return ""
+
+    # $-prefixed names are treated literally
+    if s[0] == "$":
+        return s[1:]
+
+    match name_type:
+        case NameType.MODULE:
+            return snake_case_to_pascal_case(s)
+        case NameType.CLASS:
+            return s
+        case NameType.STRUCT:
+            return s
+        case NameType.PROTOCOL:
+            return "I" + s
+        case NameType.MEMBER:
+            return snake_case_to_pascal_case(s)
+        case NameType.ENUM:
+            return s
+        case NameType.ENUM_VALUE:
+            return snake_case_to_pascal_case(s)
+        case NameType.FUNCTION:
+            return snake_case_to_pascal_case(s)
+        case NameType.FUNCTION_PARAMETER:
+            return snake_case_to_camel_case(s)
+        case NameType.FUNCTION_VARIABLE:
+            return s
+        case NameType.CONSTANT:
+            return s
+        case _:
+            raise ValueError(f"Invalid name type: {name_type}")
+
+
 def snake_case_to_pascal_case(s: str) -> str:
+    """
+    Converts snake_case/CAPS_SNAKE_CASE to PascalCase
+    """
+
     return "".join([x.title() for x in s.split("_")])
+
+
+def snake_case_to_camel_case(s: str) -> str:
+    """
+    Converts snake_case/CAPS_SNAKE_CASE to camelCase
+    """
+    components: Sequence[str] = s.split("_")
+    components[0] = components[0].lower()
+
+    for i in range(1, len(components)):
+        components[i] = components[i].title()
+
+    return "".join(components)
