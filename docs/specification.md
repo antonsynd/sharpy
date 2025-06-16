@@ -157,14 +157,18 @@ class Foo:
 
 Unlike Python, Sharpy allows overloading as in C#.
 
-Constructor methods are indicated with the dunder method `__init__`.
+Constructor methods are indicated with the special method `init` (equivalent
+to Python `__init__`). The constructor can also be given `protected` or
+`private` access via the semantic naming scheme (described below): `_init`
+and `__init` respectively.
+
 Note that `__new__` is not used in Sharpy. It can still be invoked
 manually, however. Constructors are always public.
 
 ```Python
 class Foo:
     # Constructors do not return anything and have no return type
-    def __init__(self):
+    def init(self):
         pass
 ```
 
@@ -216,7 +220,8 @@ is stripped from the variable in the ABI. This applies to classes,
 structs, protocols, and members.
 
 Sharpy only supports public, private, and protected access
-modifiers. The C# modifiers `internal`, `protected internal`, `private protected`, and `file` do not exist in Sharpy.
+modifiers. The C# modifiers `internal`, `protected internal`,
+`private protected`, and `file` do not exist in Sharpy.
 
 As an exception, Sharpy-recognized dunder methods are always
 public, however the compiler will issue a warning preferring the
