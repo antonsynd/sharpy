@@ -200,8 +200,8 @@ def resolve_name_component(s: str) -> str:
     if not s:
         return ""
 
-    # @-prefixed names are treated literally
-    if s[0] == "@":
+    # $-prefixed names are treated literally
+    if s[0] == "$":
         return s[1:]
 
     # Handle exceptions first
