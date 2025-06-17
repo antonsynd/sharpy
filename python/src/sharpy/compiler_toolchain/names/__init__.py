@@ -1,6 +1,8 @@
 from enum import Enum, auto
 from typing import Any, MutableSet, Optional, Self, Sequence
 
+import sharpy.compiler_toolchain.names.csharp as csharp
+
 
 def snake_case_to_pascal_case(s: str) -> str:
     """Converts a snake_case string to PascalCase."""
@@ -86,8 +88,9 @@ class SharpyNameType:
         self._collection_type = value
 
 
-class SharpyModule:
+class Module:
     """Represents a Sharpy module in the compiler toolchain."""
+
     def __init__(self, name: str) -> None:
         pass
 
@@ -120,80 +123,24 @@ class SharpyModule:
         pass
 
 
-class CSharpClass:
-    """Represents a C# class in the compiler toolchain."""
-    def __init__(self, name: str) -> None:
-        self.name: str = name
-
-    def add_static(self, name: str) -> None:
-        """Adds a static member to the class."""
-        pass
-
-    def add_instance(self, name: str) -> None:
-        """Adds a instance member to the class."""
-        pass
-
-
-class CSharpNamespace:
-    """
-    Represents a C# namespace in the compiler toolchain. C# namespaces can only
-    contain classes, interfaces, and enums, so it makes it relatively easy to
-    model. The only difficulty is that C# classes can be static and hold
-    static members.
-    """
-    def __init__(self, name: str) -> None:
-        self._name: str = name
-        self._classes: MutableSet[CSharpClass] = set()
-        self._interfaces: MutableSet[str] = set()
-        self._enums: MutableSet[str] = set()
-
-    def add_class(self, class_: CSharpClass) -> None:
-        """Adds a class to the namespace."""
-        self._classes.add(class_)
-
-    def add_interface(self, name: str) -> None:
-        """Adds an interface to the namespace."""
-        self._interfaces.add(name)
-
-    def add_enum(self, name: str) -> None:
-        """Adds an enum to the namespace."""
-        self._enums.add(name)
-
-    def name(self) -> str:
-        """Returns the name of the namespace."""
-        return self._name
-
-    def classes(self) -> MutableSet[CSharpClass]:
-        """Returns the classes in the namespace."""
-        return self._classes
-
-    def interfaces(self) -> MutableSet[str]:
-        """Returns the interfaces in the namespace."""
-        return self._interfaces
-
-    def enums(self) -> MutableSet[str]:
-        """Returns the enums in the namespace."""
-        return self._enums
-
-
 class Context:
     def __init__(self) -> None:
-        self._namespaces: MutableSet[CSharpNamespace] = set()
-        self._modules: MutableSet[SharpyModule] = set()
+        self._namespaces: MutableSet[csharp.Namespace] = set()
+        self._modules: MutableSet[Module] = set()
 
-    def add_namespace(self, namespace: CSharpNamespace) -> None:
+    def add_namespace(self, namespace: csharp.Namespace) -> None:
         """Adds a C# namespace to the context."""
         self._namespaces.add(namespace)
 
-    def add_module(self, module: SharpyModule) -> None:
+    def add_module(self, module: Module) -> None:
         """Adds a Sharpy module to the context."""
         self._modules.add(module)
 
-    def namespaces(self) -> MutableSet[CSharpNamespace]:
+    def namespaces(self) -> MutableSet[csharp.Namespace]:
         """Returns the C# namespaces in the context."""
         return self._namespaces
 
-    def modules(self) -> MutableSet[SharpyModule]:
+    def modules(self) -> MutableSet[Module]:
         """Returns the Sharpy modules in the context."""
         return self._modules
 
