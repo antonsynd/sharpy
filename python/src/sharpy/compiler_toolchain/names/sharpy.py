@@ -284,11 +284,11 @@ class Name:
             case IdentifierType.FIELD:
                 return context.resolve_field(self._name)
             case IdentifierType.STORAGE:
-                return context.resolve_storage(self._name, self._type.storage_type)
+                return context.resolve_storage(self._name, self._type.storage_type())
             case IdentifierType.COLLECTION:
-                return context.resolve_collection(self._name, self._type.collection_type)
+                return context.resolve_collection(self._name, self._type.collection_type())
             case _:
-                raise ValueError(f"Unknown identifier type: {self._type.identifier_type}")
+                raise ValueError(f"Unknown identifier type: {self._type.identifier_type()}")
 
 
 class QName:

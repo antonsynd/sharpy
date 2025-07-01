@@ -133,7 +133,7 @@ def map_sharpy_name_to_cs_name(s: str) -> str:
     if s in SINGLE_TEMPLATE_TYPE_MAP:
         return SINGLE_TEMPLATE_TYPE_MAP[s]
 
-    "".join([x.title() for x in s.split("_")])
+    return "".join([x.title() for x in s.split("_")])
 
 
 def map_python_type_to_cs_type(s: str) -> str:
