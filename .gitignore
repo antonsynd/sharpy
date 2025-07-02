@@ -1,3 +1,6 @@
+# ANTLR generated files
+.antlr/
+
 # Local VSCode configs
 .vscode/launch.json
 

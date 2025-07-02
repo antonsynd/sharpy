@@ -21,10 +21,10 @@ THE SOFTWARE.
  */
 
 // A substantial portion of this grammar is from
-// the Sharpy grammar at https://github.com/RobEin/ANTLR4-parser-for-Sharpy-3.13
+// the Python grammar at https://github.com/RobEin/ANTLR4-parser-for-Python-3.13
 
 /*
-Sharpy grammar
+Python grammar
 The MIT License (MIT)
 Copyright (c) 2021 Robert Einhorn
 
@@ -173,6 +173,8 @@ NAME_OR_SET      : 'set';  // identifier or set keyword,      the parser grammar
 
 // https://docs.python.org/3.13/reference/lexical_analysis.html#identifiers
 // *** BEGIN_SHARPY_ADDITIONS
+
+fragment ID_LITERAL_FLAG : '$';
 
 NAME : ID_LITERAL_FLAG? ID_START ID_CONTINUE*;
 
@@ -1508,9 +1510,3 @@ fragment ID_START
     | '\u{30000}' .. '\u{3134A}'
     | '\u{31350}' .. '\u{323AF}'
     ;
-
-// *** BEGIN_SHARPY_ADDITIONS
-
-fragment ID_LITERAL_FLAG : '$'
-
-// *** END_SHARPY_ADDITIONS

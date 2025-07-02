@@ -27,11 +27,9 @@ CSHARP_TEST_DIR: Path = ROOT_DIR / "dotnet/src/Sharpy.Tests"
 
 
 _expected_resources: Sequence[Path] = [
-    RESOURCE_DIR / "PythonLexer.g4",
-    RESOURCE_DIR / "PythonLexerBase.py",
-    RESOURCE_DIR / "PythonParser.g4",
-    RESOURCE_DIR / "PythonParserListener.py",
-    RESOURCE_DIR / "PythonParserVisitor.py",
+    RESOURCE_DIR / "SharpyLexer.py",
+    RESOURCE_DIR / "SharpyParserListener.py",
+    RESOURCE_DIR / "SharpyParserVisitor.py",
 ]
 
 
@@ -72,7 +70,7 @@ def main() -> None:
     elif command == "run":
         run(args=args, rest=rest)
     elif command == "test":
-        test(args=args, rest=rest)
+        test(args=args, rest=rest, release=False)
     elif command == "help":
         parser.print_help()
     else:
@@ -87,9 +85,12 @@ def create_parser() -> argparse.ArgumentParser:
         "setup", help="Downloads resources and generates required code."
     )
     build_parser = subparsers.add_parser("build", help="Builds the package.")
-    build_parser.add_argument("project", type=str, default="all", choices=("all", "lib", "tests"))
+    build_parser.add_argument("--project", type=str, default="all", choices=("all", "lib", "tests"))
     build_parser.add_argument("--release", action="store_true")
     clean_parser = subparsers.add_parser("clean", help="Cleans up intermediate objects.")
+    clean_parser.add_argument(
+        "--clean-resources", action="store_true", help="Cleans up generated resources."
+    )
     install_parser = subparsers.add_parser("install", help="TODO: No-op")
     format_parser = subparsers.add_parser("format", help="Runs code formatters.")
     format_parser.add_argument(
@@ -110,8 +111,12 @@ def create_parser() -> argparse.ArgumentParser:
     test_parser.add_argument(
         "--target", action="append", choices=("cs", "csharp", "py", "python"), default=None
     )
-    build_docs_parser = subparsers.add_parser("build-docs", aliases=["docs"], help="Generates documentation.")
-    view_docs_parser = subparsers.add_parser("view-docs", help="Starts the documentation server for viewing.")
+    build_docs_parser = subparsers.add_parser(
+        "build-docs", aliases=["docs"], help="Generates documentation."
+    )
+    view_docs_parser = subparsers.add_parser(
+        "view-docs", help="Starts the documentation server for viewing."
+    )
     help_parser = subparsers.add_parser("help", help="Prints this help message.")
 
     return parser
@@ -168,29 +173,30 @@ def setup(args: argparse.Namespace, rest: Sequence[str]) -> None:
         get_logger().info("Downloading resources...")
         download_data_files()
 
-        os.chdir(RESOURCE_DIR)
-
         get_logger().info("Generating lexer...")
-        subprocess.run(
-            ["antlr", "-Dlanguage=Python3", str(RESOURCE_DIR / "PythonLexer.g4")], check=True
-        )
-
-        get_logger().info("Generating parser...")
-        subprocess.run(
-            ["antlr", "-Dlanguage=Python3", str(RESOURCE_DIR / "PythonParser.g4")], check=True
-        )
-
-        get_logger().info("Generating visitor...")
         subprocess.run(
             [
                 "antlr",
-                "-visitor",
+                "-o",
+                str(RESOURCE_DIR),
                 "-Dlanguage=Python3",
-                str(RESOURCE_DIR / "PythonParser.g4"),
+                str(DATA_DIR / "SharpyLexer.g4"),
             ],
             check=True,
         )
 
+        get_logger().info("Generating parser and visitor...")
+        subprocess.run(
+            [
+                "antlr",
+                "-o",
+                str(RESOURCE_DIR),
+                "-visitor",
+                "-Dlanguage=Python3",
+                str(DATA_DIR / "SharpyParser.g4"),
+            ],
+            check=True,
+        )
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         os.chdir(old_cwd)
@@ -262,6 +268,12 @@ def clean(args: argparse.Namespace, rest: Sequence[str]) -> None:
     remove_pycache_dirs(root_path=PYTHON_SRC_DIR)
     remove_pycache_dirs(root_path=PYTHON_TEST_DIR)
 
+    if args.clean_resources:
+        get_logger().info("Removing generated resources...")
+
+        for resource in RESOURCE_DIR.rglob("*"):
+            resource.unlink()
+
 
 def docs(args: argparse.Namespace, rest: Sequence[str]) -> None:
     get_logger().info("Generating documentation...")
@@ -271,6 +283,7 @@ def docs(args: argparse.Namespace, rest: Sequence[str]) -> None:
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
+
 
 def view_docs(args: argparse.Namespace, rest: Sequence[str]) -> None:
     get_logger().info("Starting documentation server...")

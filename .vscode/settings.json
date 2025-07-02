@@ -7,5 +7,7 @@
     "*.spy": "python",
   },
   "plantuml.exportFormat": "png",
-  "plantuml.jar": "/opt/homebrew/Cellar/plantuml/1.2025.2/libexec/plantuml.jar"
+  "plantuml.jar": "/opt/homebrew/Cellar/plantuml/1.2025.2/libexec/plantuml.jar",
+  "github.copilot.advanced": {
+  }
 }

@@ -1,5 +1,0 @@
-{
-  "url": "https://raw.githubusercontent.com/antlr/grammars-v4/refs/heads/master/python/python3_13/PythonParser.g4",
-  "destination": "PythonParser.g4",
-  "checksum": "732891393a614c9d384be3fca2c7193e2af436583dd435ea7ad1adc0aa569b6d"
-}

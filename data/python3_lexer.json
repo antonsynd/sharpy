@@ -1,5 +1,0 @@
-{
-  "url": "https://raw.githubusercontent.com/antlr/grammars-v4/refs/heads/master/python/python3_13/PythonLexer.g4",
-  "destination": "PythonLexer.g4",
-  "checksum": "b69c43d67f2908f51d36c80d41d022430ef162107938ceb39a857d3e531cecfc"
-}
