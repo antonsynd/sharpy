@@ -1,5 +1,4 @@
 import io
-
 from typing import Mapping, Sequence
 
 ## Base classes

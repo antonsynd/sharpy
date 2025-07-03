@@ -5,7 +5,7 @@ from antlr4 import ParserRuleContext
 from graphviz import Digraph
 from SharpyParser import SharpyParser
 
-from sharpy.compiler_toolchain.parser import ParseTreeNode
+from ..antlr import ParseTreeNode
 
 
 def render_as_png(parse_tree: ParseTreeNode, parser: SharpyParser, output_path: Path):

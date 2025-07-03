@@ -1,22 +1,17 @@
-from io import TextIOBase
-
 from SharpyParser import SharpyParser
 from SharpyParserVisitor import SharpyParserVisitor
 
+from sharpy.compiler_toolchain.abc.ast_builder import ASTBuilder
 from sharpy.compiler_toolchain.ast import *
-from sharpy.compiler_toolchain.ast_builder import ASTBuilderBase
-from sharpy.compiler_toolchain.parser import ParseTreeNode
+
+from ..antlr import ParseTreeNode
 
 
-class AntlrASTBuilder(ASTBuilderBase, SharpyParserVisitor):
+class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
     def __init__(self):
         super().__init__()
 
         self._root: Node | None = None
-
-    def generate_ast(self, input: TextIOBase) -> Node:
-        # TODO
-        raise NotImplementedError()
 
     def _generate_ast(self, parse_tree: ParseTreeNode) -> Node:
         parse_tree.accept(self)

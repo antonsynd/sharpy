@@ -6,7 +6,7 @@ from SharpyLexer import SharpyLexer
 from SharpyParser import SharpyParser
 from SharpyParserListener import SharpyParserListener
 
-from sharpy.compiler_toolchain.parser import ParserBase, ParseTreeNode
+from sharpy.compiler_toolchain.abc.parser import ParserBase, ParseTreeNode
 
 
 class AntlrParser(ParserBase, SharpyParserListener):
