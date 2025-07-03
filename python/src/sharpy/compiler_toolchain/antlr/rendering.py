@@ -3,19 +3,19 @@ from typing import Optional
 
 from antlr4 import ParserRuleContext
 from graphviz import Digraph
-from PythonParser import PythonParser
+from SharpyParser import SharpyParser
 
 from sharpy.compiler_toolchain.parser import ParseTreeNode
 
 
-def render_as_png(parse_tree: ParseTreeNode, parser: PythonParser, output_path: Path):
+def render_as_png(parse_tree: ParseTreeNode, parser: SharpyParser, output_path: Path):
     dot: Digraph = parse_tree_to_dot(tree=parse_tree, parser=parser)
     dot.render(outfile=output_path, format="png")
 
 
 def parse_tree_to_dot(
     tree: ParseTreeNode,
-    parser: PythonParser,
+    parser: SharpyParser,
     dot: Optional[Digraph] = None,
 ) -> Digraph:
     if not dot:

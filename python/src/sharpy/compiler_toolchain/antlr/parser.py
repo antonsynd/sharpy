@@ -2,40 +2,40 @@ from io import TextIOBase
 from typing import MutableSequence
 
 from antlr4 import CommonTokenStream, InputStream
-from PythonLexer import PythonLexer
-from PythonParser import PythonParser
-from PythonParserListener import PythonParserListener
+from SharpyLexer import SharpyLexer
+from SharpyParser import SharpyParser
+from SharpyParserListener import SharpyParserListener
 
 from sharpy.compiler_toolchain.parser import ParserBase, ParseTreeNode
 
 
-class AntlrParser(ParserBase, PythonParserListener):
+class AntlrParser(ParserBase, SharpyParserListener):
     def __init__(self):
         super().__init__()
 
-    def parse(self, input: TextIOBase) -> ParseTreeNode:
+    def parse(self, input: TextIOBase) -> ParseTreeNode | None:
         parse_tree: ParseTreeNode = self._generate_parse_tree(input=input)
         return self._postprocess_parse_tree(parse_tree=parse_tree)
 
-    def _create_parser(self, input: TextIOBase) -> PythonParser:
+    def _create_parser(self, input: TextIOBase) -> SharpyParser:
         stream = InputStream(data=input.read())
-        lexer = PythonLexer(input=stream)
+        lexer = SharpyLexer(input=stream)
         token_stream = CommonTokenStream(lexer=lexer)
 
-        return PythonParser(input=token_stream)
+        return SharpyParser(input=token_stream)
 
     def _generate_parse_tree(self, input: TextIOBase) -> ParseTreeNode:
-        parser: PythonParser = self._create_parser(input=input)
+        parser: SharpyParser = self._create_parser(input=input)
 
         # Parse the input, starting with the 'file_input' rule
         return parser.file_input()
 
-    def _postprocess_parse_tree(self, parse_tree: ParseTreeNode) -> ParseTreeNode:
-        parse_tree = self._prune_empty_nodes(node=parse_tree)
+    def _postprocess_parse_tree(self, parse_tree: ParseTreeNode) -> ParseTreeNode | None:
+        parse_tree_opt: ParseTreeNode | None = self._prune_empty_nodes(node=parse_tree)
 
-        return self._simplify_direct_lineages(node=parse_tree)
+        return self._simplify_direct_lineages(node=parse_tree_opt) if parse_tree_opt else None
 
-    def _prune_empty_nodes(self, node: ParseTreeNode) -> ParseTreeNode:
+    def _prune_empty_nodes(self, node: ParseTreeNode) -> ParseTreeNode | None:
         # Ignore empty nodes
         if not node.getText().strip():
             return None
@@ -46,11 +46,11 @@ class AntlrParser(ParserBase, PythonParserListener):
             pruned_children: MutableSequence[ParseTreeNode] = []
 
             for child in node.getChildren():
-                pruned_child: ParseTreeNode = self._prune_empty_nodes(node=child)
+                pruned_child_opt: ParseTreeNode | None = self._prune_empty_nodes(node=child)
 
                 # Keep a child if it was retained
-                if pruned_child:
-                    pruned_children.append(pruned_child)
+                if pruned_child_opt:
+                    pruned_children.append(pruned_child_opt)
 
             # Update children to only include pruned children
             node.children = pruned_children

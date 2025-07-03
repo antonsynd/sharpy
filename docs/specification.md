@@ -127,32 +127,17 @@ participate in inheritance, but they can implement protocols
 (see below).
 
 Classes and structs in Sharpy can have member variables, as well as
-functional properties (getters and setters).
+functional properties (getters and setters). The decorator approach in
+Python is replaced with a shorthand syntax.
 
 ```Python
 class Foo:
-    _value: int
+    property from _value: int
+        get value(self):
+            return self._value
 
-    @property
-    def value(self) -> int:
-        return self._value
-
-    @value.setter
-    def value(self, v: int) -> None:
-        self._value = v
-```
-
-There is also a shorthand notation using the new keywords `get` and `set`:
-
-```Python
-class Foo:
-    _value: int
-
-    get value(self) -> int:
-        return self._value
-
-    set value(self, v: int) -> None:
-        self._value = v
+        set value(self):
+            self._value = value
 ```
 
 Unlike Python, Sharpy allows overloading as in C#.
@@ -253,9 +238,9 @@ class Foo:
         pass
 ```
 
-# Delegates
+# Signals
 
-TODO
+Signals are Sharpy's equivalent of C# delegates.
 
 # Naming conventions
 

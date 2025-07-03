@@ -1,6 +1,6 @@
 from enum import Enum, auto
 from io import StringIO
-from typing import AbstractSet, Dict, MutableSequence, Optional, Sequence, Tuple, Type, Union
+from typing import MutableSequence, Optional, Sequence, Tuple, Union
 
 
 class Source:

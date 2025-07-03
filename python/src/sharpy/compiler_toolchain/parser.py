@@ -1,11 +1,14 @@
 from io import TextIOBase
 
-from PythonParser import PythonParser
+from SharpyParser import SharpyParser
+
 
 # Export
-ParseTreeNode = PythonParser.File_inputContext
+ParseTreeNode = SharpyParser.File_inputContext
 
 
+# TODO: Figure out how to abstract the actual ANTLR parse tree node
+# from the parser interface.
 class ParserBase:
-    def parse(self, input: TextIOBase) -> ParseTreeNode:
+    def parse(self, input: TextIOBase) -> ParseTreeNode | None:
         raise NotImplementedError()

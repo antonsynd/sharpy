@@ -11,7 +11,7 @@ def main() -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="")
+    parser = argparse.ArgumentParser(description="The Sharpy compiler.")
     parser.add_argument("-i", "--input", type=Path, action="append", required=True)
     parser.add_argument("-o", "--output", type=Path, required=True)
 

@@ -3,7 +3,6 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
 
 from sharpy.compiler_toolchain.formatter import CSharpierFormatter, Formatter
 from sharpy.compiler_toolchain.python import code_generator
@@ -13,10 +12,10 @@ def main() -> None:
     args: argparse.Namespace = parse_args()
 
     input: Path = args.input
-    output: Optional[Path] = args.output
+    output: Path | None = args.output
     format: bool = args.format
-    csharpier_path: Optional[Path] = args.csharpier_path
-    dotnet_path: Optional[Path] = None
+    csharpier_path: Path | str | None = args.csharpier_path
+    dotnet_path: Path | None = None
     emit_line_metadata: bool = args.emit_line_metadata
     debug: bool = args.debug
 
@@ -27,7 +26,7 @@ def main() -> None:
     else:
         csharpier_path = "dotnet-csharpier"
 
-    formatter: Optional[Formatter] = None
+    formatter: Formatter | None = None
 
     if format:
         formatter = CSharpierFormatter(logger=logger, invocation=csharpier_path)

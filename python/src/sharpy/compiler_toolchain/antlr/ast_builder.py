@@ -1,1640 +1,869 @@
-import inspect
-from typing import MutableSequence, Optional
+from io import TextIOBase
 
-from antlr4 import ParseTreeVisitor, ParseTreeWalker
-from PythonParser import PythonParser
-from PythonParserListener import PythonParserListener
+from SharpyParser import SharpyParser
+from SharpyParserVisitor import SharpyParserVisitor
 
-from sharpy.compiler_toolchain.ast import AST, FunctionDef, Module
+from sharpy.compiler_toolchain.ast import *
 from sharpy.compiler_toolchain.ast_builder import ASTBuilderBase
 from sharpy.compiler_toolchain.parser import ParseTreeNode
 
 
-def print_name():
-    stack = inspect.stack()
-
-    if len(stack) > 0:
-        print(stack[1].function)
-    else:
-        print("Empty stack")
-
-
-class AntlrASTBuilder(ASTBuilderBase, ParseTreeVisitor, PythonParserListener):
+class AntlrASTBuilder(ASTBuilderBase, SharpyParserVisitor):
     def __init__(self):
         super().__init__()
 
-        self._ast: Optional[AST] = None
+        self._root: Node | None = None
 
-    def generate_ast(self, parse_tree: ParseTreeNode) -> AST:
-        # walker = ParseTreeWalker()
-        # walker.walk(listener=self, t=parse_tree)
-        # visitor = ParseTreeVisitor()
+    def generate_ast(self, input: TextIOBase) -> Node:
+        # TODO
+        raise NotImplementedError()
+
+    def _generate_ast(self, parse_tree: ParseTreeNode) -> Node:
         parse_tree.accept(self)
 
-        if not self._ast:
+        if not self._root:
             raise Exception("Failed to generate an AST")
 
-        return self._ast
+        return self._root
+
+    # Visit a parse tree produced by SharpyParser#file_input.
+    def visitFile_input(self, ctx: SharpyParser.File_inputContext):
+        return self.visitChildren(ctx)
 
-    def enterEveryRule(self, ctx: ParseTreeNode):
-        pass
+    # Visit a parse tree produced by SharpyParser#statements.
+    def visitStatements(self, ctx: SharpyParser.StatementsContext):
+        return self.visitChildren(ctx)
 
-    def exitEveryRule(self, ctx: ParseTreeNode):
-        pass
+    # Visit a parse tree produced by SharpyParser#statement.
+    def visitStatement(self, ctx: SharpyParser.StatementContext):
+        return self.visitChildren(ctx)
 
-    # Enter a parse tree produced by PythonParser#file_input.
-    def enterFile_input(self, ctx: PythonParser.File_inputContext):
-        if self._ast:
-            raise Exception("File is already open")
+    # Visit a parse tree produced by SharpyParser#statement_newline.
+    def visitStatement_newline(self, ctx: SharpyParser.Statement_newlineContext):
+        return self.visitChildren(ctx)
 
-        print_name()
-        self._ast = Module()
+    # Visit a parse tree produced by SharpyParser#simple_stmts.
+    def visitSimple_stmts(self, ctx: SharpyParser.Simple_stmtsContext):
+        return self.visitChildren(ctx)
 
-    # Exit a parse tree produced by PythonParser#file_input.
-    def exitFile_input(self, ctx: PythonParser.File_inputContext):
-        # self._ast =
-        pass
+    # Visit a parse tree produced by SharpyParser#simple_stmt.
+    def visitSimple_stmt(self, ctx: SharpyParser.Simple_stmtContext):
+        return self.visitChildren(ctx)
 
-    # Enter a parse tree produced by PythonParser#interactive.
-    def enterInteractive(self, ctx: PythonParser.InteractiveContext):
-        raise NotImplementedError()
+    # Visit a parse tree produced by SharpyParser#compound_stmt.
+    def visitCompound_stmt(self, ctx: SharpyParser.Compound_stmtContext):
+        return self.visitChildren(ctx)
 
-    # Exit a parse tree produced by PythonParser#interactive.
-    def exitInteractive(self, ctx: PythonParser.InteractiveContext):
-        raise NotImplementedError()
+    # Visit a parse tree produced by SharpyParser#assignment.
+    def visitAssignment(self, ctx: SharpyParser.AssignmentContext):
+        return self.visitChildren(ctx)
 
-    # Enter a parse tree produced by PythonParser#eval.
-    def enterEval(self, ctx: PythonParser.EvalContext):
-        raise NotImplementedError()
+    # Visit a parse tree produced by SharpyParser#annotated_rhs.
+    def visitAnnotated_rhs(self, ctx: SharpyParser.Annotated_rhsContext):
+        return self.visitChildren(ctx)
 
-    # Exit a parse tree produced by PythonParser#eval.
-    def exitEval(self, ctx: PythonParser.EvalContext):
-        raise NotImplementedError()
+    # Visit a parse tree produced by SharpyParser#augassign.
+    def visitAugassign(self, ctx: SharpyParser.AugassignContext):
+        return self.visitChildren(ctx)
 
-    # Enter a parse tree produced by PythonParser#func_type.
-    def enterFunc_type(self, ctx: PythonParser.Func_typeContext):
-        print_name()
+    # Visit a parse tree produced by SharpyParser#return_stmt.
+    def visitReturn_stmt(self, ctx: SharpyParser.Return_stmtContext):
+        return self.visitChildren(ctx)
 
-    # Exit a parse tree produced by PythonParser#func_type.
-    def exitFunc_type(self, ctx: PythonParser.Func_typeContext):
-        pass
+    # Visit a parse tree produced by SharpyParser#raise_stmt.
+    def visitRaise_stmt(self, ctx: SharpyParser.Raise_stmtContext):
+        return self.visitChildren(ctx)
 
-    # Enter a parse tree produced by PythonParser#fstring_input.
-    def enterFstring_input(self, ctx: PythonParser.Fstring_inputContext):
-        print_name()
+    # Visit a parse tree produced by SharpyParser#global_stmt.
+    def visitGlobal_stmt(self, ctx: SharpyParser.Global_stmtContext):
+        return self.visitChildren(ctx)
 
-    # Exit a parse tree produced by PythonParser#fstring_input.
-    def exitFstring_input(self, ctx: PythonParser.Fstring_inputContext):
-        pass
+    # Visit a parse tree produced by SharpyParser#nonlocal_stmt.
+    def visitNonlocal_stmt(self, ctx: SharpyParser.Nonlocal_stmtContext):
+        return self.visitChildren(ctx)
 
-    # Enter a parse tree produced by PythonParser#statements.
-    def enterStatements(self, ctx: PythonParser.StatementsContext):
-        print_name()
+    # Visit a parse tree produced by SharpyParser#del_stmt.
+    def visitDel_stmt(self, ctx: SharpyParser.Del_stmtContext):
+        return self.visitChildren(ctx)
 
-    # Exit a parse tree produced by PythonParser#statements.
-    def exitStatements(self, ctx: PythonParser.StatementsContext):
-        pass
+    # Visit a parse tree produced by SharpyParser#yield_stmt.
+    def visitYield_stmt(self, ctx: SharpyParser.Yield_stmtContext):
+        return self.visitChildren(ctx)
 
-    # Enter a parse tree produced by PythonParser#statement.
-    def enterStatement(self, ctx: PythonParser.StatementContext):
-        print_name()
+    # Visit a parse tree produced by SharpyParser#assert_stmt.
+    def visitAssert_stmt(self, ctx: SharpyParser.Assert_stmtContext):
+        return self.visitChildren(ctx)
 
-    # Exit a parse tree produced by PythonParser#statement.
-    def exitStatement(self, ctx: PythonParser.StatementContext):
-        pass
+    # Visit a parse tree produced by SharpyParser#import_stmt.
+    def visitImport_stmt(self, ctx: SharpyParser.Import_stmtContext) -> Node | None:
+        # import_stmt: import_name | import_from
 
-    # Enter a parse tree produced by PythonParser#statement_newline.
-    def enterStatement_newline(self, ctx: PythonParser.Statement_newlineContext):
-        print_name()
+        if ctx.import_name():
+            return self.visit(ctx.import_name())
+        elif ctx.import_from():
+            return self.visit(ctx.import_from())
 
-    # Exit a parse tree produced by PythonParser#statement_newline.
-    def exitStatement_newline(self, ctx: PythonParser.Statement_newlineContext):
-        pass
+        return None
 
-    # Enter a parse tree produced by PythonParser#simple_stmts.
-    def enterSimple_stmts(self, ctx: PythonParser.Simple_stmtsContext):
-        print_name()
+    def visitImport_name(self, ctx: SharpyParser.Import_nameContext) -> Import:
+        # import_name: 'import' dotted_as_names
 
-    # Exit a parse tree produced by PythonParser#simple_stmts.
-    def exitSimple_stmts(self, ctx: PythonParser.Simple_stmtsContext):
-        pass
+        dotted_as_names = self.visit(ctx.dotted_as_names())
 
-    # Enter a parse tree produced by PythonParser#simple_stmt.
-    def enterSimple_stmt(self, ctx: PythonParser.Simple_stmtContext):
-        print_name()
+        return Import(names=dotted_as_names)
 
-    # Exit a parse tree produced by PythonParser#simple_stmt.
-    def exitSimple_stmt(self, ctx: PythonParser.Simple_stmtContext):
-        pass
+    def visitImport_from(self, ctx: SharpyParser.Import_fromContext) -> ImportFrom:
+        # import_from: 'from' ('.' | '...')* dotted_name 'import' import_from_targets
+        #            | 'from' ('.' | '...')+ 'import' import_from_targets
 
-    # Enter a parse tree produced by PythonParser#compound_stmt.
-    def enterCompound_stmt(self, ctx: PythonParser.Compound_stmtContext):
-        print_name()
+        # Calculate level (number of dots)
+        level: int = 0
+        for child in ctx.children:
+            if child.getText() == ".":
+                level += 1
+            elif child.getText() == "...":
+                level += 3
+            else:
+                break
 
-    # Exit a parse tree produced by PythonParser#compound_stmt.
-    def exitCompound_stmt(self, ctx: PythonParser.Compound_stmtContext):
-        pass
+        # Get module name if present
+        module: str | None = None
 
-    # Enter a parse tree produced by PythonParser#assignment.
-    def enterAssignment(self, ctx: PythonParser.AssignmentContext):
-        print_name()
+        if ctx.dotted_name():
+            module: str | None = ctx.dotted_name().getText()
 
-    # Exit a parse tree produced by PythonParser#assignment.
-    def exitAssignment(self, ctx: PythonParser.AssignmentContext):
-        pass
+        # Get imported names
+        names: Sequence[alias] = self.visit(ctx.import_from_targets())
 
-    # Enter a parse tree produced by PythonParser#annotated_rhs.
-    def enterAnnotated_rhs(self, ctx: PythonParser.Annotated_rhsContext):
-        print_name()
+        return ImportFrom(module=module, names=names, level=level)
 
-    # Exit a parse tree produced by PythonParser#annotated_rhs.
-    def exitAnnotated_rhs(self, ctx: PythonParser.Annotated_rhsContext):
-        pass
+    def visitImport_from_targets(self, ctx: SharpyParser.Import_from_targetsContext):
+        # import_from_targets: '(' import_from_as_names ','? ')' | import_from_as_names | '*'
 
-    # Enter a parse tree produced by PythonParser#augassign.
-    def enterAugassign(self, ctx: PythonParser.AugassignContext):
-        print_name()
+        if ctx.getText() == "*":
+            return ["*"]
 
-    # Exit a parse tree produced by PythonParser#augassign.
-    def exitAugassign(self, ctx: PythonParser.AugassignContext):
-        pass
+        if ctx.import_from_as_names():
+            return self.visit(ctx.import_from_as_names())
 
-    # Enter a parse tree produced by PythonParser#return_stmt.
-    def enterReturn_stmt(self, ctx: PythonParser.Return_stmtContext):
-        print_name()
+        return []
 
-    # Exit a parse tree produced by PythonParser#return_stmt.
-    def exitReturn_stmt(self, ctx: PythonParser.Return_stmtContext):
-        pass
+    def visitImport_from_as_names(self, ctx: SharpyParser.Import_from_as_namesContext):
+        # import_from_as_names: import_from_as_name (',' import_from_as_name)*
 
-    # Enter a parse tree produced by PythonParser#raise_stmt.
-    def enterRaise_stmt(self, ctx: PythonParser.Raise_stmtContext):
-        print_name()
+        return [self.visit(child) for child in ctx.import_from_as_name()]
 
-    # Exit a parse tree produced by PythonParser#raise_stmt.
-    def exitRaise_stmt(self, ctx: PythonParser.Raise_stmtContext):
-        pass
+    def visitImport_from_as_name(self, ctx: SharpyParser.Import_from_as_nameContext) -> alias:
+        # import_from_as_name: name ('as' name)?
 
-    # Enter a parse tree produced by PythonParser#global_stmt.
-    def enterGlobal_stmt(self, ctx: PythonParser.Global_stmtContext):
-        print_name()
+        name: str = ctx.name(0).getText()
+        asname: str | None = ctx.name(1).getText() if ctx.name(1) else None
 
-    # Exit a parse tree produced by PythonParser#global_stmt.
-    def exitGlobal_stmt(self, ctx: PythonParser.Global_stmtContext):
-        pass
+        return alias(name=name, asname=asname)
 
-    # Enter a parse tree produced by PythonParser#nonlocal_stmt.
-    def enterNonlocal_stmt(self, ctx: PythonParser.Nonlocal_stmtContext):
-        print_name()
+    def visitDotted_as_names(self, ctx: SharpyParser.Dotted_as_namesContext):
+        # dotted_as_names: dotted_as_name (',' dotted_as_name)*
 
-    # Exit a parse tree produced by PythonParser#nonlocal_stmt.
-    def exitNonlocal_stmt(self, ctx: PythonParser.Nonlocal_stmtContext):
-        pass
+        return [self.visit(child) for child in ctx.dotted_as_name()]
 
-    # Enter a parse tree produced by PythonParser#del_stmt.
-    def enterDel_stmt(self, ctx: PythonParser.Del_stmtContext):
-        print_name()
+    def visitDotted_as_name(self, ctx: SharpyParser.Dotted_as_nameContext) -> alias:
+        # dotted_as_name: dotted_name ('as' name)?
 
-    # Exit a parse tree produced by PythonParser#del_stmt.
-    def exitDel_stmt(self, ctx: PythonParser.Del_stmtContext):
-        pass
+        name: str = ctx.dotted_name().getText()
+        asname: str | None = ctx.name().getText() if ctx.name() else None
 
-    # Enter a parse tree produced by PythonParser#yield_stmt.
-    def enterYield_stmt(self, ctx: PythonParser.Yield_stmtContext):
-        print_name()
+        return alias(name=name, asname=asname)
 
-    # Exit a parse tree produced by PythonParser#yield_stmt.
-    def exitYield_stmt(self, ctx: PythonParser.Yield_stmtContext):
-        pass
+    def visitDotted_name(self, ctx: SharpyParser.Dotted_nameContext) -> str:
+        # dotted_name: dotted_name '.' name | name
 
-    # Enter a parse tree produced by PythonParser#assert_stmt.
-    def enterAssert_stmt(self, ctx: PythonParser.Assert_stmtContext):
-        print_name()
+        # Return the full dotted name as a string
+        return ctx.getText()
 
-    # Exit a parse tree produced by PythonParser#assert_stmt.
-    def exitAssert_stmt(self, ctx: PythonParser.Assert_stmtContext):
-        pass
+    # Visit a parse tree produced by SharpyParser#block.
+    def visitBlock(self, ctx: SharpyParser.BlockContext):
+        return self.visitChildren(ctx)
 
-    # Enter a parse tree produced by PythonParser#import_stmt.
-    def enterImport_stmt(self, ctx: PythonParser.Import_stmtContext):
-        print_name()
+    # Visit a parse tree produced by SharpyParser#decorators.
+    def visitDecorators(self, ctx: SharpyParser.DecoratorsContext):
+        return self.visitChildren(ctx)
 
-    # Exit a parse tree produced by PythonParser#import_stmt.
-    def exitImport_stmt(self, ctx: PythonParser.Import_stmtContext):
-        pass
+    # Visit a parse tree produced by SharpyParser#class_def.
+    def visitClass_def(self, ctx: SharpyParser.Class_defContext):
+        return self.visitChildren(ctx)
 
-    # Enter a parse tree produced by PythonParser#import_name.
-    def enterImport_name(self, ctx: PythonParser.Import_nameContext):
-        print_name()
+    # Visit a parse tree produced by SharpyParser#class_def_raw.
+    def visitClass_def_raw(self, ctx: SharpyParser.Class_def_rawContext):
+        return self.visitChildren(ctx)
 
-    # Exit a parse tree produced by PythonParser#import_name.
-    def exitImport_name(self, ctx: PythonParser.Import_nameContext):
-        pass
+    # Visit a parse tree produced by SharpyParser#struct_def.
+    def visitStruct_def(self, ctx: SharpyParser.Struct_defContext):
+        return self.visitChildren(ctx)
 
-    # Enter a parse tree produced by PythonParser#import_from.
-    def enterImport_from(self, ctx: PythonParser.Import_fromContext):
-        print_name()
+    # Visit a parse tree produced by SharpyParser#struct_def_raw.
+    def visitStruct_def_raw(self, ctx: SharpyParser.Struct_def_rawContext):
+        return self.visitChildren(ctx)
 
-    # Exit a parse tree produced by PythonParser#import_from.
-    def exitImport_from(self, ctx: PythonParser.Import_fromContext):
-        pass
+    # Visit a parse tree produced by SharpyParser#protocol_def.
+    def visitProtocol_def(self, ctx: SharpyParser.Protocol_defContext):
+        return self.visitChildren(ctx)
 
-    # Enter a parse tree produced by PythonParser#import_from_targets.
-    def enterImport_from_targets(self, ctx: PythonParser.Import_from_targetsContext):
-        print_name()
+    # Visit a parse tree produced by SharpyParser#protocol_def_raw.
+    def visitProtocol_def_raw(self, ctx: SharpyParser.Protocol_def_rawContext):
+        return self.visitChildren(ctx)
 
-    # Exit a parse tree produced by PythonParser#import_from_targets.
-    def exitImport_from_targets(self, ctx: PythonParser.Import_from_targetsContext):
-        pass
+    # Visit a parse tree produced by SharpyParser#function_def.
+    def visitFunction_def(self, ctx: SharpyParser.Function_defContext):
+        return self.visitChildren(ctx)
 
-    # Enter a parse tree produced by PythonParser#import_from_as_names.
-    def enterImport_from_as_names(self, ctx: PythonParser.Import_from_as_namesContext):
-        print_name()
+    # Visit a parse tree produced by SharpyParser#function_def_raw.
+    def visitFunction_def_raw(self, ctx: SharpyParser.Function_def_rawContext):
+        return self.visitChildren(ctx)
 
-    # Exit a parse tree produced by PythonParser#import_from_as_names.
-    def exitImport_from_as_names(self, ctx: PythonParser.Import_from_as_namesContext):
-        pass
+    # Visit a parse tree produced by SharpyParser#params.
+    def visitParams(self, ctx: SharpyParser.ParamsContext):
+        return self.visitChildren(ctx)
 
-    # Enter a parse tree produced by PythonParser#import_from_as_name.
-    def enterImport_from_as_name(self, ctx: PythonParser.Import_from_as_nameContext):
-        print_name()
+    # Visit a parse tree produced by SharpyParser#parameters.
+    def visitParameters(self, ctx: SharpyParser.ParametersContext):
+        return self.visitChildren(ctx)
 
-    # Exit a parse tree produced by PythonParser#import_from_as_name.
-    def exitImport_from_as_name(self, ctx: PythonParser.Import_from_as_nameContext):
-        pass
+    # Visit a parse tree produced by SharpyParser#slash_no_default.
+    def visitSlash_no_default(self, ctx: SharpyParser.Slash_no_defaultContext):
+        return self.visitChildren(ctx)
 
-    # Enter a parse tree produced by PythonParser#dotted_as_names.
-    def enterDotted_as_names(self, ctx: PythonParser.Dotted_as_namesContext):
-        print_name()
+    # Visit a parse tree produced by SharpyParser#slash_with_default.
+    def visitSlash_with_default(self, ctx: SharpyParser.Slash_with_defaultContext):
+        return self.visitChildren(ctx)
 
-    # Exit a parse tree produced by PythonParser#dotted_as_names.
-    def exitDotted_as_names(self, ctx: PythonParser.Dotted_as_namesContext):
-        pass
+    # Visit a parse tree produced by SharpyParser#star_etc.
+    def visitStar_etc(self, ctx: SharpyParser.Star_etcContext):
+        return self.visitChildren(ctx)
 
-    # Enter a parse tree produced by PythonParser#dotted_as_name.
-    def enterDotted_as_name(self, ctx: PythonParser.Dotted_as_nameContext):
-        print_name()
+    # Visit a parse tree produced by SharpyParser#kwds.
+    def visitKwds(self, ctx: SharpyParser.KwdsContext):
+        return self.visitChildren(ctx)
 
-    # Exit a parse tree produced by PythonParser#dotted_as_name.
-    def exitDotted_as_name(self, ctx: PythonParser.Dotted_as_nameContext):
-        pass
+    # Visit a parse tree produced by SharpyParser#param_no_default.
+    def visitParam_no_default(self, ctx: SharpyParser.Param_no_defaultContext):
+        return self.visitChildren(ctx)
 
-    # Enter a parse tree produced by PythonParser#dotted_name.
-    def enterDotted_name(self, ctx: PythonParser.Dotted_nameContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#dotted_name.
-    def exitDotted_name(self, ctx: PythonParser.Dotted_nameContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#block.
-    def enterBlock(self, ctx: PythonParser.BlockContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#block.
-    def exitBlock(self, ctx: PythonParser.BlockContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#decorators.
-    def enterDecorators(self, ctx: PythonParser.DecoratorsContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#decorators.
-    def exitDecorators(self, ctx: PythonParser.DecoratorsContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#class_def.
-    def enterClass_def(self, ctx: PythonParser.Class_defContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#class_def.
-    def exitClass_def(self, ctx: PythonParser.Class_defContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#class_def_raw.
-    def enterClass_def_raw(self, ctx: PythonParser.Class_def_rawContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#class_def_raw.
-    def exitClass_def_raw(self, ctx: PythonParser.Class_def_rawContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#function_def.
-    def enterFunction_def(self, ctx: PythonParser.Function_defContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#function_def.
-    def exitFunction_def(self, ctx: PythonParser.Function_defContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#function_def_raw.
-    def enterFunction_def_raw(self, ctx: PythonParser.Function_def_rawContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#function_def_raw.
-    def exitFunction_def_raw(self, ctx: PythonParser.Function_def_rawContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#params.
-    def enterParams(self, ctx: PythonParser.ParamsContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#params.
-    def exitParams(self, ctx: PythonParser.ParamsContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#parameters.
-    def enterParameters(self, ctx: PythonParser.ParametersContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#parameters.
-    def exitParameters(self, ctx: PythonParser.ParametersContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#slash_no_default.
-    def enterSlash_no_default(self, ctx: PythonParser.Slash_no_defaultContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#slash_no_default.
-    def exitSlash_no_default(self, ctx: PythonParser.Slash_no_defaultContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#slash_with_default.
-    def enterSlash_with_default(self, ctx: PythonParser.Slash_with_defaultContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#slash_with_default.
-    def exitSlash_with_default(self, ctx: PythonParser.Slash_with_defaultContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#star_etc.
-    def enterStar_etc(self, ctx: PythonParser.Star_etcContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#star_etc.
-    def exitStar_etc(self, ctx: PythonParser.Star_etcContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#kwds.
-    def enterKwds(self, ctx: PythonParser.KwdsContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#kwds.
-    def exitKwds(self, ctx: PythonParser.KwdsContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#param_no_default.
-    def enterParam_no_default(self, ctx: PythonParser.Param_no_defaultContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#param_no_default.
-    def exitParam_no_default(self, ctx: PythonParser.Param_no_defaultContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#param_no_default_star_annotation.
-    def enterParam_no_default_star_annotation(
-        self, ctx: PythonParser.Param_no_default_star_annotationContext
+    # Visit a parse tree produced by SharpyParser#param_no_default_star_annotation.
+    def visitParam_no_default_star_annotation(
+        self, ctx: SharpyParser.Param_no_default_star_annotationContext
     ):
-        print_name()
+        return self.visitChildren(ctx)
 
-    # Exit a parse tree produced by PythonParser#param_no_default_star_annotation.
-    def exitParam_no_default_star_annotation(
-        self, ctx: PythonParser.Param_no_default_star_annotationContext
+    # Visit a parse tree produced by SharpyParser#param_with_default.
+    def visitParam_with_default(self, ctx: SharpyParser.Param_with_defaultContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#param_maybe_default.
+    def visitParam_maybe_default(self, ctx: SharpyParser.Param_maybe_defaultContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#param.
+    def visitParam(self, ctx: SharpyParser.ParamContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#param_star_annotation.
+    def visitParam_star_annotation(self, ctx: SharpyParser.Param_star_annotationContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#annotation.
+    def visitAnnotation(self, ctx: SharpyParser.AnnotationContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#star_annotation.
+    def visitStar_annotation(self, ctx: SharpyParser.Star_annotationContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#default_assignment.
+    def visitDefault_assignment(self, ctx: SharpyParser.Default_assignmentContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#if_stmt.
+    def visitIf_stmt(self, ctx: SharpyParser.If_stmtContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#elif_stmt.
+    def visitElif_stmt(self, ctx: SharpyParser.Elif_stmtContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#else_block.
+    def visitElse_block(self, ctx: SharpyParser.Else_blockContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#while_stmt.
+    def visitWhile_stmt(self, ctx: SharpyParser.While_stmtContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#for_stmt.
+    def visitFor_stmt(self, ctx: SharpyParser.For_stmtContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#with_stmt.
+    def visitWith_stmt(self, ctx: SharpyParser.With_stmtContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#with_item.
+    def visitWith_item(self, ctx: SharpyParser.With_itemContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#try_stmt.
+    def visitTry_stmt(self, ctx: SharpyParser.Try_stmtContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#except_block.
+    def visitExcept_block(self, ctx: SharpyParser.Except_blockContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#except_star_block.
+    def visitExcept_star_block(self, ctx: SharpyParser.Except_star_blockContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#finally_block.
+    def visitFinally_block(self, ctx: SharpyParser.Finally_blockContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#match_stmt.
+    def visitMatch_stmt(self, ctx: SharpyParser.Match_stmtContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#subject_expr.
+    def visitSubject_expr(self, ctx: SharpyParser.Subject_exprContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#case_block.
+    def visitCase_block(self, ctx: SharpyParser.Case_blockContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#guard.
+    def visitGuard(self, ctx: SharpyParser.GuardContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#patterns.
+    def visitPatterns(self, ctx: SharpyParser.PatternsContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#pattern.
+    def visitPattern(self, ctx: SharpyParser.PatternContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#as_pattern.
+    def visitAs_pattern(self, ctx: SharpyParser.As_patternContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#or_pattern.
+    def visitOr_pattern(self, ctx: SharpyParser.Or_patternContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#closed_pattern.
+    def visitClosed_pattern(self, ctx: SharpyParser.Closed_patternContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#literal_pattern.
+    def visitLiteral_pattern(self, ctx: SharpyParser.Literal_patternContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#literal_expr.
+    def visitLiteral_expr(self, ctx: SharpyParser.Literal_exprContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#complex_number.
+    def visitComplex_number(self, ctx: SharpyParser.Complex_numberContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#signed_number.
+    def visitSigned_number(self, ctx: SharpyParser.Signed_numberContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#signed_real_number.
+    def visitSigned_real_number(self, ctx: SharpyParser.Signed_real_numberContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#real_number.
+    def visitReal_number(self, ctx: SharpyParser.Real_numberContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#imaginary_number.
+    def visitImaginary_number(self, ctx: SharpyParser.Imaginary_numberContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#capture_pattern.
+    def visitCapture_pattern(self, ctx: SharpyParser.Capture_patternContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#pattern_capture_target.
+    def visitPattern_capture_target(self, ctx: SharpyParser.Pattern_capture_targetContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#wildcard_pattern.
+    def visitWildcard_pattern(self, ctx: SharpyParser.Wildcard_patternContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#value_pattern.
+    def visitValue_pattern(self, ctx: SharpyParser.Value_patternContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#attr.
+    def visitAttr(self, ctx: SharpyParser.AttrContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#name_or_attr.
+    def visitName_or_attr(self, ctx: SharpyParser.Name_or_attrContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#group_pattern.
+    def visitGroup_pattern(self, ctx: SharpyParser.Group_patternContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#sequence_pattern.
+    def visitSequence_pattern(self, ctx: SharpyParser.Sequence_patternContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#open_sequence_pattern.
+    def visitOpen_sequence_pattern(self, ctx: SharpyParser.Open_sequence_patternContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#maybe_sequence_pattern.
+    def visitMaybe_sequence_pattern(self, ctx: SharpyParser.Maybe_sequence_patternContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#maybe_star_pattern.
+    def visitMaybe_star_pattern(self, ctx: SharpyParser.Maybe_star_patternContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#star_pattern.
+    def visitStar_pattern(self, ctx: SharpyParser.Star_patternContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#mapping_pattern.
+    def visitMapping_pattern(self, ctx: SharpyParser.Mapping_patternContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#items_pattern.
+    def visitItems_pattern(self, ctx: SharpyParser.Items_patternContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#key_value_pattern.
+    def visitKey_value_pattern(self, ctx: SharpyParser.Key_value_patternContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#double_star_pattern.
+    def visitDouble_star_pattern(self, ctx: SharpyParser.Double_star_patternContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#class_pattern.
+    def visitClass_pattern(self, ctx: SharpyParser.Class_patternContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#positional_patterns.
+    def visitPositional_patterns(self, ctx: SharpyParser.Positional_patternsContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#keyword_patterns.
+    def visitKeyword_patterns(self, ctx: SharpyParser.Keyword_patternsContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#keyword_pattern.
+    def visitKeyword_pattern(self, ctx: SharpyParser.Keyword_patternContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#type_alias.
+    def visitType_alias(self, ctx: SharpyParser.Type_aliasContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#type_params.
+    def visitType_params(self, ctx: SharpyParser.Type_paramsContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#type_param_seq.
+    def visitType_param_seq(self, ctx: SharpyParser.Type_param_seqContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#type_param.
+    def visitType_param(self, ctx: SharpyParser.Type_paramContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#type_param_bound.
+    def visitType_param_bound(self, ctx: SharpyParser.Type_param_boundContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#type_param_default.
+    def visitType_param_default(self, ctx: SharpyParser.Type_param_defaultContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#type_param_starred_default.
+    def visitType_param_starred_default(self, ctx: SharpyParser.Type_param_starred_defaultContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#expressions.
+    def visitExpressions(self, ctx: SharpyParser.ExpressionsContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#expression.
+    def visitExpression(self, ctx: SharpyParser.ExpressionContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#yield_expr.
+    def visitYield_expr(self, ctx: SharpyParser.Yield_exprContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#star_expressions.
+    def visitStar_expressions(self, ctx: SharpyParser.Star_expressionsContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#star_expression.
+    def visitStar_expression(self, ctx: SharpyParser.Star_expressionContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#star_named_expressions.
+    def visitStar_named_expressions(self, ctx: SharpyParser.Star_named_expressionsContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#star_named_expression.
+    def visitStar_named_expression(self, ctx: SharpyParser.Star_named_expressionContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#assignment_expression.
+    def visitAssignment_expression(self, ctx: SharpyParser.Assignment_expressionContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#named_expression.
+    def visitNamed_expression(self, ctx: SharpyParser.Named_expressionContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#disjunction.
+    def visitDisjunction(self, ctx: SharpyParser.DisjunctionContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#conjunction.
+    def visitConjunction(self, ctx: SharpyParser.ConjunctionContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#inversion.
+    def visitInversion(self, ctx: SharpyParser.InversionContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#comparison.
+    def visitComparison(self, ctx: SharpyParser.ComparisonContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#compare_op_bitwise_or_pair.
+    def visitCompare_op_bitwise_or_pair(self, ctx: SharpyParser.Compare_op_bitwise_or_pairContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#eq_bitwise_or.
+    def visitEq_bitwise_or(self, ctx: SharpyParser.Eq_bitwise_orContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#noteq_bitwise_or.
+    def visitNoteq_bitwise_or(self, ctx: SharpyParser.Noteq_bitwise_orContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#lte_bitwise_or.
+    def visitLte_bitwise_or(self, ctx: SharpyParser.Lte_bitwise_orContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#lt_bitwise_or.
+    def visitLt_bitwise_or(self, ctx: SharpyParser.Lt_bitwise_orContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#gte_bitwise_or.
+    def visitGte_bitwise_or(self, ctx: SharpyParser.Gte_bitwise_orContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#gt_bitwise_or.
+    def visitGt_bitwise_or(self, ctx: SharpyParser.Gt_bitwise_orContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#notin_bitwise_or.
+    def visitNotin_bitwise_or(self, ctx: SharpyParser.Notin_bitwise_orContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#in_bitwise_or.
+    def visitIn_bitwise_or(self, ctx: SharpyParser.In_bitwise_orContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#isnot_bitwise_or.
+    def visitIsnot_bitwise_or(self, ctx: SharpyParser.Isnot_bitwise_orContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#is_bitwise_or.
+    def visitIs_bitwise_or(self, ctx: SharpyParser.Is_bitwise_orContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#bitwise_or.
+    def visitBitwise_or(self, ctx: SharpyParser.Bitwise_orContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#bitwise_xor.
+    def visitBitwise_xor(self, ctx: SharpyParser.Bitwise_xorContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#bitwise_and.
+    def visitBitwise_and(self, ctx: SharpyParser.Bitwise_andContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#shift_expr.
+    def visitShift_expr(self, ctx: SharpyParser.Shift_exprContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#sum.
+    def visitSum(self, ctx: SharpyParser.SumContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#term.
+    def visitTerm(self, ctx: SharpyParser.TermContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#factor.
+    def visitFactor(self, ctx: SharpyParser.FactorContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#power.
+    def visitPower(self, ctx: SharpyParser.PowerContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#await_primary.
+    def visitAwait_primary(self, ctx: SharpyParser.Await_primaryContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#primary.
+    def visitPrimary(self, ctx: SharpyParser.PrimaryContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#slices.
+    def visitSlices(self, ctx: SharpyParser.SlicesContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#slice.
+    def visitSlice(self, ctx: SharpyParser.SliceContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#atom.
+    def visitAtom(self, ctx: SharpyParser.AtomContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#group.
+    def visitGroup(self, ctx: SharpyParser.GroupContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#lambdef.
+    def visitLambdef(self, ctx: SharpyParser.LambdefContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#lambda_params.
+    def visitLambda_params(self, ctx: SharpyParser.Lambda_paramsContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#lambda_parameters.
+    def visitLambda_parameters(self, ctx: SharpyParser.Lambda_parametersContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#lambda_slash_no_default.
+    def visitLambda_slash_no_default(self, ctx: SharpyParser.Lambda_slash_no_defaultContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#lambda_slash_with_default.
+    def visitLambda_slash_with_default(self, ctx: SharpyParser.Lambda_slash_with_defaultContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#lambda_star_etc.
+    def visitLambda_star_etc(self, ctx: SharpyParser.Lambda_star_etcContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#lambda_kwds.
+    def visitLambda_kwds(self, ctx: SharpyParser.Lambda_kwdsContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#lambda_param_no_default.
+    def visitLambda_param_no_default(self, ctx: SharpyParser.Lambda_param_no_defaultContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#lambda_param_with_default.
+    def visitLambda_param_with_default(self, ctx: SharpyParser.Lambda_param_with_defaultContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#lambda_param_maybe_default.
+    def visitLambda_param_maybe_default(self, ctx: SharpyParser.Lambda_param_maybe_defaultContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#lambda_param.
+    def visitLambda_param(self, ctx: SharpyParser.Lambda_paramContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#fstring_middle.
+    def visitFstring_middle(self, ctx: SharpyParser.Fstring_middleContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#fstring_replacement_field.
+    def visitFstring_replacement_field(self, ctx: SharpyParser.Fstring_replacement_fieldContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#fstring_conversion.
+    def visitFstring_conversion(self, ctx: SharpyParser.Fstring_conversionContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#fstring_full_format_spec.
+    def visitFstring_full_format_spec(self, ctx: SharpyParser.Fstring_full_format_specContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#fstring_format_spec.
+    def visitFstring_format_spec(self, ctx: SharpyParser.Fstring_format_specContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#fstring.
+    def visitFstring(self, ctx: SharpyParser.FstringContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#string.
+    def visitString(self, ctx: SharpyParser.StringContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#strings.
+    def visitStrings(self, ctx: SharpyParser.StringsContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#list.
+    def visitList(self, ctx: SharpyParser.ListContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#tuple.
+    def visitTuple(self, ctx: SharpyParser.TupleContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#set.
+    def visitSet(self, ctx: SharpyParser.SetContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#dict.
+    def visitDict(self, ctx: SharpyParser.DictContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#double_starred_kvpairs.
+    def visitDouble_starred_kvpairs(self, ctx: SharpyParser.Double_starred_kvpairsContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#double_starred_kvpair.
+    def visitDouble_starred_kvpair(self, ctx: SharpyParser.Double_starred_kvpairContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#kvpair.
+    def visitKvpair(self, ctx: SharpyParser.KvpairContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#for_if_clauses.
+    def visitFor_if_clauses(self, ctx: SharpyParser.For_if_clausesContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#for_if_clause.
+    def visitFor_if_clause(self, ctx: SharpyParser.For_if_clauseContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#listcomp.
+    def visitListcomp(self, ctx: SharpyParser.ListcompContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#setcomp.
+    def visitSetcomp(self, ctx: SharpyParser.SetcompContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#genexp.
+    def visitGenexp(self, ctx: SharpyParser.GenexpContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#dictcomp.
+    def visitDictcomp(self, ctx: SharpyParser.DictcompContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#arguments.
+    def visitArguments(self, ctx: SharpyParser.ArgumentsContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#args.
+    def visitArgs(self, ctx: SharpyParser.ArgsContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#kwargs.
+    def visitKwargs(self, ctx: SharpyParser.KwargsContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#starred_expression.
+    def visitStarred_expression(self, ctx: SharpyParser.Starred_expressionContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#kwarg_or_starred.
+    def visitKwarg_or_starred(self, ctx: SharpyParser.Kwarg_or_starredContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#kwarg_or_double_starred.
+    def visitKwarg_or_double_starred(self, ctx: SharpyParser.Kwarg_or_double_starredContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#star_targets.
+    def visitStar_targets(self, ctx: SharpyParser.Star_targetsContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#star_targets_list_seq.
+    def visitStar_targets_list_seq(self, ctx: SharpyParser.Star_targets_list_seqContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#star_targets_tuple_seq.
+    def visitStar_targets_tuple_seq(self, ctx: SharpyParser.Star_targets_tuple_seqContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#star_target.
+    def visitStar_target(self, ctx: SharpyParser.Star_targetContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#target_with_star_atom.
+    def visitTarget_with_star_atom(self, ctx: SharpyParser.Target_with_star_atomContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#star_atom.
+    def visitStar_atom(self, ctx: SharpyParser.Star_atomContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#single_target.
+    def visitSingle_target(self, ctx: SharpyParser.Single_targetContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#single_subscript_attribute_target.
+    def visitSingle_subscript_attribute_target(
+        self, ctx: SharpyParser.Single_subscript_attribute_targetContext
     ):
-        print_name()
-
-    # Enter a parse tree produced by PythonParser#param_with_default.
-    def enterParam_with_default(self, ctx: PythonParser.Param_with_defaultContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#param_with_default.
-    def exitParam_with_default(self, ctx: PythonParser.Param_with_defaultContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#param_maybe_default.
-    def enterParam_maybe_default(self, ctx: PythonParser.Param_maybe_defaultContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#param_maybe_default.
-    def exitParam_maybe_default(self, ctx: PythonParser.Param_maybe_defaultContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#param.
-    def enterParam(self, ctx: PythonParser.ParamContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#param.
-    def exitParam(self, ctx: PythonParser.ParamContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#param_star_annotation.
-    def enterParam_star_annotation(self, ctx: PythonParser.Param_star_annotationContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#param_star_annotation.
-    def exitParam_star_annotation(self, ctx: PythonParser.Param_star_annotationContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#annotation.
-    def enterAnnotation(self, ctx: PythonParser.AnnotationContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#annotation.
-    def exitAnnotation(self, ctx: PythonParser.AnnotationContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#star_annotation.
-    def enterStar_annotation(self, ctx: PythonParser.Star_annotationContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#star_annotation.
-    def exitStar_annotation(self, ctx: PythonParser.Star_annotationContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#default_assignment.
-    def enterDefault_assignment(self, ctx: PythonParser.Default_assignmentContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#default_assignment.
-    def exitDefault_assignment(self, ctx: PythonParser.Default_assignmentContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#if_stmt.
-    def enterIf_stmt(self, ctx: PythonParser.If_stmtContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#if_stmt.
-    def exitIf_stmt(self, ctx: PythonParser.If_stmtContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#elif_stmt.
-    def enterElif_stmt(self, ctx: PythonParser.Elif_stmtContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#elif_stmt.
-    def exitElif_stmt(self, ctx: PythonParser.Elif_stmtContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#else_block.
-    def enterElse_block(self, ctx: PythonParser.Else_blockContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#else_block.
-    def exitElse_block(self, ctx: PythonParser.Else_blockContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#while_stmt.
-    def enterWhile_stmt(self, ctx: PythonParser.While_stmtContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#while_stmt.
-    def exitWhile_stmt(self, ctx: PythonParser.While_stmtContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#for_stmt.
-    def enterFor_stmt(self, ctx: PythonParser.For_stmtContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#for_stmt.
-    def exitFor_stmt(self, ctx: PythonParser.For_stmtContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#with_stmt.
-    def enterWith_stmt(self, ctx: PythonParser.With_stmtContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#with_stmt.
-    def exitWith_stmt(self, ctx: PythonParser.With_stmtContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#with_item.
-    def enterWith_item(self, ctx: PythonParser.With_itemContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#with_item.
-    def exitWith_item(self, ctx: PythonParser.With_itemContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#try_stmt.
-    def enterTry_stmt(self, ctx: PythonParser.Try_stmtContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#try_stmt.
-    def exitTry_stmt(self, ctx: PythonParser.Try_stmtContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#except_block.
-    def enterExcept_block(self, ctx: PythonParser.Except_blockContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#except_block.
-    def exitExcept_block(self, ctx: PythonParser.Except_blockContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#except_star_block.
-    def enterExcept_star_block(self, ctx: PythonParser.Except_star_blockContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#except_star_block.
-    def exitExcept_star_block(self, ctx: PythonParser.Except_star_blockContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#finally_block.
-    def enterFinally_block(self, ctx: PythonParser.Finally_blockContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#finally_block.
-    def exitFinally_block(self, ctx: PythonParser.Finally_blockContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#match_stmt.
-    def enterMatch_stmt(self, ctx: PythonParser.Match_stmtContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#match_stmt.
-    def exitMatch_stmt(self, ctx: PythonParser.Match_stmtContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#subject_expr.
-    def enterSubject_expr(self, ctx: PythonParser.Subject_exprContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#subject_expr.
-    def exitSubject_expr(self, ctx: PythonParser.Subject_exprContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#case_block.
-    def enterCase_block(self, ctx: PythonParser.Case_blockContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#case_block.
-    def exitCase_block(self, ctx: PythonParser.Case_blockContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#guard.
-    def enterGuard(self, ctx: PythonParser.GuardContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#guard.
-    def exitGuard(self, ctx: PythonParser.GuardContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#patterns.
-    def enterPatterns(self, ctx: PythonParser.PatternsContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#patterns.
-    def exitPatterns(self, ctx: PythonParser.PatternsContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#pattern.
-    def enterPattern(self, ctx: PythonParser.PatternContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#pattern.
-    def exitPattern(self, ctx: PythonParser.PatternContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#as_pattern.
-    def enterAs_pattern(self, ctx: PythonParser.As_patternContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#as_pattern.
-    def exitAs_pattern(self, ctx: PythonParser.As_patternContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#or_pattern.
-    def enterOr_pattern(self, ctx: PythonParser.Or_patternContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#or_pattern.
-    def exitOr_pattern(self, ctx: PythonParser.Or_patternContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#closed_pattern.
-    def enterClosed_pattern(self, ctx: PythonParser.Closed_patternContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#closed_pattern.
-    def exitClosed_pattern(self, ctx: PythonParser.Closed_patternContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#literal_pattern.
-    def enterLiteral_pattern(self, ctx: PythonParser.Literal_patternContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#literal_pattern.
-    def exitLiteral_pattern(self, ctx: PythonParser.Literal_patternContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#literal_expr.
-    def enterLiteral_expr(self, ctx: PythonParser.Literal_exprContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#literal_expr.
-    def exitLiteral_expr(self, ctx: PythonParser.Literal_exprContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#complex_number.
-    def enterComplex_number(self, ctx: PythonParser.Complex_numberContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#complex_number.
-    def exitComplex_number(self, ctx: PythonParser.Complex_numberContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#signed_number.
-    def enterSigned_number(self, ctx: PythonParser.Signed_numberContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#signed_number.
-    def exitSigned_number(self, ctx: PythonParser.Signed_numberContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#signed_real_number.
-    def enterSigned_real_number(self, ctx: PythonParser.Signed_real_numberContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#signed_real_number.
-    def exitSigned_real_number(self, ctx: PythonParser.Signed_real_numberContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#real_number.
-    def enterReal_number(self, ctx: PythonParser.Real_numberContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#real_number.
-    def exitReal_number(self, ctx: PythonParser.Real_numberContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#imaginary_number.
-    def enterImaginary_number(self, ctx: PythonParser.Imaginary_numberContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#imaginary_number.
-    def exitImaginary_number(self, ctx: PythonParser.Imaginary_numberContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#capture_pattern.
-    def enterCapture_pattern(self, ctx: PythonParser.Capture_patternContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#capture_pattern.
-    def exitCapture_pattern(self, ctx: PythonParser.Capture_patternContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#pattern_capture_target.
-    def enterPattern_capture_target(self, ctx: PythonParser.Pattern_capture_targetContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#pattern_capture_target.
-    def exitPattern_capture_target(self, ctx: PythonParser.Pattern_capture_targetContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#wildcard_pattern.
-    def enterWildcard_pattern(self, ctx: PythonParser.Wildcard_patternContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#wildcard_pattern.
-    def exitWildcard_pattern(self, ctx: PythonParser.Wildcard_patternContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#value_pattern.
-    def enterValue_pattern(self, ctx: PythonParser.Value_patternContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#value_pattern.
-    def exitValue_pattern(self, ctx: PythonParser.Value_patternContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#attr.
-    def enterAttr(self, ctx: PythonParser.AttrContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#attr.
-    def exitAttr(self, ctx: PythonParser.AttrContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#name_or_attr.
-    def enterName_or_attr(self, ctx: PythonParser.Name_or_attrContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#name_or_attr.
-    def exitName_or_attr(self, ctx: PythonParser.Name_or_attrContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#group_pattern.
-    def enterGroup_pattern(self, ctx: PythonParser.Group_patternContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#group_pattern.
-    def exitGroup_pattern(self, ctx: PythonParser.Group_patternContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#sequence_pattern.
-    def enterSequence_pattern(self, ctx: PythonParser.Sequence_patternContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#sequence_pattern.
-    def exitSequence_pattern(self, ctx: PythonParser.Sequence_patternContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#open_sequence_pattern.
-    def enterOpen_sequence_pattern(self, ctx: PythonParser.Open_sequence_patternContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#open_sequence_pattern.
-    def exitOpen_sequence_pattern(self, ctx: PythonParser.Open_sequence_patternContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#maybe_sequence_pattern.
-    def enterMaybe_sequence_pattern(self, ctx: PythonParser.Maybe_sequence_patternContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#maybe_sequence_pattern.
-    def exitMaybe_sequence_pattern(self, ctx: PythonParser.Maybe_sequence_patternContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#maybe_star_pattern.
-    def enterMaybe_star_pattern(self, ctx: PythonParser.Maybe_star_patternContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#maybe_star_pattern.
-    def exitMaybe_star_pattern(self, ctx: PythonParser.Maybe_star_patternContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#star_pattern.
-    def enterStar_pattern(self, ctx: PythonParser.Star_patternContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#star_pattern.
-    def exitStar_pattern(self, ctx: PythonParser.Star_patternContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#mapping_pattern.
-    def enterMapping_pattern(self, ctx: PythonParser.Mapping_patternContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#mapping_pattern.
-    def exitMapping_pattern(self, ctx: PythonParser.Mapping_patternContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#items_pattern.
-    def enterItems_pattern(self, ctx: PythonParser.Items_patternContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#items_pattern.
-    def exitItems_pattern(self, ctx: PythonParser.Items_patternContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#key_value_pattern.
-    def enterKey_value_pattern(self, ctx: PythonParser.Key_value_patternContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#key_value_pattern.
-    def exitKey_value_pattern(self, ctx: PythonParser.Key_value_patternContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#double_star_pattern.
-    def enterDouble_star_pattern(self, ctx: PythonParser.Double_star_patternContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#double_star_pattern.
-    def exitDouble_star_pattern(self, ctx: PythonParser.Double_star_patternContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#class_pattern.
-    def enterClass_pattern(self, ctx: PythonParser.Class_patternContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#class_pattern.
-    def exitClass_pattern(self, ctx: PythonParser.Class_patternContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#positional_patterns.
-    def enterPositional_patterns(self, ctx: PythonParser.Positional_patternsContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#positional_patterns.
-    def exitPositional_patterns(self, ctx: PythonParser.Positional_patternsContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#keyword_patterns.
-    def enterKeyword_patterns(self, ctx: PythonParser.Keyword_patternsContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#keyword_patterns.
-    def exitKeyword_patterns(self, ctx: PythonParser.Keyword_patternsContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#keyword_pattern.
-    def enterKeyword_pattern(self, ctx: PythonParser.Keyword_patternContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#keyword_pattern.
-    def exitKeyword_pattern(self, ctx: PythonParser.Keyword_patternContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#type_alias.
-    def enterType_alias(self, ctx: PythonParser.Type_aliasContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#type_alias.
-    def exitType_alias(self, ctx: PythonParser.Type_aliasContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#type_params.
-    def enterType_params(self, ctx: PythonParser.Type_paramsContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#type_params.
-    def exitType_params(self, ctx: PythonParser.Type_paramsContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#type_param_seq.
-    def enterType_param_seq(self, ctx: PythonParser.Type_param_seqContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#type_param_seq.
-    def exitType_param_seq(self, ctx: PythonParser.Type_param_seqContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#type_param.
-    def enterType_param(self, ctx: PythonParser.Type_paramContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#type_param.
-    def exitType_param(self, ctx: PythonParser.Type_paramContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#type_param_bound.
-    def enterType_param_bound(self, ctx: PythonParser.Type_param_boundContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#type_param_bound.
-    def exitType_param_bound(self, ctx: PythonParser.Type_param_boundContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#expressions.
-    def enterExpressions(self, ctx: PythonParser.ExpressionsContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#expressions.
-    def exitExpressions(self, ctx: PythonParser.ExpressionsContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#expression.
-    def enterExpression(self, ctx: PythonParser.ExpressionContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#expression.
-    def exitExpression(self, ctx: PythonParser.ExpressionContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#yield_expr.
-    def enterYield_expr(self, ctx: PythonParser.Yield_exprContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#yield_expr.
-    def exitYield_expr(self, ctx: PythonParser.Yield_exprContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#star_expressions.
-    def enterStar_expressions(self, ctx: PythonParser.Star_expressionsContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#star_expressions.
-    def exitStar_expressions(self, ctx: PythonParser.Star_expressionsContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#star_expression.
-    def enterStar_expression(self, ctx: PythonParser.Star_expressionContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#star_expression.
-    def exitStar_expression(self, ctx: PythonParser.Star_expressionContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#star_named_expressions.
-    def enterStar_named_expressions(self, ctx: PythonParser.Star_named_expressionsContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#star_named_expressions.
-    def exitStar_named_expressions(self, ctx: PythonParser.Star_named_expressionsContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#star_named_expression.
-    def enterStar_named_expression(self, ctx: PythonParser.Star_named_expressionContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#star_named_expression.
-    def exitStar_named_expression(self, ctx: PythonParser.Star_named_expressionContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#assignment_expression.
-    def enterAssignment_expression(self, ctx: PythonParser.Assignment_expressionContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#assignment_expression.
-    def exitAssignment_expression(self, ctx: PythonParser.Assignment_expressionContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#named_expression.
-    def enterNamed_expression(self, ctx: PythonParser.Named_expressionContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#named_expression.
-    def exitNamed_expression(self, ctx: PythonParser.Named_expressionContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#disjunction.
-    def enterDisjunction(self, ctx: PythonParser.DisjunctionContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#disjunction.
-    def exitDisjunction(self, ctx: PythonParser.DisjunctionContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#conjunction.
-    def enterConjunction(self, ctx: PythonParser.ConjunctionContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#conjunction.
-    def exitConjunction(self, ctx: PythonParser.ConjunctionContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#inversion.
-    def enterInversion(self, ctx: PythonParser.InversionContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#inversion.
-    def exitInversion(self, ctx: PythonParser.InversionContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#comparison.
-    def enterComparison(self, ctx: PythonParser.ComparisonContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#comparison.
-    def exitComparison(self, ctx: PythonParser.ComparisonContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#compare_op_bitwise_or_pair.
-    def enterCompare_op_bitwise_or_pair(self, ctx: PythonParser.Compare_op_bitwise_or_pairContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#compare_op_bitwise_or_pair.
-    def exitCompare_op_bitwise_or_pair(self, ctx: PythonParser.Compare_op_bitwise_or_pairContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#eq_bitwise_or.
-    def enterEq_bitwise_or(self, ctx: PythonParser.Eq_bitwise_orContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#eq_bitwise_or.
-    def exitEq_bitwise_or(self, ctx: PythonParser.Eq_bitwise_orContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#noteq_bitwise_or.
-    def enterNoteq_bitwise_or(self, ctx: PythonParser.Noteq_bitwise_orContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#noteq_bitwise_or.
-    def exitNoteq_bitwise_or(self, ctx: PythonParser.Noteq_bitwise_orContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#lte_bitwise_or.
-    def enterLte_bitwise_or(self, ctx: PythonParser.Lte_bitwise_orContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#lte_bitwise_or.
-    def exitLte_bitwise_or(self, ctx: PythonParser.Lte_bitwise_orContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#lt_bitwise_or.
-    def enterLt_bitwise_or(self, ctx: PythonParser.Lt_bitwise_orContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#lt_bitwise_or.
-    def exitLt_bitwise_or(self, ctx: PythonParser.Lt_bitwise_orContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#gte_bitwise_or.
-    def enterGte_bitwise_or(self, ctx: PythonParser.Gte_bitwise_orContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#gte_bitwise_or.
-    def exitGte_bitwise_or(self, ctx: PythonParser.Gte_bitwise_orContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#gt_bitwise_or.
-    def enterGt_bitwise_or(self, ctx: PythonParser.Gt_bitwise_orContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#gt_bitwise_or.
-    def exitGt_bitwise_or(self, ctx: PythonParser.Gt_bitwise_orContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#notin_bitwise_or.
-    def enterNotin_bitwise_or(self, ctx: PythonParser.Notin_bitwise_orContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#notin_bitwise_or.
-    def exitNotin_bitwise_or(self, ctx: PythonParser.Notin_bitwise_orContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#in_bitwise_or.
-    def enterIn_bitwise_or(self, ctx: PythonParser.In_bitwise_orContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#in_bitwise_or.
-    def exitIn_bitwise_or(self, ctx: PythonParser.In_bitwise_orContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#isnot_bitwise_or.
-    def enterIsnot_bitwise_or(self, ctx: PythonParser.Isnot_bitwise_orContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#isnot_bitwise_or.
-    def exitIsnot_bitwise_or(self, ctx: PythonParser.Isnot_bitwise_orContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#is_bitwise_or.
-    def enterIs_bitwise_or(self, ctx: PythonParser.Is_bitwise_orContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#is_bitwise_or.
-    def exitIs_bitwise_or(self, ctx: PythonParser.Is_bitwise_orContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#bitwise_or.
-    def enterBitwise_or(self, ctx: PythonParser.Bitwise_orContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#bitwise_or.
-    def exitBitwise_or(self, ctx: PythonParser.Bitwise_orContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#bitwise_xor.
-    def enterBitwise_xor(self, ctx: PythonParser.Bitwise_xorContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#bitwise_xor.
-    def exitBitwise_xor(self, ctx: PythonParser.Bitwise_xorContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#bitwise_and.
-    def enterBitwise_and(self, ctx: PythonParser.Bitwise_andContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#bitwise_and.
-    def exitBitwise_and(self, ctx: PythonParser.Bitwise_andContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#shift_expr.
-    def enterShift_expr(self, ctx: PythonParser.Shift_exprContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#shift_expr.
-    def exitShift_expr(self, ctx: PythonParser.Shift_exprContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#sum.
-    def enterSum(self, ctx: PythonParser.SumContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#sum.
-    def exitSum(self, ctx: PythonParser.SumContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#term.
-    def enterTerm(self, ctx: PythonParser.TermContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#term.
-    def exitTerm(self, ctx: PythonParser.TermContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#factor.
-    def enterFactor(self, ctx: PythonParser.FactorContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#factor.
-    def exitFactor(self, ctx: PythonParser.FactorContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#power.
-    def enterPower(self, ctx: PythonParser.PowerContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#power.
-    def exitPower(self, ctx: PythonParser.PowerContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#await_primary.
-    def enterAwait_primary(self, ctx: PythonParser.Await_primaryContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#await_primary.
-    def exitAwait_primary(self, ctx: PythonParser.Await_primaryContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#primary.
-    def enterPrimary(self, ctx: PythonParser.PrimaryContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#primary.
-    def exitPrimary(self, ctx: PythonParser.PrimaryContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#slices.
-    def enterSlices(self, ctx: PythonParser.SlicesContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#slices.
-    def exitSlices(self, ctx: PythonParser.SlicesContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#slice.
-    def enterSlice(self, ctx: PythonParser.SliceContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#slice.
-    def exitSlice(self, ctx: PythonParser.SliceContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#atom.
-    def enterAtom(self, ctx: PythonParser.AtomContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#atom.
-    def exitAtom(self, ctx: PythonParser.AtomContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#group.
-    def enterGroup(self, ctx: PythonParser.GroupContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#group.
-    def exitGroup(self, ctx: PythonParser.GroupContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#lambdef.
-    def enterLambdef(self, ctx: PythonParser.LambdefContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#lambdef.
-    def exitLambdef(self, ctx: PythonParser.LambdefContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#lambda_params.
-    def enterLambda_params(self, ctx: PythonParser.Lambda_paramsContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#lambda_params.
-    def exitLambda_params(self, ctx: PythonParser.Lambda_paramsContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#lambda_parameters.
-    def enterLambda_parameters(self, ctx: PythonParser.Lambda_parametersContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#lambda_parameters.
-    def exitLambda_parameters(self, ctx: PythonParser.Lambda_parametersContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#lambda_slash_no_default.
-    def enterLambda_slash_no_default(self, ctx: PythonParser.Lambda_slash_no_defaultContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#lambda_slash_no_default.
-    def exitLambda_slash_no_default(self, ctx: PythonParser.Lambda_slash_no_defaultContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#lambda_slash_with_default.
-    def enterLambda_slash_with_default(self, ctx: PythonParser.Lambda_slash_with_defaultContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#lambda_slash_with_default.
-    def exitLambda_slash_with_default(self, ctx: PythonParser.Lambda_slash_with_defaultContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#lambda_star_etc.
-    def enterLambda_star_etc(self, ctx: PythonParser.Lambda_star_etcContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#lambda_star_etc.
-    def exitLambda_star_etc(self, ctx: PythonParser.Lambda_star_etcContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#lambda_kwds.
-    def enterLambda_kwds(self, ctx: PythonParser.Lambda_kwdsContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#lambda_kwds.
-    def exitLambda_kwds(self, ctx: PythonParser.Lambda_kwdsContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#lambda_param_no_default.
-    def enterLambda_param_no_default(self, ctx: PythonParser.Lambda_param_no_defaultContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#lambda_param_no_default.
-    def exitLambda_param_no_default(self, ctx: PythonParser.Lambda_param_no_defaultContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#lambda_param_with_default.
-    def enterLambda_param_with_default(self, ctx: PythonParser.Lambda_param_with_defaultContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#lambda_param_with_default.
-    def exitLambda_param_with_default(self, ctx: PythonParser.Lambda_param_with_defaultContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#lambda_param_maybe_default.
-    def enterLambda_param_maybe_default(self, ctx: PythonParser.Lambda_param_maybe_defaultContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#lambda_param_maybe_default.
-    def exitLambda_param_maybe_default(self, ctx: PythonParser.Lambda_param_maybe_defaultContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#lambda_param.
-    def enterLambda_param(self, ctx: PythonParser.Lambda_paramContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#lambda_param.
-    def exitLambda_param(self, ctx: PythonParser.Lambda_paramContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#fstring_middle.
-    def enterFstring_middle(self, ctx: PythonParser.Fstring_middleContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#fstring_middle.
-    def exitFstring_middle(self, ctx: PythonParser.Fstring_middleContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#fstring_replacement_field.
-    def enterFstring_replacement_field(self, ctx: PythonParser.Fstring_replacement_fieldContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#fstring_replacement_field.
-    def exitFstring_replacement_field(self, ctx: PythonParser.Fstring_replacement_fieldContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#fstring_conversion.
-    def enterFstring_conversion(self, ctx: PythonParser.Fstring_conversionContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#fstring_conversion.
-    def exitFstring_conversion(self, ctx: PythonParser.Fstring_conversionContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#fstring_full_format_spec.
-    def enterFstring_full_format_spec(self, ctx: PythonParser.Fstring_full_format_specContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#fstring_full_format_spec.
-    def exitFstring_full_format_spec(self, ctx: PythonParser.Fstring_full_format_specContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#fstring_format_spec.
-    def enterFstring_format_spec(self, ctx: PythonParser.Fstring_format_specContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#fstring_format_spec.
-    def exitFstring_format_spec(self, ctx: PythonParser.Fstring_format_specContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#fstring.
-    def enterFstring(self, ctx: PythonParser.FstringContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#fstring.
-    def exitFstring(self, ctx: PythonParser.FstringContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#string.
-    def enterString(self, ctx: PythonParser.StringContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#string.
-    def exitString(self, ctx: PythonParser.StringContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#strings.
-    def enterStrings(self, ctx: PythonParser.StringsContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#strings.
-    def exitStrings(self, ctx: PythonParser.StringsContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#list.
-    def enterList(self, ctx: PythonParser.ListContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#list.
-    def exitList(self, ctx: PythonParser.ListContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#tuple.
-    def enterTuple(self, ctx: PythonParser.TupleContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#tuple.
-    def exitTuple(self, ctx: PythonParser.TupleContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#set.
-    def enterSet(self, ctx: PythonParser.SetContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#set.
-    def exitSet(self, ctx: PythonParser.SetContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#dict.
-    def enterDict(self, ctx: PythonParser.DictContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#dict.
-    def exitDict(self, ctx: PythonParser.DictContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#double_starred_kvpairs.
-    def enterDouble_starred_kvpairs(self, ctx: PythonParser.Double_starred_kvpairsContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#double_starred_kvpairs.
-    def exitDouble_starred_kvpairs(self, ctx: PythonParser.Double_starred_kvpairsContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#double_starred_kvpair.
-    def enterDouble_starred_kvpair(self, ctx: PythonParser.Double_starred_kvpairContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#double_starred_kvpair.
-    def exitDouble_starred_kvpair(self, ctx: PythonParser.Double_starred_kvpairContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#kvpair.
-    def enterKvpair(self, ctx: PythonParser.KvpairContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#kvpair.
-    def exitKvpair(self, ctx: PythonParser.KvpairContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#for_if_clauses.
-    def enterFor_if_clauses(self, ctx: PythonParser.For_if_clausesContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#for_if_clauses.
-    def exitFor_if_clauses(self, ctx: PythonParser.For_if_clausesContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#for_if_clause.
-    def enterFor_if_clause(self, ctx: PythonParser.For_if_clauseContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#for_if_clause.
-    def exitFor_if_clause(self, ctx: PythonParser.For_if_clauseContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#listcomp.
-    def enterListcomp(self, ctx: PythonParser.ListcompContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#listcomp.
-    def exitListcomp(self, ctx: PythonParser.ListcompContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#setcomp.
-    def enterSetcomp(self, ctx: PythonParser.SetcompContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#setcomp.
-    def exitSetcomp(self, ctx: PythonParser.SetcompContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#genexp.
-    def enterGenexp(self, ctx: PythonParser.GenexpContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#genexp.
-    def exitGenexp(self, ctx: PythonParser.GenexpContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#dictcomp.
-    def enterDictcomp(self, ctx: PythonParser.DictcompContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#dictcomp.
-    def exitDictcomp(self, ctx: PythonParser.DictcompContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#arguments.
-    def enterArguments(self, ctx: PythonParser.ArgumentsContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#arguments.
-    def exitArguments(self, ctx: PythonParser.ArgumentsContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#args.
-    def enterArgs(self, ctx: PythonParser.ArgsContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#args.
-    def exitArgs(self, ctx: PythonParser.ArgsContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#kwargs.
-    def enterKwargs(self, ctx: PythonParser.KwargsContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#kwargs.
-    def exitKwargs(self, ctx: PythonParser.KwargsContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#starred_expression.
-    def enterStarred_expression(self, ctx: PythonParser.Starred_expressionContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#starred_expression.
-    def exitStarred_expression(self, ctx: PythonParser.Starred_expressionContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#kwarg_or_starred.
-    def enterKwarg_or_starred(self, ctx: PythonParser.Kwarg_or_starredContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#kwarg_or_starred.
-    def exitKwarg_or_starred(self, ctx: PythonParser.Kwarg_or_starredContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#kwarg_or_double_starred.
-    def enterKwarg_or_double_starred(self, ctx: PythonParser.Kwarg_or_double_starredContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#kwarg_or_double_starred.
-    def exitKwarg_or_double_starred(self, ctx: PythonParser.Kwarg_or_double_starredContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#star_targets.
-    def enterStar_targets(self, ctx: PythonParser.Star_targetsContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#star_targets.
-    def exitStar_targets(self, ctx: PythonParser.Star_targetsContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#star_targets_list_seq.
-    def enterStar_targets_list_seq(self, ctx: PythonParser.Star_targets_list_seqContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#star_targets_list_seq.
-    def exitStar_targets_list_seq(self, ctx: PythonParser.Star_targets_list_seqContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#star_targets_tuple_seq.
-    def enterStar_targets_tuple_seq(self, ctx: PythonParser.Star_targets_tuple_seqContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#star_targets_tuple_seq.
-    def exitStar_targets_tuple_seq(self, ctx: PythonParser.Star_targets_tuple_seqContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#star_target.
-    def enterStar_target(self, ctx: PythonParser.Star_targetContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#star_target.
-    def exitStar_target(self, ctx: PythonParser.Star_targetContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#target_with_star_atom.
-    def enterTarget_with_star_atom(self, ctx: PythonParser.Target_with_star_atomContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#target_with_star_atom.
-    def exitTarget_with_star_atom(self, ctx: PythonParser.Target_with_star_atomContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#star_atom.
-    def enterStar_atom(self, ctx: PythonParser.Star_atomContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#star_atom.
-    def exitStar_atom(self, ctx: PythonParser.Star_atomContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#single_target.
-    def enterSingle_target(self, ctx: PythonParser.Single_targetContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#single_target.
-    def exitSingle_target(self, ctx: PythonParser.Single_targetContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#single_subscript_attribute_target.
-    def enterSingle_subscript_attribute_target(
-        self, ctx: PythonParser.Single_subscript_attribute_targetContext
-    ):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#single_subscript_attribute_target.
-    def exitSingle_subscript_attribute_target(
-        self, ctx: PythonParser.Single_subscript_attribute_targetContext
-    ):
-        print_name()
-
-    # Enter a parse tree produced by PythonParser#t_primary.
-    def enterT_primary(self, ctx: PythonParser.T_primaryContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#t_primary.
-    def exitT_primary(self, ctx: PythonParser.T_primaryContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#del_targets.
-    def enterDel_targets(self, ctx: PythonParser.Del_targetsContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#del_targets.
-    def exitDel_targets(self, ctx: PythonParser.Del_targetsContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#del_target.
-    def enterDel_target(self, ctx: PythonParser.Del_targetContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#del_target.
-    def exitDel_target(self, ctx: PythonParser.Del_targetContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#del_t_atom.
-    def enterDel_t_atom(self, ctx: PythonParser.Del_t_atomContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#del_t_atom.
-    def exitDel_t_atom(self, ctx: PythonParser.Del_t_atomContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#type_expressions.
-    def enterType_expressions(self, ctx: PythonParser.Type_expressionsContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#type_expressions.
-    def exitType_expressions(self, ctx: PythonParser.Type_expressionsContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#func_type_comment.
-    def enterFunc_type_comment(self, ctx: PythonParser.Func_type_commentContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#func_type_comment.
-    def exitFunc_type_comment(self, ctx: PythonParser.Func_type_commentContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#soft_kw_type.
-    def enterSoft_kw_type(self, ctx: PythonParser.Soft_kw_typeContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#soft_kw_type.
-    def exitSoft_kw_type(self, ctx: PythonParser.Soft_kw_typeContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#soft_kw_match.
-    def enterSoft_kw_match(self, ctx: PythonParser.Soft_kw_matchContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#soft_kw_match.
-    def exitSoft_kw_match(self, ctx: PythonParser.Soft_kw_matchContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#soft_kw_case.
-    def enterSoft_kw_case(self, ctx: PythonParser.Soft_kw_caseContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#soft_kw_case.
-    def exitSoft_kw_case(self, ctx: PythonParser.Soft_kw_caseContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#soft_kw_wildcard.
-    def enterSoft_kw_wildcard(self, ctx: PythonParser.Soft_kw_wildcardContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#soft_kw_wildcard.
-    def exitSoft_kw_wildcard(self, ctx: PythonParser.Soft_kw_wildcardContext):
-        pass
-
-    # Enter a parse tree produced by PythonParser#soft_kw__not__wildcard.
-    def enterSoft_kw__not__wildcard(self, ctx: PythonParser.Soft_kw__not__wildcardContext):
-        print_name()
-
-    # Exit a parse tree produced by PythonParser#soft_kw__not__wildcard.
-    def exitSoft_kw__not__wildcard(self, ctx: PythonParser.Soft_kw__not__wildcardContext):
-        pass
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#t_primary.
+    def visitT_primary(self, ctx: SharpyParser.T_primaryContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#del_targets.
+    def visitDel_targets(self, ctx: SharpyParser.Del_targetsContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#del_target.
+    def visitDel_target(self, ctx: SharpyParser.Del_targetContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#del_t_atom.
+    def visitDel_t_atom(self, ctx: SharpyParser.Del_t_atomContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#type_expressions.
+    def visitType_expressions(self, ctx: SharpyParser.Type_expressionsContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#func_type_comment.
+    def visitFunc_type_comment(self, ctx: SharpyParser.Func_type_commentContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#name_except_underscore.
+    def visitName_except_underscore(self, ctx: SharpyParser.Name_except_underscoreContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#name.
+    def visitName(self, ctx: SharpyParser.NameContext):
+        return self.visitChildren(ctx)

@@ -66,9 +66,9 @@ options { tokenVocab=SharpyLexer; }
 // ==============
 
 file_input: statements? EOF;
-interactive: statement_newline;
-eval: expressions NEWLINE* EOF;
-func_type: '(' type_expressions? ')' '->' expression NEWLINE* EOF;
+// interactive: statement_newline;  # Not used in Sharpy
+// eval: expressions NEWLINE* EOF;  # Not used in Sharpy
+// func_type: '(' type_expressions? ')' '->' expression NEWLINE* EOF;  # Not used in Sharpy
 
 // GENERAL STATEMENTS
 // ==================
