@@ -25,14 +25,41 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         return self._root
 
     # Visit a parse tree produced by SharpyParser#file_input.
-    def visitFile_input(self, ctx: SharpyParser.File_inputContext):
+    def visitFile_input(self, ctx: SharpyParser.File_inputContext) -> Module:
         logger.debug("Visiting file input")
-        return self.visitChildren(ctx)
+        body: MutableSequence[Node] = []
+
+        for i in range(ctx.getChildCount()):
+            child: ParseTreeNode = ctx.getChild(i)
+            node: Node | MutableSequence[Node] | None = self.visit(child)
+
+            if isinstance(node, MutableSequence):
+                body.extend(node)
+            elif node is not None:
+                body.append(node)
+
+        return Module(body)
 
     # Visit a parse tree produced by SharpyParser#statements.
-    def visitStatements(self, ctx: SharpyParser.StatementsContext):
+    def visitStatements(self, ctx: SharpyParser.StatementsContext) -> MutableSequence[Node]:
         logger.debug("Visiting statements")
-        return self.visitChildren(ctx)
+
+        statements: MutableSequence[Node] = []
+
+        for i in range(ctx.getChildCount()):
+            child: ParseTreeNode = ctx.getChild(i)
+            node: Node | None = self.visit(child)
+
+            if node is not None:
+                statements.append(node)
+
+        return statements
+
+    def visitAtom(self, ctx: SharpyParser.AtomContext) -> Constant:
+        logger.debug("Visiting atom")
+        logger.debug(f"Atom value: {ctx.getText()}")
+
+        return Constant(ctx.getText())
 
     # Visit a parse tree produced by SharpyParser#statement.
     def visitStatement(self, ctx: SharpyParser.StatementContext):
@@ -594,6 +621,14 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         value = self.visit(ctx.expression(1))
 
         return (key, value)
+
+    # Visit a parse tree produced by SharpyParser#strings.
+    def visitString(self, ctx: SharpyParser.StringContext):
+        logger.debug("Visiting string")
+
+        logger.debug(f"String text: {ctx.getText()}")
+
+        return Constant(value=ctx.getText())
 
     # Visit a parse tree produced by SharpyParser#strings.
     def visitStrings(self, ctx: SharpyParser.StringsContext):

@@ -1,6 +1,7 @@
+from io import StringIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Any, Callable, MutableSequence
+from typing import Any, MutableSequence
 
 from antlr4 import ParserRuleContext
 from graphviz import Digraph
@@ -67,7 +68,6 @@ def ast_to_dot(
     node: ASTNode,
     dot: Digraph | None = None,
     parent_id: str | None = None,
-    label_fn: Callable | None = None,
 ) -> Digraph:
     """
     Recursively convert an AST node to a Graphviz Digraph.
@@ -79,34 +79,39 @@ def ast_to_dot(
     if dot is None:
         dot = Digraph()
 
-    node_id = str(id(node))
-    # Default label: class name and (optionally) id/name field
-    if label_fn:
-        label = label_fn(node)
+    is_node: bool = isinstance(node, ASTNode)
+
+    if is_node:
+        node_id = str(id(node))
     else:
-        label = node.__class__.__name__
-        # Try to add 'id' or 'name' or 'value' if present
-        for attr in ("id", "name", "value"):
-            if hasattr(node, attr):
-                label += f"\n{attr}: {getattr(node, attr)}"
-                break
+        node_id = StringIO(str(id(node))).getvalue()
+
+    if is_node:
+        label: str = node.__class__.__name__
+    else:
+        label: str = str(node)
 
     dot.node(node_id, label=label)
+
     if parent_id:
         dot.edge(parent_id, node_id)
 
+    if not is_node:
+        return dot
+
     # Recursively add children
-    # Try .fields (AST), or __dict__ for custom nodes
     children: MutableSequence[Any] = []
 
-    if hasattr(node, "__dict__"):
-        for _, value in node.__dict__.items():
+    if is_node:
+        for key, value in node.__dict__.items():
+            logger.debug(f"[{node.__class__.__name__}] Processing field '{key}' with value: {value}")
+
             if isinstance(value, list):
                 children.extend([v for v in value if hasattr(v, "__class__")])
             elif hasattr(value, "__class__"):
                 children.append(value)
 
     for child in children:
-        ast_to_dot(child, dot=dot, parent_id=node_id, label_fn=label_fn)
+        ast_to_dot(child, dot=dot, parent_id=node_id)
 
     return dot

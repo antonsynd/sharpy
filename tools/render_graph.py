@@ -10,7 +10,7 @@ from sharpy.compiler_toolchain.antlr.ast_builder import AntlrASTBuilder
 from sharpy.compiler_toolchain.antlr.parser import AntlrParser
 from sharpy.compiler_toolchain.antlr.rendering import render_ast_as_png, render_parse_tree_as_png
 from sharpy.compiler_toolchain.ast import Node as ASTNode
-from sharpy.compiler_toolchain.logging import formatter, logger
+from sharpy.compiler_toolchain.logging import logger
 
 
 def main():
@@ -36,7 +36,7 @@ def main():
         help="Enable debug output (default: False)",
     )
     parser.add_argument(
-        "--log",
+        "--log-path",
         type=Path,
         default=None,
         help="Path to a log file to additionally write logs to. If not specified, logs to stdout and stderr.",
@@ -49,17 +49,14 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     debug: bool = args.debug
-    log_path: Path | None = args.log
-
-    if log_path:
-        # Set up file logging
-        file_handler = logging.FileHandler(log_path, mode="w", encoding="utf-8")
-        file_handler.setFormatter(formatter)
-        file_handler.setLevel(logging.DEBUG if debug else logging.INFO)
-        logger.addHandler(file_handler)
 
     if debug:
-        logger.setLevel(logging.DEBUG)
+        logger.enable_debug()
+
+    log_path: Path | None = args.log_path
+
+    if log_path:
+        logger.addFile(file_path=log_path)
 
     basename: str = args.basename or input_path.stem
 
