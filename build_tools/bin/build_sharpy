@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -196,6 +197,12 @@ def setup(args: argparse.Namespace, rest: Sequence[str]) -> None:
                 str(DATA_DIR / "SharpyParser.g4"),
             ],
             check=True,
+        )
+
+        get_logger().info("Copying lexer base to resources...")
+        shutil.copyfile(
+            src=DATA_DIR / "SharpyLexerBase.py",
+            dst=RESOURCE_DIR / "SharpyLexerBase.py",
         )
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)

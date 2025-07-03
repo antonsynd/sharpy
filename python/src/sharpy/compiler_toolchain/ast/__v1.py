@@ -28,6 +28,9 @@ class NodeSource:
     def end_col_offset(self) -> int:
         return self._end_col_offset
 
+    def __repr__(self) -> str:
+        return f"NodeSource({self._line_num}, {self._col_offset}, {self._end_line_num}, {self._end_col_offset})"
+
 
 class Node:
     """
@@ -42,6 +45,9 @@ class Node:
 
     def set_source(self, source: NodeSource) -> None:
         self._source = source
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(source={self._source})"
 
 
 ## Categories
@@ -120,6 +126,9 @@ class Add(BinaryOpTok):
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
 
+    def __repr__(self) -> str:
+        return "Add()"
+
 
 class alias(Node):
     def __init__(self, name: str, asname: str | None, source: NodeSource | None = None):
@@ -133,6 +142,9 @@ class alias(Node):
     def asname(self) -> str | None:
         return self._asname
 
+    def __repr__(self) -> str:
+        return f"alias(name={self._name}, asname={self._asname})"
+
 
 class And(Node):
     """
@@ -141,6 +153,9 @@ class And(Node):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "And()"
 
 
 class AnnAssign(Statement):
@@ -151,6 +166,9 @@ class AnnAssign(Statement):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "AnnAssign()"
 
 
 class param(Node):
@@ -173,6 +191,9 @@ class param(Node):
     def default(self) -> Node:
         return self._default
 
+    def __repr__(self) -> str:
+        return f"param(name={self._name}, type={self._type}, default={self._default})"
+
 
 class parameters(Node):
     """
@@ -185,6 +206,9 @@ class parameters(Node):
 
     def params(self) -> Mapping[str, param]:
         return self._params
+
+    def __repr__(self) -> str:
+        return f"parameters(params={self._params})"
 
 
 class Assert(Statement):
@@ -202,6 +226,9 @@ class Assert(Statement):
 
     def msg(self) -> Node | None:
         return self._msg
+
+    def __repr__(self) -> str:
+        return f"Assert(test={self._test}, msg={self._msg})"
 
 
 class Assign(Statement):
@@ -223,6 +250,9 @@ class Assign(Statement):
     def value(self) -> Node:
         return self._value
 
+    def __repr__(self) -> str:
+        return f"Assign(targets={self._targets}, value={self._value})"
+
 
 class AsyncFor(Node):
     """
@@ -239,6 +269,9 @@ class AsyncFor(Node):
 
     def iter(self) -> Node:
         return self._iter
+
+    def __repr__(self) -> str:
+        return f"AsyncFor(target={self._target}, iter={self._iter})"
 
 
 class AsyncFunctionDef(Node):
@@ -262,6 +295,24 @@ class AsyncFunctionDef(Node):
         self._decorator_list: Sequence[Node] = decorator_list if decorator_list is not None else []
         self._returns: Node | None = returns
 
+    def name(self) -> str:
+        return self._name
+
+    def args(self) -> parameters:
+        return self._args
+
+    def body(self) -> Sequence[Node]:
+        return self._body
+
+    def decorator_list(self) -> Sequence[Node]:
+        return self._decorator_list
+
+    def returns(self) -> Node | None:
+        return self._returns
+
+    def __repr__(self) -> str:
+        return f"AsyncFunctionDef(name={self._name}, args={self._args}, body={self._body}, decorator_list={self._decorator_list}, returns={self._returns})"
+
 
 class AsyncWith(Node):
     """
@@ -274,6 +325,15 @@ class AsyncWith(Node):
         super().__init__(source)
         self._items: Sequence[Node] = items
         self._body: Sequence[Node] = body
+
+    def items(self) -> Sequence[Node]:
+        return self._items
+
+    def body(self) -> Sequence[Node]:
+        return self._body
+
+    def __repr__(self) -> str:
+        return f"AsyncWith(items={self._items}, body={self._body})"
 
 
 class Attribute(Expression):
@@ -297,6 +357,9 @@ class Attribute(Expression):
 
     def ctx(self) -> Context:
         return self._ctx
+
+    def __repr__(self) -> str:
+        return f"Attribute(value={self._value}, attr={self._attr}, ctx={self._ctx})"
 
 
 class AugAssign(Statement):
@@ -323,6 +386,9 @@ class AugAssign(Statement):
     def value(self) -> Node:
         return self._value
 
+    def __repr__(self) -> str:
+        return f"AugAssign(target={self._target}, op={self._op}, value={self._value})"
+
 
 class Await(Node):
     """
@@ -336,6 +402,9 @@ class Await(Node):
 
     def value(self) -> Node:
         return self._value
+
+    def __repr__(self) -> str:
+        return f"Await(value={self._value})"
 
 
 class BinOp(Node):
@@ -360,6 +429,9 @@ class BinOp(Node):
     def right(self) -> Node:
         return self._right
 
+    def __repr__(self) -> str:
+        return f"BinOp(left={self._left}, op={self._op}, right={self._right})"
+
 
 class BitAnd(BinaryOpTok):
     """
@@ -368,6 +440,9 @@ class BitAnd(BinaryOpTok):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "BitAnd()"
 
 
 class BitOr(BinaryOpTok):
@@ -378,6 +453,9 @@ class BitOr(BinaryOpTok):
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
 
+    def __repr__(self) -> str:
+        return "BitOr()"
+
 
 class BitXor(BinaryOpTok):
     """
@@ -386,6 +464,9 @@ class BitXor(BinaryOpTok):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "BitXor()"
 
 
 class BoolOp(Expression):
@@ -405,6 +486,9 @@ class BoolOp(Expression):
     def values(self) -> Sequence[Node]:
         return self._values
 
+    def __repr__(self) -> str:
+        return f"BoolOp(op={self._op}, values={self._values})"
+
 
 class Break(Node):
     """
@@ -414,18 +498,24 @@ class Break(Node):
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
 
+    def __repr__(self) -> str:
+        return "Break()"
+
 
 class Bytes(Node):
     """
     A bytes literal.
     """
 
-    def __init__(self, value: bytes, source: NodeSource | None = None):
+    def __init__(self, value: str, source: NodeSource | None = None):
         super().__init__(source)
-        self._value: bytes = value
+        self._value: str = value
 
-    def value(self) -> bytes:
+    def value(self) -> str:
         return self._value
+
+    def __repr__(self) -> str:
+        return f"Bytes(value={self._value})"
 
 
 class Call(Expression):
@@ -454,6 +544,9 @@ class Call(Expression):
 
     def keywords(self) -> Sequence["keyword"]:
         return self._keywords
+
+    def __repr__(self) -> str:
+        return f"Call(func={self._func}, args={self._args}, keywords={self._keywords})"
 
 
 class ClassDef(Node):
@@ -487,6 +580,9 @@ class ClassDef(Node):
     def body(self) -> Sequence[Node]:
         return self._body
 
+    def __repr__(self) -> str:
+        return f"ClassDef(name={self._name}, bases={self._bases}, keywords={self._keywords}, body={self._body})"
+
 
 class Compare(Expression):
     """
@@ -516,6 +612,9 @@ class Compare(Expression):
     def comparators(self) -> Sequence[Node]:
         return self._comparators
 
+    def __repr__(self) -> str:
+        return f"Compare(left={self._left}, ops={self._ops}, comparators={self._comparators})"
+
 
 class comprehension(Node):
     """
@@ -534,6 +633,7 @@ class comprehension(Node):
         self._target: "Name | Tuple" = target
         self._iter: Node = iter
         self._ifs: Sequence[Node] = ifs
+        self._is_async: bool = is_async
 
     def target(self) -> "Name | Tuple":
         return self._target
@@ -543,6 +643,15 @@ class comprehension(Node):
 
     def ifs(self) -> Sequence[Node]:
         return self._ifs
+
+    def is_async(self) -> bool:
+        """
+        Returns True if this comprehension is asynchronous (e.g., async for).
+        """
+        return self._is_async
+
+    def __repr__(self) -> str:
+        return f"comprehension(target={self._target}, iter={self._iter}, ifs={self._ifs}, is_async={self.is_async()})"
 
 
 class Constant(Literal):
@@ -561,6 +670,9 @@ class Constant(Literal):
     def value(self) -> str | int | float | complex | bytes | bool | None:
         return self._value
 
+    def __repr__(self) -> str:
+        return f"Constant(value={self._value})"
+
 
 class Continue(Node):
     """
@@ -570,6 +682,9 @@ class Continue(Node):
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
 
+    def __repr__(self) -> str:
+        return "Continue()"
+
 
 class Del(Context):
     """
@@ -578,6 +693,9 @@ class Del(Context):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "Del()"
 
 
 class Delete(Statement):
@@ -598,6 +716,9 @@ class Delete(Statement):
     def targets(self) -> Sequence["Subscript"]:
         return self._targets
 
+    def __repr__(self) -> str:
+        return f"Delete(targets={self._targets})"
+
 
 class Dict(Literal):
     """
@@ -617,6 +738,9 @@ class Dict(Literal):
 
     def values(self) -> Sequence[Node]:
         return self._values
+
+    def __repr__(self) -> str:
+        return f"Dict(keys={self._keys}, values={self._values})"
 
 
 class DictComp(Node):
@@ -646,6 +770,9 @@ class DictComp(Node):
     def generators(self) -> Sequence[comprehension]:
         return self._generators
 
+    def __repr__(self) -> str:
+        return f"DictComp(key={self._key}, value={self._value}, generators={self._generators})"
+
 
 class Div(BinaryOpTok):
     """
@@ -654,6 +781,9 @@ class Div(BinaryOpTok):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "Div()"
 
 
 class Ellipsis(Node):
@@ -664,6 +794,9 @@ class Ellipsis(Node):
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
 
+    def __repr__(self) -> str:
+        return "Ellipsis()"
+
 
 class Eq(ComparisonOpTok):
     """
@@ -672,6 +805,9 @@ class Eq(ComparisonOpTok):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "Eq()"
 
 
 class ExceptHandler(Node):
@@ -700,6 +836,9 @@ class ExceptHandler(Node):
     def body(self) -> Sequence[Node]:
         return self._body
 
+    def __repr__(self) -> str:
+        return f"ExceptHandler(type={self._type}, name={self._name}, body={self._body})"
+
 
 class Expr(Expression):
     """
@@ -718,6 +857,9 @@ class Expr(Expression):
     def value(self) -> "Constant | Name | Lambda | Yield | YieldFrom":
         return self._value
 
+    def __repr__(self) -> str:
+        return f"Expr(value={self._value})"
+
 
 class expr(Node):
     """
@@ -727,6 +869,9 @@ class expr(Node):
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
 
+    def __repr__(self) -> str:
+        return "expr()"
+
 
 class FloorDiv(BinaryOpTok):
     """
@@ -735,6 +880,9 @@ class FloorDiv(BinaryOpTok):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "FloorDiv()"
 
 
 class For(Node):
@@ -769,6 +917,9 @@ class For(Node):
     def orelse(self) -> Sequence[Node]:
         return self._orelse
 
+    def __repr__(self) -> str:
+        return f"For(target={self._target}, iter={self._iter}, body={self._body}, orelse={self._orelse})"
+
 
 class FormattedValue(Literal):
     """
@@ -795,6 +946,9 @@ class FormattedValue(Literal):
 
     def format_spec(self) -> Node | None:
         return self._format_spec
+
+    def __repr__(self) -> str:
+        return f"FormattedValue(value={self._value}, conversion={self._conversion}, format_spec={self._format_spec})"
 
 
 class FunctionDef(Node):
@@ -833,6 +987,9 @@ class FunctionDef(Node):
     def returns(self) -> Node | None:
         return self._returns
 
+    def __repr__(self) -> str:
+        return f"FunctionDef(name={self._name}, args={self._args}, body={self._body}, decorator_list={self._decorator_list}, returns={self._returns})"
+
 
 class GeneratorExp(Node):
     """
@@ -855,6 +1012,9 @@ class GeneratorExp(Node):
     def generators(self) -> Sequence[comprehension]:
         return self._generators
 
+    def __repr__(self) -> str:
+        return f"GeneratorExp(elt={self._elt}, generators={self._generators})"
+
 
 class Global(Node):
     """
@@ -868,6 +1028,9 @@ class Global(Node):
     def names(self) -> Sequence[str]:
         return self._names
 
+    def __repr__(self) -> str:
+        return f"Global(names={self._names})"
+
 
 class Gt(ComparisonOpTok):
     """
@@ -877,6 +1040,9 @@ class Gt(ComparisonOpTok):
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
 
+    def __repr__(self) -> str:
+        return "Gt()"
+
 
 class GtE(ComparisonOpTok):
     """
@@ -885,6 +1051,9 @@ class GtE(ComparisonOpTok):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "GtE()"
 
 
 class If(Node):
@@ -913,6 +1082,9 @@ class If(Node):
     def orelse(self) -> Sequence[Node]:
         return self._orelse
 
+    def __repr__(self) -> str:
+        return f"If(test={self._test}, body={self._body}, orelse={self._orelse})"
+
 
 class IfExp(Expression):
     """
@@ -935,6 +1107,9 @@ class IfExp(Expression):
     def orelse(self) -> Node:
         return self._orelse
 
+    def __repr__(self) -> str:
+        return f"IfExp(test={self._test}, body={self._body}, orelse={self._orelse})"
+
 
 class Import(Node):
     """
@@ -947,6 +1122,9 @@ class Import(Node):
 
     def names(self) -> Sequence[alias]:
         return self._names
+
+    def __repr__(self) -> str:
+        return f"Import(names={self._names})"
 
 
 class ImportFrom(Node):
@@ -976,6 +1154,9 @@ class ImportFrom(Node):
     def level(self) -> int:
         return self._level
 
+    def __repr__(self) -> str:
+        return f"ImportFrom(module={self._module}, names={self._names}, level={self._level})"
+
 
 class In(ComparisonOpTok):
     """
@@ -985,6 +1166,9 @@ class In(ComparisonOpTok):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "In()"
 
 
 class Index(Node):
@@ -999,6 +1183,9 @@ class Index(Node):
     def value(self) -> Node:
         return self._value
 
+    def __repr__(self) -> str:
+        return f"Index(value={self._value})"
+
 
 class Is(ComparisonOpTok):
     """
@@ -1008,6 +1195,9 @@ class Is(ComparisonOpTok):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "Is()"
 
 
 class IsNot(ComparisonOpTok):
@@ -1019,6 +1209,9 @@ class IsNot(ComparisonOpTok):
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
 
+    def __repr__(self) -> str:
+        return "IsNot()"
+
 
 class Invert(UnaryOpTok):
     """
@@ -1027,6 +1220,9 @@ class Invert(UnaryOpTok):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "Invert()"
 
 
 class JoinedStr(Literal):
@@ -1042,6 +1238,9 @@ class JoinedStr(Literal):
 
     def values(self) -> Sequence[FormattedValue | Constant]:
         return self._values
+
+    def __repr__(self) -> str:
+        return f"JoinedStr(values={self._values})"
 
 
 class keyword(Node):
@@ -1060,6 +1259,9 @@ class keyword(Node):
     def value(self) -> Node:
         return self._value
 
+    def __repr__(self) -> str:
+        return f"keyword(arg={self._arg}, value={self._value})"
+
 
 class Lambda(Node):
     """
@@ -1070,6 +1272,7 @@ class Lambda(Node):
         super().__init__(source)
         self._args: parameters = args
         self._body: Node = body
+        # TODO: return type
 
     def args(self) -> parameters:
         return self._args
@@ -1077,22 +1280,28 @@ class Lambda(Node):
     def body(self) -> Node:
         return self._body
 
+    def __repr__(self) -> str:
+        return f"Lambda(args={self._args}, body={self._body})"
+
 
 class List(Literal):
     """
     A list literal, which is a sequence of values enclosed in square brackets.
     """
 
-    def __init__(self, elts: Sequence[Node], ctx: Node, source: NodeSource | None = None):
+    def __init__(self, elts: Sequence[Node], ctx: Context, source: NodeSource | None = None):
         super().__init__(source)
         self._elts: Sequence[Node] = elts
-        self._ctx: Node = ctx
+        self._ctx: Context = ctx
 
     def elts(self) -> Sequence[Node]:
         return self._elts
 
-    def ctx(self) -> Node:
+    def ctx(self) -> Context:
         return self._ctx
+
+    def __repr__(self) -> str:
+        return f"List(elts={self._elts}, ctx={self._ctx})"
 
 
 class ListComp(Node):
@@ -1113,6 +1322,9 @@ class ListComp(Node):
     def generators(self) -> Sequence[comprehension]:
         return self._generators
 
+    def __repr__(self) -> str:
+        return f"ListComp(elt={self._elt}, generators={self._generators})"
+
 
 class Load(Context):
     """
@@ -1121,6 +1333,9 @@ class Load(Context):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "Load()"
 
 
 class LShift(BinaryOpTok):
@@ -1131,6 +1346,9 @@ class LShift(BinaryOpTok):
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
 
+    def __repr__(self) -> str:
+        return "LShift()"
+
 
 class Lt(ComparisonOpTok):
     """
@@ -1140,6 +1358,9 @@ class Lt(ComparisonOpTok):
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
 
+    def __repr__(self) -> str:
+        return "Lt()"
+
 
 class LtE(ComparisonOpTok):
     """
@@ -1148,6 +1369,9 @@ class LtE(ComparisonOpTok):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "LtE()"
 
 
 class Match(Node):
@@ -1166,6 +1390,9 @@ class Match(Node):
 
     def cases(self) -> Sequence[Node]:
         return self._cases
+
+    def __repr__(self) -> str:
+        return f"Match(subject={self._subject}, cases={self._cases})"
 
 
 class match_case(Node):
@@ -1194,6 +1421,9 @@ class match_case(Node):
     def body(self) -> Sequence[Node]:
         return self._body
 
+    def __repr__(self) -> str:
+        return f"match_case(pattern={self._pattern}, guard={self._guard}, body={self._body})"
+
 
 class MatchAs(Node):
     """
@@ -1210,6 +1440,9 @@ class MatchAs(Node):
 
     def pattern(self) -> Node:
         return self._pattern
+
+    def __repr__(self) -> str:
+        return f"MatchAs(name={self._name}, pattern={self._pattern})"
 
 
 class MatchClass(Node):
@@ -1238,6 +1471,9 @@ class MatchClass(Node):
     def kwd_patterns(self) -> Sequence[Node]:
         return self._kwd_patterns
 
+    def __repr__(self) -> str:
+        return f"MatchClass(cls={self._cls}, patterns={self._patterns}, kwd_patterns={self._kwd_patterns})"
+
 
 class MatchMapping(Node):
     """
@@ -1265,6 +1501,9 @@ class MatchMapping(Node):
     def rest(self) -> Node | None:
         return self._rest
 
+    def __repr__(self) -> str:
+        return f"MatchMapping(keys={self._keys}, patterns={self._patterns}, rest={self._rest})"
+
 
 class MatchOr(Node):
     """
@@ -1277,6 +1516,9 @@ class MatchOr(Node):
 
     def patterns(self) -> Sequence[Node]:
         return self._patterns
+
+    def __repr__(self) -> str:
+        return f"MatchOr(patterns={self._patterns})"
 
 
 class MatchSequence(Node):
@@ -1297,6 +1539,9 @@ class MatchSequence(Node):
     def rest(self) -> Node | None:
         return self._rest
 
+    def __repr__(self) -> str:
+        return f"MatchSequence(patterns={self._patterns}, rest={self._rest})"
+
 
 class MatchSingleton(Node):
     """
@@ -1310,6 +1555,9 @@ class MatchSingleton(Node):
     def value(self) -> Node:
         return self._value
 
+    def __repr__(self) -> str:
+        return f"MatchSingleton(value={self._value})"
+
 
 class MatchStar(Node):
     """
@@ -1322,6 +1570,9 @@ class MatchStar(Node):
 
     def name(self) -> str | None:
         return self._name
+
+    def __repr__(self) -> str:
+        return f"MatchStar(name={self._name})"
 
 
 class MatchValue(Node):
@@ -1337,6 +1588,9 @@ class MatchValue(Node):
     def value(self) -> Node:
         return self._value
 
+    def __repr__(self) -> str:
+        return f"MatchValue(value={self._value})"
+
 
 class MatMult(Node):
     """
@@ -1346,6 +1600,9 @@ class MatMult(Node):
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
 
+    def __repr__(self) -> str:
+        return "MatMult()"
+
 
 class Mod(BinaryOpTok):
     """
@@ -1354,6 +1611,9 @@ class Mod(BinaryOpTok):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "Mod()"
 
 
 class Module(Root):
@@ -1368,6 +1628,9 @@ class Module(Root):
     def body(self) -> Sequence[Node]:
         return self._body
 
+    def __repr__(self) -> str:
+        return f"Module(body={self._body})"
+
 
 class Mult(BinaryOpTok):
     """
@@ -1377,22 +1640,28 @@ class Mult(BinaryOpTok):
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
 
+    def __repr__(self) -> str:
+        return "Mult()"
+
 
 class Name(Variable):
     """
     A name, which is an identifier in the code.
     """
 
-    def __init__(self, id: str, ctx: Node, source: NodeSource | None = None):
+    def __init__(self, id: str, ctx: Context, source: NodeSource | None = None):
         super().__init__(source)
         self._id: str = id
-        self._ctx: Node = ctx
+        self._ctx: Context = ctx
 
     def id(self) -> str:
         return self._id
 
-    def ctx(self) -> Node:
+    def ctx(self) -> Context:
         return self._ctx
+
+    def __repr__(self) -> str:
+        return f"Name(id={self._id}, ctx={self._ctx})"
 
 
 class NamedExpr(Node):
@@ -1414,6 +1683,9 @@ class NamedExpr(Node):
     def value(self) -> Node:
         return self._value
 
+    def __repr__(self) -> str:
+        return f"NamedExpr(target={self._target}, value={self._value})"
+
 
 class Nonlocal(Node):
     """
@@ -1427,6 +1699,9 @@ class Nonlocal(Node):
     def names(self) -> Sequence[str]:
         return self._names
 
+    def __repr__(self) -> str:
+        return f"Nonlocal(names={self._names})"
+
 
 class Not(UnaryOpTok):
     """
@@ -1436,6 +1711,9 @@ class Not(UnaryOpTok):
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
 
+    def __repr__(self) -> str:
+        return "Not()"
+
 
 class NotEq(ComparisonOpTok):
     """
@@ -1444,6 +1722,9 @@ class NotEq(ComparisonOpTok):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "NotEq()"
 
 
 class NotIn(Node):
@@ -1455,6 +1736,9 @@ class NotIn(Node):
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
 
+    def __repr__(self) -> str:
+        return "NotIn()"
+
 
 class Or(Node):
     """
@@ -1463,6 +1747,9 @@ class Or(Node):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "Or()"
 
 
 class Param(Node):
@@ -1491,6 +1778,9 @@ class Param(Node):
     def default(self) -> Node | None:
         return self._default
 
+    def __repr__(self) -> str:
+        return f"Param(name={self._name}, annotation={self._annotation}, default={self._default})"
+
 
 class ParamSpec(Node):
     """
@@ -1508,6 +1798,9 @@ class ParamSpec(Node):
     def kind(self) -> str:
         return self._kind
 
+    def __repr__(self) -> str:
+        return f"ParamSpec(name={self._name}, kind={self._kind})"
+
 
 class Pass(Statement):
     """
@@ -1518,6 +1811,9 @@ class Pass(Statement):
         super().__init__(source)
         # No additional attributes needed for a pass statement
 
+    def __repr__(self) -> str:
+        return "Pass()"
+
 
 class Pow(BinaryOpTok):
     """
@@ -1526,6 +1822,9 @@ class Pow(BinaryOpTok):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "Pow()"
 
 
 class Raise(Statement):
@@ -1546,6 +1845,9 @@ class Raise(Statement):
     def cause(self) -> Node | None:
         return self._cause
 
+    def __repr__(self) -> str:
+        return f"Raise(exc={self._exc}, cause={self._cause})"
+
 
 class Return(Node):
     """
@@ -1559,6 +1861,9 @@ class Return(Node):
     def value(self) -> Node | None:
         return self._value
 
+    def __repr__(self) -> str:
+        return f"Return(value={self._value})"
+
 
 class RShift(BinaryOpTok):
     """
@@ -1567,6 +1872,9 @@ class RShift(BinaryOpTok):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "RShift()"
 
 
 class Set(Literal):
@@ -1580,6 +1888,9 @@ class Set(Literal):
 
     def elts(self) -> Sequence[Node]:
         return self._elts
+
+    def __repr__(self) -> str:
+        return f"Set(elts={self._elts})"
 
 
 class SetComp(Node):
@@ -1599,6 +1910,9 @@ class SetComp(Node):
 
     def generators(self) -> Sequence[comprehension]:
         return self._generators
+
+    def __repr__(self) -> str:
+        return f"SetComp(elt={self._elt}, generators={self._generators})"
 
 
 class Slice(Node):
@@ -1627,6 +1941,9 @@ class Slice(Node):
     def step(self) -> Node | None:
         return self._step
 
+    def __repr__(self) -> str:
+        return f"Slice(lower={self._lower}, upper={self._upper}, step={self._step})"
+
 
 class Starred(Variable):
     """
@@ -1634,16 +1951,19 @@ class Starred(Variable):
     This is also used when building a Call node with *args.
     """
 
-    def __init__(self, value: Node, ctx: Node, source: NodeSource | None = None):
+    def __init__(self, value: Node, ctx: Context, source: NodeSource | None = None):
         super().__init__(source)
         self._value: Node = value
-        self._ctx: Node = ctx
+        self._ctx: Context = ctx
 
     def value(self) -> Node:
         return self._value
 
-    def ctx(self) -> Node:
+    def ctx(self) -> Context:
         return self._ctx
+
+    def __repr__(self) -> str:
+        return f"Starred(value={self._value}, ctx={self._ctx})"
 
 
 class Store(Context):
@@ -1654,18 +1974,8 @@ class Store(Context):
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
 
-
-class Str(Node):
-    """
-    A string literal.
-    """
-
-    def __init__(self, value: str, source: NodeSource | None = None):
-        super().__init__(source)
-        self._value: str = value
-
-    def value(self) -> str:
-        return self._value
+    def __repr__(self) -> str:
+        return "Store()"
 
 
 class Sub(BinaryOpTok):
@@ -1675,6 +1985,9 @@ class Sub(BinaryOpTok):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "Sub()"
 
 
 class Subscript(Node):
@@ -1697,6 +2010,9 @@ class Subscript(Node):
 
     def ctx(self) -> Context:
         return self._ctx
+
+    def __repr__(self) -> str:
+        return f"Subscript(value={self._value}, slice={self._slice}, ctx={self._ctx})"
 
 
 class Try(Node):
@@ -1730,6 +2046,9 @@ class Try(Node):
     def finalbody(self) -> Sequence[Node]:
         return self._finalbody
 
+    def __repr__(self) -> str:
+        return f"Try(body={self._body}, handlers={self._handlers}, orelse={self._orelse}, finalbody={self._finalbody})"
+
 
 class TryStar(Node):
     """
@@ -1762,22 +2081,28 @@ class TryStar(Node):
     def finalbody(self) -> Sequence[Node]:
         return self._finalbody
 
+    def __repr__(self) -> str:
+        return f"TryStar(body={self._body}, handlers={self._handlers}, orelse={self._orelse}, finalbody={self._finalbody})"
+
 
 class Tuple(Literal):
     """
     A tuple literal, which is a sequence of values enclosed in parentheses.
     """
 
-    def __init__(self, elts: Sequence[Node], ctx: Node, source: NodeSource | None = None):
+    def __init__(self, elts: Sequence[Node], ctx: Context, source: NodeSource | None = None):
         super().__init__(source)
         self._elts: Sequence[Node] = elts
-        self._ctx: Node = ctx
+        self._ctx: Context = ctx
 
     def elts(self) -> Sequence[Node]:
         return self._elts
 
-    def ctx(self) -> Node:
+    def ctx(self) -> Context:
         return self._ctx
+
+    def __repr__(self) -> str:
+        return f"Tuple(elts={self._elts}, ctx={self._ctx})"
 
 
 class TypeAlias(Statement):
@@ -1795,6 +2120,9 @@ class TypeAlias(Statement):
 
     def value(self) -> Node:
         return self._value
+
+    def __repr__(self) -> str:
+        return f"TypeAlias(name={self._name}, value={self._value})"
 
 
 class TypeVar(Node):
@@ -1823,6 +2151,9 @@ class TypeVar(Node):
     def constraints(self) -> Sequence[Node]:
         return self._constraints
 
+    def __repr__(self) -> str:
+        return f"TypeVar(name={self._name}, bound={self._bound}, constraints={self._constraints})"
+
 
 class TypeVarTuple(Node):
     """
@@ -1836,6 +2167,9 @@ class TypeVarTuple(Node):
     def name(self) -> str:
         return self._name
 
+    def __repr__(self) -> str:
+        return f"TypeVarTuple(name={self._name})"
+
 
 class UAdd(UnaryOpTok):
     """
@@ -1844,6 +2178,9 @@ class UAdd(UnaryOpTok):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "UAdd()"
 
 
 class UnaryOp(Expression):
@@ -1862,6 +2199,9 @@ class UnaryOp(Expression):
     def operand(self) -> Expression:
         return self._operand
 
+    def __repr__(self) -> str:
+        return f"UnaryOp(op={self._op}, operand={self._operand})"
+
 
 class USub(UnaryOpTok):
     """
@@ -1870,6 +2210,9 @@ class USub(UnaryOpTok):
 
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
+
+    def __repr__(self) -> str:
+        return "USub()"
 
 
 class While(Node):
@@ -1898,6 +2241,9 @@ class While(Node):
     def orelse(self) -> Sequence[Node]:
         return self._orelse
 
+    def __repr__(self) -> str:
+        return f"While(test={self._test}, body={self._body}, orelse={self._orelse})"
+
 
 class withitem(Node):
     """
@@ -1920,6 +2266,9 @@ class withitem(Node):
     def optional_vars(self) -> Node | None:
         return self._optional_vars
 
+    def __repr__(self) -> str:
+        return f"withitem(context_expr={self._context_expr}, optional_vars={self._optional_vars})"
+
 
 class With(Node):
     """
@@ -1936,6 +2285,12 @@ class With(Node):
     def items(self) -> Sequence[Node]:
         return self._items
 
+    def body(self) -> Sequence[Node]:
+        return self._body
+
+    def __repr__(self) -> str:
+        return f"With(items={self._items}, body={self._body})"
+
 
 class Yield(Node):
     """
@@ -1948,6 +2303,9 @@ class Yield(Node):
 
     def value(self) -> Node | None:
         return self._value
+
+    def __repr__(self) -> str:
+        return f"Yield(value={self._value})"
 
 
 class YieldFrom(Node):
@@ -1962,11 +2320,14 @@ class YieldFrom(Node):
     def value(self) -> Node:
         return self._value
 
+    def __repr__(self) -> str:
+        return f"YieldFrom(value={self._value})"
+
 
 ## Functions
 
 
-def parse(source: io.IOBase | str, filename: str = "<unknown>") -> Node:
+def parse(source: io.IOBase | str, filename: str = "<unknown>") -> Node | None:
     # TODO
     return Node()
 

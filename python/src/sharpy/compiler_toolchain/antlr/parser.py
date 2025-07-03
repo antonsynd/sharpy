@@ -1,19 +1,21 @@
 from io import TextIOBase
 from typing import MutableSequence
 
-from antlr4 import CommonTokenStream, InputStream
+from antlr4 import CommonTokenStream, InputStream, ParserRuleContext
 from SharpyLexer import SharpyLexer
 from SharpyParser import SharpyParser
 from SharpyParserListener import SharpyParserListener
 
-from sharpy.compiler_toolchain.abc.parser import ParserBase, ParseTreeNode
+from sharpy.compiler_toolchain.abc.parser import Parser
+
+from ..antlr import ParseTreeNode
 
 
-class AntlrParser(ParserBase, SharpyParserListener):
+class AntlrParser(Parser, SharpyParserListener):
     def __init__(self):
         super().__init__()
 
-    def parse(self, input: TextIOBase) -> ParseTreeNode | None:
+    def parse_antlr(self, input: TextIOBase) -> ParseTreeNode | None:
         parse_tree: ParseTreeNode = self._generate_parse_tree(input=input)
         return self._postprocess_parse_tree(parse_tree=parse_tree)
 
@@ -56,6 +58,25 @@ class AntlrParser(ParserBase, SharpyParserListener):
             node.children = pruned_children
 
         return node
+
+    def _eliminate_leaf_for_terminal_rule_nodes(self, node: ParseTreeNode):
+        if isinstance(node, ParserRuleContext):
+            num_children: int = node.getChildCount()
+
+            if num_children > 1:
+                for child in node.getChildren():
+                    self._eliminate_leaf_for_terminal_rule_nodes(node=child)
+            elif num_children == 1:
+                child: ParseTreeNode = node.getChild(0)
+
+                # If the child is a terminal node with no rules, remove it
+                if child.getChildCount() == 0:
+                    print(f"Eliminating leaf node: {child.getText()}")
+                    node.children = []
+                    return
+
+                # Otherwise, recursively eliminate leaf nodes for the child
+                self._eliminate_leaf_for_terminal_rule_nodes(node=child)  # type: ignore
 
     def _simplify_direct_lineages(self, node: ParseTreeNode) -> ParseTreeNode:
         num_children: int = node.getChildCount()
