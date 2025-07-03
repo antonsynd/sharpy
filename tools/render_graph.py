@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import logging
 import sys
 from io import StringIO
 from pathlib import Path
@@ -9,6 +10,7 @@ from sharpy.compiler_toolchain.antlr.ast_builder import AntlrASTBuilder
 from sharpy.compiler_toolchain.antlr.parser import AntlrParser
 from sharpy.compiler_toolchain.antlr.rendering import render_ast_as_png, render_parse_tree_as_png
 from sharpy.compiler_toolchain.ast import Node as ASTNode
+from sharpy.compiler_toolchain.logging import formatter, logger
 
 
 def main():
@@ -28,11 +30,36 @@ def main():
         default=None,
         help="Base name for output PNG file (default: input file stem)",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug output (default: False)",
+    )
+    parser.add_argument(
+        "--log",
+        type=Path,
+        default=None,
+        help="Path to a log file to additionally write logs to. If not specified, logs to stdout and stderr.",
+    )
+
     args: argparse.Namespace = parser.parse_args()
 
     input_path: Path = args.input
     output_dir: Path = args.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    debug: bool = args.debug
+    log_path: Path | None = args.log
+
+    if log_path:
+        # Set up file logging
+        file_handler = logging.FileHandler(log_path, mode="w", encoding="utf-8")
+        file_handler.setFormatter(formatter)
+        file_handler.setLevel(logging.DEBUG if debug else logging.INFO)
+        logger.addHandler(file_handler)
+
+    if debug:
+        logger.setLevel(logging.DEBUG)
 
     basename: str = args.basename or input_path.stem
 
@@ -43,13 +70,13 @@ def main():
     parse_tree: ParseTreeNode | None = raw_parser.file_input()
 
     if not parse_tree:
-        print("Failed to parse the input file.")
+        logger.error("Failed to parse the input file.")
         sys.exit(1)
 
     parser._postprocess_parse_tree(parse_tree=parse_tree)
 
     if not parse_tree:
-        print("Failed to postprocess the parse tree file.")
+        logger.error("Failed to postprocess the parse tree file.")
         sys.exit(1)
 
     if args.ast:

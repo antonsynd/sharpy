@@ -8,6 +8,7 @@ from SharpyParser import SharpyParser
 
 from sharpy.compiler_toolchain.antlr import ParseTreeNode
 from sharpy.compiler_toolchain.ast import Node as ASTNode
+from sharpy.compiler_toolchain.logging import logger
 
 
 def render_parse_tree_as_png(parse_tree: ParseTreeNode, parser: SharpyParser, output_path: Path):
@@ -36,7 +37,7 @@ def parse_tree_to_dot(
     label_opt: str | None = tree.getText()
     label: str = "<empty>"
 
-    print(f"Processing node: {label_opt} with {num_children} children")
+    logger.debug(f"Processing node: {label_opt} with {num_children} children")
     if num_children > 1:
         label: str = ""
     elif label_opt:
@@ -51,7 +52,7 @@ def parse_tree_to_dot(
         else:
             label = f"Rule: {rule_name}"
 
-    print(f"Adding node {id(tree)} with label: {label}")
+    logger.debug(f"Adding node {id(tree)} with label: {label}")
     dot.node(name=str(id(tree)), label=label)
 
     if tree.getChildCount() > 0:
