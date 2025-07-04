@@ -274,11 +274,25 @@ TODO
 
 Signals are Sharpy's equivalent of C# delegates.
 
-TODO
+```Python
+class Foo:
+    some_signal: Signal[[int, int], str]
+
+f = Foo()
+f.some_signal += lambda x, y: return x + y
+f.some_signal(1, 3)
+```
 
 # Events
 
-TOOD
+Events in Sharpy work as they do in C#.
+
+```Python
+class Foo:
+    event on_click(x: int, y: int) -> int: ...
+```
+
+Events are signals that can be publicly added to, but only privately invoked.
 
 # Naming conventions
 
@@ -352,6 +366,39 @@ Constraints on generics are specified as follows:
 class Dict[K, V](Bar) where K: Object + Hashable, where V: Object = list:
     pass
 ```
+
+TODO
+
+# Operators
+
+`?.` optional chaining:
+
+```Python
+f: str = None
+f?.lower()  # returns None
+```
+
+TODO
+
+# Optionals
+
+Optionals are indicated in the type with `?` appended to the type:
+
+```Python
+i: int? = None
+```
+
+Value types are not optional by default, but reference types are.
+
+# Match assignment
+
+```Python
+i: int? = match get_user_input():
+    case "none": return None
+    case _: return int(i)
+```
+
+TODO
 
 # Modules
 
