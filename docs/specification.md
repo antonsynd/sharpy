@@ -132,43 +132,53 @@ Python is replaced with a shorthand syntax.
 
 ```Python
 class Foo:
-    property from _value: int
-        get value(self):
-            return self._value
+    # The backing member is created as a private member
+    property value: int:
+        get(self):
+            return self.__value
 
-        set value(self):
-            self._value = value
+        set(self):
+            # value is implicit
+            self.__value = value
+```
+
+Properties can be protected or private by underscore prefixing:
+
+```Python
+class Foo:
+    property name: str:
+        # This getter is protected
+        _get(self):
+            return self.__name
+
+        # This setter is private
+        __set(self):
+            self.__name = value
 ```
 
 Unlike Python, Sharpy allows overloading as in C#.
 
-Constructor methods are indicated with the special method `init` (equivalent
-to Python `__init__`). The constructor can also be given `protected` or
-`private` access via the semantic naming scheme (described below): `_init`
-and `__init` respectively.
-
-Note that `__new__` is not used in Sharpy. It can still be invoked
-manually, however. Constructors are always public.
+Constructor methods are indicated with the special dunder method
+`__init__` (equivalent to Python `__init__`). Constructors are always public.
 
 ```Python
 class Foo:
     # Constructors do not return anything and have no return type
-    def init(self):
+    def __init__(self):
         pass
 ```
 
 # Protocols
 
-Sharpy implements protocols which are the equivalent to C#'s
-protocols.
+Sharpy implements protocols which are the equivalent to C#'s interfaces.
 
 ```Python
 protocol Encodable:
     pass
 ```
 
-In a class or struct that implements protocols and derives from
-a base class, the protocols must follow the base class.
+In a class or struct that implements protocols and derives from a base
+class, the protocols must follow the base class.
 
 ```Python
 class Foo(Bar, Encodable):
@@ -179,22 +189,26 @@ Protocols declare methods that a conforming must implement.
 
 ```Python
 protocol Encodable:
-    decl def encode(self) -> str
+    def encode(self) -> str: ...
 
     def encode_as_json(self) -> str:
         return json.dumps(self.encode())
 ```
 
-Methods with no implementation are introduced via a new keyword
-`decl`, without a closing colon. Those that have an implementation
-are introduced with `def` as is usually done for normal methods.
+Methods with no implementation have an ellipsis body (not `pass`). If an
+implementation is provided, it is inherited by all implementers of the
+protocol.
 
-Protocols can also declare/define getters and setters.
+Protocols can also declare/define properties.
 
 ```Python
 protocol Encodable:
-    decl get value(self) -> int
-    decl set value(self, v: int) -> None
+    property value: int: ...
+    # This property implicitly has both a getter and setter
+
+    property name: str:
+        get(self): ...
+        # This property has no public setter
 ```
 
 # Access modifiers
@@ -204,9 +218,9 @@ variable with a special prefix. This prefix is purely cosmetic and
 is stripped from the variable in the ABI. This applies to classes,
 structs, protocols, and members.
 
-Sharpy only supports public, private, and protected access
-modifiers. The C# modifiers `internal`, `protected internal`,
-`private protected`, and `file` do not exist in Sharpy.
+Sharpy only supports public, private, protected, internal, and file access
+modifiers. The C# modifiers `protected internal`, and `private protected`,
+do not exist in Sharpy.
 
 As an exception, Sharpy-recognized dunder methods are always
 public, however the compiler will issue a warning preferring the
@@ -217,10 +231,10 @@ user to use the equivalent global function or operators.
 | Public | `foobar` | `public` | Accessible to everyone. | Sharpy-recognized dunder methods are always public |
 | Protected | `_foobar` | `protected` | Accessible to only the actual class and its derived classes, irrespective of whether it is project internal or external | - |
 | Private | `__foobar` | `private` | Accessible to only the actual class | This does not apply to dunder methods. Sharpy-recognized dunder methods are always public |
-| N/A | - | `internal` | Accessible to anything in the project |
+| Internal | `!foobar` | `internal` | Accessible to anything in the project |
 | N/A | - | `protected internal` | Accessible to anything in the project or the actual class and its derived classes, irrespective of whether it is project internal or external | - |
 | N/A | - | `private protected` | Accessible to the class and its derived classes within the project | - |
-| N/A | - | `file` | Accessible to only symbols in the current file | - |
+| File | `!!foobar` | `file` | Accessible to only symbols in the current file | - |
 
 ```Python
 # In the ABI, this class is "public Foo"
@@ -236,11 +250,35 @@ class Foo:
     # In the ABI, this method is "private void PrivateMethod()"
     def __private_method(self) -> None:
         pass
+
+    # In the ABI, this method is "internal void InternalMethod()"
+    def !internal_method(self) -> None:
+        pass
+
+    # In the ABI, this method is "file void FileMethod()"
+    def !!internal_method(self) -> None:
+        pass
 ```
+
+# Attributes
+
+`@override`: methods
+
+`@final`: classes/protocols
+
+`@static`: methods, properties, members, classes
+
+TODO
 
 # Signals
 
 Signals are Sharpy's equivalent of C# delegates.
+
+TODO
+
+# Events
+
+TOOD
 
 # Naming conventions
 
@@ -303,10 +341,16 @@ Classes, structs, and protocols can be made generic, accepting
 types as parameters. This makes them incompatible with other
 instantiations of that type, as in C#.
 
+```Python
+class Foo[T](Bar):
+    pass
+```
+
 Constraints on generics are specified as follows:
 
 ```Python
-TODO
+class Dict[K, V](Bar) where K: Object + Hashable, where V: Object = list:
+    pass
 ```
 
 # Modules
