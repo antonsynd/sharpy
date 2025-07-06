@@ -203,14 +203,12 @@ protocol_def
 // --------------------
 
 function_def
-    : decorators function_def_raw
-    | function_def_raw;
+    : decorators? 'def' name type_params? '(' params? ')' ('->' expression )? ':' block
+    ;
 
-function_def_raw
-    : 'def' name type_params? '(' params? ')' ('->' expression )? ':' block
-    | 'async' 'def' name type_params? '(' params? ')' ('->' expression )? ':' block;
-
-// *** BEGIN_SHARPY_ADDITIONS
+async_function_def
+    : decorators? 'async' 'def' name type_params? '(' params? ')' ('->' expression )? ':' block
+    ;
 
 // Property definitions
 // --------------------
@@ -229,8 +227,6 @@ set_block: 'set' '(' name ',' typed_name ')' ':' block;
 // -----------------
 
 event_def: 'event' typed_name;
-
-// *** END_SHARPY_ADDITIONS
 
 // Function parameters
 // -------------------
@@ -251,8 +247,8 @@ param_with_default
     : param default_assignment ','?
     ;
 
-param: name annotation?;
-annotation: ':' expression;
+param: name type_annotation?;
+type_annotation: ':' expression;
 default_assignment: '=' expression;
 
 // If statement
@@ -599,7 +595,7 @@ await_primary
     | primary;
 
 primary
-    : primary ('.' name | genexp | '(' arguments? ')' | '[' slices ']')
+    : primary ('.' name | generator_expression | '(' arguments? ')' | '[' slices ']')
     | atom
     ;
 
@@ -618,9 +614,9 @@ atom
     | 'None'
     | strings
     | NUMBER
-    | (tuple | group | genexp)
-    | (list | listcomp)
-    | (dict | set | dictcomp | setcomp)
+    | (tuple | group | generator_expression)
+    | (list | list_comprehension)
+    | (dict | set | dict_comprehension | set_comprehension)
     | '...';
 
 group
@@ -629,41 +625,9 @@ group
 // Lambda functions
 // ----------------
 
+// Sharpy lambdas allow return type annotations.
 lambda_def
-    : 'lambda' lambda_params? ':' expression;
-
-lambda_params
-    : lambda_parameters;
-
-// lambda_parameters etc. duplicates parameters but without annotations
-// or type comments, and if there's no comma after a parameter, we expect
-// a colon, not a close parenthesis.  (For more, see parameters above.)
-//
-lambda_parameters
-    : lambda_slash_no_default lambda_param_no_default* lambda_param_with_default*
-    | lambda_slash_with_default lambda_param_with_default*
-    | lambda_param_no_default+ lambda_param_with_default*
-    | lambda_param_with_default+
-    ;
-
-lambda_slash_no_default
-    : lambda_param_no_default+ '/' ','?
-    ;
-
-lambda_slash_with_default
-    : lambda_param_no_default* lambda_param_with_default+ '/' ','?
-    ;
-
-lambda_param_no_default
-    : lambda_param ','?
-    ;
-lambda_param_with_default
-    : lambda_param default_assignment ','?
-    ;
-lambda_param_maybe_default
-    : lambda_param default_assignment? ','?
-    ;
-lambda_param: name;
+    : 'lambda' params? ( '->' expression )? ':' expression;
 
 // LITERALS
 // ========
@@ -715,16 +679,16 @@ for_if_clause
     : 'async'? 'for' star_targets 'in' disjunction ('if' disjunction )*
     ;
 
-listcomp
+list_comprehension
     : '[' named_expression for_if_clauses ']';
 
-setcomp
+set_comprehension
     : LBRACE named_expression for_if_clauses RBRACE;
 
-genexp
+generator_expression
     : '(' ( assignment_expression | expression) for_if_clauses ')';
 
-dictcomp
+dict_comprehension
     : LBRACE kvpair for_if_clauses RBRACE;
 
 // FUNCTION CALL ARGUMENTS
@@ -783,7 +747,7 @@ single_subscript_attribute_target
     ;
 
 t_primary
-    : t_primary ('.' name | '[' slices ']' | genexp | '(' arguments? ')')
+    : t_primary ('.' name | '[' slices ']' | generator_expression | '(' arguments? ')')
     | atom
     ;
 
@@ -799,10 +763,8 @@ del_target: t_primary ('.' name | '[' slices ']');
 // TYPING ELEMENTS
 // ---------------
 
-// type_expressions
-type_expressions: expression (',' expression)*;
-
 // *** related to soft keywords: https://docs.python.org/3.13/reference/lexical_analysis.html#soft-keywords
+// This is used in match case blocks because _ means wildcard there, not a name
 name_except_underscore
     : NAME // ***** The NAME token can be used only in this rule *****
     | NAME_OR_TYPE
@@ -816,6 +778,6 @@ name_except_underscore
 // ***** Always use name rule instead of NAME token in this grammar *****
 name: NAME_OR_WILDCARD | name_except_underscore;
 
-typed_name: name ':' expression;
+typed_name: name type_annotation;
 
 // ========================= END OF THE GRAMMAR ===========================

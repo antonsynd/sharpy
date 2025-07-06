@@ -246,11 +246,6 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug("Visiting function definition")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#function_def_raw.
-    def visitFunction_def_raw(self, ctx: SharpyParser.Function_def_rawContext):
-        logger.debug("Visiting function definition (raw)")
-        return self.visitChildren(ctx)
-
     # Visit a parse tree produced by SharpyParser#params.
     def visitParams(self, ctx: SharpyParser.ParamsContext):
         logger.debug("Visiting parameters")
@@ -276,10 +271,9 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug("Visiting parameter")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#annotation.
-    def visitAnnotation(self, ctx: SharpyParser.AnnotationContext):
-        logger.debug("Visiting annotation")
-        # annotation: '@' dotted_name ('.' name)* ('.' '(' ')')
+    # Visit a parse tree produced by SharpyParser#type_annotation.
+    def visitType_annotation(self, ctx: SharpyParser.Type_annotationContext):
+        logger.debug("Visiting type annotation")
         return self.visitChildren(ctx)
 
     # Visit a parse tree produced by SharpyParser#default_assignment.
