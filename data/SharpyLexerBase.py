@@ -99,7 +99,6 @@ class SharpyLexerBase(Lexer):
             return
 
         if not self.__indent_length_stack: # We're at the first token
-            self.__insert_ENCODING_token()
             self.__set_current_and_following_tokens()
             self.__handle_start_of_input()
         else:
@@ -136,47 +135,6 @@ class SharpyLexerBase(Lexer):
 
         self.__ffg_token = self.__cur_token if self.__cur_token.type == Token.EOF else \
                            super().nextToken()
-
-    def __insert_ENCODING_token(self) -> None:  # https://peps.python.org/pep-0263/
-        line_builder: list[str] = []
-        encoding_name: str = ""
-        line_count: int = 0
-        ws_comment_pattern: re.Pattern = re.compile(r"^[ \t\f]*(#.*)?$")
-        input_stream: InputStream = self.inputStream
-        size: int = input_stream.size
-
-        input_stream.seek(0)
-        for i in range(size):
-            c: str = chr(input_stream.LA(i + 1))
-            line_builder.append(c)
-
-            if c == '\n' or i == size - 1:
-                line: str = ''.join(line_builder).replace("\r", "").replace("\n", "")
-                if ws_comment_pattern.match(line): # WS* + COMMENT? found
-                    encoding_name = self.__get_encoding_name(line)
-                    if encoding_name:
-                        break # encoding found
-                else:
-                    break # statement or backslash found (first line is not empty, not whitespace(s), not comment)
-
-                line_count += 1
-                if line_count >= 2:
-                    break # check only the first two lines
-                line_builder = []
-
-        if not encoding_name:
-            encoding_name = "utf-8"  # default Sharpy source code encoding
-
-        encoding_token: CommonToken = CommonToken((None, None), self.ENCODING, CommonToken.HIDDEN_CHANNEL, 0, 0)
-        encoding_token.text = encoding_name
-        encoding_token.line = 0
-        encoding_token.column = -1
-        self.__add_pending_token(encoding_token)
-
-    def __get_encoding_name(self, comment_text: str) -> str:  # https://peps.python.org/pep-0263/#defining-the-encoding
-        encoding_comment_pattern: str = r"^[ \t\f]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)"
-        match: Optional[re.Match] = re.search(encoding_comment_pattern, comment_text)
-        return match.group(1) if match else ""
 
     # initialize the _indent_length_stack
     # hide the leading NEWLINE token(s)

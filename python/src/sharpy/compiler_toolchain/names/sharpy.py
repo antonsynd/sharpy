@@ -30,6 +30,56 @@ def snake_case_to_camel_case(s: str) -> str:
     return parts[0].lower() + "".join(part.title() for part in parts[1:])
 
 
+class AccessModifier(Enum):
+    """
+    Enum for access modifiers in the compiler toolchain.
+    """
+
+    PUBLIC = auto()
+    PROTECTED = auto()
+    PRIVATE = auto()
+    INTERNAL = auto()
+    FILE = auto()
+
+    def __str__(self) -> str:
+        return self.name.lower()
+
+    @classmethod
+    def from_prefix(cls, prefix: str) -> "AccessModifier":
+        """
+        Returns the access modifier from a prefix.
+        """
+        if prefix == "":
+            return AccessModifier.PUBLIC
+        elif prefix == "_":
+            return AccessModifier.PROTECTED
+        elif prefix == "__":
+            return AccessModifier.PRIVATE
+        elif prefix == "!":
+            return AccessModifier.INTERNAL
+        elif prefix == "!!":
+            return AccessModifier.FILE
+        else:
+            raise ValueError(f"Unknown access modifier prefix: {prefix}")
+
+    def as_prefix(self) -> str:
+        """
+        Returns the access modifier as a prefix for names.
+        """
+        if self == AccessModifier.PUBLIC:
+            return ""
+        elif self == AccessModifier.PROTECTED:
+            return "_"
+        elif self == AccessModifier.PRIVATE:
+            return "__"
+        elif self == AccessModifier.INTERNAL:
+            return "!"
+        elif self == AccessModifier.FILE:
+            return "!!"
+        else:
+            raise ValueError(f"Unknown access modifier: {self.name}")
+
+
 class IdentifierType(Enum):
     """
     Enum for different types of names in the compiler toolchain. This includes

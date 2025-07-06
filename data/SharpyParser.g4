@@ -66,22 +66,17 @@ options { tokenVocab=SharpyLexer; }
 // ==============
 
 file_input: statements? EOF;
-// interactive: statement_newline;  # Not used in Sharpy
-// eval: expressions NEWLINE* EOF;  # Not used in Sharpy
-// func_type: '(' type_expressions? ')' '->' expression NEWLINE* EOF;  # Not used in Sharpy
 
 // GENERAL STATEMENTS
 // ==================
 
 statements: statement+;
 
-statement: compound_stmt  | simple_stmts;
-
-statement_newline
-    : compound_stmt NEWLINE
-    | simple_stmts
-    | NEWLINE
-    | EOF;
+// Compound statements are statements that can contain other statements, e.g.
+// function definitions, for-blocks, etc.
+// Simple statements are statements that cannot contain other statements, e.g.
+// assignments, return statements, etc.
+statement: compound_stmt | simple_stmts;
 
 simple_stmts
     : simple_stmt (';' simple_stmt)* ';'? NEWLINE
@@ -92,7 +87,6 @@ simple_stmts
 simple_stmt
     : assignment
     | type_alias
-    | star_expressions
     | return_stmt
     | import_stmt
     | raise_stmt
@@ -109,6 +103,8 @@ compound_stmt
     : function_def
     | if_stmt
     | class_def
+    | protocol_def
+    | struct_def
     | with_stmt
     | for_stmt
     | try_stmt
@@ -123,10 +119,10 @@ assignment
     : name ':' expression ('=' annotated_rhs )?
     | ('(' single_target ')'
          | single_subscript_attribute_target) ':' expression ('=' annotated_rhs )?
-    | (star_targets '=' )+ (yield_expr | star_expressions) TYPE_COMMENT?
-    | single_target augassign (yield_expr | star_expressions);
+    | (star_targets '=' )+ yield_expr
+    | single_target augassign yield_expr;
 
-annotated_rhs: yield_expr | star_expressions;
+annotated_rhs: yield_expr;
 
 augassign
     : '+='
@@ -144,7 +140,7 @@ augassign
     | '//=';
 
 return_stmt
-    : 'return' star_expressions?;
+    : 'return' expressions?;
 
 raise_stmt
     : 'raise' (expression ('from' expression )?)?
@@ -201,39 +197,17 @@ block
 
 decorators: ('@' named_expression NEWLINE )+;
 
-// Class definitions
+// Class/struct/protocol definitions
 // -----------------
 
 class_def
-    : decorators class_def_raw
-    | class_def_raw;
-
-class_def_raw
-    : 'class' name type_params? ('(' arguments? ')' )? ':' block;
-
-// *** BEGIN_SHARPY_ADDITIONS
-
-// Struct definitions
-// -----------------
+    : decorators? 'class' name type_params? ('(' arguments? ')' )? ':' block;
 
 struct_def
-    : decorators struct_def_raw
-    | struct_def_raw;
-
-struct_def_raw
-    : 'struct' name type_params? ('(' arguments? ')' )? ':' block;
-
-// Protocol definitions
-// -----------------
+    : decorators? 'struct' name type_params? ('(' arguments? ')' )? ':' block;
 
 protocol_def
-    : decorators protocol_def_raw
-    | protocol_def_raw;
-
-protocol_def_raw
-    : 'protocol' name type_params? ('(' arguments? ')' )? ':' block;
-
-// *** END_SHARPY_ADDITIONS
+    : decorators? 'protocol' name type_params? ('(' arguments? ')' )? ':' block;
 
 // Function definitions
 // --------------------
@@ -248,58 +222,23 @@ function_def_raw
 
 // *** BEGIN_SHARPY_ADDITIONS
 
-// Function declarations
+// Property definitions
 // --------------------
 
-// function_decl
-//     : decorators function_decl_raw
-//     | function_decl_raw;
+property_def
+    : 'property' name ':' block
+    | 'property' name ':' get_block set_block?
+    | 'property' name ':' set_block get_block?
+    ;
 
-// function_decl_raw
-//     : 'decl' name type_params? '(' params? ')' '->' expression
-//     | 'async' 'decl' name type_params? '(' params? ')' '->' expression;
+get_block: 'get' '(' name ')' ':' block;
 
-// Getter definitions
-// --------------------
+set_block: 'set' '(' name ',' annotated_name ')' ':' block;
 
-/// get name(self) -> str:
-///     return self._name
-/// These get decorators because they can be @staticmethod
+// Event definitions
+// -----------------
 
-// property_get
-//     : decorators property_get_raw
-//     | property_get_raw;
-
-// property_get_raw
-//     : 'get' name '(' self_param ')' ('->' expression )? ':' block;
-
-// property_get_decl
-//     : decorators property_get_decl_raw
-//     | property_get_decl_raw;
-
-// property_get_decl_raw
-//     : 'decl' 'get' name '(' self_param ')' '->' expression;
-
-// Setter definitions
-// --------------------
-
-/// set name(self, value: str):
-///     self._name = value
-/// These get decorators because they can be @staticmethod
-
-// property_set
-//     : decorators property_set_raw
-//     | property_set_raw;
-
-// property_set_raw
-//     : 'set' name '(' self_param ',' param_no_default ')' ':' block;
-
-// property_set_decl
-//     : decorators property_set_decl_raw
-//     | property_set_decl_raw;
-
-// property_set_decl_raw
-//     : 'decl' 'set' name '(' self_param ',' param_no_default ')';
+event_def: 'event' annotated_name;
 
 // *** END_SHARPY_ADDITIONS
 
@@ -310,67 +249,20 @@ params
     : parameters;
 
 parameters
-    : slash_no_default param_no_default* param_with_default* star_etc?
-    | slash_with_default param_with_default* star_etc?
-    | param_no_default+ param_with_default* star_etc?
-    | param_with_default+ star_etc?
-    | star_etc;
-
-// *** BEGIN_SHARPY_ADDITIONS
-
-/// For self parameters in getters/setters.
-// self_param: name;
-
-// *** END_SHARPY_ADDITIONS
-
-// Some duplication here because we can't write (',' | {isCurrentTokenType(RPAR)}?),
-// which is because we don't support empty alternatives (yet).
-
-slash_no_default
-    : param_no_default+ '/' ','?
+    : param_no_default+ param_with_default*
+    | param_with_default+
     ;
-slash_with_default
-    : param_no_default* param_with_default+ '/' ','?
-    ;
-
-star_etc
-    : '*' param_no_default param_maybe_default* kwds?
-    | '*' param_no_default_star_annotation param_maybe_default* kwds?
-    | '*' ',' param_maybe_default+ kwds?
-    | kwds;
-
-kwds
-    : '**' param_no_default;
-
-// One parameter.  This *includes* a following comma and type comment.
-//
-// There are three styles:
-// - No default_assignment
-// - With default_assignment
-// - Maybe with default_assignment
-//
-// There are two alternative forms of each, to deal with type comments:
-// - Ends in a comma followed by an optional type comment
-// - No comma, optional type comment, must be followed by close paren
-// The latter form is for a final parameter without trailing comma.
-//
 
 param_no_default
-    : param ','? TYPE_COMMENT?
+    : param ','?
     ;
-param_no_default_star_annotation
-    : param_star_annotation ','? TYPE_COMMENT?
-    ;
+
 param_with_default
-    : param default_assignment ','? TYPE_COMMENT?
+    : param default_assignment ','?
     ;
-param_maybe_default
-    : param default_assignment? ','? TYPE_COMMENT?
-    ;
+
 param: name annotation?;
-param_star_annotation: name star_annotation;
 annotation: ':' expression;
-star_annotation: ':' star_expression;
 default_assignment: '=' expression;
 
 // If statement
@@ -395,16 +287,16 @@ while_stmt
 // -------------
 
 for_stmt
-    : 'async'? 'for' star_targets 'in' star_expressions ':' TYPE_COMMENT? block else_block?
+    : 'async'? 'for' star_targets 'in' expressions ':' block else_block?
     ;
 
 // With statement
 // --------------
 
 with_stmt
-    : 'with' '(' with_item (',' with_item)* ','? ')' ':' TYPE_COMMENT? block
+    : 'with' '(' with_item (',' with_item)* ','? ')' ':' block
     | 'async' 'with' '(' with_item (',' with_item)* ','? ')' ':' block
-    | 'async'? 'with' with_item (',' with_item)* ':' TYPE_COMMENT? block
+    | 'async'? 'with' with_item (',' with_item)* ':' block
     ;
 
 with_item
@@ -418,7 +310,6 @@ try_stmt
     : 'try' ':' block finally_block
     | 'try' ':' block except_block+ else_block? finally_block?
     | 'try' ':' block except_star_block+ else_block? finally_block?;
-
 
 // Except statement
 // ----------------
@@ -437,9 +328,7 @@ finally_block
 match_stmt
     : 'match' subject_expr ':' NEWLINE INDENT case_block+ DEDENT;
 
-subject_expr
-    : star_named_expression ',' star_named_expressions?
-    | named_expression;
+subject_expr: named_expression;
 
 case_block
     : 'case' patterns guard? ':' block;
@@ -565,8 +454,6 @@ class_pattern
     : name_or_attr '(' ((positional_patterns (',' keyword_patterns)? | keyword_patterns) ','?)? ')'
     ;
 
-
-
 positional_patterns
     : pattern (',' pattern)*;
 
@@ -591,14 +478,10 @@ type_param_seq: type_param (',' type_param)* ','?;
 
 type_param
     : name type_param_bound? type_param_default?
-    | '*'  name type_param_starred_default?
-    | '**' name type_param_default?
     ;
-
 
 type_param_bound: ':' expression;
 type_param_default: '=' expression;
-type_param_starred_default: '=' star_expression;
 
 // EXPRESSIONS
 // -----------
@@ -607,33 +490,24 @@ expressions
     : expression (',' expression )* ','?
     ;
 
-
 expression
     : disjunction ('if' disjunction 'else' expression)?
     | lambdef
     ;
 
 yield_expr
-    : 'yield' ('from' expression | star_expressions?)
+    : 'yield' 'from' expression
     ;
 
-star_expressions
-    : star_expression (',' star_expression )* ','?
+// Sharpy allows for match expressions similar to C# switch expressions
+match_expr
+    : 'match' subject_expr ':' NEWLINE INDENT case_block+ DEDENT
     ;
-
-
-star_expression
-    : '*' bitwise_or
-    | expression;
-
-star_named_expressions: star_named_expression (',' star_named_expression)* ','?;
-
-star_named_expression
-    : '*' bitwise_or
-    | named_expression;
 
 assignment_expression
     : name ':=' expression;
+
+named_expressions: named_expression (',' named_expression)* ','?;
 
 named_expression
     : assignment_expression
@@ -715,9 +589,6 @@ term
     | factor
     ;
 
-
-
-
 factor
     : '+' factor
     | '-' factor
@@ -742,11 +613,9 @@ primary
     | atom
     ;
 
-
-
 slices
     : slice
-    | (slice | starred_expression) (',' (slice | starred_expression))* ','?;
+    | slice (',' slice)* ','?;
 
 slice
     : expression? ':' expression? (':' expression? )?
@@ -781,11 +650,11 @@ lambda_params
 // a colon, not a close parenthesis.  (For more, see parameters above.)
 //
 lambda_parameters
-    : lambda_slash_no_default lambda_param_no_default* lambda_param_with_default* lambda_star_etc?
-    | lambda_slash_with_default lambda_param_with_default* lambda_star_etc?
-    | lambda_param_no_default+ lambda_param_with_default* lambda_star_etc?
-    | lambda_param_with_default+ lambda_star_etc?
-    | lambda_star_etc;
+    : lambda_slash_no_default lambda_param_no_default* lambda_param_with_default*
+    | lambda_slash_with_default lambda_param_with_default*
+    | lambda_param_no_default+ lambda_param_with_default*
+    | lambda_param_with_default+
+    ;
 
 lambda_slash_no_default
     : lambda_param_no_default+ '/' ','?
@@ -794,14 +663,6 @@ lambda_slash_no_default
 lambda_slash_with_default
     : lambda_param_no_default* lambda_param_with_default+ '/' ','?
     ;
-
-lambda_star_etc
-    : '*' lambda_param_no_default lambda_param_maybe_default* lambda_kwds?
-    | '*' ',' lambda_param_maybe_default+ lambda_kwds?
-    | lambda_kwds;
-
-lambda_kwds
-    : '**' lambda_param_no_default;
 
 lambda_param_no_default
     : lambda_param ','?
@@ -836,24 +697,21 @@ string: STRING;
 strings: (fstring|string)+;
 
 list
-    : '[' star_named_expressions? ']';
+    : '[' named_expressions? ']';
 
 tuple
-    : '(' (star_named_expression ',' star_named_expressions?  )? ')';
+    : '(' (named_expression ',' named_expressions?  )? ')';
 
-set: LBRACE star_named_expressions RBRACE;
+set: LBRACE named_expressions RBRACE;
 
 // Dicts
 // -----
 
 dict
-    : LBRACE double_starred_kvpairs? RBRACE;
+    : LBRACE kvpairs? RBRACE;
 
-double_starred_kvpairs: double_starred_kvpair (',' double_starred_kvpair)* ','?;
-
-double_starred_kvpair
-    : '**' bitwise_or
-    | kvpair;
+kvpairs
+    : kvpair (',' kvpair)* ','?;
 
 kvpair: expression ':' expression;
 
@@ -886,24 +744,12 @@ arguments
     : args ','?;
 
 args
-    : (starred_expression | ( assignment_expression | expression)) (',' (starred_expression | ( assignment_expression | expression)))* (',' kwargs )?
+    : ( assignment_expression | expression) (',' ( assignment_expression | expression))* (',' kwargs )?
     | kwargs;
 
-kwargs
-    : kwarg_or_starred (',' kwarg_or_starred)* (',' kwarg_or_double_starred (',' kwarg_or_double_starred)*)?
-    | kwarg_or_double_starred (',' kwarg_or_double_starred)*
-    ;
+kwargs: kwarg (',' kwarg)* ','?;
 
-starred_expression
-    : '*' expression;
-
-kwarg_or_starred
-    : name '=' expression
-    | starred_expression;
-
-kwarg_or_double_starred
-    : name '=' expression
-    | '**' expression;
+kwarg: name '=' expression;
 
 // ASSIGNMENT TARGETS
 // ==================
@@ -951,42 +797,20 @@ t_primary
     | atom
     ;
 
-
-
-
-
 // Targets for del statements
 // --------------------------
 
+// Allows trailing comma
 del_targets: del_target (',' del_target)* ','?;
 
-del_target
-    : t_primary ('.' name | '[' slices ']')
-    | del_t_atom
-    ;
-
-del_t_atom
-    : name
-    | '(' del_target ')'
-    | '(' del_targets? ')'
-    | '[' del_targets? ']';
+// Sharpy only allows del statements with dictionary keys, not names
+del_target: t_primary ('.' name | '[' slices ']');
 
 // TYPING ELEMENTS
 // ---------------
 
-
-// type_expressions allow */** but ignore them
-type_expressions
-    : expression (',' expression)* (',' ('*' expression (',' '**' expression)? | '**' expression))?
-    | '*' expression (',' '**' expression)?
-    | '**' expression
-    ;
-
-
-
-func_type_comment
-    : NEWLINE TYPE_COMMENT   // Must be followed by indented block
-    | TYPE_COMMENT;
+// type_expressions
+type_expressions: expression (',' expression)*;
 
 // *** related to soft keywords: https://docs.python.org/3.13/reference/lexical_analysis.html#soft-keywords
 name_except_underscore
@@ -994,11 +818,14 @@ name_except_underscore
     | NAME_OR_TYPE
     | NAME_OR_MATCH
     | NAME_OR_CASE
+    | NAME_OR_EVENT
     | NAME_OR_GET
     | NAME_OR_SET
     ;
 
 // ***** Always use name rule instead of NAME token in this grammar *****
 name: NAME_OR_WILDCARD | name_except_underscore;
+
+annotated_name: name ':' expression;
 
 // ========================= END OF THE GRAMMAR ===========================

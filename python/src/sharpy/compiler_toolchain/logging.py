@@ -68,8 +68,6 @@ class Logger:
     def debug(self, message: str) -> None:
         if self._debug:
             self._logger.debug(message)
-        else:
-            self._logger.warning("Debug logging is disabled. Enable it to see debug messages.")
 
     def warning(self, message: str) -> None:
         self._logger.warning(message)

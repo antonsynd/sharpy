@@ -274,6 +274,7 @@ def clean(args: argparse.Namespace, rest: Sequence[str]) -> None:
 
     remove_pycache_dirs(root_path=PYTHON_SRC_DIR)
     remove_pycache_dirs(root_path=PYTHON_TEST_DIR)
+    remove_pycache_dirs(root_path=RESOURCE_DIR)
 
     if args.clean_resources:
         get_logger().info("Removing generated resources...")

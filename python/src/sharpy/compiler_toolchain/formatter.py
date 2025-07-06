@@ -158,7 +158,7 @@ class CSharpierFormatter(Formatter):
             "--no-msbuild-check",
             "--fast",
             "--write-stdout",
-        ]
+        ]  # type: ignore
 
         try:
             proc = subprocess.Popen(

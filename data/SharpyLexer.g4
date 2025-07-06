@@ -52,9 +52,7 @@ lexer grammar SharpyLexer;
 options { superClass=SharpyLexerBase; }
 
 tokens {
-    ENCODING // https://docs.python.org/3.13/reference/lexical_analysis.html#encoding-declarations
-  , INDENT, DEDENT // https://docs.python.org/3.13/reference/lexical_analysis.html#indentation
-  , TYPE_COMMENT // not supported, only for compatibility with the SharpyParser.g4 grammar
+    INDENT, DEDENT // https://docs.python.org/3.13/reference/lexical_analysis.html#indentation
   , FSTRING_START, FSTRING_MIDDLE, FSTRING_END // https://peps.python.org/pep-0701/#specification
 }
 
@@ -152,22 +150,23 @@ YIELD    : 'yield';
 // *** BEGIN_SHARPY_ADDITIONS
 
 STRUCT   : 'struct';
+PROPERTY : 'property';
 PROTOCOL : 'protocol';
-DECL     : 'decl';
 
 // *** END_SHARPY_ADDITIONS
 
 
 // *** Soft Keywords: https://docs.python.org/3.13/reference/lexical_analysis.html#soft-keywords
-NAME_OR_TYPE     : 'type';  // identifier or type keyword,    the parser grammar will decide what it means
-NAME_OR_MATCH    : 'match'; // identifier or match keyword,   the parser grammar will decide what it means
-NAME_OR_CASE     : 'case';  // identifier or case keyword,    the parser grammar will decide what it means
-NAME_OR_WILDCARD : '_';     // identifier or wildcard symbol, the parser grammar will decide what it means
+NAME_OR_TYPE     : 'type';   // identifier or type keyword,    the parser grammar will decide what it means
+NAME_OR_MATCH    : 'match';  // identifier or match keyword,   the parser grammar will decide what it means
+NAME_OR_CASE     : 'case';   // identifier or case keyword,    the parser grammar will decide what it means
+NAME_OR_WILDCARD : '_';      // identifier or wildcard symbol, the parser grammar will decide what it means
 
 // *** BEGIN_SHARPY_ADDITIONS
 
-NAME_OR_GET      : 'get';  // identifier or get keyword,      the parser grammar will decide what it means
-NAME_OR_SET      : 'set';  // identifier or set keyword,      the parser grammar will decide what it means
+NAME_OR_GET      : 'get';   // identifier or get keyword,      the parser grammar will decide what it means
+NAME_OR_SET      : 'set';   // identifier or set keyword,      the parser grammar will decide what it means
+NAME_OR_EVENT    : 'event'; // identifier or event keyword,    the parser grammar will decide what it means
 
 // *** END_SHARPY_ADDITIONS
 
@@ -176,7 +175,14 @@ NAME_OR_SET      : 'set';  // identifier or set keyword,      the parser grammar
 
 fragment ID_LITERAL_FLAG : '$';
 
-NAME : ID_LITERAL_FLAG? ID_START ID_CONTINUE*;
+fragment ID_ACCESS_MODIFIER
+    : '_'  // protected
+    | '__' // private
+    | '!'  // internal
+    | '!!' // file
+    ;
+
+NAME : ID_ACCESS_MODIFIER? ID_LITERAL_FLAG? ID_START ID_CONTINUE*;
 
 // *** END_SHARPY_ADDITIONS
 

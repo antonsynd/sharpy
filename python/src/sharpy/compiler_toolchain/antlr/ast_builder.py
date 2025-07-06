@@ -66,16 +66,6 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug("Visiting statement")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#statement_newline.
-    def visitStatement_newline(self, ctx: SharpyParser.Statement_newlineContext):
-        logger.debug("Visiting statement newline")
-        return self.visitChildren(ctx)
-
-    # Visit a parse tree produced by SharpyParser#simple_stmts.
-    def visitSimple_stmts(self, ctx: SharpyParser.Simple_stmtsContext):
-        logger.debug("Visiting simple statements")
-        return self.visitChildren(ctx)
-
     # Visit a parse tree produced by SharpyParser#simple_stmt.
     def visitSimple_stmt(self, ctx: SharpyParser.Simple_stmtContext):
         logger.debug("Visiting simple statement")
@@ -246,29 +236,14 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug("Visiting class definition")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#class_def_raw.
-    def visitClass_def_raw(self, ctx: SharpyParser.Class_def_rawContext):
-        logger.debug("Visiting class definition (raw)")
-        return self.visitChildren(ctx)
-
     # Visit a parse tree produced by SharpyParser#struct_def.
     def visitStruct_def(self, ctx: SharpyParser.Struct_defContext):
         logger.debug("Visiting struct definition")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#struct_def_raw.
-    def visitStruct_def_raw(self, ctx: SharpyParser.Struct_def_rawContext):
-        logger.debug("Visiting struct definition (raw)")
-        return self.visitChildren(ctx)
-
     # Visit a parse tree produced by SharpyParser#protocol_def.
     def visitProtocol_def(self, ctx: SharpyParser.Protocol_defContext):
         logger.debug("Visiting protocol definition")
-        return self.visitChildren(ctx)
-
-    # Visit a parse tree produced by SharpyParser#protocol_def_raw.
-    def visitProtocol_def_raw(self, ctx: SharpyParser.Protocol_def_rawContext):
-        logger.debug("Visiting protocol definition (raw)")
         return self.visitChildren(ctx)
 
     # Visit a parse tree produced by SharpyParser#function_def.
@@ -291,36 +266,9 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug("Visiting parameter list")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#slash_no_default.
-    def visitSlash_no_default(self, ctx: SharpyParser.Slash_no_defaultContext):
-        logger.debug("Visiting slash without default")
-        return self.visitChildren(ctx)
-
-    # Visit a parse tree produced by SharpyParser#slash_with_default.
-    def visitSlash_with_default(self, ctx: SharpyParser.Slash_with_defaultContext):
-        logger.debug("Visiting slash with default")
-        return self.visitChildren(ctx)
-
-    # Visit a parse tree produced by SharpyParser#star_etc.
-    def visitStar_etc(self, ctx: SharpyParser.Star_etcContext):
-        logger.debug("Visiting star etc")
-        return self.visitChildren(ctx)
-
-    # Visit a parse tree produced by SharpyParser#kwds.
-    def visitKwds(self, ctx: SharpyParser.KwdsContext):
-        logger.debug("Visiting keyword arguments")
-        return self.visitChildren(ctx)
-
     # Visit a parse tree produced by SharpyParser#param_no_default.
     def visitParam_no_default(self, ctx: SharpyParser.Param_no_defaultContext):
         logger.debug("Visiting parameter without default")
-        return self.visitChildren(ctx)
-
-    # Visit a parse tree produced by SharpyParser#param_no_default_star_annotation.
-    def visitParam_no_default_star_annotation(
-        self, ctx: SharpyParser.Param_no_default_star_annotationContext
-    ):
-        logger.debug("Visiting parameter without default (star annotation)")
         return self.visitChildren(ctx)
 
     # Visit a parse tree produced by SharpyParser#param_with_default.
@@ -328,30 +276,15 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug("Visiting parameter with default")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#param_maybe_default.
-    def visitParam_maybe_default(self, ctx: SharpyParser.Param_maybe_defaultContext):
-        logger.debug("Visiting parameter maybe with default")
-        return self.visitChildren(ctx)
-
     # Visit a parse tree produced by SharpyParser#param.
     def visitParam(self, ctx: SharpyParser.ParamContext):
         logger.debug("Visiting parameter")
-        return self.visitChildren(ctx)
-
-    # Visit a parse tree produced by SharpyParser#param_star_annotation.
-    def visitParam_star_annotation(self, ctx: SharpyParser.Param_star_annotationContext):
-        logger.debug("Visiting parameter (star annotation)")
         return self.visitChildren(ctx)
 
     # Visit a parse tree produced by SharpyParser#annotation.
     def visitAnnotation(self, ctx: SharpyParser.AnnotationContext):
         logger.debug("Visiting annotation")
         # annotation: '@' dotted_name ('.' name)* ('.' '(' ')')
-        return self.visitChildren(ctx)
-
-    # Visit a parse tree produced by SharpyParser#star_annotation.
-    def visitStar_annotation(self, ctx: SharpyParser.Star_annotationContext):
-        logger.debug("Visiting star annotation")
         return self.visitChildren(ctx)
 
     # Visit a parse tree produced by SharpyParser#default_assignment.
@@ -549,8 +482,8 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         # list: '[' star_named_expressions? ']'
 
         elts: Sequence[Node] = []
-        if ctx.star_named_expressions():
-            elts: Sequence[Node] = self.visit(ctx.star_named_expressions())
+        if ctx.named_expressions():
+            elts: Sequence[Node] = self.visit(ctx.named_expressions())
 
         return List(elts=elts, ctx=Load())
 
@@ -561,8 +494,8 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
 
         elts: Sequence[Node] = []
 
-        if ctx.star_named_expressions():
-            elts: Sequence[Node] = self.visit(ctx.star_named_expressions())
+        if ctx.named_expressions():
+            elts: Sequence[Node] = self.visit(ctx.named_expressions())
 
         return Tuple(elts=elts, ctx=Load())
 
@@ -572,7 +505,7 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         # set: '{' star_named_expressions '}'
 
         elts: Sequence[Node] = (
-            self.visit(ctx.star_named_expressions()) if ctx.star_named_expressions() else []
+            self.visit(ctx.named_expressions()) if ctx.named_expressions() else []
         )
 
         return Set(elts=elts)
@@ -585,32 +518,14 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         keys: MutableSequence[Node] = []
         values: MutableSequence[Node] = []
 
-        if ctx.double_starred_kvpairs():
-            kvpairs = self.visit(ctx.double_starred_kvpairs())
+        if ctx.kvpairs():
+            kvpairs = self.visit(ctx.kvpairs())
 
             for k, v in kvpairs:
                 keys.append(k)
                 values.append(v)
 
         return Dict(keys=keys, values=values)
-
-    # Visit a parse tree produced by SharpyParser#double_starred_kvpairs.
-    def visitDouble_starred_kvpairs(self, ctx: SharpyParser.Double_starred_kvpairsContext):
-        logger.debug("Visiting double-starred key-value pairs")
-        # double_starred_kvpairs: double_starred_kvpair (',' double_starred_kvpair)* ','?
-
-        return [self.visit(child) for child in ctx.double_starred_kvpair()]
-
-    # Visit a parse tree produced by SharpyParser#double_starred_kvpair.
-    def visitDouble_starred_kvpair(self, ctx: SharpyParser.Double_starred_kvpairContext):
-        logger.debug("Visiting double-starred key-value pair")
-        # double_starred_kvpair: kvpair | '**' expression
-
-        if ctx.kvpair():
-            return self.visit(ctx.kvpair())
-        else:
-            # For dict literals, ignore **expr for now (not a literal)
-            return (None, None)
 
     # Visit a parse tree produced by SharpyParser#kvpair.
     def visitKvpair(self, ctx: SharpyParser.KvpairContext):
@@ -642,22 +557,3 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         value = "".join(str(node.value) for node in string_nodes if hasattr(node, "value"))
 
         return Constant(value=value)
-
-    # Visit a parse tree produced by SharpyParser#star_named_expressions.
-    def visitStar_named_expressions(self, ctx: SharpyParser.Star_named_expressionsContext):
-        logger.debug("Visiting star named expressions")
-        # star_named_expressions: star_named_expression (',' star_named_expression)* ','?
-
-        return [self.visit(child) for child in ctx.star_named_expression()]
-
-    # Visit a parse tree produced by SharpyParser#star_named_expression.
-    def visitStar_named_expression(self, ctx: SharpyParser.Star_named_expressionContext):
-        logger.debug("Visiting star named expression")
-        # star_named_expression: expression | '*' expression
-
-        # For now, just return the expression (ignore starred for literals)
-        if ctx.getChildCount() == 2 and ctx.getChild(0).getText() == "*":
-            # Starred expression, e.g. *a
-            return self.visit(ctx.named_expression())
-        else:
-            return self.visit(ctx.named_expression())
