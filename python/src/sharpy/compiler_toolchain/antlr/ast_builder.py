@@ -24,9 +24,9 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
 
         return self._root
 
-    # Visit a parse tree produced by SharpyParser#file_input.
-    def visitFile_input(self, ctx: SharpyParser.File_inputContext) -> Module:
-        logger.debug("Visiting file input")
+    # Visit a parse tree produced by SharpyParser#module.
+    def visitModule(self, ctx: SharpyParser.ModuleContext) -> Module:
+        logger.debug("Visiting module")
         body: MutableSequence[Node] = []
 
         for i in range(ctx.getChildCount()):
@@ -41,7 +41,7 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         return Module(body)
 
     # Visit a parse tree produced by SharpyParser#statements.
-    def visitStatements(self, ctx: SharpyParser.StatementsContext) -> MutableSequence[Node]:
+    def visitStatement(self, ctx: SharpyParser.StatementContext) -> MutableSequence[Node]:
         logger.debug("Visiting statements")
 
         statements: MutableSequence[Node] = []
@@ -61,18 +61,13 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
 
         return Constant(ctx.getText())
 
-    # Visit a parse tree produced by SharpyParser#statement.
-    def visitStatement(self, ctx: SharpyParser.StatementContext):
-        logger.debug("Visiting statement")
-        return self.visitChildren(ctx)
-
-    # Visit a parse tree produced by SharpyParser#simple_stmt.
-    def visitSimple_stmt(self, ctx: SharpyParser.Simple_stmtContext):
+    # Visit a parse tree produced by SharpyParser#simple_statement.
+    def visitSimple_statement(self, ctx: SharpyParser.Simple_statementContext):
         logger.debug("Visiting simple statement")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#compound_stmt.
-    def visitCompound_stmt(self, ctx: SharpyParser.Compound_stmtContext):
+    # Visit a parse tree produced by SharpyParser#compound_statement.
+    def visitCompound_statement(self, ctx: SharpyParser.Compound_statementContext):
         logger.debug("Visiting compound statement")
         return self.visitChildren(ctx)
 
@@ -86,50 +81,50 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug("Visiting annotated right-hand side")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#augassign.
-    def visitAugassign(self, ctx: SharpyParser.AugassignContext):
+    # Visit a parse tree produced by SharpyParser#AugmentedAssignmentContext.
+    def visitAugmentedAssignmentContext(self, ctx: SharpyParser.Augmented_assignmentContext):
         logger.debug("Visiting augmented assignment")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#return_stmt.
-    def visitReturn_stmt(self, ctx: SharpyParser.Return_stmtContext):
+    # Visit a parse tree produced by SharpyParser#return_statement.
+    def visitReturn_statement(self, ctx: SharpyParser.Return_statementContext):
         logger.debug("Visiting return statement")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#raise_stmt.
-    def visitRaise_stmt(self, ctx: SharpyParser.Raise_stmtContext):
+    # Visit a parse tree produced by SharpyParser#raise_statement.
+    def visitRaise_statement(self, ctx: SharpyParser.Raise_statementContext):
         logger.debug("Visiting raise statement")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#global_stmt.
-    def visitGlobal_stmt(self, ctx: SharpyParser.Global_stmtContext):
+    # Visit a parse tree produced by SharpyParser#global_statement.
+    def visitGlobal_statement(self, ctx: SharpyParser.Global_statementContext):
         logger.debug("Visiting global statement")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#nonlocal_stmt.
-    def visitNonlocal_stmt(self, ctx: SharpyParser.Nonlocal_stmtContext):
+    # Visit a parse tree produced by SharpyParser#nonlocal_statement.
+    def visitNonlocal_statement(self, ctx: SharpyParser.Nonlocal_statementContext):
         logger.debug("Visiting nonlocal statement")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#del_stmt.
-    def visitDel_stmt(self, ctx: SharpyParser.Del_stmtContext):
+    # Visit a parse tree produced by SharpyParser#del_statement.
+    def visitDel_statement(self, ctx: SharpyParser.Del_statementContext):
         logger.debug("Visiting delete statement")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#yield_stmt.
-    def visitYield_stmt(self, ctx: SharpyParser.Yield_stmtContext):
+    # Visit a parse tree produced by SharpyParser#yield_statement.
+    def visitYield_statement(self, ctx: SharpyParser.Yield_statementContext):
         logger.debug("Visiting yield statement")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#assert_stmt.
-    def visitAssert_stmt(self, ctx: SharpyParser.Assert_stmtContext):
+    # Visit a parse tree produced by SharpyParser#assert_statement.
+    def visitAssert_statement(self, ctx: SharpyParser.Assert_statementContext):
         logger.debug("Visiting assert statement")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#import_stmt.
-    def visitImport_stmt(self, ctx: SharpyParser.Import_stmtContext) -> Node | None:
+    # Visit a parse tree produced by SharpyParser#import_statement.
+    def visitImport_statement(self, ctx: SharpyParser.Import_statementContext) -> Node | None:
         logger.debug("Visiting import statement")
-        # import_stmt: import_name | import_from
+        # import_statement: import_name | import_from
 
         if ctx.import_name():
             return self.visit(ctx.import_name())
@@ -292,14 +287,14 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug("Visiting default assignment")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#if_stmt.
-    def visitIf_stmt(self, ctx: SharpyParser.If_stmtContext):
+    # Visit a parse tree produced by SharpyParser#if_statement.
+    def visitIf_statement(self, ctx: SharpyParser.If_statementContext):
         logger.debug("Visiting if statement")
-        # if_stmt: 'if' expression ':' block (elif_stmt | else_block)*
+        # if_statement: 'if' expression ':' block (elif_statement | else_block)*
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#elif_stmt.
-    def visitElif_stmt(self, ctx: SharpyParser.Elif_stmtContext):
+    # Visit a parse tree produced by SharpyParser#elif_statement.
+    def visitElif_statement(self, ctx: SharpyParser.Elif_statementContext):
         logger.debug("Visiting elif statement")
         return self.visitChildren(ctx)
 
@@ -308,18 +303,18 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug("Visiting else block")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#while_stmt.
-    def visitWhile_stmt(self, ctx: SharpyParser.While_stmtContext):
+    # Visit a parse tree produced by SharpyParser#while_statement.
+    def visitWhile_statement(self, ctx: SharpyParser.While_statementContext):
         logger.debug("Visiting while statement")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#for_stmt.
-    def visitFor_stmt(self, ctx: SharpyParser.For_stmtContext):
+    # Visit a parse tree produced by SharpyParser#for_statement.
+    def visitFor_statement(self, ctx: SharpyParser.For_statementContext):
         logger.debug("Visiting for statement")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#with_stmt.
-    def visitWith_stmt(self, ctx: SharpyParser.With_stmtContext):
+    # Visit a parse tree produced by SharpyParser#with_statement.
+    def visitWith_statement(self, ctx: SharpyParser.With_statementContext):
         logger.debug("Visiting with statement")
         return self.visitChildren(ctx)
 
@@ -328,8 +323,8 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug("Visiting with item")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#try_stmt.
-    def visitTry_stmt(self, ctx: SharpyParser.Try_stmtContext):
+    # Visit a parse tree produced by SharpyParser#try_statement.
+    def visitTry_statement(self, ctx: SharpyParser.Try_statementContext):
         logger.debug("Visiting try statement")
         return self.visitChildren(ctx)
 
@@ -348,13 +343,13 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug("Visiting finally block")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#match_stmt.
-    def visitMatch_stmt(self, ctx: SharpyParser.Match_stmtContext):
+    # Visit a parse tree produced by SharpyParser#match_statement.
+    def visitMatch_statement(self, ctx: SharpyParser.Match_statementContext):
         logger.debug("Visiting match statement")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#subject_expr.
-    def visitSubject_expr(self, ctx: SharpyParser.Subject_exprContext):
+    # Visit a parse tree produced by SharpyParser#subject_expression.
+    def visitSubject_expression(self, ctx: SharpyParser.Subject_expressionContext):
         logger.debug("Visiting subject expression")
         return self.visitChildren(ctx)
 
@@ -398,10 +393,10 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug("Visiting literal pattern")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#literal_expr.
-    def visitLiteral_expr(self, ctx: SharpyParser.Literal_exprContext):
+    # Visit a parse tree produced by SharpyParser#literal_expression.
+    def visitLiteral_expression(self, ctx: SharpyParser.Literal_expressionContext):
         logger.debug("Visiting literal expression")
-        # literal_expr: string | complex_number | signed_number | 'None' | 'True' | 'False'
+        # literal_expression: string | complex_number | signed_number | 'None' | 'True' | 'False'
 
         if ctx.strings():
             return self.visit(ctx.strings())

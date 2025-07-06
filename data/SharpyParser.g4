@@ -65,66 +65,58 @@ options { tokenVocab=SharpyLexer; }
 // STARTING RULES
 // ==============
 
-file_input: statements? EOF;
-
-// GENERAL STATEMENTS
-// ==================
-
-statements: statement+;
+// A module simply contains a series of statements.
+module: statement+ EOF;
 
 // Compound statements are statements that can contain other statements, e.g.
 // function definitions, for-blocks, etc.
 // Simple statements are statements that cannot contain other statements, e.g.
 // assignments, return statements, etc.
-statement: compound_stmt | simple_stmts;
-
-simple_stmts
-    : simple_stmt (';' simple_stmt)* ';'? NEWLINE
-    ;
+statement: compound_statement | simple_statement NEWLINE;
 
 // NOTE: assignment MUST precede expression, else parsing a simple assignment
 // will throw a SyntaxError.
-simple_stmt
+simple_statement
     : assignment
     | type_alias
-    | return_stmt
-    | import_stmt
-    | raise_stmt
+    | return_statement
+    | import_statement
+    | raise_statement
     | 'pass'
-    | del_stmt
-    | yield_stmt
-    | assert_stmt
+    | del_statement
+    | yield_statement
+    | assert_statement
     | 'break'
     | 'continue'
-    | global_stmt
-    | nonlocal_stmt;
+    | global_statement
+    | nonlocal_statement;
 
-compound_stmt
+compound_statement
     : function_def
-    | if_stmt
+    | if_statement
     | class_def
     | protocol_def
     | struct_def
-    | with_stmt
-    | for_stmt
-    | try_stmt
-    | while_stmt
-    | match_stmt;
+    | with_statement
+    | for_statement
+    | try_statement
+    | while_statement
+    | match_statement;
 
 // SIMPLE STATEMENTS
 // =================
 
-// NOTE: annotated_rhs may start with 'yield'; yield_expr must start with 'yield'
+// NOTE: annotated_rhs may start with 'yield'; yield_expression must start with 'yield'
 assignment
-    : name ':' expression ('=' annotated_rhs )?
+    : target=typed_name ('=' annotated_rhs )?
     | ('(' single_target ')'
          | single_subscript_attribute_target) ':' expression ('=' annotated_rhs )?
-    | (star_targets '=' )+ yield_expr
-    | single_target augassign yield_expr;
+    | (star_targets '=' )+ yield_expression
+    | single_target augmented_assignment yield_expression;
 
-annotated_rhs: yield_expr;
+annotated_rhs: yield_expression;
 
-augassign
+augmented_assignment
     : '+='
     | '-='
     | '*='
@@ -139,25 +131,25 @@ augassign
     | '**='
     | '//=';
 
-return_stmt
+return_statement
     : 'return' expressions?;
 
-raise_stmt
-    : 'raise' (expression ('from' expression )?)?
+raise_statement
+    : 'raise' (error=expression ('from' parent=expression )?)?
     ;
 
-global_stmt: 'global' name (',' name)*;
+global_statement: 'global' name (',' name)*;
 
-nonlocal_stmt: 'nonlocal' name (',' name)*;
+nonlocal_statement: 'nonlocal' name (',' name)*;
 
-del_stmt
+del_statement
     : 'del' del_targets;
 
-yield_stmt: yield_expr;
+yield_statement: yield_expression;
 
-assert_stmt: 'assert' expression (',' expression )?;
+assert_statement: 'assert' expression (',' expression )?;
 
-import_stmt
+import_statement
     : import_name
     | import_from;
 
@@ -191,9 +183,7 @@ dotted_name
 // Common elements
 // ---------------
 
-block
-    : NEWLINE INDENT statements DEDENT
-    | simple_stmts;
+block: NEWLINE INDENT statement+ DEDENT;
 
 decorators: ('@' named_expression NEWLINE )+;
 
@@ -233,12 +223,12 @@ property_def
 
 get_block: 'get' '(' name ')' ':' block;
 
-set_block: 'set' '(' name ',' annotated_name ')' ':' block;
+set_block: 'set' '(' name ',' typed_name ')' ':' block;
 
 // Event definitions
 // -----------------
 
-event_def: 'event' annotated_name;
+event_def: 'event' typed_name;
 
 // *** END_SHARPY_ADDITIONS
 
@@ -268,11 +258,11 @@ default_assignment: '=' expression;
 // If statement
 // ------------
 
-if_stmt
-    : 'if' named_expression ':' block (elif_stmt | else_block?)
+if_statement
+    : 'if' named_expression ':' block (elif_statement | else_block?)
     ;
-elif_stmt
-    : 'elif' named_expression ':' block (elif_stmt | else_block?)
+elif_statement
+    : 'elif' named_expression ':' block (elif_statement | else_block?)
     ;
 else_block
     : 'else' ':' block;
@@ -280,20 +270,20 @@ else_block
 // While statement
 // ---------------
 
-while_stmt
+while_statement
     : 'while' named_expression ':' block else_block?;
 
 // For statement
 // -------------
 
-for_stmt
+for_statement
     : 'async'? 'for' star_targets 'in' expressions ':' block else_block?
     ;
 
 // With statement
 // --------------
 
-with_stmt
+with_statement
     : 'with' '(' with_item (',' with_item)* ','? ')' ':' block
     | 'async' 'with' '(' with_item (',' with_item)* ','? ')' ':' block
     | 'async'? 'with' with_item (',' with_item)* ':' block
@@ -306,7 +296,7 @@ with_item
 // Try statement
 // -------------
 
-try_stmt
+try_statement
     : 'try' ':' block finally_block
     | 'try' ':' block except_block+ else_block? finally_block?
     | 'try' ':' block except_star_block+ else_block? finally_block?;
@@ -325,10 +315,10 @@ finally_block
 // Match statement
 // ---------------
 
-match_stmt
-    : 'match' subject_expr ':' NEWLINE INDENT case_block+ DEDENT;
+match_statement
+    : 'match' subject_expression ':' NEWLINE INDENT case_block+ DEDENT;
 
-subject_expr: named_expression;
+subject_expression: named_expression;
 
 case_block
     : 'case' patterns guard? ':' block;
@@ -369,7 +359,7 @@ literal_pattern
     | 'False';
 
 // Literal expressions are used to restrict permitted mapping pattern keys
-literal_expr
+literal_expression
     : signed_number
     | complex_number
     | strings
@@ -445,7 +435,7 @@ items_pattern
     : key_value_pattern (',' key_value_pattern)*;
 
 key_value_pattern
-    : (literal_expr | attr) ':' pattern;
+    : (literal_expression | attr) ':' pattern;
 
 double_star_pattern
     : '**' pattern_capture_target;
@@ -492,16 +482,16 @@ expressions
 
 expression
     : disjunction ('if' disjunction 'else' expression)?
-    | lambdef
+    | lambda_def
     ;
 
-yield_expr
+yield_expression
     : 'yield' 'from' expression
     ;
 
 // Sharpy allows for match expressions similar to C# switch expressions
-match_expr
-    : 'match' subject_expr ':' NEWLINE INDENT case_block+ DEDENT
+match_expression
+    : 'match' subject_expression ':' NEWLINE INDENT case_block+ DEDENT
     ;
 
 assignment_expression
@@ -568,11 +558,11 @@ bitwise_xor
     | bitwise_and;
 
 bitwise_and
-    : bitwise_and '&' shift_expr
-    | shift_expr;
+    : bitwise_and '&' shift_expression
+    | shift_expression;
 
-shift_expr
-    : shift_expr ('<<' | '>>') sum
+shift_expression
+    : shift_expression ('<<' | '>>') sum
     | sum
     ;
 
@@ -634,12 +624,12 @@ atom
     | '...';
 
 group
-    : '(' (yield_expr | named_expression) ')';
+    : '(' (yield_expression | named_expression) ')';
 
 // Lambda functions
 // ----------------
 
-lambdef
+lambda_def
     : 'lambda' lambda_params? ':' expression;
 
 lambda_params
@@ -826,6 +816,6 @@ name_except_underscore
 // ***** Always use name rule instead of NAME token in this grammar *****
 name: NAME_OR_WILDCARD | name_except_underscore;
 
-annotated_name: name ':' expression;
+typed_name: name ':' expression;
 
 // ========================= END OF THE GRAMMAR ===========================

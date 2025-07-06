@@ -1,4 +1,4 @@
 import SharpyParser
 
 # Export
-ParseTreeNode = SharpyParser.SharpyParser.File_inputContext
+ParseTreeNode = SharpyParser.SharpyParser.ModuleContext

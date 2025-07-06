@@ -146,35 +146,26 @@ ELIF     : 'elif';
 IF       : 'if';
 OR       : 'or';
 YIELD    : 'yield';
-
-// *** BEGIN_SHARPY_ADDITIONS
-
 STRUCT   : 'struct';
 PROPERTY : 'property';
 PROTOCOL : 'protocol';
 
-// *** END_SHARPY_ADDITIONS
-
-
 // *** Soft Keywords: https://docs.python.org/3.13/reference/lexical_analysis.html#soft-keywords
-NAME_OR_TYPE     : 'type';   // identifier or type keyword,    the parser grammar will decide what it means
-NAME_OR_MATCH    : 'match';  // identifier or match keyword,   the parser grammar will decide what it means
-NAME_OR_CASE     : 'case';   // identifier or case keyword,    the parser grammar will decide what it means
-NAME_OR_WILDCARD : '_';      // identifier or wildcard symbol, the parser grammar will decide what it means
-
-// *** BEGIN_SHARPY_ADDITIONS
-
-NAME_OR_GET      : 'get';   // identifier or get keyword,      the parser grammar will decide what it means
-NAME_OR_SET      : 'set';   // identifier or set keyword,      the parser grammar will decide what it means
-NAME_OR_EVENT    : 'event'; // identifier or event keyword,    the parser grammar will decide what it means
-
-// *** END_SHARPY_ADDITIONS
+NAME_OR_TYPE     : 'type';  // identifier or type keyword,    the parser grammar will decide what it means
+NAME_OR_MATCH    : 'match'; // identifier or match keyword,   the parser grammar will decide what it means
+NAME_OR_CASE     : 'case';  // identifier or case keyword,    the parser grammar will decide what it means
+NAME_OR_WILDCARD : '_';     // identifier or wildcard symbol, the parser grammar will decide what it means
+NAME_OR_GET      : 'get';   // identifier or get keyword,     the parser grammar will decide what it means
+NAME_OR_SET      : 'set';   // identifier or set keyword,     the parser grammar will decide what it means
+NAME_OR_EVENT    : 'event'; // identifier or event keyword,   the parser grammar will decide what it means
 
 // https://docs.python.org/3.13/reference/lexical_analysis.html#identifiers
-// *** BEGIN_SHARPY_ADDITIONS
 
+// Indicates that the identifier is either a keyword or meant to be treated
+// literally for native case lookup of C# APIs.
 fragment ID_LITERAL_FLAG : '$';
 
+// Sharpy access modifiers are semantic prefixes on names.
 fragment ID_ACCESS_MODIFIER
     : '_'  // protected
     | '__' // private
@@ -183,8 +174,6 @@ fragment ID_ACCESS_MODIFIER
     ;
 
 NAME : ID_ACCESS_MODIFIER? ID_LITERAL_FLAG? ID_START ID_CONTINUE*;
-
-// *** END_SHARPY_ADDITIONS
 
 // https://docs.python.org/3.13/reference/lexical_analysis.html#numeric-literals
 NUMBER
@@ -211,7 +200,6 @@ WS : [ \t\f]+                             -> channel(HIDDEN);
 // https://docs.python.org/3.13/reference/lexical_analysis.html#explicit-line-joining
 EXPLICIT_LINE_JOINING : BACKSLASH_NEWLINE -> channel(HIDDEN);
 
-
 // *************************
 // abbreviations for FSTRING
 // *************************
@@ -234,7 +222,6 @@ FSTRING_START : FSTRING_PREFIX ([']
 
 // catch the unrecognized characters
 ERRORTOKEN : . ; // SharpyLexerBase class will report an error about this (the ERRORTOKEN will also cause an error in the parser)
-
 
 /*
  *  other lexer modes
@@ -279,7 +266,6 @@ mode DQ3R_FSTRING_MODE;
      DQ3R_FSTRING_END    : ["]["]["]         -> type(FSTRING_END); // popMode will be called in SharpyLexerBase class
      DQ3R_FSTRING_MIDDLE : DQ3R_FSTRING_ITEM -> type(FSTRING_MIDDLE);
      DQ3R_FSTRING_LBRACE : '{'               -> type(LBRACE); // pushMode(DQ3R_FORMAT_SPECIFICATION_MODE) will be called in SharpyLexerBase class
-
 
 mode SQ1__FORMAT_SPECIFICATION_MODE; // it is only used after a format specifier colon
      SQ1__FORMAT_SPECIFICATION_FSTRING_MIDDLE : SQ1__FSTRING_PART+ -> type(FSTRING_MIDDLE);
