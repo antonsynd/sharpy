@@ -380,15 +380,15 @@ f?.lower()  # returns None
 
 TODO
 
-# Optionals
+# None-able types
 
-Optionals are indicated in the type with `?` appended to the type:
+None-able types are indicated in the type with `?` appended to the type:
 
 ```Python
 i: int? = None
 ```
 
-Value types are not optional by default, but reference types are.
+Value types are not None-able by default, but reference types are.
 
 # Match assignment
 
