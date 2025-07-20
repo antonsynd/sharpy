@@ -231,10 +231,10 @@ user to use the equivalent global function or operators.
 | Public | `foobar` | `public` | Accessible to everyone. | Sharpy-recognized dunder methods are always public |
 | Protected | `_foobar` | `protected` | Accessible to only the actual class and its derived classes, irrespective of whether it is project internal or external | - |
 | Private | `__foobar` | `private` | Accessible to only the actual class | This does not apply to dunder methods. Sharpy-recognized dunder methods are always public |
-| Internal | `!foobar` | `internal` | Accessible to anything in the project |
+| Internal | `$foobar` | `internal` | Accessible to anything in the project |
 | N/A | - | `protected internal` | Accessible to anything in the project or the actual class and its derived classes, irrespective of whether it is project internal or external | - |
 | N/A | - | `private protected` | Accessible to the class and its derived classes within the project | - |
-| File | `!!foobar` | `file` | Accessible to only symbols in the current file | - |
+| File | `$$foobar` | `file` | Accessible to only symbols in the current file | - |
 
 ```Python
 # In the ABI, this class is "public Foo"
@@ -252,11 +252,11 @@ class Foo:
         pass
 
     # In the ABI, this method is "internal void InternalMethod()"
-    def !internal_method(self) -> None:
+    def $internal_method(self) -> None:
         pass
 
     # In the ABI, this method is "file void FileMethod()"
-    def !!internal_method(self) -> None:
+    def $$internal_method(self) -> None:
         pass
 ```
 
