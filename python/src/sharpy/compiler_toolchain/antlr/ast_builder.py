@@ -514,8 +514,16 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         # list: '[' star_named_expressions? ']'
 
         elts: Sequence[Node] = []
+
         if ctx.named_expressions():
-            elts: Sequence[Node] = self.visit(ctx.named_expressions())
+            for node in ctx.named_expressions().getChildren():
+
+                if node.getText() == ",":
+                    continue
+
+                elts.append(self.visit(node))
+
+        logger.debug(f"List elements: {elts}")
 
         return List(elts=elts, ctx=Load())
 
@@ -527,7 +535,14 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         elts: Sequence[Node] = []
 
         if ctx.named_expressions():
-            elts: Sequence[Node] = self.visit(ctx.named_expressions())
+            for node in ctx.named_expressions().getChildren():
+
+                if node.getText() == ",":
+                    continue
+
+                elts.append(self.visit(node))
+
+        logger.debug(f"Tuple elements: {elts}")
 
         return Tuple(elts=elts, ctx=Load())
 
@@ -536,9 +551,17 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug("Visiting set")
         # set: '{' star_named_expressions '}'
 
-        elts: Sequence[Node] = (
-            self.visit(ctx.named_expressions()) if ctx.named_expressions() else []
-        )
+        elts: Sequence[Node] = []
+
+        if ctx.named_expressions():
+            for node in ctx.named_expressions().getChildren():
+
+                if node.getText() == ",":
+                    continue
+
+                elts.append(self.visit(node))
+
+        logger.debug(f"Set elements: {elts}")
 
         return Set(elts=elts)
 

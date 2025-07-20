@@ -25,7 +25,10 @@ def main():
         "--output-dir", type=Path, default=Path("."), help="Output directory for PNG files"
     )
     parser.add_argument(
-        "--ast", action="store_true", help="Render AST (default: render parse tree)"
+        "--only-parse", action="store_true", help="Render only parse tree (default: render both)"
+    )
+    parser.add_argument(
+        "--only-ast", action="store_true", help="Render only AST (default: render both)"
     )
     parser.add_argument(
         "--basename",
@@ -56,6 +59,12 @@ def main():
     output_dir: Path = args.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     keep_temp: bool = args.keep_temp
+    only_parse: bool = args.only_parse
+    only_ast: bool = args.only_ast
+
+    if only_parse and only_ast:
+        logger.error("Cannot specify both --only-parse and --only-ast. Choose one.")
+        sys.exit(1)
 
     debug: bool = args.debug
 
@@ -85,7 +94,7 @@ def main():
         logger.error("Failed to postprocess the parse tree file.")
         sys.exit(1)
 
-    if args.ast:
+    if not only_parse:
         # AST build
         builder = AntlrASTBuilder()
         ast: ASTNode = builder._generate_ast(parse_tree)
@@ -99,7 +108,8 @@ def main():
 
         if temp_file:
             print(f"Temporary file kept at {temp_file}")
-    else:
+
+    if not only_ast:
         out_png: Path = output_dir / f"{basename}_parse_tree.png"
         temp_file: Path | None = render_parse_tree_as_png(
             parse_tree, raw_parser, out_png, keep_temp=keep_temp

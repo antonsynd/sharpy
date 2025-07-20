@@ -1,4 +1,3 @@
-from io import StringIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any, MutableSequence, Tuple
@@ -8,7 +7,9 @@ from graphviz import Digraph
 from SharpyParser import SharpyParser
 
 from sharpy.compiler_toolchain.antlr import ParseTreeNode
+from sharpy.compiler_toolchain.ast import Dict, List
 from sharpy.compiler_toolchain.ast import Node as ASTNode
+from sharpy.compiler_toolchain.ast import Set, Tuple
 from sharpy.compiler_toolchain.logging import logger
 
 
@@ -133,12 +134,24 @@ def ast_to_dot(
                 # Don't emit source information
                 continue
 
+            new_key: str | None = None
+
+            if key in {"_body"}:
+                new_key = None
+            else:
+                new_key = key
+
             if isinstance(value, list):
-                for v in value:
+                for i, v in enumerate(value):
                     if not hasattr(v, "__class__"):
                         continue
 
-                    children.append((None, v))
+                    new_key: str | None = (
+                        new_key if not isinstance(node, (List, Tuple, Set, Dict)) else f"[{i}]"
+                    )
+
+                    logger.debug(f"{new_key}: adding child node: {value}")
+                    children.append((new_key, v))
             elif hasattr(value, "__class__"):
                 logger.debug(f"{key}: adding child node: {value}")
                 children.append((key.lstrip("_"), value))
