@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import AbstractSet, Iterable, Mapping, Sequence
+from typing import AbstractSet, Iterable, Mapping, MutableSequence, Sequence
 
 import requests
 
@@ -38,7 +38,17 @@ def main() -> None:
     setup_logger()
 
     parser: argparse.ArgumentParser = create_parser()
-    args, rest = parser.parse_known_args()
+    pre_args: MutableSequence[str] = []
+    rest: MutableSequence[str] = []
+
+    for i, arg in enumerate(sys.argv[1:], start=1):
+        if arg == "--":
+            rest.extend(sys.argv[i + 1 :])
+            break
+
+        pre_args.append(arg)
+
+    args: argparse.Namespace = parser.parse_args(pre_args)
 
     command: str = args.command
 

@@ -55,15 +55,52 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
 
         return statements
 
-    def visitAtom(self, ctx: SharpyParser.AtomContext) -> Constant:
+    def visitAtom(self, ctx: SharpyParser.AtomContext) -> Node:
         logger.debug("Visiting atom")
         logger.debug(f"Atom value: {ctx.getText()}")
 
-        return Constant(ctx.getText())
+        text: str | None = ctx.getText()
+
+        match text:
+            case "True":
+                return Constant(value=True)
+            case "False":
+                return Constant(value=False)
+            case "None":
+                return Constant(value=None)
+            case "pass":
+                return Pass()
+            case "...":
+                return Ellipsis()
+            case _:
+                return Constant(value=text)
+
+    def emit_hard_coded_token(self, token: str) -> Node:
+        logger.debug(f"Emitting hard-coded token: {token}")
+
+        match token:
+            case "True":
+                return Constant(True)
+            case "False":
+                return Constant(False)
+            case "None":
+                return Constant(None)
+            case "pass":
+                return Pass()
+            case "...":
+                return Ellipsis()
+            case _:
+                return Constant(value=token)
 
     # Visit a parse tree produced by SharpyParser#simple_statement.
     def visitSimple_statement(self, ctx: SharpyParser.Simple_statementContext):
         logger.debug("Visiting simple statement")
+
+        text: str | None = ctx.getText()
+
+        if text:
+            return self.emit_hard_coded_token(text)
+
         return self.visitChildren(ctx)
 
     # Visit a parse tree produced by SharpyParser#compound_statement.
@@ -407,6 +444,12 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
 
         return None
 
+    def visitName_except_underscore(self, ctx: SharpyParser.Name_except_underscoreContext):
+        return Name(
+            id=ctx.getText(),
+            ctx=Load(),
+        )
+
     # Visit a parse tree produced by SharpyParser#complex_number.
     def visitComplex_number(self, ctx: SharpyParser.Complex_numberContext):
         logger.debug("Visiting complex number")
@@ -534,6 +577,22 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
 
         return Constant(value=ctx.getText())
 
+    def stringify_string_constant(self, ctx: Constant) -> str | None:
+        """
+        Convert a string constant to a Python string literal. Handles both
+        single and double quotes. Returns None if none of the preconditions
+        are met.
+        """
+        if isinstance(ctx, Constant):
+            text = ctx.value()
+
+            if isinstance(text, str):
+                # If it's a string, return it without the quotes
+                if text.startswith("'") or text.startswith('"'):
+                    return text[1:-1]
+
+        return None
+
     # Visit a parse tree produced by SharpyParser#strings.
     def visitStrings(self, ctx: SharpyParser.StringsContext):
         logger.debug("Visiting strings")
@@ -543,6 +602,11 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         string_nodes = [self.visit(child) for child in ctx.getChildren()]
 
         # If each is a Constant, concatenate their values
-        value = "".join(str(node.value) for node in string_nodes if hasattr(node, "value"))
+        value = "".join(
+            self.stringify_string_constant(node) or ""
+            for node in string_nodes
+            if hasattr(node, "value")
+        )
+        value = f'"{value}"'
 
         return Constant(value=value)

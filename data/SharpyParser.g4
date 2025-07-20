@@ -89,7 +89,11 @@ simple_statement
     | 'break'
     | 'continue'
     | global_statement
-    | nonlocal_statement;
+    | nonlocal_statement
+    | expression_statement;
+
+expression_statement
+    : expressions;
 
 compound_statement
     : function_def

@@ -1,6 +1,8 @@
 import io
 from typing import Mapping, Sequence
 
+from sharpy.compiler_toolchain.logging import logger
+
 ## Base classes
 
 
@@ -666,6 +668,7 @@ class Constant(Literal):
     ):
         super().__init__(source)
         self._value: str | int | float | bool | bytes | complex | None = value
+        logger.debug(f"Processing constant node with value: {self._value}")
 
     def value(self) -> str | int | float | complex | bytes | bool | None:
         return self._value

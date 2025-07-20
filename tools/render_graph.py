@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import logging
 import sys
 from io import StringIO
 from pathlib import Path
@@ -8,7 +7,11 @@ from pathlib import Path
 from sharpy.compiler_toolchain.antlr import ParseTreeNode
 from sharpy.compiler_toolchain.antlr.ast_builder import AntlrASTBuilder
 from sharpy.compiler_toolchain.antlr.parser import AntlrParser
-from sharpy.compiler_toolchain.antlr.rendering import render_ast_as_png, render_parse_tree_as_png
+from sharpy.compiler_toolchain.antlr.rendering import (
+    _node_list,
+    render_ast_as_png,
+    render_parse_tree_as_png,
+)
 from sharpy.compiler_toolchain.ast import Node as ASTNode
 from sharpy.compiler_toolchain.logging import logger
 
@@ -41,12 +44,18 @@ def main():
         default=None,
         help="Path to a log file to additionally write logs to. If not specified, logs to stdout and stderr.",
     )
+    parser.add_argument(
+        "--keep-temp",
+        action="store_true",
+        help="Keep temporary files used for rendering (default: False)",
+    )
 
     args: argparse.Namespace = parser.parse_args()
 
     input_path: Path = args.input
     output_dir: Path = args.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
+    keep_temp: bool = args.keep_temp
 
     debug: bool = args.debug
 
@@ -64,7 +73,7 @@ def main():
     buffer = StringIO(input_path.read_text(encoding="utf-8"))
     parser = AntlrParser()
     raw_parser = parser._create_parser(input=buffer)
-    parse_tree: ParseTreeNode | None = raw_parser.file_input()
+    parse_tree: ParseTreeNode | None = raw_parser.module()
 
     if not parse_tree:
         logger.error("Failed to parse the input file.")
@@ -81,14 +90,25 @@ def main():
         builder = AntlrASTBuilder()
         ast: ASTNode = builder._generate_ast(parse_tree)
         out_png: Path = output_dir / f"{basename}_ast.png"
-        render_ast_as_png(ast, out_png)
+        temp_file: Path | None = render_ast_as_png(ast, out_png, keep_temp=keep_temp)
+
+        for node in _node_list:
+            logger.debug(f"Node: {node}")
 
         print(f"AST PNG written to {out_png}")
+
+        if temp_file:
+            print(f"Temporary file kept at {temp_file}")
     else:
         out_png: Path = output_dir / f"{basename}_parse_tree.png"
-        render_parse_tree_as_png(parse_tree, raw_parser, out_png)
+        temp_file: Path | None = render_parse_tree_as_png(
+            parse_tree, raw_parser, out_png, keep_temp=keep_temp
+        )
 
         print(f"Parse tree PNG written to {out_png}")
+
+        if temp_file:
+            print(f"Temporary file kept at {temp_file}")
 
 
 if __name__ == "__main__":

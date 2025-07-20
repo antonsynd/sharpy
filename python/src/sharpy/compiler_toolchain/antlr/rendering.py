@@ -1,7 +1,7 @@
 from io import StringIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Any, MutableSequence
+from typing import Any, MutableSequence, Tuple
 
 from antlr4 import ParserRuleContext
 from graphviz import Digraph
@@ -12,17 +12,31 @@ from sharpy.compiler_toolchain.ast import Node as ASTNode
 from sharpy.compiler_toolchain.logging import logger
 
 
-def render_parse_tree_as_png(parse_tree: ParseTreeNode, parser: SharpyParser, output_path: Path):
+def render_parse_tree_as_png(
+    parse_tree: ParseTreeNode, parser: SharpyParser, output_path: Path, keep_temp: bool = False
+) -> Path | None:
     dot: Digraph = parse_tree_to_dot(tree=parse_tree, parser=parser)
 
-    with NamedTemporaryFile(suffix=".gv", mode="w+") as temp_file:
+    with NamedTemporaryFile(suffix=".gv", mode="w+", delete=not keep_temp) as temp_file:
+        logger.debug(f"Rendering parse tree to {temp_file.name}...")
         dot.render(filename=temp_file.name, outfile=output_path, format="png")
 
+        if keep_temp:
+            return Path(temp_file.name)
+        else:
+            return None
 
-def render_ast_as_png(ast: ASTNode, output_path: Path):
+
+def render_ast_as_png(ast: ASTNode, output_path: Path, keep_temp: bool = False) -> Path | None:
     dot: Digraph = ast_to_dot(node=ast)
-    with NamedTemporaryFile(suffix=".gv", mode="w+") as temp_file:
+    with NamedTemporaryFile(suffix=".gv", mode="w+", delete=not keep_temp) as temp_file:
+        logger.debug(f"Rendering parse tree to {temp_file.name}...")
         dot.render(filename=temp_file.name, outfile=output_path, format="png")
+
+        if keep_temp:
+            return Path(temp_file.name)
+        else:
+            return None
 
 
 def parse_tree_to_dot(
@@ -64,10 +78,14 @@ def parse_tree_to_dot(
     return dot
 
 
+_node_list: MutableSequence[str] = list()
+
+
 def ast_to_dot(
     node: ASTNode,
     dot: Digraph | None = None,
     parent_id: str | None = None,
+    label_prefix: str | None = None,
 ) -> Digraph:
     """
     Recursively convert an AST node to a Graphviz Digraph.
@@ -81,15 +99,18 @@ def ast_to_dot(
 
     is_node: bool = isinstance(node, ASTNode)
 
-    if is_node:
-        node_id = str(id(node))
-    else:
-        node_id = StringIO(str(id(node))).getvalue()
+    node_id = str(id(node))
 
     if is_node:
         label: str = node.__class__.__name__
     else:
         label: str = str(node)
+
+    if label_prefix:
+        label = f"{label_prefix}: {label}"
+
+    logger.debug(f"Processing node: {label} with ID: {node_id}")
+    _node_list.append(f"{node_id}: {label}")
 
     dot.node(node_id, label=label)
 
@@ -100,18 +121,31 @@ def ast_to_dot(
         return dot
 
     # Recursively add children
-    children: MutableSequence[Any] = []
+    children: MutableSequence[Tuple[str | None, Any]] = []
 
     if is_node:
         for key, value in node.__dict__.items():
-            logger.debug(f"[{node.__class__.__name__}] Processing field '{key}' with value: {value}")
+            logger.debug(
+                f"[{node.__class__.__name__}] Processing field '{key}' with value: {value}"
+            )
+
+            if key in {"_source"}:
+                # Don't emit source information
+                continue
 
             if isinstance(value, list):
-                children.extend([v for v in value if hasattr(v, "__class__")])
+                for v in value:
+                    if not hasattr(v, "__class__"):
+                        continue
+
+                    children.append((None, v))
             elif hasattr(value, "__class__"):
-                children.append(value)
+                logger.debug(f"{key}: adding child node: {value}")
+                children.append((key.lstrip("_"), value))
+
+    logger.debug(f"Node {node_id} has children: {children}")
 
     for child in children:
-        ast_to_dot(child, dot=dot, parent_id=node_id)
+        ast_to_dot(child[1], dot=dot, parent_id=node_id, label_prefix=child[0])
 
     return dot

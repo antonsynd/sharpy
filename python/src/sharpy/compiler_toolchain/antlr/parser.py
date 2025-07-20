@@ -29,8 +29,8 @@ class AntlrParser(Parser, SharpyParserListener):
     def _generate_parse_tree(self, input: TextIOBase) -> ParseTreeNode:
         parser: SharpyParser = self._create_parser(input=input)
 
-        # Parse the input, starting with the 'file_input' rule
-        return parser.file_input()
+        # Parse the input, starting with the 'module' rule
+        return parser.module()
 
     def _postprocess_parse_tree(self, parse_tree: ParseTreeNode) -> ParseTreeNode | None:
         parse_tree_opt: ParseTreeNode | None = self._prune_empty_nodes(node=parse_tree)
