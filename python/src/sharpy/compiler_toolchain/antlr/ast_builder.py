@@ -59,49 +59,43 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug("Visiting atom")
         logger.debug(f"Atom value: {ctx.getText()}")
 
-        text: str | None = ctx.getText()
-
-        match text:
-            case "True":
-                return Constant(value=True)
-            case "False":
-                return Constant(value=False)
-            case "None":
-                return Constant(value=None)
-            case "pass":
-                return Pass()
-            case "...":
-                return Ellipsis()
-            case _:
-                return Constant(value=text)
-
-    def emit_hard_coded_token(self, token: str) -> Node:
-        logger.debug(f"Emitting hard-coded token: {token}")
-
-        match token:
-            case "True":
-                return Constant(True)
-            case "False":
-                return Constant(False)
-            case "None":
-                return Constant(None)
-            case "pass":
-                return Pass()
-            case "...":
-                return Ellipsis()
-            case _:
-                return Constant(value=token)
+        return Constant(value=ctx.getText())
 
     # Visit a parse tree produced by SharpyParser#simple_statement.
     def visitSimple_statement(self, ctx: SharpyParser.Simple_statementContext):
         logger.debug("Visiting simple statement")
 
-        text: str | None = ctx.getText()
-
-        if text:
-            return self.emit_hard_coded_token(text)
-
         return self.visitChildren(ctx)
+
+    def visitPass_statement(self, ctx: SharpyParser.Pass_statementContext):
+        logger.debug("Visiting pass statement")
+        # pass_statement: 'pass'
+        return Pass()
+
+    def visitBreak_statement(self, ctx: SharpyParser.Break_statementContext):
+        logger.debug("Visiting break statement")
+        # break_statement: 'break'
+        return Break()
+
+    def visitContinue_statement(self, ctx: SharpyParser.Continue_statementContext):
+        logger.debug("Visiting continue statement")
+        # continue_statement: 'continue'
+        return Continue()
+
+    def visitTrue_literal(self, ctx: SharpyParser.True_literalContext):
+        logger.debug("Visiting True literal")
+        # true_literal: 'True'
+        return Constant(value=True)
+
+    def visitFalse_literal(self, ctx: SharpyParser.False_literalContext):
+        logger.debug("Visiting False literal")
+        # false_literal: 'False'
+        return Constant(value=False)
+
+    def visitNone_literal(self, ctx: SharpyParser.None_literalContext):
+        logger.debug("Visiting None literal")
+        # none_literal: 'None'
+        return Constant(value=None)
 
     # Visit a parse tree produced by SharpyParser#compound_statement.
     def visitCompound_statement(self, ctx: SharpyParser.Compound_statementContext):
@@ -582,15 +576,39 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
 
         return Dict(keys=keys, values=values)
 
+    def visitKvpairs(self, ctx: SharpyParser.KvpairsContext) -> MutableSequence[tuple[Node, Node]]:
+        logger.debug("Visiting key-value pairs")
+        # kvpairs: kvpair (',' kvpair)*
+        return [self.visitKvpair(kvpair) for kvpair in ctx.kvpair()]
+
     # Visit a parse tree produced by SharpyParser#kvpair.
     def visitKvpair(self, ctx: SharpyParser.KvpairContext):
         logger.debug("Visiting key-value pair")
         # kvpair: expression ':' expression
 
-        key = self.visit(ctx.expression(0))
-        value = self.visit(ctx.expression(1))
+        if ctx.getChildCount() != 3:
+            raise ValueError("Invalid key-value pair format")
+
+        # TODO: Strange why this doesn't work...
+        # print(ctx.getChildCount(), ctx.key_expression(), ctx.value_expression())
+        # print(dir(ctx))
+
+        # key = self.visit(ctx.key_expression())
+        # value = self.visit(ctx.value_expression())
+        key = self.visit(ctx.children[0])
+        value = self.visit(ctx.children[2])
 
         return (key, value)
+
+    def visitKey_expression(self, ctx: SharpyParser.Key_expressionContext) -> Node:
+        logger.debug("Visiting key expression")
+        # key_expression: expression
+        return self.visit(ctx.expression())
+
+    def visitValue_expression(self, ctx: SharpyParser.Value_expressionContext) -> Node:
+        logger.debug("Visiting value expression")
+        # value_expression: expression
+        return self.visit(ctx.expression())
 
     # Visit a parse tree produced by SharpyParser#strings.
     def visitString(self, ctx: SharpyParser.StringContext):

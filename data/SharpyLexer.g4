@@ -169,8 +169,8 @@ fragment ID_LITERAL_FLAG : '$';
 fragment ID_ACCESS_MODIFIER
     : '_'  // protected
     | '__' // private
-    | '!'  // internal
-    | '!!' // file
+    | '$'  // internal
+    | '$$' // file
     ;
 
 NAME : ID_ACCESS_MODIFIER? ID_LITERAL_FLAG? ID_START ID_CONTINUE*;

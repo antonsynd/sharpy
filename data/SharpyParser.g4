@@ -82,12 +82,12 @@ simple_statement
     | return_statement
     | import_statement
     | raise_statement
-    | 'pass'
+    | pass_statement
     | del_statement
     | yield_statement
     | assert_statement
-    | 'break'
-    | 'continue'
+    | break_statement
+    | continue_statement
     | global_statement
     | nonlocal_statement
     | expression_statement;
@@ -134,6 +134,11 @@ augmented_assignment
     | '>>='
     | '**='
     | '//=';
+
+pass_statement: 'pass';
+
+break_statement: 'break';
+continue_statement: 'continue';
 
 return_statement
     : 'return' expressions?;
@@ -354,18 +359,22 @@ literal_pattern
     : signed_number
     | complex_number
     | strings
-    | 'None'
-    | 'True'
-    | 'False';
+    | none_literal
+    | true_literal
+    | false_literal;
+
+none_literal: 'None';
+true_literal: 'True';
+false_literal: 'False';
 
 // Literal expressions are used to restrict permitted mapping pattern keys
 literal_expression
     : signed_number
     | complex_number
     | strings
-    | 'None'
-    | 'True'
-    | 'False';
+    | none_literal
+    | true_literal
+    | false_literal;
 
 complex_number
     : signed_real_number ('+' | '-') imaginary_number
@@ -611,17 +620,19 @@ slice
     : expression? ':' expression? (':' expression? )?
     | named_expression;
 
+ellipsis_literal: '...';
+
 atom
     : name
-    | 'True'
-    | 'False'
-    | 'None'
+    | none_literal
+    | true_literal
+    | false_literal
     | strings
     | NUMBER
     | (tuple | group | generator_expression)
     | (list | list_comprehension)
     | (dict | set | dict_comprehension | set_comprehension)
-    | '...';
+    | ellipsis_literal;
 
 group
     : '(' (yield_expression | named_expression) ')';
@@ -671,7 +682,12 @@ dict
 kvpairs
     : kvpair (',' kvpair)* ','?;
 
-kvpair: expression ':' expression;
+// TODO: This doesn't work for some reason, I used direct references to the
+// children instead.
+kvpair: key_expression ':' value_expression;
+
+key_expression: expression;
+value_expression: expression;
 
 // Comprehensions & Generators
 // ---------------------------

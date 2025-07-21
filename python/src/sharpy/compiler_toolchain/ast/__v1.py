@@ -668,10 +668,15 @@ class Constant(Literal):
     ):
         super().__init__(source)
         self._value: str | int | float | bool | bytes | complex | None = value
+        # TODO: Need to infer other numeric types via the suffix
+        self._type: str = type(value).__name__.title() if value is not None else "None"
         logger.debug(f"Processing constant node with value: {self._value}")
 
     def value(self) -> str | int | float | complex | bytes | bool | None:
         return self._value
+
+    def type(self) -> str:
+        return self._type
 
     def __repr__(self) -> str:
         return f"Constant(value={self._value})"

@@ -122,7 +122,7 @@ def ast_to_dot(
         return dot
 
     # Recursively add children
-    children: MutableSequence[Tuple[str | None, Any]] = []
+    children: MutableSequence[tuple[str | None, Any]] = []
 
     if is_node:
         for key, value in node.__dict__.items():
@@ -139,7 +139,7 @@ def ast_to_dot(
             if key in {"_body"}:
                 new_key = None
             else:
-                new_key = key
+                new_key = key.lstrip("_")
 
             if isinstance(value, list):
                 for i, v in enumerate(value):
@@ -147,7 +147,7 @@ def ast_to_dot(
                         continue
 
                     new_key: str | None = (
-                        new_key if not isinstance(node, (List, Tuple, Set, Dict)) else f"[{i}]"
+                        new_key if not isinstance(node, (List, Tuple, Set)) else f"[{i}]"
                     )
 
                     logger.debug(f"{new_key}: adding child node: {value}")
