@@ -264,19 +264,19 @@ default_assignment: '=' expression;
 // ------------
 
 if_statement
-    : 'if' named_expression ':' block (elif_statement | else_block?)
+    : IF named_expression ':' block (elif_statement | else_block?)
     ;
 elif_statement
-    : 'elif' named_expression ':' block (elif_statement | else_block?)
+    : ELIF named_expression ':' block (elif_statement | else_block?)
     ;
 else_block
-    : 'else' ':' block;
+    : ELSE ':' block;
 
 // While statement
 // ---------------
 
 while_statement
-    : 'while' named_expression ':' block else_block?;
+    : WHILE named_expression ':' block else_block?;
 
 // For statement
 // -------------
@@ -363,9 +363,9 @@ literal_pattern
     | true_literal
     | false_literal;
 
-none_literal: 'None';
-true_literal: 'True';
-false_literal: 'False';
+none_literal: NONE;
+true_literal: TRUE;
+false_literal: FALSE;
 
 // Literal expressions are used to restrict permitted mapping pattern keys
 literal_expression
@@ -490,12 +490,17 @@ expressions
     ;
 
 expression
-    : disjunction ('if' disjunction 'else' expression)?
+    : (disjunction | ternary_expression)
     | lambda_def
     ;
 
+// ast.IfExp()
+ternary_expression
+    : body=disjunction IF test=disjunction ELSE orelse=expression
+    ;
+
 yield_expression
-    : 'yield' 'from' expression
+    : YIELD FROM expression
     ;
 
 // Sharpy allows for match expressions similar to C# switch expressions
@@ -579,20 +584,36 @@ shift_expression
 // --------------------
 
 sum
-    : sum ('+' | '-') term
+    : sum (addition_operator | subtraction_operator) term
     | term
     ;
 
+addition_operator: '+';
+subtraction_operator: '-';
+
 term
-    : term ('*' | '/' | '//' | '%' | '@') factor
+    : term (multiplication_operator | division_operator | floor_division_operator | modulo_operator | matrix_multiplication_operator) factor
     | factor
     ;
 
+multiplication_operator: '*';
+division_operator: '/';
+floor_division_operator: '//';
+modulo_operator: '%';
+matrix_multiplication_operator: '@';
+
 factor
-    : '+' factor
-    | '-' factor
-    | '~' factor
+    : positive_sign factor
+    | negative_sign factor
+    | inversion_operator factor
     | power;
+
+positive_sign
+    : '+';
+negative_sign
+    : '-';
+inversion_operator
+    : '~';
 
 power
     : await_primary ('**' factor)?

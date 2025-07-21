@@ -1,0 +1,18 @@
+# Operators
+x + 1
+x - 1
+x * 2
+x / 2
+x // 2
+x % 2
+x ** 2
+x & 1
+x | 2
+x ^ 3
+~x
+x << 1
+x >> 1
+True and False
+True or False
+not True
+"yes" if True else "no"

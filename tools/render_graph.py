@@ -11,6 +11,7 @@ from sharpy.compiler_toolchain.antlr.rendering import (
     _node_list,
     render_ast_as_png,
     render_parse_tree_as_png,
+    render_parse_tree_as_xml,
 )
 from sharpy.compiler_toolchain.ast import Node as ASTNode
 from sharpy.compiler_toolchain.logging import logger
@@ -52,6 +53,11 @@ def main():
         action="store_true",
         help="Keep temporary files used for rendering (default: False)",
     )
+    parser.add_argument(
+        "--emit-xml",
+        action="store_true",
+        help="Emit XML representation of the parse tree (default: False)",
+    )
 
     args: argparse.Namespace = parser.parse_args()
 
@@ -61,6 +67,7 @@ def main():
     keep_temp: bool = args.keep_temp
     only_parse: bool = args.only_parse
     only_ast: bool = args.only_ast
+    emit_xml: bool = args.emit_xml
 
     if only_parse and only_ast:
         logger.error("Cannot specify both --only-parse and --only-ast. Choose one.")
@@ -119,6 +126,11 @@ def main():
 
         if temp_file:
             print(f"Temporary file kept at {temp_file}")
+
+        if emit_xml:
+            xml_output_path: Path = output_dir / f"{basename}_parse_tree.xml"
+            render_parse_tree_as_xml(parse_tree, raw_parser, xml_output_path)
+            print(f"Parse tree XML written to {xml_output_path}")
 
 
 if __name__ == "__main__":

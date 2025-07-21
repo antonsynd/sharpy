@@ -1,3 +1,5 @@
+import uuid
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any, MutableSequence, Tuple
@@ -79,6 +81,86 @@ def parse_tree_to_dot(
     return dot
 
 
+def render_parse_tree_as_xml(
+    parse_tree: ParseTreeNode, parser: SharpyParser, output_path: Path
+) -> None:
+    """
+    Render a ParseTreeNode and its children as XML and write to the specified path.
+
+    Args:
+        parse_tree: The root ParseTreeNode to render
+        parser: The SharpyParser instance (for rule name lookup)
+        output_path: Path where the XML file will be written
+    """
+    root_element = parse_tree_to_xml(parse_tree, parser)
+
+    # Create the XML tree and write to file
+    tree = ET.ElementTree(root_element)
+    ET.indent(tree, space="  ", level=0)  # Pretty formatting
+
+    logger.debug(f"Writing parse tree XML to {output_path}")
+    tree.write(output_path, encoding="utf-8", xml_declaration=True)
+
+
+def parse_tree_to_xml(
+    tree: ParseTreeNode, parser: SharpyParser, parent_element: ET.Element | None = None
+) -> ET.Element:
+    """
+    Convert a ParseTreeNode to an XML Element recursively.
+
+    Args:
+        tree: The ParseTreeNode to convert
+        parser: The SharpyParser instance (for rule name lookup)
+        parent_element: The parent XML element (None for root)
+
+    Returns:
+        The XML Element representing this ParseTreeNode
+    """
+    # Determine the element name and type
+    if isinstance(tree, ParserRuleContext):
+        rule_index = tree.getRuleIndex()
+        rule_name = parser.ruleNames[rule_index] if rule_index >= 0 else "unknown_rule"
+        element_name = "parse_rule"
+        node_type = "rule"
+    else:
+        # Terminal node
+        element_name = "terminal"
+        node_type = "terminal"
+        rule_name = None
+
+    # Create the XML element
+    element = ET.Element(element_name)
+
+    # Add attributes
+    element.set("id", str(id(tree)))
+    element.set("type", node_type)
+
+    if rule_name:
+        element.set("rule_name", rule_name)
+
+    # Add text content
+    text_content = tree.getText()
+    if text_content:
+        element.set("text", text_content)
+
+    # Add child count for debugging
+    child_count = tree.getChildCount()
+    element.set("child_count", str(child_count))
+
+    # Recursively add children
+    if child_count > 0:
+        children_element = ET.SubElement(element, "children")
+        for child in tree.getChildren():
+            child_element = parse_tree_to_xml(child, parser)
+            children_element.append(child_element)
+
+    logger.debug(
+        f"Created XML element for node {id(tree)}: {element_name} ({rule_name if rule_name else 'terminal'})"
+    )
+
+    return element
+
+
 _node_list: MutableSequence[str] = list()
 
 
@@ -100,7 +182,12 @@ def ast_to_dot(
 
     is_node: bool = isinstance(node, ASTNode)
 
-    node_id = str(id(node))
+    if is_node:
+        node_id = str(id(node))
+    else:
+        # Literal values in Python are shared, so for readability, we append a
+        # UUID to ensure unique node IDs for the same value.
+        node_id = f"value_{id(node)}_{uuid.uuid4().hex}"
 
     if is_node:
         label: str = node.__class__.__name__

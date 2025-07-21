@@ -59,6 +59,31 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug("Visiting atom")
         logger.debug(f"Atom value: {ctx.getText()}")
 
+        if ctx.name():
+            return self.visit(ctx.name())
+        if ctx.ellipsis_literal():
+            return self.visit(ctx.ellipsis_literal())
+        if ctx.none_literal():
+            return self.visit(ctx.none_literal())
+        if ctx.true_literal():
+            return self.visit(ctx.true_literal())
+        if ctx.false_literal():
+            return self.visit(ctx.false_literal())
+        # if ctx.signed_number():
+        #     return self.visit(ctx.signed_number())
+        # if ctx.complex_number():
+        #     return self.visit(ctx.complex_number())
+        if ctx.strings():
+            return self.visit(ctx.strings())
+        # if ctx.list():
+        #     return self.visit(ctx.list())
+        # if ctx.tuple():
+        #     return self.visit(ctx.tuple())
+        # if ctx.set():
+        #     return self.visit(ctx.set())
+        # if ctx.dict():
+        #     return self.visit(ctx.dict())
+
         return Constant(value=ctx.getText())
 
     # Visit a parse tree produced by SharpyParser#simple_statement.
@@ -85,17 +110,23 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
     def visitTrue_literal(self, ctx: SharpyParser.True_literalContext):
         logger.debug("Visiting True literal")
         # true_literal: 'True'
-        return Constant(value=True)
+        retval = Constant(value=True)
+        logger.debug(f"Returning True literal: {id(retval)}")
+        return retval
 
     def visitFalse_literal(self, ctx: SharpyParser.False_literalContext):
         logger.debug("Visiting False literal")
         # false_literal: 'False'
-        return Constant(value=False)
+        retval = Constant(value=False)
+        logger.debug(f"Returning False literal: {id(retval)}")
+        return retval
 
     def visitNone_literal(self, ctx: SharpyParser.None_literalContext):
         logger.debug("Visiting None literal")
         # none_literal: 'None'
-        return Constant(value=None)
+        retval = Constant(value=None)
+        logger.debug(f"Returning None literal: {id(retval)}")
+        return retval
 
     # Visit a parse tree produced by SharpyParser#compound_statement.
     def visitCompound_statement(self, ctx: SharpyParser.Compound_statementContext):
@@ -197,6 +228,11 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         names: Sequence[alias] = self.visit(ctx.import_from_targets())
 
         return ImportFrom(module=module, names=names, level=level)
+
+    def visitTernary_expression(self, ctx: SharpyParser.Ternary_expressionContext):
+        return IfExp(
+            test=self.visit(ctx.test), body=self.visit(ctx.body), orelse=self.visit(ctx.orelse)
+        )
 
     def visitImport_from_targets(self, ctx: SharpyParser.Import_from_targetsContext):
         logger.debug("Visiting import from targets")
@@ -429,12 +465,12 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
             return self.visit(ctx.complex_number())
         elif ctx.signed_number():
             return self.visit(ctx.signed_number())
-        elif ctx.getText() == "None":
-            return Constant(value=None)
-        elif ctx.getText() == "True":
-            return Constant(value=True)
-        elif ctx.getText() == "False":
-            return Constant(value=False)
+        elif ctx.none_literal():
+            return self.visit(ctx.none_literal())
+        elif ctx.true_literal():
+            return self.visit(ctx.true_literal())
+        elif ctx.false_literal():
+            return self.visit(ctx.false_literal())
 
         return None
 
