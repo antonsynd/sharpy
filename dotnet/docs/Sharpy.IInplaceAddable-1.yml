@@ -17,7 +17,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IInplaceAddable.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: IInplaceAddable
     path: ../src/Sharpy/IInplaceAddable.cs
     startLine: 2
@@ -47,7 +47,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IInplaceAddable.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __IAdd__
     path: ../src/Sharpy/IInplaceAddable.cs
     startLine: 4

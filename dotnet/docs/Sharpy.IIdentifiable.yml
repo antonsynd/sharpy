@@ -17,7 +17,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IIdentifiable.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: IIdentifiable
     path: ../src/Sharpy/IIdentifiable.cs
     startLine: 2
@@ -42,7 +42,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IIdentifiable.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Id__
     path: ../src/Sharpy/IIdentifiable.cs
     startLine: 4

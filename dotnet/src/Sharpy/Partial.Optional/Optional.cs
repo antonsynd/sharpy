@@ -1,38 +1,75 @@
 namespace Sharpy;
 
-public sealed partial class Optional<T> : Object where T : notnull
+public partial struct Optional<T> : IBoolConvertible, IRepresentable, IEquatable, IEquatableWith<Optional<T>>
 {
-    // Type-erased to remove default/null distinction for value and
-    // reference types.
-    private object? _value;
+    private T _value;
+    private bool _hasValue;
 
-    public Optional() { }
+    public Optional() { _value = default; _hasValue = false; }
 
-    public Optional(T? value) { _value = value; }
-
-    public T GetValue()
+    public Optional(T value)
     {
-        if (_value is null)
+        Set(value);
+    }
+
+    public T Value()
+    {
+        if (!_hasValue)
         {
-            throw new ArgumentNullException($"Optional<${typeof(T).Name}> has no value.");
+            throw new InvalidOperationException($"Optional<{typeof(T).Name}> has no value.");
         }
 
-        return (T)_value;
+        return _value;
     }
 
-    public void SetValue(T? value)
+    public readonly T ValueOrDefault(T defaultValue)
     {
-        _value = value;
+        return _hasValue ? _value : defaultValue!;
     }
 
-    public bool HasValue()
+    public Optional<U> Map<U>(Func<T, U> func)
     {
-        return _value != null;
+        if (!_hasValue)
+        {
+            return new Optional<U>();
+        }
+
+        return func(_value);
     }
 
-    public void Reset()
+    public void Set(T value)
     {
-        _value = null;
+        _value = value ?? default;
+        _hasValue = value is not null;
+    }
+
+    public T Take()
+    {
+        if (!_hasValue)
+        {
+            throw new InvalidOperationException($"Optional<{typeof(T).Name}> has no value.");
+        }
+
+        var value = _value;
+        Clear();
+        return value;
+    }
+
+    public readonly bool HasValue()
+    {
+        return _hasValue;
+    }
+
+    public void Clear()
+    {
+        _value = default;
+        _hasValue = false;
+    }
+
+    public void Swap(Optional<T> other)
+    {
+        (other._value, _value) = (_value, other._value);
+        (other._hasValue, _hasValue) = (_hasValue, other._hasValue);
     }
 
     public static bool operator true(Optional<T> optional)
@@ -45,31 +82,8 @@ public sealed partial class Optional<T> : Object where T : notnull
         return !optional.__Bool__();
     }
 
-    public static implicit operator Optional<T>(T? value)
+    public static implicit operator Optional<T>(T value)
     {
         return new Optional<T>(value);
-    }
-
-    public static bool operator ==(Optional<T> optional, T? value)
-    {
-        return ReferenceEquals(optional._value, value);
-    }
-
-    public static bool operator !=(Optional<T> optional, T? value)
-    {
-        return !(optional == value);
-    }
-
-    /// <remarks>
-    /// Equality is only symmetrical if it is symmetrical for T.
-    /// </remarks>
-    public static bool operator ==(T? value, Optional<T> optional)
-    {
-        return ReferenceEquals(value, optional._value);
-    }
-
-    public static bool operator !=(T? value, Optional<T> optional)
-    {
-        return !(optional == value);
     }
 }

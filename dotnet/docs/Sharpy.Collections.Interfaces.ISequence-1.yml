@@ -26,7 +26,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISequence.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: ISequence
     path: ../src/Sharpy/Collections/Interfaces/ISequence.cs
     startLine: 5
@@ -74,7 +74,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISequence.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Collections/Interfaces/ISequence.cs
     startLine: 16
@@ -115,7 +115,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISequence.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Collections/Interfaces/ISequence.cs
     startLine: 24
@@ -149,7 +149,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISequence.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Collections/Interfaces/ISequence.cs
     startLine: 32
@@ -183,7 +183,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISequence.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Collections/Interfaces/ISequence.cs
     startLine: 40
@@ -217,7 +217,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISequence.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Collections/Interfaces/ISequence.cs
     startLine: 57
@@ -263,7 +263,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISequence.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Collections/Interfaces/ISequence.cs
     startLine: 76
@@ -315,7 +315,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISequence.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Count
     path: ../src/Sharpy/Collections/Interfaces/ISequence.cs
     startLine: 88
@@ -353,7 +353,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISequence.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Index
     path: ../src/Sharpy/Collections/Interfaces/ISequence.cs
     startLine: 96
@@ -400,7 +400,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISequence.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __GetItem__
     path: ../src/Sharpy/Collections/Interfaces/ISequence.cs
     startLine: 103
@@ -441,7 +441,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISequence.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __GetItem__
     path: ../src/Sharpy/Collections/Interfaces/ISequence.cs
     startLine: 110

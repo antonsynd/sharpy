@@ -17,7 +17,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/StopIteration.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: StopIteration
     path: ../src/Sharpy/StopIteration.cs
     startLine: 2
@@ -65,7 +65,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/StopIteration.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/StopIteration.cs
     startLine: 2

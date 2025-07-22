@@ -17,7 +17,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IndexExtensions.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: IndexExtensions
     path: ../src/Sharpy/IndexExtensions.cs
     startLine: 2
@@ -53,7 +53,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IndexExtensions.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: ToNormalizedUint32
     path: ../src/Sharpy/IndexExtensions.cs
     startLine: 4

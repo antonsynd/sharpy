@@ -17,7 +17,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IMultipliable.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: IMultipliable
     path: ../src/Sharpy/IMultipliable.cs
     startLine: 22
@@ -63,7 +63,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IMultipliable.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: op_Multiply
     path: ../src/Sharpy/IMultipliable.cs
     startLine: 27

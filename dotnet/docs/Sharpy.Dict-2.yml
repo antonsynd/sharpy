@@ -61,7 +61,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Dict
     path: ../src/Sharpy/Dict.cs
     startLine: 8
@@ -129,7 +129,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Dict.cs
     startLine: 12
@@ -158,7 +158,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Dict.cs
     startLine: 17
@@ -190,7 +190,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Dict.cs
     startLine: 25
@@ -222,7 +222,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Copy
     path: ../src/Sharpy/Dict.cs
     startLine: 36
@@ -254,7 +254,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Clear
     path: ../src/Sharpy/Dict.cs
     startLine: 49
@@ -290,7 +290,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Contains
     path: ../src/Sharpy/Dict.cs
     startLine: 54
@@ -331,7 +331,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Get
     path: ../src/Sharpy/Dict.cs
     startLine: 59
@@ -375,7 +375,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Get
     path: ../src/Sharpy/Dict.cs
     startLine: 69
@@ -421,7 +421,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: GetEnumerator
     path: ../src/Sharpy/Dict.cs
     startLine: 79
@@ -456,7 +456,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Items
     path: ../src/Sharpy/Dict.cs
     startLine: 87
@@ -493,7 +493,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Keys
     path: ../src/Sharpy/Dict.cs
     startLine: 92
@@ -527,7 +527,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Pop
     path: ../src/Sharpy/Dict.cs
     startLine: 97
@@ -567,7 +567,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Pop
     path: ../src/Sharpy/Dict.cs
     startLine: 107
@@ -609,7 +609,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: PopItem
     path: ../src/Sharpy/Dict.cs
     startLine: 117
@@ -650,7 +650,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: SetDefault
     path: ../src/Sharpy/Dict.cs
     startLine: 125
@@ -692,7 +692,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Update
     path: ../src/Sharpy/Dict.cs
     startLine: 135
@@ -735,7 +735,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Update
     path: ../src/Sharpy/Dict.cs
     startLine: 143
@@ -780,7 +780,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Values
     path: ../src/Sharpy/Dict.cs
     startLine: 151
@@ -814,7 +814,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Contains__
     path: ../src/Sharpy/Dict.cs
     startLine: 156
@@ -858,7 +858,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __DelItem__
     path: ../src/Sharpy/Dict.cs
     startLine: 161
@@ -896,7 +896,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __GetItem__
     path: ../src/Sharpy/Dict.cs
     startLine: 169
@@ -936,7 +936,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Iter__
     path: ../src/Sharpy/Dict.cs
     startLine: 179
@@ -983,7 +983,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: this[]
     path: ../src/Sharpy/Dict.cs
     startLine: 184
@@ -1022,7 +1022,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Len__
     path: ../src/Sharpy/Dict.cs
     startLine: 190
@@ -1056,7 +1056,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/Dict.cs
     startLine: 195
@@ -1097,7 +1097,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/Dict.cs
     startLine: 205
@@ -1131,7 +1131,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __SetItem__
     path: ../src/Sharpy/Dict.cs
     startLine: 234
@@ -1168,7 +1168,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: ToDictionary
     path: ../src/Sharpy/Dict.cs
     startLine: 244
@@ -1198,7 +1198,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Or__
     path: ../src/Sharpy/Dict.cs
     startLine: 249
@@ -1232,7 +1232,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __IOr__
     path: ../src/Sharpy/Dict.cs
     startLine: 257
@@ -1264,7 +1264,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Or__
     path: ../src/Sharpy/Dict.cs
     startLine: 262
@@ -1305,7 +1305,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __IOr__
     path: ../src/Sharpy/Dict.cs
     startLine: 270
@@ -1344,7 +1344,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Or__
     path: ../src/Sharpy/Dict.cs
     startLine: 275
@@ -1387,7 +1387,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __IOr__
     path: ../src/Sharpy/Dict.cs
     startLine: 283
@@ -1426,7 +1426,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: op_BitwiseOr
     path: ../src/Sharpy/Dict.cs
     startLine: 288
@@ -1462,7 +1462,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: op_Equality
     path: ../src/Sharpy/Dict.cs
     startLine: 293
@@ -1498,7 +1498,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: op_Inequality
     path: ../src/Sharpy/Dict.cs
     startLine: 308
@@ -1534,7 +1534,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Hash__
     path: ../src/Sharpy/Dict.cs
     startLine: 313
@@ -1567,7 +1567,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Repr__
     path: ../src/Sharpy/Dict.cs
     startLine: 322
@@ -1604,7 +1604,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Bool__
     path: ../src/Sharpy/Dict.cs
     startLine: 347
@@ -1642,7 +1642,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: op_True
     path: ../src/Sharpy/Dict.cs
     startLine: 352
@@ -1676,7 +1676,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: op_False
     path: ../src/Sharpy/Dict.cs
     startLine: 357
@@ -1710,7 +1710,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: IsReadOnly
     path: ../src/Sharpy/Dict.cs
     startLine: 362
@@ -1745,7 +1745,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Add
     path: ../src/Sharpy/Dict.cs
     startLine: 370
@@ -1784,7 +1784,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Dict.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: CopyTo
     path: ../src/Sharpy/Dict.cs
     startLine: 385

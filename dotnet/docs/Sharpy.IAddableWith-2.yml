@@ -17,7 +17,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IAddable.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: IAddableWith
     path: ../src/Sharpy/IAddable.cs
     startLine: 10
@@ -59,7 +59,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IAddable.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Add__
     path: ../src/Sharpy/IAddable.cs
     startLine: 12

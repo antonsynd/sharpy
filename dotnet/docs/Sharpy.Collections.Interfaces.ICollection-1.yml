@@ -18,7 +18,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ICollection.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: ICollection
     path: ../src/Sharpy/Collections/Interfaces/ICollection.cs
     startLine: 5
@@ -61,7 +61,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ICollection.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: IsReadOnly
     path: ../src/Sharpy/Collections/Interfaces/ICollection.cs
     startLine: 19
@@ -92,7 +92,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ICollection.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Remove
     path: ../src/Sharpy/Collections/Interfaces/ICollection.cs
     startLine: 27

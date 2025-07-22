@@ -17,7 +17,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.SetIterator/SetIterator.IIterator.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: SetIterator
     path: ../src/Sharpy/Partial.SetIterator/SetIterator.IIterator.cs
     startLine: 2
@@ -63,7 +63,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Partial.SetIterator/SetIterator.IIterator.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Next__
     path: ../src/Sharpy/Partial.SetIterator/SetIterator.IIterator.cs
     startLine: 5

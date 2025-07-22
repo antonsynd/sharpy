@@ -17,7 +17,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/ILessThanComparable.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: ILessThanComparableWith
     path: ../src/Sharpy/ILessThanComparable.cs
     startLine: 2
@@ -47,7 +47,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/ILessThanComparable.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Lt__
     path: ../src/Sharpy/ILessThanComparable.cs
     startLine: 4

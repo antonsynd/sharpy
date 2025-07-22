@@ -144,7 +144,7 @@ items:
     type: Class
   - uid: Sharpy.Optional`1
     name: Optional<T>
-    type: Class
+    type: Struct
   - uid: Sharpy.PrintArguments`1
     name: PrintArguments<T>
     type: Class

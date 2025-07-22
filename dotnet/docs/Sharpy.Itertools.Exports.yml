@@ -20,7 +20,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Itertools/Repeat.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Exports
     path: ../src/Sharpy/Itertools/Repeat.cs
     startLine: 2
@@ -55,7 +55,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Itertools/Count.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Count
     path: ../src/Sharpy/Itertools/Count.cs
     startLine: 6
@@ -93,7 +93,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Itertools/Cycle.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Cycle
     path: ../src/Sharpy/Itertools/Cycle.cs
     startLine: 6
@@ -129,7 +129,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Itertools/Repeat.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Repeat
     path: ../src/Sharpy/Itertools/Repeat.cs
     startLine: 4
@@ -165,7 +165,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Itertools/Repeat.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Repeat
     path: ../src/Sharpy/Itertools/Repeat.cs
     startLine: 9

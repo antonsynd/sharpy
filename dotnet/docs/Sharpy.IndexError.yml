@@ -17,7 +17,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IndexError.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: IndexError
     path: ../src/Sharpy/IndexError.cs
     startLine: 6
@@ -70,7 +70,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IndexError.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/IndexError.cs
     startLine: 6

@@ -23,7 +23,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Slice.Sized.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Slice
     path: ../src/Sharpy/Slice.Sized.cs
     startLine: 2
@@ -57,7 +57,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Slice.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: .ctor
     path: ../src/Sharpy/Slice.cs
     startLine: 4
@@ -93,7 +93,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Slice.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: start
     path: ../src/Sharpy/Slice.cs
     startLine: 6
@@ -120,7 +120,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Slice.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: end
     path: ../src/Sharpy/Slice.cs
     startLine: 7
@@ -147,7 +147,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Slice.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: step
     path: ../src/Sharpy/Slice.cs
     startLine: 8
@@ -174,7 +174,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Slice.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Len
     path: ../src/Sharpy/Slice.cs
     startLine: 10
@@ -212,7 +212,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Slice.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: FromRange
     path: ../src/Sharpy/Slice.cs
     startLine: 17
@@ -243,7 +243,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Slice.Sized.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Len__
     path: ../src/Sharpy/Slice.Sized.cs
     startLine: 4

@@ -17,7 +17,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/RangeExtensions.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: RangeExtensions
     path: ../src/Sharpy/RangeExtensions.cs
     startLine: 2
@@ -53,7 +53,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/RangeExtensions.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: ToSlice
     path: ../src/Sharpy/RangeExtensions.cs
     startLine: 4

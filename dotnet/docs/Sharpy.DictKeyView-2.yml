@@ -37,7 +37,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: DictKeyView
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 5
@@ -84,7 +84,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: CompareTo
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 14
@@ -118,7 +118,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Contains
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 19
@@ -151,7 +151,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: Equals
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 24
@@ -185,7 +185,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: GetEnumerator
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 29
@@ -220,7 +220,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: IsDisjoint
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 37
@@ -254,7 +254,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __And__
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 42
@@ -288,7 +288,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Contains__
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 47
@@ -321,7 +321,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Eq__
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 52
@@ -355,7 +355,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Ge__
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 57
@@ -389,7 +389,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Gt__
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 62
@@ -423,7 +423,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Iter__
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 67
@@ -470,7 +470,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Len__
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 72
@@ -504,7 +504,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Le__
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 77
@@ -538,7 +538,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Lt__
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 82
@@ -572,7 +572,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Ne__
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 87
@@ -606,7 +606,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Or__
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 92
@@ -640,7 +640,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: op_BitwiseOr
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 97
@@ -676,7 +676,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __ROr__
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 102
@@ -710,7 +710,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __RSub__
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 107
@@ -744,7 +744,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Sub__
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 112
@@ -778,7 +778,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/DictKeyView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __XOr__
     path: ../src/Sharpy/DictKeyView.cs
     startLine: 117

@@ -17,7 +17,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IRepresentable.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: IRepresentable
     path: ../src/Sharpy/IRepresentable.cs
     startLine: 2
@@ -42,7 +42,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/IRepresentable.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Repr__
     path: ../src/Sharpy/IRepresentable.cs
     startLine: 4

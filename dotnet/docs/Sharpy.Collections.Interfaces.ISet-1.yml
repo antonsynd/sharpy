@@ -23,7 +23,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISet.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: ISet
     path: ../src/Sharpy/Collections/Interfaces/ISet.cs
     startLine: 5
@@ -75,7 +75,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISet.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __And__
     path: ../src/Sharpy/Collections/Interfaces/ISet.cs
     startLine: 10
@@ -109,7 +109,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISet.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Or__
     path: ../src/Sharpy/Collections/Interfaces/ISet.cs
     startLine: 12
@@ -143,7 +143,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISet.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __Sub__
     path: ../src/Sharpy/Collections/Interfaces/ISet.cs
     startLine: 14
@@ -177,7 +177,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISet.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __RSub__
     path: ../src/Sharpy/Collections/Interfaces/ISet.cs
     startLine: 16
@@ -211,7 +211,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISet.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __XOr__
     path: ../src/Sharpy/Collections/Interfaces/ISet.cs
     startLine: 18
@@ -245,7 +245,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISet.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: __ROr__
     path: ../src/Sharpy/Collections/Interfaces/ISet.cs
     startLine: 20
@@ -279,7 +279,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/ISet.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: IsDisjoint
     path: ../src/Sharpy/Collections/Interfaces/ISet.cs
     startLine: 22

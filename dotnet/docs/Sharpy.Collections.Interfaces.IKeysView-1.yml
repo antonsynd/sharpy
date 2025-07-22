@@ -16,7 +16,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IKeysView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: IKeysView
     path: ../src/Sharpy/Collections/Interfaces/IKeysView.cs
     startLine: 5

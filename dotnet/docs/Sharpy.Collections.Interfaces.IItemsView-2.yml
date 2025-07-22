@@ -16,7 +16,7 @@ items:
     remote:
       path: dotnet/src/Sharpy/Collections/Interfaces/IItemsView.cs
       branch: mainline
-      repo: https://github.com/antonsynd/sharpy.git
+      repo: git@github.com:antonsynd/sharpy.git
     id: IItemsView
     path: ../src/Sharpy/Collections/Interfaces/IItemsView.cs
     startLine: 5
