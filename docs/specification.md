@@ -1,8 +1,15 @@
 # Sharpy Language Specification
 
+# Brief
+
+Sharpy is a modern and statically-typed Pythonic language targeting .NET.
+While Python code will not run in Sharpy without modifications, the
+additions and changes in Sharpy over Python will be welcomed by all Python
+developers.
+
 # Goals
 
-* Provide a statically-typed Pythonic language for the .NET CLI
+* Provide a statically-typed and modern Pythonic language for the .NET CLI
 * Be ABI compatible with C# and the rest of the CLI/CLR.
 
 # Types
@@ -37,7 +44,7 @@ table below this one.
 | `memoryview` | `memoryview` | - | - | - |
 | `None` | `None` | `void` | `System.Void` | As a type, only indicates the lack of a return value, rather than an untyped parameter or the `None` (`null`) literal |
 | `object` | `object` | `object` | `System.Object` | - |
-| `T?` or `Optional[T]` | `T` | `T?` | `System.Nullable<T>` | Both Sharpy syntaxes are accepted, but `T?` is preferred |
+| `T?` | `T` | `T?` | `System.Nullable<T>` | - |
 | `sbyte` | `int` | `sbyte` | `System.SByte` | - |
 | `set[T]` | `set[T]` | `HashSet<T>` | `System.Collections.Generic.HashSet<T>` | - |
 | `short` | `int` | `short` | `System.Int16` | - |
@@ -75,7 +82,7 @@ follows:
 | `memoryview` | `Sharpy.MemoryView` | - |
 | `None` | `void` | As a type, only indicates a lack of a return value, rather than an untyped parameter or the `None` (`null`) literal |
 | `object` | `Sharpy.Object` | - |
-| `T?` | `T?` | - |
+| `T?` | `Sharpy.Optional<T>` | - |
 | `sbyte` | `sbyte` | - |
 | `set[T]` | `Sharpy.Set<T>` | - |
 | `short` | `short` | - |
@@ -132,13 +139,14 @@ Python is replaced with a shorthand syntax.
 
 ```Python
 class Foo:
-    # The backing member is created as a private member
+    # The backing member is created as a private member based on the property
+    # name (indicated by the double underscore prefix)
     property value: int:
         get(self):
             return self.__value
 
         set(self):
-            # value is implicit
+            # `value` is implicit but can be explicitly specified
             self.__value = value
 ```
 
@@ -189,6 +197,9 @@ Protocols declare methods that a conforming must implement.
 
 ```Python
 protocol Encodable:
+    @static
+    def foobar() -> bool: ...
+
     def encode(self) -> str: ...
 
     def encode_as_json(self) -> str:
@@ -323,11 +334,14 @@ conversion to the desired case. If there is an existing case variant,
 the compiler throws an exception telling the user to resolve the
 ambiguity.
 
-Any symbol in Sharpy can be prefixed with `$` to tell the compiler
+Any symbol in Sharpy can be prefixed with `\`` to tell the compiler
 to not transform the name during resolution. This is equivalent to
 C#'s `@`, which indicates that a symbol name should be resolved as it
-is, even if it is a keyword. Sharpy `$` can also be used for the
+is, even if it is a keyword. Sharpy `\`` can also be used for the
 purpose of using keywords as identifiers.
+
+Note that a closing `\`` is allowed, but not required, to fit the behavior
+of editors to close certain quotation-like characters.
 
 ```Python
 # Exposed in ABI as AddSomething()
@@ -343,10 +357,10 @@ new_hash_set()
 ```
 
 ```Python
-from foo_bar.$abc import *
+from foo_bar.`abc import *
 
 # resolves to FooBar.abc.new_hash_set()
-$new_hash_set()
+new_hash_set()
 ```
 
 # Generics
@@ -380,7 +394,7 @@ f?.lower()  # returns None
 
 TODO
 
-# None-able types
+# True-optional/None-able types
 
 None-able types are indicated in the type with `?` appended to the type:
 
@@ -394,8 +408,8 @@ Value types are not None-able by default, but reference types are.
 
 ```Python
 i: int? = match get_user_input():
-    case "none": return None
-    case _: return int(i)
+    case "none": None
+    case _: int(i)
 ```
 
 TODO
