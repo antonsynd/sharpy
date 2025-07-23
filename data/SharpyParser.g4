@@ -112,51 +112,51 @@ compound_statement
 
 // NOTE: annotated_rhs may start with 'yield'; yield_expression must start with 'yield'
 assignment
-    : target=typed_name ('=' annotated_rhs )?
-    | ('(' single_target ')'
-         | single_subscript_attribute_target) ':' expression ('=' annotated_rhs )?
-    | (star_targets '=' )+ yield_expression
+    : target=typed_name (EQUAL annotated_rhs )?
+    | (LPAR single_target RPAR
+         | single_subscript_attribute_target) COLON expression (EQUAL annotated_rhs )?
+    | (star_targets EQUAL )+ yield_expression
     | single_target augmented_assignment yield_expression;
 
 annotated_rhs: yield_expression;
 
 augmented_assignment
-    : '+='
-    | '-='
-    | '*='
-    | '@='
-    | '/='
-    | '%='
-    | '&='
-    | '|='
-    | '^='
-    | '<<='
-    | '>>='
-    | '**='
-    | '//=';
+    : PLUSEQUAL
+    | MINEQUAL
+    | STAREQUAL
+    | ATEQUAL
+    | SLASHEQUAL
+    | PERCENTEQUAL
+    | AMPEREQUAL
+    | VBAREQUAL
+    | CIRCUMFLEXEQUAL
+    | LEFTSHIFTEQUAL
+    | RIGHTSHIFTEQUAL
+    | DOUBLESTAREQUAL
+    | DOUBLESLASHEQUAL;
 
-pass_statement: 'pass';
+pass_statement: PASS;
 
-break_statement: 'break';
-continue_statement: 'continue';
+break_statement: BREAK;
+continue_statement: CONTINUE;
 
 return_statement
-    : 'return' expressions?;
+    : RETURN expressions?;
 
 raise_statement
-    : 'raise' (error=expression ('from' parent=expression )?)?
+    : RAISE (error=expression (FROM parent=expression )?)?
     ;
 
-global_statement: 'global' name (',' name)*;
+global_statement: GLOBAL name (COMMA name)*;
 
-nonlocal_statement: 'nonlocal' name (',' name)*;
+nonlocal_statement: NONLOCAL name (COMMA name)*;
 
 del_statement
-    : 'del' del_targets;
+    : DEL del_targets;
 
 yield_statement: yield_expression;
 
-assert_statement: 'assert' expression (',' expression )?;
+assert_statement: ASSERT expression (COMMA expression )?;
 
 import_statement
     : import_name
@@ -165,25 +165,25 @@ import_statement
 // Import statements
 // -----------------
 
-import_name: 'import' dotted_as_names;
+import_name: IMPORT dotted_as_names;
 // note below: the ('.' | '...') is necessary because '...' is tokenized as ELLIPSIS
 import_from
-    : 'from' ('.' | '...')* dotted_name 'import' import_from_targets
-    | 'from' ('.' | '...')+ 'import' import_from_targets;
+    : FROM ('.' | '...')* dotted_name IMPORT import_from_targets
+    | FROM ('.' | '...')+ IMPORT import_from_targets;
 import_from_targets
-    : '(' import_from_as_names ','? ')'
+    : LPAR import_from_as_names COMMA? RPAR
     | import_from_as_names
-    | '*';
+    | STAR;
 import_from_as_names
-    : import_from_as_name (',' import_from_as_name)*;
+    : import_from_as_name (COMMA import_from_as_name)*;
 import_from_as_name
-    : name ('as' name )?;
+    : name (AS name )?;
 dotted_as_names
-    : dotted_as_name (',' dotted_as_name)*;
+    : dotted_as_name (COMMA dotted_as_name)*;
 dotted_as_name
-    : dotted_name ('as' name )?;
+    : dotted_name (AS name )?;
 dotted_name
-    : dotted_name '.' name
+    : dotted_name member_access name
     | name;
 
 // COMPOUND STATEMENTS
@@ -194,43 +194,43 @@ dotted_name
 
 block: NEWLINE INDENT statement+ DEDENT;
 
-decorators: ('@' named_expression NEWLINE )+;
+decorators: (AT named_expression NEWLINE )+;
 
 // Class/struct/protocol definitions
 // -----------------
 
 class_def
-    : decorators? 'class' name type_params? ('(' arguments? ')' )? ':' block;
+    : decorators? CLASS name type_params? (LPAR arguments? RPAR )? COLON block;
 
 struct_def
-    : decorators? 'struct' name type_params? ('(' arguments? ')' )? ':' block;
+    : decorators? STRUCT name type_params? (LPAR arguments? RPAR )? COLON block;
 
 protocol_def
-    : decorators? 'protocol' name type_params? ('(' arguments? ')' )? ':' block;
+    : decorators? PROTOCOL name type_params? (LPAR arguments? RPAR )? COLON block;
 
 // Function definitions
 // --------------------
 
 function_def
-    : decorators? 'def' name type_params? '(' params? ')' ('->' expression )? ':' block
+    : decorators? DEF name type_params? LPAR params? RPAR (RARROW expression )? COLON block
     ;
 
 async_function_def
-    : decorators? 'async' 'def' name type_params? '(' params? ')' ('->' expression )? ':' block
+    : decorators? ASYNC DEF name type_params? LPAR params? RPAR (RARROW expression )? COLON block
     ;
 
 // Property definitions
 // --------------------
 
 property_def
-    : 'property' name ':' block
-    | 'property' name ':' get_block set_block?
-    | 'property' name ':' set_block get_block?
+    : PROPERTY name COLON block
+    | PROPERTY name COLON get_block set_block?
+    | PROPERTY name COLON set_block get_block?
     ;
 
-get_block: 'get' '(' name ')' ':' block;
+get_block: 'get' LPAR name RPAR COLON block;
 
-set_block: 'set' '(' name ',' typed_name ')' ':' block;
+set_block: 'set' LPAR name COMMA typed_name RPAR COLON block;
 
 // Event definitions
 // -----------------
@@ -249,86 +249,86 @@ parameters
     ;
 
 param_no_default
-    : param ','?
+    : param COMMA?
     ;
 
 param_with_default
-    : param default_assignment ','?
+    : param default_assignment COMMA?
     ;
 
 param: name type_annotation?;
-type_annotation: ':' expression;
-default_assignment: '=' expression;
+type_annotation: COLON expression;
+default_assignment: EQUAL expression;
 
 // If statement
 // ------------
 
 if_statement
-    : IF named_expression ':' block (elif_statement | else_block?)
+    : IF named_expression COLON block (elif_statement | else_block?)
     ;
 elif_statement
-    : ELIF named_expression ':' block (elif_statement | else_block?)
+    : ELIF named_expression COLON block (elif_statement | else_block?)
     ;
 else_block
-    : ELSE ':' block;
+    : ELSE COLON block;
 
 // While statement
 // ---------------
 
 while_statement
-    : WHILE named_expression ':' block else_block?;
+    : WHILE named_expression COLON block else_block?;
 
 // For statement
 // -------------
 
 for_statement
-    : 'async'? 'for' star_targets 'in' expressions ':' block else_block?
+    : ASYNC? FOR star_targets IN expressions COLON block else_block?
     ;
 
 // With statement
 // --------------
 
 with_statement
-    : 'with' '(' with_item (',' with_item)* ','? ')' ':' block
-    | 'async' 'with' '(' with_item (',' with_item)* ','? ')' ':' block
-    | 'async'? 'with' with_item (',' with_item)* ':' block
+    : WITH LPAR with_item (COMMA with_item)* COMMA? RPAR COLON block
+    | ASYNC WITH LPAR with_item (COMMA with_item)* COMMA? RPAR COLON block
+    | ASYNC? WITH with_item (COMMA with_item)* COLON block
     ;
 
 with_item
-    : expression ('as' star_target)?
+    : expression (AS star_target)?
     ;
 
 // Try statement
 // -------------
 
 try_statement
-    : 'try' ':' block finally_block
-    | 'try' ':' block except_block+ else_block? finally_block?
-    | 'try' ':' block except_star_block+ else_block? finally_block?;
+    : TRY COLON block finally_block
+    | TRY COLON block except_block+ else_block? finally_block?
+    | TRY COLON block except_star_block+ else_block? finally_block?;
 
 // Except statement
 // ----------------
 
 except_block
-    : 'except' (expression ('as' name )?)? ':' block
+    : EXCEPT (expression (AS name )?)? COLON block
     ;
 except_star_block
-    : 'except' '*' expression ('as' name )? ':' block;
+    : EXCEPT STAR expression (AS name )? COLON block;
 finally_block
-    : 'finally' ':' block;
+    : FINALLY COLON block;
 
 // Match statement
 // ---------------
 
 match_statement
-    : 'match' subject_expression ':' NEWLINE INDENT case_block+ DEDENT;
+    : 'match' subject_expression COLON NEWLINE INDENT case_block+ DEDENT;
 
 subject_expression: named_expression;
 
 case_block
-    : 'case' patterns guard? ':' block;
+    : 'case' patterns guard? COLON block;
 
-guard: 'if' named_expression;
+guard: IF named_expression;
 
 patterns
     : open_sequence_pattern
@@ -339,10 +339,10 @@ pattern
     | or_pattern;
 
 as_pattern
-    : or_pattern 'as' pattern_capture_target;
+    : or_pattern AS pattern_capture_target;
 
 or_pattern
-    : closed_pattern ('|' closed_pattern)*;
+    : closed_pattern (VBAR closed_pattern)*;
 
 closed_pattern
     : literal_pattern
@@ -377,15 +377,15 @@ literal_expression
     | false_literal;
 
 complex_number
-    : signed_real_number ('+' | '-') imaginary_number
+    : signed_real_number (PLUS | MINUS) imaginary_number
     ;
 
 signed_number
-    : '-'? NUMBER
+    : MINUS? NUMBER
     ;
 
 signed_real_number
-    : '-'? real_number
+    : MINUS? real_number
     ;
 
 real_number
@@ -407,86 +407,86 @@ value_pattern
     : attr;
 
 attr
-    : name ('.' name)+
+    : name (member_access name)+
     ;
 name_or_attr
-    : name ('.' name)*
+    : name (member_access name)*
     ;
 
 group_pattern
-    : '(' pattern ')';
+    : LPAR pattern RPAR;
 
 sequence_pattern
-    : '[' maybe_sequence_pattern? ']'
-    | '(' open_sequence_pattern? ')';
+    : LSQB maybe_sequence_pattern? RSQB
+    | LPAR open_sequence_pattern? RPAR;
 
 open_sequence_pattern
-    : maybe_star_pattern ',' maybe_sequence_pattern?;
+    : maybe_star_pattern COMMA maybe_sequence_pattern?;
 
 maybe_sequence_pattern
-    : maybe_star_pattern (',' maybe_star_pattern)* ','?;
+    : maybe_star_pattern (COMMA maybe_star_pattern)* COMMA?;
 
 maybe_star_pattern
     : star_pattern
     | pattern;
 
 star_pattern
-    : '*' name
+    : STAR name
     ;
 
 mapping_pattern
     : LBRACE RBRACE
-    | LBRACE double_star_pattern ','? RBRACE
-    | LBRACE items_pattern (',' double_star_pattern)? ','? RBRACE
+    | LBRACE double_star_pattern COMMA? RBRACE
+    | LBRACE items_pattern (COMMA double_star_pattern)? COMMA? RBRACE
     ;
 
 items_pattern
-    : key_value_pattern (',' key_value_pattern)*;
+    : key_value_pattern (COMMA key_value_pattern)*;
 
 key_value_pattern
-    : (literal_expression | attr) ':' pattern;
+    : (literal_expression | attr) COLON pattern;
 
 double_star_pattern
-    : '**' pattern_capture_target;
+    : DOUBLESTAR pattern_capture_target;
 
 class_pattern
-    : name_or_attr '(' ((positional_patterns (',' keyword_patterns)? | keyword_patterns) ','?)? ')'
+    : name_or_attr LPAR ((positional_patterns (COMMA keyword_patterns)? | keyword_patterns) COMMA?)? RPAR
     ;
 
 positional_patterns
-    : pattern (',' pattern)*;
+    : pattern (COMMA pattern)*;
 
 keyword_patterns
-    : keyword_pattern (',' keyword_pattern)*;
+    : keyword_pattern (COMMA keyword_pattern)*;
 
 keyword_pattern
-    : name '=' pattern;
+    : name EQUAL pattern;
 
 // Type statement
 // ---------------
 
 type_alias
-    : 'type' name type_params? '=' expression;
+    : 'type' name type_params? EQUAL expression;
 
 // Type parameter declaration
 // --------------------------
 
-type_params: '[' type_param_seq  ']';
+type_params: LSQB type_param_seq  RSQB;
 
-type_param_seq: type_param (',' type_param)* ','?;
+type_param_seq: type_param (COMMA type_param)* COMMA?;
 
 type_param
     : name type_param_bound? type_param_default?
     ;
 
-type_param_bound: ':' expression;
-type_param_default: '=' expression;
+type_param_bound: COLON expression;
+type_param_default: EQUAL expression;
 
 // EXPRESSIONS
 // -----------
 
 expressions
-    : expression (',' expression )* ','?
+    : expression (COMMA expression )* COMMA?
     ;
 
 expression
@@ -505,28 +505,28 @@ yield_expression
 
 // Sharpy allows for match expressions similar to C# switch expressions
 match_expression
-    : 'match' subject_expression ':' NEWLINE INDENT case_block+ DEDENT
+    : NAME_OR_MATCH subject_expression COLON NEWLINE INDENT case_block+ DEDENT
     ;
 
 assignment_expression
-    : name ':=' expression;
+    : name COLONEQUAL expression;
 
-named_expressions: named_expression (',' named_expression)* ','?;
+named_expressions: named_expression (COMMA named_expression)* COMMA?;
 
 named_expression
     : assignment_expression
     | expression;
 
 disjunction
-    : conjunction ('or' conjunction )*
+    : conjunction (OR conjunction )*
     ;
 
 conjunction
-    : inversion ('and' inversion )*
+    : inversion (AND inversion )*
     ;
 
 inversion
-    : 'not' inversion
+    : NOT inversion
     | comparison;
 
 // Comparison operators
@@ -548,37 +548,40 @@ compare_op_bitwise_or_pair
     | isnot_bitwise_or
     | is_bitwise_or;
 
-eq_bitwise_or: '==' bitwise_or;
+eq_bitwise_or: EQEQUAL bitwise_or;
 noteq_bitwise_or
-    : ('!=' ) bitwise_or;
-lte_bitwise_or: '<=' bitwise_or;
-lt_bitwise_or: '<' bitwise_or;
-gte_bitwise_or: '>=' bitwise_or;
-gt_bitwise_or: '>' bitwise_or;
-notin_bitwise_or: 'not' 'in' bitwise_or;
-in_bitwise_or: 'in' bitwise_or;
-isnot_bitwise_or: 'is' 'not' bitwise_or;
-is_bitwise_or: 'is' bitwise_or;
+    : NOTEQUAL bitwise_or;
+lte_bitwise_or: LESSEQUAL bitwise_or;
+lt_bitwise_or: LESS bitwise_or;
+gte_bitwise_or: GREATEREQUAL bitwise_or;
+gt_bitwise_or: GREATER bitwise_or;
+notin_bitwise_or: NOT IN bitwise_or;
+in_bitwise_or: IN bitwise_or;
+isnot_bitwise_or: IS NOT bitwise_or;
+is_bitwise_or: IS bitwise_or;
 
 // Bitwise operators
 // -----------------
 
 bitwise_or
-    : bitwise_or '|' bitwise_xor
+    : bitwise_or VBAR bitwise_xor
     | bitwise_xor;
 
 bitwise_xor
-    : bitwise_xor '^' bitwise_and
+    : bitwise_xor CIRCUMFLEX bitwise_and
     | bitwise_and;
 
 bitwise_and
-    : bitwise_and '&' shift_expression
+    : bitwise_and AMPER shift_expression
     | shift_expression;
 
 shift_expression
-    : shift_expression ('<<' | '>>') sum
+    : shift_expression (leftshift_operator | rightshift_operator) sum
     | sum
     ;
+
+leftshift_operator: LEFTSHIFT;
+rightshift_operator: RIGHTSHIFT;
 
 // Arithmetic operators
 // --------------------
@@ -588,19 +591,19 @@ sum
     | term
     ;
 
-addition_operator: '+';
-subtraction_operator: '-';
+addition_operator: PLUS;
+subtraction_operator: MINUS;
 
 term
     : term (multiplication_operator | division_operator | floor_division_operator | modulo_operator | matrix_multiplication_operator) factor
     | factor
     ;
 
-multiplication_operator: '*';
-division_operator: '/';
-floor_division_operator: '//';
-modulo_operator: '%';
-matrix_multiplication_operator: '@';
+multiplication_operator: STAR;
+division_operator: SLASH;
+floor_division_operator: DOUBLESLASH;
+modulo_operator: PERCENT;
+matrix_multiplication_operator: AT;
 
 factor
     : positive_sign factor
@@ -609,14 +612,14 @@ factor
     | power;
 
 positive_sign
-    : '+';
+    : PLUS;
 negative_sign
-    : '-';
+    : MINUS;
 inversion_operator
-    : '~';
+    : TILDE;
 
 power
-    : await_primary ('**' factor)?
+    : await_primary (DOUBLESTAR factor)?
     ;
 
 // Primary elements
@@ -625,23 +628,23 @@ power
 // Primary elements are things like "obj.something.something", "obj[something]", "obj(something)", "obj" ...
 
 await_primary
-    : 'await' primary
+    : AWAIT primary
     | primary;
 
 primary
-    : primary ('.' name | generator_expression | '(' arguments? ')' | '[' slices ']')
+    : primary (member_access name | generator_expression | LPAR arguments? RPAR | LSQB slices RSQB)
     | atom
     ;
 
 slices
     : slice
-    | slice (',' slice)* ','?;
+    | slice (COMMA slice)* COMMA?;
 
 slice
-    : expression? ':' expression? (':' expression? )?
+    : expression? COLON expression? (COLON expression? )?
     | named_expression;
 
-ellipsis_literal: '...';
+ellipsis_literal: ELLIPSIS;
 
 atom
     : name
@@ -656,14 +659,14 @@ atom
     | ellipsis_literal;
 
 group
-    : '(' (yield_expression | named_expression) ')';
+    : LPAR (yield_expression | named_expression) RPAR;
 
 // Lambda functions
 // ----------------
 
 // Sharpy lambdas allow return type annotations.
 lambda_def
-    : 'lambda' params? ( '->' expression )? ':' expression;
+    : LAMBDA params? ( RARROW expression )? COLON expression;
 
 // LITERALS
 // ========
@@ -672,11 +675,11 @@ fstring_middle
     : fstring_replacement_field
     | FSTRING_MIDDLE;
 fstring_replacement_field
-    : LBRACE annotated_rhs '='? fstring_conversion? fstring_full_format_spec? RBRACE;
+    : LBRACE annotated_rhs EQUAL? fstring_conversion? fstring_full_format_spec? RBRACE;
 fstring_conversion
-    : '!' name;
+    : EXCLAMATION name;
 fstring_full_format_spec
-    : ':' fstring_format_spec*;
+    : COLON fstring_format_spec*;
 fstring_format_spec
     : FSTRING_MIDDLE
     | fstring_replacement_field;
@@ -687,10 +690,10 @@ string: STRING;
 strings: (fstring|string)+;
 
 list
-    : '[' named_expressions? ']';
+    : LSQB named_expressions? RSQB;
 
 tuple
-    : '(' (named_expression ',' named_expressions?  )? ')';
+    : LPAR (named_expression COMMA named_expressions? )? RPAR;
 
 set: LBRACE named_expressions RBRACE;
 
@@ -701,11 +704,11 @@ dict
     : LBRACE kvpairs? RBRACE;
 
 kvpairs
-    : kvpair (',' kvpair)* ','?;
+    : kvpair (COMMA kvpair)* COMMA?;
 
 // TODO: This doesn't work for some reason, I used direct references to the
 // children instead.
-kvpair: key_expression ':' value_expression;
+kvpair: key_expression COLON value_expression;
 
 key_expression: expression;
 value_expression: expression;
@@ -717,17 +720,17 @@ for_if_clauses
     : for_if_clause+;
 
 for_if_clause
-    : 'async'? 'for' star_targets 'in' disjunction ('if' disjunction )*
+    : ASYNC? FOR star_targets IN disjunction (IF disjunction )*
     ;
 
 list_comprehension
-    : '[' named_expression for_if_clauses ']';
+    : LSQB named_expression for_if_clauses RSQB;
 
 set_comprehension
     : LBRACE named_expression for_if_clauses RBRACE;
 
 generator_expression
-    : '(' ( assignment_expression | expression) for_if_clauses ')';
+    : LPAR ( assignment_expression | expression) for_if_clauses RPAR;
 
 dict_comprehension
     : LBRACE kvpair for_if_clauses RBRACE;
@@ -736,15 +739,15 @@ dict_comprehension
 // =======================
 
 arguments
-    : args ','?;
+    : args COMMA?;
 
 args
-    : ( assignment_expression | expression) (',' ( assignment_expression | expression))* (',' kwargs )?
+    : ( assignment_expression | expression) (COMMA ( assignment_expression | expression))* (COMMA kwargs )?
     | kwargs;
 
-kwargs: kwarg (',' kwarg)* ','?;
+kwargs: kwarg (COMMA kwarg)* COMMA?;
 
-kwarg: name '=' expression;
+kwarg: name EQUAL expression;
 
 // ASSIGNMENT TARGETS
 // ==================
@@ -754,41 +757,41 @@ kwarg: name '=' expression;
 
 // NOTE: star_targets may contain *bitwise_or, targets may not.
 star_targets
-    : star_target (',' star_target )* ','?
+    : star_target (COMMA star_target )* COMMA?
     ;
 
-star_targets_list_seq: star_target (',' star_target)* ','?;
+star_targets_list_seq: star_target (COMMA star_target)* COMMA?;
 
 star_targets_tuple_seq
-    : star_target (',' | (',' star_target )+ ','?)
+    : star_target (COMMA | (COMMA star_target )+ COMMA?)
     ;
 
 star_target
-    : '*' (star_target)
+    : STAR (star_target)
     | target_with_star_atom;
 
 target_with_star_atom
-    : t_primary ('.' name | '[' slices ']')
+    : t_primary (member_access name | LSQB slices RSQB)
     | star_atom
     ;
 
 star_atom
     : name
-    | '(' target_with_star_atom ')'
-    | '(' star_targets_tuple_seq? ')'
-    | '[' star_targets_list_seq? ']';
+    | LPAR target_with_star_atom RPAR
+    | LPAR star_targets_tuple_seq? RPAR
+    | LSQB star_targets_list_seq? RSQB;
 
 single_target
     : single_subscript_attribute_target
     | name
-    | '(' single_target ')';
+    | LPAR single_target RPAR;
 
 single_subscript_attribute_target
-    : t_primary ('.' name | '[' slices ']')
+    : t_primary (member_access name | LSQB slices RSQB)
     ;
 
 t_primary
-    : t_primary ('.' name | '[' slices ']' | generator_expression | '(' arguments? ')')
+    : t_primary (member_access name | LSQB slices RSQB | generator_expression | LPAR arguments? RPAR)
     | atom
     ;
 
@@ -796,13 +799,15 @@ t_primary
 // --------------------------
 
 // Allows trailing comma
-del_targets: del_target (',' del_target)* ','?;
+del_targets: del_target (COMMA del_target)* COMMA?;
 
 // Sharpy only allows del statements with dictionary keys, not names
-del_target: t_primary ('.' name | '[' slices ']');
+del_target: t_primary (member_access name | LSQB slices RSQB);
 
 // TYPING ELEMENTS
 // ---------------
+
+member_access: DOT | QUESTIONDOT;
 
 // *** related to soft keywords: https://docs.python.org/3.13/reference/lexical_analysis.html#soft-keywords
 // This is used in match case blocks because _ means wildcard there, not a name

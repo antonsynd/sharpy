@@ -234,6 +234,30 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
             test=self.visit(ctx.test), body=self.visit(ctx.body), orelse=self.visit(ctx.orelse)
         )
 
+    def visitTerm(self, ctx: SharpyParser.TermContext):
+        logger.debug("Visiting term")
+        # term: term ('*' | '/' | '//' | '%' | '<<' | '>>') factor | fator
+
+        if ctx.getChildCount() == 1:
+            # If there's only one child, it's a single factor
+            return self.visit(ctx.factor())
+
+        left: Node = self.visit(ctx.getChild(0))  # The left operand
+        right: Node = self.visit(ctx.getChild(2))  # The right operand
+
+        if ctx.multiplication_operator():
+            op_type = Mult()
+        elif ctx.division_operator():
+            op_type = Div()
+        elif ctx.floor_division_operator():
+            op_type = FloorDiv()
+        elif ctx.modulo_operator():
+            op_type = Mod()
+        else:
+            raise ValueError("Invalid operator in term")
+
+        return BinOp(left=left, op=op_type, right=right)
+
     def visitImport_from_targets(self, ctx: SharpyParser.Import_from_targetsContext):
         logger.debug("Visiting import from targets")
         # import_from_targets: '(' import_from_as_names ','? ')' | import_from_as_names | '*'
@@ -413,6 +437,28 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
     def visitSubject_expression(self, ctx: SharpyParser.Subject_expressionContext):
         logger.debug("Visiting subject expression")
         return self.visitChildren(ctx)
+
+    def visitSum(self, ctx: SharpyParser.SumContext):
+        logger.debug("Visiting sum")
+        # sum: sum ('+' | '-') term | term
+
+        if ctx.getChildCount() == 1:
+            # If there's only one child, it's a single term
+            return self.visit(ctx.term())
+
+        logger.debug(f"Sum context: {ctx.term()}")
+
+        # TODO: sum_() and term() don't work for some reason
+        left: Node = self.visit(ctx.getChild(0))  # The left operand
+
+        if ctx.addition_operator() is not None:
+            op_type: Node = Add()
+        else:
+            op_type: Node = Sub()
+
+        right: Node = self.visit(ctx.getChild(2))  # The right operand
+
+        return BinOp(left=left, op=op_type, right=right)
 
     # Visit a parse tree produced by SharpyParser#case_block.
     def visitCase_block(self, ctx: SharpyParser.Case_blockContext):
@@ -626,6 +672,8 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
             raise ValueError("Invalid key-value pair format")
 
         # TODO: Strange why this doesn't work...
+        # TODO: It might be because of the use of the actual token names
+        # as opposed to raw characters, I see the same issue with visitSum()
         # print(ctx.getChildCount(), ctx.key_expression(), ctx.value_expression())
         # print(dir(ctx))
 
