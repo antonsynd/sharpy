@@ -1,6 +1,7 @@
 {
   "python.analysis.extraPaths": [
-    "__resources"
+    "__resources",
+    "./python/src"
   ],
   "files.associations": {
     "*.json5": "jsonc",
