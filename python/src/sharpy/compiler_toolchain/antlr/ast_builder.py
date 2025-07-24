@@ -502,6 +502,18 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug("Visiting patterns")
         return self.visitChildren(ctx)
 
+    def visitPower(self, ctx: SharpyParser.PowerContext):
+        logger.debug("Visiting power expression")
+
+        if ctx.getChildCount() == 1:
+            # If there's only one child, it's a single term `await_primary`
+            return self.visit(ctx.getChild(0))
+
+        left: Node = self.visit(ctx.getChild(0))  # The left operand
+        right: Node = self.visit(ctx.getChild(2))  # The right operand
+
+        return BinOp(left=left, op=Pow(), right=right)
+
     # Visit a parse tree produced by SharpyParser#protocol_def.
     def visitProtocol_def(self, ctx: SharpyParser.Protocol_defContext):
         logger.debug("Visiting protocol definition")
@@ -607,9 +619,7 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
 
         # If each is a Constant, concatenate their values
         value = "".join(
-            stringify_string_constant(node) or ""
-            for node in string_nodes
-            if hasattr(node, "value")
+            stringify_string_constant(node) or "" for node in string_nodes if hasattr(node, "value")
         )
         value = f'"{value}"'
 
