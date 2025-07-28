@@ -559,22 +559,27 @@ class ClassDef(Node):
     def __init__(
         self,
         name: str,
-        bases: Sequence[Node],
+        base: Node | None,
+        protocols: Sequence[Node],
         keywords: Sequence[Node],
         body: Sequence[Node],
         source: NodeSource | None = None,
     ):
         super().__init__(source)
         self._name: str = name
-        self._bases: Sequence[Node] = bases
+        self._base: Node | None = base
+        self._protocols: Sequence[Node] = protocols
         self._keywords: Sequence[Node] = keywords
         self._body: Sequence[Node] = body
 
     def name(self) -> str:
         return self._name
 
-    def bases(self) -> Sequence[Node]:
-        return self._bases
+    def base(self) -> Node | None:
+        return self._base
+
+    def protocols(self) -> Sequence[Node]:
+        return self._protocols
 
     def keywords(self) -> Sequence[Node]:
         return self._keywords
@@ -583,7 +588,7 @@ class ClassDef(Node):
         return self._body
 
     def __repr__(self) -> str:
-        return f"ClassDef(name={self._name}, bases={self._bases}, keywords={self._keywords}, body={self._body})"
+        return f"ClassDef(name={self._name}, base={self._base}, protocols={self._protocols}, keywords={self._keywords}, body={self._body})"
 
 
 class Compare(Expression):
