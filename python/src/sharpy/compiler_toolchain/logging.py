@@ -79,3 +79,17 @@ class Logger:
 logger = Logger("sharpyc")
 logger.enable_stdout()
 logger.enable_stderr()
+
+
+def get_logger(name: str) -> Logger:
+    """
+    Get or create a logger instance with the specified name.
+
+    :param name: The name of the logger.
+    :return: A Logger instance.
+    """
+    l = Logger(f"sharpyc.{name}")
+    l.enable_stdout()
+    l.enable_stderr()
+
+    return l

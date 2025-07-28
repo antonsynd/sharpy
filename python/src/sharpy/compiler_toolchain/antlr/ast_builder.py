@@ -97,24 +97,55 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug("Visiting augmented assignment")
         return self.visitChildren(ctx)
 
-    def visitBreak_statement(self, ctx: SharpyParser.Break_statementContext):
-        logger.debug("Visiting break statement")
-        # break_statement: 'break'
-        return Break()
+    def visitBitwise_and(self, ctx: SharpyParser.Bitwise_andContext):
+        logger.debug("Visiting bitwise and")
+
+        if ctx.getChildCount() == 1:
+            # If there's only one child, it's a single term
+            return self.visit(ctx.shift_expression())
+
+        left: Node = self.visit(ctx.getChild(0))  # The left operand
+        right: Node = self.visit(ctx.getChild(2))  # The right operand
+
+        return BinOp(left=left, op=BitAnd(), right=right)
+
+    def visitBitwise_or(self, ctx: SharpyParser.Bitwise_orContext):
+        logger.debug("Visiting bitwise or")
+
+        if ctx.getChildCount() == 1:
+            # If there's only one child, it's a single term
+            return self.visit(ctx.bitwise_xor())
+
+        left: Node = self.visit(ctx.getChild(0))  # The left operand
+        right: Node = self.visit(ctx.getChild(2))  # The right operand
+
+        return BinOp(left=left, op=BitOr(), right=right)
+
+    def visitBitwise_xor(self, ctx: SharpyParser.Bitwise_xorContext):
+        logger.debug("Visiting bitwise xor")
+
+        if ctx.getChildCount() == 1:
+            # If there's only one child, it's a single term
+            return self.visit(ctx.bitwise_and())
+
+        left: Node = self.visit(ctx.getChild(0))  # The left operand
+        right: Node = self.visit(ctx.getChild(2))  # The right operand
+
+        return BinOp(left=left, op=BitXor(), right=right)
 
     # Visit a parse tree produced by SharpyParser#block.
     def visitBlock(self, ctx: SharpyParser.BlockContext):
         logger.debug("Visiting block")
         return self.visitChildren(ctx)
 
+    def visitBreak_statement(self, ctx: SharpyParser.Break_statementContext):
+        logger.debug("Visiting break statement")
+        # break_statement: 'break'
+        return Break()
+
     # Visit a parse tree produced by SharpyParser#case_block.
     def visitCase_block(self, ctx: SharpyParser.Case_blockContext):
         logger.debug("Visiting case block")
-        return self.visitChildren(ctx)
-
-    # Visit a parse tree produced by SharpyParser#guard.
-    def visitGuard(self, ctx: SharpyParser.GuardContext):
-        logger.debug("Visiting guard")
         return self.visitChildren(ctx)
 
     # Visit a parse tree produced by SharpyParser#class_def.
@@ -145,6 +176,16 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
     def visitCompound_statement(self, ctx: SharpyParser.Compound_statementContext):
         logger.debug("Visiting compound statement")
         return self.visitChildren(ctx)
+
+    def visitConjunction(self, ctx: SharpyParser.ConjunctionContext):
+        logger.debug("Visiting conjunction")
+        # conjunction: inversion ( AND inversion )*
+
+        values: MutableSequence[Node] = []
+        for i in range(0, ctx.getChildCount(), 2):
+            values.append(self.visit(ctx.getChild(i)))
+
+        return BoolOp(op=And(), values=values)
 
     def visitContinue_statement(self, ctx: SharpyParser.Continue_statementContext):
         logger.debug("Visiting continue statement")
@@ -182,6 +223,16 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
                 values.append(v)
 
         return Dict(keys=keys, values=values)
+
+    def visitDisjunction(self, ctx: SharpyParser.DisjunctionContext):
+        logger.debug("Visiting disjunction")
+        # disjunction: conjunction ( OR conjunction )*
+
+        values: MutableSequence[Node] = []
+        for i in range(0, ctx.getChildCount(), 2):
+            values.append(self.visit(ctx.getChild(i)))
+
+        return BoolOp(op=Or(), values=values)
 
     def visitDotted_as_name(self, ctx: SharpyParser.Dotted_as_nameContext) -> alias:
         logger.debug("Visiting dotted as name")
@@ -250,6 +301,11 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
     # Visit a parse tree produced by SharpyParser#global_statement.
     def visitGlobal_statement(self, ctx: SharpyParser.Global_statementContext):
         logger.debug("Visiting global statement")
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by SharpyParser#guard.
+    def visitGuard(self, ctx: SharpyParser.GuardContext):
+        logger.debug("Visiting guard")
         return self.visitChildren(ctx)
 
     # Visit a parse tree produced by SharpyParser#if_statement.
@@ -342,6 +398,17 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
             return self.visit(ctx.import_from())
 
         return None
+
+    def visitInversion(self, ctx: SharpyParser.InversionContext):
+        logger.debug("Visiting inversion")
+
+        if ctx.getChildCount() == 2:
+            operand: Expression = self.visit(ctx.getChild(1))
+            return UnaryOp(Not(), operand)
+        elif ctx.getChildCount() == 1:
+            return self.visit(ctx.getChild(0))
+        else:
+            raise ValueError("Unknown inversion type")
 
     def visitKey_expression(self, ctx: SharpyParser.Key_expressionContext) -> Node:
         logger.debug("Visiting key expression")
@@ -562,6 +629,23 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug(f"Set elements: {elts}")
 
         return Set(elts=elts)
+
+    def visitShift_expression(self, ctx: SharpyParser.Shift_expressionContext):
+        logger.debug("Visiting shift expression")
+
+        if ctx.getChildCount() == 1:
+            # If there's only one child, it's a single term
+            return self.visit(ctx.sum_())
+
+        left: Node = self.visit(ctx.getChild(0))  # The left operand
+        right: Node = self.visit(ctx.getChild(2))  # The right operand
+
+        if ctx.leftshift_operator():
+            return BinOp(left=left, op=LShift(), right=right)
+        elif ctx.rightshift_operator():
+            return BinOp(left=left, op=RShift(), right=right)
+        else:
+            raise ValueError("Invalid shift operator in shift expression")
 
     # Visit a parse tree produced by SharpyParser#signed_number.
     def visitSigned_number(self, ctx: SharpyParser.Signed_numberContext):
