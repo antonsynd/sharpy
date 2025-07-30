@@ -264,11 +264,17 @@ default_assignment: EQUAL expression;
 // ------------
 
 if_statement
-    : IF named_expression COLON block (elif_statement | else_block?)
+    : IF named_expression COLON block else_blocks
     ;
+
+else_blocks
+    : (elif_statement)* else_block?
+    ;
+
 elif_statement
-    : ELIF named_expression COLON block (elif_statement | else_block?)
+    : ELIF named_expression COLON block
     ;
+
 else_block
     : ELSE COLON block;
 
@@ -504,8 +510,15 @@ yield_expression
     ;
 
 // Sharpy allows for match expressions similar to C# switch expressions
+// TODO: Should be in an assignment
 match_expression
     : NAME_OR_MATCH subject_expression COLON NEWLINE INDENT case_block+ DEDENT
+    ;
+
+// Sharpy borrows try expressions from Swift
+// TODO: Should be in an assignment, and maybe not restricted to function calls
+try_expression
+    : TRY await_primary
     ;
 
 assignment_expression

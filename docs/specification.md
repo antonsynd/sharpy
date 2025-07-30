@@ -414,6 +414,16 @@ i: int? = match get_user_input():
 
 TODO
 
+# Try expressions
+
+Sharpy introduces `try` expressions (inspired by Swift), where an assignment
+expression that may raise an exception, instead returns a true optional `T?`.
+The optional is empty if an exception was raised.
+
+```Python
+i: int? = try something_that_may_throw()
+```
+
 # Modules
 
 Sharpy has modules which are the equivalent of namespaces in C#. Modules
