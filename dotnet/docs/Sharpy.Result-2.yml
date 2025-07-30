@@ -1,0 +1,1573 @@
+### YamlMime:ManagedReference
+items:
+- uid: Sharpy.Result`2
+  commentId: T:Sharpy.Result`2
+  id: Result`2
+  parent: Sharpy
+  children:
+  - Sharpy.Result`2.#ctor(`0)
+  - Sharpy.Result`2.#ctor(`1)
+  - Sharpy.Result`2.Equals(Sharpy.Result{`0,`1})
+  - Sharpy.Result`2.Error
+  - Sharpy.Result`2.IsError
+  - Sharpy.Result`2.IsOk
+  - Sharpy.Result`2.Value
+  - Sharpy.Result`2.__Bool__
+  - Sharpy.Result`2.__Eq__(Sharpy.Result{`0,`1})
+  - Sharpy.Result`2.__Eq__(System.Object)
+  - Sharpy.Result`2.__Hash__
+  - Sharpy.Result`2.__Repr__
+  - Sharpy.Result`2.op_False(Sharpy.Result{`0,`1})
+  - Sharpy.Result`2.op_Implicit(`0)~Sharpy.Result{`0,`1}
+  - Sharpy.Result`2.op_Implicit(`1)~Sharpy.Result{`0,`1}
+  - Sharpy.Result`2.op_True(Sharpy.Result{`0,`1})
+  langs:
+  - csharp
+  - vb
+  name: Result<T, E>
+  nameWithType: Result<T, E>
+  fullName: Sharpy.Result<T, E>
+  type: Struct
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Result/Result.IRepresentable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Result
+    path: ../src/Sharpy/Partial.Result/Result.IRepresentable.cs
+    startLine: 2
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: 'public readonly struct Result<T, E> : IBoolConvertible, IRepresentable, IEquatableWith<Result<T, E>>, IEquatable, IHashable, IEquatable<Result<T, E>>'
+    typeParameters:
+    - id: T
+    - id: E
+    content.vb: Public Structure Result(Of T, E) Implements IBoolConvertible, IRepresentable, IEquatableWith(Of Result(Of T, E)), IEquatable, IHashable, IEquatable(Of Result(Of T, E))
+  implements:
+  - Sharpy.IBoolConvertible
+  - Sharpy.IRepresentable
+  - Sharpy.IEquatableWith{Sharpy.Result`2}
+  - Sharpy.IEquatable
+  - Sharpy.IHashable
+  - System.IEquatable{Sharpy.Result`2}
+  inheritedMembers:
+  - System.ValueType.Equals(System.Object)
+  - System.ValueType.GetHashCode
+  - System.ValueType.ToString
+  - System.Object.Equals(System.Object,System.Object)
+  - System.Object.GetType
+  - System.Object.ReferenceEquals(System.Object,System.Object)
+  nameWithType.vb: Result(Of T, E)
+  fullName.vb: Sharpy.Result(Of T, E)
+  name.vb: Result(Of T, E)
+- uid: Sharpy.Result`2.#ctor(`0)
+  commentId: M:Sharpy.Result`2.#ctor(`0)
+  id: '#ctor(`0)'
+  parent: Sharpy.Result`2
+  langs:
+  - csharp
+  - vb
+  name: Result(T)
+  nameWithType: Result<T, E>.Result(T)
+  fullName: Sharpy.Result<T, E>.Result(T)
+  type: Constructor
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Result/Result.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: .ctor
+    path: ../src/Sharpy/Partial.Result/Result.cs
+    startLine: 8
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public Result(T value)
+    parameters:
+    - id: value
+      type: '{T}'
+    content.vb: Public Sub New(value As T)
+  overload: Sharpy.Result`2.#ctor*
+  nameWithType.vb: Result(Of T, E).New(T)
+  fullName.vb: Sharpy.Result(Of T, E).New(T)
+  name.vb: New(T)
+- uid: Sharpy.Result`2.#ctor(`1)
+  commentId: M:Sharpy.Result`2.#ctor(`1)
+  id: '#ctor(`1)'
+  parent: Sharpy.Result`2
+  langs:
+  - csharp
+  - vb
+  name: Result(E)
+  nameWithType: Result<T, E>.Result(E)
+  fullName: Sharpy.Result<T, E>.Result(E)
+  type: Constructor
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Result/Result.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: .ctor
+    path: ../src/Sharpy/Partial.Result/Result.cs
+    startLine: 15
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public Result(E error)
+    parameters:
+    - id: error
+      type: '{E}'
+    content.vb: Public Sub New([error] As E)
+  overload: Sharpy.Result`2.#ctor*
+  nameWithType.vb: Result(Of T, E).New(E)
+  fullName.vb: Sharpy.Result(Of T, E).New(E)
+  name.vb: New(E)
+- uid: Sharpy.Result`2.IsOk
+  commentId: M:Sharpy.Result`2.IsOk
+  id: IsOk
+  parent: Sharpy.Result`2
+  langs:
+  - csharp
+  - vb
+  name: IsOk()
+  nameWithType: Result<T, E>.IsOk()
+  fullName: Sharpy.Result<T, E>.IsOk()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Result/Result.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IsOk
+    path: ../src/Sharpy/Partial.Result/Result.cs
+    startLine: 22
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public bool IsOk()
+    return:
+      type: System.Boolean
+    content.vb: Public Function IsOk() As Boolean
+  overload: Sharpy.Result`2.IsOk*
+  nameWithType.vb: Result(Of T, E).IsOk()
+  fullName.vb: Sharpy.Result(Of T, E).IsOk()
+- uid: Sharpy.Result`2.IsError
+  commentId: M:Sharpy.Result`2.IsError
+  id: IsError
+  parent: Sharpy.Result`2
+  langs:
+  - csharp
+  - vb
+  name: IsError()
+  nameWithType: Result<T, E>.IsError()
+  fullName: Sharpy.Result<T, E>.IsError()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Result/Result.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: IsError
+    path: ../src/Sharpy/Partial.Result/Result.cs
+    startLine: 27
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public bool IsError()
+    return:
+      type: System.Boolean
+    content.vb: Public Function IsError() As Boolean
+  overload: Sharpy.Result`2.IsError*
+  nameWithType.vb: Result(Of T, E).IsError()
+  fullName.vb: Sharpy.Result(Of T, E).IsError()
+- uid: Sharpy.Result`2.Value
+  commentId: M:Sharpy.Result`2.Value
+  id: Value
+  parent: Sharpy.Result`2
+  langs:
+  - csharp
+  - vb
+  name: Value()
+  nameWithType: Result<T, E>.Value()
+  fullName: Sharpy.Result<T, E>.Value()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Result/Result.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Value
+    path: ../src/Sharpy/Partial.Result/Result.cs
+    startLine: 32
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public Optional<T> Value()
+    return:
+      type: Sharpy.Optional{{T}}
+    content.vb: Public Function Value() As [Optional](Of T)
+  overload: Sharpy.Result`2.Value*
+  nameWithType.vb: Result(Of T, E).Value()
+  fullName.vb: Sharpy.Result(Of T, E).Value()
+- uid: Sharpy.Result`2.Error
+  commentId: M:Sharpy.Result`2.Error
+  id: Error
+  parent: Sharpy.Result`2
+  langs:
+  - csharp
+  - vb
+  name: Error()
+  nameWithType: Result<T, E>.Error()
+  fullName: Sharpy.Result<T, E>.Error()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Result/Result.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Error
+    path: ../src/Sharpy/Partial.Result/Result.cs
+    startLine: 37
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public Optional<E> Error()
+    return:
+      type: Sharpy.Optional{{E}}
+    content.vb: Public Function [Error]() As [Optional](Of E)
+  overload: Sharpy.Result`2.Error*
+  nameWithType.vb: Result(Of T, E).Error()
+  fullName.vb: Sharpy.Result(Of T, E).Error()
+- uid: Sharpy.Result`2.op_True(Sharpy.Result{`0,`1})
+  commentId: M:Sharpy.Result`2.op_True(Sharpy.Result{`0,`1})
+  id: op_True(Sharpy.Result{`0,`1})
+  parent: Sharpy.Result`2
+  langs:
+  - csharp
+  - vb
+  name: operator true(Result<T, E>)
+  nameWithType: Result<T, E>.operator true(Result<T, E>)
+  fullName: Sharpy.Result<T, E>.operator true(Sharpy.Result<T, E>)
+  type: Operator
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Result/Result.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: op_True
+    path: ../src/Sharpy/Partial.Result/Result.cs
+    startLine: 42
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static bool operator true(Result<T, E> result)
+    parameters:
+    - id: result
+      type: Sharpy.Result`2
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Operator IsTrue(result As Result(Of T, E)) As Boolean
+  overload: Sharpy.Result`2.op_True*
+  nameWithType.vb: Result(Of T, E).IsTrue(Result(Of T, E))
+  fullName.vb: Sharpy.Result(Of T, E).IsTrue(Sharpy.Result(Of T, E))
+  name.vb: IsTrue(Result(Of T, E))
+- uid: Sharpy.Result`2.op_False(Sharpy.Result{`0,`1})
+  commentId: M:Sharpy.Result`2.op_False(Sharpy.Result{`0,`1})
+  id: op_False(Sharpy.Result{`0,`1})
+  parent: Sharpy.Result`2
+  langs:
+  - csharp
+  - vb
+  name: operator false(Result<T, E>)
+  nameWithType: Result<T, E>.operator false(Result<T, E>)
+  fullName: Sharpy.Result<T, E>.operator false(Sharpy.Result<T, E>)
+  type: Operator
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Result/Result.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: op_False
+    path: ../src/Sharpy/Partial.Result/Result.cs
+    startLine: 47
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static bool operator false(Result<T, E> result)
+    parameters:
+    - id: result
+      type: Sharpy.Result`2
+    return:
+      type: System.Boolean
+    content.vb: Public Shared Operator IsFalse(result As Result(Of T, E)) As Boolean
+  overload: Sharpy.Result`2.op_False*
+  nameWithType.vb: Result(Of T, E).IsFalse(Result(Of T, E))
+  fullName.vb: Sharpy.Result(Of T, E).IsFalse(Sharpy.Result(Of T, E))
+  name.vb: IsFalse(Result(Of T, E))
+- uid: Sharpy.Result`2.op_Implicit(`0)~Sharpy.Result{`0,`1}
+  commentId: M:Sharpy.Result`2.op_Implicit(`0)~Sharpy.Result{`0,`1}
+  id: op_Implicit(`0)~Sharpy.Result{`0,`1}
+  parent: Sharpy.Result`2
+  langs:
+  - csharp
+  - vb
+  name: implicit operator Result<T, E>(T)
+  nameWithType: Result<T, E>.implicit operator Result<T, E>(T)
+  fullName: Sharpy.Result<T, E>.implicit operator Sharpy.Result<T, E>(T)
+  type: Operator
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Result/Result.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: op_Implicit
+    path: ../src/Sharpy/Partial.Result/Result.cs
+    startLine: 52
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static implicit operator Result<T, E>(T value)
+    parameters:
+    - id: value
+      type: '{T}'
+    return:
+      type: Sharpy.Result`2
+    content.vb: Public Shared Widening Operator CType(value As T) As Result(Of T, E)
+  overload: Sharpy.Result`2.op_Implicit*
+  nameWithType.vb: Result(Of T, E).CType(T)
+  fullName.vb: Sharpy.Result(Of T, E).CType(T)
+  name.vb: CType(T)
+- uid: Sharpy.Result`2.op_Implicit(`1)~Sharpy.Result{`0,`1}
+  commentId: M:Sharpy.Result`2.op_Implicit(`1)~Sharpy.Result{`0,`1}
+  id: op_Implicit(`1)~Sharpy.Result{`0,`1}
+  parent: Sharpy.Result`2
+  langs:
+  - csharp
+  - vb
+  name: implicit operator Result<T, E>(E)
+  nameWithType: Result<T, E>.implicit operator Result<T, E>(E)
+  fullName: Sharpy.Result<T, E>.implicit operator Sharpy.Result<T, E>(E)
+  type: Operator
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Result/Result.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: op_Implicit
+    path: ../src/Sharpy/Partial.Result/Result.cs
+    startLine: 57
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static implicit operator Result<T, E>(E error)
+    parameters:
+    - id: error
+      type: '{E}'
+    return:
+      type: Sharpy.Result`2
+    content.vb: Public Shared Widening Operator CType([error] As E) As Result(Of T, E)
+  overload: Sharpy.Result`2.op_Implicit*
+  nameWithType.vb: Result(Of T, E).CType(E)
+  fullName.vb: Sharpy.Result(Of T, E).CType(E)
+  name.vb: CType(E)
+- uid: Sharpy.Result`2.__Bool__
+  commentId: M:Sharpy.Result`2.__Bool__
+  id: __Bool__
+  parent: Sharpy.Result`2
+  langs:
+  - csharp
+  - vb
+  name: __Bool__()
+  nameWithType: Result<T, E>.__Bool__()
+  fullName: Sharpy.Result<T, E>.__Bool__()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Result/Result.IBoolConvertible.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Bool__
+    path: ../src/Sharpy/Partial.Result/Result.IBoolConvertible.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  example: []
+  syntax:
+    content: public bool __Bool__()
+    return:
+      type: System.Boolean
+    content.vb: Public Function __Bool__() As Boolean
+  overload: Sharpy.Result`2.__Bool__*
+  implements:
+  - Sharpy.IBoolConvertible.__Bool__
+  nameWithType.vb: Result(Of T, E).__Bool__()
+  fullName.vb: Sharpy.Result(Of T, E).__Bool__()
+- uid: Sharpy.Result`2.__Eq__(System.Object)
+  commentId: M:Sharpy.Result`2.__Eq__(System.Object)
+  id: __Eq__(System.Object)
+  parent: Sharpy.Result`2
+  langs:
+  - csharp
+  - vb
+  name: __Eq__(object)
+  nameWithType: Result<T, E>.__Eq__(object)
+  fullName: Sharpy.Result<T, E>.__Eq__(object)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Result/Result.IEquatable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Eq__
+    path: ../src/Sharpy/Partial.Result/Result.IEquatable.cs
+    startLine: 10
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  remarks: >-
+    Unlike other types, optionals are equivalent if they hold the same
+
+    value.
+  example: []
+  syntax:
+    content: public bool __Eq__(object other)
+    parameters:
+    - id: other
+      type: System.Object
+      description: ''
+    return:
+      type: System.Boolean
+      description: ''
+    content.vb: Public Function __Eq__(other As Object) As Boolean
+  overload: Sharpy.Result`2.__Eq__*
+  implements:
+  - Sharpy.IEquatableWith{Sharpy.Result`2}.__Eq__(System.Object)
+  - Sharpy.IEquatable.__Eq__(System.Object)
+  nameWithType.vb: Result(Of T, E).__Eq__(Object)
+  fullName.vb: Sharpy.Result(Of T, E).__Eq__(Object)
+  name.vb: __Eq__(Object)
+- uid: Sharpy.Result`2.__Eq__(Sharpy.Result{`0,`1})
+  commentId: M:Sharpy.Result`2.__Eq__(Sharpy.Result{`0,`1})
+  id: __Eq__(Sharpy.Result{`0,`1})
+  parent: Sharpy.Result`2
+  langs:
+  - csharp
+  - vb
+  name: __Eq__(Result<T, E>)
+  nameWithType: Result<T, E>.__Eq__(Result<T, E>)
+  fullName: Sharpy.Result<T, E>.__Eq__(Sharpy.Result<T, E>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Result/Result.IEquatable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Eq__
+    path: ../src/Sharpy/Partial.Result/Result.IEquatable.cs
+    startLine: 20
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  remarks: This defines equality between two objects of the same type.
+  example: []
+  syntax:
+    content: public bool __Eq__(Result<T, E> other)
+    parameters:
+    - id: other
+      type: Sharpy.Result`2
+    return:
+      type: System.Boolean
+    content.vb: Public Function __Eq__(other As Result(Of T, E)) As Boolean
+  overload: Sharpy.Result`2.__Eq__*
+  implements:
+  - Sharpy.IEquatableWith{Sharpy.Result`2}.__Eq__(Sharpy.Result{{T},{E}})
+  nameWithType.vb: Result(Of T, E).__Eq__(Result(Of T, E))
+  fullName.vb: Sharpy.Result(Of T, E).__Eq__(Sharpy.Result(Of T, E))
+  name.vb: __Eq__(Result(Of T, E))
+- uid: Sharpy.Result`2.Equals(Sharpy.Result{`0,`1})
+  commentId: M:Sharpy.Result`2.Equals(Sharpy.Result{`0,`1})
+  id: Equals(Sharpy.Result{`0,`1})
+  parent: Sharpy.Result`2
+  langs:
+  - csharp
+  - vb
+  name: Equals(Result<T, E>)
+  nameWithType: Result<T, E>.Equals(Result<T, E>)
+  fullName: Sharpy.Result<T, E>.Equals(Sharpy.Result<T, E>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Result/Result.IEquatable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Equals
+    path: ../src/Sharpy/Partial.Result/Result.IEquatable.cs
+    startLine: 37
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: Indicates whether the current object is equal to another object of the same type.
+  example: []
+  syntax:
+    content: public bool Equals(Result<T, E> other)
+    parameters:
+    - id: other
+      type: Sharpy.Result`2
+      description: An object to compare with this object.
+    return:
+      type: System.Boolean
+      description: <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if the current object is equal to the <code class="paramref">other</code> parameter; otherwise, <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.
+    content.vb: Public Function Equals(other As Result(Of T, E)) As Boolean
+  overload: Sharpy.Result`2.Equals*
+  implements:
+  - System.IEquatable{Sharpy.Result`2}.Equals(Sharpy.Result{{T},{E}})
+  nameWithType.vb: Result(Of T, E).Equals(Result(Of T, E))
+  fullName.vb: Sharpy.Result(Of T, E).Equals(Sharpy.Result(Of T, E))
+  name.vb: Equals(Result(Of T, E))
+- uid: Sharpy.Result`2.__Hash__
+  commentId: M:Sharpy.Result`2.__Hash__
+  id: __Hash__
+  parent: Sharpy.Result`2
+  langs:
+  - csharp
+  - vb
+  name: __Hash__()
+  nameWithType: Result<T, E>.__Hash__()
+  fullName: Sharpy.Result<T, E>.__Hash__()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Result/Result.IHashable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Hash__
+    path: ../src/Sharpy/Partial.Result/Result.IHashable.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  summary: >-
+    This method should return the hash of the object. In Sharpy,
+
+    objects that have the same hash are not guaranteed to be equal.
+  example: []
+  syntax:
+    content: public int __Hash__()
+    return:
+      type: System.Int32
+      description: The hash of the object.
+    content.vb: Public Function __Hash__() As Integer
+  overload: Sharpy.Result`2.__Hash__*
+  implements:
+  - Sharpy.IHashable.__Hash__
+  nameWithType.vb: Result(Of T, E).__Hash__()
+  fullName.vb: Sharpy.Result(Of T, E).__Hash__()
+- uid: Sharpy.Result`2.__Repr__
+  commentId: M:Sharpy.Result`2.__Repr__
+  id: __Repr__
+  parent: Sharpy.Result`2
+  langs:
+  - csharp
+  - vb
+  name: __Repr__()
+  nameWithType: Result<T, E>.__Repr__()
+  fullName: Sharpy.Result<T, E>.__Repr__()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Result/Result.IRepresentable.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: __Repr__
+    path: ../src/Sharpy/Partial.Result/Result.IRepresentable.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  example: []
+  syntax:
+    content: public string __Repr__()
+    return:
+      type: System.String
+    content.vb: Public Function __Repr__() As String
+  overload: Sharpy.Result`2.__Repr__*
+  implements:
+  - Sharpy.IRepresentable.__Repr__
+  nameWithType.vb: Result(Of T, E).__Repr__()
+  fullName.vb: Sharpy.Result(Of T, E).__Repr__()
+references:
+- uid: Sharpy
+  commentId: N:Sharpy
+  href: Sharpy.html
+  name: Sharpy
+  nameWithType: Sharpy
+  fullName: Sharpy
+- uid: Sharpy.IBoolConvertible
+  commentId: T:Sharpy.IBoolConvertible
+  parent: Sharpy
+  href: Sharpy.IBoolConvertible.html
+  name: IBoolConvertible
+  nameWithType: IBoolConvertible
+  fullName: Sharpy.IBoolConvertible
+- uid: Sharpy.IRepresentable
+  commentId: T:Sharpy.IRepresentable
+  parent: Sharpy
+  href: Sharpy.IRepresentable.html
+  name: IRepresentable
+  nameWithType: IRepresentable
+  fullName: Sharpy.IRepresentable
+- uid: Sharpy.IEquatableWith{Sharpy.Result`2}
+  commentId: T:Sharpy.IEquatableWith{Sharpy.Result`2}
+  parent: Sharpy
+  definition: Sharpy.IEquatableWith`1
+  href: Sharpy.IEquatableWith-1.html
+  name: IEquatableWith<Result<T, E>>
+  nameWithType: IEquatableWith<Result<T, E>>
+  fullName: Sharpy.IEquatableWith<Sharpy.Result<T, E>>
+  nameWithType.vb: IEquatableWith(Of Result(Of T, E))
+  fullName.vb: Sharpy.IEquatableWith(Of Sharpy.Result(Of T, E))
+  name.vb: IEquatableWith(Of Result(Of T, E))
+  spec.csharp:
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith
+    href: Sharpy.IEquatableWith-1.html
+  - name: <
+  - uid: Sharpy.Result`2
+    name: Result
+    href: Sharpy.Result-2.html
+  - name: <
+  - name: T
+  - name: ','
+  - name: " "
+  - name: E
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith
+    href: Sharpy.IEquatableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Result`2
+    name: Result
+    href: Sharpy.Result-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: ','
+  - name: " "
+  - name: E
+  - name: )
+  - name: )
+- uid: Sharpy.IEquatable
+  commentId: T:Sharpy.IEquatable
+  parent: Sharpy
+  href: Sharpy.IEquatable.html
+  name: IEquatable
+  nameWithType: IEquatable
+  fullName: Sharpy.IEquatable
+- uid: Sharpy.IHashable
+  commentId: T:Sharpy.IHashable
+  parent: Sharpy
+  href: Sharpy.IHashable.html
+  name: IHashable
+  nameWithType: IHashable
+  fullName: Sharpy.IHashable
+- uid: System.IEquatable{Sharpy.Result`2}
+  commentId: T:System.IEquatable{Sharpy.Result`2}
+  parent: System
+  definition: System.IEquatable`1
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  name: IEquatable<Result<T, E>>
+  nameWithType: IEquatable<Result<T, E>>
+  fullName: System.IEquatable<Sharpy.Result<T, E>>
+  nameWithType.vb: IEquatable(Of Result(Of T, E))
+  fullName.vb: System.IEquatable(Of Sharpy.Result(Of T, E))
+  name.vb: IEquatable(Of Result(Of T, E))
+  spec.csharp:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: <
+  - uid: Sharpy.Result`2
+    name: Result
+    href: Sharpy.Result-2.html
+  - name: <
+  - name: T
+  - name: ','
+  - name: " "
+  - name: E
+  - name: '>'
+  - name: '>'
+  spec.vb:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - uid: Sharpy.Result`2
+    name: Result
+    href: Sharpy.Result-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: ','
+  - name: " "
+  - name: E
+  - name: )
+  - name: )
+- uid: System.ValueType.Equals(System.Object)
+  commentId: M:System.ValueType.Equals(System.Object)
+  parent: System.ValueType
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.valuetype.equals
+  name: Equals(object)
+  nameWithType: ValueType.Equals(object)
+  fullName: System.ValueType.Equals(object)
+  nameWithType.vb: ValueType.Equals(Object)
+  fullName.vb: System.ValueType.Equals(Object)
+  name.vb: Equals(Object)
+  spec.csharp:
+  - uid: System.ValueType.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.valuetype.equals
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.ValueType.Equals(System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.valuetype.equals
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.ValueType.GetHashCode
+  commentId: M:System.ValueType.GetHashCode
+  parent: System.ValueType
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.valuetype.gethashcode
+  name: GetHashCode()
+  nameWithType: ValueType.GetHashCode()
+  fullName: System.ValueType.GetHashCode()
+  spec.csharp:
+  - uid: System.ValueType.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.valuetype.gethashcode
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.ValueType.GetHashCode
+    name: GetHashCode
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.valuetype.gethashcode
+  - name: (
+  - name: )
+- uid: System.ValueType.ToString
+  commentId: M:System.ValueType.ToString
+  parent: System.ValueType
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.valuetype.tostring
+  name: ToString()
+  nameWithType: ValueType.ToString()
+  fullName: System.ValueType.ToString()
+  spec.csharp:
+  - uid: System.ValueType.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.valuetype.tostring
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.ValueType.ToString
+    name: ToString
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.valuetype.tostring
+  - name: (
+  - name: )
+- uid: System.Object.Equals(System.Object,System.Object)
+  commentId: M:System.Object.Equals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  name: Equals(object, object)
+  nameWithType: object.Equals(object, object)
+  fullName: object.Equals(object, object)
+  nameWithType.vb: Object.Equals(Object, Object)
+  fullName.vb: Object.Equals(Object, Object)
+  name.vb: Equals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.Equals(System.Object,System.Object)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: System.Object.GetType
+  commentId: M:System.Object.GetType
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  name: GetType()
+  nameWithType: object.GetType()
+  fullName: object.GetType()
+  nameWithType.vb: Object.GetType()
+  fullName.vb: Object.GetType()
+  spec.csharp:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: System.Object.GetType
+    name: GetType
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.gettype
+  - name: (
+  - name: )
+- uid: System.Object.ReferenceEquals(System.Object,System.Object)
+  commentId: M:System.Object.ReferenceEquals(System.Object,System.Object)
+  parent: System.Object
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  name: ReferenceEquals(object, object)
+  nameWithType: object.ReferenceEquals(object, object)
+  fullName: object.ReferenceEquals(object, object)
+  nameWithType.vb: Object.ReferenceEquals(Object, Object)
+  fullName.vb: Object.ReferenceEquals(Object, Object)
+  name.vb: ReferenceEquals(Object, Object)
+  spec.csharp:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: System.Object.ReferenceEquals(System.Object,System.Object)
+    name: ReferenceEquals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object.referenceequals
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: ','
+  - name: " "
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: Sharpy.IEquatableWith`1
+  commentId: T:Sharpy.IEquatableWith`1
+  href: Sharpy.IEquatableWith-1.html
+  name: IEquatableWith<T>
+  nameWithType: IEquatableWith<T>
+  fullName: Sharpy.IEquatableWith<T>
+  nameWithType.vb: IEquatableWith(Of T)
+  fullName.vb: Sharpy.IEquatableWith(Of T)
+  name.vb: IEquatableWith(Of T)
+  spec.csharp:
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith
+    href: Sharpy.IEquatableWith-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.IEquatableWith`1
+    name: IEquatableWith
+    href: Sharpy.IEquatableWith-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System.IEquatable`1
+  commentId: T:System.IEquatable`1
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  name: IEquatable<T>
+  nameWithType: IEquatable<T>
+  fullName: System.IEquatable<T>
+  nameWithType.vb: IEquatable(Of T)
+  fullName.vb: System.IEquatable(Of T)
+  name.vb: IEquatable(Of T)
+  spec.csharp:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: System.IEquatable`1
+    name: IEquatable
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: System
+  commentId: N:System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system
+  name: System
+  nameWithType: System
+  fullName: System
+- uid: System.ValueType
+  commentId: T:System.ValueType
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.valuetype
+  name: ValueType
+  nameWithType: ValueType
+  fullName: System.ValueType
+- uid: System.Object
+  commentId: T:System.Object
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.object
+  name: object
+  nameWithType: object
+  fullName: object
+  nameWithType.vb: Object
+  fullName.vb: Object
+  name.vb: Object
+- uid: Sharpy.Result`2.#ctor*
+  commentId: Overload:Sharpy.Result`2.#ctor
+  href: Sharpy.Result-2.html#Sharpy_Result_2__ctor__0_
+  name: Result
+  nameWithType: Result<T, E>.Result
+  fullName: Sharpy.Result<T, E>.Result
+  nameWithType.vb: Result(Of T, E).New
+  fullName.vb: Sharpy.Result(Of T, E).New
+  name.vb: New
+- uid: '{T}'
+  commentId: '!:T'
+  definition: T
+  name: T
+  nameWithType: T
+  fullName: T
+- uid: T
+  name: T
+  nameWithType: T
+  fullName: T
+- uid: '{E}'
+  commentId: '!:E'
+  definition: E
+  name: E
+  nameWithType: E
+  fullName: E
+- uid: E
+  name: E
+  nameWithType: E
+  fullName: E
+- uid: Sharpy.Result`2.IsOk*
+  commentId: Overload:Sharpy.Result`2.IsOk
+  href: Sharpy.Result-2.html#Sharpy_Result_2_IsOk
+  name: IsOk
+  nameWithType: Result<T, E>.IsOk
+  fullName: Sharpy.Result<T, E>.IsOk
+  nameWithType.vb: Result(Of T, E).IsOk
+  fullName.vb: Sharpy.Result(Of T, E).IsOk
+- uid: System.Boolean
+  commentId: T:System.Boolean
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.boolean
+  name: bool
+  nameWithType: bool
+  fullName: bool
+  nameWithType.vb: Boolean
+  fullName.vb: Boolean
+  name.vb: Boolean
+- uid: Sharpy.Result`2.IsError*
+  commentId: Overload:Sharpy.Result`2.IsError
+  href: Sharpy.Result-2.html#Sharpy_Result_2_IsError
+  name: IsError
+  nameWithType: Result<T, E>.IsError
+  fullName: Sharpy.Result<T, E>.IsError
+  nameWithType.vb: Result(Of T, E).IsError
+  fullName.vb: Sharpy.Result(Of T, E).IsError
+- uid: Sharpy.Result`2.Value*
+  commentId: Overload:Sharpy.Result`2.Value
+  href: Sharpy.Result-2.html#Sharpy_Result_2_Value
+  name: Value
+  nameWithType: Result<T, E>.Value
+  fullName: Sharpy.Result<T, E>.Value
+  nameWithType.vb: Result(Of T, E).Value
+  fullName.vb: Sharpy.Result(Of T, E).Value
+- uid: Sharpy.Optional{{T}}
+  commentId: T:Sharpy.Optional{``0}
+  parent: Sharpy
+  definition: Sharpy.Optional`1
+  href: Sharpy.Optional-1.html
+  name: Optional<T>
+  nameWithType: Optional<T>
+  fullName: Sharpy.Optional<T>
+  nameWithType.vb: Optional(Of T)
+  fullName.vb: Sharpy.Optional(Of T)
+  name.vb: Optional(Of T)
+  spec.csharp:
+  - uid: Sharpy.Optional`1
+    name: Optional
+    href: Sharpy.Optional-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Optional`1
+    name: Optional
+    href: Sharpy.Optional-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Optional`1
+  commentId: T:Sharpy.Optional`1
+  parent: Sharpy
+  href: Sharpy.Optional-1.html
+  name: Optional<T>
+  nameWithType: Optional<T>
+  fullName: Sharpy.Optional<T>
+  nameWithType.vb: Optional(Of T)
+  fullName.vb: Sharpy.Optional(Of T)
+  name.vb: Optional(Of T)
+  spec.csharp:
+  - uid: Sharpy.Optional`1
+    name: Optional
+    href: Sharpy.Optional-1.html
+  - name: <
+  - name: T
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Optional`1
+    name: Optional
+    href: Sharpy.Optional-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: )
+- uid: Sharpy.Result`2.Error*
+  commentId: Overload:Sharpy.Result`2.Error
+  href: Sharpy.Result-2.html#Sharpy_Result_2_Error
+  name: Error
+  nameWithType: Result<T, E>.Error
+  fullName: Sharpy.Result<T, E>.Error
+  nameWithType.vb: Result(Of T, E).Error
+  fullName.vb: Sharpy.Result(Of T, E).Error
+- uid: Sharpy.Optional{{E}}
+  commentId: T:Sharpy.Optional{`1}
+  parent: Sharpy
+  definition: Sharpy.Optional`1
+  href: Sharpy.Optional-1.html
+  name: Optional<E>
+  nameWithType: Optional<E>
+  fullName: Sharpy.Optional<E>
+  nameWithType.vb: Optional(Of E)
+  fullName.vb: Sharpy.Optional(Of E)
+  name.vb: Optional(Of E)
+  spec.csharp:
+  - uid: Sharpy.Optional`1
+    name: Optional
+    href: Sharpy.Optional-1.html
+  - name: <
+  - name: E
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Optional`1
+    name: Optional
+    href: Sharpy.Optional-1.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: E
+  - name: )
+- uid: Sharpy.Result`2.op_True*
+  commentId: Overload:Sharpy.Result`2.op_True
+  name: operator true
+  nameWithType: Result<T, E>.operator true
+  fullName: Sharpy.Result<T, E>.operator true
+  nameWithType.vb: Result(Of T, E).IsTrue
+  fullName.vb: Sharpy.Result(Of T, E).IsTrue
+  name.vb: IsTrue
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - name: "true"
+- uid: Sharpy.Result`2
+  commentId: T:Sharpy.Result`2
+  parent: Sharpy
+  href: Sharpy.Result-2.html
+  name: Result<T, E>
+  nameWithType: Result<T, E>
+  fullName: Sharpy.Result<T, E>
+  nameWithType.vb: Result(Of T, E)
+  fullName.vb: Sharpy.Result(Of T, E)
+  name.vb: Result(Of T, E)
+  spec.csharp:
+  - uid: Sharpy.Result`2
+    name: Result
+    href: Sharpy.Result-2.html
+  - name: <
+  - name: T
+  - name: ','
+  - name: " "
+  - name: E
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Result`2
+    name: Result
+    href: Sharpy.Result-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: ','
+  - name: " "
+  - name: E
+  - name: )
+- uid: Sharpy.Result`2.op_False*
+  commentId: Overload:Sharpy.Result`2.op_False
+  name: operator false
+  nameWithType: Result<T, E>.operator false
+  fullName: Sharpy.Result<T, E>.operator false
+  nameWithType.vb: Result(Of T, E).IsFalse
+  fullName.vb: Sharpy.Result(Of T, E).IsFalse
+  name.vb: IsFalse
+  spec.csharp:
+  - name: operator
+  - name: " "
+  - name: "false"
+- uid: Sharpy.Result`2.op_Implicit*
+  commentId: Overload:Sharpy.Result`2.op_Implicit
+  name: implicit operator
+  nameWithType: Result<T, E>.implicit operator
+  fullName: Sharpy.Result<T, E>.implicit operator
+  nameWithType.vb: Result(Of T, E).CType
+  fullName.vb: Sharpy.Result(Of T, E).CType
+  name.vb: CType
+  spec.csharp:
+  - name: implicit
+  - name: " "
+  - name: operator
+- uid: Sharpy.Result`2.__Bool__*
+  commentId: Overload:Sharpy.Result`2.__Bool__
+  href: Sharpy.Result-2.html#Sharpy_Result_2___Bool__
+  name: __Bool__
+  nameWithType: Result<T, E>.__Bool__
+  fullName: Sharpy.Result<T, E>.__Bool__
+  nameWithType.vb: Result(Of T, E).__Bool__
+  fullName.vb: Sharpy.Result(Of T, E).__Bool__
+- uid: Sharpy.IBoolConvertible.__Bool__
+  commentId: M:Sharpy.IBoolConvertible.__Bool__
+  parent: Sharpy.IBoolConvertible
+  href: Sharpy.IBoolConvertible.html#Sharpy_IBoolConvertible___Bool__
+  name: __Bool__()
+  nameWithType: IBoolConvertible.__Bool__()
+  fullName: Sharpy.IBoolConvertible.__Bool__()
+  spec.csharp:
+  - uid: Sharpy.IBoolConvertible.__Bool__
+    name: __Bool__
+    href: Sharpy.IBoolConvertible.html#Sharpy_IBoolConvertible___Bool__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IBoolConvertible.__Bool__
+    name: __Bool__
+    href: Sharpy.IBoolConvertible.html#Sharpy_IBoolConvertible___Bool__
+  - name: (
+  - name: )
+- uid: Sharpy.Result`2.__Eq__*
+  commentId: Overload:Sharpy.Result`2.__Eq__
+  href: Sharpy.Result-2.html#Sharpy_Result_2___Eq___System_Object_
+  name: __Eq__
+  nameWithType: Result<T, E>.__Eq__
+  fullName: Sharpy.Result<T, E>.__Eq__
+  nameWithType.vb: Result(Of T, E).__Eq__
+  fullName.vb: Sharpy.Result(Of T, E).__Eq__
+- uid: Sharpy.IEquatableWith{Sharpy.Result`2}.__Eq__(System.Object)
+  commentId: M:Sharpy.IEquatableWith{Sharpy.Result`2}.__Eq__(System.Object)
+  parent: Sharpy.IEquatableWith{Sharpy.Result`2}
+  definition: Sharpy.IEquatableWith`1.__Eq__(System.Object)
+  href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq___System_Object_
+  name: __Eq__(object)
+  nameWithType: IEquatableWith<Result<T, E>>.__Eq__(object)
+  fullName: Sharpy.IEquatableWith<Sharpy.Result<T, E>>.__Eq__(object)
+  nameWithType.vb: IEquatableWith(Of Result(Of T, E)).__Eq__(Object)
+  fullName.vb: Sharpy.IEquatableWith(Of Sharpy.Result(Of T, E)).__Eq__(Object)
+  name.vb: __Eq__(Object)
+  spec.csharp:
+  - uid: Sharpy.IEquatableWith{Sharpy.Result`2}.__Eq__(System.Object)
+    name: __Eq__
+    href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq___System_Object_
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IEquatableWith{Sharpy.Result`2}.__Eq__(System.Object)
+    name: __Eq__
+    href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq___System_Object_
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: Sharpy.IEquatable.__Eq__(System.Object)
+  commentId: M:Sharpy.IEquatable.__Eq__(System.Object)
+  parent: Sharpy.IEquatable
+  isExternal: true
+  href: Sharpy.IEquatable.html#Sharpy_IEquatable___Eq___System_Object_
+  name: __Eq__(object)
+  nameWithType: IEquatable.__Eq__(object)
+  fullName: Sharpy.IEquatable.__Eq__(object)
+  nameWithType.vb: IEquatable.__Eq__(Object)
+  fullName.vb: Sharpy.IEquatable.__Eq__(Object)
+  name.vb: __Eq__(Object)
+  spec.csharp:
+  - uid: Sharpy.IEquatable.__Eq__(System.Object)
+    name: __Eq__
+    href: Sharpy.IEquatable.html#Sharpy_IEquatable___Eq___System_Object_
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IEquatable.__Eq__(System.Object)
+    name: __Eq__
+    href: Sharpy.IEquatable.html#Sharpy_IEquatable___Eq___System_Object_
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: Sharpy.IEquatableWith`1.__Eq__(System.Object)
+  commentId: M:Sharpy.IEquatableWith`1.__Eq__(System.Object)
+  isExternal: true
+  href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq___System_Object_
+  name: __Eq__(object)
+  nameWithType: IEquatableWith<T>.__Eq__(object)
+  fullName: Sharpy.IEquatableWith<T>.__Eq__(object)
+  nameWithType.vb: IEquatableWith(Of T).__Eq__(Object)
+  fullName.vb: Sharpy.IEquatableWith(Of T).__Eq__(Object)
+  name.vb: __Eq__(Object)
+  spec.csharp:
+  - uid: Sharpy.IEquatableWith`1.__Eq__(System.Object)
+    name: __Eq__
+    href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq___System_Object_
+  - name: (
+  - uid: System.Object
+    name: object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IEquatableWith`1.__Eq__(System.Object)
+    name: __Eq__
+    href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq___System_Object_
+  - name: (
+  - uid: System.Object
+    name: Object
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.object
+  - name: )
+- uid: Sharpy.IEquatableWith{Sharpy.Result`2}.__Eq__(Sharpy.Result{{T},{E}})
+  commentId: M:Sharpy.IEquatableWith{Sharpy.Result`2}.__Eq__(Sharpy.Result{`0,`1})
+  parent: Sharpy.IEquatableWith{Sharpy.Result`2}
+  definition: Sharpy.IEquatableWith`1.__Eq__(`0)
+  href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq____0_
+  name: __Eq__(Result<T, E>)
+  nameWithType: IEquatableWith<Result<T, E>>.__Eq__(Result<T, E>)
+  fullName: Sharpy.IEquatableWith<Sharpy.Result<T, E>>.__Eq__(Sharpy.Result<T, E>)
+  nameWithType.vb: IEquatableWith(Of Result(Of T, E)).__Eq__(Result(Of T, E))
+  fullName.vb: Sharpy.IEquatableWith(Of Sharpy.Result(Of T, E)).__Eq__(Sharpy.Result(Of T, E))
+  name.vb: __Eq__(Result(Of T, E))
+  spec.csharp:
+  - uid: Sharpy.IEquatableWith{Sharpy.Result`2}.__Eq__(Sharpy.Result{`0,`1})
+    name: __Eq__
+    href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq____0_
+  - name: (
+  - uid: Sharpy.Result`2
+    name: Result
+    href: Sharpy.Result-2.html
+  - name: <
+  - name: T
+  - name: ','
+  - name: " "
+  - name: E
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IEquatableWith{Sharpy.Result`2}.__Eq__(Sharpy.Result{`0,`1})
+    name: __Eq__
+    href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq____0_
+  - name: (
+  - uid: Sharpy.Result`2
+    name: Result
+    href: Sharpy.Result-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: ','
+  - name: " "
+  - name: E
+  - name: )
+  - name: )
+- uid: Sharpy.IEquatableWith`1.__Eq__(`0)
+  commentId: M:Sharpy.IEquatableWith`1.__Eq__(`0)
+  href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq____0_
+  name: __Eq__(T)
+  nameWithType: IEquatableWith<T>.__Eq__(T)
+  fullName: Sharpy.IEquatableWith<T>.__Eq__(T)
+  nameWithType.vb: IEquatableWith(Of T).__Eq__(T)
+  fullName.vb: Sharpy.IEquatableWith(Of T).__Eq__(T)
+  spec.csharp:
+  - uid: Sharpy.IEquatableWith`1.__Eq__(`0)
+    name: __Eq__
+    href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq____0_
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IEquatableWith`1.__Eq__(`0)
+    name: __Eq__
+    href: Sharpy.IEquatableWith-1.html#Sharpy_IEquatableWith_1___Eq____0_
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.Result`2.Equals*
+  commentId: Overload:Sharpy.Result`2.Equals
+  href: Sharpy.Result-2.html#Sharpy_Result_2_Equals_Sharpy_Result__0__1__
+  name: Equals
+  nameWithType: Result<T, E>.Equals
+  fullName: Sharpy.Result<T, E>.Equals
+  nameWithType.vb: Result(Of T, E).Equals
+  fullName.vb: Sharpy.Result(Of T, E).Equals
+- uid: System.IEquatable{Sharpy.Result`2}.Equals(Sharpy.Result{{T},{E}})
+  commentId: M:System.IEquatable{Sharpy.Result`2}.Equals(Sharpy.Result{`0,`1})
+  parent: System.IEquatable{Sharpy.Result`2}
+  definition: System.IEquatable`1.Equals(`0)
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
+  name: Equals(Result<T, E>)
+  nameWithType: IEquatable<Result<T, E>>.Equals(Result<T, E>)
+  fullName: System.IEquatable<Sharpy.Result<T, E>>.Equals(Sharpy.Result<T, E>)
+  nameWithType.vb: IEquatable(Of Result(Of T, E)).Equals(Result(Of T, E))
+  fullName.vb: System.IEquatable(Of Sharpy.Result(Of T, E)).Equals(Sharpy.Result(Of T, E))
+  name.vb: Equals(Result(Of T, E))
+  spec.csharp:
+  - uid: System.IEquatable{Sharpy.Result`2}.Equals(Sharpy.Result{`0,`1})
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
+  - name: (
+  - uid: Sharpy.Result`2
+    name: Result
+    href: Sharpy.Result-2.html
+  - name: <
+  - name: T
+  - name: ','
+  - name: " "
+  - name: E
+  - name: '>'
+  - name: )
+  spec.vb:
+  - uid: System.IEquatable{Sharpy.Result`2}.Equals(Sharpy.Result{`0,`1})
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
+  - name: (
+  - uid: Sharpy.Result`2
+    name: Result
+    href: Sharpy.Result-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: ','
+  - name: " "
+  - name: E
+  - name: )
+  - name: )
+- uid: System.IEquatable`1.Equals(`0)
+  commentId: M:System.IEquatable`1.Equals(`0)
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
+  name: Equals(T)
+  nameWithType: IEquatable<T>.Equals(T)
+  fullName: System.IEquatable<T>.Equals(T)
+  nameWithType.vb: IEquatable(Of T).Equals(T)
+  fullName.vb: System.IEquatable(Of T).Equals(T)
+  spec.csharp:
+  - uid: System.IEquatable`1.Equals(`0)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
+  - name: (
+  - name: T
+  - name: )
+  spec.vb:
+  - uid: System.IEquatable`1.Equals(`0)
+    name: Equals
+    isExternal: true
+    href: https://learn.microsoft.com/dotnet/api/system.iequatable-1.equals
+  - name: (
+  - name: T
+  - name: )
+- uid: Sharpy.Result`2.__Hash__*
+  commentId: Overload:Sharpy.Result`2.__Hash__
+  href: Sharpy.Result-2.html#Sharpy_Result_2___Hash__
+  name: __Hash__
+  nameWithType: Result<T, E>.__Hash__
+  fullName: Sharpy.Result<T, E>.__Hash__
+  nameWithType.vb: Result(Of T, E).__Hash__
+  fullName.vb: Sharpy.Result(Of T, E).__Hash__
+- uid: Sharpy.IHashable.__Hash__
+  commentId: M:Sharpy.IHashable.__Hash__
+  parent: Sharpy.IHashable
+  href: Sharpy.IHashable.html#Sharpy_IHashable___Hash__
+  name: __Hash__()
+  nameWithType: IHashable.__Hash__()
+  fullName: Sharpy.IHashable.__Hash__()
+  spec.csharp:
+  - uid: Sharpy.IHashable.__Hash__
+    name: __Hash__
+    href: Sharpy.IHashable.html#Sharpy_IHashable___Hash__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IHashable.__Hash__
+    name: __Hash__
+    href: Sharpy.IHashable.html#Sharpy_IHashable___Hash__
+  - name: (
+  - name: )
+- uid: System.Int32
+  commentId: T:System.Int32
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.int32
+  name: int
+  nameWithType: int
+  fullName: int
+  nameWithType.vb: Integer
+  fullName.vb: Integer
+  name.vb: Integer
+- uid: Sharpy.Result`2.__Repr__*
+  commentId: Overload:Sharpy.Result`2.__Repr__
+  href: Sharpy.Result-2.html#Sharpy_Result_2___Repr__
+  name: __Repr__
+  nameWithType: Result<T, E>.__Repr__
+  fullName: Sharpy.Result<T, E>.__Repr__
+  nameWithType.vb: Result(Of T, E).__Repr__
+  fullName.vb: Sharpy.Result(Of T, E).__Repr__
+- uid: Sharpy.IRepresentable.__Repr__
+  commentId: M:Sharpy.IRepresentable.__Repr__
+  parent: Sharpy.IRepresentable
+  href: Sharpy.IRepresentable.html#Sharpy_IRepresentable___Repr__
+  name: __Repr__()
+  nameWithType: IRepresentable.__Repr__()
+  fullName: Sharpy.IRepresentable.__Repr__()
+  spec.csharp:
+  - uid: Sharpy.IRepresentable.__Repr__
+    name: __Repr__
+    href: Sharpy.IRepresentable.html#Sharpy_IRepresentable___Repr__
+  - name: (
+  - name: )
+  spec.vb:
+  - uid: Sharpy.IRepresentable.__Repr__
+    name: __Repr__
+    href: Sharpy.IRepresentable.html#Sharpy_IRepresentable___Repr__
+  - name: (
+  - name: )
+- uid: System.String
+  commentId: T:System.String
+  parent: System
+  isExternal: true
+  href: https://learn.microsoft.com/dotnet/api/system.string
+  name: string
+  nameWithType: string
+  fullName: string
+  nameWithType.vb: String
+  fullName.vb: String
+  name.vb: String

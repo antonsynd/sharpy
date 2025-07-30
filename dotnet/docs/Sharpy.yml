@@ -53,6 +53,7 @@ items:
   - Sharpy.Optional`1
   - Sharpy.PrintArguments`1
   - Sharpy.RangeExtensions
+  - Sharpy.Result`2
   - Sharpy.SetIterator`1
   - Sharpy.Set`1
   - Sharpy.Slice
@@ -1131,6 +1132,38 @@ references:
   - name: Of
   - name: " "
   - name: T
+  - name: )
+- uid: Sharpy.Result`2
+  commentId: T:Sharpy.Result`2
+  parent: Sharpy
+  href: Sharpy.Result-2.html
+  name: Result<T, E>
+  nameWithType: Result<T, E>
+  fullName: Sharpy.Result<T, E>
+  nameWithType.vb: Result(Of T, E)
+  fullName.vb: Sharpy.Result(Of T, E)
+  name.vb: Result(Of T, E)
+  spec.csharp:
+  - uid: Sharpy.Result`2
+    name: Result
+    href: Sharpy.Result-2.html
+  - name: <
+  - name: T
+  - name: ','
+  - name: " "
+  - name: E
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Result`2
+    name: Result
+    href: Sharpy.Result-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: ','
+  - name: " "
+  - name: E
   - name: )
 - uid: Sharpy.Set`1
   commentId: T:Sharpy.Set`1

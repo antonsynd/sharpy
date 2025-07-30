@@ -151,6 +151,9 @@ items:
   - uid: Sharpy.RangeExtensions
     name: RangeExtensions
     type: Class
+  - uid: Sharpy.Result`2
+    name: Result<T, E>
+    type: Struct
   - uid: Sharpy.SetIterator`1
     name: SetIterator<T>
     type: Class

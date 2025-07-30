@@ -21,6 +21,7 @@ items:
   - Sharpy.Exports.Bool(System.UInt16)
   - Sharpy.Exports.Bool(System.UInt32)
   - Sharpy.Exports.Bool(System.UInt64)
+  - Sharpy.Exports.Error``2(``1)
   - Sharpy.Exports.Iter``1(Sharpy.Collections.Interfaces.IIterable{``0})
   - Sharpy.Exports.Len(Sharpy.Collections.Interfaces.ISized)
   - Sharpy.Exports.Len(System.String)
@@ -30,6 +31,7 @@ items:
   - Sharpy.Exports.Min``2(Sharpy.Collections.Interfaces.IIterable{``0},System.Func{``0,``1})
   - Sharpy.Exports.Next``1(Sharpy.Iterator{``0})
   - Sharpy.Exports.None``1
+  - Sharpy.Exports.Ok``2(``0)
   - Sharpy.Exports.Print(Sharpy.Object,System.UInt32,System.Boolean)
   - Sharpy.Exports.Print(Sharpy.PrintArguments{Sharpy.Object},System.UInt32,System.Boolean)
   - Sharpy.Exports.Print(Sharpy.PrintArguments{System.Object},System.UInt32,System.Boolean)
@@ -609,6 +611,43 @@ items:
   nameWithType.vb: Exports.Bool(Object)
   fullName.vb: Sharpy.Exports.Bool(Object)
   name.vb: Bool(Object)
+- uid: Sharpy.Exports.Error``2(``1)
+  commentId: M:Sharpy.Exports.Error``2(``1)
+  id: Error``2(``1)
+  parent: Sharpy.Exports
+  langs:
+  - csharp
+  - vb
+  name: Error<T, E>(E)
+  nameWithType: Exports.Error<T, E>(E)
+  fullName: Sharpy.Exports.Error<T, E>(E)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Error.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Error
+    path: ../src/Sharpy/Error.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static Result<T, E> Error<T, E>(E error)
+    parameters:
+    - id: error
+      type: '{E}'
+    typeParameters:
+    - id: T
+    - id: E
+    return:
+      type: Sharpy.Result{{T},{E}}
+    content.vb: Public Shared Function [Error](Of T, E)([error] As E) As Result(Of T, E)
+  overload: Sharpy.Exports.Error*
+  nameWithType.vb: Exports.Error(Of T, E)(E)
+  fullName.vb: Sharpy.Exports.Error(Of T, E)(E)
+  name.vb: Error(Of T, E)(E)
 - uid: Sharpy.Exports.Iter``1(Sharpy.Collections.Interfaces.IIterable{``0})
   commentId: M:Sharpy.Exports.Iter``1(Sharpy.Collections.Interfaces.IIterable{``0})
   id: Iter``1(Sharpy.Collections.Interfaces.IIterable{``0})
@@ -926,7 +965,7 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: 'public static Optional<T> None<T>() where T : notnull'
+    content: public static Optional<T> None<T>()
     typeParameters:
     - id: T
     return:
@@ -936,6 +975,43 @@ items:
   nameWithType.vb: Exports.None(Of T)()
   fullName.vb: Sharpy.Exports.None(Of T)()
   name.vb: None(Of T)()
+- uid: Sharpy.Exports.Ok``2(``0)
+  commentId: M:Sharpy.Exports.Ok``2(``0)
+  id: Ok``2(``0)
+  parent: Sharpy.Exports
+  langs:
+  - csharp
+  - vb
+  name: Ok<T, E>(T)
+  nameWithType: Exports.Ok<T, E>(T)
+  fullName: Sharpy.Exports.Ok<T, E>(T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Ok.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: Ok
+    path: ../src/Sharpy/Ok.cs
+    startLine: 4
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public static Result<T, E> Ok<T, E>(T value)
+    parameters:
+    - id: value
+      type: '{T}'
+    typeParameters:
+    - id: T
+    - id: E
+    return:
+      type: Sharpy.Result{{T},{E}}
+    content.vb: Public Shared Function Ok(Of T, E)(value As T) As Result(Of T, E)
+  overload: Sharpy.Exports.Ok*
+  nameWithType.vb: Exports.Ok(Of T, E)(T)
+  fullName.vb: Sharpy.Exports.Ok(Of T, E)(T)
+  name.vb: Ok(Of T, E)(T)
 - uid: Sharpy.Exports.Str(System.Object)
   commentId: M:Sharpy.Exports.Str(System.Object)
   id: Str(System.Object)
@@ -1267,7 +1343,7 @@ items:
     <code>var opt = new Optional&lt;int&gt;(5);</code>.
   example: []
   syntax:
-    content: 'public static Optional<T> Some<T>(T value) where T : notnull'
+    content: public static Optional<T> Some<T>(T value)
     parameters:
     - id: value
       type: '{T}'
@@ -1723,6 +1799,87 @@ references:
   name: IBoolConvertible
   nameWithType: IBoolConvertible
   fullName: Sharpy.IBoolConvertible
+- uid: Sharpy.Exports.Error*
+  commentId: Overload:Sharpy.Exports.Error
+  href: Sharpy.Exports.html#Sharpy_Exports_Error__2___1_
+  name: Error
+  nameWithType: Exports.Error
+  fullName: Sharpy.Exports.Error
+- uid: '{E}'
+  commentId: '!:E'
+  definition: E
+  name: E
+  nameWithType: E
+  fullName: E
+- uid: Sharpy.Result{{T},{E}}
+  commentId: T:Sharpy.Result{``0,``1}
+  parent: Sharpy
+  definition: Sharpy.Result`2
+  href: Sharpy.Result-2.html
+  name: Result<T, E>
+  nameWithType: Result<T, E>
+  fullName: Sharpy.Result<T, E>
+  nameWithType.vb: Result(Of T, E)
+  fullName.vb: Sharpy.Result(Of T, E)
+  name.vb: Result(Of T, E)
+  spec.csharp:
+  - uid: Sharpy.Result`2
+    name: Result
+    href: Sharpy.Result-2.html
+  - name: <
+  - name: T
+  - name: ','
+  - name: " "
+  - name: E
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Result`2
+    name: Result
+    href: Sharpy.Result-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: ','
+  - name: " "
+  - name: E
+  - name: )
+- uid: E
+  name: E
+  nameWithType: E
+  fullName: E
+- uid: Sharpy.Result`2
+  commentId: T:Sharpy.Result`2
+  parent: Sharpy
+  href: Sharpy.Result-2.html
+  name: Result<T, E>
+  nameWithType: Result<T, E>
+  fullName: Sharpy.Result<T, E>
+  nameWithType.vb: Result(Of T, E)
+  fullName.vb: Sharpy.Result(Of T, E)
+  name.vb: Result(Of T, E)
+  spec.csharp:
+  - uid: Sharpy.Result`2
+    name: Result
+    href: Sharpy.Result-2.html
+  - name: <
+  - name: T
+  - name: ','
+  - name: " "
+  - name: E
+  - name: '>'
+  spec.vb:
+  - uid: Sharpy.Result`2
+    name: Result
+    href: Sharpy.Result-2.html
+  - name: (
+  - name: Of
+  - name: " "
+  - name: T
+  - name: ','
+  - name: " "
+  - name: E
+  - name: )
 - uid: Sharpy.Exports.Iter*
   commentId: Overload:Sharpy.Exports.Iter
   href: Sharpy.Exports.html#Sharpy_Exports_Iter__1_Sharpy_Collections_Interfaces_IIterable___0__
@@ -2033,6 +2190,12 @@ references:
   - name: " "
   - name: T
   - name: )
+- uid: Sharpy.Exports.Ok*
+  commentId: Overload:Sharpy.Exports.Ok
+  href: Sharpy.Exports.html#Sharpy_Exports_Ok__2___0_
+  name: Ok
+  nameWithType: Exports.Ok
+  fullName: Sharpy.Exports.Ok
 - uid: Sharpy.Exports.Str*
   commentId: Overload:Sharpy.Exports.Str
   href: Sharpy.Exports.html#Sharpy_Exports_Str_System_Object_

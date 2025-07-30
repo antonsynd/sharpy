@@ -9,13 +9,16 @@ items:
   - Sharpy.Optional`1.#ctor(`0)
   - Sharpy.Optional`1.Clear
   - Sharpy.Optional`1.Equals(Sharpy.Optional{`0})
+  - Sharpy.Optional`1.Extract
+  - Sharpy.Optional`1.ExtractOr(`0)
+  - Sharpy.Optional`1.ExtractOrDefault
   - Sharpy.Optional`1.HasValue
-  - Sharpy.Optional`1.Map``1(System.Func{`0,``0})
-  - Sharpy.Optional`1.Set(`0)
-  - Sharpy.Optional`1.Swap(Sharpy.Optional{`0})
-  - Sharpy.Optional`1.Take
+  - Sharpy.Optional`1.MapValue``1(System.Func{`0,``0})
+  - Sharpy.Optional`1.SetValue(`0)
+  - Sharpy.Optional`1.SwapWith(Sharpy.Optional{`0})
   - Sharpy.Optional`1.Value
-  - Sharpy.Optional`1.ValueOrDefault(`0)
+  - Sharpy.Optional`1.ValueOr(`0)
+  - Sharpy.Optional`1.ValueOrDefault
   - Sharpy.Optional`1.__Bool__
   - Sharpy.Optional`1.__Eq__(Sharpy.Optional{`0})
   - Sharpy.Optional`1.__Eq__(System.Object)
@@ -155,16 +158,16 @@ items:
   overload: Sharpy.Optional`1.Value*
   nameWithType.vb: Optional(Of T).Value()
   fullName.vb: Sharpy.Optional(Of T).Value()
-- uid: Sharpy.Optional`1.ValueOrDefault(`0)
-  commentId: M:Sharpy.Optional`1.ValueOrDefault(`0)
-  id: ValueOrDefault(`0)
+- uid: Sharpy.Optional`1.ValueOrDefault
+  commentId: M:Sharpy.Optional`1.ValueOrDefault
+  id: ValueOrDefault
   parent: Sharpy.Optional`1
   langs:
   - csharp
   - vb
-  name: ValueOrDefault(T)
-  nameWithType: Optional<T>.ValueOrDefault(T)
-  fullName: Sharpy.Optional<T>.ValueOrDefault(T)
+  name: ValueOrDefault()
+  nameWithType: Optional<T>.ValueOrDefault()
+  fullName: Sharpy.Optional<T>.ValueOrDefault()
   type: Method
   source:
     remote:
@@ -178,40 +181,70 @@ items:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public readonly T ValueOrDefault(T defaultValue)
-    parameters:
-    - id: defaultValue
-      type: '{T}'
+    content: public readonly T ValueOrDefault()
     return:
       type: '{T}'
-    content.vb: Public Function ValueOrDefault(defaultValue As T) As T
+    content.vb: Public Function ValueOrDefault() As T
   overload: Sharpy.Optional`1.ValueOrDefault*
-  nameWithType.vb: Optional(Of T).ValueOrDefault(T)
-  fullName.vb: Sharpy.Optional(Of T).ValueOrDefault(T)
-- uid: Sharpy.Optional`1.Map``1(System.Func{`0,``0})
-  commentId: M:Sharpy.Optional`1.Map``1(System.Func{`0,``0})
-  id: Map``1(System.Func{`0,``0})
+  nameWithType.vb: Optional(Of T).ValueOrDefault()
+  fullName.vb: Sharpy.Optional(Of T).ValueOrDefault()
+- uid: Sharpy.Optional`1.ValueOr(`0)
+  commentId: M:Sharpy.Optional`1.ValueOr(`0)
+  id: ValueOr(`0)
   parent: Sharpy.Optional`1
   langs:
   - csharp
   - vb
-  name: Map<U>(Func<T, U>)
-  nameWithType: Optional<T>.Map<U>(Func<T, U>)
-  fullName: Sharpy.Optional<T>.Map<U>(System.Func<T, U>)
+  name: ValueOr(T)
+  nameWithType: Optional<T>.ValueOr(T)
+  fullName: Sharpy.Optional<T>.ValueOr(T)
   type: Method
   source:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
-    id: Map
+    id: ValueOr
     path: ../src/Sharpy/Partial.Optional/Optional.cs
-    startLine: 29
+    startLine: 26
   assemblies:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public Optional<U> Map<U>(Func<T, U> func)
+    content: public readonly T ValueOr(T defaultValue)
+    parameters:
+    - id: defaultValue
+      type: '{T}'
+    return:
+      type: '{T}'
+    content.vb: Public Function ValueOr(defaultValue As T) As T
+  overload: Sharpy.Optional`1.ValueOr*
+  nameWithType.vb: Optional(Of T).ValueOr(T)
+  fullName.vb: Sharpy.Optional(Of T).ValueOr(T)
+- uid: Sharpy.Optional`1.MapValue``1(System.Func{`0,``0})
+  commentId: M:Sharpy.Optional`1.MapValue``1(System.Func{`0,``0})
+  id: MapValue``1(System.Func{`0,``0})
+  parent: Sharpy.Optional`1
+  langs:
+  - csharp
+  - vb
+  name: MapValue<U>(Func<T, U>)
+  nameWithType: Optional<T>.MapValue<U>(Func<T, U>)
+  fullName: Sharpy.Optional<T>.MapValue<U>(System.Func<T, U>)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Optional/Optional.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: MapValue
+    path: ../src/Sharpy/Partial.Optional/Optional.cs
+    startLine: 31
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public Optional<U> MapValue<U>(Func<T, U> func)
     parameters:
     - id: func
       type: System.Func{{T},{U}}
@@ -219,72 +252,135 @@ items:
     - id: U
     return:
       type: Sharpy.Optional{{U}}
-    content.vb: Public Function Map(Of U)(func As Func(Of T, U)) As [Optional](Of U)
-  overload: Sharpy.Optional`1.Map*
-  nameWithType.vb: Optional(Of T).Map(Of U)(Func(Of T, U))
-  fullName.vb: Sharpy.Optional(Of T).Map(Of U)(System.Func(Of T, U))
-  name.vb: Map(Of U)(Func(Of T, U))
-- uid: Sharpy.Optional`1.Set(`0)
-  commentId: M:Sharpy.Optional`1.Set(`0)
-  id: Set(`0)
+    content.vb: Public Function MapValue(Of U)(func As Func(Of T, U)) As [Optional](Of U)
+  overload: Sharpy.Optional`1.MapValue*
+  nameWithType.vb: Optional(Of T).MapValue(Of U)(Func(Of T, U))
+  fullName.vb: Sharpy.Optional(Of T).MapValue(Of U)(System.Func(Of T, U))
+  name.vb: MapValue(Of U)(Func(Of T, U))
+- uid: Sharpy.Optional`1.SetValue(`0)
+  commentId: M:Sharpy.Optional`1.SetValue(`0)
+  id: SetValue(`0)
   parent: Sharpy.Optional`1
   langs:
   - csharp
   - vb
-  name: Set(T)
-  nameWithType: Optional<T>.Set(T)
-  fullName: Sharpy.Optional<T>.Set(T)
+  name: SetValue(T)
+  nameWithType: Optional<T>.SetValue(T)
+  fullName: Sharpy.Optional<T>.SetValue(T)
   type: Method
   source:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
-    id: Set
+    id: SetValue
     path: ../src/Sharpy/Partial.Optional/Optional.cs
-    startLine: 39
+    startLine: 41
   assemblies:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public void Set(T value)
+    content: public void SetValue(T value)
     parameters:
     - id: value
       type: '{T}'
-    content.vb: Public Sub [Set](value As T)
-  overload: Sharpy.Optional`1.Set*
-  nameWithType.vb: Optional(Of T).Set(T)
-  fullName.vb: Sharpy.Optional(Of T).Set(T)
-- uid: Sharpy.Optional`1.Take
-  commentId: M:Sharpy.Optional`1.Take
-  id: Take
+    content.vb: Public Sub SetValue(value As T)
+  overload: Sharpy.Optional`1.SetValue*
+  nameWithType.vb: Optional(Of T).SetValue(T)
+  fullName.vb: Sharpy.Optional(Of T).SetValue(T)
+- uid: Sharpy.Optional`1.Extract
+  commentId: M:Sharpy.Optional`1.Extract
+  id: Extract
   parent: Sharpy.Optional`1
   langs:
   - csharp
   - vb
-  name: Take()
-  nameWithType: Optional<T>.Take()
-  fullName: Sharpy.Optional<T>.Take()
+  name: Extract()
+  nameWithType: Optional<T>.Extract()
+  fullName: Sharpy.Optional<T>.Extract()
   type: Method
   source:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
-    id: Take
+    id: Extract
     path: ../src/Sharpy/Partial.Optional/Optional.cs
-    startLine: 45
+    startLine: 47
   assemblies:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public T Take()
+    content: public T Extract()
     return:
       type: '{T}'
-    content.vb: Public Function Take() As T
-  overload: Sharpy.Optional`1.Take*
-  nameWithType.vb: Optional(Of T).Take()
-  fullName.vb: Sharpy.Optional(Of T).Take()
+    content.vb: Public Function Extract() As T
+  overload: Sharpy.Optional`1.Extract*
+  nameWithType.vb: Optional(Of T).Extract()
+  fullName.vb: Sharpy.Optional(Of T).Extract()
+- uid: Sharpy.Optional`1.ExtractOr(`0)
+  commentId: M:Sharpy.Optional`1.ExtractOr(`0)
+  id: ExtractOr(`0)
+  parent: Sharpy.Optional`1
+  langs:
+  - csharp
+  - vb
+  name: ExtractOr(T)
+  nameWithType: Optional<T>.ExtractOr(T)
+  fullName: Sharpy.Optional<T>.ExtractOr(T)
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Optional/Optional.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: ExtractOr
+    path: ../src/Sharpy/Partial.Optional/Optional.cs
+    startLine: 59
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public T ExtractOr(T defaultValue)
+    parameters:
+    - id: defaultValue
+      type: '{T}'
+    return:
+      type: '{T}'
+    content.vb: Public Function ExtractOr(defaultValue As T) As T
+  overload: Sharpy.Optional`1.ExtractOr*
+  nameWithType.vb: Optional(Of T).ExtractOr(T)
+  fullName.vb: Sharpy.Optional(Of T).ExtractOr(T)
+- uid: Sharpy.Optional`1.ExtractOrDefault
+  commentId: M:Sharpy.Optional`1.ExtractOrDefault
+  id: ExtractOrDefault
+  parent: Sharpy.Optional`1
+  langs:
+  - csharp
+  - vb
+  name: ExtractOrDefault()
+  nameWithType: Optional<T>.ExtractOrDefault()
+  fullName: Sharpy.Optional<T>.ExtractOrDefault()
+  type: Method
+  source:
+    remote:
+      path: dotnet/src/Sharpy/Partial.Optional/Optional.cs
+      branch: mainline
+      repo: git@github.com:antonsynd/sharpy.git
+    id: ExtractOrDefault
+    path: ../src/Sharpy/Partial.Optional/Optional.cs
+    startLine: 71
+  assemblies:
+  - Sharpy
+  namespace: Sharpy
+  syntax:
+    content: public T ExtractOrDefault()
+    return:
+      type: '{T}'
+    content.vb: Public Function ExtractOrDefault() As T
+  overload: Sharpy.Optional`1.ExtractOrDefault*
+  nameWithType.vb: Optional(Of T).ExtractOrDefault()
+  fullName.vb: Sharpy.Optional(Of T).ExtractOrDefault()
 - uid: Sharpy.Optional`1.HasValue
   commentId: M:Sharpy.Optional`1.HasValue
   id: HasValue
@@ -303,7 +399,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: HasValue
     path: ../src/Sharpy/Partial.Optional/Optional.cs
-    startLine: 57
+    startLine: 73
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -333,7 +429,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: Clear
     path: ../src/Sharpy/Partial.Optional/Optional.cs
-    startLine: 62
+    startLine: 78
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -343,38 +439,38 @@ items:
   overload: Sharpy.Optional`1.Clear*
   nameWithType.vb: Optional(Of T).Clear()
   fullName.vb: Sharpy.Optional(Of T).Clear()
-- uid: Sharpy.Optional`1.Swap(Sharpy.Optional{`0})
-  commentId: M:Sharpy.Optional`1.Swap(Sharpy.Optional{`0})
-  id: Swap(Sharpy.Optional{`0})
+- uid: Sharpy.Optional`1.SwapWith(Sharpy.Optional{`0})
+  commentId: M:Sharpy.Optional`1.SwapWith(Sharpy.Optional{`0})
+  id: SwapWith(Sharpy.Optional{`0})
   parent: Sharpy.Optional`1
   langs:
   - csharp
   - vb
-  name: Swap(Optional<T>)
-  nameWithType: Optional<T>.Swap(Optional<T>)
-  fullName: Sharpy.Optional<T>.Swap(Sharpy.Optional<T>)
+  name: SwapWith(Optional<T>)
+  nameWithType: Optional<T>.SwapWith(Optional<T>)
+  fullName: Sharpy.Optional<T>.SwapWith(Sharpy.Optional<T>)
   type: Method
   source:
     remote:
       path: dotnet/src/Sharpy/Partial.Optional/Optional.cs
       branch: mainline
       repo: git@github.com:antonsynd/sharpy.git
-    id: Swap
+    id: SwapWith
     path: ../src/Sharpy/Partial.Optional/Optional.cs
-    startLine: 68
+    startLine: 84
   assemblies:
   - Sharpy
   namespace: Sharpy
   syntax:
-    content: public void Swap(Optional<T> other)
+    content: public void SwapWith(Optional<T> other)
     parameters:
     - id: other
       type: Sharpy.Optional`1
-    content.vb: Public Sub Swap(other As [Optional](Of T))
-  overload: Sharpy.Optional`1.Swap*
-  nameWithType.vb: Optional(Of T).Swap(Optional(Of T))
-  fullName.vb: Sharpy.Optional(Of T).Swap(Sharpy.Optional(Of T))
-  name.vb: Swap(Optional(Of T))
+    content.vb: Public Sub SwapWith(other As [Optional](Of T))
+  overload: Sharpy.Optional`1.SwapWith*
+  nameWithType.vb: Optional(Of T).SwapWith(Optional(Of T))
+  fullName.vb: Sharpy.Optional(Of T).SwapWith(Sharpy.Optional(Of T))
+  name.vb: SwapWith(Optional(Of T))
 - uid: Sharpy.Optional`1.op_True(Sharpy.Optional{`0})
   commentId: M:Sharpy.Optional`1.op_True(Sharpy.Optional{`0})
   id: op_True(Sharpy.Optional{`0})
@@ -393,7 +489,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_True
     path: ../src/Sharpy/Partial.Optional/Optional.cs
-    startLine: 74
+    startLine: 90
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -427,7 +523,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_False
     path: ../src/Sharpy/Partial.Optional/Optional.cs
-    startLine: 79
+    startLine: 95
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -461,7 +557,7 @@ items:
       repo: git@github.com:antonsynd/sharpy.git
     id: op_Implicit
     path: ../src/Sharpy/Partial.Optional/Optional.cs
-    startLine: 84
+    startLine: 100
   assemblies:
   - Sharpy
   namespace: Sharpy
@@ -1117,20 +1213,28 @@ references:
   fullName.vb: Sharpy.Optional(Of T).Value
 - uid: Sharpy.Optional`1.ValueOrDefault*
   commentId: Overload:Sharpy.Optional`1.ValueOrDefault
-  href: Sharpy.Optional-1.html#Sharpy_Optional_1_ValueOrDefault__0_
+  href: Sharpy.Optional-1.html#Sharpy_Optional_1_ValueOrDefault
   name: ValueOrDefault
   nameWithType: Optional<T>.ValueOrDefault
   fullName: Sharpy.Optional<T>.ValueOrDefault
   nameWithType.vb: Optional(Of T).ValueOrDefault
   fullName.vb: Sharpy.Optional(Of T).ValueOrDefault
-- uid: Sharpy.Optional`1.Map*
-  commentId: Overload:Sharpy.Optional`1.Map
-  href: Sharpy.Optional-1.html#Sharpy_Optional_1_Map__1_System_Func__0___0__
-  name: Map
-  nameWithType: Optional<T>.Map
-  fullName: Sharpy.Optional<T>.Map
-  nameWithType.vb: Optional(Of T).Map
-  fullName.vb: Sharpy.Optional(Of T).Map
+- uid: Sharpy.Optional`1.ValueOr*
+  commentId: Overload:Sharpy.Optional`1.ValueOr
+  href: Sharpy.Optional-1.html#Sharpy_Optional_1_ValueOr__0_
+  name: ValueOr
+  nameWithType: Optional<T>.ValueOr
+  fullName: Sharpy.Optional<T>.ValueOr
+  nameWithType.vb: Optional(Of T).ValueOr
+  fullName.vb: Sharpy.Optional(Of T).ValueOr
+- uid: Sharpy.Optional`1.MapValue*
+  commentId: Overload:Sharpy.Optional`1.MapValue
+  href: Sharpy.Optional-1.html#Sharpy_Optional_1_MapValue__1_System_Func__0___0__
+  name: MapValue
+  nameWithType: Optional<T>.MapValue
+  fullName: Sharpy.Optional<T>.MapValue
+  nameWithType.vb: Optional(Of T).MapValue
+  fullName.vb: Sharpy.Optional(Of T).MapValue
 - uid: System.Func{{T},{U}}
   commentId: T:System.Func{`0,``0}
   parent: System
@@ -1253,22 +1357,38 @@ references:
   - name: " "
   - name: T
   - name: )
-- uid: Sharpy.Optional`1.Set*
-  commentId: Overload:Sharpy.Optional`1.Set
-  href: Sharpy.Optional-1.html#Sharpy_Optional_1_Set__0_
-  name: Set
-  nameWithType: Optional<T>.Set
-  fullName: Sharpy.Optional<T>.Set
-  nameWithType.vb: Optional(Of T).Set
-  fullName.vb: Sharpy.Optional(Of T).Set
-- uid: Sharpy.Optional`1.Take*
-  commentId: Overload:Sharpy.Optional`1.Take
-  href: Sharpy.Optional-1.html#Sharpy_Optional_1_Take
-  name: Take
-  nameWithType: Optional<T>.Take
-  fullName: Sharpy.Optional<T>.Take
-  nameWithType.vb: Optional(Of T).Take
-  fullName.vb: Sharpy.Optional(Of T).Take
+- uid: Sharpy.Optional`1.SetValue*
+  commentId: Overload:Sharpy.Optional`1.SetValue
+  href: Sharpy.Optional-1.html#Sharpy_Optional_1_SetValue__0_
+  name: SetValue
+  nameWithType: Optional<T>.SetValue
+  fullName: Sharpy.Optional<T>.SetValue
+  nameWithType.vb: Optional(Of T).SetValue
+  fullName.vb: Sharpy.Optional(Of T).SetValue
+- uid: Sharpy.Optional`1.Extract*
+  commentId: Overload:Sharpy.Optional`1.Extract
+  href: Sharpy.Optional-1.html#Sharpy_Optional_1_Extract
+  name: Extract
+  nameWithType: Optional<T>.Extract
+  fullName: Sharpy.Optional<T>.Extract
+  nameWithType.vb: Optional(Of T).Extract
+  fullName.vb: Sharpy.Optional(Of T).Extract
+- uid: Sharpy.Optional`1.ExtractOr*
+  commentId: Overload:Sharpy.Optional`1.ExtractOr
+  href: Sharpy.Optional-1.html#Sharpy_Optional_1_ExtractOr__0_
+  name: ExtractOr
+  nameWithType: Optional<T>.ExtractOr
+  fullName: Sharpy.Optional<T>.ExtractOr
+  nameWithType.vb: Optional(Of T).ExtractOr
+  fullName.vb: Sharpy.Optional(Of T).ExtractOr
+- uid: Sharpy.Optional`1.ExtractOrDefault*
+  commentId: Overload:Sharpy.Optional`1.ExtractOrDefault
+  href: Sharpy.Optional-1.html#Sharpy_Optional_1_ExtractOrDefault
+  name: ExtractOrDefault
+  nameWithType: Optional<T>.ExtractOrDefault
+  fullName: Sharpy.Optional<T>.ExtractOrDefault
+  nameWithType.vb: Optional(Of T).ExtractOrDefault
+  fullName.vb: Sharpy.Optional(Of T).ExtractOrDefault
 - uid: Sharpy.Optional`1.HasValue*
   commentId: Overload:Sharpy.Optional`1.HasValue
   href: Sharpy.Optional-1.html#Sharpy_Optional_1_HasValue
@@ -1296,14 +1416,14 @@ references:
   fullName: Sharpy.Optional<T>.Clear
   nameWithType.vb: Optional(Of T).Clear
   fullName.vb: Sharpy.Optional(Of T).Clear
-- uid: Sharpy.Optional`1.Swap*
-  commentId: Overload:Sharpy.Optional`1.Swap
-  href: Sharpy.Optional-1.html#Sharpy_Optional_1_Swap_Sharpy_Optional__0__
-  name: Swap
-  nameWithType: Optional<T>.Swap
-  fullName: Sharpy.Optional<T>.Swap
-  nameWithType.vb: Optional(Of T).Swap
-  fullName.vb: Sharpy.Optional(Of T).Swap
+- uid: Sharpy.Optional`1.SwapWith*
+  commentId: Overload:Sharpy.Optional`1.SwapWith
+  href: Sharpy.Optional-1.html#Sharpy_Optional_1_SwapWith_Sharpy_Optional__0__
+  name: SwapWith
+  nameWithType: Optional<T>.SwapWith
+  fullName: Sharpy.Optional<T>.SwapWith
+  nameWithType.vb: Optional(Of T).SwapWith
+  fullName.vb: Sharpy.Optional(Of T).SwapWith
 - uid: Sharpy.Optional`1.op_True*
   commentId: Overload:Sharpy.Optional`1.op_True
   name: operator true

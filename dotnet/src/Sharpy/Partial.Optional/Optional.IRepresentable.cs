@@ -4,11 +4,11 @@ public partial struct Optional<T>
 {
     public string __Repr__()
     {
-        if (_value is null)
+        if (!HasValue())
         {
-            return "None";
+            return $"Optional<{typeof(T).Name}>(None)";
         }
 
-        return Repr(_value);
+        return $"Optional<{typeof(T).Name}>({Repr(_value)})";
     }
 }

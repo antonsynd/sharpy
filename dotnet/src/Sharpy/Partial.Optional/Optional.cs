@@ -5,11 +5,11 @@ public partial struct Optional<T> : IBoolConvertible, IRepresentable, IEquatable
     private T _value;
     private bool _hasValue;
 
-    public Optional() { _value = default; _hasValue = false; }
+    public Optional() { _value = default!; _hasValue = false; }
 
     public Optional(T value)
     {
-        Set(value);
+        SetValue(value);
     }
 
     public T Value()
@@ -22,12 +22,14 @@ public partial struct Optional<T> : IBoolConvertible, IRepresentable, IEquatable
         return _value;
     }
 
-    public readonly T ValueOrDefault(T defaultValue)
+    public readonly T ValueOrDefault() => ValueOr(default!);
+
+    public readonly T ValueOr(T defaultValue)
     {
-        return _hasValue ? _value : defaultValue!;
+        return _hasValue ? _value : defaultValue;
     }
 
-    public Optional<U> Map<U>(Func<T, U> func)
+    public Optional<U> MapValue<U>(Func<T, U> func)
     {
         if (!_hasValue)
         {
@@ -37,13 +39,13 @@ public partial struct Optional<T> : IBoolConvertible, IRepresentable, IEquatable
         return func(_value);
     }
 
-    public void Set(T value)
+    public void SetValue(T value)
     {
-        _value = value ?? default;
+        _value = value ?? default!;
         _hasValue = value is not null;
     }
 
-    public T Take()
+    public T Extract()
     {
         if (!_hasValue)
         {
@@ -55,6 +57,20 @@ public partial struct Optional<T> : IBoolConvertible, IRepresentable, IEquatable
         return value;
     }
 
+    public T ExtractOr(T defaultValue)
+    {
+        if (!_hasValue)
+        {
+            return defaultValue;
+        }
+
+        var value = _value;
+        Clear();
+        return value;
+    }
+
+    public T ExtractOrDefault() => ExtractOr(default!);
+
     public readonly bool HasValue()
     {
         return _hasValue;
@@ -62,11 +78,11 @@ public partial struct Optional<T> : IBoolConvertible, IRepresentable, IEquatable
 
     public void Clear()
     {
-        _value = default;
+        _value = default!;
         _hasValue = false;
     }
 
-    public void Swap(Optional<T> other)
+    public void SwapWith(Optional<T> other)
     {
         (other._value, _value) = (_value, other._value);
         (other._hasValue, _hasValue) = (_hasValue, other._hasValue);
