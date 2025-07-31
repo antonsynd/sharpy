@@ -264,31 +264,35 @@ default_assignment: EQUAL expression;
 // ------------
 
 if_statement
-    : IF named_expression COLON block else_blocks
+    : IF test=named_expression COLON body=block orelse=elif_or_else?
     ;
 
-else_blocks
-    : (elif_statement)* else_block?
+elif_or_else
+    : elif=elif_statement | else=else_block
     ;
 
 elif_statement
-    : ELIF named_expression COLON block
+    : ELIF test=named_expression COLON body=block orelse=elif_or_else?
     ;
 
 else_block
-    : ELSE COLON block;
+    : ELSE COLON body=block;
 
 // While statement
 // ---------------
 
 while_statement
-    : WHILE named_expression COLON block else_block?;
+    : WHILE test=named_expression COLON body=block orelse=else_block?;
 
 // For statement
 // -------------
 
 for_statement
-    : ASYNC? FOR star_targets IN expressions COLON block else_block?
+    : FOR target=star_targets IN iter=expressions COLON body=block orelse=else_block?
+    ;
+
+async_for_statement
+    : ASYNC FOR target=star_targets IN iter=expressions COLON body=block orelse=else_block?
     ;
 
 // With statement

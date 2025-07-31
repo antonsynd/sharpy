@@ -221,21 +221,21 @@ def ast_to_dot(
                 # Don't emit source information
                 continue
 
-            new_key: str | None = None
-
-            if key in {"_body"}:
-                new_key = None
-            else:
-                new_key = key.lstrip("_")
+            key = key.lstrip("_")
 
             if isinstance(value, list):
+                num_subvalues: int = len(value)
+
                 for i, v in enumerate(value):
                     if not hasattr(v, "__class__"):
                         continue
 
-                    new_key: str | None = (
-                        new_key if not isinstance(node, (List, Tuple, Set)) else f"[{i}]"
-                    )
+                    if isinstance(node, (List, Tuple, Set)):
+                        new_key = f"[{i}]"
+                    elif num_subvalues > 1:
+                        new_key = f"{key}[{i}]"
+                    else:
+                        new_key = key
 
                     logger.debug(f"{new_key}: adding child node: {value}")
                     children.append((new_key, v))

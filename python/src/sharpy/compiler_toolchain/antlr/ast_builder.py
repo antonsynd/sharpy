@@ -270,22 +270,34 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
     # Visit a parse tree produced by SharpyParser#elif_statement.
     def visitElif_statement(self, ctx: SharpyParser.Elif_statementContext):
         logger.debug("Visiting elif statement")
-        test: Node = self.visit(ctx.getChild(1))
-        body: Sequence[Node] = self.visit(ctx.getChild(3))
+        test: Node = self.visit(ctx.test)
+        body: Sequence[Node] = self.visit(ctx.body)
+        orelse: Sequence[Node] = []
 
-        # TODO: This is probably wrong, as else is nested under the elif
-        # above it
-        return If(test=test, body=body, orelse=[])
+        if ctx.orelse:
+            orelse.extend(self.visit(ctx.orelse))
+
+        return [If(test=test, body=body, orelse=orelse)]
+
+    # Visit a parse tree produced by SharpyParser#elif_or_else.
+    def visitElif_or_else(self, ctx: SharpyParser.Elif_or_elseContext):
+        logger.debug("Visiting elif_or_else")
+
+        if ctx.else_:
+            # If there's an else block, visit it
+            return self.visit(ctx.else_)
+        elif ctx.elif_:
+            # If there's an elif block, visit it
+            return self.visit(ctx.elif_)
+        else:
+            raise ValueError("Invalid elif_or_else structure")
 
     # Visit a parse tree produced by SharpyParser#else_block.
     def visitElse_block(self, ctx: SharpyParser.Else_blockContext):
         logger.debug("Visiting else block")
-        return self.visit(ctx.getChild(2))  # Visit the block after 'else'
 
-    # Visit a parse tree produced by SharpyParser#else_blocks.
-    def visitElse_blocks(self, ctx: SharpyParser.Else_blocksContext):
-        logger.debug("Visiting else blocks")
-        return [self.visit(child) for child in ctx.getChildren()]
+        # Returns sequence of nodes
+        return self.visit(ctx.body)
 
     # Visit a parse tree produced by SharpyParser#except_block.
     def visitExcept_block(self, ctx: SharpyParser.Except_blockContext):
@@ -332,15 +344,14 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
     # Visit a parse tree produced by SharpyParser#if_statement.
     def visitIf_statement(self, ctx: SharpyParser.If_statementContext):
         logger.debug("Visiting if statement")
-        test: Node = self.visit(ctx.getChild(1))
-        body: Sequence[Node] = self.visit(ctx.getChild(3))
-        else_blocks: Sequence[Node] = []
+        test: Node = self.visit(ctx.test)
+        body: Sequence[Node] = self.visit(ctx.body)
+        orelse: Sequence[Node] = []
 
-        if ctx.getChildCount() > 4:
-            # If there are else blocks, visit them
-            else_blocks = self.visit(ctx.getChild(4))
+        if ctx.orelse:
+            orelse.extend(self.visit(ctx.orelse))
 
-        return If(test=test, body=body, orelse=else_blocks)
+        return If(test=test, body=body, orelse=orelse)
 
     # Visit a parse tree produced by SharpyParser#imaginary_number.
     def visitImaginary_number(self, ctx: SharpyParser.Imaginary_numberContext):
@@ -842,7 +853,15 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
     # Visit a parse tree produced by SharpyParser#while_statement.
     def visitWhile_statement(self, ctx: SharpyParser.While_statementContext):
         logger.debug("Visiting while statement")
-        return self.visitChildren(ctx)
+
+        test: Node = self.visit(ctx.test)
+        body: Sequence[Node] = self.visit(ctx.body)
+        orelse: Sequence[Node] = []
+
+        if ctx.orelse:
+            orelse.extend(self.visit(ctx.orelse))
+
+        return While(test=test, body=body, orelse=orelse)
 
     # Visit a parse tree produced by SharpyParser#with_item.
     def visitWith_item(self, ctx: SharpyParser.With_itemContext):

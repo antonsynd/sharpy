@@ -81,7 +81,7 @@ def main():
     log_path: Path | None = args.log_path
 
     if log_path:
-        logger.addFile(file_path=log_path)
+        logger.add_file(file_path=log_path)
 
     basename: str = args.basename or input_path.stem
 
