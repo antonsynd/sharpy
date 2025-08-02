@@ -88,8 +88,6 @@ simple_statement
     | assert_statement
     | break_statement
     | continue_statement
-    | global_statement
-    | nonlocal_statement
     | expression_statement;
 
 expression_statement
@@ -146,10 +144,6 @@ return_statement
 raise_statement
     : RAISE (error=expression (FROM parent=expression )?)?
     ;
-
-global_statement: GLOBAL name (COMMA name)*;
-
-nonlocal_statement: NONLOCAL name (COMMA name)*;
 
 del_statement
     : DEL del_targets;

@@ -1046,22 +1046,6 @@ class GeneratorExp(Node):
         return f"GeneratorExp(elt={self._elt}, generators={self._generators})"
 
 
-class Global(Node):
-    """
-    A global statement, which declares global variables.
-    """
-
-    def __init__(self, names: Sequence[str], source: NodeSource | None = None):
-        super().__init__(source)
-        self._names: Sequence[str] = names
-
-    def names(self) -> Sequence[str]:
-        return self._names
-
-    def __repr__(self) -> str:
-        return f"Global(names={self._names})"
-
-
 class Gt(ComparisonOpTok):
     """
     The greater than operator >.
@@ -1727,22 +1711,6 @@ class NamedExpr(Node):
 
     def __repr__(self) -> str:
         return f"NamedExpr(target={self._target}, value={self._value})"
-
-
-class Nonlocal(Node):
-    """
-    A nonlocal statement, which declares nonlocal variables.
-    """
-
-    def __init__(self, names: Sequence[str], source: NodeSource | None = None):
-        super().__init__(source)
-        self._names: Sequence[str] = names
-
-    def names(self) -> Sequence[str]:
-        return self._names
-
-    def __repr__(self) -> str:
-        return f"Nonlocal(names={self._names})"
 
 
 class Not(UnaryOpTok):

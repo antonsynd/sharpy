@@ -352,11 +352,6 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug("Visiting function definition")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#global_statement.
-    def visitGlobal_statement(self, ctx: SharpyParser.Global_statementContext):
-        logger.debug("Visiting global statement")
-        return self.visitChildren(ctx)
-
     # Visit a parse tree produced by SharpyParser#guard.
     def visitGuard(self, ctx: SharpyParser.GuardContext):
         logger.debug("Visiting guard")
@@ -578,11 +573,6 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         retval = Constant(value=None)
         logger.debug(f"Returning None literal: {id(retval)}")
         return retval
-
-    # Visit a parse tree produced by SharpyParser#nonlocal_statement.
-    def visitNonlocal_statement(self, ctx: SharpyParser.Nonlocal_statementContext):
-        logger.debug("Visiting nonlocal statement")
-        return self.visitChildren(ctx)
 
     # Visit a parse tree produced by SharpyParser#or_pattern.
     def visitOr_pattern(self, ctx: SharpyParser.Or_patternContext):
