@@ -136,9 +136,11 @@ TRY      : 'try';
 AS       : 'as';
 DEF      : 'def';
 FROM     : 'from';
+NONLOCAL : 'nonlocal';  // Reserved, but not used
 WHILE    : 'while';
 ASSERT   : 'assert';
 DEL      : 'del';
+GLOBAL   : 'global';  // Reserved, but not used
 NOT      : 'not';
 WITH     : 'with';
 ASYNC    : 'async';
