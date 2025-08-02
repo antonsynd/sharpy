@@ -251,7 +251,7 @@ param_with_default
     ;
 
 param: name type_annotation?;
-type_annotation: COLON expression;
+type_annotation: COLON type_name;
 default_assignment: EQUAL expression;
 
 // If statement
@@ -314,12 +314,10 @@ try_statement
 // ----------------
 
 except_block
-    // TODO: This should be a type, not an expression
-    : EXCEPT (type_=expression (AS alias=name )?)? COLON body=block
+    : EXCEPT (type_=type_name (AS alias=name )?)? COLON body=block
     ;
 except_star_block
-    // TODO: This should be a type, not an expression
-    : EXCEPT STAR type_=expression (AS alias=name )? COLON body=block
+    : EXCEPT STAR type_=type_name (AS alias=name )? COLON body=block
     ;
 finally_block
     : FINALLY COLON body=block;
@@ -468,26 +466,6 @@ keyword_patterns
 
 keyword_pattern
     : name EQUAL pattern;
-
-// Type statement
-// ---------------
-
-type_alias
-    : 'type' name type_params? EQUAL expression;
-
-// Type parameter declaration
-// --------------------------
-
-type_params: LSQB type_param_seq  RSQB;
-
-type_param_seq: type_param (COMMA type_param)* COMMA?;
-
-type_param
-    : name type_param_bound? type_param_default?
-    ;
-
-type_param_bound: COLON expression;
-type_param_default: EQUAL expression;
 
 // EXPRESSIONS
 // -----------
@@ -680,7 +658,7 @@ group
 
 // Sharpy lambdas allow return type annotations.
 lambda_def
-    : LAMBDA params? ( RARROW expression )? COLON expression;
+    : LAMBDA params? ( RARROW type_name )? COLON expression;
 
 // LITERALS
 // ========
@@ -818,10 +796,35 @@ del_targets: del_target (COMMA del_target)* COMMA?;
 // Sharpy only allows del statements with dictionary keys, not names
 del_target: t_primary (member_access name | LSQB slices RSQB);
 
+// Type statement
+// ---------------
+
+type_alias
+    : 'type' name type_params? EQUAL type_name;
+
+// Type parameter declaration for generic types
+// --------------------------
+
+type_params: LSQB tparams+=type_param (COMMA tparams+=type_param)* COMMA? RSQB;
+
+type_param
+    : tname=name tbinder=type_param_bound? tdefault=type_param_default?
+    ;
+
+type_param_bound: COLON type_name;
+type_param_default: EQUAL type_name;
+
 // TYPING ELEMENTS
 // ---------------
 
 member_access: DOT | QUESTIONDOT;
+
+type_name_component: base=name tparams=type_params?;
+
+// A qualified name
+type_name
+    : component+=type_name_component (DOT component+=type_name_component)*
+    ;
 
 // *** related to soft keywords: https://docs.python.org/3.13/reference/lexical_analysis.html#soft-keywords
 // This is used in match case blocks because _ means wildcard there, not a name

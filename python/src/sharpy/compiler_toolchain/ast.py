@@ -67,19 +67,46 @@ class Root(Node):
         super().__init__(source)
 
 
+class Type(Node):
+    """
+    The base type for all types, but also encompassing simple types like
+    `int`, `str`, etc.
+    """
+
+    def __init__(
+        self, name: str, prefixes: Sequence[str] | None = None, source: NodeSource | None = None
+    ):
+        super().__init__(source)
+        self._prefixes: Sequence[str] = prefixes if prefixes is not None else []
+        self._name: str = name
+
+    def name(self) -> str:
+        return self._name
+
+    def prefixes(self) -> Sequence[str]:
+        """
+        The prefixes of the type, which can be used to indicate the type's
+        namespaces or outer scope (for nested types).
+        """
+        return self._prefixes
+
+    def __repr__(self) -> str:
+        return f"Type(name={self._name}, prefixes={self._prefixes})"
+
+
 class Literal(Node):
     """
     Things like constants, strings, and collection literals like lists.
     """
 
-    def __init__(self, type_: str | None = None, source: NodeSource | None = None):
+    def __init__(self, type_: Type | None = None, source: NodeSource | None = None):
         super().__init__(source)
-        self._type: str | None = type_
+        self._type: Type | None = type_
 
-    def type(self) -> str | None:
+    def type(self) -> Type | None:
         return self._type
 
-    def set_type(self, type_: str) -> None:
+    def set_type(self, type_: Type) -> None:
         """
         Set the type of the literal node.
         """
@@ -679,21 +706,26 @@ class Constant(Literal):
     def __init__(
         self,
         value: str | bytes | complex | int | float | bool | None,
-        type_: str | None = None,
+        type_: Type | None = None,
         source: NodeSource | None = None,
     ):
         super().__init__(type_=type_, source=source)
         self._value: str | int | float | bool | bytes | complex | None = value
 
         # TODO: Need to infer other numeric types via the suffix
-        self._type: str | None = type(value).__name__ if value is not None else "None"
+        if type_ is not None:
+            self._type: Type | None = type_
+        elif value is None:
+            self._type = Type(name="NoneType")
+        else:
+            self._type: Type | None = Type(name=type(value).__name__)
 
         logger.debug(f"Processing constant node with value: {self._value}")
 
     def value(self) -> str | int | float | complex | bytes | bool | None:
         return self._value
 
-    def type(self) -> str | None:
+    def type(self) -> Type | None:
         return self._type
 
     def __repr__(self) -> str:
@@ -756,7 +788,7 @@ class Dict(Literal):
         self,
         keys: Sequence[Node],
         values: Sequence[Node],
-        type_: str | None = None,
+        type_: Type | None = None,
         source: NodeSource | None = None,
     ):
         super().__init__(type_=type_, source=source)
@@ -963,7 +995,7 @@ class FormattedValue(Literal):
         format_spec: Node | None = None,
         source: NodeSource | None = None,
     ):
-        super().__init__(type_="str", source=source)
+        super().__init__(type_=Type(name="str"), source=source)
         self._value: Node = value
         self._conversion: int = conversion
         self._format_spec: Node | None = format_spec
@@ -1247,7 +1279,7 @@ class JoinedStr(Literal):
     def __init__(
         self, values: Sequence[FormattedValue | Constant], source: NodeSource | None = None
     ):
-        super().__init__(type_="str", source=source)
+        super().__init__(type_=Type(name="str"), source=source)
         self._values: Sequence[FormattedValue | Constant] = values
 
     def values(self) -> Sequence[FormattedValue | Constant]:
@@ -1307,7 +1339,7 @@ class List(Literal):
         self,
         elts: Sequence[Node],
         ctx: Context,
-        type_: str | None = None,
+        type_: Type | None = None,
         source: NodeSource | None = None,
     ):
         super().__init__(type_=type_, source=source)
@@ -1792,6 +1824,31 @@ class Param(Node):
         return f"Param(name={self._name}, annotation={self._annotation}, default={self._default})"
 
 
+class ParameterizedType(Type):
+    """
+    A generic type, e.g. list[T] or dict[str, int].
+    """
+
+    def __init__(
+        self,
+        name: str,
+        params: Sequence["TypeParameter"],
+        prefixes: Sequence[str] | None = None,
+        source: NodeSource | None = None,
+    ):
+        super().__init__(name, prefixes, source)
+        self._params: Sequence[TypeParameter] = params
+
+    def name(self) -> str:
+        return self._name
+
+    def params(self) -> Sequence["TypeParameter"]:
+        return self._params
+
+    def __repr__(self) -> str:
+        return f"GenericType(name={self._name}, params={self._params}, prefixes={self._prefixes})"
+
+
 class ParamSpec(Node):
     """
     A parameter specification, which is used to define the parameters of a function.
@@ -1893,7 +1950,7 @@ class Set(Literal):
     """
 
     def __init__(
-        self, elts: Sequence[Node], type_: str | None = None, source: NodeSource | None = None
+        self, elts: Sequence[Node], type_: Type | None = None, source: NodeSource | None = None
     ):
         super().__init__(type_=type_, source=source)
         self._elts: Sequence[Node] = elts
@@ -2118,7 +2175,7 @@ class Tuple(Literal):
         self,
         elts: Sequence[Node],
         ctx: Context,
-        type_: str | None = None,
+        type_: Type | None = None,
         source: NodeSource | None = None,
     ):
         super().__init__(type_=type_, source=source)
@@ -2140,65 +2197,74 @@ class TypeAlias(Statement):
     A type alias, which is used to define a new name for an existing type.
     """
 
-    def __init__(self, name: str, value: Node, source: NodeSource | None = None):
+    def __init__(self, name: str, value: Type, source: NodeSource | None = None):
         super().__init__(source)
         self._name: str = name
-        self._value: Node = value
+        self._value: Type = value
 
     def name(self) -> str:
         return self._name
 
-    def value(self) -> Node:
+    def value(self) -> Type:
         return self._value
 
     def __repr__(self) -> str:
         return f"TypeAlias(name={self._name}, value={self._value})"
 
 
-class TypeVar(Node):
+class TypeParameter(Node):
     """
-    A type variable, which is used to define generic types.
+    A type parameter, which is used to define generic types. It can be
+    constrained by a bound type (a superclass or a protocol) and have a
+    default.
     """
 
     def __init__(
         self,
         name: str,
-        bound: Node | None = None,
+        bound: Type | None = None,
+        default_type: Type | None = None,
         constraints: Sequence[Node] | None = None,
         source: NodeSource | None = None,
     ):
         super().__init__(source)
         self._name: str = name
-        self._bound: Node | None = bound
+        self._bound: Type | None = bound
+        self._default_type: Type | None = default_type
         self._constraints: Sequence[Node] = constraints if constraints is not None else []
 
     def name(self) -> str:
+        """
+        The name of the type parameter, e.g. `T` in `list[T].
+        """
         return self._name
 
     def bound(self) -> Node | None:
+        """
+        This is the resolved type of a specific instance of a parameterized
+        type, e.g. `T` for list[T] = [1, 3, 5] would be likely be `int`.
+        """
         return self._bound
 
+    def default_type(self) -> Node | None:
+        """
+        The default type for this type parameter, which can be used if no
+        specific type is provided.
+        """
+        return self._default_type
+
     def constraints(self) -> Sequence[Node]:
+        """
+        Constraints on the type parameter, which can be used to restrict the
+        types that can be used as arguments for this type parameter.
+
+        This will be a constraint of the sort in C# introduced by the `where`
+        keyword, or by the colon syntax indicating a superclass or protocol.
+        """
         return self._constraints
 
     def __repr__(self) -> str:
-        return f"TypeVar(name={self._name}, bound={self._bound}, constraints={self._constraints})"
-
-
-class TypeVarTuple(Node):
-    """
-    A type variable tuple, which is used to define a variable-length tuple type.
-    """
-
-    def __init__(self, name: str, source: NodeSource | None = None):
-        super().__init__(source)
-        self._name: str = name
-
-    def name(self) -> str:
-        return self._name
-
-    def __repr__(self) -> str:
-        return f"TypeVarTuple(name={self._name})"
+        return f"TypeVar(name={self._name}, bound={self._bound}, default_type={self._default_type}, constraints={self._constraints})"
 
 
 class UAdd(UnaryOpTok):

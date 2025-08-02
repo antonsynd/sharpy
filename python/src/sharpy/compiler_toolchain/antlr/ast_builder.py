@@ -897,6 +897,22 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug("Visiting type annotation")
         return self.visitChildren(ctx)
 
+    def visitType_name(self, ctx: SharpyParser.Type_nameContext):
+        logger.debug("Visiting type name")
+        return super().visitType_name(ctx)
+
+    def visitType_name_component(self, ctx: SharpyParser.Type_name_componentContext):
+        logger.debug("Visiting type name component")
+        return super().visitType_name_component(ctx)
+
+    def visitType_param(self, ctx: SharpyParser.Type_paramContext):
+        logger.debug("Visiting type param")
+        return super().visitType_param(ctx)
+
+    def visitType_params(self, ctx: SharpyParser.Type_paramsContext):
+        logger.debug("Visiting type params")
+        return super().visitType_params(ctx)
+
     def visitValue_expression(self, ctx: SharpyParser.Value_expressionContext) -> Node:
         logger.debug("Visiting value expression")
         # value_expression: expression
