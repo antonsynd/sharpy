@@ -314,9 +314,18 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         return ExceptHandler(type_=type_, name=name, body=body)
 
     # Visit a parse tree produced by SharpyParser#except_star_block.
-    # def visitExcept_star_block(self, ctx: SharpyParser.Except_star_blockContext):
-    #     logger.debug("Visiting except star block")
-    #     return self.visitChildren(ctx)
+    def visitExcept_star_block(self, ctx: SharpyParser.Except_star_blockContext):
+        logger.debug("Visiting except star block")
+
+        if ctx.alias:
+            name = self.visit(ctx.alias)
+        else:
+            name = None
+
+        type_ = self.visit(ctx.type_)
+        body = self.visit(ctx.body)
+
+        return ExceptHandler(type_=type_, name=name, body=body)
 
     def visitFalse_literal(self, ctx: SharpyParser.False_literalContext):
         logger.debug("Visiting False literal")
@@ -834,6 +843,7 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
 
         body: Sequence[Node] = self.visit(ctx.body)
         handlers: Sequence[ExceptHandler] = []
+        is_try_star: bool = False
 
         if ctx.except_:
             for except_block in ctx.except_:
@@ -841,15 +851,37 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
                 handler = self.visit(except_block)
 
                 handlers.append(handler)
+        elif ctx.except_star:
+            is_try_star = True
+
+            for except_block in ctx.except_star:
+                logger.debug("Visiting except star block")
+                handler = self.visit(except_block)
+
+                handlers.append(handler)
+
+        orelse: Sequence[Node] = []
+
+        # If there's an else block, visit it
+        if ctx.orelse:
+            orelse = self.visit(ctx.orelse)
 
         finalbody: Sequence[Node] = self.visit(ctx.finally_) if ctx.finally_ else []
 
-        return Try(
-            body=body,
-            handlers=handlers,
-            orelse=[],
-            finalbody=finalbody,
-        )
+        if is_try_star:
+            return TryStar(
+                body=body,
+                handlers=handlers,
+                orelse=orelse,
+                finalbody=finalbody,
+            )
+        else:
+            return Try(
+                body=body,
+                handlers=handlers,
+                orelse=orelse,
+                finalbody=finalbody,
+            )
 
     # Visit a parse tree produced by SharpyParser#tuple.
     def visitTuple(self, ctx: SharpyParser.TupleContext):

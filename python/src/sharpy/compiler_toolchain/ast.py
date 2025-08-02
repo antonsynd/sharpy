@@ -2097,6 +2097,18 @@ class Try(Node):
 class TryStar(Node):
     """
     A try statement with a star expression, which is used to handle exceptions with a star pattern.
+    This is for exception groups:
+    try:
+        raise ExceptionGroup("group", [ValueError("value error"), TypeError("type error")])
+    except* ValueError as e:
+        print("Caught ValueError:", e)
+    except* TypeError as e:
+        print("Caught TypeError:", e)
+    except Exception as e:
+        print("Caught other exception:", e)
+
+    This allows handling each exception in the group separately, which each
+    exception being handled by the first handler that matches its type.
     """
 
     def __init__(

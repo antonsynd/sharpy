@@ -312,9 +312,8 @@ with_item
 // -------------
 
 try_statement
-    : TRY COLON body=block finally_=finally_block
-    | TRY COLON body=block except_+=except_block+ else=else_block? finally_=finally_block?
-    // | TRY COLON body=block except_=except_star_block+ else=else_block? finally_=finally_block?
+    : TRY COLON body=block except_+=except_block+ orelse=else_block? finally_=finally_block?
+    | TRY COLON body=block except_star+=except_star_block+ orelse=else_block? finally_=finally_block?
     ;
 
 // Except statement
@@ -324,9 +323,10 @@ except_block
     // TODO: This should be a type, not an expression
     : EXCEPT (type_=expression (AS alias=name )?)? COLON body=block
     ;
-// except_star_block
-//     : EXCEPT STAR exception=expression (AS alias=name )? COLON body=block
-//     ;
+except_star_block
+    // TODO: This should be a type, not an expression
+    : EXCEPT STAR type_=expression (AS alias=name )? COLON body=block
+    ;
 finally_block
     : FINALLY COLON body=block;
 
