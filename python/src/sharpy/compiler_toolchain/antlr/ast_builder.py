@@ -302,12 +302,21 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
     # Visit a parse tree produced by SharpyParser#except_block.
     def visitExcept_block(self, ctx: SharpyParser.Except_blockContext):
         logger.debug("Visiting except block")
-        return self.visitChildren(ctx)
+
+        if ctx.alias:
+            name = self.visit(ctx.alias)
+        else:
+            name = None
+
+        type_ = self.visit(ctx.type_)
+        body = self.visit(ctx.body)
+
+        return ExceptHandler(type_=type_, name=name, body=body)
 
     # Visit a parse tree produced by SharpyParser#except_star_block.
-    def visitExcept_star_block(self, ctx: SharpyParser.Except_star_blockContext):
-        logger.debug("Visiting except star block")
-        return self.visitChildren(ctx)
+    # def visitExcept_star_block(self, ctx: SharpyParser.Except_star_blockContext):
+    #     logger.debug("Visiting except star block")
+    #     return self.visitChildren(ctx)
 
     def visitFalse_literal(self, ctx: SharpyParser.False_literalContext):
         logger.debug("Visiting False literal")
@@ -319,7 +328,10 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
     # Visit a parse tree produced by SharpyParser#finally_block.
     def visitFinally_block(self, ctx: SharpyParser.Finally_blockContext):
         logger.debug("Visiting finally block")
-        return self.visitChildren(ctx)
+
+        body: Sequence[Node] = self.visit(ctx.body)
+
+        return body
 
     # Visit a parse tree produced by SharpyParser#for_statement.
     def visitFor_statement(self, ctx: SharpyParser.For_statementContext):
@@ -819,7 +831,25 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
     # Visit a parse tree produced by SharpyParser#try_statement.
     def visitTry_statement(self, ctx: SharpyParser.Try_statementContext):
         logger.debug("Visiting try statement")
-        return self.visitChildren(ctx)
+
+        body: Sequence[Node] = self.visit(ctx.body)
+        handlers: Sequence[ExceptHandler] = []
+
+        if ctx.except_:
+            for except_block in ctx.except_:
+                logger.debug("Visiting except block")
+                handler = self.visit(except_block)
+
+                handlers.append(handler)
+
+        finalbody: Sequence[Node] = self.visit(ctx.finally_) if ctx.finally_ else []
+
+        return Try(
+            body=body,
+            handlers=handlers,
+            orelse=[],
+            finalbody=finalbody,
+        )
 
     # Visit a parse tree produced by SharpyParser#tuple.
     def visitTuple(self, ctx: SharpyParser.TupleContext):

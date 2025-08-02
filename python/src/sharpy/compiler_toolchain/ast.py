@@ -72,8 +72,18 @@ class Literal(Node):
     Things like constants, strings, and collection literals like lists.
     """
 
-    def __init__(self, source: NodeSource | None = None):
+    def __init__(self, type_: str | None = None, source: NodeSource | None = None):
         super().__init__(source)
+        self._type: str | None = type_
+
+    def type(self) -> str | None:
+        return self._type
+
+    def set_type(self, type_: str) -> None:
+        """
+        Set the type of the literal node.
+        """
+        self._type = type_
 
 
 class Statement(Node):
@@ -669,22 +679,25 @@ class Constant(Literal):
     def __init__(
         self,
         value: str | bytes | complex | int | float | bool | None,
+        type_: str | None = None,
         source: NodeSource | None = None,
     ):
-        super().__init__(source)
+        super().__init__(type_=type_, source=source)
         self._value: str | int | float | bool | bytes | complex | None = value
+
         # TODO: Need to infer other numeric types via the suffix
-        self._type: str = type(value).__name__.title() if value is not None else "None"
+        self._type: str | None = type(value).__name__ if value is not None else "None"
+
         logger.debug(f"Processing constant node with value: {self._value}")
 
     def value(self) -> str | int | float | complex | bytes | bool | None:
         return self._value
 
-    def type(self) -> str:
+    def type(self) -> str | None:
         return self._type
 
     def __repr__(self) -> str:
-        return f"Constant(value={self._value})"
+        return f"Constant(value={self._value}, type={self._type})"
 
 
 class Continue(Node):
@@ -740,9 +753,13 @@ class Dict(Literal):
     """
 
     def __init__(
-        self, keys: Sequence[Node], values: Sequence[Node], source: NodeSource | None = None
+        self,
+        keys: Sequence[Node],
+        values: Sequence[Node],
+        type_: str | None = None,
+        source: NodeSource | None = None,
     ):
-        super().__init__(source)
+        super().__init__(type_=type_, source=source)
         self._keys: Sequence[Node] = keys
         self._values: Sequence[Node] = values
 
@@ -753,7 +770,7 @@ class Dict(Literal):
         return self._values
 
     def __repr__(self) -> str:
-        return f"Dict(keys={self._keys}, values={self._values})"
+        return f"Dict(keys={self._keys}, values={self._values}, type={self._type})"
 
 
 class DictComp(Node):
@@ -946,7 +963,7 @@ class FormattedValue(Literal):
         format_spec: Node | None = None,
         source: NodeSource | None = None,
     ):
-        super().__init__(source)
+        super().__init__(type_="str", source=source)
         self._value: Node = value
         self._conversion: int = conversion
         self._format_spec: Node | None = format_spec
@@ -961,7 +978,7 @@ class FormattedValue(Literal):
         return self._format_spec
 
     def __repr__(self) -> str:
-        return f"FormattedValue(value={self._value}, conversion={self._conversion}, format_spec={self._format_spec})"
+        return f"FormattedValue(value={self._value}, conversion={self._conversion}, format_spec={self._format_spec}, type={self._type})"
 
 
 class FunctionDef(Node):
@@ -1246,14 +1263,14 @@ class JoinedStr(Literal):
     def __init__(
         self, values: Sequence[FormattedValue | Constant], source: NodeSource | None = None
     ):
-        super().__init__(source)
+        super().__init__(type_="str", source=source)
         self._values: Sequence[FormattedValue | Constant] = values
 
     def values(self) -> Sequence[FormattedValue | Constant]:
         return self._values
 
     def __repr__(self) -> str:
-        return f"JoinedStr(values={self._values})"
+        return f"JoinedStr(values={self._values}, type={self._type})"
 
 
 class keyword(Node):
@@ -1302,8 +1319,14 @@ class List(Literal):
     A list literal, which is a sequence of values enclosed in square brackets.
     """
 
-    def __init__(self, elts: Sequence[Node], ctx: Context, source: NodeSource | None = None):
-        super().__init__(source)
+    def __init__(
+        self,
+        elts: Sequence[Node],
+        ctx: Context,
+        type_: str | None = None,
+        source: NodeSource | None = None,
+    ):
+        super().__init__(type_=type_, source=source)
         self._elts: Sequence[Node] = elts
         self._ctx: Context = ctx
 
@@ -1314,7 +1337,7 @@ class List(Literal):
         return self._ctx
 
     def __repr__(self) -> str:
-        return f"List(elts={self._elts}, ctx={self._ctx})"
+        return f"List(elts={self._elts}, ctx={self._ctx}, type={self._type})"
 
 
 class ListComp(Node):
@@ -1662,10 +1685,13 @@ class Name(Variable):
     A name, which is an identifier in the code.
     """
 
-    def __init__(self, id: str, ctx: Context, source: NodeSource | None = None):
+    def __init__(
+        self, id: str, ctx: Context, type_: str | None = None, source: NodeSource | None = None
+    ):
         super().__init__(source)
         self._id: str = id
         self._ctx: Context = ctx
+        self._type: str | None = type_
 
     def id(self) -> str:
         return self._id
@@ -1673,8 +1699,11 @@ class Name(Variable):
     def ctx(self) -> Context:
         return self._ctx
 
+    def type(self) -> str | None:
+        return self._type
+
     def __repr__(self) -> str:
-        return f"Name(id={self._id}, ctx={self._ctx})"
+        return f"Name(id={self._id}, ctx={self._ctx}, type={self._type})"
 
 
 class NamedExpr(Node):
@@ -1895,15 +1924,17 @@ class Set(Literal):
     A set literal, which is a collection of unique values enclosed in curly braces.
     """
 
-    def __init__(self, elts: Sequence[Node], source: NodeSource | None = None):
-        super().__init__(source)
+    def __init__(
+        self, elts: Sequence[Node], type_: str | None = None, source: NodeSource | None = None
+    ):
+        super().__init__(type_=type_, source=source)
         self._elts: Sequence[Node] = elts
 
     def elts(self) -> Sequence[Node]:
         return self._elts
 
     def __repr__(self) -> str:
-        return f"Set(elts={self._elts})"
+        return f"Set(elts={self._elts}, type={self._type})"
 
 
 class SetComp(Node):
@@ -2103,8 +2134,14 @@ class Tuple(Literal):
     A tuple literal, which is a sequence of values enclosed in parentheses.
     """
 
-    def __init__(self, elts: Sequence[Node], ctx: Context, source: NodeSource | None = None):
-        super().__init__(source)
+    def __init__(
+        self,
+        elts: Sequence[Node],
+        ctx: Context,
+        type_: str | None = None,
+        source: NodeSource | None = None,
+    ):
+        super().__init__(type_=type_, source=source)
         self._elts: Sequence[Node] = elts
         self._ctx: Context = ctx
 
@@ -2115,7 +2152,7 @@ class Tuple(Literal):
         return self._ctx
 
     def __repr__(self) -> str:
-        return f"Tuple(elts={self._elts}, ctx={self._ctx})"
+        return f"Tuple(elts={self._elts}, ctx={self._ctx}, type={self._type})"
 
 
 class TypeAlias(Statement):
