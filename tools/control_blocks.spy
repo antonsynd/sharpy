@@ -23,6 +23,18 @@ for i in [1, 2, 3]:
 else:
     pass
 
+for k, v in {"a": 1, "b": 2}.items():
+    if k == "a":
+        continue
+
+    pass
+
+for (k, v) in {"a": 1, "b": 2}.items():
+    if k == "a":
+        continue
+
+    pass
+
 try:
     pass
 except ValueError as e:
