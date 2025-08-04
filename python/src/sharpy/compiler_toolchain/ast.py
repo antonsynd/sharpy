@@ -128,17 +128,17 @@ class Expression(Node):
         super().__init__(source)
 
 
-class UnaryOpTok(Node):
+class UnaryOperatorToken(Node):
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
 
 
-class BinaryOpTok(Node):
+class BinaryOperatorToken(Node):
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
 
 
-class ComparisonOpTok(Node):
+class ComparisonOperatorToken(Node):
     def __init__(self, source: NodeSource | None = None):
         super().__init__(source)
 
@@ -157,7 +157,7 @@ class Context(Node):
 # These nodes represent the actual nodes in alphabetical order.
 
 
-class Add(BinaryOpTok):
+class Add(BinaryOperatorToken):
     """
     The addition operator +.
     """
@@ -401,7 +401,7 @@ class Attribute(Expression):
         return f"Attribute(value={self._value}, attr={self._attr}, ctx={self._ctx})"
 
 
-class AugAssign(Statement):
+class AugmentedAssignment(Statement):
     """
     An augmented assignment statement of the form:
         x += y
@@ -409,24 +409,28 @@ class AugAssign(Statement):
     """
 
     def __init__(
-        self, target: Node, op: BinaryOpTok, value: Node, source: NodeSource | None = None
+        self,
+        target: Node,
+        operator: BinaryOperatorToken,
+        value: Node,
+        source: NodeSource | None = None,
     ):
         super().__init__(source)
         self._target: Node = target
-        self._op: Node = op
+        self._operator: Node = operator
         self._value: Node = value
 
     def target(self) -> Node:
         return self._target
 
-    def op(self) -> Node:
-        return self._op
+    def operator(self) -> Node:
+        return self._operator
 
     def value(self) -> Node:
         return self._value
 
     def __repr__(self) -> str:
-        return f"AugAssign(target={self._target}, op={self._op}, value={self._value})"
+        return f"AugmentedAssignment(target={self._target}, operator={self._operator}, value={self._value})"
 
 
 class Await(Node):
@@ -446,33 +450,39 @@ class Await(Node):
         return f"Await(value={self._value})"
 
 
-class BinOp(Node):
+class BinaryOperation(Node):
     """
     A binary operation of the form:
         x + y
     where + is any valid binary operator.
     """
 
-    def __init__(self, left: Node, op: BinaryOpTok, right: Node, source: NodeSource | None = None):
+    def __init__(
+        self,
+        left: Node,
+        operator: BinaryOperatorToken,
+        right: Node,
+        source: NodeSource | None = None,
+    ):
         super().__init__(source)
         self._left: Node = left
-        self._op: BinaryOpTok = op
+        self._operator: BinaryOperatorToken = operator
         self._right: Node = right
 
     def left(self) -> Node:
         return self._left
 
-    def op(self) -> BinaryOpTok:
-        return self._op
+    def operator(self) -> BinaryOperatorToken:
+        return self._operator
 
     def right(self) -> Node:
         return self._right
 
     def __repr__(self) -> str:
-        return f"BinOp(left={self._left}, op={self._op}, right={self._right})"
+        return f"BinOp(left={self._left}, operator={self._operator}, right={self._right})"
 
 
-class BitAnd(BinaryOpTok):
+class BitwiseAnd(BinaryOperatorToken):
     """
     The bitwise AND operator &.
     """
@@ -484,7 +494,7 @@ class BitAnd(BinaryOpTok):
         return "BitAnd()"
 
 
-class BitOr(BinaryOpTok):
+class BitwiseOr(BinaryOperatorToken):
     """
     The bitwise OR operator |.
     """
@@ -496,7 +506,7 @@ class BitOr(BinaryOpTok):
         return "BitOr()"
 
 
-class BitXor(BinaryOpTok):
+class BitwiseXor(BinaryOperatorToken):
     """
     The bitwise XOR operator ^.
     """
@@ -508,25 +518,27 @@ class BitXor(BinaryOpTok):
         return "BitXor()"
 
 
-class BoolOp(Expression):
+class BooleanOperation(Expression):
     """
     A boolean operation of the form:
         x and y and z
     """
 
-    def __init__(self, op: "Or | And", values: Sequence[Node], source: NodeSource | None = None):
+    def __init__(
+        self, operator: "Or | And", values: Sequence[Node], source: NodeSource | None = None
+    ):
         super().__init__(source)
-        self._op: Or | And = op
+        self._operator: Or | And = operator
         self._values: Sequence[Node] = values
 
-    def op(self) -> "Or | And":
-        return self._op
+    def operator(self) -> "Or | And":
+        return self._operator
 
     def values(self) -> Sequence[Node]:
         return self._values
 
     def __repr__(self) -> str:
-        return f"BoolOp(op={self._op}, values={self._values})"
+        return f"BoolOperation(operator={self._operator}, values={self._values})"
 
 
 class Break(Node):
@@ -588,7 +600,7 @@ class Call(Expression):
         return f"Call(func={self._func}, args={self._args}, keywords={self._keywords})"
 
 
-class ClassDef(Node):
+class ClassDefinition(Node):
     """
     A class definition.
     """
@@ -638,19 +650,19 @@ class Compare(Expression):
     def __init__(
         self,
         left: Node,
-        ops: Sequence[ComparisonOpTok],
+        ops: Sequence[ComparisonOperatorToken],
         comparators: Sequence[Node],
         source: NodeSource | None = None,
     ):
         super().__init__(source)
         self._left: Node = left
-        self._ops: Sequence[ComparisonOpTok] = ops
+        self._ops: Sequence[ComparisonOperatorToken] = ops
         self._comparators: Sequence[Node] = comparators
 
     def left(self) -> Node:
         return self._left
 
-    def ops(self) -> Sequence[ComparisonOpTok]:
+    def ops(self) -> Sequence[ComparisonOperatorToken]:
         return self._ops
 
     def comparators(self) -> Sequence[Node]:
@@ -836,7 +848,7 @@ class DictComp(Node):
         return f"DictComp(key={self._key}, value={self._value}, generators={self._generators})"
 
 
-class Div(BinaryOpTok):
+class Div(BinaryOperatorToken):
     """
     The division operator /.
     """
@@ -860,7 +872,7 @@ class Ellipsis(Node):
         return "Ellipsis()"
 
 
-class Eq(ComparisonOpTok):
+class Eq(ComparisonOperatorToken):
     """
     The equality operator.
     """
@@ -935,7 +947,7 @@ class expr(Node):
         return "expr()"
 
 
-class FloorDiv(BinaryOpTok):
+class FloorDiv(BinaryOperatorToken):
     """
     The floor division operator //.
     """
@@ -1078,7 +1090,7 @@ class GeneratorExp(Node):
         return f"GeneratorExp(elt={self._elt}, generators={self._generators})"
 
 
-class Gt(ComparisonOpTok):
+class Gt(ComparisonOperatorToken):
     """
     The greater than operator >.
     """
@@ -1090,7 +1102,7 @@ class Gt(ComparisonOpTok):
         return "Gt()"
 
 
-class GtE(ComparisonOpTok):
+class GtE(ComparisonOperatorToken):
     """
     The greater than or equal to operator >=.
     """
@@ -1204,7 +1216,7 @@ class ImportFrom(Node):
         return f"ImportFrom(module={self._module}, names={self._names}, level={self._level})"
 
 
-class In(ComparisonOpTok):
+class In(ComparisonOperatorToken):
     """
     The `in` keyword, which is the membership operator, used to check if a
     value is in a sequence.
@@ -1233,7 +1245,7 @@ class Index(Node):
         return f"Index(value={self._value})"
 
 
-class Is(ComparisonOpTok):
+class Is(ComparisonOperatorToken):
     """
     The `is` keyword, which is the identity operator, used to check if two
     values are the same object.
@@ -1246,7 +1258,7 @@ class Is(ComparisonOpTok):
         return "Is()"
 
 
-class IsNot(ComparisonOpTok):
+class IsNot(ComparisonOperatorToken):
     """
     The `is not` keyword, which is the negative identity operator, used to
     check if two values are not the same object.
@@ -1259,7 +1271,7 @@ class IsNot(ComparisonOpTok):
         return "IsNot()"
 
 
-class Invert(UnaryOpTok):
+class Invert(UnaryOperatorToken):
     """
     The bitwise NOT operator ~.
     """
@@ -1390,7 +1402,7 @@ class Load(Context):
         return "Load()"
 
 
-class LShift(BinaryOpTok):
+class LShift(BinaryOperatorToken):
     """
     The left shift operator <<.
     """
@@ -1402,7 +1414,7 @@ class LShift(BinaryOpTok):
         return "LShift()"
 
 
-class Lt(ComparisonOpTok):
+class Lt(ComparisonOperatorToken):
     """
     The less than operator <.
     """
@@ -1414,7 +1426,7 @@ class Lt(ComparisonOpTok):
         return "Lt()"
 
 
-class LtE(ComparisonOpTok):
+class LtE(ComparisonOperatorToken):
     """
     The less than or equal to operator <=.
     """
@@ -1656,7 +1668,7 @@ class MatMult(Node):
         return "MatMult()"
 
 
-class Mod(BinaryOpTok):
+class Mod(BinaryOperatorToken):
     """
     The modulo operator %.
     """
@@ -1684,7 +1696,7 @@ class Module(Root):
         return f"Module(body={self._body})"
 
 
-class Mult(BinaryOpTok):
+class Mult(BinaryOperatorToken):
     """
     The multiplication operator *.
     """
@@ -1745,7 +1757,7 @@ class NamedExpr(Node):
         return f"NamedExpr(target={self._target}, value={self._value})"
 
 
-class Not(UnaryOpTok):
+class Not(UnaryOperatorToken):
     """
     The `not` keyword, used for logical negation.
     """
@@ -1757,7 +1769,7 @@ class Not(UnaryOpTok):
         return "Not()"
 
 
-class NotEq(ComparisonOpTok):
+class NotEq(ComparisonOperatorToken):
     """
     The not equal operator.
     """
@@ -1846,27 +1858,32 @@ class ParameterizedType(Type):
         return self._params
 
     def __repr__(self) -> str:
-        return f"GenericType(name={self._name}, params={self._params}, prefixes={self._prefixes})"
+        return f"ParameterizedType(name={self._name}, params={self._params}, prefixes={self._prefixes})"
 
 
-class ParamSpec(Node):
+class ParameterSpecification(Node):
     """
-    A parameter specification, which is used to define the parameters of a function.
+    A parameter specification, which is used to define the parameters of a
+    function.
     """
 
-    def __init__(self, name: str, kind: str, source: NodeSource | None = None):
+    def __init__(self, name: str, type_: Type | None = None, source: NodeSource | None = None):
+        """
+        `self` cannot have a type.
+        """
+
         super().__init__(source)
         self._name: str = name
-        self._kind: str = kind  # e.g., 'positional', 'keyword', etc.
+        self._type: Type | None = type_
 
     def name(self) -> str:
         return self._name
 
-    def kind(self) -> str:
-        return self._kind
+    def type(self) -> Type | None:
+        return self._type
 
     def __repr__(self) -> str:
-        return f"ParamSpec(name={self._name}, kind={self._kind})"
+        return f"ParameterSpecification(name={self._name}, type={self._type})"
 
 
 class Pass(Statement):
@@ -1882,7 +1899,7 @@ class Pass(Statement):
         return "Pass()"
 
 
-class Pow(BinaryOpTok):
+class Pow(BinaryOperatorToken):
     """
     The power operator **, used for exponentiation.
     """
@@ -1932,7 +1949,7 @@ class Return(Node):
         return f"Return(value={self._value})"
 
 
-class RShift(BinaryOpTok):
+class RShift(BinaryOperatorToken):
     """
     The right shift operator >>.
     """
@@ -2047,7 +2064,7 @@ class Store(Context):
         return "Store()"
 
 
-class Sub(BinaryOpTok):
+class Sub(BinaryOperatorToken):
     """
     The subtraction operator -.
     """
@@ -2195,14 +2212,19 @@ class Tuple(Literal):
 class TypeAlias(Statement):
     """
     A type alias, which is used to define a new name for an existing type.
+
+    A type alias can also be generic, meaning it can take type parameters. The
+    corresponding value can also be a parameterized type, e.g.:
+
+    type StringDict[T] = dict[str, T]
     """
 
-    def __init__(self, name: str, value: Type, source: NodeSource | None = None):
+    def __init__(self, name: Type, value: Type, source: NodeSource | None = None):
         super().__init__(source)
-        self._name: str = name
+        self._name: Type = name
         self._value: Type = value
 
-    def name(self) -> str:
+    def name(self) -> Type:
         return self._name
 
     def value(self) -> Type:
@@ -2216,22 +2238,31 @@ class TypeParameter(Node):
     """
     A type parameter, which is used to define generic types. It can be
     constrained by a bound type (a superclass or a protocol) and have a
-    default.
+    default, e.g.
+
+    SomeClass[T: Object, U, V = int], where T must be a subclass of Object,
+    U can be any type, and V defaults to int if not specified.
+
+    Constraints can also be introduced via `where` as in C#, but this is not
+    yet designed.
     """
 
     def __init__(
         self,
         name: str,
-        bound: Type | None = None,
         default_type: Type | None = None,
-        constraints: Sequence[Node] | None = None,
+        constraint: Node | None = None,
+        resolved_type: Type | None = None,
         source: NodeSource | None = None,
     ):
         super().__init__(source)
         self._name: str = name
-        self._bound: Type | None = bound
         self._default_type: Type | None = default_type
-        self._constraints: Sequence[Node] = constraints if constraints is not None else []
+        # TODO: Constraints need to be modeled
+        self._constraint: Node | None = constraint
+
+        # Note: This should be resolved in static type analysis
+        self._resolved_type: Type | None = resolved_type
 
     def name(self) -> str:
         """
@@ -2239,12 +2270,12 @@ class TypeParameter(Node):
         """
         return self._name
 
-    def bound(self) -> Node | None:
+    def resolved_type(self) -> Node | None:
         """
         This is the resolved type of a specific instance of a parameterized
         type, e.g. `T` for list[T] = [1, 3, 5] would be likely be `int`.
         """
-        return self._bound
+        return self._resolved_type
 
     def default_type(self) -> Node | None:
         """
@@ -2253,21 +2284,21 @@ class TypeParameter(Node):
         """
         return self._default_type
 
-    def constraints(self) -> Sequence[Node]:
+    def constraint(self) -> Node | None:
         """
-        Constraints on the type parameter, which can be used to restrict the
+        Constraint on the type parameter, which can be used to restrict the
         types that can be used as arguments for this type parameter.
 
         This will be a constraint of the sort in C# introduced by the `where`
         keyword, or by the colon syntax indicating a superclass or protocol.
         """
-        return self._constraints
+        return self._constraint
 
     def __repr__(self) -> str:
-        return f"TypeVar(name={self._name}, bound={self._bound}, default_type={self._default_type}, constraints={self._constraints})"
+        return f"TypeVar(name={self._name}, default_type={self._default_type}, constraint={self._constraint}, resolved_type={self._resolved_type})"
 
 
-class UAdd(UnaryOpTok):
+class UnaryAddition(UnaryOperatorToken):
     """
     The unary addition operator +.
     """
@@ -2276,30 +2307,32 @@ class UAdd(UnaryOpTok):
         super().__init__(source)
 
     def __repr__(self) -> str:
-        return "UAdd()"
+        return "UnaryAddition()"
 
 
-class UnaryOp(Expression):
+class UnaryOperation(Expression):
     """
     A unary operation, which is an operation that takes a single operand.
     """
 
-    def __init__(self, op: UnaryOpTok, operand: Expression, source: NodeSource | None = None):
+    def __init__(
+        self, operator: UnaryOperatorToken, operand: Expression, source: NodeSource | None = None
+    ):
         super().__init__(source)
-        self._op: UnaryOpTok = op
+        self._operator: UnaryOperatorToken = operator
         self._operand: Expression = operand
 
-    def op(self) -> UnaryOpTok:
-        return self._op
+    def operator(self) -> UnaryOperatorToken:
+        return self._operator
 
     def operand(self) -> Expression:
         return self._operand
 
     def __repr__(self) -> str:
-        return f"UnaryOp(op={self._op}, operand={self._operand})"
+        return f"UnaryOperation(operator={self._operator}, operand={self._operand})"
 
 
-class USub(UnaryOpTok):
+class UnarySubtraction(UnaryOperatorToken):
     """
     The unary subtraction operator -.
     """
@@ -2308,7 +2341,7 @@ class USub(UnaryOpTok):
         super().__init__(source)
 
     def __repr__(self) -> str:
-        return "USub()"
+        return "UnarySubtraction()"
 
 
 class While(Node):

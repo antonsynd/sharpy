@@ -1,0 +1,3 @@
+type Int = int
+type IntList = list[int]
+type StringMap = dict[str, str]

@@ -800,7 +800,7 @@ del_target: t_primary (member_access name | LSQB slices RSQB);
 // ---------------
 
 type_alias
-    : 'type' name type_params? EQUAL type_name;
+    : 'type' tname=type_name EQUAL tvalue=type_name;
 
 // Type parameter declaration for generic types
 // --------------------------
@@ -808,10 +808,10 @@ type_alias
 type_params: LSQB tparams+=type_param (COMMA tparams+=type_param)* COMMA? RSQB;
 
 type_param
-    : tname=name tbinder=type_param_bound? tdefault=type_param_default?
+    : tname=name tconstraint=type_param_constraint? tdefault=type_param_default?
     ;
 
-type_param_bound: COLON type_name;
+type_param_constraint: COLON type_name;
 type_param_default: EQUAL type_name;
 
 // TYPING ELEMENTS
@@ -821,8 +821,11 @@ member_access: DOT | QUESTIONDOT;
 
 type_name_component: base=name tparams=type_params?;
 
-// A qualified name
+// A qualified name, i.e. a type that may be qualified with multiple namespaces
+// The difference between them is handled in type resolution later.
 type_name
+    // NOTE: type_name_component could also be a namespace, the difference is
+    // not important to the parser because type resolution will handle it
     : component+=type_name_component (DOT component+=type_name_component)*
     ;
 

@@ -107,7 +107,7 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         left: Node = self.visit(ctx.getChild(0))  # The left operand
         right: Node = self.visit(ctx.getChild(2))  # The right operand
 
-        return BinOp(left=left, op=BitAnd(), right=right)
+        return BinaryOperation(left=left, operator=BitwiseAnd(), right=right)
 
     def visitBitwise_or(self, ctx: SharpyParser.Bitwise_orContext):
         logger.debug("Visiting bitwise or")
@@ -119,7 +119,7 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         left: Node = self.visit(ctx.getChild(0))  # The left operand
         right: Node = self.visit(ctx.getChild(2))  # The right operand
 
-        return BinOp(left=left, op=BitOr(), right=right)
+        return BinaryOperation(left=left, operator=BitwiseOr(), right=right)
 
     def visitBitwise_xor(self, ctx: SharpyParser.Bitwise_xorContext):
         logger.debug("Visiting bitwise xor")
@@ -131,7 +131,7 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         left: Node = self.visit(ctx.getChild(0))  # The left operand
         right: Node = self.visit(ctx.getChild(2))  # The right operand
 
-        return BinOp(left=left, op=BitXor(), right=right)
+        return BinaryOperation(left=left, operator=BitwiseXor(), right=right)
 
     # Visit a parse tree produced by SharpyParser#block.
     def visitBlock(self, ctx: SharpyParser.BlockContext):
@@ -196,7 +196,7 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         for i in range(0, ctx.getChildCount(), 2):
             values.append(self.visit(ctx.getChild(i)))
 
-        return BoolOp(op=And(), values=values)
+        return BooleanOperation(operator=And(), values=values)
 
     def visitContinue_statement(self, ctx: SharpyParser.Continue_statementContext):
         logger.debug("Visiting continue statement")
@@ -243,7 +243,7 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         for i in range(0, ctx.getChildCount(), 2):
             values.append(self.visit(ctx.getChild(i)))
 
-        return BoolOp(op=Or(), values=values)
+        return BooleanOperation(operator=Or(), values=values)
 
     def visitDotted_as_name(self, ctx: SharpyParser.Dotted_as_nameContext) -> alias:
         logger.debug("Visiting dotted as name")
@@ -459,7 +459,7 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
 
         if ctx.getChildCount() == 2:
             operand: Expression = self.visit(ctx.getChild(1))
-            return UnaryOp(Not(), operand)
+            return UnaryOperation(Not(), operand)
         elif ctx.getChildCount() == 1:
             return self.visit(ctx.getChild(0))
         else:
@@ -629,7 +629,7 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         left: Node = self.visit(ctx.getChild(0))  # The left operand
         right: Node = self.visit(ctx.getChild(2))  # The right operand
 
-        return BinOp(left=left, op=Pow(), right=right)
+        return BinaryOperation(left=left, operator=Pow(), right=right)
 
     # Visit a parse tree produced by SharpyParser#protocol_def.
     def visitProtocol_def(self, ctx: SharpyParser.Protocol_defContext):
@@ -691,9 +691,9 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         right: Node = self.visit(ctx.getChild(2))  # The right operand
 
         if ctx.leftshift_operator():
-            return BinOp(left=left, op=LShift(), right=right)
+            return BinaryOperation(left=left, operator=LShift(), right=right)
         elif ctx.rightshift_operator():
-            return BinOp(left=left, op=RShift(), right=right)
+            return BinaryOperation(left=left, operator=RShift(), right=right)
         else:
             raise ValueError("Invalid shift operator in shift expression")
 
@@ -789,7 +789,7 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
 
         right: Node = self.visit(ctx.getChild(2))  # The right operand
 
-        return BinOp(left=left, op=op_type, right=right)
+        return BinaryOperation(left=left, operator=op_type, right=right)
 
     def visitTerm(self, ctx: SharpyParser.TermContext):
         logger.debug("Visiting term")
@@ -813,7 +813,7 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         else:
             raise ValueError("Invalid operator in term")
 
-        return BinOp(left=left, op=op_type, right=right)
+        return BinaryOperation(left=left, operator=op_type, right=right)
 
     def visitTernary_expression(self, ctx: SharpyParser.Ternary_expressionContext):
         return IfExp(
@@ -892,6 +892,18 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
 
         return Tuple(elts=elts, ctx=Load())
 
+    def visitType_alias(self, ctx: SharpyParser.Type_aliasContext):
+        logger.debug("Visiting type alias")
+        # type_alias: 'type' tname=type_name EQUAL tvalue=type_name;
+
+        tname: Node = self.visitType_name(ctx.tname)
+        tvalue: Node = self.visitType_name(ctx.tvalue)
+
+        return TypeAlias(
+            name=tname,
+            value=tvalue,
+        )
+
     # Visit a parse tree produced by SharpyParser#type_annotation.
     def visitType_annotation(self, ctx: SharpyParser.Type_annotationContext):
         logger.debug("Visiting type annotation")
@@ -899,7 +911,13 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
 
     def visitType_name(self, ctx: SharpyParser.Type_nameContext):
         logger.debug("Visiting type name")
-        return super().visitType_name(ctx)
+
+        assert len(ctx.component) > 0, "Type name must have at least one component"
+
+        tname: str = ctx.component[-1].getText()
+        prefixes: Sequence[str] = [component.getText() for component in ctx.component[:-1]]
+
+        return Type(name=tname, prefixes=prefixes)
 
     def visitType_name_component(self, ctx: SharpyParser.Type_name_componentContext):
         logger.debug("Visiting type name component")
