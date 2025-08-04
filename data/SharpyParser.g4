@@ -819,7 +819,7 @@ type_param_default: EQUAL type_name;
 
 member_access: DOT | QUESTIONDOT;
 
-type_name_component: base=name tparams=type_params?;
+type_name_component: tname=name tparams=type_params?;
 
 // A qualified name, i.e. a type that may be qualified with multiple namespaces
 // The difference between them is handled in type resolution later.

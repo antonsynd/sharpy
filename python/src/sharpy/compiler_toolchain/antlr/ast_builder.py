@@ -196,7 +196,7 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         for i in range(0, ctx.getChildCount(), 2):
             values.append(self.visit(ctx.getChild(i)))
 
-        return BooleanOperation(operator=And(), values=values)
+        return BoolOperation(operator=And(), values=values)
 
     def visitContinue_statement(self, ctx: SharpyParser.Continue_statementContext):
         logger.debug("Visiting continue statement")
@@ -243,7 +243,7 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         for i in range(0, ctx.getChildCount(), 2):
             values.append(self.visit(ctx.getChild(i)))
 
-        return BooleanOperation(operator=Or(), values=values)
+        return BoolOperation(operator=Or(), values=values)
 
     def visitDotted_as_name(self, ctx: SharpyParser.Dotted_as_nameContext) -> alias:
         logger.debug("Visiting dotted as name")
@@ -912,24 +912,64 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
     def visitType_name(self, ctx: SharpyParser.Type_nameContext):
         logger.debug("Visiting type name")
 
-        assert len(ctx.component) > 0, "Type name must have at least one component"
+        if len(ctx.component) == 0:
+            raise ValueError("Type name must have at least one component")
 
-        tname: str = ctx.component[-1].getText()
-        prefixes: Sequence[str] = [component.getText() for component in ctx.component[:-1]]
+        components: MutableSequence[TypeComponent] = []
 
-        return Type(name=tname, prefixes=prefixes)
+        for component in ctx.component:
+            components.append(self.visit(component))
 
-    def visitType_name_component(self, ctx: SharpyParser.Type_name_componentContext):
+        return Type(components=components)
+
+    def visitType_name_component(
+        self, ctx: SharpyParser.Type_name_componentContext
+    ) -> TypeComponent:
         logger.debug("Visiting type name component")
-        return super().visitType_name_component(ctx)
+        name: str = ctx.tname.getText()
 
-    def visitType_param(self, ctx: SharpyParser.Type_paramContext):
+        if ctx.tparams is None:
+            parameters: MutableSequence[TypeParameter] = []
+        else:
+            logger.debug("Visiting type parameters")
+            # If there are type parameters, visit them
+            parameters: MutableSequence[TypeParameter] = self.visit(ctx.tparams)
+
+        return TypeComponent(name=name, parameters=parameters)
+
+    def visitType_param(self, ctx: SharpyParser.Type_paramContext) -> TypeParameter:
         logger.debug("Visiting type param")
-        return super().visitType_param(ctx)
 
-    def visitType_params(self, ctx: SharpyParser.Type_paramsContext):
+        constraint: Node | None = None
+        if ctx.tconstraint:
+            constraint = self.visit(ctx.tconstraint)
+
+        default_type: Type | None = None
+        if ctx.tdefault:
+            default_type = self.visit(ctx.tdefault)
+
+        return TypeParameter(
+            name=ctx.tname.getText(),
+            default_type=default_type,
+            constraint=constraint,
+        )
+
+    def visitType_param_constraint(self, ctx: SharpyParser.Type_param_constraintContext) -> Type:
+        return Type(components=[self.visit(ctx.type_name())])
+
+    def visitType_param_default(self, ctx: SharpyParser.Type_param_defaultContext) -> Type:
+        return Type(components=[self.visit(ctx.type_name())])
+
+    def visitType_params(
+        self, ctx: SharpyParser.Type_paramsContext
+    ) -> MutableSequence[TypeParameter]:
         logger.debug("Visiting type params")
-        return super().visitType_params(ctx)
+        parameters: MutableSequence[TypeParameter] = []
+
+        for param in ctx.tparams:
+            parameters.append(self.visit(param))
+
+        return parameters
 
     def visitValue_expression(self, ctx: SharpyParser.Value_expressionContext) -> Node:
         logger.debug("Visiting value expression")

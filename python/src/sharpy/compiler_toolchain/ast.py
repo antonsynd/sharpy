@@ -67,31 +67,47 @@ class Root(Node):
         super().__init__(source)
 
 
-class Type(Node):
+class TypeComponent(Node):
     """
-    The base type for all types, but also encompassing simple types like
-    `int`, `str`, etc.
+    A type component abstracts the differences between module names, and type
+    names (e.g. pathlib.Path). The simplest type component is either a module
+    name or a simple type (`int`), while the most complex is one that is
+    parameterized.
     """
 
     def __init__(
-        self, name: str, prefixes: Sequence[str] | None = None, source: NodeSource | None = None
+        self,
+        name: str,
+        parameters: Sequence["TypeParameter"] | None = None,
+        source: NodeSource | None = None,
     ):
         super().__init__(source)
-        self._prefixes: Sequence[str] = prefixes if prefixes is not None else []
         self._name: str = name
+        self._parameters: Sequence["TypeParameter"] = parameters if parameters is not None else []
 
     def name(self) -> str:
         return self._name
 
-    def prefixes(self) -> Sequence[str]:
+    def parameters(self) -> Sequence["TypeParameter"]:
         """
-        The prefixes of the type, which can be used to indicate the type's
-        namespaces or outer scope (for nested types).
+        Returns the parameters of this type component, if any.
         """
-        return self._prefixes
+        return self._parameters
 
     def __repr__(self) -> str:
-        return f"Type(name={self._name}, prefixes={self._prefixes})"
+        return f"TypeComponent(name={self._name}, parameters={self._parameters})"
+
+
+class Type(Node):
+    def __init__(self, components: Sequence[TypeComponent], source: NodeSource | None = None):
+        super().__init__(source)
+        self._components: Sequence[TypeComponent] = components
+
+    def components(self) -> Sequence[TypeComponent]:
+        return self._components
+
+    def __repr__(self) -> str:
+        return f"Type(components={self._components})"
 
 
 class Literal(Node):
@@ -518,7 +534,7 @@ class BitwiseXor(BinaryOperatorToken):
         return "BitXor()"
 
 
-class BooleanOperation(Expression):
+class BoolOperation(Expression):
     """
     A boolean operation of the form:
         x and y and z
@@ -728,9 +744,9 @@ class Constant(Literal):
         if type_ is not None:
             self._type: Type | None = type_
         elif value is None:
-            self._type = Type(name="NoneType")
+            self._type = Type(components=[TypeComponent(name="NoneType")])
         else:
-            self._type: Type | None = Type(name=type(value).__name__)
+            self._type: Type | None = Type(components=[TypeComponent(name=type(value).__name__)])
 
         logger.debug(f"Processing constant node with value: {self._value}")
 
@@ -1007,7 +1023,7 @@ class FormattedValue(Literal):
         format_spec: Node | None = None,
         source: NodeSource | None = None,
     ):
-        super().__init__(type_=Type(name="str"), source=source)
+        super().__init__(type_=Type(components=[TypeComponent(name="str")]), source=source)
         self._value: Node = value
         self._conversion: int = conversion
         self._format_spec: Node | None = format_spec
@@ -1291,7 +1307,7 @@ class JoinedStr(Literal):
     def __init__(
         self, values: Sequence[FormattedValue | Constant], source: NodeSource | None = None
     ):
-        super().__init__(type_=Type(name="str"), source=source)
+        super().__init__(type_=Type(components=[TypeComponent(name="str")]), source=source)
         self._values: Sequence[FormattedValue | Constant] = values
 
     def values(self) -> Sequence[FormattedValue | Constant]:
@@ -1806,7 +1822,7 @@ class Or(Node):
         return "Or()"
 
 
-class Param(Node):
+class Parameter(Node):
     """
     A parameter in a function definition.
     """
@@ -1833,32 +1849,9 @@ class Param(Node):
         return self._default
 
     def __repr__(self) -> str:
-        return f"Param(name={self._name}, annotation={self._annotation}, default={self._default})"
-
-
-class ParameterizedType(Type):
-    """
-    A generic type, e.g. list[T] or dict[str, int].
-    """
-
-    def __init__(
-        self,
-        name: str,
-        params: Sequence["TypeParameter"],
-        prefixes: Sequence[str] | None = None,
-        source: NodeSource | None = None,
-    ):
-        super().__init__(name, prefixes, source)
-        self._params: Sequence[TypeParameter] = params
-
-    def name(self) -> str:
-        return self._name
-
-    def params(self) -> Sequence["TypeParameter"]:
-        return self._params
-
-    def __repr__(self) -> str:
-        return f"ParameterizedType(name={self._name}, params={self._params}, prefixes={self._prefixes})"
+        return (
+            f"Parameter(name={self._name}, annotation={self._annotation}, default={self._default})"
+        )
 
 
 class ParameterSpecification(Node):
