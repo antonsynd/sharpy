@@ -245,14 +245,14 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
 
         return BoolOperation(operator=Or(), values=values)
 
-    def visitDotted_as_name(self, ctx: SharpyParser.Dotted_as_nameContext) -> alias:
+    def visitDotted_as_name(self, ctx: SharpyParser.Dotted_as_nameContext) -> Alias:
         logger.debug("Visiting dotted as name")
         # dotted_as_name: dotted_name ('as' name)?
 
         name: str = ctx.dotted_name().getText()
         asname: str | None = ctx.name().getText() if ctx.name() else None
 
-        return alias(name=name, asname=asname)
+        return Alias(name=name, asname=asname)
 
     def visitDotted_as_names(self, ctx: SharpyParser.Dotted_as_namesContext):
         logger.debug("Visiting dotted as names")
@@ -411,18 +411,18 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
             module: str | None = ctx.dotted_name().getText()
 
         # Get imported names
-        names: Sequence[alias] = self.visit(ctx.import_from_targets())
+        names: Sequence[Alias] = self.visit(ctx.import_from_targets())
 
         return ImportFrom(module=module, names=names, level=level)
 
-    def visitImport_from_as_name(self, ctx: SharpyParser.Import_from_as_nameContext) -> alias:
+    def visitImport_from_as_name(self, ctx: SharpyParser.Import_from_as_nameContext) -> Alias:
         logger.debug("Visiting import from as name")
         # import_from_as_name: name ('as' name)?
 
         name: str = ctx.name(0).getText()
         asname: str | None = ctx.name(1).getText() if ctx.name(1) else None
 
-        return alias(name=name, asname=asname)
+        return Alias(name=name, asname=asname)
 
     def visitImport_from_as_names(self, ctx: SharpyParser.Import_from_as_namesContext):
         logger.debug("Visiting import from as names")

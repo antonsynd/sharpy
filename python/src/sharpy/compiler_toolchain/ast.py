@@ -31,7 +31,7 @@ class NodeSource:
         return self._end_col_offset
 
     def __repr__(self) -> str:
-        return f"NodeSource({self._line_num}, {self._col_offset}, {self._end_line_num}, {self._end_col_offset})"
+        return f"NodeSource({self._line_num}:{self._col_offset} - {self._end_line_num}:{self._end_col_offset})"
 
 
 class Node:
@@ -185,7 +185,7 @@ class Add(BinaryOperatorToken):
         return "Add()"
 
 
-class alias(Node):
+class Alias(Node):
     def __init__(self, name: str, asname: str | None, source: NodeSource | None = None):
         super().__init__(source)
         self._name: str = name
@@ -224,46 +224,6 @@ class AnnAssign(Statement):
 
     def __repr__(self) -> str:
         return "AnnAssign()"
-
-
-class param(Node):
-    """
-    A parameter in a function call.
-    """
-
-    def __init__(self, name: str, type_: Node, default: Node, source: NodeSource | None = None):
-        super().__init__(source)
-        self._name: str = name
-        self._type: Node = type_
-        self._default: Node = default
-
-    def name(self) -> str:
-        return self._name
-
-    def type(self) -> Node:
-        return self._type
-
-    def default(self) -> Node:
-        return self._default
-
-    def __repr__(self) -> str:
-        return f"param(name={self._name}, type={self._type}, default={self._default})"
-
-
-class parameters(Node):
-    """
-    An parameter list in a function call.
-    """
-
-    def __init__(self, params: Mapping[str, param]):
-        super().__init__()
-        self._params: Mapping[str, param] = params
-
-    def params(self) -> Mapping[str, param]:
-        return self._params
-
-    def __repr__(self) -> str:
-        return f"parameters(params={self._params})"
 
 
 class Assert(Statement):
@@ -337,7 +297,7 @@ class AsyncFunctionDef(Node):
     def __init__(
         self,
         name: str,
-        args: parameters,
+        args: "Parameters",
         body: Sequence[Node],
         decorator_list: Sequence[Node] | None = None,
         returns: Node | None = None,
@@ -345,7 +305,7 @@ class AsyncFunctionDef(Node):
     ):
         super().__init__(source)
         self._name: str = name
-        self._args: parameters = args
+        self._args: Parameters = args
         self._body: Sequence[Node] = body
         self._decorator_list: Sequence[Node] = decorator_list if decorator_list is not None else []
         self._returns: Node | None = returns
@@ -353,7 +313,7 @@ class AsyncFunctionDef(Node):
     def name(self) -> str:
         return self._name
 
-    def args(self) -> parameters:
+    def args(self) -> "Parameters":
         return self._args
 
     def body(self) -> Sequence[Node]:
@@ -595,13 +555,13 @@ class Call(Expression):
         self,
         func: Node,
         args: Sequence[Node],
-        keywords: Sequence["keyword"] | None = None,
+        keywords: Sequence["Keyword"] | None = None,
         source: NodeSource | None = None,
     ):
         super().__init__(source)
         self._func: Node = func
         self._args: Sequence[Node] = args
-        self._keywords: Sequence[keyword] = keywords if keywords is not None else []
+        self._keywords: Sequence[Keyword] = keywords if keywords is not None else []
 
     def func(self) -> Node:
         return self._func
@@ -609,7 +569,7 @@ class Call(Expression):
     def args(self) -> Sequence[Node]:
         return self._args
 
-    def keywords(self) -> Sequence["keyword"]:
+    def keywords(self) -> Sequence["Keyword"]:
         return self._keywords
 
     def __repr__(self) -> str:
@@ -930,7 +890,7 @@ class ExceptHandler(Node):
         return f"ExceptHandler(type={self._type}, name={self._name}, body={self._body})"
 
 
-class Expr(Expression):
+class ExpressionStatement(Expression):
     """
     An expression statement, which is an expression that is not part of a
     larger statement like a function call where the result is not used.
@@ -951,7 +911,7 @@ class Expr(Expression):
         return f"Expr(value={self._value})"
 
 
-class expr(Node):
+class Expr(Node):
     """
     A generic expression node.
     """
@@ -1049,7 +1009,7 @@ class FunctionDef(Node):
     def __init__(
         self,
         name: str,
-        args: parameters,
+        args: "Parameters",
         body: Sequence[Node],
         decorator_list: Sequence[Node] | None = None,
         returns: Node | None = None,
@@ -1057,7 +1017,7 @@ class FunctionDef(Node):
     ):
         super().__init__(source)
         self._name: str = name
-        self._args: parameters = args
+        self._args: Parameters = args
         self._body: Sequence[Node] = body
         self._decorator_list: Sequence[Node] = decorator_list if decorator_list is not None else []
         self._returns: Node | None = returns
@@ -1065,7 +1025,7 @@ class FunctionDef(Node):
     def name(self) -> str:
         return self._name
 
-    def args(self) -> parameters:
+    def args(self) -> "Parameters":
         return self._args
 
     def body(self) -> Sequence[Node]:
@@ -1190,11 +1150,11 @@ class Import(Node):
     An import statement, which imports modules or specific names from modules.
     """
 
-    def __init__(self, names: Sequence[alias], source: NodeSource | None = None):
+    def __init__(self, names: Sequence[Alias], source: NodeSource | None = None):
         super().__init__(source)
-        self._names: Sequence[alias] = names
+        self._names: Sequence[Alias] = names
 
-    def names(self) -> Sequence[alias]:
+    def names(self) -> Sequence[Alias]:
         return self._names
 
     def __repr__(self) -> str:
@@ -1210,19 +1170,19 @@ class ImportFrom(Node):
     def __init__(
         self,
         module: str | None,
-        names: Sequence[alias],
+        names: Sequence[Alias],
         level: int,
         source: NodeSource | None = None,
     ):
         super().__init__(source)
         self._module: str | None = module
-        self._names: Sequence[alias] = names
+        self._names: Sequence[Alias] = names
         self._level: int = level
 
     def module(self) -> str | None:
         return self._module
 
-    def names(self) -> Sequence[alias]:
+    def names(self) -> Sequence[Alias]:
         return self._names
 
     def level(self) -> int:
@@ -1317,7 +1277,7 @@ class JoinedStr(Literal):
         return f"JoinedStr(values={self._values}, type={self._type})"
 
 
-class keyword(Node):
+class Keyword(Node):
     """
     A keyword argument in a function call.
     """
@@ -1342,13 +1302,13 @@ class Lambda(Node):
     A lambda function, which is an anonymous function defined with the `lambda` keyword.
     """
 
-    def __init__(self, args: parameters, body: Node, source: NodeSource | None = None):
+    def __init__(self, args: "Parameters", body: Node, source: NodeSource | None = None):
         super().__init__(source)
-        self._args: parameters = args
+        self._args: Parameters = args
         self._body: Node = body
         # TODO: return type
 
-    def args(self) -> parameters:
+    def args(self) -> "Parameters":
         return self._args
 
     def body(self) -> Node:
@@ -1475,7 +1435,7 @@ class Match(Node):
         return f"Match(subject={self._subject}, cases={self._cases})"
 
 
-class match_case(Node):
+class MatchCase(Node):
     """
     A case in a match statement.
     """
@@ -1502,7 +1462,7 @@ class match_case(Node):
         return self._body
 
     def __repr__(self) -> str:
-        return f"match_case(pattern={self._pattern}, guard={self._guard}, body={self._body})"
+        return f"MatchCase(pattern={self._pattern}, guard={self._guard}, body={self._body})"
 
 
 class MatchAs(Node):
@@ -1822,6 +1782,30 @@ class Or(Node):
         return "Or()"
 
 
+class Param(Node):
+    """
+    A parameter in a function call.
+    """
+
+    def __init__(self, name: str, type_: Node, default: Node, source: NodeSource | None = None):
+        super().__init__(source)
+        self._name: str = name
+        self._type: Node = type_
+        self._default: Node = default
+
+    def name(self) -> str:
+        return self._name
+
+    def type(self) -> Node:
+        return self._type
+
+    def default(self) -> Node:
+        return self._default
+
+    def __repr__(self) -> str:
+        return f"param(name={self._name}, type={self._type}, default={self._default})"
+
+
 class Parameter(Node):
     """
     A parameter in a function definition.
@@ -1852,6 +1836,22 @@ class Parameter(Node):
         return (
             f"Parameter(name={self._name}, annotation={self._annotation}, default={self._default})"
         )
+
+
+class Parameters(Node):
+    """
+    An parameter list in a function call.
+    """
+
+    def __init__(self, params: Mapping[str, Param]):
+        super().__init__()
+        self._params: Mapping[str, Param] = params
+
+    def params(self) -> Mapping[str, Param]:
+        return self._params
+
+    def __repr__(self) -> str:
+        return f"parameters(params={self._params})"
 
 
 class ParameterSpecification(Node):
@@ -2367,7 +2367,7 @@ class While(Node):
         return f"While(test={self._test}, body={self._body}, orelse={self._orelse})"
 
 
-class withitem(Node):
+class WithItem(Node):
     """
     An item in a with statement, which typically includes an expression and an optional variable to assign the context manager to.
     """
@@ -2398,13 +2398,13 @@ class With(Node):
     """
 
     def __init__(
-        self, items: Sequence[withitem], body: Sequence[Node], source: NodeSource | None = None
+        self, items: Sequence[WithItem], body: Sequence[Node], source: NodeSource | None = None
     ):
         super().__init__(source)
-        self._items: Sequence[withitem] = items
+        self._items: Sequence[WithItem] = items
         self._body: Sequence[Node] = body
 
-    def items(self) -> Sequence[Node]:
+    def items(self) -> Sequence[WithItem]:
         return self._items
 
     def body(self) -> Sequence[Node]:
