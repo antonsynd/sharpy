@@ -206,11 +206,11 @@ protocol_def
 // --------------------
 
 function_def
-    : decorators? DEF name type_params? LPAR params? RPAR (RARROW expression )? COLON block
+    : decorators? DEF function_name=name type_params_=type_params? LPAR parameters_=parameters? RPAR (RARROW return_type=type_name )? COLON body=block
     ;
 
 async_function_def
-    : decorators? ASYNC DEF name type_params? LPAR params? RPAR (RARROW expression )? COLON block
+    : decorators? ASYNC DEF function_name=name type_params_=type_params? LPAR parameters_=parameters? RPAR (RARROW return_type=type_name )? COLON body=block
     ;
 
 // Property definitions
@@ -234,25 +234,16 @@ event_def: 'event' typed_name;
 // Function parameters
 // -------------------
 
-params
-    : parameters;
-
+// Must have at least one parameter, otherwise it will match empty string
 parameters
-    : param_no_default+ param_with_default*
-    | param_with_default+
+    : parameter_list+=parameter (COMMA parameter_list+=parameter)* COMMA?
     ;
 
-param_no_default
-    : param COMMA?
+parameter
+    : parameter_name=name parameter_type=type_annotation? (EQUAL parameter_default=expression)?
     ;
 
-param_with_default
-    : param default_assignment COMMA?
-    ;
-
-param: name type_annotation?;
 type_annotation: COLON type_name;
-default_assignment: EQUAL expression;
 
 // If statement
 // ------------
@@ -658,7 +649,7 @@ group
 
 // Sharpy lambdas allow return type annotations.
 lambda_def
-    : LAMBDA params? ( RARROW type_name )? COLON expression;
+    : LAMBDA parameters? ( RARROW type_name )? COLON expression;
 
 // LITERALS
 // ========

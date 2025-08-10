@@ -235,6 +235,22 @@ class AnnAssign(Statement):
         return "AnnAssign()"
 
 
+class Argument(Node):
+    def __init__(self, value: Node, source: NodeSource | None = None):
+        super().__init__(source)
+        self._value: Node = value
+        self._resolved_type: Node | None = None
+
+    def value(self) -> Node:
+        return self._value
+
+    def resolved_type(self) -> Node | None:
+        return self._resolved_type
+
+    def __repr__(self) -> str:
+        return f"Argument(value={self._value}, resolved_type={self._resolved_type})"
+
+
 class Assert(Statement):
     """
     An assert statement.
@@ -306,24 +322,25 @@ class AsyncFunctionDef(Node):
     def __init__(
         self,
         name: str,
-        args: "Parameters",
+        parameters: Sequence["ParameterSpecification"],
         body: Sequence[Node],
         decorator_list: Sequence[Node] | None = None,
-        returns: Node | None = None,
+        return_type: Node | None = None,
         source: NodeSource | None = None,
     ):
         super().__init__(source)
         self._name: str = name
-        self._args: Parameters = args
+        self._parameters: Sequence["ParameterSpecification"] = parameters
         self._body: Sequence[Node] = body
         self._decorator_list: Sequence[Node] = decorator_list if decorator_list is not None else []
-        self._returns: Node | None = returns
+        self._return_type: Node | None = return_type
+        self._resolved_return_type: Node | None = None
 
     def name(self) -> str:
         return self._name
 
-    def args(self) -> "Parameters":
-        return self._args
+    def parameters(self) -> Sequence["ParameterSpecification"]:
+        return self._parameters
 
     def body(self) -> Sequence[Node]:
         return self._body
@@ -331,11 +348,14 @@ class AsyncFunctionDef(Node):
     def decorator_list(self) -> Sequence[Node]:
         return self._decorator_list
 
-    def returns(self) -> Node | None:
-        return self._returns
+    def return_type(self) -> Node | None:
+        return self._return_type
+
+    def resolved_return_type(self) -> Node | None:
+        return self._resolved_return_type
 
     def __repr__(self) -> str:
-        return f"AsyncFunctionDef(name={self._name}, args={self._args}, body={self._body}, decorator_list={self._decorator_list}, returns={self._returns})"
+        return f"AsyncFunctionDef(name={self._name}, parameters={self._parameters}, body={self._body}, decorator_list={self._decorator_list}, return_type={self._return_type}, resolved_return_type={self._resolved_return_type})"
 
 
 class AsyncWith(Node):
@@ -563,26 +583,28 @@ class Call(Expression):
     def __init__(
         self,
         func: Node,
-        args: Sequence[Node],
-        keywords: Sequence["Keyword"] | None = None,
+        arguments: Sequence[Argument],
+        keyword_arguments: Sequence["KeywordArgument"] | None = None,
         source: NodeSource | None = None,
     ):
         super().__init__(source)
         self._func: Node = func
-        self._args: Sequence[Node] = args
-        self._keywords: Sequence[Keyword] = keywords if keywords is not None else []
+        self._arguments: Sequence[Argument] = arguments
+        self._keyword_arguments: Sequence[KeywordArgument] = (
+            keyword_arguments if keyword_arguments is not None else []
+        )
 
     def func(self) -> Node:
         return self._func
 
-    def args(self) -> Sequence[Node]:
-        return self._args
+    def arguments(self) -> Sequence[Argument]:
+        return self._arguments
 
-    def keywords(self) -> Sequence["Keyword"]:
-        return self._keywords
+    def keyword_arguments(self) -> Sequence["KeywordArgument"]:
+        return self._keyword_arguments
 
     def __repr__(self) -> str:
-        return f"Call(func={self._func}, args={self._args}, keywords={self._keywords})"
+        return f"Call(func={self._func}, arguments={self._arguments}, keyword_arguments={self._keyword_arguments})"
 
 
 class ClassDefinition(Node):
@@ -596,7 +618,6 @@ class ClassDefinition(Node):
         base: Node | None,
         protocols: Sequence[Node],
         parameters: Sequence["TypeParameter"],
-        # keywords: Sequence[Node],
         body: Sequence[Node],
         source: NodeSource | None = None,
     ):
@@ -605,7 +626,6 @@ class ClassDefinition(Node):
         self._base: Node | None = base
         self._protocols: Sequence[Node] = protocols
         self._parameters: Sequence[TypeParameter] = parameters
-        # self._keywords: Sequence[Node] = keywords
         self._body: Sequence[Node] = body
 
     def name(self) -> str:
@@ -619,9 +639,6 @@ class ClassDefinition(Node):
 
     def parameters(self) -> Sequence["TypeParameter"]:
         return self._parameters
-
-    # def keywords(self) -> Sequence[Node]:
-    #     return self._keywords
 
     def body(self) -> Sequence[Node]:
         return self._body
@@ -1015,7 +1032,7 @@ class FormattedValue(Literal):
         return f"FormattedValue(value={self._value}, conversion={self._conversion}, format_spec={self._format_spec}, type={self._type})"
 
 
-class FunctionDef(Node):
+class FunctionDefinition(Node):
     """
     A function definition.
     """
@@ -1023,36 +1040,45 @@ class FunctionDef(Node):
     def __init__(
         self,
         name: str,
-        args: "Parameters",
+        parameters: Sequence["ParameterSpecification"],
         body: Sequence[Node],
-        decorator_list: Sequence[Node] | None = None,
-        returns: Node | None = None,
+        type_parameters: Sequence["TypeParameter"] | None = None,
+        return_type: Type | None = None,
         source: NodeSource | None = None,
     ):
         super().__init__(source)
         self._name: str = name
-        self._args: Parameters = args
+        self._parameters: Sequence[ParameterSpecification] = parameters
         self._body: Sequence[Node] = body
-        self._decorator_list: Sequence[Node] = decorator_list if decorator_list is not None else []
-        self._returns: Node | None = returns
+
+        # Type parameters for generic programming
+        self._type_parameters: Sequence[TypeParameter] = (
+            type_parameters if type_parameters is not None else []
+        )
+
+        self._return_type: Type | None = return_type
+        self._resolved_return_type: Type | None = return_type if return_type else None
 
     def name(self) -> str:
         return self._name
 
-    def args(self) -> "Parameters":
-        return self._args
+    def parameters(self) -> Sequence["ParameterSpecification"]:
+        return self._parameters
+
+    def type_parameters(self) -> Sequence["TypeParameter"]:
+        return self._type_parameters
 
     def body(self) -> Sequence[Node]:
         return self._body
 
-    def decorator_list(self) -> Sequence[Node]:
-        return self._decorator_list
+    def return_type(self) -> Type | None:
+        return self._return_type
 
-    def returns(self) -> Node | None:
-        return self._returns
+    def resolved_return_type(self) -> Type | None:
+        return self._resolved_return_type
 
     def __repr__(self) -> str:
-        return f"FunctionDef(name={self._name}, args={self._args}, body={self._body}, decorator_list={self._decorator_list}, returns={self._returns})"
+        return f"FunctionDefinition(name={self._name}, type_parameters={self._type_parameters}, parameters={self._parameters}, body={self._body}, return_type={self._return_type}, resolved_return_type={self._resolved_return_type})"
 
 
 class GeneratorExp(Node):
@@ -1291,24 +1317,20 @@ class JoinedStr(Literal):
         return f"JoinedStr(values={self._values}, type={self._type})"
 
 
-class Keyword(Node):
+class KeywordArgument(Argument):
     """
     A keyword argument in a function call.
     """
 
-    def __init__(self, arg: str | None, value: Node, source: NodeSource | None = None):
-        super().__init__(source)
-        self._arg: str | None = arg
-        self._value: Node = value
+    def __init__(self, name: str | None, value: Node, source: NodeSource | None = None):
+        super().__init__(value, source)
+        self._name: str | None = name
 
-    def arg(self) -> str | None:
-        return self._arg
-
-    def value(self) -> Node:
-        return self._value
+    def name(self) -> str | None:
+        return self._name
 
     def __repr__(self) -> str:
-        return f"keyword(arg={self._arg}, value={self._value})"
+        return f"KeywordArgument(name={self._name}, value={self._value}, resolved_type={self._resolved_type})"
 
 
 class Lambda(Node):
@@ -1316,20 +1338,33 @@ class Lambda(Node):
     A lambda function, which is an anonymous function defined with the `lambda` keyword.
     """
 
-    def __init__(self, args: "Parameters", body: Node, source: NodeSource | None = None):
+    def __init__(
+        self,
+        parameters: Sequence["ParameterSpecification"],
+        body: Node,
+        return_type: Node | None = None,
+        source: NodeSource | None = None,
+    ):
         super().__init__(source)
-        self._args: Parameters = args
+        self._parameters: Sequence["ParameterSpecification"] = parameters
         self._body: Node = body
-        # TODO: return type
+        self._return_type: Node | None = return_type
+        self._resolved_return_type: Node | None = None
 
-    def args(self) -> "Parameters":
-        return self._args
+    def parameters(self) -> Sequence["ParameterSpecification"]:
+        return self._parameters
 
     def body(self) -> Node:
         return self._body
 
+    def return_type(self) -> Node | None:
+        return self._return_type
+
+    def resolved_return_type(self) -> Node | None:
+        return self._resolved_return_type
+
     def __repr__(self) -> str:
-        return f"Lambda(args={self._args}, body={self._body})"
+        return f"Lambda(parameters={self._parameters}, return_type={self._return_type}, body={self._body}, resolved_return_type={self._resolved_return_type})"
 
 
 class List(Literal):
@@ -1796,85 +1831,19 @@ class Or(Node):
         return "Or()"
 
 
-class Param(Node):
-    """
-    A parameter in a function call.
-    """
-
-    def __init__(self, name: str, type_: Node, default: Node, source: NodeSource | None = None):
-        super().__init__(source)
-        self._name: str = name
-        self._type: Node = type_
-        self._default: Node = default
-
-    def name(self) -> str:
-        return self._name
-
-    def type(self) -> Node:
-        return self._type
-
-    def default(self) -> Node:
-        return self._default
-
-    def __repr__(self) -> str:
-        return f"param(name={self._name}, type={self._type}, default={self._default})"
-
-
-class Parameter(Node):
-    """
-    A parameter in a function definition.
-    """
-
-    def __init__(
-        self,
-        name: str,
-        annotation: Node | None = None,
-        default: Node | None = None,
-        source: NodeSource | None = None,
-    ):
-        super().__init__(source)
-        self._name: str = name
-        self._annotation: Node | None = annotation
-        self._default: Node | None = default
-
-    def name(self) -> str:
-        return self._name
-
-    def annotation(self) -> Node | None:
-        return self._annotation
-
-    def default(self) -> Node | None:
-        return self._default
-
-    def __repr__(self) -> str:
-        return (
-            f"Parameter(name={self._name}, annotation={self._annotation}, default={self._default})"
-        )
-
-
-class Parameters(Node):
-    """
-    An parameter list in a function call.
-    """
-
-    def __init__(self, params: Mapping[str, Param]):
-        super().__init__()
-        self._params: Mapping[str, Param] = params
-
-    def params(self) -> Mapping[str, Param]:
-        return self._params
-
-    def __repr__(self) -> str:
-        return f"parameters(params={self._params})"
-
-
 class ParameterSpecification(Node):
     """
     A parameter specification, which is used to define the parameters of a
     function.
     """
 
-    def __init__(self, name: str, type_: Type | None = None, source: NodeSource | None = None):
+    def __init__(
+        self,
+        name: str,
+        type_: Type | None = None,
+        default: Node | None = None,
+        source: NodeSource | None = None,
+    ):
         """
         `self` cannot have a type.
         """
@@ -1882,6 +1851,7 @@ class ParameterSpecification(Node):
         super().__init__(source)
         self._name: str = name
         self._type: Type | None = type_
+        self._default: Node | None = default
 
     def name(self) -> str:
         return self._name
@@ -1889,8 +1859,13 @@ class ParameterSpecification(Node):
     def type(self) -> Type | None:
         return self._type
 
+    def default(self) -> Node | None:
+        return self._default
+
     def __repr__(self) -> str:
-        return f"ParameterSpecification(name={self._name}, type={self._type})"
+        return (
+            f"ParameterSpecification(name={self._name}, type={self._type}, default={self._default})"
+        )
 
 
 class Pass(Statement):

@@ -134,7 +134,7 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         return BinaryOperation(left=left, operator=BitwiseXor(), right=right)
 
     # Visit a parse tree produced by SharpyParser#block.
-    def visitBlock(self, ctx: SharpyParser.BlockContext):
+    def visitBlock(self, ctx: SharpyParser.BlockContext) -> Sequence[Node]:
         logger.debug("Visiting block")
 
         statements: MutableSequence[Node] = []
@@ -228,11 +228,6 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
     # Visit a parse tree produced by SharpyParser#decorators.
     def visitDecorators(self, ctx: SharpyParser.DecoratorsContext):
         logger.debug("Visiting decorators")
-        return self.visitChildren(ctx)
-
-    # Visit a parse tree produced by SharpyParser#default_assignment.
-    def visitDefault_assignment(self, ctx: SharpyParser.Default_assignmentContext):
-        logger.debug("Visiting default assignment")
         return self.visitChildren(ctx)
 
     # Visit a parse tree produced by SharpyParser#del_statement.
@@ -370,9 +365,26 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         return self.visitChildren(ctx)
 
     # Visit a parse tree produced by SharpyParser#function_def.
-    def visitFunction_def(self, ctx: SharpyParser.Function_defContext):
+    def visitFunction_def(self, ctx: SharpyParser.Function_defContext) -> FunctionDefinition:
         logger.debug("Visiting function definition")
-        return self.visitChildren(ctx)
+
+        name: str = ctx.function_name.getText()
+        parameters: Sequence[ParameterSpecification] = (
+            self.visit(ctx.parameters_) if ctx.parameters_ else []
+        )
+        body: Sequence[Node] = self.visit(ctx.body)
+        type_parameters: Sequence[TypeParameter] = (
+            self.visit(ctx.type_params_) if ctx.type_params_ else []
+        )
+        return_type: Type | None = self.visit(ctx.return_type) if ctx.return_type else None
+
+        return FunctionDefinition(
+            name=name,
+            parameters=parameters,
+            body=body,
+            type_parameters=type_parameters,
+            return_type=return_type,
+        )
 
     # Visit a parse tree produced by SharpyParser#guard.
     def visitGuard(self, ctx: SharpyParser.GuardContext):
@@ -601,30 +613,23 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         logger.debug("Visiting or pattern")
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by SharpyParser#param_no_default.
-    def visitParam_no_default(self, ctx: SharpyParser.Param_no_defaultContext):
-        logger.debug("Visiting parameter without default")
-        return self.visitChildren(ctx)
-
-    # Visit a parse tree produced by SharpyParser#param_with_default.
-    def visitParam_with_default(self, ctx: SharpyParser.Param_with_defaultContext):
-        logger.debug("Visiting parameter with default")
-        return self.visitChildren(ctx)
-
     # Visit a parse tree produced by SharpyParser#param.
-    def visitParam(self, ctx: SharpyParser.ParamContext):
+    def visitParameter(self, ctx: SharpyParser.ParameterContext) -> ParameterSpecification:
         logger.debug("Visiting parameter")
-        return self.visitChildren(ctx)
+        name: str = ctx.parameter_name.getText()
+        type_annotation: Type | None = (
+            self.visit(ctx.parameter_type) if ctx.parameter_type else None
+        )
+        default: Node | None = self.visit(ctx.parameter_default) if ctx.parameter_default else None
+
+        return ParameterSpecification(name=name, type_=type_annotation, default=default)
 
     # Visit a parse tree produced by SharpyParser#parameters.
-    def visitParameters(self, ctx: SharpyParser.ParametersContext):
+    def visitParameters(
+        self, ctx: SharpyParser.ParametersContext
+    ) -> Sequence[ParameterSpecification]:
         logger.debug("Visiting parameter list")
-        return self.visitChildren(ctx)
-
-    # Visit a parse tree produced by SharpyParser#params.
-    def visitParams(self, ctx: SharpyParser.ParamsContext):
-        logger.debug("Visiting parameters")
-        return self.visitChildren(ctx)
+        return [self.visit(param) for param in ctx.parameter_list]
 
     def visitPass_statement(self, ctx: SharpyParser.Pass_statementContext):
         logger.debug("Visiting pass statement")
