@@ -1,0 +1,13 @@
+class Foo(Bar, Baz):
+    x: int
+    y: str
+
+    def __init__(self, x: int, y: str):
+        self.x = x
+        self.y = y
+
+    def display(self):
+        print(f"Foo: {self.x}, {self.y}")
+
+    def __str__(self):
+        return f"Foo({self.x}, {self.y})"

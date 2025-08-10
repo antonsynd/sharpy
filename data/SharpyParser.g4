@@ -194,13 +194,13 @@ decorators: (AT named_expression NEWLINE )+;
 // -----------------
 
 class_def
-    : decorators? CLASS name type_params? (LPAR arguments? RPAR )? COLON block;
+    : decorators? CLASS class_name=name type_params_=type_params? (LPAR type_names+=type_name? RPAR )? COLON body=block;
 
 struct_def
-    : decorators? STRUCT name type_params? (LPAR arguments? RPAR )? COLON block;
+    : decorators? STRUCT struct_name=name type_params_=type_params? (LPAR type_names+=type_name? RPAR )? COLON body=block;
 
 protocol_def
-    : decorators? PROTOCOL name type_params? (LPAR arguments? RPAR )? COLON block;
+    : decorators? PROTOCOL protocol_name=name type_params_=type_params? (LPAR type_names+=type_name? RPAR )? COLON body=block;
 
 // Function definitions
 // --------------------
@@ -826,8 +826,9 @@ type_name_component: tname=name tparams=type_params?;
 type_name
     // NOTE: type_name_component could also be a namespace, the difference is
     // not important to the parser because type resolution will handle it
-    : component+=type_name_component (DOT component+=type_name_component)*
+    : component+=type_name_component (DOT component+=type_name_component)* optional=QUESTION?
     ;
+// TODO: Fix Callable types because they take a list of arguments
 
 // *** related to soft keywords: https://docs.python.org/3.13/reference/lexical_analysis.html#soft-keywords
 // This is used in match case blocks because _ means wildcard there, not a name

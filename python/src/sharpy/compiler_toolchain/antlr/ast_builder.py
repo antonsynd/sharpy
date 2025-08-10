@@ -162,7 +162,29 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
     # Visit a parse tree produced by SharpyParser#class_def.
     def visitClass_def(self, ctx: SharpyParser.Class_defContext):
         logger.debug("Visiting class definition")
-        return self.visitChildren(ctx)
+
+        statements: Sequence[Node] = self.visitChildren(ctx)
+        name: str = ctx.class_name.getText()
+        type_names: Sequence[Node] = []
+
+        for type_name in ctx.type_names:
+            type_names.append(self.visit(type_name))
+
+        # TODO: Actually, we don't know if the type name is a protocol or
+        # super class
+        base: Node | None = None if not type_names else type_names[0]
+        protocols: Sequence[Node] = [] if len(type_names) < 2 else type_names[1:]
+
+        # body: Sequence[Node] = self.visit(ctx.body)
+
+        if ctx.type_params_:
+            type_params = self.visit(ctx.type_params_)
+        else:
+            type_params = []
+
+        return ClassDefinition(
+            name=name, base=base, protocols=protocols, parameters=type_params, body=[]
+        )
 
     # Visit a parse tree produced by SharpyParser#closed_pattern.
     def visitClosed_pattern(self, ctx: SharpyParser.Closed_patternContext):
@@ -920,7 +942,9 @@ class AntlrASTBuilder(ASTBuilder, SharpyParserVisitor):
         for component in ctx.component:
             components.append(self.visit(component))
 
-        return Type(components=components)
+        optional: bool = ctx.optional is not None
+
+        return Type(components=components, optional=optional)
 
     def visitType_name_component(
         self, ctx: SharpyParser.Type_name_componentContext

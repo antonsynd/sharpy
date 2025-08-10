@@ -99,15 +99,24 @@ class TypeComponent(Node):
 
 
 class Type(Node):
-    def __init__(self, components: Sequence[TypeComponent], source: NodeSource | None = None):
+    def __init__(
+        self,
+        components: Sequence[TypeComponent],
+        optional: bool = False,
+        source: NodeSource | None = None,
+    ):
         super().__init__(source)
         self._components: Sequence[TypeComponent] = components
+        self._optional: bool = optional
 
     def components(self) -> Sequence[TypeComponent]:
         return self._components
 
+    def is_optional(self) -> bool:
+        return self._optional
+
     def __repr__(self) -> str:
-        return f"Type(components={self._components})"
+        return f"Type(components={self._components}, optional={self._optional})"
 
 
 class Literal(Node):
@@ -586,7 +595,8 @@ class ClassDefinition(Node):
         name: str,
         base: Node | None,
         protocols: Sequence[Node],
-        keywords: Sequence[Node],
+        parameters: Sequence["TypeParameter"],
+        # keywords: Sequence[Node],
         body: Sequence[Node],
         source: NodeSource | None = None,
     ):
@@ -594,7 +604,8 @@ class ClassDefinition(Node):
         self._name: str = name
         self._base: Node | None = base
         self._protocols: Sequence[Node] = protocols
-        self._keywords: Sequence[Node] = keywords
+        self._parameters: Sequence[TypeParameter] = parameters
+        # self._keywords: Sequence[Node] = keywords
         self._body: Sequence[Node] = body
 
     def name(self) -> str:
@@ -606,14 +617,17 @@ class ClassDefinition(Node):
     def protocols(self) -> Sequence[Node]:
         return self._protocols
 
-    def keywords(self) -> Sequence[Node]:
-        return self._keywords
+    def parameters(self) -> Sequence["TypeParameter"]:
+        return self._parameters
+
+    # def keywords(self) -> Sequence[Node]:
+    #     return self._keywords
 
     def body(self) -> Sequence[Node]:
         return self._body
 
     def __repr__(self) -> str:
-        return f"ClassDef(name={self._name}, base={self._base}, protocols={self._protocols}, keywords={self._keywords}, body={self._body})"
+        return f"ClassDef(name={self._name}, base={self._base}, protocols={self._protocols}, parameters={self._parameters}, body={self._body})"
 
 
 class Compare(Expression):

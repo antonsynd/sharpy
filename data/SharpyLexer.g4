@@ -110,6 +110,7 @@ ATEQUAL          : '@=';
 RARROW           : '->';
 ELLIPSIS         : '...';
 COLONEQUAL       : ':=';
+QUESTION         : '?';
 EXCLAMATION      : '!';
 
 // https://docs.python.org/3.13/reference/lexical_analysis.html#keywords
