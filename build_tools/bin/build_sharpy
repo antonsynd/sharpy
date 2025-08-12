@@ -26,6 +26,9 @@ CSHARP_SRC_DIR: Path = ROOT_DIR / "dotnet/src/Sharpy"
 CSHARP_DOCS_DIR: Path = ROOT_DIR / "dotnet/docs"
 CSHARP_TEST_DIR: Path = ROOT_DIR / "dotnet/src/Sharpy.Tests"
 
+RUST_ROOT_DIR: Path = ROOT_DIR / "rust"
+RUST_SRC_DIR: Path = RUST_ROOT_DIR / "src"
+
 
 _expected_resources: Sequence[Path] = [
     RESOURCE_DIR / "SharpyLexer.py",
@@ -56,6 +59,8 @@ def main() -> None:
         build(args=args, rest=rest, release=args.release)
     elif command == "setup":
         setup(args=args, rest=rest)
+    elif command == "cargo":
+        run_cargo(args=args, rest=rest)
     elif command == "clean":
         clean(args=args, rest=rest)
     elif command == "install":
@@ -95,8 +100,10 @@ def create_parser() -> argparse.ArgumentParser:
     setup_parser = subparsers.add_parser(
         "setup", help="Downloads resources and generates required code."
     )
+    cargo_parser = subparsers.add_parser("cargo", help="Delegates to cargo.")
+
     build_parser = subparsers.add_parser("build", help="Builds the package.")
-    build_parser.add_argument("--project", type=str, default="all", choices=("all", "lib", "tests"))
+    build_parser.add_argument("--project", type=str, default="all", choices=("all", "compiler", "lib", "tests"))
     build_parser.add_argument("--release", action="store_true")
     clean_parser = subparsers.add_parser("clean", help="Cleans up intermediate objects.")
     clean_parser.add_argument(
@@ -105,22 +112,22 @@ def create_parser() -> argparse.ArgumentParser:
     install_parser = subparsers.add_parser("install", help="TODO: No-op")
     format_parser = subparsers.add_parser("format", help="Runs code formatters.")
     format_parser.add_argument(
-        "--target", action="append", choices=("cs", "csharp", "py", "python"), default=None
+        "--target", action="append", choices=("cs", "csharp", "py", "python", "rs", "rust"), default=None
     )
     debug_parser = subparsers.add_parser("debug", help="Runs all steps.")
     debug_parser.add_argument(
-        "--target", action="append", choices=("cs", "csharp", "py", "python"), default=None
+        "--target", action="append", choices=("cs", "csharp", "py", "python", "rs", "rust"), default=None
     )
     release_parser = subparsers.add_parser("release", help="Runs all steps.")
     release_parser.add_argument(
-        "--target", action="append", choices=("cs", "csharp", "py", "python"), default=None
+        "--target", action="append", choices=("cs", "csharp", "py", "python", "rs", "rust"), default=None
     )
     run_parser = subparsers.add_parser(
         "run", help="Runs the given arguments in the context of the Python modules available here."
     )
     test_parser = subparsers.add_parser("test", help="Runs tests.")
     test_parser.add_argument(
-        "--target", action="append", choices=("cs", "csharp", "py", "python"), default=None
+        "--target", action="append", choices=("cs", "csharp", "py", "python", "rs", "rust"), default=None
     )
     build_docs_parser = subparsers.add_parser(
         "build-docs", aliases=["docs"], help="Generates documentation."
@@ -137,7 +144,7 @@ def get_targets(args: argparse.Namespace) -> AbstractSet[str]:
     if args.target:
         return set(args.target)
 
-    return {"py", "cs"}
+    return {"py", "cs", "rs"}
 
 
 def build(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
@@ -145,11 +152,39 @@ def build(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
 
     argdict: Mapping[str, str] = vars(args)
 
+    if "project" not in argdict or argdict["project"] in {"all", "compiler"}:
+        build_compiler(release=release)
+
     if "project" not in argdict or argdict["project"] in {"all", "lib"}:
         build_lib(release=release)
 
     if "project" not in argdict or argdict["project"] in {"all", "tests"}:
         build_tests(release=release)
+
+
+def run_cargo(args: argparse.Namespace, rest: Sequence[str]) -> None:
+    get_logger().info("Running cargo...")
+    try:
+        subprocess.run(["cargo"] + list(rest), check=True, cwd=RUST_ROOT_DIR)
+    except subprocess.CalledProcessError as e:
+        print(f"Encountered error {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def build_compiler(release: bool) -> None:
+    build_type: str = "Release" if release else "Debug"
+
+    try:
+        get_logger().info(f"Building compiler with {build_type.lower()} configuration...")
+        args: MutableSequence[str] = ["cargo", "build", "--release"]
+
+        if release:
+            args.append("--release")
+
+        subprocess.run(args, check=True, cwd=RUST_SRC_DIR)
+    except subprocess.CalledProcessError as e:
+        print(f"Encountered error {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def build_lib(release: bool) -> None:
@@ -327,6 +362,9 @@ def format(args: argparse.Namespace, rest: Sequence[str]) -> None:
     if "cs" in targets or "csharp" in targets:
         format_with_dotnet_format()
 
+    if "rs" in targets or "rust" in targets:
+        format_with_cargo()
+
 
 def format_with_black() -> None:
     get_logger().info("Formatting with black...")
@@ -384,6 +422,18 @@ def format_with_dotnet_format() -> None:
         sys.exit(1)
 
 
+def format_with_cargo() -> None:
+    get_logger().info("Formatting with cargo...")
+
+    try:
+        subprocess.run(
+            ["cargo", "fmt", "--all"], check=True, cwd=RUST_SRC_DIR
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"Encountered error {e}", file=sys.stderr)
+        sys.exit(1)
+
+
 def run(args: argparse.Namespace, rest: Sequence[str]) -> None:
     get_logger().info("Running custom command...")
 
@@ -417,6 +467,16 @@ def test(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
         try:
             subprocess.run(
                 ["dotnet", "test", "-c", build_type, str(CSHARP_TEST_DIR), *rest], check=True
+            )
+        except subprocess.CalledProcessError as e:
+            get_logger().error(f"Encountered error {e}")
+            sys.exit(1)
+
+    if "rs" in targets or "rust" in targets:
+        get_logger().info("Running tests with cargo...")
+        try:
+            subprocess.run(
+                ["cargo", "test", "--all"], check=True
             )
         except subprocess.CalledProcessError as e:
             get_logger().error(f"Encountered error {e}")
