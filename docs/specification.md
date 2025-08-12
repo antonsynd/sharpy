@@ -185,6 +185,13 @@ protocol Encodable:
     pass
 ```
 
+Protocols can inherit from other protocols.
+
+```Python
+protocol JSONEncodable(Encodable):
+    pass
+```
+
 In a class or struct that implements protocols and derives from a base
 class, the protocols must follow the base class.
 
@@ -206,9 +213,11 @@ protocol Encodable:
         return json.dumps(self.encode())
 ```
 
-Methods with no implementation have an ellipsis body (not `pass`). If an
-implementation is provided, it is inherited by all implementers of the
-protocol.
+Methods with no implementation have an ellipsis. If an actual
+implementation is provided, it is inherited by all inheriting protocols and
+implementers. If a body with a single `pass` statement (comments optional) is
+provided, it is treated as being implemented. This is a crucial difference
+between having an ellipsis vs. a `pass` statement.
 
 Protocols can also declare/define properties.
 

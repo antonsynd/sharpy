@@ -10,7 +10,12 @@ impl SourceLocation {
     /// Creates a new source location.
     #[must_use]
     pub const fn new(line: usize, column: usize, start: usize, end: usize) -> Self {
-        Self { line, column, start, end }
+        Self {
+            line,
+            column,
+            start,
+            end,
+        }
     }
 
     /// Creates a source location for a single character.

@@ -17,6 +17,9 @@ pub enum LexerError {
     #[error("Invalid number format: '{0}'")]
     InvalidNumber(String),
 
+    #[error("Invalid indentation: {0}")]
+    InvalidIndentation(String),
+
     #[error("Inconsistent use of tabs and spaces in indentation")]
     InconsistentIndentation,
 

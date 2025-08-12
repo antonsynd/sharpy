@@ -1,17 +1,20 @@
 pub mod error;
-pub mod token;
-pub mod keyword;
 pub mod indent;
+pub mod keyword;
 pub mod number_lexer;
-pub mod string_lexer;
 pub mod scanner;
+pub mod string_lexer;
+pub mod token;
 
+#[cfg(test)]
+mod test_indent;
+
+use crate::utils::is_id_start;
 pub use error::LexerError;
-pub use token::*;
 use indent::IndentationHandler;
 use scanner::Scanner;
-use crate::utils::is_id_start;
 use std::collections::VecDeque;
+pub use token::*;
 
 pub struct SharpyLexer<'a> {
     scanner: Scanner<'a>,
@@ -85,7 +88,9 @@ impl<'a> SharpyLexer<'a> {
             if !whitespace.is_empty() && !self.is_at_eof() && !self.is_comment_or_newline() {
                 // Handle indentation
                 let location = self.scanner.current_location();
-                let indent_tokens = self.indent_handler.handle_indentation(&whitespace, location)?;
+                let indent_tokens = self
+                    .indent_handler
+                    .handle_indentation(&whitespace, location)?;
                 for token in indent_tokens {
                     self.pending_tokens.push_back(token);
                 }
@@ -95,8 +100,8 @@ impl<'a> SharpyLexer<'a> {
             }
             self.at_line_start = false;
         } else {
-            // Skip whitespace in the middle of lines
-            self.scanner.skip_whitespace();
+            // Skip whitespace in the middle of lines (allows tabs in expressions)
+            self.scanner.skip_expression_whitespace();
         }
 
         match self.scanner.current_char {
@@ -110,7 +115,7 @@ impl<'a> SharpyLexer<'a> {
 
                 self.pending_tokens.pop_front().map_or_else(
                     || Ok(Token::new(TokenType::Eof, String::new(), location)),
-                    Ok
+                    Ok,
                 )
             }
             Some('\n') => self.handle_newline(),
@@ -137,16 +142,17 @@ impl<'a> SharpyLexer<'a> {
         self.scanner.advance(); // consume '\n'
         self.at_line_start = true;
 
-        let newline_tokens = self.indent_handler.handle_newline(self.opened_parens, location)?;
+        let newline_tokens = self
+            .indent_handler
+            .handle_newline(self.opened_parens, location)?;
 
         for token in newline_tokens {
             self.pending_tokens.push_back(token);
         }
 
-        self.pending_tokens.pop_front().map_or_else(
-            || self.scan_next_token(),
-            Ok
-        )
+        self.pending_tokens
+            .pop_front()
+            .map_or_else(|| self.scan_next_token(), Ok)
     }
 
     const fn is_at_eof(&self) -> bool {
@@ -191,7 +197,7 @@ mod tests {
         let mut lexer = SharpyLexer::new("x = 42");
 
         let token1 = lexer.next_token().unwrap();
-        assert!(matches!(token1.token_type, TokenType::Name(_)));
+        assert!(matches!(token1.token_type, TokenType::Name(_, false)));
 
         let token2 = lexer.next_token().unwrap();
         assert_eq!(token2.token_type, TokenType::Equal);
@@ -216,13 +222,14 @@ mod tests {
 
     #[test]
     fn test_access_modifiers() {
-        let mut lexer = SharpyLexer::new("_protected __private `internal ``file");
+        let mut lexer = SharpyLexer::new("_protected __private $internal $file");
 
         let tokens = lexer.tokenize_all().unwrap();
         for token in &tokens {
-            if let TokenType::Name(_) = token.token_type {
+            if let TokenType::Name(_, is_literal) = token.token_type {
                 // Access modifiers are included in the lexeme
-                assert!(token.lexeme.starts_with('_') || token.lexeme.starts_with('`'));
+                assert!(token.lexeme.starts_with('_') || token.lexeme.starts_with('$'));
+                assert!(!is_literal);
             }
         }
     }

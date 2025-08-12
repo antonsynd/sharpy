@@ -8,7 +8,11 @@ impl NumberLexer {
     ///
     /// # Errors
     /// Returns a lexer error if the number format is invalid.
-    pub fn scan_number(input: &str, start_pos: usize, location: SourceLocation) -> Result<(Token, usize), LexerError> {
+    pub fn scan_number(
+        input: &str,
+        start_pos: usize,
+        location: SourceLocation,
+    ) -> Result<(Token, usize), LexerError> {
         let chars: Vec<char> = input.chars().collect();
         let pos = start_pos;
 
@@ -30,7 +34,11 @@ impl NumberLexer {
         Self::scan_decimal_number(&chars, pos, location)
     }
 
-    fn scan_binary_number(chars: &[char], start_pos: usize, location: SourceLocation) -> Result<(Token, usize), LexerError> {
+    fn scan_binary_number(
+        chars: &[char],
+        start_pos: usize,
+        location: SourceLocation,
+    ) -> Result<(Token, usize), LexerError> {
         let mut pos = start_pos + 2; // Skip '0b' or '0B'
         let mut has_digits = false;
 
@@ -48,15 +56,25 @@ impl NumberLexer {
         }
 
         if !has_digits {
-            return Err(LexerError::InvalidNumber("binary number without digits".to_string()));
+            return Err(LexerError::InvalidNumber(
+                "binary number without digits".to_string(),
+            ));
         }
 
         let lexeme: String = chars[start_pos..pos].iter().collect();
-        let token = Token::new(TokenType::Number(NumberType::Integer(lexeme.clone())), lexeme, location);
+        let token = Token::new(
+            TokenType::Number(NumberType::Integer(lexeme.clone())),
+            lexeme,
+            location,
+        );
         Ok((token, pos))
     }
 
-    fn scan_octal_number(chars: &[char], start_pos: usize, location: SourceLocation) -> Result<(Token, usize), LexerError> {
+    fn scan_octal_number(
+        chars: &[char],
+        start_pos: usize,
+        location: SourceLocation,
+    ) -> Result<(Token, usize), LexerError> {
         let mut pos = start_pos + 2; // Skip '0o' or '0O'
         let mut has_digits = false;
 
@@ -74,15 +92,25 @@ impl NumberLexer {
         }
 
         if !has_digits {
-            return Err(LexerError::InvalidNumber("octal number without digits".to_string()));
+            return Err(LexerError::InvalidNumber(
+                "octal number without digits".to_string(),
+            ));
         }
 
         let lexeme: String = chars[start_pos..pos].iter().collect();
-        let token = Token::new(TokenType::Number(NumberType::Integer(lexeme.clone())), lexeme, location);
+        let token = Token::new(
+            TokenType::Number(NumberType::Integer(lexeme.clone())),
+            lexeme,
+            location,
+        );
         Ok((token, pos))
     }
 
-    fn scan_hex_number(chars: &[char], start_pos: usize, location: SourceLocation) -> Result<(Token, usize), LexerError> {
+    fn scan_hex_number(
+        chars: &[char],
+        start_pos: usize,
+        location: SourceLocation,
+    ) -> Result<(Token, usize), LexerError> {
         let mut pos = start_pos + 2; // Skip '0x' or '0X'
         let mut has_digits = false;
 
@@ -100,15 +128,25 @@ impl NumberLexer {
         }
 
         if !has_digits {
-            return Err(LexerError::InvalidNumber("hexadecimal number without digits".to_string()));
+            return Err(LexerError::InvalidNumber(
+                "hexadecimal number without digits".to_string(),
+            ));
         }
 
         let lexeme: String = chars[start_pos..pos].iter().collect();
-        let token = Token::new(TokenType::Number(NumberType::Integer(lexeme.clone())), lexeme, location);
+        let token = Token::new(
+            TokenType::Number(NumberType::Integer(lexeme.clone())),
+            lexeme,
+            location,
+        );
         Ok((token, pos))
     }
 
-    fn scan_decimal_number(chars: &[char], start_pos: usize, location: SourceLocation) -> Result<(Token, usize), LexerError> {
+    fn scan_decimal_number(
+        chars: &[char],
+        start_pos: usize,
+        location: SourceLocation,
+    ) -> Result<(Token, usize), LexerError> {
         let mut pos = start_pos;
         let mut is_float = false;
         let mut _has_exponent = false;
@@ -150,7 +188,9 @@ impl NumberLexer {
             }
 
             if pos == exp_start {
-                return Err(LexerError::InvalidNumber("exponent without digits".to_string()));
+                return Err(LexerError::InvalidNumber(
+                    "exponent without digits".to_string(),
+                ));
             }
         }
 

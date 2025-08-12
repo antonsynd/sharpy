@@ -23,23 +23,26 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    let input = args.input.map_or_else(|| {
-        // Read from stdin
-        let mut buffer = String::new();
-        match io::stdin().read_to_string(&mut buffer) {
-            Ok(_) => buffer,
+    let input = args.input.map_or_else(
+        || {
+            // Read from stdin
+            let mut buffer = String::new();
+            match io::stdin().read_to_string(&mut buffer) {
+                Ok(_) => buffer,
+                Err(err) => {
+                    eprintln!("Error reading from stdin: {err}");
+                    std::process::exit(1);
+                }
+            }
+        },
+        |filename| match fs::read_to_string(&filename) {
+            Ok(content) => content,
             Err(err) => {
-                eprintln!("Error reading from stdin: {err}");
+                eprintln!("Error reading file '{filename}': {err}");
                 std::process::exit(1);
             }
-        }
-    }, |filename| match fs::read_to_string(&filename) {
-        Ok(content) => content,
-        Err(err) => {
-            eprintln!("Error reading file '{filename}': {err}");
-            std::process::exit(1);
-        }
-    });
+        },
+    );
 
     if args.tokenize {
         tokenize_input(&input, args.verbose);

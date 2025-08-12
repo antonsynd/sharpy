@@ -16,9 +16,7 @@ pub fn is_id_continue(ch: char) -> bool {
 pub fn is_valid_identifier(s: &str) -> bool {
     let mut chars = s.chars();
     match chars.next() {
-        Some(first) if is_id_start(first) => {
-            chars.all(is_id_continue)
-        }
+        Some(first) if is_id_start(first) => chars.all(is_id_continue),
         _ => false,
     }
 }

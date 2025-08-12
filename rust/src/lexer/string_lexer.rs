@@ -5,14 +5,14 @@ use crate::utils::SourceLocation;
 pub enum LexerMode {
     Default,
     // F-string modes
-    FStringSQ1,      // f'...'
-    FStringDQ1,      // f"..."
-    FStringSQ3,      // f'''...'''
-    FStringDQ3,      // f"""..."""
-    FStringSQ1Raw,   // rf'...' or fr'...'
-    FStringDQ1Raw,   // rf"..." or fr"..."
-    FStringSQ3Raw,   // rf'''...''' or fr'''...'''
-    FStringDQ3Raw,   // rf"""...""" or fr"""..."""
+    FStringSQ1,    // f'...'
+    FStringDQ1,    // f"..."
+    FStringSQ3,    // f'''...'''
+    FStringDQ3,    // f"""..."""
+    FStringSQ1Raw, // rf'...' or fr'...'
+    FStringDQ1Raw, // rf"..." or fr"..."
+    FStringSQ3Raw, // rf'''...''' or fr'''...'''
+    FStringDQ3Raw, // rf"""...""" or fr"""..."""
 
     // Format specification modes (after : in f-strings)
     FormatSpecSQ1,
@@ -50,7 +50,11 @@ impl StringLexer {
     ///
     /// # Errors
     /// Returns a lexer error if the string is invalid or unterminated.
-    pub fn scan_string(input: &str, start_pos: usize, location: SourceLocation) -> Result<(Token, usize), LexerError> {
+    pub fn scan_string(
+        input: &str,
+        start_pos: usize,
+        location: SourceLocation,
+    ) -> Result<(Token, usize), LexerError> {
         let chars: Vec<char> = input.chars().collect();
         let mut pos = start_pos;
 
@@ -104,20 +108,32 @@ impl StringLexer {
         }
     }
 
-    fn scan_fstring_start(chars: &[char], start_pos: usize, pos: usize, _prefix: &str, location: SourceLocation) -> Result<(Token, usize), LexerError> {
+    fn scan_fstring_start(
+        chars: &[char],
+        start_pos: usize,
+        pos: usize,
+        _prefix: &str,
+        location: SourceLocation,
+    ) -> Result<(Token, usize), LexerError> {
         let (_quote_style, new_pos, _is_triple) = Self::scan_quote_style(chars, pos)?;
 
         let lexeme: String = chars[start_pos..new_pos].iter().collect();
         let token = Token::new(
             TokenType::FString(FStringPart::Start(lexeme.clone())),
             lexeme,
-            location
+            location,
         );
 
         Ok((token, new_pos))
     }
 
-    fn scan_regular_string(chars: &[char], start_pos: usize, pos: usize, prefix: &str, location: SourceLocation) -> Result<(Token, usize), LexerError> {
+    fn scan_regular_string(
+        chars: &[char],
+        start_pos: usize,
+        pos: usize,
+        prefix: &str,
+        location: SourceLocation,
+    ) -> Result<(Token, usize), LexerError> {
         let (quote_style, mut current_pos, is_triple) = Self::scan_quote_style(chars, pos)?;
         let quote_char = quote_style.chars().next().unwrap();
         let is_raw = prefix.to_lowercase().contains('r');
@@ -132,9 +148,10 @@ impl StringLexer {
             if ch == quote_char {
                 if is_triple {
                     // Check for triple quote end
-                    if current_pos + 2 < chars.len() &&
-                       chars[current_pos + 1] == quote_char &&
-                       chars[current_pos + 2] == quote_char {
+                    if current_pos + 2 < chars.len()
+                        && chars[current_pos + 1] == quote_char
+                        && chars[current_pos + 2] == quote_char
+                    {
                         current_pos += 3;
                         break;
                     }
@@ -170,9 +187,14 @@ impl StringLexer {
         Ok((token, current_pos))
     }
 
-    fn scan_escape_sequence(chars: &[char], start_pos: usize) -> Result<(String, usize), LexerError> {
+    fn scan_escape_sequence(
+        chars: &[char],
+        start_pos: usize,
+    ) -> Result<(String, usize), LexerError> {
         if start_pos + 1 >= chars.len() {
-            return Err(LexerError::InvalidEscapeSequence("incomplete escape sequence".to_string()));
+            return Err(LexerError::InvalidEscapeSequence(
+                "incomplete escape sequence".to_string(),
+            ));
         }
 
         let escape_char = chars[start_pos + 1];
@@ -205,7 +227,9 @@ impl StringLexer {
                         return Err(LexerError::InvalidEscapeSequence(format!("\\x{hex_chars}")));
                     }
                 } else {
-                    return Err(LexerError::InvalidEscapeSequence("incomplete \\x escape".to_string()));
+                    return Err(LexerError::InvalidEscapeSequence(
+                        "incomplete \\x escape".to_string(),
+                    ));
                 }
             }
             'u' => {
@@ -217,13 +241,17 @@ impl StringLexer {
                             pos += 4;
                             unicode_char.to_string()
                         } else {
-                            return Err(LexerError::InvalidEscapeSequence(format!("invalid unicode \\u{hex_chars}")));
+                            return Err(LexerError::InvalidEscapeSequence(format!(
+                                "invalid unicode \\u{hex_chars}"
+                            )));
                         }
                     } else {
                         return Err(LexerError::InvalidEscapeSequence(format!("\\u{hex_chars}")));
                     }
                 } else {
-                    return Err(LexerError::InvalidEscapeSequence("incomplete \\u escape".to_string()));
+                    return Err(LexerError::InvalidEscapeSequence(
+                        "incomplete \\u escape".to_string(),
+                    ));
                 }
             }
             'U' => {
@@ -235,13 +263,17 @@ impl StringLexer {
                             pos += 8;
                             unicode_char.to_string()
                         } else {
-                            return Err(LexerError::InvalidEscapeSequence(format!("invalid unicode \\U{hex_chars}")));
+                            return Err(LexerError::InvalidEscapeSequence(format!(
+                                "invalid unicode \\U{hex_chars}"
+                            )));
                         }
                     } else {
                         return Err(LexerError::InvalidEscapeSequence(format!("\\U{hex_chars}")));
                     }
                 } else {
-                    return Err(LexerError::InvalidEscapeSequence("incomplete \\U escape".to_string()));
+                    return Err(LexerError::InvalidEscapeSequence(
+                        "incomplete \\U escape".to_string(),
+                    ));
                 }
             }
             'N' => {
@@ -259,10 +291,14 @@ impl StringLexer {
                         // In a full implementation, you'd look up the Unicode name
                         format!("\\N{{{name}}}")
                     } else {
-                        return Err(LexerError::InvalidEscapeSequence("incomplete \\N{} escape".to_string()));
+                        return Err(LexerError::InvalidEscapeSequence(
+                            "incomplete \\N{} escape".to_string(),
+                        ));
                     }
                 } else {
-                    return Err(LexerError::InvalidEscapeSequence("invalid \\N escape".to_string()));
+                    return Err(LexerError::InvalidEscapeSequence(
+                        "invalid \\N escape".to_string(),
+                    ));
                 }
             }
             '0'..='7' => {

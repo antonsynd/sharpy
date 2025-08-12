@@ -1,7 +1,10 @@
-use crate::lexer::{error::LexerError, token::*, keyword::KeywordMap, number_lexer::NumberLexer, string_lexer::StringLexer};
-use crate::utils::{SourceLocation, is_id_start, is_id_continue};
-use std::str::Chars;
+use crate::lexer::{
+    error::LexerError, keyword::KeywordMap, number_lexer::NumberLexer, string_lexer::StringLexer,
+    token::*,
+};
+use crate::utils::{SourceLocation, is_id_continue, is_id_start};
 use std::iter::Peekable;
+use std::str::Chars;
 
 pub struct Scanner<'a> {
     input: &'a str,
@@ -61,14 +64,25 @@ impl<'a> Scanner<'a> {
 
     /// Creates a source location from a start position to the current position.
     #[must_use]
-    pub const fn location_from_start(&self, start_line: usize, start_column: usize, start_pos: usize) -> SourceLocation {
+    pub const fn location_from_start(
+        &self,
+        start_line: usize,
+        start_column: usize,
+        start_pos: usize,
+    ) -> SourceLocation {
         SourceLocation::new(start_line, start_column, start_pos, self.position)
     }
 
     pub fn skip_whitespace(&mut self) -> String {
         let mut whitespace = String::new();
         while let Some(ch) = self.current_char {
-            if ch == ' ' || ch == '\t' || ch == '\x0C' { // space, tab, form feed
+            if ch == ' ' || ch == '\x0C' {
+                // space, form feed (no tabs allowed)
+                whitespace.push(ch);
+                self.advance();
+            } else if ch == '\t' {
+                // Tab found - this will be an error, but include it in the whitespace
+                // for the indentation handler to process and report the error
                 whitespace.push(ch);
                 self.advance();
             } else {
@@ -76,6 +90,20 @@ impl<'a> Scanner<'a> {
             }
         }
         whitespace
+    }
+
+    /// Skips whitespace in non-indentation contexts (inside expressions).
+    /// This allows tabs for compatibility in expressions, but they're still
+    /// forbidden at the start of lines for indentation.
+    pub fn skip_expression_whitespace(&mut self) {
+        while let Some(ch) = self.current_char {
+            if ch == ' ' || ch == '\t' || ch == '\x0C' {
+                // Allow tabs in expressions
+                self.advance();
+            } else {
+                break;
+            }
+        }
     }
 
     /// Scans an identifier token.
@@ -113,7 +141,7 @@ impl<'a> Scanner<'a> {
         // Determine token type
         let token_type = if literal_flag {
             // Literal identifiers are never keywords
-            TokenType::Name(identifier)
+            TokenType::Name(identifier, literal_flag)
         } else {
             self.keyword_or_identifier(&identifier)
         };
@@ -123,13 +151,13 @@ impl<'a> Scanner<'a> {
 
     fn scan_access_modifier(&mut self) -> Option<AccessModifier> {
         match self.current_char {
-            Some('`') => {
-                if self.peek_char() == Some('`') {
-                    self.advance(); // consume first `
-                    self.advance(); // consume second `
+            Some('$') => {
+                if self.peek_char() == Some('$') {
+                    self.advance(); // consume first $
+                    self.advance(); // consume second $$
                     Some(AccessModifier::File)
                 } else {
-                    self.advance(); // consume `
+                    self.advance(); // consume $
                     Some(AccessModifier::Internal)
                 }
             }
@@ -141,7 +169,8 @@ impl<'a> Scanner<'a> {
                         self.advance(); // consume first _
                         self.advance(); // consume second _
                         Some(AccessModifier::Private)
-                    } else if is_id_start('_') { // Just protected
+                    } else if is_id_start('_') {
+                        // Just protected
                         self.advance(); // consume _
                         Some(AccessModifier::Protected)
                     } else {
@@ -159,7 +188,7 @@ impl<'a> Scanner<'a> {
     }
 
     fn scan_literal_flag(&mut self) -> bool {
-        if self.current_char == Some('$') {
+        if self.current_char == Some('`') {
             self.advance();
             true
         } else {
@@ -171,11 +200,11 @@ impl<'a> Scanner<'a> {
         self.keyword_map.get_keyword(identifier).map_or_else(
             || {
                 self.keyword_map.get_soft_keyword(identifier).map_or_else(
-                    || TokenType::Name(identifier.to_string()),
-                    std::clone::Clone::clone
+                    || TokenType::Name(identifier.to_string(), false),
+                    std::clone::Clone::clone,
                 )
             },
-            std::clone::Clone::clone
+            std::clone::Clone::clone,
         )
     }
 

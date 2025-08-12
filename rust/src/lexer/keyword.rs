@@ -45,8 +45,6 @@ impl KeywordMap {
         keywords.insert("await", TokenType::Await);
         keywords.insert("assert", TokenType::Assert);
         keywords.insert("del", TokenType::Del);
-        keywords.insert("global", TokenType::Global);
-        keywords.insert("nonlocal", TokenType::Nonlocal);
         keywords.insert("with", TokenType::With);
         keywords.insert("yield", TokenType::Yield);
         keywords.insert("in", TokenType::In);
@@ -62,7 +60,10 @@ impl KeywordMap {
         soft_keywords.insert("set", TokenType::Set);
         soft_keywords.insert("_", TokenType::Wildcard);
 
-        Self { keywords, soft_keywords }
+        Self {
+            keywords,
+            soft_keywords,
+        }
     }
 
     /// Gets a hard keyword token type for the given identifier.
