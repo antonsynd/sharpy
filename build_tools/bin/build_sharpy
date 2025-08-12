@@ -165,7 +165,10 @@ def build(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
 def run_cargo(args: argparse.Namespace, rest: Sequence[str]) -> None:
     get_logger().info("Running cargo...")
     try:
-        subprocess.run(["cargo"] + list(rest), check=True, cwd=RUST_ROOT_DIR)
+        cargo_args: MutableSequence[str] = ["cargo"]
+        cargo_args.extend(rest)
+
+        subprocess.run(cargo_args, check=True, cwd=RUST_ROOT_DIR)
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
