@@ -103,7 +103,9 @@ def create_parser() -> argparse.ArgumentParser:
     cargo_parser = subparsers.add_parser("cargo", help="Delegates to cargo.")
 
     build_parser = subparsers.add_parser("build", help="Builds the package.")
-    build_parser.add_argument("--project", type=str, default="all", choices=("all", "compiler", "lib", "tests"))
+    build_parser.add_argument(
+        "--project", type=str, default="all", choices=("all", "compiler", "lib", "tests")
+    )
     build_parser.add_argument("--release", action="store_true")
     clean_parser = subparsers.add_parser("clean", help="Cleans up intermediate objects.")
     clean_parser.add_argument(
@@ -112,22 +114,34 @@ def create_parser() -> argparse.ArgumentParser:
     install_parser = subparsers.add_parser("install", help="TODO: No-op")
     format_parser = subparsers.add_parser("format", help="Runs code formatters.")
     format_parser.add_argument(
-        "--target", action="append", choices=("cs", "csharp", "py", "python", "rs", "rust"), default=None
+        "--target",
+        action="append",
+        choices=("cs", "csharp", "py", "python", "rs", "rust"),
+        default=None,
     )
     debug_parser = subparsers.add_parser("debug", help="Runs all steps.")
     debug_parser.add_argument(
-        "--target", action="append", choices=("cs", "csharp", "py", "python", "rs", "rust"), default=None
+        "--target",
+        action="append",
+        choices=("cs", "csharp", "py", "python", "rs", "rust"),
+        default=None,
     )
     release_parser = subparsers.add_parser("release", help="Runs all steps.")
     release_parser.add_argument(
-        "--target", action="append", choices=("cs", "csharp", "py", "python", "rs", "rust"), default=None
+        "--target",
+        action="append",
+        choices=("cs", "csharp", "py", "python", "rs", "rust"),
+        default=None,
     )
     run_parser = subparsers.add_parser(
         "run", help="Runs the given arguments in the context of the Python modules available here."
     )
     test_parser = subparsers.add_parser("test", help="Runs tests.")
     test_parser.add_argument(
-        "--target", action="append", choices=("cs", "csharp", "py", "python", "rs", "rust"), default=None
+        "--target",
+        action="append",
+        choices=("cs", "csharp", "py", "python", "rs", "rust"),
+        default=None,
     )
     build_docs_parser = subparsers.add_parser(
         "build-docs", aliases=["docs"], help="Generates documentation."
@@ -429,9 +443,7 @@ def format_with_cargo() -> None:
     get_logger().info("Formatting with cargo...")
 
     try:
-        subprocess.run(
-            ["cargo", "fmt", "--all"], check=True, cwd=RUST_SRC_DIR
-        )
+        subprocess.run(["cargo", "fmt", "--all"], check=True, cwd=RUST_SRC_DIR)
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -478,9 +490,7 @@ def test(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
     if "rs" in targets or "rust" in targets:
         get_logger().info("Running tests with cargo...")
         try:
-            subprocess.run(
-                ["cargo", "test", "--all"], check=True
-            )
+            subprocess.run(["cargo", "test", "--all"], check=True, cwd=RUST_SRC_DIR)
         except subprocess.CalledProcessError as e:
             get_logger().error(f"Encountered error {e}")
             sys.exit(1)
