@@ -202,7 +202,7 @@ mod tests {
                 name,
                 NameType {
                     name: "x".to_string(),
-                    literalness: NameLiteralness::NotLiteral,
+                    is_literal: false,
                     access_modifier: AccessModifier::Public,
                 }
             );
@@ -240,7 +240,7 @@ mod tests {
             if let TokenType::Name(name) = &token.token_type {
                 // Access modifiers are included in the lexeme
                 assert!(token.lexeme.starts_with('_') || token.lexeme.starts_with('$'));
-                assert_eq!(name.literalness, NameLiteralness::NotLiteral);
+                assert_eq!(name.is_literal, false);
             }
         }
     }

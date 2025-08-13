@@ -145,7 +145,7 @@ impl<'a> Scanner<'a> {
             // Literal identifiers are never keywords
             TokenType::Name(NameType {
                 name: identifier,
-                literalness: NameLiteralness::Literal,
+                is_literal: true,
                 access_modifier,
             })
         } else {
@@ -213,7 +213,7 @@ impl<'a> Scanner<'a> {
                     || {
                         TokenType::Name(NameType {
                             name: identifier.to_string(),
-                            literalness: NameLiteralness::NotLiteral,
+                            is_literal: false,
                             access_modifier,
                         })
                     },

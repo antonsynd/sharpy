@@ -173,15 +173,9 @@ pub enum FStringPart {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum NameLiteralness {
-    NotLiteral,
-    Literal,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NameType {
     pub name: String,
-    pub literalness: NameLiteralness,
+    pub is_literal: bool,
     pub access_modifier: AccessModifier,
 }
 
