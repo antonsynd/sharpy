@@ -139,8 +139,7 @@ pub enum TokenType {
     Dedent,
 
     // Identifiers
-    // Name (identifier, is_literal)
-    Name(String, bool),
+    Name(NameType),
 
     // Comments
     Comment(String),
@@ -171,6 +170,19 @@ pub enum FStringPart {
     Start(String),  // f" or f'
     Middle(String), // text between expressions
     End(String),    // closing quote
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum NameLiteralness {
+    NotLiteral,
+    Literal,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct NameType {
+    pub name: String,
+    pub literalness: NameLiteralness,
+    pub access_modifier: AccessModifier,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -207,8 +219,9 @@ impl Token {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AccessModifier {
+    Public,    // (empty)
     Protected, // _
     Private,   // __
     Internal,  // $

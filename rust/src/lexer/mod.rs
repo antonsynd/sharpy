@@ -197,7 +197,18 @@ mod tests {
         let mut lexer = SharpyLexer::new("x = 42");
 
         let token1 = lexer.next_token().unwrap();
-        assert!(matches!(token1.token_type, TokenType::Name(_, false)));
+        if let TokenType::Name(name) = token1.token_type {
+            assert_eq!(
+                name,
+                NameType {
+                    name: "x".to_string(),
+                    literalness: NameLiteralness::NotLiteral,
+                    access_modifier: AccessModifier::Public,
+                }
+            );
+        } else {
+            panic!("Expected Name token, found {:?}", token1.token_type);
+        };
 
         let token2 = lexer.next_token().unwrap();
         assert_eq!(token2.token_type, TokenType::Equal);
@@ -226,10 +237,10 @@ mod tests {
 
         let tokens = lexer.tokenize_all().unwrap();
         for token in &tokens {
-            if let TokenType::Name(_, is_literal) = token.token_type {
+            if let TokenType::Name(name) = &token.token_type {
                 // Access modifiers are included in the lexeme
                 assert!(token.lexeme.starts_with('_') || token.lexeme.starts_with('$'));
-                assert!(!is_literal);
+                assert_eq!(name.literalness, NameLiteralness::NotLiteral);
             }
         }
     }

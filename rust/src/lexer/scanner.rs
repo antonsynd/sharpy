@@ -116,7 +116,9 @@ impl<'a> Scanner<'a> {
         let start_col = self.column;
 
         // Handle access modifiers and literal flag
-        let _access_modifier = self.scan_access_modifier();
+        let access_modifier = self
+            .scan_access_modifier()
+            .unwrap_or(AccessModifier::Public);
         let literal_flag = self.scan_literal_flag();
 
         // Scan the actual identifier
@@ -141,9 +143,13 @@ impl<'a> Scanner<'a> {
         // Determine token type
         let token_type = if literal_flag {
             // Literal identifiers are never keywords
-            TokenType::Name(identifier, literal_flag)
+            TokenType::Name(NameType {
+                name: identifier,
+                literalness: NameLiteralness::Literal,
+                access_modifier,
+            })
         } else {
-            self.keyword_or_identifier(&identifier)
+            self.keyword_or_identifier(&identifier, access_modifier)
         };
 
         Ok(Token::new(token_type, lexeme, location))
@@ -196,11 +202,21 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn keyword_or_identifier(&self, identifier: &str) -> TokenType {
+    fn keyword_or_identifier(
+        &self,
+        identifier: &str,
+        access_modifier: AccessModifier,
+    ) -> TokenType {
         self.keyword_map.get_keyword(identifier).map_or_else(
             || {
                 self.keyword_map.get_soft_keyword(identifier).map_or_else(
-                    || TokenType::Name(identifier.to_string(), false),
+                    || {
+                        TokenType::Name(NameType {
+                            name: identifier.to_string(),
+                            literalness: NameLiteralness::NotLiteral,
+                            access_modifier,
+                        })
+                    },
                     std::clone::Clone::clone,
                 )
             },
