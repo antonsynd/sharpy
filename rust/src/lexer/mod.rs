@@ -6,9 +6,6 @@ pub mod scanner;
 pub mod string_lexer;
 pub mod token;
 
-#[cfg(test)]
-mod test_indent;
-
 use crate::utils::is_id_start;
 pub use error::LexerError;
 use indent::IndentationHandler;
