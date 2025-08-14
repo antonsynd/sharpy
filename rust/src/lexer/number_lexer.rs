@@ -1,4 +1,4 @@
-use crate::lexer::{error::LexerError, token::*};
+use crate::lexer::{error::LexerError, token::*, scanner::Scanner};
 use crate::utils::SourceLocation;
 
 pub struct NumberLexer;
@@ -8,48 +8,47 @@ impl NumberLexer {
     ///
     /// # Errors
     /// Returns a lexer error if the number format is invalid.
-    pub fn scan_number(
-        input: &str,
-        start_pos: usize,
-        location: SourceLocation,
-    ) -> Result<(Token, usize), LexerError> {
-        let chars: Vec<char> = input.chars().collect();
-        let pos = start_pos;
+    pub fn scan_number(scanner: &mut Scanner) -> Result<Token, LexerError> {
+        let start_pos = scanner.position();
+        let location = scanner.current_location();
 
-        if pos >= chars.len() {
+        if scanner.current_char.is_none() {
             return Err(LexerError::UnexpectedEof);
         }
 
         // Check for different number formats
-        if chars[pos] == '0' && pos + 1 < chars.len() {
-            match chars[pos + 1] {
-                'b' | 'B' => return Self::scan_binary_number(&chars, pos, location),
-                'o' | 'O' => return Self::scan_octal_number(&chars, pos, location),
-                'x' | 'X' => return Self::scan_hex_number(&chars, pos, location),
-                _ => {}
+        if scanner.current_char == Some('0') {
+            if let Some(next_char) = scanner.peek_char() {
+                match next_char {
+                    'b' | 'B' => return Self::scan_binary_number(scanner, start_pos, location),
+                    'o' | 'O' => return Self::scan_octal_number(scanner, start_pos, location),
+                    'x' | 'X' => return Self::scan_hex_number(scanner, start_pos, location),
+                    _ => {}
+                }
             }
         }
 
         // Decimal number (integer or float)
-        Self::scan_decimal_number(&chars, pos, location)
+        Self::scan_decimal_number(scanner, start_pos, location)
     }
 
     fn scan_binary_number(
-        chars: &[char],
+        scanner: &mut Scanner,
         start_pos: usize,
         location: SourceLocation,
-    ) -> Result<(Token, usize), LexerError> {
-        let mut pos = start_pos + 2; // Skip '0b' or '0B'
+    ) -> Result<Token, LexerError> {
+        scanner.advance(); // Skip '0'
+        scanner.advance(); // Skip 'b' or 'B'
         let mut has_digits = false;
 
-        while pos < chars.len() {
-            match chars[pos] {
+        while let Some(ch) = scanner.current_char {
+            match ch {
                 '0' | '1' => {
                     has_digits = true;
-                    pos += 1;
+                    scanner.advance();
                 }
                 '_' => {
-                    pos += 1; // Skip underscore separators
+                    scanner.advance(); // Skip underscore separators
                 }
                 _ => break,
             }
@@ -61,31 +60,32 @@ impl NumberLexer {
             ));
         }
 
-        let lexeme: String = chars[start_pos..pos].iter().collect();
+        let lexeme = scanner.lexeme_from(start_pos);
         let token = Token::new(
             TokenType::Number(NumberType::Integer(lexeme.clone())),
             lexeme,
             location,
         );
-        Ok((token, pos))
+        Ok(token)
     }
 
     fn scan_octal_number(
-        chars: &[char],
+        scanner: &mut Scanner,
         start_pos: usize,
         location: SourceLocation,
-    ) -> Result<(Token, usize), LexerError> {
-        let mut pos = start_pos + 2; // Skip '0o' or '0O'
+    ) -> Result<Token, LexerError> {
+        scanner.advance(); // Skip '0'
+        scanner.advance(); // Skip 'o' or 'O'
         let mut has_digits = false;
 
-        while pos < chars.len() {
-            match chars[pos] {
+        while let Some(ch) = scanner.current_char {
+            match ch {
                 '0'..='7' => {
                     has_digits = true;
-                    pos += 1;
+                    scanner.advance();
                 }
                 '_' => {
-                    pos += 1; // Skip underscore separators
+                    scanner.advance(); // Skip underscore separators
                 }
                 _ => break,
             }
@@ -97,31 +97,32 @@ impl NumberLexer {
             ));
         }
 
-        let lexeme: String = chars[start_pos..pos].iter().collect();
+        let lexeme = scanner.lexeme_from(start_pos);
         let token = Token::new(
             TokenType::Number(NumberType::Integer(lexeme.clone())),
             lexeme,
             location,
         );
-        Ok((token, pos))
+        Ok(token)
     }
 
     fn scan_hex_number(
-        chars: &[char],
+        scanner: &mut Scanner,
         start_pos: usize,
         location: SourceLocation,
-    ) -> Result<(Token, usize), LexerError> {
-        let mut pos = start_pos + 2; // Skip '0x' or '0X'
+    ) -> Result<Token, LexerError> {
+        scanner.advance(); // Skip '0'
+        scanner.advance(); // Skip 'x' or 'X'
         let mut has_digits = false;
 
-        while pos < chars.len() {
-            match chars[pos] {
+        while let Some(ch) = scanner.current_char {
+            match ch {
                 '0'..='9' | 'a'..='f' | 'A'..='F' => {
                     has_digits = true;
-                    pos += 1;
+                    scanner.advance();
                 }
                 '_' => {
-                    pos += 1; // Skip underscore separators
+                    scanner.advance(); // Skip underscore separators
                 }
                 _ => break,
             }
@@ -133,74 +134,97 @@ impl NumberLexer {
             ));
         }
 
-        let lexeme: String = chars[start_pos..pos].iter().collect();
+        let lexeme = scanner.lexeme_from(start_pos);
         let token = Token::new(
             TokenType::Number(NumberType::Integer(lexeme.clone())),
             lexeme,
             location,
         );
-        Ok((token, pos))
+        Ok(token)
     }
 
     fn scan_decimal_number(
-        chars: &[char],
+        scanner: &mut Scanner,
         start_pos: usize,
         location: SourceLocation,
-    ) -> Result<(Token, usize), LexerError> {
-        let mut pos = start_pos;
+    ) -> Result<Token, LexerError> {
         let mut is_float = false;
         let mut _has_exponent = false;
 
         // Scan integer part
-        while pos < chars.len() && (chars[pos].is_ascii_digit() || chars[pos] == '_') {
-            pos += 1;
+        while let Some(ch) = scanner.current_char {
+            if ch.is_ascii_digit() || ch == '_' {
+                scanner.advance();
+            } else {
+                break;
+            }
         }
 
         // Check for decimal point
-        if pos < chars.len() && chars[pos] == '.' {
+        if scanner.current_char == Some('.') {
             // Look ahead to make sure it's not an ellipsis or method call
-            if pos + 1 < chars.len() && chars[pos + 1].is_ascii_digit() {
-                is_float = true;
-                pos += 1; // Skip '.'
+            if let Some(next_char) = scanner.peek_char() {
+                if next_char.is_ascii_digit() {
+                    is_float = true;
+                    scanner.advance(); // Skip '.'
 
-                // Scan fractional part
-                while pos < chars.len() && (chars[pos].is_ascii_digit() || chars[pos] == '_') {
-                    pos += 1;
+                    // Scan fractional part
+                    while let Some(ch) = scanner.current_char {
+                        if ch.is_ascii_digit() || ch == '_' {
+                            scanner.advance();
+                        } else {
+                            break;
+                        }
+                    }
                 }
             }
         }
 
         // Check for exponent
-        if pos < chars.len() && (chars[pos] == 'e' || chars[pos] == 'E') {
-            _has_exponent = true;
-            is_float = true;
-            pos += 1;
+        if let Some(ch) = scanner.current_char {
+            if ch == 'e' || ch == 'E' {
+                _has_exponent = true;
+                is_float = true;
+                scanner.advance();
 
-            // Optional sign
-            if pos < chars.len() && (chars[pos] == '+' || chars[pos] == '-') {
-                pos += 1;
-            }
+                // Optional sign
+                if let Some(sign_ch) = scanner.current_char {
+                    if sign_ch == '+' || sign_ch == '-' {
+                        scanner.advance();
+                    }
+                }
 
-            // Exponent digits
-            let exp_start = pos;
-            while pos < chars.len() && (chars[pos].is_ascii_digit() || chars[pos] == '_') {
-                pos += 1;
-            }
+                // Exponent digits
+                let exp_start = scanner.position();
+                while let Some(exp_ch) = scanner.current_char {
+                    if exp_ch.is_ascii_digit() || exp_ch == '_' {
+                        scanner.advance();
+                    } else {
+                        break;
+                    }
+                }
 
-            if pos == exp_start {
-                return Err(LexerError::InvalidNumber(
-                    "exponent without digits".to_string(),
-                ));
+                if scanner.position() == exp_start {
+                    return Err(LexerError::InvalidNumber(
+                        "exponent without digits".to_string(),
+                    ));
+                }
             }
         }
 
         // Check for imaginary suffix
-        let is_imaginary = pos < chars.len() && (chars[pos] == 'j' || chars[pos] == 'J');
-        if is_imaginary {
-            pos += 1;
-        }
+        let is_imaginary = if let Some(ch) = scanner.current_char {
+            if ch == 'j' || ch == 'J' {
+                scanner.advance();
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        };
 
-        let lexeme: String = chars[start_pos..pos].iter().collect();
+        let lexeme = scanner.lexeme_from(start_pos);
 
         let number_type = if is_imaginary {
             NumberType::Imaginary(lexeme.clone())
@@ -211,6 +235,6 @@ impl NumberLexer {
         };
 
         let token = Token::new(TokenType::Number(number_type), lexeme, location);
-        Ok((token, pos))
+        Ok(token)
     }
 }

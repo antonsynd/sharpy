@@ -73,6 +73,30 @@ impl<'a> Scanner<'a> {
         SourceLocation::new(start_line, start_column, start_pos, self.position)
     }
 
+    /// Gets the current position in the input.
+    #[must_use]
+    pub const fn position(&self) -> usize {
+        self.position
+    }
+
+    /// Gets the current line number.
+    #[must_use]
+    pub const fn line(&self) -> usize {
+        self.line
+    }
+
+    /// Gets the current column number.
+    #[must_use]
+    pub const fn column(&self) -> usize {
+        self.column
+    }
+
+    /// Creates a lexeme from a start position to the current position.
+    #[must_use]
+    pub fn lexeme_from(&self, start_pos: usize) -> String {
+        self.input[start_pos..self.position].to_string()
+    }
+
     pub fn skip_whitespace(&mut self) -> String {
         let mut whitespace = String::new();
         while let Some(ch) = self.current_char {
@@ -229,17 +253,7 @@ impl<'a> Scanner<'a> {
     /// # Errors
     /// Returns a lexer error if the number format is invalid.
     pub fn scan_number(&mut self) -> Result<Token, LexerError> {
-        let start_pos = self.position;
-        let location = self.current_location();
-
-        let (token, new_pos) = NumberLexer::scan_number(self.input, start_pos, location)?;
-
-        // Update scanner position
-        while self.position < new_pos {
-            self.advance();
-        }
-
-        Ok(token)
+        NumberLexer::scan_number(self)
     }
 
     /// Scans a string token.
@@ -247,15 +261,7 @@ impl<'a> Scanner<'a> {
     /// # Errors
     /// Returns a lexer error if the string is invalid or unterminated.
     pub fn scan_string(&mut self) -> Result<Token, LexerError> {
-        let start_pos = self.position;
-        let location = self.current_location();
-
-        let (token, new_pos) = StringLexer::scan_string(self.input, start_pos, location)?;
-
-        // Update scanner position
-        while self.position < new_pos {
-            self.advance();
-        }
+        let token = StringLexer::scan_string(self)?;
 
         Ok(token)
     }

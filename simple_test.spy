@@ -1,0 +1,2 @@
+regular = "hello world"
+escaped = "hello\nworld"
