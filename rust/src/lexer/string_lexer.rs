@@ -326,10 +326,9 @@ impl StringLexer {
                             scanner.advance(); // consume '}'
                             found_closing = true;
                             break;
-                        } else {
-                            name.push(ch);
-                            scanner.advance();
                         }
+                        name.push(ch);
+                        scanner.advance();
                     }
 
                     if name.is_empty() || !found_closing {

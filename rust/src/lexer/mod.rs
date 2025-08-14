@@ -205,7 +205,7 @@ mod tests {
             );
         } else {
             panic!("Expected Name token, found {:?}", token1.token_type);
-        };
+        }
 
         let token2 = lexer.next_token().unwrap();
         assert_eq!(token2.token_type, TokenType::Equal);
@@ -237,7 +237,7 @@ mod tests {
             if let TokenType::Name(name) = &token.token_type {
                 // Access modifiers are included in the lexeme
                 assert!(token.lexeme.starts_with('_') || token.lexeme.starts_with('$'));
-                assert_eq!(name.is_literal, false);
+                assert!(!name.is_literal);
             }
         }
     }
