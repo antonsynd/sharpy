@@ -149,7 +149,6 @@ impl NumberLexer {
         location: SourceLocation,
     ) -> Result<Token, LexerError> {
         let mut is_float = false;
-        let mut _has_exponent = false;
 
         // Scan integer part
         while let Some(ch) = scanner.current_char() {

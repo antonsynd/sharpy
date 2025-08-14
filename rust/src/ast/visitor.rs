@@ -164,32 +164,14 @@ pub trait Visitor {
     }
 
     fn visit_class_def(&mut self, node: &crate::ast::node::ClassDef) {
-        for decorator in &node.decorator_list {
-            self.visit(decorator);
-        }
-        for base in &node.bases {
+        if let Some(base) = &node.base {
             self.visit(base);
-        }
-        for keyword in &node.keywords {
-            self.visit(&keyword.value);
-        }
-        for stmt in &node.body {
-            self.visit(stmt);
         }
     }
 
     fn visit_class_def_mut(&mut self, node: &mut crate::ast::node::ClassDef) {
-        for decorator in &mut node.decorator_list {
-            self.visit_mut(decorator);
-        }
-        for base in &mut node.bases {
+        if let Some(base) = &mut node.base {
             self.visit_mut(base);
-        }
-        for keyword in &mut node.keywords {
-            self.visit_mut(&mut keyword.value);
-        }
-        for stmt in &mut node.body {
-            self.visit_mut(stmt);
         }
     }
 

@@ -3,9 +3,18 @@ use crate::utils::position::SourceLocation;
 /// Source location information for AST nodes
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NodeSource {
+    /// The starting line of the node (inclusive), 1-indexed.
     pub line_start: usize,
+
+    /// The starting column of the node (inclusive), 1-indexed, based on
+    /// Unicode scalar value offsets.
     pub col_start: usize,
+
+    /// The ending line of the node (inclusive), 1-indexed.
     pub line_end: usize,
+
+    /// The ending column of the node (exclusive), 1-indexed, based on
+    /// Unicode scalar value offsets.
     pub col_end: usize,
 }
 
@@ -31,66 +40,59 @@ impl NodeSource {
     }
 }
 
-/// Context for variables (Load, Store, Del)
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Context {
-    Load,
-    Store,
-    Del,
-}
-
 /// Unary operators
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnaryOp {
-    Not,
-    UnaryAdd,
-    UnarySub,
-    Invert,
+    Not,      // not x
+    UnaryAdd, // +x
+    UnarySub, // -x
+    Invert,   // ~x
 }
 
 /// Binary operators
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BinaryOp {
-    Add,
-    Sub,
-    Mult,
-    MatMult,
-    Div,
-    FloorDiv,
-    Mod,
-    Pow,
-    LShift,
-    RShift,
-    BitwiseOr,
-    BitwiseXor,
-    BitwiseAnd,
+    Add,        // x + y
+    Sub,        // x - y
+    Mult,       // x * y
+    MatMult,    // x @ y
+    Div,        // x / y
+    FloorDiv,   // x // y
+    Mod,        // x % y
+    Pow,        // x ** y
+    LShift,     // x << y
+    RShift,     // x >> y
+    BitwiseOr,  // x | y
+    BitwiseXor, // x ^ y
+    BitwiseAnd, // x & y
 }
 
 /// Comparison operators
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CompOp {
-    Eq,
-    NotEq,
-    Lt,
-    LtE,
-    Gt,
-    GtE,
-    Is,
-    IsNot,
-    In,
-    NotIn,
+    Eq,    // x == y
+    NotEq, // x != y
+    Lt,    // x < y
+    LtE,   // x <= y
+    Gt,    // x > y
+    GtE,   // x >= y
+    Is,    // x is y
+    IsNot, // x is not y
+    In,    // x in y
+    NotIn, // x not in y
 }
 
 /// Boolean operators
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BoolOp {
-    And,
-    Or,
+    And, // x and y
+    Or,  // x or y
 }
 
 /// Base trait for all AST nodes
 pub trait AstNode {
     fn source(&self) -> Option<&NodeSource>;
+    fn source_mut(&mut self) -> Option<&mut NodeSource>;
     fn set_source(&mut self, source: NodeSource);
 }
 
@@ -103,7 +105,6 @@ pub enum Node {
 
     // Statements
     Assign(Assign),
-    AnnAssign(AnnAssign),
     AugAssign(AugAssign),
     Assert(Assert),
     Pass(Pass),
@@ -156,7 +157,12 @@ pub enum Node {
     // Definitions
     FunctionDef(FunctionDef),
     AsyncFunctionDef(AsyncFunctionDef),
+    MemberDef(MemberDef),
+    PropertyDef(PropertyDef),
+    EventDef(EventDef),
     ClassDef(ClassDef),
+    StructDef(StructDef),
+    ProtocolDef(ProtocolDef),
 
     // Others
     Import(Import),
@@ -173,6 +179,17 @@ impl AstNode for Node {
             Self::Assign(n) => n.source.as_ref(),
             Self::Constant(n) => n.source.as_ref(),
             Self::Name(n) => n.source.as_ref(),
+            // Add all other variants...
+            _ => None, // Temporary fallback
+        }
+    }
+
+    fn source_mut(&mut self) -> Option<&mut NodeSource> {
+        match self {
+            Self::Module(n) => n.source.as_mut(),
+            Self::Assign(n) => n.source.as_mut(),
+            Self::Constant(n) => n.source.as_mut(),
+            Self::Name(n) => n.source.as_mut(),
             // Add all other variants...
             _ => None, // Temporary fallback
         }
@@ -418,7 +435,6 @@ pub enum ConstantValue {
 pub struct Attribute {
     pub value: Box<Node>,
     pub attr: String,
-    pub ctx: Context,
     pub source: Option<NodeSource>,
 }
 
@@ -426,35 +442,30 @@ pub struct Attribute {
 pub struct Subscript {
     pub value: Box<Node>,
     pub slice: Box<Node>,
-    pub ctx: Context,
     pub source: Option<NodeSource>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Starred {
     pub value: Box<Node>,
-    pub ctx: Context,
     pub source: Option<NodeSource>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Name {
     pub id: String,
-    pub ctx: Context,
     pub source: Option<NodeSource>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct List {
     pub elts: Vec<Node>,
-    pub ctx: Context,
     pub source: Option<NodeSource>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Tuple {
     pub elts: Vec<Node>,
-    pub ctx: Context,
     pub source: Option<NodeSource>,
 }
 
@@ -562,12 +573,57 @@ pub struct AsyncFunctionDef {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct MemberDef {
+    pub name: String,
+    pub type_: Box<Node>,
+    pub default: Box<Node>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PropertyDef {
+    pub name: String,
+    pub type_: Box<Node>,
+    pub default: Box<Node>,
+    pub getter: Option<Box<Node>>,
+    pub setter: Option<Box<Node>>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EventDef {
+    pub name: String,
+    pub type_: Box<Node>,
+    pub default: Box<Node>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct ClassDef {
     pub name: String,
+    pub base: Option<Box<Node>>,
+    pub protocols: Vec<Node>,
+    pub members: Vec<Node>,
+    pub properties: Vec<Node>,
+    pub events: Vec<Node>,
+    pub functions: Vec<Node>,
+    pub source: Option<NodeSource>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StructDef {
+    pub name: String,
+    pub protocols: Vec<Node>,
+    pub members: Vec<Node>,
+    pub properties: Vec<Node>,
+    pub events: Vec<Node>,
+    pub functions: Vec<Node>,
+    pub source: Option<NodeSource>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProtocolDef {
+    pub name: String,
     pub bases: Vec<Node>,
-    pub keywords: Vec<Keyword>,
-    pub body: Vec<Node>,
-    pub decorator_list: Vec<Node>,
+    pub properties: Vec<Node>,
+    pub functions: Vec<Node>,
     pub source: Option<NodeSource>,
 }
 
