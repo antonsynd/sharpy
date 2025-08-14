@@ -3,7 +3,7 @@ pub struct SourceLocation {
     /// The line number, 1-indexed.
     pub line: usize,
 
-    /// The column number, 1-indexed.
+    /// The column number, 1-indexed, based on Unicode scalar value offsets.
     pub column: usize,
 
     /// The start position in bytes (not Unicode scalar value offsets).

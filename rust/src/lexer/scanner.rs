@@ -16,7 +16,7 @@ pub struct Scanner<'a> {
     /// The line number, 1-indexed.
     line: usize,
 
-    /// The column number, 1-indexed.
+    /// The column number, 1-indexed, based on Unicode scalar value offsets.
     column: usize,
     current_char: Option<char>,
     keyword_map: KeywordMap,

@@ -17,14 +17,14 @@ impl NumberLexer {
         }
 
         // Check for different number formats
-        if scanner.current_char() == Some('0') {
-            if let Some(next_char) = scanner.peek_char() {
-                match next_char {
-                    'b' | 'B' => return Self::scan_binary_number(scanner, start_pos, location),
-                    'o' | 'O' => return Self::scan_octal_number(scanner, start_pos, location),
-                    'x' | 'X' => return Self::scan_hex_number(scanner, start_pos, location),
-                    _ => {}
-                }
+        if scanner.current_char() == Some('0')
+            && let Some(next_char) = scanner.peek_char()
+        {
+            match next_char {
+                'b' | 'B' => return Self::scan_binary_number(scanner, start_pos, location),
+                'o' | 'O' => return Self::scan_octal_number(scanner, start_pos, location),
+                'x' | 'X' => return Self::scan_hex_number(scanner, start_pos, location),
+                _ => {}
             }
         }
 
@@ -163,66 +163,58 @@ impl NumberLexer {
         // Check for decimal point
         if scanner.current_char() == Some('.') {
             // Look ahead to make sure it's not an ellipsis or method call
-            if let Some(next_char) = scanner.peek_char() {
-                if next_char.is_ascii_digit() {
-                    is_float = true;
-                    scanner.advance(); // Skip '.'
+            if let Some(next_char) = scanner.peek_char()
+                && next_char.is_ascii_digit()
+            {
+                is_float = true;
+                scanner.advance(); // Skip '.'
 
-                    // Scan fractional part
-                    while let Some(ch) = scanner.current_char() {
-                        if ch.is_ascii_digit() || ch == '_' {
-                            scanner.advance();
-                        } else {
-                            break;
-                        }
+                // Scan fractional part
+                while let Some(ch) = scanner.current_char() {
+                    if ch.is_ascii_digit() || ch == '_' {
+                        scanner.advance();
+                    } else {
+                        break;
                     }
                 }
             }
         }
 
         // Check for exponent
-        if let Some(ch) = scanner.current_char() {
-            if ch == 'e' || ch == 'E' {
-                _has_exponent = true;
-                is_float = true;
+        if let Some(ch) = scanner.current_char()
+            && (ch == 'e' || ch == 'E')
+        {
+            is_float = true;
+            scanner.advance();
+
+            // Optional sign
+            if let Some(sign_ch) = scanner.current_char()
+                && (sign_ch == '+' || sign_ch == '-')
+            {
                 scanner.advance();
+            }
 
-                // Optional sign
-                if let Some(sign_ch) = scanner.current_char() {
-                    if sign_ch == '+' || sign_ch == '-' {
-                        scanner.advance();
-                    }
+            // Exponent digits
+            let exp_start = scanner.position();
+            while let Some(exp_ch) = scanner.current_char() {
+                if exp_ch.is_ascii_digit() || exp_ch == '_' {
+                    scanner.advance();
+                } else {
+                    break;
                 }
+            }
 
-                // Exponent digits
-                let exp_start = scanner.position();
-                while let Some(exp_ch) = scanner.current_char() {
-                    if exp_ch.is_ascii_digit() || exp_ch == '_' {
-                        scanner.advance();
-                    } else {
-                        break;
-                    }
-                }
-
-                if scanner.position() == exp_start {
-                    return Err(LexerError::InvalidNumber(
-                        "exponent without digits".to_string(),
-                    ));
-                }
+            if scanner.position() == exp_start {
+                return Err(LexerError::InvalidNumber(
+                    "exponent without digits".to_string(),
+                ));
             }
         }
 
         // Check for imaginary suffix
-        let is_imaginary = if let Some(ch) = scanner.current_char() {
-            if ch == 'j' || ch == 'J' {
-                scanner.advance();
-                true
-            } else {
-                false
-            }
-        } else {
-            false
-        };
+        let is_imaginary = scanner
+            .current_char()
+            .is_some_and(|ch| ch == 'j' || ch == 'J');
 
         let lexeme = scanner.lexeme_from(start_pos);
 

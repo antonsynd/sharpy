@@ -96,16 +96,15 @@ impl StringLexer {
         scanner.advance(); // consume first quote
 
         // Check for triple quotes
-        if scanner.current_char() == Some(quote_char) {
-            if let Some(next_char) = scanner.peek_char() {
-                if next_char == quote_char {
-                    // Triple quotes
-                    scanner.advance(); // consume second quote
-                    scanner.advance(); // consume third quote
-                    let quote_style = quote_char.to_string().repeat(3);
-                    return Ok((quote_style, true));
-                }
-            }
+        if scanner.current_char() == Some(quote_char)
+            && let Some(next_char) = scanner.peek_char()
+            && next_char == quote_char
+        {
+            // Triple quotes
+            scanner.advance(); // consume second quote
+            scanner.advance(); // consume third quote
+            let quote_style = quote_char.to_string().repeat(3);
+            return Ok((quote_style, true));
         }
 
         // Single quote
