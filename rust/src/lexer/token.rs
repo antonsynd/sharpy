@@ -153,6 +153,7 @@ pub enum TokenType {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum NumberType {
+    // TODO: Split these into separate variants for different bit widths
     Integer(String),   // Store as string to preserve format
     Float(String),     // Store as string to preserve format
     Imaginary(String), // Store as string to preserve format
@@ -175,6 +176,9 @@ pub enum FStringPart {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NameType {
     pub name: String,
+
+    /// Whether or not this name should be treated literally, i.e. excluded
+    /// from automatic CamelCase conversion.
     pub is_literal: bool,
     pub access_modifier: AccessModifier,
 }

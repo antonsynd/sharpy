@@ -1,4 +1,4 @@
-use crate::lexer::{error::LexerError, token::*, scanner::Scanner};
+use crate::lexer::{error::LexerError, scanner::Scanner, token::*};
 use crate::utils::SourceLocation;
 
 pub struct NumberLexer;
@@ -12,12 +12,12 @@ impl NumberLexer {
         let start_pos = scanner.position();
         let location = scanner.current_location();
 
-        if scanner.current_char.is_none() {
+        if scanner.current_char().is_none() {
             return Err(LexerError::UnexpectedEof);
         }
 
         // Check for different number formats
-        if scanner.current_char == Some('0') {
+        if scanner.current_char() == Some('0') {
             if let Some(next_char) = scanner.peek_char() {
                 match next_char {
                     'b' | 'B' => return Self::scan_binary_number(scanner, start_pos, location),
@@ -41,7 +41,7 @@ impl NumberLexer {
         scanner.advance(); // Skip 'b' or 'B'
         let mut has_digits = false;
 
-        while let Some(ch) = scanner.current_char {
+        while let Some(ch) = scanner.current_char() {
             match ch {
                 '0' | '1' => {
                     has_digits = true;
@@ -78,7 +78,7 @@ impl NumberLexer {
         scanner.advance(); // Skip 'o' or 'O'
         let mut has_digits = false;
 
-        while let Some(ch) = scanner.current_char {
+        while let Some(ch) = scanner.current_char() {
             match ch {
                 '0'..='7' => {
                     has_digits = true;
@@ -115,7 +115,7 @@ impl NumberLexer {
         scanner.advance(); // Skip 'x' or 'X'
         let mut has_digits = false;
 
-        while let Some(ch) = scanner.current_char {
+        while let Some(ch) = scanner.current_char() {
             match ch {
                 '0'..='9' | 'a'..='f' | 'A'..='F' => {
                     has_digits = true;
@@ -152,7 +152,7 @@ impl NumberLexer {
         let mut _has_exponent = false;
 
         // Scan integer part
-        while let Some(ch) = scanner.current_char {
+        while let Some(ch) = scanner.current_char() {
             if ch.is_ascii_digit() || ch == '_' {
                 scanner.advance();
             } else {
@@ -161,7 +161,7 @@ impl NumberLexer {
         }
 
         // Check for decimal point
-        if scanner.current_char == Some('.') {
+        if scanner.current_char() == Some('.') {
             // Look ahead to make sure it's not an ellipsis or method call
             if let Some(next_char) = scanner.peek_char() {
                 if next_char.is_ascii_digit() {
@@ -169,7 +169,7 @@ impl NumberLexer {
                     scanner.advance(); // Skip '.'
 
                     // Scan fractional part
-                    while let Some(ch) = scanner.current_char {
+                    while let Some(ch) = scanner.current_char() {
                         if ch.is_ascii_digit() || ch == '_' {
                             scanner.advance();
                         } else {
@@ -181,14 +181,14 @@ impl NumberLexer {
         }
 
         // Check for exponent
-        if let Some(ch) = scanner.current_char {
+        if let Some(ch) = scanner.current_char() {
             if ch == 'e' || ch == 'E' {
                 _has_exponent = true;
                 is_float = true;
                 scanner.advance();
 
                 // Optional sign
-                if let Some(sign_ch) = scanner.current_char {
+                if let Some(sign_ch) = scanner.current_char() {
                     if sign_ch == '+' || sign_ch == '-' {
                         scanner.advance();
                     }
@@ -196,7 +196,7 @@ impl NumberLexer {
 
                 // Exponent digits
                 let exp_start = scanner.position();
-                while let Some(exp_ch) = scanner.current_char {
+                while let Some(exp_ch) = scanner.current_char() {
                     if exp_ch.is_ascii_digit() || exp_ch == '_' {
                         scanner.advance();
                     } else {
@@ -213,7 +213,7 @@ impl NumberLexer {
         }
 
         // Check for imaginary suffix
-        let is_imaginary = if let Some(ch) = scanner.current_char {
+        let is_imaginary = if let Some(ch) = scanner.current_char() {
             if ch == 'j' || ch == 'J' {
                 scanner.advance();
                 true

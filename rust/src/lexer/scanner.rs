@@ -9,10 +9,16 @@ use std::str::Chars;
 pub struct Scanner<'a> {
     input: &'a str,
     chars: Peekable<Chars<'a>>,
+
+    /// The current position in bytes (not Unicode scalar value offsets).
     position: usize,
+
+    /// The line number, 1-indexed.
     line: usize,
+
+    /// The column number, 1-indexed.
     column: usize,
-    pub current_char: Option<char>,
+    current_char: Option<char>,
     keyword_map: KeywordMap,
 }
 
@@ -71,6 +77,11 @@ impl<'a> Scanner<'a> {
         start_pos: usize,
     ) -> SourceLocation {
         SourceLocation::new(start_line, start_column, start_pos, self.position)
+    }
+
+    #[must_use]
+    pub const fn current_char(&self) -> Option<char> {
+        self.current_char
     }
 
     /// Gets the current position in the input.

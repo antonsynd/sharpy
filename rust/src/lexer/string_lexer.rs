@@ -1,4 +1,4 @@
-use crate::lexer::{error::LexerError, token::*, scanner::Scanner};
+use crate::lexer::{error::LexerError, scanner::Scanner, token::*};
 use crate::utils::SourceLocation;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -70,7 +70,7 @@ impl StringLexer {
         let mut prefix = String::new();
 
         // Scan for string prefixes: r, u, b, f (and combinations)
-        while let Some(ch) = scanner.current_char {
+        while let Some(ch) = scanner.current_char() {
             match ch.to_ascii_lowercase() {
                 'r' | 'u' | 'b' | 'f' => {
                     prefix.push(ch);
@@ -84,11 +84,11 @@ impl StringLexer {
     }
 
     fn scan_quote_style(scanner: &mut Scanner) -> Result<(String, bool), LexerError> {
-        if scanner.current_char.is_none() {
+        if scanner.current_char().is_none() {
             return Err(LexerError::UnexpectedEof);
         }
 
-        let quote_char = scanner.current_char.unwrap();
+        let quote_char = scanner.current_char().unwrap();
         if quote_char != '"' && quote_char != '\'' {
             return Err(LexerError::UnexpectedCharacter(quote_char));
         }
@@ -96,7 +96,7 @@ impl StringLexer {
         scanner.advance(); // consume first quote
 
         // Check for triple quotes
-        if scanner.current_char == Some(quote_char) {
+        if scanner.current_char() == Some(quote_char) {
             if let Some(next_char) = scanner.peek_char() {
                 if next_char == quote_char {
                     // Triple quotes
@@ -143,7 +143,7 @@ impl StringLexer {
 
         let mut content = String::new();
 
-        while let Some(ch) = scanner.current_char {
+        while let Some(ch) = scanner.current_char() {
             // Check for end quote(s)
             if ch == quote_char {
                 if is_triple {
@@ -193,13 +193,13 @@ impl StringLexer {
         // We're currently at the backslash, advance to the escape character
         scanner.advance();
 
-        if scanner.current_char.is_none() {
+        if scanner.current_char().is_none() {
             return Err(LexerError::InvalidEscapeSequence(
                 "incomplete escape sequence".to_string(),
             ));
         }
 
-        let escape_char = scanner.current_char.unwrap();
+        let escape_char = scanner.current_char().unwrap();
         scanner.advance(); // consume the escape character
 
         let result = match escape_char {
@@ -222,7 +222,7 @@ impl StringLexer {
                 // Hexadecimal escape \xhh
                 let mut hex_chars = String::new();
                 for _ in 0..2 {
-                    if let Some(ch) = scanner.current_char {
+                    if let Some(ch) = scanner.current_char() {
                         if ch.is_ascii_hexdigit() {
                             hex_chars.push(ch);
                             scanner.advance();
@@ -235,9 +235,9 @@ impl StringLexer {
                 }
 
                 if hex_chars.len() != 2 {
-                    return Err(LexerError::InvalidEscapeSequence(
-                        format!("incomplete \\x{hex_chars} escape"),
-                    ));
+                    return Err(LexerError::InvalidEscapeSequence(format!(
+                        "incomplete \\x{hex_chars} escape"
+                    )));
                 }
 
                 if let Ok(value) = u8::from_str_radix(&hex_chars, 16) {
@@ -250,7 +250,7 @@ impl StringLexer {
                 // Unicode escape \uxxxx
                 let mut hex_chars = String::new();
                 for _ in 0..4 {
-                    if let Some(ch) = scanner.current_char {
+                    if let Some(ch) = scanner.current_char() {
                         if ch.is_ascii_hexdigit() {
                             hex_chars.push(ch);
                             scanner.advance();
@@ -263,9 +263,9 @@ impl StringLexer {
                 }
 
                 if hex_chars.len() != 4 {
-                    return Err(LexerError::InvalidEscapeSequence(
-                        format!("incomplete \\u{hex_chars} escape"),
-                    ));
+                    return Err(LexerError::InvalidEscapeSequence(format!(
+                        "incomplete \\u{hex_chars} escape"
+                    )));
                 }
 
                 if let Ok(value) = u32::from_str_radix(&hex_chars, 16) {
@@ -284,7 +284,7 @@ impl StringLexer {
                 // Unicode escape \Uxxxxxxxx
                 let mut hex_chars = String::new();
                 for _ in 0..8 {
-                    if let Some(ch) = scanner.current_char {
+                    if let Some(ch) = scanner.current_char() {
                         if ch.is_ascii_hexdigit() {
                             hex_chars.push(ch);
                             scanner.advance();
@@ -297,9 +297,9 @@ impl StringLexer {
                 }
 
                 if hex_chars.len() != 8 {
-                    return Err(LexerError::InvalidEscapeSequence(
-                        format!("incomplete \\U{hex_chars} escape"),
-                    ));
+                    return Err(LexerError::InvalidEscapeSequence(format!(
+                        "incomplete \\U{hex_chars} escape"
+                    )));
                 }
 
                 if let Ok(value) = u32::from_str_radix(&hex_chars, 16) {
@@ -316,12 +316,12 @@ impl StringLexer {
             }
             'N' => {
                 // Named unicode escape \N{name}
-                if scanner.current_char == Some('{') {
+                if scanner.current_char() == Some('{') {
                     scanner.advance(); // consume '{'
                     let mut name = String::new();
                     let mut found_closing = false;
 
-                    while let Some(ch) = scanner.current_char {
+                    while let Some(ch) = scanner.current_char() {
                         if ch == '}' {
                             scanner.advance(); // consume '}'
                             found_closing = true;
@@ -351,7 +351,7 @@ impl StringLexer {
                 let mut octal_value = (escape_char as u8) - b'0';
 
                 for _ in 0..2 {
-                    if let Some(ch) = scanner.current_char {
+                    if let Some(ch) = scanner.current_char() {
                         if ch.is_ascii_digit() && (ch as u8) < b'8' {
                             let digit = (ch as u8) - b'0';
                             octal_value = octal_value * 8 + digit;

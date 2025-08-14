@@ -443,7 +443,7 @@ def format_with_cargo() -> None:
     get_logger().info("Formatting with cargo...")
 
     try:
-        subprocess.run(["cargo", "fmt", "--all"], check=True, cwd=RUST_SRC_DIR)
+        subprocess.run(["cargo", "fmt", "--all"], check=True, cwd=RUST_ROOT_DIR)
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -490,7 +490,7 @@ def test(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
     if "rs" in targets or "rust" in targets:
         get_logger().info("Running tests with cargo...")
         try:
-            subprocess.run(["cargo", "test", "--all"], check=True, cwd=RUST_SRC_DIR)
+            subprocess.run(["cargo", "test", "--all"], check=True, cwd=RUST_ROOT_DIR)
         except subprocess.CalledProcessError as e:
             get_logger().error(f"Encountered error {e}")
             sys.exit(1)

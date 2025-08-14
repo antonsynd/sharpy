@@ -101,7 +101,7 @@ impl<'a> SharpyLexer<'a> {
             self.scanner.skip_expression_whitespace();
         }
 
-        match self.scanner.current_char {
+        match self.scanner.current_char() {
             None => {
                 // Handle EOF
                 let location = self.scanner.current_location();
@@ -153,11 +153,11 @@ impl<'a> SharpyLexer<'a> {
     }
 
     const fn is_at_eof(&self) -> bool {
-        self.scanner.current_char.is_none()
+        self.scanner.current_char().is_none()
     }
 
     const fn is_comment_or_newline(&self) -> bool {
-        matches!(self.scanner.current_char, Some('#' | '\n'))
+        matches!(self.scanner.current_char(), Some('#' | '\n'))
     }
 
     const fn could_be_string_with_prefix(ch: char) -> bool {
