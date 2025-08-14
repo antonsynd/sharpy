@@ -6,10 +6,7 @@ fn test_valid_4_space_indentation() {
     let mut lexer = SharpyLexer::new(code);
 
     let result = lexer.tokenize_all();
-    assert!(
-        result.is_ok(),
-        "Valid 4-space indentation should be accepted"
-    );
+    assert!(result.is_ok());
 }
 
 #[test]
@@ -18,10 +15,16 @@ fn test_valid_8_space_indentation() {
     let mut lexer = SharpyLexer::new(code);
 
     let result = lexer.tokenize_all();
-    assert!(
-        result.is_ok(),
-        "Valid 8-space indentation should be accepted"
-    );
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_valid_nested_8_space_indentation() {
+    let code = "if True:\n        x = 1";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
 }
 
 #[test]
@@ -30,7 +33,7 @@ fn test_tab_indentation_rejected() {
     let mut lexer = SharpyLexer::new(code);
 
     let result = lexer.tokenize_all();
-    assert!(result.is_err(), "Tab indentation should be rejected");
+    assert!(result.is_err());
 
     let errors = result.unwrap_err();
     assert!(!errors.is_empty());
@@ -43,10 +46,7 @@ fn test_mixed_tab_space_indentation_rejected() {
     let mut lexer = SharpyLexer::new(code);
 
     let result = lexer.tokenize_all();
-    assert!(
-        result.is_err(),
-        "Mixed tab/space indentation should be rejected"
-    );
+    assert!(result.is_err());
 
     let errors = result.unwrap_err();
     assert!(!errors.is_empty());
@@ -59,10 +59,7 @@ fn test_invalid_space_count_rejected() {
     let mut lexer = SharpyLexer::new(code);
 
     let result = lexer.tokenize_all();
-    assert!(
-        result.is_err(),
-        "Non-4-space indentation should be rejected"
-    );
+    assert!(result.is_err());
 
     let errors = result.unwrap_err();
     assert!(!errors.is_empty());
@@ -75,7 +72,7 @@ fn test_5_space_indentation_rejected() {
     let mut lexer = SharpyLexer::new(code);
 
     let result = lexer.tokenize_all();
-    assert!(result.is_err(), "5-space indentation should be rejected");
+    assert!(result.is_err());
 
     let errors = result.unwrap_err();
     assert!(!errors.is_empty());
@@ -88,7 +85,7 @@ fn test_zero_indentation_valid() {
     let mut lexer = SharpyLexer::new(code);
 
     let result = lexer.tokenize_all();
-    assert!(result.is_ok(), "Zero indentation should be valid");
+    assert!(result.is_ok());
 }
 
 #[test]
@@ -97,7 +94,7 @@ fn test_tabs_allowed_in_expressions() {
     let mut lexer = SharpyLexer::new(code);
 
     let result = lexer.tokenize_all();
-    assert!(result.is_ok(), "Tabs within expressions should be allowed");
+    assert!(result.is_ok());
 }
 
 #[test]
@@ -112,13 +109,13 @@ fn test_detailed_error_message() {
     if let LexerError::InvalidIndentation(msg) = &errors[0] {
         assert!(
             msg.contains("4 spaces"),
-            "Error message should mention 4 spaces"
+            "Error message should mention 4 spaces."
         );
         assert!(
             msg.contains('3'),
-            "Error message should mention actual count"
+            "Error message should mention actual count."
         );
     } else {
-        panic!("Expected InvalidIndentation error");
+        panic!("Expected InvalidIndentation error.");
     }
 }
