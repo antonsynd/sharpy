@@ -1,3 +1,4 @@
+use super::types::Type;
 use crate::utils::position::SourceLocation;
 
 /// Source location information for AST nodes
@@ -169,6 +170,7 @@ pub enum Node {
     ImportFrom(ImportFrom),
     ExceptHandler(ExceptHandler),
     MatchCase(MatchCase),
+    Type(Type),
     TypeAlias(TypeAlias),
 }
 
@@ -279,6 +281,7 @@ pub struct Continue {
     pub source: Option<NodeSource>,
 }
 
+/// Boolean operations like `or` and `and`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BoolOp_ {
     pub op: BoolOp,
@@ -293,6 +296,7 @@ pub struct NamedExpr {
     pub source: Option<NodeSource>,
 }
 
+/// A binary operation, e.g. x + y.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BinOp {
     pub left: Box<Node>,
@@ -301,6 +305,7 @@ pub struct BinOp {
     pub source: Option<NodeSource>,
 }
 
+/// A unary operation, e.g. +x, -x, or not x.
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnaryOp_ {
     pub op: UnaryOp,
@@ -311,6 +316,7 @@ pub struct UnaryOp_ {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Lambda {
     pub args: Arguments,
+    pub return_type: Box<Node>,
     pub body: Box<Node>,
     pub source: Option<NodeSource>,
 }

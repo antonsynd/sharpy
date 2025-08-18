@@ -1,10 +1,16 @@
 use crate::ast::node::{Node, NodeSource};
 
-/// Type system components for the AST
+/// A type component (delimited by a period), e.g.
+/// sharpy.collections.defaultdict[K, V>] has the components, "sharpy",
+/// "collections", and "defaultdict[K, V]".
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypeComponent {
+    /// The base name of this component, e.g. "sharpy" or "defaultdict".
     pub name: String,
+
+    /// The type parameters for this component, if any, e.g. K and V.
     pub parameters: Vec<TypeParameter>,
+
     pub source: Option<NodeSource>,
 }
 
@@ -28,10 +34,17 @@ impl TypeComponent {
     }
 }
 
+/// A complete type, including all components.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Type {
+    /// The components of the type, including the modules, parent types, and
+    /// the actual type itself.
     pub components: Vec<TypeComponent>,
+
+    /// Whether or not the type is optional, e.g. T?. In Sharpy, this means a true optional,
+    /// not a nullable type.
     pub optional: bool,
+
     pub source: Option<NodeSource>,
 }
 
@@ -61,23 +74,37 @@ impl Type {
     }
 }
 
+/// A type parameter, which can be either a generic type parameter or a
+/// concrete type parameter. This is for both as part of a type, class,
+/// function, etc.
 #[derive(Debug, Clone, PartialEq)]
-pub struct TypeParameter {
+pub enum TypeParameter {
+    Generic(GenericTypeParameter),
+    Concrete(ConcreteTypeParameter),
+}
+
+/// A type parameter that is part of a generic type.
+#[derive(Debug, Clone, PartialEq)]
+pub struct GenericTypeParameter {
+    /// The placeholder's name, e.g. T.
     pub name: String,
+
+    /// The default type for this parameter, if any, e.g. T = int.
     pub default_type: Option<Type>,
-    pub constraint: Option<Box<Node>>,
-    pub resolved_type: Option<Type>,
+
+    /// Constraints on the type parameter, e.g. T : Protocol, or a where clause.
+    pub constraint: Vec<Box<Node>>,
+
     pub source: Option<NodeSource>,
 }
 
-impl TypeParameter {
+impl GenericTypeParameter {
     #[must_use]
     pub const fn new(name: String) -> Self {
         Self {
             name,
             default_type: None,
-            constraint: None,
-            resolved_type: None,
+            constraint: vec![],
             source: None,
         }
     }
@@ -87,70 +114,49 @@ impl TypeParameter {
         Self {
             name,
             default_type: Some(default_type),
-            constraint: None,
-            resolved_type: None,
+            constraint: vec![],
             source: None,
         }
     }
 
     #[must_use]
-    pub const fn with_constraint(name: String, constraint: Box<Node>) -> Self {
+    pub const fn with_constraint(name: String, constraint: Vec<Box<Node>>) -> Self {
         Self {
             name,
             default_type: None,
-            constraint: Some(constraint),
-            resolved_type: None,
+            constraint,
             source: None,
         }
     }
 }
 
-/// Parameter specification for functions
+/// A concrete type inside a generic type, e.g. defaultdict[str]
 #[derive(Debug, Clone, PartialEq)]
-pub struct ParameterSpecification {
-    pub name: String,
-    pub type_: Option<Type>,
-    pub default: Option<Box<Node>>,
+pub struct ConcreteTypeParameter {
+    /// The name of the parameter, if any, e.g. T in defaultdict[T].
+    pub name: Option<String>,
+
+    /// The concrete type, e.g. int or str.
+    pub type_: Type,
+
     pub source: Option<NodeSource>,
 }
 
-impl ParameterSpecification {
+impl ConcreteTypeParameter {
     #[must_use]
-    pub const fn new(name: String) -> Self {
+    pub const fn new(type_: Type) -> Self {
         Self {
-            name,
-            type_: None,
-            default: None,
+            name: None,
+            type_,
             source: None,
         }
     }
 
     #[must_use]
-    pub const fn with_type(name: String, type_: Type) -> Self {
+    pub const fn with_name(name: String, type_: Type) -> Self {
         Self {
-            name,
-            type_: Some(type_),
-            default: None,
-            source: None,
-        }
-    }
-
-    #[must_use]
-    pub const fn with_default(name: String, default: Box<Node>) -> Self {
-        Self {
-            name,
-            type_: None,
-            default: Some(default),
-            source: None,
-        }
-    }
-
-    #[must_use]
-    pub const fn with_type_and_default(name: String, type_: Type, default: Box<Node>) -> Self {
-        Self {
-            name,
-            type_: Some(type_),
-            default: Some(default),
+            name: Some(name),
+            type_,
             source: None,
         }
     }
