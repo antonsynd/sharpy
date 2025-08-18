@@ -93,7 +93,7 @@ pub struct GenericTypeParameter {
     pub default_type: Option<Type>,
 
     /// Constraints on the type parameter, e.g. T : Protocol, or a where clause.
-    pub constraint: Vec<Box<Node>>,
+    pub constraint: Vec<Node>,
 
     pub source: Option<NodeSource>,
 }
@@ -120,7 +120,7 @@ impl GenericTypeParameter {
     }
 
     #[must_use]
-    pub const fn with_constraint(name: String, constraint: Vec<Box<Node>>) -> Self {
+    pub const fn with_constraint(name: String, constraint: Vec<Node>) -> Self {
         Self {
             name,
             default_type: None,
@@ -130,12 +130,11 @@ impl GenericTypeParameter {
     }
 }
 
-/// A concrete type inside a generic type, e.g. defaultdict[str]
+/// A concrete type inside a generic type slot, e.g. defaultdict[str]. This
+/// should also be used for replacing a generic type parameter with a concrete
+/// type during type resolution.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConcreteTypeParameter {
-    /// The name of the parameter, if any, e.g. T in defaultdict[T].
-    pub name: Option<String>,
-
     /// The concrete type, e.g. int or str.
     pub type_: Type,
 
@@ -146,16 +145,6 @@ impl ConcreteTypeParameter {
     #[must_use]
     pub const fn new(type_: Type) -> Self {
         Self {
-            name: None,
-            type_,
-            source: None,
-        }
-    }
-
-    #[must_use]
-    pub const fn with_name(name: String, type_: Type) -> Self {
-        Self {
-            name: Some(name),
             type_,
             source: None,
         }

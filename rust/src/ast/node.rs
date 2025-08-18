@@ -209,13 +209,15 @@ impl AstNode for Node {
     }
 }
 
-// Concrete node structs
+/// A module.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Module {
     pub body: Vec<Node>,
     pub source: Option<NodeSource>,
 }
 
+/// An assignment expression, e.g. `x = 5`. Also accepts destructuring assignment
+/// for lists and tuples.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Assign {
     pub targets: Vec<Node>,
@@ -223,15 +225,7 @@ pub struct Assign {
     pub source: Option<NodeSource>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct AnnAssign {
-    pub target: Box<Node>,
-    pub annotation: Box<Node>,
-    pub value: Option<Box<Node>>,
-    pub simple: bool,
-    pub source: Option<NodeSource>,
-}
-
+/// An augmented assignment expression, e.g. `x += 5`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AugAssign {
     pub target: Box<Node>,
@@ -240,6 +234,7 @@ pub struct AugAssign {
     pub source: Option<NodeSource>,
 }
 
+/// Assert statement, e.g. `assert x == 5, "Should be 5"`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Assert {
     pub test: Box<Node>,
@@ -247,17 +242,20 @@ pub struct Assert {
     pub source: Option<NodeSource>,
 }
 
+/// Pass statement, e.g. pass.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pass {
     pub source: Option<NodeSource>,
 }
 
+/// Delete statement for deleting dictionary keys, e.g. `del x["foobar"]`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Delete {
     pub targets: Vec<Node>,
     pub source: Option<NodeSource>,
 }
 
+/// Return statement, e.g. `return x`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Return {
     pub value: Option<Box<Node>>,
@@ -271,11 +269,13 @@ pub struct Raise {
     pub source: Option<NodeSource>,
 }
 
+/// Break statement, e.g. `break`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Break {
     pub source: Option<NodeSource>,
 }
 
+/// Continue statement, e.g. `continue`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Continue {
     pub source: Option<NodeSource>,
@@ -296,7 +296,7 @@ pub struct NamedExpr {
     pub source: Option<NodeSource>,
 }
 
-/// A binary operation, e.g. x + y.
+/// A binary operation, e.g. `x + y`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BinOp {
     pub left: Box<Node>,
@@ -305,7 +305,7 @@ pub struct BinOp {
     pub source: Option<NodeSource>,
 }
 
-/// A unary operation, e.g. +x, -x, or not x.
+/// A unary operation, e.g. `+x`, `-x`, or `not x`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnaryOp_ {
     pub op: UnaryOp,
@@ -316,7 +316,7 @@ pub struct UnaryOp_ {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Lambda {
     pub args: Arguments,
-    pub return_type: Box<Node>,
+    pub return_type: Option<Box<Node>>,
     pub body: Box<Node>,
     pub source: Option<NodeSource>,
 }
