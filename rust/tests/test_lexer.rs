@@ -1,4 +1,4 @@
-use sharpy_compiler_toolchain::lexer::{LexerError, SharpyLexer};
+use sharpy_compiler_toolchain::lexer::SharpyLexer;
 
 #[test]
 fn test_name() {
