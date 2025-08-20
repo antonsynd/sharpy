@@ -23,7 +23,7 @@ impl SharpyAstBuilder {
     /// Builds the AST from the provided tokens.
     /// # Errors
     /// Returns an `ASTError`.
-    pub fn build(&self, tokens: &[Token]) -> Result<Node, AstError> {
+    pub const fn build(&self, tokens: &[Token]) -> Result<Node, AstError> {
         if tokens.is_empty() {
             return Err(AstError::EmptyInput);
         }
