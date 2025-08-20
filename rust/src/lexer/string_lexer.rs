@@ -63,7 +63,7 @@ impl StringLexer {
         }
 
         // Regular string or bytes
-        Self::scan_regular_string(scanner, start_pos, &prefix, location)
+        Self::scan_regular_string(scanner, &prefix, location)
     }
 
     fn scan_string_prefix(scanner: &mut Scanner) -> String {
@@ -120,18 +120,13 @@ impl StringLexer {
         let (_quote_style, _is_triple) = Self::scan_quote_style(scanner)?;
 
         let lexeme = scanner.lexeme_from(start_pos);
-        let token = Token::new(
-            TokenType::FString(FStringPart::Start(lexeme.clone())),
-            lexeme,
-            location,
-        );
+        let token = Token::new(TokenType::FString(FStringPart::Start(lexeme)), location);
 
         Ok(token)
     }
 
     fn scan_regular_string(
         scanner: &mut Scanner,
-        start_pos: usize,
         prefix: &str,
         location: SourceLocation,
     ) -> Result<Token, LexerError> {
@@ -174,8 +169,6 @@ impl StringLexer {
             }
         }
 
-        let lexeme = scanner.lexeme_from(start_pos);
-
         let token_type = if is_bytes {
             TokenType::String(StringType::Bytes(content.into_bytes()))
         } else if is_raw {
@@ -184,7 +177,7 @@ impl StringLexer {
             TokenType::String(StringType::Regular(content))
         };
 
-        let token = Token::new(token_type, lexeme, location);
+        let token = Token::new(token_type, location);
         Ok(token)
     }
 

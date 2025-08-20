@@ -65,7 +65,7 @@ fn tokenize_input(input: &str, verbose: bool) {
                 for token in &tokens {
                     match &token.token_type {
                         TokenType::Eof => break,
-                        _ => println!("{:?}: '{}'", token.token_type, token.lexeme),
+                        _ => println!("{:?}", token.token_type),
                     }
                 }
             }

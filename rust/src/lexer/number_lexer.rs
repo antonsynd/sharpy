@@ -61,11 +61,7 @@ impl NumberLexer {
         }
 
         let lexeme = scanner.lexeme_from(start_pos);
-        let token = Token::new(
-            TokenType::Number(NumberType::Integer(lexeme.clone())),
-            lexeme,
-            location,
-        );
+        let token = Token::new(TokenType::Number(NumberType::Integer(lexeme)), location);
         Ok(token)
     }
 
@@ -98,11 +94,7 @@ impl NumberLexer {
         }
 
         let lexeme = scanner.lexeme_from(start_pos);
-        let token = Token::new(
-            TokenType::Number(NumberType::Integer(lexeme.clone())),
-            lexeme,
-            location,
-        );
+        let token = Token::new(TokenType::Number(NumberType::Integer(lexeme)), location);
         Ok(token)
     }
 
@@ -135,11 +127,7 @@ impl NumberLexer {
         }
 
         let lexeme = scanner.lexeme_from(start_pos);
-        let token = Token::new(
-            TokenType::Number(NumberType::Integer(lexeme.clone())),
-            lexeme,
-            location,
-        );
+        let token = Token::new(TokenType::Number(NumberType::Integer(lexeme)), location);
         Ok(token)
     }
 
@@ -218,14 +206,14 @@ impl NumberLexer {
         let lexeme = scanner.lexeme_from(start_pos);
 
         let number_type = if is_imaginary {
-            NumberType::Imaginary(lexeme.clone())
+            NumberType::Imaginary(lexeme)
         } else if is_float {
-            NumberType::Float(lexeme.clone())
+            NumberType::Float(lexeme)
         } else {
-            NumberType::Integer(lexeme.clone())
+            NumberType::Integer(lexeme)
         };
 
-        let token = Token::new(TokenType::Number(number_type), lexeme, location);
+        let token = Token::new(TokenType::Number(number_type), location);
         Ok(token)
     }
 }

@@ -186,7 +186,6 @@ pub struct NameType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token {
     pub token_type: TokenType,
-    pub lexeme: String,
     pub location: SourceLocation,
     pub channel: Channel,
 }
@@ -200,10 +199,9 @@ pub enum Channel {
 impl Token {
     /// Creates a new token with the given type, lexeme, and location.
     #[must_use]
-    pub const fn new(token_type: TokenType, lexeme: String, location: SourceLocation) -> Self {
+    pub const fn new(token_type: TokenType, location: SourceLocation) -> Self {
         Self {
             token_type,
-            lexeme,
             location,
             channel: Channel::Default,
         }

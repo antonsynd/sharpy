@@ -171,8 +171,6 @@ impl<'a> Scanner<'a> {
             }
         }
 
-        // Create the full lexeme including modifiers
-        let lexeme = self.input[start_pos..self.position].to_string();
         let location = self.location_from_start(start_line, start_col, start_pos);
 
         // Determine token type
@@ -187,7 +185,7 @@ impl<'a> Scanner<'a> {
             self.keyword_or_identifier(&identifier, access_modifier)
         };
 
-        Ok(Token::new(token_type, lexeme, location))
+        Ok(Token::new(token_type, location))
     }
 
     fn scan_access_modifier(&mut self) -> Option<AccessModifier> {
@@ -293,10 +291,9 @@ impl<'a> Scanner<'a> {
             self.advance();
         }
 
-        let lexeme = self.input[start_pos..self.position].to_string();
         let location = self.location_from_start(start_line, start_col, start_pos);
 
-        Token::new(TokenType::Comment(comment), lexeme, location).with_channel(Channel::Hidden)
+        Token::new(TokenType::Comment(comment), location).with_channel(Channel::Hidden)
     }
 
     /// Scans an operator token.
@@ -535,10 +532,9 @@ impl<'a> Scanner<'a> {
             _ => return Err(LexerError::UnexpectedCharacter(ch)),
         };
 
-        let lexeme = self.input[start_pos..self.position].to_string();
         let location = self.location_from_start(start_line, start_col, start_pos);
 
-        Ok(Token::new(token_type, lexeme, location))
+        Ok(Token::new(token_type, location))
     }
 
     #[allow(clippy::unused_peekable)]

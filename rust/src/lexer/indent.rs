@@ -30,7 +30,7 @@ impl IndentationHandler {
         let mut tokens = vec![];
 
         // Create newline token
-        let newline_token = Token::new(TokenType::Newline, "\n".to_string(), location);
+        let newline_token = Token::new(TokenType::Newline, location);
 
         // If we're in implicit line joining (inside parens/brackets/braces), hide the newline
         if opened_parens > 0 {
@@ -100,7 +100,7 @@ impl IndentationHandler {
             Ordering::Greater => {
                 // Increase in indentation -> INDENT
                 self.indent_stack.push(new_indent);
-                tokens.push(Token::new(TokenType::Indent, String::new(), location));
+                tokens.push(Token::new(TokenType::Indent, location));
             }
             Ordering::Less => {
                 // Decrease in indentation -> DEDENT(s)
@@ -109,11 +109,7 @@ impl IndentationHandler {
                         break;
                     }
                     self.indent_stack.pop();
-                    tokens.push(Token::new(
-                        TokenType::Dedent,
-                        String::new(),
-                        location.clone(),
-                    ));
+                    tokens.push(Token::new(TokenType::Dedent, location.clone()));
                 }
 
                 // Check for inconsistent dedent
@@ -135,11 +131,7 @@ impl IndentationHandler {
         // Generate DEDENT tokens for all remaining indentation levels
         while self.indent_stack.len() > 1 {
             self.indent_stack.pop();
-            tokens.push(Token::new(
-                TokenType::Dedent,
-                String::new(),
-                location.clone(),
-            ));
+            tokens.push(Token::new(TokenType::Dedent, location.clone()));
         }
 
         tokens

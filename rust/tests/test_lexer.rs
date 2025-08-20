@@ -19,7 +19,6 @@ fn test_name() {
                     is_literal: false,
                     access_modifier: AccessModifier::Public
                 }),
-                lexeme: "x".to_string(),
                 location: SourceLocation {
                     line: 1,
                     column: 1,
@@ -30,7 +29,6 @@ fn test_name() {
             },
             Token {
                 token_type: TokenType::Eof,
-                lexeme: "".to_string(),
                 location: SourceLocation {
                     line: 1,
                     column: 7,
@@ -60,7 +58,6 @@ fn test_typed_name() {
                     is_literal: false,
                     access_modifier: AccessModifier::Public
                 }),
-                lexeme: "x".to_string(),
                 location: SourceLocation {
                     line: 1,
                     column: 1,
@@ -71,7 +68,6 @@ fn test_typed_name() {
             },
             Token {
                 token_type: TokenType::Colon,
-                lexeme: ":".to_string(),
                 location: SourceLocation {
                     line: 1,
                     column: 2,
@@ -86,7 +82,6 @@ fn test_typed_name() {
                     is_literal: false,
                     access_modifier: AccessModifier::Public
                 }),
-                lexeme: "int".to_string(),
                 location: SourceLocation {
                     line: 1,
                     column: 4,
@@ -97,7 +92,6 @@ fn test_typed_name() {
             },
             Token {
                 token_type: TokenType::Eof,
-                lexeme: "".to_string(),
                 location: SourceLocation {
                     line: 1,
                     column: 7,

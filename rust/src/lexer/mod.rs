@@ -110,10 +110,9 @@ impl<'a> SharpyLexer<'a> {
                     self.pending_tokens.push_back(token);
                 }
 
-                self.pending_tokens.pop_front().map_or_else(
-                    || Ok(Token::new(TokenType::Eof, String::new(), location)),
-                    Ok,
-                )
+                self.pending_tokens
+                    .pop_front()
+                    .map_or_else(|| Ok(Token::new(TokenType::Eof, location)), Ok)
             }
             Some('\n') => self.handle_newline(),
             Some('#') => Ok(self.scanner.scan_comment()),
@@ -235,8 +234,6 @@ mod tests {
         let tokens = lexer.tokenize_all().unwrap();
         for token in &tokens {
             if let TokenType::Name(name) = &token.token_type {
-                // Access modifiers are included in the lexeme
-                assert!(token.lexeme.starts_with('_') || token.lexeme.starts_with('$'));
                 assert!(!name.is_literal);
             }
         }
@@ -260,7 +257,7 @@ mod tests {
         let tokens = lexer.tokenize_all().unwrap();
         for token in &tokens {
             if let TokenType::Number(_) = token.token_type {
-                assert!(!token.lexeme.is_empty());
+                // TODO
             }
         }
     }
