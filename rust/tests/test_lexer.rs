@@ -31,9 +31,9 @@ fn test_name() {
                 token_type: TokenType::Eof,
                 location: SourceLocation {
                     line: 1,
-                    column: 7,
-                    start: 6,
-                    end: 7
+                    column: 2,
+                    start: 1,
+                    end: 2
                 },
                 channel: Channel::Default
             }
