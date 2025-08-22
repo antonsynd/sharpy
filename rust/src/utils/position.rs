@@ -1,15 +1,15 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceLocation {
-    /// The line number, 1-indexed.
+    /// The start line number, 1-indexed.
     pub line: usize,
 
-    /// The column number, 1-indexed, based on Unicode scalar value offsets.
+    /// The start column number, 1-indexed, based on Unicode scalar value offsets.
     pub column: usize,
 
-    /// The start position in bytes (not Unicode scalar value offsets).
+    /// The start position in bytes (not Unicode scalar value offsets), inclusive.
     pub start: usize,
 
-    /// The end position in bytes (not Unicode scalar value offsets).
+    /// The end position in bytes (not Unicode scalar value offsets), exclusive.
     pub end: usize,
 }
 

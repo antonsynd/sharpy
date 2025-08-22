@@ -111,6 +111,88 @@ fn test_typed_assignment() {
 
     let result = lexer.tokenize_all();
     assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 6);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "x".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 1
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Colon,
+                location: SourceLocation {
+                    line: 1,
+                    column: 2,
+                    start: 1,
+                    end: 2
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "int".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 4,
+                    start: 3,
+                    end: 6
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "int".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 4,
+                    start: 3,
+                    end: 6
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "int".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 4,
+                    start: 3,
+                    end: 6
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 7,
+                    start: 6,
+                    end: 7
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
 }
 
 #[test]
@@ -120,6 +202,32 @@ fn test_none() {
 
     let result = lexer.tokenize_all();
     assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 2);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::None,
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 4
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 5,
+                    start: 4,
+                    end: 5
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
 }
 
 #[test]
@@ -129,6 +237,32 @@ fn test_true() {
 
     let result = lexer.tokenize_all();
     assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 2);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::True,
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 4
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 5,
+                    start: 4,
+                    end: 5
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
 }
 
 #[test]
@@ -138,6 +272,32 @@ fn test_false() {
 
     let result = lexer.tokenize_all();
     assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 2);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::False,
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 5
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 6,
+                    start: 5,
+                    end: 6
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
 }
 
 #[test]
@@ -147,6 +307,32 @@ fn test_ellipsis() {
 
     let result = lexer.tokenize_all();
     assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 2);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Ellipsis,
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 3
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 4,
+                    start: 3,
+                    end: 4
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
 }
 
 #[test]
@@ -156,6 +342,32 @@ fn test_pass() {
 
     let result = lexer.tokenize_all();
     assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 2);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Pass,
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 4
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 5,
+                    start: 4,
+                    end: 5
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
 }
 
 #[test]
@@ -165,6 +377,32 @@ fn test_integer() {
 
     let result = lexer.tokenize_all();
     assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 2);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Number(NumberType::Integer("42".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 1
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 3,
+                    start: 2,
+                    end: 3
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
 }
 
 #[test]
@@ -174,6 +412,32 @@ fn test_float() {
 
     let result = lexer.tokenize_all();
     assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 2);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Number(NumberType::Float("3.14".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 4
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 5,
+                    start: 4,
+                    end: 5
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
 }
 
 #[test]
@@ -183,6 +447,32 @@ fn test_imaginary() {
 
     let result = lexer.tokenize_all();
     assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 5);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::None,
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 1
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 7,
+                    start: 6,
+                    end: 7
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
 }
 
 #[test]
@@ -192,6 +482,32 @@ fn test_empty_list_literal() {
 
     let result = lexer.tokenize_all();
     assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 3);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::None,
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 1
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 7,
+                    start: 6,
+                    end: 7
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
 }
 
 #[test]
@@ -201,6 +517,32 @@ fn test_list_literal() {
 
     let result = lexer.tokenize_all();
     assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 8);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::None,
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 1
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 7,
+                    start: 6,
+                    end: 7
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
 }
 
 #[test]
@@ -210,6 +552,32 @@ fn test_tuple_literal() {
 
     let result = lexer.tokenize_all();
     assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 8);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::None,
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 1
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 7,
+                    start: 6,
+                    end: 7
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
 }
 
 #[test]
@@ -219,6 +587,32 @@ fn test_set_literal() {
 
     let result = lexer.tokenize_all();
     assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 8);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::None,
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 1
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 7,
+                    start: 6,
+                    end: 7
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
 }
 
 #[test]
@@ -228,6 +622,32 @@ fn test_dictionary_literal() {
 
     let result = lexer.tokenize_all();
     assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 10);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::None,
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 1
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 7,
+                    start: 6,
+                    end: 7
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
 }
 
 #[test]
@@ -237,6 +657,32 @@ fn test_double_quoted_string_literal() {
 
     let result = lexer.tokenize_all();
     assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 2);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::String(StringType::Regular("Hello, World!".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 15
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 16,
+                    start: 15,
+                    end: 16
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
 }
 
 #[test]
@@ -246,13 +692,75 @@ fn test_single_quoted_string_literal() {
 
     let result = lexer.tokenize_all();
     assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 2);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::String(StringType::Regular("Hello, World!".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 15
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 16,
+                    start: 15,
+                    end: 16
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
 }
 
 #[test]
 fn test_sequential_string_literals() {
-    let code = r#"Hello" "World!""#;
+    let code = r#""Hello" "World!""#;
     let mut lexer = SharpyLexer::new(code);
 
     let result = lexer.tokenize_all();
     assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 3);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::String(StringType::Regular("Hello".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 6
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::String(StringType::Regular("World!".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 8,
+                    start: 7,
+                    end: 14
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 15,
+                    start: 14,
+                    end: 15
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
 }
