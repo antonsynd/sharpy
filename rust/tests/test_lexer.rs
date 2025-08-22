@@ -42,6 +42,279 @@ fn test_name() {
 }
 
 #[test]
+fn test_longer_name() {
+    let code = "xyz";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 2);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "xyz".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 3
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 4,
+                    start: 3,
+                    end: 4
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_literal_name() {
+    let code = "`xyz";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 2);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "xyz".to_string(),
+                    is_literal: true,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 4
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 5,
+                    start: 4,
+                    end: 5
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_protected_name() {
+    let code = "_xyz";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 2);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "xyz".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Protected
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 4
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 5,
+                    start: 4,
+                    end: 5
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_private_name() {
+    let code = "__xyz";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 2);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "xyz".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Private
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 5
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 6,
+                    start: 5,
+                    end: 6
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_internal_name() {
+    let code = "$xyz";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 2);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "xyz".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Internal
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 4
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 5,
+                    start: 4,
+                    end: 5
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_file_name() {
+    let code = "$$xyz";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 2);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "xyz".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::File
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 5
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 6,
+                    start: 5,
+                    end: 6
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_complex_name() {
+    let code = "__`__xyz";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 3);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "__xyz".to_string(),
+                    is_literal: true,
+                    access_modifier: AccessModifier::Private
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 8
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 8,
+                    start: 8,
+                    end: 9
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
 fn test_typed_name() {
     let code = "x: int";
     let mut lexer = SharpyLexer::new(code);

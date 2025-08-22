@@ -1,3 +1,5 @@
+use std::char;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceLocation {
     /// The start line number, 1-indexed.
