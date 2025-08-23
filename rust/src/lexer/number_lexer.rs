@@ -35,7 +35,7 @@ impl NumberLexer {
     fn scan_binary_number(
         scanner: &mut Scanner,
         start_pos: usize,
-        location: SourceLocation,
+        mut location: SourceLocation,
     ) -> Result<Token, LexerError> {
         scanner.advance(); // Skip '0'
         scanner.advance(); // Skip 'b' or 'B'
@@ -61,6 +61,7 @@ impl NumberLexer {
         }
 
         let lexeme = scanner.lexeme_from(start_pos);
+        location.end = lexeme.len() + location.start;
         let token = Token::new(TokenType::Number(NumberType::Integer(lexeme)), location);
         Ok(token)
     }
@@ -68,7 +69,7 @@ impl NumberLexer {
     fn scan_octal_number(
         scanner: &mut Scanner,
         start_pos: usize,
-        location: SourceLocation,
+        mut location: SourceLocation,
     ) -> Result<Token, LexerError> {
         scanner.advance(); // Skip '0'
         scanner.advance(); // Skip 'o' or 'O'
@@ -94,6 +95,7 @@ impl NumberLexer {
         }
 
         let lexeme = scanner.lexeme_from(start_pos);
+        location.end = lexeme.len() + location.start;
         let token = Token::new(TokenType::Number(NumberType::Integer(lexeme)), location);
         Ok(token)
     }
@@ -101,7 +103,7 @@ impl NumberLexer {
     fn scan_hex_number(
         scanner: &mut Scanner,
         start_pos: usize,
-        location: SourceLocation,
+        mut location: SourceLocation,
     ) -> Result<Token, LexerError> {
         scanner.advance(); // Skip '0'
         scanner.advance(); // Skip 'x' or 'X'
@@ -127,6 +129,7 @@ impl NumberLexer {
         }
 
         let lexeme = scanner.lexeme_from(start_pos);
+        location.end = lexeme.len() + location.start;
         let token = Token::new(TokenType::Number(NumberType::Integer(lexeme)), location);
         Ok(token)
     }
@@ -134,7 +137,7 @@ impl NumberLexer {
     fn scan_decimal_number(
         scanner: &mut Scanner,
         start_pos: usize,
-        location: SourceLocation,
+        mut location: SourceLocation,
     ) -> Result<Token, LexerError> {
         let mut is_float = false;
 
@@ -204,6 +207,7 @@ impl NumberLexer {
             .is_some_and(|ch| ch == 'j' || ch == 'J');
 
         let lexeme = scanner.lexeme_from(start_pos);
+        location.end = lexeme.len() + location.start;
 
         let number_type = if is_imaginary {
             NumberType::Imaginary(lexeme)

@@ -115,11 +115,12 @@ impl StringLexer {
         scanner: &mut Scanner,
         start_pos: usize,
         _prefix: &str,
-        location: SourceLocation,
+        mut location: SourceLocation,
     ) -> Result<Token, LexerError> {
         let (_quote_style, _is_triple) = Self::scan_quote_style(scanner)?;
 
         let lexeme = scanner.lexeme_from(start_pos);
+        location.end = lexeme.len() + location.start;
         let token = Token::new(TokenType::FString(FStringPart::Start(lexeme)), location);
 
         Ok(token)
@@ -128,7 +129,7 @@ impl StringLexer {
     fn scan_regular_string(
         scanner: &mut Scanner,
         prefix: &str,
-        location: SourceLocation,
+        mut location: SourceLocation,
     ) -> Result<Token, LexerError> {
         let (quote_style, is_triple) = Self::scan_quote_style(scanner)?;
         let quote_char = quote_style.chars().next().unwrap();
@@ -177,6 +178,7 @@ impl StringLexer {
             TokenType::String(StringType::Regular(content))
         };
 
+        location.end = scanner.position();
         let token = Token::new(token_type, location);
         Ok(token)
     }

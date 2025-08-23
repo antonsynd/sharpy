@@ -84,7 +84,7 @@ impl<'a> Scanner<'a> {
         self.current_char
     }
 
-    /// Gets the current position in the input.
+    /// Gets the current position (in bytes) in the input.
     #[must_use]
     pub const fn position(&self) -> usize {
         self.position

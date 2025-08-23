@@ -1010,7 +1010,7 @@ fn test_sequential_string_literals() {
                     line: 1,
                     column: 1,
                     start: 0,
-                    end: 6
+                    end: 7
                 },
                 channel: Channel::Default
             },
@@ -1018,9 +1018,9 @@ fn test_sequential_string_literals() {
                 token_type: TokenType::String(StringType::Regular("World!".to_string())),
                 location: SourceLocation {
                     line: 1,
-                    column: 8,
-                    start: 7,
-                    end: 14
+                    column: 9,
+                    start: 8,
+                    end: 16
                 },
                 channel: Channel::Default
             },
@@ -1028,9 +1028,9 @@ fn test_sequential_string_literals() {
                 token_type: TokenType::Eof,
                 location: SourceLocation {
                     line: 1,
-                    column: 15,
-                    start: 14,
-                    end: 15
+                    column: 17,
+                    start: 16,
+                    end: 17
                 },
                 channel: Channel::Default
             }
