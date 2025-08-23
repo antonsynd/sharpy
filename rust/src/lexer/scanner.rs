@@ -202,9 +202,16 @@ impl<'a> Scanner<'a> {
             }
             Some('_') => {
                 if self.peek_char() == Some('_') {
-                    // Check if it's a dunder or just private
-                    let peek_2 = self.peek_next_chars(2);
-                    if peek_2.len() >= 2 && is_id_start(peek_2.chars().nth(1).unwrap()) {
+                    // Check if it's private with optional literal
+                    // e.g. __foobar or __`foobar
+                    let peek_3 = self.peek_next_chars(3);
+                    if peek_3.len() >= 3
+                        // __foobar case
+                        && (is_id_start(peek_3.chars().nth(1).unwrap())
+                        // __`foobar case
+                            || (peek_3.chars().nth(1).unwrap() == '`'
+                                && is_id_start(peek_3.chars().nth(2).unwrap())))
+                    {
                         self.advance(); // consume first _
                         self.advance(); // consume second _
                         Some(AccessModifier::Private)

@@ -282,7 +282,7 @@ fn test_complex_name() {
 
     let result = lexer.tokenize_all();
     assert!(result.is_ok());
-    assert_eq!(result.as_ref().unwrap().len(), 3);
+    assert_eq!(result.as_ref().unwrap().len(), 2);
     assert_eq!(
         result.unwrap(),
         vec![
@@ -304,7 +304,7 @@ fn test_complex_name() {
                 token_type: TokenType::Eof,
                 location: SourceLocation {
                     line: 1,
-                    column: 8,
+                    column: 9,
                     start: 8,
                     end: 9
                 },
