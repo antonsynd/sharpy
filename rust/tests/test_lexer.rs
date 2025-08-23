@@ -660,7 +660,7 @@ fn test_integer() {
                     line: 1,
                     column: 1,
                     start: 0,
-                    end: 1
+                    end: 2
                 },
                 channel: Channel::Default
             },

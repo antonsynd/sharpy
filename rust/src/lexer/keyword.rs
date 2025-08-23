@@ -50,7 +50,6 @@ impl KeywordMap {
         keywords.insert("in", TokenType::In);
         keywords.insert("is", TokenType::Is);
         keywords.insert("lambda", TokenType::Lambda);
-        keywords.insert("event", TokenType::Event);
 
         // Soft keywords - context dependent
         soft_keywords.insert("type", TokenType::Type);
@@ -58,6 +57,7 @@ impl KeywordMap {
         soft_keywords.insert("case", TokenType::Case);
         soft_keywords.insert("get", TokenType::Get);
         soft_keywords.insert("set", TokenType::Set);
+        soft_keywords.insert("event", TokenType::Event);
         soft_keywords.insert("_", TokenType::Wildcard);
 
         Self {
