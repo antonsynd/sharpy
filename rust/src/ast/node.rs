@@ -219,6 +219,7 @@ impl Node {
 
 /// Node variants
 
+/// A type alias, e.g. `type SomeInteger = int`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Alias {
     pub name: String,
@@ -263,6 +264,7 @@ pub struct Assign {
     pub source: Option<NodeSource>,
 }
 
+/// An async for loop, e.g. `async for x in y:`
 #[derive(Debug, Clone, PartialEq)]
 pub struct AsyncFor {
     pub target: Box<Node>,
@@ -283,6 +285,7 @@ pub struct AsyncFunctionDef {
     pub source: Option<NodeSource>,
 }
 
+/// An async with statement, e.g. `async for x in y:`
 #[derive(Debug, Clone, PartialEq)]
 pub struct AsyncWith {
     pub items: Vec<WithItem>,
