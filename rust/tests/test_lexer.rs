@@ -427,30 +427,22 @@ fn test_typed_assignment() {
                 channel: Channel::Default
             },
             Token {
-                token_type: TokenType::Name(NameType {
-                    name: "int".to_string(),
-                    is_literal: false,
-                    access_modifier: AccessModifier::Public
-                }),
+                token_type: TokenType::Equal,
                 location: SourceLocation {
                     line: 1,
-                    column: 4,
-                    start: 3,
-                    end: 6
+                    column: 8,
+                    start: 7,
+                    end: 8
                 },
                 channel: Channel::Default
             },
             Token {
-                token_type: TokenType::Name(NameType {
-                    name: "int".to_string(),
-                    is_literal: false,
-                    access_modifier: AccessModifier::Public
-                }),
+                token_type: TokenType::Number(NumberType::Integer("3".to_string())),
                 location: SourceLocation {
                     line: 1,
-                    column: 4,
-                    start: 3,
-                    end: 6
+                    column: 10,
+                    start: 9,
+                    end: 10
                 },
                 channel: Channel::Default
             },
@@ -458,9 +450,9 @@ fn test_typed_assignment() {
                 token_type: TokenType::Eof,
                 location: SourceLocation {
                     line: 1,
-                    column: 7,
-                    start: 6,
-                    end: 7
+                    column: 11,
+                    start: 10,
+                    end: 11
                 },
                 channel: Channel::Default
             }
@@ -760,7 +752,7 @@ fn test_empty_list_literal() {
         result.unwrap(),
         vec![
             Token {
-                token_type: TokenType::None,
+                token_type: TokenType::LeftBracket,
                 location: SourceLocation {
                     line: 1,
                     column: 1,
@@ -770,12 +762,22 @@ fn test_empty_list_literal() {
                 channel: Channel::Default
             },
             Token {
+                token_type: TokenType::RightBracket,
+                location: SourceLocation {
+                    line: 1,
+                    column: 2,
+                    start: 1,
+                    end: 2
+                },
+                channel: Channel::Default
+            },
+            Token {
                 token_type: TokenType::Eof,
                 location: SourceLocation {
                     line: 1,
-                    column: 7,
-                    start: 6,
-                    end: 7
+                    column: 3,
+                    start: 2,
+                    end: 3
                 },
                 channel: Channel::Default
             }
@@ -795,7 +797,7 @@ fn test_list_literal() {
         result.unwrap(),
         vec![
             Token {
-                token_type: TokenType::None,
+                token_type: TokenType::LeftBracket,
                 location: SourceLocation {
                     line: 1,
                     column: 1,
@@ -805,12 +807,72 @@ fn test_list_literal() {
                 channel: Channel::Default
             },
             Token {
+                token_type: TokenType::Number(NumberType::Integer("1".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 2,
+                    start: 1,
+                    end: 2
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Comma,
+                location: SourceLocation {
+                    line: 1,
+                    column: 3,
+                    start: 2,
+                    end: 3
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Number(NumberType::Integer("2".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 5,
+                    start: 4,
+                    end: 5
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Comma,
+                location: SourceLocation {
+                    line: 1,
+                    column: 6,
+                    start: 5,
+                    end: 6
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Number(NumberType::Integer("3".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 8,
+                    start: 7,
+                    end: 8
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::RightBracket,
+                location: SourceLocation {
+                    line: 1,
+                    column: 9,
+                    start: 8,
+                    end: 9
+                },
+                channel: Channel::Default
+            },
+            Token {
                 token_type: TokenType::Eof,
                 location: SourceLocation {
                     line: 1,
-                    column: 7,
-                    start: 6,
-                    end: 7
+                    column: 10,
+                    start: 9,
+                    end: 10
                 },
                 channel: Channel::Default
             }
@@ -830,7 +892,7 @@ fn test_tuple_literal() {
         result.unwrap(),
         vec![
             Token {
-                token_type: TokenType::None,
+                token_type: TokenType::LeftParen,
                 location: SourceLocation {
                     line: 1,
                     column: 1,
@@ -840,12 +902,72 @@ fn test_tuple_literal() {
                 channel: Channel::Default
             },
             Token {
+                token_type: TokenType::Number(NumberType::Integer("1".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 2,
+                    start: 1,
+                    end: 2
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Comma,
+                location: SourceLocation {
+                    line: 1,
+                    column: 3,
+                    start: 2,
+                    end: 3
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Number(NumberType::Integer("2".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 5,
+                    start: 4,
+                    end: 5
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Comma,
+                location: SourceLocation {
+                    line: 1,
+                    column: 6,
+                    start: 5,
+                    end: 6
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Number(NumberType::Integer("3".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 8,
+                    start: 7,
+                    end: 8
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::RightParen,
+                location: SourceLocation {
+                    line: 1,
+                    column: 9,
+                    start: 8,
+                    end: 9
+                },
+                channel: Channel::Default
+            },
+            Token {
                 token_type: TokenType::Eof,
                 location: SourceLocation {
                     line: 1,
-                    column: 7,
-                    start: 6,
-                    end: 7
+                    column: 10,
+                    start: 9,
+                    end: 10
                 },
                 channel: Channel::Default
             }
@@ -960,7 +1082,7 @@ fn test_dictionary_literal() {
         result.unwrap(),
         vec![
             Token {
-                token_type: TokenType::None,
+                token_type: TokenType::LeftBrace,
                 location: SourceLocation {
                     line: 1,
                     column: 1,
@@ -970,12 +1092,92 @@ fn test_dictionary_literal() {
                 channel: Channel::Default
             },
             Token {
-                token_type: TokenType::Eof,
+                token_type: TokenType::String(StringType::Regular("x".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 2,
+                    start: 1,
+                    end: 4
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Colon,
+                location: SourceLocation {
+                    line: 1,
+                    column: 5,
+                    start: 4,
+                    end: 5
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Number(NumberType::Integer("10".to_string())),
                 location: SourceLocation {
                     line: 1,
                     column: 7,
                     start: 6,
-                    end: 7
+                    end: 8
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Comma,
+                location: SourceLocation {
+                    line: 1,
+                    column: 9,
+                    start: 8,
+                    end: 9
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::String(StringType::Regular("y".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 11,
+                    start: 10,
+                    end: 13
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Colon,
+                location: SourceLocation {
+                    line: 1,
+                    column: 14,
+                    start: 13,
+                    end: 14
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Number(NumberType::Integer("20".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 16,
+                    start: 15,
+                    end: 17
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::RightBrace,
+                location: SourceLocation {
+                    line: 1,
+                    column: 18,
+                    start: 17,
+                    end: 18
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 19,
+                    start: 18,
+                    end: 19
                 },
                 channel: Channel::Default
             }
