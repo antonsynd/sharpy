@@ -13,15 +13,15 @@ pub trait Visitor {
     /// Default traversal method that visits all child nodes
     fn walk(&mut self, node: &Node) {
         match node {
-            Node::Module(n) => self.visit_module(n),
             Node::Assign(n) => self.visit_assign(n),
-            Node::Constant(n) => self.visit_constant(n),
-            Node::Name(n) => self.visit_name(n),
             Node::BinOp(n) => self.visit_binop(n),
             Node::Call(n) => self.visit_call(n),
-            Node::If(n) => self.visit_if(n),
-            Node::FunctionDef(n) => self.visit_function_def(n),
             Node::ClassDef(n) => self.visit_class_def(n),
+            Node::Constant(n) => self.visit_constant(n),
+            Node::FunctionDef(n) => self.visit_function_def(n),
+            Node::If(n) => self.visit_if(n),
+            Node::Module(n) => self.visit_module(n),
+            Node::Name(n) => self.visit_name(n),
             // Add more as needed...
             _ => self.generic_visit(node),
         }
@@ -30,15 +30,15 @@ pub trait Visitor {
     /// Default mutable traversal method
     fn walk_mut(&mut self, node: &mut Node) {
         match node {
-            Node::Module(n) => self.visit_module_mut(n),
             Node::Assign(n) => self.visit_assign_mut(n),
-            Node::Constant(n) => self.visit_constant_mut(n),
-            Node::Name(n) => self.visit_name_mut(n),
             Node::BinOp(n) => self.visit_binop_mut(n),
             Node::Call(n) => self.visit_call_mut(n),
-            Node::If(n) => self.visit_if_mut(n),
-            Node::FunctionDef(n) => self.visit_function_def_mut(n),
             Node::ClassDef(n) => self.visit_class_def_mut(n),
+            Node::Constant(n) => self.visit_constant_mut(n),
+            Node::FunctionDef(n) => self.visit_function_def_mut(n),
+            Node::If(n) => self.visit_if_mut(n),
+            Node::Module(n) => self.visit_module_mut(n),
+            Node::Name(n) => self.visit_name_mut(n),
             // Add more as needed...
             _ => self.generic_visit_mut(node),
         }
