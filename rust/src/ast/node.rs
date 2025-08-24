@@ -180,33 +180,36 @@ pub enum Node {
 }
 
 impl Node {
+    #[allow(dead_code)]
     const fn source(&self) -> Option<&NodeSource> {
         match self {
-            Self::Module(n) => n.source.as_ref(),
             Self::Assign(n) => n.source.as_ref(),
             Self::Constant(n) => n.source.as_ref(),
+            Self::Module(n) => n.source.as_ref(),
             Self::Name(n) => n.source.as_ref(),
             // Add all other variants...
             _ => None, // Temporary fallback
         }
     }
 
+    #[allow(dead_code)]
     const fn source_mut(&mut self) -> Option<&mut NodeSource> {
         match self {
-            Self::Module(n) => n.source.as_mut(),
             Self::Assign(n) => n.source.as_mut(),
             Self::Constant(n) => n.source.as_mut(),
+            Self::Module(n) => n.source.as_mut(),
             Self::Name(n) => n.source.as_mut(),
             // Add all other variants...
             _ => None, // Temporary fallback
         }
     }
 
+    #[allow(dead_code)]
     const fn set_source(&mut self, source: NodeSource) {
         match self {
-            Self::Module(n) => n.source = Some(source),
             Self::Assign(n) => n.source = Some(source),
             Self::Constant(n) => n.source = Some(source),
+            Self::Module(n) => n.source = Some(source),
             Self::Name(n) => n.source = Some(source),
             // Add all other variants...
             _ => {} // Temporary fallback
@@ -214,7 +217,7 @@ impl Node {
     }
 }
 
-// Node variants
+/// Node variants
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Alias {
