@@ -2334,3 +2334,247 @@ fn test_lambda_expression() {
         ]
     );
 }
+
+#[test]
+fn test_fstring_simple() {
+    let code = r#"f"hello {name}""#;
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 7);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::FString(FStringPart::Start("f\"".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 2
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "hello".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 3,
+                    start: 2,
+                    end: 7
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::LeftBrace,
+                location: SourceLocation {
+                    line: 1,
+                    column: 9,
+                    start: 8,
+                    end: 9
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "name".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 10,
+                    start: 9,
+                    end: 13
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::RightBrace,
+                location: SourceLocation {
+                    line: 1,
+                    column: 14,
+                    start: 13,
+                    end: 14
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::FString(FStringPart::End("\"".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 15,
+                    start: 14,
+                    end: 15
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 16,
+                    start: 15,
+                    end: 16
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_fstring_single_quotes() {
+    let code = r#"f'hello {world}'"#;
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert_eq!(result.as_ref().unwrap().len(), 7);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::FString(FStringPart::Start("f'".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 2
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "hello".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 3,
+                    start: 2,
+                    end: 7
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::LeftBrace,
+                location: SourceLocation {
+                    line: 1,
+                    column: 9,
+                    start: 8,
+                    end: 9
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "world".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 10,
+                    start: 9,
+                    end: 14
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::RightBrace,
+                location: SourceLocation {
+                    line: 1,
+                    column: 15,
+                    start: 14,
+                    end: 15
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::FString(FStringPart::End("'".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 16,
+                    start: 15,
+                    end: 16
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 17,
+                    start: 16,
+                    end: 17
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_fstring_no_expressions() {
+    let code = r#"f"just text""#;
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 5);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::FString(FStringPart::Start("f'".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 2
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "just text".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 3,
+                    start: 2,
+                    end: 11
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::FString(FStringPart::End("'".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 12,
+                    start: 11,
+                    end: 12
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 13,
+                    start: 12,
+                    end: 13
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}

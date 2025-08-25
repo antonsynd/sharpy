@@ -11,11 +11,13 @@ pub use error::LexerError;
 use indent::IndentationHandler;
 use scanner::Scanner;
 use std::collections::VecDeque;
+use string_lexer::StringLexer;
 pub use token::*;
 
 pub struct SharpyLexer<'a> {
     scanner: Scanner<'a>,
     indent_handler: IndentationHandler,
+    string_lexer: StringLexer,
     pending_tokens: VecDeque<Token>,
     opened_parens: usize,
     at_line_start: bool,
@@ -29,6 +31,7 @@ impl<'a> SharpyLexer<'a> {
         Self {
             scanner: Scanner::new(input),
             indent_handler: IndentationHandler::new(),
+            string_lexer: StringLexer::new(),
             pending_tokens: VecDeque::new(),
             opened_parens: 0,
             at_line_start: true,
@@ -79,6 +82,11 @@ impl<'a> SharpyLexer<'a> {
     }
 
     fn scan_next_token(&mut self) -> Result<Token, LexerError> {
+        // Handle f-string continuation if we're in f-string mode
+        if self.string_lexer.is_in_fstring() {
+            return self.handle_fstring_continuation();
+        }
+
         // Skip whitespace at the beginning of a line for indentation
         if self.at_line_start {
             let whitespace = self.scanner.skip_whitespace();
@@ -117,11 +125,11 @@ impl<'a> SharpyLexer<'a> {
             Some('\n') => self.handle_newline(),
             Some('#') => Ok(self.scanner.scan_comment()),
             Some(ch) if ch.is_ascii_digit() => self.scanner.scan_number(),
-            Some(ch) if is_string_start(ch) => self.scanner.scan_string(),
+            Some(ch) if is_string_start(ch) => self.scan_string(),
             Some(ch) if Self::could_be_string_with_prefix(ch) => {
                 // Check if it's actually a string with prefix or just an identifier
                 if self.scanner.is_string_prefix_followed_by_quote() {
-                    self.scanner.scan_string()
+                    self.scan_string()
                 } else {
                     self.scanner.scan_identifier()
                 }
@@ -175,6 +183,180 @@ impl<'a> SharpyLexer<'a> {
         self.opened_parens = 0;
         self.at_line_start = true;
         self.errors.clear();
+    }
+
+    fn handle_fstring_continuation(&mut self) -> Result<Token, LexerError> {
+        // Skip whitespace within f-strings (but preserve for content)
+        if self.string_lexer.is_in_fstring_expression() {
+            // We're in an expression within an f-string
+            match self.scanner.current_char() {
+                Some('}') => {
+                    // End of expression
+                    self.string_lexer.exit_fstring_expression();
+                    let location = self.scanner.current_location();
+                    self.scanner.advance();
+                    return Ok(Token::new(TokenType::RightBrace, location));
+                }
+                Some('{') => {
+                    // Nested braces
+                    self.string_lexer.enter_fstring_expression();
+                    let location = self.scanner.current_location();
+                    self.scanner.advance();
+                    return Ok(Token::new(TokenType::LeftBrace, location));
+                }
+                _ => {
+                    // Regular expression token - fall through to normal lexing
+                }
+            }
+        } else {
+            // We're in f-string content, not in an expression
+            match self.scanner.current_char() {
+                Some('{') => {
+                    // Start of expression
+                    self.string_lexer.enter_fstring_expression();
+                    let location = self.scanner.current_location();
+                    self.scanner.advance();
+                    return Ok(Token::new(TokenType::LeftBrace, location));
+                }
+                Some('"' | '\'') => {
+                    // Potential end of f-string
+                    if self.is_fstring_end() {
+                        let token = self.string_lexer.scan_fstring_end(&mut self.scanner)?;
+                        self.string_lexer.end_fstring();
+                        return Ok(token);
+                    }
+                    // Part of f-string content
+                    return self.string_lexer.scan_fstring_middle(&mut self.scanner);
+                }
+                Some(_) => {
+                    // F-string content
+                    return self.string_lexer.scan_fstring_middle(&mut self.scanner);
+                }
+                None => {
+                    return Err(LexerError::UnterminatedString);
+                }
+            }
+        }
+
+        // If we get here, we're in an expression - use normal lexing but skip whitespace differently
+        self.scanner.skip_expression_whitespace();
+
+        match self.scanner.current_char() {
+            None => Err(LexerError::UnterminatedString),
+            Some('\n') => self.handle_newline(),
+            Some('#') => Ok(self.scanner.scan_comment()),
+            Some(ch) if ch.is_ascii_digit() => self.scanner.scan_number(),
+            Some(ch) if is_string_start(ch) => StringLexer::scan_string(&mut self.scanner),
+            Some(ch) if Self::could_be_string_with_prefix(ch) => {
+                if self.scanner.is_string_prefix_followed_by_quote() {
+                    StringLexer::scan_string(&mut self.scanner)
+                } else {
+                    self.scanner.scan_identifier()
+                }
+            }
+            Some(ch) if is_id_start(ch) || ch == '_' || ch == '`' || ch == '$' => {
+                self.scanner.scan_identifier()
+            }
+            Some(_) => self.scanner.scan_operator(),
+        }
+    }
+
+    fn is_fstring_end(&mut self) -> bool {
+        // Check if the current quote character matches the f-string terminator
+        if let Some(mode) = self.string_lexer.current_fstring_mode() {
+            let (quote_char, is_triple) =
+                match mode {
+                    string_lexer::LexerMode::FStringSQ1
+                    | string_lexer::LexerMode::FStringSQ1Raw => ('\'', false),
+                    string_lexer::LexerMode::FStringDQ1
+                    | string_lexer::LexerMode::FStringDQ1Raw => ('"', false),
+                    string_lexer::LexerMode::FStringSQ3
+                    | string_lexer::LexerMode::FStringSQ3Raw => ('\'', true),
+                    string_lexer::LexerMode::FStringDQ3
+                    | string_lexer::LexerMode::FStringDQ3Raw => ('"', true),
+                    _ => return false,
+                };
+
+            if let Some(current_char) = self.scanner.current_char() {
+                if current_char == quote_char {
+                    if is_triple {
+                        // Check for triple quote
+                        let peek_next = self.scanner.peek_next_chars(2);
+                        peek_next.len() >= 2
+                            && peek_next.chars().nth(0) == Some(quote_char)
+                            && peek_next.chars().nth(1) == Some(quote_char)
+                    } else {
+                        true
+                    }
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
+
+    fn scan_string(&mut self) -> Result<Token, LexerError> {
+        // First, peek at the prefix without consuming it
+        let prefix = self.peek_string_prefix();
+
+        // Determine if it's an f-string
+        if prefix.to_lowercase().contains('f') {
+            let token = StringLexer::scan_string(&mut self.scanner)?;
+            // After creating the f-string start token, set up the state
+            if let TokenType::FString(FStringPart::Start(_)) = &token.token_type {
+                // We need to get the quote style to set up the mode properly
+                // Since scan_string already consumed the prefix and quote, we need to reconstruct the info
+                let quote_style = SharpyLexer::determine_quote_style_from_start_token(&token);
+                let is_triple = quote_style.len() == 3;
+                self.string_lexer
+                    .start_fstring(&prefix, &quote_style, is_triple);
+            }
+            Ok(token)
+        } else {
+            // Regular string - use static method
+            StringLexer::scan_string(&mut self.scanner)
+        }
+    }
+
+    fn peek_string_prefix(&mut self) -> String {
+        let mut prefix = String::new();
+
+        // Use peek_next_chars to look ahead without consuming
+        let lookahead = self.scanner.peek_next_chars(4); // Max reasonable prefix length
+
+        for ch in lookahead.chars() {
+            match ch.to_ascii_lowercase() {
+                'r' | 'u' | 'b' | 'f' => {
+                    prefix.push(ch);
+                }
+                _ => break,
+            }
+        }
+
+        prefix
+    }
+
+    fn determine_quote_style_from_start_token(token: &Token) -> String {
+        if let TokenType::FString(FStringPart::Start(lexeme)) = &token.token_type {
+            // Extract the quote style from the lexeme (e.g., f" -> ", f''' -> ''')
+            if lexeme.ends_with(r#"""""#) {
+                r#"""""#.to_string()
+            } else if lexeme.ends_with("'''") {
+                "'''".to_string()
+            } else if lexeme.ends_with('"') {
+                "\"".to_string()
+            } else if lexeme.ends_with('\'') {
+                "'".to_string()
+            } else {
+                "\"".to_string() // default
+            }
+        } else {
+            "\"".to_string() // default
+        }
     }
 }
 

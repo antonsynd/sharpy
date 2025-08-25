@@ -27,12 +27,8 @@ pub enum LexerMode {
 
 #[allow(clippy::struct_field_names)]
 pub struct StringLexer {
-    #[allow(dead_code)]
     mode_stack: Vec<LexerMode>,
-    #[allow(dead_code)]
-    brace_expression_stack: Vec<String>,
-    #[allow(dead_code)]
-    paren_bracket_stack: Vec<usize>,
+    brace_depth: usize,
 }
 
 impl StringLexer {
@@ -41,9 +37,222 @@ impl StringLexer {
     pub const fn new() -> Self {
         Self {
             mode_stack: vec![],
-            brace_expression_stack: vec![],
-            paren_bracket_stack: vec![],
+            brace_depth: 0,
         }
+    }
+
+    /// Check if we're currently in an f-string mode
+    #[must_use]
+    pub fn is_in_fstring(&self) -> bool {
+        self.mode_stack.iter().any(|mode| {
+            matches!(
+                mode,
+                LexerMode::FStringSQ1
+                    | LexerMode::FStringDQ1
+                    | LexerMode::FStringSQ3
+                    | LexerMode::FStringDQ3
+                    | LexerMode::FStringSQ1Raw
+                    | LexerMode::FStringDQ1Raw
+                    | LexerMode::FStringSQ3Raw
+                    | LexerMode::FStringDQ3Raw
+            )
+        })
+    }
+
+    /// Get the current f-string mode if we're in one
+    #[must_use]
+    pub fn current_fstring_mode(&self) -> Option<&LexerMode> {
+        self.mode_stack.iter().rev().find(|mode| {
+            matches!(
+                mode,
+                LexerMode::FStringSQ1
+                    | LexerMode::FStringDQ1
+                    | LexerMode::FStringSQ3
+                    | LexerMode::FStringDQ3
+                    | LexerMode::FStringSQ1Raw
+                    | LexerMode::FStringDQ1Raw
+                    | LexerMode::FStringSQ3Raw
+                    | LexerMode::FStringDQ3Raw
+            )
+        })
+    }
+
+    /// Check if we're currently in an expression within an f-string
+    #[must_use]
+    pub fn is_in_fstring_expression(&self) -> bool {
+        self.is_in_fstring() && self.brace_depth > 0
+    }
+
+    /// Start scanning an f-string and push the appropriate mode
+    pub fn start_fstring(&mut self, prefix: &str, quote_style: &str, is_triple: bool) {
+        let is_raw = prefix.to_lowercase().contains('r');
+        let mode = match (quote_style.chars().next(), is_triple, is_raw) {
+            (Some('\''), false, false) => LexerMode::FStringSQ1,
+            (Some('"'), false, false) => LexerMode::FStringDQ1,
+            (Some('\''), true, false) => LexerMode::FStringSQ3,
+            (Some('"'), true, false) => LexerMode::FStringDQ3,
+            (Some('\''), false, true) => LexerMode::FStringSQ1Raw,
+            (Some('"'), false, true) => LexerMode::FStringDQ1Raw,
+            (Some('\''), true, true) => LexerMode::FStringSQ3Raw,
+            (Some('"'), true, true) => LexerMode::FStringDQ3Raw,
+            _ => unreachable!(),
+        };
+        self.mode_stack.push(mode);
+        self.brace_depth = 0;
+    }
+
+    /// Handle entering an f-string expression (when we encounter '{')
+    pub const fn enter_fstring_expression(&mut self) {
+        self.brace_depth += 1;
+    }
+
+    /// Handle exiting an f-string expression (when we encounter '}')
+    pub const fn exit_fstring_expression(&mut self) {
+        if self.brace_depth > 0 {
+            self.brace_depth -= 1;
+        }
+    }
+
+    /// End the current f-string mode
+    pub fn end_fstring(&mut self) {
+        // Remove the f-string mode from the stack
+        if let Some(pos) = self.mode_stack.iter().rposition(|mode| {
+            matches!(
+                mode,
+                LexerMode::FStringSQ1
+                    | LexerMode::FStringDQ1
+                    | LexerMode::FStringSQ3
+                    | LexerMode::FStringDQ3
+                    | LexerMode::FStringSQ1Raw
+                    | LexerMode::FStringDQ1Raw
+                    | LexerMode::FStringSQ3Raw
+                    | LexerMode::FStringDQ3Raw
+            )
+        }) {
+            self.mode_stack.remove(pos);
+        }
+        self.brace_depth = 0;
+    }
+
+    /// Scan f-string content (text between expressions)
+    ///
+    /// # Errors
+    /// Errors if the f-string is unterminated or contains invalid escape
+    /// sequences.
+    pub fn scan_fstring_middle(&self, scanner: &mut Scanner) -> Result<Token, LexerError> {
+        let mut location = scanner.current_location();
+        let mut content = String::new();
+
+        // Get the quote character and style for the current f-string
+        let mode = self
+            .current_fstring_mode()
+            .ok_or(LexerError::UnexpectedCharacter('f'))?;
+        let (quote_char, is_triple, is_raw) = match mode {
+            LexerMode::FStringSQ1 => ('\'', false, false),
+            LexerMode::FStringDQ1 => ('"', false, false),
+            LexerMode::FStringSQ3 => ('\'', true, false),
+            LexerMode::FStringDQ3 => ('"', true, false),
+            LexerMode::FStringSQ1Raw => ('\'', false, true),
+            LexerMode::FStringDQ1Raw => ('"', false, true),
+            LexerMode::FStringSQ3Raw => ('\'', true, true),
+            LexerMode::FStringDQ3Raw => ('"', true, true),
+            _ => return Err(LexerError::UnexpectedCharacter('f')),
+        };
+
+        while let Some(ch) = scanner.current_char() {
+            // Check for end quote(s)
+            if ch == quote_char {
+                if is_triple {
+                    // Check for triple quote end
+                    if scanner.peek_char() == Some(quote_char) {
+                        let peek_next = scanner.peek_next_chars(2);
+                        if peek_next.len() >= 2 && peek_next.chars().nth(1) == Some(quote_char) {
+                            // Found end of f-string
+                            break;
+                        }
+                    }
+                    content.push(ch);
+                    scanner.advance();
+                } else {
+                    // Single quote - end of f-string
+                    break;
+                }
+            } else if ch == '{' {
+                // Start of expression - stop here
+                break;
+            } else if ch == '}' {
+                // Unmatched closing brace - error or escaped
+                if scanner.peek_char() == Some('}') {
+                    // Escaped closing brace {{
+                    content.push(ch);
+                    scanner.advance(); // consume first }
+                    scanner.advance(); // consume second }
+                } else {
+                    return Err(LexerError::UnexpectedCharacter(ch));
+                }
+            } else if ch == '\\' && !is_raw {
+                // Handle escape sequences
+                let escaped = Self::scan_escape_sequence(scanner)?;
+                content.push_str(&escaped);
+            } else if ch == '\n' && !is_triple {
+                return Err(LexerError::UnterminatedString);
+            } else {
+                content.push(ch);
+                scanner.advance();
+            }
+        }
+
+        location.end = scanner.position();
+        Ok(Token::new(
+            TokenType::FString(FStringPart::Middle(content)),
+            location,
+        ))
+    }
+
+    /// Scan the end of an f-string
+    ///
+    /// # Errors
+    /// Errors if the f-string is unterminated.
+    pub fn scan_fstring_end(&self, scanner: &mut Scanner) -> Result<Token, LexerError> {
+        let start_pos = scanner.position();
+        let mut location = scanner.current_location();
+
+        // Get the quote character and style for the current f-string
+        let mode = self
+            .current_fstring_mode()
+            .ok_or(LexerError::UnexpectedCharacter('f'))?;
+        let (quote_char, is_triple) = match mode {
+            LexerMode::FStringSQ1 | LexerMode::FStringSQ1Raw => ('\'', false),
+            LexerMode::FStringDQ1 | LexerMode::FStringDQ1Raw => ('"', false),
+            LexerMode::FStringSQ3 | LexerMode::FStringSQ3Raw => ('\'', true),
+            LexerMode::FStringDQ3 | LexerMode::FStringDQ3Raw => ('"', true),
+            _ => return Err(LexerError::UnexpectedCharacter('f')),
+        };
+
+        if is_triple {
+            // Consume triple quotes
+            for _ in 0..3 {
+                if scanner.current_char() == Some(quote_char) {
+                    scanner.advance();
+                } else {
+                    return Err(LexerError::UnterminatedString);
+                }
+            }
+        } else {
+            // Consume single quote
+            if scanner.current_char() == Some(quote_char) {
+                scanner.advance();
+            } else {
+                return Err(LexerError::UnterminatedString);
+            }
+        }
+
+        let lexeme = scanner.lexeme_from(start_pos);
+        location.end = scanner.position();
+        Ok(Token::new(
+            TokenType::FString(FStringPart::End(lexeme)),
+            location,
+        ))
     }
 
     /// Scans a string literal token.
@@ -59,7 +268,7 @@ impl StringLexer {
 
         // Determine if it's an f-string
         if prefix.to_lowercase().contains('f') {
-            return Self::scan_fstring_start(scanner, start_pos, &prefix, location);
+            return Self::scan_fstring_start(scanner, start_pos, location);
         }
 
         // Regular string or bytes
@@ -114,7 +323,6 @@ impl StringLexer {
     fn scan_fstring_start(
         scanner: &mut Scanner,
         start_pos: usize,
-        _prefix: &str,
         mut location: SourceLocation,
     ) -> Result<Token, LexerError> {
         let (_quote_style, _is_triple) = Self::scan_quote_style(scanner)?;
