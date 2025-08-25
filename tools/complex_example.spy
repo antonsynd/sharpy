@@ -1,0 +1,16 @@
+class Person:
+    def __init__(self, name: str, age: int):
+        self.name = name
+        self.age = age
+
+    def greet(self) -> str:
+        return f"Hello, I'm {self.name} and I'm {self.age} years old"
+
+for i in range(10):
+    if i % 2 == 0:
+        print(f"Even: {i}")
+    else:
+        print(f"Odd: {i}")
+
+result = lambda x, y: x ** 2 + y ** 2
+numbers = [1j + 2, 3.14, 42]

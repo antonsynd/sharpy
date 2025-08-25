@@ -1479,3 +1479,858 @@ fn test_sequential_string_literals() {
         ]
     );
 }
+
+#[test]
+fn test_class_definition() {
+    let code = "class Person:";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 4);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Class,
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 5
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "Person".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 7,
+                    start: 6,
+                    end: 12
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Colon,
+                location: SourceLocation {
+                    line: 1,
+                    column: 13,
+                    start: 12,
+                    end: 13
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 14,
+                    start: 13,
+                    end: 14
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_class_inheritance() {
+    let code = "class Student(Person):";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 7);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Class,
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 5
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "Student".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 7,
+                    start: 6,
+                    end: 13
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::LeftParen,
+                location: SourceLocation {
+                    line: 1,
+                    column: 14,
+                    start: 13,
+                    end: 14
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "Person".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 15,
+                    start: 14,
+                    end: 20
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::RightParen,
+                location: SourceLocation {
+                    line: 1,
+                    column: 21,
+                    start: 20,
+                    end: 21
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Colon,
+                location: SourceLocation {
+                    line: 1,
+                    column: 22,
+                    start: 21,
+                    end: 22
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 23,
+                    start: 22,
+                    end: 23
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_struct_definition() {
+    let code = "struct Point:";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 4);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Struct,
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 6
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "Point".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 8,
+                    start: 7,
+                    end: 12
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Colon,
+                location: SourceLocation {
+                    line: 1,
+                    column: 13,
+                    start: 12,
+                    end: 13
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 14,
+                    start: 13,
+                    end: 14
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_function_definition() {
+    let code = "def add(x: int, y: int) -> int:";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 15);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Def,
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 3
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "add".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 5,
+                    start: 4,
+                    end: 7
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::LeftParen,
+                location: SourceLocation {
+                    line: 1,
+                    column: 8,
+                    start: 7,
+                    end: 8
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "x".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 9,
+                    start: 8,
+                    end: 9
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Colon,
+                location: SourceLocation {
+                    line: 1,
+                    column: 10,
+                    start: 9,
+                    end: 10
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "int".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 12,
+                    start: 11,
+                    end: 14
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Comma,
+                location: SourceLocation {
+                    line: 1,
+                    column: 15,
+                    start: 14,
+                    end: 15
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "y".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 17,
+                    start: 16,
+                    end: 17
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Colon,
+                location: SourceLocation {
+                    line: 1,
+                    column: 18,
+                    start: 17,
+                    end: 18
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "int".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 20,
+                    start: 19,
+                    end: 22
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::RightParen,
+                location: SourceLocation {
+                    line: 1,
+                    column: 23,
+                    start: 22,
+                    end: 23
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::RArrow,
+                location: SourceLocation {
+                    line: 1,
+                    column: 25,
+                    start: 24,
+                    end: 26
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "int".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 28,
+                    start: 27,
+                    end: 30
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Colon,
+                location: SourceLocation {
+                    line: 1,
+                    column: 31,
+                    start: 30,
+                    end: 31
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 32,
+                    start: 31,
+                    end: 32
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_function_call() {
+    let code = "result = add(5, 10)";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 9);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "result".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 6
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Equal,
+                location: SourceLocation {
+                    line: 1,
+                    column: 8,
+                    start: 7,
+                    end: 8
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "add".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 10,
+                    start: 9,
+                    end: 12
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::LeftParen,
+                location: SourceLocation {
+                    line: 1,
+                    column: 13,
+                    start: 12,
+                    end: 13
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Number(NumberType::Integer("5".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 14,
+                    start: 13,
+                    end: 14
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Comma,
+                location: SourceLocation {
+                    line: 1,
+                    column: 15,
+                    start: 14,
+                    end: 15
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Number(NumberType::Integer("10".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 17,
+                    start: 16,
+                    end: 18
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::RightParen,
+                location: SourceLocation {
+                    line: 1,
+                    column: 19,
+                    start: 18,
+                    end: 19
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 20,
+                    start: 19,
+                    end: 20
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_if_statement() {
+    let code = "if x > 0:";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 6);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::If,
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 2
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "x".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 4,
+                    start: 3,
+                    end: 4
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Greater,
+                location: SourceLocation {
+                    line: 1,
+                    column: 6,
+                    start: 5,
+                    end: 6
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Number(NumberType::Integer("0".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 8,
+                    start: 7,
+                    end: 8
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Colon,
+                location: SourceLocation {
+                    line: 1,
+                    column: 9,
+                    start: 8,
+                    end: 9
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 10,
+                    start: 9,
+                    end: 10
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_for_loop() {
+    let code = "for item in items:";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 6);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::For,
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 3
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "item".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 5,
+                    start: 4,
+                    end: 8
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::In,
+                location: SourceLocation {
+                    line: 1,
+                    column: 10,
+                    start: 9,
+                    end: 11
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "items".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 13,
+                    start: 12,
+                    end: 17
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Colon,
+                location: SourceLocation {
+                    line: 1,
+                    column: 18,
+                    start: 17,
+                    end: 18
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 19,
+                    start: 18,
+                    end: 19
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_while_loop() {
+    let code = "while condition:";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 4);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::While,
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 5
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "condition".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 7,
+                    start: 6,
+                    end: 15
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Colon,
+                location: SourceLocation {
+                    line: 1,
+                    column: 16,
+                    start: 15,
+                    end: 16
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 17,
+                    start: 16,
+                    end: 17
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_lambda_expression() {
+    let code = "lambda x, y: x + y";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 9);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Lambda,
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 6
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "x".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 8,
+                    start: 7,
+                    end: 8
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Comma,
+                location: SourceLocation {
+                    line: 1,
+                    column: 9,
+                    start: 8,
+                    end: 9
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "y".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 11,
+                    start: 10,
+                    end: 11
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Colon,
+                location: SourceLocation {
+                    line: 1,
+                    column: 12,
+                    start: 11,
+                    end: 12
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "x".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 14,
+                    start: 13,
+                    end: 14
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Plus,
+                location: SourceLocation {
+                    line: 1,
+                    column: 16,
+                    start: 15,
+                    end: 16
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "y".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 18,
+                    start: 17,
+                    end: 18
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 19,
+                    start: 18,
+                    end: 19
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
