@@ -3,12 +3,8 @@
 This page provides an overview of the Sharpy language.
 
 If you know Python, then a lot of Sharpy code will look familiar. However, Sharpy
-incorporates features like static type checking, memory safety, next-generation
-compiler technologies, and more. As such, Sharpy also has a lot in common with
-languages like C++ and Rust.
-
-If you prefer to learn by doing, follow the [Get started with
-Sharpy](/sharpy/manual/get-started) tutorial.
+incorporates features like static type checking, making it more aligned with C#,
+which it is interoperable with on .NET.
 
 On this page, we'll introduce the essential Sharpy syntax, so you can start
 coding quickly and understand other Sharpy code you encounter. Subsequent
@@ -45,31 +41,13 @@ def main():
     print(y)
 ```
 
-You can also _explicitly_ declare variables with the `var` keyword:
-
-```sharpy
-var x = 10
-```
-
-When declaring a variable with `var`, you can also declare a variable type, with
-or without an assignment:
-
-
-```sharpy
-def main():
-    var x: Int = 10
-    var sum: Int
-    sum = x + x
-```
-
-Both implicitly declared and explicitly declared variables are statically typed:
-that is, the type is set at compile time, and doesn't change at runtime.
-If you don't specify a type, Sharpy uses the type of the first value assigned to
-the variable.
+All variables are statically typed: that is, the type is set at compile time,
+and doesn't change at runtime. If you don't specify a type, Sharpy uses the
+type of the first value assigned to the variable.
 
 ```sharpy
 x = 10
-x = "Foo" # Error: Cannot convert "strLiteral" value to "Int"
+x = "Foo"  # Error: Cannot convert "str" value to "int"
 ```
 
 For more details, see the page about
@@ -87,8 +65,9 @@ def loop():
             print(x)
 ```
 
-You can use any number of spaces or tabs for your indentation (we prefer 4
-spaces).
+Unlike Python, you must use spaces for your indentation; tabs are not allowed.
+However, you can use any number of spaces for your indentation levels, though
+we prefer 4.
 
 All code statements in Sharpy end with a newline. However, statements can span
 multiple lines if you indent the following lines. For example, this long string
@@ -114,16 +93,15 @@ For more information on loops and conditional statements, see
 
 ## Functions
 
-You can define a Sharpy function using either the `def` or `fn` keyword. For
-example, the following uses the `def` keyword to define a function named
-`greet` that requires a single `str` argument and returns a `str`:
+You can define a Sharpy function using the `def` keyword. For example, the
+following uses the `def` keyword to define a function named `greet` that
+requires a single `str` argument and returns a `str`:
 
 ```sharpy
 def greet(name: str) -> str:
     return "Hello, " + name + "!"
 ```
 
-Where `def` and `fn` differ is error handling and argument mutability defaults.
 Refer to the [Functions](/sharpy/manual/functions) page for more details on
 defining and calling functions.
 
@@ -138,7 +116,7 @@ You can create a one-line comment using the hash `#` symbol:
 Comments may also follow some code:
 
 ```sharpy
-var message = "Hello, World!" # This is also a valid comment
+var message = "Hello, World!"  # This is also a valid comment
 ```
 
 API documentation comments are enclosed in triple quotes. For example:
@@ -179,14 +157,14 @@ For example, here's a basic struct:
 
 ```sharpy
 struct MyPair(Copyable):
-    var first: Int
-    var second: Int
+    first: int
+    second: int
 
-    fn __init__(out self, first: Int, second: Int):
+    def __init__(self, first: int, second: int):
         self.first = first
         self.second = second
 
-    fn __copyinit__(out self, existing: Self):
+    def __copyinit__(self, existing: MyPair):
         self.first = existing.first
         self.second = existing.second
 
@@ -198,13 +176,9 @@ And here's how you can use it:
 
 ```sharpy
 def use_mypair():
-    var mine = MyPair(2, 4)
+    mine = MyPair(2, 4)
     mine.dump()
 ```
-
-Note that some functions are declared with `fn` function, while the `dump()`
-function is declared with `def`. In general, you can use either form in a
-struct.
 
 The `MyPair` struct contains two special methods, `__init__()`, the constructor,
 and `__copyinit__()`, the copy constructor. _Lifecycle methods_ like this
@@ -231,11 +205,12 @@ For more details, see the page about
 
 ### Protocols
 
-A protocol is like a template of characteristics for a struct. If you want to
-create a struct with the characteristics defined in a protocol, you must implement
-each characteristic (such as each method). Each characteristic in a protocol is a
-"requirement" for the struct, and when your struct implements all of the
-requirements, it's said to "conform" to the protocol.
+A protocol is like a template of characteristics for a class or struct. If you
+want to create a class or struct with the characteristics defined in a
+protocol, you must implement each characteristic (such as each method). Each
+characteristic in a protocol is a "requirement" for the class or struct, and
+when your class or struct implements all of the requirements, it's said to
+"conform" to the protocol.
 
 Using protocols allows you to write generic functions that can accept any type
 that conforms to a protocol, rather than accept only specific types.
@@ -244,7 +219,7 @@ For example, here's how you can create a protocol:
 
 ```sharpy
 protocol SomeProtocol:
-    fn required_method(self, x: Int): ...
+    def required_method(self, x: int): ...
 ```
 
 The three dots following the method signature are Sharpy syntax indicating that
@@ -255,7 +230,7 @@ Here's a struct that conforms to `SomeProtocol`:
 ```sharpy
 @fieldwise_init
 struct SomeStruct(SomeProtocol):
-    fn required_method(self, x: Int):
+    def required_method(self, x: Int):
         print("hello protocols", x)
 ```
 
@@ -263,21 +238,21 @@ Then, here's a function that uses the protocol as an argument type (instead of t
 struct type):
 
 ```sharpy
-fn fun_with_protocols[T: SomeProtocol](x: T):
+def fun_with_protocols[T: SomeProtocol](x: T):
     x.required_method(42)
 
-fn use_protocol_function():
+def use_protocol_function():
     var thing = SomeStruct()
     fun_with_protocols(thing)
 ```
 
 You'll see protocols used in a lot of APIs provided by Sharpy's standard library. For
-example, Sharpy's collection types like `List` and `Dict` can store any type that
+example, Sharpy's collection types like `list` and `dict` can store any type that
 conforms to the `Copyable` and `Movable` protocols. You can specify the type when
 you create a collection:
 
 ```sharpy
-my_list = List[Float64]()
+my_list = list[float]()
 ```
 
 :::note
