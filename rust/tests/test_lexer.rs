@@ -2357,16 +2357,12 @@ fn test_fstring_simple() {
                 channel: Channel::Default
             },
             Token {
-                token_type: TokenType::Name(NameType {
-                    name: "hello".to_string(),
-                    is_literal: false,
-                    access_modifier: AccessModifier::Public
-                }),
+                token_type: TokenType::FString(FStringPart::Middle("hello ".to_string())),
                 location: SourceLocation {
                     line: 1,
                     column: 3,
                     start: 2,
-                    end: 7
+                    end: 8
                 },
                 channel: Channel::Default
             },
@@ -2429,6 +2425,101 @@ fn test_fstring_simple() {
 }
 
 #[test]
+fn test_fstring_with_nested_string() {
+    let code = r#"f"text {'inner'} more""#;
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 8);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::FString(FStringPart::Start("f\"".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 2
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::FString(FStringPart::Middle("text ".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 3,
+                    start: 2,
+                    end: 7
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::LeftBrace,
+                location: SourceLocation {
+                    line: 1,
+                    column: 8,
+                    start: 7,
+                    end: 8
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::String(StringType::Regular("inner".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 9,
+                    start: 8,
+                    end: 15
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::RightBrace,
+                location: SourceLocation {
+                    line: 1,
+                    column: 16,
+                    start: 15,
+                    end: 16
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::FString(FStringPart::Middle(" more".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 17,
+                    start: 16,
+                    end: 21
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::FString(FStringPart::End("\"".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 22,
+                    start: 21,
+                    end: 22
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 23,
+                    start: 22,
+                    end: 23
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
 fn test_fstring_single_quotes() {
     let code = r#"f'hello {world}'"#;
     let mut lexer = SharpyLexer::new(code);
@@ -2449,16 +2540,12 @@ fn test_fstring_single_quotes() {
                 channel: Channel::Default
             },
             Token {
-                token_type: TokenType::Name(NameType {
-                    name: "hello".to_string(),
-                    is_literal: false,
-                    access_modifier: AccessModifier::Public
-                }),
+                token_type: TokenType::FString(FStringPart::Middle("hello ".to_string())),
                 location: SourceLocation {
                     line: 1,
                     column: 3,
                     start: 2,
-                    end: 7
+                    end: 8
                 },
                 channel: Channel::Default
             },
@@ -2527,12 +2614,12 @@ fn test_fstring_no_expressions() {
 
     let result = lexer.tokenize_all();
     assert!(result.is_ok());
-    assert_eq!(result.as_ref().unwrap().len(), 5);
+    assert_eq!(result.as_ref().unwrap().len(), 4);
     assert_eq!(
         result.unwrap(),
         vec![
             Token {
-                token_type: TokenType::FString(FStringPart::Start("f'".to_string())),
+                token_type: TokenType::FString(FStringPart::Start("f\"".to_string())),
                 location: SourceLocation {
                     line: 1,
                     column: 1,
@@ -2542,11 +2629,7 @@ fn test_fstring_no_expressions() {
                 channel: Channel::Default
             },
             Token {
-                token_type: TokenType::Name(NameType {
-                    name: "just text".to_string(),
-                    is_literal: false,
-                    access_modifier: AccessModifier::Public
-                }),
+                token_type: TokenType::FString(FStringPart::Middle("just text".to_string())),
                 location: SourceLocation {
                     line: 1,
                     column: 3,
@@ -2556,7 +2639,7 @@ fn test_fstring_no_expressions() {
                 channel: Channel::Default
             },
             Token {
-                token_type: TokenType::FString(FStringPart::End("'".to_string())),
+                token_type: TokenType::FString(FStringPart::End("\"".to_string())),
                 location: SourceLocation {
                     line: 1,
                     column: 12,

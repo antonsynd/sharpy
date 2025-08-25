@@ -84,8 +84,13 @@ impl<'a> SharpyLexer<'a> {
     fn scan_next_token(&mut self) -> Result<Token, LexerError> {
         // Handle f-string continuation if we're in f-string mode
         if self.string_lexer.is_in_fstring() {
+            println!("In f-string mode, calling handle_fstring_continuation");
             return self.handle_fstring_continuation();
         }
+        println!(
+            "Not in f-string mode (current_char={:?})",
+            self.scanner.current_char()
+        );
 
         // Skip whitespace at the beginning of a line for indentation
         if self.at_line_start {
@@ -128,9 +133,12 @@ impl<'a> SharpyLexer<'a> {
             Some(ch) if is_string_start(ch) => self.scan_string(),
             Some(ch) if Self::could_be_string_with_prefix(ch) => {
                 // Check if it's actually a string with prefix or just an identifier
+                println!("Found potential string prefix character: {ch:?}");
                 if self.scanner.is_string_prefix_followed_by_quote() {
+                    println!("Confirmed string with prefix, calling scan_string");
                     self.scan_string()
                 } else {
+                    println!("Not followed by quote, treating as identifier");
                     self.scanner.scan_identifier()
                 }
             }
@@ -186,6 +194,12 @@ impl<'a> SharpyLexer<'a> {
     }
 
     fn handle_fstring_continuation(&mut self) -> Result<Token, LexerError> {
+        println!(
+            "handle_fstring_continuation: in_expression={}, current_char={:?}",
+            self.string_lexer.is_in_fstring_expression(),
+            self.scanner.current_char()
+        );
+
         // Skip whitespace within f-strings (but preserve for content)
         if self.string_lexer.is_in_fstring_expression() {
             // We're in an expression within an f-string
@@ -220,11 +234,14 @@ impl<'a> SharpyLexer<'a> {
                 }
                 Some('"' | '\'') => {
                     // Potential end of f-string
+                    println!("Found quote character: {:?}", self.scanner.current_char());
                     if self.is_fstring_end() {
+                        println!("Detected f-string end, scanning end token");
                         let token = self.string_lexer.scan_fstring_end(&mut self.scanner)?;
                         self.string_lexer.end_fstring();
                         return Ok(token);
                     }
+                    println!("Not f-string end, scanning as middle content");
                     // Part of f-string content
                     return self.string_lexer.scan_fstring_middle(&mut self.scanner);
                 }
@@ -305,15 +322,24 @@ impl<'a> SharpyLexer<'a> {
 
         // Determine if it's an f-string
         if prefix.to_lowercase().contains('f') {
+            println!("Detected f-string prefix: '{prefix}'");
             let token = StringLexer::scan_string(&mut self.scanner)?;
+            println!("F-string token created: {token:?}");
             // After creating the f-string start token, set up the state
             if let TokenType::FString(FStringPart::Start(_)) = &token.token_type {
                 // We need to get the quote style to set up the mode properly
                 // Since scan_string already consumed the prefix and quote, we need to reconstruct the info
                 let quote_style = SharpyLexer::determine_quote_style_from_start_token(&token);
                 let is_triple = quote_style.len() == 3;
+                println!(
+                    "Setting up f-string state: prefix='{prefix}', quote_style='{quote_style}', is_triple={is_triple}"
+                );
                 self.string_lexer
                     .start_fstring(&prefix, &quote_style, is_triple);
+                println!(
+                    "F-string state setup complete. In f-string: {}",
+                    self.string_lexer.is_in_fstring()
+                );
             }
             Ok(token)
         } else {
@@ -325,8 +351,28 @@ impl<'a> SharpyLexer<'a> {
     fn peek_string_prefix(&mut self) -> String {
         let mut prefix = String::new();
 
-        // Use peek_next_chars to look ahead without consuming
-        let lookahead = self.scanner.peek_next_chars(4); // Max reasonable prefix length
+        // First, check the current character
+        if let Some(current_ch) = self.scanner.current_char() {
+            match current_ch.to_ascii_lowercase() {
+                'r' | 'u' | 'b' | 'f' => {
+                    prefix.push(current_ch);
+                }
+                _ => {
+                    println!(
+                        "peek_string_prefix: current char '{current_ch}' is not a prefix"
+                    );
+                    return prefix;
+                }
+            }
+        }
+
+        // Then look ahead for more prefix characters
+        let lookahead = self.scanner.peek_next_chars(3); // Look ahead for 3 more characters
+        println!(
+            "peek_string_prefix: current='{}', lookahead='{}'",
+            self.scanner.current_char().unwrap_or('?'),
+            lookahead
+        );
 
         for ch in lookahead.chars() {
             match ch.to_ascii_lowercase() {
@@ -337,9 +383,9 @@ impl<'a> SharpyLexer<'a> {
             }
         }
 
+        println!("peek_string_prefix: returning '{prefix}'");
         prefix
     }
-
     fn determine_quote_style_from_start_token(token: &Token) -> String {
         if let TokenType::FString(FStringPart::Start(lexeme)) = &token.token_type {
             // Extract the quote style from the lexeme (e.g., f" -> ", f''' -> ''')
