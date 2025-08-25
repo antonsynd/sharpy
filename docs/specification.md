@@ -343,14 +343,11 @@ conversion to the desired case. If there is an existing case variant,
 the compiler throws an exception telling the user to resolve the
 ambiguity.
 
-Any symbol in Sharpy can be prefixed with `\`` to tell the compiler
+Any symbol in Sharpy can be surrounded with `\`` to tell the compiler
 to not transform the name during resolution. This is equivalent to
 C#'s `@`, which indicates that a symbol name should be resolved as it
-is, even if it is a keyword. Sharpy `\`` can also be used for the
+is, even if it is a keyword. Sharpy's paired `\`` can also be used for the
 purpose of using keywords as identifiers.
-
-Note that a closing `\`` is allowed, but not required, to fit the behavior
-of editors to close certain quotation-like characters.
 
 ```Python
 # Exposed in ABI as AddSomething()
@@ -366,7 +363,7 @@ new_hash_set()
 ```
 
 ```Python
-from foo_bar.`abc import *
+from foo_bar.`abc` import *
 
 # resolves to FooBar.abc.new_hash_set()
 new_hash_set()

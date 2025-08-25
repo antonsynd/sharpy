@@ -358,9 +358,7 @@ impl<'a> SharpyLexer<'a> {
                     prefix.push(current_ch);
                 }
                 _ => {
-                    println!(
-                        "peek_string_prefix: current char '{current_ch}' is not a prefix"
-                    );
+                    println!("peek_string_prefix: current char '{current_ch}' is not a prefix");
                     return prefix;
                 }
             }

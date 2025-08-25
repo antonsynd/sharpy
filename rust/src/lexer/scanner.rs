@@ -171,10 +171,23 @@ impl<'a> Scanner<'a> {
             }
         }
 
+        // If literal flag was set, check for closing backtick
+        let is_literal = if literal_flag {
+            if self.current_char == Some('`') {
+                self.advance(); // consume closing backtick
+                true
+            } else {
+                // No closing backtick found - treat as regular identifier
+                false
+            }
+        } else {
+            false
+        };
+
         let location = self.location_from_start(start_line, start_col, start_pos);
 
         // Determine token type
-        let token_type = if literal_flag {
+        let token_type = if is_literal {
             // Literal identifiers are never keywords
             TokenType::Name(NameType {
                 name: identifier,
@@ -235,7 +248,7 @@ impl<'a> Scanner<'a> {
 
     fn scan_literal_flag(&mut self) -> bool {
         if self.current_char == Some('`') {
-            self.advance();
+            self.advance(); // consume opening backtick
             true
         } else {
             false

@@ -82,7 +82,7 @@ fn test_longer_name() {
 
 #[test]
 fn test_literal_name() {
-    let code = "`xyz";
+    let code = "`xyz`";
     let mut lexer = SharpyLexer::new(code);
 
     let result = lexer.tokenize_all();
@@ -101,7 +101,7 @@ fn test_literal_name() {
                     line: 1,
                     column: 1,
                     start: 0,
-                    end: 4
+                    end: 5
                 },
                 channel: Channel::Default
             },
@@ -109,9 +109,9 @@ fn test_literal_name() {
                 token_type: TokenType::Eof,
                 location: SourceLocation {
                     line: 1,
-                    column: 5,
-                    start: 4,
-                    end: 5
+                    column: 6,
+                    start: 5,
+                    end: 6
                 },
                 channel: Channel::Default
             }
@@ -277,7 +277,7 @@ fn test_file_name() {
 
 #[test]
 fn test_complex_name() {
-    let code = "__`__xyz";
+    let code = "__`__xyz`";
     let mut lexer = SharpyLexer::new(code);
 
     let result = lexer.tokenize_all();
@@ -296,7 +296,7 @@ fn test_complex_name() {
                     line: 1,
                     column: 1,
                     start: 0,
-                    end: 8
+                    end: 9
                 },
                 channel: Channel::Default
             },
@@ -304,9 +304,49 @@ fn test_complex_name() {
                 token_type: TokenType::Eof,
                 location: SourceLocation {
                     line: 1,
-                    column: 9,
-                    start: 8,
-                    end: 9
+                    column: 10,
+                    start: 9,
+                    end: 10
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_incomplete_literal_name() {
+    // Test that a backtick without closing backtick is treated as regular identifier
+    let code = "`xyz";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 2);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Name(NameType {
+                    name: "xyz".to_string(),
+                    is_literal: false,
+                    access_modifier: AccessModifier::Public
+                }),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 4
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 5,
+                    start: 4,
+                    end: 5
                 },
                 channel: Channel::Default
             }
