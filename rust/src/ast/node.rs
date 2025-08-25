@@ -217,7 +217,7 @@ impl Node {
     }
 }
 
-/// Node variants
+// Node variants
 
 /// A type alias, e.g. `type SomeInteger = int`.
 #[derive(Debug, Clone, PartialEq, Eq)]

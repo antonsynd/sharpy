@@ -120,7 +120,7 @@ impl StringLexer {
         let (_quote_style, _is_triple) = Self::scan_quote_style(scanner)?;
 
         let lexeme = scanner.lexeme_from(start_pos);
-        location.end = lexeme.len() + location.start;
+        location.end = scanner.position();
         let token = Token::new(TokenType::FString(FStringPart::Start(lexeme)), location);
 
         Ok(token)

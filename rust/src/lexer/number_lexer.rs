@@ -61,7 +61,7 @@ impl NumberLexer {
         }
 
         let lexeme = scanner.lexeme_from(start_pos);
-        location.end = lexeme.len() + location.start;
+        location.end = scanner.position();
         let token = Token::new(TokenType::Number(NumberType::Integer(lexeme)), location);
         Ok(token)
     }
@@ -95,7 +95,7 @@ impl NumberLexer {
         }
 
         let lexeme = scanner.lexeme_from(start_pos);
-        location.end = lexeme.len() + location.start;
+        location.end = scanner.position();
         let token = Token::new(TokenType::Number(NumberType::Integer(lexeme)), location);
         Ok(token)
     }
@@ -129,7 +129,7 @@ impl NumberLexer {
         }
 
         let lexeme = scanner.lexeme_from(start_pos);
-        location.end = lexeme.len() + location.start;
+        location.end = scanner.position();
         let token = Token::new(TokenType::Number(NumberType::Integer(lexeme)), location);
         Ok(token)
     }
@@ -202,12 +202,17 @@ impl NumberLexer {
         }
 
         // Check for imaginary suffix
-        let is_imaginary = scanner
-            .current_char()
-            .is_some_and(|ch| ch == 'j' || ch == 'J');
+        let is_imaginary = if let Some(ch) = scanner.current_char()
+            && (ch == 'j' || ch == 'J')
+        {
+            scanner.advance(); // Consume the 'j' or 'J'
+            true
+        } else {
+            false
+        };
 
         let lexeme = scanner.lexeme_from(start_pos);
-        location.end = lexeme.len() + location.start;
+        location.end = scanner.position();
 
         let number_type = if is_imaginary {
             NumberType::Imaginary(lexeme)

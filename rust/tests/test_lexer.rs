@@ -712,17 +712,197 @@ fn test_imaginary() {
 
     let result = lexer.tokenize_all();
     assert!(result.is_ok());
-    assert_eq!(result.as_ref().unwrap().len(), 5);
+    assert_eq!(result.as_ref().unwrap().len(), 4);
     assert_eq!(
         result.unwrap(),
         vec![
             Token {
-                token_type: TokenType::None,
+                token_type: TokenType::Number(NumberType::Imaginary("1j".to_string())),
                 location: SourceLocation {
                     line: 1,
                     column: 1,
                     start: 0,
-                    end: 1
+                    end: 2
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Plus,
+                location: SourceLocation {
+                    line: 1,
+                    column: 3,
+                    start: 2,
+                    end: 3
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Number(NumberType::Integer("23".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 4,
+                    start: 3,
+                    end: 5
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 6,
+                    start: 5,
+                    end: 6
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_imaginary_complex_expression() {
+    let code = "3j-4";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 4);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Number(NumberType::Imaginary("3j".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 2
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Minus,
+                location: SourceLocation {
+                    line: 1,
+                    column: 3,
+                    start: 2,
+                    end: 3
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Number(NumberType::Integer("4".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 4,
+                    start: 3,
+                    end: 4
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 5,
+                    start: 4,
+                    end: 5
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_imaginary_float() {
+    let code = "3.14j";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 2);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Number(NumberType::Imaginary("3.14j".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 5
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 6,
+                    start: 5,
+                    end: 6
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_imaginary_capital_j() {
+    let code = "2J";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 2);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Number(NumberType::Imaginary("2J".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 2
+                },
+                channel: Channel::Default
+            },
+            Token {
+                token_type: TokenType::Eof,
+                location: SourceLocation {
+                    line: 1,
+                    column: 3,
+                    start: 2,
+                    end: 3
+                },
+                channel: Channel::Default
+            }
+        ]
+    );
+}
+
+#[test]
+fn test_imaginary_scientific_notation() {
+    let code = "1.5e2j";
+    let mut lexer = SharpyLexer::new(code);
+
+    let result = lexer.tokenize_all();
+    assert!(result.is_ok());
+    assert_eq!(result.as_ref().unwrap().len(), 2);
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            Token {
+                token_type: TokenType::Number(NumberType::Imaginary("1.5e2j".to_string())),
+                location: SourceLocation {
+                    line: 1,
+                    column: 1,
+                    start: 0,
+                    end: 6
                 },
                 channel: Channel::Default
             },
