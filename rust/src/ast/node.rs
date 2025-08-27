@@ -90,6 +90,7 @@ pub enum BoolOp {
     Or,  // x or y
 }
 
+/// Constant literals.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ConstantValue {
     None,
@@ -102,8 +103,6 @@ pub enum ConstantValue {
     Ellipsis,
 }
 
-/// Main AST node enum - this is the key difference from Python's class hierarchy
-/// In Rust, we use enums with variants instead of inheritance
 #[derive(Debug, Clone, PartialEq)]
 pub enum Node {
     // Root
@@ -318,6 +317,7 @@ pub struct AsyncWith {
     pub source: Option<NodeSource>,
 }
 
+/// TODO: What is this, is this a decorator?
 #[derive(Debug, Clone, PartialEq)]
 pub struct Attribute {
     pub value: Box<Node>,
@@ -365,23 +365,27 @@ pub struct Break {
     pub source: Option<NodeSource>,
 }
 
+/// A function call expression, e.g. `foo(bar)`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Call {
-    pub func: Box<Node>,
-    pub args: Vec<Node>,
-    pub keywords: Vec<Keyword>,
+    /// Typically a function name, but it can be an expression that returns a
+    /// function that is immediately invoked.
+    pub function: Box<Node>,
+
+    /// These are the positional arguments passed to the function.
+    pub positional_args: Vec<Node>,
+
+    /// These are the keyword arguments passed to the function.
+    pub keyword_args: Vec<Node>,
     pub source: Option<NodeSource>,
 }
 
+/// A class definition, e.g. `class Foo:`
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassDef {
     pub name: String,
-    pub base: Option<Box<Node>>,
-    pub protocols: Vec<Node>,
-    pub members: Vec<Node>,
-    pub properties: Vec<Node>,
-    pub events: Vec<Node>,
-    pub functions: Vec<Node>,
+    pub bases: Vec<Node>,
+    pub body: Vec<Node>,
     pub source: Option<NodeSource>,
 }
 
@@ -441,8 +445,8 @@ pub struct DictComp {
 #[derive(Debug, Clone, PartialEq)]
 pub struct EventDef {
     pub name: String,
-    pub type_: Box<Node>,
-    pub default: Box<Node>,
+    pub type_: Option<Box<Node>>,
+    pub default: Option<Box<Node>>,
     pub source: Option<NodeSource>,
 }
 
@@ -578,8 +582,8 @@ pub struct MatchCase {
 #[derive(Debug, Clone, PartialEq)]
 pub struct MemberDef {
     pub name: String,
-    pub type_: Box<Node>,
-    pub default: Box<Node>,
+    pub type_: Option<Box<Node>>,
+    pub default: Option<Box<Node>>,
     pub source: Option<NodeSource>,
 }
 
@@ -623,8 +627,7 @@ pub struct PropertyDef {
 pub struct ProtocolDef {
     pub name: String,
     pub bases: Vec<Node>,
-    pub properties: Vec<Node>,
-    pub functions: Vec<Node>,
+    pub body: Vec<Node>,
     pub source: Option<NodeSource>,
 }
 
@@ -674,11 +677,8 @@ pub struct Starred {
 #[derive(Debug, Clone, PartialEq)]
 pub struct StructDef {
     pub name: String,
-    pub protocols: Vec<Node>,
-    pub members: Vec<Node>,
-    pub properties: Vec<Node>,
-    pub events: Vec<Node>,
-    pub functions: Vec<Node>,
+    pub bases: Vec<Node>,
+    pub body: Vec<Node>,
     pub source: Option<NodeSource>,
 }
 

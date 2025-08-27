@@ -14,7 +14,7 @@ pub trait Visitor {
     fn walk(&mut self, node: &Node) {
         match node {
             Node::Assign(n) => self.visit_assign(n),
-            Node::BinOp(n) => self.visit_binop(n),
+            Node::BinaryOp(n) => self.visit_binop(n),
             Node::Call(n) => self.visit_call(n),
             Node::ClassDef(n) => self.visit_class_def(n),
             Node::Constant(n) => self.visit_constant(n),
@@ -31,7 +31,7 @@ pub trait Visitor {
     fn walk_mut(&mut self, node: &mut Node) {
         match node {
             Node::Assign(n) => self.visit_assign_mut(n),
-            Node::BinOp(n) => self.visit_binop_mut(n),
+            Node::BinaryOp(n) => self.visit_binop_mut(n),
             Node::Call(n) => self.visit_call_mut(n),
             Node::ClassDef(n) => self.visit_class_def_mut(n),
             Node::Constant(n) => self.visit_constant_mut(n),
@@ -79,33 +79,27 @@ pub trait Visitor {
 
     fn visit_name_mut(&mut self, _node: &mut crate::ast::node::Name) {}
 
-    fn visit_binop(&mut self, node: &crate::ast::node::BinOp) {
+    fn visit_binop(&mut self, node: &crate::ast::node::BinaryOp_) {
         self.visit(&node.left);
         self.visit(&node.right);
     }
 
-    fn visit_binop_mut(&mut self, node: &mut crate::ast::node::BinOp) {
+    fn visit_binop_mut(&mut self, node: &mut crate::ast::node::BinaryOp_) {
         self.visit_mut(&mut node.left);
         self.visit_mut(&mut node.right);
     }
 
     fn visit_call(&mut self, node: &crate::ast::node::Call) {
-        self.visit(&node.func);
-        for arg in &node.args {
+        self.visit(&node.function);
+        for arg in &node.positional_args {
             self.visit(arg);
-        }
-        for keyword in &node.keywords {
-            self.visit(&keyword.value);
         }
     }
 
     fn visit_call_mut(&mut self, node: &mut crate::ast::node::Call) {
-        self.visit_mut(&mut node.func);
-        for arg in &mut node.args {
+        self.visit_mut(&mut node.function);
+        for arg in &mut node.positional_args {
             self.visit_mut(arg);
-        }
-        for keyword in &mut node.keywords {
-            self.visit_mut(&mut keyword.value);
         }
     }
 
@@ -154,13 +148,13 @@ pub trait Visitor {
     }
 
     fn visit_class_def(&mut self, node: &crate::ast::node::ClassDef) {
-        if let Some(base) = &node.base {
+        if let Some(base) = &node.bases.first() {
             self.visit(base);
         }
     }
 
     fn visit_class_def_mut(&mut self, node: &mut crate::ast::node::ClassDef) {
-        if let Some(base) = &mut node.base {
+        if let Some(base) = &mut node.bases.first_mut() {
             self.visit_mut(base);
         }
     }
