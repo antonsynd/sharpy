@@ -123,7 +123,7 @@ pub enum Node {
     // Expressions
     BoolOp(BoolOp_),
     NamedExpr(NamedExpr),
-    BinOp(BinOp),
+    BinaryOp(BinaryOp_),
     UnaryOp(UnaryOp_),
     Lambda(Lambda),
     IfExp(IfExp),
@@ -343,7 +343,7 @@ pub struct Await {
 
 /// A binary operation, e.g. `x + y`.
 #[derive(Debug, Clone, PartialEq)]
-pub struct BinOp {
+pub struct BinaryOp_ {
     pub left: Box<Node>,
     pub op: BinaryOp,
     pub right: Box<Node>,
@@ -443,6 +443,7 @@ pub struct EventDef {
     pub name: String,
     pub type_: Box<Node>,
     pub default: Box<Node>,
+    pub source: Option<NodeSource>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -579,6 +580,7 @@ pub struct MemberDef {
     pub name: String,
     pub type_: Box<Node>,
     pub default: Box<Node>,
+    pub source: Option<NodeSource>,
 }
 
 /// A module.
@@ -614,6 +616,7 @@ pub struct PropertyDef {
     pub default: Box<Node>,
     pub getter: Option<Box<Node>>,
     pub setter: Option<Box<Node>>,
+    pub source: Option<NodeSource>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
