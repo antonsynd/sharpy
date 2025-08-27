@@ -219,38 +219,51 @@ impl Node {
 
 // Node variants
 
-/// A type alias, e.g. `type SomeInteger = int`.
+/// An alias used in imports, e.g. `import x as y`.
+/// TODO: Is this correct?
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Alias {
+    /// The name of the alias.
     pub name: String,
-    pub asname: Option<String>,
+
+    /// The value of the alias.
+    pub as_name: Option<String>,
+
     pub source: Option<NodeSource>,
 }
 
+/// An argument in a function or lambda definition. An argument has a name,
+/// typically has a type, and may have a default value.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Arg {
-    pub arg: String,
-    pub annotation: Option<Box<Node>>,
-    pub type_comment: Option<String>,
+    pub name: String,
+
+    /// `self` arguments and arguments in lambdas where static type inference
+    /// can occur can be untyped. Others must be typed.
+    pub type_: Option<Box<Node>>,
+
+    /// The default value, if any. Invalid for `self` arguments.
+    pub default: Option<Box<Node>>,
     pub source: Option<NodeSource>,
 }
 
-// Helper structs
+/// Arguments in a function or lambda definition. Supports an optional leading
+/// vararg, and any number of arguments.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Arguments {
-    pub posonlyargs: Vec<Arg>,
-    pub args: Vec<Arg>,
     pub vararg: Option<Arg>,
-    pub kwonlyargs: Vec<Arg>,
-    pub kw_defaults: Vec<Option<Node>>,
-    pub kwarg: Option<Arg>,
-    pub defaults: Vec<Node>,
+    pub args: Vec<Arg>,
 }
 
 /// Assert statement, e.g. `assert x == 5, "Should be 5"`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Assert {
+    /// A test expression whose boolean value is expected to be true. This
+    /// can also be an expression whose type implements `__bool__()`.
     pub test: Box<Node>,
+
+    /// The message to emit if the assertion fails. Typically a string literal
+    /// but can be any expression whose type implements `__str__()`.
     pub msg: Option<Box<Node>>,
     pub source: Option<NodeSource>,
 }
@@ -264,28 +277,40 @@ pub struct Assign {
     pub source: Option<NodeSource>,
 }
 
-/// An async for loop, e.g. `async for x in y:`
+/// An async for loop, e.g. `async for x in y:`. Allows an optional else clause
+/// if the loop does not exit via `break`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AsyncFor {
+    /// The target of the for loop, typically a variable.
     pub target: Box<Node>,
+
+    /// The iterable being looped over.
     pub iter: Box<Node>,
+
+    /// The body of the for loop.
     pub body: Vec<Node>,
-    pub orelse: Vec<Node>,
+
+    /// The optional else clause.
+    pub else_: Vec<Node>,
+
     pub source: Option<NodeSource>,
 }
 
+/// An async function definition, e.g. `async def foo():`
 #[derive(Debug, Clone, PartialEq)]
 pub struct AsyncFunctionDef {
     pub name: String,
     pub args: Arguments,
+    pub decorators: Vec<Node>,
+    /// The return type of the function. If omitted, then it must be inferrable
+    /// from the body.
+    pub return_type: Option<Box<Node>>,
     pub body: Vec<Node>,
-    pub decorator_list: Vec<Node>,
-    pub returns: Option<Box<Node>>,
-    pub type_comment: Option<String>,
     pub source: Option<NodeSource>,
 }
 
 /// An async with statement, e.g. `async for x in y:`
+/// TODO
 #[derive(Debug, Clone, PartialEq)]
 pub struct AsyncWith {
     pub items: Vec<WithItem>,
@@ -309,9 +334,10 @@ pub struct AugAssign {
     pub source: Option<NodeSource>,
 }
 
+/// An await expression, e.g. `await x`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Await {
-    pub value: Box<Node>,
+    pub future: Box<Node>,
     pub source: Option<NodeSource>,
 }
 
@@ -324,7 +350,8 @@ pub struct BinOp {
     pub source: Option<NodeSource>,
 }
 
-/// Boolean operations like `or` and `and`.
+/// Boolean operations like `or` and `and`. Values must be at least two, and
+/// the same operator evaluation is applied to every value.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BoolOp_ {
     pub op: BoolOp,
@@ -375,6 +402,8 @@ pub struct Comprehension {
     pub source: Option<NodeSource>,
 }
 
+/// A constant value, e.g. 3, False, or "hello". This excludes more complex
+/// literals like list literals.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Constant {
     pub value: ConstantValue,
@@ -429,7 +458,7 @@ pub struct For {
     pub target: Box<Node>,
     pub iter: Box<Node>,
     pub body: Vec<Node>,
-    pub orelse: Vec<Node>,
+    pub else_: Vec<Node>,
     pub source: Option<NodeSource>,
 }
 
@@ -438,7 +467,7 @@ pub struct FunctionDef {
     pub name: String,
     pub args: Arguments,
     pub body: Vec<Node>,
-    pub decorator_list: Vec<Node>,
+    pub decorators: Vec<Node>,
     pub returns: Option<Box<Node>>,
     pub type_comment: Option<String>,
     pub source: Option<NodeSource>,
@@ -446,7 +475,7 @@ pub struct FunctionDef {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct GeneratorExp {
-    pub elt: Box<Node>,
+    pub element: Box<Node>,
     pub generators: Vec<Comprehension>,
     pub source: Option<NodeSource>,
 }
@@ -455,7 +484,7 @@ pub struct GeneratorExp {
 pub struct If {
     pub test: Box<Node>,
     pub body: Vec<Node>,
-    pub orelse: Vec<Node>,
+    pub else_: Vec<Node>,
     pub source: Option<NodeSource>,
 }
 
@@ -463,7 +492,7 @@ pub struct If {
 pub struct IfExp {
     pub test: Box<Node>,
     pub body: Box<Node>,
-    pub orelse: Box<Node>,
+    pub else_: Box<Node>,
     pub source: Option<NodeSource>,
 }
 
@@ -502,6 +531,12 @@ pub struct Keyword {
     pub source: Option<NodeSource>,
 }
 
+/// A lambda expression, e.g. `lambda x: x + 1`.
+///
+/// The return type is optional, being inferred from the body. Argument types
+/// are also inferred from context when possible.
+///
+/// TODO: What does the syntax for typed arguments look like?
 #[derive(Debug, Clone, PartialEq)]
 pub struct Lambda {
     pub args: Arguments,
@@ -510,15 +545,16 @@ pub struct Lambda {
     pub source: Option<NodeSource>,
 }
 
+/// A list literal.
 #[derive(Debug, Clone, PartialEq)]
 pub struct List {
-    pub elts: Vec<Node>,
+    pub elements: Vec<Node>,
     pub source: Option<NodeSource>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ListComp {
-    pub elt: Box<Node>,
+    pub element: Box<Node>,
     pub generators: Vec<Comprehension>,
     pub source: Option<NodeSource>,
 }
@@ -599,19 +635,21 @@ pub struct Raise {
 /// Return statement, e.g. `return x`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Return {
+    /// The value being returned. Multiple values being returned must be stored
+    /// as a tuple.
     pub value: Option<Box<Node>>,
     pub source: Option<NodeSource>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Set {
-    pub elts: Vec<Node>,
+    pub elements: Vec<Node>,
     pub source: Option<NodeSource>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SetComp {
-    pub elt: Box<Node>,
+    pub element: Box<Node>,
     pub generators: Vec<Comprehension>,
     pub source: Option<NodeSource>,
 }
@@ -652,7 +690,7 @@ pub struct Subscript {
 pub struct Try {
     pub body: Vec<Node>,
     pub handlers: Vec<ExceptHandler>,
-    pub orelse: Vec<Node>,
+    pub else_: Vec<Node>,
     pub finalbody: Vec<Node>,
     pub source: Option<NodeSource>,
 }
@@ -661,14 +699,14 @@ pub struct Try {
 pub struct TryStar {
     pub body: Vec<Node>,
     pub handlers: Vec<ExceptHandler>,
-    pub orelse: Vec<Node>,
+    pub else_: Vec<Node>,
     pub finalbody: Vec<Node>,
     pub source: Option<NodeSource>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Tuple {
-    pub elts: Vec<Node>,
+    pub elements: Vec<Node>,
     pub source: Option<NodeSource>,
 }
 
@@ -688,11 +726,13 @@ pub struct UnaryOp_ {
     pub source: Option<NodeSource>,
 }
 
+/// A while statement, e.g. `while x: y`. Allows an optional else clause
+/// if the body does not exit via `break`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct While {
     pub test: Box<Node>,
     pub body: Vec<Node>,
-    pub orelse: Vec<Node>,
+    pub else_: Vec<Node>,
     pub source: Option<NodeSource>,
 }
 
@@ -710,14 +750,16 @@ pub struct WithItem {
     pub source: Option<NodeSource>,
 }
 
+/// A yield expression, e.g. `yield x`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Yield {
     pub value: Option<Box<Node>>,
     pub source: Option<NodeSource>,
 }
 
+/// A yield from expression, e.g. `yield from x`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct YieldFrom {
-    pub value: Box<Node>,
+    pub generator: Box<Node>,
     pub source: Option<NodeSource>,
 }

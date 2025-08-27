@@ -114,7 +114,7 @@ pub trait Visitor {
         for stmt in &node.body {
             self.visit(stmt);
         }
-        for stmt in &node.orelse {
+        for stmt in &node.else_ {
             self.visit(stmt);
         }
     }
@@ -124,19 +124,14 @@ pub trait Visitor {
         for stmt in &mut node.body {
             self.visit_mut(stmt);
         }
-        for stmt in &mut node.orelse {
+        for stmt in &mut node.else_ {
             self.visit_mut(stmt);
         }
     }
 
     fn visit_function_def(&mut self, node: &crate::ast::node::FunctionDef) {
-        for decorator in &node.decorator_list {
+        for decorator in &node.decorators {
             self.visit(decorator);
-        }
-        for arg in &node.args.args {
-            if let Some(annotation) = &arg.annotation {
-                self.visit(annotation);
-            }
         }
         if let Some(returns) = &node.returns {
             self.visit(returns);
@@ -147,13 +142,8 @@ pub trait Visitor {
     }
 
     fn visit_function_def_mut(&mut self, node: &mut crate::ast::node::FunctionDef) {
-        for decorator in &mut node.decorator_list {
+        for decorator in &mut node.decorators {
             self.visit_mut(decorator);
-        }
-        for arg in &mut node.args.args {
-            if let Some(annotation) = &mut arg.annotation {
-                self.visit_mut(annotation);
-            }
         }
         if let Some(returns) = &mut node.returns {
             self.visit_mut(returns);
