@@ -4,7 +4,6 @@ import hashlib
 import json
 import logging
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -15,8 +14,6 @@ import requests
 _logger: logging.Logger = logging.getLogger(name="build_sharpy")
 
 ROOT_DIR: Path = Path(__file__).parent.parent.parent
-PYTHON_SRC_DIR: Path = ROOT_DIR / "python/src"
-PYTHON_TEST_DIR: Path = ROOT_DIR / "python/test"
 RESOURCE_DIR: Path = ROOT_DIR / "__resources"
 TOOLS_DIR: Path = ROOT_DIR / "tools"
 DATA_DIR: Path = ROOT_DIR / "data"
@@ -30,11 +27,7 @@ RUST_ROOT_DIR: Path = ROOT_DIR / "rust"
 RUST_SRC_DIR: Path = RUST_ROOT_DIR / "src"
 
 
-_expected_resources: Sequence[Path] = [
-    RESOURCE_DIR / "SharpyLexer.py",
-    RESOURCE_DIR / "SharpyParserListener.py",
-    RESOURCE_DIR / "SharpyParserVisitor.py",
-]
+_expected_resources: Sequence[Path] = []
 
 
 def main() -> None:
@@ -83,8 +76,6 @@ def main() -> None:
         test(args=args, rest=rest, release=True)
         docs(args=args, rest=rest)
         install(args=args, rest=rest)
-    elif command == "run":
-        run(args=args, rest=rest)
     elif command == "test":
         test(args=args, rest=rest, release=False)
     elif command == "help":
@@ -104,10 +95,15 @@ def create_parser() -> argparse.ArgumentParser:
 
     build_parser = subparsers.add_parser("build", help="Builds the package.")
     build_parser.add_argument(
-        "--project", type=str, default="all", choices=("all", "compiler", "lib", "tests")
+        "--project",
+        type=str,
+        default="all",
+        choices=("all", "compiler", "lib", "tests"),
     )
     build_parser.add_argument("--release", action="store_true")
-    clean_parser = subparsers.add_parser("clean", help="Cleans up intermediate objects.")
+    clean_parser = subparsers.add_parser(
+        "clean", help="Cleans up intermediate objects."
+    )
     clean_parser.add_argument(
         "--clean-resources", action="store_true", help="Cleans up generated resources."
     )
@@ -116,31 +112,28 @@ def create_parser() -> argparse.ArgumentParser:
     format_parser.add_argument(
         "--target",
         action="append",
-        choices=("cs", "csharp", "py", "python", "rs", "rust"),
+        choices=("cs", "csharp", "rs", "rust"),
         default=None,
     )
     debug_parser = subparsers.add_parser("debug", help="Runs all steps.")
     debug_parser.add_argument(
         "--target",
         action="append",
-        choices=("cs", "csharp", "py", "python", "rs", "rust"),
+        choices=("cs", "csharp", "rs", "rust"),
         default=None,
     )
     release_parser = subparsers.add_parser("release", help="Runs all steps.")
     release_parser.add_argument(
         "--target",
         action="append",
-        choices=("cs", "csharp", "py", "python", "rs", "rust"),
+        choices=("cs", "csharp", "rs", "rust"),
         default=None,
-    )
-    run_parser = subparsers.add_parser(
-        "run", help="Runs the given arguments in the context of the Python modules available here."
     )
     test_parser = subparsers.add_parser("test", help="Runs tests.")
     test_parser.add_argument(
         "--target",
         action="append",
-        choices=("cs", "csharp", "py", "python", "rs", "rust"),
+        choices=("cs", "csharp", "rs", "rust"),
         default=None,
     )
     build_docs_parser = subparsers.add_parser(
@@ -158,7 +151,7 @@ def get_targets(args: argparse.Namespace) -> AbstractSet[str]:
     if args.target:
         return set(args.target)
 
-    return {"py", "cs", "rs"}
+    return {"cs", "rs"}
 
 
 def build(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
@@ -178,6 +171,7 @@ def build(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
 
 def run_cargo(args: argparse.Namespace, rest: Sequence[str]) -> None:
     get_logger().info("Running cargo...")
+
     try:
         cargo_args: MutableSequence[str] = ["cargo"]
         cargo_args.extend(rest)
@@ -192,7 +186,9 @@ def build_compiler(release: bool) -> None:
     build_type: str = "Release" if release else "Debug"
 
     try:
-        get_logger().info(f"Building compiler with {build_type.lower()} configuration...")
+        get_logger().info(
+            f"Building compiler with {build_type.lower()} configuration..."
+        )
         args: MutableSequence[str] = ["cargo", "build", "--release"]
 
         if release:
@@ -208,8 +204,12 @@ def build_lib(release: bool) -> None:
     build_type: str = "Release" if release else "Debug"
 
     try:
-        get_logger().info(f"Building standard library with {build_type.lower()} configuration...")
-        subprocess.run(["dotnet", "build", "-c", build_type, str(CSHARP_SRC_DIR)], check=True)
+        get_logger().info(
+            f"Building standard library with {build_type.lower()} configuration..."
+        )
+        subprocess.run(
+            ["dotnet", "build", "-c", build_type, str(CSHARP_SRC_DIR)], check=True
+        )
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -220,7 +220,9 @@ def build_tests(release: bool) -> None:
 
     try:
         get_logger().info(f"Building tests with {build_type.lower()} configuration...")
-        subprocess.run(["dotnet", "build", "-c", build_type, str(CSHARP_TEST_DIR)], check=True)
+        subprocess.run(
+            ["dotnet", "build", "-c", build_type, str(CSHARP_TEST_DIR)], check=True
+        )
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -235,37 +237,6 @@ def setup(args: argparse.Namespace, rest: Sequence[str]) -> None:
     try:
         get_logger().info("Downloading resources...")
         download_data_files()
-
-        get_logger().info("Generating lexer...")
-        subprocess.run(
-            [
-                "antlr",
-                "-o",
-                str(RESOURCE_DIR),
-                "-Dlanguage=Python3",
-                str(DATA_DIR / "SharpyLexer.g4"),
-            ],
-            check=True,
-        )
-
-        get_logger().info("Generating parser and visitor...")
-        subprocess.run(
-            [
-                "antlr",
-                "-o",
-                str(RESOURCE_DIR),
-                "-visitor",
-                "-Dlanguage=Python3",
-                str(DATA_DIR / "SharpyParser.g4"),
-            ],
-            check=True,
-        )
-
-        get_logger().info("Copying lexer base to resources...")
-        shutil.copyfile(
-            src=DATA_DIR / "SharpyLexerBase.py",
-            dst=RESOURCE_DIR / "SharpyLexerBase.py",
-        )
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         os.chdir(old_cwd)
@@ -314,7 +285,8 @@ def download_file_from_json(spec: Path, target_dir: Path) -> None:
 
     if response.status_code != 200:
         print(
-            f"Failed to download '{url}' with status code {response.status_code}", file=sys.stderr
+            f"Failed to download '{url}' with status code {response.status_code}",
+            file=sys.stderr,
         )
         sys.exit(1)
 
@@ -334,8 +306,6 @@ def download_file_from_json(spec: Path, target_dir: Path) -> None:
 def clean(args: argparse.Namespace, rest: Sequence[str]) -> None:
     get_logger().info("Removing __pycache__ directories...")
 
-    remove_pycache_dirs(root_path=PYTHON_SRC_DIR)
-    remove_pycache_dirs(root_path=PYTHON_TEST_DIR)
     remove_pycache_dirs(root_path=RESOURCE_DIR)
 
     if args.clean_resources:
@@ -372,39 +342,11 @@ def install(args: argparse.Namespace, rest: Sequence[str]) -> None:
 def format(args: argparse.Namespace, rest: Sequence[str]) -> None:
     targets: AbstractSet[str] = get_targets(args)
 
-    if "py" in targets or "python" in targets:
-        format_with_isort()
-        format_with_black()
-
     if "cs" in targets or "csharp" in targets:
         format_with_dotnet_format()
 
     if "rs" in targets or "rust" in targets:
         format_with_cargo()
-
-
-def format_with_black() -> None:
-    get_logger().info("Formatting with black...")
-
-    try:
-        subprocess.run(
-            ["black", str(PYTHON_SRC_DIR), str(PYTHON_TEST_DIR), str(TOOLS_DIR)], check=True
-        )
-    except subprocess.CalledProcessError as e:
-        print(f"Encountered error {e}", file=sys.stderr)
-        sys.exit(1)
-
-
-def format_with_isort() -> None:
-    get_logger().info("Formatting with isort...")
-
-    try:
-        subprocess.run(
-            ["isort", str(PYTHON_SRC_DIR), str(PYTHON_TEST_DIR), str(TOOLS_DIR)], check=True
-        )
-    except subprocess.CalledProcessError as e:
-        print(f"Encountered error {e}", file=sys.stderr)
-        sys.exit(1)
 
 
 def format_with_dotnet_format() -> None:
@@ -449,39 +391,19 @@ def format_with_cargo() -> None:
         sys.exit(1)
 
 
-def run(args: argparse.Namespace, rest: Sequence[str]) -> None:
-    get_logger().info("Running custom command...")
-
-    run_env: Mapping[str, str] = os.environ.copy()
-    existing_python_path: str = run_env.get("PYTHONPATH", "")
-    run_env["PYTHONPATH"] = ":".join([existing_python_path, str(PYTHON_SRC_DIR), str(RESOURCE_DIR)])
-
-    try:
-        subprocess.run(rest, env=run_env, check=True)
-    except subprocess.CalledProcessError as e:
-        get_logger().error(f"Encountered error {e}")
-        sys.exit(1)
-
-
 def test(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
     targets: AbstractSet[str] = get_targets(args)
-
-    if "py" in targets or "python" in targets:
-        get_logger().info("Running tests with pytest...")
-
-        try:
-            subprocess.run(["pytest", str(PYTHON_TEST_DIR), *rest], check=True)
-        except subprocess.CalledProcessError as e:
-            get_logger().error(f"Encountered error {e}")
-            sys.exit(1)
 
     if "cs" in targets or "csharp" in targets:
         build_type: str = "Release" if release else "Debug"
 
-        get_logger().info(f"Running tests with dotnet with {build_type.lower()} configuration...")
+        get_logger().info(
+            f"Running tests with dotnet with {build_type.lower()} configuration..."
+        )
         try:
             subprocess.run(
-                ["dotnet", "test", "-c", build_type, str(CSHARP_TEST_DIR), *rest], check=True
+                ["dotnet", "test", "-c", build_type, str(CSHARP_TEST_DIR), *rest],
+                check=True,
             )
         except subprocess.CalledProcessError as e:
             get_logger().error(f"Encountered error {e}")
@@ -504,7 +426,9 @@ def get_logger() -> logging.Logger:
 def setup_logger() -> None:
     global _logger
 
-    _logger.setLevel(logging.DEBUG)  # Set the base level to the lowest level you want to capture
+    _logger.setLevel(
+        logging.DEBUG
+    )  # Set the base level to the lowest level you want to capture
 
     # Handler for stdout (INFO and DEBUG)
     _stdout_handler = logging.StreamHandler(sys.stdout)
@@ -520,7 +444,9 @@ def setup_logger() -> None:
         lambda record: record.levelno >= logging.WARNING
     )  # Filter for WARNING and ERROR
 
-    _formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    _formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
     _stdout_handler.setFormatter(_formatter)
     _stderr_handler.setFormatter(_formatter)
 

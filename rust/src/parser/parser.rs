@@ -9,7 +9,8 @@ pub struct Parser {
 }
 
 impl Parser {
-    #[must_use] pub const fn new(tokens: Vec<Token>) -> Self {
+    #[must_use]
+    pub const fn new(tokens: Vec<Token>) -> Self {
         Self { tokens, current: 0 }
     }
 
@@ -91,14 +92,15 @@ impl Parser {
     /// Parse a name (identifier)
     fn parse_name(&mut self) -> Result<Node, ParseError> {
         if let Some(token) = self.current_token()
-            && let TokenType::Name(name_type) = &token.token_type {
-                let location = token.location.clone();
-                let name = name_type.name.clone();
-                let source = Some(NodeSource::from_source_location(&location, &location));
+            && let TokenType::Name(name_type) = &token.token_type
+        {
+            let location = token.location.clone();
+            let name = name_type.name.clone();
+            let source = Some(NodeSource::from_source_location(&location, &location));
 
-                self.advance();
-                return Ok(Node::Name(Name { id: name, source }));
-            }
+            self.advance();
+            return Ok(Node::Name(Name { id: name, source }));
+        }
 
         Err(ParseError::UnexpectedToken {
             expected: "identifier".to_string(),
