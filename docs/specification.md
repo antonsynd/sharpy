@@ -430,6 +430,31 @@ The optional is empty if an exception was raised.
 i: int? = try something_that_may_throw()
 ```
 
+# Call pipelining
+
+```Python
+def foo(x: int) -> str: ...
+
+def bar(y: str, z: bool) -> str: ...
+
+foo(5) -> bar(_, True) -> print
+```
+
+The use of the wildcard `_` is to indicate where the return value should be
+received as an argument in the following function.
+
+In the event of a tuple return value, it can be destructured:
+
+```Python
+def foo(x: int) -> tuple[bool, str, int]: ...
+
+def bar(y: str, z: bool) -> str: ...
+
+foo(5) -> bar(_.1, _.0) -> print
+```
+
+Note that in this case, `_.2` is discarded.
+
 # Modules
 
 Sharpy has modules which are the equivalent of namespaces in C#. Modules
