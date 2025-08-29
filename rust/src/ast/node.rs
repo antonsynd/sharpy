@@ -293,7 +293,8 @@ pub struct Assign {
 /// if the loop does not exit via `break`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AsyncFor {
-    /// The target of the for loop, typically a variable.
+    /// The target of the for loop, typically a variable. It can also be a
+    /// destructuring pattern implemented as a Tuple node.
     pub target: Box<Node>,
 
     /// The iterable being looped over.
@@ -341,6 +342,7 @@ pub struct Attribute {
 /// An augmented assignment expression, e.g. `x += 5`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AugAssign {
+    /// Cannot be a destructuring pattern.
     pub target: Box<Node>,
     pub op: BinaryOp,
     pub value: Box<Node>,
@@ -402,6 +404,9 @@ pub struct ClassDef {
     pub source: Option<NodeSource>,
 }
 
+/// A comparison operation, e.g. `x < y`. The comparators on the right can
+/// be more than one, e.g. `x < y < z`, which is equivalent to
+/// `x < y and y < z`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Compare {
     pub left: Box<Node>,
@@ -471,23 +476,35 @@ pub struct ExceptHandler {
     pub source: Option<NodeSource>,
 }
 
+/// An for loop, e.g. `for x in y:`. Allows an optional else clause if the
+/// loop does not exit via `break`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct For {
+    /// The target of the for loop, typically a variable. It can also be a
+    /// destructuring pattern implemented as a Tuple node.
     pub target: Box<Node>,
+
+    /// The iterable being looped over.
     pub iter: Box<Node>,
+
+    /// The body of the for loop.
     pub body: Vec<Node>,
+
+    /// The optional else clause.
     pub else_: Vec<Node>,
     pub source: Option<NodeSource>,
 }
 
+/// A function definition, e.g. `def foo():`
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDef {
     pub name: String,
     pub args: Arguments,
-    pub body: Vec<Node>,
     pub decorators: Vec<Node>,
-    pub returns: Option<Box<Node>>,
-    pub type_comment: Option<String>,
+    /// The return type of the function. If omitted, then it must be inferrable
+    /// from the body.
+    pub return_type: Option<Box<Node>>,
+    pub body: Vec<Node>,
     pub source: Option<NodeSource>,
 }
 
@@ -498,14 +515,20 @@ pub struct GeneratorExp {
     pub source: Option<NodeSource>,
 }
 
+/// An if statement, e.g. `if x:` with an optional else clause implemented
+/// as a vector of statements (which may be empty).
 #[derive(Debug, Clone, PartialEq)]
 pub struct If {
     pub test: Box<Node>,
     pub body: Vec<Node>,
+
+    /// Else statements, if any. Can be empty.
     pub else_: Vec<Node>,
     pub source: Option<NodeSource>,
 }
 
+/// An if expression, e.g. `x if y else z` where y is the test, x is the
+/// body and z is the else clause.
 #[derive(Debug, Clone, PartialEq)]
 pub struct IfExp {
     pub test: Box<Node>,
@@ -600,13 +623,20 @@ pub struct MemberDef {
     pub source: Option<NodeSource>,
 }
 
-/// A module.
+/// A module, which is a collection of statements.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Module {
     pub body: Vec<Node>,
     pub source: Option<NodeSource>,
 }
 
+/// A simple name, e.g. `x`. See also `TypedName` which has a type declaration.
+///
+/// This is used in cases where the variable is declared but its type should be
+/// inferred from its context (e.g. the value it is being assigned to) or if
+/// the variable is being used (loaded), or if the variable was already
+/// declared and simply being reassigned to another value compatible with its
+/// existing type.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Name {
     pub id: String,
@@ -660,6 +690,7 @@ pub struct Return {
     pub source: Option<NodeSource>,
 }
 
+/// A set literal, e.g. `{1, 2, 3}`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Set {
     pub elements: Vec<Node>,
@@ -736,7 +767,13 @@ pub struct TypeAlias {
     pub source: Option<NodeSource>,
 }
 
-/// A name with an associated type, e.g. `x: int`.
+/// A name with an associated type, e.g. `x: int`. See `Name` for the untyped
+/// version.
+///
+/// This should be used when first declaring a variable and its type
+/// should not be inferred from its context. It can also be used to create a
+/// variable local to the scope, shadowing an existing one, possibly with
+/// a different type.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedName {
     pub id: String,
@@ -758,6 +795,8 @@ pub struct UnaryOp_ {
 pub struct While {
     pub test: Box<Node>,
     pub body: Vec<Node>,
+
+    /// The else clause implemented as a vector of statements. Can be empty.
     pub else_: Vec<Node>,
     pub source: Option<NodeSource>,
 }

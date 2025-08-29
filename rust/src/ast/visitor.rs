@@ -123,8 +123,8 @@ pub trait Visitor {
         for decorator in &node.decorators {
             self.visit(decorator);
         }
-        if let Some(returns) = &node.returns {
-            self.visit(returns);
+        if let Some(return_type) = &node.return_type {
+            self.visit(return_type);
         }
         for stmt in &node.body {
             self.visit(stmt);
@@ -135,8 +135,8 @@ pub trait Visitor {
         for decorator in &mut node.decorators {
             self.visit_mut(decorator);
         }
-        if let Some(returns) = &mut node.returns {
-            self.visit_mut(returns);
+        if let Some(return_type) = &mut node.return_type {
+            self.visit_mut(return_type);
         }
         for stmt in &mut node.body {
             self.visit_mut(stmt);
