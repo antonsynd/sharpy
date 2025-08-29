@@ -47,12 +47,16 @@ fn test_typed_assignment() {
 
     match &nodes[0] {
         Node::Assign(assign) => {
-            // Check target is a name
+            // Check target is a typed name
             match &*assign.target {
-                Node::Name(name) => {
-                    assert_eq!(name.id, "x");
+                Node::TypedName(typed_name) => {
+                    assert_eq!(typed_name.id, "x");
+                    match &*typed_name.type_ {
+                        Node::Name(type_name) => assert_eq!(type_name.id, "int"),
+                        _ => panic!("Expected Name node for type"),
+                    }
                 }
-                _ => panic!("Expected Name node for target"),
+                _ => panic!("Expected TypedName node for target"),
             }
 
             // Check value is a constant
@@ -198,6 +202,220 @@ fn test_boolean_assignment() {
                     _ => panic!("Expected boolean constant"),
                 },
                 _ => panic!("Expected Constant node for value"),
+            }
+        }
+        _ => panic!("Expected Assign node"),
+    }
+}
+
+#[test]
+fn test_simple_destructuring_assignment() {
+    let code = "x, y = (1, 2)";
+    let mut lexer = SharpyLexer::new(code);
+    let tokens = lexer.tokenize_all().expect("Lexing should succeed");
+
+    let mut parser = Parser::new(tokens);
+    let nodes = parser.parse().expect("Parsing should succeed");
+
+    assert_eq!(nodes.len(), 1);
+
+    match &nodes[0] {
+        Node::Assign(assign) => {
+            // Check target is a tuple
+            match &*assign.target {
+                Node::Tuple(tuple) => {
+                    assert_eq!(tuple.elements.len(), 2);
+
+                    // Check first target element
+                    match &tuple.elements[0] {
+                        Node::Name(name) => assert_eq!(name.id, "x"),
+                        _ => panic!("Expected Name node for first target"),
+                    }
+
+                    // Check second target element
+                    match &tuple.elements[1] {
+                        Node::Name(name) => assert_eq!(name.id, "y"),
+                        _ => panic!("Expected Name node for second target"),
+                    }
+                }
+                _ => panic!("Expected Tuple node for target"),
+            }
+
+            // Check value is a tuple
+            match assign.value.as_ref() {
+                Node::Tuple(tuple) => {
+                    assert_eq!(tuple.elements.len(), 2);
+
+                    // Check first value element
+                    match &tuple.elements[0] {
+                        Node::Constant(constant) => match &constant.value {
+                            ConstantValue::Int(val) => assert_eq!(*val, 1),
+                            _ => panic!("Expected integer constant"),
+                        },
+                        _ => panic!("Expected Constant node for first value"),
+                    }
+
+                    // Check second value element
+                    match &tuple.elements[1] {
+                        Node::Constant(constant) => match &constant.value {
+                            ConstantValue::Int(val) => assert_eq!(*val, 2),
+                            _ => panic!("Expected integer constant"),
+                        },
+                        _ => panic!("Expected Constant node for second value"),
+                    }
+                }
+                _ => panic!("Expected Tuple node for value"),
+            }
+        }
+        _ => panic!("Expected Assign node"),
+    }
+}
+
+#[test]
+fn test_typed_destructuring_assignment() {
+    let code = "x: int, y: float = (1, 2.5)";
+    let mut lexer = SharpyLexer::new(code);
+    let tokens = lexer.tokenize_all().expect("Lexing should succeed");
+
+    let mut parser = Parser::new(tokens);
+    let nodes = parser.parse().expect("Parsing should succeed");
+
+    assert_eq!(nodes.len(), 1);
+
+    match &nodes[0] {
+        Node::Assign(assign) => {
+            // Check target is a tuple with typed names
+            match &*assign.target {
+                Node::Tuple(tuple) => {
+                    assert_eq!(tuple.elements.len(), 2);
+
+                    // Check first target element (typed)
+                    match &tuple.elements[0] {
+                        Node::TypedName(typed_name) => {
+                            assert_eq!(typed_name.id, "x");
+                            match &*typed_name.type_ {
+                                Node::Name(type_name) => assert_eq!(type_name.id, "int"),
+                                _ => panic!("Expected Name node for type"),
+                            }
+                        }
+                        _ => panic!("Expected TypedName node for first target"),
+                    }
+
+                    // Check second target element (typed)
+                    match &tuple.elements[1] {
+                        Node::TypedName(typed_name) => {
+                            assert_eq!(typed_name.id, "y");
+                            match &*typed_name.type_ {
+                                Node::Name(type_name) => assert_eq!(type_name.id, "float"),
+                                _ => panic!("Expected Name node for type"),
+                            }
+                        }
+                        _ => panic!("Expected TypedName node for second target"),
+                    }
+                }
+                _ => panic!("Expected Tuple node for target"),
+            }
+
+            // Check value is a tuple
+            match assign.value.as_ref() {
+                Node::Tuple(tuple) => {
+                    assert_eq!(tuple.elements.len(), 2);
+
+                    // Check first value element
+                    match &tuple.elements[0] {
+                        Node::Constant(constant) => match &constant.value {
+                            ConstantValue::Int(val) => assert_eq!(*val, 1),
+                            _ => panic!("Expected integer constant"),
+                        },
+                        _ => panic!("Expected Constant node for first value"),
+                    }
+
+                    // Check second value element
+                    match &tuple.elements[1] {
+                        Node::Constant(constant) => match &constant.value {
+                            ConstantValue::Float(val) => assert_eq!(*val, 2.5),
+                            _ => panic!("Expected float constant"),
+                        },
+                        _ => panic!("Expected Constant node for second value"),
+                    }
+                }
+                _ => panic!("Expected Tuple node for value"),
+            }
+        }
+        _ => panic!("Expected Assign node"),
+    }
+}
+
+#[test]
+fn test_mixed_typed_destructuring_assignment() {
+    let code = "x: int, y = (1, 2.5)";
+    let mut lexer = SharpyLexer::new(code);
+    let tokens = lexer.tokenize_all().expect("Lexing should succeed");
+
+    let mut parser = Parser::new(tokens);
+    let nodes = parser.parse().expect("Parsing should succeed");
+
+    assert_eq!(nodes.len(), 1);
+
+    match &nodes[0] {
+        Node::Assign(assign) => {
+            // Check target is a tuple with mixed typing
+            match &*assign.target {
+                Node::Tuple(tuple) => {
+                    assert_eq!(tuple.elements.len(), 2);
+
+                    // Check first target element (typed)
+                    match &tuple.elements[0] {
+                        Node::TypedName(typed_name) => {
+                            assert_eq!(typed_name.id, "x");
+                            match &*typed_name.type_ {
+                                Node::Name(type_name) => assert_eq!(type_name.id, "int"),
+                                _ => panic!("Expected Name node for type"),
+                            }
+                        }
+                        _ => panic!("Expected TypedName node for first target"),
+                    }
+
+                    // Check second target element (untyped)
+                    match &tuple.elements[1] {
+                        Node::Name(name) => assert_eq!(name.id, "y"),
+                        _ => panic!("Expected Name node for second target"),
+                    }
+                }
+                _ => panic!("Expected Tuple node for target"),
+            }
+        }
+        _ => panic!("Expected Assign node"),
+    }
+}
+
+#[test]
+fn test_destructuring_from_list() {
+    let code = "x, y = [1, 2]";
+    let mut lexer = SharpyLexer::new(code);
+    let tokens = lexer.tokenize_all().expect("Lexing should succeed");
+
+    let mut parser = Parser::new(tokens);
+    let nodes = parser.parse().expect("Parsing should succeed");
+
+    assert_eq!(nodes.len(), 1);
+
+    match &nodes[0] {
+        Node::Assign(assign) => {
+            // Check target is a tuple
+            match &*assign.target {
+                Node::Tuple(tuple) => {
+                    assert_eq!(tuple.elements.len(), 2);
+                }
+                _ => panic!("Expected Tuple node for target"),
+            }
+
+            // Check value is a list
+            match assign.value.as_ref() {
+                Node::List(list) => {
+                    assert_eq!(list.elements.len(), 2);
+                }
+                _ => panic!("Expected List node for value"),
             }
         }
         _ => panic!("Expected Assign node"),

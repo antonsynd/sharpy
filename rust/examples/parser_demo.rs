@@ -8,6 +8,11 @@ fn main() {
         "matrix = [[1, 2], [3, 4]]",
         "flag = True",
         "value = None",
+        "x, y = (1, 2)",
+        "a: int, b: float = (42, 3.14)",
+        "x: int, y = (1, 2.5)",
+        "coords, color = ([1, 2], \"red\")",
+        "first, rest = ([1, 2, 3], [4, 5, 6])",
     ];
 
     for code in examples {
@@ -25,7 +30,7 @@ fn main() {
                     Ok(nodes) => {
                         println!("  Success: {} AST nodes", nodes.len());
                         for (i, node) in nodes.iter().enumerate() {
-                            println!("    Node {}: {:?}", i, get_node_type(node));
+                            println!("    Node {}: {}", i, get_node_description(node));
                         }
                     }
                     Err(err) => {
@@ -41,12 +46,32 @@ fn main() {
     }
 }
 
-fn get_node_type(node: &Node) -> &'static str {
+fn get_node_description(node: &Node) -> String {
     match node {
-        Node::Assign(_) => "Assignment",
-        Node::Constant(_) => "Constant",
-        Node::Name(_) => "Name",
-        Node::List(_) => "List",
-        _ => "Other",
+        Node::Assign(assign) => {
+            let target_type = match &*assign.target {
+                Node::Name(_) => "Simple Assignment",
+                Node::TypedName(_) => "Typed Assignment",
+                Node::Tuple(tuple) => {
+                    if tuple
+                        .elements
+                        .iter()
+                        .any(|e| matches!(e, Node::TypedName(_)))
+                    {
+                        "Typed Destructuring Assignment"
+                    } else {
+                        "Destructuring Assignment"
+                    }
+                }
+                _ => "Other Assignment",
+            };
+            target_type.to_string()
+        }
+        Node::Constant(_) => "Constant".to_string(),
+        Node::Name(_) => "Name".to_string(),
+        Node::List(_) => "List".to_string(),
+        Node::Tuple(_) => "Tuple".to_string(),
+        Node::TypedName(_) => "TypedName".to_string(),
+        _ => "Other".to_string(),
     }
 }

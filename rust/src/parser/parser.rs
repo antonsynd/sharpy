@@ -38,19 +38,12 @@ impl Parser {
         self.parse_assignment()
     }
 
-    /// Parse an assignment statement: name = value or name: type = value
+    /// Parse an assignment statement: name = value, name: type = value, or x, y = value
     fn parse_assignment(&mut self) -> Result<Node, ParseError> {
         let start_location = self.current_location();
 
-        // Parse the target (left-hand side)
-        let target = self.parse_name()?;
-
-        // Check if this is a typed assignment (name: type = value)
-        let mut type_annotation = None;
-        if self.match_token(&TokenType::Colon) {
-            self.advance(); // consume ':'
-            type_annotation = Some(Box::new(self.parse_type_annotation()?));
-        }
+        // Parse the target(s) (left-hand side)
+        let target = self.parse_assignment_target()?;
 
         // Expect '=' for assignment
         if !self.match_token(&TokenType::Equal) {
@@ -71,21 +64,70 @@ impl Parser {
             &end_location,
         ));
 
-        // If there's a type annotation, create a typed assignment
-        if let Some(_type_node) = type_annotation {
-            // For typed assignments, we'll create an Assign node with the type info in the target
-            // This is a simplification - in a real parser you might want a separate TypedAssign node
-            Ok(Node::Assign(Assign {
-                target: Box::new(target),
-                value: Box::new(value),
-                source,
-            }))
+        Ok(Node::Assign(Assign {
+            target: Box::new(target),
+            value: Box::new(value),
+            source,
+        }))
+    }
+
+    /// Parse assignment targets: name, name: type, or x, y (destructuring)
+    fn parse_assignment_target(&mut self) -> Result<Node, ParseError> {
+        let first = self.parse_target_element()?;
+
+        // Check if this is a tuple assignment (multiple targets)
+        if self.match_token(&TokenType::Comma) {
+            let start_location = self.current_location();
+            let mut elements = vec![first];
+
+            while self.match_token(&TokenType::Comma) {
+                self.advance(); // consume ','
+
+                // Allow trailing comma
+                if self.match_token(&TokenType::Equal) {
+                    break;
+                }
+
+                elements.push(self.parse_target_element()?);
+            }
+
+            let end_location = self.previous_location();
+            let source = Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            ));
+
+            Ok(Node::Tuple(Tuple { elements, source }))
         } else {
-            Ok(Node::Assign(Assign {
-                target: Box::new(target),
-                value: Box::new(value),
-                source,
-            }))
+            // Single target
+            Ok(first)
+        }
+    }
+
+    /// Parse a single target element: name or name: type
+    fn parse_target_element(&mut self) -> Result<Node, ParseError> {
+        let name = self.parse_name()?;
+
+        // Check if this has a type annotation
+        if self.match_token(&TokenType::Colon) {
+            self.advance(); // consume ':'
+            let type_annotation = self.parse_type_annotation()?;
+
+            if let Node::Name(Name { id, source }) = name {
+                Ok(Node::TypedName(TypedName {
+                    id,
+                    type_: Box::new(type_annotation),
+                    source,
+                }))
+            } else {
+                Err(ParseError::InvalidSyntax {
+                    message: "Expected identifier before type annotation".to_string(),
+                    location: self.current_location(),
+                })
+            }
+        } else {
+            // Untyped target
+            Ok(name)
         }
     }
 
@@ -216,6 +258,9 @@ impl Parser {
                 // List literals
                 TokenType::LeftBracket => self.parse_list(),
 
+                // Tuple literals (parentheses)
+                TokenType::LeftParen => self.parse_tuple_or_parenthesized_expr(),
+
                 // Names/identifiers
                 TokenType::Name(_) => self.parse_name(),
 
@@ -300,6 +345,85 @@ impl Parser {
         ));
 
         Ok(Node::List(List { elements, source }))
+    }
+
+    /// Parse a tuple literal or parenthesized expression: (expr1, expr2, ...) or (expr)
+    fn parse_tuple_or_parenthesized_expr(&mut self) -> Result<Node, ParseError> {
+        let start_location = self.current_location();
+
+        // Consume '('
+        if !self.match_token(&TokenType::LeftParen) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "'('".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance();
+
+        // Handle empty tuple ()
+        if self.match_token(&TokenType::RightParen) {
+            self.advance();
+            let end_location = self.previous_location();
+            let source = Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            ));
+            return Ok(Node::Tuple(Tuple {
+                elements: Vec::new(),
+                source,
+            }));
+        }
+
+        // Parse first element
+        let first_element = self.parse_expression()?;
+
+        // Check if this is a tuple (has comma) or just parenthesized expression
+        if self.match_token(&TokenType::Comma) {
+            // This is a tuple
+            let mut elements = vec![first_element];
+
+            while self.match_token(&TokenType::Comma) {
+                self.advance(); // consume ','
+
+                // Allow trailing comma before ')'
+                if self.match_token(&TokenType::RightParen) {
+                    break;
+                }
+
+                elements.push(self.parse_expression()?);
+            }
+
+            // Consume ')'
+            if !self.match_token(&TokenType::RightParen) {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "')'".to_string(),
+                    found: self.current_token_string(),
+                    location: self.current_location(),
+                });
+            }
+            self.advance();
+
+            let end_location = self.previous_location();
+            let source = Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            ));
+
+            Ok(Node::Tuple(Tuple { elements, source }))
+        } else {
+            // This is a parenthesized expression, just return the inner expression
+            if !self.match_token(&TokenType::RightParen) {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "')'".to_string(),
+                    found: self.current_token_string(),
+                    location: self.current_location(),
+                });
+            }
+            self.advance();
+
+            Ok(first_element)
+        }
     }
 
     // Helper methods

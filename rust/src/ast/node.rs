@@ -147,6 +147,7 @@ pub enum Node {
     List(List),
     Tuple(Tuple),
     Slice(Slice),
+    TypedName(TypedName),
 
     // Control flow
     If(If),
@@ -186,6 +187,9 @@ impl Node {
             Self::Constant(n) => n.source.as_ref(),
             Self::Module(n) => n.source.as_ref(),
             Self::Name(n) => n.source.as_ref(),
+            Self::TypedName(n) => n.source.as_ref(),
+            Self::List(n) => n.source.as_ref(),
+            Self::Tuple(n) => n.source.as_ref(),
             // Add all other variants...
             _ => None, // Temporary fallback
         }
@@ -196,8 +200,11 @@ impl Node {
         match self {
             Self::Assign(n) => n.source.as_mut(),
             Self::Constant(n) => n.source.as_mut(),
+            Self::List(n) => n.source.as_mut(),
             Self::Module(n) => n.source.as_mut(),
             Self::Name(n) => n.source.as_mut(),
+            Self::Tuple(n) => n.source.as_mut(),
+            Self::TypedName(n) => n.source.as_mut(),
             // Add all other variants...
             _ => None, // Temporary fallback
         }
@@ -208,8 +215,11 @@ impl Node {
         match self {
             Self::Assign(n) => n.source = Some(source),
             Self::Constant(n) => n.source = Some(source),
+            Self::List(n) => n.source = Some(source),
             Self::Module(n) => n.source = Some(source),
             Self::Name(n) => n.source = Some(source),
+            Self::Tuple(n) => n.source = Some(source),
+            Self::TypedName(n) => n.source = Some(source),
             // Add all other variants...
             _ => {} // Temporary fallback
         }
@@ -270,7 +280,11 @@ pub struct Assert {
 /// An assignment expression, e.g. `x = 5`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Assign {
+    /// For destructuring assignments, the target is a Tuple node of
+    /// Name/TypedName nodes.
     pub target: Box<Node>,
+
+    /// For destructuring assignments, the value is a Tuple node.
     pub value: Box<Node>,
     pub source: Option<NodeSource>,
 }
@@ -423,14 +437,6 @@ pub struct Continue {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Delete {
     pub targets: Vec<Node>,
-    pub source: Option<NodeSource>,
-}
-
-/// A destructured assignment expression for tuples, e.g. `x, y = (1, 2)`.
-#[derive(Debug, Clone, PartialEq)]
-pub struct DestructuredAssign {
-    pub target: Vec<Node>,
-    pub value: Box<Node>,
     pub source: Option<NodeSource>,
 }
 
