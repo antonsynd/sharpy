@@ -13,10 +13,8 @@ fn test_simple_assignment() {
 
     match &nodes[0] {
         Node::Assign(assign) => {
-            assert_eq!(assign.targets.len(), 1);
-
             // Check target is a name
-            match &assign.targets[0] {
+            match &*assign.target {
                 Node::Name(name) => {
                     assert_eq!(name.id, "x");
                 }
@@ -49,10 +47,8 @@ fn test_typed_assignment() {
 
     match &nodes[0] {
         Node::Assign(assign) => {
-            assert_eq!(assign.targets.len(), 1);
-
             // Check target is a name
-            match &assign.targets[0] {
+            match &*assign.target {
                 Node::Name(name) => {
                     assert_eq!(name.id, "x");
                 }

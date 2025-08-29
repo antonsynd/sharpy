@@ -76,13 +76,13 @@ impl Parser {
             // For typed assignments, we'll create an Assign node with the type info in the target
             // This is a simplification - in a real parser you might want a separate TypedAssign node
             Ok(Node::Assign(Assign {
-                targets: vec![target],
+                target: Box::new(target),
                 value: Box::new(value),
                 source,
             }))
         } else {
             Ok(Node::Assign(Assign {
-                targets: vec![target],
+                target: Box::new(target),
                 value: Box::new(value),
                 source,
             }))

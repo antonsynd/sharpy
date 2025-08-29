@@ -58,16 +58,12 @@ pub trait Visitor {
     }
 
     fn visit_assign(&mut self, node: &crate::ast::node::Assign) {
-        for target in &node.targets {
-            self.visit(target);
-        }
+        self.visit(&node.target);
         self.visit(&node.value);
     }
 
     fn visit_assign_mut(&mut self, node: &mut crate::ast::node::Assign) {
-        for target in &mut node.targets {
-            self.visit_mut(target);
-        }
+        self.visit_mut(&mut node.target);
         self.visit_mut(&mut node.value);
     }
 

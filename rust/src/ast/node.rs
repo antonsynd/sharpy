@@ -267,11 +267,10 @@ pub struct Assert {
     pub source: Option<NodeSource>,
 }
 
-/// An assignment expression, e.g. `x = 5`. Also accepts destructuring assignment
-/// for lists and tuples.
+/// An assignment expression, e.g. `x = 5`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Assign {
-    pub targets: Vec<Node>,
+    pub target: Box<Node>,
     pub value: Box<Node>,
     pub source: Option<NodeSource>,
 }
@@ -424,6 +423,14 @@ pub struct Continue {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Delete {
     pub targets: Vec<Node>,
+    pub source: Option<NodeSource>,
+}
+
+/// A destructured assignment expression for tuples, e.g. `x, y = (1, 2)`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DestructuredAssign {
+    pub target: Vec<Node>,
+    pub value: Box<Node>,
     pub source: Option<NodeSource>,
 }
 
@@ -707,6 +714,8 @@ pub struct TryStar {
     pub source: Option<NodeSource>,
 }
 
+/// A tuple literal, e.g. `(1, "hello", False)`. It can also be empty, e.g.
+/// `(,)`, or a tuple with a single element `(1,)`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Tuple {
     pub elements: Vec<Node>,
@@ -718,6 +727,14 @@ pub struct TypeAlias {
     pub name: Box<Node>,
     pub type_params: Vec<Node>,
     pub value: Box<Node>,
+    pub source: Option<NodeSource>,
+}
+
+/// A name with an associated type, e.g. `x: int`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypedName {
+    pub id: String,
+    pub type_: Box<Node>,
     pub source: Option<NodeSource>,
 }
 
