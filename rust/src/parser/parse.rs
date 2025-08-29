@@ -1,5 +1,5 @@
-use crate::ast::node::*;
-use crate::lexer::token::*;
+use crate::ast::node::{Node, NodeSource, Assign, Tuple, Name, TypedName, ConstantValue, Constant, List};
+use crate::lexer::token::{Token, TokenType, NumberType, StringType};
 use crate::parser::error::ParseError;
 use crate::utils::SourceLocation;
 
@@ -15,6 +15,13 @@ impl Parser {
     }
 
     /// Parse tokens into AST nodes
+    ///
+    /// # Errors
+    ///
+    /// Returns `ParseError` if:
+    /// - Unexpected tokens are encountered
+    /// - Invalid syntax is found
+    /// - Unexpected end of file is reached
     pub fn parse(&mut self) -> Result<Vec<Node>, ParseError> {
         let mut statements = Vec::new();
 
@@ -456,11 +463,9 @@ impl Parser {
     }
 
     fn match_token(&self, token_type: &TokenType) -> bool {
-        if let Some(token) = self.current_token() {
+        self.current_token().is_some_and(|token|
             std::mem::discriminant(&token.token_type) == std::mem::discriminant(token_type)
-        } else {
-            false
-        }
+        )
     }
 
     fn is_comment(&self) -> bool {
@@ -471,28 +476,25 @@ impl Parser {
     }
 
     fn current_token_string(&self) -> String {
-        if let Some(token) = self.current_token() {
-            format!("{:?}", token.token_type)
-        } else {
-            "end of file".to_string()
-        }
+        self.current_token().map_or_else(
+            || "end of file".to_string(),
+            |token| format!("{:?}", token.token_type)
+        )
     }
 
     fn current_location(&self) -> SourceLocation {
-        if let Some(token) = self.current_token() {
-            token.location.clone()
-        } else if let Some(last_token) = self.tokens.last() {
-            last_token.location.clone()
-        } else {
-            SourceLocation::single_char(1, 1, 0)
-        }
+        self.current_token().map_or_else(|| {
+            self.tokens.last().map_or_else(
+                || SourceLocation::single_char(1, 1, 0),
+                |last_token| last_token.location.clone()
+            )
+        }, |token| token.location.clone())
     }
 
     fn previous_location(&self) -> SourceLocation {
-        if let Some(token) = self.previous() {
-            token.location.clone()
-        } else {
-            self.current_location()
-        }
+        self.previous().map_or_else(
+            || self.current_location(),
+            |token| token.location.clone()
+        )
     }
 }
