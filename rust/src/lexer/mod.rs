@@ -95,8 +95,9 @@ impl<'a> SharpyLexer<'a> {
         // Skip whitespace at the beginning of a line for indentation
         if self.at_line_start {
             let whitespace = self.scanner.skip_whitespace();
-            if !whitespace.is_empty() && !self.is_at_eof() && !self.is_comment_or_newline() {
-                // Handle indentation
+            self.at_line_start = false; // Reset flag immediately
+            // Always handle indentation at line start to check for dedents
+            if !self.is_at_eof() && !self.is_comment_or_newline() {
                 let location = self.scanner.current_location();
                 let indent_tokens = self
                     .indent_handler
@@ -108,7 +109,6 @@ impl<'a> SharpyLexer<'a> {
                     return Ok(token);
                 }
             }
-            self.at_line_start = false;
         } else {
             // Skip whitespace in the middle of lines (allows tabs in expressions)
             self.scanner.skip_expression_whitespace();

@@ -404,9 +404,9 @@ pub struct ClassDef {
     pub source: Option<NodeSource>,
 }
 
-/// A comparison operation, e.g. `x < y`. The comparators on the right can
-/// be more than one, e.g. `x < y < z`, which is equivalent to
-/// `x < y and y < z`.
+/// A comparison operation, e.g. `x < y`. The operators and comparators can
+/// be more than one, e.g. `x < y <= z`, which is equivalent to
+/// `x < y and y <= z`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Compare {
     pub left: Box<Node>,

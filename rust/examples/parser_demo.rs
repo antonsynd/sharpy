@@ -13,6 +13,15 @@ fn main() {
         "x: int, y = (1, 2.5)",
         "coords, color = ([1, 2], \"red\")",
         "first, rest = ([1, 2, 3], [4, 5, 6])",
+        // Comparison examples
+        "x == 5",
+        "age >= 18",
+        "1 < x <= 10",
+        "name in users",
+        "obj is None",
+        // If statement examples
+        "if x == 5:\n    y = 10",
+        "if age >= 18:\n    status = \"adult\"\nelse:\n    status = \"minor\"",
     ];
 
     for code in examples {
@@ -67,6 +76,14 @@ fn get_node_description(node: &Node) -> String {
             };
             target_type.to_string()
         }
+        Node::Compare(compare) => {
+            if compare.ops.len() == 1 {
+                format!("Simple Comparison ({:?})", compare.ops[0])
+            } else {
+                format!("Chained Comparison ({} ops)", compare.ops.len())
+            }
+        }
+        Node::If(_) => "If Statement".to_string(),
         Node::Constant(_) => "Constant".to_string(),
         Node::Name(_) => "Name".to_string(),
         Node::List(_) => "List".to_string(),
