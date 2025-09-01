@@ -1,0 +1,15 @@
+pass
+
+return
+
+return 42
+
+return x + y
+
+not True
+
+-42
+
++7
+
+~8

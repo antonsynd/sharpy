@@ -1,6 +1,6 @@
 use crate::ast::node::{
-    Assign, CompOp, Compare, Constant, ConstantValue, If, List, Name, Node, NodeSource, Tuple,
-    TypedName, While,
+    Assign, CompOp, Compare, Constant, ConstantValue, If, List, Name, Node, NodeSource, Pass,
+    Return, Tuple, TypedName, UnaryOp, UnaryOp_, While,
 };
 use crate::lexer::token::{NumberType, StringType, Token, TokenType};
 use crate::parser::error::ParseError;
@@ -51,6 +51,15 @@ impl Parser {
 
         if self.match_token(&TokenType::While) {
             return self.parse_while_statement();
+        }
+
+        // Check for simple statements
+        if self.match_token(&TokenType::Pass) {
+            return self.parse_pass_statement();
+        }
+
+        if self.match_token(&TokenType::Return) {
+            return self.parse_return_statement();
         }
 
         // Try to parse as assignment first, then fall back to expression
@@ -229,19 +238,19 @@ impl Parser {
 
     /// Parse comparison expressions: expr == expr, expr < expr, etc.
     fn parse_comparison(&mut self) -> Result<Node, ParseError> {
-        let left = self.parse_primary()?;
+        let left = self.parse_addition()?;
 
         let mut ops = Vec::new();
         let mut comparators = Vec::new();
 
         while let Some(comp_op) = self.parse_comparison_operator() {
             ops.push(comp_op);
-            let right = self.parse_primary()?;
+            let right = self.parse_addition()?;
             comparators.push(right);
         }
 
         if ops.is_empty() {
-            // No comparison operators found, return the primary expression
+            // No comparison operators found, return the addition expression
             Ok(left)
         } else {
             // Create a Compare node
@@ -306,6 +315,56 @@ impl Parser {
         } else {
             None
         }
+    }
+
+    /// Parse addition and subtraction expressions: expr + expr, expr - expr
+    fn parse_addition(&mut self) -> Result<Node, ParseError> {
+        let left = self.parse_multiplication()?;
+
+        // For now, just return the multiplication result
+        // TODO: Implement binary operations (BinOp AST nodes)
+        Ok(left)
+    }
+
+    /// Parse multiplication, division, and modulo expressions: expr * expr, expr / expr, expr % expr
+    fn parse_multiplication(&mut self) -> Result<Node, ParseError> {
+        let left = self.parse_unary()?;
+
+        // For now, just return the unary result
+        // TODO: Implement binary operations (BinOp AST nodes)
+        Ok(left)
+    }
+
+    /// Parse unary expressions: +expr, -expr, not expr, ~expr
+    fn parse_unary(&mut self) -> Result<Node, ParseError> {
+        if let Some(token) = self.current_token() {
+            let unary_op = match token.token_type {
+                TokenType::Plus => Some(UnaryOp::UnaryAdd),
+                TokenType::Minus => Some(UnaryOp::UnarySub),
+                TokenType::Not => Some(UnaryOp::Not),
+                TokenType::Tilde => Some(UnaryOp::Invert),
+                _ => None,
+            };
+
+            if let Some(op) = unary_op {
+                let start_location = token.location.clone();
+                self.advance(); // consume the unary operator
+                let operand = self.parse_unary()?; // right-associative
+                let end_location = self.get_node_end_location(&operand);
+
+                return Ok(Node::UnaryOp(UnaryOp_ {
+                    op,
+                    operand: Box::new(operand),
+                    source: Some(NodeSource::from_source_location(
+                        &start_location,
+                        &end_location,
+                    )),
+                }));
+            }
+        }
+
+        // No unary operator found, parse as primary
+        self.parse_primary()
     }
 
     /// Parse primary expressions (constants, lists, etc.)
@@ -885,5 +944,65 @@ impl Parser {
         }
 
         Ok(statements)
+    }
+
+    /// Parse a pass statement, e.g., `pass`
+    fn parse_pass_statement(&mut self) -> Result<Node, ParseError> {
+        // Get the location before consuming the token
+        let location = self.current_location();
+
+        // Consume 'pass' keyword
+        if !self.match_token(&TokenType::Pass) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "'pass'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance();
+
+        Ok(Node::Pass(Pass {
+            source: Some(NodeSource::from_source_location(&location, &location)),
+        }))
+    }
+
+    /// Parse a return statement, e.g., `return` or `return expr`
+    fn parse_return_statement(&mut self) -> Result<Node, ParseError> {
+        // Get the location before consuming the token
+        let start_location = self.current_location();
+
+        // Consume 'return' keyword
+        if !self.match_token(&TokenType::Return) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "'return'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance();
+
+        // Check if there's an expression to return
+        let (value, end_location) = if self.is_at_end() {
+            (None, start_location.clone())
+        } else if let Some(token) = self.current_token() {
+            match token.token_type {
+                TokenType::Newline | TokenType::Dedent => (None, start_location.clone()),
+                _ => {
+                    let expr = self.parse_expression()?;
+                    let end_loc = self.current_location();
+                    (Some(Box::new(expr)), end_loc)
+                }
+            }
+        } else {
+            (None, start_location.clone())
+        };
+
+        Ok(Node::Return(Return {
+            value,
+            source: Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            )),
+        }))
     }
 }

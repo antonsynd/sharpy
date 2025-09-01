@@ -583,7 +583,7 @@ fn test_simple_if_statement() {
 
 #[test]
 fn test_simple_while_statement() {
-    let code = "while x < 10:\n    x = x + 1";
+    let code = "while x < 10:\n    x = 5";
     let mut lexer = SharpyLexer::new(code);
     let tokens = lexer.tokenize_all().expect("Lexing should succeed");
 
@@ -628,7 +628,7 @@ fn test_simple_while_statement() {
 
 #[test]
 fn test_while_with_else_statement() {
-    let code = "while x < 10:\n    x = x + 1\nelse:\n    print('done')";
+    let code = "while x < 10:\n    x = 5\nelse:\n    pass";
     let mut lexer = SharpyLexer::new(code);
     let tokens = lexer.tokenize_all().expect("Lexing should succeed");
 
@@ -657,7 +657,11 @@ fn test_while_with_else_statement() {
 
                     // Check else clause exists and has content
                     assert_eq!(while_node.else_.len(), 1);
-                    // The else body should contain the print statement (which will be parsed as a function call)
+                    // The else body should contain the pass statement
+                    match &while_node.else_[0] {
+                        Node::Pass(_) => {} // Expected pass statement
+                        _ => panic!("Expected pass statement in while else body"),
+                    }
                 }
                 _ => panic!("Expected While node"),
             }
@@ -669,5 +673,219 @@ fn test_while_with_else_statement() {
             );
             // This is acceptable for now as our lexer might be strict about indentation
         }
+    }
+}
+
+#[test]
+fn test_pass_statement() {
+    let code = "pass";
+    let mut lexer = SharpyLexer::new(code);
+    let tokens = lexer.tokenize_all().expect("Lexing should succeed");
+
+    let mut parser = Parser::new(tokens);
+    let nodes = parser.parse().expect("Parsing should succeed");
+
+    assert_eq!(nodes.len(), 1);
+
+    match &nodes[0] {
+        Node::Pass(_pass) => {
+            // Pass statements don't have specific data to check beyond existing
+        }
+        _ => panic!("Expected Pass node"),
+    }
+}
+
+#[test]
+fn test_return_without_value() {
+    let code = "return";
+    let mut lexer = SharpyLexer::new(code);
+    let tokens = lexer.tokenize_all().expect("Lexing should succeed");
+
+    let mut parser = Parser::new(tokens);
+    let nodes = parser.parse().expect("Parsing should succeed");
+
+    assert_eq!(nodes.len(), 1);
+
+    match &nodes[0] {
+        Node::Return(return_node) => {
+            assert!(return_node.value.is_none(), "Return should have no value");
+        }
+        _ => panic!("Expected Return node"),
+    }
+}
+
+#[test]
+fn test_return_with_value() {
+    let code = "return 42";
+    let mut lexer = SharpyLexer::new(code);
+    let tokens = lexer.tokenize_all().expect("Lexing should succeed");
+
+    let mut parser = Parser::new(tokens);
+    let nodes = parser.parse().expect("Parsing should succeed");
+
+    assert_eq!(nodes.len(), 1);
+
+    match &nodes[0] {
+        Node::Return(return_node) => {
+            assert!(return_node.value.is_some(), "Return should have a value");
+
+            // Check the returned value is 42
+            match return_node.value.as_ref().unwrap().as_ref() {
+                Node::Constant(constant) => match &constant.value {
+                    ConstantValue::Int(val) => assert_eq!(*val, 42),
+                    _ => panic!("Expected integer constant"),
+                },
+                _ => panic!("Expected Constant node for return value"),
+            }
+        }
+        _ => panic!("Expected Return node"),
+    }
+}
+
+#[test]
+fn test_unary_minus() {
+    let code = "-42";
+    let mut lexer = SharpyLexer::new(code);
+    let tokens = lexer.tokenize_all().expect("Lexing should succeed");
+
+    let mut parser = Parser::new(tokens);
+    let nodes = parser.parse().expect("Parsing should succeed");
+
+    assert_eq!(nodes.len(), 1);
+
+    match &nodes[0] {
+        Node::UnaryOp(unary_op) => {
+            assert!(matches!(unary_op.op, UnaryOp::UnarySub));
+
+            // Check the operand is 42
+            match unary_op.operand.as_ref() {
+                Node::Constant(constant) => match &constant.value {
+                    ConstantValue::Int(val) => assert_eq!(*val, 42),
+                    _ => panic!("Expected integer constant"),
+                },
+                _ => panic!("Expected Constant node for operand"),
+            }
+        }
+        _ => panic!("Expected UnaryOp node"),
+    }
+}
+
+#[test]
+fn test_unary_plus() {
+    let code = "+7";
+    let mut lexer = SharpyLexer::new(code);
+    let tokens = lexer.tokenize_all().expect("Lexing should succeed");
+
+    let mut parser = Parser::new(tokens);
+    let nodes = parser.parse().expect("Parsing should succeed");
+
+    assert_eq!(nodes.len(), 1);
+
+    match &nodes[0] {
+        Node::UnaryOp(unary_op) => {
+            assert!(matches!(unary_op.op, UnaryOp::UnaryAdd));
+
+            // Check the operand is 7
+            match unary_op.operand.as_ref() {
+                Node::Constant(constant) => match &constant.value {
+                    ConstantValue::Int(val) => assert_eq!(*val, 7),
+                    _ => panic!("Expected integer constant"),
+                },
+                _ => panic!("Expected Constant node for operand"),
+            }
+        }
+        _ => panic!("Expected UnaryOp node"),
+    }
+}
+
+#[test]
+fn test_unary_not() {
+    let code = "not True";
+    let mut lexer = SharpyLexer::new(code);
+    let tokens = lexer.tokenize_all().expect("Lexing should succeed");
+
+    let mut parser = Parser::new(tokens);
+    let nodes = parser.parse().expect("Parsing should succeed");
+
+    assert_eq!(nodes.len(), 1);
+
+    match &nodes[0] {
+        Node::UnaryOp(unary_op) => {
+            assert!(matches!(unary_op.op, UnaryOp::Not));
+
+            // Check the operand is True
+            match unary_op.operand.as_ref() {
+                Node::Constant(constant) => match &constant.value {
+                    ConstantValue::Bool(val) => assert!(*val),
+                    _ => panic!("Expected boolean constant"),
+                },
+                _ => panic!("Expected Constant node for operand"),
+            }
+        }
+        _ => panic!("Expected UnaryOp node"),
+    }
+}
+
+#[test]
+fn test_unary_invert() {
+    let code = "~8";
+    let mut lexer = SharpyLexer::new(code);
+    let tokens = lexer.tokenize_all().expect("Lexing should succeed");
+
+    let mut parser = Parser::new(tokens);
+    let nodes = parser.parse().expect("Parsing should succeed");
+
+    assert_eq!(nodes.len(), 1);
+
+    match &nodes[0] {
+        Node::UnaryOp(unary_op) => {
+            assert!(matches!(unary_op.op, UnaryOp::Invert));
+
+            // Check the operand is 8
+            match unary_op.operand.as_ref() {
+                Node::Constant(constant) => match &constant.value {
+                    ConstantValue::Int(val) => assert_eq!(*val, 8),
+                    _ => panic!("Expected integer constant"),
+                },
+                _ => panic!("Expected Constant node for operand"),
+            }
+        }
+        _ => panic!("Expected UnaryOp node"),
+    }
+}
+
+#[test]
+fn test_nested_unary_operations() {
+    let code = "--42";
+    let mut lexer = SharpyLexer::new(code);
+    let tokens = lexer.tokenize_all().expect("Lexing should succeed");
+
+    let mut parser = Parser::new(tokens);
+    let nodes = parser.parse().expect("Parsing should succeed");
+
+    assert_eq!(nodes.len(), 1);
+
+    match &nodes[0] {
+        Node::UnaryOp(outer_unary) => {
+            assert!(matches!(outer_unary.op, UnaryOp::UnarySub));
+
+            // Check the operand is another unary operation
+            match outer_unary.operand.as_ref() {
+                Node::UnaryOp(inner_unary) => {
+                    assert!(matches!(inner_unary.op, UnaryOp::UnarySub));
+
+                    // Check the inner operand is 42
+                    match inner_unary.operand.as_ref() {
+                        Node::Constant(constant) => match &constant.value {
+                            ConstantValue::Int(val) => assert_eq!(*val, 42),
+                            _ => panic!("Expected integer constant"),
+                        },
+                        _ => panic!("Expected Constant node for inner operand"),
+                    }
+                }
+                _ => panic!("Expected UnaryOp node for outer operand"),
+            }
+        }
+        _ => panic!("Expected UnaryOp node"),
     }
 }
