@@ -22,6 +22,9 @@ fn main() {
         // If statement examples
         "if x == 5:\n    y = 10",
         "if age >= 18:\n    status = \"adult\"\nelse:\n    status = \"minor\"",
+        // While loop examples
+        "while x < 10:\n    x = 42",
+        "while count > 0:\n    count = 0\nelse:\n    status = \"finished\"",
     ];
 
     for code in examples {
@@ -84,6 +87,13 @@ fn get_node_description(node: &Node) -> String {
             }
         }
         Node::If(_) => "If Statement".to_string(),
+        Node::While(while_node) => {
+            if while_node.else_.is_empty() {
+                "While Loop".to_string()
+            } else {
+                "While Loop with Else".to_string()
+            }
+        }
         Node::Constant(_) => "Constant".to_string(),
         Node::Name(_) => "Name".to_string(),
         Node::List(_) => "List".to_string(),

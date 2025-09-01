@@ -1,6 +1,6 @@
 use crate::ast::node::{
     Assign, CompOp, Compare, Constant, ConstantValue, If, List, Name, Node, NodeSource, Tuple,
-    TypedName,
+    TypedName, While,
 };
 use crate::lexer::token::{NumberType, StringType, Token, TokenType};
 use crate::parser::error::ParseError;
@@ -47,6 +47,10 @@ impl Parser {
         // Check for control flow statements first
         if self.match_token(&TokenType::If) {
             return self.parse_if_statement();
+        }
+
+        if self.match_token(&TokenType::While) {
+            return self.parse_while_statement();
         }
 
         // Try to parse as assignment first, then fall back to expression
@@ -758,6 +762,81 @@ impl Parser {
         ));
 
         Ok(Node::If(If {
+            test: Box::new(test),
+            body,
+            else_: else_body,
+            source,
+        }))
+    }
+
+    /// Parse a while statement: while condition: body [else: body]
+    fn parse_while_statement(&mut self) -> Result<Node, ParseError> {
+        let start_location = self.current_location();
+
+        // Consume 'while' keyword
+        if !self.match_token(&TokenType::While) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "'while'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance();
+
+        // Parse condition
+        let test = self.parse_expression()?;
+
+        // Expect ':'
+        if !self.match_token(&TokenType::Colon) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "':'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance();
+
+        // Parse while body
+        let body = self.parse_block()?;
+
+        // Consume the dedent that ends the while block
+        if self.match_token(&TokenType::Dedent) {
+            self.advance();
+        }
+
+        // Parse optional else clause
+        let mut else_body = Vec::new();
+
+        // Check for else at the same indentation level
+        if self.match_token(&TokenType::Else) {
+            self.advance(); // consume 'else'
+
+            // Expect ':'
+            if !self.match_token(&TokenType::Colon) {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "':'".to_string(),
+                    found: self.current_token_string(),
+                    location: self.current_location(),
+                });
+            }
+            self.advance();
+
+            // Parse else body
+            else_body = self.parse_block()?;
+
+            // Consume dedent
+            if self.match_token(&TokenType::Dedent) {
+                self.advance();
+            }
+        }
+
+        let end_location = self.previous_location();
+        let source = Some(NodeSource::from_source_location(
+            &start_location,
+            &end_location,
+        ));
+
+        Ok(Node::While(While {
             test: Box::new(test),
             body,
             else_: else_body,
