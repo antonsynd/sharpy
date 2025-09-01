@@ -50,9 +50,6 @@ x = 10
 x = "Foo"  # Error: Cannot convert "str" value to "int"
 ```
 
-For more details, see the page about
-[variables](/sharpy/manual/variables).
-
 ## Blocks and statements
 
 Code blocks such as functions, conditions, and loops are defined
@@ -70,8 +67,8 @@ However, you can use any number of spaces for your indentation levels, though
 we prefer 4.
 
 All code statements in Sharpy end with a newline. However, statements can span
-multiple lines if you indent the following lines. For example, this long string
-spans two lines:
+multiple lines if you indent the following lines to match the indentation of
+the start of the expression. For example, this long string spans two lines:
 
 ```sharpy
 def print_line():
@@ -80,16 +77,34 @@ def print_line():
     print(long_text)
 ```
 
-And you can chain function calls across lines:
+You can also wrap multiple lines in parentheses:
+
+```sharpy
+def print_line():
+    long_text = ("This is a long line of text that is a lot easier to read if"
+    " it is broken up across two lines instead of one long line.")
+    print(long_text)
+```
+
+Or use a backslash as a line continuation character:
+
+```sharpy
+def print_line():
+    long_text = "This is a long line of text that is a lot easier to read if" \
+    " it is broken up across two lines instead of one long line."
+    print(long_text)
+```
+
+You can chain function calls across lines:
 
 ```sharpy
 def print_hello():
-    text = ",".join("Hello", " world!")
+    text = ",".join("Hello",
+                    " world!")
     print(text)
 ```
 
-For more information on loops and conditional statements, see
-[Control flow](/sharpy/manual/control-flow).
+However, for readability, it is best to indent the next lines accordingly.
 
 ## Functions
 
@@ -101,9 +116,6 @@ requires a single `str` argument and returns a `str`:
 def greet(name: str) -> str:
     return "Hello, " + name + "!"
 ```
-
-Refer to the [Functions](/sharpy/manual/functions) page for more details on
-defining and calling functions.
 
 ## Code comments
 
@@ -119,7 +131,9 @@ Comments may also follow some code:
 var message = "Hello, World!"  # This is also a valid comment
 ```
 
-API documentation comments are enclosed in triple quotes. For example:
+API documentation comments ("docstrings) are enclosed in triple quotes.
+
+For example:
 
 ```sharpy
 fn print(x: str):
@@ -131,24 +145,11 @@ fn print(x: str):
     ...
 ```
 
-Documenting your code with these kinds of comments (known as "docstrings")
-is a topic we've yet to fully specify, but you can generate an API reference
-from docstrings using the [`sharpy doc` command](/sharpy/cli/doc).
+## Classes
 
-:::note
+You can build high-level abstractions for types (or "objects") as a `class`.
 
-Technically, docstrings aren't _comments_, they're a special use of Sharpy's
-syntax for multi-line string literals. For details, see
-[str literals](/sharpy/manual/types#string-literals) in the page on
-[Types](/sharpy/manual/types).
-
-:::
-
-## Structs
-
-You can build high-level abstractions for types (or "objects") as a `struct`.
-
-A `struct` in Sharpy has the same capabilities as a C# `struct`. In comparison
+A `class` in Sharpy has the same capabilities as a C# `class`. In comparison
 to a `class` in Python, both support methods, fields, operator overloading,
 decorators for metaprogramming, and so on. However, Sharpy structs are always
 passed by value, not by reference.
@@ -199,9 +200,6 @@ struct MyPair(Copyable, Movable):
     def dump(self):
         print(self.first, self.second)
 ```
-
-For more details, see the page about
-[structs](/sharpy/manual/structs).
 
 ### Protocols
 
@@ -318,6 +316,3 @@ because there's less to compute at runtime.
 Similarly, you can define a struct with parameters, which effectively allows
 you to define variants of that type at compile-time, depending on the parameter
 values.
-
-For more detail on parameters, see the section on
-[Metaprogramming](/sharpy/manual/parameters/).
