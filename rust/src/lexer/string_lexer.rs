@@ -345,6 +345,7 @@ impl StringLexer {
         let is_bytes = prefix.to_lowercase().contains('b');
 
         let mut content = String::new();
+        let mut found_closing_quote = false;
 
         while let Some(ch) = scanner.current_char() {
             // Check for end quote(s)
@@ -357,6 +358,7 @@ impl StringLexer {
                             scanner.advance(); // consume first quote
                             scanner.advance(); // consume second quote
                             scanner.advance(); // consume third quote
+                            found_closing_quote = true;
                             break;
                         }
                     }
@@ -364,6 +366,7 @@ impl StringLexer {
                     scanner.advance();
                 } else {
                     scanner.advance();
+                    found_closing_quote = true;
                     break;
                 }
             } else if ch == '\\' && !is_raw {
@@ -376,6 +379,11 @@ impl StringLexer {
                 content.push(ch);
                 scanner.advance();
             }
+        }
+
+        // Check if we reached EOF without finding the closing quote
+        if !found_closing_quote {
+            return Err(LexerError::UnterminatedString);
         }
 
         let token_type = if is_bytes {

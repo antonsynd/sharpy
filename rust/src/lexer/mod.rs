@@ -60,6 +60,7 @@ impl<'a> SharpyLexer<'a> {
         let mut tokens = Vec::new();
 
         loop {
+            let current_pos = self.scanner.position();
             match self.next_token() {
                 Ok(token) => {
                     let is_eof = matches!(token.token_type, TokenType::Eof);
@@ -70,6 +71,17 @@ impl<'a> SharpyLexer<'a> {
                 }
                 Err(err) => {
                     self.errors.push(err);
+                    // Ensure we advance past the problematic character to avoid infinite loops
+                    if self.scanner.position() == current_pos {
+                        if self.scanner.current_char().is_some() {
+                            self.scanner.advance();
+                        } else {
+                            // We're at EOF, create an EOF token and break
+                            let location = self.scanner.current_location();
+                            tokens.push(Token::new(TokenType::Eof, location));
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -84,13 +96,8 @@ impl<'a> SharpyLexer<'a> {
     fn scan_next_token(&mut self) -> Result<Token, LexerError> {
         // Handle f-string continuation if we're in f-string mode
         if self.string_lexer.is_in_fstring() {
-            println!("In f-string mode, calling handle_fstring_continuation");
             return self.handle_fstring_continuation();
         }
-        println!(
-            "Not in f-string mode (current_char={:?})",
-            self.scanner.current_char()
-        );
 
         // Skip whitespace at the beginning of a line for indentation
         if self.at_line_start {
@@ -130,15 +137,16 @@ impl<'a> SharpyLexer<'a> {
             Some('\n') => self.handle_newline(),
             Some('#') => Ok(self.scanner.scan_comment()),
             Some(ch) if ch.is_ascii_digit() => self.scanner.scan_number(),
+            Some('.') if self.scanner.peek_char().is_some_and(|c| c.is_ascii_digit()) => {
+                // Float starting with decimal point (.5, .123, etc.)
+                self.scanner.scan_number()
+            }
             Some(ch) if is_string_start(ch) => self.scan_string(),
             Some(ch) if Self::could_be_string_with_prefix(ch) => {
                 // Check if it's actually a string with prefix or just an identifier
-                println!("Found potential string prefix character: {ch:?}");
                 if self.scanner.is_string_prefix_followed_by_quote() {
-                    println!("Confirmed string with prefix, calling scan_string");
                     self.scan_string()
                 } else {
-                    println!("Not followed by quote, treating as identifier");
                     self.scanner.scan_identifier()
                 }
             }
@@ -194,12 +202,6 @@ impl<'a> SharpyLexer<'a> {
     }
 
     fn handle_fstring_continuation(&mut self) -> Result<Token, LexerError> {
-        println!(
-            "handle_fstring_continuation: in_expression={}, current_char={:?}",
-            self.string_lexer.is_in_fstring_expression(),
-            self.scanner.current_char()
-        );
-
         // Skip whitespace within f-strings (but preserve for content)
         if self.string_lexer.is_in_fstring_expression() {
             // We're in an expression within an f-string
@@ -234,14 +236,11 @@ impl<'a> SharpyLexer<'a> {
                 }
                 Some('"' | '\'') => {
                     // Potential end of f-string
-                    println!("Found quote character: {:?}", self.scanner.current_char());
                     if self.is_fstring_end() {
-                        println!("Detected f-string end, scanning end token");
                         let token = self.string_lexer.scan_fstring_end(&mut self.scanner)?;
                         self.string_lexer.end_fstring();
                         return Ok(token);
                     }
-                    println!("Not f-string end, scanning as middle content");
                     // Part of f-string content
                     return self.string_lexer.scan_fstring_middle(&mut self.scanner);
                 }
@@ -322,24 +321,15 @@ impl<'a> SharpyLexer<'a> {
 
         // Determine if it's an f-string
         if prefix.to_lowercase().contains('f') {
-            println!("Detected f-string prefix: '{prefix}'");
             let token = StringLexer::scan_string(&mut self.scanner)?;
-            println!("F-string token created: {token:?}");
             // After creating the f-string start token, set up the state
             if let TokenType::FString(FStringPart::Start(_)) = &token.token_type {
                 // We need to get the quote style to set up the mode properly
                 // Since scan_string already consumed the prefix and quote, we need to reconstruct the info
                 let quote_style = SharpyLexer::determine_quote_style_from_start_token(&token);
                 let is_triple = quote_style.len() == 3;
-                println!(
-                    "Setting up f-string state: prefix='{prefix}', quote_style='{quote_style}', is_triple={is_triple}"
-                );
                 self.string_lexer
                     .start_fstring(&prefix, &quote_style, is_triple);
-                println!(
-                    "F-string state setup complete. In f-string: {}",
-                    self.string_lexer.is_in_fstring()
-                );
             }
             Ok(token)
         } else {
@@ -358,7 +348,6 @@ impl<'a> SharpyLexer<'a> {
                     prefix.push(current_ch);
                 }
                 _ => {
-                    println!("peek_string_prefix: current char '{current_ch}' is not a prefix");
                     return prefix;
                 }
             }
@@ -366,11 +355,6 @@ impl<'a> SharpyLexer<'a> {
 
         // Then look ahead for more prefix characters
         let lookahead = self.scanner.peek_next_chars(3); // Look ahead for 3 more characters
-        println!(
-            "peek_string_prefix: current='{}', lookahead='{}'",
-            self.scanner.current_char().unwrap_or('?'),
-            lookahead
-        );
 
         for ch in lookahead.chars() {
             match ch.to_ascii_lowercase() {
@@ -381,7 +365,6 @@ impl<'a> SharpyLexer<'a> {
             }
         }
 
-        println!("peek_string_prefix: returning '{prefix}'");
         prefix
     }
     fn determine_quote_style_from_start_token(token: &Token) -> String {
