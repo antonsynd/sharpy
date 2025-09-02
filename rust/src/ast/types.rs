@@ -25,7 +25,7 @@ impl TypeName {
 /// A module-qualified type, e.g. `collections.defaultdict`, `sharpy.io.File`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QualifiedType {
-    /// The module path components, e.g. ["sharpy", "collections"] for sharpy.collections.defaultdict
+    /// The module path components, e.g. `["sharpy", "collections"] for sharpy.collections.defaultdict`
     pub module_path: Vec<String>,
     /// The final type name, e.g. "defaultdict"
     pub name: String,

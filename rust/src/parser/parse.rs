@@ -88,14 +88,13 @@ impl Parser {
             if let Some(token) = self.tokens.get(pos) {
                 match token.token_type {
                     TokenType::Equal => return true, // Found assignment operator
-                    TokenType::Comma => pos += 1,    // Continue through tuple elements
+                    TokenType::Comma | TokenType::Name(_) => pos += 1, // Continue through tuple elements and names
                     TokenType::Colon => {
                         // Skip type annotation - handle complex types
                         pos += 1;
                         pos = self.skip_type_expression(pos);
                     }
-                    TokenType::Name(_) => pos += 1, // Continue through names
-                    _ => break,                     // Not an assignment pattern
+                    _ => break, // Not an assignment pattern
                 }
             } else {
                 break;
@@ -574,27 +573,23 @@ impl Parser {
     fn parse_postfix(&mut self) -> Result<Node, ParseError> {
         let mut expr = self.parse_unary()?;
 
-        loop {
-            if let Some(token) = self.current_token() {
-                match token.token_type {
-                    TokenType::LeftParen => {
-                        // Function call: expr(args...)
-                        expr = self.parse_function_call(expr)?;
-                    }
-                    TokenType::Dot => {
-                        // Attribute access: expr.attr
-                        // TODO: Implement attribute access
-                        break;
-                    }
-                    TokenType::LeftBracket => {
-                        // Subscript: expr[index]
-                        // TODO: Implement subscript
-                        break;
-                    }
-                    _ => break,
+        while let Some(token) = self.current_token() {
+            match token.token_type {
+                TokenType::LeftParen => {
+                    // Function call: expr(args...)
+                    expr = self.parse_function_call(expr)?;
                 }
-            } else {
-                break;
+                TokenType::Dot => {
+                    // Attribute access: expr.attr
+                    // TODO: Implement attribute access
+                    break;
+                }
+                TokenType::LeftBracket => {
+                    // Subscript: expr[index]
+                    // TODO: Implement subscript
+                    break;
+                }
+                _ => break,
             }
         }
 
@@ -1455,11 +1450,11 @@ impl Parser {
                 NodeSource::from_source_location(&self.current_location(), &end_location),
             ));
 
-            return self.maybe_parse_optional(generic_type);
+            return Ok(self.maybe_parse_optional(generic_type));
         }
 
         // Check for optional: type?
-        self.maybe_parse_optional(base_type)
+        Ok(self.maybe_parse_optional(base_type))
     }
 
     /// Parse a base type (`TypeName` or `QualifiedType`)
@@ -1514,18 +1509,18 @@ impl Parser {
     }
 
     /// Check for optional suffix and wrap the type if found
-    fn maybe_parse_optional(&mut self, base_type: Node) -> Result<Node, ParseError> {
+    fn maybe_parse_optional(&mut self, base_type: Node) -> Node {
         if self.match_token(&TokenType::Question) {
             let start_location = self.get_node_start_location(&base_type);
             self.advance(); // consume '?'
             let end_location = self.current_location();
 
-            Ok(Node::OptionalType(OptionalType::with_source(
+            Node::OptionalType(OptionalType::with_source(
                 Box::new(base_type),
                 NodeSource::from_source_location(&start_location, &end_location),
-            )))
+            ))
         } else {
-            Ok(base_type)
+            base_type
         }
     }
 }
