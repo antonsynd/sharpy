@@ -1,6 +1,6 @@
 use crate::ast::node::{
-    Assign, CompOp, Compare, Constant, ConstantValue, If, List, Name, Node, NodeSource, Pass,
-    Return, Tuple, TypedName, UnaryOp, UnaryOp_, While,
+    Assign, BinaryOp, BinaryOp_, CompOp, Compare, Constant, ConstantValue, If, List, Name, Node,
+    NodeSource, Pass, Return, Tuple, TypedName, UnaryOp, UnaryOp_, While,
 };
 use crate::ast::types::{GenericType, OptionalType, QualifiedType, TypeName};
 use crate::lexer::token::{NumberType, StringType, Token, TokenType};
@@ -294,19 +294,19 @@ impl Parser {
 
     /// Parse comparison expressions: expr == expr, expr < expr, etc.
     fn parse_comparison(&mut self) -> Result<Node, ParseError> {
-        let left = self.parse_addition()?;
+        let left = self.parse_bitwise_or()?;
 
         let mut ops = Vec::new();
         let mut comparators = Vec::new();
 
         while let Some(comp_op) = self.parse_comparison_operator() {
             ops.push(comp_op);
-            let right = self.parse_addition()?;
+            let right = self.parse_bitwise_or()?;
             comparators.push(right);
         }
 
         if ops.is_empty() {
-            // No comparison operators found, return the addition expression
+            // No comparison operators found, return the bitwise expression
             Ok(left)
         } else {
             // Create a Compare node
@@ -373,21 +373,200 @@ impl Parser {
         }
     }
 
+    /// Parse bitwise OR expressions: expr | expr
+    fn parse_bitwise_or(&mut self) -> Result<Node, ParseError> {
+        let mut left = self.parse_bitwise_xor()?;
+
+        while let Some(token) = self.current_token()
+            && matches!(token.token_type, TokenType::Vbar)
+        {
+            let start_location = self.get_node_start_location(&left);
+            self.advance(); // consume '|'
+            let right = self.parse_bitwise_xor()?;
+            let end_location = self.get_node_end_location(&right);
+
+            left = Node::BinaryOp(BinaryOp_ {
+                left: Box::new(left),
+                op: BinaryOp::BitwiseOr,
+                right: Box::new(right),
+                source: Some(NodeSource::from_source_location(
+                    &start_location,
+                    &end_location,
+                )),
+            });
+        }
+
+        Ok(left)
+    }
+
+    /// Parse bitwise XOR expressions: expr ^ expr
+    fn parse_bitwise_xor(&mut self) -> Result<Node, ParseError> {
+        let mut left = self.parse_bitwise_and()?;
+
+        while let Some(token) = self.current_token()
+            && matches!(token.token_type, TokenType::Circumflex)
+        {
+            let start_location = self.get_node_start_location(&left);
+            self.advance(); // consume '^'
+            let right = self.parse_bitwise_and()?;
+            let end_location = self.get_node_end_location(&right);
+
+            left = Node::BinaryOp(BinaryOp_ {
+                left: Box::new(left),
+                op: BinaryOp::BitwiseXor,
+                right: Box::new(right),
+                source: Some(NodeSource::from_source_location(
+                    &start_location,
+                    &end_location,
+                )),
+            });
+        }
+
+        Ok(left)
+    }
+
+    /// Parse bitwise AND expressions: expr & expr
+    fn parse_bitwise_and(&mut self) -> Result<Node, ParseError> {
+        let mut left = self.parse_shift()?;
+
+        while let Some(token) = self.current_token()
+            && matches!(token.token_type, TokenType::Amper)
+        {
+            let start_location = self.get_node_start_location(&left);
+            self.advance(); // consume '&'
+            let right = self.parse_shift()?;
+            let end_location = self.get_node_end_location(&right);
+
+            left = Node::BinaryOp(BinaryOp_ {
+                left: Box::new(left),
+                op: BinaryOp::BitwiseAnd,
+                right: Box::new(right),
+                source: Some(NodeSource::from_source_location(
+                    &start_location,
+                    &end_location,
+                )),
+            });
+        }
+
+        Ok(left)
+    }
+
+    /// Parse shift expressions: expr << expr, expr >> expr
+    fn parse_shift(&mut self) -> Result<Node, ParseError> {
+        let mut left = self.parse_addition()?;
+
+        while let Some(token) = self.current_token() {
+            let op = match token.token_type {
+                TokenType::LeftShift => BinaryOp::LShift,
+                TokenType::RightShift => BinaryOp::RShift,
+                _ => break,
+            };
+
+            let start_location = self.get_node_start_location(&left);
+            self.advance(); // consume the operator
+            let right = self.parse_addition()?;
+            let end_location = self.get_node_end_location(&right);
+
+            left = Node::BinaryOp(BinaryOp_ {
+                left: Box::new(left),
+                op,
+                right: Box::new(right),
+                source: Some(NodeSource::from_source_location(
+                    &start_location,
+                    &end_location,
+                )),
+            });
+        }
+
+        Ok(left)
+    }
+
     /// Parse addition and subtraction expressions: expr + expr, expr - expr
     fn parse_addition(&mut self) -> Result<Node, ParseError> {
-        let left = self.parse_multiplication()?;
+        let mut left = self.parse_multiplication()?;
 
-        // For now, just return the multiplication result
-        // TODO: Implement binary operations (BinOp AST nodes)
+        while let Some(token) = self.current_token() {
+            let op = match token.token_type {
+                TokenType::Plus => BinaryOp::Add,
+                TokenType::Minus => BinaryOp::Sub,
+                _ => break,
+            };
+
+            let start_location = self.get_node_start_location(&left);
+            self.advance(); // consume the operator
+            let right = self.parse_multiplication()?;
+            let end_location = self.get_node_end_location(&right);
+
+            left = Node::BinaryOp(BinaryOp_ {
+                left: Box::new(left),
+                op,
+                right: Box::new(right),
+                source: Some(NodeSource::from_source_location(
+                    &start_location,
+                    &end_location,
+                )),
+            });
+        }
+
         Ok(left)
     }
 
     /// Parse multiplication, division, and modulo expressions: expr * expr, expr / expr, expr % expr
     fn parse_multiplication(&mut self) -> Result<Node, ParseError> {
+        let mut left = self.parse_power()?;
+
+        while let Some(token) = self.current_token() {
+            let op = match token.token_type {
+                TokenType::Star => BinaryOp::Mult,
+                TokenType::Slash => BinaryOp::Div,
+                TokenType::DoubleSlash => BinaryOp::FloorDiv,
+                TokenType::Percent => BinaryOp::Mod,
+                TokenType::At => BinaryOp::MatMult,
+                _ => break,
+            };
+
+            let start_location = self.get_node_start_location(&left);
+            self.advance(); // consume the operator
+            let right = self.parse_power()?;
+            let end_location = self.get_node_end_location(&right);
+
+            left = Node::BinaryOp(BinaryOp_ {
+                left: Box::new(left),
+                op,
+                right: Box::new(right),
+                source: Some(NodeSource::from_source_location(
+                    &start_location,
+                    &end_location,
+                )),
+            });
+        }
+
+        Ok(left)
+    }
+
+    /// Parse power expressions: expr ** expr (right-associative)
+    fn parse_power(&mut self) -> Result<Node, ParseError> {
         let left = self.parse_unary()?;
 
-        // For now, just return the unary result
-        // TODO: Implement binary operations (BinOp AST nodes)
+        if let Some(token) = self.current_token()
+            && matches!(token.token_type, TokenType::DoubleStar)
+        {
+            let start_location = self.get_node_start_location(&left);
+            self.advance(); // consume '**'
+            let right = self.parse_power()?; // right-associative
+            let end_location = self.get_node_end_location(&right);
+
+            return Ok(Node::BinaryOp(BinaryOp_ {
+                left: Box::new(left),
+                op: BinaryOp::Pow,
+                right: Box::new(right),
+                source: Some(NodeSource::from_source_location(
+                    &start_location,
+                    &end_location,
+                )),
+            }));
+        }
+
         Ok(left)
     }
 
