@@ -1,6 +1,6 @@
 use crate::ast::node::{
-    Assign, BinaryOp, BinaryOp_, CompOp, Compare, Constant, ConstantValue, If, List, Name, Node,
-    NodeSource, Pass, Return, Tuple, TypedName, UnaryOp, UnaryOp_, While,
+    Assign, BinaryOp, BinaryOp_, Call, CompOp, Compare, Constant, ConstantValue, If, List, Name,
+    Node, NodeSource, Pass, Return, Tuple, TypedName, UnaryOp, UnaryOp_, While,
 };
 use crate::ast::types::{GenericType, OptionalType, QualifiedType, TypeName};
 use crate::lexer::token::{NumberType, StringType, Token, TokenType};
@@ -546,7 +546,7 @@ impl Parser {
 
     /// Parse power expressions: expr ** expr (right-associative)
     fn parse_power(&mut self) -> Result<Node, ParseError> {
-        let left = self.parse_unary()?;
+        let left = self.parse_postfix()?;
 
         if let Some(token) = self.current_token()
             && matches!(token.token_type, TokenType::DoubleStar)
@@ -568,6 +568,179 @@ impl Parser {
         }
 
         Ok(left)
+    }
+
+    /// Parse postfix expressions: expr(args), expr.attr, expr[index]
+    fn parse_postfix(&mut self) -> Result<Node, ParseError> {
+        let mut expr = self.parse_unary()?;
+
+        loop {
+            if let Some(token) = self.current_token() {
+                match token.token_type {
+                    TokenType::LeftParen => {
+                        // Function call: expr(args...)
+                        expr = self.parse_function_call(expr)?;
+                    }
+                    TokenType::Dot => {
+                        // Attribute access: expr.attr
+                        // TODO: Implement attribute access
+                        break;
+                    }
+                    TokenType::LeftBracket => {
+                        // Subscript: expr[index]
+                        // TODO: Implement subscript
+                        break;
+                    }
+                    _ => break,
+                }
+            } else {
+                break;
+            }
+        }
+
+        Ok(expr)
+    }
+
+    /// Parse a function call: function(arg1, arg2, key=value, ...)
+    fn parse_function_call(&mut self, function: Node) -> Result<Node, ParseError> {
+        let start_location = self.get_node_start_location(&function);
+
+        // Consume '('
+        if !self.match_token(&TokenType::LeftParen) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "'('".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance(); // consume '('
+
+        let mut positional_args = Vec::new();
+        let mut keyword_args = Vec::new();
+
+        // Handle empty function call: func()
+        if self.match_token(&TokenType::RightParen) {
+            self.advance(); // consume ')'
+            let end_location = self.previous_location();
+            let source = Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            ));
+
+            return Ok(Node::Call(Call {
+                function: Box::new(function),
+                positional_args,
+                keyword_args,
+                source,
+            }));
+        }
+
+        // Parse arguments
+        loop {
+            // Check if this looks like a keyword argument (name=value)
+            if self.is_keyword_argument() {
+                let keyword_arg = self.parse_keyword_argument()?;
+                keyword_args.push(keyword_arg);
+            } else {
+                // Positional argument
+                let arg = self.parse_expression()?;
+                positional_args.push(arg);
+            }
+
+            if self.match_token(&TokenType::Comma) {
+                self.advance(); // consume ','
+
+                // Allow trailing comma
+                if self.match_token(&TokenType::RightParen) {
+                    break;
+                }
+            } else if self.match_token(&TokenType::RightParen) {
+                break;
+            } else {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "',' or ')'".to_string(),
+                    found: self.current_token_string(),
+                    location: self.current_location(),
+                });
+            }
+        }
+
+        // Consume ')'
+        if !self.match_token(&TokenType::RightParen) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "')'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance(); // consume ')'
+
+        let end_location = self.previous_location();
+        let source = Some(NodeSource::from_source_location(
+            &start_location,
+            &end_location,
+        ));
+
+        Ok(Node::Call(Call {
+            function: Box::new(function),
+            positional_args,
+            keyword_args,
+            source,
+        }))
+    }
+
+    /// Check if the current position looks like a keyword argument (name=value)
+    fn is_keyword_argument(&self) -> bool {
+        if let Some(token) = self.current_token()
+            && matches!(token.token_type, TokenType::Name(_))
+        {
+            // Look ahead for '='
+            if let Some(next_token) = self.tokens.get(self.current + 1)
+                && matches!(next_token.token_type, TokenType::Equal)
+            {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Parse a keyword argument: name=value
+    fn parse_keyword_argument(&mut self) -> Result<Node, ParseError> {
+        // For now, let's store keyword arguments as a special structure
+        // This is a temporary solution - in a full implementation you might want
+        // to modify the Call AST node to handle keyword arguments differently
+
+        // Parse the argument name
+        let _arg_name = if let Some(token) = self.current_token()
+            && let TokenType::Name(name_type) = &token.token_type
+        {
+            let arg_name = name_type.name.clone();
+            self.advance(); // consume name
+            arg_name
+        } else {
+            return Err(ParseError::UnexpectedToken {
+                expected: "argument name".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        };
+
+        // Expect '='
+        if !self.match_token(&TokenType::Equal) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "'='".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance(); // consume '='
+
+        // Parse the value
+        let value = self.parse_expression()?;
+
+        // For now, just return the value
+        // TODO: Properly handle keyword argument names
+        Ok(value)
     }
 
     /// Parse unary expressions: +expr, -expr, not expr, ~expr

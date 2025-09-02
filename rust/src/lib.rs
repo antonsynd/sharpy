@@ -6,6 +6,7 @@ pub mod utils;
 pub use ast::{
     Node, NodeSource,
     node::BinaryOp,
+    node::Call,
     node::CompOp,
     node::ConstantValue,
     node::UnaryOp,
