@@ -2,7 +2,7 @@ use sharpy_compiler_toolchain::{Parser, SharpyLexer};
 
 fn main() {
     let code = "if age >= 18:\n    status = \"adult\"\nelse:\n    status = \"minor\"";
-    println!("Code:\n{}\n", code);
+    println!("Code:\n{code}\n");
 
     let mut lexer = SharpyLexer::new(code);
     let tokens = lexer.tokenize_all().unwrap();
@@ -22,7 +22,7 @@ fn main() {
             println!("Success: {} AST nodes", nodes.len());
         }
         Err(err) => {
-            println!("Parse error: {}", err);
+            println!("Parse error: {err}");
         }
     }
 }

@@ -42,7 +42,7 @@ fn test_simple_lambda() {
             panic!("Expected BinaryOp node for lambda body");
         }
     } else {
-        panic!("Expected Lambda node, got {:?}", result);
+        panic!("Expected Lambda node, got {result:?}");
     }
 }
 
@@ -77,7 +77,7 @@ fn test_lambda_with_multiple_args() {
             panic!("Expected BinaryOp node for lambda body");
         }
     } else {
-        panic!("Expected Lambda node, got {:?}", result);
+        panic!("Expected Lambda node, got {result:?}");
     }
 }
 
@@ -108,7 +108,7 @@ fn test_lambda_no_args() {
             panic!("Expected Constant node for lambda body");
         }
     } else {
-        panic!("Expected Lambda node, got {:?}", result);
+        panic!("Expected Lambda node, got {result:?}");
     }
 }
 
@@ -142,7 +142,7 @@ fn test_lambda_with_return_type() {
             panic!("Expected BinaryOp node for lambda body");
         }
     } else {
-        panic!("Expected Lambda node, got {:?}", result);
+        panic!("Expected Lambda node, got {result:?}");
     }
 }
 
@@ -180,7 +180,7 @@ fn test_lambda_in_function_call() {
             panic!("Expected Name node for second argument");
         }
     } else {
-        panic!("Expected Call node, got {:?}", result);
+        panic!("Expected Call node, got {result:?}");
     }
 }
 
@@ -205,7 +205,7 @@ fn test_lambda_with_complex_body() {
             panic!("Expected BinaryOp node for lambda body");
         }
     } else {
-        panic!("Expected Lambda node, got {:?}", result);
+        panic!("Expected Lambda node, got {result:?}");
     }
 }
 
@@ -237,6 +237,6 @@ fn test_nested_lambdas() {
             panic!("Expected Lambda node for outer lambda body");
         }
     } else {
-        panic!("Expected Lambda node, got {:?}", result);
+        panic!("Expected Lambda node, got {result:?}");
     }
 }

@@ -43,6 +43,10 @@ struct Args {
     /// Skip rendering and just output DOT format
     #[arg(long)]
     dot_only: bool,
+
+    /// DPI for PNG output (higher values = higher resolution)
+    #[arg(long, default_value = "300")]
+    dpi: u32,
 }
 
 fn main() -> Result<()> {
@@ -138,16 +142,17 @@ fn main() -> Result<()> {
         eprintln!("Warning: Graphviz 'dot' command not found. Only DOT file will be generated.");
         println!("DOT file written to: {}", dot_path.display());
         println!(
-            "To generate PNG: dot -Tpng {} -o {}",
+            "To generate PNG: dot -Tpng -Gdpi={} {} -o {}",
+            args.dpi,
             dot_path.display(),
             png_path.display()
         );
         return Ok(());
     }
 
-    // Generate PNG using Graphviz
+    // Generate PNG using Graphviz with higher resolution
     let output = Command::new("dot")
-        .args(["-Tpng", "-o"])
+        .args(["-Tpng", &format!("-Gdpi={}", args.dpi), "-o"])
         .arg(&png_path)
         .arg(&dot_path)
         .output()

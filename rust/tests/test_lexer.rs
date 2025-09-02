@@ -1442,7 +1442,7 @@ fn test_double_quoted_string_literal() {
 
 #[test]
 fn test_single_quoted_string_literal() {
-    let code = r#"'Hello, World!'"#;
+    let code = r"'Hello, World!'";
     let mut lexer = SharpyLexer::new(code);
 
     let result = lexer.tokenize_all();
@@ -2561,7 +2561,7 @@ fn test_fstring_with_nested_string() {
 
 #[test]
 fn test_fstring_single_quotes() {
-    let code = r#"f'hello {world}'"#;
+    let code = r"f'hello {world}'";
     let mut lexer = SharpyLexer::new(code);
 
     let result = lexer.tokenize_all();

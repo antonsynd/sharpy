@@ -13,7 +13,7 @@ impl ASTRenderer {
     }
 
     /// Renders the AST as a DOT format string
-    /// 
+    ///
     /// # Errors
     /// Returns an error if DOT rendering fails or if the output contains invalid UTF-8
     pub fn render_ast(&self, ast: &Node) -> anyhow::Result<String> {
@@ -154,35 +154,35 @@ impl ASTGraph {
 
     fn get_node_label(node: &Node) -> String {
         match node {
-            Node::Module(m) => format!("Module\\n({} statements)", m.body.len()),
+            Node::Module(m) => format!("Module\n({} statements)", m.body.len()),
             Node::Assign(_) => "Assignment".to_string(),
-            Node::BinaryOp(op) => format!("BinaryOp\\n{:?}", op.op),
-            Node::UnaryOp(op) => format!("UnaryOp\\n{:?}", op.op),
+            Node::BinaryOp(op) => format!("BinaryOp\n{:?}", op.op),
+            Node::UnaryOp(op) => format!("UnaryOp\n{:?}", op.op),
             Node::Lambda(l) => {
                 let args_count = l.args.args.len();
                 let return_type = if l.return_type.is_some() { " -> T" } else { "" };
-                format!("Lambda\\n({args_count} args{return_type})")
+                format!("Lambda\n({args_count} args{return_type})")
             }
-            Node::Dict(d) => format!("Dict\\n({} items)", d.keys.len()),
-            Node::Set(s) => format!("Set\\n({} items)", s.elements.len()),
-            Node::List(l) => format!("List\\n({} items)", l.elements.len()),
-            Node::Tuple(t) => format!("Tuple\\n({} items)", t.elements.len()),
+            Node::Dict(d) => format!("Dict\n({} items)", d.keys.len()),
+            Node::Set(s) => format!("Set\n({} items)", s.elements.len()),
+            Node::List(l) => format!("List\n({} items)", l.elements.len()),
+            Node::Tuple(t) => format!("Tuple\n({} items)", t.elements.len()),
             Node::Call(c) => format!(
-                "Call\\n({} args)",
+                "Call\n({} args)",
                 c.positional_args.len() + c.keyword_args.len()
             ),
-            Node::Constant(c) => format!("Constant\\n{}", Self::format_constant(&c.value)),
-            Node::Attribute(a) => format!("Attribute\\n.{}", a.attr),
-            Node::Subscript(_) => "Subscript\\n[]".to_string(),
-            Node::Name(n) => format!("Name\\n{}", n.id),
-            Node::TypedName(tn) => format!("TypedName\\n{}: T", tn.id),
-            Node::Compare(c) => format!("Compare\\n{:?}", c.ops),
-            Node::BoolOp(b) => format!("BoolOp\\n{:?}", b.op),
+            Node::Constant(c) => format!("Constant\n{}", Self::format_constant(&c.value)),
+            Node::Attribute(a) => format!("Attribute\n.{}", a.attr),
+            Node::Subscript(_) => "Subscript\n[]".to_string(),
+            Node::Name(n) => format!("Name\n{}", n.id),
+            Node::TypedName(tn) => format!("TypedName\n{}: T", tn.id),
+            Node::Compare(c) => format!("Compare\n{:?}", c.ops),
+            Node::BoolOp(b) => format!("BoolOp\n{:?}", b.op),
             Node::If(_) => "If".to_string(),
             Node::While(_) => "While".to_string(),
             Node::For(_) => "For".to_string(),
-            Node::FunctionDef(f) => format!("FunctionDef\\n{}", f.name),
-            Node::ClassDef(c) => format!("ClassDef\\n{}", c.name),
+            Node::FunctionDef(f) => format!("FunctionDef\n{}", f.name),
+            Node::ClassDef(c) => format!("ClassDef\n{}", c.name),
             Node::Return(_) => "Return".to_string(),
             Node::Pass(_) => "Pass".to_string(),
             _ => Self::get_node_type_name(node),

@@ -94,7 +94,9 @@ fn test_list_assignment() {
                     for (i, element) in list.elements.iter().enumerate() {
                         match element {
                             Node::Constant(constant) => match &constant.value {
-                                ConstantValue::Int(val) => assert_eq!(*val, (i + 1) as i64),
+                                ConstantValue::Int(val) => {
+                                    assert_eq!(*val, i64::try_from(i + 1).unwrap())
+                                }
                                 _ => panic!("Expected integer constant"),
                             },
                             _ => panic!("Expected Constant node in list"),
@@ -136,7 +138,8 @@ fn test_nested_list_assignment() {
                                     match inner_element {
                                         Node::Constant(constant) => match &constant.value {
                                             ConstantValue::Int(val) => {
-                                                let expected = (i * 2 + j + 1) as i64;
+                                                let expected =
+                                                    i64::try_from(i * 2 + j + 1).unwrap();
                                                 assert_eq!(*val, expected);
                                             }
                                             _ => panic!("Expected integer constant"),
@@ -198,7 +201,7 @@ fn test_boolean_assignment() {
             // Check value is a boolean constant
             match assign.value.as_ref() {
                 Node::Constant(constant) => match &constant.value {
-                    ConstantValue::Bool(val) => assert_eq!(*val, true),
+                    ConstantValue::Bool(val) => assert!(*val),
                     _ => panic!("Expected boolean constant"),
                 },
                 _ => panic!("Expected Constant node for value"),
@@ -333,7 +336,7 @@ fn test_typed_destructuring_assignment() {
                     // Check second value element
                     match &tuple.elements[1] {
                         Node::Constant(constant) => match &constant.value {
-                            ConstantValue::Float(val) => assert_eq!(*val, 2.5),
+                            ConstantValue::Float(val) => assert!((*val - 2.5).abs() < f64::EPSILON),
                             _ => panic!("Expected float constant"),
                         },
                         _ => panic!("Expected Constant node for second value"),
@@ -532,7 +535,7 @@ fn test_different_comparison_operators() {
                 assert_eq!(compare.ops.len(), 1);
                 assert_eq!(compare.ops[0], expected_op);
             }
-            _ => panic!("Expected Compare node for: {}", code),
+            _ => panic!("Expected Compare node for: {code}"),
         }
     }
 }
@@ -575,7 +578,7 @@ fn test_simple_if_statement() {
             }
         }
         Err(e) => {
-            println!("If parsing failed (expected due to indentation): {:?}", e);
+            println!("If parsing failed (expected due to indentation): {e:?}");
             // This is acceptable for now as our lexer might be strict about indentation
         }
     }
@@ -617,10 +620,7 @@ fn test_simple_while_statement() {
             }
         }
         Err(e) => {
-            println!(
-                "While parsing failed (expected due to indentation): {:?}",
-                e
-            );
+            println!("While parsing failed (expected due to indentation): {e:?}");
             // This is acceptable for now as our lexer might be strict about indentation
         }
     }
@@ -667,10 +667,7 @@ fn test_while_with_else_statement() {
             }
         }
         Err(e) => {
-            println!(
-                "While with else parsing failed (expected due to indentation): {:?}",
-                e
-            );
+            println!("While with else parsing failed (expected due to indentation): {e:?}");
             // This is acceptable for now as our lexer might be strict about indentation
         }
     }

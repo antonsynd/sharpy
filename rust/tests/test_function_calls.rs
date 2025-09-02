@@ -251,7 +251,7 @@ fn test_chained_function_calls() {
     // This should fail for now since we haven't implemented attribute access yet
     // But the function call part should work
     // We'll implement this when we add attribute access
-    println!("Chained call result: {:?}", result);
+    println!("Chained call result: {result:?}");
 
     // For now, let's test a simpler case that should work
     let code2 = "result = func1() + func2()";

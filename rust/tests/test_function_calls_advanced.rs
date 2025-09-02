@@ -247,7 +247,7 @@ fn test_function_calls_with_lists() {
                                 match element {
                                     Node::Constant(constant) => match &constant.value {
                                         ConstantValue::Int(val) => {
-                                            assert_eq!(*val, (i + 1) as i64);
+                                            assert_eq!(*val, i64::try_from(i + 1).unwrap());
                                         }
                                         _ => panic!("Expected integer constant"),
                                     },

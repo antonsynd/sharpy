@@ -27,7 +27,7 @@ fn test_simple_subscript() {
             panic!("Expected Constant node for slice");
         }
     } else {
-        panic!("Expected Subscript node, got {:?}", result);
+        panic!("Expected Subscript node, got {result:?}");
     }
 }
 
@@ -64,7 +64,7 @@ fn test_chained_subscript() {
             panic!("Expected Subscript node for inner subscript");
         }
     } else {
-        panic!("Expected Subscript node, got {:?}", result);
+        panic!("Expected Subscript node, got {result:?}");
     }
 }
 
@@ -104,7 +104,7 @@ fn test_subscript_with_expression() {
             panic!("Expected BinaryOp node for slice");
         }
     } else {
-        panic!("Expected Subscript node, got {:?}", result);
+        panic!("Expected Subscript node, got {result:?}");
     }
 }
 
@@ -135,7 +135,7 @@ fn test_subscript_with_function_call() {
             panic!("Expected Name node for slice");
         }
     } else {
-        panic!("Expected Subscript node, got {:?}", result);
+        panic!("Expected Subscript node, got {result:?}");
     }
 }
 
@@ -173,6 +173,6 @@ fn test_mixed_attribute_and_subscript() {
             panic!("Expected Subscript node for final attr value");
         }
     } else {
-        panic!("Expected Attribute node, got {:?}", result);
+        panic!("Expected Attribute node, got {result:?}");
     }
 }

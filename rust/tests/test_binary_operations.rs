@@ -195,11 +195,11 @@ fn test_bitwise_operations() {
         match &nodes[0] {
             Node::Assign(assign) => match &*assign.value {
                 Node::BinaryOp(bin_op) => {
-                    assert_eq!(bin_op.op, expected_op, "Failed for: {}", code);
+                    assert_eq!(bin_op.op, expected_op, "Failed for: {code}");
                 }
-                _ => panic!("Expected BinaryOp for: {}", code),
+                _ => panic!("Expected BinaryOp for: {code}"),
             },
-            _ => panic!("Expected Assign for: {}", code),
+            _ => panic!("Expected Assign for: {code}"),
         }
     }
 }

@@ -28,7 +28,7 @@ fn main() {
     ];
 
     for code in examples {
-        println!("Parsing: {}", code);
+        println!("Parsing: {code}");
 
         // Tokenize
         let mut lexer = SharpyLexer::new(code);
@@ -46,12 +46,12 @@ fn main() {
                         }
                     }
                     Err(err) => {
-                        println!("  Parse error: {}", err);
+                        println!("  Parse error: {err}");
                     }
                 }
             }
             Err(err) => {
-                println!("  Lexer error: {:?}", err);
+                println!("  Lexer error: {err:?}");
             }
         }
         println!();

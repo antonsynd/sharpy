@@ -53,7 +53,7 @@ fn test_lambda_integration_with_phase1_features() {
                 if let Node::Lambda(_) = element {
                     println!("✅ Lambda {} in list parsed", i + 1);
                 } else {
-                    panic!("Expected Lambda for list element {}", i);
+                    panic!("Expected Lambda for list element {i}");
                 }
             }
         } else {
@@ -67,7 +67,7 @@ fn test_lambda_integration_with_phase1_features() {
         println!("   - Lambdas with function calls (api.get_processor(name))");
         println!("   - Lambdas with comparison expressions");
     } else {
-        panic!("Expected Dict node, got {:?}", result);
+        panic!("Expected Dict node, got {result:?}");
     }
 }
 
@@ -108,7 +108,7 @@ fn test_lambda_as_function_arguments() {
             panic!("Expected Lambda for third argument");
         }
     } else {
-        panic!("Expected Call node, got {:?}", result);
+        panic!("Expected Call node, got {result:?}");
     }
 }
 
@@ -139,7 +139,7 @@ fn test_lambda_chaining_with_postfix_operations() {
             panic!("Expected Attribute for final call");
         }
     } else {
-        panic!("Expected Call node for final result, got {:?}", result);
+        panic!("Expected Call node for final result, got {result:?}");
     }
 }
 
@@ -173,6 +173,6 @@ fn test_lambda_with_all_expression_types() {
             panic!("Expected Call for lambda body");
         }
     } else {
-        panic!("Expected Lambda node, got {:?}", result);
+        panic!("Expected Lambda node, got {result:?}");
     }
 }

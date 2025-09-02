@@ -14,7 +14,7 @@ fn test_empty_dict() {
         assert!(dict.keys.is_empty());
         assert!(dict.values.is_empty());
     } else {
-        panic!("Expected Dict node, got {:?}", result);
+        panic!("Expected Dict node, got {result:?}");
     }
 }
 
@@ -53,7 +53,7 @@ fn test_simple_dict() {
             panic!("Expected Constant node for value");
         }
     } else {
-        panic!("Expected Dict node, got {:?}", result);
+        panic!("Expected Dict node, got {result:?}");
     }
 }
 
@@ -78,10 +78,10 @@ fn test_multi_item_dict() {
                 {
                     assert_eq!(s, expected_key);
                 } else {
-                    panic!("Expected string constant for key {}", i);
+                    panic!("Expected string constant for key {i}");
                 }
             } else {
-                panic!("Expected Constant node for key {}", i);
+                panic!("Expected Constant node for key {i}");
             }
         }
 
@@ -94,14 +94,14 @@ fn test_multi_item_dict() {
                 {
                     assert_eq!(*n, *expected_value);
                 } else {
-                    panic!("Expected integer constant for value {}", i);
+                    panic!("Expected integer constant for value {i}");
                 }
             } else {
-                panic!("Expected Constant node for value {}", i);
+                panic!("Expected Constant node for value {i}");
             }
         }
     } else {
-        panic!("Expected Dict node, got {:?}", result);
+        panic!("Expected Dict node, got {result:?}");
     }
 }
 
@@ -117,7 +117,7 @@ fn test_dict_with_trailing_comma() {
         assert_eq!(dict.keys.len(), 1);
         assert_eq!(dict.values.len(), 1);
     } else {
-        panic!("Expected Dict node, got {:?}", result);
+        panic!("Expected Dict node, got {result:?}");
     }
 }
 
@@ -139,14 +139,14 @@ fn test_simple_set() {
                 {
                     assert_eq!(*n, *expected_value);
                 } else {
-                    panic!("Expected integer constant for element {}", i);
+                    panic!("Expected integer constant for element {i}");
                 }
             } else {
-                panic!("Expected Constant node for element {}", i);
+                panic!("Expected Constant node for element {i}");
             }
         }
     } else {
-        panic!("Expected Set node, got {:?}", result);
+        panic!("Expected Set node, got {result:?}");
     }
 }
 
@@ -161,7 +161,7 @@ fn test_set_with_trailing_comma() {
     if let Node::Set(set) = result {
         assert_eq!(set.elements.len(), 3);
     } else {
-        panic!("Expected Set node, got {:?}", result);
+        panic!("Expected Set node, got {result:?}");
     }
 }
 
@@ -198,7 +198,7 @@ fn test_set_with_expressions() {
             panic!("Expected BinaryOp node for second element");
         }
     } else {
-        panic!("Expected Set node, got {:?}", result);
+        panic!("Expected Set node, got {result:?}");
     }
 }
 
@@ -227,6 +227,6 @@ fn test_dict_with_variable_keys() {
             panic!("Expected Name node for second key");
         }
     } else {
-        panic!("Expected Dict node, got {:?}", result);
+        panic!("Expected Dict node, got {result:?}");
     }
 }

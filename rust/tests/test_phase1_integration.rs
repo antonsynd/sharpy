@@ -32,7 +32,7 @@ fn test_phase1_integration() {
         println!("   - Method calls (.get_all(), .get_tags())");
         println!("   - Nested dicts and sets");
     } else {
-        panic!("Expected Dict node, got {:?}", result);
+        panic!("Expected Dict node, got {result:?}");
     }
 }
 
@@ -53,7 +53,7 @@ fn test_complex_chaining() {
             println!("✅ Successfully parsed complex chaining expression:");
             println!("   data[key].items()[0].process().result.value[index]");
         }
-        _ => panic!("Expected final operation to be Subscript, got {:?}", result),
+        _ => panic!("Expected final operation to be Subscript, got {result:?}"),
     }
 }
 
@@ -87,7 +87,7 @@ fn test_mixed_literals_and_operations() {
 
         println!("✅ Successfully parsed nested dict with attribute access");
     } else {
-        panic!("Expected Dict node, got {:?}", result);
+        panic!("Expected Dict node, got {result:?}");
     }
 }
 
@@ -121,6 +121,6 @@ fn test_all_postfix_operations() {
             panic!("Expected Call node for subscript value");
         }
     } else {
-        panic!("Expected Subscript node, got {:?}", result);
+        panic!("Expected Subscript node, got {result:?}");
     }
 }

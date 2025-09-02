@@ -18,7 +18,7 @@ fn test_simple_attribute_access() {
             panic!("Expected Name node for value");
         }
     } else {
-        panic!("Expected Attribute node, got {:?}", result);
+        panic!("Expected Attribute node, got {result:?}");
     }
 }
 
@@ -45,7 +45,7 @@ fn test_chained_attribute_access() {
             panic!("Expected Attribute node for outer value");
         }
     } else {
-        panic!("Expected Attribute node, got {:?}", result);
+        panic!("Expected Attribute node, got {result:?}");
     }
 }
 
@@ -71,7 +71,7 @@ fn test_attribute_access_with_function_call() {
         assert!(call.positional_args.is_empty());
         assert!(call.keyword_args.is_empty());
     } else {
-        panic!("Expected Call node, got {:?}", result);
+        panic!("Expected Call node, got {result:?}");
     }
 }
 
@@ -115,6 +115,6 @@ fn test_complex_attribute_chain() {
             panic!("Expected Attribute node for result");
         }
     } else {
-        panic!("Expected Attribute node, got {:?}", result);
+        panic!("Expected Attribute node, got {result:?}");
     }
 }

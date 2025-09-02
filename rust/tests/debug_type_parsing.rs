@@ -13,10 +13,10 @@ mod debug_test {
         let result = parser.parse();
         match result {
             Ok(ast) => {
-                println!("Parsed successfully: {:#?}", ast);
+                println!("Parsed successfully: {ast:#?}");
             }
             Err(e) => {
-                println!("Parse error: {:?}", e);
+                println!("Parse error: {e:?}");
                 panic!("Parse failed");
             }
         }
@@ -32,10 +32,10 @@ mod debug_test {
         let result = parser.parse();
         match result {
             Ok(ast) => {
-                println!("Parsed successfully: {:#?}", ast);
+                println!("Parsed successfully: {ast:#?}");
             }
             Err(e) => {
-                println!("Parse error: {:?}", e);
+                println!("Parse error: {e:?}");
                 panic!("Parse failed");
             }
         }
