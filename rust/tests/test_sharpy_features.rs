@@ -97,29 +97,65 @@ fn test_optional_type_syntax() {
 
 #[test]
 fn test_generic_type_syntax() {
-    // Generic types are not fully implemented yet, so we'll test basic parsing
-    let test_cases = vec!["x", "y", "z", "w"];
+    // Test generic type annotations with actual generic syntax
+    let test_cases = vec![
+        "x: List[int] = []",
+        "y: Dict[str, int] = {}",
+        "z: Optional[List[str]] = None",
+        "w: Tuple[int, str, bool] = (1, 'a', True)",
+    ];
 
     for case in test_cases {
         let mut lexer = SharpyLexer::new(case);
-        let tokens = lexer.tokenize_all().unwrap();
+        let tokens = match lexer.tokenize_all() {
+            Ok(tokens) => tokens,
+            Err(errors) => {
+                panic!("Failed to tokenize '{}': {:?}", case, errors);
+            }
+        };
+
         let mut parser = Parser::new(tokens);
         let result = parser.parse();
-        assert!(result.is_ok(), "Failed to parse identifier: {}", case);
+
+        assert!(
+            result.is_ok(),
+            "Failed to parse generic type annotation: {} - Error: {:?}",
+            case,
+            result.err()
+        );
     }
 }
 
 #[test]
 fn test_qualified_type_syntax() {
-    // Qualified types are not fully implemented yet, so we'll test basic parsing
-    let test_cases = vec!["x", "y", "z"];
+    // Test qualified type annotations with dot notation
+    let test_cases = vec![
+        "x: collections.defaultdict = None",
+        "y: typing.Optional = None",
+        "z: some.deeply.nested.Type = None",
+        // Test combined qualified and generic types
+        "a: collections.defaultdict[str, int] = None",
+        "b: typing.Optional[str] = None",
+    ];
 
     for case in test_cases {
         let mut lexer = SharpyLexer::new(case);
-        let tokens = lexer.tokenize_all().unwrap();
+        let tokens = match lexer.tokenize_all() {
+            Ok(tokens) => tokens,
+            Err(errors) => {
+                panic!("Failed to tokenize '{}': {:?}", case, errors);
+            }
+        };
+
         let mut parser = Parser::new(tokens);
         let result = parser.parse();
-        assert!(result.is_ok(), "Failed to parse identifier: {}", case);
+
+        assert!(
+            result.is_ok(),
+            "Failed to parse qualified type annotation: {} - Error: {:?}",
+            case,
+            result.err()
+        );
     }
 }
 
