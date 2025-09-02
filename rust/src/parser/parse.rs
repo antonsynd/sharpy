@@ -1,6 +1,7 @@
 use crate::ast::node::{
-    Assign, BinaryOp, BinaryOp_, Call, CompOp, Compare, Constant, ConstantValue, If, List, Name,
-    Node, NodeSource, Pass, Return, Tuple, TypedName, UnaryOp, UnaryOp_, While,
+    Assign, Attribute, BinaryOp, BinaryOp_, Call, CompOp, Compare, Constant, ConstantValue, Dict,
+    If, List, Name, Node, NodeSource, Pass, Return, Set, Subscript, Tuple, TypedName, UnaryOp,
+    UnaryOp_, While,
 };
 use crate::ast::types::{GenericType, OptionalType, QualifiedType, TypeName};
 use crate::lexer::token::{NumberType, StringType, Token, TokenType};
@@ -287,7 +288,7 @@ impl Parser {
     }
 
     /// Parse an expression
-    fn parse_expression(&mut self) -> Result<Node, ParseError> {
+    pub fn parse_expression(&mut self) -> Result<Node, ParseError> {
         self.parse_comparison()
     }
 
@@ -581,13 +582,11 @@ impl Parser {
                 }
                 TokenType::Dot => {
                     // Attribute access: expr.attr
-                    // TODO: Implement attribute access
-                    break;
+                    expr = self.parse_attribute_access(expr)?;
                 }
                 TokenType::LeftBracket => {
                     // Subscript: expr[index]
-                    // TODO: Implement subscript
-                    break;
+                    expr = self.parse_subscript(expr)?;
                 }
                 _ => break,
             }
@@ -682,6 +681,217 @@ impl Parser {
             keyword_args,
             source,
         }))
+    }
+
+    /// Parse attribute access: expr.attr
+    fn parse_attribute_access(&mut self, value: Node) -> Result<Node, ParseError> {
+        let start_location = self.get_node_start_location(&value);
+
+        // Consume '.'
+        if !self.match_token(&TokenType::Dot) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "'.'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance(); // consume '.'
+
+        // Expect an attribute name
+        if let Some(token) = self.current_token() {
+            if let TokenType::Name(name_type) = &token.token_type {
+                let attr = name_type.name.clone();
+                let end_location = token.location.clone();
+                self.advance(); // consume attribute name
+
+                let source = Some(NodeSource::from_source_location(
+                    &start_location,
+                    &end_location,
+                ));
+
+                Ok(Node::Attribute(Attribute {
+                    value: Box::new(value),
+                    attr,
+                    source,
+                }))
+            } else {
+                Err(ParseError::UnexpectedToken {
+                    expected: "attribute name".to_string(),
+                    found: self.current_token_string(),
+                    location: self.current_location(),
+                })
+            }
+        } else {
+            Err(ParseError::UnexpectedEof {
+                expected: "attribute name".to_string(),
+                location: self.current_location(),
+            })
+        }
+    }
+
+    /// Parse subscript: expr[index]
+    fn parse_subscript(&mut self, value: Node) -> Result<Node, ParseError> {
+        let start_location = self.get_node_start_location(&value);
+
+        // Consume '['
+        if !self.match_token(&TokenType::LeftBracket) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "'['".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance(); // consume '['
+
+        // Parse the index expression
+        let slice = self.parse_expression()?;
+
+        // Consume ']'
+        if !self.match_token(&TokenType::RightBracket) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "']'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        let end_location = self.current_location();
+        self.advance(); // consume ']'
+
+        let source = Some(NodeSource::from_source_location(
+            &start_location,
+            &end_location,
+        ));
+
+        Ok(Node::Subscript(Subscript {
+            value: Box::new(value),
+            slice: Box::new(slice),
+            source,
+        }))
+    }
+
+    /// Parse dict or set literal: {key: value, ...} or {elem1, elem2, ...}
+    fn parse_dict_or_set(&mut self) -> Result<Node, ParseError> {
+        let start_location = self.current_location();
+
+        // Consume '{'
+        if !self.match_token(&TokenType::LeftBrace) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "'{'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance(); // consume '{'
+
+        // Handle empty dict/set: {}
+        if self.match_token(&TokenType::RightBrace) {
+            let end_location = self.current_location();
+            self.advance(); // consume '}'
+            let source = Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            ));
+            // Empty {} is interpreted as an empty dict by default
+            return Ok(Node::Dict(Dict {
+                keys: vec![],
+                values: vec![],
+                source,
+            }));
+        }
+
+        // Parse first element to determine if it's a dict or set
+        let first_expr = self.parse_expression()?;
+
+        // Check if this is a dict (has ':') or set (has ',' or '}')
+        if self.match_token(&TokenType::Colon) {
+            // It's a dict: {key: value, ...}
+            self.advance(); // consume ':'
+            let first_value = self.parse_expression()?;
+
+            let mut keys = vec![Some(first_expr)];
+            let mut values = vec![first_value];
+
+            // Parse additional key-value pairs
+            while self.match_token(&TokenType::Comma) {
+                self.advance(); // consume ','
+
+                // Allow trailing comma
+                if self.match_token(&TokenType::RightBrace) {
+                    break;
+                }
+
+                let key = self.parse_expression()?;
+
+                if !self.match_token(&TokenType::Colon) {
+                    return Err(ParseError::UnexpectedToken {
+                        expected: "':'".to_string(),
+                        found: self.current_token_string(),
+                        location: self.current_location(),
+                    });
+                }
+                self.advance(); // consume ':'
+
+                let value = self.parse_expression()?;
+                keys.push(Some(key));
+                values.push(value);
+            }
+
+            // Consume '}'
+            if !self.match_token(&TokenType::RightBrace) {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "'}'".to_string(),
+                    found: self.current_token_string(),
+                    location: self.current_location(),
+                });
+            }
+            let end_location = self.current_location();
+            self.advance(); // consume '}'
+
+            let source = Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            ));
+
+            Ok(Node::Dict(Dict {
+                keys,
+                values,
+                source,
+            }))
+        } else {
+            // It's a set: {elem1, elem2, ...}
+            let mut elements = vec![first_expr];
+
+            // Parse additional elements
+            while self.match_token(&TokenType::Comma) {
+                self.advance(); // consume ','
+
+                // Allow trailing comma
+                if self.match_token(&TokenType::RightBrace) {
+                    break;
+                }
+
+                let element = self.parse_expression()?;
+                elements.push(element);
+            }
+
+            // Consume '}'
+            if !self.match_token(&TokenType::RightBrace) {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "'}'".to_string(),
+                    found: self.current_token_string(),
+                    location: self.current_location(),
+                });
+            }
+            let end_location = self.current_location();
+            self.advance(); // consume '}'
+
+            let source = Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            ));
+
+            Ok(Node::Set(Set { elements, source }))
+        }
     }
 
     /// Check if the current position looks like a keyword argument (name=value)
@@ -865,6 +1075,9 @@ impl Parser {
 
                 // List literals
                 TokenType::LeftBracket => self.parse_list(),
+
+                // Dict or Set literals
+                TokenType::LeftBrace => self.parse_dict_or_set(),
 
                 // Tuple literals (parentheses)
                 TokenType::LeftParen => self.parse_tuple_or_parenthesized_expr(),
