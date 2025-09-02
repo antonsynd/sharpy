@@ -1,7 +1,7 @@
 use crate::ast::node::{
-    Assign, Attribute, BinaryOp, BinaryOp_, Call, CompOp, Compare, Constant, ConstantValue, Dict,
-    If, List, Name, Node, NodeSource, Pass, Return, Set, Subscript, Tuple, TypedName, UnaryOp,
-    UnaryOp_, While,
+    Arg, Arguments, Assign, Attribute, BinaryOp, BinaryOp_, Call, CompOp, Compare, Constant,
+    ConstantValue, Dict, If, Lambda, List, Name, Node, NodeSource, Pass, Return, Set, Subscript,
+    Tuple, TypedName, UnaryOp, UnaryOp_, While,
 };
 use crate::ast::types::{GenericType, OptionalType, QualifiedType, TypeName};
 use crate::lexer::token::{NumberType, StringType, Token, TokenType};
@@ -894,6 +894,145 @@ impl Parser {
         }
     }
 
+    /// Parse lambda expression: lambda args: body
+    fn parse_lambda(&mut self) -> Result<Node, ParseError> {
+        let start_location = self.current_location();
+
+        // Consume 'lambda'
+        if !self.match_token(&TokenType::Lambda) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "'lambda'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance(); // consume 'lambda'
+
+        // Parse arguments (optional)
+        let args = if self.match_token(&TokenType::Colon) {
+            // No arguments: lambda: body
+            Arguments {
+                vararg: None,
+                args: vec![],
+            }
+        } else {
+            self.parse_lambda_arguments()?
+        };
+
+        // Consume ':'
+        if !self.match_token(&TokenType::Colon) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "':'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance(); // consume ':'
+
+        // Parse optional return type annotation
+        let return_type = if self.match_token(&TokenType::RArrow) {
+            self.advance(); // consume '->'
+            Some(Box::new(self.parse_type_expression()?))
+        } else {
+            None
+        };
+
+        // Parse body expression
+        let body = self.parse_expression()?;
+        let end_location = self.get_node_end_location(&body);
+
+        let source = Some(NodeSource::from_source_location(
+            &start_location,
+            &end_location,
+        ));
+
+        Ok(Node::Lambda(Lambda {
+            args,
+            return_type,
+            body: Box::new(body),
+            source,
+        }))
+    }
+
+    /// Parse lambda arguments: arg1, arg2, arg3 (untyped for now)
+    fn parse_lambda_arguments(&mut self) -> Result<Arguments, ParseError> {
+        let mut args = Vec::new();
+
+        // Parse first argument
+        if let Some(token) = self.current_token() {
+            if let TokenType::Name(name_type) = &token.token_type {
+                let arg_name = name_type.name.clone();
+                let token_location = token.location.clone();
+                self.advance(); // consume argument name
+
+                args.push(Arg {
+                    name: arg_name,
+                    type_: None,   // No type annotations for lambda args yet
+                    default: None, // No default values for lambda args yet
+                    source: Some(NodeSource::from_source_location(
+                        &token_location,
+                        &token_location,
+                    )),
+                });
+            } else {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "argument name".to_string(),
+                    found: self.current_token_string(),
+                    location: self.current_location(),
+                });
+            }
+        } else {
+            return Err(ParseError::UnexpectedEof {
+                expected: "argument name".to_string(),
+                location: self.current_location(),
+            });
+        }
+
+        // Parse additional arguments
+        while self.match_token(&TokenType::Comma) {
+            self.advance(); // consume ','
+
+            // Check if we've reached the colon (end of args)
+            if self.match_token(&TokenType::Colon) {
+                break;
+            }
+
+            if let Some(token) = self.current_token() {
+                if let TokenType::Name(name_type) = &token.token_type {
+                    let arg_name = name_type.name.clone();
+                    let token_location = token.location.clone();
+                    self.advance(); // consume argument name
+
+                    args.push(Arg {
+                        name: arg_name,
+                        type_: None,
+                        default: None,
+                        source: Some(NodeSource::from_source_location(
+                            &token_location,
+                            &token_location,
+                        )),
+                    });
+                } else {
+                    return Err(ParseError::UnexpectedToken {
+                        expected: "argument name".to_string(),
+                        found: self.current_token_string(),
+                        location: self.current_location(),
+                    });
+                }
+            } else {
+                return Err(ParseError::UnexpectedEof {
+                    expected: "argument name".to_string(),
+                    location: self.current_location(),
+                });
+            }
+        }
+
+        Ok(Arguments {
+            vararg: None, // No varargs support for lambdas yet
+            args,
+        })
+    }
+
     /// Check if the current position looks like a keyword argument (name=value)
     fn is_keyword_argument(&self) -> bool {
         if let Some(token) = self.current_token()
@@ -1081,6 +1220,9 @@ impl Parser {
 
                 // Tuple literals (parentheses)
                 TokenType::LeftParen => self.parse_tuple_or_parenthesized_expr(),
+
+                // Lambda expressions
+                TokenType::Lambda => self.parse_lambda(),
 
                 // Names/identifiers
                 TokenType::Name(_) => self.parse_name(),
