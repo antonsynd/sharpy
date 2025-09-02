@@ -105,6 +105,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
 
 [[package]]
+name = "dot"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a74b6c4d4a1cff5f454164363c16b72fa12463ca6b31f4b5f2035a65fa3d5906"
+
+[[package]]
 name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -146,6 +152,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "dot",
  "thiserror",
  "unicode-normalization",
  "unicode-xid",

@@ -1,0 +1,4 @@
+x = 5
+y = x + 10
+f = lambda a: a * 2
+result = f(y)

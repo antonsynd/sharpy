@@ -7,12 +7,17 @@ edition = "2024"
 name = "sharpyc"
 path = "src/main.rs"
 
+[[bin]]
+name = "sharpy-ast-visualizer"
+path = "src/bin/ast_visualizer.rs"
+
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
 unicode-xid = "0.2"
 unicode-normalization = "0.1"
 thiserror = "1.0"
 anyhow = "1.0.99"
+dot = "0.1"
 
 [lints.clippy]
 # Enable additional clippy lints for better code quality

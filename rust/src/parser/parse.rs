@@ -288,6 +288,12 @@ impl Parser {
     }
 
     /// Parse an expression
+    ///
+    /// # Errors
+    /// Returns `ParseError` if:
+    /// - The input contains invalid syntax
+    /// - Unexpected tokens are encountered
+    /// - The expression is malformed
     pub fn parse_expression(&mut self) -> Result<Node, ParseError> {
         self.parse_comparison()
     }
