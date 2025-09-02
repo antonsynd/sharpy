@@ -2,6 +2,7 @@ use crate::ast::node::{
     Assign, CompOp, Compare, Constant, ConstantValue, If, List, Name, Node, NodeSource, Pass,
     Return, Tuple, TypedName, UnaryOp, UnaryOp_, While,
 };
+use crate::ast::types::{GenericType, OptionalType, QualifiedType, TypeName};
 use crate::lexer::token::{NumberType, StringType, Token, TokenType};
 use crate::parser::error::ParseError;
 use crate::utils::SourceLocation;
@@ -89,17 +90,9 @@ impl Parser {
                     TokenType::Equal => return true, // Found assignment operator
                     TokenType::Comma => pos += 1,    // Continue through tuple elements
                     TokenType::Colon => {
-                        // Skip type annotation
+                        // Skip type annotation - handle complex types
                         pos += 1;
-                        // Skip the type name
-                        if pos < self.tokens.len()
-                            && matches!(
-                                self.tokens.get(pos).map(|t| &t.token_type),
-                                Some(TokenType::Name(_))
-                            )
-                        {
-                            pos += 1;
-                        }
+                        pos = self.skip_type_expression(pos);
                     }
                     TokenType::Name(_) => pos += 1, // Continue through names
                     _ => break,                     // Not an assignment pattern
@@ -110,6 +103,70 @@ impl Parser {
         }
 
         false
+    }
+
+    /// Skip over a type expression starting at the given position
+    fn skip_type_expression(&self, mut pos: usize) -> usize {
+        // Skip base type name
+        if pos < self.tokens.len()
+            && matches!(
+                self.tokens.get(pos).map(|t| &t.token_type),
+                Some(TokenType::Name(_))
+            )
+        {
+            pos += 1;
+
+            // Handle qualified types (e.g., app.Config)
+            while pos < self.tokens.len()
+                && matches!(
+                    self.tokens.get(pos).map(|t| &t.token_type),
+                    Some(TokenType::Dot)
+                )
+            {
+                pos += 1; // skip dot
+                if pos < self.tokens.len()
+                    && matches!(
+                        self.tokens.get(pos).map(|t| &t.token_type),
+                        Some(TokenType::Name(_))
+                    )
+                {
+                    pos += 1; // skip name after dot
+                } else {
+                    break;
+                }
+            }
+
+            // Handle generic types (e.g., List[str])
+            if pos < self.tokens.len()
+                && matches!(
+                    self.tokens.get(pos).map(|t| &t.token_type),
+                    Some(TokenType::LeftBracket)
+                )
+            {
+                pos += 1; // skip [
+                let mut bracket_depth = 1;
+
+                while pos < self.tokens.len() && bracket_depth > 0 {
+                    match self.tokens.get(pos).map(|t| &t.token_type) {
+                        Some(TokenType::LeftBracket) => bracket_depth += 1,
+                        Some(TokenType::RightBracket) => bracket_depth -= 1,
+                        _ => {}
+                    }
+                    pos += 1;
+                }
+            }
+
+            // Handle optional types (e.g., int?)
+            if pos < self.tokens.len()
+                && matches!(
+                    self.tokens.get(pos).map(|t| &t.token_type),
+                    Some(TokenType::Question)
+                )
+            {
+                pos += 1;
+            }
+        }
+        pos
     }
 
     /// Parse an assignment statement: name = value, name: type = value, or x, y = value
@@ -227,8 +284,7 @@ impl Parser {
 
     /// Parse a type annotation
     fn parse_type_annotation(&mut self) -> Result<Node, ParseError> {
-        // For now, just parse simple type names
-        self.parse_name()
+        self.parse_type_expression()
     }
 
     /// Parse an expression
@@ -1004,5 +1060,120 @@ impl Parser {
                 &end_location,
             )),
         }))
+    }
+
+    /// Parse a type expression, e.g., `int`, `list[str]`, `collections.defaultdict[str, int]`, `int?`
+    fn parse_type_expression(&mut self) -> Result<Node, ParseError> {
+        let base_type = self.parse_base_type()?;
+
+        // Check for generic parameters: type[arg1, arg2, ...]
+        if self.match_token(&TokenType::LeftBracket) {
+            self.advance(); // consume '['
+
+            let mut type_args = Vec::new();
+
+            // Parse first type argument
+            if !self.match_token(&TokenType::RightBracket) {
+                type_args.push(self.parse_type_expression()?);
+
+                // Parse remaining type arguments
+                while self.match_token(&TokenType::Comma) {
+                    self.advance(); // consume ','
+                    if self.match_token(&TokenType::RightBracket) {
+                        break; // trailing comma
+                    }
+                    type_args.push(self.parse_type_expression()?);
+                }
+            }
+
+            // Expect closing bracket
+            if !self.match_token(&TokenType::RightBracket) {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "']'".to_string(),
+                    found: self.current_token_string(),
+                    location: self.current_location(),
+                });
+            }
+            self.advance(); // consume ']'
+
+            let end_location = self.current_location();
+            let generic_type = Node::GenericType(GenericType::with_source(
+                Box::new(base_type),
+                type_args,
+                NodeSource::from_source_location(&self.current_location(), &end_location),
+            ));
+
+            return self.maybe_parse_optional(generic_type);
+        }
+
+        // Check for optional: type?
+        self.maybe_parse_optional(base_type)
+    }
+
+    /// Parse a base type (`TypeName` or `QualifiedType`)
+    fn parse_base_type(&mut self) -> Result<Node, ParseError> {
+        let start_location = self.current_location();
+
+        // Parse the first component
+        let first_name = self.parse_name_token()?;
+        let mut components = vec![first_name];
+
+        // Parse additional components separated by dots
+        while self.match_token(&TokenType::Dot) {
+            self.advance(); // consume '.'
+            let name = self.parse_name_token()?;
+            components.push(name);
+        }
+
+        let end_location = self.current_location();
+
+        if components.len() == 1 {
+            // Simple type name
+            Ok(Node::TypeName(TypeName::with_source(
+                components.into_iter().next().unwrap(),
+                NodeSource::from_source_location(&start_location, &end_location),
+            )))
+        } else {
+            // Qualified type name
+            let name = components.pop().unwrap(); // Last component is the type name
+            Ok(Node::QualifiedType(QualifiedType::with_source(
+                components, // Remaining components are the module path
+                name,
+                NodeSource::from_source_location(&start_location, &end_location),
+            )))
+        }
+    }
+
+    /// Parse a name token and return the string
+    fn parse_name_token(&mut self) -> Result<String, ParseError> {
+        if let Some(token) = self.current_token()
+            && let TokenType::Name(name_type) = &token.token_type
+        {
+            let name = name_type.name.clone();
+            self.advance();
+            return Ok(name);
+        }
+
+        Err(ParseError::UnexpectedToken {
+            expected: "identifier".to_string(),
+            found: self.current_token_string(),
+            location: self.current_location(),
+        })
+    }
+
+    /// Check for optional suffix and wrap the type if found
+    fn maybe_parse_optional(&mut self, base_type: Node) -> Result<Node, ParseError> {
+        if self.match_token(&TokenType::Question) {
+            let start_location = self.get_node_start_location(&base_type);
+            self.advance(); // consume '?'
+            let end_location = self.current_location();
+
+            Ok(Node::OptionalType(OptionalType::with_source(
+                Box::new(base_type),
+                NodeSource::from_source_location(&start_location, &end_location),
+            )))
+        } else {
+            Ok(base_type)
+        }
     }
 }

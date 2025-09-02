@@ -1,0 +1,2 @@
+# Simple type annotation test
+x: int = 5

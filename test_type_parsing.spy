@@ -1,0 +1,16 @@
+# Test file for type parsing functionality
+
+# Simple type name
+x: int = 5
+
+# Optional type
+maybe_value: int? = None
+
+# Qualified type
+config: app.settings.Config = get_config()
+
+# Generic type
+items: List[str] = ["hello", "world"]
+
+# Complex generic type
+data: Dict[str, List[int?]] = {}

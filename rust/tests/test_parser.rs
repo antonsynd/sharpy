@@ -52,8 +52,8 @@ fn test_typed_assignment() {
                 Node::TypedName(typed_name) => {
                     assert_eq!(typed_name.id, "x");
                     match &*typed_name.type_ {
-                        Node::Name(type_name) => assert_eq!(type_name.id, "int"),
-                        _ => panic!("Expected Name node for type"),
+                        Node::TypeName(type_name) => assert_eq!(type_name.name, "int"),
+                        _ => panic!("Expected TypeName node for type"),
                     }
                 }
                 _ => panic!("Expected TypedName node for target"),
@@ -294,8 +294,8 @@ fn test_typed_destructuring_assignment() {
                         Node::TypedName(typed_name) => {
                             assert_eq!(typed_name.id, "x");
                             match &*typed_name.type_ {
-                                Node::Name(type_name) => assert_eq!(type_name.id, "int"),
-                                _ => panic!("Expected Name node for type"),
+                                Node::TypeName(type_name) => assert_eq!(type_name.name, "int"),
+                                _ => panic!("Expected TypeName node for type"),
                             }
                         }
                         _ => panic!("Expected TypedName node for first target"),
@@ -306,8 +306,8 @@ fn test_typed_destructuring_assignment() {
                         Node::TypedName(typed_name) => {
                             assert_eq!(typed_name.id, "y");
                             match &*typed_name.type_ {
-                                Node::Name(type_name) => assert_eq!(type_name.id, "float"),
-                                _ => panic!("Expected Name node for type"),
+                                Node::TypeName(type_name) => assert_eq!(type_name.name, "float"),
+                                _ => panic!("Expected TypeName node for type"),
                             }
                         }
                         _ => panic!("Expected TypedName node for second target"),
@@ -369,8 +369,8 @@ fn test_mixed_typed_destructuring_assignment() {
                         Node::TypedName(typed_name) => {
                             assert_eq!(typed_name.id, "x");
                             match &*typed_name.type_ {
-                                Node::Name(type_name) => assert_eq!(type_name.id, "int"),
-                                _ => panic!("Expected Name node for type"),
+                                Node::TypeName(type_name) => assert_eq!(type_name.name, "int"),
+                                _ => panic!("Expected TypeName node for type"),
                             }
                         }
                         _ => panic!("Expected TypedName node for first target"),

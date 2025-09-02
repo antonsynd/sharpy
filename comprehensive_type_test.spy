@@ -1,0 +1,20 @@
+# Comprehensive type annotation tests
+
+# Simple types
+x: int = 5
+name: str = "hello"
+flag: bool = True
+
+# Qualified types
+config: app.Config = None
+logger: utils.logging.Logger = None
+database: project.db.Connection = None
+
+# Generic types
+items: List[str] = ["a", "b"]
+mapping: Dict[str, int] = {}
+nested: List[Dict[str, bool]] = []
+
+# Complex combinations
+service: app.services.UserService[User] = None
+cache: collections.Cache[str, List[User]] = None

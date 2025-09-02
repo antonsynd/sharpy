@@ -1,4 +1,4 @@
-use super::types::Type;
+use super::types::{GenericType, OptionalType, QualifiedType, Type, TypeName, UnionType};
 use crate::utils::position::SourceLocation;
 
 /// Source location information for AST nodes
@@ -175,6 +175,15 @@ pub enum Node {
     ImportFrom(ImportFrom),
     ExceptHandler(ExceptHandler),
     MatchCase(MatchCase),
+
+    // Type expressions (syntactic)
+    TypeName(TypeName),
+    QualifiedType(QualifiedType),
+    GenericType(GenericType),
+    OptionalType(OptionalType),
+    UnionType(UnionType),
+
+    // Legacy type (for semantic analysis)
     Type(Type),
     TypeAlias(TypeAlias),
 }
@@ -190,6 +199,12 @@ impl Node {
             Self::TypedName(n) => n.source.as_ref(),
             Self::List(n) => n.source.as_ref(),
             Self::Tuple(n) => n.source.as_ref(),
+            // Type expressions
+            Self::TypeName(n) => n.source.as_ref(),
+            Self::QualifiedType(n) => n.source.as_ref(),
+            Self::GenericType(n) => n.source.as_ref(),
+            Self::OptionalType(n) => n.source.as_ref(),
+            Self::UnionType(n) => n.source.as_ref(),
             // Add all other variants...
             _ => None, // Temporary fallback
         }
@@ -205,6 +220,12 @@ impl Node {
             Self::Name(n) => n.source.as_mut(),
             Self::Tuple(n) => n.source.as_mut(),
             Self::TypedName(n) => n.source.as_mut(),
+            // Type expressions
+            Self::TypeName(n) => n.source.as_mut(),
+            Self::QualifiedType(n) => n.source.as_mut(),
+            Self::GenericType(n) => n.source.as_mut(),
+            Self::OptionalType(n) => n.source.as_mut(),
+            Self::UnionType(n) => n.source.as_mut(),
             // Add all other variants...
             _ => None, // Temporary fallback
         }
@@ -220,6 +241,12 @@ impl Node {
             Self::Name(n) => n.source = Some(source),
             Self::Tuple(n) => n.source = Some(source),
             Self::TypedName(n) => n.source = Some(source),
+            // Type expressions
+            Self::TypeName(n) => n.source = Some(source),
+            Self::QualifiedType(n) => n.source = Some(source),
+            Self::GenericType(n) => n.source = Some(source),
+            Self::OptionalType(n) => n.source = Some(source),
+            Self::UnionType(n) => n.source = Some(source),
             // Add all other variants...
             _ => {} // Temporary fallback
         }
