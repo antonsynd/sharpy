@@ -15,14 +15,14 @@ fn test_boolean_and_operation() {
         Node::BoolOp(bool_op) => {
             assert_eq!(bool_op.op, BoolOp::And);
             assert_eq!(bool_op.values.len(), 3);
-            
+
             // Check all values are Name nodes
             for (i, value) in bool_op.values.iter().enumerate() {
                 match value {
                     Node::Name(name) => {
                         let expected = match i {
                             0 => "x",
-                            1 => "y", 
+                            1 => "y",
                             2 => "z",
                             _ => panic!("Unexpected index"),
                         };
@@ -72,7 +72,7 @@ fn test_mixed_boolean_operations() {
         Node::BoolOp(or_op) => {
             assert_eq!(or_op.op, BoolOp::Or);
             assert_eq!(or_op.values.len(), 2);
-            
+
             // First value should be an AND operation
             match &or_op.values[0] {
                 Node::BoolOp(and_op) => {
@@ -81,7 +81,7 @@ fn test_mixed_boolean_operations() {
                 }
                 _ => panic!("Expected nested BoolOp node"),
             }
-            
+
             // Second value should be a simple name
             match &or_op.values[1] {
                 Node::Name(name) => {
@@ -112,13 +112,13 @@ fn test_ternary_expression() {
                 Node::Name(name) => assert_eq!(name.id, "x"),
                 _ => panic!("Expected Name node for body"),
             }
-            
+
             // Check test condition
             match if_exp.test.as_ref() {
                 Node::Name(name) => assert_eq!(name.id, "condition"),
                 _ => panic!("Expected Name node for test"),
             }
-            
+
             // Check else clause
             match if_exp.else_.as_ref() {
                 Node::Name(name) => assert_eq!(name.id, "y"),
@@ -143,26 +143,24 @@ fn test_nested_ternary_expression() {
     // Should parse as: a if x else (b if y else c)
     match &nodes[0] {
         Node::IfExp(if_exp) => {
-            // Check body 
+            // Check body
             match if_exp.body.as_ref() {
                 Node::Name(name) => assert_eq!(name.id, "a"),
                 _ => panic!("Expected Name node for body"),
             }
-            
+
             // Check test condition
             match if_exp.test.as_ref() {
                 Node::Name(name) => assert_eq!(name.id, "x"),
                 _ => panic!("Expected Name node for test"),
             }
-            
+
             // Check else clause should be another IfExp
             match if_exp.else_.as_ref() {
-                Node::IfExp(nested_if) => {
-                    match nested_if.body.as_ref() {
-                        Node::Name(name) => assert_eq!(name.id, "b"),
-                        _ => panic!("Expected Name node for nested body"),
-                    }
-                }
+                Node::IfExp(nested_if) => match nested_if.body.as_ref() {
+                    Node::Name(name) => assert_eq!(name.id, "b"),
+                    _ => panic!("Expected Name node for nested body"),
+                },
                 _ => panic!("Expected nested IfExp node for else"),
             }
         }
@@ -188,15 +186,13 @@ fn test_named_expression() {
                 Node::Name(name) => assert_eq!(name.id, "result"),
                 _ => panic!("Expected Name node for target"),
             }
-            
+
             // Check value (expression being assigned)
             match named_expr.value.as_ref() {
-                Node::Call(call) => {
-                    match call.function.as_ref() {
-                        Node::Name(name) => assert_eq!(name.id, "compute"),
-                        _ => panic!("Expected Name node for function"),
-                    }
-                }
+                Node::Call(call) => match call.function.as_ref() {
+                    Node::Name(name) => assert_eq!(name.id, "compute"),
+                    _ => panic!("Expected Name node for function"),
+                },
                 _ => panic!("Expected Call node for value"),
             }
         }
@@ -218,7 +214,7 @@ fn test_boolean_not_operation() {
     match &nodes[0] {
         Node::UnaryOp(unary_op) => {
             assert_eq!(unary_op.op, UnaryOp::Not);
-            
+
             match unary_op.operand.as_ref() {
                 Node::Name(name) => assert_eq!(name.id, "x"),
                 _ => panic!("Expected Name node for operand"),
@@ -242,12 +238,12 @@ fn test_chained_not_operation() {
     match &nodes[0] {
         Node::UnaryOp(outer_not) => {
             assert_eq!(outer_not.op, UnaryOp::Not);
-            
+
             // Should be nested NOT operations
             match outer_not.operand.as_ref() {
                 Node::UnaryOp(inner_not) => {
                     assert_eq!(inner_not.op, UnaryOp::Not);
-                    
+
                     match inner_not.operand.as_ref() {
                         Node::Name(name) => assert_eq!(name.id, "x"),
                         _ => panic!("Expected Name node for inner operand"),

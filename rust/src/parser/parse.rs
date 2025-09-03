@@ -1,7 +1,8 @@
 use crate::ast::node::{
-    Arg, Arguments, Assign, Attribute, BinaryOp, BinaryOp_, BoolOp, BoolOp_, Call, CompOp, Compare, Constant,
-    ConstantValue, Dict, If, IfExp, Lambda, List, Name, NamedExpr, Node, NodeSource, Pass, Return, Set, Subscript,
-    Tuple, TypedName, UnaryOp, UnaryOp_, While,
+    Arg, Arguments, Assign, Attribute, BinaryOp, BinaryOp_, BoolOp, BoolOp_, Call, CompOp, Compare,
+    Constant, ConstantValue, Dict, ExceptHandler, For, If, IfExp, Lambda, List, Name, NamedExpr,
+    Node, NodeSource, Pass, Return, Set, Subscript, Try, Tuple, TypedName, UnaryOp, UnaryOp_,
+    While,
 };
 use crate::ast::types::{GenericType, OptionalType, QualifiedType, TypeName};
 use crate::lexer::token::{NumberType, StringType, Token, TokenType};
@@ -53,6 +54,14 @@ impl Parser {
 
         if self.match_token(&TokenType::While) {
             return self.parse_while_statement();
+        }
+
+        if self.match_token(&TokenType::For) {
+            return self.parse_for_statement();
+        }
+
+        if self.match_token(&TokenType::Try) {
+            return self.parse_try_statement();
         }
 
         // Check for simple statements
@@ -319,7 +328,10 @@ impl Parser {
             let else_ = self.parse_ternary()?; // Right-associative
 
             let end_location = self.previous_location();
-            let source = Some(NodeSource::from_source_location(&start_location, &end_location));
+            let source = Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            ));
 
             Ok(Node::IfExp(IfExp {
                 test: Box::new(test),
@@ -346,7 +358,10 @@ impl Parser {
             }
 
             let end_location = self.previous_location();
-            let source = Some(NodeSource::from_source_location(&start_location, &end_location));
+            let source = Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            ));
 
             expr = Node::BoolOp(BoolOp_ {
                 op: BoolOp::Or,
@@ -358,7 +373,7 @@ impl Parser {
         Ok(expr)
     }
 
-    /// Parse boolean AND expressions: expr and expr  
+    /// Parse boolean AND expressions: expr and expr
     fn parse_and(&mut self) -> Result<Node, ParseError> {
         let mut expr = self.parse_not()?;
 
@@ -372,7 +387,10 @@ impl Parser {
             }
 
             let end_location = self.previous_location();
-            let source = Some(NodeSource::from_source_location(&start_location, &end_location));
+            let source = Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            ));
 
             expr = Node::BoolOp(BoolOp_ {
                 op: BoolOp::And,
@@ -392,7 +410,10 @@ impl Parser {
 
             let operand = self.parse_not()?; // Allow chaining: not not x
             let end_location = self.previous_location();
-            let source = Some(NodeSource::from_source_location(&start_location, &end_location));
+            let source = Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            ));
 
             Ok(Node::UnaryOp(UnaryOp_ {
                 op: UnaryOp::Not,
@@ -414,7 +435,10 @@ impl Parser {
 
             let value = self.parse_named_expression()?; // Right-associative
             let end_location = self.previous_location();
-            let source = Some(NodeSource::from_source_location(&start_location, &end_location));
+            let source = Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            ));
 
             Ok(Node::NamedExpr(NamedExpr {
                 target: Box::new(expr),
@@ -1793,6 +1817,282 @@ impl Parser {
             else_: else_body,
             source,
         }))
+    }
+
+    /// Parse a for statement: for target in iterable:
+    fn parse_for_statement(&mut self) -> Result<Node, ParseError> {
+        let start_location = self.current_location();
+
+        // Consume 'for' keyword
+        if !self.match_token(&TokenType::For) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "'for'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance();
+
+        // Parse target (variable or destructuring pattern)
+        let target = self.parse_assignment_target()?;
+
+        // Expect 'in' keyword
+        if !self.match_token(&TokenType::In) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "'in'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance();
+
+        // Parse iterable expression
+        let iter = self.parse_expression()?;
+
+        // Expect ':'
+        if !self.match_token(&TokenType::Colon) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "':'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance();
+
+        // Parse for body
+        let body = self.parse_block()?;
+
+        // Consume the dedent that ends the for block
+        if self.match_token(&TokenType::Dedent) {
+            self.advance();
+        }
+
+        // Check for optional else clause
+        let mut else_body = Vec::new();
+        if self.match_token(&TokenType::Else) {
+            self.advance();
+
+            // Expect ':'
+            if !self.match_token(&TokenType::Colon) {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "':'".to_string(),
+                    found: self.current_token_string(),
+                    location: self.current_location(),
+                });
+            }
+            self.advance();
+
+            // Parse else body
+            else_body = self.parse_block()?;
+
+            // Consume dedent
+            if self.match_token(&TokenType::Dedent) {
+                self.advance();
+            }
+        }
+
+        let end_location = self.previous_location();
+        let source = Some(NodeSource::from_source_location(
+            &start_location,
+            &end_location,
+        ));
+
+        Ok(Node::For(For {
+            target: Box::new(target),
+            iter: Box::new(iter),
+            body,
+            else_: else_body,
+            source,
+        }))
+    }
+
+    /// Parse a try statement: try: ... except: ... finally: ...
+    fn parse_try_statement(&mut self) -> Result<Node, ParseError> {
+        let start_location = self.current_location();
+
+        // Consume 'try' keyword
+        if !self.match_token(&TokenType::Try) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "'try'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance();
+
+        // Expect ':'
+        if !self.match_token(&TokenType::Colon) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "':'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance();
+
+        // Parse try body
+        let body = self.parse_block()?;
+
+        // Consume the dedent that ends the try block
+        if self.match_token(&TokenType::Dedent) {
+            self.advance();
+        }
+
+        // Parse exception handlers
+        let mut handlers = Vec::new();
+        while self.match_token(&TokenType::Except) {
+            handlers.push(self.parse_except_handler()?);
+        }
+
+        // Parse optional else clause
+        let mut else_body = Vec::new();
+        if self.match_token(&TokenType::Else) {
+            self.advance();
+
+            // Expect ':'
+            if !self.match_token(&TokenType::Colon) {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "':'".to_string(),
+                    found: self.current_token_string(),
+                    location: self.current_location(),
+                });
+            }
+            self.advance();
+
+            // Parse else body
+            else_body = self.parse_block()?;
+
+            // Consume dedent
+            if self.match_token(&TokenType::Dedent) {
+                self.advance();
+            }
+        }
+
+        // Parse optional finally clause
+        let mut finalbody = Vec::new();
+        if self.match_token(&TokenType::Finally) {
+            self.advance();
+
+            // Expect ':'
+            if !self.match_token(&TokenType::Colon) {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "':'".to_string(),
+                    found: self.current_token_string(),
+                    location: self.current_location(),
+                });
+            }
+            self.advance();
+
+            // Parse finally body
+            finalbody = self.parse_block()?;
+
+            // Consume dedent
+            if self.match_token(&TokenType::Dedent) {
+                self.advance();
+            }
+        }
+
+        // Validate that we have at least one handler or a finally clause
+        if handlers.is_empty() && finalbody.is_empty() {
+            return Err(ParseError::InvalidSyntax {
+                message: "try statement must have at least one except or finally clause"
+                    .to_string(),
+                location: self.current_location(),
+            });
+        }
+
+        let end_location = self.previous_location();
+        let source = Some(NodeSource::from_source_location(
+            &start_location,
+            &end_location,
+        ));
+
+        Ok(Node::Try(Try {
+            body,
+            handlers,
+            else_: else_body,
+            finalbody,
+            source,
+        }))
+    }
+
+    /// Parse an exception handler: except [type [as name]]:
+    fn parse_except_handler(&mut self) -> Result<ExceptHandler, ParseError> {
+        let start_location = self.current_location();
+
+        // Consume 'except' keyword
+        if !self.match_token(&TokenType::Except) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "'except'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance();
+
+        // Parse optional exception type
+        let mut type_ = None;
+        let mut name = None;
+
+        // Check if there's an exception type specified
+        if !self.match_token(&TokenType::Colon) {
+            type_ = Some(Box::new(self.parse_expression()?));
+
+            // Check for optional 'as name' clause
+            if self.match_token(&TokenType::As) {
+                self.advance();
+
+                // Expect identifier
+                if let Some(token) = self.current_token() {
+                    if let TokenType::Name(name_type) = &token.token_type {
+                        name = Some(name_type.name.clone());
+                        self.advance();
+                    } else {
+                        return Err(ParseError::UnexpectedToken {
+                            expected: "identifier".to_string(),
+                            found: self.current_token_string(),
+                            location: self.current_location(),
+                        });
+                    }
+                } else {
+                    return Err(ParseError::UnexpectedEof {
+                        expected: "identifier".to_string(),
+                        location: self.current_location(),
+                    });
+                }
+            }
+        }
+
+        // Expect ':'
+        if !self.match_token(&TokenType::Colon) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "':'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance();
+
+        // Parse handler body
+        let body = self.parse_block()?;
+
+        // Consume the dedent that ends the except block
+        if self.match_token(&TokenType::Dedent) {
+            self.advance();
+        }
+
+        let end_location = self.previous_location();
+        let source = Some(NodeSource::from_source_location(
+            &start_location,
+            &end_location,
+        ));
+
+        Ok(ExceptHandler {
+            type_,
+            name,
+            body,
+            source,
+        })
     }
 
     /// Parse a block of statements (typically after ':')
