@@ -1,6 +1,6 @@
 use crate::ast::node::{
-    Arg, Arguments, Assign, Attribute, BinaryOp, BinaryOp_, Call, CompOp, Compare, Constant,
-    ConstantValue, Dict, If, Lambda, List, Name, Node, NodeSource, Pass, Return, Set, Subscript,
+    Arg, Arguments, Assign, Attribute, BinaryOp, BinaryOp_, BoolOp, BoolOp_, Call, CompOp, Compare, Constant,
+    ConstantValue, Dict, If, IfExp, Lambda, List, Name, NamedExpr, Node, NodeSource, Pass, Return, Set, Subscript,
     Tuple, TypedName, UnaryOp, UnaryOp_, While,
 };
 use crate::ast::types::{GenericType, OptionalType, QualifiedType, TypeName};
@@ -295,7 +295,135 @@ impl Parser {
     /// - Unexpected tokens are encountered
     /// - The expression is malformed
     pub fn parse_expression(&mut self) -> Result<Node, ParseError> {
-        self.parse_comparison()
+        self.parse_ternary()
+    }
+
+    /// Parse ternary conditional expressions: expr if test else expr
+    fn parse_ternary(&mut self) -> Result<Node, ParseError> {
+        let body = self.parse_or()?;
+
+        if self.match_token(&TokenType::If) {
+            let start_location = self.current_location();
+            self.advance(); // consume 'if'
+
+            let test = self.parse_or()?;
+
+            if !self.match_token(&TokenType::Else) {
+                return Err(ParseError::InvalidSyntax {
+                    message: "Expected 'else' in ternary expression".to_string(),
+                    location: self.current_location(),
+                });
+            }
+            self.advance(); // consume 'else'
+
+            let else_ = self.parse_ternary()?; // Right-associative
+
+            let end_location = self.previous_location();
+            let source = Some(NodeSource::from_source_location(&start_location, &end_location));
+
+            Ok(Node::IfExp(IfExp {
+                test: Box::new(test),
+                body: Box::new(body),
+                else_: Box::new(else_),
+                source,
+            }))
+        } else {
+            Ok(body)
+        }
+    }
+
+    /// Parse boolean OR expressions: expr or expr
+    fn parse_or(&mut self) -> Result<Node, ParseError> {
+        let mut expr = self.parse_and()?;
+
+        if self.match_token(&TokenType::Or) {
+            let start_location = self.current_location();
+            let mut values = vec![expr];
+
+            while self.match_token(&TokenType::Or) {
+                self.advance(); // consume 'or'
+                values.push(self.parse_and()?);
+            }
+
+            let end_location = self.previous_location();
+            let source = Some(NodeSource::from_source_location(&start_location, &end_location));
+
+            expr = Node::BoolOp(BoolOp_ {
+                op: BoolOp::Or,
+                values,
+                source,
+            });
+        }
+
+        Ok(expr)
+    }
+
+    /// Parse boolean AND expressions: expr and expr  
+    fn parse_and(&mut self) -> Result<Node, ParseError> {
+        let mut expr = self.parse_not()?;
+
+        if self.match_token(&TokenType::And) {
+            let start_location = self.current_location();
+            let mut values = vec![expr];
+
+            while self.match_token(&TokenType::And) {
+                self.advance(); // consume 'and'
+                values.push(self.parse_not()?);
+            }
+
+            let end_location = self.previous_location();
+            let source = Some(NodeSource::from_source_location(&start_location, &end_location));
+
+            expr = Node::BoolOp(BoolOp_ {
+                op: BoolOp::And,
+                values,
+                source,
+            });
+        }
+
+        Ok(expr)
+    }
+
+    /// Parse boolean NOT expressions: not expr
+    fn parse_not(&mut self) -> Result<Node, ParseError> {
+        if self.match_token(&TokenType::Not) {
+            let start_location = self.current_location();
+            self.advance(); // consume 'not'
+
+            let operand = self.parse_not()?; // Allow chaining: not not x
+            let end_location = self.previous_location();
+            let source = Some(NodeSource::from_source_location(&start_location, &end_location));
+
+            Ok(Node::UnaryOp(UnaryOp_ {
+                op: UnaryOp::Not,
+                operand: Box::new(operand),
+                source,
+            }))
+        } else {
+            self.parse_named_expression()
+        }
+    }
+
+    /// Parse named expressions (walrus operator): name := expr
+    fn parse_named_expression(&mut self) -> Result<Node, ParseError> {
+        let expr = self.parse_comparison()?;
+
+        if self.match_token(&TokenType::ColonEqual) {
+            let start_location = self.current_location();
+            self.advance(); // consume ':='
+
+            let value = self.parse_named_expression()?; // Right-associative
+            let end_location = self.previous_location();
+            let source = Some(NodeSource::from_source_location(&start_location, &end_location));
+
+            Ok(Node::NamedExpr(NamedExpr {
+                target: Box::new(expr),
+                value: Box::new(value),
+                source,
+            }))
+        } else {
+            Ok(expr)
+        }
     }
 
     /// Parse comparison expressions: expr == expr, expr < expr, etc.

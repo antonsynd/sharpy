@@ -5,11 +5,7 @@ pub mod utils;
 
 pub use ast::{
     Node, NodeSource,
-    node::BinaryOp,
-    node::Call,
-    node::CompOp,
-    node::ConstantValue,
-    node::UnaryOp,
+    node::{BinaryOp, BoolOp, Call, CompOp, ConstantValue, UnaryOp},
     types::{GenericType, OptionalType, QualifiedType, TypeName, UnionType},
 };
 pub use lexer::{LexerError, SharpyLexer, Token, TokenType};

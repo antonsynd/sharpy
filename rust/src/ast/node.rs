@@ -190,15 +190,18 @@ pub enum Node {
 
 impl Node {
     #[allow(dead_code)]
-    const fn source(&self) -> Option<&NodeSource> {
+    pub const fn source(&self) -> Option<&NodeSource> {
         match self {
             Self::Assign(n) => n.source.as_ref(),
+            Self::BoolOp(n) => n.source.as_ref(),
             Self::Constant(n) => n.source.as_ref(),
+            Self::IfExp(n) => n.source.as_ref(),
+            Self::List(n) => n.source.as_ref(),
             Self::Module(n) => n.source.as_ref(),
             Self::Name(n) => n.source.as_ref(),
-            Self::TypedName(n) => n.source.as_ref(),
-            Self::List(n) => n.source.as_ref(),
+            Self::NamedExpr(n) => n.source.as_ref(),
             Self::Tuple(n) => n.source.as_ref(),
+            Self::TypedName(n) => n.source.as_ref(),
             // Type expressions
             Self::TypeName(n) => n.source.as_ref(),
             Self::QualifiedType(n) => n.source.as_ref(),
@@ -214,10 +217,13 @@ impl Node {
     const fn source_mut(&mut self) -> Option<&mut NodeSource> {
         match self {
             Self::Assign(n) => n.source.as_mut(),
+            Self::BoolOp(n) => n.source.as_mut(),
             Self::Constant(n) => n.source.as_mut(),
+            Self::IfExp(n) => n.source.as_mut(),
             Self::List(n) => n.source.as_mut(),
             Self::Module(n) => n.source.as_mut(),
             Self::Name(n) => n.source.as_mut(),
+            Self::NamedExpr(n) => n.source.as_mut(),
             Self::Tuple(n) => n.source.as_mut(),
             Self::TypedName(n) => n.source.as_mut(),
             // Type expressions
@@ -235,10 +241,13 @@ impl Node {
     const fn set_source(&mut self, source: NodeSource) {
         match self {
             Self::Assign(n) => n.source = Some(source),
+            Self::BoolOp(n) => n.source = Some(source),
             Self::Constant(n) => n.source = Some(source),
+            Self::IfExp(n) => n.source = Some(source),
             Self::List(n) => n.source = Some(source),
             Self::Module(n) => n.source = Some(source),
             Self::Name(n) => n.source = Some(source),
+            Self::NamedExpr(n) => n.source = Some(source),
             Self::Tuple(n) => n.source = Some(source),
             Self::TypedName(n) => n.source = Some(source),
             // Type expressions
