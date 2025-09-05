@@ -193,22 +193,7 @@ class Foo:
         self.__some_backing_field = v
 ```
 
-### Mixed Auto/Explicit Properties
-
-You can combine auto and explicit property syntax for the same property. In this case,
-you can access the backing field via the soft keyword `field`.
-
-```Python
-class Foo:
-    # Auto getter with backing field
-    get property value: int = 5
-
-    # Explicit setter using the same backing field
-    property value(self, v: int):
-        if v < 0:
-            raise ValueError("Value must be positive")
-        field = v
-```
+You cannot combine auto and explicit property syntax for the same property.
 
 ### Type Inference
 
@@ -250,8 +235,6 @@ protocol Encodable:
 - Properties can be read-only (getter only) or write-only (setter only)
 - Type inference works between getter and setter when both are explicit
 - For auto properties, the backing field name is mangled by the compiler to avoid conflicts
-- For mixed auto and explicit properties, access to the compiler-managed backing
-field can be done via the `field` soft keyword.
 
 # Protocols
 
