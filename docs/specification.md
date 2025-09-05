@@ -245,22 +245,55 @@ protocol Encodable:
     pass
 ```
 
-Protocols can inherit from other protocols.
+## Protocol Inheritance
+
+Protocols can inherit from multiple other protocols.
 
 ```Python
 protocol JSONEncodable(Encodable):
     pass
-```
 
-In a class or struct that implements protocols and derives from a base
-class, the protocols must follow the base class.
-
-```Python
-class Foo(Bar, Encodable):
+protocol AdvancedEncodable(Encodable, Serializable, Cacheable):
     pass
 ```
 
-Protocols declare methods that a conforming must implement.
+## Class Implementation and Inheritance
+
+Classes can inherit from one base class and implement multiple protocols. In a class
+declaration that includes both inheritance and protocol implementation, the base class
+must be listed first, followed by any protocols.
+
+```Python
+# Single inheritance from base class
+class Foo(Bar):
+    pass
+
+# Base class + single protocol implementation
+class Foo(Bar, Encodable):
+    pass
+
+# Base class + multiple protocol implementations
+class Foo(Bar, Encodable, Serializable, Cacheable):
+    pass
+
+# Multiple protocol implementations (no base class)
+class Foo(Encodable, Serializable):
+    pass
+```
+
+## Struct Protocol Implementation
+
+Structs do not participate in inheritance but can implement multiple protocols.
+
+```Python
+struct Point(Encodable, Comparable):
+    x: int
+    y: int
+```
+
+## Protocol Methods and Properties
+
+Protocols declare methods that a conforming type must implement.
 
 ```Python
 protocol Encodable:
@@ -273,7 +306,7 @@ protocol Encodable:
         return json.dumps(self.encode())
 ```
 
-Methods with no implementation have an ellipsis. If an actual
+Methods with no implementation have an ellipsis (`...`). If an actual
 implementation is provided, it is inherited by all inheriting protocols and
 implementers. If a body with a single `pass` statement (comments optional) is
 provided, it is treated as being implemented. This is a crucial difference
@@ -290,6 +323,14 @@ protocol Encodable:
         get(self): ...
         # This property has no public setter
 ```
+
+## Inheritance Rules Summary
+
+- **Classes**: Can inherit from exactly one base class and implement multiple protocols
+- **Protocols**: Can inherit from multiple other protocols
+- **Structs**: Cannot inherit from classes but can implement multiple protocols
+- **Parsing**: All base types (classes and protocols) are represented uniformly in the AST as a `bases` list of `Name` or `GenericType` nodes
+- **Validation**: Type resolution and inheritance rule validation occurs during semantic analysis, not during parsing
 
 # Access modifiers
 
