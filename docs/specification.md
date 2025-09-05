@@ -133,37 +133,6 @@ Sharpy structs do not inherit from `Sharpy.Object` and do not
 participate in inheritance, but they can implement protocols
 (see below).
 
-Classes and structs in Sharpy can have member variables, as well as
-functional properties (getters and setters). The decorator approach in
-Python is replaced with a shorthand syntax.
-
-```Python
-class Foo:
-    # The backing member is created as a private member based on the property
-    # name (indicated by the double underscore prefix)
-    property value: int:
-        get(self):
-            return self.__value
-
-        set(self):
-            # `value` is implicit but can be explicitly specified
-            self.__value = value
-```
-
-Properties can be protected or private by underscore prefixing:
-
-```Python
-class Foo:
-    property name: str:
-        # This getter is protected
-        _get(self):
-            return self.__name
-
-        # This setter is private
-        __set(self):
-            self.__name = value
-```
-
 Unlike Python, Sharpy allows overloading as in C#.
 
 Constructor methods are indicated with the special dunder method
@@ -175,6 +144,114 @@ class Foo:
     def __init__(self):
         pass
 ```
+
+Classes and structs in Sharpy can have member variables, as well as
+functional properties (getters and setters). Properties in Sharpy offer
+flexible syntax for auto-generation, explicit implementation, and fine-grained
+access control.
+
+## Property Syntax
+
+### Auto Properties
+
+Auto properties generate both getter and setter with the same access modifier,
+along with a compiler-managed private backing field:
+
+```Python
+class Foo:
+    # Auto-generated getter/setter with internal access, initialized to 5
+    # Corresponds to C#: internal int Value { get; set; } = 5;
+    property $value: int = 5
+
+    # Read-only public auto-property (only getter generated)
+    get property length: int
+
+    # Write-only private auto-property with initial value
+    set property _size: int = 0
+```
+
+It is a compiler error to provide an initial value to both an auto-generated getter
+and an auto-generated setter.
+
+### Explicit Properties
+
+Explicit properties allow custom getter/setter implementations without
+auto-generated backing fields. Access modifiers are applied individually
+to each getter/setter:
+
+```Python
+class Foo:
+    # Manual backing field
+    __some_backing_field: int = 0
+
+    # Read-only explicit property (protected access)
+    property _dimensions(self) -> int:
+        return self.__some_backing_field
+
+    # Write-only explicit property (private access)
+    property __dimensions(self, v: int):
+        self.__some_backing_field = v
+```
+
+### Mixed Auto/Explicit Properties
+
+You can combine auto and explicit property syntax for the same property. In this case,
+you can access the backing field via the soft keyword `field`.
+
+```Python
+class Foo:
+    # Auto getter with backing field
+    get property value: int = 5
+
+    # Explicit setter using the same backing field
+    property value(self, v: int):
+        if v < 0:
+            raise ValueError("Value must be positive")
+        field = v
+```
+
+### Type Inference
+
+When both getter and setter are explicit, type annotations can be inferred:
+
+```Python
+class Foo:
+    property value(self) -> int:        # Getter with return type
+        return self.__backing
+
+    property value(self, v):            # Setter type inferred from getter
+        self.__backing = v
+```
+
+### Abstract Properties (Protocols)
+
+In protocols and abstract classes, properties can be declared as abstract:
+
+```Python
+protocol Encodable:
+    # Abstract property requiring both getter and setter
+    property num_characters: int
+
+    # Abstract property requiring only getter
+    get property num_words: int
+
+    # Abstract property requiring only setter
+    set property num_sentences: int
+
+    # Abstract explicit properties with ellipsis
+    property num_tokens(self) -> int: ...
+    property num_tokens(self, v: int): ...
+```
+
+## Property Notes
+
+- Auto properties have completely compiler-managed backing fields that cannot be directly accessed
+- Access modifiers apply individually to getters and setters using naming prefixes
+- Properties can be read-only (getter only) or write-only (setter only)
+- Type inference works between getter and setter when both are explicit
+- For auto properties, the backing field name is mangled by the compiler to avoid conflicts
+- For mixed auto and explicit properties, access to the compiler-managed backing
+field can be done via the `field` soft keyword.
 
 # Protocols
 

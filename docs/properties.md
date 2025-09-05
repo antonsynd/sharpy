@@ -64,11 +64,35 @@ Ellipsis is still for "abstract" methods from protocols.
 #    internal int Value { get; set; } = 5;
 property $value: int = 5
 
-# auto-generated protected getter
-get _length -> int: auto
-# auto-generated private setter
-set __length(int): auto
-# in both cases, the backing field is auto-generated as well
+# Read-only public auto-property with no user-defined initial value (defaults to
+# type's initial value. Has backing field.
+get property length: int
 
+# Write-only private auto-property with initial value. Has backing field.
+set property _size: int = 0
 
+# Explicitly provided getter/setters (the absence of one or the other means
+# read-only/write-only respectively). No backing field is auto-generated.
+# Type annotation is required (for now) on both getter and setter if both
+# are defined. Getter/setter is inferred from the argument types. Getter
+# only has self, setter has self plus one other argument.
+property _dimensions(self) -> int:
+    return self.__some_backing_field
+
+property __dimensions(self, v: int):
+    self.__some_backing_field = v
+
+# In protocols (or i guess abstract classes), an abstract property can
+# be defined
+
+# No initial value can be defined. Providing get/set in front of property
+# will mean the protocol only requires the getter/setter.
+property num_characters: int
+get property num_words: int
+set property num_sentences: int
+
+# An abstract explicit property's getter/setters can also be defined using
+# ellipsis.
+property num_tokens(self) -> int: ...
+property num_tokens(self, v: int): ...
 ```
