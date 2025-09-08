@@ -279,7 +279,7 @@ fn test_complex_class_definition() {
 class __PrivateContainer[T, U](BaseClass, Protocol1):
     def method(self):
         pass
-    
+
     x: int = 5
 "#;
 
