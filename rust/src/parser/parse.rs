@@ -3037,7 +3037,7 @@ impl Parser {
         if self.match_token(&TokenType::LeftParen) {
             // Explicit property: property name(self) -> type: body
             self.parse_explicit_property(
-                start_location,
+                &start_location,
                 access_modifier,
                 name,
                 is_get_only,
@@ -3046,7 +3046,7 @@ impl Parser {
         } else {
             // Auto property: property name: type = value
             self.parse_auto_property(
-                start_location,
+                &start_location,
                 access_modifier,
                 name,
                 is_get_only,
@@ -3058,7 +3058,7 @@ impl Parser {
     /// Parse an auto property: property name: type = value
     fn parse_auto_property(
         &mut self,
-        start_location: SourceLocation,
+        start_location: &SourceLocation,
         access_modifier: Option<String>,
         name: String,
         is_get_only: bool,
@@ -3092,7 +3092,7 @@ impl Parser {
             is_get_only,
             is_set_only,
             source: Some(NodeSource::from_source_location(
-                &start_location,
+                start_location,
                 &end_location,
             )),
         }))
@@ -3101,7 +3101,7 @@ impl Parser {
     /// Parse an explicit property: property name(self) -> type: body
     fn parse_explicit_property(
         &mut self,
-        start_location: SourceLocation,
+        start_location: &SourceLocation,
         access_modifier: Option<String>,
         name: String,
         is_get_only: bool,
@@ -3188,7 +3188,7 @@ impl Parser {
             is_get_only,
             is_set_only,
             source: Some(NodeSource::from_source_location(
-                &start_location,
+                start_location,
                 &end_location,
             )),
         }))

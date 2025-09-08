@@ -155,11 +155,11 @@ impl NumberLexer {
             // Look ahead to make sure it's not an ellipsis or method call
             let next_char = scanner.peek_char();
             let is_decimal = match next_char {
-                None => true,                                  // End of input, treat as decimal point
+                // End of input, treat as decimal point
                 Some('.') => false,                            // Ellipsis, not a decimal point
                 Some(ch) if ch.is_ascii_digit() => true, // Followed by digit, definitely decimal
                 Some(ch) if ch.is_ascii_alphabetic() => false, // Method call like 5.abs()
-                _ => true, // Other characters (operators, etc.), treat as decimal point
+                _ => true, // Other characters (operators, etc.) or end of input, treat as decimal point
             };
 
             if is_decimal {
