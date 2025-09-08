@@ -1,8 +1,9 @@
 use crate::ast::node::{
     Alias, Arg, Arguments, Assign, Attribute, BinaryOp, BinaryOp_, BoolOp, BoolOp_, Call, ClassDef,
     CompOp, Compare, Constant, ConstantValue, Dict, ExceptHandler, For, FunctionDef, If, IfExp,
-    Import, ImportFrom, Lambda, List, Name, NamedExpr, Node, NodeSource, Pass, ProtocolDef, Return,
-    Set, StructDef, Subscript, Try, Tuple, TypedName, UnaryOp, UnaryOp_, While,
+    Import, ImportFrom, Lambda, List, Name, NamedExpr, Node, NodeSource, Pass, PropertyDef,
+    ProtocolDef, Return, Set, StructDef, Subscript, Try, Tuple, TypedName, UnaryOp, UnaryOp_,
+    While,
 };
 use crate::ast::types::{GenericType, OptionalType, QualifiedType, TypeName};
 use crate::lexer::token::{NumberType, StringType, Token, TokenType};
@@ -72,6 +73,11 @@ impl Parser {
         if self.match_token(&TokenType::Protocol) {
             self.advance(); // consume 'protocol'
             return self.parse_protocol_definition();
+        }
+
+        // Check for property definitions (contextual keywords)
+        if self.is_property_definition() {
+            return self.parse_property_definition();
         }
 
         // Check for function definitions
@@ -2429,47 +2435,6 @@ impl Parser {
     }
 
     /// Extract access modifier from a function name based on naming conventions
-    fn extract_access_modifier(name: &str) -> (Option<String>, String) {
-        if name.starts_with("$$") {
-            (Some("file".to_string()), name[2..].to_string())
-        } else if name.starts_with("__") {
-            (Some("private".to_string()), name[2..].to_string())
-        } else if name.starts_with('_') {
-            (Some("protected".to_string()), name[1..].to_string())
-        } else if name.starts_with('$') {
-            (Some("internal".to_string()), name[1..].to_string())
-        } else {
-            (None, name.to_string()) // Public by default
-        }
-    }
-
-    /// Expect a specific token type and return the token
-    fn expect_token(
-        &mut self,
-        expected: &TokenType,
-        description: &str,
-    ) -> Result<Token, ParseError> {
-        if let Some(token) = self.current_token() {
-            if std::mem::discriminant(&token.token_type) == std::mem::discriminant(expected) {
-                let token = token.clone();
-                self.advance();
-                Ok(token)
-            } else {
-                Err(ParseError::UnexpectedToken {
-                    expected: description.to_string(),
-                    found: self.current_token_string(),
-                    location: self.current_location(),
-                })
-            }
-        } else {
-            Err(ParseError::UnexpectedToken {
-                expected: description.to_string(),
-                found: "end of input".to_string(),
-                location: self.current_location(),
-            })
-        }
-    }
-
     /// Consume newlines and empty lines
     fn consume_newlines(&mut self) {
         while let Some(token) = self.current_token() {
@@ -3020,5 +2985,212 @@ impl Parser {
         }
 
         Ok(parts.join("."))
+    }
+
+    /// Check if the current position starts a property definition
+    fn is_property_definition(&self) -> bool {
+        // Check for property keyword or get/set property
+        if self.match_token(&TokenType::Property) {
+            return true;
+        }
+
+        if self.match_token(&TokenType::Get) || self.match_token(&TokenType::Set) {
+            // Check if next token is "property"
+            if let Some(next_token) = self.tokens.get(self.current + 1) {
+                return matches!(next_token.token_type, TokenType::Property);
+            }
+        }
+
+        false
+    }
+
+    /// Parse a property definition: property name: type = value or property name(self) -> type: body
+    fn parse_property_definition(&mut self) -> Result<Node, ParseError> {
+        let start_location = self.current_location();
+
+        // Parse optional get/set prefix
+        let mut is_get_only = false;
+        let mut is_set_only = false;
+
+        if self.match_token(&TokenType::Get) {
+            is_get_only = true;
+            self.advance(); // consume 'get'
+        } else if self.match_token(&TokenType::Set) {
+            is_set_only = true;
+            self.advance(); // consume 'set'
+        }
+
+        // Expect 'property' keyword
+        if !self.match_token(&TokenType::Property) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "'property'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance(); // consume 'property'
+
+        // Parse property name with access modifier
+        let (access_modifier, name) = self.parse_type_definition_name()?;
+
+        // Check if this is an explicit property (has parentheses) or auto property
+        if self.match_token(&TokenType::LeftParen) {
+            // Explicit property: property name(self) -> type: body
+            self.parse_explicit_property(
+                start_location,
+                access_modifier,
+                name,
+                is_get_only,
+                is_set_only,
+            )
+        } else {
+            // Auto property: property name: type = value
+            self.parse_auto_property(
+                start_location,
+                access_modifier,
+                name,
+                is_get_only,
+                is_set_only,
+            )
+        }
+    }
+
+    /// Parse an auto property: property name: type = value
+    fn parse_auto_property(
+        &mut self,
+        start_location: SourceLocation,
+        access_modifier: Option<String>,
+        name: String,
+        is_get_only: bool,
+        is_set_only: bool,
+    ) -> Result<Node, ParseError> {
+        // Parse optional type annotation
+        let type_ = if self.match_token(&TokenType::Colon) {
+            self.advance(); // consume ':'
+            Some(Box::new(self.parse_type_expression()?))
+        } else {
+            None
+        };
+
+        // Parse optional default value
+        let default = if self.match_token(&TokenType::Equal) {
+            self.advance(); // consume '='
+            Some(Box::new(self.parse_expression()?))
+        } else {
+            None
+        };
+
+        let end_location = self.current_location();
+
+        Ok(Node::PropertyDef(PropertyDef {
+            access_modifier,
+            name,
+            type_,
+            default,
+            getter: None,
+            setter: None,
+            is_get_only,
+            is_set_only,
+            source: Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            )),
+        }))
+    }
+
+    /// Parse an explicit property: property name(self) -> type: body
+    fn parse_explicit_property(
+        &mut self,
+        start_location: SourceLocation,
+        access_modifier: Option<String>,
+        name: String,
+        is_get_only: bool,
+        is_set_only: bool,
+    ) -> Result<Node, ParseError> {
+        // Consume the left parenthesis
+        self.advance(); // consume '('
+
+        // Parse function arguments (self, optional setter parameter)
+        let args = if self.match_token(&TokenType::RightParen) {
+            // Empty parameter list (shouldn't happen for properties)
+            self.advance();
+            Arguments { args: vec![] }
+        } else {
+            let args = self.parse_function_arguments()?;
+            if !self.match_token(&TokenType::RightParen) {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "')'".to_string(),
+                    found: self.current_token_string(),
+                    location: self.current_location(),
+                });
+            }
+            self.advance(); // consume ')'
+            args
+        };
+
+        // Parse optional return type
+        let type_ = if self.match_token(&TokenType::RArrow) {
+            self.advance(); // consume '->'
+            Some(Box::new(self.parse_type_expression()?))
+        } else {
+            None
+        };
+
+        // Expect ':'
+        if !self.match_token(&TokenType::Colon) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "':'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance(); // consume ':'
+
+        // Parse property body (similar to function body)
+        let body = self.parse_block()?;
+
+        // Consume the dedent that ends the property block
+        if self.match_token(&TokenType::Dedent) {
+            self.advance();
+        }
+
+        let end_location = self.current_location();
+
+        // Determine if this is a getter or setter based on arguments
+        let is_getter = args.args.len() == 1; // Only self parameter
+        let is_setter = args.args.len() == 2; // Self + value parameter
+
+        let getter = if is_getter {
+            Some(Box::new(Node::List(crate::ast::node::List {
+                elements: body.clone(),
+                source: None,
+            })))
+        } else {
+            None
+        };
+
+        let setter = if is_setter {
+            Some(Box::new(Node::List(crate::ast::node::List {
+                elements: body,
+                source: None,
+            })))
+        } else {
+            None
+        };
+
+        Ok(Node::PropertyDef(PropertyDef {
+            access_modifier,
+            name,
+            type_,
+            default: None,
+            getter,
+            setter,
+            is_get_only,
+            is_set_only,
+            source: Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            )),
+        }))
     }
 }

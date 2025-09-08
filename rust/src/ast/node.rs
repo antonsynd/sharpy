@@ -671,6 +671,7 @@ pub struct MatchCase {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MemberDef {
+    pub access_modifier: Option<String>,
     pub name: String,
     pub type_: Option<Box<Node>>,
     pub default: Option<Box<Node>>,
@@ -712,11 +713,14 @@ pub struct Pass {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PropertyDef {
+    pub access_modifier: Option<String>,
     pub name: String,
-    pub type_: Box<Node>,
-    pub default: Box<Node>,
+    pub type_: Option<Box<Node>>,
+    pub default: Option<Box<Node>>,
     pub getter: Option<Box<Node>>,
     pub setter: Option<Box<Node>>,
+    pub is_get_only: bool,
+    pub is_set_only: bool,
     pub source: Option<NodeSource>,
 }
 
