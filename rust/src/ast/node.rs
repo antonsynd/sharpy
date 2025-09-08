@@ -197,6 +197,7 @@ impl Node {
             Self::BoolOp(n) => n.source.as_ref(),
             Self::Constant(n) => n.source.as_ref(),
             Self::For(n) => n.source.as_ref(),
+            Self::FunctionDef(n) => n.source.as_ref(),
             Self::If(n) => n.source.as_ref(),
             Self::IfExp(n) => n.source.as_ref(),
             Self::List(n) => n.source.as_ref(),
@@ -225,6 +226,7 @@ impl Node {
             Self::BoolOp(n) => n.source.as_mut(),
             Self::Constant(n) => n.source.as_mut(),
             Self::For(n) => n.source.as_mut(),
+            Self::FunctionDef(n) => n.source.as_mut(),
             Self::If(n) => n.source.as_mut(),
             Self::IfExp(n) => n.source.as_mut(),
             Self::List(n) => n.source.as_mut(),
@@ -253,6 +255,7 @@ impl Node {
             Self::BoolOp(n) => n.source = Some(source),
             Self::Constant(n) => n.source = Some(source),
             Self::For(n) => n.source = Some(source),
+            Self::FunctionDef(n) => n.source = Some(source),
             Self::If(n) => n.source = Some(source),
             Self::IfExp(n) => n.source = Some(source),
             Self::List(n) => n.source = Some(source),
@@ -309,7 +312,6 @@ pub struct Arg {
 /// vararg, and any number of arguments.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Arguments {
-    pub vararg: Option<Arg>,
     pub args: Vec<Arg>,
 }
 
@@ -547,6 +549,7 @@ pub struct For {
 /// A function definition, e.g. `def foo():`
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDef {
+    pub access_modifier: Option<String>,
     pub name: String,
     pub args: Arguments,
     pub decorators: Vec<Node>,

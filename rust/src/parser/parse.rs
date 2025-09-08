@@ -1,6 +1,6 @@
 use crate::ast::node::{
     Arg, Arguments, Assign, Attribute, BinaryOp, BinaryOp_, BoolOp, BoolOp_, Call, CompOp, Compare,
-    Constant, ConstantValue, Dict, ExceptHandler, For, If, IfExp, Lambda, List, Name, NamedExpr,
+    Constant, ConstantValue, Dict, ExceptHandler, For, FunctionDef, If, IfExp, Lambda, List, Name, NamedExpr,
     Node, NodeSource, Pass, Return, Set, Subscript, Try, Tuple, TypedName, UnaryOp, UnaryOp_,
     While,
 };
@@ -47,7 +47,13 @@ impl Parser {
 
     /// Parse a single statement
     fn parse_statement(&mut self) -> Result<Node, ParseError> {
-        // Check for control flow statements first
+        // Check for function definitions first
+        if self.match_token(&TokenType::Def) {
+            self.advance(); // consume 'def'
+            return self.parse_function_definition();
+        }
+
+        // Check for control flow statements
         if self.match_token(&TokenType::If) {
             return self.parse_if_statement();
         }
@@ -1070,7 +1076,6 @@ impl Parser {
         let args = if self.match_token(&TokenType::Colon) {
             // No arguments: lambda: body
             Arguments {
-                vararg: None,
                 args: vec![],
             }
         } else {
@@ -1186,7 +1191,6 @@ impl Parser {
         }
 
         Ok(Arguments {
-            vararg: None, // No varargs support for lambdas yet
             args,
         })
     }
@@ -2311,5 +2315,215 @@ impl Parser {
         } else {
             base_type
         }
+    }
+
+    /// Extract access modifier from a function name based on naming conventions
+    fn extract_access_modifier(name: &str) -> (Option<String>, String) {
+        if name.starts_with("$$") {
+            (Some("file".to_string()), name[2..].to_string())
+        } else if name.starts_with("__") {
+            (Some("private".to_string()), name[2..].to_string())
+        } else if name.starts_with('_') {
+            (Some("protected".to_string()), name[1..].to_string())
+        } else if name.starts_with('$') {
+            (Some("internal".to_string()), name[1..].to_string())
+        } else {
+            (None, name.to_string()) // Public by default
+        }
+    }
+
+    /// Expect a specific token type and return the token
+    fn expect_token(&mut self, expected: &TokenType, description: &str) -> Result<Token, ParseError> {
+        if let Some(token) = self.current_token() {
+            if std::mem::discriminant(&token.token_type) == std::mem::discriminant(expected) {
+                let token = token.clone();
+                self.advance();
+                Ok(token)
+            } else {
+                Err(ParseError::UnexpectedToken {
+                    expected: description.to_string(),
+                    found: self.current_token_string(),
+                    location: self.current_location(),
+                })
+            }
+        } else {
+            Err(ParseError::UnexpectedToken {
+                expected: description.to_string(),
+                found: "end of input".to_string(),
+                location: self.current_location(),
+            })
+        }
+    }
+
+    /// Consume newlines and empty lines
+    fn consume_newlines(&mut self) {
+        while let Some(token) = self.current_token() {
+            if matches!(token.token_type, TokenType::Newline) {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+    }
+
+    /// Parse a function definition: def name(args) -> `return_type`: body
+    fn parse_function_definition(&mut self) -> Result<Node, ParseError> {
+        let start_location = self.current_location();
+
+        // Parse function name
+        if let Some(token) = self.current_token() {
+            if let TokenType::Name(name_type) = &token.token_type {
+                let clean_name = name_type.name.clone();
+                let access_modifier = match name_type.access_modifier {
+                    crate::lexer::token::AccessModifier::Public => None,
+                    crate::lexer::token::AccessModifier::Protected => Some("protected".to_string()),
+                    crate::lexer::token::AccessModifier::Private => Some("private".to_string()),
+                    crate::lexer::token::AccessModifier::Internal => Some("internal".to_string()),
+                    crate::lexer::token::AccessModifier::File => Some("file".to_string()),
+                };
+                self.advance(); // consume name
+
+                // Parse argument list
+                if !self.match_token(&TokenType::LeftParen) {
+                    return Err(ParseError::UnexpectedToken {
+                        expected: "'('".to_string(),
+                        found: self.current_token_string(),
+                        location: self.current_location(),
+                    });
+                }
+                self.advance(); // consume '('
+
+                let args = if self.match_token(&TokenType::RightParen) {
+                    // Empty parameter list
+                    self.advance();
+                    Arguments { args: vec![] }
+                } else {
+                    let args = self.parse_function_arguments()?;
+                    if !self.match_token(&TokenType::RightParen) {
+                        return Err(ParseError::UnexpectedToken {
+                            expected: "')'".to_string(),
+                            found: self.current_token_string(),
+                            location: self.current_location(),
+                        });
+                    }
+                    self.advance(); // consume ')'
+                    args
+                };
+
+                // Parse optional return type
+                let return_type = if self.match_token(&TokenType::RArrow) {
+                    self.advance(); // consume '->'
+                    Some(Box::new(self.parse_type_expression()?))
+                } else {
+                    None
+                };
+
+                // Parse colon and body
+                if !self.match_token(&TokenType::Colon) {
+                    return Err(ParseError::UnexpectedToken {
+                        expected: "':'".to_string(),
+                        found: self.current_token_string(),
+                        location: self.current_location(),
+                    });
+                }
+                self.advance(); // consume ':'
+                self.consume_newlines();
+
+                // Parse function body
+                let body = self.parse_block()?;
+
+                // Consume the dedent that ends the function block
+                if self.match_token(&TokenType::Dedent) {
+                    self.advance();
+                }
+
+                let end_location = self.current_location();
+
+                Ok(Node::FunctionDef(FunctionDef {
+                    access_modifier,
+                    name: clean_name,
+                    args,
+                    decorators: vec![], // TODO: Add decorator support later
+                    return_type,
+                    body,
+                    source: Some(NodeSource::from_source_location(&start_location, &end_location)),
+                }))
+            } else {
+                Err(ParseError::UnexpectedToken {
+                    expected: "function name".to_string(),
+                    found: self.current_token_string(),
+                    location: self.current_location(),
+                })
+            }
+        } else {
+            Err(ParseError::UnexpectedToken {
+                expected: "function name".to_string(),
+                found: "end of input".to_string(),
+                location: self.current_location(),
+            })
+        }
+    }
+
+    /// Parse function arguments (without the parentheses)
+    fn parse_function_arguments(&mut self) -> Result<Arguments, ParseError> {
+        let mut args = Vec::new();
+
+        loop {
+            // Parse argument name
+            if let Some(token) = self.current_token() {
+                if let TokenType::Name(name_type) = &token.token_type {
+                    let arg_name = name_type.name.clone();
+                    self.advance(); // consume name
+
+                    // Parse optional type annotation
+                    let arg_type = if self.match_token(&TokenType::Colon) {
+                        self.advance(); // consume ':'
+                        Some(Box::new(self.parse_type_expression()?))
+                    } else {
+                        None
+                    };
+
+                    // Parse optional default value
+                    let default = if self.match_token(&TokenType::Equal) {
+                        self.advance(); // consume '='
+                        Some(Box::new(self.parse_expression()?))
+                    } else {
+                        None
+                    };
+
+                    args.push(Arg {
+                        name: arg_name,
+                        type_: arg_type,
+                        default,
+                        source: None, // TODO: Add source tracking for individual args
+                    });
+
+                    // Check for more arguments
+                    if self.match_token(&TokenType::Comma) {
+                        self.advance();
+                        // Allow trailing comma
+                        if self.match_token(&TokenType::RightParen) {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                } else {
+                    return Err(ParseError::UnexpectedToken {
+                        expected: "parameter name".to_string(),
+                        found: self.current_token_string(),
+                        location: self.current_location(),
+                    });
+                }
+            } else {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "parameter name".to_string(),
+                    found: "end of input".to_string(),
+                    location: self.current_location(),
+                });
+            }
+        }
+
+        Ok(Arguments { args })
     }
 }

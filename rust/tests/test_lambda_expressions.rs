@@ -92,7 +92,6 @@ fn test_lambda_no_args() {
     if let Node::Lambda(lambda) = result {
         // Check no arguments
         assert_eq!(lambda.args.args.len(), 0);
-        assert!(lambda.args.vararg.is_none());
 
         // Check return type
         assert!(lambda.return_type.is_none());
