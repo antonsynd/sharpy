@@ -1,8 +1,8 @@
 use crate::ast::node::{
-    Arg, Arguments, Assign, Attribute, BinaryOp, BinaryOp_, BoolOp, BoolOp_, Call, CompOp, Compare,
-    Constant, ConstantValue, Dict, ExceptHandler, For, FunctionDef, If, IfExp, Lambda, List, Name,
-    NamedExpr, Node, NodeSource, Pass, Return, Set, Subscript, Try, Tuple, TypedName, UnaryOp,
-    UnaryOp_, While,
+    Arg, Arguments, Assign, Attribute, BinaryOp, BinaryOp_, BoolOp, BoolOp_, Call, ClassDef,
+    CompOp, Compare, Constant, ConstantValue, Dict, ExceptHandler, For, FunctionDef, If, IfExp,
+    Lambda, List, Name, NamedExpr, Node, NodeSource, Pass, ProtocolDef, Return, Set, StructDef,
+    Subscript, Try, Tuple, TypedName, UnaryOp, UnaryOp_, While,
 };
 use crate::ast::types::{GenericType, OptionalType, QualifiedType, TypeName};
 use crate::lexer::token::{NumberType, StringType, Token, TokenType};
@@ -47,7 +47,23 @@ impl Parser {
 
     /// Parse a single statement
     fn parse_statement(&mut self) -> Result<Node, ParseError> {
-        // Check for function definitions first
+        // Check for type definitions first
+        if self.match_token(&TokenType::Class) {
+            self.advance(); // consume 'class'
+            return self.parse_class_definition();
+        }
+
+        if self.match_token(&TokenType::Struct) {
+            self.advance(); // consume 'struct'
+            return self.parse_struct_definition();
+        }
+
+        if self.match_token(&TokenType::Protocol) {
+            self.advance(); // consume 'protocol'
+            return self.parse_protocol_definition();
+        }
+
+        // Check for function definitions
         if self.match_token(&TokenType::Def) {
             self.advance(); // consume 'def'
             return self.parse_function_definition();
@@ -2616,5 +2632,262 @@ impl Parser {
         }
 
         Ok(Arguments { args })
+    }
+
+    /// Parse a class definition: class Name[T](Base): body
+    fn parse_class_definition(&mut self) -> Result<Node, ParseError> {
+        let start_location = self.current_location();
+
+        // Parse class name with access modifier
+        let (access_modifier, name) = self.parse_type_definition_name()?;
+
+        // Parse optional generic parameters: [T, U, V]
+        let type_params = self.parse_optional_generic_params()?;
+
+        // Parse optional inheritance/protocol implementation: (Base, Protocol1, Protocol2)
+        let bases = if self.match_token(&TokenType::LeftParen) {
+            self.parse_inheritance_list()?
+        } else {
+            Vec::new()
+        };
+
+        // Parse colon and body
+        if !self.match_token(&TokenType::Colon) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "':'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance(); // consume ':'
+
+        // Parse class body
+        let body = self.parse_block()?;
+
+        // Consume the dedent that ends the class block
+        if self.match_token(&TokenType::Dedent) {
+            self.advance();
+        }
+
+        let end_location = self.current_location();
+
+        Ok(Node::ClassDef(ClassDef {
+            access_modifier,
+            name,
+            type_params,
+            bases,
+            body,
+            source: Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            )),
+        }))
+    }
+
+    /// Parse a struct definition: struct Name[T](Protocol): body
+    fn parse_struct_definition(&mut self) -> Result<Node, ParseError> {
+        let start_location = self.current_location();
+
+        // Parse struct name with access modifier
+        let (access_modifier, name) = self.parse_type_definition_name()?;
+
+        // Parse optional generic parameters: [T, U, V]
+        let type_params = self.parse_optional_generic_params()?;
+
+        // Parse optional protocol implementation: (Protocol1, Protocol2)
+        let bases = if self.match_token(&TokenType::LeftParen) {
+            self.parse_inheritance_list()?
+        } else {
+            Vec::new()
+        };
+
+        // Parse colon and body
+        if !self.match_token(&TokenType::Colon) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "':'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance(); // consume ':'
+
+        // Parse struct body
+        let body = self.parse_block()?;
+
+        // Consume the dedent that ends the struct block
+        if self.match_token(&TokenType::Dedent) {
+            self.advance();
+        }
+
+        let end_location = self.current_location();
+
+        Ok(Node::StructDef(StructDef {
+            access_modifier,
+            name,
+            type_params,
+            bases,
+            body,
+            source: Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            )),
+        }))
+    }
+
+    /// Parse a protocol definition: protocol Name[T](Base): body
+    fn parse_protocol_definition(&mut self) -> Result<Node, ParseError> {
+        let start_location = self.current_location();
+
+        // Parse protocol name with access modifier
+        let (access_modifier, name) = self.parse_type_definition_name()?;
+
+        // Parse optional generic parameters: [T, U, V]
+        let type_params = self.parse_optional_generic_params()?;
+
+        // Parse optional protocol inheritance: (Base1, Base2)
+        let bases = if self.match_token(&TokenType::LeftParen) {
+            self.parse_inheritance_list()?
+        } else {
+            Vec::new()
+        };
+
+        // Parse colon and body
+        if !self.match_token(&TokenType::Colon) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "':'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance(); // consume ':'
+
+        // Parse protocol body
+        let body = self.parse_block()?;
+
+        // Consume the dedent that ends the protocol block
+        if self.match_token(&TokenType::Dedent) {
+            self.advance();
+        }
+
+        let end_location = self.current_location();
+
+        Ok(Node::ProtocolDef(ProtocolDef {
+            access_modifier,
+            name,
+            type_params,
+            bases,
+            body,
+            source: Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            )),
+        }))
+    }
+
+    /// Parse a type definition name and extract access modifier
+    fn parse_type_definition_name(&mut self) -> Result<(Option<String>, String), ParseError> {
+        if let Some(token) = self.current_token() {
+            if let TokenType::Name(name_type) = &token.token_type {
+                let clean_name = name_type.name.clone();
+                let access_modifier = match name_type.access_modifier {
+                    crate::lexer::token::AccessModifier::Public => None,
+                    crate::lexer::token::AccessModifier::Protected => Some("protected".to_string()),
+                    crate::lexer::token::AccessModifier::Private => Some("private".to_string()),
+                    crate::lexer::token::AccessModifier::Internal => Some("internal".to_string()),
+                    crate::lexer::token::AccessModifier::File => Some("file".to_string()),
+                };
+                self.advance(); // consume name
+                Ok((access_modifier, clean_name))
+            } else {
+                Err(ParseError::UnexpectedToken {
+                    expected: "type name".to_string(),
+                    found: self.current_token_string(),
+                    location: self.current_location(),
+                })
+            }
+        } else {
+            Err(ParseError::UnexpectedToken {
+                expected: "type name".to_string(),
+                found: "end of input".to_string(),
+                location: self.current_location(),
+            })
+        }
+    }
+
+    /// Parse optional generic parameters: [T, U, V] or empty
+    fn parse_optional_generic_params(&mut self) -> Result<Vec<String>, ParseError> {
+        if self.match_token(&TokenType::LeftBracket) {
+            self.advance(); // consume '['
+
+            let mut type_params = Vec::new();
+
+            // Parse first type parameter
+            if !self.match_token(&TokenType::RightBracket) {
+                type_params.push(self.parse_name_token()?);
+
+                // Parse remaining type parameters
+                while self.match_token(&TokenType::Comma) {
+                    self.advance(); // consume ','
+                    if self.match_token(&TokenType::RightBracket) {
+                        break; // trailing comma
+                    }
+                    type_params.push(self.parse_name_token()?);
+                }
+            }
+
+            // Expect closing bracket
+            if !self.match_token(&TokenType::RightBracket) {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "']'".to_string(),
+                    found: self.current_token_string(),
+                    location: self.current_location(),
+                });
+            }
+            self.advance(); // consume ']'
+
+            Ok(type_params)
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
+    /// Parse inheritance/protocol implementation list: (Base, Protocol1, Protocol2)
+    fn parse_inheritance_list(&mut self) -> Result<Vec<Node>, ParseError> {
+        if !self.match_token(&TokenType::LeftParen) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "'('".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance(); // consume '('
+
+        let mut bases = Vec::new();
+
+        // Parse first base type
+        if !self.match_token(&TokenType::RightParen) {
+            bases.push(self.parse_type_expression()?);
+
+            // Parse remaining base types
+            while self.match_token(&TokenType::Comma) {
+                self.advance(); // consume ','
+                if self.match_token(&TokenType::RightParen) {
+                    break; // trailing comma
+                }
+                bases.push(self.parse_type_expression()?);
+            }
+        }
+
+        // Expect closing paren
+        if !self.match_token(&TokenType::RightParen) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "')'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance(); // consume ')'
+
+        Ok(bases)
     }
 }

@@ -449,7 +449,9 @@ pub struct Call {
 /// A class definition, e.g. `class Foo:`
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassDef {
+    pub access_modifier: Option<String>,
     pub name: String,
+    pub type_params: Vec<String>,
     pub bases: Vec<Node>,
     pub body: Vec<Node>,
     pub source: Option<NodeSource>,
@@ -720,7 +722,9 @@ pub struct PropertyDef {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProtocolDef {
+    pub access_modifier: Option<String>,
     pub name: String,
+    pub type_params: Vec<String>,
     pub bases: Vec<Node>,
     pub body: Vec<Node>,
     pub source: Option<NodeSource>,
@@ -772,7 +776,9 @@ pub struct Starred {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct StructDef {
+    pub access_modifier: Option<String>,
     pub name: String,
+    pub type_params: Vec<String>,
     pub bases: Vec<Node>,
     pub body: Vec<Node>,
     pub source: Option<NodeSource>,
