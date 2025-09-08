@@ -1,8 +1,8 @@
 use crate::ast::node::{
-    Arg, Arguments, Assign, Attribute, BinaryOp, BinaryOp_, BoolOp, BoolOp_, Call, ClassDef,
+    Alias, Arg, Arguments, Assign, Attribute, BinaryOp, BinaryOp_, BoolOp, BoolOp_, Call, ClassDef,
     CompOp, Compare, Constant, ConstantValue, Dict, ExceptHandler, For, FunctionDef, If, IfExp,
-    Lambda, List, Name, NamedExpr, Node, NodeSource, Pass, ProtocolDef, Return, Set, StructDef,
-    Subscript, Try, Tuple, TypedName, UnaryOp, UnaryOp_, While,
+    Import, ImportFrom, Lambda, List, Name, NamedExpr, Node, NodeSource, Pass, ProtocolDef, Return,
+    Set, StructDef, Subscript, Try, Tuple, TypedName, UnaryOp, UnaryOp_, While,
 };
 use crate::ast::types::{GenericType, OptionalType, QualifiedType, TypeName};
 use crate::lexer::token::{NumberType, StringType, Token, TokenType};
@@ -47,7 +47,18 @@ impl Parser {
 
     /// Parse a single statement
     fn parse_statement(&mut self) -> Result<Node, ParseError> {
-        // Check for type definitions first
+        // Check for import statements first
+        if self.match_token(&TokenType::Import) {
+            self.advance(); // consume 'import'
+            return self.parse_import_statement();
+        }
+
+        if self.match_token(&TokenType::From) {
+            self.advance(); // consume 'from'
+            return self.parse_import_from_statement();
+        }
+
+        // Check for type definitions
         if self.match_token(&TokenType::Class) {
             self.advance(); // consume 'class'
             return self.parse_class_definition();
@@ -2889,5 +2900,125 @@ impl Parser {
         self.advance(); // consume ')'
 
         Ok(bases)
+    }
+
+    /// Parse an import statement: import module [as alias], module2 [as alias2], ...
+    fn parse_import_statement(&mut self) -> Result<Node, ParseError> {
+        let start_location = self.current_location();
+        let mut names = Vec::new();
+
+        // Parse first import
+        names.push(self.parse_import_alias()?);
+
+        // Parse additional imports separated by commas
+        while self.match_token(&TokenType::Comma) {
+            self.advance(); // consume ','
+            names.push(self.parse_import_alias()?);
+        }
+
+        let end_location = self.current_location();
+
+        Ok(Node::Import(Import {
+            names,
+            source: Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            )),
+        }))
+    }
+
+    /// Parse a from-import statement: from module import name [as alias], name2 [as alias2], ...
+    fn parse_import_from_statement(&mut self) -> Result<Node, ParseError> {
+        let start_location = self.current_location();
+
+        // Parse module name (dotted name like 'package.module')
+        let module = Some(self.parse_dotted_name()?);
+
+        // Expect 'import' keyword
+        if !self.match_token(&TokenType::Import) {
+            return Err(ParseError::UnexpectedToken {
+                expected: "'import'".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        }
+        self.advance(); // consume 'import'
+
+        let mut names = Vec::new();
+
+        // Handle star import: from module import *
+        if self.match_token(&TokenType::Star) {
+            self.advance(); // consume '*'
+            names.push(Alias {
+                name: "*".to_string(),
+                as_name: None,
+                source: Some(NodeSource::from_source_location(
+                    &self.current_location(),
+                    &self.current_location(),
+                )),
+            });
+        } else {
+            // Parse first import name
+            names.push(self.parse_import_alias()?);
+
+            // Parse additional names separated by commas
+            while self.match_token(&TokenType::Comma) {
+                self.advance(); // consume ','
+                names.push(self.parse_import_alias()?);
+            }
+        }
+
+        let end_location = self.current_location();
+
+        Ok(Node::ImportFrom(ImportFrom {
+            module,
+            names,
+            level: 0, // No relative imports for now
+            source: Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            )),
+        }))
+    }
+
+    /// Parse an import alias: name [as alias]
+    fn parse_import_alias(&mut self) -> Result<Alias, ParseError> {
+        let start_location = self.current_location();
+
+        // Parse the module/name (could be dotted like 'package.module')
+        let name = self.parse_dotted_name()?;
+
+        // Parse optional 'as alias'
+        let as_name = if self.match_token(&TokenType::As) {
+            self.advance(); // consume 'as'
+            Some(self.parse_name_token()?)
+        } else {
+            None
+        };
+
+        Ok(Alias {
+            name,
+            as_name,
+            source: Some(NodeSource::from_source_location(
+                &start_location,
+                &self.current_location(),
+            )),
+        })
+    }
+
+    /// Parse a dotted name like 'package.module.submodule'
+    fn parse_dotted_name(&mut self) -> Result<String, ParseError> {
+        let mut parts = Vec::new();
+
+        // Parse first part
+        parts.push(self.parse_name_token()?);
+
+        // Parse additional parts separated by dots
+        while self.match_token(&TokenType::Dot) {
+            self.advance(); // consume '.'
+            parts.push(self.parse_name_token()?);
+        }
+
+        Ok(parts.join("."))
     }
 }
