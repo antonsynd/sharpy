@@ -1,8 +1,8 @@
 use crate::ast::node::{
     Arg, Arguments, Assign, Attribute, BinaryOp, BinaryOp_, BoolOp, BoolOp_, Call, CompOp, Compare,
-    Constant, ConstantValue, Dict, ExceptHandler, For, FunctionDef, If, IfExp, Lambda, List, Name, NamedExpr,
-    Node, NodeSource, Pass, Return, Set, Subscript, Try, Tuple, TypedName, UnaryOp, UnaryOp_,
-    While,
+    Constant, ConstantValue, Dict, ExceptHandler, For, FunctionDef, If, IfExp, Lambda, List, Name,
+    NamedExpr, Node, NodeSource, Pass, Return, Set, Subscript, Try, Tuple, TypedName, UnaryOp,
+    UnaryOp_, While,
 };
 use crate::ast::types::{GenericType, OptionalType, QualifiedType, TypeName};
 use crate::lexer::token::{NumberType, StringType, Token, TokenType};
@@ -99,12 +99,37 @@ impl Parser {
     fn is_assignment_pattern(&self) -> bool {
         let mut pos = self.current;
 
-        // Skip over potential assignment targets (names, tuples, etc.)
+        // Skip over potential assignment targets (names, subscripts, attributes, tuples, etc.)
         while pos < self.tokens.len() {
             if let Some(token) = self.tokens.get(pos) {
                 match token.token_type {
                     TokenType::Equal => return true, // Found assignment operator
                     TokenType::Comma | TokenType::Name(_) => pos += 1, // Continue through tuple elements and names
+                    TokenType::LeftBracket => {
+                        // Skip over subscript: name[index]
+                        pos += 1; // skip '['
+                        pos = self.skip_expression(pos); // skip the index expression
+                        if pos < self.tokens.len()
+                            && matches!(
+                                self.tokens.get(pos).map(|t| &t.token_type),
+                                Some(TokenType::RightBracket)
+                            )
+                        {
+                            pos += 1; // skip ']'
+                        }
+                    }
+                    TokenType::Dot => {
+                        // Skip over attribute access: name.attr
+                        pos += 1; // skip '.'
+                        if pos < self.tokens.len()
+                            && matches!(
+                                self.tokens.get(pos).map(|t| &t.token_type),
+                                Some(TokenType::Name(_))
+                            )
+                        {
+                            pos += 1; // skip attribute name
+                        }
+                    }
                     TokenType::Colon => {
                         // Skip type annotation - handle complex types
                         pos += 1;
@@ -184,6 +209,55 @@ impl Parser {
         pos
     }
 
+    /// Skip over an expression (simple implementation for lookahead)
+    fn skip_expression(&self, mut pos: usize) -> usize {
+        let mut paren_depth = 0;
+        let mut bracket_depth = 0;
+        let mut brace_depth = 0;
+
+        while pos < self.tokens.len() {
+            if let Some(token) = self.tokens.get(pos) {
+                match token.token_type {
+                    TokenType::LeftParen => paren_depth += 1,
+                    TokenType::RightParen => {
+                        if paren_depth > 0 {
+                            paren_depth -= 1;
+                        } else {
+                            break; // Unmatched closing paren
+                        }
+                    }
+                    TokenType::LeftBracket => bracket_depth += 1,
+                    TokenType::RightBracket => {
+                        if bracket_depth > 0 {
+                            bracket_depth -= 1;
+                        } else {
+                            break; // Unmatched closing bracket
+                        }
+                    }
+                    TokenType::LeftBrace => brace_depth += 1,
+                    TokenType::RightBrace => {
+                        if brace_depth > 0 {
+                            brace_depth -= 1;
+                        } else {
+                            break; // Unmatched closing brace
+                        }
+                    }
+                    TokenType::Comma | TokenType::Equal => {
+                        if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 {
+                            break; // End of expression
+                        }
+                    }
+                    _ => {}
+                }
+                pos += 1;
+            } else {
+                break;
+            }
+        }
+
+        pos
+    }
+
     /// Parse an assignment statement: name = value, name: type = value, or x, y = value
     fn parse_assignment(&mut self) -> Result<Node, ParseError> {
         let start_location = self.current_location();
@@ -250,16 +324,30 @@ impl Parser {
         }
     }
 
-    /// Parse a single target element: name or name: type
+    /// Parse a single target element: name, name[index], or name: type
     fn parse_target_element(&mut self) -> Result<Node, ParseError> {
-        let name = self.parse_name()?;
+        // Parse a postfix expression to handle subscripts like name[index]
+        let target = self.parse_postfix()?;
 
-        // Check if this has a type annotation
+        // Validate that this is a valid assignment target
+        match &target {
+            Node::Name(_) | Node::Subscript(_) | Node::Attribute(_) => {
+                // These are valid assignment targets
+            }
+            _ => {
+                return Err(ParseError::InvalidSyntax {
+                    message: "Invalid assignment target".to_string(),
+                    location: self.current_location(),
+                });
+            }
+        }
+
+        // Check if this has a type annotation (only valid for simple names)
         if self.match_token(&TokenType::Colon) {
             self.advance(); // consume ':'
             let type_annotation = self.parse_type_annotation()?;
 
-            if let Node::Name(Name { id, source }) = name {
+            if let Node::Name(Name { id, source }) = target {
                 Ok(Node::TypedName(TypedName {
                     id,
                     type_: Box::new(type_annotation),
@@ -267,13 +355,13 @@ impl Parser {
                 }))
             } else {
                 Err(ParseError::InvalidSyntax {
-                    message: "Expected identifier before type annotation".to_string(),
+                    message: "Type annotations are only allowed on simple names".to_string(),
                     location: self.current_location(),
                 })
             }
         } else {
             // Untyped target
-            Ok(name)
+            Ok(target)
         }
     }
 
@@ -1075,9 +1163,7 @@ impl Parser {
         // Parse arguments (optional)
         let args = if self.match_token(&TokenType::Colon) {
             // No arguments: lambda: body
-            Arguments {
-                args: vec![],
-            }
+            Arguments { args: vec![] }
         } else {
             self.parse_lambda_arguments()?
         };
@@ -1190,9 +1276,7 @@ impl Parser {
             }
         }
 
-        Ok(Arguments {
-            args,
-        })
+        Ok(Arguments { args })
     }
 
     /// Check if the current position looks like a keyword argument (name=value)
@@ -2333,7 +2417,11 @@ impl Parser {
     }
 
     /// Expect a specific token type and return the token
-    fn expect_token(&mut self, expected: &TokenType, description: &str) -> Result<Token, ParseError> {
+    fn expect_token(
+        &mut self,
+        expected: &TokenType,
+        description: &str,
+    ) -> Result<Token, ParseError> {
         if let Some(token) = self.current_token() {
             if std::mem::discriminant(&token.token_type) == std::mem::discriminant(expected) {
                 let token = token.clone();
@@ -2446,7 +2534,10 @@ impl Parser {
                     decorators: vec![], // TODO: Add decorator support later
                     return_type,
                     body,
-                    source: Some(NodeSource::from_source_location(&start_location, &end_location)),
+                    source: Some(NodeSource::from_source_location(
+                        &start_location,
+                        &end_location,
+                    )),
                 }))
             } else {
                 Err(ParseError::UnexpectedToken {
