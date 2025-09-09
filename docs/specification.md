@@ -12,6 +12,42 @@ developers.
 * Provide a statically-typed and modern Pythonic language for the .NET CLI
 * Be ABI compatible with C# and the rest of the CLI/CLR.
 
+# Implementation Status
+
+This specification describes the full vision for Sharpy. The current compiler implementation (as of version 0.1.0) supports a subset of these features:
+
+## ✅ Fully Implemented
+- **Lexing**: Complete tokenization including all operators, keywords, and literals
+- **Basic parsing**: Expressions, statements, control flow (if/while/for/try)
+- **Functions**: Function definitions with type annotations, default parameters
+- **Classes**: Class definitions with inheritance and access modifiers
+- **Structs**: Basic struct definitions
+- **Protocols**: Protocol definitions with inheritance
+- **Properties**: Both auto-properties and explicit properties with access modifiers
+- **Member variables**: Typed class/struct member variables
+- **Import statements**: All forms of import/from import
+- **Type annotations**: Simple types, generics, optionals, qualified types
+- **Access modifiers**: Full support for public/protected/private/internal/file
+- **Lambda expressions**: Full lambda support with type inference
+- **Literals**: Numbers, strings, f-strings, collections (list/dict/set/tuple)
+- **F-strings**: Formatted string literals with expression interpolation
+
+## ⚠️ Partially Implemented
+- **Generics**: Basic parsing support, constraints not yet implemented
+- **Match statements**: `match` and `case` keywords reserved but not implemented
+- **Async/await**: Keywords reserved but not implemented
+
+## ❌ Not Yet Implemented
+- **Attributes/decorators**: `@override`, `@final`, `@static`, etc.
+- **Events**: Event definitions and handling
+- **Signals**: Delegate-like functionality
+- **Optional chaining**: `?.` operator (lexed but not parsed)
+- **Null coalescing**: `??` operator (lexed but not parsed)
+- **Call pipelining**: `->` pipeline operator
+- **Try expressions**: `try` as expression form
+- **Match expressions**: Pattern matching in expressions
+- **Advanced generics**: Constraints and where clauses
+
 # Types
 
 This is a table of top-level Sharpy types and their Python and
@@ -166,9 +202,11 @@ class Foo:
     # Read-only public auto-property (only getter generated)
     get property length: int
 
-    # Write-only private auto-property with initial value
+    # Write-only protected auto-property with initial value
     set property _size: int = 0
 ```
+
+**Note**: The `get` and `set` keywords are **soft keywords** in Sharpy (context-dependent keywords). They can be used as prefixes to `property` to create read-only or write-only auto-properties.
 
 It is a compiler error to provide an initial value to both an auto-generated getter
 and an auto-generated setter.
@@ -176,8 +214,8 @@ and an auto-generated setter.
 ### Explicit Properties
 
 Explicit properties allow custom getter/setter implementations without
-auto-generated backing fields. Access modifiers are applied individually
-to each getter/setter:
+auto-generated backing fields. Access modifiers are applied to the property name
+using the standard Sharpy naming convention:
 
 ```Python
 class Foo:
@@ -194,6 +232,19 @@ class Foo:
 ```
 
 You cannot combine auto and explicit property syntax for the same property.
+
+### Property AST Representation
+
+In the AST, properties are represented as `PropertyDef` nodes with the following structure:
+
+- `access_modifier`: Optional string ("protected", "private", "internal", "file", or None for public)
+- `name`: Property name with access modifier prefix stripped
+- `type_`: Optional type annotation
+- `default`: Optional default value for auto properties
+- `getter`: Optional getter body for explicit properties
+- `setter`: Optional setter body for explicit properties
+- `is_get_only`: Boolean flag for get-only properties
+- `is_set_only`: Boolean flag for set-only properties
 
 ### Type Inference
 
@@ -357,6 +408,8 @@ user to use the equivalent global function or operators.
 | N/A | - | `private protected` | Accessible to the class and its derived classes within the project | - |
 | File | `$$foobar` | `file` | Accessible to only symbols in the current file | - |
 
+**Implementation Note**: In the lexer, access modifiers are automatically detected and stored in the `NameType` token. The parser extracts the clean name (without prefixes) and the access modifier level separately. For example, `_protected_method` becomes `name: "protected_method"` with `access_modifier: Some("protected")`.
+
 ```Python
 # In the ABI, this class is "public Foo"
 class Foo:
@@ -383,6 +436,8 @@ class Foo:
 
 # Attributes
 
+**Note**: Attributes/decorators are currently not implemented in the compiler.
+
 `@override`: methods
 
 `@final`: classes/protocols
@@ -392,6 +447,8 @@ class Foo:
 TODO
 
 # Signals
+
+**Note**: Signals are currently not implemented in the compiler.
 
 Signals are Sharpy's equivalent of C# delegates.
 
@@ -405,6 +462,8 @@ f.some_signal(1, 3)
 ```
 
 # Events
+
+**Note**: Events are currently not implemented in the compiler, though the `event` keyword is reserved as a soft keyword.
 
 Events in Sharpy work as they do in C#.
 
@@ -444,11 +503,15 @@ conversion to the desired case. If there is an existing case variant,
 the compiler throws an exception telling the user to resolve the
 ambiguity.
 
-Any symbol in Sharpy can be surrounded with `\`` to tell the compiler
+## Literal Names
+
+Any symbol in Sharpy can be surrounded with backticks `` ` `` to tell the compiler
 to not transform the name during resolution. This is equivalent to
 C#'s `@`, which indicates that a symbol name should be resolved as it
-is, even if it is a keyword. Sharpy's paired `\`` can also be used for the
+is, even if it is a keyword. Sharpy's paired backticks can also be used for the
 purpose of using keywords as identifiers.
+
+**Implementation Note**: The lexer automatically detects backtick-surrounded identifiers and marks them as literal names in the `NameType` token with the `is_literal` flag set to `true`.
 
 ```Python
 # Exposed in ABI as AddSomething()
@@ -470,7 +533,19 @@ from foo_bar.`abc` import *
 new_hash_set()
 ```
 
+```Python
+# Using a keyword as an identifier
+def `class`():
+    pass
+
+# Using exact casing without transformation
+def `ExactMethodName`():
+    pass
+```
+
 # Generics
+
+**Note**: Generics are partially implemented in the compiler with basic parsing support.
 
 Classes, structs, and protocols can be made generic, accepting
 types as parameters. This makes them incompatible with other
@@ -492,11 +567,29 @@ TODO
 
 # Operators
 
+## Optional Chaining
+
 `?.` optional chaining:
 
 ```Python
 f: str = None
 f?.lower()  # returns None
+```
+
+## Null Coalescing
+
+`??` null coalescing operator:
+
+```Python
+result = value ?? default_value
+```
+
+## Matrix Multiplication
+
+`@` matrix multiplication (from Python 3.5+):
+
+```Python
+result = matrix_a @ matrix_b
 ```
 
 TODO
@@ -510,6 +603,8 @@ i: int? = None
 ```
 
 Value types are not None-able by default, but reference types are.
+
+**Note**: The following features are currently not implemented in the compiler:
 
 # Match assignment
 
@@ -532,6 +627,8 @@ i: int? = try something_that_may_throw()
 ```
 
 # Call pipelining
+
+**Note**: Call pipelining is currently not implemented in the compiler.
 
 ```Python
 def foo(x: int) -> str: ...
@@ -602,7 +699,62 @@ using SomeModule;
 Print(SomeModule.__Module__.SOME_CONSTANT);
 ```
 
-# Program structure
+# Keywords and Operators
+
+## Hard Keywords
+
+The following are hard keywords in Sharpy and are always reserved:
+
+`and`, `as`, `assert`, `async`, `await`, `break`, `class`, `continue`, `def`, `del`, `elif`, `else`, `except`, `False`, `finally`, `for`, `from`, `if`, `in`, `is`, `import`, `lambda`, `None`, `not`, `or`, `pass`, `property`, `protocol`, `raise`, `return`, `struct`, `True`, `try`, `while`, `with`, `yield`
+
+## Soft Keywords (Context-Dependent)
+
+The following are soft keywords that are only treated as keywords in specific contexts:
+
+`case`, `event`, `get`, `match`, `set`, `type`, `_` (wildcard)
+
+## Sharpy-Specific Operators
+
+In addition to standard Python operators, Sharpy introduces these operators:
+
+- `?.` - Optional chaining (null-conditional member access)
+- `??` - Null coalescing operator
+- `@` - Matrix multiplication (from Python 3.5+)
+- `->` - Function return type annotation arrow
+
+## Type Syntax
+
+Sharpy supports several type syntax forms:
+
+- **Simple types**: `int`, `str`, `bool`
+- **Generic types**: `List[int]`, `Dict[str, int]`
+- **Optional types**: `int?`, `str?` (true optionals)
+- **Qualified types**: `Module.ClassName`, `Package.Module.Type`
+- **Union types**: `int | str | None` (using `|` operator)
+
+## Member Variables
+
+Classes and structs can have typed member variables:
+
+```Python
+class Person:
+    # Public member variable with type and default
+    name: str = "Unknown"
+
+    # Protected member variable
+    _age: int = 0
+
+    # Private member variable
+    __id: int
+```
+
+Member variables are represented in the AST as `MemberDef` nodes with:
+- `access_modifier`: Access level based on naming prefix
+- `name`: Variable name with prefix stripped
+- `type_`: Optional type annotation
+- `default`: Optional default value
+
+# Program Structure
 
 The entry point of a Sharpy program is either a file with top-level
 statements, or a single file with a top-level `main()` method.
