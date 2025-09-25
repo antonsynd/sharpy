@@ -10,5 +10,15 @@
   "plantuml.exportFormat": "png",
   "plantuml.jar": "/opt/homebrew/Cellar/plantuml/1.2025.2/libexec/plantuml.jar",
   "github.copilot.advanced": {
-  }
+  },
+  "terminal.integrated.env.osx": {
+    "PATH": "/opt/homebrew/bin:/opt/homebrew/sbin:${env:PATH}"
+  },
+  "terminal.integrated.profiles.osx": {
+      "zsh": {
+          "path": "zsh",
+          "args": ["-l"]
+      }
+  },
+  "terminal.integrated.defaultProfile.osx": "zsh"
 }

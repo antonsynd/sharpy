@@ -1,5 +1,5 @@
 use clap::Parser;
-use sharpy_compiler_toolchain::{SharpyLexer, TokenType};
+use sharpy_compiler_toolchain::{Parser as SharpyParser, SharpyLexer, TokenType};
 use std::fs;
 use std::io::{self, Read};
 
@@ -14,6 +14,10 @@ struct Args {
     /// Tokenize only (lexer test mode)
     #[arg(short, long)]
     tokenize: bool,
+
+    /// Parse only (parser test mode)
+    #[arg(short, long)]
+    parse: bool,
 
     /// Verbose output
     #[arg(short, long)]
@@ -46,8 +50,45 @@ fn main() {
 
     if args.tokenize {
         tokenize_input(&input, args.verbose);
+    } else if args.parse {
+        parse_input(&input, args.verbose);
     } else {
-        println!("Compilation not yet implemented. Use --tokenize to test the lexer.");
+        println!("Compilation not yet implemented. Use --tokenize to test the lexer or --parse to test the parser.");
+    }
+}
+
+fn parse_input(input: &str, verbose: bool) {
+    let mut lexer = SharpyLexer::new(input);
+
+    match lexer.tokenize_all() {
+        Ok(tokens) => {
+            if verbose {
+                println!("Successfully tokenized {} tokens", tokens.len());
+            }
+
+            let mut parser = SharpyParser::new(tokens);
+            match parser.parse_module() {
+                Ok(module_ast) => {
+                    if verbose {
+                        println!("Successfully parsed module:");
+                        println!("{:#?}", module_ast);
+                    } else {
+                        println!("Parse successful - Module AST generated");
+                    }
+                }
+                Err(error) => {
+                    eprintln!("Parser error: {}", error);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Err(errors) => {
+            eprintln!("Lexer errors:");
+            for error in &errors {
+                eprintln!("  {error}");
+            }
+            std::process::exit(1);
+        }
     }
 }
 

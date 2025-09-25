@@ -1,7 +1,7 @@
 use crate::ast::node::{
     Alias, Arg, Arguments, Assign, Attribute, BinaryOp, BinaryOp_, BoolOp, BoolOp_, Call, ClassDef,
     CompOp, Compare, Constant, ConstantValue, Dict, ExceptHandler, For, FunctionDef, If, IfExp,
-    Import, ImportFrom, Lambda, List, Name, NamedExpr, Node, NodeSource, Pass, PropertyDef,
+    Import, ImportFrom, Lambda, List, Module, Name, NamedExpr, Node, NodeSource, Pass, PropertyDef,
     ProtocolDef, Return, Set, StructDef, Subscript, Try, Tuple, TypedName, UnaryOp, UnaryOp_,
     While,
 };
@@ -46,8 +46,57 @@ impl Parser {
         Ok(statements)
     }
 
+    /// Parse tokens into a Module AST node
+    ///
+    /// # Errors
+    ///
+    /// Returns `ParseError` if:
+    /// - Unexpected tokens are encountered
+    /// - Invalid syntax is found
+    /// - Unexpected end of file is reached
+    /// - Non-module-level statements are encountered
+    pub fn parse_module(&mut self) -> Result<Node, ParseError> {
+        let start_location = self.current_location();
+        let mut statements = Vec::new();
+
+        while !self.is_at_end() {
+            // Skip newlines and comments
+            if self.match_token(&TokenType::Newline) || self.is_comment() {
+                self.advance();
+                continue;
+            }
+
+            let stmt = self.parse_module_level_statement()?;
+            statements.push(stmt);
+        }
+
+        let end_location = if self.current > 0 {
+            self.tokens[self.current - 1].location.clone()
+        } else {
+            start_location.clone()
+        };
+
+        Ok(Node::Module(Module {
+            body: statements,
+            source: Some(NodeSource::from_source_location(&start_location, &end_location)),
+        }))
+    }
+
+    /// Parse a module-level statement (delegates to regular statement parsing)
+    /// Semantic analysis will handle module-level restrictions
+    fn parse_module_level_statement(&mut self) -> Result<Node, ParseError> {
+        // Just delegate to regular statement parsing
+        // Semantic analysis will enforce module-level restrictions
+        self.parse_statement()
+    }
+
     /// Parse a single statement
     fn parse_statement(&mut self) -> Result<Node, ParseError> {
+        // Handle decorators first
+        if self.match_token(&TokenType::At) {
+            return self.parse_decorated_definition();
+        }
+
         // Check for import statements first
         if self.match_token(&TokenType::Import) {
             self.advance(); // consume 'import'
@@ -1674,6 +1723,10 @@ impl Parser {
         self.tokens.get(self.current)
     }
 
+    fn peek(&self) -> Option<&Token> {
+        self.current_token()
+    }
+
     fn advance(&mut self) -> Option<&Token> {
         if !self.is_at_end() {
             self.current += 1;
@@ -2443,6 +2496,69 @@ impl Parser {
             } else {
                 break;
             }
+        }
+    }
+
+    /// Parse a decorated definition (function, class, etc.) starting with @
+    fn parse_decorated_definition(&mut self) -> Result<Node, ParseError> {
+        let mut decorators = Vec::new();
+
+        // Parse decorators
+        while self.match_token(&TokenType::At) {
+            self.advance(); // consume '@'
+
+            // Parse decorator name (for now, just simple names like @static, @override)
+            if let Some(token) = self.current_token() {
+                if let TokenType::Name(name_type) = &token.token_type {
+                    let decorator = Node::Name(Name {
+                        id: name_type.name.clone(),
+                        source: Some(NodeSource::new(
+                            token.location.line,
+                            token.location.column,
+                            token.location.line,
+                            token.location.column + name_type.name.len(),
+                        )),
+                    });
+                    decorators.push(decorator);
+                    self.advance(); // consume decorator name
+                } else {
+                    return Err(ParseError::UnexpectedToken {
+                        expected: "decorator name".to_string(),
+                        found: format!("{:?}", token.token_type),
+                        location: token.location.clone(),
+                    });
+                }
+            } else {
+                return Err(ParseError::UnexpectedEof {
+                    expected: "decorator name".to_string(),
+                    location: self.current_location(),
+                });
+            }
+
+            // Consume newlines after decorator
+            self.consume_newlines();
+        }
+
+        // Now parse the decorated definition
+        if self.match_token(&TokenType::Def) {
+            self.advance(); // consume 'def'
+            let mut function_node = self.parse_function_definition()?;
+
+            // Add decorators to the function
+            if let Node::FunctionDef(ref mut func_def) = function_node {
+                func_def.decorators = decorators;
+            }
+
+            Ok(function_node)
+        } else if self.match_token(&TokenType::Class) {
+            // TODO: Add decorator support for classes
+            self.advance(); // consume 'class'
+            self.parse_class_definition()
+        } else {
+            Err(ParseError::InvalidSyntax {
+                message: "Decorators can only be applied to functions or classes".to_string(),
+                location: self.current_location(),
+            })
         }
     }
 
