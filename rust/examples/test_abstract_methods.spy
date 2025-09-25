@@ -1,0 +1,32 @@
+"""Test protocol with abstract methods using ellipsis"""
+
+protocol Drawable:
+    def draw(self): ...
+    def get_bounds(self) -> tuple[int, int, int, int]: ...
+
+protocol Resizable(Drawable):
+    def resize(self, width: int, height: int): ...
+
+class AbstractShape:
+    def get_area(self) -> float: ...
+
+    def get_name(self) -> str:
+        return "Unknown Shape"
+
+class Rectangle(AbstractShape, Drawable, Resizable):
+    def __init__(self, width: int, height: int):
+        self.width = width
+        self.height = height
+
+    def draw(self):
+        print(f"Drawing rectangle {self.width}x{self.height}")
+
+    def get_bounds(self) -> tuple[int, int, int, int]:
+        return (0, 0, self.width, self.height)
+
+    def resize(self, width: int, height: int):
+        self.width = width
+        self.height = height
+
+    def get_area(self) -> float:
+        return float(self.width * self.height)

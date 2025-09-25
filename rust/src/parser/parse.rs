@@ -6,7 +6,7 @@ use crate::ast::node::{
     While,
 };
 use crate::ast::types::{GenericType, OptionalType, QualifiedType, TypeName};
-use crate::lexer::token::{NumberType, StringType, Token, TokenType};
+use crate::lexer::token::{FStringPart, NumberType, StringType, Token, TokenType};
 use crate::parser::error::ParseError;
 use crate::utils::SourceLocation;
 
@@ -78,7 +78,10 @@ impl Parser {
 
         Ok(Node::Module(Module {
             body: statements,
-            source: Some(NodeSource::from_source_location(&start_location, &end_location)),
+            source: Some(NodeSource::from_source_location(
+                &start_location,
+                &end_location,
+            )),
         }))
     }
 
@@ -1555,6 +1558,20 @@ impl Parser {
                 // Names/identifiers
                 TokenType::Name(_) => self.parse_name(),
 
+                // Ellipsis literal
+                TokenType::Ellipsis => {
+                    let location = token.location.clone();
+                    let source = Some(NodeSource::from_source_location(&location, &location));
+                    self.advance();
+                    Ok(Node::Constant(Constant {
+                        value: ConstantValue::Ellipsis,
+                        source,
+                    }))
+                }
+
+                // F-string literals
+                TokenType::FString(_) => self.parse_fstring(),
+
                 _ => Err(ParseError::UnexpectedToken {
                     expected: "expression".to_string(),
                     found: self.current_token_string(),
@@ -1721,10 +1738,6 @@ impl Parser {
 
     fn current_token(&self) -> Option<&Token> {
         self.tokens.get(self.current)
-    }
-
-    fn peek(&self) -> Option<&Token> {
-        self.current_token()
     }
 
     fn advance(&mut self) -> Option<&Token> {
@@ -2623,15 +2636,9 @@ impl Parser {
                     });
                 }
                 self.advance(); // consume ':'
-                self.consume_newlines();
 
-                // Parse function body
-                let body = self.parse_block()?;
-
-                // Consume the dedent that ends the function block
-                if self.match_token(&TokenType::Dedent) {
-                    self.advance();
-                }
+                // Parse function body - either a block or ellipsis for abstract methods
+                let body = self.parse_function_body()?;
 
                 let end_location = self.current_location();
 
@@ -2661,6 +2668,34 @@ impl Parser {
                 location: self.current_location(),
             })
         }
+    }
+
+    /// Parse function body - either a block or ellipsis for abstract methods
+    fn parse_function_body(&mut self) -> Result<Vec<Node>, ParseError> {
+        // Check if there's an ellipsis on the same line (for abstract methods)
+        if self.match_token(&TokenType::Ellipsis) {
+            let location = self.current_location();
+            self.advance(); // consume '...'
+
+            // Create a single ellipsis statement for abstract methods
+            let ellipsis_node = Node::Constant(Constant {
+                value: ConstantValue::Ellipsis,
+                source: Some(NodeSource::from_source_location(&location, &location)),
+            });
+
+            return Ok(vec![ellipsis_node]);
+        }
+
+        // Otherwise, expect a newline and indented block
+        self.consume_newlines();
+        let body = self.parse_block()?;
+
+        // Consume the dedent that ends the function block
+        if self.match_token(&TokenType::Dedent) {
+            self.advance();
+        }
+
+        Ok(body)
     }
 
     /// Parse function arguments (without the parentheses)
@@ -3308,5 +3343,68 @@ impl Parser {
                 &end_location,
             )),
         }))
+    }
+
+    /// Parse an f-string literal
+    /// F-strings are tokenized as Start + Middle + End sequence
+    fn parse_fstring(&mut self) -> Result<Node, ParseError> {
+        let start_location = self.current_location();
+        let mut content_parts = Vec::new();
+
+        // Expect FString(Start(...))
+        if let Some(token) = self.current_token() {
+            if let TokenType::FString(FStringPart::Start(_)) = &token.token_type {
+                self.advance(); // consume the start token
+
+                // Collect middle parts and handle expressions (for now, just collect text)
+                while let Some(token) = self.current_token() {
+                    match &token.token_type {
+                        TokenType::FString(FStringPart::Middle(text)) => {
+                            content_parts.push(text.clone());
+                            self.advance();
+                        }
+                        TokenType::FString(FStringPart::End(_)) => {
+                            self.advance(); // consume the end token
+                            break;
+                        }
+                        TokenType::Eof => {
+                            return Err(ParseError::UnexpectedEof {
+                                expected: "f-string end".to_string(),
+                                location: self.current_location(),
+                            });
+                        }
+                        // TODO: Handle expression tokens inside f-strings
+                        _ => {
+                            // For now, skip any other tokens (expressions will be handled later)
+                            self.advance();
+                        }
+                    }
+                }
+
+                // Join all content parts
+                let content = content_parts.join("");
+                let end_location = self.previous_location();
+                let source = Some(NodeSource::from_source_location(
+                    &start_location,
+                    &end_location,
+                ));
+
+                Ok(Node::Constant(Constant {
+                    value: ConstantValue::Str(content),
+                    source,
+                }))
+            } else {
+                Err(ParseError::UnexpectedToken {
+                    expected: "f-string start".to_string(),
+                    found: self.current_token_string(),
+                    location: self.current_location(),
+                })
+            }
+        } else {
+            Err(ParseError::UnexpectedEof {
+                expected: "f-string".to_string(),
+                location: self.current_location(),
+            })
+        }
     }
 }

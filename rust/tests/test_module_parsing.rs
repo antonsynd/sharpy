@@ -27,11 +27,17 @@ from collections import defaultdict
     let tokens = lexer.tokenize_all().expect("Failed to tokenize");
 
     let mut parser = Parser::new(tokens);
-    let result = parser.parse_module().expect("Failed to parse import module");
+    let result = parser
+        .parse_module()
+        .expect("Failed to parse import module");
 
     match result {
         sharpy_compiler_toolchain::Node::Module(module) => {
-            assert_eq!(module.body.len(), 2, "Module should have 2 import statements");
+            assert_eq!(
+                module.body.len(),
+                2,
+                "Module should have 2 import statements"
+            );
         }
         _ => panic!("Expected Module node"),
     }
@@ -57,7 +63,11 @@ protocol MyProtocol:
 
     match result {
         sharpy_compiler_toolchain::Node::Module(module) => {
-            assert_eq!(module.body.len(), 3, "Module should have 3 type definitions");
+            assert_eq!(
+                module.body.len(),
+                3,
+                "Module should have 3 type definitions"
+            );
         }
         _ => panic!("Expected Module node"),
     }
@@ -76,11 +86,17 @@ def another_function():
     let tokens = lexer.tokenize_all().expect("Failed to tokenize");
 
     let mut parser = Parser::new(tokens);
-    let result = parser.parse_module().expect("Failed to parse function module");
+    let result = parser
+        .parse_module()
+        .expect("Failed to parse function module");
 
     match result {
         sharpy_compiler_toolchain::Node::Module(module) => {
-            assert_eq!(module.body.len(), 2, "Module should have 2 function definitions");
+            assert_eq!(
+                module.body.len(),
+                2,
+                "Module should have 2 function definitions"
+            );
         }
         _ => panic!("Expected Module node"),
     }
@@ -97,11 +113,17 @@ another_var: float = 3.14
     let tokens = lexer.tokenize_all().expect("Failed to tokenize");
 
     let mut parser = Parser::new(tokens);
-    let result = parser.parse_module().expect("Failed to parse constants module");
+    let result = parser
+        .parse_module()
+        .expect("Failed to parse constants module");
 
     match result {
         sharpy_compiler_toolchain::Node::Module(module) => {
-            assert_eq!(module.body.len(), 3, "Module should have 3 constant assignments");
+            assert_eq!(
+                module.body.len(),
+                3,
+                "Module should have 3 constant assignments"
+            );
         }
         _ => panic!("Expected Module node"),
     }
@@ -122,11 +144,17 @@ def special_method(self, x: int):
     let tokens = lexer.tokenize_all().expect("Failed to tokenize");
 
     let mut parser = Parser::new(tokens);
-    let result = parser.parse_module().expect("Failed to parse decorated function module");
+    let result = parser
+        .parse_module()
+        .expect("Failed to parse decorated function module");
 
     match result {
         sharpy_compiler_toolchain::Node::Module(module) => {
-            assert_eq!(module.body.len(), 2, "Module should have 2 decorated functions");
+            assert_eq!(
+                module.body.len(),
+                2,
+                "Module should have 2 decorated functions"
+            );
         }
         _ => panic!("Expected Module node"),
     }
@@ -172,12 +200,18 @@ def main():
     let tokens = lexer.tokenize_all().expect("Failed to tokenize");
 
     let mut parser = Parser::new(tokens);
-    let result = parser.parse_module().expect("Failed to parse comprehensive module");
+    let result = parser
+        .parse_module()
+        .expect("Failed to parse comprehensive module");
 
     match result {
         sharpy_compiler_toolchain::Node::Module(module) => {
             // Should have: 2 imports, 2 constants, 1 class, 1 struct, 1 protocol, 1 decorated function
-            assert_eq!(module.body.len(), 8, "Module should have 8 top-level statements");
+            assert_eq!(
+                module.body.len(),
+                8,
+                "Module should have 8 top-level statements"
+            );
         }
         _ => panic!("Expected Module node"),
     }
@@ -198,7 +232,10 @@ if True:
     let result = parser.parse_module();
 
     // Should now parse successfully - semantic analysis will validate
-    assert!(result.is_ok(), "Should successfully parse control flow statements");
+    assert!(
+        result.is_ok(),
+        "Should successfully parse control flow statements"
+    );
 
     if let Ok(sharpy_compiler_toolchain::Node::Module(module)) = result {
         assert_eq!(module.body.len(), 1, "Should have 1 if statement");
@@ -271,7 +308,11 @@ protocol Processable:
     match result {
         sharpy_compiler_toolchain::Node::Module(module) => {
             // Should have: 2 imports, 2 constants, 1 function, 1 class, 1 struct, 1 protocol
-            assert_eq!(module.body.len(), 8, "Module should have 8 top-level statements");
+            assert_eq!(
+                module.body.len(),
+                8,
+                "Module should have 8 top-level statements"
+            );
         }
         _ => panic!("Expected Module node"),
     }

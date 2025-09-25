@@ -53,7 +53,9 @@ fn main() {
     } else if args.parse {
         parse_input(&input, args.verbose);
     } else {
-        println!("Compilation not yet implemented. Use --tokenize to test the lexer or --parse to test the parser.");
+        println!(
+            "Compilation not yet implemented. Use --tokenize to test the lexer or --parse to test the parser."
+        );
     }
 }
 
@@ -71,13 +73,13 @@ fn parse_input(input: &str, verbose: bool) {
                 Ok(module_ast) => {
                     if verbose {
                         println!("Successfully parsed module:");
-                        println!("{:#?}", module_ast);
+                        println!("{module_ast:#?}");
                     } else {
                         println!("Parse successful - Module AST generated");
                     }
                 }
                 Err(error) => {
-                    eprintln!("Parser error: {}", error);
+                    eprintln!("Parser error: {error}");
                     std::process::exit(1);
                 }
             }

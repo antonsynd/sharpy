@@ -1,4 +1,4 @@
-use sharpy_compiler_toolchain::{Parser, SharpyLexer, Node};
+use sharpy_compiler_toolchain::{Node, Parser, SharpyLexer};
 
 /// Test the complete pipeline from Sharpy source code to Module AST
 #[test]
@@ -41,11 +41,18 @@ protocol Drawable:
     // Step 3: Verify the structure
     match module_ast {
         Node::Module(module) => {
-            println!("Successfully parsed module with {} top-level statements", module.body.len());
+            println!(
+                "Successfully parsed module with {} top-level statements",
+                module.body.len()
+            );
 
             // Verify we have the expected statements
             // Should have: 2 imports, 1 constant, 1 class, 1 decorated function, 1 struct, 1 protocol
-            assert_eq!(module.body.len(), 7, "Module should have 7 top-level statements");
+            assert_eq!(
+                module.body.len(),
+                7,
+                "Module should have 7 top-level statements"
+            );
 
             // Check each statement type
             let mut import_count = 0;
@@ -112,9 +119,13 @@ MY_CONSTANT: int = 42
                 assert_eq!(module.body.len(), 4, "Should have 4 statements");
             }
         }
-        Err(error) => panic!("Should successfully parse mixed statements, got error: {}", error),
+        Err(error) => panic!(
+            "Should successfully parse mixed statements, got error: {}",
+            error
+        ),
     }
-}/// Test that we can handle empty modules
+}
+/// Test that we can handle empty modules
 #[test]
 fn test_empty_module_parsing() {
     let empty_code = "";
@@ -127,7 +138,10 @@ fn test_empty_module_parsing() {
 
     match module_ast {
         Node::Module(module) => {
-            assert!(module.body.is_empty(), "Empty module should have no statements");
+            assert!(
+                module.body.is_empty(),
+                "Empty module should have no statements"
+            );
             println!("✅ Empty module parsing test passed!");
         }
         _ => panic!("Expected Module node"),
@@ -148,11 +162,16 @@ fn test_comments_only_module() {
     let tokens = lexer.tokenize_all().expect("Tokenization should succeed");
 
     let mut parser = Parser::new(tokens);
-    let module_ast = parser.parse_module().expect("Should parse comments-only module");
+    let module_ast = parser
+        .parse_module()
+        .expect("Should parse comments-only module");
 
     match module_ast {
         Node::Module(module) => {
-            assert!(module.body.is_empty(), "Comments-only module should have no statements");
+            assert!(
+                module.body.is_empty(),
+                "Comments-only module should have no statements"
+            );
             println!("✅ Comments-only module parsing test passed!");
         }
         _ => panic!("Expected Module node"),
