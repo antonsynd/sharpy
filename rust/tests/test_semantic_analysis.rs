@@ -1,7 +1,4 @@
-use sharpy_compiler_toolchain::{
-    SemanticAnalyzer, SharpyLexer, Parser,
-    SymbolKind
-};
+use sharpy_compiler_toolchain::{Parser, SemanticAnalyzer, SharpyLexer, SymbolKind};
 
 #[test]
 fn test_basic_symbol_table_creation() {
@@ -39,7 +36,8 @@ def add_numbers(x: int, y: int) -> int:
     let ast = parser.parse().expect("Parsing should succeed");
 
     let mut analyzer = SemanticAnalyzer::new();
-    analyzer.analyze_module(&ast, Some("test_module".to_string()))
+    analyzer
+        .analyze_module(&ast, Some("test_module".to_string()))
         .expect("Analysis should succeed");
 
     let symbol_table = analyzer.get_symbol_table();
@@ -83,7 +81,8 @@ class Person:
     let ast = parser.parse().expect("Parsing should succeed");
 
     let mut analyzer = SemanticAnalyzer::new();
-    analyzer.analyze_module(&ast, Some("test_module".to_string()))
+    analyzer
+        .analyze_module(&ast, Some("test_module".to_string()))
         .expect("Analysis should succeed");
 
     let symbol_table = analyzer.get_symbol_table();
@@ -117,7 +116,8 @@ protocol Encodable:
     let ast = parser.parse().expect("Parsing should succeed");
 
     let mut analyzer = SemanticAnalyzer::new();
-    analyzer.analyze_module(&ast, Some("test_module".to_string()))
+    analyzer
+        .analyze_module(&ast, Some("test_module".to_string()))
         .expect("Analysis should succeed");
 
     let symbol_table = analyzer.get_symbol_table();
@@ -147,7 +147,8 @@ struct Point:
     let ast = parser.parse().expect("Parsing should succeed");
 
     let mut analyzer = SemanticAnalyzer::new();
-    analyzer.analyze_module(&ast, Some("test_module".to_string()))
+    analyzer
+        .analyze_module(&ast, Some("test_module".to_string()))
         .expect("Analysis should succeed");
 
     let symbol_table = analyzer.get_symbol_table();
@@ -179,7 +180,8 @@ class MyClass:
     let ast = parser.parse().expect("Parsing should succeed");
 
     let mut analyzer = SemanticAnalyzer::new();
-    analyzer.analyze_module(&ast, Some("test_module".to_string()))
+    analyzer
+        .analyze_module(&ast, Some("test_module".to_string()))
         .expect("Analysis should succeed");
 
     let symbol_table = analyzer.get_symbol_table();
@@ -208,7 +210,8 @@ from typing import List, Dict
     let ast = parser.parse().expect("Parsing should succeed");
 
     let mut analyzer = SemanticAnalyzer::new();
-    analyzer.analyze_module(&ast, Some("test_module".to_string()))
+    analyzer
+        .analyze_module(&ast, Some("test_module".to_string()))
         .expect("Analysis should succeed");
 
     let symbol_table = analyzer.get_symbol_table();

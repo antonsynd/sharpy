@@ -11,4 +11,7 @@ pub use ast::{
 };
 pub use lexer::{LexerError, SharpyLexer, Token, TokenType};
 pub use parser::{ParseError, Parser};
-pub use semantic::{SemanticAnalyzer, SymbolTable, Symbol, SymbolKind, SemanticType, BuiltinType, AccessLevel, SymbolMetadata};
+pub use semantic::{
+    AccessLevel, BuiltinType, SemanticAnalyzer, SemanticType, Symbol, SymbolKind, SymbolMetadata,
+    SymbolTable,
+};

@@ -1,4 +1,4 @@
-use sharpy_compiler_toolchain::{SemanticAnalyzer, SharpyLexer, Parser};
+use sharpy_compiler_toolchain::{Parser, SemanticAnalyzer, SharpyLexer};
 
 #[test]
 fn debug_simple_function() {
@@ -23,7 +23,7 @@ fn debug_simple_function() {
             if let Some(symbol) = hello_symbol {
                 println!("Found symbol: {} of kind {:?}", symbol.name, symbol.kind);
             }
-        },
+        }
         Err(errors) => {
             println!("Analysis failed: {:?}", errors);
         }

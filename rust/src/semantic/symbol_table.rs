@@ -41,6 +41,7 @@ pub enum AccessLevel {
 
 impl AccessLevel {
     /// Parse access level from access modifier string
+    #[must_use]
     pub fn from_modifier(modifier: Option<&str>) -> Self {
         match modifier {
             Some("protected") => Self::Protected,
@@ -52,7 +53,8 @@ impl AccessLevel {
     }
 
     /// Get the string representation
-    pub fn as_str(&self) -> &'static str {
+    #[must_use]
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Public => "public",
             Self::Protected => "protected",
@@ -124,10 +126,10 @@ pub enum SymbolMetadata {
     },
     /// Struct metadata
     Struct {
-        protocols: Vec<String>,     // protocol symbol ids
-        members: Vec<String>,       // member symbol ids
-        methods: Vec<String>,       // method symbol ids
-        properties: Vec<String>,    // property symbol ids
+        protocols: Vec<String>,  // protocol symbol ids
+        members: Vec<String>,    // member symbol ids
+        methods: Vec<String>,    // method symbol ids
+        properties: Vec<String>, // property symbol ids
     },
     /// Protocol metadata
     Protocol {
@@ -165,6 +167,7 @@ pub enum SymbolMetadata {
 
 impl Symbol {
     /// Create a new symbol
+    #[must_use]
     pub fn new(
         name: String,
         kind: SymbolKind,
@@ -199,24 +202,28 @@ impl Symbol {
     }
 
     /// Set metadata for the symbol
+    #[must_use]
     pub fn with_metadata(mut self, metadata: SymbolMetadata) -> Self {
         self.metadata = metadata;
         self
     }
 
     /// Set generic parameters
+    #[must_use]
     pub fn with_generic_params(mut self, params: Vec<String>) -> Self {
         self.generic_params = params;
         self
     }
 
     /// Set static flag
-    pub fn with_static(mut self, is_static: bool) -> Self {
+    #[must_use]
+    pub const fn with_static(mut self, is_static: bool) -> Self {
         self.is_static = is_static;
         self
     }
 
     /// Get the fully qualified name of this symbol
+    #[must_use]
     pub fn qualified_name(&self, symbol_table: &SymbolTable) -> String {
         let mut parts = vec![self.name.clone()];
         let mut current_scope = symbol_table.scopes.get(&self.scope_id);
@@ -226,7 +233,9 @@ impl Symbol {
                 parts.insert(0, name.clone());
             }
 
-            current_scope = scope.parent.as_ref()
+            current_scope = scope
+                .parent
+                .as_ref()
                 .and_then(|parent_id| symbol_table.scopes.get(parent_id));
         }
 
@@ -234,9 +243,9 @@ impl Symbol {
     }
 
     /// Check if this symbol is accessible from the given scope
+    #[must_use]
     pub fn is_accessible_from(&self, from_scope_id: &str, symbol_table: &SymbolTable) -> bool {
         match self.access_level {
-            AccessLevel::Public => true,
             AccessLevel::Protected => {
                 // TODO: Check if from_scope is a subclass
                 self.is_same_class_or_subclass(from_scope_id, symbol_table)
@@ -245,13 +254,9 @@ impl Symbol {
                 // Only accessible from the same class/struct
                 self.is_same_type_scope(from_scope_id, symbol_table)
             }
-            AccessLevel::Internal => {
-                // TODO: Check if same module/project
-                true // For now, allow internal access
-            }
-            AccessLevel::File => {
-                // TODO: Check if same file
-                true // For now, allow file access
+            AccessLevel::Public | AccessLevel::Internal | AccessLevel::File => {
+                // TODO: Check if same module/project/file for Internal/File
+                true // For now, allow public/internal/file access
             }
         }
     }
@@ -259,8 +264,8 @@ impl Symbol {
     /// Check if the symbol is in the same class scope
     fn is_same_type_scope(&self, from_scope_id: &str, symbol_table: &SymbolTable) -> bool {
         // Find the nearest class/struct scope for both symbols
-        let self_class_scope = self.find_nearest_type_scope(&self.scope_id, symbol_table);
-        let from_class_scope = self.find_nearest_type_scope(from_scope_id, symbol_table);
+        let self_class_scope = Self::find_nearest_type_scope(self, &self.scope_id, symbol_table);
+        let from_class_scope = Self::find_nearest_type_scope(self, from_scope_id, symbol_table);
 
         match (self_class_scope, from_class_scope) {
             (Some(self_scope), Some(from_scope)) => self_scope == from_scope,
@@ -275,7 +280,11 @@ impl Symbol {
     }
 
     /// Find the nearest class/struct/protocol scope
-    fn find_nearest_type_scope(&self, scope_id: &str, symbol_table: &SymbolTable) -> Option<String> {
+    fn find_nearest_type_scope(
+        _self: &Self,
+        scope_id: &str,
+        symbol_table: &SymbolTable,
+    ) -> Option<String> {
         let mut current_scope = symbol_table.scopes.get(scope_id);
 
         while let Some(scope) = current_scope {
@@ -286,7 +295,9 @@ impl Symbol {
                 _ => {}
             }
 
-            current_scope = scope.parent.as_ref()
+            current_scope = scope
+                .parent
+                .as_ref()
                 .and_then(|parent_id| symbol_table.scopes.get(parent_id));
         }
 
@@ -296,7 +307,8 @@ impl Symbol {
 
 impl SymbolKind {
     /// Get the string representation of the symbol kind
-    pub fn as_str(&self) -> &'static str {
+    #[must_use]
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Function => "function",
             Self::Method => "method",
@@ -334,6 +346,7 @@ pub struct SymbolTable {
 
 impl SymbolTable {
     /// Create a new symbol table
+    #[must_use]
     pub fn new() -> Self {
         let builtin_types = crate::semantic::types::create_builtin_types();
 
@@ -353,10 +366,10 @@ impl SymbolTable {
         let scope_id = scope.id.clone();
 
         // Add as child to parent scope
-        if let Some(parent_id) = &parent_id {
-            if let Some(parent_scope) = self.scopes.get_mut(parent_id) {
-                parent_scope.add_child(scope_id.clone());
-            }
+        if let Some(parent_id) = &parent_id
+            && let Some(parent_scope) = self.scopes.get_mut(parent_id)
+        {
+            parent_scope.add_child(scope_id.clone());
         }
 
         // Set as root scope if this is the first scope
@@ -372,27 +385,29 @@ impl SymbolTable {
 
     /// Exit the current scope and return to parent
     pub fn exit_scope(&mut self) -> Option<String> {
-        if let Some(current_id) = &self.current_scope_id {
-            if let Some(scope) = self.scopes.get(current_id) {
-                let parent_id = scope.parent.clone();
-                self.current_scope_id = parent_id.clone();
-                return parent_id;
-            }
+        if let Some(current_id) = &self.current_scope_id
+            && let Some(scope) = self.scopes.get(current_id)
+        {
+            let parent_id = scope.parent.clone();
+            self.current_scope_id.clone_from(&parent_id);
+            return parent_id;
         }
         None
     }
 
     /// Add a symbol to the current scope
+    /// # Errors
+    /// Returns an error if the symbol already exists in the current scope
     pub fn add_symbol(&mut self, symbol: Symbol) -> Result<String, String> {
         let symbol_id = symbol.id.clone();
         let symbol_name = symbol.name.clone();
         let scope_id = symbol.scope_id.clone();
 
         // Check if symbol already exists in current scope
-        if let Some(scope) = self.scopes.get(&scope_id) {
-            if scope.symbols.contains_key(&symbol_name) {
-                return Err(format!("Symbol '{}' already defined in scope", symbol_name));
-            }
+        if let Some(scope) = self.scopes.get(&scope_id)
+            && scope.symbols.contains_key(&symbol_name)
+        {
+            return Err(format!("Symbol '{symbol_name}' already defined in scope"));
         }
 
         // Add symbol to scope
@@ -407,25 +422,24 @@ impl SymbolTable {
     }
 
     /// Look up a symbol by name, searching through scope hierarchy
+    #[must_use]
     pub fn lookup_symbol(&self, name: &str) -> Option<&Symbol> {
         // Start from current scope, or root scope if no current scope
-        let start_scope_id = self.current_scope_id.as_ref()
+        let start_scope_id = self
+            .current_scope_id
+            .as_ref()
             .or(self.root_scope_id.as_ref())?;
 
         let mut current_scope_id = start_scope_id;
 
-        loop {
-            if let Some(scope) = self.scopes.get(current_scope_id) {
-                if let Some(symbol_id) = scope.get_symbol(name) {
-                    return self.symbols.get(symbol_id);
-                }
+        while let Some(scope) = self.scopes.get(current_scope_id) {
+            if let Some(symbol_id) = scope.get_symbol(name) {
+                return self.symbols.get(symbol_id);
+            }
 
-                // Move to parent scope
-                if let Some(parent_id) = &scope.parent {
-                    current_scope_id = parent_id;
-                } else {
-                    break;
-                }
+            // Move to parent scope
+            if let Some(parent_id) = &scope.parent {
+                current_scope_id = parent_id;
             } else {
                 break;
             }
@@ -435,6 +449,7 @@ impl SymbolTable {
     }
 
     /// Look up a symbol in a specific scope
+    #[must_use]
     pub fn lookup_symbol_in_scope(&self, name: &str, scope_id: &str) -> Option<&Symbol> {
         let scope = self.scopes.get(scope_id)?;
         let symbol_id = scope.get_symbol(name)?;
@@ -442,6 +457,7 @@ impl SymbolTable {
     }
 
     /// Look up a type by name (including built-ins)
+    #[must_use]
     pub fn lookup_type(&self, name: &str) -> Option<SemanticType> {
         // First check built-in types
         if let Some(builtin_type) = self.builtin_types.get(name) {
@@ -449,43 +465,45 @@ impl SymbolTable {
         }
 
         // Then check user-defined types
-        if let Some(symbol) = self.lookup_symbol(name) {
-            match symbol.kind {
+        self.lookup_symbol(name)
+            .and_then(|symbol| match symbol.kind {
                 SymbolKind::Class | SymbolKind::Struct | SymbolKind::Protocol => {
                     Some(symbol.symbol_type.clone())
                 }
                 _ => None,
-            }
-        } else {
-            None
-        }
+            })
     }
 
     /// Get the current scope
+    #[must_use]
     pub fn current_scope(&self) -> Option<&Scope> {
-        self.current_scope_id.as_ref()
+        self.current_scope_id
+            .as_ref()
             .and_then(|id| self.scopes.get(id))
     }
 
     /// Get a scope by ID
+    #[must_use]
     pub fn get_scope(&self, scope_id: &str) -> Option<&Scope> {
         self.scopes.get(scope_id)
     }
 
     /// Get a symbol by ID
+    #[must_use]
     pub fn get_symbol(&self, symbol_id: &str) -> Option<&Symbol> {
         self.symbols.get(symbol_id)
     }
 
     /// Get all symbols in a specific scope
+    #[must_use]
     pub fn get_symbols_in_scope(&self, scope_id: &str) -> Vec<&Symbol> {
-        if let Some(scope) = self.scopes.get(scope_id) {
-            scope.symbols.values()
+        self.scopes.get(scope_id).map_or_else(Vec::new, |scope| {
+            scope
+                .symbols
+                .values()
                 .filter_map(|symbol_id| self.symbols.get(symbol_id))
                 .collect()
-        } else {
-            Vec::new()
-        }
+        })
     }
 
     /// Debug print the symbol table
@@ -503,12 +521,18 @@ impl SymbolTable {
         let indent_str = "  ".repeat(indent);
 
         if let Some(scope) = self.scopes.get(scope_id) {
-            println!("{}Scope: {} ({})", indent_str, scope.display_name(), scope.id);
+            println!(
+                "{}Scope: {} ({})",
+                indent_str,
+                scope.display_name(),
+                scope.id
+            );
 
             // Print symbols in this scope
             for symbol_id in scope.symbols.values() {
                 if let Some(symbol) = self.symbols.get(symbol_id) {
-                    println!("{}  {} {}: {} ({})",
+                    println!(
+                        "{}  {} {}: {} ({})",
                         indent_str,
                         symbol.access_level.as_str(),
                         symbol.kind.as_str(),

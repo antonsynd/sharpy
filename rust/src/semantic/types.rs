@@ -69,11 +69,11 @@ pub enum BuiltinType {
     Complex,
 
     // Collections (generic)
-    List,     // List[T]
-    Dict,     // Dict[K, V]
-    Set,      // Set[T]
-    Tuple,    // Tuple[...]
-    Array,    // Array[T]
+    List,      // List[T]
+    Dict,      // Dict[K, V]
+    Set,       // Set[T]
+    Tuple,     // Tuple[...]
+    Array,     // Array[T]
     FrozenSet, // FrozenSet[T]
 
     // Other built-ins
@@ -88,7 +88,8 @@ pub enum BuiltinType {
 
 impl BuiltinType {
     /// Get the string representation of the built-in type
-    pub fn as_str(&self) -> &'static str {
+    #[must_use]
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Int => "int",
             Self::Float => "float",
@@ -123,127 +124,183 @@ impl BuiltinType {
     }
 
     /// Get all built-in types
+    #[must_use]
     pub fn all() -> Vec<Self> {
         vec![
-            Self::Int, Self::Float, Self::Bool, Self::Str, Self::None,
-            Self::Byte, Self::Short, Self::Long, Self::UInt, Self::UShort, Self::ULong, Self::SByte,
-            Self::Char, Self::Double, Self::Decimal, Self::Complex,
-            Self::List, Self::Dict, Self::Set, Self::Tuple, Self::Array, Self::FrozenSet,
-            Self::Object, Self::Bytes, Self::ByteArray, Self::Exception, Self::Ellipsis,
-            Self::Slice, Self::MemoryView,
+            Self::Int,
+            Self::Float,
+            Self::Bool,
+            Self::Str,
+            Self::None,
+            Self::Byte,
+            Self::Short,
+            Self::Long,
+            Self::UInt,
+            Self::UShort,
+            Self::ULong,
+            Self::SByte,
+            Self::Char,
+            Self::Double,
+            Self::Decimal,
+            Self::Complex,
+            Self::List,
+            Self::Dict,
+            Self::Set,
+            Self::Tuple,
+            Self::Array,
+            Self::FrozenSet,
+            Self::Object,
+            Self::Bytes,
+            Self::ByteArray,
+            Self::Exception,
+            Self::Ellipsis,
+            Self::Slice,
+            Self::MemoryView,
         ]
     }
 
     /// Check if this type is a generic container type
-    pub fn is_generic(&self) -> bool {
-        matches!(self, Self::List | Self::Dict | Self::Set | Self::Array | Self::FrozenSet | Self::Tuple)
+    #[must_use]
+    pub const fn is_generic(&self) -> bool {
+        matches!(
+            self,
+            Self::List | Self::Dict | Self::Set | Self::Array | Self::FrozenSet | Self::Tuple
+        )
     }
 
     /// Get the expected number of generic parameters for container types
-    pub fn generic_param_count(&self) -> Option<usize> {
+    #[must_use]
+    pub const fn generic_param_count(&self) -> Option<usize> {
         match self {
             Self::List | Self::Set | Self::Array | Self::FrozenSet => Some(1),
             Self::Dict => Some(2),
-            Self::Tuple => None, // Variable number of parameters
-            _ => None,
+            _ => None, // Tuple and others have variable number of parameters
         }
     }
 }
 
 impl SemanticType {
     /// Create a built-in type
-    pub fn builtin(builtin: BuiltinType) -> Self {
+    #[must_use]
+    pub const fn builtin(builtin: BuiltinType) -> Self {
         Self::Builtin(builtin)
     }
 
     /// Create a class type
-    pub fn class(name: String, module: Option<String>, generic_params: Vec<String>) -> Self {
-        Self::Class { name, module, generic_params }
+    #[must_use]
+    pub const fn class(name: String, module: Option<String>, generic_params: Vec<String>) -> Self {
+        Self::Class {
+            name,
+            module,
+            generic_params,
+        }
     }
 
     /// Create a struct type
-    pub fn struct_type(name: String, module: Option<String>, generic_params: Vec<String>) -> Self {
-        Self::Struct { name, module, generic_params }
+    #[must_use]
+    pub const fn struct_type(
+        name: String,
+        module: Option<String>,
+        generic_params: Vec<String>,
+    ) -> Self {
+        Self::Struct {
+            name,
+            module,
+            generic_params,
+        }
     }
 
     /// Create a protocol type
-    pub fn protocol(name: String, module: Option<String>, generic_params: Vec<String>) -> Self {
-        Self::Protocol { name, module, generic_params }
+    #[must_use]
+    pub const fn protocol(
+        name: String,
+        module: Option<String>,
+        generic_params: Vec<String>,
+    ) -> Self {
+        Self::Protocol {
+            name,
+            module,
+            generic_params,
+        }
     }
 
     /// Create a generic instantiation
-    pub fn generic(base: SemanticType, args: Vec<SemanticType>) -> Self {
+    #[must_use]
+    pub fn generic(base: Self, args: Vec<Self>) -> Self {
         Self::Generic {
             base: Box::new(base),
-            args
+            args,
         }
     }
 
     /// Create an optional type
-    pub fn optional(inner: SemanticType) -> Self {
+    #[must_use]
+    pub fn optional(inner: Self) -> Self {
         Self::Optional(Box::new(inner))
     }
 
     /// Create a function type
-    pub fn function(params: Vec<SemanticType>, return_type: Option<SemanticType>) -> Self {
+    pub fn function(params: Vec<Self>, return_type: Option<Self>) -> Self {
         Self::Function {
             params,
-            return_type: return_type.map(Box::new)
+            return_type: return_type.map(Box::new),
         }
     }
 
     /// Get the display name of the type
+    #[must_use]
     pub fn display_name(&self) -> String {
         match self {
             Self::Builtin(builtin) => builtin.as_str().to_string(),
-            Self::Class { name, module, .. } |
-            Self::Struct { name, module, .. } |
-            Self::Protocol { name, module, .. } => {
-                if let Some(module) = module {
-                    format!("{}.{}", module, name)
-                } else {
-                    name.clone()
-                }
-            }
+            Self::Class { name, module, .. }
+            | Self::Struct { name, module, .. }
+            | Self::Protocol { name, module, .. } => module
+                .as_ref()
+                .map_or_else(|| name.clone(), |module| format!("{module}.{name}")),
             Self::Generic { base, args } => {
-                let args_str = args.iter()
-                    .map(|arg| arg.display_name())
+                let args_str = args
+                    .iter()
+                    .map(Self::display_name)
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("{}[{}]", base.display_name(), args_str)
             }
             Self::Optional(inner) => format!("{}?", inner.display_name()),
-            Self::Function { params, return_type } => {
-                let params_str = params.iter()
-                    .map(|p| p.display_name())
+            Self::Function {
+                params,
+                return_type,
+            } => {
+                let params_str = params
+                    .iter()
+                    .map(Self::display_name)
                     .collect::<Vec<_>>()
                     .join(", ");
-                if let Some(ret) = return_type {
-                    format!("({}) -> {}", params_str, ret.display_name())
-                } else {
-                    format!("({})", params_str)
-                }
+                return_type.as_ref().map_or_else(
+                    || format!("({params_str})"),
+                    |ret| format!("({}) -> {}", params_str, ret.display_name()),
+                )
             }
             Self::Tuple(types) => {
-                let types_str = types.iter()
-                    .map(|t| t.display_name())
+                let types_str = types
+                    .iter()
+                    .map(Self::display_name)
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("tuple[{}]", types_str)
+                format!("tuple[{types_str}]")
             }
-            Self::Union(types) => {
-                types.iter()
-                    .map(|t| t.display_name())
-                    .collect::<Vec<_>>()
-                    .join(" | ")
-            }
+            Self::Union(types) => types
+                .iter()
+                .map(Self::display_name)
+                .collect::<Vec<_>>()
+                .join(" | "),
             Self::Array(inner) => format!("array[{}]", inner.display_name()),
-            Self::Unknown(name) => format!("<?{}>", name),
+            Self::Unknown(name) => format!("<?{name}>"),
         }
     }
 
     /// Check if this type is assignable to another type
-    pub fn is_assignable_to(&self, other: &SemanticType) -> bool {
+    #[must_use]
+    pub fn is_assignable_to(&self, other: &Self) -> bool {
         // Basic implementation - can be expanded with more sophisticated type checking
         match (self, other) {
             // Exact match
@@ -260,11 +317,22 @@ impl SemanticType {
             (_, Self::Builtin(BuiltinType::Object)) => true,
 
             // Generic type compatibility (basic check)
-            (Self::Generic { base: base1, args: args1 },
-             Self::Generic { base: base2, args: args2 }) => {
-                base1.is_assignable_to(base2) &&
-                args1.len() == args2.len() &&
-                args1.iter().zip(args2.iter()).all(|(a1, a2)| a1.is_assignable_to(a2))
+            (
+                Self::Generic {
+                    base: base1,
+                    args: args1,
+                },
+                Self::Generic {
+                    base: base2,
+                    args: args2,
+                },
+            ) => {
+                base1.is_assignable_to(base2)
+                    && args1.len() == args2.len()
+                    && args1
+                        .iter()
+                        .zip(args2.iter())
+                        .all(|(a1, a2)| a1.is_assignable_to(a2))
             }
 
             _ => false,
@@ -273,6 +341,7 @@ impl SemanticType {
 }
 
 /// Provides built-in types for the symbol table
+#[must_use]
 pub fn create_builtin_types() -> HashMap<String, SemanticType> {
     let mut types = HashMap::new();
 

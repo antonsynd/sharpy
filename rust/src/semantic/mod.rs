@@ -5,5 +5,5 @@ pub mod types;
 
 pub use analyzer::SemanticAnalyzer;
 pub use scope::{Scope, ScopeKind};
-pub use symbol_table::{Symbol, SymbolKind, SymbolTable, AccessLevel, SymbolMetadata};
+pub use symbol_table::{AccessLevel, Symbol, SymbolKind, SymbolMetadata, SymbolTable};
 pub use types::{BuiltinType, SemanticType};

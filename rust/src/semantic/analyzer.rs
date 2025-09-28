@@ -1,7 +1,9 @@
-use crate::ast::node::{Node, FunctionDef, ClassDef, StructDef, ProtocolDef, PropertyDef, Import, ImportFrom};
+use crate::ast::node::{
+    ClassDef, FunctionDef, Import, ImportFrom, Node, PropertyDef, ProtocolDef, StructDef,
+};
 use crate::semantic::{
-    SymbolTable, Symbol, SymbolKind, SymbolMetadata, AccessLevel,
-    ScopeKind, SemanticType, BuiltinType
+    AccessLevel, BuiltinType, ScopeKind, SemanticType, Symbol, SymbolKind, SymbolMetadata,
+    SymbolTable,
 };
 
 /// Main semantic analyzer for Sharpy
@@ -18,23 +20,29 @@ pub struct SemanticAnalyzer {
 
 impl SemanticAnalyzer {
     /// Create a new semantic analyzer
+    #[must_use]
     pub fn new() -> Self {
         Self {
             symbol_table: SymbolTable::new(),
-            errors: Vec::new(),
             current_module: None,
+            errors: Vec::new(),
         }
     }
 
     /// Analyze a module (list of top-level statements)
-    pub fn analyze_module(&mut self, statements: &[Node], module_name: Option<String>) -> Result<(), Vec<String>> {
-        self.current_module = module_name.clone();
+    /// # Errors
+    /// Returns errors for invalid symbols or duplicate definitions
+    pub fn analyze_module(
+        &mut self,
+        statements: &[Node],
+        module_name: Option<String>,
+    ) -> Result<(), Vec<String>> {
+        self.current_module.clone_from(&module_name);
 
         // Enter module scope
-        let _module_scope_id = self.symbol_table.enter_scope(
-            ScopeKind::Module,
-            module_name
-        );
+        let _module_scope_id = self
+            .symbol_table
+            .enter_scope(ScopeKind::Module, module_name);
 
         // Analyze all statements
         for statement in statements {
@@ -76,17 +84,18 @@ impl SemanticAnalyzer {
         let access_level = AccessLevel::from_modifier(func.access_modifier.as_deref());
 
         // Determine if this is a method or function based on current scope
-        let symbol_kind = if let Some(scope) = self.symbol_table.current_scope() {
-            match scope.kind {
+        let symbol_kind = self
+            .symbol_table
+            .current_scope()
+            .map_or(SymbolKind::Function, |scope| match scope.kind {
                 ScopeKind::Class | ScopeKind::Struct | ScopeKind::Protocol => SymbolKind::Method,
                 _ => SymbolKind::Function,
-            }
-        } else {
-            SymbolKind::Function
-        };
+            });
 
         // Parse return type
-        let return_type = func.return_type.as_ref()
+        let return_type = func
+            .return_type
+            .as_ref()
             .and_then(|type_node| self.resolve_type_annotation(type_node))
             .or_else(|| {
                 // If no return type specified, default to None for functions
@@ -94,12 +103,15 @@ impl SemanticAnalyzer {
             });
 
         // Create function symbol
-        let current_scope_id = self.symbol_table.current_scope_id.as_ref()
+        let current_scope_id = self
+            .symbol_table
+            .current_scope_id
+            .as_ref()
             .ok_or("No current scope")?;
 
         let function_type = SemanticType::function(
             Vec::new(), // Parameter types will be filled in below
-            return_type.clone()
+            return_type.clone(),
         );
 
         let mut symbol = Symbol::new(
@@ -108,11 +120,13 @@ impl SemanticAnalyzer {
             function_type,
             access_level,
             current_scope_id.clone(),
-            func.source.as_ref().map(|s| crate::utils::SourceLocation::new(s.line_start, s.col_start, s.line_end, s.col_end)),
+            func.source.as_ref().map(|s| {
+                crate::utils::SourceLocation::new(s.line_start, s.col_start, s.line_end, s.col_end)
+            }),
         );
 
         // Check if function is abstract (has ellipsis body)
-        let is_abstract = self.is_function_abstract(func);
+        let is_abstract = Self::is_function_abstract(func);
 
         // Set metadata based on symbol kind
         let metadata = match symbol.kind {
@@ -137,10 +151,9 @@ impl SemanticAnalyzer {
         let symbol_id = self.symbol_table.add_symbol(symbol)?;
 
         // Enter function scope to analyze parameters and body
-        let _func_scope_id = self.symbol_table.enter_scope(
-            ScopeKind::Function,
-            Some(func.name.clone())
-        );
+        let _func_scope_id = self
+            .symbol_table
+            .enter_scope(ScopeKind::Function, Some(func.name.clone()));
 
         // Analyze parameters
         let mut param_types = Vec::new();
@@ -160,14 +173,12 @@ impl SemanticAnalyzer {
         // Update function symbol with parameter information
         if let Some(symbol) = self.symbol_table.symbols.get_mut(&symbol_id) {
             // Update function type with parameter types
-            symbol.symbol_type = SemanticType::function(param_types, return_type.clone());
+            symbol.symbol_type = SemanticType::function(param_types, return_type);
 
             // Update metadata with parameter symbol IDs
             match &mut symbol.metadata {
-                SymbolMetadata::Function { parameters, .. } => {
-                    *parameters = param_symbol_ids;
-                }
-                SymbolMetadata::Method { parameters, .. } => {
+                SymbolMetadata::Function { parameters, .. }
+                | SymbolMetadata::Method { parameters, .. } => {
                     *parameters = param_symbol_ids;
                 }
                 _ => {}
@@ -188,18 +199,24 @@ impl SemanticAnalyzer {
     }
 
     /// Check if a function is abstract (has ellipsis as body)
-    fn is_function_abstract(&self, func: &FunctionDef) -> bool {
-        func.body.len() == 1 && matches!(func.body[0], Node::Constant(ref c)
+    fn is_function_abstract(func: &FunctionDef) -> bool {
+        func.body.len() == 1
+            && matches!(func.body[0], Node::Constant(ref c)
             if matches!(c.value, crate::ast::node::ConstantValue::Ellipsis))
     }
 
     /// Analyze a parameter
     fn analyze_parameter(&mut self, arg: &crate::ast::node::Arg) -> Result<String, String> {
-        let param_type = arg.type_.as_ref()
+        let param_type = arg
+            .type_
+            .as_ref()
             .and_then(|type_node| self.resolve_type_annotation(type_node))
-            .unwrap_or(SemanticType::Unknown(arg.name.clone()));
+            .unwrap_or_else(|| SemanticType::Unknown(arg.name.clone()));
 
-        let current_scope_id = self.symbol_table.current_scope_id.as_ref()
+        let current_scope_id = self
+            .symbol_table
+            .current_scope_id
+            .as_ref()
             .ok_or("No current scope")?;
 
         let symbol = Symbol::new(
@@ -218,7 +235,10 @@ impl SemanticAnalyzer {
     fn analyze_class_def(&mut self, class: &ClassDef) -> Result<(), String> {
         let access_level = AccessLevel::from_modifier(class.access_modifier.as_deref());
 
-        let current_scope_id = self.symbol_table.current_scope_id.as_ref()
+        let current_scope_id = self
+            .symbol_table
+            .current_scope_id
+            .as_ref()
             .ok_or("No current scope")?;
 
         // Create class type
@@ -234,12 +254,14 @@ impl SemanticAnalyzer {
             class_type,
             access_level,
             current_scope_id.clone(),
-            class.source.as_ref().map(|s| crate::utils::SourceLocation::new(s.line_start, s.col_start, s.line_end, s.col_end)),
+            class.source.as_ref().map(|s| {
+                crate::utils::SourceLocation::new(s.line_start, s.col_start, s.line_end, s.col_end)
+            }),
         );
 
         // Set class metadata
         let metadata = SymbolMetadata::Class {
-            base_class: None,    // TODO: Resolve base class
+            base_class: None,      // TODO: Resolve base class
             protocols: Vec::new(), // TODO: Resolve protocol implementations
             members: Vec::new(),
             methods: Vec::new(),
@@ -252,10 +274,9 @@ impl SemanticAnalyzer {
         let _class_symbol_id = self.symbol_table.add_symbol(symbol)?;
 
         // Enter class scope
-        let _class_scope_id = self.symbol_table.enter_scope(
-            ScopeKind::Class,
-            Some(class.name.clone())
-        );
+        let _class_scope_id = self
+            .symbol_table
+            .enter_scope(ScopeKind::Class, Some(class.name.clone()));
 
         // Analyze class body
         for statement in &class.body {
@@ -272,7 +293,10 @@ impl SemanticAnalyzer {
     fn analyze_struct_def(&mut self, struct_def: &StructDef) -> Result<(), String> {
         let access_level = AccessLevel::from_modifier(struct_def.access_modifier.as_deref());
 
-        let current_scope_id = self.symbol_table.current_scope_id.as_ref()
+        let current_scope_id = self
+            .symbol_table
+            .current_scope_id
+            .as_ref()
             .ok_or("No current scope")?;
 
         let struct_type = SemanticType::struct_type(
@@ -287,7 +311,9 @@ impl SemanticAnalyzer {
             struct_type,
             access_level,
             current_scope_id.clone(),
-            struct_def.source.as_ref().map(|s| crate::utils::SourceLocation::new(s.line_start, s.col_start, s.line_end, s.col_end)),
+            struct_def.source.as_ref().map(|s| {
+                crate::utils::SourceLocation::new(s.line_start, s.col_start, s.line_end, s.col_end)
+            }),
         );
 
         let metadata = SymbolMetadata::Struct {
@@ -301,10 +327,9 @@ impl SemanticAnalyzer {
         let _struct_symbol_id = self.symbol_table.add_symbol(symbol)?;
 
         // Enter struct scope
-        let _struct_scope_id = self.symbol_table.enter_scope(
-            ScopeKind::Struct,
-            Some(struct_def.name.clone())
-        );
+        let _struct_scope_id = self
+            .symbol_table
+            .enter_scope(ScopeKind::Struct, Some(struct_def.name.clone()));
 
         // Analyze struct body
         for statement in &struct_def.body {
@@ -321,7 +346,10 @@ impl SemanticAnalyzer {
     fn analyze_protocol_def(&mut self, protocol: &ProtocolDef) -> Result<(), String> {
         let access_level = AccessLevel::from_modifier(protocol.access_modifier.as_deref());
 
-        let current_scope_id = self.symbol_table.current_scope_id.as_ref()
+        let current_scope_id = self
+            .symbol_table
+            .current_scope_id
+            .as_ref()
             .ok_or("No current scope")?;
 
         let protocol_type = SemanticType::protocol(
@@ -336,7 +364,9 @@ impl SemanticAnalyzer {
             protocol_type,
             access_level,
             current_scope_id.clone(),
-            protocol.source.as_ref().map(|s| crate::utils::SourceLocation::new(s.line_start, s.col_start, s.line_end, s.col_end)),
+            protocol.source.as_ref().map(|s| {
+                crate::utils::SourceLocation::new(s.line_start, s.col_start, s.line_end, s.col_end)
+            }),
         );
 
         let metadata = SymbolMetadata::Protocol {
@@ -349,10 +379,9 @@ impl SemanticAnalyzer {
         let _protocol_symbol_id = self.symbol_table.add_symbol(symbol)?;
 
         // Enter protocol scope
-        let _protocol_scope_id = self.symbol_table.enter_scope(
-            ScopeKind::Protocol,
-            Some(protocol.name.clone())
-        );
+        let _protocol_scope_id = self
+            .symbol_table
+            .enter_scope(ScopeKind::Protocol, Some(protocol.name.clone()));
 
         // Analyze protocol body
         for statement in &protocol.body {
@@ -369,17 +398,21 @@ impl SemanticAnalyzer {
     fn analyze_property_def(&mut self, prop: &PropertyDef) -> Result<(), String> {
         let access_level = AccessLevel::from_modifier(prop.access_modifier.as_deref());
 
-        let current_scope_id = self.symbol_table.current_scope_id.as_ref()
+        let current_scope_id = self
+            .symbol_table
+            .current_scope_id
+            .as_ref()
             .ok_or("No current scope")?
             .clone();
 
         // Resolve property type
-        let prop_type = if let Some(type_node) = &prop.type_ {
-            self.resolve_type_annotation(type_node)
-                .unwrap_or(SemanticType::Unknown(prop.name.clone()))
-        } else {
-            SemanticType::Unknown(prop.name.clone())
-        };
+        let prop_type = prop.type_.as_ref().map_or_else(
+            || SemanticType::Unknown(prop.name.clone()),
+            |type_node| {
+                self.resolve_type_annotation(type_node)
+                    .unwrap_or_else(|| SemanticType::Unknown(prop.name.clone()))
+            },
+        );
 
         let mut symbol = Symbol::new(
             prop.name.clone(),
@@ -391,8 +424,12 @@ impl SemanticAnalyzer {
         );
 
         let metadata = SymbolMetadata::Property {
-            has_getter: prop.getter.is_some() || prop.is_get_only || (!prop.is_set_only && prop.setter.is_none()),
-            has_setter: prop.setter.is_some() || prop.is_set_only || (!prop.is_get_only && prop.getter.is_none()),
+            has_getter: prop.getter.is_some()
+                || prop.is_get_only
+                || (!prop.is_set_only && prop.setter.is_none()),
+            has_setter: prop.setter.is_some()
+                || prop.is_set_only
+                || (!prop.is_get_only && prop.getter.is_none()),
             is_auto: prop.getter.is_none() && prop.setter.is_none(),
             backing_field: None, // TODO: Create backing field for auto properties
         };
@@ -409,7 +446,10 @@ impl SemanticAnalyzer {
         for alias in &import.names {
             let import_name = alias.as_name.as_ref().unwrap_or(&alias.name).clone();
 
-            let current_scope_id = self.symbol_table.current_scope_id.as_ref()
+            let current_scope_id = self
+                .symbol_table
+                .current_scope_id
+                .as_ref()
                 .ok_or("No current scope")?;
 
             let symbol = Symbol::new(
@@ -433,7 +473,10 @@ impl SemanticAnalyzer {
         for alias in &import_from.names {
             let import_name = alias.as_name.as_ref().unwrap_or(&alias.name).clone();
 
-            let current_scope_id = self.symbol_table.current_scope_id.as_ref()
+            let current_scope_id = self
+                .symbol_table
+                .current_scope_id
+                .as_ref()
                 .ok_or("No current scope")?;
 
             let symbol = Symbol::new(
@@ -452,7 +495,7 @@ impl SemanticAnalyzer {
     }
 
     /// Analyze an assignment
-    fn analyze_assignment(&mut self, assign: &crate::ast::node::Assign) -> Result<(), String> {
+    fn analyze_assignment(&self, assign: &crate::ast::node::Assign) -> Result<(), String> {
         // For now, just analyze the target and value as expressions
         self.analyze_expression(&assign.target)?;
         self.analyze_expression(&assign.value)?;
@@ -461,13 +504,18 @@ impl SemanticAnalyzer {
     }
 
     /// Analyze an expression (placeholder implementation)
-    fn analyze_expression(&mut self, _node: &Node) -> Result<(), String> {
+    #[allow(
+        clippy::unused_self,
+        clippy::unnecessary_wraps,
+        clippy::missing_const_for_fn
+    )]
+    fn analyze_expression(&self, _node: &Node) -> Result<(), String> {
         // TODO: Implement expression analysis
         Ok(())
     }
 
     /// Resolve a type annotation to a semantic type
-    fn resolve_type_annotation(&mut self, type_node: &Node) -> Option<SemanticType> {
+    fn resolve_type_annotation(&self, type_node: &Node) -> Option<SemanticType> {
         match type_node {
             Node::Name(name) => {
                 // Look up type by name
@@ -480,12 +528,8 @@ impl SemanticAnalyzer {
             Node::Subscript(subscript) => {
                 // Handle generic types like List[int]
                 if let Node::Name(base_name) = &*subscript.value {
-                    if let Some(base_type) = self.symbol_table.lookup_type(&base_name.id) {
-                        // TODO: Parse subscript arguments and create generic type
-                        Some(base_type)
-                    } else {
-                        None
-                    }
+                    self.symbol_table.lookup_type(&base_name.id)
+                    // TODO: Parse subscript arguments and create generic type
                 } else {
                     None
                 }
@@ -495,12 +539,14 @@ impl SemanticAnalyzer {
     }
 
     /// Get analysis errors
+    #[must_use]
     pub fn get_errors(&self) -> &[String] {
         &self.errors
     }
 
     /// Get the symbol table
-    pub fn get_symbol_table(&self) -> &SymbolTable {
+    #[must_use]
+    pub const fn get_symbol_table(&self) -> &SymbolTable {
         &self.symbol_table
     }
 }
