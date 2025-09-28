@@ -1,4 +1,4 @@
-use sharpy_compiler_toolchain::{SharpyLexer, Parser, SemanticAnalyzer};
+use sharpy_compiler_toolchain::{Parser, SemanticAnalyzer, SharpyLexer};
 
 #[test]
 fn test_basic_type_checking() {
@@ -12,8 +12,16 @@ fn test_basic_type_checking() {
     let result = analyzer.analyze_module(&ast, Some("test_module".to_string()));
 
     // Should succeed - simple assignment
-    assert!(result.is_ok(), "Basic assignment should succeed: {:?}", result);
-    assert!(analyzer.get_errors().is_empty(), "Should have no errors: {:?}", analyzer.get_errors());
+    assert!(
+        result.is_ok(),
+        "Basic assignment should succeed: {:?}",
+        result
+    );
+    assert!(
+        analyzer.get_errors().is_empty(),
+        "Should have no errors: {:?}",
+        analyzer.get_errors()
+    );
 }
 
 #[test]
@@ -32,7 +40,11 @@ z = x + y
     let result = analyzer.analyze_module(&ast, Some("test_module".to_string()));
 
     // Should succeed - type compatible operations
-    assert!(result.is_ok(), "Mixed int/float arithmetic should succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Mixed int/float arithmetic should succeed: {:?}",
+        result
+    );
 }
 
 #[test]
@@ -50,7 +62,11 @@ message = str(42)
     let result = analyzer.analyze_module(&ast, Some("test_module".to_string()));
 
     // Should succeed - built-in function calls
-    assert!(result.is_ok(), "Built-in function calls should succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Built-in function calls should succeed: {:?}",
+        result
+    );
 }
 
 #[test]
@@ -71,8 +87,16 @@ e = None
     let result = analyzer.analyze_module(&ast, Some("test_module".to_string()));
 
     // Should succeed - all basic constants
-    assert!(result.is_ok(), "Constant assignments should succeed: {:?}", result);
-    assert!(analyzer.get_errors().is_empty(), "Should have no errors: {:?}", analyzer.get_errors());
+    assert!(
+        result.is_ok(),
+        "Constant assignments should succeed: {:?}",
+        result
+    );
+    assert!(
+        analyzer.get_errors().is_empty(),
+        "Should have no errors: {:?}",
+        analyzer.get_errors()
+    );
 }
 
 #[test]
@@ -92,7 +116,11 @@ d = 15.0 / 3.0
     let result = analyzer.analyze_module(&ast, Some("test_module".to_string()));
 
     // Should succeed - arithmetic operations
-    assert!(result.is_ok(), "Arithmetic expressions should succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Arithmetic expressions should succeed: {:?}",
+        result
+    );
 }
 
 #[test]
@@ -109,5 +137,9 @@ greeting = \"Hello\" + \" World\"
     let result = analyzer.analyze_module(&ast, Some("test_module".to_string()));
 
     // Should succeed - string concatenation
-    assert!(result.is_ok(), "String concatenation should succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "String concatenation should succeed: {:?}",
+        result
+    );
 }

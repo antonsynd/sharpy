@@ -507,17 +507,24 @@ impl SemanticAnalyzer {
         // Then handle the target (left side of assignment)
         // For simple names, add them to the symbol table
         if let Node::Name(name) = assign.target.as_ref() {
+            // Get the current scope ID or use a default
+            let scope_id = self
+                .symbol_table
+                .current_scope_id
+                .as_deref()
+                .unwrap_or("global");
+
             // Add or update the variable in the symbol table
             let symbol = Symbol::new(
                 name.id.clone(),
                 SymbolKind::Variable,
                 value_type,
                 AccessLevel::Private, // Default access level
-                "module".to_string(), // Default scope
+                scope_id.to_string(),
                 None, // No location info for now
             );
             if let Err(err) = self.symbol_table.add_symbol(symbol) {
-                return Err(format!("Failed to add symbol: {}", err));
+                return Err(format!("Failed to add symbol: {err}"));
             }
         } else {
             // For more complex targets (like tuples, attributes), just validate the value
@@ -587,7 +594,7 @@ impl SemanticAnalyzer {
 
     /// Analyze a name reference
     fn analyze_name_reference(&self, name: &Name) -> Result<SemanticType, String> {
-        if let Some(symbol) = self.symbol_table.get_symbol(&name.id) {
+        if let Some(symbol) = self.symbol_table.lookup_symbol(&name.id) {
             Ok(symbol.symbol_type.clone())
         } else {
             Err(format!("Undefined variable: {}", name.id))
@@ -604,16 +611,32 @@ impl SemanticAnalyzer {
             BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mult | BinaryOp::Div => {
                 // Arithmetic operations - check for numeric compatibility
                 match (&left_type, &right_type) {
-                    (SemanticType::Builtin(BuiltinType::Int), SemanticType::Builtin(BuiltinType::Int)) =>
-                        Ok(SemanticType::Builtin(BuiltinType::Int)),
-                    (SemanticType::Builtin(BuiltinType::Float), SemanticType::Builtin(BuiltinType::Float)) =>
-                        Ok(SemanticType::Builtin(BuiltinType::Float)),
-                    (SemanticType::Builtin(BuiltinType::Int), SemanticType::Builtin(BuiltinType::Float)) |
-                    (SemanticType::Builtin(BuiltinType::Float), SemanticType::Builtin(BuiltinType::Int)) =>
-                        Ok(SemanticType::Builtin(BuiltinType::Float)),
-                    (SemanticType::Builtin(BuiltinType::Str), SemanticType::Builtin(BuiltinType::Str))
-                        if matches!(binop.op, BinaryOp::Add) => Ok(SemanticType::Builtin(BuiltinType::Str)),
-                    _ => Err(format!("Invalid types for {:?}: {:?} and {:?}", binop.op, left_type, right_type)),
+                    (
+                        SemanticType::Builtin(BuiltinType::Int),
+                        SemanticType::Builtin(BuiltinType::Int),
+                    ) => Ok(SemanticType::Builtin(BuiltinType::Int)),
+                    (
+                        SemanticType::Builtin(BuiltinType::Float),
+                        SemanticType::Builtin(BuiltinType::Float),
+                    ) => Ok(SemanticType::Builtin(BuiltinType::Float)),
+                    (
+                        SemanticType::Builtin(BuiltinType::Int),
+                        SemanticType::Builtin(BuiltinType::Float),
+                    )
+                    | (
+                        SemanticType::Builtin(BuiltinType::Float),
+                        SemanticType::Builtin(BuiltinType::Int),
+                    ) => Ok(SemanticType::Builtin(BuiltinType::Float)),
+                    (
+                        SemanticType::Builtin(BuiltinType::Str),
+                        SemanticType::Builtin(BuiltinType::Str),
+                    ) if matches!(binop.op, BinaryOp::Add) => {
+                        Ok(SemanticType::Builtin(BuiltinType::Str))
+                    }
+                    _ => Err(format!(
+                        "Invalid types for {:?}: {:?} and {:?}",
+                        binop.op, left_type, right_type
+                    )),
                 }
             }
             _ => Err(format!("Unsupported binary operation: {:?}", binop.op)),
@@ -625,18 +648,20 @@ impl SemanticAnalyzer {
         let operand_type = self.analyze_expression(&unop.operand)?;
 
         match unop.op {
-            UnaryOp::Not => {
-                match operand_type {
-                    SemanticType::Builtin(BuiltinType::Bool) => Ok(SemanticType::Builtin(BuiltinType::Bool)),
-                    _ => Err(format!("Not operation requires boolean operand, got {:?}", operand_type)),
+            UnaryOp::Not => match operand_type {
+                SemanticType::Builtin(BuiltinType::Bool) => {
+                    Ok(SemanticType::Builtin(BuiltinType::Bool))
                 }
-            }
-            UnaryOp::UnaryAdd | UnaryOp::UnarySub => {
-                match operand_type {
-                    SemanticType::Builtin(BuiltinType::Int) | SemanticType::Builtin(BuiltinType::Float) => Ok(operand_type),
-                    _ => Err(format!("Unary +/- requires numeric operand, got {:?}", operand_type)),
-                }
-            }
+                _ => Err(format!(
+                    "Not operation requires boolean operand, got {operand_type:?}"
+                )),
+            },
+            UnaryOp::UnaryAdd | UnaryOp::UnarySub => match operand_type {
+                SemanticType::Builtin(BuiltinType::Int | BuiltinType::Float) => Ok(operand_type),
+                _ => Err(format!(
+                    "Unary +/- requires numeric operand, got {operand_type:?}"
+                )),
+            },
             _ => Err(format!("Unsupported unary operation: {:?}", unop.op)),
         }
     }
@@ -662,7 +687,7 @@ impl SemanticAnalyzer {
                 "bool" => Ok(SemanticType::Builtin(BuiltinType::Bool)),
                 _ => {
                     // Look up user-defined function
-                    if let Some(symbol) = self.symbol_table.get_symbol(&name.id) {
+                    if let Some(symbol) = self.symbol_table.lookup_symbol(&name.id) {
                         match &symbol.symbol_type {
                             SemanticType::Function { return_type, .. } => {
                                 if let Some(return_type) = return_type {
@@ -693,19 +718,31 @@ impl SemanticAnalyzer {
         match value_type {
             SemanticType::Array(element_type) => Ok((*element_type).clone()),
             SemanticType::Builtin(BuiltinType::Str) => Ok(SemanticType::Builtin(BuiltinType::Str)), // Character access
-            _ => Err(format!("Cannot subscript type: {:?}", value_type)),
+            _ => Err(format!("Cannot subscript type: {value_type:?}")),
         }
     }
 
     /// Check if two types are compatible for operations
-    fn types_compatible(&self, left: &SemanticType, right: &SemanticType) -> bool {
+    const fn types_compatible(&self, left: &SemanticType, right: &SemanticType) -> bool {
         match (left, right) {
-            (SemanticType::Builtin(BuiltinType::Int), SemanticType::Builtin(BuiltinType::Int)) |
-            (SemanticType::Builtin(BuiltinType::Float), SemanticType::Builtin(BuiltinType::Float)) |
-            (SemanticType::Builtin(BuiltinType::Str), SemanticType::Builtin(BuiltinType::Str)) |
-            (SemanticType::Builtin(BuiltinType::Bool), SemanticType::Builtin(BuiltinType::Bool)) => true,
-            (SemanticType::Builtin(BuiltinType::Int), SemanticType::Builtin(BuiltinType::Float)) |
-            (SemanticType::Builtin(BuiltinType::Float), SemanticType::Builtin(BuiltinType::Int)) => true,
+            (SemanticType::Builtin(BuiltinType::Int), SemanticType::Builtin(BuiltinType::Int))
+            | (
+                SemanticType::Builtin(BuiltinType::Float),
+                SemanticType::Builtin(BuiltinType::Float),
+            )
+            | (SemanticType::Builtin(BuiltinType::Str), SemanticType::Builtin(BuiltinType::Str))
+            | (
+                SemanticType::Builtin(BuiltinType::Bool),
+                SemanticType::Builtin(BuiltinType::Bool),
+            ) => true,
+            (
+                SemanticType::Builtin(BuiltinType::Int),
+                SemanticType::Builtin(BuiltinType::Float),
+            )
+            | (
+                SemanticType::Builtin(BuiltinType::Float),
+                SemanticType::Builtin(BuiltinType::Int),
+            ) => true,
             _ => false,
         }
     }
