@@ -1,6 +1,7 @@
 pub mod ast;
 pub mod lexer;
 pub mod parser;
+pub mod semantic;
 pub mod utils;
 
 pub use ast::{
@@ -10,3 +11,4 @@ pub use ast::{
 };
 pub use lexer::{LexerError, SharpyLexer, Token, TokenType};
 pub use parser::{ParseError, Parser};
+pub use semantic::{SemanticAnalyzer, SymbolTable, Symbol, SymbolKind, SemanticType, BuiltinType, AccessLevel, SymbolMetadata};
