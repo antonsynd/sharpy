@@ -1,5 +1,6 @@
 use crate::ast::node::{
-    ClassDef, FunctionDef, Import, ImportFrom, Node, PropertyDef, ProtocolDef, StructDef,
+    Assign, BinaryOp, BinaryOp_, Call, ClassDef, Constant, ConstantValue, FunctionDef, Import,
+    ImportFrom, Name, Node, PropertyDef, ProtocolDef, StructDef, Subscript, UnaryOp, UnaryOp_,
 };
 use crate::semantic::{
     AccessLevel, BuiltinType, ScopeKind, SemanticType, Symbol, SymbolKind, SymbolMetadata,
@@ -74,7 +75,11 @@ impl SemanticAnalyzer {
             Node::Assign(assign) => self.analyze_assignment(assign),
 
             // For now, other statements are analyzed as expressions
-            _ => self.analyze_expression(node),
+            _ => {
+                // For expressions, analyze and ignore the type for now
+                self.analyze_expression(node)?;
+                Ok(())
+            }
         }
     }
 
@@ -495,22 +500,52 @@ impl SemanticAnalyzer {
     }
 
     /// Analyze an assignment
-    fn analyze_assignment(&self, assign: &crate::ast::node::Assign) -> Result<(), String> {
-        // For now, just analyze the target and value as expressions
-        self.analyze_expression(&assign.target)?;
-        self.analyze_expression(&assign.value)?;
+    fn analyze_assignment(&mut self, assign: &Assign) -> Result<(), String> {
+        // First, analyze the value expression to get its type
+        let value_type = self.analyze_expression(&assign.value)?;
+
+        // Then handle the target (left side of assignment)
+        // For simple names, add them to the symbol table
+        if let Node::Name(name) = assign.target.as_ref() {
+            // Add or update the variable in the symbol table
+            let symbol = Symbol::new(
+                name.id.clone(),
+                SymbolKind::Variable,
+                value_type,
+                AccessLevel::Private, // Default access level
+                "module".to_string(), // Default scope
+                None, // No location info for now
+            );
+            if let Err(err) = self.symbol_table.add_symbol(symbol) {
+                return Err(format!("Failed to add symbol: {}", err));
+            }
+        } else {
+            // For more complex targets (like tuples, attributes), just validate the value
+            // This is a simplified implementation
+        }
 
         Ok(())
     }
 
-    /// Analyze an expression (placeholder implementation)
-    #[allow(
-        clippy::unused_self,
-        clippy::unnecessary_wraps,
-        clippy::missing_const_for_fn
-    )]
-    fn analyze_expression(&self, _node: &Node) -> Result<(), String> {
-        // TODO: Implement expression analysis
+    /// Analyze an expression and return its semantic type
+    fn analyze_expression(&mut self, expr: &Node) -> Result<SemanticType, String> {
+        match expr {
+            Node::Constant(constant) => self.analyze_constant(constant),
+            Node::Name(name) => self.analyze_name_reference(name),
+            Node::BinaryOp(binop) => self.analyze_binary_operation(binop),
+            Node::UnaryOp(unop) => self.analyze_unary_operation(unop),
+            Node::Call(call) => self.analyze_function_call(call),
+            Node::Subscript(subscript) => self.analyze_subscript(subscript),
+            _ => {
+                // For now, return unknown type for unhandled expressions
+                Ok(SemanticType::Unknown("unhandled_expression".to_string()))
+            }
+        }
+    }
+
+    /// Analyze an expression for type validation without returning the type
+    fn analyze_expression_for_type(&mut self, expr: &Node) -> Result<(), String> {
+        self.analyze_expression(expr)?;
         Ok(())
     }
 
@@ -535,6 +570,143 @@ impl SemanticAnalyzer {
                 }
             }
             _ => None,
+        }
+    }
+
+    /// Analyze a constant expression
+    fn analyze_constant(&self, constant: &Constant) -> Result<SemanticType, String> {
+        match &constant.value {
+            ConstantValue::Int(_) => Ok(SemanticType::Builtin(BuiltinType::Int)),
+            ConstantValue::Float(_) => Ok(SemanticType::Builtin(BuiltinType::Float)),
+            ConstantValue::Str(_) => Ok(SemanticType::Builtin(BuiltinType::Str)),
+            ConstantValue::Bool(_) => Ok(SemanticType::Builtin(BuiltinType::Bool)),
+            ConstantValue::None => Ok(SemanticType::Builtin(BuiltinType::None)),
+            _ => Ok(SemanticType::Unknown("unsupported_constant".to_string())),
+        }
+    }
+
+    /// Analyze a name reference
+    fn analyze_name_reference(&self, name: &Name) -> Result<SemanticType, String> {
+        if let Some(symbol) = self.symbol_table.get_symbol(&name.id) {
+            Ok(symbol.symbol_type.clone())
+        } else {
+            Err(format!("Undefined variable: {}", name.id))
+        }
+    }
+
+    /// Analyze a binary operation
+    fn analyze_binary_operation(&mut self, binop: &BinaryOp_) -> Result<SemanticType, String> {
+        let left_type = self.analyze_expression(&binop.left)?;
+        let right_type = self.analyze_expression(&binop.right)?;
+
+        // Type checking for binary operations
+        match binop.op {
+            BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mult | BinaryOp::Div => {
+                // Arithmetic operations - check for numeric compatibility
+                match (&left_type, &right_type) {
+                    (SemanticType::Builtin(BuiltinType::Int), SemanticType::Builtin(BuiltinType::Int)) =>
+                        Ok(SemanticType::Builtin(BuiltinType::Int)),
+                    (SemanticType::Builtin(BuiltinType::Float), SemanticType::Builtin(BuiltinType::Float)) =>
+                        Ok(SemanticType::Builtin(BuiltinType::Float)),
+                    (SemanticType::Builtin(BuiltinType::Int), SemanticType::Builtin(BuiltinType::Float)) |
+                    (SemanticType::Builtin(BuiltinType::Float), SemanticType::Builtin(BuiltinType::Int)) =>
+                        Ok(SemanticType::Builtin(BuiltinType::Float)),
+                    (SemanticType::Builtin(BuiltinType::Str), SemanticType::Builtin(BuiltinType::Str))
+                        if matches!(binop.op, BinaryOp::Add) => Ok(SemanticType::Builtin(BuiltinType::Str)),
+                    _ => Err(format!("Invalid types for {:?}: {:?} and {:?}", binop.op, left_type, right_type)),
+                }
+            }
+            _ => Err(format!("Unsupported binary operation: {:?}", binop.op)),
+        }
+    }
+
+    /// Analyze a unary operation
+    fn analyze_unary_operation(&mut self, unop: &UnaryOp_) -> Result<SemanticType, String> {
+        let operand_type = self.analyze_expression(&unop.operand)?;
+
+        match unop.op {
+            UnaryOp::Not => {
+                match operand_type {
+                    SemanticType::Builtin(BuiltinType::Bool) => Ok(SemanticType::Builtin(BuiltinType::Bool)),
+                    _ => Err(format!("Not operation requires boolean operand, got {:?}", operand_type)),
+                }
+            }
+            UnaryOp::UnaryAdd | UnaryOp::UnarySub => {
+                match operand_type {
+                    SemanticType::Builtin(BuiltinType::Int) | SemanticType::Builtin(BuiltinType::Float) => Ok(operand_type),
+                    _ => Err(format!("Unary +/- requires numeric operand, got {:?}", operand_type)),
+                }
+            }
+            _ => Err(format!("Unsupported unary operation: {:?}", unop.op)),
+        }
+    }
+
+    /// Analyze a function call
+    fn analyze_function_call(&mut self, call: &Call) -> Result<SemanticType, String> {
+        // For now, we'll do basic analysis
+        // In a full implementation, we'd look up the function in the symbol table
+
+        // Analyze all arguments
+        for arg in &call.positional_args {
+            self.analyze_expression(arg)?;
+        }
+
+        // For built-in functions, we can handle some basic ones
+        if let Node::Name(name) = &*call.function {
+            match name.id.as_str() {
+                "print" => Ok(SemanticType::Builtin(BuiltinType::None)),
+                "len" => Ok(SemanticType::Builtin(BuiltinType::Int)),
+                "str" => Ok(SemanticType::Builtin(BuiltinType::Str)),
+                "int" => Ok(SemanticType::Builtin(BuiltinType::Int)),
+                "float" => Ok(SemanticType::Builtin(BuiltinType::Float)),
+                "bool" => Ok(SemanticType::Builtin(BuiltinType::Bool)),
+                _ => {
+                    // Look up user-defined function
+                    if let Some(symbol) = self.symbol_table.get_symbol(&name.id) {
+                        match &symbol.symbol_type {
+                            SemanticType::Function { return_type, .. } => {
+                                if let Some(return_type) = return_type {
+                                    Ok((**return_type).clone())
+                                } else {
+                                    Ok(SemanticType::Builtin(BuiltinType::None))
+                                }
+                            }
+                            _ => Err(format!("'{}' is not a function", name.id)),
+                        }
+                    } else {
+                        Err(format!("Undefined function: {}", name.id))
+                    }
+                }
+            }
+        } else {
+            // Complex function expressions not yet supported
+            Ok(SemanticType::Unknown("complex_function".to_string()))
+        }
+    }
+
+    /// Analyze a subscript operation
+    fn analyze_subscript(&mut self, subscript: &Subscript) -> Result<SemanticType, String> {
+        let value_type = self.analyze_expression(&subscript.value)?;
+        let _slice_type = self.analyze_expression(&subscript.slice)?;
+
+        // Basic subscript type checking
+        match value_type {
+            SemanticType::Array(element_type) => Ok((*element_type).clone()),
+            SemanticType::Builtin(BuiltinType::Str) => Ok(SemanticType::Builtin(BuiltinType::Str)), // Character access
+            _ => Err(format!("Cannot subscript type: {:?}", value_type)),
+        }
+    }
+
+    /// Check if two types are compatible for operations
+    fn types_compatible(&self, left: &SemanticType, right: &SemanticType) -> bool {
+        match (left, right) {
+            (SemanticType::Builtin(BuiltinType::Int), SemanticType::Builtin(BuiltinType::Int)) |
+            (SemanticType::Builtin(BuiltinType::Float), SemanticType::Builtin(BuiltinType::Float)) |
+            (SemanticType::Builtin(BuiltinType::Str), SemanticType::Builtin(BuiltinType::Str)) |
+            (SemanticType::Builtin(BuiltinType::Bool), SemanticType::Builtin(BuiltinType::Bool)) => true,
+            (SemanticType::Builtin(BuiltinType::Int), SemanticType::Builtin(BuiltinType::Float)) |
+            (SemanticType::Builtin(BuiltinType::Float), SemanticType::Builtin(BuiltinType::Int)) => true,
+            _ => false,
         }
     }
 
