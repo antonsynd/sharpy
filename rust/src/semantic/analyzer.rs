@@ -551,11 +551,6 @@ impl SemanticAnalyzer {
     }
 
     /// Analyze an expression for type validation without returning the type
-    fn analyze_expression_for_type(&mut self, expr: &Node) -> Result<(), String> {
-        self.analyze_expression(expr)?;
-        Ok(())
-    }
-
     /// Resolve a type annotation to a semantic type
     fn resolve_type_annotation(&self, type_node: &Node) -> Option<SemanticType> {
         match type_node {
@@ -668,28 +663,72 @@ impl SemanticAnalyzer {
 
     /// Analyze a function call
     fn analyze_function_call(&mut self, call: &Call) -> Result<SemanticType, String> {
-        // For now, we'll do basic analysis
-        // In a full implementation, we'd look up the function in the symbol table
-
-        // Analyze all arguments
+        // Analyze all arguments and collect their types
+        let mut arg_types = Vec::new();
         for arg in &call.positional_args {
-            self.analyze_expression(arg)?;
+            let arg_type = self.analyze_expression(arg)?;
+            arg_types.push(arg_type);
         }
 
         // For built-in functions, we can handle some basic ones
         if let Node::Name(name) = &*call.function {
             match name.id.as_str() {
-                "print" => Ok(SemanticType::Builtin(BuiltinType::None)),
-                "len" => Ok(SemanticType::Builtin(BuiltinType::Int)),
-                "str" => Ok(SemanticType::Builtin(BuiltinType::Str)),
-                "int" => Ok(SemanticType::Builtin(BuiltinType::Int)),
-                "float" => Ok(SemanticType::Builtin(BuiltinType::Float)),
-                "bool" => Ok(SemanticType::Builtin(BuiltinType::Bool)),
+                "print" => {
+                    // print() can take any number of arguments of any type
+                    Ok(SemanticType::Builtin(BuiltinType::None))
+                }
+                "len" => {
+                    // len() requires exactly one argument of a collection type
+                    if arg_types.len() != 1 {
+                        return Err(format!("len() takes exactly 1 argument, got {}", arg_types.len()));
+                    }
+                    // For now, accept any type (could be enhanced to check if it's a collection)
+                    Ok(SemanticType::Builtin(BuiltinType::Int))
+                }
+                "str" | "int" | "float" | "bool" => {
+                    // Type conversion functions take exactly one argument
+                    if arg_types.len() != 1 {
+                        let func_name = name.id.as_str();
+                        return Err(format!("{}() takes exactly 1 argument, got {}", func_name, arg_types.len()));
+                    }
+                    // Return the corresponding type
+                    match name.id.as_str() {
+                        "str" => Ok(SemanticType::Builtin(BuiltinType::Str)),
+                        "int" => Ok(SemanticType::Builtin(BuiltinType::Int)),
+                        "float" => Ok(SemanticType::Builtin(BuiltinType::Float)),
+                        "bool" => Ok(SemanticType::Builtin(BuiltinType::Bool)),
+                        _ => unreachable!(),
+                    }
+                }
                 _ => {
                     // Look up user-defined function
                     if let Some(symbol) = self.symbol_table.lookup_symbol(&name.id) {
                         match &symbol.symbol_type {
-                            SemanticType::Function { return_type, .. } => {
+                            SemanticType::Function { params, return_type } => {
+                                // Validate argument count
+                                if arg_types.len() != params.len() {
+                                    return Err(format!(
+                                        "Function '{}' expects {} arguments, got {}",
+                                        name.id,
+                                        params.len(),
+                                        arg_types.len()
+                                    ));
+                                }
+
+                                // Validate argument types
+                                for (i, (expected, actual)) in params.iter().zip(arg_types.iter()).enumerate() {
+                                    if !self.types_compatible(actual, expected) {
+                                        return Err(format!(
+                                            "Function '{}' argument {} expects type {:?}, got {:?}",
+                                            name.id,
+                                            i + 1,
+                                            expected,
+                                            actual
+                                        ));
+                                    }
+                                }
+
+                                // Return function's return type
                                 if let Some(return_type) = return_type {
                                     Ok((**return_type).clone())
                                 } else {
@@ -725,6 +764,7 @@ impl SemanticAnalyzer {
     /// Check if two types are compatible for operations
     const fn types_compatible(&self, left: &SemanticType, right: &SemanticType) -> bool {
         match (left, right) {
+            // Exact matches
             (SemanticType::Builtin(BuiltinType::Int), SemanticType::Builtin(BuiltinType::Int))
             | (
                 SemanticType::Builtin(BuiltinType::Float),
@@ -734,7 +774,13 @@ impl SemanticAnalyzer {
             | (
                 SemanticType::Builtin(BuiltinType::Bool),
                 SemanticType::Builtin(BuiltinType::Bool),
+            )
+            | (
+                SemanticType::Builtin(BuiltinType::None),
+                SemanticType::Builtin(BuiltinType::None),
             ) => true,
+
+            // Numeric type compatibility
             (
                 SemanticType::Builtin(BuiltinType::Int),
                 SemanticType::Builtin(BuiltinType::Float),
@@ -743,6 +789,10 @@ impl SemanticAnalyzer {
                 SemanticType::Builtin(BuiltinType::Float),
                 SemanticType::Builtin(BuiltinType::Int),
             ) => true,
+
+            // Unknown types are compatible with anything (for gradual typing)
+            (SemanticType::Unknown(_), _) | (_, SemanticType::Unknown(_)) => true,
+
             _ => false,
         }
     }
