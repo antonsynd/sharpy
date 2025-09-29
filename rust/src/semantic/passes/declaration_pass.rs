@@ -298,9 +298,8 @@ impl DeclarationPass {
             return Err(SemanticError::DuplicateSymbol(typed_name.id.clone()));
         }
 
-        // TODO: Parse the type annotation from typed_name.type_
-        // For now, we'll use Unknown type that will be inferred later
-        let symbol_type = SemanticType::Unknown("typed".to_string());
+        // Parse the type annotation from typed_name.type_
+        let symbol_type = self.convert_ast_type_to_semantic_type(&typed_name.type_)?;
 
         // Create variable symbol
         let symbol = Symbol {
@@ -330,5 +329,79 @@ impl DeclarationPass {
             .map_err(SemanticError::DuplicateSymbol)?;
 
         Ok(())
+    }
+
+    /// Convert AST type node to `SemanticType`
+    fn convert_ast_type_to_semantic_type(
+        &self,
+        type_node: &Node,
+    ) -> Result<SemanticType, SemanticError> {
+        use crate::semantic::types::{BuiltinType, SemanticType};
+
+        match type_node {
+            Node::TypeName(type_name) => {
+                // Convert basic type names to builtin or class types
+                match type_name.name.as_str() {
+                    "int" => Ok(SemanticType::Builtin(BuiltinType::Int)),
+                    "float" => Ok(SemanticType::Builtin(BuiltinType::Float)),
+                    "str" => Ok(SemanticType::Builtin(BuiltinType::Str)),
+                    "bool" => Ok(SemanticType::Builtin(BuiltinType::Bool)),
+                    "bytes" => Ok(SemanticType::Builtin(BuiltinType::Bytes)),
+                    "None" => Ok(SemanticType::Builtin(BuiltinType::None)),
+                    "List" => Ok(SemanticType::Builtin(BuiltinType::List)),
+                    "Dict" => Ok(SemanticType::Builtin(BuiltinType::Dict)),
+                    "Set" => Ok(SemanticType::Builtin(BuiltinType::Set)),
+                    "Tuple" => Ok(SemanticType::Builtin(BuiltinType::Tuple)),
+                    _ => {
+                        // Assume it's a user-defined class for now
+                        Ok(SemanticType::Class {
+                            name: type_name.name.clone(),
+                            module: None,
+                            generic_params: Vec::new(),
+                        })
+                    }
+                }
+            }
+            Node::GenericType(generic_type) => {
+                // Handle generic types like List[int], Dict[str, int]
+                let base_type = self.convert_ast_type_to_semantic_type(&generic_type.base_type)?;
+                let mut arg_types = Vec::new();
+                for arg in &generic_type.type_args {
+                    arg_types.push(self.convert_ast_type_to_semantic_type(arg)?);
+                }
+                Ok(SemanticType::Generic {
+                    base: Box::new(base_type),
+                    args: arg_types,
+                })
+            }
+            Node::OptionalType(optional_type) => {
+                // Handle optional types like int?
+                let inner_type =
+                    self.convert_ast_type_to_semantic_type(&optional_type.inner_type)?;
+                Ok(SemanticType::Optional(Box::new(inner_type)))
+            }
+            Node::QualifiedType(qualified_type) => {
+                // Handle module-qualified types like collections.defaultdict
+                Ok(SemanticType::Class {
+                    name: qualified_type.name.clone(),
+                    module: Some(qualified_type.module_path.join(".")),
+                    generic_params: Vec::new(),
+                })
+            }
+            Node::UnionType(union_type) => {
+                // Handle union types like int | str
+                let mut union_types = Vec::new();
+                for type_node in &union_type.types {
+                    union_types.push(self.convert_ast_type_to_semantic_type(type_node)?);
+                }
+                Ok(SemanticType::Union(union_types))
+            }
+            _ => {
+                // For any other node type, return an unknown type
+                Ok(SemanticType::Unknown(format!(
+                    "unsupported_type_{type_node:?}"
+                )))
+            }
+        }
     }
 }

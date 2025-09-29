@@ -613,7 +613,7 @@ impl TypePass {
         left: &SemanticType,
         right: &SemanticType,
     ) -> (bool, SemanticType) {
-        use BuiltinType::{Int, Float};
+        use BuiltinType::{Float, Int};
 
         match (left, right) {
             (SemanticType::Unknown(_), _) => (true, right.clone()),
@@ -814,12 +814,13 @@ impl TypePass {
                 } else {
                     // Check if it's a variable being called as function
                     if let Some(symbol) = registry.resolve_symbol(&func_name.id)
-                        && symbol.kind != SymbolKind::Function {
-                            return Err(SemanticError::VariableCalledAsFunction {
-                                variable_name: func_name.id.clone(),
-                                variable_type: symbol.symbol_type.display_name(),
-                            });
-                        }
+                        && symbol.kind != SymbolKind::Function
+                    {
+                        return Err(SemanticError::VariableCalledAsFunction {
+                            variable_name: func_name.id.clone(),
+                            variable_type: symbol.symbol_type.display_name(),
+                        });
+                    }
                 }
             }
             Node::Attribute(attr_node) => {

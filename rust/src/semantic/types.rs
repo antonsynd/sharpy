@@ -316,6 +316,20 @@ impl SemanticType {
             // All types can be assigned to object
             (_, Self::Builtin(BuiltinType::Object)) => true,
 
+            // Array to List compatibility - Array[T] is assignable to List[T]
+            (Self::Array(array_element_type), Self::Generic { base, args })
+                if matches!(base.as_ref(), Self::Builtin(BuiltinType::List)) && args.len() == 1 =>
+            {
+                array_element_type.is_assignable_to(&args[0])
+            }
+
+            // List to Array compatibility - List[T] is assignable to Array[T]
+            (Self::Generic { base, args }, Self::Array(array_element_type))
+                if matches!(base.as_ref(), Self::Builtin(BuiltinType::List)) && args.len() == 1 =>
+            {
+                args[0].is_assignable_to(array_element_type)
+            }
+
             // Generic type compatibility (basic check)
             (
                 Self::Generic {
@@ -546,7 +560,7 @@ pub fn create_builtin_functions() -> Vec<(String, SemanticType)> {
 }
 
 /// Creates built-in method definitions for built-in types
-#[must_use] 
+#[must_use]
 pub fn create_builtin_methods()
 -> std::collections::HashMap<String, std::collections::HashMap<String, SemanticType>> {
     let mut methods = std::collections::HashMap::new();
