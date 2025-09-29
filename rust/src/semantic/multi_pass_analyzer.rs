@@ -1,7 +1,7 @@
 /// Multi-pass semantic analyzer coordinator
 /// Orchestrates the execution of semantic analysis passes
 use crate::ast::node::Node;
-use crate::semantic::passes::{AnalysisPass, DeclarationPass, ImportPass};
+use crate::semantic::passes::{AnalysisPass, DeclarationPass, ImportPass, TypePass};
 use crate::semantic::{ModuleRegistry, SemanticError};
 
 /// Multi-pass semantic analyzer
@@ -85,7 +85,7 @@ impl MultiPassAnalyzer {
         let mut passes: Vec<Box<dyn AnalysisPass>> = vec![
             Box::new(DeclarationPass),
             Box::new(ImportPass),
-            // TODO: Add TypePass back when it's fixed
+            Box::new(TypePass::new()),
         ];
 
         // Run each pass

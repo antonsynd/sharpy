@@ -119,16 +119,38 @@ impl TypePass {
         value: &Node,
         registry: &mut ModuleRegistry,
     ) -> Result<(), SemanticError> {
-        let _value_type = self.infer_expression_type(value, registry)?;
+        let value_type = self.infer_expression_type(value, registry)?;
 
         // For simple assignments to names, we can update the symbol type
         if let Node::Name(name) = target
             && let Some(current_module) = registry.current_module_mut()
         {
-            if let Some(_symbol) = current_module.symbols.lookup_symbol(&name.id) {
-                // TODO: Update the symbol's type if it was unknown
-                // For now, we'll just do type checking without mutation
-                // This requires extending the SymbolTable API to support mutation
+            if let Some(symbol) = current_module.symbols.lookup_symbol_mut(&name.id) {
+                // Update the symbol's type if it was unknown or compatible
+                match &symbol.symbol_type {
+                    SemanticType::Unknown(_) => {
+                        symbol.symbol_type = value_type;
+                    }
+                    existing_type => {
+                        // Check type compatibility
+                        if !value_type.is_assignable_to(existing_type) {
+                            // We don't have line/column info here, so use placeholder types
+                            // TODO: Thread position information through the analysis
+                            // TODO: Convert SemanticType to ResolvedType properly
+                            let placeholder_type = crate::ast::Type {
+                                components: vec![],
+                                optional: false,
+                                source: None,
+                            };
+                            return Err(SemanticError::TypeMismatch {
+                                expected: placeholder_type.clone(),
+                                found: placeholder_type,
+                                line: 0,
+                                column: 0,
+                            });
+                        }
+                    }
+                }
             } else {
                 return Err(SemanticError::UndefinedSymbol(name.id.clone()));
             }
@@ -185,9 +207,91 @@ impl TypePass {
                 }
             }
 
+            Node::Dict(dict) => {
+                // Infer dictionary type from keys and values
+                if dict.keys.is_empty() {
+                    Ok(SemanticType::Generic {
+                        base: Box::new(SemanticType::Builtin(BuiltinType::Dict)),
+                        args: vec![
+                            SemanticType::Unknown("empty_dict_key".to_string()),
+                            SemanticType::Unknown("empty_dict_value".to_string()),
+                        ],
+                    })
+                } else {
+                    // Check the first non-None key for type inference
+                    let key_type = if let Some(key) = &dict.keys[0] {
+                        self.infer_expression_type(key, registry)?
+                    } else {
+                        SemanticType::Unknown("dict_expansion_key".to_string())
+                    };
+                    let value_type = self.infer_expression_type(&dict.values[0], registry)?;
+                    Ok(SemanticType::Generic {
+                        base: Box::new(SemanticType::Builtin(BuiltinType::Dict)),
+                        args: vec![key_type, value_type],
+                    })
+                }
+            }
+
+            Node::Set(set) => {
+                // Infer set type from elements
+                if set.elements.is_empty() {
+                    Ok(SemanticType::Generic {
+                        base: Box::new(SemanticType::Builtin(BuiltinType::Set)),
+                        args: vec![SemanticType::Unknown("empty_set".to_string())],
+                    })
+                } else {
+                    let element_type = self.infer_expression_type(&set.elements[0], registry)?;
+                    Ok(SemanticType::Generic {
+                        base: Box::new(SemanticType::Builtin(BuiltinType::Set)),
+                        args: vec![element_type],
+                    })
+                }
+            }
+
+            Node::Tuple(tuple) => {
+                // Infer tuple type from elements
+                let mut element_types = Vec::new();
+                for element in &tuple.elements {
+                    element_types.push(self.infer_expression_type(element, registry)?);
+                }
+                Ok(SemanticType::Tuple(element_types))
+            }
+
+            Node::If(if_node) => {
+                // Analyze conditional expression (ternary-like)
+                let true_type = self.infer_expression_type(&if_node.body[0], registry)?;
+                if if_node.else_.is_empty() {
+                    // No else branch - could be None
+                    Ok(SemanticType::Optional(Box::new(true_type)))
+                } else {
+                    let false_type = self.infer_expression_type(&if_node.else_[0], registry)?;
+                    // If both branches have the same type, use that type
+                    if self.types_compatible(&true_type, &false_type) {
+                        Ok(true_type)
+                    } else {
+                        // Different types - create a union type
+                        Ok(SemanticType::Union(vec![true_type, false_type]))
+                    }
+                }
+            }
+
             _ => {
-                // TODO: Handle other expression types
-                Ok(SemanticType::Unknown("unhandled_expression".to_string()))
+                // Handle remaining expression types with a more specific unknown type
+                let node_type = match expr {
+                    Node::Lambda(_) => "lambda",
+                    Node::ListComp(_) => "list_comprehension",
+                    Node::DictComp(_) => "dict_comprehension",
+                    Node::SetComp(_) => "set_comprehension",
+                    Node::GeneratorExp(_) => "generator_expression",
+                    Node::YieldFrom(_) => "yield_from",
+                    Node::Yield(_) => "yield",
+                    Node::Await(_) => "await",
+                    Node::Compare(_) => "comparison",
+                    Node::BoolOp(_) => "bool_op",
+                    Node::IfExp(_) => "if_expression",
+                    _ => "unknown_expression",
+                };
+                Ok(SemanticType::Unknown(format!("{node_type}_expression")))
             }
         }
     }
@@ -296,12 +400,41 @@ impl TypePass {
         attr: &str,
         registry: &mut ModuleRegistry,
     ) -> Result<SemanticType, SemanticError> {
-        let _object_type = self.infer_expression_type(object, registry)?;
+        let object_type = self.infer_expression_type(object, registry)?;
 
-        // TODO: Look up attribute in object's type definition
-        // For now, return unknown type
-        let _ = attr;
-        Ok(SemanticType::Unknown("attribute_access".to_string()))
+        // Look up attribute in object's type definition
+        match &object_type {
+            SemanticType::Class { name, module, .. } => {
+                // Look for the class definition to find its attributes
+                let full_name = module
+                    .as_ref()
+                    .map_or(name.clone(), |m| format!("{m}.{name}"));
+
+                if let Some(class_symbol) = registry.resolve_symbol(&full_name) {
+                    // TODO: Implement proper class attribute lookup
+                    // For now, assume all attributes exist and return unknown type
+                    let _ = class_symbol;
+                    Ok(SemanticType::Unknown(format!("{attr}_attribute")))
+                } else {
+                    Ok(SemanticType::Unknown(format!("{attr}_attribute")))
+                }
+            }
+            SemanticType::Builtin(builtin_type) => {
+                // Handle built-in type attributes (like str.length, list.append, etc.)
+                match (builtin_type, attr) {
+                    (BuiltinType::Str, "length") => Ok(SemanticType::Builtin(BuiltinType::Int)),
+                    (BuiltinType::List, "append") => Ok(SemanticType::Function {
+                        params: vec![SemanticType::Unknown("item".to_string())],
+                        return_type: None,
+                    }),
+                    _ => Ok(SemanticType::Unknown(format!("{attr}_builtin_attribute"))),
+                }
+            }
+            _ => {
+                // For other types, assume the attribute exists but with unknown type
+                Ok(SemanticType::Unknown(format!("{attr}_attribute")))
+            }
+        }
     }
 
     /// Infer type from subscript access
@@ -420,11 +553,44 @@ impl TypePass {
         body: &[Node],
         registry: &mut ModuleRegistry,
     ) -> Result<(), SemanticError> {
-        let _iterable_type = self.infer_expression_type(iterable, registry)?;
+        let iterable_type = self.infer_expression_type(iterable, registry)?;
 
-        // TODO: Check if iterable_type is actually iterable
-        // TODO: Add loop variable to scope
-        let _ = target;
+        // Check if iterable_type is actually iterable and infer element type
+        let element_type = match &iterable_type {
+            SemanticType::Array(element_type) => element_type.as_ref().clone(),
+            SemanticType::Generic { base, args } => match base.as_ref() {
+                SemanticType::Builtin(BuiltinType::List) if !args.is_empty() => args[0].clone(),
+                SemanticType::Builtin(BuiltinType::Set) if !args.is_empty() => args[0].clone(),
+                _ => SemanticType::Unknown("non_iterable".to_string()),
+            },
+            SemanticType::Builtin(BuiltinType::Str) => SemanticType::Builtin(BuiltinType::Str), // str iterates over str
+            _ => SemanticType::Unknown("non_iterable".to_string()),
+        };
+
+        // Add loop variable to scope
+        if let Node::Name(name) = target
+            && let Some(current_module) = registry.current_module_mut()
+        {
+            // Add or update the loop variable with the inferred element type
+            if let Some(symbol) = current_module.symbols.lookup_symbol_mut(&name.id) {
+                symbol.symbol_type = element_type;
+            } else {
+                // Variable doesn't exist, create it
+                let symbol = crate::semantic::symbol_table::Symbol {
+                    id: format!("loop_var_{}", name.id),
+                    name: name.id.clone(),
+                    kind: crate::semantic::symbol_table::SymbolKind::Variable,
+                    symbol_type: element_type,
+                    access_level: crate::semantic::symbol_table::AccessLevel::Private,
+                    scope_id: "current_scope".to_string(), // TODO: Use proper scope tracking
+                    location: None,
+                    is_static: false,
+                    generic_params: vec![],
+                    metadata: crate::semantic::symbol_table::SymbolMetadata::None,
+                };
+                let _ = current_module.symbols.add_symbol(symbol);
+            }
+        }
 
         for stmt in body {
             self.analyze_types(stmt, registry)?;
@@ -446,7 +612,32 @@ impl TypePass {
             self.analyze_expression(arg, registry)?;
         }
 
-        // TODO: Check argument types against function signature
+        // Check argument types against function signature
+        if let Node::Name(func_name) = call.function.as_ref() {
+            let func_symbol_type = registry
+                .resolve_symbol(&func_name.id)
+                .map(|s| s.symbol_type.clone());
+
+            if let Some(SemanticType::Function { params, .. }) = func_symbol_type {
+                // Check if the number of arguments matches
+                if call.positional_args.len() == params.len() {
+                    // Check each argument type
+                    for (i, (arg, expected_type)) in
+                        call.positional_args.iter().zip(params.iter()).enumerate()
+                    {
+                        let actual_type = self.infer_expression_type(arg, registry)?;
+                        if !self.types_compatible(expected_type, &actual_type) {
+                            // TODO: Create proper error for argument type mismatch
+                            // For now, we'll just continue without error
+                            let _ = i;
+                        }
+                    }
+                } else {
+                    // For now, we'll just warn about mismatched argument counts
+                    // TODO: Implement proper error for argument count mismatch
+                }
+            }
+        }
 
         Ok(())
     }

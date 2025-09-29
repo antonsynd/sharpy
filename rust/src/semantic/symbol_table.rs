@@ -448,6 +448,34 @@ impl SymbolTable {
         None
     }
 
+    /// Look up a symbol by name (mutable), searching through scope hierarchy
+    pub fn lookup_symbol_mut(&mut self, name: &str) -> Option<&mut Symbol> {
+        // Start from current scope, or root scope if no current scope
+        let start_scope_id = self
+            .current_scope_id
+            .as_ref()
+            .or(self.root_scope_id.as_ref())?
+            .clone();
+
+        let mut current_scope_id = start_scope_id;
+
+        loop {
+            let scope = self.scopes.get(&current_scope_id)?;
+            if let Some(symbol_id) = scope.get_symbol(name) {
+                return self.symbols.get_mut(symbol_id);
+            }
+
+            // Move to parent scope
+            if let Some(parent_id) = &scope.parent {
+                current_scope_id = parent_id.clone();
+            } else {
+                break;
+            }
+        }
+
+        None
+    }
+
     /// Look up a symbol in a specific scope
     #[must_use]
     pub fn lookup_symbol_in_scope(&self, name: &str, scope_id: &str) -> Option<&Symbol> {
