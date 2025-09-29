@@ -122,37 +122,74 @@ impl TypePass {
         let value_type = self.infer_expression_type(value, registry)?;
 
         // For simple assignments to names, we can update the symbol type
-        if let Node::Name(name) = target
-            && let Some(current_module) = registry.current_module_mut()
-        {
-            if let Some(symbol) = current_module.symbols.lookup_symbol_mut(&name.id) {
-                // Update the symbol's type if it was unknown or compatible
-                match &symbol.symbol_type {
-                    SemanticType::Unknown(_) => {
-                        symbol.symbol_type = value_type;
-                    }
-                    existing_type => {
-                        // Check type compatibility
-                        if !value_type.is_assignable_to(existing_type) {
-                            // We don't have line/column info here, so use placeholder types
-                            // TODO: Thread position information through the analysis
-                            // TODO: Convert SemanticType to ResolvedType properly
-                            let placeholder_type = crate::ast::Type {
-                                components: vec![],
-                                optional: false,
-                                source: None,
-                            };
-                            return Err(SemanticError::TypeMismatch {
-                                expected: placeholder_type.clone(),
-                                found: placeholder_type,
-                                line: 0,
-                                column: 0,
-                            });
+        match target {
+            Node::Name(name) => {
+                if let Some(current_module) = registry.current_module_mut() {
+                    if let Some(symbol) = current_module.symbols.lookup_symbol_mut(&name.id) {
+                        // Update the symbol's type if it was unknown or compatible
+                        match &symbol.symbol_type {
+                            SemanticType::Unknown(_) => {
+                                symbol.symbol_type = value_type;
+                            }
+                            existing_type => {
+                                // Check type compatibility
+                                if !value_type.is_assignable_to(existing_type) {
+                                    // We don't have line/column info here, so use placeholder types
+                                    // TODO: Thread position information through the analysis
+                                    // TODO: Convert SemanticType to ResolvedType properly
+                                    let placeholder_type = crate::ast::Type {
+                                        components: vec![],
+                                        optional: false,
+                                        source: None,
+                                    };
+                                    return Err(SemanticError::TypeMismatch {
+                                        expected: placeholder_type.clone(),
+                                        found: placeholder_type,
+                                        line: 0,
+                                        column: 0,
+                                    });
+                                }
+                            }
                         }
+                    } else {
+                        return Err(SemanticError::UndefinedSymbol(name.id.clone()));
                     }
                 }
-            } else {
-                return Err(SemanticError::UndefinedSymbol(name.id.clone()));
+            }
+            Node::TypedName(typed_name) => {
+                if let Some(current_module) = registry.current_module_mut() {
+                    if let Some(symbol) = current_module.symbols.lookup_symbol_mut(&typed_name.id) {
+                        // For typed assignments, we should resolve the type annotation and check compatibility
+                        // For now, we'll update with the value type if it's unknown
+                        match &symbol.symbol_type {
+                            SemanticType::Unknown(_) => {
+                                symbol.symbol_type = value_type;
+                            }
+                            existing_type => {
+                                // Check type compatibility
+                                if !value_type.is_assignable_to(existing_type) {
+                                    let placeholder_type = crate::ast::Type {
+                                        components: vec![],
+                                        optional: false,
+                                        source: None,
+                                    };
+                                    return Err(SemanticError::TypeMismatch {
+                                        expected: placeholder_type.clone(),
+                                        found: placeholder_type,
+                                        line: 0,
+                                        column: 0,
+                                    });
+                                }
+                            }
+                        }
+                    } else {
+                        return Err(SemanticError::UndefinedSymbol(typed_name.id.clone()));
+                    }
+                }
+            }
+            _ => {
+                // For other assignment targets (tuple destructuring, etc.),
+                // we don't currently update symbol types
             }
         }
 
@@ -370,26 +407,44 @@ impl TypePass {
     fn infer_function_call_type(
         &mut self,
         call: &crate::ast::node::Call,
-        registry: &ModuleRegistry,
+        registry: &mut ModuleRegistry,
     ) -> Result<SemanticType, SemanticError> {
-        // Extract function name from the function node
-        let func_name = match call.function.as_ref() {
-            Node::Name(name) => &name.id,
-            Node::Attribute(attr) => &attr.attr, // Method call
-            _ => return Ok(SemanticType::Unknown("complex_call".to_string())),
-        };
+        // First, infer the type of the function being called
+        let func_type = self.infer_expression_type(&call.function, registry)?;
 
-        if let Some(symbol) = registry.resolve_symbol(func_name) {
-            match &symbol.symbol_type {
-                SemanticType::Function { return_type, .. } => Ok(return_type
+        match func_type {
+            SemanticType::Function { return_type, .. } => {
+                // Return the function's return type
+                Ok(return_type
                     .as_ref()
                     .map_or(SemanticType::Builtin(BuiltinType::None), |t| {
                         t.as_ref().clone()
-                    })),
-                _ => Ok(SemanticType::Unknown("not_callable".to_string())),
+                    }))
             }
-        } else {
-            Ok(SemanticType::Unknown("undefined_function".to_string()))
+            SemanticType::Unknown(_) => {
+                // If the function type is unknown, it might be a simple function name lookup
+                // Try to extract the function name and look it up in the symbol table
+                if let Node::Name(name) = call.function.as_ref() {
+                    if let Some(symbol) = registry.resolve_symbol(&name.id) {
+                        match &symbol.symbol_type {
+                            SemanticType::Function { return_type, .. } => Ok(return_type
+                                .as_ref()
+                                .map_or(SemanticType::Builtin(BuiltinType::None), |t| {
+                                    t.as_ref().clone()
+                                })),
+                            _ => Ok(SemanticType::Unknown("not_callable".to_string())),
+                        }
+                    } else {
+                        Ok(SemanticType::Unknown("undefined_function".to_string()))
+                    }
+                } else {
+                    Ok(func_type) // Return the unknown type
+                }
+            }
+            _ => {
+                // Not a function type - this is an error
+                Ok(SemanticType::Unknown("not_callable".to_string()))
+            }
         }
     }
 
@@ -423,11 +478,30 @@ impl TypePass {
                 // Handle built-in type attributes (like str.length, list.append, etc.)
                 match (builtin_type, attr) {
                     (BuiltinType::Str, "length") => Ok(SemanticType::Builtin(BuiltinType::Int)),
+                    (BuiltinType::Str, "upper") => Ok(SemanticType::Function {
+                        params: vec![],
+                        return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Str))),
+                    }),
+                    (BuiltinType::Str, "lower") => Ok(SemanticType::Function {
+                        params: vec![],
+                        return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Str))),
+                    }),
+                    (BuiltinType::Str, "split") => Ok(SemanticType::Function {
+                        params: vec![],
+                        return_type: Some(Box::new(SemanticType::Unknown("List[str]".to_string()))),
+                    }),
                     (BuiltinType::List, "append") => Ok(SemanticType::Function {
                         params: vec![SemanticType::Unknown("item".to_string())],
                         return_type: None,
                     }),
-                    _ => Ok(SemanticType::Unknown(format!("{attr}_builtin_attribute"))),
+                    (BuiltinType::List, "pop") => Ok(SemanticType::Function {
+                        params: vec![],
+                        return_type: Some(Box::new(SemanticType::Unknown("item".to_string()))),
+                    }),
+                    _ => Err(SemanticError::AttributeNotFound {
+                        object_type: format!("{builtin_type:?}"),
+                        attribute: attr.to_string(),
+                    }),
                 }
             }
             _ => {

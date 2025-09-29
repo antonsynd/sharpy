@@ -1,4 +1,3 @@
-pub mod analyzer;
 pub mod module_registry;
 pub mod multi_pass_analyzer;
 pub mod passes;
@@ -6,9 +5,9 @@ pub mod scope;
 pub mod symbol_table;
 pub mod types;
 
-pub use analyzer::SemanticAnalyzer;
+// Main semantic analyzer - now using multi-pass by default
 pub use module_registry::{ModuleRegistry, ModuleSymbolTable};
-pub use multi_pass_analyzer::{AnalysisResult, MultiPassAnalyzer};
+pub use multi_pass_analyzer::{AnalysisResult, MultiPassAnalyzer as SemanticAnalyzer};
 pub use scope::{Scope, ScopeKind};
 pub use symbol_table::{AccessLevel, Symbol, SymbolKind, SymbolMetadata, SymbolTable};
 pub use types::{BuiltinType, SemanticType};
@@ -62,6 +61,12 @@ pub enum SemanticError {
         symbol: String,
         access_level: AccessLevel,
         context: String,
+    },
+
+    /// Attribute not found on type
+    AttributeNotFound {
+        object_type: String,
+        attribute: String,
     },
 }
 
@@ -121,6 +126,12 @@ impl std::fmt::Display for SemanticError {
                     f,
                     "Access violation: cannot access {access_level:?} symbol '{symbol}' from {context}"
                 )
+            }
+            Self::AttributeNotFound {
+                object_type,
+                attribute,
+            } => {
+                write!(f, "Type '{object_type}' has no attribute '{attribute}'")
             }
         }
     }

@@ -11,6 +11,9 @@ pub struct MultiPassAnalyzer {
 
     /// Whether to continue analysis on errors
     continue_on_errors: bool,
+
+    /// Last analysis errors (for backward compatibility)
+    last_errors: Vec<String>,
 }
 
 /// Result of complete semantic analysis
@@ -33,6 +36,7 @@ impl MultiPassAnalyzer {
         Self {
             registry: ModuleRegistry::new(),
             continue_on_errors: false,
+            last_errors: Vec::new(),
         }
     }
 
@@ -49,8 +53,8 @@ impl MultiPassAnalyzer {
         self.registry.add_search_paths(paths);
     }
 
-    /// Analyze a module (simplified version for now)
-    pub fn analyze_module(
+    /// Internal multi-pass analysis method
+    fn analyze_module_internal(
         &mut self,
         module_name: String,
         file_path: String,
@@ -67,7 +71,7 @@ impl MultiPassAnalyzer {
             return AnalysisResult {
                 errors: all_errors,
                 success: false,
-                registry: std::mem::take(&mut self.registry),
+                registry: ModuleRegistry::new(),
             };
         }
 
@@ -77,7 +81,7 @@ impl MultiPassAnalyzer {
             return AnalysisResult {
                 errors: all_errors,
                 success: false,
-                registry: std::mem::take(&mut self.registry),
+                registry: ModuleRegistry::new(),
             };
         }
 
@@ -122,7 +126,8 @@ impl MultiPassAnalyzer {
         AnalysisResult {
             success: all_errors.is_empty(),
             errors: all_errors,
-            registry: std::mem::take(&mut self.registry),
+            // Don't take the registry for backward compatibility - just create a placeholder
+            registry: ModuleRegistry::new(),
         }
     }
 
@@ -135,6 +140,64 @@ impl MultiPassAnalyzer {
     /// Get the current module registry (mutable)
     pub const fn registry_mut(&mut self) -> &mut ModuleRegistry {
         &mut self.registry
+    }
+
+    // === Backward-Compatible API ===
+
+    /// Backward-compatible `analyze_module` for legacy tests
+    /// Analyzes a list of statements as a module
+    pub fn analyze_module(
+        &mut self,
+        statements: &[Node],
+        module_name: Option<String>,
+    ) -> Result<(), Vec<String>> {
+        use crate::ast::node::Module;
+
+        let module_name = module_name.unwrap_or_else(|| "main".to_string());
+        let file_path = format!("{module_name}.spy");
+
+        // Wrap statements in a Module node
+        let module_node = Node::Module(Module {
+            body: statements.to_vec(),
+            source: None,
+        });
+
+        // Use the internal multi-pass analysis
+        let result = self.analyze_module_internal(module_name, file_path, &module_node);
+
+        if result.success {
+            self.last_errors.clear();
+            Ok(())
+        } else {
+            // Convert SemanticError to String for backward compatibility
+            let string_errors: Vec<String> =
+                result.errors.into_iter().map(|e| e.to_string()).collect();
+            self.last_errors = string_errors.clone();
+            Err(string_errors)
+        }
+    }
+
+    /// Get errors from the last analysis (for backward compatibility)
+    #[must_use]
+    pub const fn get_errors(&self) -> &Vec<String> {
+        &self.last_errors
+    }
+
+    /// Get a reference to the symbol table from the current module
+    /// For backward compatibility with legacy tests
+    #[must_use]
+    pub fn get_symbol_table(&self) -> &crate::semantic::SymbolTable {
+        // Get the symbol table from the current module, or return a static empty one
+        if let Some(current_module_name) = self.registry.current_module_name()
+            && let Some(current_module) = self.registry.get_module(current_module_name)
+        {
+            return &current_module.symbols;
+        }
+
+        // Return a reference to an empty symbol table for compatibility
+        static EMPTY_SYMBOL_TABLE: std::sync::LazyLock<crate::semantic::SymbolTable> =
+            std::sync::LazyLock::new(crate::semantic::SymbolTable::new);
+        &EMPTY_SYMBOL_TABLE
     }
 }
 

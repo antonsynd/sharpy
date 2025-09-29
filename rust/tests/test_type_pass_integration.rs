@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod type_pass_integration_tests {
-    use sharpy_compiler_toolchain::ast::node::Module;
-    use sharpy_compiler_toolchain::semantic::MultiPassAnalyzer;
-    use sharpy_compiler_toolchain::{Node, Parser, SemanticAnalyzer, SharpyLexer};
+    use sharpy_compiler_toolchain::{
+        lexer::SharpyLexer, parser::Parser, semantic::SemanticAnalyzer,
+    };
 
     #[test]
     fn test_type_pass_integration() {
@@ -22,29 +22,23 @@ result = add(x, y)
         let mut parser = Parser::new(tokens);
         let ast = parser.parse().expect("Parser should succeed");
 
-        // Wrap AST in a Module node for MultiPassAnalyzer
-        let module_node = Node::Module(Module {
-            body: ast,
-            source: None,
-        });
-
-        // Analyze with Type Pass enabled using MultiPassAnalyzer
-        let mut analyzer = MultiPassAnalyzer::new();
-        let result = analyzer.analyze_module(
-            "test_module".to_string(),
-            "test.spy".to_string(),
-            &module_node,
-        );
+        // Analyze with Type Pass enabled using SemanticAnalyzer (multi-pass)
+        let mut analyzer = SemanticAnalyzer::new();
+        let result = analyzer.analyze_module(&ast, Some("test_module".to_string()));
 
         // Type Pass should run successfully
         assert!(
-            result.success,
+            result.is_ok(),
             "Semantic analysis should succeed, but got errors: {:?}",
-            result.errors
+            result.err()
         );
 
         println!("✓ Type Pass integration test passed!");
-        println!("  Analysis completed with {} errors", result.errors.len());
+        if let Err(errors) = result {
+            println!("  Analysis completed with {} errors", errors.len());
+        } else {
+            println!("  Analysis completed with 0 errors");
+        }
     }
 
     #[test]
@@ -65,27 +59,19 @@ result = add(x, y)  # This should potentially flag a type issue
         let mut parser = Parser::new(tokens);
         let ast = parser.parse().expect("Parser should succeed");
 
-        // Wrap AST in a Module node for MultiPassAnalyzer
-        let module_node = Node::Module(Module {
-            body: ast,
-            source: None,
-        });
-
-        // Analyze with Type Pass enabled using MultiPassAnalyzer
-        let mut analyzer = MultiPassAnalyzer::new();
-        let result = analyzer.analyze_module(
-            "test_module".to_string(),
-            "test.spy".to_string(),
-            &module_node,
-        );
+        // Analyze with Type Pass enabled using SemanticAnalyzer (multi-pass)
+        let mut analyzer = SemanticAnalyzer::new();
+        let result = analyzer.analyze_module(&ast, Some("test_module".to_string()));
 
         // Type Pass should run (even if it finds issues)
-        println!(
-            "Type Pass analysis completed with {} errors",
-            result.errors.len()
-        );
-        for (i, error) in result.errors.iter().enumerate() {
-            println!("Error {}: {:?}", i + 1, error);
+        match &result {
+            Ok(_) => println!("Type Pass analysis completed with 0 errors"),
+            Err(errors) => {
+                println!("Type Pass analysis completed with {} errors", errors.len());
+                for (i, error) in errors.iter().enumerate() {
+                    println!("Error {}: {:?}", i + 1, error);
+                }
+            }
         }
 
         // The test succeeds if the Type Pass runs without crashing

@@ -1,4 +1,4 @@
-use crate::semantic::{SemanticError, Symbol, SymbolTable};
+use crate::semantic::{ScopeKind, SemanticError, Symbol, SymbolTable};
 /// Module registry for managing per-module symbol tables
 /// and cross-module symbol resolution
 use std::collections::HashMap;
@@ -64,8 +64,13 @@ impl ModuleRegistry {
             return Err(SemanticError::DuplicateModule(name));
         }
 
+        let mut symbols = SymbolTable::new();
+
+        // Create and enter the module-level scope
+        symbols.enter_scope(ScopeKind::Module, Some(name.clone()));
+
         let module_table = ModuleSymbolTable {
-            symbols: SymbolTable::new(),
+            symbols,
             file_path,
             imports: Vec::new(),
             is_analyzed: false,
@@ -89,6 +94,12 @@ impl ModuleRegistry {
     pub fn current_module_mut(&mut self) -> Option<&mut ModuleSymbolTable> {
         let module_name = self.current_module.as_ref()?;
         self.modules.get_mut(module_name)
+    }
+
+    /// Get the current module name
+    #[must_use]
+    pub const fn current_module_name(&self) -> Option<&String> {
+        self.current_module.as_ref()
     }
 
     /// Get a module's symbol table (immutable)
