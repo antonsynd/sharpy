@@ -38,7 +38,7 @@ This specification describes the full vision for Sharpy. The current compiler im
 - **Async/await**: Keywords reserved but not implemented
 
 ## ❌ Not Yet Implemented
-- **Attributes/decorators**: `@override`, `@final`, `@static`, etc.
+- **Advanced decorators**: `@override`, `@final`, etc. (basic access modifier decorators are implemented)
 - **Events**: Event definitions and handling
 - **Signals**: Delegate-like functionality
 - **Optional chaining**: `?.` operator (lexed but not parsed)
@@ -197,7 +197,8 @@ along with a compiler-managed private backing field:
 class Foo:
     # Auto-generated getter/setter with internal access, initialized to 5
     # Corresponds to C#: internal int Value { get; set; } = 5;
-    property $value: int = 5
+    @internal
+    property value: int = 5
 
     # Read-only public auto-property (only getter generated)
     get property length: int
@@ -479,17 +480,23 @@ class Foo:
     # File-level methods (decorator required)
     @file
     def file_method(self) -> None:
-        pass**Implementation Note**: The lexer detects underscore-prefixed names and stores them as naming hints in the token. The parser processes `@protected`, `@private`, `@internal`, `@file` decorators and combines them with underscore hints using the precedence rules above. When both are present, decorators take precedence over naming conventions.
+        pass
+```
+
+**Implementation Note**: The lexer detects underscore-prefixed names and stores them as naming hints in the token. The parser processes `@protected`, `@private`, `@internal`, `@file` decorators and combines them with underscore hints using the precedence rules above. When both are present, decorators take precedence over naming conventions.
 
 # Attributes
 
-**Note**: Attributes/decorators are currently not implemented in the compiler.
+**Note**: Most attributes/decorators are currently not implemented in the compiler. However, access modifier decorators (`@protected`, `@private`, `@internal`, `@file`) are fully implemented.
 
-`@override`: methods
+## Implemented Decorators
+- **Access modifiers**: `@protected`, `@private`, `@internal`, `@file` - Control member visibility
+- **Decorator stacking**: Multiple decorators can be combined (e.g., `@static @private`)
 
-`@final`: classes/protocols
-
-`@static`: methods, properties, members, classes
+## Planned Decorators
+- `@override`: methods
+- `@final`: classes/protocols
+- `@static`: methods, properties, members, classes
 
 TODO
 
@@ -752,7 +759,9 @@ Print(SomeModule.__Module__.SOME_CONSTANT);
 
 The following are hard keywords in Sharpy and are always reserved:
 
-`and`, `as`, `assert`, `async`, `await`, `break`, `class`, `continue`, `def`, `del`, `elif`, `else`, `except`, `False`, `file`, `finally`, `for`, `from`, `if`, `import`, `in`, `internal`, `is`, `lambda`, `None`, `not`, `or`, `pass`, `private`, `property`, `protected`, `protocol`, `public`, `raise`, `return`, `struct`, `True`, `try`, `while`, `with`, `yield`
+`and`, `as`, `assert`, `async`, `await`, `break`, `class`, `continue`, `def`, `del`, `elif`, `else`, `except`, `False`, `finally`, `for`, `from`, `if`, `import`, `in`, `is`, `lambda`, `None`, `not`, `or`, `pass`, `property`, `protocol`, `raise`, `return`, `struct`, `True`, `try`, `while`, `with`, `yield`
+
+**Note**: Access modifier keywords (`file`, `internal`, `private`, `protected`, `public`) are no longer hard keywords. They are now regular identifiers that can be used as decorator names (e.g., `@protected`, `@private`).
 
 ## Soft Keywords (Context-Dependent)
 
