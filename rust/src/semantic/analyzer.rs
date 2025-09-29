@@ -505,33 +505,69 @@ impl SemanticAnalyzer {
         let value_type = self.analyze_expression(&assign.value)?;
 
         // Then handle the target (left side of assignment)
-        // For simple names, add them to the symbol table
-        if let Node::Name(name) = assign.target.as_ref() {
-            // Get the current scope ID or use a default
-            let scope_id = self
-                .symbol_table
-                .current_scope_id
-                .as_deref()
-                .unwrap_or("global");
-
-            // Add or update the variable in the symbol table
-            let symbol = Symbol::new(
-                name.id.clone(),
-                SymbolKind::Variable,
-                value_type,
-                AccessLevel::Private, // Default access level
-                scope_id.to_string(),
-                None, // No location info for now
-            );
-            if let Err(err) = self.symbol_table.add_symbol(symbol) {
-                return Err(format!("Failed to add symbol: {err}"));
+        match assign.target.as_ref() {
+            Node::Name(name) => {
+                // Simple assignment: x = value
+                self.add_variable_to_scope(&name.id, value_type)?;
             }
-        } else {
-            // For more complex targets (like tuples, attributes), just validate the value
-            // This is a simplified implementation
+            Node::TypedName(typed_name) => {
+                // Typed assignment: x: int = value
+                if let Some(declared_type) = self.resolve_type_annotation(&typed_name.type_) {
+                    // Validate that the value type is compatible with the declared type
+                    if !self.is_type_assignable(&value_type, &declared_type) {
+                        return Err(format!(
+                            "Cannot assign {} to variable '{}' of type {}",
+                            value_type.display_name(),
+                            typed_name.id,
+                            declared_type.display_name()
+                        ));
+                    }
+                    // Use the declared type as the variable's type (supports type narrowing)
+                    self.add_variable_to_scope(&typed_name.id, declared_type)?;
+                } else {
+                    return Err(format!(
+                        "Cannot resolve type annotation for variable '{}'",
+                        typed_name.id
+                    ));
+                }
+            }
+            _ => {
+                // For more complex targets (like tuples, attributes), just validate the value
+                // This is a simplified implementation
+            }
         }
 
         Ok(())
+    }
+
+    /// Helper method to add a variable to the current scope
+    fn add_variable_to_scope(&mut self, name: &str, var_type: SemanticType) -> Result<(), String> {
+        let scope_id = self
+            .symbol_table
+            .current_scope_id
+            .as_deref()
+            .unwrap_or("global");
+
+        let symbol = Symbol::new(
+            name.to_string(),
+            SymbolKind::Variable,
+            var_type,
+            AccessLevel::Private, // Default access level
+            scope_id.to_string(),
+            None, // No location info for now
+        );
+
+        self.symbol_table
+            .add_symbol(symbol)
+            .map_err(|err| format!("Failed to add symbol: {err}"))
+            .map(|_| ())
+    }
+
+    /// Check if a value type can be assigned to a variable of a declared type
+    fn is_type_assignable(&self, value_type: &SemanticType, declared_type: &SemanticType) -> bool {
+        // Use existing type compatibility, but also support declared type as "wider" acceptance
+        value_type.is_assignable_to(declared_type)
+            || self.types_compatible(value_type, declared_type)
     }
 
     /// Analyze an expression and return its semantic type
@@ -543,6 +579,9 @@ impl SemanticAnalyzer {
             Node::UnaryOp(unop) => self.analyze_unary_operation(unop),
             Node::Call(call) => self.analyze_function_call(call),
             Node::Subscript(subscript) => self.analyze_subscript(subscript),
+            Node::List(list) => self.analyze_list_literal(list),
+            Node::Dict(dict) => self.analyze_dict_literal(dict),
+            Node::Set(set) => self.analyze_set_literal(set),
             _ => {
                 // For now, return unknown type for unhandled expressions
                 Ok(SemanticType::Unknown("unhandled_expression".to_string()))
@@ -562,16 +601,116 @@ impl SemanticAnalyzer {
                 // Handle TypeName nodes
                 self.symbol_table.lookup_type(&type_name.name)
             }
+            Node::GenericType(generic_type) => {
+                // Handle generic types like List[int], Dict[str, int]
+                let base_type = self.resolve_type_annotation(&generic_type.base_type)?;
+
+                // Parse generic type arguments
+                let mut type_args = Vec::new();
+                for arg_node in &generic_type.type_args {
+                    if let Some(arg_type) = self.resolve_type_annotation(arg_node) {
+                        type_args.push(arg_type);
+                    } else {
+                        return None; // Failed to resolve argument type
+                    }
+                }
+
+                // Validate argument count for known generic types
+                match &base_type {
+                    SemanticType::Builtin(builtin) => {
+                        if let Some(expected_count) = builtin.generic_param_count()
+                            && type_args.len() != expected_count {
+                                return None; // Invalid argument count
+                            }
+                    }
+                    _ => {} // For user-defined types, allow any number of args for now
+                }
+
+                Some(SemanticType::Generic {
+                    base: Box::new(base_type),
+                    args: type_args,
+                })
+            }
             Node::Subscript(subscript) => {
-                // Handle generic types like List[int]
+                // Handle generic types like List[int], Dict[str, bool] (legacy fallback)
                 if let Node::Name(base_name) = &*subscript.value {
-                    self.symbol_table.lookup_type(&base_name.id)
-                    // TODO: Parse subscript arguments and create generic type
+                    if let Some(base_type) = self.symbol_table.lookup_type(&base_name.id) {
+                        // Parse the subscript arguments
+                        let type_args = self.parse_generic_type_args(&subscript.slice)?;
+
+                        // Validate argument count for known generic types
+                        match &base_type {
+                            SemanticType::Builtin(builtin) => {
+                                if let Some(expected_count) = builtin.generic_param_count()
+                                    && type_args.len() != expected_count {
+                                        return None; // Invalid argument count
+                                    }
+
+                                // Create generic instantiation
+                                Some(SemanticType::Generic {
+                                    base: Box::new(base_type),
+                                    args: type_args,
+                                })
+                            }
+                            _ => {
+                                // For user-defined generic types
+                                Some(SemanticType::Generic {
+                                    base: Box::new(base_type),
+                                    args: type_args,
+                                })
+                            }
+                        }
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
             }
             _ => None,
+        }
+    }
+
+    /// Parse generic type arguments from a subscript slice
+    fn parse_generic_type_args(&self, slice_node: &Node) -> Option<Vec<SemanticType>> {
+        match slice_node {
+            // Single argument: List[int]
+            Node::Name(name) => {
+                if let Some(arg_type) = self.symbol_table.lookup_type(&name.id) {
+                    Some(vec![arg_type])
+                } else {
+                    None
+                }
+            }
+            // TypeName node: List[int] where int is a TypeName
+            Node::TypeName(type_name) => {
+                if let Some(arg_type) = self.symbol_table.lookup_type(&type_name.name) {
+                    Some(vec![arg_type])
+                } else {
+                    None
+                }
+            }
+            // Multiple arguments: Dict[str, int] (represented as tuple)
+            Node::Tuple(tuple) => {
+                let mut type_args = Vec::new();
+                for element in &tuple.elements {
+                    if let Some(arg_type) = self.resolve_type_annotation(element) {
+                        type_args.push(arg_type);
+                    } else {
+                        return None; // Failed to resolve one of the arguments
+                    }
+                }
+                Some(type_args)
+            }
+            // Handle nested subscript or other complex type expressions
+            _ => {
+                // Try to resolve it as a type annotation recursively
+                if let Some(arg_type) = self.resolve_type_annotation(slice_node) {
+                    Some(vec![arg_type])
+                } else {
+                    None
+                }
+            }
         }
     }
 
@@ -680,7 +819,10 @@ impl SemanticAnalyzer {
                 "len" => {
                     // len() requires exactly one argument of a collection type
                     if arg_types.len() != 1 {
-                        return Err(format!("len() takes exactly 1 argument, got {}", arg_types.len()));
+                        return Err(format!(
+                            "len() takes exactly 1 argument, got {}",
+                            arg_types.len()
+                        ));
                     }
                     // For now, accept any type (could be enhanced to check if it's a collection)
                     Ok(SemanticType::Builtin(BuiltinType::Int))
@@ -689,7 +831,11 @@ impl SemanticAnalyzer {
                     // Type conversion functions take exactly one argument
                     if arg_types.len() != 1 {
                         let func_name = name.id.as_str();
-                        return Err(format!("{}() takes exactly 1 argument, got {}", func_name, arg_types.len()));
+                        return Err(format!(
+                            "{}() takes exactly 1 argument, got {}",
+                            func_name,
+                            arg_types.len()
+                        ));
                     }
                     // Return the corresponding type
                     match name.id.as_str() {
@@ -704,7 +850,10 @@ impl SemanticAnalyzer {
                     // Look up user-defined function
                     if let Some(symbol) = self.symbol_table.lookup_symbol(&name.id) {
                         match &symbol.symbol_type {
-                            SemanticType::Function { params, return_type } => {
+                            SemanticType::Function {
+                                params,
+                                return_type,
+                            } => {
                                 // Validate argument count
                                 if arg_types.len() != params.len() {
                                     return Err(format!(
@@ -716,7 +865,9 @@ impl SemanticAnalyzer {
                                 }
 
                                 // Validate argument types
-                                for (i, (expected, actual)) in params.iter().zip(arg_types.iter()).enumerate() {
+                                for (i, (expected, actual)) in
+                                    params.iter().zip(arg_types.iter()).enumerate()
+                                {
                                     if !self.types_compatible(actual, expected) {
                                         return Err(format!(
                                             "Function '{}' argument {} expects type {:?}, got {:?}",
@@ -751,14 +902,185 @@ impl SemanticAnalyzer {
     /// Analyze a subscript operation
     fn analyze_subscript(&mut self, subscript: &Subscript) -> Result<SemanticType, String> {
         let value_type = self.analyze_expression(&subscript.value)?;
-        let _slice_type = self.analyze_expression(&subscript.slice)?;
+        let _index_type = self.analyze_expression(&subscript.slice)?;
 
-        // Basic subscript type checking
-        match value_type {
-            SemanticType::Array(element_type) => Ok((*element_type).clone()),
-            SemanticType::Builtin(BuiltinType::Str) => Ok(SemanticType::Builtin(BuiltinType::Str)), // Character access
-            _ => Err(format!("Cannot subscript type: {value_type:?}")),
+        // Enhanced subscript type checking with generic support
+        match &value_type {
+            // Generic collections
+            SemanticType::Generic { base, args } => {
+                match base.as_ref() {
+                    SemanticType::Builtin(BuiltinType::List) if args.len() == 1 => {
+                        // List[T] -> T
+                        Ok(args[0].clone())
+                    }
+                    SemanticType::Builtin(BuiltinType::Dict) if args.len() == 2 => {
+                        // Dict[K, V] -> V
+                        Ok(args[1].clone())
+                    }
+                    SemanticType::Builtin(BuiltinType::Set) => {
+                        // Set[T] doesn't support subscript
+                        Err("Set objects do not support item access".to_string())
+                    }
+                    _ => Ok(SemanticType::Unknown("generic_subscript".to_string())),
+                }
+            }
+            // Legacy array type
+            SemanticType::Array(element_type) => Ok((**element_type).clone()),
+            // String character access
+            SemanticType::Builtin(BuiltinType::Str) => Ok(SemanticType::Builtin(BuiltinType::Str)),
+            // Untyped containers - return object type
+            SemanticType::Builtin(BuiltinType::List | BuiltinType::Dict) => {
+                Ok(SemanticType::Builtin(BuiltinType::Object))
+            }
+            _ => Err(format!(
+                "Cannot subscript type: {}",
+                value_type.display_name()
+            )),
         }
+    }
+
+    /// Analyze a list literal
+    fn analyze_list_literal(
+        &mut self,
+        list: &crate::ast::node::List,
+    ) -> Result<SemanticType, String> {
+        if list.elements.is_empty() {
+            // Empty list - return generic List with unknown element type
+            return Ok(SemanticType::Generic {
+                base: Box::new(SemanticType::Builtin(BuiltinType::List)),
+                args: vec![SemanticType::Builtin(BuiltinType::Object)],
+            });
+        }
+
+        // Analyze all elements and infer common type
+        let mut element_types = Vec::new();
+        for element in &list.elements {
+            let element_type = self.analyze_expression(element)?;
+            element_types.push(element_type);
+        }
+
+        // Find common type among all elements
+        let common_type = self.find_common_type(&element_types)?;
+
+        Ok(SemanticType::Generic {
+            base: Box::new(SemanticType::Builtin(BuiltinType::List)),
+            args: vec![common_type],
+        })
+    }
+
+    /// Analyze a dictionary literal
+    fn analyze_dict_literal(
+        &mut self,
+        dict: &crate::ast::node::Dict,
+    ) -> Result<SemanticType, String> {
+        if dict.keys.is_empty() {
+            // Empty dict - return generic Dict with unknown key/value types
+            return Ok(SemanticType::Generic {
+                base: Box::new(SemanticType::Builtin(BuiltinType::Dict)),
+                args: vec![
+                    SemanticType::Builtin(BuiltinType::Object),
+                    SemanticType::Builtin(BuiltinType::Object),
+                ],
+            });
+        }
+
+        let mut key_types = Vec::new();
+        let mut value_types = Vec::new();
+
+        for (key, value) in dict.keys.iter().zip(dict.values.iter()) {
+            if let Some(key_node) = key {
+                let key_type = self.analyze_expression(key_node)?;
+                key_types.push(key_type);
+            } else {
+                // **dict expansion - skip for now
+                return Ok(SemanticType::Generic {
+                    base: Box::new(SemanticType::Builtin(BuiltinType::Dict)),
+                    args: vec![
+                        SemanticType::Builtin(BuiltinType::Object),
+                        SemanticType::Builtin(BuiltinType::Object),
+                    ],
+                });
+            }
+
+            let value_type = self.analyze_expression(value)?;
+            value_types.push(value_type);
+        }
+
+        // Find common types for keys and values
+        let common_key_type = self.find_common_type(&key_types)?;
+        let common_value_type = self.find_common_type(&value_types)?;
+
+        Ok(SemanticType::Generic {
+            base: Box::new(SemanticType::Builtin(BuiltinType::Dict)),
+            args: vec![common_key_type, common_value_type],
+        })
+    }
+
+    /// Analyze a set literal
+    fn analyze_set_literal(&mut self, set: &crate::ast::node::Set) -> Result<SemanticType, String> {
+        if set.elements.is_empty() {
+            // Empty set - return generic Set with unknown element type
+            return Ok(SemanticType::Generic {
+                base: Box::new(SemanticType::Builtin(BuiltinType::Set)),
+                args: vec![SemanticType::Builtin(BuiltinType::Object)],
+            });
+        }
+
+        // Analyze all elements and infer common type
+        let mut element_types = Vec::new();
+        for element in &set.elements {
+            let element_type = self.analyze_expression(element)?;
+            element_types.push(element_type);
+        }
+
+        // Find common type among all elements
+        let common_type = self.find_common_type(&element_types)?;
+
+        Ok(SemanticType::Generic {
+            base: Box::new(SemanticType::Builtin(BuiltinType::Set)),
+            args: vec![common_type],
+        })
+    }
+
+    /// Find a common type among a collection of types
+    fn find_common_type(&self, types: &[SemanticType]) -> Result<SemanticType, String> {
+        if types.is_empty() {
+            return Ok(SemanticType::Builtin(BuiltinType::Object));
+        }
+
+        if types.len() == 1 {
+            return Ok(types[0].clone());
+        }
+
+        // Check if all types are identical
+        let first_type = &types[0];
+        if types.iter().all(|t| t == first_type) {
+            return Ok(first_type.clone());
+        }
+
+        // Check for compatible numeric types
+        let all_numeric = types.iter().all(|t| {
+            matches!(
+                t,
+                SemanticType::Builtin(BuiltinType::Int | BuiltinType::Float)
+            )
+        });
+
+        if all_numeric {
+            // If there's any float, the common type is float
+            if types
+                .iter()
+                .any(|t| matches!(t, SemanticType::Builtin(BuiltinType::Float)))
+            {
+                return Ok(SemanticType::Builtin(BuiltinType::Float));
+            }
+            // Otherwise, all are integers
+            return Ok(SemanticType::Builtin(BuiltinType::Int));
+        }
+
+        // For now, fall back to object type for mixed collections
+        // This could be enhanced to create union types in the future
+        Ok(SemanticType::Builtin(BuiltinType::Object))
     }
 
     /// Check if two types are compatible for operations

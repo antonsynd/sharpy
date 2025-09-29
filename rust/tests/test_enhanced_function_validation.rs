@@ -1,5 +1,5 @@
-use sharpy_compiler_toolchain::{Parser, SemanticAnalyzer, SharpyLexer};
 use sharpy_compiler_toolchain::semantic::{BuiltinType, SemanticType};
+use sharpy_compiler_toolchain::{Parser, SemanticAnalyzer, SharpyLexer};
 
 #[test]
 fn test_builtin_function_argument_validation() {
@@ -11,7 +11,11 @@ fn test_builtin_function_argument_validation() {
     let ast = parser.parse().expect("Should parse");
     let mut analyzer = SemanticAnalyzer::new();
     let result = analyzer.analyze_module(&ast, Some("test_module".to_string()));
-    assert!(result.is_ok(), "len() with 1 argument should succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "len() with 1 argument should succeed: {:?}",
+        result
+    );
 
     // Test len() with incorrect argument count (too many)
     let source = "result = len([1, 2], [3, 4])";
@@ -23,7 +27,11 @@ fn test_builtin_function_argument_validation() {
     let result = analyzer.analyze_module(&ast, Some("test_module".to_string()));
     assert!(result.is_err());
     let errors = result.unwrap_err();
-    assert!(errors.iter().any(|err| err.contains("len() takes exactly 1 argument, got 2")));
+    assert!(
+        errors
+            .iter()
+            .any(|err| err.contains("len() takes exactly 1 argument, got 2"))
+    );
 
     // Test str() with correct argument count
     let source = "result = str(42)";
@@ -33,7 +41,11 @@ fn test_builtin_function_argument_validation() {
     let ast = parser.parse().expect("Should parse");
     let mut analyzer = SemanticAnalyzer::new();
     let result = analyzer.analyze_module(&ast, Some("test_module".to_string()));
-    assert!(result.is_ok(), "str() with 1 argument should succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "str() with 1 argument should succeed: {:?}",
+        result
+    );
 
     // Test str() with incorrect argument count (too few)
     let source = "result = str()";
@@ -45,7 +57,11 @@ fn test_builtin_function_argument_validation() {
     let result = analyzer.analyze_module(&ast, Some("test_module".to_string()));
     assert!(result.is_err());
     let errors = result.unwrap_err();
-    assert!(errors.iter().any(|err| err.contains("str() takes exactly 1 argument, got 0")));
+    assert!(
+        errors
+            .iter()
+            .any(|err| err.contains("str() takes exactly 1 argument, got 0"))
+    );
 }
 
 #[test]
@@ -64,7 +80,11 @@ result = add_numbers(5, 3)
     let ast = parser.parse().expect("Should parse");
     let mut analyzer = SemanticAnalyzer::new();
     let result = analyzer.analyze_module(&ast, Some("test_module".to_string()));
-    assert!(result.is_ok(), "Function call with correct arguments should succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Function call with correct arguments should succeed: {:?}",
+        result
+    );
 
     // Test calling the function with wrong argument count
     let source = r#"
@@ -82,7 +102,11 @@ result = add_numbers(5)
     let result = analyzer.analyze_module(&ast, Some("test_module".to_string()));
     assert!(result.is_err());
     let errors = result.unwrap_err();
-    assert!(errors.iter().any(|err| err.contains("Function 'add_numbers' expects 2 arguments, got 1")));
+    assert!(
+        errors
+            .iter()
+            .any(|err| err.contains("Function 'add_numbers' expects 2 arguments, got 1"))
+    );
 }
 
 #[test]
@@ -101,7 +125,11 @@ result = process_number(5)
     let ast = parser.parse().expect("Should parse");
     let mut analyzer = SemanticAnalyzer::new();
     let result = analyzer.analyze_module(&ast, Some("test_module".to_string()));
-    assert!(result.is_ok(), "Function call with int->float conversion should succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Function call with int->float conversion should succeed: {:?}",
+        result
+    );
 
     // Test calling function with incompatible type
     let source = r#"
@@ -119,11 +147,11 @@ result = process_number("hello")
     let result = analyzer.analyze_module(&ast, Some("test_module".to_string()));
     assert!(result.is_err());
     let errors = result.unwrap_err();
-    assert!(errors.iter().any(|err|
-        err.contains("Function 'process_number' argument 1 expects type") &&
-        err.contains("Int") &&
-        err.contains("Str")
-    ));
+    assert!(errors.iter().any(|err| {
+        err.contains("Function 'process_number' argument 1 expects type")
+            && err.contains("Int")
+            && err.contains("Str")
+    }));
 }
 
 #[test]
@@ -146,17 +174,27 @@ age = get_age()
     let ast = parser.parse().expect("Should parse");
     let mut analyzer = SemanticAnalyzer::new();
     let result = analyzer.analyze_module(&ast, Some("test_module".to_string()));
-    assert!(result.is_ok(), "Function calls with return types should succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Function calls with return types should succeed: {:?}",
+        result
+    );
 
     // Verify the types are correctly inferred
     let symbol_table = analyzer.get_symbol_table();
 
     if let Some(name_symbol) = symbol_table.lookup_symbol("name") {
-        assert_eq!(name_symbol.symbol_type, SemanticType::Builtin(BuiltinType::Str));
+        assert_eq!(
+            name_symbol.symbol_type,
+            SemanticType::Builtin(BuiltinType::Str)
+        );
     }
 
     if let Some(age_symbol) = symbol_table.lookup_symbol("age") {
-        assert_eq!(age_symbol.symbol_type, SemanticType::Builtin(BuiltinType::Int));
+        assert_eq!(
+            age_symbol.symbol_type,
+            SemanticType::Builtin(BuiltinType::Int)
+        );
     }
 }
 
@@ -173,7 +211,11 @@ fn test_undefined_function_error() {
 
     assert!(result.is_err());
     let errors = result.unwrap_err();
-    assert!(errors.iter().any(|err| err.contains("Undefined function: unknown_function")));
+    assert!(
+        errors
+            .iter()
+            .any(|err| err.contains("Undefined function: unknown_function"))
+    );
 }
 
 #[test]
@@ -192,5 +234,9 @@ result = x(10)
 
     assert!(result.is_err());
     let errors = result.unwrap_err();
-    assert!(errors.iter().any(|err| err.contains("'x' is not a function")));
+    assert!(
+        errors
+            .iter()
+            .any(|err| err.contains("'x' is not a function"))
+    );
 }

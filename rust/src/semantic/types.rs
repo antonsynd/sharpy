@@ -346,7 +346,25 @@ pub fn create_builtin_types() -> HashMap<String, SemanticType> {
     let mut types = HashMap::new();
 
     for builtin in BuiltinType::all() {
-        types.insert(builtin.as_str().to_string(), SemanticType::builtin(builtin));
+        let name = builtin.as_str();
+        types.insert(name.to_string(), SemanticType::builtin(builtin.clone()));
+
+        // Also add capitalized versions for common generic types
+        match builtin {
+            BuiltinType::List => {
+                types.insert("List".to_string(), SemanticType::builtin(builtin));
+            }
+            BuiltinType::Dict => {
+                types.insert("Dict".to_string(), SemanticType::builtin(builtin));
+            }
+            BuiltinType::Set => {
+                types.insert("Set".to_string(), SemanticType::builtin(builtin));
+            }
+            BuiltinType::Tuple => {
+                types.insert("Tuple".to_string(), SemanticType::builtin(builtin));
+            }
+            _ => {}
+        }
     }
 
     types
