@@ -264,7 +264,7 @@ impl SemanticAnalyzer {
             }),
         );
 
-        // Set class metadata
+        // Set initial class metadata (will be populated after analyzing body)
         let metadata = SymbolMetadata::Class {
             base_class: None,      // TODO: Resolve base class
             protocols: Vec::new(), // TODO: Resolve protocol implementations
@@ -276,16 +276,80 @@ impl SemanticAnalyzer {
         symbol = symbol.with_metadata(metadata);
 
         // Add class symbol
-        let _class_symbol_id = self.symbol_table.add_symbol(symbol)?;
+        let class_symbol_id = self.symbol_table.add_symbol(symbol)?;
 
         // Enter class scope
         let _class_scope_id = self
             .symbol_table
             .enter_scope(ScopeKind::Class, Some(class.name.clone()));
 
-        // Analyze class body
+        // Track members found during analysis by checking what gets added
+        let mut methods = Vec::new();
+        let mut properties = Vec::new();
+        let mut members = Vec::new();
+
+        // Analyze class body and collect member information
         for statement in &class.body {
-            self.analyze_statement(statement)?;
+            match statement {
+                Node::FunctionDef(func_def) => {
+                    // Analyze the method
+                    self.analyze_statement(statement)?;
+
+                    // Find the method symbol by name in current (class) scope
+                    if let Some(method_symbol_id) = self
+                        .symbol_table
+                        .current_scope()
+                        .and_then(|scope| scope.get_symbol(&func_def.name))
+                    {
+                        methods.push(method_symbol_id.clone());
+                    }
+                }
+                Node::PropertyDef(prop_def) => {
+                    // Analyze the property
+                    self.analyze_statement(statement)?;
+
+                    // Find the property symbol by name in current (class) scope
+                    if let Some(property_symbol_id) = self
+                        .symbol_table
+                        .current_scope()
+                        .and_then(|scope| scope.get_symbol(&prop_def.name))
+                    {
+                        properties.push(property_symbol_id.clone());
+                    }
+                }
+                Node::Assign(assign) => {
+                    // Class-level variable assignment
+                    self.analyze_statement(statement)?;
+
+                    // For simple assignments, try to get the target name
+                    if let Node::Name(name_node) = &*assign.target
+                        && let Some(member_symbol_id) = self
+                            .symbol_table
+                            .current_scope()
+                            .and_then(|scope| scope.get_symbol(&name_node.id))
+                    {
+                        members.push(member_symbol_id.clone());
+                    }
+                }
+                _ => {
+                    // Analyze other statements
+                    self.analyze_statement(statement)?;
+                }
+            }
+        }
+
+        // Update class symbol with collected member information
+        if let Some(class_symbol) = self.symbol_table.symbols.get_mut(&class_symbol_id)
+            && let SymbolMetadata::Class {
+                methods: class_methods,
+                properties: class_properties,
+                members: class_members,
+                ..
+            } = &mut class_symbol.metadata
+        {
+            *class_methods = methods;
+            *class_properties = properties;
+            *class_members = members;
         }
 
         // Exit class scope
@@ -850,7 +914,7 @@ impl SemanticAnalyzer {
                     }
                 }
                 _ => {
-                    // Look up user-defined function
+                    // Look up user-defined function or class constructor
                     if let Some(symbol) = self.symbol_table.lookup_symbol(&name.id) {
                         match &symbol.symbol_type {
                             SemanticType::Function {
@@ -889,6 +953,13 @@ impl SemanticAnalyzer {
                                     Ok(SemanticType::Builtin(BuiltinType::None))
                                 }
                             }
+                            SemanticType::Class {
+                                name: class_name, ..
+                            } => {
+                                // Handle constructor call
+                                let class_name_owned = class_name.clone();
+                                self.analyze_constructor_call(&class_name_owned, &arg_types)
+                            }
                             _ => Err(format!("'{}' is not a function", name.id)),
                         }
                     } else {
@@ -902,6 +973,81 @@ impl SemanticAnalyzer {
         } else {
             // Complex function expressions not yet supported
             Ok(SemanticType::Unknown("complex_function".to_string()))
+        }
+    }
+
+    /// Analyze a constructor call (ClassName(args))
+    fn analyze_constructor_call(
+        &mut self,
+        class_name: &str,
+        arg_types: &[SemanticType],
+    ) -> Result<SemanticType, String> {
+        // Look for the class symbol first to get its type
+        if let Some(class_symbol) = self.symbol_table.lookup_symbol(class_name) {
+            let class_type = class_symbol.symbol_type.clone();
+
+            // Look for __init__ method by searching through class metadata
+            if let SymbolMetadata::Class { methods, .. } = &class_symbol.metadata {
+                // Look for __init__ method in the class methods
+                let mut init_method = None;
+                for method_id in methods {
+                    if let Some(method_symbol) = self.symbol_table.symbols.get(method_id)
+                        && method_symbol.name == "__init__"
+                    {
+                        init_method = Some(method_symbol);
+                        break;
+                    }
+                }
+
+                if let Some(init_symbol) = init_method {
+                    if let SemanticType::Function { params, .. } = &init_symbol.symbol_type {
+                        // For __init__, params include self, so we skip the first parameter
+                        let expected_params = if params.is_empty() {
+                            0
+                        } else {
+                            params.len() - 1
+                        };
+
+                        if arg_types.len() != expected_params {
+                            return Err(format!(
+                                "Constructor for '{}' expects {} arguments, got {}",
+                                class_name,
+                                expected_params,
+                                arg_types.len()
+                            ));
+                        }
+
+                        // Validate argument types (skip self parameter)
+                        for (i, (expected, actual)) in
+                            params.iter().skip(1).zip(arg_types.iter()).enumerate()
+                        {
+                            if !self.types_compatible(actual, expected) {
+                                return Err(format!(
+                                    "Constructor for '{}' argument {} expects type {:?}, got {:?}",
+                                    class_name,
+                                    i + 1,
+                                    expected,
+                                    actual
+                                ));
+                            }
+                        }
+                    }
+                } else {
+                    // No explicit __init__ method - check if arguments are provided
+                    if !arg_types.is_empty() {
+                        return Err(format!(
+                            "Constructor for '{}' expects 0 arguments, got {}",
+                            class_name,
+                            arg_types.len()
+                        ));
+                    }
+                }
+            }
+
+            // Return instance of the class
+            Ok(class_type)
+        } else {
+            Err(format!("Unknown class: {class_name}"))
         }
     }
 
@@ -1135,6 +1281,13 @@ impl SemanticAnalyzer {
         let obj_type = self.analyze_expression(&attribute.value)?;
         let method_name = &attribute.attr;
 
+        // Determine if this is a static method call by checking the AST node type
+        // If the attribute.value is a Name node referring to a class symbol, it's a static call
+        // If it refers to a variable symbol, it's an instance call
+        let is_static_call = matches!(attribute.value.as_ref(), Node::Name(name)
+            if self.symbol_table.lookup_symbol(&name.id)
+                .is_some_and(|s| s.kind == SymbolKind::Class));
+
         // Get the method function type
         let method_type = self.resolve_attribute_type(&obj_type, method_name)?;
 
@@ -1143,19 +1296,28 @@ impl SemanticAnalyzer {
                 params,
                 return_type,
             } => {
-                // For method calls, we need to account for the implicit 'self' parameter
-                // The declared parameters don't include 'self', so we check against params directly
-                if arg_types.len() != params.len() {
+                // For static calls, use all parameters; for instance calls, skip 'self'
+                let params_to_check: Vec<&SemanticType> = if is_static_call {
+                    // Static call: check against all parameters
+                    params.iter().collect()
+                } else {
+                    // Instance call: skip the first 'self' parameter if it exists
+                    params.iter().skip(1).collect()
+                };
+
+                if arg_types.len() != params_to_check.len() {
                     return Err(format!(
                         "Method '{}' expects {} arguments, got {}",
                         method_name,
-                        params.len(),
+                        params_to_check.len(),
                         arg_types.len()
                     ));
                 }
 
                 // Validate argument types
-                for (i, (expected, actual)) in params.iter().zip(arg_types.iter()).enumerate() {
+                for (i, (expected, actual)) in
+                    params_to_check.iter().zip(arg_types.iter()).enumerate()
+                {
                     if !self.types_compatible(actual, expected) {
                         return Err(format!(
                             "Method '{}' argument {} expects type {:?}, got {:?}",
@@ -1199,9 +1361,45 @@ impl SemanticAnalyzer {
             SemanticType::Class { name, .. } | SemanticType::Struct { name, .. } => {
                 // Look up the class/struct definition and find the attribute
                 if let Some(class_symbol) = self.symbol_table.lookup_symbol(name) {
-                    // Look for the attribute in the class scope
+                    // Check class metadata for methods first
+                    if let SymbolMetadata::Class {
+                        methods,
+                        properties,
+                        members,
+                        ..
+                    } = &class_symbol.metadata
+                    {
+                        // Search in methods first
+                        for method_id in methods {
+                            if let Some(method_symbol) = self.symbol_table.symbols.get(method_id)
+                                && method_symbol.name == attr_name
+                            {
+                                return Ok(method_symbol.symbol_type.clone());
+                            }
+                        }
+
+                        // Search in properties
+                        for property_id in properties {
+                            if let Some(property_symbol) =
+                                self.symbol_table.symbols.get(property_id)
+                                && property_symbol.name == attr_name
+                            {
+                                return Ok(property_symbol.symbol_type.clone());
+                            }
+                        }
+
+                        // Search in general members
+                        for member_id in members {
+                            if let Some(member_symbol) = self.symbol_table.symbols.get(member_id)
+                                && member_symbol.name == attr_name
+                            {
+                                return Ok(member_symbol.symbol_type.clone());
+                            }
+                        }
+                    }
+
+                    // Fallback: try the old scope-based lookup
                     let scope_id = &class_symbol.scope_id;
-                    // Search for the attribute in the class's scope
                     if let Some(attr_symbol) = self
                         .symbol_table
                         .lookup_symbol_in_scope(attr_name, scope_id)
