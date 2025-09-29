@@ -199,80 +199,24 @@ fn test_private_name() {
 
 #[test]
 fn test_internal_name() {
+    // Test that the old $ prefix syntax is no longer supported
     let code = "$xyz";
     let mut lexer = SharpyLexer::new(code);
 
     let result = lexer.tokenize_all();
-    assert!(result.is_ok());
-    assert_eq!(result.as_ref().unwrap().len(), 2);
-    assert_eq!(
-        result.unwrap(),
-        vec![
-            Token {
-                token_type: TokenType::Name(NameType {
-                    name: "xyz".to_string(),
-                    is_literal: false,
-                    access_modifier: AccessModifier::Internal
-                }),
-                location: SourceLocation {
-                    line: 1,
-                    column: 1,
-                    start: 0,
-                    end: 4
-                },
-                channel: Channel::Default
-            },
-            Token {
-                token_type: TokenType::Eof,
-                location: SourceLocation {
-                    line: 1,
-                    column: 5,
-                    start: 4,
-                    end: 5
-                },
-                channel: Channel::Default
-            }
-        ]
-    );
+    // Should fail because $ is not a valid identifier character
+    assert!(result.is_err());
 }
 
 #[test]
 fn test_file_name() {
+    // Test that the old $$ prefix syntax is no longer supported
     let code = "$$xyz";
     let mut lexer = SharpyLexer::new(code);
 
     let result = lexer.tokenize_all();
-    assert!(result.is_ok());
-    assert_eq!(result.as_ref().unwrap().len(), 2);
-    assert_eq!(
-        result.unwrap(),
-        vec![
-            Token {
-                token_type: TokenType::Name(NameType {
-                    name: "xyz".to_string(),
-                    is_literal: false,
-                    access_modifier: AccessModifier::File
-                }),
-                location: SourceLocation {
-                    line: 1,
-                    column: 1,
-                    start: 0,
-                    end: 5
-                },
-                channel: Channel::Default
-            },
-            Token {
-                token_type: TokenType::Eof,
-                location: SourceLocation {
-                    line: 1,
-                    column: 6,
-                    start: 5,
-                    end: 6
-                },
-                channel: Channel::Default
-            }
-        ]
-    );
+    // Should fail because $ is not a valid identifier character
+    assert!(result.is_err());
 }
 
 #[test]

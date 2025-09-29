@@ -1296,13 +1296,24 @@ impl SemanticAnalyzer {
                 params,
                 return_type,
             } => {
-                // For static calls, use all parameters; for instance calls, skip 'self'
+                // Determine if we need to skip 'self' parameter
+                // For builtin types, the method definitions don't include 'self'
+                // For user-defined types, they do include 'self' for instance methods
                 let params_to_check: Vec<&SemanticType> = if is_static_call {
                     // Static call: check against all parameters
                     params.iter().collect()
                 } else {
-                    // Instance call: skip the first 'self' parameter if it exists
-                    params.iter().skip(1).collect()
+                    // Instance call: check if this is a builtin method or user-defined method
+                    match &obj_type {
+                        SemanticType::Builtin(_) | SemanticType::Generic { .. } => {
+                            // Builtin methods don't include 'self' in their parameter list
+                            params.iter().collect()
+                        }
+                        _ => {
+                            // User-defined methods include 'self', so skip the first parameter
+                            params.iter().skip(1).collect()
+                        }
+                    }
                 };
 
                 if arg_types.len() != params_to_check.len() {

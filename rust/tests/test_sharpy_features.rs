@@ -2,12 +2,13 @@ use sharpy_compiler_toolchain::{Parser, SharpyLexer, TokenType};
 
 #[test]
 fn test_sharpy_access_modifiers() {
+    // Test cases: (input, expected access modifier string)
     let test_cases = vec![
         ("public_var", "Public"),
         ("_protected_var", "Protected"),
         ("__private_var", "Private"),
-        ("$internal_var", "Internal"),
-        ("$$file_var", "File"),
+        // Note: Internal and File access modifiers are now decorator-based (@internal, @file)
+        // so they're not tested via underscore prefixes anymore
     ];
 
     for (input, expected_modifier) in test_cases {

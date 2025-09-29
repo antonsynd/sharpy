@@ -195,11 +195,12 @@ def __secret_method():
     }
 }
 
-/// Test internal function (single dollar prefix)
+/// Test internal function (decorator-based)
 #[test]
 fn test_internal_function() {
     let input = r#"
-def $project_helper():
+@internal
+def project_helper():
     pass
 "#;
 
@@ -220,11 +221,12 @@ def $project_helper():
     }
 }
 
-/// Test file-scoped function (double dollar prefix)
+/// Test file-scoped function (decorator-based)
 #[test]
 fn test_file_scoped_function() {
     let input = r#"
-def $$file_local():
+@file
+def file_local():
     pass
 "#;
 

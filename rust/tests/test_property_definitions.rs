@@ -195,8 +195,8 @@ fn test_private_property() {
 }
 
 #[test]
-fn test_internal_property() {
-    let input = "property $shared_value: int = 0";
+fn test_protected_property() {
+    let input = "property _shared_value: int = 0";
     let mut lexer = SharpyLexer::new(input);
     let tokens = lexer.tokenize_all().unwrap();
     let mut parser = Parser::new(tokens);
@@ -206,7 +206,7 @@ fn test_internal_property() {
 
     if let Node::PropertyDef(prop) = &statements[0] {
         assert_eq!(prop.name, "shared_value");
-        assert_eq!(prop.access_modifier, Some("internal".to_string()));
+        assert_eq!(prop.access_modifier, Some("protected".to_string()));
     } else {
         panic!("Expected PropertyDef node, got {:?}", statements[0]);
     }
