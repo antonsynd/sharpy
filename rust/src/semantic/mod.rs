@@ -50,6 +50,27 @@ pub enum SemanticError {
     /// No current module set
     NoCurrentModule,
 
+    /// Function argument count mismatch
+    ArgumentCountMismatch {
+        function_name: String,
+        expected: usize,
+        found: usize,
+    },
+
+    /// Function argument type mismatch
+    ArgumentTypeMismatch {
+        function_name: String,
+        argument_index: usize,
+        expected: String,
+        found: String,
+    },
+
+    /// Variable called as function
+    VariableCalledAsFunction {
+        variable_name: String,
+        variable_type: String,
+    },
+
     /// Module cache error
     ModuleCacheError(String),
 
@@ -132,6 +153,44 @@ impl std::fmt::Display for SemanticError {
                 attribute,
             } => {
                 write!(f, "Type '{object_type}' has no attribute '{attribute}'")
+            }
+            Self::ArgumentCountMismatch {
+                function_name,
+                expected,
+                found,
+            } => {
+                write!(
+                    f,
+                    "{}() takes exactly {} argument{}, got {}",
+                    function_name,
+                    expected,
+                    if *expected == 1 { "" } else { "s" },
+                    found
+                )
+            }
+            Self::ArgumentTypeMismatch {
+                function_name,
+                argument_index,
+                expected,
+                found,
+            } => {
+                write!(
+                    f,
+                    "{}(): argument {} expected '{}', got '{}'",
+                    function_name,
+                    argument_index + 1,
+                    expected,
+                    found
+                )
+            }
+            Self::VariableCalledAsFunction {
+                variable_name,
+                variable_type,
+            } => {
+                write!(
+                    f,
+                    "'{variable_name}' is not callable (it is of type '{variable_type}')"
+                )
             }
         }
     }

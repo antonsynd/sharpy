@@ -369,3 +369,272 @@ pub fn create_builtin_types() -> HashMap<String, SemanticType> {
 
     types
 }
+
+/// Create builtin function definitions
+#[must_use]
+pub fn create_builtin_functions() -> Vec<(String, SemanticType)> {
+    vec![
+        // Collection functions
+        (
+            "len".to_string(),
+            SemanticType::Function {
+                params: vec![SemanticType::Unknown("any".to_string())], // exactly 1 argument
+                return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Int))),
+            },
+        ),
+        // Conversion functions
+        (
+            "str".to_string(),
+            SemanticType::Function {
+                params: vec![SemanticType::Unknown("any".to_string())], // exactly 1 argument
+                return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Str))),
+            },
+        ),
+        (
+            "int".to_string(),
+            SemanticType::Function {
+                params: vec![SemanticType::Unknown("any".to_string())], // exactly 1 argument
+                return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Int))),
+            },
+        ),
+        (
+            "float".to_string(),
+            SemanticType::Function {
+                params: vec![SemanticType::Unknown("any".to_string())], // exactly 1 argument
+                return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Float))),
+            },
+        ),
+        (
+            "bool".to_string(),
+            SemanticType::Function {
+                params: vec![SemanticType::Unknown("any".to_string())], // exactly 1 argument
+                return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Bool))),
+            },
+        ),
+        // IO functions
+        (
+            "print".to_string(),
+            SemanticType::Function {
+                params: vec![SemanticType::Unknown("any".to_string())], // at least 1 argument
+                return_type: None,                                      // void return
+            },
+        ),
+        // Math functions
+        (
+            "abs".to_string(),
+            SemanticType::Function {
+                params: vec![SemanticType::Union(vec![
+                    SemanticType::Builtin(BuiltinType::Int),
+                    SemanticType::Builtin(BuiltinType::Float),
+                ])], // exactly 1 argument
+                return_type: Some(Box::new(SemanticType::Union(vec![
+                    SemanticType::Builtin(BuiltinType::Int),
+                    SemanticType::Builtin(BuiltinType::Float),
+                ]))),
+            },
+        ),
+        (
+            "max".to_string(),
+            SemanticType::Function {
+                params: vec![SemanticType::Unknown("any".to_string())], // at least 1 argument
+                return_type: Some(Box::new(SemanticType::Unknown("any".to_string()))),
+            },
+        ),
+        (
+            "min".to_string(),
+            SemanticType::Function {
+                params: vec![SemanticType::Unknown("any".to_string())], // at least 1 argument
+                return_type: Some(Box::new(SemanticType::Unknown("any".to_string()))),
+            },
+        ),
+        (
+            "sum".to_string(),
+            SemanticType::Function {
+                params: vec![SemanticType::Unknown("any".to_string())], // exactly 1 argument (iterable)
+                return_type: Some(Box::new(SemanticType::Union(vec![
+                    SemanticType::Builtin(BuiltinType::Int),
+                    SemanticType::Builtin(BuiltinType::Float),
+                ]))),
+            },
+        ),
+        // Iterator functions
+        (
+            "iter".to_string(),
+            SemanticType::Function {
+                params: vec![SemanticType::Unknown("any".to_string())], // exactly 1 argument
+                return_type: Some(Box::new(SemanticType::Unknown("iterator".to_string()))),
+            },
+        ),
+        (
+            "next".to_string(),
+            SemanticType::Function {
+                params: vec![SemanticType::Unknown("iterator".to_string())], // exactly 1 argument
+                return_type: Some(Box::new(SemanticType::Unknown("any".to_string()))),
+            },
+        ),
+        // Other utility functions
+        (
+            "id".to_string(),
+            SemanticType::Function {
+                params: vec![SemanticType::Unknown("any".to_string())], // exactly 1 argument
+                return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Int))),
+            },
+        ),
+        (
+            "repr".to_string(),
+            SemanticType::Function {
+                params: vec![SemanticType::Unknown("any".to_string())], // exactly 1 argument
+                return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Str))),
+            },
+        ),
+        (
+            "round".to_string(),
+            SemanticType::Function {
+                params: vec![SemanticType::Builtin(BuiltinType::Float)], // exactly 1 argument
+                return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Int))),
+            },
+        ),
+        (
+            "sorted".to_string(),
+            SemanticType::Function {
+                params: vec![SemanticType::Unknown("any".to_string())], // exactly 1 argument
+                return_type: Some(Box::new(SemanticType::Unknown("list".to_string()))),
+            },
+        ),
+        (
+            "reversed".to_string(),
+            SemanticType::Function {
+                params: vec![SemanticType::Unknown("any".to_string())], // exactly 1 argument
+                return_type: Some(Box::new(SemanticType::Unknown("iterator".to_string()))),
+            },
+        ),
+        // Numeric functions
+        (
+            "pow".to_string(),
+            SemanticType::Function {
+                params: vec![
+                    SemanticType::Union(vec![
+                        SemanticType::Builtin(BuiltinType::Int),
+                        SemanticType::Builtin(BuiltinType::Float),
+                    ]),
+                    SemanticType::Union(vec![
+                        SemanticType::Builtin(BuiltinType::Int),
+                        SemanticType::Builtin(BuiltinType::Float),
+                    ]),
+                ], // exactly 2 arguments
+                return_type: Some(Box::new(SemanticType::Union(vec![
+                    SemanticType::Builtin(BuiltinType::Int),
+                    SemanticType::Builtin(BuiltinType::Float),
+                ]))),
+            },
+        ),
+        (
+            "oct".to_string(),
+            SemanticType::Function {
+                params: vec![SemanticType::Builtin(BuiltinType::Int)], // exactly 1 argument
+                return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Str))),
+            },
+        ),
+        (
+            "ord".to_string(),
+            SemanticType::Function {
+                params: vec![SemanticType::Builtin(BuiltinType::Str)], // exactly 1 argument
+                return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Int))),
+            },
+        ),
+    ]
+}
+
+/// Creates built-in method definitions for built-in types
+#[must_use] 
+pub fn create_builtin_methods()
+-> std::collections::HashMap<String, std::collections::HashMap<String, SemanticType>> {
+    let mut methods = std::collections::HashMap::new();
+
+    // String methods
+    let mut str_methods = std::collections::HashMap::new();
+    str_methods.insert(
+        "upper".to_string(),
+        SemanticType::Function {
+            params: vec![], // no arguments (self is implicit)
+            return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Str))),
+        },
+    );
+    str_methods.insert(
+        "lower".to_string(),
+        SemanticType::Function {
+            params: vec![], // no arguments
+            return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Str))),
+        },
+    );
+    str_methods.insert(
+        "split".to_string(),
+        SemanticType::Function {
+            params: vec![], // no arguments (separator is optional)
+            return_type: Some(Box::new(SemanticType::Generic {
+                base: Box::new(SemanticType::Builtin(BuiltinType::List)),
+                args: vec![SemanticType::Builtin(BuiltinType::Str)],
+            })),
+        },
+    );
+    str_methods.insert(
+        "strip".to_string(),
+        SemanticType::Function {
+            params: vec![], // no arguments
+            return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Str))),
+        },
+    );
+    methods.insert("str".to_string(), str_methods);
+
+    // List methods
+    let mut list_methods = std::collections::HashMap::new();
+    list_methods.insert(
+        "append".to_string(),
+        SemanticType::Function {
+            params: vec![SemanticType::Unknown("item".to_string())], // 1 argument (item to append)
+            return_type: None,                                       // void return
+        },
+    );
+    list_methods.insert(
+        "pop".to_string(),
+        SemanticType::Function {
+            params: vec![], // no arguments (index is optional)
+            return_type: Some(Box::new(SemanticType::Unknown("item".to_string()))), // returns item type
+        },
+    );
+    list_methods.insert(
+        "extend".to_string(),
+        SemanticType::Function {
+            params: vec![SemanticType::Unknown("iterable".to_string())], // 1 argument
+            return_type: None,                                           // void return
+        },
+    );
+    methods.insert("List".to_string(), list_methods);
+
+    // Dict methods
+    let mut dict_methods = std::collections::HashMap::new();
+    dict_methods.insert(
+        "keys".to_string(),
+        SemanticType::Function {
+            params: vec![], // no arguments
+            return_type: Some(Box::new(SemanticType::Unknown("dict_keys".to_string()))),
+        },
+    );
+    dict_methods.insert(
+        "values".to_string(),
+        SemanticType::Function {
+            params: vec![], // no arguments
+            return_type: Some(Box::new(SemanticType::Unknown("dict_values".to_string()))),
+        },
+    );
+    dict_methods.insert(
+        "items".to_string(),
+        SemanticType::Function {
+            params: vec![], // no arguments
+            return_type: Some(Box::new(SemanticType::Unknown("dict_items".to_string()))),
+        },
+    );
+    methods.insert("Dict".to_string(), dict_methods);
+
+    methods
+}

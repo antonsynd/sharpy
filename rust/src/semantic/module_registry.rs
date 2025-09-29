@@ -66,6 +66,9 @@ impl ModuleRegistry {
 
         let mut symbols = SymbolTable::new();
 
+        // Add builtin functions to the symbol table
+        symbols.add_builtin_functions();
+
         // Create and enter the module-level scope
         symbols.enter_scope(ScopeKind::Module, Some(name.clone()));
 

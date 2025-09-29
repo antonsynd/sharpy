@@ -106,7 +106,10 @@ result2 = text.upper("invalid_arg")
         "Analysis should fail for method with wrong argument count"
     );
     let error_msg = format!("{:?}", result.err().unwrap());
-    assert!(error_msg.contains("expects") && error_msg.contains("arguments"));
+    assert!(
+        error_msg.contains("takes exactly") && error_msg.contains("arguments"),
+        "Error message should contain argument count information"
+    );
 }
 
 #[test]

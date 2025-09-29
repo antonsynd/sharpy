@@ -1,0 +1,2 @@
+text: str = "hello"
+result2 = text.upper("invalid_arg")

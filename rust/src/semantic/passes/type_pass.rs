@@ -4,6 +4,8 @@ use super::{AnalysisPass, PassResult};
 use crate::ast::node::{BinaryOp, Node, UnaryOp};
 use crate::ast::types::ResolvedType;
 use crate::semantic::module_registry::ModuleRegistry;
+use crate::semantic::symbol_table::SymbolKind;
+use crate::semantic::types::create_builtin_methods;
 use crate::semantic::{BuiltinType, SemanticError, SemanticType};
 
 /// Third pass: type checking and semantic analysis
@@ -222,7 +224,12 @@ impl TypePass {
 
             Node::UnaryOp(unop) => self.infer_unary_op_type(&unop.op, &unop.operand, registry),
 
-            Node::Call(call) => self.infer_function_call_type(call, registry),
+            Node::Call(call) => {
+                // First validate the function call arguments
+                self.analyze_function_call(call, registry)?;
+                // Then infer the return type
+                self.infer_function_call_type(call, registry)
+            }
 
             Node::Attribute(attr) => {
                 self.infer_attribute_access_type(&attr.value, &attr.attr, registry)
@@ -371,8 +378,10 @@ impl TypePass {
 
         match op {
             BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mult | BinaryOp::Div => {
-                if self.types_compatible(&left_type, &right_type) {
-                    Ok(left_type)
+                let (compatible, result_type) =
+                    self.arithmetic_types_compatible(&left_type, &right_type);
+                if compatible {
+                    Ok(result_type)
                 } else {
                     Err(SemanticError::TypeMismatch {
                         expected: self.semantic_type_to_resolved_type(&left_type),
@@ -475,33 +484,83 @@ impl TypePass {
                 }
             }
             SemanticType::Builtin(builtin_type) => {
-                // Handle built-in type attributes (like str.length, list.append, etc.)
-                match (builtin_type, attr) {
-                    (BuiltinType::Str, "length") => Ok(SemanticType::Builtin(BuiltinType::Int)),
-                    (BuiltinType::Str, "upper") => Ok(SemanticType::Function {
-                        params: vec![],
-                        return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Str))),
-                    }),
-                    (BuiltinType::Str, "lower") => Ok(SemanticType::Function {
-                        params: vec![],
-                        return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Str))),
-                    }),
-                    (BuiltinType::Str, "split") => Ok(SemanticType::Function {
-                        params: vec![],
-                        return_type: Some(Box::new(SemanticType::Unknown("List[str]".to_string()))),
-                    }),
-                    (BuiltinType::List, "append") => Ok(SemanticType::Function {
-                        params: vec![SemanticType::Unknown("item".to_string())],
-                        return_type: None,
-                    }),
-                    (BuiltinType::List, "pop") => Ok(SemanticType::Function {
-                        params: vec![],
-                        return_type: Some(Box::new(SemanticType::Unknown("item".to_string()))),
-                    }),
-                    _ => Err(SemanticError::AttributeNotFound {
+                // Handle built-in type methods using our method definitions
+                let builtin_methods = create_builtin_methods();
+                let type_name = match builtin_type {
+                    BuiltinType::Str => "str",
+                    BuiltinType::List => "List",
+                    BuiltinType::Dict => "Dict",
+                    _ => {
+                        return Err(SemanticError::AttributeNotFound {
+                            object_type: format!("{builtin_type:?}"),
+                            attribute: attr.to_string(),
+                        });
+                    }
+                };
+
+                if let Some(methods) = builtin_methods.get(type_name) {
+                    if let Some(method_type) = methods.get(attr) {
+                        Ok(method_type.clone())
+                    } else {
+                        Err(SemanticError::AttributeNotFound {
+                            object_type: format!("{builtin_type:?}"),
+                            attribute: attr.to_string(),
+                        })
+                    }
+                } else {
+                    Err(SemanticError::AttributeNotFound {
                         object_type: format!("{builtin_type:?}"),
                         attribute: attr.to_string(),
-                    }),
+                    })
+                }
+            }
+            SemanticType::Generic { base, args } => {
+                // Handle generic types like List[str], Dict[str, int]
+                if let SemanticType::Builtin(builtin_type) = base.as_ref() {
+                    let builtin_methods = create_builtin_methods();
+                    let type_name = match builtin_type {
+                        BuiltinType::List => "List",
+                        BuiltinType::Dict => "Dict",
+                        _ => {
+                            return Err(SemanticError::AttributeNotFound {
+                                object_type: format!("{object_type:?}"),
+                                attribute: attr.to_string(),
+                            });
+                        }
+                    };
+
+                    if let Some(methods) = builtin_methods.get(type_name) {
+                        if let Some(method_type) = methods.get(attr) {
+                            // For generic methods, we might need to adjust the return type
+                            // based on the generic arguments
+                            match (builtin_type, attr) {
+                                (BuiltinType::List, "pop") => {
+                                    // List[T].pop() returns T
+                                    if let Some(item_type) = args.first() {
+                                        Ok(SemanticType::Function {
+                                            params: vec![],
+                                            return_type: Some(Box::new(item_type.clone())),
+                                        })
+                                    } else {
+                                        Ok(method_type.clone())
+                                    }
+                                }
+                                _ => Ok(method_type.clone()),
+                            }
+                        } else {
+                            Err(SemanticError::AttributeNotFound {
+                                object_type: format!("{object_type:?}"),
+                                attribute: attr.to_string(),
+                            })
+                        }
+                    } else {
+                        Err(SemanticError::AttributeNotFound {
+                            object_type: format!("{object_type:?}"),
+                            attribute: attr.to_string(),
+                        })
+                    }
+                } else {
+                    Ok(SemanticType::Unknown(format!("{attr}_attribute")))
                 }
             }
             _ => {
@@ -535,7 +594,42 @@ impl TypePass {
             (SemanticType::Optional(inner), other) | (other, SemanticType::Optional(inner)) => {
                 self.types_compatible(inner, other)
             }
+            // Allow int/float compatibility for arithmetic operations
+            (
+                SemanticType::Builtin(BuiltinType::Int),
+                SemanticType::Builtin(BuiltinType::Float),
+            )
+            | (
+                SemanticType::Builtin(BuiltinType::Float),
+                SemanticType::Builtin(BuiltinType::Int),
+            ) => true,
             _ => expected == actual,
+        }
+    }
+
+    /// Check if two types are compatible specifically for arithmetic operations
+    fn arithmetic_types_compatible(
+        &self,
+        left: &SemanticType,
+        right: &SemanticType,
+    ) -> (bool, SemanticType) {
+        use BuiltinType::{Int, Float};
+
+        match (left, right) {
+            (SemanticType::Unknown(_), _) => (true, right.clone()),
+            (_, SemanticType::Unknown(_)) => (true, left.clone()),
+
+            // Exact match
+            (l, r) if l == r => (true, l.clone()),
+
+            // Int/Float arithmetic - float takes precedence
+            (SemanticType::Builtin(Int), SemanticType::Builtin(Float))
+            | (SemanticType::Builtin(Float), SemanticType::Builtin(Int)) => {
+                (true, SemanticType::Builtin(Float))
+            }
+
+            // Other numeric types could be added here in the future
+            _ => (false, left.clone()),
         }
     }
 
@@ -687,29 +781,85 @@ impl TypePass {
         }
 
         // Check argument types against function signature
-        if let Node::Name(func_name) = call.function.as_ref() {
-            let func_symbol_type = registry
-                .resolve_symbol(&func_name.id)
-                .map(|s| s.symbol_type.clone());
+        match call.function.as_ref() {
+            Node::Name(func_name) => {
+                let func_symbol_type = registry
+                    .resolve_symbol(&func_name.id)
+                    .map(|s| s.symbol_type.clone());
 
-            if let Some(SemanticType::Function { params, .. }) = func_symbol_type {
-                // Check if the number of arguments matches
-                if call.positional_args.len() == params.len() {
+                if let Some(SemanticType::Function { params, .. }) = func_symbol_type {
+                    // Check if the number of arguments matches
+                    if call.positional_args.len() != params.len() {
+                        return Err(SemanticError::ArgumentCountMismatch {
+                            function_name: func_name.id.clone(),
+                            expected: params.len(),
+                            found: call.positional_args.len(),
+                        });
+                    }
+
                     // Check each argument type
                     for (i, (arg, expected_type)) in
                         call.positional_args.iter().zip(params.iter()).enumerate()
                     {
                         let actual_type = self.infer_expression_type(arg, registry)?;
                         if !self.types_compatible(expected_type, &actual_type) {
-                            // TODO: Create proper error for argument type mismatch
-                            // For now, we'll just continue without error
-                            let _ = i;
+                            return Err(SemanticError::ArgumentTypeMismatch {
+                                function_name: func_name.id.clone(),
+                                argument_index: i,
+                                expected: expected_type.display_name(),
+                                found: actual_type.display_name(),
+                            });
                         }
                     }
                 } else {
-                    // For now, we'll just warn about mismatched argument counts
-                    // TODO: Implement proper error for argument count mismatch
+                    // Check if it's a variable being called as function
+                    if let Some(symbol) = registry.resolve_symbol(&func_name.id)
+                        && symbol.kind != SymbolKind::Function {
+                            return Err(SemanticError::VariableCalledAsFunction {
+                                variable_name: func_name.id.clone(),
+                                variable_type: symbol.symbol_type.display_name(),
+                            });
+                        }
                 }
+            }
+            Node::Attribute(attr_node) => {
+                // Handle method calls like object.method()
+                let method_type =
+                    self.infer_attribute_access_type(&attr_node.value, &attr_node.attr, registry)?;
+
+                if let SemanticType::Function { params, .. } = method_type {
+                    // Check if the number of arguments matches
+                    if call.positional_args.len() != params.len() {
+                        return Err(SemanticError::ArgumentCountMismatch {
+                            function_name: format!("<object>.{}", attr_node.attr),
+                            expected: params.len(),
+                            found: call.positional_args.len(),
+                        });
+                    }
+
+                    // Check each argument type
+                    for (i, (arg, expected_type)) in
+                        call.positional_args.iter().zip(params.iter()).enumerate()
+                    {
+                        let actual_type = self.infer_expression_type(arg, registry)?;
+                        if !self.types_compatible(expected_type, &actual_type) {
+                            return Err(SemanticError::ArgumentTypeMismatch {
+                                function_name: format!("<object>.{}", attr_node.attr),
+                                argument_index: i,
+                                expected: expected_type.display_name(),
+                                found: actual_type.display_name(),
+                            });
+                        }
+                    }
+                } else {
+                    return Err(SemanticError::VariableCalledAsFunction {
+                        variable_name: format!("<object>.{}", attr_node.attr),
+                        variable_type: method_type.display_name(),
+                    });
+                }
+            }
+            _ => {
+                // Other types of function calls - for now, just continue without specific validation
             }
         }
 

@@ -359,6 +359,33 @@ impl SymbolTable {
         }
     }
 
+    /// Add builtin functions to the symbol table
+    pub fn add_builtin_functions(&mut self) {
+        let builtin_functions = crate::semantic::types::create_builtin_functions();
+
+        for (name, function_type) in builtin_functions {
+            let symbol = Symbol {
+                id: format!("builtin::{name}"),
+                name: name.clone(),
+                kind: SymbolKind::Function,
+                symbol_type: function_type,
+                access_level: AccessLevel::Public,
+                scope_id: "builtin".to_string(),
+                location: None,
+                is_static: true,
+                generic_params: Vec::new(),
+                metadata: SymbolMetadata::Function {
+                    parameters: Vec::new(),
+                    return_type: None,
+                    is_abstract: false,
+                },
+            };
+
+            // Add directly to symbols without requiring a scope
+            self.symbols.insert(symbol.id.clone(), symbol);
+        }
+    }
+
     /// Create and enter a new scope
     pub fn enter_scope(&mut self, kind: ScopeKind, name: Option<String>) -> String {
         let parent_id = self.current_scope_id.clone();
@@ -428,24 +455,28 @@ impl SymbolTable {
         let start_scope_id = self
             .current_scope_id
             .as_ref()
-            .or(self.root_scope_id.as_ref())?;
+            .or(self.root_scope_id.as_ref());
 
-        let mut current_scope_id = start_scope_id;
+        if let Some(start_scope_id) = start_scope_id {
+            let mut current_scope_id = start_scope_id;
 
-        while let Some(scope) = self.scopes.get(current_scope_id) {
-            if let Some(symbol_id) = scope.get_symbol(name) {
-                return self.symbols.get(symbol_id);
-            }
+            while let Some(scope) = self.scopes.get(current_scope_id) {
+                if let Some(symbol_id) = scope.get_symbol(name) {
+                    return self.symbols.get(symbol_id);
+                }
 
-            // Move to parent scope
-            if let Some(parent_id) = &scope.parent {
-                current_scope_id = parent_id;
-            } else {
-                break;
+                // Move to parent scope
+                if let Some(parent_id) = &scope.parent {
+                    current_scope_id = parent_id;
+                } else {
+                    break;
+                }
             }
         }
 
-        None
+        // If not found in scopes, check builtin functions
+        let builtin_id = format!("builtin::{name}");
+        self.symbols.get(&builtin_id)
     }
 
     /// Look up a symbol by name (mutable), searching through scope hierarchy
