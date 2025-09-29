@@ -203,16 +203,6 @@ impl<'a> Scanner<'a> {
 
     fn scan_access_modifier(&mut self) -> Option<AccessModifier> {
         match self.current_char {
-            Some('$') => {
-                if self.peek_char() == Some('$') {
-                    self.advance(); // consume first $
-                    self.advance(); // consume second $$
-                    Some(AccessModifier::File)
-                } else {
-                    self.advance(); // consume $
-                    Some(AccessModifier::Internal)
-                }
-            }
             Some('_') => {
                 if self.peek_char() == Some('_') {
                     // Check if it's private with optional literal
@@ -260,21 +250,36 @@ impl<'a> Scanner<'a> {
         identifier: &str,
         access_modifier: AccessModifier,
     ) -> TokenType {
-        self.keyword_map.get_keyword(identifier).map_or_else(
-            || {
-                self.keyword_map.get_soft_keyword(identifier).map_or_else(
+        // If this identifier was created by stripping an access modifier prefix,
+        // don't treat it as a keyword - it should be a regular name
+        match access_modifier {
+            AccessModifier::Protected | AccessModifier::Private => {
+                // This came from _name or __name, so treat it as a regular identifier
+                TokenType::Name(NameType {
+                    name: identifier.to_string(),
+                    is_literal: false,
+                    access_modifier,
+                })
+            }
+            AccessModifier::Public | AccessModifier::Internal | AccessModifier::File => {
+                // Normal keyword detection for public names
+                self.keyword_map.get_keyword(identifier).map_or_else(
                     || {
-                        TokenType::Name(NameType {
-                            name: identifier.to_string(),
-                            is_literal: false,
-                            access_modifier,
-                        })
+                        self.keyword_map.get_soft_keyword(identifier).map_or_else(
+                            || {
+                                TokenType::Name(NameType {
+                                    name: identifier.to_string(),
+                                    is_literal: false,
+                                    access_modifier,
+                                })
+                            },
+                            std::clone::Clone::clone,
+                        )
                     },
                     std::clone::Clone::clone,
                 )
-            },
-            std::clone::Clone::clone,
-        )
+            }
+        }
     }
 
     /// Scans a number token.

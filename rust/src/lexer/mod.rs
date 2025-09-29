@@ -438,14 +438,41 @@ mod tests {
 
     #[test]
     fn test_access_modifiers() {
-        let mut lexer = SharpyLexer::new("_protected __private $internal $file");
+        let mut lexer = SharpyLexer::new("_protected __private public internal");
 
         let tokens = lexer.tokenize_all().unwrap();
-        for token in &tokens {
-            if let TokenType::Name(name) = &token.token_type {
-                assert!(!name.is_literal);
-            }
+
+        // Filter out EOF and other non-content tokens
+        let content_tokens: Vec<_> = tokens.iter()
+            .filter(|t| !matches!(t.token_type, TokenType::Eof | TokenType::Newline))
+            .collect();
+
+        // Check that we get the expected tokens
+        assert_eq!(content_tokens.len(), 4);
+
+        // _protected should be a name with Protected access modifier
+        if let TokenType::Name(name) = &content_tokens[0].token_type {
+            assert_eq!(name.name, "protected");
+            assert_eq!(name.access_modifier, crate::lexer::token::AccessModifier::Protected);
+            assert!(!name.is_literal);
+        } else {
+            panic!("Expected Name token for _protected, got {:?}", content_tokens[0].token_type);
         }
+
+        // __private should be a name with Private access modifier
+        if let TokenType::Name(name) = &content_tokens[1].token_type {
+            assert_eq!(name.name, "private");
+            assert_eq!(name.access_modifier, crate::lexer::token::AccessModifier::Private);
+            assert!(!name.is_literal);
+        } else {
+            panic!("Expected Name token for __private");
+        }
+
+        // public should be a keyword token
+        assert_eq!(content_tokens[2].token_type, TokenType::Public);
+
+        // internal should be a keyword token
+        assert_eq!(content_tokens[3].token_type, TokenType::Internal);
     }
 
     #[test]

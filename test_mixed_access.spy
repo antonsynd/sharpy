@@ -1,0 +1,30 @@
+# Test explicit access modifier keywords
+
+public def public_function():
+    pass
+
+protected def protected_function():
+    pass
+
+private def private_function():
+    pass
+
+internal def internal_function():
+    pass
+
+file def file_function():
+    pass
+
+# Test underscore prefix behavior
+def _protected_method():
+    pass
+
+def __private_method():
+    pass
+
+# Test mixed cases (prefix should take precedence)
+public def _should_be_protected():
+    pass
+
+private def __should_be_private():
+    pass

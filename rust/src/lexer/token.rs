@@ -21,6 +21,13 @@ pub enum TokenType {
     Protocol,
     Property,
 
+    // Keywords - Access Modifiers
+    Public,
+    Protected,
+    Private,
+    Internal,
+    File,
+
     // Keywords - Function/Control
     Def,
     Return,

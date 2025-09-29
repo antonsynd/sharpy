@@ -28,11 +28,13 @@ impl KeywordMap {
         keywords.insert("else", TokenType::Else);
         keywords.insert("except", TokenType::Except);
         keywords.insert("False", TokenType::False);
+        keywords.insert("file", TokenType::File);
         keywords.insert("finally", TokenType::Finally);
         keywords.insert("for", TokenType::For);
         keywords.insert("from", TokenType::From);
         keywords.insert("if", TokenType::If);
         keywords.insert("in", TokenType::In);
+        keywords.insert("internal", TokenType::Internal);
         keywords.insert("is", TokenType::Is);
         keywords.insert("import", TokenType::Import);
         keywords.insert("lambda", TokenType::Lambda);
@@ -40,8 +42,11 @@ impl KeywordMap {
         keywords.insert("not", TokenType::Not);
         keywords.insert("or", TokenType::Or);
         keywords.insert("pass", TokenType::Pass);
+        keywords.insert("private", TokenType::Private);
         keywords.insert("property", TokenType::Property);
+        keywords.insert("protected", TokenType::Protected);
         keywords.insert("protocol", TokenType::Protocol);
+        keywords.insert("public", TokenType::Public);
         keywords.insert("raise", TokenType::Raise);
         keywords.insert("return", TokenType::Return);
         keywords.insert("struct", TokenType::Struct);

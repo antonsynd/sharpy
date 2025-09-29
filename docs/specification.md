@@ -385,54 +385,86 @@ protocol Encodable:
 
 # Access modifiers
 
-Access modifiers in Sharpy are indicated by the naming of the
-variable with a special prefix. This prefix is purely cosmetic and
-is stripped from the variable in the ABI. This applies to classes,
-structs, protocols, and members.
+Access modifiers in Sharpy can be specified using either naming prefixes or explicit keywords. This hybrid approach enforces semantic consistency while providing developer choice and maintaining lexical simplicity.
 
-Sharpy only supports public, private, protected, internal, and file access
-modifiers. The C# modifiers `protected internal`, and `private protected`,
-do not exist in Sharpy.
+Sharpy supports public, private, protected, internal, and file access modifiers. The C# modifiers `protected internal` and `private protected` do not exist in Sharpy.
 
-As an exception, Sharpy-recognized dunder methods are always
-public, however the compiler will issue a warning preferring the
-user to use the equivalent global function or operators.
+As an exception, Sharpy-recognized dunder methods are always public, however the compiler will issue a warning preferring the user to use the equivalent global function or operators.
 
-| Sharpy | Example | C# equivalent | Access | Notes |
+## Access Level Syntax
+
+| Access Level | Prefix Syntax | Keyword Syntax | C# Equivalent | Access |
 | - | - | - | - | - |
-| Public | `foobar` | `public` | Accessible to everyone. | Sharpy-recognized dunder methods are always public |
-| Protected | `_foobar` | `protected` | Accessible to only the actual class and its derived classes, irrespective of whether it is project internal or external | - |
-| Private | `__foobar` | `private` | Accessible to only the actual class | This does not apply to dunder methods. Sharpy-recognized dunder methods are always public |
-| Internal | `$foobar` | `internal` | Accessible to anything in the project |
-| N/A | - | `protected internal` | Accessible to anything in the project or the actual class and its derived classes, irrespective of whether it is project internal or external | - |
-| N/A | - | `private protected` | Accessible to the class and its derived classes within the project | - |
-| File | `$$foobar` | `file` | Accessible to only symbols in the current file | - |
+| Public | `name` | `public name` | `public` | Accessible to everyone (default) |
+| Protected | `_name` | `protected name` | `protected` | Accessible to the class and its derived classes |
+| Private | `__name` | `private name` | `private` | Accessible to only the actual class |
+| Internal | N/A | `internal name` | `internal` | Accessible to anything in the project |
+| File | N/A | `file name` | `file` | Accessible to only symbols in the current file |
 
-**Implementation Note**: In the lexer, access modifiers are automatically detected and stored in the `NameType` token. The parser extracts the clean name (without prefixes) and the access modifier level separately. For example, `_protected_method` becomes `name: "protected_method"` with `access_modifier: Some("protected")`.
+## Behavior
+
+The compiler uses the following precedence rules for access modifiers:
+
+1. **Underscore prefixes take precedence**: Names starting with `_` are protected, `__` are private, regardless of explicit keywords
+2. **Explicit keywords for non-prefix names**: Names without underscore prefixes use explicit keywords to determine access level
+3. **Default access**: Names without prefixes and without explicit keywords are public
 
 ```Python
-# In the ABI, this class is "public Foo"
+class Calculator:
+    # Protected access (from _ prefix)
+    _helper: int = 0                    # Protected (inferred from prefix)
+    private _still_protected: int = 0   # Protected (prefix overrides keyword)
+
+    # Private access (from __ prefix)
+    __temp: int = 0                     # Private (inferred from prefix)
+    public __still_private: int = 0     # Private (prefix overrides keyword)
+
+    # Explicit keyword access (no prefix)
+    protected helper_method: int = 0    # Protected (from keyword)
+    private secret_data: int = 0        # Private (from keyword)
+    internal shared_data: int = 0       # Internal (keyword required)
+    file local_cache: dict = {}         # File-level (keyword required)
+
+    # Public access (default)
+    value: int = 0                      # Public (default)
+    public api_value: int = 0           # Public (explicit)
+```
+
+## Implementation Examples
+
+```Python
 class Foo:
-    # In the ABI, this method is "public void PublicMethod()"
+    # Public methods (default)
     def public_method(self) -> None:
         pass
 
-    # In the ABI, this method is "protected void ProtectedMethod()"
-    def _protected_method(self) -> None:
+    public def explicit_public_method(self) -> None:
         pass
 
-    # In the ABI, this method is "private void PrivateMethod()"
-    def __private_method(self) -> None:
+    # Protected methods
+    def _protected_method(self) -> None:  # Inferred from prefix
         pass
 
-    # In the ABI, this method is "internal void InternalMethod()"
-    def $internal_method(self) -> None:
+    protected def other_protected_method(self) -> None:  # Explicit keyword
         pass
 
-    # In the ABI, this method is "file void FileMethod()"
-    def $$internal_method(self) -> None:
+    # Private methods
+    def __private_method(self) -> None:  # Inferred from prefix
+        pass
+
+    private def other_private_method(self) -> None:  # Explicit keyword
+        pass
+
+    # Internal methods (keyword required)
+    internal def internal_method(self) -> None:
+        pass
+
+    # File-level methods (keyword required)
+    file def file_method(self) -> None:
         pass
 ```
+
+**Implementation Note**: The lexer detects both prefix-based access modifiers in name tokens and explicit access modifier keywords. The parser extracts clean names (without prefixes) and access modifier levels. When both are present, underscore prefixes take precedence over explicit keywords.
 
 # Attributes
 
@@ -705,7 +737,7 @@ Print(SomeModule.__Module__.SOME_CONSTANT);
 
 The following are hard keywords in Sharpy and are always reserved:
 
-`and`, `as`, `assert`, `async`, `await`, `break`, `class`, `continue`, `def`, `del`, `elif`, `else`, `except`, `False`, `finally`, `for`, `from`, `if`, `in`, `is`, `import`, `lambda`, `None`, `not`, `or`, `pass`, `property`, `protocol`, `raise`, `return`, `struct`, `True`, `try`, `while`, `with`, `yield`
+`and`, `as`, `assert`, `async`, `await`, `break`, `class`, `continue`, `def`, `del`, `elif`, `else`, `except`, `False`, `file`, `finally`, `for`, `from`, `if`, `import`, `in`, `internal`, `is`, `lambda`, `None`, `not`, `or`, `pass`, `private`, `property`, `protected`, `protocol`, `public`, `raise`, `return`, `struct`, `True`, `try`, `while`, `with`, `yield`
 
 ## Soft Keywords (Context-Dependent)
 

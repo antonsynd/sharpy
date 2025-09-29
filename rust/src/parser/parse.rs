@@ -93,11 +93,96 @@ impl Parser {
         self.parse_statement()
     }
 
+    /// Parse a definition with an explicit access modifier keyword
+    fn parse_access_modified_definition(&mut self) -> Result<Node, ParseError> {
+        // Get the explicit access modifier keyword
+        let explicit_access_modifier = if self.match_token(&TokenType::Public) {
+            self.advance(); // consume 'public'
+            Some("public".to_string())
+        } else if self.match_token(&TokenType::Protected) {
+            self.advance(); // consume 'protected'
+            Some("protected".to_string())
+        } else if self.match_token(&TokenType::Private) {
+            self.advance(); // consume 'private'
+            Some("private".to_string())
+        } else if self.match_token(&TokenType::Internal) {
+            self.advance(); // consume 'internal'
+            Some("internal".to_string())
+        } else if self.match_token(&TokenType::File) {
+            self.advance(); // consume 'file'
+            Some("file".to_string())
+        } else {
+            return Err(ParseError::UnexpectedToken {
+                expected: "access modifier keyword".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        };
+
+        // Parse the definition that follows and override its access modifier
+        let mut node = if self.match_token(&TokenType::Def) {
+            self.advance(); // consume 'def'
+            self.parse_function_definition()?
+        } else if self.match_token(&TokenType::Class) {
+            self.advance(); // consume 'class'
+            self.parse_class_definition()?
+        } else if self.match_token(&TokenType::Struct) {
+            self.advance(); // consume 'struct'
+            self.parse_struct_definition()?
+        } else if self.match_token(&TokenType::Protocol) {
+            self.advance(); // consume 'protocol'
+            self.parse_protocol_definition()?
+        } else {
+            // Try to parse as a variable assignment with explicit access modifier
+            // This handles cases like: private name: int = 5
+            return Err(ParseError::UnexpectedToken {
+                expected: "function, class, struct, or protocol definition".to_string(),
+                found: self.current_token_string(),
+                location: self.current_location(),
+            });
+        };
+
+        // Override access modifier in the parsed node
+        match &mut node {
+            Node::FunctionDef(func_def) => {
+                func_def.access_modifier = explicit_access_modifier;
+            }
+            Node::ClassDef(class_def) => {
+                class_def.access_modifier = explicit_access_modifier;
+            }
+            Node::StructDef(struct_def) => {
+                struct_def.access_modifier = explicit_access_modifier;
+            }
+            Node::ProtocolDef(protocol_def) => {
+                protocol_def.access_modifier = explicit_access_modifier;
+            }
+            _ => {
+                // This shouldn't happen given our parsing logic above
+                return Err(ParseError::UnexpectedToken {
+                    expected: "function, class, struct, or protocol definition".to_string(),
+                    found: format!("{:?}", node),
+                    location: self.current_location(),
+                });
+            }
+        }
+
+        Ok(node)
+    }
+
     /// Parse a single statement
     fn parse_statement(&mut self) -> Result<Node, ParseError> {
         // Handle decorators first
         if self.match_token(&TokenType::At) {
             return self.parse_decorated_definition();
+        }
+
+        // Check for explicit access modifier keywords
+        if self.match_token(&TokenType::Public) ||
+           self.match_token(&TokenType::Protected) ||
+           self.match_token(&TokenType::Private) ||
+           self.match_token(&TokenType::Internal) ||
+           self.match_token(&TokenType::File) {
+            return self.parse_access_modified_definition();
         }
 
         // Check for import statements first
