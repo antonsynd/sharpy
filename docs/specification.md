@@ -27,19 +27,25 @@ This specification describes the full vision for Sharpy. The current compiler im
 - **Member variables**: Typed class/struct member variables
 - **Import statements**: All forms of import/from import
 - **Type annotations**: Simple types, generics, optionals, qualified types
-- **Access modifiers**: Full support for public/protected/private/internal/file
+- **Access modifiers**: Full support for public/protected/private/internal/file with decorator syntax
 - **Lambda expressions**: Full lambda support with type inference
 - **Literals**: Numbers, strings, f-strings, collections (list/dict/set/tuple)
 - **F-strings**: Formatted string literals with expression interpolation
+- **Multi-pass semantic analysis**: 3-pass analyzer (Declaration → Import → Type) with comprehensive type checking
+- **Attribute access**: Method and property access on builtin types (str, list, etc.) with type inference
+- **Function call analysis**: Type checking for function calls including method calls
+- **Type inference**: Basic type inference for assignments, expressions, and function returns
 
 ## ⚠️ Partially Implemented
 - **Generics**: Basic parsing support, constraints not yet implemented
 - **Match statements**: `match` and `case` keywords reserved but not implemented
 - **Async/await**: Keywords reserved but not implemented
+- **Builtin functions**: Some builtin functions (print, len, etc.) not fully integrated with semantic analysis
+- **Exception handling**: Try/except/finally parsing implemented but semantic analysis incomplete
 
 ## ❌ Not Yet Implemented
 - **Advanced decorators**: `@override`, `@final`, etc. (basic access modifier decorators are implemented)
-- **Events**: Event definitions and handling
+- **Events**: Event definitions and handling (AST nodes exist but not fully implemented)
 - **Signals**: Delegate-like functionality
 - **Optional chaining**: `?.` operator (lexed but not parsed)
 - **Null coalescing**: `??` operator (lexed but not parsed)
@@ -47,6 +53,8 @@ This specification describes the full vision for Sharpy. The current compiler im
 - **Try expressions**: `try` as expression form
 - **Match expressions**: Pattern matching in expressions
 - **Advanced generics**: Constraints and where clauses
+- **Advanced type system**: Union types, intersection types, type aliases
+- **Comprehensive error handling**: Exception type checking and propagation
 
 # Types
 
@@ -448,6 +456,8 @@ class Calculator:
     def private_static_method(): pass
 ```
 
+**Implementation Note**: Access modifier decorators (`@protected`, `@private`, `@internal`, `@file`) are fully implemented in the current compiler. The lexer detects underscore-prefixed names and stores them as naming hints in the token. The parser processes access modifier decorators and combines them with underscore hints using the precedence rules above.
+
 ## Implementation Examples
 
 ```Python
@@ -517,7 +527,7 @@ f.some_signal(1, 3)
 
 # Events
 
-**Note**: Events are currently not implemented in the compiler, though the `event` keyword is reserved as a soft keyword.
+**Note**: Events are currently partially implemented in the compiler. The `event` keyword is reserved as a soft keyword and AST nodes exist, but full semantic analysis and code generation are not yet complete.
 
 Events in Sharpy work as they do in C#.
 
@@ -527,6 +537,8 @@ class Foo:
 ```
 
 Events are signals that can be publicly added to, but only privately invoked.
+
+**Implementation Status**: Event syntax is recognized by the lexer and parser, with `EventDef` AST nodes created, but the semantic analyzer does not yet fully process event definitions.
 
 # Naming conventions
 
@@ -761,7 +773,7 @@ The following are hard keywords in Sharpy and are always reserved:
 
 `and`, `as`, `assert`, `async`, `await`, `break`, `class`, `continue`, `def`, `del`, `elif`, `else`, `except`, `False`, `finally`, `for`, `from`, `if`, `import`, `in`, `is`, `lambda`, `None`, `not`, `or`, `pass`, `property`, `protocol`, `raise`, `return`, `struct`, `True`, `try`, `while`, `with`, `yield`
 
-**Note**: Access modifier keywords (`file`, `internal`, `private`, `protected`, `public`) are no longer hard keywords. They are now regular identifiers that can be used as decorator names (e.g., `@protected`, `@private`).
+**Implementation Note**: Access modifier keywords (`file`, `internal`, `private`, `protected`, `public`) are no longer hard keywords. They are now regular identifiers that can be used as decorator names (e.g., `@protected`, `@private`).
 
 ## Soft Keywords (Context-Dependent)
 
@@ -769,24 +781,28 @@ The following are soft keywords that are only treated as keywords in specific co
 
 `case`, `event`, `get`, `match`, `set`, `type`, `_` (wildcard)
 
+**Implementation Status**: All soft keywords are properly recognized by the lexer and handled contextually by the parser. The `get` and `set` keywords work as prefixes for property definitions, `event` is recognized for event definitions, and `type` is reserved for future type alias functionality.
+
 ## Sharpy-Specific Operators
 
 In addition to standard Python operators, Sharpy introduces these operators:
 
-- `?.` - Optional chaining (null-conditional member access)
-- `??` - Null coalescing operator
-- `@` - Matrix multiplication (from Python 3.5+)
-- `->` - Function return type annotation arrow
+- `?.` - Optional chaining (null-conditional member access) - **lexed, not yet implemented**
+- `??` - Null coalescing operator - **lexed, not yet implemented**
+- `@` - Matrix multiplication (from Python 3.5+) - **fully implemented**
+- `->` - Function return type annotation arrow - **fully implemented**
+
+**Implementation Note**: The `?.` and `??` operators are recognized by the lexer but not yet implemented in the parser or semantic analyzer. The `@` operator is fully supported for matrix multiplication, and `->` is used extensively for function return type annotations.
 
 ## Type Syntax
 
 Sharpy supports several type syntax forms:
 
-- **Simple types**: `int`, `str`, `bool`
-- **Generic types**: `List[int]`, `Dict[str, int]`
-- **Optional types**: `int?`, `str?` (true optionals)
-- **Qualified types**: `Module.ClassName`, `Package.Module.Type`
-- **Union types**: `int | str | None` (using `|` operator)
+- **Simple types**: `int`, `str`, `bool` - **fully implemented**
+- **Generic types**: `List[int]`, `Dict[str, int]` - **fully implemented**
+- **Optional types**: `int?`, `str?` (true optionals) - **parsing implemented**
+- **Qualified types**: `Module.ClassName`, `Package.Module.Type` - **fully implemented**
+- **Union types**: `int | str | None` (using `|` operator) - **parsing implemented**
 
 ## Member Variables
 
@@ -809,6 +825,72 @@ Member variables are represented in the AST as `MemberDef` nodes with:
 - `name`: Variable name with prefix stripped
 - `type_`: Optional type annotation
 - `default`: Optional default value
+
+# Semantic Analysis
+
+Sharpy employs a sophisticated multi-pass semantic analysis system that provides comprehensive type checking, symbol resolution, and error detection.
+
+## Multi-Pass Architecture
+
+The semantic analyzer uses a 3-pass approach:
+
+1. **Declaration Pass**: Collects all symbol declarations (functions, classes, variables) without analyzing their bodies
+2. **Import Pass**: Resolves import statements and establishes module dependencies
+3. **Type Pass**: Performs type checking, type inference, and comprehensive semantic analysis
+
+This multi-pass approach allows forward references and provides better error reporting by separating concerns.
+
+## Type System Features
+
+### Built-in Type Support
+- **Primitive types**: `int`, `str`, `bool`, `float`, etc.
+- **Collection types**: `List[T]`, `Dict[K,V]`, `Set[T]`, `Tuple[T...]`
+- **Optional types**: `T?` syntax for nullable types
+
+### Method and Attribute Resolution
+The type system provides comprehensive attribute access analysis:
+
+```Python
+# String methods are properly typed
+text: str = "hello"
+upper_func = text.upper    # Type: () -> str
+result = text.upper()      # Type: str
+
+# List methods maintain generic type information
+numbers: List[int] = [1, 2, 3]
+append_func = numbers.append  # Type: (int) -> None
+
+# Built-in string methods supported:
+# upper(), lower(), split(), etc.
+
+# Built-in list methods supported:
+# append(), pop(), etc.
+```
+
+**Implementation Status**: Attribute access is fully implemented for built-in types (`str`, `list`, etc.) with proper method type resolution. The semantic analyzer can distinguish between method access (returning a function type) and method calls (returning the result type).
+
+### Type Inference
+- **Assignment inference**: Variable types inferred from assigned values
+- **Expression inference**: Binary operations, function calls, attribute access
+- **Function return inference**: Return types inferred from return statements
+
+### Error Detection
+- **Undefined symbol detection**: References to undeclared variables/functions
+- **Type mismatch detection**: Incompatible type assignments and operations
+- **Attribute access validation**: Invalid method/property access on types
+- **Function call validation**: Argument count and type checking
+
+## Symbol Table Management
+
+The semantic analyzer maintains a hierarchical symbol table with:
+- **Scope management**: Proper handling of nested scopes (modules, classes, functions)
+- **Access control**: Enforcement of access modifier rules
+- **Cross-module resolution**: Symbol lookup across imported modules
+- **Metadata tracking**: Additional information for properties, methods, and classes
+
+## Backward Compatibility
+
+The multi-pass analyzer maintains full backward compatibility with existing code through a unified API that preserves the same interface as the original single-pass analyzer.
 
 # Program Structure
 
