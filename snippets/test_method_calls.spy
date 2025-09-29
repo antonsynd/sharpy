@@ -1,0 +1,24 @@
+# Test comprehensive method calls and attribute access
+text: str = "Hello World"
+numbers: List[int] = [1, 2, 3]
+data: Dict[str, int] = {"a": 1, "b": 2}
+
+# Method access (returns function type)
+upper_func = text.upper
+split_func = text.split
+append_func = numbers.append
+
+# Method calls (returns result type)
+upper_text = text.upper()           # Returns str
+split_result = text.split()         # Returns List[str]
+text_length = len(text)             # Returns int
+
+# Chained method calls
+result = text.lower().split()
+
+# Collection operations
+numbers.append(4)
+first_num = numbers.pop()
+dict_keys = data.keys()
+
+print("Method calls and attribute access working!")

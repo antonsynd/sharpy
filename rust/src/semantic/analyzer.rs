@@ -582,6 +582,7 @@ impl SemanticAnalyzer {
             Node::List(list) => self.analyze_list_literal(list),
             Node::Dict(dict) => self.analyze_dict_literal(dict),
             Node::Set(set) => self.analyze_set_literal(set),
+            Node::Attribute(attribute) => self.analyze_attribute_access(attribute),
             _ => {
                 // For now, return unknown type for unhandled expressions
                 Ok(SemanticType::Unknown("unhandled_expression".to_string()))
@@ -619,9 +620,10 @@ impl SemanticAnalyzer {
                 match &base_type {
                     SemanticType::Builtin(builtin) => {
                         if let Some(expected_count) = builtin.generic_param_count()
-                            && type_args.len() != expected_count {
-                                return None; // Invalid argument count
-                            }
+                            && type_args.len() != expected_count
+                        {
+                            return None; // Invalid argument count
+                        }
                     }
                     _ => {} // For user-defined types, allow any number of args for now
                 }
@@ -642,9 +644,10 @@ impl SemanticAnalyzer {
                         match &base_type {
                             SemanticType::Builtin(builtin) => {
                                 if let Some(expected_count) = builtin.generic_param_count()
-                                    && type_args.len() != expected_count {
-                                        return None; // Invalid argument count
-                                    }
+                                    && type_args.len() != expected_count
+                                {
+                                    return None; // Invalid argument count
+                                }
 
                                 // Create generic instantiation
                                 Some(SemanticType::Generic {
@@ -893,6 +896,9 @@ impl SemanticAnalyzer {
                     }
                 }
             }
+        } else if let Node::Attribute(attribute) = &*call.function {
+            // Handle method calls (obj.method())
+            self.analyze_method_call(attribute, &arg_types)
         } else {
             // Complex function expressions not yet supported
             Ok(SemanticType::Unknown("complex_function".to_string()))
@@ -1116,6 +1122,294 @@ impl SemanticAnalyzer {
             (SemanticType::Unknown(_), _) | (_, SemanticType::Unknown(_)) => true,
 
             _ => false,
+        }
+    }
+
+    /// Analyze method calls (`obj.method()`)
+    fn analyze_method_call(
+        &mut self,
+        attribute: &crate::ast::node::Attribute,
+        arg_types: &[SemanticType],
+    ) -> Result<SemanticType, String> {
+        // Get the object type first
+        let obj_type = self.analyze_expression(&attribute.value)?;
+        let method_name = &attribute.attr;
+
+        // Get the method function type
+        let method_type = self.resolve_attribute_type(&obj_type, method_name)?;
+
+        match method_type {
+            SemanticType::Function {
+                params,
+                return_type,
+            } => {
+                // For method calls, we need to account for the implicit 'self' parameter
+                // The declared parameters don't include 'self', so we check against params directly
+                if arg_types.len() != params.len() {
+                    return Err(format!(
+                        "Method '{}' expects {} arguments, got {}",
+                        method_name,
+                        params.len(),
+                        arg_types.len()
+                    ));
+                }
+
+                // Validate argument types
+                for (i, (expected, actual)) in params.iter().zip(arg_types.iter()).enumerate() {
+                    if !self.types_compatible(actual, expected) {
+                        return Err(format!(
+                            "Method '{}' argument {} expects type {:?}, got {:?}",
+                            method_name,
+                            i + 1,
+                            expected,
+                            actual
+                        ));
+                    }
+                }
+
+                // Return the method's return type
+                if let Some(return_type) = return_type {
+                    Ok(*return_type)
+                } else {
+                    Ok(SemanticType::Builtin(BuiltinType::None))
+                }
+            }
+            _ => Err(format!("'{method_name}' is not a method")),
+        }
+    }
+
+    /// Analyze attribute access (obj.attr)
+    fn analyze_attribute_access(
+        &mut self,
+        attribute: &crate::ast::node::Attribute,
+    ) -> Result<SemanticType, String> {
+        let obj_type = self.analyze_expression(&attribute.value)?;
+
+        // Resolve the attribute type based on the object type
+        self.resolve_attribute_type(&obj_type, &attribute.attr)
+    }
+
+    /// Resolve the type of an attribute access
+    fn resolve_attribute_type(
+        &self,
+        obj_type: &SemanticType,
+        attr_name: &str,
+    ) -> Result<SemanticType, String> {
+        match obj_type {
+            SemanticType::Class { name, .. } | SemanticType::Struct { name, .. } => {
+                // Look up the class/struct definition and find the attribute
+                if let Some(class_symbol) = self.symbol_table.lookup_symbol(name) {
+                    // Look for the attribute in the class scope
+                    let scope_id = &class_symbol.scope_id;
+                    // Search for the attribute in the class's scope
+                    if let Some(attr_symbol) = self
+                        .symbol_table
+                        .lookup_symbol_in_scope(attr_name, scope_id)
+                    {
+                        match attr_symbol.kind {
+                            SymbolKind::Property | SymbolKind::Variable => {
+                                Ok(attr_symbol.symbol_type.clone())
+                            }
+                            SymbolKind::Function | SymbolKind::Method => {
+                                // For method access without call, return the function type
+                                Ok(attr_symbol.symbol_type.clone())
+                            }
+                            _ => Err(format!("'{attr_name}' is not a valid attribute")),
+                        }
+                    } else {
+                        Err(format!("'{name}' object has no attribute '{attr_name}'"))
+                    }
+                } else {
+                    Err(format!("Cannot find class definition for '{name}'"))
+                }
+            }
+            SemanticType::Builtin(builtin_type) => {
+                // Handle built-in type attributes/methods
+                self.resolve_builtin_attribute(builtin_type, attr_name)
+            }
+            SemanticType::Generic { base, args } => {
+                // For generic types, resolve attributes on the base type and adjust for generic args
+                let base_attr_type = self.resolve_attribute_type(base, attr_name)?;
+                self.resolve_generic_method_type(&base_attr_type, args)
+            }
+            _ => Err(format!(
+                "Cannot access attribute '{}' on type '{}'",
+                attr_name,
+                obj_type.display_name()
+            )),
+        }
+    }
+
+    /// Resolve method types for generic collections
+    fn resolve_generic_method_type(
+        &self,
+        method_type: &SemanticType,
+        generic_args: &[SemanticType],
+    ) -> Result<SemanticType, String> {
+        match method_type {
+            SemanticType::Function {
+                params,
+                return_type,
+            } => {
+                // For generic collection methods, substitute Object with the appropriate generic type
+                let adjusted_params = params
+                    .iter()
+                    .map(|param| {
+                        match param {
+                            SemanticType::Builtin(BuiltinType::Object) => {
+                                // For methods like append(element), use the element type (first generic arg)
+                                if generic_args.is_empty() {
+                                    param.clone()
+                                } else {
+                                    generic_args[0].clone()
+                                }
+                            }
+                            _ => param.clone(),
+                        }
+                    })
+                    .collect();
+
+                // Adjust return type if needed
+                let adjusted_return_type = return_type.as_ref().map(|rt| {
+                    match &**rt {
+                        SemanticType::Builtin(BuiltinType::Object) => {
+                            // For methods like pop(), return the element type
+                            if generic_args.is_empty() {
+                                rt.clone()
+                            } else {
+                                Box::new(generic_args[0].clone())
+                            }
+                        }
+                        _ => rt.clone(),
+                    }
+                });
+
+                Ok(SemanticType::Function {
+                    params: adjusted_params,
+                    return_type: adjusted_return_type,
+                })
+            }
+            _ => Ok(method_type.clone()),
+        }
+    }
+
+    /// Resolve attributes on built-in types
+    fn resolve_builtin_attribute(
+        &self,
+        builtin_type: &BuiltinType,
+        attr_name: &str,
+    ) -> Result<SemanticType, String> {
+        match (builtin_type, attr_name) {
+            // String methods
+            (BuiltinType::Str, "upper" | "lower" | "strip") => {
+                Ok(SemanticType::Function {
+                    params: vec![], // These methods take no arguments
+                    return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Str))),
+                })
+            }
+            (BuiltinType::Str, "replace") => {
+                Ok(SemanticType::Function {
+                    params: vec![
+                        SemanticType::Builtin(BuiltinType::Str), // old
+                        SemanticType::Builtin(BuiltinType::Str), // new
+                    ],
+                    return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Str))),
+                })
+            }
+            (BuiltinType::Str, "split") => {
+                Ok(SemanticType::Function {
+                    params: vec![], // No arguments for simple split
+                    return_type: Some(Box::new(SemanticType::Generic {
+                        base: Box::new(SemanticType::Builtin(BuiltinType::List)),
+                        args: vec![SemanticType::Builtin(BuiltinType::Str)],
+                    })),
+                })
+            }
+
+            // List methods
+            (BuiltinType::List, "append") => {
+                Ok(SemanticType::Function {
+                    params: vec![SemanticType::Builtin(BuiltinType::Object)], // One argument (element to append)
+                    return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::None))),
+                })
+            }
+            (BuiltinType::List, "extend") => {
+                Ok(SemanticType::Function {
+                    params: vec![SemanticType::Builtin(BuiltinType::Object)], // One argument (iterable)
+                    return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::None))),
+                })
+            }
+            (BuiltinType::List, "insert") => {
+                Ok(SemanticType::Function {
+                    params: vec![
+                        SemanticType::Builtin(BuiltinType::Int),    // index
+                        SemanticType::Builtin(BuiltinType::Object), // element
+                    ],
+                    return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::None))),
+                })
+            }
+            (BuiltinType::List, "remove") => {
+                Ok(SemanticType::Function {
+                    params: vec![SemanticType::Builtin(BuiltinType::Object)], // element to remove
+                    return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::None))),
+                })
+            }
+            (BuiltinType::List, "clear") => {
+                Ok(SemanticType::Function {
+                    params: vec![], // No arguments
+                    return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::None))),
+                })
+            }
+            (BuiltinType::List, "pop") => {
+                Ok(SemanticType::Function {
+                    params: vec![], // Optional index argument simplified to no args for now
+                    return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Object))), // Should be element type
+                })
+            }
+            (BuiltinType::List, "index") => {
+                Ok(SemanticType::Function {
+                    params: vec![SemanticType::Builtin(BuiltinType::Object)], // element to find
+                    return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Int))),
+                })
+            }
+
+            // Dict methods
+            (BuiltinType::Dict, "keys") => {
+                Ok(SemanticType::Function {
+                    params: vec![],
+                    return_type: Some(Box::new(SemanticType::Generic {
+                        base: Box::new(SemanticType::Builtin(BuiltinType::List)),
+                        args: vec![SemanticType::Builtin(BuiltinType::Object)], // Should be key type
+                    })),
+                })
+            }
+            (BuiltinType::Dict, "values") => {
+                Ok(SemanticType::Function {
+                    params: vec![],
+                    return_type: Some(Box::new(SemanticType::Generic {
+                        base: Box::new(SemanticType::Builtin(BuiltinType::List)),
+                        args: vec![SemanticType::Builtin(BuiltinType::Object)], // Should be value type
+                    })),
+                })
+            }
+            (BuiltinType::Dict, "get") => {
+                Ok(SemanticType::Function {
+                    params: vec![SemanticType::Builtin(BuiltinType::Object)], // key
+                    return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Object))), // Should be value type
+                })
+            }
+            (BuiltinType::Dict, "pop") => {
+                Ok(SemanticType::Function {
+                    params: vec![SemanticType::Builtin(BuiltinType::Object)], // key
+                    return_type: Some(Box::new(SemanticType::Builtin(BuiltinType::Object))), // Should be value type
+                })
+            }
+
+            _ => Err(format!(
+                "'{}' object has no attribute '{}'",
+                builtin_type.as_str(),
+                attr_name
+            )),
         }
     }
 
