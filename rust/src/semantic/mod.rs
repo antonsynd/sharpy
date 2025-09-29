@@ -71,6 +71,9 @@ pub enum SemanticError {
         variable_type: String,
     },
 
+    /// Undefined function called
+    UndefinedFunction(String),
+
     /// Module cache error
     ModuleCacheError(String),
 
@@ -161,7 +164,7 @@ impl std::fmt::Display for SemanticError {
             } => {
                 write!(
                     f,
-                    "{}() takes exactly {} argument{}, got {}",
+                    "Function '{}' expects {} argument{}, got {}",
                     function_name,
                     expected,
                     if *expected == 1 { "" } else { "s" },
@@ -176,7 +179,7 @@ impl std::fmt::Display for SemanticError {
             } => {
                 write!(
                     f,
-                    "{}(): argument {} expected '{}', got '{}'",
+                    "Function '{}' argument {} expects type '{}', got '{}'",
                     function_name,
                     argument_index + 1,
                     expected,
@@ -185,12 +188,12 @@ impl std::fmt::Display for SemanticError {
             }
             Self::VariableCalledAsFunction {
                 variable_name,
-                variable_type,
+                variable_type: _,
             } => {
-                write!(
-                    f,
-                    "'{variable_name}' is not callable (it is of type '{variable_type}')"
-                )
+                write!(f, "'{variable_name}' is not a function")
+            }
+            Self::UndefinedFunction(name) => {
+                write!(f, "Undefined function: {name}")
             }
         }
     }

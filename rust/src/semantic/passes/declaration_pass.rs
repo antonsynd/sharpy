@@ -53,7 +53,9 @@ impl DeclarationPass {
             }
 
             Node::FunctionDef(func_def) => {
+                println!("DEBUG: Found function definition: {}", func_def.name);
                 self.collect_function_declaration(func_def, registry)?;
+                println!("DEBUG: Function declaration collected: {}", func_def.name);
             }
 
             Node::Assign(assign) => {
@@ -92,6 +94,13 @@ impl DeclarationPass {
         // Extract access level from access modifier or decorators
         let access_level = AccessLevel::from_modifier(class_def.access_modifier.as_deref());
 
+        // Get the current scope ID from the symbol table
+        let scope_id = current_module
+            .symbols
+            .current_scope_id()
+            .cloned()
+            .unwrap_or_else(|| "module".to_string());
+
         // Create class symbol
         let symbol = Symbol {
             id: format!("{}::{}", current_module.file_path, class_def.name),
@@ -103,7 +112,7 @@ impl DeclarationPass {
                 generic_params: Vec::new(), // TODO: Extract from type_params
             },
             access_level,
-            scope_id: "module".to_string(), // TODO: Use proper scope tracking
+            scope_id,
             location: class_def
                 .source
                 .as_ref()
@@ -153,17 +162,50 @@ impl DeclarationPass {
         // Extract access level from access modifier
         let access_level = AccessLevel::from_modifier(func_def.access_modifier.as_deref());
 
+        // Extract parameter types
+        let mut param_types = Vec::new();
+        for arg in &func_def.args.args {
+            if let Some(type_node) = &arg.type_ {
+                let param_type = self.convert_ast_type_to_semantic_type(type_node)?;
+                param_types.push(param_type);
+            } else {
+                // If no type annotation, use Unknown for now
+                param_types.push(SemanticType::Unknown("inferred_param".to_string()));
+            }
+        }
+
+        // Extract return type
+        let return_type = if let Some(return_type_node) = &func_def.return_type {
+            Some(Box::new(
+                self.convert_ast_type_to_semantic_type(return_type_node)?,
+            ))
+        } else {
+            None
+        };
+
+        // Get the current scope ID from the symbol table
+        let scope_id = current_module
+            .symbols
+            .current_scope_id()
+            .cloned()
+            .unwrap_or_else(|| "module".to_string());
+
+        println!(
+            "DEBUG: Using scope_id for function {}: {}",
+            func_def.name, scope_id
+        );
+
         // Create function symbol
         let symbol = Symbol {
             id: format!("{}::{}", current_module.file_path, func_def.name),
             name: func_def.name.clone(),
             kind: SymbolKind::Function,
             symbol_type: SemanticType::Function {
-                params: Vec::new(), // TODO: Extract parameter types
-                return_type: None,  // TODO: Extract return type
+                params: param_types,
+                return_type,
             },
             access_level,
-            scope_id: "module".to_string(), // TODO: Use proper scope tracking
+            scope_id,
             location: func_def
                 .source
                 .as_ref()
@@ -171,8 +213,8 @@ impl DeclarationPass {
             is_static: false,
             generic_params: Vec::new(), // TODO: Extract from function definition
             metadata: SymbolMetadata::Function {
-                parameters: Vec::new(),
-                return_type: None,
+                parameters: Vec::new(), // TODO: Fill with parameter metadata if needed
+                return_type: None,      // TODO: Convert return type if needed
                 is_abstract: false,
             },
         };
@@ -182,6 +224,11 @@ impl DeclarationPass {
             .symbols
             .add_symbol(symbol)
             .map_err(SemanticError::DuplicateSymbol)?;
+
+        println!(
+            "DEBUG: Function symbol added to symbol table: {}",
+            func_def.name
+        );
 
         Ok(())
     }

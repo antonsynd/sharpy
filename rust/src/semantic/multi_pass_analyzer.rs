@@ -188,13 +188,19 @@ impl MultiPassAnalyzer {
     #[must_use]
     pub fn get_symbol_table(&self) -> &crate::semantic::SymbolTable {
         // Get the symbol table from the current module, or return a static empty one
-        if let Some(current_module_name) = self.registry.current_module_name()
-            && let Some(current_module) = self.registry.get_module(current_module_name)
-        {
-            return &current_module.symbols;
+        if let Some(current_module_name) = self.registry.current_module_name() {
+            println!("DEBUG: Current module name: {current_module_name}");
+            if let Some(current_module) = self.registry.get_module(current_module_name) {
+                println!("DEBUG: Found current module, returning its symbol table");
+                return &current_module.symbols;
+            }
+            println!("DEBUG: Current module not found in registry");
+        } else {
+            println!("DEBUG: No current module name");
         }
 
         // Return a reference to an empty symbol table for compatibility
+        println!("DEBUG: Returning empty symbol table");
         static EMPTY_SYMBOL_TABLE: std::sync::LazyLock<crate::semantic::SymbolTable> =
             std::sync::LazyLock::new(crate::semantic::SymbolTable::new);
         &EMPTY_SYMBOL_TABLE

@@ -430,6 +430,10 @@ impl SymbolTable {
         let symbol_name = symbol.name.clone();
         let scope_id = symbol.scope_id.clone();
 
+        println!(
+            "DEBUG: Adding symbol '{symbol_name}' with ID '{symbol_id}' to scope '{scope_id}'"
+        );
+
         // Check if symbol already exists in current scope
         if let Some(scope) = self.scopes.get(&scope_id)
             && scope.symbols.contains_key(&symbol_name)
@@ -439,7 +443,12 @@ impl SymbolTable {
 
         // Add symbol to scope
         if let Some(scope) = self.scopes.get_mut(&scope_id) {
-            scope.add_symbol(symbol_name, symbol_id.clone());
+            scope.add_symbol(symbol_name.clone(), symbol_id.clone());
+            println!("DEBUG: Successfully added symbol '{symbol_name}' to scope '{scope_id}'");
+        } else {
+            println!(
+                "DEBUG: WARNING - scope '{scope_id}' not found when adding symbol '{symbol_name}'"
+            );
         }
 
         // Add symbol to symbol table
@@ -451,17 +460,23 @@ impl SymbolTable {
     /// Look up a symbol by name, searching through scope hierarchy
     #[must_use]
     pub fn lookup_symbol(&self, name: &str) -> Option<&Symbol> {
+        println!("DEBUG: Looking up symbol: {name}");
+
         // Start from current scope, or root scope if no current scope
         let start_scope_id = self
             .current_scope_id
             .as_ref()
             .or(self.root_scope_id.as_ref());
 
+        println!("DEBUG: Start scope ID: {start_scope_id:?}");
+
         if let Some(start_scope_id) = start_scope_id {
             let mut current_scope_id = start_scope_id;
 
             while let Some(scope) = self.scopes.get(current_scope_id) {
+                println!("DEBUG: Checking scope: {current_scope_id}");
                 if let Some(symbol_id) = scope.get_symbol(name) {
+                    println!("DEBUG: Found symbol in scope {current_scope_id}: {symbol_id}");
                     return self.symbols.get(symbol_id);
                 }
 
@@ -476,6 +491,7 @@ impl SymbolTable {
 
         // If not found in scopes, check builtin functions
         let builtin_id = format!("builtin::{name}");
+        println!("DEBUG: Checking builtin: {builtin_id}");
         self.symbols.get(&builtin_id)
     }
 
@@ -539,6 +555,12 @@ impl SymbolTable {
         self.current_scope_id
             .as_ref()
             .and_then(|id| self.scopes.get(id))
+    }
+
+    /// Get the current scope ID
+    #[must_use]
+    pub const fn current_scope_id(&self) -> Option<&String> {
+        self.current_scope_id.as_ref()
     }
 
     /// Get a scope by ID

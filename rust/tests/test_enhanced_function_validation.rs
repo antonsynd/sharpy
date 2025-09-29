@@ -30,7 +30,7 @@ fn test_builtin_function_argument_validation() {
     assert!(
         errors
             .iter()
-            .any(|err| err.contains("len() takes exactly 1 argument, got 2"))
+            .any(|err| err.contains("Function 'len' expects 1 argument, got 2"))
     );
 
     // Test str() with correct argument count
@@ -60,7 +60,7 @@ fn test_builtin_function_argument_validation() {
     assert!(
         errors
             .iter()
-            .any(|err| err.contains("str() takes exactly 1 argument, got 0"))
+            .any(|err| err.contains("Function 'str' expects 1 argument, got 0"))
     );
 }
 
@@ -149,8 +149,8 @@ result = process_number("hello")
     let errors = result.unwrap_err();
     assert!(errors.iter().any(|err| {
         err.contains("Function 'process_number' argument 1 expects type")
-            && err.contains("Int")
-            && err.contains("Str")
+            && err.contains("int")
+            && err.contains("str")
     }));
 }
 

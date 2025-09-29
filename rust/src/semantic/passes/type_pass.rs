@@ -4,7 +4,6 @@ use super::{AnalysisPass, PassResult};
 use crate::ast::node::{BinaryOp, Node, UnaryOp};
 use crate::ast::types::ResolvedType;
 use crate::semantic::module_registry::ModuleRegistry;
-use crate::semantic::symbol_table::SymbolKind;
 use crate::semantic::types::create_builtin_methods;
 use crate::semantic::{BuiltinType, SemanticError, SemanticType};
 
@@ -419,7 +418,17 @@ impl TypePass {
         registry: &mut ModuleRegistry,
     ) -> Result<SemanticType, SemanticError> {
         // First, infer the type of the function being called
-        let func_type = self.infer_expression_type(&call.function, registry)?;
+        let func_type = match self.infer_expression_type(&call.function, registry) {
+            Ok(t) => t,
+            Err(SemanticError::UndefinedSymbol(name)) => {
+                // Convert UndefinedSymbol to UndefinedFunction when in function call context
+                if let Node::Name(func_name) = call.function.as_ref() {
+                    return Err(SemanticError::UndefinedFunction(func_name.id.clone()));
+                }
+                return Err(SemanticError::UndefinedSymbol(name));
+            }
+            Err(other) => return Err(other),
+        };
 
         match func_type {
             SemanticType::Function { return_type, .. } => {
@@ -444,7 +453,7 @@ impl TypePass {
                             _ => Ok(SemanticType::Unknown("not_callable".to_string())),
                         }
                     } else {
-                        Ok(SemanticType::Unknown("undefined_function".to_string()))
+                        Err(SemanticError::UndefinedFunction(name.id.clone()))
                     }
                 } else {
                     Ok(func_type) // Return the unknown type
@@ -783,42 +792,45 @@ impl TypePass {
         // Check argument types against function signature
         match call.function.as_ref() {
             Node::Name(func_name) => {
-                let func_symbol_type = registry
-                    .resolve_symbol(&func_name.id)
-                    .map(|s| s.symbol_type.clone());
+                let func_symbol = registry.resolve_symbol(&func_name.id);
 
-                if let Some(SemanticType::Function { params, .. }) = func_symbol_type {
-                    // Check if the number of arguments matches
-                    if call.positional_args.len() != params.len() {
-                        return Err(SemanticError::ArgumentCountMismatch {
-                            function_name: func_name.id.clone(),
-                            expected: params.len(),
-                            found: call.positional_args.len(),
-                        });
-                    }
+                if func_symbol.is_none() {
+                    // Function not found - generate UndefinedFunction error
+                    return Err(SemanticError::UndefinedFunction(func_name.id.clone()));
+                }
 
-                    // Check each argument type
-                    for (i, (arg, expected_type)) in
-                        call.positional_args.iter().zip(params.iter()).enumerate()
-                    {
-                        let actual_type = self.infer_expression_type(arg, registry)?;
-                        if !self.types_compatible(expected_type, &actual_type) {
-                            return Err(SemanticError::ArgumentTypeMismatch {
+                let func_symbol_type = func_symbol.unwrap().symbol_type.clone();
+                match func_symbol_type {
+                    SemanticType::Function { params, .. } => {
+                        // Check if the number of arguments matches
+                        if call.positional_args.len() != params.len() {
+                            return Err(SemanticError::ArgumentCountMismatch {
                                 function_name: func_name.id.clone(),
-                                argument_index: i,
-                                expected: expected_type.display_name(),
-                                found: actual_type.display_name(),
+                                expected: params.len(),
+                                found: call.positional_args.len(),
                             });
                         }
+
+                        // Check each argument type
+                        for (i, (arg, expected_type)) in
+                            call.positional_args.iter().zip(params.iter()).enumerate()
+                        {
+                            let actual_type = self.infer_expression_type(arg, registry)?;
+                            if !self.types_compatible(expected_type, &actual_type) {
+                                return Err(SemanticError::ArgumentTypeMismatch {
+                                    function_name: func_name.id.clone(),
+                                    argument_index: i,
+                                    expected: expected_type.display_name(),
+                                    found: actual_type.display_name(),
+                                });
+                            }
+                        }
                     }
-                } else {
-                    // Check if it's a variable being called as function
-                    if let Some(symbol) = registry.resolve_symbol(&func_name.id)
-                        && symbol.kind != SymbolKind::Function
-                    {
+                    _ => {
+                        // It's a variable being called as function
                         return Err(SemanticError::VariableCalledAsFunction {
                             variable_name: func_name.id.clone(),
-                            variable_type: symbol.symbol_type.display_name(),
+                            variable_type: func_symbol_type.display_name(),
                         });
                     }
                 }
