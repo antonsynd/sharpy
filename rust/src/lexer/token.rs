@@ -21,13 +21,6 @@ pub enum TokenType {
     Protocol,
     Property,
 
-    // Keywords - Access Modifiers
-    Public,
-    Protected,
-    Private,
-    Internal,
-    File,
-
     // Keywords - Function/Control
     Def,
     Return,
@@ -224,9 +217,9 @@ impl Token {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AccessModifier {
-    Public,    // (empty)
-    Protected, // _
-    Private,   // __
-    Internal,  // $
-    File,      // $$
+    Public,    // (default/no prefix)
+    Protected, // _ prefix
+    Private,   // __ prefix
+    Internal,  // via @internal decorator
+    File,      // via @file decorator
 }

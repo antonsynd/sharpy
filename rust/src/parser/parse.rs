@@ -94,95 +94,11 @@ impl Parser {
     }
 
     /// Parse a definition with an explicit access modifier keyword
-    fn parse_access_modified_definition(&mut self) -> Result<Node, ParseError> {
-        // Get the explicit access modifier keyword
-        let explicit_access_modifier = if self.match_token(&TokenType::Public) {
-            self.advance(); // consume 'public'
-            Some("public".to_string())
-        } else if self.match_token(&TokenType::Protected) {
-            self.advance(); // consume 'protected'
-            Some("protected".to_string())
-        } else if self.match_token(&TokenType::Private) {
-            self.advance(); // consume 'private'
-            Some("private".to_string())
-        } else if self.match_token(&TokenType::Internal) {
-            self.advance(); // consume 'internal'
-            Some("internal".to_string())
-        } else if self.match_token(&TokenType::File) {
-            self.advance(); // consume 'file'
-            Some("file".to_string())
-        } else {
-            return Err(ParseError::UnexpectedToken {
-                expected: "access modifier keyword".to_string(),
-                found: self.current_token_string(),
-                location: self.current_location(),
-            });
-        };
-
-        // Parse the definition that follows and override its access modifier
-        let mut node = if self.match_token(&TokenType::Def) {
-            self.advance(); // consume 'def'
-            self.parse_function_definition()?
-        } else if self.match_token(&TokenType::Class) {
-            self.advance(); // consume 'class'
-            self.parse_class_definition()?
-        } else if self.match_token(&TokenType::Struct) {
-            self.advance(); // consume 'struct'
-            self.parse_struct_definition()?
-        } else if self.match_token(&TokenType::Protocol) {
-            self.advance(); // consume 'protocol'
-            self.parse_protocol_definition()?
-        } else {
-            // Try to parse as a variable assignment with explicit access modifier
-            // This handles cases like: private name: int = 5
-            return Err(ParseError::UnexpectedToken {
-                expected: "function, class, struct, or protocol definition".to_string(),
-                found: self.current_token_string(),
-                location: self.current_location(),
-            });
-        };
-
-        // Override access modifier in the parsed node
-        match &mut node {
-            Node::FunctionDef(func_def) => {
-                func_def.access_modifier = explicit_access_modifier;
-            }
-            Node::ClassDef(class_def) => {
-                class_def.access_modifier = explicit_access_modifier;
-            }
-            Node::StructDef(struct_def) => {
-                struct_def.access_modifier = explicit_access_modifier;
-            }
-            Node::ProtocolDef(protocol_def) => {
-                protocol_def.access_modifier = explicit_access_modifier;
-            }
-            _ => {
-                // This shouldn't happen given our parsing logic above
-                return Err(ParseError::UnexpectedToken {
-                    expected: "function, class, struct, or protocol definition".to_string(),
-                    found: format!("{:?}", node),
-                    location: self.current_location(),
-                });
-            }
-        }
-
-        Ok(node)
-    }
-
     /// Parse a single statement
     fn parse_statement(&mut self) -> Result<Node, ParseError> {
         // Handle decorators first
         if self.match_token(&TokenType::At) {
             return self.parse_decorated_definition();
-        }
-
-        // Check for explicit access modifier keywords
-        if self.match_token(&TokenType::Public) ||
-           self.match_token(&TokenType::Protected) ||
-           self.match_token(&TokenType::Private) ||
-           self.match_token(&TokenType::Internal) ||
-           self.match_token(&TokenType::File) {
-            return self.parse_access_modified_definition();
         }
 
         // Check for import statements first
@@ -2600,6 +2516,7 @@ impl Parser {
     /// Parse a decorated definition (function, class, etc.) starting with @
     fn parse_decorated_definition(&mut self) -> Result<Node, ParseError> {
         let mut decorators = Vec::new();
+        let mut access_modifier: Option<String> = None;
 
         // Parse decorators
         while self.match_token(&TokenType::At) {
@@ -2608,16 +2525,40 @@ impl Parser {
             // Parse decorator name (for now, just simple names like @static, @override)
             if let Some(token) = self.current_token() {
                 if let TokenType::Name(name_type) = &token.token_type {
-                    let decorator = Node::Name(Name {
-                        id: name_type.name.clone(),
-                        source: Some(NodeSource::new(
-                            token.location.line,
-                            token.location.column,
-                            token.location.line,
-                            token.location.column + name_type.name.len(),
-                        )),
-                    });
-                    decorators.push(decorator);
+                    let decorator_name = &name_type.name;
+
+                    // Check if this is an access modifier decorator
+                    match decorator_name.as_str() {
+                        "public" => {
+                            access_modifier = Some("public".to_string());
+                        }
+                        "protected" => {
+                            access_modifier = Some("protected".to_string());
+                        }
+                        "private" => {
+                            access_modifier = Some("private".to_string());
+                        }
+                        "internal" => {
+                            access_modifier = Some("internal".to_string());
+                        }
+                        "file" => {
+                            access_modifier = Some("file".to_string());
+                        }
+                        _ => {
+                            // Not an access modifier, add to regular decorators
+                            let decorator = Node::Name(Name {
+                                id: decorator_name.clone(),
+                                source: Some(NodeSource::new(
+                                    token.location.line,
+                                    token.location.column,
+                                    token.location.line,
+                                    token.location.column + decorator_name.len(),
+                                )),
+                            });
+                            decorators.push(decorator);
+                        }
+                    }
+
                     self.advance(); // consume decorator name
                 } else {
                     return Err(ParseError::UnexpectedToken {
@@ -2642,16 +2583,33 @@ impl Parser {
             self.advance(); // consume 'def'
             let mut function_node = self.parse_function_definition()?;
 
-            // Add decorators to the function
+            // Add decorators and access modifier to the function
             if let Node::FunctionDef(ref mut func_def) = function_node {
                 func_def.decorators = decorators;
+
+                // Override access modifier if one was specified via decorator
+                if let Some(explicit_access) = access_modifier {
+                    func_def.access_modifier = Some(explicit_access);
+                }
             }
 
             Ok(function_node)
         } else if self.match_token(&TokenType::Class) {
-            // TODO: Add decorator support for classes
             self.advance(); // consume 'class'
-            self.parse_class_definition()
+            let mut class_node = self.parse_class_definition()?;
+
+            // Add decorators and access modifier to the class
+            if let Node::ClassDef(ref mut class_def) = class_node {
+                // TODO: Add decorator support for classes
+                // class_def.decorators = decorators;
+
+                // Override access modifier if one was specified via decorator
+                if let Some(explicit_access) = access_modifier {
+                    class_def.access_modifier = Some(explicit_access);
+                }
+            }
+
+            Ok(class_node)
         } else {
             Err(ParseError::InvalidSyntax {
                 message: "Decorators can only be applied to functions or classes".to_string(),

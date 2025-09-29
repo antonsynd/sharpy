@@ -443,7 +443,8 @@ mod tests {
         let tokens = lexer.tokenize_all().unwrap();
 
         // Filter out EOF and other non-content tokens
-        let content_tokens: Vec<_> = tokens.iter()
+        let content_tokens: Vec<_> = tokens
+            .iter()
             .filter(|t| !matches!(t.token_type, TokenType::Eof | TokenType::Newline))
             .collect();
 
@@ -453,26 +454,59 @@ mod tests {
         // _protected should be a name with Protected access modifier
         if let TokenType::Name(name) = &content_tokens[0].token_type {
             assert_eq!(name.name, "protected");
-            assert_eq!(name.access_modifier, crate::lexer::token::AccessModifier::Protected);
+            assert_eq!(
+                name.access_modifier,
+                crate::lexer::token::AccessModifier::Protected
+            );
             assert!(!name.is_literal);
         } else {
-            panic!("Expected Name token for _protected, got {:?}", content_tokens[0].token_type);
+            panic!(
+                "Expected Name token for _protected, got {:?}",
+                content_tokens[0].token_type
+            );
         }
 
         // __private should be a name with Private access modifier
         if let TokenType::Name(name) = &content_tokens[1].token_type {
             assert_eq!(name.name, "private");
-            assert_eq!(name.access_modifier, crate::lexer::token::AccessModifier::Private);
+            assert_eq!(
+                name.access_modifier,
+                crate::lexer::token::AccessModifier::Private
+            );
             assert!(!name.is_literal);
         } else {
             panic!("Expected Name token for __private");
         }
 
-        // public should be a keyword token
-        assert_eq!(content_tokens[2].token_type, TokenType::Public);
+        // public should be a regular name token (for use in decorators)
+        if let TokenType::Name(name) = &content_tokens[2].token_type {
+            assert_eq!(name.name, "public");
+            assert_eq!(
+                name.access_modifier,
+                crate::lexer::token::AccessModifier::Public
+            );
+            assert!(!name.is_literal);
+        } else {
+            panic!(
+                "Expected Name token for public, got {:?}",
+                content_tokens[2].token_type
+            );
+        }
 
-        // internal should be a keyword token
-        assert_eq!(content_tokens[3].token_type, TokenType::Internal);
+        // internal should be a regular name token (for use in decorators)
+        if let TokenType::Name(name) = &content_tokens[3].token_type {
+            assert_eq!(name.name, "internal");
+            assert_eq!(
+                name.access_modifier,
+                crate::lexer::token::AccessModifier::Public
+            );
+            assert!(!name.is_literal);
+        } else {
+            panic!(
+                "Expected Name token for internal, got {:?}",
+                content_tokens[3].token_type
+            );
+        }
     }
 
     #[test]

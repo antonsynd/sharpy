@@ -1,0 +1,65 @@
+# Comprehensive Decorator-Based Access Modifier Demo
+
+class Calculator:
+    # Public methods (default - no decorator needed)
+    def add(self, a: int, b: int) -> int:
+        return a + b
+
+    # Explicit access modifier decorators
+    @protected
+    def validate_input(self, value: int) -> bool:
+        return value >= 0
+
+    @private
+    def internal_calculation(self, x: int) -> int:
+        return x * 2
+
+    @internal
+    def shared_utility(self) -> str:
+        return "shared across module"
+
+    @file
+    def local_helper(self) -> None:
+        pass
+
+    # Underscore naming hints (fallback when no decorator)
+    def _protected_style(self) -> None:
+        pass
+
+    def __private_style(self) -> None:
+        pass
+
+    # Decorator overrides naming convention
+    @public
+    def _actually_public(self) -> None:
+        pass
+
+    @internal
+    def __actually_internal(self) -> None:
+        pass
+
+    # Stacking access modifiers with other decorators
+    @static
+    @private
+    def private_static_method() -> int:
+        return 42
+
+    @static
+    @protected
+    def protected_static_helper() -> str:
+        return "helper"
+
+# Module-level functions with access modifiers
+@internal
+def module_helper():
+    pass
+
+@file
+def file_scoped_function():
+    pass
+
+def _traditional_protected():
+    pass
+
+def __traditional_private():
+    pass

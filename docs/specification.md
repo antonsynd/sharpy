@@ -385,7 +385,9 @@ protocol Encodable:
 
 # Access modifiers
 
-Access modifiers in Sharpy can be specified using either naming prefixes or explicit keywords. This hybrid approach enforces semantic consistency while providing developer choice and maintaining lexical simplicity.
+# Access modifiers
+
+Access modifiers in Sharpy are specified using decorators, providing consistency with other Sharpy features like `@static`, `@override`, and `@final`. Additionally, traditional Python underscore naming conventions are supported as fallback hints when no explicit decorator is used.
 
 Sharpy supports public, private, protected, internal, and file access modifiers. The C# modifiers `protected internal` and `private protected` do not exist in Sharpy.
 
@@ -393,41 +395,56 @@ As an exception, Sharpy-recognized dunder methods are always public, however the
 
 ## Access Level Syntax
 
-| Access Level | Prefix Syntax | Keyword Syntax | C# Equivalent | Access |
+| Access Level | Decorator Syntax | Underscore Hint | C# Equivalent | Access |
 | - | - | - | - | - |
-| Public | `name` | `public name` | `public` | Accessible to everyone (default) |
-| Protected | `_name` | `protected name` | `protected` | Accessible to the class and its derived classes |
-| Private | `__name` | `private name` | `private` | Accessible to only the actual class |
-| Internal | N/A | `internal name` | `internal` | Accessible to anything in the project |
-| File | N/A | `file name` | `file` | Accessible to only symbols in the current file |
+| Public | *(default)* | `name` | `public` | Accessible to everyone (default) |
+| Protected | `@protected` | `_name` | `protected` | Accessible to the class and its derived classes |
+| Private | `@private` | `__name` | `private` | Accessible to only the actual class |
+| Internal | `@internal` | N/A | `internal` | Accessible to anything in the project |
+| File | `@file` | N/A | `file` | Accessible to only symbols in the current file |
 
 ## Behavior
 
 The compiler uses the following precedence rules for access modifiers:
 
-1. **Underscore prefixes take precedence**: Names starting with `_` are protected, `__` are private, regardless of explicit keywords
-2. **Explicit keywords for non-prefix names**: Names without underscore prefixes use explicit keywords to determine access level
-3. **Default access**: Names without prefixes and without explicit keywords are public
+1. **Decorators take precedence**: Explicit `@protected`, `@private`, etc. decorators override any naming conventions
+2. **Underscore fallback**: Names starting with `_` are protected, `__` are private, when no decorator is present
+3. **Default access**: Names without decorators and without underscore prefixes are public
 
 ```Python
 class Calculator:
-    # Protected access (from _ prefix)
-    _helper: int = 0                    # Protected (inferred from prefix)
-    private _still_protected: int = 0   # Protected (prefix overrides keyword)
+    # Public access (default - no decorator needed)
+    value: int = 0
+    def api_method(self): pass
 
-    # Private access (from __ prefix)
-    __temp: int = 0                     # Private (inferred from prefix)
-    public __still_private: int = 0     # Private (prefix overrides keyword)
+    # Explicit decorator access modifiers
+    @protected
+    def helper_method(self): pass
 
-    # Explicit keyword access (no prefix)
-    protected helper_method: int = 0    # Protected (from keyword)
-    private secret_data: int = 0        # Private (from keyword)
-    internal shared_data: int = 0       # Internal (keyword required)
-    file local_cache: dict = {}         # File-level (keyword required)
+    @private
+    secret_data: int = 0
 
-    # Public access (default)
-    value: int = 0                      # Public (default)
-    public api_value: int = 0           # Public (explicit)
+    @internal
+    def shared_utility(self): pass
+
+    @file
+    def local_helper(self): pass
+
+    # Underscore naming hints (when no decorator present)
+    def _protected_style(self): pass    # Protected (from _ prefix)
+    def __private_style(self): pass     # Private (from __ prefix)
+
+    # Decorator overrides naming convention
+    @public
+    def _actually_public(self): pass    # Public (decorator overrides _ prefix)
+
+    @internal
+    def __actually_internal(self): pass # Internal (decorator overrides __ prefix)
+
+    # Decorator stacking with other features
+    @static
+    @private
+    def private_static_method(): pass
 ```
 
 ## Implementation Examples
@@ -438,33 +455,31 @@ class Foo:
     def public_method(self) -> None:
         pass
 
-    public def explicit_public_method(self) -> None:
-        pass
-
     # Protected methods
-    def _protected_method(self) -> None:  # Inferred from prefix
+    @protected
+    def protected_method(self) -> None:
         pass
 
-    protected def other_protected_method(self) -> None:  # Explicit keyword
+    def _protected_by_naming(self) -> None:  # Protected by underscore hint
         pass
 
     # Private methods
-    def __private_method(self) -> None:  # Inferred from prefix
+    @private
+    def private_method(self) -> None:
         pass
 
-    private def other_private_method(self) -> None:  # Explicit keyword
+    def __private_by_naming(self) -> None:  # Private by underscore hint
         pass
 
-    # Internal methods (keyword required)
-    internal def internal_method(self) -> None:
+    # Internal methods (decorator required)
+    @internal
+    def internal_method(self) -> None:
         pass
 
-    # File-level methods (keyword required)
-    file def file_method(self) -> None:
-        pass
-```
-
-**Implementation Note**: The lexer detects both prefix-based access modifiers in name tokens and explicit access modifier keywords. The parser extracts clean names (without prefixes) and access modifier levels. When both are present, underscore prefixes take precedence over explicit keywords.
+    # File-level methods (decorator required)
+    @file
+    def file_method(self) -> None:
+        pass**Implementation Note**: The lexer detects underscore-prefixed names and stores them as naming hints in the token. The parser processes `@protected`, `@private`, `@internal`, `@file` decorators and combines them with underscore hints using the precedence rules above. When both are present, decorators take precedence over naming conventions.
 
 # Attributes
 
