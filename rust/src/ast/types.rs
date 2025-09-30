@@ -112,32 +112,6 @@ impl OptionalType {
     }
 }
 
-/// A union type, e.g. `int | str` (if supported)
-#[derive(Debug, Clone, PartialEq)]
-pub struct UnionType {
-    /// The types in the union
-    pub types: Vec<Node>,
-    pub source: Option<NodeSource>,
-}
-
-impl UnionType {
-    #[must_use]
-    pub const fn new(types: Vec<Node>) -> Self {
-        Self {
-            types,
-            source: None,
-        }
-    }
-
-    #[must_use]
-    pub const fn with_source(types: Vec<Node>, source: NodeSource) -> Self {
-        Self {
-            types,
-            source: Some(source),
-        }
-    }
-}
-
 // Keep the old complex type system for semantic analysis / type resolution
 // These will be used by the type checker, not the parser
 

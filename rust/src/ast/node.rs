@@ -1,4 +1,4 @@
-use super::types::{GenericType, OptionalType, QualifiedType, Type, TypeName, UnionType};
+use super::types::{GenericType, OptionalType, QualifiedType, Type, TypeName};
 use crate::utils::position::SourceLocation;
 
 /// Source location information for AST nodes
@@ -181,7 +181,6 @@ pub enum Node {
     QualifiedType(QualifiedType),
     GenericType(GenericType),
     OptionalType(OptionalType),
-    UnionType(UnionType),
 
     // Legacy type (for semantic analysis)
     Type(Type),
@@ -213,7 +212,6 @@ impl Node {
             Self::QualifiedType(n) => n.source.as_ref(),
             Self::GenericType(n) => n.source.as_ref(),
             Self::OptionalType(n) => n.source.as_ref(),
-            Self::UnionType(n) => n.source.as_ref(),
             // Add all other variants...
             _ => None, // Temporary fallback
         }
@@ -242,7 +240,6 @@ impl Node {
             Self::QualifiedType(n) => n.source.as_mut(),
             Self::GenericType(n) => n.source.as_mut(),
             Self::OptionalType(n) => n.source.as_mut(),
-            Self::UnionType(n) => n.source.as_mut(),
             // Add all other variants...
             _ => None, // Temporary fallback
         }
@@ -271,7 +268,6 @@ impl Node {
             Self::QualifiedType(n) => n.source = Some(source),
             Self::GenericType(n) => n.source = Some(source),
             Self::OptionalType(n) => n.source = Some(source),
-            Self::UnionType(n) => n.source = Some(source),
             // Add all other variants...
             _ => {} // Temporary fallback
         }

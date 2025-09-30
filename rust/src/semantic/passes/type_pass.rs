@@ -241,12 +241,32 @@ impl TypePass {
             Node::List(list) => {
                 // Infer list type from elements
                 if list.elements.is_empty() {
-                    Ok(SemanticType::Array(Box::new(SemanticType::Unknown(
-                        "empty_list".to_string(),
-                    ))))
+                    Ok(SemanticType::Generic {
+                        base: Box::new(SemanticType::Builtin(BuiltinType::List)),
+                        args: vec![SemanticType::Builtin(BuiltinType::Object)],
+                    })
                 } else {
                     let first_type = self.infer_expression_type(&list.elements[0], registry)?;
-                    Ok(SemanticType::Array(Box::new(first_type)))
+
+                    // Check if we need to promote int to float for mixed numeric lists
+                    let mut element_type = first_type;
+                    for elem in &list.elements[1..] {
+                        let elem_type = self.infer_expression_type(elem, registry)?;
+                        if element_type == SemanticType::Builtin(BuiltinType::Int)
+                            && elem_type == SemanticType::Builtin(BuiltinType::Float)
+                        {
+                            element_type = SemanticType::Builtin(BuiltinType::Float);
+                        } else if element_type == SemanticType::Builtin(BuiltinType::Float)
+                            && elem_type == SemanticType::Builtin(BuiltinType::Int)
+                        {
+                            // Already float, keep it
+                        }
+                    }
+
+                    Ok(SemanticType::Generic {
+                        base: Box::new(SemanticType::Builtin(BuiltinType::List)),
+                        args: vec![element_type],
+                    })
                 }
             }
 
@@ -256,8 +276,8 @@ impl TypePass {
                     Ok(SemanticType::Generic {
                         base: Box::new(SemanticType::Builtin(BuiltinType::Dict)),
                         args: vec![
-                            SemanticType::Unknown("empty_dict_key".to_string()),
-                            SemanticType::Unknown("empty_dict_value".to_string()),
+                            SemanticType::Builtin(BuiltinType::Object),
+                            SemanticType::Builtin(BuiltinType::Object),
                         ],
                     })
                 } else {
@@ -312,8 +332,8 @@ impl TypePass {
                     if self.types_compatible(&true_type, &false_type) {
                         Ok(true_type)
                     } else {
-                        // Different types - create a union type
-                        Ok(SemanticType::Union(vec![true_type, false_type]))
+                        // Different types - use Unknown for now
+                        Ok(SemanticType::Unknown("conditional_mixed_types".to_string()))
                     }
                 }
             }
@@ -588,8 +608,43 @@ impl TypePass {
     ) -> Result<SemanticType, SemanticError> {
         let array_type = self.infer_expression_type(array, registry)?;
 
-        match array_type {
-            SemanticType::Array(element_type) => Ok(*element_type),
+        match &array_type {
+            SemanticType::Array(element_type) => Ok((**element_type).clone()),
+            SemanticType::Generic { base, args } => {
+                // Handle generic types like List[T], Dict[K, V], Set[T]
+                match **base {
+                    SemanticType::Builtin(BuiltinType::List) => {
+                        // List[T] subscript returns T
+                        if args.is_empty() {
+                            Ok(SemanticType::Unknown("list_element".to_string()))
+                        } else {
+                            Ok(args[0].clone())
+                        }
+                    }
+                    SemanticType::Builtin(BuiltinType::Dict) => {
+                        // Dict[K, V] subscript returns V
+                        if args.len() < 2 {
+                            Ok(SemanticType::Unknown("dict_value".to_string()))
+                        } else {
+                            Ok(args[1].clone())
+                        }
+                    }
+                    SemanticType::Builtin(BuiltinType::Tuple) => {
+                        // Tuple subscript - would need index analysis for proper typing
+                        Ok(SemanticType::Unknown("tuple_element".to_string()))
+                    }
+                    SemanticType::Builtin(BuiltinType::Set) => {
+                        // Sets don't support item access
+                        Err(SemanticError::InvalidOperation {
+                            operation: "subscript".to_string(),
+                            type_name: "Set objects do not support item access".to_string(),
+                        })
+                    }
+                    _ => Err(SemanticError::NotIndexable(
+                        self.semantic_type_to_resolved_type(&array_type),
+                    )),
+                }
+            }
             _ => Err(SemanticError::NotIndexable(
                 self.semantic_type_to_resolved_type(&array_type),
             )),

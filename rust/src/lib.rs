@@ -7,7 +7,7 @@ pub mod utils;
 pub use ast::{
     Node, NodeSource,
     node::{BinaryOp, BoolOp, Call, CompOp, ConstantValue, Module, UnaryOp},
-    types::{GenericType, OptionalType, QualifiedType, TypeName, UnionType},
+    types::{GenericType, OptionalType, QualifiedType, TypeName},
 };
 pub use lexer::{LexerError, SharpyLexer, Token, TokenType};
 pub use parser::{ParseError, Parser};

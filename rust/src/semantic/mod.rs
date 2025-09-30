@@ -111,7 +111,7 @@ impl std::fmt::Display for SemanticError {
             } => {
                 write!(
                     f,
-                    "Type mismatch at {line}:{column}: expected {expected:?}, found {found:?}"
+                    "Cannot assign {found:?} to {expected:?} at {line}:{column}"
                 )
             }
             Self::InvalidOperation {

@@ -37,8 +37,6 @@ pub enum SemanticType {
     },
     /// Tuple types
     Tuple(Vec<SemanticType>),
-    /// Union types (int | str)
-    Union(Vec<SemanticType>),
     /// Array types (array[T])
     Array(Box<SemanticType>),
     /// Unknown/unresolved type
@@ -288,11 +286,6 @@ impl SemanticType {
                     .join(", ");
                 format!("tuple[{types_str}]")
             }
-            Self::Union(types) => types
-                .iter()
-                .map(Self::display_name)
-                .collect::<Vec<_>>()
-                .join(" | "),
             Self::Array(inner) => format!("array[{}]", inner.display_name()),
             Self::Unknown(name) => format!("<?{name}>"),
         }
@@ -308,6 +301,9 @@ impl SemanticType {
 
             // None can be assigned to any optional type
             (Self::Builtin(BuiltinType::None), Self::Optional(_)) => true,
+
+            // Numeric type promotion: int can be assigned to float
+            (Self::Builtin(BuiltinType::Int), Self::Builtin(BuiltinType::Float)) => true,
 
             // Optional types
             (Self::Optional(inner), other_type) => inner.is_assignable_to(other_type),
@@ -437,14 +433,8 @@ pub fn create_builtin_functions() -> Vec<(String, SemanticType)> {
         (
             "abs".to_string(),
             SemanticType::Function {
-                params: vec![SemanticType::Union(vec![
-                    SemanticType::Builtin(BuiltinType::Int),
-                    SemanticType::Builtin(BuiltinType::Float),
-                ])], // exactly 1 argument
-                return_type: Some(Box::new(SemanticType::Union(vec![
-                    SemanticType::Builtin(BuiltinType::Int),
-                    SemanticType::Builtin(BuiltinType::Float),
-                ]))),
+                params: vec![SemanticType::Unknown("any".to_string())], // exactly 1 argument
+                return_type: Some(Box::new(SemanticType::Unknown("any".to_string()))),
             },
         ),
         (
@@ -465,10 +455,7 @@ pub fn create_builtin_functions() -> Vec<(String, SemanticType)> {
             "sum".to_string(),
             SemanticType::Function {
                 params: vec![SemanticType::Unknown("any".to_string())], // exactly 1 argument (iterable)
-                return_type: Some(Box::new(SemanticType::Union(vec![
-                    SemanticType::Builtin(BuiltinType::Int),
-                    SemanticType::Builtin(BuiltinType::Float),
-                ]))),
+                return_type: Some(Box::new(SemanticType::Unknown("any".to_string()))),
             },
         ),
         // Iterator functions
@@ -527,19 +514,10 @@ pub fn create_builtin_functions() -> Vec<(String, SemanticType)> {
             "pow".to_string(),
             SemanticType::Function {
                 params: vec![
-                    SemanticType::Union(vec![
-                        SemanticType::Builtin(BuiltinType::Int),
-                        SemanticType::Builtin(BuiltinType::Float),
-                    ]),
-                    SemanticType::Union(vec![
-                        SemanticType::Builtin(BuiltinType::Int),
-                        SemanticType::Builtin(BuiltinType::Float),
-                    ]),
+                    SemanticType::Unknown("any".to_string()),
+                    SemanticType::Unknown("any".to_string()),
                 ], // exactly 2 arguments
-                return_type: Some(Box::new(SemanticType::Union(vec![
-                    SemanticType::Builtin(BuiltinType::Int),
-                    SemanticType::Builtin(BuiltinType::Float),
-                ]))),
+                return_type: Some(Box::new(SemanticType::Unknown("any".to_string()))),
             },
         ),
         (

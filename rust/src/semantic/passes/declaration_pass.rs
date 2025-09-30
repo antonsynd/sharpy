@@ -435,14 +435,6 @@ impl DeclarationPass {
                     generic_params: Vec::new(),
                 })
             }
-            Node::UnionType(union_type) => {
-                // Handle union types like int | str
-                let mut union_types = Vec::new();
-                for type_node in &union_type.types {
-                    union_types.push(self.convert_ast_type_to_semantic_type(type_node)?);
-                }
-                Ok(SemanticType::Union(union_types))
-            }
             _ => {
                 // For any other node type, return an unknown type
                 Ok(SemanticType::Unknown(format!(

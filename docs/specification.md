@@ -53,7 +53,7 @@ This specification describes the full vision for Sharpy. The current compiler im
 - **Try expressions**: `try` as expression form
 - **Match expressions**: Pattern matching in expressions
 - **Advanced generics**: Constraints and where clauses
-- **Advanced type system**: Union types, intersection types, type aliases
+- **Advanced type system**: Intersection types, type aliases
 - **Comprehensive error handling**: Exception type checking and propagation
 
 # Types
@@ -802,7 +802,6 @@ Sharpy supports several type syntax forms:
 - **Generic types**: `List[int]`, `Dict[str, int]` - **fully implemented**
 - **Optional types**: `int?`, `str?` (true optionals) - **parsing implemented**
 - **Qualified types**: `Module.ClassName`, `Package.Module.Type` - **fully implemented**
-- **Union types**: `int | str | None` (using `|` operator) - **parsing implemented**
 
 ## Member Variables
 

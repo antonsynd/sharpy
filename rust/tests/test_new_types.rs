@@ -40,12 +40,5 @@ fn test_new_type_system_examples() {
     ))));
     println!("Optional type: {optional_type:?}");
 
-    // Union type: int | str
-    let union_type = Node::UnionType(UnionType::new(vec![
-        Node::TypeName(TypeName::new("int".to_string())),
-        Node::TypeName(TypeName::new("str".to_string())),
-    ]));
-    println!("Union type: {union_type:?}");
-
     // This test always passes - it's just for demonstration
 }
