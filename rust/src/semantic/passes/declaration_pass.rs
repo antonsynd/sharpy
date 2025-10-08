@@ -52,6 +52,14 @@ impl DeclarationPass {
                 self.collect_class_declaration(class_def, registry)?;
             }
 
+            Node::StructDef(struct_def) => {
+                self.collect_struct_declaration(struct_def, registry)?;
+            }
+
+            Node::ProtocolDef(protocol_def) => {
+                self.collect_protocol_declaration(protocol_def, registry)?;
+            }
+
             Node::FunctionDef(func_def) => {
                 println!("DEBUG: Found function definition: {}", func_def.name);
                 self.collect_function_declaration(func_def, registry)?;
@@ -136,6 +144,133 @@ impl DeclarationPass {
 
         // TODO: We might want to enter the class scope and collect its members
         // For now, we'll handle member collection in the type analysis pass
+
+        Ok(())
+    }
+
+    /// Collect struct declaration
+    fn collect_struct_declaration(
+        &mut self,
+        struct_def: &crate::ast::node::StructDef,
+        registry: &mut ModuleRegistry,
+    ) -> Result<(), SemanticError> {
+        let current_module = registry
+            .current_module_mut()
+            .ok_or(SemanticError::NoCurrentModule)?;
+
+        // Check for duplicate struct declaration
+        if current_module
+            .symbols
+            .lookup_symbol(&struct_def.name)
+            .is_some()
+        {
+            return Err(SemanticError::DuplicateSymbol(struct_def.name.clone()));
+        }
+
+        // Extract access level from access modifier or decorators
+        let access_level = AccessLevel::from_modifier(struct_def.access_modifier.as_deref());
+
+        // Get the current scope ID from the symbol table
+        let scope_id = current_module
+            .symbols
+            .current_scope_id()
+            .cloned()
+            .unwrap_or_else(|| "module".to_string());
+
+        // Create struct symbol
+        let symbol = Symbol {
+            id: format!("{}::{}", current_module.file_path, struct_def.name),
+            name: struct_def.name.clone(),
+            kind: SymbolKind::Struct,
+            symbol_type: SemanticType::Struct {
+                name: struct_def.name.clone(),
+                module: None,               // Will be filled later
+                generic_params: Vec::new(), // TODO: Extract from type_params
+            },
+            access_level,
+            scope_id,
+            location: struct_def
+                .source
+                .as_ref()
+                .map(|s| SourceLocation::new(s.line_start, s.col_start, s.line_end, s.col_end)),
+            is_static: false,
+            generic_params: Vec::new(), // TODO: Extract from type_params
+            metadata: SymbolMetadata::Struct {
+                protocols: Vec::new(),  // Will be populated in later pass
+                members: Vec::new(),    // Will be populated in later pass
+                methods: Vec::new(),    // Will be populated in later pass
+                properties: Vec::new(), // Will be populated in later pass
+            },
+        };
+
+        // Add to current module's symbol table
+        current_module
+            .symbols
+            .add_symbol(symbol)
+            .map_err(SemanticError::DuplicateSymbol)?;
+
+        Ok(())
+    }
+
+    /// Collect protocol declaration
+    fn collect_protocol_declaration(
+        &mut self,
+        protocol_def: &crate::ast::node::ProtocolDef,
+        registry: &mut ModuleRegistry,
+    ) -> Result<(), SemanticError> {
+        let current_module = registry
+            .current_module_mut()
+            .ok_or(SemanticError::NoCurrentModule)?;
+
+        // Check for duplicate protocol declaration
+        if current_module
+            .symbols
+            .lookup_symbol(&protocol_def.name)
+            .is_some()
+        {
+            return Err(SemanticError::DuplicateSymbol(protocol_def.name.clone()));
+        }
+
+        // Extract access level from access modifier or decorators
+        let access_level = AccessLevel::from_modifier(protocol_def.access_modifier.as_deref());
+
+        // Get the current scope ID from the symbol table
+        let scope_id = current_module
+            .symbols
+            .current_scope_id()
+            .cloned()
+            .unwrap_or_else(|| "module".to_string());
+
+        // Create protocol symbol
+        let symbol = Symbol {
+            id: format!("{}::{}", current_module.file_path, protocol_def.name),
+            name: protocol_def.name.clone(),
+            kind: SymbolKind::Protocol,
+            symbol_type: SemanticType::Protocol {
+                name: protocol_def.name.clone(),
+                module: None,               // Will be filled later
+                generic_params: Vec::new(), // TODO: Extract from type_params
+            },
+            access_level,
+            scope_id,
+            location: protocol_def
+                .source
+                .as_ref()
+                .map(|s| SourceLocation::new(s.line_start, s.col_start, s.line_end, s.col_end)),
+            is_static: false,
+            generic_params: Vec::new(), // TODO: Extract from type_params
+            metadata: SymbolMetadata::Protocol {
+                base_protocols: Vec::new(), // Will be populated in later pass
+                methods: Vec::new(),        // Will be populated in later pass
+                properties: Vec::new(),     // Will be populated in later pass
+            },
+        };
+
+        // Add to current module's symbol table
+        current_module
+            .symbols
+            .add_symbol(symbol)
+            .map_err(SemanticError::DuplicateSymbol)?;
 
         Ok(())
     }
