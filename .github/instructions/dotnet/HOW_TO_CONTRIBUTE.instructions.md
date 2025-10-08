@@ -18,6 +18,9 @@ You can build the tests using:
 chiri pkg -- build --project tests
 ```
 
+It doesn't take any other arguments, so if you need any additional options
+or flags, use `dotnet` directly as described below.
+
 Again, you can optionally add the `--release` flag to build the tests in release mode.
 
 You can run the tests using:
@@ -32,7 +35,10 @@ You can format the C# code using:
 chiri pkg -- fmt --target cs
 ```
 
-If you need to invoke any `dotnet` tool directly, just use `dotnet` to invoke the .NET CLI. For example, to run the tests directly with `dotnet`, you can use:
+If you need to invoke any `dotnet` tool directly or pass additional options not
+mentioned here, just use `dotnet` to invoke the .NET CLI. For example, to run
+the tests directly with `dotnet` (do not prefix with a call to `chiri` as it
+will not work), you can use:
 
 ```bash
 dotnet test
