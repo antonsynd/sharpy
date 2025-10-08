@@ -1,4 +1,5 @@
 pub mod ast;
+pub mod codegen;
 pub mod lexer;
 pub mod parser;
 pub mod semantic;
@@ -9,6 +10,7 @@ pub use ast::{
     node::{BinaryOp, BoolOp, Call, CompOp, ConstantValue, Module, UnaryOp},
     types::{GenericType, OptionalType, QualifiedType, TypeName},
 };
+pub use codegen::{CodeGenError, CodeGenerator};
 pub use lexer::{LexerError, SharpyLexer, Token, TokenType};
 pub use parser::{ParseError, Parser};
 pub use semantic::{
