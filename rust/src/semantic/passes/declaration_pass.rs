@@ -4,7 +4,7 @@ use super::{AnalysisPass, PassResult};
 use crate::ast::node::{Assign, ClassDef, FunctionDef, Name, Node, TypedName};
 use crate::semantic::module_registry::ModuleRegistry;
 use crate::semantic::{
-    AccessLevel, SemanticError, SemanticType, Symbol, SymbolKind, SymbolMetadata,
+    AccessLevel, ScopeKind, SemanticError, SemanticType, Symbol, SymbolKind, SymbolMetadata,
 };
 use crate::utils::SourceLocation;
 
@@ -86,7 +86,7 @@ impl DeclarationPass {
         class_def: &ClassDef,
         registry: &mut ModuleRegistry,
     ) -> Result<(), SemanticError> {
-        let current_module = registry
+        let mut current_module = registry
             .current_module_mut()
             .ok_or(SemanticError::NoCurrentModule)?;
 
@@ -137,13 +137,46 @@ impl DeclarationPass {
         };
 
         // Add to current module's symbol table
-        current_module
+        let class_symbol_id = current_module
             .symbols
             .add_symbol(symbol)
             .map_err(SemanticError::DuplicateSymbol)?;
 
-        // TODO: We might want to enter the class scope and collect its members
-        // For now, we'll handle member collection in the type analysis pass
+        // Enter class scope and collect methods
+        current_module
+            .symbols
+            .enter_scope(ScopeKind::Class, Some(class_def.name.clone()));
+
+        let mut method_ids = Vec::new();
+
+        // Collect methods from class body
+        for node in &class_def.body {
+            if let Node::FunctionDef(func_def) = node {
+                // Collect the method
+                self.collect_function_declaration(func_def, registry)?;
+
+                // Get the method's symbol ID
+                current_module = registry
+                    .current_module_mut()
+                    .ok_or(SemanticError::NoCurrentModule)?;
+                if let Some(method_symbol) = current_module.symbols.lookup_symbol(&func_def.name) {
+                    method_ids.push(method_symbol.id.clone());
+                }
+            }
+        }
+
+        // Exit class scope
+        current_module = registry
+            .current_module_mut()
+            .ok_or(SemanticError::NoCurrentModule)?;
+        current_module.symbols.exit_scope();
+
+        // Update the class symbol with the collected methods
+        if let Some(class_symbol) = current_module.symbols.symbols.get_mut(&class_symbol_id)
+            && let SymbolMetadata::Class { methods, .. } = &mut class_symbol.metadata
+        {
+            *methods = method_ids;
+        }
 
         Ok(())
     }

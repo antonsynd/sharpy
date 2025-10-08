@@ -4,8 +4,9 @@ use super::{AnalysisPass, PassResult};
 use crate::ast::node::{BinaryOp, Node, UnaryOp};
 use crate::ast::types::ResolvedType;
 use crate::semantic::module_registry::ModuleRegistry;
+use crate::semantic::symbol_table::SymbolMetadata;
 use crate::semantic::types::create_builtin_methods;
-use crate::semantic::{BuiltinType, SemanticError, SemanticType};
+use crate::semantic::{BuiltinType, SemanticError, SemanticType, SymbolKind};
 
 /// Third pass: type checking and semantic analysis
 pub struct TypePass {
@@ -459,6 +460,22 @@ impl TypePass {
                         t.as_ref().clone()
                     }))
             }
+            SemanticType::Class { name, module, .. } => {
+                // Calling a class is a constructor call - return an instance of that class
+                Ok(SemanticType::Class {
+                    name,
+                    module,
+                    generic_params: vec![],
+                })
+            }
+            SemanticType::Struct { name, module, .. } => {
+                // Calling a struct is a constructor call - return an instance of that struct
+                Ok(SemanticType::Struct {
+                    name,
+                    module,
+                    generic_params: vec![],
+                })
+            }
             SemanticType::Unknown(_) => {
                 // If the function type is unknown, it might be a simple function name lookup
                 // Try to extract the function name and look it up in the symbol table
@@ -504,9 +521,29 @@ impl TypePass {
                     .map_or(name.clone(), |m| format!("{m}.{name}"));
 
                 if let Some(class_symbol) = registry.resolve_symbol(&full_name) {
-                    // TODO: Implement proper class attribute lookup
-                    // For now, assume all attributes exist and return unknown type
-                    let _ = class_symbol;
+                    // Look up methods in the class metadata and clone the list
+                    let methods_list = match &class_symbol.metadata {
+                        SymbolMetadata::Class { methods, .. } => methods.clone(),
+                        SymbolMetadata::Struct { methods, .. } => methods.clone(),
+                        _ => return Ok(SemanticType::Unknown(format!("{attr}_attribute"))),
+                    };
+
+                    // Get the current module's symbol table to look up methods by ID
+                    if let Some(current_module) = registry.current_module_mut() {
+                        // Search for the method by name in the stored method IDs
+                        for method_id in &methods_list {
+                            if let Some(method_symbol) =
+                                current_module.symbols.symbols.get(method_id)
+                                && method_symbol.name == attr
+                            {
+                                // Found the method - return its type
+                                return Ok(method_symbol.symbol_type.clone());
+                            }
+                        }
+                    }
+
+                    // Method not found - could be a property or field
+                    // TODO: Check properties and fields
                     Ok(SemanticType::Unknown(format!("{attr}_attribute")))
                 } else {
                     Ok(SemanticType::Unknown(format!("{attr}_attribute")))
@@ -881,6 +918,87 @@ impl TypePass {
                             }
                         }
                     }
+                    SemanticType::Class { name, .. } | SemanticType::Struct { name, .. } => {
+                        // Constructor call - validate against __init__ signature
+                        // Look up the class/struct symbol to find its __init__ method
+                        if let Some(class_symbol) = registry.resolve_symbol(&name) {
+                            let metadata = &class_symbol.metadata;
+
+                            // Get methods list from metadata
+                            let methods = match metadata {
+                                SymbolMetadata::Class { methods, .. } => methods,
+                                SymbolMetadata::Struct { methods, .. } => methods,
+                                _ => {
+                                    // Should not happen - just validate arguments exist
+                                    for arg in &call.positional_args {
+                                        self.analyze_expression(arg, registry)?;
+                                    }
+                                    return Ok(());
+                                }
+                            };
+
+                            // Look for __init__ method
+                            let mut init_params: Option<Vec<SemanticType>> = None;
+                            for method_id in methods {
+                                if let Some(method_symbol) = registry.resolve_symbol(method_id)
+                                    && method_symbol.name == "__init__"
+                                {
+                                    // Found __init__ - extract parameters
+                                    if let SemanticType::Function { params, .. } =
+                                        &method_symbol.symbol_type
+                                    {
+                                        // Skip 'self' parameter (first one)
+                                        init_params =
+                                            Some(params.iter().skip(1).cloned().collect());
+                                    }
+                                    break;
+                                }
+                            }
+
+                            // Validate argument count
+                            if let Some(expected_params) = init_params {
+                                if call.positional_args.len() != expected_params.len() {
+                                    return Err(SemanticError::ArgumentCountMismatch {
+                                        function_name: format!("{name}.__init__"),
+                                        expected: expected_params.len(),
+                                        found: call.positional_args.len(),
+                                    });
+                                }
+
+                                // Check each argument type
+                                for (i, (arg, expected_type)) in call
+                                    .positional_args
+                                    .iter()
+                                    .zip(expected_params.iter())
+                                    .enumerate()
+                                {
+                                    let actual_type = self.infer_expression_type(arg, registry)?;
+                                    if !self.types_compatible(expected_type, &actual_type) {
+                                        return Err(SemanticError::ArgumentTypeMismatch {
+                                            function_name: format!("{name}.__init__"),
+                                            argument_index: i,
+                                            expected: expected_type.display_name(),
+                                            found: actual_type.display_name(),
+                                        });
+                                    }
+                                }
+                            } else {
+                                // No __init__ method - default constructor expects no arguments
+                                if !call.positional_args.is_empty() {
+                                    return Err(SemanticError::ArgumentCountMismatch {
+                                        function_name: format!("{name}.__init__"),
+                                        expected: 0,
+                                        found: call.positional_args.len(),
+                                    });
+                                }
+                            }
+                        }
+
+                        // Validate that all arguments are valid expressions
+                        for arg in &call.positional_args {
+                            self.analyze_expression(arg, registry)?;
+                        }
+                    }
                     _ => {
                         // It's a variable being called as function
                         return Err(SemanticError::VariableCalledAsFunction {
@@ -891,23 +1009,57 @@ impl TypePass {
                 }
             }
             Node::Attribute(attr_node) => {
-                // Handle method calls like object.method()
+                // Handle method calls like object.method() or Class.static_method()
                 let method_type =
                     self.infer_attribute_access_type(&attr_node.value, &attr_node.attr, registry)?;
 
                 if let SemanticType::Function { params, .. } = method_type {
+                    // Determine if we need to skip the 'self' parameter
+                    // 1. Builtin types (str, List, Dict, etc.) - their methods already exclude 'self', don't skip
+                    // 2. Static calls (Class.method) - don't skip
+                    // 3. Instance calls on user-defined types (obj.method) - skip 'self'
+
+                    let object_type = self.infer_expression_type(&attr_node.value, registry)?;
+                    let is_builtin_type = matches!(
+                        object_type,
+                        SemanticType::Builtin(_) | SemanticType::Generic { .. }
+                    );
+
+                    let is_static_call = if let Node::Name(name_node) = attr_node.value.as_ref() {
+                        // Check if this name refers to a class/struct symbol
+                        if let Some(symbol) = registry.resolve_symbol(&name_node.id) {
+                            matches!(symbol.kind, SymbolKind::Class | SymbolKind::Struct)
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    };
+
+                    let expected_params: Vec<_> =
+                        if !params.is_empty() && !is_static_call && !is_builtin_type {
+                            // Instance method call on user-defined type - skip 'self' parameter
+                            params.iter().skip(1).cloned().collect()
+                        } else {
+                            // Static method call or builtin type - use all parameters
+                            params
+                        };
+
                     // Check if the number of arguments matches
-                    if call.positional_args.len() != params.len() {
+                    if call.positional_args.len() != expected_params.len() {
                         return Err(SemanticError::ArgumentCountMismatch {
                             function_name: format!("<object>.{}", attr_node.attr),
-                            expected: params.len(),
+                            expected: expected_params.len(),
                             found: call.positional_args.len(),
                         });
                     }
 
                     // Check each argument type
-                    for (i, (arg, expected_type)) in
-                        call.positional_args.iter().zip(params.iter()).enumerate()
+                    for (i, (arg, expected_type)) in call
+                        .positional_args
+                        .iter()
+                        .zip(expected_params.iter())
+                        .enumerate()
                     {
                         let actual_type = self.infer_expression_type(arg, registry)?;
                         if !self.types_compatible(expected_type, &actual_type) {
