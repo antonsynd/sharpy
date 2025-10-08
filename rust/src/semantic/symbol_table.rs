@@ -361,28 +361,21 @@ impl SymbolTable {
 
     /// Add builtin functions to the symbol table
     pub fn add_builtin_functions(&mut self) {
-        let builtin_functions = crate::semantic::types::create_builtin_functions();
+        let builtin_symbols = crate::semantic::builtins::create_builtin_functions();
 
-        for (name, function_type) in builtin_functions {
-            let symbol = Symbol {
-                id: format!("builtin::{name}"),
-                name: name.clone(),
-                kind: SymbolKind::Function,
-                symbol_type: function_type,
-                access_level: AccessLevel::Public,
-                scope_id: "builtin".to_string(),
-                location: None,
-                is_static: true,
-                generic_params: Vec::new(),
-                metadata: SymbolMetadata::Function {
-                    parameters: Vec::new(),
-                    return_type: None,
-                    is_abstract: false,
-                },
-            };
-
+        for builtin in builtin_symbols {
             // Add directly to symbols without requiring a scope
-            self.symbols.insert(symbol.id.clone(), symbol);
+            self.symbols
+                .insert(builtin.symbol.id.clone(), builtin.symbol);
+        }
+
+        // Add builtin methods for each type
+        let builtin_methods = crate::semantic::builtins::create_builtin_methods();
+        for (_type_name, methods) in builtin_methods {
+            for builtin_method in methods {
+                self.symbols
+                    .insert(builtin_method.symbol.id.clone(), builtin_method.symbol);
+            }
         }
     }
 

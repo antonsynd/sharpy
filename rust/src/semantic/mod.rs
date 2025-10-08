@@ -1,3 +1,4 @@
+pub mod builtins;
 pub mod module_registry;
 pub mod multi_pass_analyzer;
 pub mod passes;
@@ -6,6 +7,7 @@ pub mod symbol_table;
 pub mod types;
 
 // Main semantic analyzer - now using multi-pass by default
+pub use builtins::{BuiltinSymbol, CSharpMapping};
 pub use module_registry::{ModuleRegistry, ModuleSymbolTable};
 pub use multi_pass_analyzer::{AnalysisResult, MultiPassAnalyzer as SemanticAnalyzer};
 pub use scope::{Scope, ScopeKind};

@@ -1,8 +1,12 @@
+# High-level layout of the `sharpy` repository
+
 The Sharpy standard library (implemented as a .NET library in C#) is located
 at `./dotnet` relative to the root of this repository.
 
 The Sharpy compiler toolchain (implemented as a Rust project) is located at
 `./rust` relative to the root of this repository.
+
+# Invocable tools in the workspace
 
 In each of those subdirectories, you can use the native `dotnet` or `cargo`
 commands to build, test, and format the code. However, there is also a
@@ -12,3 +16,10 @@ located at `~/.chiri/bin/chiri` but should be on PATH anyway.
 
 Run `chiri pkg -- --help` to see what options are available. It itself
 invokes `./build_tools/bin/build_sharpy` relative to the root of the repository.
+
+# General guidance
+
+There's no need to create summary documents of your changes unless explicitly
+requested to.
+
+There's also no need to create demo programs unless explicitly requested to.
