@@ -4,3 +4,17 @@
 /Users/anton/Documents/github/sharpy/test_output/TestCodegen/obj/Debug/net9.0/TestCodegen.AssemblyInfo.cs
 /Users/anton/Documents/github/sharpy/test_output/TestCodegen/obj/Debug/net9.0/TestCodegen.csproj.CoreCompileInputs.cache
 /Users/anton/Documents/github/sharpy/test_output/TestCodegen/obj/Debug/net9.0/TestCodegen.sourcelink.json
+/Users/anton/Documents/github/sharpy/test_output/TestCodegen/bin/Debug/net9.0/TestCodegen
+/Users/anton/Documents/github/sharpy/test_output/TestCodegen/bin/Debug/net9.0/TestCodegen.deps.json
+/Users/anton/Documents/github/sharpy/test_output/TestCodegen/bin/Debug/net9.0/TestCodegen.runtimeconfig.json
+/Users/anton/Documents/github/sharpy/test_output/TestCodegen/bin/Debug/net9.0/TestCodegen.dll
+/Users/anton/Documents/github/sharpy/test_output/TestCodegen/bin/Debug/net9.0/TestCodegen.pdb
+/Users/anton/Documents/github/sharpy/test_output/TestCodegen/bin/Debug/net9.0/Sharpy.dll
+/Users/anton/Documents/github/sharpy/test_output/TestCodegen/bin/Debug/net9.0/Sharpy.pdb
+/Users/anton/Documents/github/sharpy/test_output/TestCodegen/bin/Debug/net9.0/Sharpy.xml
+/Users/anton/Documents/github/sharpy/test_output/TestCodegen/obj/Debug/net9.0/TestCode.F107D18F.Up2Date
+/Users/anton/Documents/github/sharpy/test_output/TestCodegen/obj/Debug/net9.0/TestCodegen.dll
+/Users/anton/Documents/github/sharpy/test_output/TestCodegen/obj/Debug/net9.0/refint/TestCodegen.dll
+/Users/anton/Documents/github/sharpy/test_output/TestCodegen/obj/Debug/net9.0/TestCodegen.pdb
+/Users/anton/Documents/github/sharpy/test_output/TestCodegen/obj/Debug/net9.0/TestCodegen.genruntimeconfig.cache
+/Users/anton/Documents/github/sharpy/test_output/TestCodegen/obj/Debug/net9.0/ref/TestCodegen.dll

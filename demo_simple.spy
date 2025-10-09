@@ -1,0 +1,22 @@
+def calculate(x, y):
+    """Perform some calculations"""
+    result = x + y
+    print("Sum:", result)
+    return result
+
+def main():
+    """Main entry point"""
+    print("=== Sharpy Demo ===")
+
+    answer = calculate(5, 7)
+    print("Answer:", answer)
+
+    if answer > 10:
+        print("Answer is large!")
+
+    i = 0
+    while i < 3:
+        print("Count:", i)
+        i = i + 1
+
+    print("=== Complete ===")

@@ -1,0 +1,1290 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Sharpy</name>
+    </assembly>
+    <members>
+        <member name="M:Sharpy.Exports.Len(Sharpy.Collections.Interfaces.ISized)">
+            <summary>
+            Return the length (the number of items) of an object. The argument
+            may be a sequence (such as a string, bytes, tuple, list, or range)
+            or a collection (such as a dictionary, set, or frozen set).
+            </summary>
+        </member>
+        <member name="M:Sharpy.Exports.Repr(Sharpy.Object)">
+            <summary>
+            Return a string containing a printable representation of an object.
+            </summary>
+            <remarks>
+            By default, the representation is a string enclosed in angle
+            brackets that contains the id of the object. A class can control
+            what this function returns for its instances by overriding the
+            <see cref="M:Sharpy.Object.__Repr__"/> method.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Exports.Repr(System.Object)">
+            <summary>
+            Return a string containing a printable representation of the
+            value type or struct. This essentially makes an attempt to return
+            a string that would yield the same value when written in code.
+            </summary>
+            <remarks>
+            This actually applies to all C# objects, but overload resolution
+            should prefer the <see cref="T:Sharpy.Object"/> version for Sharpy objects.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Exports.Some``1(``0)">
+            <summary>
+            Allows for code like <c>var opt = Some(5);</c> instead of
+            <c>var opt = new Optional&lt;int&gt;(5);</c>.
+            </summary>
+        </member>
+        <member name="T:Sharpy.Collections.Interfaces.ICollection`1">
+            <summary>
+            Interface for sized iterable container classes.
+            </summary>
+        </member>
+        <member name="T:Sharpy.Collections.Interfaces.IContainer`1">
+            <summary>
+            Interface for classes that provide the <see cref="M:Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)"/>
+            method.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)">
+            <summary>
+            Called to implement membership test operators. Should return
+            <c>true</c> if item is in self, <c>false</c> otherwise.
+            </summary>
+            <remarks>
+            For mapping objects, this should consider the keys of the mapping
+            rather than the values or the key-item pairs.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IContainer`1.Contains(`0)">
+            <remarks>
+            In subclasses, this must call <see cref="M:Sharpy.Collections.Interfaces.IContainer`1.__Contains__(`0)" /> to
+            correctly implement <c>x in y</c> behavior.
+            </remarks>
+        </member>
+        <member name="T:Sharpy.Collections.Interfaces.IItemsView`2">
+            <summary>
+            Interface for mapping views over pairs of keys and values.
+            </summary>
+        </member>
+        <member name="T:Sharpy.Collections.Interfaces.IIterable`1">
+            <summary>
+            Interface for classes that provide the <see cref="M:Sharpy.Collections.Interfaces.IIterable`1.__Iter__"/> method.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IIterable`1.__Iter__">
+            <summary>
+            Return an <see cref="T:Sharpy.Iterator`1"/> object. The object is required to
+            support the iterator protocol described below.
+            </summary>
+            <remarks>
+            If a container supports different types of iteration, additional
+            methods can be provided to specifically request iterators for
+            those iteration types. (An example of an object supporting multiple
+            forms of iteration would be a tree structure which supports both
+            breadth-first and depth-first traversal).
+            </remarks>
+        </member>
+        <member name="T:Sharpy.Collections.Interfaces.IKeysView`1">
+            <summary>
+            Interface for mapping views over keys.
+            </summary>
+        </member>
+        <member name="T:Sharpy.Collections.Interfaces.IMapping`2">
+            <summary>
+            Interface for read-only mappings.
+            </summary>
+        </member>
+        <member name="P:Sharpy.Collections.Interfaces.IMapping`2.Item(`0)">
+            <summary>
+            Returns the value at the given key in the mapping. If the key does
+            not exist then this raises a <see cref="T:Sharpy.KeyError"/>.
+            </summary>
+            <remarks>
+            Should call <see cref="M:Sharpy.Collections.Interfaces.IMapping`2.__GetItem__(`0)"/> underneath.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMapping`2.__GetItem__(`0)">
+            <summary>
+            Gets the value for the given key. Raises <see cref="T:Sharpy.KeyError"/>
+            if the key doesn't exist in the mapping.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMapping`2.__Or__(Sharpy.Collections.Interfaces.IMapping{`0,`1})">
+            <summary>
+            Returns the union of this mapping and the other mapping, with
+            conflicting keys using the value from the other mapping.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMapping`2.__Or__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})">
+            <summary>
+            Returns the union of this mapping and the iterable of key-value
+            tuples, with conflicting keys using the value from the other
+            mapping.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMapping`2.Keys">
+            <summary>
+            Returns a view over the keys of this mapping, in insertion order.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMapping`2.Items">
+            <summary>
+            Returns a view over the items (key-value pairs) of this mapping,
+            in insertion order.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMapping`2.Values">
+            <summary>
+            Returns a view over the values of this mapping, in insertion order.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMapping`2.Get(`0)">
+            <summary>
+            Gets the value with the given key, if it exists. If it doesn't
+            exist, it returns <see langword="null"/>.
+            </summary>
+            <remarks>
+            Internally, this should call <see cref="M:Sharpy.Collections.Interfaces.IMapping`2.__GetItem__(`0)"/>, unless
+            the class is sealed, in which case it doesn't matter.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMapping`2.Get(`0,`1)">
+            <summary>
+            Gets the value with the given key, if it exists. If it doesn't
+            exist, it returns the given default value.
+            </summary>
+            <remarks>
+            Internally, this should call <see cref="M:Sharpy.Collections.Interfaces.IMapping`2.__GetItem__(`0)"/>, unless
+            the class is sealed, in which case it doesn't matter.
+            </remarks>
+        </member>
+        <member name="T:Sharpy.Collections.Interfaces.IMapping`3">
+            <summary>
+            Interface for read-only mappings as a curiously recursive template,
+            with methods dealing directly with the given mapping type.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMapping`3.__Or__(`0)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Sharpy.Collections.Interfaces.IMappingView`1">
+            <summary>
+            Interface for mapping views.
+            </summary>
+        </member>
+        <member name="T:Sharpy.Collections.Interfaces.IMutableMapping`2">
+            <summary>
+            Interface for mutable mappings.
+            </summary>
+        </member>
+        <member name="P:Sharpy.Collections.Interfaces.IMutableMapping`2.Item(`0)">
+            <summary>
+            Gets the value of or sets the value of the given key.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMutableMapping`2.__SetItem__(`0,`1)">
+            <summary>
+            Sets the given key to the given value.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMutableMapping`2.__DelItem__(`0)">
+            <summary>
+            Deletes the value at the given key. Raises <see cref="T:Sharpy.KeyError"/>
+            if the key does not exist in this mapping.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.IMapping{`0,`1})">
+            <summary>
+            Updates this mapping with the pairs from the other mapping, with
+            conflicting keys using the value from the other mapping.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})">
+            <summary>
+            Updates this mapping with the key-value tuples in the iterable,
+            with conflicting keys using the value from the iterable.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMutableMapping`2.Pop(`0)">
+            <summary>
+            Removes the value at the given key. If the key does not exist,
+            this raises a <see cref="T:Sharpy.KeyError"/>.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMutableMapping`2.Pop(`0,`1)">
+            <summary>
+            Removes the value at the given key. If the key does not exist,
+            this returns the given default value.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMutableMapping`2.PopItem(System.Boolean)">
+            <summary>
+            Removes the first key-value pair from the mapping, by insertion
+            order. If last is True, then returns the last such pair.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMutableMapping`2.Update(Sharpy.Collections.Interfaces.IMapping{`0,`1})">
+            <summary>
+            Updates this mapping with the pairs from the other mapping, with
+            conflicting keys using the value from the other mapping.
+            </summary>
+            <remarks>
+            Internally should call <see cref="M:Sharpy.Collections.Interfaces.IMutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.IMapping{`0,`1})"/> if the class is
+            not sealed.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMutableMapping`2.Update(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})">
+            <summary>
+            Updates this mapping with the key-value tuples in the iterable,
+            with conflicting keys using the value from the iterable.
+            </summary>
+            <remarks>
+            Internally should call
+            <see cref="M:Sharpy.Collections.Interfaces.IMutableMapping`2.__IOr__(Sharpy.Collections.Interfaces.IIterable{System.ValueTuple{`0,`1}})"/> if the class is
+            not sealed.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMutableMapping`2.SetDefault(`0,`1)">
+            <summary>
+            Returns the value for the given key, setting it to the given default
+            if the key is not in the mapping, before returning it.
+            </summary>
+        </member>
+        <member name="T:Sharpy.Collections.Interfaces.IMutableMapping`3">
+            <summary>
+            Interface for mutable mappings that can be updated with other
+            mutable mappings via a curiously recursive template.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMutableMapping`3.__IOr__(`0)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMutableMapping`3.Update(`0)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Sharpy.Collections.Interfaces.IMutableSequence`1">
+            <summary>
+            Interface for mutable sequences.
+            </summary>
+        </member>
+        <member name="P:Sharpy.Collections.Interfaces.IMutableSequence`1.Item(System.Int32)">
+            <summary>
+            Returns or sets the element at the given index. Supports negative
+            indices to get or set from the back. If the index is out of range,
+            then this raises an <see cref="T:Sharpy.IndexError"/>.
+            </summary>
+        </member>
+        <member name="P:Sharpy.Collections.Interfaces.IMutableSequence`1.Item(System.Int32,System.Int32)">
+            <summary>
+            Returns the element at the given index. Supports negative indices
+            to get or set from the back. If the index is out of range, then
+            this raises an <see cref="T:Sharpy.IndexError"/>.
+            </summary>
+        </member>
+        <member name="P:Sharpy.Collections.Interfaces.IMutableSequence`1.Item(System.Int32,System.Int32,System.Int32)">
+            <see cref="P:Sharpy.Collections.Interfaces.IMutableSequence`1.Item(System.Int32,System.Int32)"/>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMutableSequence`1.Extend(System.Collections.Generic.IEnumerable{`0})">
+            <remarks>
+            Iterable&lt;T&gt; extends IEnumerable&lt;T&gt;.
+            </remarks>
+        </member>
+        <member name="P:Sharpy.Collections.Interfaces.IMutableSequence`2.Item(System.Int32,System.Int32,System.Int32)">
+            <see cref="P:Sharpy.Collections.Interfaces.IMutableSequence`2.Item(System.Int32,System.Int32)"/>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMutableSequence`2.__SetItem__(Sharpy.Slice,`0)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Sharpy.Collections.Interfaces.IMutableSet`1">
+            <summary>
+            Interface for mutable sets.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMutableSet`2.__IOr__(`0)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMutableSet`2.__IAnd__(`0)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMutableSet`2.__IXOr__(`0)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IMutableSet`2.__ISub__(`0)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Sharpy.Collections.Interfaces.IReversible`1">
+            <summary>
+            Interface for iterable classes that also provide the
+            <see cref="M:Sharpy.Collections.Interfaces.IReversible`1.__Reversed__"/> method.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.IReversible`1.__Reversed__">
+            <summary>
+            Called (if present) by the <see cref="!:Reversed(IReversible&lt;T&gt;)"/> built-in to
+            implement reverse iteration. It should return a new
+            <see cref="T:Sharpy.Iterator`1"/> that iterates over all the objects in the
+            container in reverse order.
+            </summary>
+        </member>
+        <member name="T:Sharpy.Collections.Interfaces.ISequence`1">
+            <summary>
+            Interface for read-only sequences.
+            </summary>
+        </member>
+        <member name="P:Sharpy.Collections.Interfaces.ISequence`1.Item(System.Int32)">
+            <summary>
+            Returns the item at the given index in the sequence. Supports negative
+            indices to get or set from the back. If the index is out of range,
+            then this raises an <see cref="T:Sharpy.IndexError"/>.
+            </summary>
+        </member>
+        <member name="P:Sharpy.Collections.Interfaces.ISequence`1.Item(System.Int32,System.Int32)">
+            <summary>
+            Returns the sub-sequence at the given start and end (exclusive) indices
+            in the sequence. Supports negative indices to count from the back.
+            If either index is out of range, then this raises an
+            <see cref="T:Sharpy.IndexError"/>.
+            </summary>
+            <remarks>
+            Should call <see cref="M:Sharpy.Collections.Interfaces.ISequence`1.__GetItem__(Sharpy.Slice)"/> underneath.
+            </remarks>
+        </member>
+        <member name="P:Sharpy.Collections.Interfaces.ISequence`1.Item(System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Returns the sub-sequence at the given start and end (exclusive)
+            indices in the sequence, skipping every step elements after the
+            start. Supports negative indices to count from the back. If either
+            index is out of range, then this raises an
+            <see cref="T:Sharpy.IndexError"/>. If the step is less than 1, then an
+            empty sequence is returned.
+            </summary>
+            <remarks>
+            Should call <see cref="M:Sharpy.Collections.Interfaces.ISequence`1.__GetItem__(Sharpy.Slice)"/> underneath.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.ISequence`1.Count(`0)">
+            <summary>
+            Returns the number of times the given element appears in the
+            sequence as evaluated by Sharpy's equality resolution.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.ISequence`1.Index(`0,System.Int32,System.Int32)">
+            <summary>
+            Returns the index of the first occurrence of the given element in
+            the sequence as evaluated by Sharpy's equality resolution, within
+            the given start and end (exclusive) indices. Supports negative
+            indices to count from the back.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.ISequence`1.__GetItem__(System.Int32)">
+            <summary>
+            Returns the element at the given index in the sequence. Supports
+            negative indices to get or set from the back. If the index is out
+            of range, then this raises an <see cref="T:Sharpy.IndexError"/>.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.ISequence`1.__GetItem__(Sharpy.Slice)">
+            <summary>
+            Returns a (sub-)sequence for the given slice. If any component of
+            the slice is out of range, then this raises an
+            <see cref="T:Sharpy.IndexError"/>.
+            </summary>
+        </member>
+        <member name="T:Sharpy.Collections.Interfaces.ISequence`2">
+            <summary>
+            Interface for read-only sequences as a curiously recursive template,
+            with methods dealing directly with the given sequence type.
+            </summary>
+        </member>
+        <member name="P:Sharpy.Collections.Interfaces.ISequence`2.Item(System.Int32,System.Int32)">
+            <summary>
+            Returns the sub-sequence at the given start and end (exclusive) indices
+            in the sequence. Supports negative indices to count from the back.
+            If either index is out of range, then this raises an
+            <see cref="T:Sharpy.IndexError"/>.
+            </summary>
+            <remarks>
+            Should call <see cref="M:Sharpy.Collections.Interfaces.ISequence`2.__GetItem__(Sharpy.Slice)"/> underneath.
+            </remarks>
+        </member>
+        <member name="P:Sharpy.Collections.Interfaces.ISequence`2.Item(System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Returns the sub-sequence at the given start and end (exclusive)
+            indices in the sequence, skipping every step elements after the
+            start. Supports negative indices to count from the back. If either
+            index is out of range, then this raises an
+            <see cref="T:Sharpy.IndexError"/>. If the step is less than 1, then an
+            empty sequence is returned.
+            </summary>
+            <remarks>
+            Should call <see cref="M:Sharpy.Collections.Interfaces.ISequence`2.__GetItem__(Sharpy.Slice)"/> underneath.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.ISequence`2.__GetItem__(Sharpy.Slice)">
+            <summary>
+            Returns the sub-sequence at the given start and end (exclusive)
+            indices in the sequence, skipping every step elements after the
+            start. Supports negative indices to count from the back. If either
+            index is out of range, then this raises an
+            <see cref="T:Sharpy.IndexError"/>. If the step is less than 1, then an
+            empty sequence is returned.
+            </summary>
+        </member>
+        <member name="T:Sharpy.Collections.Interfaces.ISet`1">
+            <summary>
+            Interface for read-only sets.
+            </summary>
+        </member>
+        <member name="T:Sharpy.Collections.Interfaces.ISized">
+            <summary>
+            Interface for classes that provide the <see cref="M:Sharpy.Collections.Interfaces.ISized.__Len__"/> method.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Collections.Interfaces.ISized.__Len__">
+            <summary>
+            Return the length (the number of items) of an object.
+            </summary>
+        </member>
+        <member name="T:Sharpy.Collections.Interfaces.IValuesView`1">
+            <summary>
+            Interface for mapping views over values.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Dict`2.Copy">
+            <summary>
+            Return a shallow copy of the dictionary.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Dict`2.System#Collections#IEnumerable#GetEnumerator">
+            <summary>
+            Delegate to specialized GetEnumerator() for generalized one.
+            </summary>
+        </member>
+        <member name="T:Sharpy.IAddableWith`2">
+            <summary>
+            An interface for a type (the augend) that can be augmented (or added to)
+            with something (the addende) producing a sum (the result, which may be
+            the modified augend itself.
+            </summary>
+            <typeparam name="TAddend">The addend (the increase or thing to
+            add/insert).</typeparam>
+            <typeparam name="TSum">The sum.</typeparam>
+        </member>
+        <member name="T:Sharpy.IAddable`3">
+            <summary>
+            An interface for a type (the augend) that can be augmented (or added to)
+            with something (the addende) producing a sum (the result, which may be
+            the modified augend itself. This version has native operator support.
+            </summary>
+            <typeparam name="TAugend">The augend (the thing to add something to, or the
+            thing that is increased or augmented).</typeparam>
+            <typeparam name="TAddend">The addend (the increase or thing to
+            add/insert).</typeparam>
+            <typeparam name="TSum">The sum.</typeparam>
+        </member>
+        <member name="T:Sharpy.IAddable`2">
+            <summary>
+            An interface defining an augmentation operator, where the left operand
+            is the element to be augmented (increased) and the right operand is the
+            amount of augumentation or something to be included in the other element.
+            </summary>
+            <typeparam name="TAugend">The type that gets augmented
+            (the "augend").</typeparam>
+            <typeparam name="TAddend">The type that indicates the amount of
+            augmentation or what is being included in the "augend".</typeparam>
+        </member>
+        <member name="T:Sharpy.IAddable`1">
+            <summary>
+            An interface for a type that can be added to itself yielding a result
+            of the same type.
+            </summary>
+        </member>
+        <member name="T:Sharpy.IEquatable">
+            <summary>
+            This interface defines objects that can be checked for equality via
+            the <c>__Eq__</c> method. Equality in Sharpy is not the same as
+            reference equality (except for <see cref="T:Sharpy.Object"/>). All Sharpy
+            objects implement this interface. This is the non-generic version of
+            the <see cref="T:Sharpy.IEquatable`1"/> interface.
+            </summary>
+        </member>
+        <member name="M:Sharpy.IEquatable.Equals(System.Object)">
+            <remarks>
+            This should delegate to <see cref="M:Sharpy.IEquatable.__Eq__(System.Object)"/>. All C# (and
+            therefore Sharpy) objects declare this by existing because they
+            all subclass <see cref="T:System.Object"/> which implements this.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.IEquatable.__Eq__(System.Object)">
+            <remarks>
+            This should delegate to <see cref="M:Sharpy.IEquatableWith`1.__Eq__(`0)"/>
+            when possible.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.IEquatableWith`1.__Eq__(`0)">
+            <remarks>
+            This defines equality between two objects of the same type.
+            </remarks>
+        </member>
+        <member name="T:Sharpy.IEquatable`1">
+            <summary>
+            This interface defines objects that can be checked for equality via
+            the <c>__Eq__</c> method. All Sharpy objects implement this interface.
+            This is the generic version of the <see cref="T:Sharpy.IEquatable"/> interface.
+            </summary>
+            <typeparam name="T"></typeparam>
+        </member>
+        <member name="T:Sharpy.IHashable">
+            <summary>
+            This interface defines hashable objects whose hashes can be obtained
+            via the <c>__Hash__</c> method.
+            </summary>
+        </member>
+        <member name="M:Sharpy.IHashable.__Hash__">
+            <summary>
+            This method should return the hash of the object. In Sharpy,
+            objects that have the same hash are not guaranteed to be equal.
+            </summary>
+            <returns>The hash of the object.</returns>
+        </member>
+        <member name="T:Sharpy.IMultipliableWith`2">
+            <summary>
+            An interface for a type (the multiplicand) that can be multiplied with
+            something (the multiplier) producing a result (the product).
+            </summary>
+            <typeparam name="TMultiplier">The multiplier (the factor).</typeparam>
+            <typeparam name="TProduct">The product.</typeparam>
+        </member>
+        <member name="T:Sharpy.IMultipliable`3">
+            <summary>
+            An interface for a type (the multiplicand) that can be multiplied with
+            something (the multiplier) producing a result (the product) with native
+            operator support.
+            </summary>
+            <typeparam name="TMultiplicand">The multiplicand (what is being
+            multiplied).</typeparam>
+            <typeparam name="TMultiplier">The multiplier (i.e. the factor).</typeparam>
+            <typeparam name="TProduct">The product.</typeparam>
+        </member>
+        <member name="T:Sharpy.IMultipliable`2">
+            <summary>
+            An interface for a type (the multiplicand) that can be multiplied with
+            something (the multiplier) producing a result (the product) with native
+            operator support, where the result is of the same type as the multiplicand.
+            </summary>
+            <typeparam name="TMultiplicannd">The multiplicand (what is being
+            multiplied), and also the type of the product (the result).</typeparam>
+            <typeparam name="TMultiplier">The multiplier (i.e. the factor).</typeparam>
+        </member>
+        <member name="T:Sharpy.IMultipliable`1">
+            <summary>
+            An interface for a type that can be multiplied by itself yielding a result
+            of the same type.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Index.Normalize(System.Int32,System.UInt32,System.Boolean,System.Boolean)">
+            <summary>
+            Returns a normalized index.
+            </summary>
+            <param name="i">The index to normalize.</param>
+            <param name="max">The maximum length of the given sequence</param>
+            <param name="forSlice">Whether this is for a slice or not.</param>
+            <param name="forInsertion">Whether this is for insertion or not (allowing for past the end indices).</param>
+            <returns>The normalized index.</returns>
+            <exception cref="T:Sharpy.IndexError">If the given index is inherently out of range.</exception>
+        </member>
+        <member name="T:Sharpy.IndexError">
+            <summary>
+            Raised when a sequence subscript is out of range. (Slice indices are
+            silently truncated to fall in the allowed range).
+            </summary>
+        </member>
+        <member name="M:Sharpy.IndexError.#ctor(System.String)">
+            <summary>
+            Raised when a sequence subscript is out of range. (Slice indices are
+            silently truncated to fall in the allowed range).
+            </summary>
+        </member>
+        <member name="T:Sharpy.KeyComparer`2">
+            <summary>
+            Delegator to statically chosen comparer.
+            </summary>
+        </member>
+        <member name="M:Sharpy.KeyComparer`2.#ctor(System.Func{`0,`1})">
+            <summary>
+            Delegator to statically chosen comparer.
+            </summary>
+        </member>
+        <member name="M:Sharpy.KeyComparer`2.Compare(`0,`0)">
+            <remarks>
+            Unlike in Python, this compares None to non-None values as ordering
+            before the non-None value, whereas Python disallows such comparisons
+            by raising a TypeError.
+            </remarks>
+        </member>
+        <member name="T:Sharpy.KeyComparerFactory`2">
+            <summary>
+            Simplifies creation of a key comparer if the key is null, by returning
+            the comparer for T rather than for TKey.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Operator.Exports.Eq``1(``0,``0)">
+            <summary>
+            Compares two <see cref="T:Sharpy.IEquatable`1"/> objects for equality.
+            </summary>
+            <param name="left">The left object.</param>
+            <param name="right">The right object.</param>
+            <returns>True if the objects are equal, false otherwise.</returns>
+            <typeparam name="T">The type of the objects being compared.</typeparam>
+        </member>
+        <member name="T:Sharpy.Iterator`1">
+            <summary>
+            An object representing a stream of data. Repeated calls to the
+            iterator’s <see cref="M:Sharpy.Iterator`1.__Next__"/> method (or passing it to the
+            built-in function <see cref="!:Next(Iterator&lt;T&gt;)"/>) return successive items in the
+            stream. When no more data are available, a <see cref="T:Sharpy.StopIteration"/>
+            exception is raised instead. At this point, the iterator object is
+            exhausted and any further calls to its <see cref="M:Sharpy.Iterator`1.__Next__"/> method
+            just raise <see cref="T:Sharpy.StopIteration"/> again.
+            </summary>
+            <remarks>
+            Iterators are required to have an <see cref="M:Sharpy.Iterator`1.__Iter__"/> method that
+            returns the iterator object itself so every iterator is also iterable
+            and may be used in most places where other iterables are accepted. One
+            notable exception is code which attempts multiple iteration passes. A
+            container object (such as a list) produces a fresh new iterator each
+            time you pass it to the <see cref="!:Iter(IIterable&lt;T&gt;)"/> function or use it in a
+            <c>for</c> loop. Attempting this with an iterator will just return the
+            same exhausted iterator object used in the previous iteration pass,
+            making it appear like an empty container.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Iterator`1.__Next__">
+            <summary>
+            Return the next item from the iterator. If there are no further
+            items, raises the <see cref="T:Sharpy.StopIteration"/> exception.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Iterator`1.GetEnumerator">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Iterator`1.System#Collections#IEnumerable#GetEnumerator">
+            <remarks>
+            Type-erased version of <see cref="M:Sharpy.Iterator`1.GetEnumerator"/>.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Iterator`1.__Iter__">
+            <summary>
+            Return the iterator object itself (a shallow copy). This is
+            required to allow both containers and iterators to be used with
+            the <c>for</c> and <c>in</c> statements.
+            </summary>
+        </member>
+        <member name="T:Sharpy.List`1">
+            <summary>
+            A list of elements.
+            </summary>
+        </member>
+        <member name="M:Sharpy.List`1.#ctor">
+            <summary>
+            Constructs an empty list.
+            </summary>
+        </member>
+        <member name="M:Sharpy.List`1.#ctor(System.Collections.Generic.IEnumerable{`0})">
+            <summary>
+            Constructs a list with a shallow copy of the elements in the
+            iterable.
+            </summary>
+        </member>
+        <member name="M:Sharpy.List`1.Add(`0)">
+            <remarks>
+            For collection initializers. Also a part of the
+            System.Collections.Generic.ICollection interface.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.List`1.Copy">
+            <summary>
+            Return a shallow copy of the list.
+            </summary>
+        </member>
+        <member name="M:Sharpy.List`1.Sort(System.Boolean)">
+            <summary>
+            Sort the items of the list in place (the arguments can be used for
+            sort customization, see Sorted() for their explanation).
+            </summary>
+            <remarks>
+            This is not a stable sort.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.List`1.Sort``1(System.Func{`0,``0},System.Boolean)">
+            <summary>
+            Sort the items of the list in place (the arguments can be used for
+            sort customization, see Sorted() for their explanation).
+            </summary>
+            <remarks>
+            This is not a stable sort.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.List`1.ToList">
+            <summary>
+            Creates a shallow copy this list as a .NET list.
+            </summary>
+        </member>
+        <member name="M:Sharpy.List`1.Equals(Sharpy.List{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__Add__(Sharpy.List{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__Bool__">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__Contains__(`0)">
+            <summary>
+            Returns whether the item is in the list.
+            </summary>
+        </member>
+        <member name="M:Sharpy.List`1.Contains(`0)">
+            <summary>
+            Returns whether the item is in the list.
+            </summary>
+        </member>
+        <member name="M:Sharpy.List`1.GetEnumerator">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.System#Collections#IEnumerable#GetEnumerator">
+            <summary>
+            Delegate to specialized GetEnumerator() for generalized one.
+            </summary>
+        </member>
+        <member name="M:Sharpy.List`1.__Eq__(Sharpy.Object)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__Eq__(Sharpy.List{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__Hash__">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__IAdd__(Sharpy.List{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__IMul__(System.Int32)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__Iter__">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__Mul__(System.Int32)">
+            <inheritdoc/>
+        </member>
+        <member name="P:Sharpy.List`1.Item(System.Int32)">
+            <inheritdoc/>
+        </member>
+        <member name="P:Sharpy.List`1.Item(System.Int32,System.Int32)">
+            <inheritdoc/>
+        </member>
+        <member name="P:Sharpy.List`1.Item(System.Int32,System.Int32,System.Int32)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.Append(`0)">
+            <summary>
+            Add an item to the end of the list. Similar to a[len(a):] = [x].
+            </summary>
+        </member>
+        <member name="M:Sharpy.List`1.Extend(System.Collections.Generic.IEnumerable{`0})">
+            <summary>
+            Extend the list by appending all the items from the iterable.
+            Similar to a[len(a):] = iterable.
+            </summary>
+        </member>
+        <member name="M:Sharpy.List`1.Clear">
+            <summary>
+            Remove all items from the list.
+            </summary>
+        </member>
+        <member name="M:Sharpy.List`1.Insert(System.Int32,`0)">
+            <summary>
+            Insert an item at a given position. The first argument is the
+            index of the element before which to insert, so a.Insert(0, x)
+            inserts at the front of the list, and a.Insert(Len(a), x) is
+            equivalent to a.Append(x).
+            </summary>
+        </member>
+        <member name="M:Sharpy.List`1.Pop(System.Int32)">
+            <summary>
+            Remove the item at the given position in the list, and return it.
+            If no index is specified, a.Pop() removes and returns the last
+            item in the list. It raises an IndexError if the list is empty or
+            the index is outside the list range.
+            </summary>
+        </member>
+        <member name="M:Sharpy.List`1.Remove(`0)">
+            <summary>
+            Remove the first item from the list whose value is equal to x. It
+            raises a ValueError if there is no such item.
+            </summary>
+        </member>
+        <member name="M:Sharpy.List`1.Reverse">
+            <summary>
+            Reverse the elements of the list in place.
+            </summary>
+        </member>
+        <member name="M:Sharpy.List`1.__IAdd__(Sharpy.Collections.Interfaces.ISequence{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__SetItem__(Sharpy.Slice,Sharpy.Collections.Interfaces.ISequence{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__DelItem__(System.Int32)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__DelItem__(Sharpy.Slice)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__SetItem__(System.Int32,`0)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__SetItem__(Sharpy.Slice,Sharpy.List{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__Repr__">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__Reversed__">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__RAdd__(Sharpy.List{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__RMul__(System.Int32)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__Add__(Sharpy.Collections.Interfaces.ISequence{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__RAdd__(Sharpy.Collections.Interfaces.ISequence{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__GetItem__(System.Int32)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.__GetItem__(Sharpy.Slice)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.List`1.Count(`0)">
+            <summary>
+            Return the number of times x appears in the list.
+            </summary>
+        </member>
+        <member name="M:Sharpy.List`1.Index(`0,System.Int32,System.Int32)">
+            <summary>
+            Return zero-based index in the list of the first item whose value
+            is equal to x. Raises a <see cref="T:Sharpy.ValueError"/> if there is no
+            such item.
+            </summary>
+            <remarks>
+            The optional arguments start and end are interpreted as
+            in the slice notation and are used to limit the search to a
+            particular subsequence of the list. The returned index is computed
+            relative to the beginning of the full sequence rather than the
+            start argument.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.List`1.__Len__">
+            <summary>
+            Returns the number of items in the list.
+            </summary>
+        </member>
+        <member name="M:Sharpy.List`1.op_Equality(Sharpy.List{`0},Sharpy.List{`0})">
+            <remarks>
+            This returns true for both lists if they contain the same elements,
+            even if they are not the actual same list reference. If the elements
+            are Sharpy Objects, then <see cref="M:Sharpy.Object.__Eq__(Sharpy.Object)"/> is used.
+            Otherwise, <see cref="M:System.Object.Equals(System.Object)"/> is used.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.ListIterator`1.__Next__">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.ListReverseIterator`1.__Next__">
+            <inheritdoc/>
+        </member>
+        <member name="T:Sharpy.Object">
+            <summary>
+            Base class for all Sharpy objects (except value types), deriving from
+            C# object.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Object.#ctor">
+            <remarks>
+            Not publicly constructible.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Object.Equals(Sharpy.Object)">
+            <remarks>
+            Not virtual to prevent subclasses from overriding this.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Object.__Bool__">
+            <remarks>
+            Unlike Python where all base objects are implicitly truthy, Sharpy
+            ones are not, to enforce custom implementations that are suitable
+            for the given subclass.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Object.__Eq__(Sharpy.Object)">
+            <remarks>
+            By default, returns whether this and other refer to the same object
+            via <see cref="M:System.Object.ReferenceEquals(System.Object,System.Object)"/> with a fallback to
+            <see cref="M:Sharpy.Object.__Id__"/>.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Object.__Eq__(System.Object)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Object.__Hash__">
+            <remarks>
+            By default, returns <see cref="M:System.Object.GetHashCode"/>.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Object.__Id__">
+            <remarks>
+            In Sharpy's reference implementation in C#, this returns the
+            hashcode of the object by calling <see cref="M:System.Object.GetHashCode"/>
+            by default (not by <see cref="M:Sharpy.Object.__Hash__"/>). This is because
+            objects in C# are not guaranteed to have pinned memory addresses.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Object.__Ne__(Sharpy.Object)">
+            <remarks>
+            By default, inverts the result of <see cref="M:Sharpy.Object.__Eq__(Sharpy.Object)"/>.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Object.__Ne__(System.Object)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Object.__Repr__">
+            <summary>
+            By default, returns a string containing the result of
+            <see cref="M:Sharpy.Object.__Id__"/> in the form <c>"&lt;Object object with id {__Id__()}&gt;"</c>.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:Sharpy.Object.__Str__">
+            <remarks>
+            By default, calls <see cref="M:Sharpy.Object.__Repr__"/>.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Object.Equals(System.Object)">
+            <remarks>
+            Sealed to prevent subclasses from overriding this mapping to
+            <see cref="M:Sharpy.Object.__Eq__(Sharpy.Object)"/> which should be the one that subclasses
+            override.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Object.GetHashCode">
+            <remarks>
+            Sealed to prevent subclasses from overriding this mapping to
+            <see cref="M:Sharpy.Object.__Hash__"/> which should be the one that subclasses
+            override.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Object.ToString">
+            <remarks>
+            Sealed to prevent subclasses from overriding this mapping to
+            <see cref="M:Sharpy.Object.__Str__"/> which should be the one that subclasses
+            override.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Object.op_Equality(Sharpy.Object,Sharpy.Object)">
+            <remarks>
+            Comparison between Objects is based on <see cref="M:Sharpy.Object.__Eq__(Sharpy.Object)"/>.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Object.op_Inequality(Sharpy.Object,Sharpy.Object)">
+            <remarks>
+            Comparison between Objects is based on <see cref="M:Sharpy.Object.__Eq__(Sharpy.Object)"/>.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Object.op_Equality(Sharpy.Object,System.Object)">
+            <remarks>
+            Comparison between Sharpy Objects and C# objects is based on
+            <see cref="M:Sharpy.Object.Equals(System.Object)"/> which is false if the C# object is not
+            a type-erased Sharpy Object. If it is one, then it uses
+            <see cref="M:Sharpy.Object.__Eq__(Sharpy.Object)"/>.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Object.op_Inequality(Sharpy.Object,System.Object)">
+            <remarks>
+            Comparison between Sharpy Objects and C# objects is based on
+            <see cref="M:Sharpy.Object.Equals(System.Object)"/> which is false if the C# object is not
+            a type-erased Sharpy Object. If it is one, then it uses
+            <see cref="M:Sharpy.Object.__Eq__(Sharpy.Object)"/>.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Object.op_Equality(System.Object,Sharpy.Object)">
+            <remarks>
+            Symmetrical equality prioritizing Sharpy Object's
+            <see cref="M:Sharpy.Object.Equals(Sharpy.Object)"/> implementation.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Object.op_Inequality(System.Object,Sharpy.Object)">
+            <remarks>
+            Symmetrical equality prioritizing Sharpy Object's
+            <see cref="M:Sharpy.Object.Equals(Sharpy.Object)"/> implementation.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Object.op_True(Sharpy.Object)">
+            <remarks>
+            Objects are truthy based on <see cref="M:Sharpy.Object.__Bool__"/>.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Object.op_False(Sharpy.Object)">
+            <remarks>
+            Objects are falsey based on the inverse of
+            <see cref="M:Sharpy.Object.__Bool__"/>.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Optional`1.__Eq__(System.Object)">
+            <remarks>
+            Unlike other types, optionals are equivalent if they hold the same
+            value.
+            </remarks>
+            <param name="other"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Sharpy.Result`2.__Eq__(System.Object)">
+            <remarks>
+            Unlike other types, optionals are equivalent if they hold the same
+            value.
+            </remarks>
+            <param name="other"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Sharpy.Set`1.Equals(Sharpy.Set{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.Equals(Sharpy.Collections.Interfaces.ISet{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Bool__">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.Contains(`0)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Contains__(`0)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.GetEnumerator">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Eq__(Sharpy.Object)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Eq__(Sharpy.Set{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Eq__(Sharpy.Collections.Interfaces.ISet{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Gt__(Sharpy.Set{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Gt__(Sharpy.Collections.Interfaces.ISet{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Ge__(Sharpy.Set{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Ge__(Sharpy.Collections.Interfaces.ISet{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Hash__">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Ne__(Sharpy.Set{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Ne__(Sharpy.Collections.Interfaces.ISet{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Iter__">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Lt__(Sharpy.Set{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Lt__(Sharpy.Collections.Interfaces.ISet{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Le__(Sharpy.Set{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Le__(Sharpy.Collections.Interfaces.ISet{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.Add(`0)">
+            <remarks>
+            For initializer literals and part of
+            System.Collections.Generic.ICollection interface.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Set`1.Discard(`0)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.Clear">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.Pop">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.Remove(`0)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__IOr__(Sharpy.Collections.Interfaces.ISet{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__IAnd__(Sharpy.Collections.Interfaces.ISet{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__IXOr__(Sharpy.Collections.Interfaces.ISet{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__ISub__(Sharpy.Collections.Interfaces.ISet{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__IAnd__(Sharpy.Set{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__IOr__(Sharpy.Set{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__ISub__(Sharpy.Set{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__IXOr__(Sharpy.Set{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Repr__">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.IsDisjoint(Sharpy.Set{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__And__(Sharpy.Set{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Or__(Sharpy.Set{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__ROr__(Sharpy.Set{`0})">
+            <remarks>
+            For insertion order, the other set is iterated through first.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Set`1.__RSub__(Sharpy.Set{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Sub__(Sharpy.Set{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__XOr__(Sharpy.Set{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__And__(Sharpy.Collections.Interfaces.ISet{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Or__(Sharpy.Collections.Interfaces.ISet{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Sub__(Sharpy.Collections.Interfaces.ISet{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__RSub__(Sharpy.Collections.Interfaces.ISet{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__XOr__(Sharpy.Collections.Interfaces.ISet{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__ROr__(Sharpy.Collections.Interfaces.ISet{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.IsDisjoint(Sharpy.Collections.Interfaces.ISet{`0})">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.__Len__">
+            <inheritdoc/>
+        </member>
+        <member name="M:Sharpy.Set`1.op_Equality(Sharpy.Set{`0},Sharpy.Set{`0})">
+            <remarks>
+            This returns true for both sets if they contain the same items,
+            even if they are not the actual same set reference. If the items
+            are Sharpy Objects, then <see cref="M:Sharpy.Object.__Eq__(Sharpy.Object)"/> is used.
+            Otherwise, <see cref="M:System.Object.Equals(System.Object)"/> is used.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.SetIterator`1.__Next__">
+            <inheritdoc/>
+        </member>
+        <member name="T:Sharpy.Str">
+            <remarks>
+            Unlike Python strings, Sharpy strings use C# strings as storage, so
+            they are always UTF-16.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Str.#ctor(System.Object)">
+            <remarks>
+            <see cref="M:Sharpy.Object.ToString"/> calls <see cref="M:Sharpy.Object.__Str__"/>
+            so this implementation covers all native C# objects and Sharpy
+            objects.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Str.op_Implicit(System.String)~Sharpy.Str">
+            <remarks>
+            Implicit conversion from string.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Str.op_Implicit(Sharpy.Str)~System.String">
+            <remarks>
+            Implicit conversion to string.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Str.GetHashCode">
+            <remarks>
+            Same hash code as C# strings. Both are immutable and readonly with
+            the same logical semantics.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Str.Count(Sharpy.Str)">
+            <summary>
+            Return the number of times x appears in the list.
+            </summary>
+        </member>
+        <member name="M:Sharpy.Str.Index(System.Char,System.Int32,System.Int32)">
+            <summary>
+            Return zero-based index in the list of the first item whose value
+            is equal to x. Raises a <see cref="T:Sharpy.ValueError"/> if there is no
+            such item.
+            </summary>
+            <remarks>
+            The optional arguments start and end are interpreted as
+            in the slice notation and are used to limit the search to a
+            particular subsequence of the list. The returned index is computed
+            relative to the beginning of the full sequence rather than the
+            start argument.
+            </remarks>
+        </member>
+        <member name="M:Sharpy.Str.__Len__">
+            <summary>
+            Returns the number of (Unicode) characters in the string.
+            </summary>
+        </member>
+    </members>
+</doc>

@@ -1,0 +1,6 @@
+/Users/anton/Documents/github/sharpy/demo_project/obj/Debug/net9.0/demo_project.csproj.AssemblyReference.cache
+/Users/anton/Documents/github/sharpy/demo_project/obj/Debug/net9.0/demo_project.GeneratedMSBuildEditorConfig.editorconfig
+/Users/anton/Documents/github/sharpy/demo_project/obj/Debug/net9.0/demo_project.AssemblyInfoInputs.cache
+/Users/anton/Documents/github/sharpy/demo_project/obj/Debug/net9.0/demo_project.AssemblyInfo.cs
+/Users/anton/Documents/github/sharpy/demo_project/obj/Debug/net9.0/demo_project.csproj.CoreCompileInputs.cache
+/Users/anton/Documents/github/sharpy/demo_project/obj/Debug/net9.0/demo_project.sourcelink.json

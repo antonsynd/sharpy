@@ -11,11 +11,11 @@ namespace SharpyGenerated;
 /// </summary>
 public static class __Module__
 {
-        public static void Main()
+    /// <summary>
+    /// Main entry point
+    /// </summary>
+    public static void Main()
     {
         Sharpy.Exports.Print("Hello, World!");
-        Sharpy.Exports.Print("This is Sharpy!");
-        Sharpy.Exports.Print("Compiled to C# successfully!");
     }
 }
-

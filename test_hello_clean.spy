@@ -1,0 +1,4 @@
+def main():
+    print("Hello, World!")
+    print("This is Sharpy!")
+    print("Compiled to C# successfully!")

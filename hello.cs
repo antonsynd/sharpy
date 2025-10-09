@@ -11,11 +11,10 @@ namespace SharpyGenerated;
 /// </summary>
 public static class __Module__
 {
-        public static void Main()
+        private static void Greet(object name)
     {
-        Sharpy.Exports.Print("Hello, World!");
-        Sharpy.Exports.Print("This is Sharpy!");
-        Sharpy.Exports.Print("Compiled to C# successfully!");
+        Sharpy.Exports.Print("Hello,", name, "!");
     }
+        // TODO: Name collision: 'greet' and '' both mangle to 'Greet'
 }
 

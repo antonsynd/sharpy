@@ -18,6 +18,7 @@ pub fn generate_expression(expr: &Node, ctx: &mut CodeGenContext) -> CodeGenResu
         Node::BinaryOp(binop_node) => generate_binary_op(binop_node, ctx),
         Node::UnaryOp(unop_node) => generate_unary_op(unop_node, ctx),
         Node::Compare(cmp_node) => generate_compare(cmp_node, ctx),
+        Node::Call(call_node) => generate_call(call_node, ctx),
         _ => Err(CodeGenError::NotImplemented {
             feature: format!("Expression: {expr:?}"),
         }),
@@ -147,6 +148,109 @@ fn generate_compare(
     };
 
     Ok(format!("({left} {op_str} {right})"))
+}
+
+/// Generate function call
+fn generate_call(call: &crate::ast::node::Call, ctx: &mut CodeGenContext) -> CodeGenResult<String> {
+    // Get the function name
+    let func_name = match call.function.as_ref() {
+        Node::Name(name) => &name.id,
+        _ => {
+            return Err(CodeGenError::NotImplemented {
+                feature: "Complex function expressions (only simple names supported)".to_string(),
+            });
+        }
+    };
+
+    // Check if it's a builtin function
+    let csharp_func_name = if is_builtin_function(func_name) {
+        // Map to C# builtin
+        get_builtin_csharp_name(func_name)
+    } else {
+        // User-defined function - use mangled name
+        ctx.mangle_name(func_name, super::NameContext::Method, false)?
+    };
+
+    // Generate arguments
+    let mut args = Vec::new();
+    for arg in &call.positional_args {
+        let arg_code = generate_expression(arg, ctx)?;
+        args.push(arg_code);
+    }
+
+    // For P0, we don't support keyword arguments
+    if !call.keyword_args.is_empty() {
+        return Err(CodeGenError::NotImplemented {
+            feature: "Keyword arguments".to_string(),
+        });
+    }
+
+    Ok(format!("{}({})", csharp_func_name, args.join(", ")))
+}
+
+/// Check if a function is a builtin
+fn is_builtin_function(name: &str) -> bool {
+    matches!(
+        name,
+        "print"
+            | "input"
+            | "len"
+            | "range"
+            | "int"
+            | "float"
+            | "str"
+            | "bool"
+            | "list"
+            | "dict"
+            | "set"
+            | "tuple"
+            | "abs"
+            | "min"
+            | "max"
+            | "sum"
+            | "sorted"
+            | "reversed"
+            | "enumerate"
+            | "zip"
+            | "map"
+            | "filter"
+            | "all"
+            | "any"
+    )
+}
+
+/// Get the C# name for a builtin function
+fn get_builtin_csharp_name(name: &str) -> String {
+    // Builtin functions are in Sharpy.Exports
+    let csharp_name = match name {
+        "print" => "Print",
+        "input" => "Input",
+        "len" => "Len",
+        "range" => "Range",
+        "int" => "Int",
+        "float" => "Float",
+        "str" => "Str",
+        "bool" => "Bool",
+        "list" => "List",
+        "dict" => "Dict",
+        "set" => "Set",
+        "tuple" => "Tuple",
+        "abs" => "Abs",
+        "min" => "Min",
+        "max" => "Max",
+        "sum" => "Sum",
+        "sorted" => "Sorted",
+        "reversed" => "Reversed",
+        "enumerate" => "Enumerate",
+        "zip" => "Zip",
+        "map" => "Map",
+        "filter" => "Filter",
+        "all" => "All",
+        "any" => "Any",
+        _ => name, // Fallback
+    };
+
+    format!("Sharpy.Exports.{csharp_name}")
 }
 
 #[cfg(test)]
