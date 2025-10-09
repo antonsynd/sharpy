@@ -18,8 +18,8 @@
 use crate::ast::{Module, Node};
 use crate::semantic::SymbolTable;
 
+use super::CodeGenResult;
 use super::context::CodeGenContext;
-use super::{CodeGenError, CodeGenResult};
 
 /// Main code generator
 pub struct CodeGenerator {
@@ -106,22 +106,15 @@ impl CodeGenerator {
 
     /// Generate code for a top-level statement
     fn generate_top_level_statement(&mut self, stmt: &Node) -> CodeGenResult<String> {
-        match stmt {
-            // For P0, we only handle simple expressions as demonstration
-            Node::Constant(_c) => {
-                let expr_code = super::expression::generate_expression(stmt, &mut self.context)?;
-                Ok(format!("// Constant: {expr_code}"))
-            }
-            _ => Err(CodeGenError::NotImplemented {
-                feature: format!("Top-level statement: {stmt:?}"),
-            }),
-        }
+        // Use the statement module for all statement generation
+        super::statement::generate_statement(stmt, &mut self.context)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ast::node::{Arguments, Constant, ConstantValue, FunctionDef, Return};
 
     #[test]
     fn test_basic_codegen_structure() {
@@ -147,5 +140,39 @@ mod tests {
 
         // Should have __Module__ class
         assert!(result.contains("public static class __Module__"));
+    }
+
+    #[test]
+    fn test_function_generation() {
+        let symbol_table = SymbolTable::new();
+        let mut generator = CodeGenerator::new(symbol_table);
+
+        let func_def = FunctionDef {
+            name: "main".to_string(),
+            args: Arguments { args: vec![] },
+            body: vec![Node::Return(Return {
+                value: Some(Box::new(Node::Constant(Constant {
+                    value: ConstantValue::Int(0),
+                    source: None,
+                }))),
+                source: None,
+            })],
+            decorators: vec![],
+            return_type: None,
+            access_modifier: None,
+            source: None,
+        };
+
+        let module = Module {
+            body: vec![Node::FunctionDef(func_def)],
+            source: None,
+        };
+
+        let result = generator.generate(&module).unwrap();
+
+        // Should contain a Main function
+        assert!(result.contains("public static void Main()"));
+        // Should contain the return statement
+        assert!(result.contains("return 0;"));
     }
 }

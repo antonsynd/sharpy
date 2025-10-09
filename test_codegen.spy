@@ -1,0 +1,4 @@
+def main():
+    """Main entry point"""
+    x = 42
+    return x

@@ -1,0 +1,6 @@
+/Users/anton/Documents/github/sharpy/test_output/TestCodegen/obj/Debug/net9.0/TestCodegen.csproj.AssemblyReference.cache
+/Users/anton/Documents/github/sharpy/test_output/TestCodegen/obj/Debug/net9.0/TestCodegen.GeneratedMSBuildEditorConfig.editorconfig
+/Users/anton/Documents/github/sharpy/test_output/TestCodegen/obj/Debug/net9.0/TestCodegen.AssemblyInfoInputs.cache
+/Users/anton/Documents/github/sharpy/test_output/TestCodegen/obj/Debug/net9.0/TestCodegen.AssemblyInfo.cs
+/Users/anton/Documents/github/sharpy/test_output/TestCodegen/obj/Debug/net9.0/TestCodegen.csproj.CoreCompileInputs.cache
+/Users/anton/Documents/github/sharpy/test_output/TestCodegen/obj/Debug/net9.0/TestCodegen.sourcelink.json
