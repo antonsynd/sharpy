@@ -4,57 +4,34 @@
 
 Sharpy is a modern and statically-typed Pythonic language targeting .NET.
 While Python code will not run in Sharpy without modifications, the
-additions and changes in Sharpy over Python will be welcomed by all Python
-developers.
+additions and changes in Sharpy over Python should be intuitive to and welcomed
+by all Python developers.
 
 # Goals
 
-* Provide a statically-typed and modern Pythonic language for the .NET CLI
-* Be ABI compatible with C# and the rest of the CLI/CLR.
+* Provide a statically-typed and modern Pythonic language for the .NET CLI.
+* Seamless bidi interop with other .NET libraries.
 
-# Implementation Status
+# Guiding principles
 
-This specification describes the full vision for Sharpy. The current compiler implementation (as of version 0.1.0) supports a subset of these features:
+These principles are ordered in descending order of importance. They should be
+used to guide decisions when conflicts or ambiguities arise.
 
-## ✅ Fully Implemented
-- **Lexing**: Complete tokenization including all operators, keywords, and literals
-- **Basic parsing**: Expressions, statements, control flow (if/while/for/try)
-- **Functions**: Function definitions with type annotations, default parameters
-- **Classes**: Class definitions with inheritance and access modifiers
-- **Structs**: Basic struct definitions
-- **Protocols**: Protocol definitions with inheritance
-- **Properties**: Both auto-properties and explicit properties with access modifiers
-- **Member variables**: Typed class/struct member variables
-- **Import statements**: All forms of import/from import
-- **Type annotations**: Simple types, generics, optionals, qualified types
-- **Access modifiers**: Full support for public/protected/private/internal/file with decorator syntax
-- **Lambda expressions**: Full lambda support with type inference
-- **Literals**: Numbers, strings, f-strings, collections (list/dict/set/tuple)
-- **F-strings**: Formatted string literals with expression interpolation
-- **Multi-pass semantic analysis**: 3-pass analyzer (Declaration → Import → Type) with comprehensive type checking
-- **Attribute access**: Method and property access on builtin types (str, list, etc.) with type inference
-- **Function call analysis**: Type checking for function calls including method calls
-- **Type inference**: Basic type inference for assignments, expressions, and function returns
+* Sharpy is a .NET language at its core, inheriting and prefering design
+choices from the .NET CLI.
+* Sharpy is a Pythonic language second, inheriting syntax, semantics, and
+standard library, where possible from Python.
+* Where the preceding two principles conflict, a preference for .NET will
+prevail, unless the conflict can be resolved within the compiler as intrinsics
+or clear, predictable, implicit conversions at .NET ABI boundaries, with
+zero-cost abstractions.
 
-## ⚠️ Partially Implemented
-- **Generics**: Basic parsing support, constraints not yet implemented
-- **Match statements**: `match` and `case` keywords reserved but not implemented
-- **Async/await**: Keywords reserved but not implemented
-- **Builtin functions**: Some builtin functions (print, len, etc.) not fully integrated with semantic analysis
-- **Exception handling**: Try/except/finally parsing implemented but semantic analysis incomplete
+# Philosophy
 
-## ❌ Not Yet Implemented
-- **Advanced decorators**: `@override`, `@final`, etc. (basic access modifier decorators are implemented)
-- **Events**: Event definitions and handling (AST nodes exist but not fully implemented)
-- **Signals**: Delegate-like functionality
-- **Optional chaining**: `?.` operator (lexed but not parsed)
-- **Null coalescing**: `??` operator (lexed but not parsed)
-- **Call pipelining**: `->` pipeline operator
-- **Try expressions**: `try` as expression form
-- **Match expressions**: Pattern matching in expressions
-- **Advanced generics**: Constraints and where clauses
-- **Advanced type system**: Intersection types, type aliases
-- **Comprehensive error handling**: Exception type checking and propagation
+Sharpy believes that static typing is key to writing safe, predictable, and
+performant programs, at both the development stage and at runtime.
+
+TODO
 
 # Types
 
@@ -81,14 +58,13 @@ table below this one.
 | `Exception` | `Exception` | `Exception` | `System.Exception` | - |
 | `float` | `float` | `float` | `System.Single` | - |
 | `frozenset[T]` | `frozenset[T]` | `FrozenSet<T>` | `System.Collections.Frozen.FrozenSet<T>` | - |
-| `Func[(...), R]` | `Callable[(...), R]` | `Func<..., R>` or `Action<...>` | `System.Delegate` | `Action` used when `R` would be `void` in C# which in Sharpy is a lack of a return type. A type alias for a function type in Sharpy becomes a C# `delegate` type |
 | `int` | `int` | `int` | `System.Int32` | - |
 | `list[T]` | `list[T]` | `List<T>` | `System.Collections.Generic.List<T>` | - |
 | `long` | `int` | `long` | `System.Int64` | - |
 | `memoryview` | `memoryview` | - | - | - |
-| `None` | `None` | `void` | `System.Void` | As a type, only indicates the lack of a return value, rather than an untyped parameter or the `None` (`null`) literal |
+| `None` | `None` | `void` | `System.Void` | In this context, `None` only refers to a return type of a function, indicating no return value. |
 | `object` | `object` | `object` | `System.Object` | - |
-| `T?` | `T` | `T?` | `System.Nullable<T>` | - |
+| `T?` | `Optional[T]` | `T?` | `System.Nullable<T>` | - |
 | `sbyte` | `int` | `sbyte` | `System.SByte` | - |
 | `set[T]` | `set[T]` | `HashSet<T>` | `System.Collections.Generic.HashSet<T>` | - |
 | `short` | `int` | `short` | `System.Int16` | - |
@@ -119,12 +95,11 @@ follows:
 | `Exception` | `Sharpy.Exception` | - |
 | `float` | `float` | - |
 | `frozenset[T]` | `Sharpy.FrozenSet<T>` | - |
-| `Func[(...), R]` | See note | Module-level functions are implemented as static member functions of a hidden static class called `__Exports__`. As expected, member functions are implemented as members of the class they belong to |
 | `int` | `int` | - |
 | `list[T]` | `Sharpy.List<T>` | - |
 | `long` | `long` | - |
 | `memoryview` | `Sharpy.MemoryView` | - |
-| `None` | `void` | As a type, only indicates a lack of a return value, rather than an untyped parameter or the `None` (`null`) literal |
+| `None` | `void` | In this context, `None` only refers to a return type of a function, indicating no return value. |
 | `object` | `Sharpy.Object` | - |
 | `T?` | `Sharpy.Optional<T>` | - |
 | `sbyte` | `sbyte` | - |
@@ -141,9 +116,9 @@ follows:
 
 | Sharpy | Python equivalent | C# equivalent | Notes |
 | - | - | - | - |
-| `...` | `...` | - | Ellipsis literal in slices |
+| `...` | `...` | - | Ellipsis literal in slices. |
 | `False` | `False` | `false` | - |
-| `None` | `None` | `null` | - |
+| `None` | `None` | `null` | In this context, `None` refers to the special value indicating a lack of a value. |
 | `True` | `True` | `true` | - |
 
 # Classes and structs
