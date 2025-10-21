@@ -10,9 +10,16 @@ Member operators that are defined and have a C# static
 equivalent, e.g. `__add__` and `operator +`, will cause the
 C# static equivalent to be automatically synthesized. This
 allows virtual dispatch at runtime to subclass overrides of
-an operator.
+an operator. It is possible for the user to manually define
+the corresponding static operator.
 
-Dunder methods in Sharpy are all reserved.
+No user-defined object members or methods can take the
+form of `__[A-Za-z0-9_]*__`, i.e. no user-defined member
+or method on a object can look like a dunder method. The
+exception to this is if it is used as an override or
+overload of the corresponding dunder method, since
+most dunder methods are virtual (e.g. the operators) and
+can be overloaded.
 
 All Sharpy objects have an automatically synthesized
 static `==` operator delegating to the `equals()` method
