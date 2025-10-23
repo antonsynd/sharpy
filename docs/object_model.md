@@ -76,3 +76,137 @@ because it is exactly how it works in Python.
 | Context manager | `IDisposable` | `def __exit__(self) -> T` | `def __exit__(self)` implementing `ContextManager[T]` | ??? |
 | Cloning | `ICloneable.Clone()` | `def __copy__(self) -> T` | ??? | ??? |
 | Deep Cloning | `ICloneable.Clone()` | `def __deepcopy__(self) -> T` | ??? | ??? |
+
+# Dunder methods
+
+Sharpy inherits dunder methods from Python. Dunder methods
+are a closed set of members that are compiler-defined.
+Only those supported by the compiler can be implemented,
+overridden, and/or overloaded by the user.
+
+Dunder methods typically are associated with a Sharpy
+protocol (C# interface), though some are compiler
+intrinsic aliases to existing methods on `System.Object`,
+e.g. when a type has `__hash__()` defined in Sharpy,
+then `GetHashCode()` is overridden to delegate to that
+method in the generated C# code.
+
+# Context managers
+
+Sharpy inherits context managers from Python. An object
+is a context manager if it implements the
+`ContextManager` or the `ContextManager[T]` protocol,
+which declares the `__enter__()` and `__exit__()` dunder
+methods. The context manager protocols are underlyingly the
+`Sharpy.IContextManager` and `Sharpy.IContextManager<T>`
+interfaces in generated C# code.
+
+For C# code generation, when a context manager object
+enters a `with`-block, its `__enter__()` method is
+invoked. If it is an untyped context manager, it should
+return nothing. If it a typed context manager with type
+parameter `T`, then this method returns an instance of type
+`T` which is an object whose scope is bound inside
+the `with`-block. The `as`-clause provides the scope-local
+name for this object. If no such name is provided, then
+the compiler autogenerates a random name. When the
+`with`-block ends, the `__exit__()` method is invoked on
+the context manager object only, not the returned object
+(if any).
+
+An example C# implementation of the interfaces is shown
+below. Note that if the user defines the Sharpy dunder
+methods `__enter__()` and/or `__exit__()`, then the C#
+interface methods `EnterContext()` and/or `ExitContext()`
+should automatically be generated to delegate to them.
+It is also possible for the user to define `enter_context()`
+and `exit_context()` themselves (prior to name mangling)
+to obviate the need for the compiler to synthesize the
+delegation.
+
+```C#
+namespace Sharpy;
+
+interface IContextManager {
+  void EnterContext();
+  bool ExitContext(Sharpy.Optional<Exception> e);
+}
+
+interface IContextManager<T> {
+  T EnterContext();
+  bool ExitContext(Sharpy.Optional<Exception> e);
+}
+```
+
+The following Sharpy code:
+
+```Sharpy
+class Foobar(ContextManager[int]):
+    def __enter__() -> int:
+        return 5
+    def __exit__(e: Exception?) -> bool:
+        return False
+
+with Foobar() as i:
+    print(i)
+
+f = Foobar()
+
+with f as i:
+    print(i)
+```
+
+Will generate this C# code:
+
+```C#
+class Foobar : IContextManager<int> {
+  int EnterContext() {
+    return 5;
+  }
+  bool ExitContext(Sharpy.Optional<Exception> e) {
+    return false;
+  }
+}
+
+// Block for visual purposes and source mapping in code
+// generation. There is no semantic purpose.
+{
+  var temp_foobar = new Foobar();
+  Exception? temp_e = null;
+  try {
+    // The alias to the object returned by `EnterContext`
+    // is always in a `using`-assignment.
+    using var i = temp_foobar.EnterContext();
+    Sharpy.Print(i);
+  }
+  catch (Exception e) {
+    temp_e = e;
+  }
+  finally {
+    // Note, implicit conversion of `Exception?` to
+    // `Sharpy.Optional<Exception>`
+    // TODO: Should we also pass StackTrace(true)?
+    if (!temp_foobar.ExitContext(temp_e)) {
+      throw temp_e;
+    }
+  }
+}
+
+var f = new Foobar();
+
+{
+  Exception? temp_e = null;
+  try {
+    using var i = f.EnterContext();
+    Sharpy.Print(i);
+  }
+  catch (Exception e) {
+    temp_e = e;
+  }
+  finally {
+    if (!f.ExitContext(temp_e)) {
+      throw temp_e;
+    }
+  }
+}
+```
