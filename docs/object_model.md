@@ -1,6 +1,6 @@
 # Object Model
 
-# System.Object
+## Objects
 
 The .NET top-level object `System.Object` is the base class
 of all Sharpy builtin types, with `ValueType` as an
@@ -60,7 +60,7 @@ because it is exactly how it works in Python.
 | In-place true division | N/A | `__idiv__(self)` | N/A | Not supported in .NET. |
 | Negation | `static T operator -(T value)` | `__neg__(self)` | `def __neg__(self) -> T` | Automatically synthesizes the equivalent static `-` operator. |
 | Inversion | `static T operator !(T value)` | `__invert__(self)` | `def __invert__(self) -> T` | Automatically synthesizes the equivalent static `!` operator. |
-| Boolean conversion | `static operator bool(T value)` | `__bool__(self)` | `def __bool(self)` | Automatically synthesizes `__true__` and `__false__`. |
+| Boolean conversion | `static operator bool(T value)` | `__bool__(self)` | `def __bool__(self)` | Automatically synthesizes `__true__` and `__false__`. |
 | True conversion | `static bool operator true(T value)` | - | `def __true__(self) -> bool` | Automatically synthesizes `__false__`. |
 | False conversion | `static bool operator false(T value)` | - | `def __false__(self) -> bool` | Automatically synthesizes `__true__`. |
 | Get indexing | `T this[K] { get; }` | `def __getitem__(self, key: K) -> T` | `def __getitem__(key: K) -> T` | - |
@@ -77,7 +77,7 @@ because it is exactly how it works in Python.
 | Cloning | `ICloneable.Clone()` | `def __copy__(self) -> T` | ??? | ??? |
 | Deep Cloning | `ICloneable.Clone()` | `def __deepcopy__(self) -> T` | ??? | ??? |
 
-# Dunder methods
+## Dunder methods
 
 Sharpy inherits dunder methods from Python. Dunder methods
 are a closed set of members that are compiler-defined.
@@ -91,7 +91,40 @@ e.g. when a type has `__hash__()` defined in Sharpy,
 then `GetHashCode()` is overridden to delegate to that
 method in the generated C# code.
 
-# Context managers
+| Sharpy dunder method | Sharpy user invocation | C#/.NET | Notes |
+| - | - | - | - |
+| `__add__()` | `+` | `operator +()` | - |
+| `__bool__()` | `bool(x)`, `if x` | `operator bool()` | - |
+| `__call__()` | `()` | `operator ()()` | - |
+| `__copy__()` | - | TODO | - |
+| `__deepcopy__()` | - | TODO | - |
+| `__del__()` | - | `~Foobar()` | - |
+| `__delitem__()` | `del x[i]` | TODO | - |
+| `__div__()` | `/` | `operator /()` | - |
+| `__enter__()` | TODO | `EnterContext()` | - |
+| `__eq__()` | `==` | `Equals()`, `operator ==()`, `operator !=()` | - |
+| `__exit__()` | TODO | `ExitContext()` | - |
+| `__false__()` | `if not x` | `operator false()` | - |
+| `__floordiv__()` | `//` | TODO | - |
+| `__ge__()` | `>=` | `operator >=()` | - |
+| `__getitem__()` | `x[i]` | `this[]() { get; }` | - |
+| `__gt__()` | `>` | `operator >()` | - |
+| `__hash__()` | `hash(x)` | `GetHashCode()` | - |
+| `__index__()` | - | TODO | - |
+| `__init__()` | `Foobar()` | `Foobar()` | - |
+| `__iter__()` | `iter(x)` | `GetEnumerator()` | - |
+| `__le__()` | `<=` | `operator <=()` | - |
+| `__lt__()` | `<` | `operator <()` | - |
+| `__mul__()` | `*` | `operator *()` | - |
+| `__next__()` | `next(x)` | TODO | - |
+| `__pow__()` | `x ** y` | TODO | - |
+| `__setitem__()` | `x[i] = y` | | `this[]() { set; }` | - |
+| `__str__()` | `str(x)` | `ToString()` | - |
+| `__sub__()` | `-` | `operator -()` | - |
+| `__sum__()` | `sum(x)` | TODO | - |
+| `__true__()` | `if x` | `operator true()` | - |
+
+## Context managers
 
 Sharpy inherits context managers from Python. An object
 is a context manager if it implements the
@@ -142,12 +175,12 @@ delegation.
 ```C#
 namespace Sharpy;
 
-interface IContextManager {
+public interface IContextManager {
   void EnterContext();
   bool ExitContext(Sharpy.Optional<Sharpy.Tuple<Exception, StackTrace>> e);
 }
 
-interface IContextManager<T> {
+public interface IContextManager<T> {
   T EnterContext();
   bool ExitContext(Sharpy.Optional<Sharpy.Tuple<Exception, StackTrace>> e);
 }
@@ -223,5 +256,71 @@ var f = new Foobar();
       throw temp_e.Item0;
     }
   }
+}
+```
+
+## Tuples
+
+Tuples in Sharpy operate similarly to Python ones. Tuples
+are iterable, but the iterated elements are type-erased.
+Specifically, each element is a tuple of its C#/.NET `Type`
+record and the actual element itself as a raw `object`.
+
+Auto-generated property names follow `System.ValueTuple`
+names, e.g. `Item0`, `Item1`, etc.
+
+```C#
+namespace Sharpy;
+
+public class TupleIterator<T1, T2> : IEnumerator<(Type, object)> {
+  private readonly (Type, object)[] source_;
+
+  file TupleIterator(Tuple<T1, T2> source) {
+    source_ = new [
+      (typeof(T1), source.Item0),
+      (typeof(T2), source.Item1)
+    ];
+  }
+
+  public (Type, object) this[](int i) {
+    return source_[i];
+  }
+
+  public int Length() { return source_.Length; }
+}
+
+public readonly struct Tuple<T1, T2> : IEnumerable<(Type, object)> {
+  private readonly (T1, T2) inner_;
+
+  public Tuple(T1 item1, T2 item2)
+  {
+    inner_ = (item1, item2);
+  }
+
+  public T1 Item1 => inner_.Item1;
+  public T2 Item2 => inner_.Item2;
+
+  // For destructuring assignment
+  public void Deconstruct(out T1 item1, out T2 item2)
+  {
+      item1 = inner.Item1;
+      item2 = inner.Item2;
+  }
+
+  public override TupleEnumerator<T1, T2> GetEnumerator() {
+    return new TupleEnumerator<T1, T2>(this);
+  }
+
+  public override bool Equals(object? obj) =>
+      obj is Tuple<T1, T2> other &&
+      EqualityComparer<T1>.Default.Equals(Item1, other.Item1) &&
+      EqualityComparer<T2>.Default.Equals(Item2, other.Item2);
+
+  public override int GetHashCode() => HashCode.Combine(Item1, Item2);
+
+  public override string ToString() => $"({Item1}, {Item2})";
+
+  public static implicit operator (T1, T2)(Tuple<T1, T2> t) => t.inner_;
+  public static implicit operator Tuple<T1, T2>((T1, T2) t) => new(t.Item1, t.Item2);
 }
 ```
