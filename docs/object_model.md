@@ -96,11 +96,11 @@ method in the generated C# code.
 | `__add__()` | `+` | `operator +()` | - |
 | `__bool__()` | `bool(x)`, `if x` | `operator bool()` | - |
 | `__call__()` | `()` | `operator ()()` | - |
+| `__contains__()` | `in` | TODO | - |
 | `__copy__()` | - | TODO | - |
 | `__deepcopy__()` | - | TODO | - |
 | `__del__()` | - | `~Foobar()` | - |
 | `__delitem__()` | `del x[i]` | TODO | - |
-| `__div__()` | `/` | `operator /()` | - |
 | `__enter__()` | TODO | `EnterContext()` | - |
 | `__eq__()` | `==` | `Equals()`, `operator ==()`, `operator !=()` | - |
 | `__exit__()` | TODO | `ExitContext()` | - |
@@ -114,15 +114,28 @@ method in the generated C# code.
 | `__init__()` | `Foobar()` | `Foobar()` | - |
 | `__iter__()` | `iter(x)` | `GetEnumerator()` | - |
 | `__le__()` | `<=` | `operator <=()` | - |
+| `__len__()` | `len(x)` | TODO | - |
 | `__lt__()` | `<` | `operator <()` | - |
 | `__mul__()` | `*` | `operator *()` | - |
+| `__mod__()` | `%` | TODO | - |
+| `__ne__()` | `!=` | `operator !=()` | - |
+| `__neg__()` | `-x` | `operator -()` | - |
 | `__next__()` | `next(x)` | TODO | - |
 | `__pow__()` | `x ** y` | TODO | - |
-| `__setitem__()` | `x[i] = y` | | `this[]() { set; }` | - |
+| `__radd__()` | `+` | `operator +()` | - |
+| `__reversed__()` | `reversed(x)` | TODO | - |
+| `__rfloordiv__()` | `//` | TODO | - |
+| `__rmul__()` | `*` | `operator *()` | - |
+| `__rmod__()` | `%` | TOOD | - |
+| `__rpow__()` | `**` | TODO | - |
+| `__rsub__()` | `-` | `operator -()` | - |
+| `__rtruediv__()` | `/` | `operator /()` | - |
+| `__setitem__()` | `x[i] = y` | `this[]() { set; }` | - |
 | `__str__()` | `str(x)` | `ToString()` | - |
 | `__sub__()` | `-` | `operator -()` | - |
 | `__sum__()` | `sum(x)` | TODO | - |
 | `__true__()` | `if x` | `operator true()` | - |
+| `__truediv__()` | `/` | `operator /()` | - |
 
 ## Context managers
 
