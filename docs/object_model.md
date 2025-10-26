@@ -93,49 +93,55 @@ method in the generated C# code.
 
 | Sharpy dunder method | Sharpy user invocation | C#/.NET | Notes |
 | - | - | - | - |
-| `__add__()` | `+` | `operator +()` | - |
+| `__add__()` | `x + y` | `operator +()` | - |
+| `__and__()` | `x & y` | `operator &()` | - |
 | `__bool__()` | `bool(x)`, `if x` | `operator bool()` | - |
-| `__call__()` | `()` | `operator ()()` | - |
-| `__contains__()` | `in` | TODO | - |
+| `__call__()` | `x()` | `operator ()()` | - |
+| `__contains__()` | `y in x` | `ICollection<T>.Contains()` | - |
 | `__copy__()` | - | TODO | - |
 | `__deepcopy__()` | - | TODO | - |
 | `__del__()` | - | `~Foobar()` | - |
 | `__delitem__()` | `del x[i]` | TODO | - |
-| `__enter__()` | TODO | `EnterContext()` | - |
+| `__enter__()` | `with x:` | `IContextManager<T>.EnterContext()` | - |
 | `__eq__()` | `==` | `Equals()`, `operator ==()`, `operator !=()` | - |
-| `__exit__()` | TODO | `ExitContext()` | - |
+| `__exit__()` | End of `with`-block | `IContextManager<T>.ExitContext()` | - |
 | `__false__()` | `if not x` | `operator false()` | - |
-| `__floordiv__()` | `//` | TODO | - |
-| `__ge__()` | `>=` | `operator >=()` | - |
+| `__floordiv__()` | `x // y` | N/A | Only used in Sharpy syntax. |
+| `__ge__()` | `x >= y` | `operator >=()` | - |
 | `__getitem__()` | `x[i]` | `this[]() { get; }` | - |
-| `__gt__()` | `>` | `operator >()` | - |
+| `__gt__()` | `x > y` | `operator >()` | - |
 | `__hash__()` | `hash(x)` | `GetHashCode()` | - |
 | `__index__()` | - | TODO | - |
 | `__init__()` | `Foobar()` | `Foobar()` | - |
-| `__iter__()` | `iter(x)` | `GetEnumerator()` | - |
-| `__le__()` | `<=` | `operator <=()` | - |
-| `__len__()` | `len(x)` | TODO | - |
-| `__lt__()` | `<` | `operator <()` | - |
-| `__mul__()` | `*` | `operator *()` | - |
-| `__mod__()` | `%` | TODO | - |
-| `__ne__()` | `!=` | `operator !=()` | - |
-| `__neg__()` | `-x` | `operator -()` | - |
-| `__next__()` | `next(x)` | TODO | - |
-| `__pow__()` | `x ** y` | TODO | - |
-| `__radd__()` | `+` | `operator +()` | - |
+| `__iter__()` | `iter(x)` | `IEnumerable<T>.GetEnumerator()` | - |
+| `__invert__()` | `~x` | `operator ~()` | - |
+| `__le__()` | `x <= y` | `operator <=()` | - |
+| `__len__()` | `len(x)` | `Count { get; }` | - |
+| `__lshift__()` | `x << y` | `operator <<()` | - |
+| `__lt__()` | `x < y` | `operator <()` | - |
+| `__mul__()` | `x * y` | `operator *()` | - |
+| `__mod__()` | `x % y` | `operator %()` | - |
+| `__ne__()` | `x != y` | `operator !=()` | - |
+| `__neg__()` | `-x` | `operator -()` | Cannot have an argument. |
+| `__next__()` | `next(x)` | `IEnumerator<T>.Current { get; }` and `IEnumerator<T>.MoveNext()` | `MoveNext()` is auto-generated to invoke `__next__()` and store the result in an auto-generated private member that is the source of the `Current` property. |
+| `__or__()` | `x \| y` | `operator \|()` | - |
+| `__pow__()` | `x ** y` | N/A | Only used in Sharpy syntax. |
+| `__radd__()` | `y + x` | `operator +()` | - |
 | `__reversed__()` | `reversed(x)` | TODO | - |
-| `__rfloordiv__()` | `//` | TODO | - |
-| `__rmul__()` | `*` | `operator *()` | - |
-| `__rmod__()` | `%` | TOOD | - |
-| `__rpow__()` | `**` | TODO | - |
-| `__rsub__()` | `-` | `operator -()` | - |
-| `__rtruediv__()` | `/` | `operator /()` | - |
+| `__rfloordiv__()` | `y // x` | N/A | Only used in Sharpy syntax. |
+| `__rmul__()` | `y * x` | `operator *()` | - |
+| `__rmod__()` | `y % x` | `operator %()` | - |
+| `__rpow__()` | `y ** x` | N/A | Only used in Sharpy syntax. |
+| `__rshift__()` | `x >> y` | `operator >>()` | - |
+| `__rsub__()` | `y - x` | `operator -()` | - |
+| `__rtruediv__()` | `y / x` | `operator /()` | - |
 | `__setitem__()` | `x[i] = y` | `this[]() { set; }` | - |
 | `__str__()` | `str(x)` | `ToString()` | - |
-| `__sub__()` | `-` | `operator -()` | - |
+| `__sub__()` | `-` | `operator -()` | Requires one argument. |
 | `__sum__()` | `sum(x)` | TODO | - |
 | `__true__()` | `if x` | `operator true()` | - |
-| `__truediv__()` | `/` | `operator /()` | - |
+| `__truediv__()` | `x / y` | `operator /()` | - |
+| `__xor__()` | `x ^ y` | `operator ^()` | - |
 
 ## Context managers
 
@@ -165,9 +171,12 @@ will have its `Dispose()` method invoked when the
 
 When the `with`-block ends, as mentioned above, if the object
 originally returned by `__enter__()` implements the C#
-`IDisposable` interface, that objects `Dispose()` method
-will also be invoked. Afterwards, the `__exit__()` method
-is invoked on the context manager object.
+`IDisposable` or `IAsyncDisposable` interface, that
+object's `Dispose()` method will also be invoked by way
+of being automatically assigned via a `using var` or
+`async using var` statement during code generation.
+Afterwards, the `__exit__()` method is invoked on the
+context manager object.
 
 In the case of multiple context managers declared at
 the start of a `with`-block, the `__enter__()` and
@@ -235,9 +244,10 @@ class Foobar : IContextManager<int> {
   var temp_foobar = new Foobar();
   Sharpy.Tuple<Exception, StackTrace>? temp_e = null;
   try {
-    // The alias to the object returned by `EnterContext`
-    // is always in a `using`-assignment.
-    using var i = temp_foobar.EnterContext();
+    // If the object returned by `EnterContext` implements
+    // IDisposable or IAsyncDisposable, it is assigned in
+    // a `using var` assignment (not shown here).
+    var i = temp_foobar.EnterContext();
     Sharpy.Print(i);
   }
   catch (Exception e) {
@@ -258,7 +268,7 @@ var f = new Foobar();
 {
   Sharpy.Tuple<Exception, StackTrace>? temp_e = null;
   try {
-    using var i = f.EnterContext();
+    var i = f.EnterContext();
     Sharpy.Print(i);
   }
   catch (Exception e) {
@@ -285,21 +295,53 @@ names, e.g. `Item0`, `Item1`, etc.
 ```C#
 namespace Sharpy;
 
+public static class Exports {
+  public static T Next<T>(IEnumerator<T> enumerator) {
+    // Enumerators start at the position before the first
+    // element
+    if (enumerator.MoveNext()) {
+      return enumerator.Current;
+    }
+
+    throw new StopIteration();
+  }
+}
+
 public class TupleIterator<T1, T2> : IEnumerator<(Type, object)> {
   private readonly (Type, object)[] source_;
+  private int current_ = 0;
 
   file TupleIterator(Tuple<T1, T2> source) {
-    source_ = new [
+    source_ = {
       (typeof(T1), source.Item0),
       (typeof(T2), source.Item1)
-    ];
+    };
   }
 
-  public (Type, object) this[](int i) {
-    return source_[i];
+  public T Current {
+    get {
+      return source_[current_];
+    }
   }
 
-  public int Length() { return source_.Length; }
+  public void Dispose() {
+    // no-op
+  }
+
+  public bool MoveNext()
+  {
+    ++current_;
+
+    return current_ < source_.Length;
+  }
+
+  public void Reset() {
+    current_ = 0;
+  }
+
+  public int Count { get {
+    return source_.Length;
+  }
 }
 
 public readonly struct Tuple<T1, T2> : IEnumerable<(Type, object)> {
