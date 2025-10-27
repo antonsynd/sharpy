@@ -12,7 +12,7 @@ public partial struct Optional<T> : IBoolConvertible, IRepresentable, IEquatable
         SetValue(value);
     }
 
-    public T Value()
+    public readonly T Value()
     {
         if (!_hasValue)
         {
@@ -29,7 +29,7 @@ public partial struct Optional<T> : IBoolConvertible, IRepresentable, IEquatable
         return _hasValue ? _value : defaultValue;
     }
 
-    public Optional<U> MapValue<U>(Func<T, U> func)
+    public readonly Optional<U> MapValue<U>(Func<T, U> func)
     {
         if (!_hasValue)
         {
@@ -101,5 +101,10 @@ public partial struct Optional<T> : IBoolConvertible, IRepresentable, IEquatable
     public static implicit operator Optional<T>(T value)
     {
         return new Optional<T>(value);
+    }
+
+    public static implicit operator T?(Optional<T> optional)
+    {
+        return optional.ValueOrDefault();
     }
 }

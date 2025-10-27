@@ -19,4 +19,9 @@ public partial struct Optional<T>
 
         return hashCode.ToHashCode();
     }
+
+    public override int GetHashCode()
+    {
+        return __Hash__();
+    }
 }

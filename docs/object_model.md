@@ -93,10 +93,15 @@ method in the generated C# code.
 
 | Sharpy dunder method | Sharpy user invocation | C#/.NET | Notes |
 | - | - | - | - |
+| `__abs__()` | `abs(x)` | `Sharpy.Abs(x)` | The implementation of `Sharpy.Abs()` should be overloaded on the `Sharpy.IAbsoluteValue<TSelf>` and the `System.Numerics.INumberBase<TSelf>` interfaces, invoking the dunder method in the former, and `TSelf.Abs(x)` in the latter. |
 | `__add__()` | `x + y` | `operator +()` | - |
+| `__aenter__()` | `async with x:` | `IAsyncContextManager<T>.AsyncEnterContext()` | Only used in Sharpy syntax. |
+| `__aexit__()` | End of `async with`-block | `IAsyncContextManager<T>.AsyncExitContext()` | Only used in Sharpy syntax. |
+| `__aiter__()` | `async iter(x)` | TODO | - |
 | `__and__()` | `x & y` | `operator &()` | - |
-| `__bool__()` | `bool(x)`, `if x` | `operator bool()` | - |
+| `__bool__()` | `bool(x)`, `if x` | `operator bool()` | If defined, auto-generates `__true__()` and `__false__()` if both are not defined. |
 | `__call__()` | `x()` | `operator ()()` | - |
+| `__concat__()` | - | TODO | - |
 | `__contains__()` | `y in x` | `ICollection<T>.Contains()` | - |
 | `__copy__()` | - | TODO | - |
 | `__deepcopy__()` | - | TODO | - |
@@ -119,22 +124,35 @@ method in the generated C# code.
 | `__len__()` | `len(x)` | `Count { get; }` | - |
 | `__lshift__()` | `x << y` | `operator <<()` | - |
 | `__lt__()` | `x < y` | `operator <()` | - |
+| `__matmul__()` | `x @ y` | TODO | - |
 | `__mul__()` | `x * y` | `operator *()` | - |
 | `__mod__()` | `x % y` | `operator %()` | - |
 | `__ne__()` | `x != y` | `operator !=()` | - |
 | `__neg__()` | `-x` | `operator -()` | Cannot have an argument. |
+| `__new__()` | TODO | TODO | TODO |
 | `__next__()` | `next(x)` | `IEnumerator<T>.Current { get; }` and `IEnumerator<T>.MoveNext()` | `MoveNext()` is auto-generated to invoke `__next__()` and store the result in an auto-generated private member that is the source of the `Current` property. |
 | `__or__()` | `x \| y` | `operator \|()` | - |
+| `__pos__()` | TODO | TODO | TODO |
+| `__post_init__()` | TODO | TODO | TODO |
 | `__pow__()` | `x ** y` | N/A | Only used in Sharpy syntax. |
 | `__radd__()` | `y + x` | `operator +()` | - |
+| `__rand__()` | `y & x` | `operator &()` | - |
+| `__rdivmod__()` | TODO | TODO | - |
+| `__repr__()` | `repr(x)` | TODO | - |
 | `__reversed__()` | `reversed(x)` | TODO | - |
 | `__rfloordiv__()` | `y // x` | N/A | Only used in Sharpy syntax. |
+| `__rlshift__()` | `y << x` | `operator <<()` | - |
+| `__rmatmul__()` | `y @ x` | Only used in Sharpy syntax. | - |
 | `__rmul__()` | `y * x` | `operator *()` | - |
 | `__rmod__()` | `y % x` | `operator %()` | - |
+| `__round__()` | `round(x)` | N/A | Only used in Sharpy syntax. |
+| `__ror__()` | `y \| x` | `operator \|()` | - |
 | `__rpow__()` | `y ** x` | N/A | Only used in Sharpy syntax. |
+| `__rrshift__()` | `y >> x` | `operator >>()` | - |
 | `__rshift__()` | `x >> y` | `operator >>()` | - |
 | `__rsub__()` | `y - x` | `operator -()` | - |
 | `__rtruediv__()` | `y / x` | `operator /()` | - |
+| `__rxor__()` | `y ^ x` | `operator ^()` | - |
 | `__setitem__()` | `x[i] = y` | `this[]() { set; }` | - |
 | `__str__()` | `str(x)` | `ToString()` | - |
 | `__sub__()` | `-` | `operator -()` | Requires one argument. |
