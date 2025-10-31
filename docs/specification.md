@@ -1,5 +1,15 @@
 # Sharpy Language Specification
 
+> **⚠️ Documentation Reorganization Notice**
+>
+> This document has been reorganized into three focused documents:
+> - **[Language Reference](language_reference.md)** - Syntax and usage
+> - **[Type System](type_system.md)** - Type semantics and protocols
+> - **[Compiler Design](compiler_design.md)** - Implementation details
+>
+> This file is retained for reference but may not be kept up to date.
+> See [README_MIGRATION.md](README_MIGRATION.md) for the new structure.
+
 # Brief
 
 Sharpy is a modern and statically-typed Pythonic language targeting .NET.
