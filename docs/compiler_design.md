@@ -173,7 +173,7 @@ Node (abstract base)
 │   ├── FunctionDef
 │   ├── ClassDef
 │   ├── StructDef
-│   ├── ProtocolDef
+│   ├── InterfaceDef
 │   ├── PropertyDef
 │   ├── EventDef
 │   ├── MemberDef
@@ -416,7 +416,7 @@ public class NameMangler
         return ToCamelCase(name);
     }
 
-    public static string MangleProtocolName(string name)
+    public static string MangleInterfaceName(string name)
     {
         // PascalCase -> IPascalCase
         return "I" + name;
@@ -431,7 +431,7 @@ public class NameMangler
 | `add_numbers` | `AddNumbers` | Function |
 | `user_name` | `userName` | Parameter |
 | `my_module` | `MyModule` | Module |
-| `Drawable` | `IDrawable` | Protocol |
+| `Drawable` | `IDrawable` | Interface |
 | `MAX_SIZE` | `MAX_SIZE` | Constant (unchanged) |
 
 ### Module Code Generation
@@ -617,12 +617,12 @@ public class Temperature : Sharpy.Object
 }
 ```
 
-### Protocol Code Generation
+### Interface Code Generation
 
-**Sharpy protocol**:
+**Sharpy interface**:
 ```python
-protocol Drawable:
-    """Protocol for drawable objects."""
+interface Drawable:
+    """Interface for drawable objects."""
 
     def draw(self) -> None:
         """Draw the object."""
@@ -635,9 +635,9 @@ protocol Drawable:
 
 **Generated C# interface**:
 ```csharp
-namespace Sharpy.Protocols;
+namespace Sharpy.Interfaces;
 
-/// <summary>Protocol for drawable objects.</summary>
+/// <summary>Interface for drawable objects.</summary>
 public interface IDrawable
 {
     /// <summary>Draw the object.</summary>
@@ -849,9 +849,9 @@ public static Point operator +(Point left, Point right)
 }
 ```
 
-### Protocol Dispatch
+### Interface Dispatch
 
-Protocol method calls use direct interface dispatch (no reflection):
+Interface method calls use direct interface dispatch (no reflection):
 
 ```csharp
 public static void Render(IDrawable drawable)
@@ -893,7 +893,7 @@ error[E0001]: undefined symbol 'foo'
 - ✅ Attribute resolution for built-in types
 - ✅ Access modifier decorators
 - ✅ Module system
-- ✅ Class/struct/protocol definitions
+- ✅ Class/struct/interface definitions
 - ✅ Property syntax (auto and explicit)
 - ✅ Generic types with constraints
 - ✅ Operator synthesis from dunder methods
@@ -917,4 +917,4 @@ error[E0001]: undefined symbol 'foo'
 ## See Also
 
 - [Language Reference](language_reference.md) - Syntax and usage
-- [Type System](type_system.md) - Type semantics and protocols
+- [Type System](type_system.md) - Type semantics and interfaces

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Sharpy uses a static type system with full type inference. All types are known at compile time, with optional runtime type checking for boundary cases. The type system bridges Python's dynamic object semantics with .NET's static type hierarchy.
+Sharpy uses a static type system with full type inference. All types are known at compile time, with optional runtime type checking for boundary cases.
 
 For syntax details, see [Language Reference](language_reference.md).
 For implementation details, see [Compiler Design](compiler_design.md).
@@ -10,10 +10,10 @@ For implementation details, see [Compiler Design](compiler_design.md).
 ## Design Principles
 
 1. **Static typing by default**: All types are statically known at compile time
-2. **Protocol-oriented design**: Interfaces (protocols) over inheritance
+2. **Interface-oriented design**: Interfaces over inheritance
 3. **Zero-cost abstractions**: Python semantics compile to efficient .NET IL
 4. **Automatic conversions at boundaries**: Seamless interop at .NET/Sharpy boundaries
-5. **Dunder method synthesis**: Automatic generation of .NET operator overloads from Python-style methods
+5. **Dunder method synthesis**: Automatic generation of .NET operator overloads from Python-style dunder methods
 
 ## Type Hierarchy
 
@@ -26,55 +26,10 @@ System.Object
 │   ├── Sharpy.Optional<T>
 │   └── [User-defined structs]
 └── Reference Types (for classes)
-    ├── Sharpy.Object (base for Sharpy classes)
-    │   ├── Sharpy.Str
-    │   ├── Sharpy.List<T>
-    │   ├── Sharpy.Dict<K, V>
-    │   ├── Sharpy.Exception
-    │   └── [User-defined classes]
-    └── System.String, System.Array, etc.
-```
-
-### Sharpy.Object Base Class
-
-All Sharpy reference types (classes) derive from `Sharpy.Object`, which provides:
-
-- Default implementations of `__eq__()`, `__hash__()`, and `__str__()`
-- Automatic synthesis of static operators from dunder methods
-- Runtime type information via `__class__` property
-- Reflection support for dynamic operations
-
-```csharp
-namespace Sharpy;
-
-public abstract class Object : System.Object
-{
-    // Runtime type information
-    public virtual Type __class__ => GetType();
-
-    // Default equality (reference equality)
-    public virtual bool __eq__(object? other) => ReferenceEquals(this, other);
-
-    // Default hash (identity hash)
-    public virtual int __hash__() => RuntimeHelpers.GetHashCode(this);
-
-    // Default string representation
-    public virtual string __str__() => ToString();
-
-    // Override System.Object methods to delegate to dunder methods
-    public sealed override bool Equals(object? obj) => __eq__(obj);
-    public sealed override int GetHashCode() => __hash__();
-    public sealed override string ToString() => __str__();
-
-    // Synthesized static operators
-    public static bool operator ==(Object? left, Object? right)
-    {
-        if (left is null) return right is null;
-        return left.__eq__(right);
-    }
-
-    public static bool operator !=(Object? left, Object? right) => !(left == right);
-}
+    ├── System.String, System.Array, etc.
+    ├── Sharpy.List<T>
+    ├── Sharpy.Dict<K, V>
+    └── [User-defined classes]
 ```
 
 ## Built-in Types
@@ -126,9 +81,10 @@ Type inference for numeric literals:
 ```python
 x = 42          # int
 y = 42L         # long
-z = 3.14        # float (actually double in .NET)
-d = 3.14m       # decimal
-c = 3 + 4j      # complex
+z = 3.14f       # float
+u = 3.14        # double
+v = 3.14m       # decimal
+w = 3 + 4j      # complex
 ```
 
 ### String Type
@@ -330,33 +286,33 @@ public static class Math
 
 ## Classes and Inheritance
 
-Classes are reference types supporting single inheritance and multiple protocol implementation.
+Classes are reference types supporting single inheritance and multiple interface implementation.
 
 For class syntax, see [Language Reference - Classes](language_reference.md#classes).
 
 ### Inheritance Rules
 
 - **Single inheritance**: A class can inherit from exactly one base class
-- **Multiple protocol implementation**: A class can implement multiple protocols
-- **Protocol-only multiple inheritance**: Multiple "bases" are allowed if all but one are protocols
+- **Multiple interface implementation**: A class can implement multiple interfaces
+- **Interface-only multiple inheritance**: Multiple "bases" are allowed if all but one are interfaces
 
 ```python
 # Single inheritance
 class Employee(Person):
     pass
 
-# Base class + protocols
+# Base class + interfaces
 class JSONEmployee(Employee, Serializable, Comparable):
     pass
 
-# Protocols only (no base class)
+# Interfaces only (no base class)
 class Point(Drawable, Comparable):
     pass
 ```
 
 ### Method Resolution Order (MRO)
 
-Sharpy uses C3 linearization (same as Python) for method resolution when multiple protocols are involved. Since C# only supports single class inheritance, the MRO primarily affects protocol method resolution.
+Sharpy uses C3 linearization (same as Python) for method resolution when multiple interfaces are involved. Since C# only supports single class inheritance, the MRO primarily affects interface method resolution.
 
 ```python
 class A:
@@ -426,7 +382,7 @@ public abstract class Shape : Sharpy.Object
 
 ## Structs (Value Types)
 
-Structs are value types that do not support inheritance but can implement protocols.
+Structs are value types that do not support inheritance but can implement interfaces.
 
 For struct syntax, see [Language Reference - Structs](language_reference.md#structs).
 
@@ -452,7 +408,7 @@ print(p1.x)  # Still 1.0 (not affected by p2)
 ### Struct Constraints
 
 - **No inheritance**: Structs cannot inherit from classes or other structs
-- **Protocol implementation**: Structs can implement protocols
+- **Interface implementation**: Structs can implement interfaces
 - **Immutability**: Structs should be immutable (readonly) for safety
 - **Size**: Keep structs small (< 16 bytes recommended)
 
@@ -467,18 +423,18 @@ struct Vector2(Comparable):
         return -1 if self.y < other.y else (1 if self.y > other.y else 0)
 ```
 
-## Protocols and Interfaces
+## Interfaces
 
-Protocols define structural contracts that types must satisfy. They enable duck typing at compile time and map to C# interfaces.
+Interfaces define structural contracts that types must satisfy. They enable duck typing at compile time and map to C# interfaces.
 
-For protocol syntax, see [Language Reference - Protocols](language_reference.md#protocols).
+For interface syntax, see [Language Reference - Interfaces](language_reference.md#interfaces).
 
 ### Structural Typing
 
-Protocols use structural typing - a type satisfies a protocol if it implements all required methods, regardless of explicit declaration:
+Interfaces use structural typing - a type satisfies a interface if it implements all required methods, regardless of explicit declaration:
 
 ```python
-protocol Drawable:
+interface Drawable:
     def draw(self) -> None: ...
     def get_bounds(self) -> tuple[float, float, float, float]: ...
 
@@ -497,30 +453,28 @@ def render(obj: Drawable):
 render(Circle(0, 0, 10))  # ✅ Circle satisfies Drawable
 ```
 
-### Protocol Implementation
+### Interface Implementation
 
-**Sharpy protocol**:
+**Sharpy interface**:
 ```python
-protocol Drawable:
+interface Drawable:
     def draw(self) -> None: ...
 ```
 
 **Generated C# interface**:
 ```csharp
-namespace Sharpy.Protocols;
-
 public interface IDrawable
 {
     void draw();
 }
 ```
 
-### Protocol with Default Implementations
+### Interface with Default Implementations
 
-Protocols can provide default implementations using C# default interface methods:
+Interfaces can provide default implementations using C# default interface methods:
 
 ```python
-protocol Logger:
+interface Logger:
     def log(self, message: str) -> None:
         """Must be implemented."""
         ...
@@ -543,9 +497,9 @@ public interface ILogger
 }
 ```
 
-### Common Protocols
+### Common Interfaces
 
-| Protocol | Methods | .NET Interface | Purpose |
+| Interface | Methods | .NET Interface | Purpose |
 |----------|---------|----------------|---------|
 | `Iterable[T]` | `__iter__() -> Iterator[T]` | `IEnumerable<T>` | Can be iterated |
 | `Iterator[T]` | `__next__() -> T` | `IEnumerator<T>` | Produces values |
@@ -558,7 +512,7 @@ public interface ILogger
 
 ## Generic Types
 
-Generic types enable type-safe parameterization of classes, structs, protocols, and functions.
+Generic types enable type-safe parameterization of classes, structs, interfaces, and functions.
 
 For generic syntax, see [Language Reference - Generics](language_reference.md#generics).
 
@@ -590,7 +544,7 @@ public class Box<T> : Sharpy.Object
 Constraints limit what types can be used as type arguments:
 
 ```python
-# Protocol constraint
+# Interface constraint
 def find_max[T: Comparable](items: list[T]) -> T:
     max_item = items[0]
     for item in items:

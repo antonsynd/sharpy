@@ -27,7 +27,7 @@ Sharpy believes that static typing is key to writing safe, predictable, and perf
 
 The following are hard keywords in Sharpy and are always reserved:
 
-`and`, `as`, `assert`, `async`, `await`, `break`, `class`, `continue`, `def`, `del`, `elif`, `else`, `except`, `False`, `finally`, `for`, `from`, `if`, `import`, `in`, `is`, `lambda`, `None`, `not`, `or`, `pass`, `protocol`, `raise`, `return`, `struct`, `True`, `try`, `while`, `with`, `yield`
+`and`, `as`, `assert`, `async`, `await`, `break`, `class`, `continue`, `def`, `del`, `elif`, `else`, `except`, `False`, `finally`, `for`, `from`, `if`, `import`, `in`, `interface`, `is`, `lambda`, `None`, `not`, `or`, `pass`, `raise`, `return`, `struct`, `True`, `try`, `while`, `with`, `yield`
 
 ### Soft Keywords (Context-Dependent)
 
@@ -42,15 +42,14 @@ The following are soft keywords that are only treated as keywords in specific co
 - Comparison: `==`, `!=`, `<`, `>`, `<=`, `>=`
 - Logical: `and`, `or`, `not`
 - Bitwise: `&`, `|`, `^`, `~`, `<<`, `>>`
+- Matrix: `@`
 - Membership: `in`, `not in`
 - Identity: `is`, `is not`
 - Assignment: `=`, `+=`, `-=`, `*=`, `/=`, etc.
 
 **Sharpy-specific operators:**
-- `?.` - Optional chaining (null-conditional member access)
-- `??` - Null coalescing operator
-- `@` - Matrix multiplication (from Python 3.5+)
-- `->` - Function return type annotation arrow
+- `?.` - None (null) conditional member access
+- `??` - None (null) coalescing operator
 
 ## Literals and Special Values
 
@@ -58,10 +57,11 @@ The following are soft keywords that are only treated as keywords in specific co
 
 | Sharpy | Python Equivalent | C# Equivalent | Notes |
 |--------|------------------|---------------|-------|
-| `...` | `...` | - | Ellipsis literal in slices |
+| `...` | `...` | - | Ellipsis literal as a placeholder or for slices |
 | `False` | `False` | `false` | Boolean false |
 | `None` | `None` | `null` | Null/absence of value |
 | `True` | `True` | `true` | Boolean true |
+| `{/}` | `set()` | - | Empty set literal, borrowed from PEP 802 |
 
 ### Literal Names
 
@@ -109,10 +109,10 @@ unique: set[str] = {"x", "y", "z"}
 matrix: list[list[float]] = [[1.0, 2.0], [3.0, 4.0]]
 ```
 
-### Optional Types
+### Nullable Types
 
 ```python
-# Optional (nullable) types
+# Nullable types
 maybe_name: str? = None
 result: int? = get_value()
 
@@ -124,10 +124,10 @@ if result is not None:
 ### Qualified Types
 
 ```python
-from System.Collections.Generic import *
+from system.collections.generic import hash_set
 
 # Fully qualified type names
-numbers: List[int] = List[int]()
+numbers = hash_set[int]()
 ```
 
 ## Modules and Imports
@@ -178,7 +178,7 @@ class MyClass:
 
 ## Classes
 
-Classes are reference types that support single inheritance and multiple protocol implementation.
+Classes are reference types that support single inheritance and multiple interface implementation.
 
 See [Type System - Classes](type_system.md#classes-and-inheritance) for details on the type hierarchy.
 
@@ -210,11 +210,11 @@ class Employee(Person):
         return f"Hello, I'm {self.name}, employee #{self.employee_id}"
 ```
 
-### Protocol Implementation
+### Interface Implementation
 
 ```python
 class JSONSerializable(Serializable, Comparable):
-    """Class implementing multiple protocols."""
+    """Class implementing multiple interfaces."""
 
     def serialize(self) -> str:
         # Implementation
@@ -246,7 +246,7 @@ class Point:
 
 ## Structs
 
-Structs are value types that do not support inheritance but can implement protocols.
+Structs are value types that do not support inheritance but can implement interfaces.
 
 See [Type System - Structs](type_system.md#structs-value-types) for runtime behavior.
 
@@ -264,17 +264,17 @@ struct Vector2:
         return (self.x ** 2 + self.y ** 2) ** 0.5
 ```
 
-## Protocols
+## Interfaces
 
-Protocols define structural contracts that types must satisfy. They compile to C# interfaces.
+Interfaces define structural contracts that types must satisfy. They compile to C# interfaces.
 
-See [Type System - Protocols](type_system.md#protocols-and-interfaces) for type checking rules.
+See [Type System - Interfaces](type_system.md#interfaces-and-interfaces) for type checking rules.
 
-### Protocol Definition
+### Interface Definition
 
 ```python
-protocol Drawable:
-    """Protocol for drawable objects."""
+interface Drawable:
+    """Interface for drawable objects."""
 
     def draw(self) -> None:
         """Draw the object."""
@@ -285,22 +285,22 @@ protocol Drawable:
         ...
 ```
 
-### Protocol Inheritance
+### Interface Inheritance
 
 ```python
-protocol Serializable:
+interface Serializable:
     def serialize(self) -> str: ...
 
-protocol JSONSerializable(Serializable):
-    """Extends Serializable protocol."""
+interface JSONSerializable(Serializable):
+    """Extends Serializable interface."""
     def to_json(self) -> str: ...
 ```
 
-### Protocol with Default Implementation
+### Interface with Default Implementation
 
 ```python
-protocol Logger:
-    """Protocol with default behavior."""
+interface Logger:
+    """Interface with default behavior."""
 
     def log(self, message: str) -> None:
         """Must be implemented."""
@@ -351,10 +351,10 @@ class Temperature:
         return self.__celsius * 9/5 + 32
 ```
 
-### Abstract Properties (in Protocols)
+### Abstract Properties (in Interfaces)
 
 ```python
-protocol Measurable:
+interface Measurable:
     # Abstract property requiring both getter and setter
     property length: float
 
@@ -512,7 +512,7 @@ evens = filter(lambda x: x % 2 == 0, numbers)
 
 ## Generics
 
-Classes, structs, protocols, and functions can be generic with type parameters.
+Classes, structs, interfaces, and functions can be generic with type parameters.
 
 See [Type System - Generic Types](type_system.md#generic-types) for constraint details.
 
@@ -551,9 +551,9 @@ def first[T](items: list[T]) -> T:
 ### Type Constraints
 
 ```python
-from typing import Protocol
+from typing import Interface
 
-class Comparable(Protocol):
+class Comparable(Interface):
     def __lt__(self, other) -> bool: ...
 
 def find_max[T: Comparable](items: list[T]) -> T:
@@ -707,7 +707,7 @@ Sharpy follows specific naming conventions with automatic case conversion for .N
 | Module | `snake_case` | `PascalCase` |
 | Class | `PascalCase` | (unchanged) |
 | Struct | `PascalCase` | (unchanged) |
-| Protocol | `PascalCase` | `IPascalCase` (I-prefixed) |
+| Interface | `IPascalCase` | (unchanged) |
 | Members | `snake_case` | `PascalCase` |
 | Enum | `PascalCase` | (unchanged) |
 | Enum values | `CAPS_SNAKE_CASE` | `PascalCase` |
@@ -745,5 +745,5 @@ def main():
 
 ## See Also
 
-- [Type System](type_system.md) - Detailed type semantics, protocols, and generics
+- [Type System](type_system.md) - Detailed type semantics, interfaces, and generics
 - [Compiler Design](compiler_design.md) - Implementation details and code generation
