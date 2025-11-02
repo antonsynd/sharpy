@@ -100,6 +100,35 @@ The following are soft keywords that are only treated as keywords in specific co
 - `?.` - None (null) conditional member access
 - `??` - None (null) coalescing operator
 
+### Operator Precedence
+
+Operators are listed from highest to lowest precedence:
+
+| Precedence | Operators | Description | Associativity |
+|------------|-----------|-------------|---------------|
+| 1 | `()`, `[]`, `.`, `?.` | Grouping, indexing, attribute access, null-conditional access | Left-to-right |
+| 2 | `**` | Exponentiation | Right-to-left |
+| 3 | `+x`, `-x`, `~x` | Unary plus, minus, bitwise NOT | Right-to-left |
+| 4 | `*`, `/`, `//`, `%`, `@` | Multiplication, division, floor division, modulo, matrix multiply | Left-to-right |
+| 5 | `+`, `-` | Addition, subtraction | Left-to-right |
+| 6 | `<<`, `>>` | Bitwise shifts | Left-to-right |
+| 7 | `&` | Bitwise AND | Left-to-right |
+| 8 | `^` | Bitwise XOR | Left-to-right |
+| 9 | `\|` | Bitwise OR | Left-to-right |
+| 10 | `in`, `not in`, `is`, `is not`, `<`, `<=`, `>`, `>=`, `!=`, `==` | Comparisons, membership, identity | Left-to-right |
+| 11 | `not` | Logical NOT | Right-to-left |
+| 12 | `and` | Logical AND | Left-to-right |
+| 13 | `or` | Logical OR | Left-to-right |
+| 14 | `??` | Null coalescing | Left-to-right |
+| 15 | `if`-`else` | Conditional expression | Right-to-left |
+| 16 | `lambda` | Lambda expression | N/A |
+| 17 | `:=` | Walrus operator (assignment expression) | Right-to-left |
+
+**Notes:**
+- Comparison operators can be chained: `a < b < c` is equivalent to `a < b and b < c`
+- The walrus operator `:=` allows assignment within expressions (see [Walrus Operator](#walrus-operator))
+- The `??` operator has lower precedence than `or`, so `a or b ?? c` is `(a or b) ?? c`
+
 ## Literals and Special Values
 
 ### Special Literals
@@ -111,6 +140,31 @@ The following are soft keywords that are only treated as keywords in specific co
 | `None` | `None` | `null` | Null/absence of value |
 | `True` | `True` | `true` | Boolean true |
 | `{/}` | `set()` | - | Empty set literal, borrowed from PEP 802 |
+
+**Ellipsis (`...`) Usage:**
+
+The ellipsis literal has several uses:
+
+```python
+# 1. Placeholder in interface/abstract method definitions
+interface IDrawable:
+    def draw(self) -> None:
+        ...
+
+# 2. Placeholder for unimplemented code (like 'pass')
+def todo_function():
+    ...
+
+# 3. Open-ended slicing (take all remaining elements)
+matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+first_row = matrix[0, ...]  # [1, 2, 3]
+first_col = matrix[..., 0]  # [1, 4, 7]
+
+# 4. Type hint for variable-length homogeneous tuples
+def process(values: tuple[int, ...]) -> None:
+    # Accepts tuples of any length containing ints
+    pass
+```
 
 ### Literal Names
 
@@ -169,6 +223,41 @@ result: int? = get_value()
 if result is not None:
     print(result + 10)  # Safe: result is int here
 ```
+
+### Type Narrowing
+
+Sharpy performs type narrowing in conditional branches:
+
+```python
+# Nullable type narrowing
+value: str? = get_optional_string()
+
+if value is not None:
+    # Inside this block, 'value' is narrowed to 'str'
+    print(value.upper())  # OK - value is str, not str?
+
+# isinstance() narrowing
+obj: object = get_value()
+
+if isinstance(obj, str):
+    # Inside this block, 'obj' is narrowed to 'str'
+    print(obj.upper())  # OK
+
+# Pattern matching narrowing (see Match Statements)
+match value:
+    case int() as i:
+        # 'i' is narrowed to 'int'
+        print(i + 1)
+    case str() as s:
+        # 's' is narrowed to 'str'
+        print(s.upper())
+```
+
+**Narrowing Rules:**
+- `is not None` narrows nullable type to non-nullable
+- `isinstance(x, Type)` narrows to that type
+- Pattern matching with type patterns narrows to matched type
+- Narrowing only affects the scope of the conditional block
 
 ### Qualified Types
 
@@ -278,6 +367,31 @@ x: auto = very_long_generic_type_here()  # Saves typing the long type name
 - The type name is very long or complex
 - You want to acknowledge the type change without spelling it out
 
+### Comprehension and Loop Variable Scope
+
+Variables declared in comprehensions and loop expressions are scoped to that comprehension/loop and do not leak into the outer scope:
+
+```python
+# List comprehension
+squares = [i ** 2 for i in range(10)]
+print(i)  # ERROR: 'i' does not exist in this scope
+
+# Dict comprehension
+mapping = {k: v for k, v in items}
+print(k)  # ERROR: 'k' does not exist in this scope
+
+# For loop
+for item in collection:
+    process(item)
+print(item)  # ERROR: 'item' does not exist outside loop
+
+# Exception: Generator expressions evaluated lazily
+gen = (x ** 2 for x in range(10))
+# 'x' is scoped to generator execution, not outer scope
+```
+
+**Note:** This differs from Python 2 behavior where loop variables leaked into the outer scope. Sharpy follows Python 3+ scoping rules.
+
 ## Constants
 
 Constants are immutable values declared with the `const` keyword. They must be initialized with a compile-time constant expression and cannot be reassigned.
@@ -310,6 +424,82 @@ class MathConstants:
 class Config:
     const VERSION = "1.0.0"
     const API_BASE_URL = "https://api.example.com"
+```
+
+### Static vs Instance Members
+
+**Static members** belong to the class itself, not instances:
+
+```python
+class MathUtils:
+    # Static field (class-level)
+    const PI: double = 3.14159
+
+    # Static method
+    @static
+    def square(x: double) -> double:
+        return x ** 2
+
+    # Static property
+    @static
+    property version() -> str:
+        return "1.0.0"
+
+# Access static members via class name
+result = MathUtils.square(5)        # 25
+pi = MathUtils.PI                   # 3.14159
+version = MathUtils.version         # "1.0.0"
+
+# Static members NOT accessible via instances
+obj = MathUtils()
+obj.square(5)  # ERROR - cannot access static member via instance
+```
+
+**Instance members** belong to each object instance:
+
+```python
+class Counter:
+    # Instance field (per-object)
+    count: int = 0
+
+    # Instance method
+    def increment(self):
+        self.count += 1
+
+    # Instance property
+    property value(self) -> int:
+        return self.count
+
+# Each instance has its own state
+c1 = Counter()
+c2 = Counter()
+
+c1.increment()
+print(c1.value)  # 1
+print(c2.value)  # 0 - separate instance
+```
+
+**Class attributes (shared state):**
+
+To create shared state across all instances (like Python class variables), use static fields:
+
+```python
+class BankAccount:
+    # Shared across all instances
+    @static
+    total_accounts: int = 0
+
+    # Per-instance data
+    balance: double
+
+    def __init__(self, initial_balance: double):
+        self.balance = initial_balance
+        BankAccount.total_accounts += 1  # Increment shared counter
+
+# All instances share total_accounts
+acc1 = BankAccount(100.0)
+acc2 = BankAccount(200.0)
+print(BankAccount.total_accounts)  # 2
 ```
 
 ### Constant Rules
@@ -364,6 +554,32 @@ MAX_VALUE = 200  # OK - no const keyword
 const MAX_VALUE: int = 100
 MAX_VALUE = 200  # ERROR - declared with const
 ```
+
+### Default Parameter Evaluation
+
+Default parameter values are evaluated **once** at function definition time, not per call. This means mutable default parameters share the same instance across calls:
+
+```python
+# DANGER: Mutable default parameter
+def append_to(item: int, target: list[int] = []) -> list[int]:
+    target.append(item)
+    return target
+
+list1 = append_to(1)  # [1]
+list2 = append_to(2)  # [1, 2] - SAME list as list1!
+
+# SAFE: Use None and create new instance
+def append_to_safe(item: int, target: list[int]? = None) -> list[int]:
+    if target is None:
+        target = []
+    target.append(item)
+    return target
+
+list3 = append_to_safe(1)  # [1]
+list4 = append_to_safe(2)  # [2] - different list
+```
+
+**Best Practice:** Never use mutable objects (lists, dicts, sets) as default parameter values. Use `None` and create the instance inside the function.
 
 ## Modules and Imports
 
@@ -461,6 +677,58 @@ class Employee(Person):
     def greet(self) -> str:
         return f"Hello, I'm {self.name}, employee #{self.employee_id}"
 ```
+
+**Constructor Chaining:**
+
+When a derived class defines a constructor, it **must** call the base class constructor using `super().__init__()`. The call to `super().__init__()` does not need to be the first statement, but all base class initialization must complete before accessing inherited members:
+
+```python
+class Base:
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+class Derived(Base):
+    multiplier: int
+
+    def __init__(self, value: int, multiplier: int):
+        # Setup can happen before super().__init__()
+        self.multiplier = multiplier
+
+        # Call base constructor
+        super().__init__(value * multiplier)
+
+        # Can access base members after super().__init__()
+        print(f"Base value: {self.value}")
+```
+
+**Multiple Inheritance Rules:**
+
+Sharpy supports single class inheritance plus multiple interface implementation:
+
+```python
+# OK: Single class inheritance
+class Dog(Animal):
+    pass
+
+# OK: Class + multiple interfaces
+class JSONEmployee(Employee, ISerializable, IComparable):
+    pass
+
+# OK: Multiple interfaces only (no base class)
+class Point(IDrawable, IComparable):
+    pass
+
+# ERROR: Multiple class inheritance not allowed
+class Invalid(ClassA, ClassB):  # ERROR: At most one base class allowed
+    pass
+```
+
+**Inheritance Order:**
+- If present, the base class **must** come first in the inheritance list
+- Interfaces follow the base class
+- Order of interfaces affects method resolution when ambiguous
 
 ### Interface Implementation
 
@@ -642,6 +910,40 @@ class Temperature:
         return self.__celsius * 9/5 + 32
 ```
 
+**Property Definition Rules:**
+
+A property can have:
+- **Getter only** (read-only property)
+- **Setter only** (write-only property, rarely used)
+- **Both getter and setter** (read-write property)
+
+```python
+class Example:
+    _value: int = 0
+
+    # Read-only property
+    property read_only(self) -> int:
+        return self._value
+
+    # Write-only property
+    property write_only(self, value: int):
+        self._value = value
+
+    # Read-write property
+    property read_write(self) -> int:
+        return self._value
+
+    property read_write(self, value: int):
+        self._value = value
+
+# Usage
+obj = Example()
+obj.write_only = 42       # OK - has setter
+x = obj.read_only         # OK - has getter
+obj.read_only = 10        # ERROR - no setter
+y = obj.write_only        # ERROR - no getter
+```
+
 ### Abstract Properties (in Interfaces)
 
 ```python
@@ -710,6 +1012,85 @@ class Example:
 | `@private` | `__name` | `private` | Only the declaring class |
 | `@internal` | N/A | `internal` | Same assembly |
 | `@file` | N/A | `file` | Same file |
+
+## Events
+
+Events provide a publish-subscribe pattern for notifications. They are similar to properties but designed for multicast delegates.
+
+### Event Declaration
+
+```python
+class Button:
+    """A button that can be clicked."""
+
+    # Event declaration
+    event clicked: (object, EventArgs) -> None
+
+    def click(self):
+        """Simulate a button click."""
+        # Raise the event if there are subscribers
+        if self.clicked is not None:
+            self.clicked(self, EventArgs())
+
+# Event subscription
+button = Button()
+
+def on_button_clicked(sender: object, args: EventArgs):
+    print("Button was clicked!")
+
+# Subscribe to event
+button.clicked += on_button_clicked
+
+# Trigger event
+button.click()  # Prints: "Button was clicked!"
+
+# Unsubscribe from event
+button.clicked -= on_button_clicked
+```
+
+### Event with Custom EventArgs
+
+```python
+class ValueChangedEventArgs(EventArgs):
+    old_value: int
+    new_value: int
+
+    def __init__(self, old_value: int, new_value: int):
+        self.old_value = old_value
+        self.new_value = new_value
+
+class Counter:
+    event value_changed: (object, ValueChangedEventArgs) -> None
+    _value: int = 0
+
+    property value(self) -> int:
+        return self._value
+
+    property value(self, new_value: int):
+        old = self._value
+        self._value = new_value
+
+        # Raise event with custom args
+        if self.value_changed is not None:
+            self.value_changed(self, ValueChangedEventArgs(old, new_value))
+
+# Usage
+counter = Counter()
+
+def on_value_changed(sender: object, args: ValueChangedEventArgs):
+    print(f"Value changed from {args.old_value} to {args.new_value}")
+
+counter.value_changed += on_value_changed
+counter.value = 42  # Prints: "Value changed from 0 to 42"
+```
+
+### Event Rules
+
+- Events can only be invoked from within the declaring class
+- Events support `+=` (subscribe) and `-=` (unsubscribe) operators
+- Events can have multiple subscribers (multicast)
+- Event handlers are invoked in subscription order
+- If no subscribers exist, event is `None`
 
 ## Decorators
 
@@ -952,6 +1333,108 @@ empty_set: set[int] = {/}
 numbers: set[int] = {1, 2, 3, 4, 5}
 ```
 
+### Collection Mutability
+
+Collections have different mutability characteristics:
+
+| Collection | Mutable? | Notes |
+|------------|----------|-------|
+| `list[T]` | ✅ Yes | Can append, remove, modify elements |
+| `dict[K, V]` | ✅ Yes | Can add, remove, modify entries |
+| `set[T]` | ✅ Yes | Can add, remove elements |
+| `tuple[...]` | ❌ No | Immutable, fixed-size |
+| `frozenset[T]` | ❌ No | Immutable set |
+| `str` | ❌ No | Immutable string |
+| `bytes` | ❌ No | Immutable byte array |
+| `bytearray` | ✅ Yes | Mutable byte array |
+
+```python
+# Mutable collections
+numbers = [1, 2, 3]
+numbers.append(4)      # OK - list is mutable
+numbers[0] = 10        # OK - can modify elements
+
+mapping = {"a": 1}
+mapping["b"] = 2       # OK - dict is mutable
+
+unique = {1, 2, 3}
+unique.add(4)          # OK - set is mutable
+
+# Immutable collections
+point = (10, 20)
+point[0] = 30          # ERROR - tuple is immutable
+
+text = "hello"
+text[0] = "H"          # ERROR - string is immutable
+
+frozen = frozenset([1, 2, 3])
+frozen.add(4)          # ERROR - frozenset is immutable
+```
+
+**Creating Immutable Copies:**
+
+```python
+# List to tuple (immutable)
+numbers = [1, 2, 3]
+immutable_numbers = tuple(numbers)
+
+# Set to frozenset (immutable)
+unique = {1, 2, 3}
+immutable_unique = frozenset(unique)
+
+# String is already immutable
+text = "hello"  # Always immutable
+```
+
+## Walrus Operator
+
+The walrus operator `:=` allows assignment within expressions. This is useful for capturing values in comprehensions, conditionals, and other expressions:
+
+```python
+# Capture value in conditional
+if (match := pattern.search(text)) is not None:
+    print(f"Found match at position {match.start()}")
+
+# Reuse computed value in comprehension
+results = [y for x in data if (y := transform(x)) is not None]
+
+# Avoid repeated function calls
+while (line := file.read_line()) is not None:
+    process(line)
+
+# In list comprehension
+data = [1, 2, 3, 4, 5]
+filtered = [y for x in data if (y := x * 2) > 5]
+# Result: [6, 8, 10] (filtered where doubled value > 5)
+```
+
+**Scoping Rules:**
+
+The walrus operator creates or assigns to a variable in the **enclosing scope**, not a new scope:
+
+```python
+# Variable created in function scope
+def process():
+    if (x := compute()) > 0:
+        # x exists here
+        print(x)
+    # x still exists here
+    print(x)
+
+# In comprehension, variable scoped to comprehension
+results = [y for item in data if (y := transform(item)) is not None]
+print(y)  # ERROR: y does not exist outside comprehension
+```
+
+**Type Inference:**
+
+The type of a walrus-assigned variable is inferred from the right-hand side expression:
+
+```python
+if (x := get_value()) > 0:  # x inferred as int (or whatever get_value returns)
+    print(x + 1)
+```
+
 ## String Formatting
 
 ### F-Strings (Interpolated Strings)
@@ -983,6 +1466,34 @@ padded = f"{value:0>5}"    # Pad with zeros: "00042"
 # Raw strings (backslashes not escaped)
 path = r"C:\Users\Alice\Documents"
 regex = r"\d+\.\d+"
+```
+
+**Escape Sequences in Regular Strings:**
+
+Regular (non-raw) strings support standard escape sequences:
+
+| Escape | Meaning |
+|--------|---------|
+| `\\` | Backslash |
+| `\'` | Single quote |
+| `\"` | Double quote |
+| `\n` | Newline |
+| `\r` | Carriage return |
+| `\t` | Tab |
+| `\b` | Backspace |
+| `\f` | Form feed |
+| `\0` | Null character |
+| `\xHH` | Character with hex value HH (e.g., `\x41` = 'A') |
+| `\uHHHH` | Unicode character with 16-bit hex value HHHH |
+| `\UHHHHHHHH` | Unicode character with 32-bit hex value HHHHHHHH |
+
+```python
+# Escape sequences
+newline = "Hello\nWorld"
+tab = "Column1\tColumn2"
+unicode_char = "Greek alpha: \u03B1"
+emoji = "Rocket: \U0001F680"
+hex_char = "Capital A: \x41"
 ```
 
 ### Multi-line Strings
@@ -1230,6 +1741,61 @@ def distance(p1: Coordinate, p2: Coordinate) -> double:
 
 Note that union types e.g. `int | str | None` are not allowed in Sharpy.
 
+### None Type Semantics
+
+`None` has different meanings depending on context:
+
+**As a function return type:**
+
+```python
+def no_return() -> None:
+    """Function that returns nothing."""
+    print("Hello")
+    # Implicit return None
+
+def explicit_return() -> None:
+    print("Hello")
+    return  # Can explicitly return (without value)
+```
+
+**As a value (null reference):**
+
+```python
+# None as nullable reference
+name: str? = None
+
+# Checking for None
+if name is None:
+    print("No name provided")
+
+if name is not None:
+    print(f"Name: {name}")
+```
+
+**Type distinctions:**
+
+| Context | Sharpy Syntax | Meaning | Compiled Form |
+|---------|---------------|---------|---------------|
+| Return type | `-> None` | No return value | `void` |
+| Variable type | `x: None` | Not allowed | - |
+| Nullable variable | `x: str?` | Can be null | Nullable reference |
+| None literal | `None` | Null value | `null` |
+
+```python
+# Valid uses of None
+def do_work() -> None:           # OK - return type
+    pass
+
+x: str? = None                   # OK - nullable variable with None value
+y = None                         # OK - inferred as object? (nullable object)
+
+# Invalid uses of None
+def broken() -> None:
+    return 42                     # ERROR - cannot return value from None function
+
+z: None = None                   # ERROR - None is not a valid variable type
+```
+
 ### Enumerations
 
 Enums define a set of named constants:
@@ -1386,6 +1952,214 @@ def describe(value):
             return "other"
 ```
 
+Match statements provide powerful pattern matching capabilities for structural matching and type discrimination.
+
+### Pattern Matching Syntax
+
+**Literal Patterns:**
+
+```python
+match status_code:
+    case 200:
+        print("OK")
+    case 404:
+        print("Not Found")
+    case 500:
+        print("Server Error")
+    case _:
+        print("Unknown status")
+```
+
+**Type Patterns:**
+
+```python
+match value:
+    case int():
+        print("It's an integer")
+    case str():
+        print("It's a string")
+    case list():
+        print("It's a list")
+    case _:
+        print("Unknown type")
+```
+
+**Type Patterns with Binding:**
+
+```python
+match value:
+    case int() as i:
+        # i is bound to value, narrowed to int
+        print(f"Integer: {i + 1}")
+    case str() as s:
+        # s is bound to value, narrowed to str
+        print(f"String: {s.upper()}")
+    case list() as lst:
+        print(f"List length: {len(lst)}")
+```
+
+**Destructuring Patterns:**
+
+```python
+# Tuple destructuring
+match point:
+    case (0, 0):
+        print("Origin")
+    case (0, y):
+        print(f"On Y-axis at {y}")
+    case (x, 0):
+        print(f"On X-axis at {x}")
+    case (x, y):
+        print(f"Point at ({x}, {y})")
+
+# List destructuring
+match values:
+    case []:
+        print("Empty list")
+    case [x]:
+        print(f"Single element: {x}")
+    case [x, y]:
+        print(f"Two elements: {x}, {y}")
+    case [first, *rest]:
+        print(f"First: {first}, Rest: {rest}")
+    case [*init, last]:
+        print(f"Init: {init}, Last: {last}")
+
+# Dict destructuring
+match config:
+    case {"host": host, "port": port}:
+        print(f"Server at {host}:{port}")
+    case {"path": path}:
+        print(f"File path: {path}")
+```
+
+**Guard Clauses:**
+
+Guard clauses add additional conditions to patterns:
+
+```python
+match value:
+    case int() as i if i > 0:
+        print("Positive integer")
+    case int() as i if i < 0:
+        print("Negative integer")
+    case int():
+        print("Zero")
+
+match point:
+    case (x, y) if x == y:
+        print("On diagonal")
+    case (x, y) if x > y:
+        print("Above diagonal")
+    case (x, y):
+        print("Below diagonal")
+```
+
+**OR Patterns:**
+
+Multiple patterns can match the same case using `|`:
+
+```python
+match command:
+    case "quit" | "exit" | "q":
+        print("Exiting...")
+    case "help" | "h" | "?":
+        print("Showing help...")
+    case _:
+        print("Unknown command")
+
+match value:
+    case 0 | 1 | 2:
+        print("Small number")
+    case int() | float():
+        print("Numeric value")
+```
+
+**Class Patterns:**
+
+Match against class instances with property matching:
+
+```python
+class Point:
+    x: double
+    y: double
+
+match shape:
+    case Point(x=0, y=0):
+        print("Origin point")
+    case Point(x=x, y=0):
+        print(f"On X-axis at {x}")
+    case Point(x=0, y=y):
+        print(f"On Y-axis at {y}")
+    case Point(x=x, y=y):
+        print(f"Point at ({x}, {y})")
+```
+
+**Wildcard Pattern:**
+
+The underscore `_` matches anything and discards the value:
+
+```python
+match response:
+    case {"status": "ok", "data": data}:
+        process(data)
+    case {"status": "error", "message": msg}:
+        print(f"Error: {msg}")
+    case _:
+        print("Unknown response format")
+
+# Wildcards in destructuring
+match point:
+    case (x, _):  # Match any point, capture only x coordinate
+        print(f"X coordinate: {x}")
+```
+
+**Match as Expression:**
+
+Match statements can return values:
+
+```python
+result = match value:
+    case int() as i if i > 0: "positive"
+    case int() as i if i < 0: "negative"
+    case _: "zero"
+
+# More complex example
+color = match status:
+    case 200: "green"
+    case 404: "yellow"
+    case 500: "red"
+    case _: "gray"
+```
+
+### Exhaustiveness Checking
+
+The compiler warns if match patterns don't cover all possible cases for enum types:
+
+```python
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+# WARNING: Non-exhaustive match
+match color:
+    case Color.RED:
+        print("Red")
+    case Color.GREEN:
+        print("Green")
+    # Missing Color.BLUE case
+
+# OK: Exhaustive with wildcard
+match color:
+    case Color.RED:
+        print("Red")
+    case Color.GREEN:
+        print("Green")
+    case _:
+        print("Other color")
+```
+
 ## Exception Handling
 
 ```python
@@ -1423,6 +2197,8 @@ The order of `dispose()` and `__exit__()` calls is as follows: for every pair of
 
 ## Async Programming
 
+Async programming enables concurrent execution of I/O-bound operations without blocking.
+
 ### Async Functions
 
 ```python
@@ -1434,6 +2210,89 @@ async def fetch_data(url: str) -> str:
 async def main():
     result = await fetch_data("https://example.com")
     print(result)
+```
+
+### Running Async Code
+
+Async functions must be awaited or run through an async runtime:
+
+```python
+# Top-level async (in async context)
+async def main():
+    result = await some_async_function()
+    print(result)
+
+# Running from synchronous code
+import asyncio
+
+def sync_main():
+    # Run async function from sync context
+    result = asyncio.run(main())
+```
+
+### Concurrent Execution
+
+```python
+async def fetch_all(urls: list[str]) -> list[str]:
+    """Fetch multiple URLs concurrently."""
+    # Create tasks for concurrent execution
+    tasks = [fetch_data(url) for url in urls]
+
+    # Wait for all tasks to complete
+    results = await asyncio.gather(*tasks)
+    return results
+
+async def main():
+    urls = [
+        "https://api1.com",
+        "https://api2.com",
+        "https://api3.com"
+    ]
+
+    # All fetches run concurrently
+    data = await fetch_all(urls)
+
+    for item in data:
+        print(item)
+```
+
+### Task Management
+
+```python
+async def background_work():
+    """Long-running background task."""
+    while True:
+        await asyncio.sleep(1)
+        print("Working...")
+
+async def main():
+    # Start background task
+    task = asyncio.create_task(background_work())
+
+    # Do other work
+    await asyncio.sleep(5)
+
+    # Cancel background task
+    task.cancel()
+
+    try:
+        await task
+    except asyncio.CancelledError:
+        print("Background task cancelled")
+```
+
+### Timeouts
+
+```python
+async def fetch_with_timeout(url: str, timeout: double) -> str:
+    """Fetch with timeout."""
+    try:
+        return await asyncio.wait_for(
+            fetch_data(url),
+            timeout=timeout
+        )
+    except asyncio.TimeoutError:
+        raise Exception(f"Request to {url} timed out")
 ```
 
 ### Async Iteration
@@ -1457,6 +2316,136 @@ async def use_resource():
     async with AsyncResource() as resource:
         await resource.process()
 ```
+
+Async context managers use `async __aenter__()` and `async __aexit__()` methods:
+
+```python
+class AsyncResource:
+    """Async resource with async context manager support."""
+
+    async def __aenter__(self):
+        """Called when entering async with block."""
+        print("Acquiring resource...")
+        await asyncio.sleep(0.1)
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Called when exiting async with block."""
+        print("Releasing resource...")
+        await asyncio.sleep(0.1)
+
+    async def process(self):
+        """Do some async work."""
+        await asyncio.sleep(0.5)
+        print("Processing...")
+
+# Usage
+async def main():
+    async with AsyncResource() as res:
+        await res.process()
+```
+
+## Defer Statement
+
+The `defer` statement schedules a block of code to execute when the current scope exits, regardless of how it exits (normal return, exception, etc.). This is useful for cleanup operations.
+
+### Basic Defer
+
+```python
+def process_file(path: str):
+    file = open(path, "r")
+    defer:
+        file.close()
+
+    # Process file...
+    # file.close() will be called when function exits
+    return process(file.read())
+```
+
+### Multiple Defer Statements
+
+Multiple `defer` statements execute in **reverse order** (LIFO - Last In, First Out):
+
+```python
+def nested_resources():
+    print("Opening A")
+    defer:
+        print("Closing A")
+
+    print("Opening B")
+    defer:
+        print("Closing B")
+
+    print("Opening C")
+    defer:
+        print("Closing C")
+
+    print("Processing")
+
+# Output:
+# Opening A
+# Opening B
+# Opening C
+# Processing
+# Closing C
+# Closing B
+# Closing A
+```
+
+### Defer with Exception Handling
+
+Defer blocks execute even when exceptions are raised:
+
+```python
+def risky_operation():
+    resource = acquire()
+    defer:
+        print("Cleanup happens even if exception raised")
+        resource.release()
+
+    # If this raises an exception, defer still executes
+    dangerous_work(resource)
+```
+
+### Defer Scope Rules
+
+Defer statements are scoped to the enclosing function or block:
+
+```python
+def example():
+    defer:
+        print("Function exit")
+
+    if condition:
+        defer:
+            print("If block exit")  # Executes when if block exits
+
+        do_work()
+    # "If block exit" printed here (end of if block)
+
+    do_more()
+# "Function exit" printed here (end of function)
+```
+
+### Defer vs Context Managers
+
+| Feature | `defer` | `with` (Context Manager) |
+|---------|---------|-------------------------|
+| Use case | Ad-hoc cleanup | Structured resource management |
+| Syntax | Simple block | Requires `__enter__`/`__exit__` |
+| Order | LIFO (reverse) | LIFO (reverse) |
+| Exception safe | Yes | Yes |
+| Can capture variables | Yes | Limited (via `__enter__` return) |
+
+**When to use `defer`:**
+- Quick cleanup operations
+- Working with resources that don't have context managers
+- Multiple cleanup steps in one function
+
+**When to use `with`:**
+- Established resource management patterns (files, locks, connections)
+- Reusable resource management logic
+- Standard library integration
 
 ## Naming Conventions
 
@@ -1516,6 +2505,167 @@ def main():
 ```
 
 **Note**: The Python idiom `if __name__ == "__main__":` does not exist in Sharpy. The `__name__` variable is not available and attempting to use it causes a compilation error.
+
+## .NET Interop
+
+Sharpy provides seamless interop with .NET libraries and frameworks.
+
+### Importing .NET Types
+
+```python
+# Import .NET namespaces
+from system.collections.generic import List, Dictionary
+from system.io import File, Path
+from system.linq import Enumerable
+
+# Use .NET types directly
+list = List[int]()
+list.add(1)
+list.add(2)
+
+dict = Dictionary[str, int]()
+dict["key"] = 42
+```
+
+### Using .NET Methods
+
+```python
+from system.io import File, Path
+
+# Call static .NET methods
+content = File.read_all_text("data.txt")
+full_path = Path.get_full_path("file.txt")
+exists = File.exists("config.json")
+
+# Use .NET instance methods
+from system.text import StringBuilder
+
+sb = StringBuilder()
+sb.append("Hello")
+sb.append(" ")
+sb.append("World")
+result = sb.to_string()  # "Hello World"
+result = str(sb)  # Also valid via str() which delegates to `to_string()` underlyingly
+```
+
+### .NET Properties
+
+.NET properties are accessed like Sharpy properties:
+
+```python
+from system.io import FileInfo
+
+file = FileInfo("data.txt")
+
+# Access properties
+size = file.length
+name = file.name
+dir = file.directory
+readonly = file.is_read_only
+
+# Set properties
+file.is_read_only = True
+```
+
+### Extension Methods
+
+.NET extension methods work naturally in Sharpy:
+
+```python
+from system.linq import Enumerable
+
+numbers = [1, 2, 3, 4, 5]
+
+# LINQ extension methods
+evens = numbers.where(lambda x: x % 2 == 0)
+doubled = numbers.select(lambda x: x * 2)
+sum = numbers.sum()
+first = numbers.first()
+```
+
+### Literal Names for Exact Casing
+
+Use backticks to preserve exact casing when calling .NET APIs:
+
+```python
+# Without backticks, case conversion applies
+from system.io import File
+
+# With backticks, exact casing preserved
+from `System.IO` import File
+
+# Useful for calling .NET methods with exact names
+result = File.`ReadAllText`("data.txt")
+```
+
+### Handling .NET Exceptions
+
+.NET exceptions can be caught using Sharpy's exception handling:
+
+```python
+from system import ArgumentException, InvalidOperationException
+from system.io import IOException
+
+try:
+    File.read_all_text("missing.txt")
+except IOException as e:
+    print(f"IO error: {e.message}")
+except ArgumentException as e:
+    print(f"Argument error: {e.message}")
+```
+
+### IDisposable Pattern
+
+.NET's `IDisposable` pattern integrates with Sharpy's `with` statement:
+
+```python
+from system.io import FileStream, FileMode
+
+with FileStream("output.dat", FileMode.create) as stream:
+    stream.write(data, 0, len(data))
+    # stream.Dispose() called automatically
+```
+
+### Nullable Reference Types
+
+.NET's nullable reference types map to Sharpy's nullable syntax:
+
+```python
+# .NET method that returns string?
+name: str? = get_optional_name()
+
+if name is not None:
+    print(name.to_upper())  # Safe - narrowed to str
+```
+
+### Attributes (Annotations)
+
+.NET attributes can be applied using decorator-like syntax:
+
+```python
+# Custom attribute
+@Serializable
+class DataModel:
+    @JsonProperty("user_name")
+    property name: str
+
+    @JsonIgnore
+    property internal_id: int
+```
+
+### Generic .NET Types
+
+```python
+from system.collections.generic import List, Dictionary, HashSet
+
+# Generic type instantiation
+int_list = List[int]()
+string_dict = Dictionary[str, str]()
+unique_values = HashSet[double]()
+
+# Nested generics
+matrix = List[List[int]]()
+```
 
 ## See Also
 
