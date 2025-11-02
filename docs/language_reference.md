@@ -33,6 +33,7 @@ The following are hard keywords in Sharpy and are always reserved:
 | `as` | Aliasing for imports, assignments, etc. |
 | `assert` | Assertion |
 | `async` | Async modifier on functions, iterators, etc. |
+| `auto` | Inferred type declaration |
 | `await` | Await for async operations |
 | `break` | Break statement for loops |
 | `class` | Keyword for classes (reference types) |
@@ -47,7 +48,6 @@ The following are hard keywords in Sharpy and are always reserved:
 | `finally` | Finally block for exception handling |
 | `for` | For loop |
 | `from` | Selective imports and generator delegation |
-| `guard` | Guard block for conditional early function returns |
 | `if` | If block for conditionals |
 | `import` | Import statement for modules |
 | `in` | Membership check in collections |
@@ -93,7 +93,7 @@ The following are soft keywords that are only treated as keywords in specific co
 - Matrix: `@`
 - Membership: `in`, `not in`
 - Identity: `is`, `is not`
-- Assignment: `=`, `+=`, `-=`, `*=`, `/=`, etc.
+- Assignment: `=`, `+=`, `-=`, `*=`, `/=`, `:=`, etc.
 
 **Sharpy-specific operators:**
 - `?.` - None (null) conditional member access
@@ -178,6 +178,70 @@ from system.collections.generic import hash_set
 numbers = hash_set[int]()
 ```
 
+## Variable Assignment and Scope
+
+Sharpy allows variables to be declared without assignment. However, they must be given a value before their first use. Note that the first declaration of a variable in a scope does not need an explicit type annotation if it can be inferred by an accompanying assignment in the same declaration.
+
+```python
+x: int
+
+print(x)  # Compile-time error, cannot use x without assignment
+```
+
+```python
+x: int
+
+x = 5
+
+print(x)  # Ok
+```
+
+Unlike Python, variables are scoped by block.
+
+```python
+x = 5
+
+if x > 4:
+    y = 4
+
+print(y)  # Compile-time error, y does not exist
+```
+
+All code paths prior to a variable's first use must result in that variable being assigned a value.
+
+```python
+x = 5
+y: int
+
+if x > 4:
+    y = 4
+
+
+print(y)  # Compile-time error, y might not be assigned
+```
+
+```python
+x = 5
+y: int
+
+if x > 4:
+    y = 4
+else:
+    y = x
+
+print(y)  # Ok
+```
+
+### Variable Shadowing
+
+Variables can be redeclared in the same scope with a different type. Use the `auto` keyword for automatic type inference:
+
+```python
+x: int = 5
+x: str = str(x)       # Explicit type for shadowing
+x: auto = [x]         # Type inferred as list[str]
+```
+
 ## Modules and Imports
 
 Sharpy modules map to C# namespaces with static classes for module-level members.
@@ -244,6 +308,8 @@ class Person:
         return f"Hello, I'm {self.name}"
 ```
 
+Note that constructor methods do not have return types.
+
 ### Inheritance
 
 ```python
@@ -275,21 +341,55 @@ class IJSONSerializable(ISerializable, IComparable):
 
 ### Constructor Overloading
 
+Multiple `__init__` methods with different parameter signatures are allowed:
+
 ```python
 class Point:
     """A 2D point with multiple constructors."""
 
     def __init__(self):
+        """Default constructor - origin point."""
         self.x = 0.0
         self.y = 0.0
 
     def __init__(self, x: double, y: double):
+        """Construct from coordinates."""
         self.x = x
         self.y = y
 
     def __init__(self, other: Point):
+        """Copy constructor."""
         self.x = other.x
         self.y = other.y
+
+# Usage
+p1 = Point()              # Calls parameterless constructor
+p2 = Point(10.0, 20.0)    # Calls (double, double) constructor
+p3 = Point(p2)            # Calls copy constructor
+```
+
+**Overload Resolution:**
+- Based on parameter **count** and **types** only
+- Parameter **names** do not affect overload resolution
+
+**Default Parameters:**
+Default parameters generate a **single** constructor with optional parameters, not multiple overloads:
+
+```python
+class Point:
+    # Generates ONE C# constructor: Point(double x = 0.0, double y = 0.0)
+    def __init__(self, x: double = 0.0, y: double = 0.0):
+        self.x = x
+        self.y = y
+```
+
+**Compile Errors:**
+As mentioned above, parameter names do not count towards overload resolution as they are ultimately not part of the function's signature.
+
+```python
+class Point:
+    def __init__(self, x: double, y: double): pass
+    def __init__(self, a: double, b: double): pass  # ERROR: Duplicate signature
 ```
 
 ## Structs
@@ -452,7 +552,8 @@ class Example:
     # Private by naming convention
     def __internal_state(self): pass
 
-    # Decorator overrides naming
+    # Decorator always overrides inferred access modifier
+    # via naming convention
     @public
     def _actually_public(self): pass
 ```
@@ -630,10 +731,6 @@ while count < 10:
 for i in range(10):
     print(i)
 
-# for loop with range literal
-for i in 0..<10:
-    print(i)
-
 # for loop with collection
 names = ["Alice", "Bob", "Charlie"]
 for name in names:
@@ -645,6 +742,14 @@ for i in range(100):
         break  # Exit loop
     if i % 2 == 0:
         continue  # Skip to next iteration
+
+# Else block after loops (both for and while) that don't
+# exit via break
+for i in some_values:
+    if i is None:
+        break
+else:
+    print("None value not found")
 ```
 
 ### Match Statements
@@ -658,15 +763,6 @@ def describe(value):
             return "one"
         case _:
             return "other"
-
-# Pattern matching with types
-match obj:
-    case str():
-        print("It's a string")
-    case int():
-        print("It's an int")
-    case _:
-        print("Unknown type")
 ```
 
 ## Exception Handling
