@@ -27,13 +27,61 @@ Sharpy believes that static typing is key to writing safe, predictable, and perf
 
 The following are hard keywords in Sharpy and are always reserved:
 
-`and`, `as`, `assert`, `async`, `await`, `break`, `class`, `continue`, `def`, `del`, `elif`, `else`, `except`, `False`, `finally`, `for`, `from`, `if`, `import`, `in`, `interface`, `is`, `lambda`, `None`, `not`, `or`, `pass`, `raise`, `return`, `struct`, `True`, `try`, `while`, `with`, `yield`
+| Sharpy | Notes |
+| ------ | ----- |
+| `and` | Boolean and |
+| `as` | Aliasing for imports, assignments, etc. |
+| `assert` | Assertion |
+| `async` | Async modifier on functions, iterators, etc. |
+| `await` | Await for async operations |
+| `break` | Break statement for loops |
+| `class` | Keyword for classes (reference types) |
+| `continue` | Continue statement for loops |
+| `def` | Function definition |
+| `del` | Delete statement for dictionaries |
+| `elif` | Else if block for conditionals |
+| `else` | Else block for conditionals and loops |
+| `enum` | Enumeration (tagged union) |
+| `except` | Except block for exception handling |
+| `False` | Boolean false literal |
+| `finally` | Finally block for exception handling |
+| `for` | For loop |
+| `from` | Selective imports and generator delegation |
+| `guard` | Guard block for conditional early function returns |
+| `if` | If block for conditionals |
+| `import` | Import statement for modules |
+| `in` | Membership check in collections |
+| `interface` | Keyword for interfaces |
+| `is` | Reference equality operator |
+| `lambda` | Lambda expression |
+| `match` | Match block for expressive, structural matching |
+| `None` | None literal |
+| `not` | Boolean not |
+| `or` | Boolean or |
+| `pass` | No-op placeholder statement |
+| `raise` | Raise statement for exceptions |
+| `return` | Return statement |
+| `struct` | Keyword for structs (value types) |
+| `True` | Boolean true literal |
+| `try` | Try block for exception handling |
+| `while` | While loop |
+| `with` | With block for context managers |
+| `yield` | Yield for generators |
 
 ### Soft Keywords (Context-Dependent)
 
 The following are soft keywords that are only treated as keywords in specific contexts:
 
-`case`, `defer`, `event`, `get`, `guard`, `match`, `property`, `set`, `type`, `_` (wildcard)
+| Sharpy | Notes |
+| ------ | ----- |
+| `case` | Case block for match blocks |
+| `defer` | Deferral of cleanup expressions |
+| `event` | Event handler definition |
+| `get` | Property getter definition |
+| `property` | Property definition |
+| `set` | Property setter definition |
+| `type` | Type alias |
+| `_` | Wildcard in match blocks |
 
 ### Operators
 
@@ -56,7 +104,7 @@ The following are soft keywords that are only treated as keywords in specific co
 ### Special Literals
 
 | Sharpy | Python Equivalent | C# Equivalent | Notes |
-|--------|------------------|---------------|-------|
+|--------|-------------------|---------------|-------|
 | `...` | `...` | - | Ellipsis literal as a placeholder or for slices |
 | `False` | `False` | `false` | Boolean false |
 | `None` | `None` | `null` | Null/absence of value |
@@ -94,7 +142,7 @@ flag: bool = True
 
 # Type inference
 y = 42              # Inferred as int
-pi = 3.14159        # Inferred as float
+pi = 3.14159        # Inferred as double
 ```
 
 ### Generic Types
@@ -106,7 +154,7 @@ mapping: dict[str, int] = {"a": 1, "b": 2}
 unique: set[str] = {"x", "y", "z"}
 
 # Nested generics
-matrix: list[list[float]] = [[1.0, 2.0], [3.0, 4.0]]
+matrix: list[list[double]] = [[1.0, 2.0], [3.0, 4.0]]
 ```
 
 ### Nullable Types
@@ -213,7 +261,7 @@ class Employee(Person):
 ### Interface Implementation
 
 ```python
-class JSONSerializable(Serializable, Comparable):
+class IJSONSerializable(ISerializable, IComparable):
     """Class implementing multiple interfaces."""
 
     def serialize(self) -> str:
@@ -235,7 +283,7 @@ class Point:
         self.x = 0.0
         self.y = 0.0
 
-    def __init__(self, x: float, y: float):
+    def __init__(self, x: double, y: double):
         self.x = x
         self.y = y
 
@@ -253,14 +301,14 @@ See [Type System - Structs](type_system.md#structs-value-types) for runtime beha
 ```python
 struct Vector2:
     """A 2D vector value type."""
-    x: float
-    y: float
+    x: double
+    y: double
 
-    def __init__(self, x: float, y: float):
+    def __init__(self, x: double, y: double):
         self.x = x
         self.y = y
 
-    def magnitude(self) -> float:
+    def magnitude(self) -> double:
         return (self.x ** 2 + self.y ** 2) ** 0.5
 ```
 
@@ -273,14 +321,14 @@ See [Type System - Interfaces](type_system.md#interfaces-and-interfaces) for typ
 ### Interface Definition
 
 ```python
-interface Drawable:
+interface IDrawable:
     """Interface for drawable objects."""
 
     def draw(self) -> None:
         """Draw the object."""
         ...
 
-    def get_bounds(self) -> tuple[float, float, float, float]:
+    def get_bounds(self) -> tuple[double, double, double, double]:
         """Get bounding box (x, y, width, height)."""
         ...
 ```
@@ -288,10 +336,10 @@ interface Drawable:
 ### Interface Inheritance
 
 ```python
-interface Serializable:
+interface ISerializable:
     def serialize(self) -> str: ...
 
-interface JSONSerializable(Serializable):
+interface IJSONSerializable(ISerializable):
     """Extends Serializable interface."""
     def to_json(self) -> str: ...
 ```
@@ -299,7 +347,7 @@ interface JSONSerializable(Serializable):
 ### Interface with Default Implementation
 
 ```python
-interface Logger:
+interface ILogger:
     """Interface with default behavior."""
 
     def log(self, message: str) -> None:
@@ -324,7 +372,7 @@ class Person:
     # Auto-property with default value
     property name: str = "Unknown"
 
-    # Read-only auto-property
+    # Read-only auto-property with default value
     get property id: int = 0
 
     # Write-only auto-property
@@ -337,17 +385,17 @@ class Person:
 class Temperature:
     """Temperature with Celsius/Fahrenheit conversion."""
 
-    __celsius: float = 0.0
+    __celsius: double = 0.0
 
     # Explicit getter and setter
-    property celsius(self) -> float:
+    property celsius(self) -> double:
         return self.__celsius
 
-    property celsius(self, value: float):
+    property celsius(self, value: double):
         self.__celsius = value
 
     # Computed property (read-only)
-    property fahrenheit(self) -> float:
+    property fahrenheit(self) -> double:
         return self.__celsius * 9/5 + 32
 ```
 
@@ -356,14 +404,14 @@ class Temperature:
 ```python
 interface Measurable:
     # Abstract property requiring both getter and setter
-    property length: float
+    property length: double
 
     # Abstract read-only property
-    get property width: float
+    get property width: double
 
     # Explicit abstract properties
-    property height(self) -> float: ...
-    property height(self, value: float): ...
+    property height(self) -> double: ...
+    property height(self, value: double): ...
 ```
 
 ## Access Modifiers
@@ -450,20 +498,7 @@ class Example:
 
 ### Custom Decorators
 
-```python
-def trace(func):
-    """Decorator that traces function calls."""
-    def wrapper(*args, **kwargs):
-        print(f"Calling {func.__name__}")
-        result = func(*args, **kwargs)
-        print(f"Result: {result}")
-        return result
-    return wrapper
-
-@trace
-def compute(x: int) -> int:
-    return x * 2
-```
+TODO: Should behave like C# annotations.
 
 ## Functions
 
@@ -475,7 +510,7 @@ def greet(name: str) -> str:
     return f"Hello, {name}!"
 
 # With default arguments
-def power(base: float, exponent: float = 2.0) -> float:
+def power(base: double, exponent: double = 2.0) -> double:
     return base ** exponent
 
 # Multiple return values (tuple)
@@ -492,7 +527,7 @@ def process(value: int) -> str:
 def process(value: str) -> str:
     return f"String: {value}"
 
-def process(value: float) -> str:
+def process(value: double) -> str:
     return f"Float: {value}"
 ```
 
@@ -551,17 +586,17 @@ def first[T](items: list[T]) -> T:
 ### Type Constraints
 
 ```python
-from typing import Interface
+interface IComparable[T]:
+    def __lt__(self, other: T) -> bool: ...
 
-class Comparable(Interface):
-    def __lt__(self, other) -> bool: ...
-
-def find_max[T: Comparable](items: list[T]) -> T:
+def find_max[T: IComparable[T]](items: list[T]) -> T:
     """Find the maximum item (must be comparable)."""
     max_item = items[0]
+
     for item in items:
         if max_item < item:
             max_item = item
+
     return max_item
 ```
 
@@ -593,6 +628,10 @@ while count < 10:
 
 # for loop with range
 for i in range(10):
+    print(i)
+
+# for loop with range literal
+for i in 0..<10:
     print(i)
 
 # for loop with collection
@@ -719,11 +758,11 @@ Sharpy follows specific naming conventions with automatic case conversion for .N
 ### Examples
 
 ```python
-# Module: my_module.spy → namespace MyModule
-# Function: add_numbers() → AddNumbers()
-# Parameter: user_name → userName
+# Module: my_module.spy -> namespace MyModule
+# Function: add_numbers() -> AddNumbers()
+# Parameter: user_name -> userName
 
-def calculate_total(item_count: int, price_per_item: float) -> float:
+def calculate_total(item_count: int, price_per_item: double) -> double:
     """Calculate total price."""
     return item_count * price_per_item
 ```
