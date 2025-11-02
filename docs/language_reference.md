@@ -1798,7 +1798,11 @@ z: None = None                   # ERROR - None is not a valid variable type
 
 ### Enumerations
 
-Enums define a set of named constants:
+Sharpy supports two kinds of enumerations: **simple enums** (C#-style) and **tagged unions** (Rust/Swift-style algebraic data types).
+
+#### Simple Enums
+
+Simple enums define a set of named constants and map directly to C# enums:
 
 ```python
 enum Color:
@@ -1806,32 +1810,7 @@ enum Color:
     GREEN = 2
     BLUE = 3
 
-# Usage
-favorite = Color.RED
-print(favorite)  # Color.RED
-
-# Comparison
-if favorite == Color.RED:
-    print("Red is your favorite")
-
-# Enums with methods
-enum Status:
-    PENDING = 0
-    ACTIVE = 1
-    COMPLETED = 2
-
-    def is_done(self) -> bool:
-        return self == Status.COMPLETED
-
-# Usage
-status = Status.ACTIVE
-if not status.is_done():
-    print("Still processing")
-```
-
-### Enum with String Values
-
-```python
+# With string values
 enum HttpMethod:
     GET = "GET"
     POST = "POST"
@@ -1839,8 +1818,258 @@ enum HttpMethod:
     DELETE = "DELETE"
 
 # Usage
+favorite = Color.RED
 method = HttpMethod.GET
-request_type = method.value  # "GET"
+
+# Comparison
+if favorite == Color.RED:
+    print("Red is your favorite")
+
+# Getting underlying value
+value = favorite.value  # 1
+name = favorite.name    # "RED"
+```
+
+**Simple Enum Rules:**
+- All cases must have explicit constant values
+- Values must be integers or strings
+- No associated data with cases
+- Compiles to C# `enum` type
+
+#### Tagged Unions (Algebraic Data Types)
+
+Tagged unions allow cases to carry associated data, enabling type-safe representation of variants:
+
+```python
+# Generic Result type (like Rust's Result)
+enum Result[T, E]:
+    case Ok(value: T)
+    case Err(error: E)
+
+# Option type (like Rust's Option or Swift's Optional)
+enum Option[T]:
+    case Some(value: T)
+    case None()
+
+# Tree structure
+enum BinaryTree[T]:
+    case Leaf(value: T)
+    case Node(left: BinaryTree[T], right: BinaryTree[T])
+
+# JSON representation
+enum JsonValue:
+    case Null()
+    case Bool(value: bool)
+    case Number(value: double)
+    case String(value: str)
+    case Array(items: list[JsonValue])
+    case Object(fields: dict[str, JsonValue])
+```
+
+**Creating Tagged Union Values:**
+
+```python
+# Using case constructors
+success = Result.Ok(42)
+failure = Result.Err("Something went wrong")
+
+# Or using factory methods (lowercase convention)
+success = Result.ok(42)
+failure = Result.err("Something went wrong")
+
+# Nested structures
+tree = BinaryTree.Node(
+    BinaryTree.Leaf(1),
+    BinaryTree.Node(
+        BinaryTree.Leaf(2),
+        BinaryTree.Leaf(3)
+    )
+)
+```
+
+**Pattern Matching Tagged Unions:**
+
+```python
+def divide(a: double, b: double) -> Result[double, str]:
+    if b == 0:
+        return Result.err("Division by zero")
+    return Result.ok(a / b)
+
+# Exhaustive pattern matching
+result = divide(10, 2)
+match result:
+    case Result.Ok(value):
+        print(f"Success: {value}")
+    case Result.Err(error):
+        print(f"Error: {error}")
+
+# Nested pattern matching
+def sum_tree(tree: BinaryTree[int]) -> int:
+    match tree:
+        case BinaryTree.Leaf(value):
+            return value
+        case BinaryTree.Node(left, right):
+            return sum_tree(left) + sum_tree(right)
+```
+
+**Tagged Union Methods:**
+
+Tagged unions can have methods just like classes:
+
+```python
+enum Result[T, E]:
+    case Ok(value: T)
+    case Err(error: E)
+
+    def is_ok(self) -> bool:
+        match self:
+            case Result.Ok(): return True
+            case Result.Err(): return False
+
+    def is_err(self) -> bool:
+        return not self.is_ok()
+
+    def unwrap(self) -> T:
+        """Get the Ok value or raise an exception."""
+        match self:
+            case Result.Ok(value): return value
+            case Result.Err(error): raise Exception(f"Called unwrap on Err: {error}")
+
+    def unwrap_or(self, default: T) -> T:
+        """Get the Ok value or return default."""
+        match self:
+            case Result.Ok(value): return value
+            case Result.Err(): return default
+
+    def map[U](self, f: (T) -> U) -> Result[U, E]:
+        """Transform the Ok value if present."""
+        match self:
+            case Result.Ok(value): return Result.ok(f(value))
+            case Result.Err(error): return Result.err(error)
+
+# Usage
+result = divide(10, 2)
+if result.is_ok():
+    print(result.unwrap())
+
+# Chaining operations
+final = divide(10, 2).map(lambda x: x * 2).unwrap_or(0.0)
+```
+
+**Type Checks:**
+
+```python
+result = divide(10, 0)
+
+# Using isinstance with case types
+if isinstance(result, Result.Ok):
+    print(f"Success: {result.value}")
+elif isinstance(result, Result.Err):
+    print(f"Error: {result.error}")
+
+# Checking which variant
+is_success = isinstance(result, Result.Ok)
+```
+
+**Tagged Union Rules:**
+- Cases must have parameters (use `case Name()` for parameterless cases)
+- Cannot mix simple enum cases and tagged union cases
+- Compiles to abstract base class with nested sealed case classes
+- Each case class has properties for associated data
+- Provides `Deconstruct` methods for C# pattern matching
+
+#### Enum Methods and Properties
+
+Both simple enums and tagged unions can have methods:
+
+```python
+# Simple enum with methods
+enum Status:
+    PENDING = 0
+    ACTIVE = 1
+    COMPLETED = 2
+    CANCELLED = 3
+
+    def is_done(self) -> bool:
+        return self == Status.COMPLETED or self == Status.CANCELLED
+
+    def can_cancel(self) -> bool:
+        return self == Status.PENDING or self == Status.ACTIVE
+
+# Usage
+status = Status.ACTIVE
+if status.can_cancel():
+    status = Status.CANCELLED
+```
+
+#### Exhaustiveness Checking
+
+The compiler enforces exhaustive pattern matching for both enum types:
+
+```python
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+# ERROR: Non-exhaustive match (missing BLUE)
+match color:
+    case Color.RED: print("Red")
+    case Color.GREEN: print("Green")
+
+# OK: Exhaustive with all cases
+match color:
+    case Color.RED: print("Red")
+    case Color.GREEN: print("Green")
+    case Color.BLUE: print("Blue")
+
+# OK: Exhaustive with wildcard
+match color:
+    case Color.RED: print("Red")
+    case _: print("Other color")
+```
+
+#### Interoperability
+
+**Simple Enums:**
+- Directly compatible with C# enums
+- Can use .NET enums in Sharpy code
+- Preserve underlying type (int, string, etc.)
+
+```python
+from system.io import FileMode
+
+# Use .NET enum
+mode = FileMode.CREATE
+
+match mode:
+    case FileMode.CREATE: print("Creating")
+    case FileMode.OPEN: print("Opening")
+    case _: print("Other mode")
+```
+
+**Tagged Unions:**
+- Compile to C# abstract class hierarchy
+- C# code can pattern match using C# 8+ switch expressions
+- Provide `Deconstruct` methods for C# deconstruction
+
+```csharp
+// C# consuming Sharpy tagged union
+Result<int, string> result = SharpyModule.Divide(10, 2);
+
+// C# pattern matching
+var message = result switch
+{
+    Result<int, string>.Ok { Value: var v } => $"Success: {v}",
+    Result<int, string>.Err { Error: var e } => $"Error: {e}",
+    _ => "Unknown"
+};
+
+// Or with deconstruction
+if (result is Result<int, string>.Ok(var value))
+{
+    Console.WriteLine(value);
+}
 ```
 
 ## Assertions
