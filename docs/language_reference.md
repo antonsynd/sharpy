@@ -701,6 +701,475 @@ def find_max[T: IComparable[T]](items: list[T]) -> T:
     return max_item
 ```
 
+## Tuples
+
+Tuples are immutable, fixed-size collections that can hold values of different types.
+
+### Tuple Creation
+
+```python
+# Tuple literals
+point = (10, 20)
+triple = (1, "hello", True)
+
+# Type annotations
+point: tuple[int, int] = (10, 20)
+triple: tuple[int, str, bool] = (1, "hello", True)
+
+# Single-element tuple (trailing comma required)
+single = (42,)
+
+# Empty tuple
+empty = ()
+```
+
+### Tuple Unpacking
+
+```python
+# Basic unpacking
+x, y = point
+a, b, c = triple
+
+# Partial unpacking with wildcard
+first, *rest = (1, 2, 3, 4, 5)      # first = 1, rest = [2, 3, 4, 5]
+first, *middle, last = (1, 2, 3, 4)  # first = 1, middle = [2, 3], last = 4
+*start, last = (1, 2, 3)             # start = [1, 2], last = 3
+```
+
+### Tuple Indexing
+
+```python
+triple = (1, "hello", True)
+
+# Index access (returns object?, requires cast for type safety)
+first = triple[0]   # Returns object?
+
+# Typed property access (preferred)
+x_val: int = point.item1
+y_val: int = point.item2
+```
+
+### Tuple Iteration
+
+```python
+for item in triple:
+    print(item)
+
+# With enumeration
+for i, value in enumerate(triple):
+    print(f"Index {i}: {value}")
+```
+
+See [Type System - Tuples](type_system.md#tuples) for implementation details.
+
+## Collection Literals
+
+### Lists
+
+```python
+# List literals
+numbers = [1, 2, 3]
+empty: list[int] = []
+
+# Type annotations
+values: list[str] = ["a", "b", "c"]
+
+# Nested lists
+matrix: list[list[int]] = [[1, 2], [3, 4]]
+```
+
+### Dictionaries
+
+```python
+# Dict literals
+mapping = {"a": 1, "b": 2}
+empty_dict: dict[str, int] = {}
+
+# Type annotations
+scores: dict[str, double] = {"Alice": 95.5, "Bob": 87.0}
+
+# Nested dicts
+config: dict[str, dict[str, int]] = {
+    "server": {"port": 8080, "timeout": 30}
+}
+```
+
+### Sets
+
+```python
+# Set literals
+unique = {1, 2, 3}
+words = {"apple", "banana", "cherry"}
+
+# Empty set (special syntax to distinguish from empty dict)
+empty_set: set[int] = {/}
+
+# Type annotations
+numbers: set[int] = {1, 2, 3, 4, 5}
+```
+
+## String Formatting
+
+### F-Strings (Interpolated Strings)
+
+```python
+name = "Alice"
+age = 30
+
+# Basic interpolation
+greeting = f"Hello, {name}!"
+
+# Expressions in interpolation
+message = f"{name} is {age} years old"
+calculation = f"Next year you'll be {age + 1}"
+
+# Format specifiers
+pi = 3.14159
+formatted = f"Pi is approximately {pi:.2f}"  # "Pi is approximately 3.14"
+
+# Alignment and padding
+value = 42
+aligned = f"{value:>10}"   # Right-align in 10 characters
+padded = f"{value:0>5}"    # Pad with zeros: "00042"
+```
+
+### Raw Strings
+
+```python
+# Raw strings (backslashes not escaped)
+path = r"C:\Users\Alice\Documents"
+regex = r"\d+\.\d+"
+```
+
+### Multi-line Strings
+
+```python
+# Triple-quoted strings
+text = """
+This is a
+multi-line string
+with preserved whitespace
+"""
+
+# Triple-quoted f-strings
+report = f"""
+Name: {name}
+Age: {age}
+Status: Active
+"""
+```
+
+## Comprehensions
+
+Comprehensions provide concise syntax for creating collections.
+
+### List Comprehensions
+
+```python
+# Basic list comprehension
+squares = [x**2 for x in range(10)]
+# Result: [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
+
+# With condition
+evens = [x for x in range(10) if x % 2 == 0]
+# Result: [0, 2, 4, 6, 8]
+
+# With transformation and condition
+doubled_evens = [x * 2 for x in range(10) if x % 2 == 0]
+# Result: [0, 4, 8, 12, 16]
+
+# Nested comprehensions
+matrix = [[i * j for j in range(3)] for i in range(3)]
+# Result: [[0, 0, 0], [0, 1, 2], [0, 2, 4]]
+
+# Multiple for clauses
+pairs = [(x, y) for x in range(3) for y in range(3)]
+# Result: [(0,0), (0,1), (0,2), (1,0), (1,1), (1,2), (2,0), (2,1), (2,2)]
+```
+
+### Dict Comprehensions
+
+```python
+# Basic dict comprehension
+square_dict = {x: x**2 for x in range(5)}
+# Result: {0: 0, 1: 1, 2: 4, 3: 9, 4: 16}
+
+# With condition
+even_squares = {x: x**2 for x in range(10) if x % 2 == 0}
+# Result: {0: 0, 2: 4, 4: 16, 6: 36, 8: 64}
+
+# From existing dict
+prices = {"apple": 1.0, "banana": 0.5, "cherry": 2.0}
+discounted = {k: v * 0.9 for k, v in prices.items()}
+```
+
+### Set Comprehensions
+
+```python
+# Basic set comprehension
+unique_lengths = {len(word) for word in ["apple", "banana", "cherry"]}
+# Result: {5, 6}
+
+# With condition
+consonants = {c for c in "hello world" if c not in "aeiou "}
+# Result: {'h', 'l', 'w', 'r', 'd'}
+```
+
+## Slicing
+
+Slicing extracts portions of sequences (lists, tuples, strings).
+
+### Basic Slicing
+
+```python
+numbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+# Basic slice [start:end] (end is exclusive)
+subset = numbers[1:4]      # [1, 2, 3]
+prefix = numbers[:3]       # [0, 1, 2] (start defaults to 0)
+suffix = numbers[7:]       # [7, 8, 9] (end defaults to length)
+full_copy = numbers[:]     # [0, 1, 2, ..., 9]
+
+# Negative indices (count from end)
+last_three = numbers[-3:]  # [7, 8, 9]
+all_but_last = numbers[:-1] # [0, 1, 2, ..., 8]
+```
+
+### Slicing with Step
+
+```python
+numbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+# [start:end:step]
+evens = numbers[::2]       # [0, 2, 4, 6, 8] (every 2nd element)
+odds = numbers[1::2]       # [1, 3, 5, 7, 9]
+reversed = numbers[::-1]   # [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
+
+# Subset with step
+every_third = numbers[2:9:3]  # [2, 5, 8]
+```
+
+### String Slicing
+
+```python
+text = "Hello, World!"
+
+# Same syntax works for strings
+greeting = text[:5]        # "Hello"
+world = text[7:12]         # "World"
+reversed = text[::-1]      # "!dlroW ,olleH"
+```
+
+## Operator Overloading
+
+Classes can define special methods (dunder methods) to customize operator behavior.
+
+### Arithmetic Operators
+
+```python
+class Vector:
+    def __init__(self, x: double, y: double):
+        self.x = x
+        self.y = y
+
+    def __add__(self, other: Vector) -> Vector:
+        """Overload + operator."""
+        return Vector(self.x + other.x, self.y + other.y)
+
+    def __sub__(self, other: Vector) -> Vector:
+        """Overload - operator."""
+        return Vector(self.x - other.x, self.y - other.y)
+
+    def __mul__(self, scalar: double) -> Vector:
+        """Overload * operator for scalar multiplication."""
+        return Vector(self.x * scalar, self.y * scalar)
+
+    def __neg__(self) -> Vector:
+        """Overload unary - operator."""
+        return Vector(-self.x, -self.y)
+
+# Usage
+v1 = Vector(1.0, 2.0)
+v2 = Vector(3.0, 4.0)
+v3 = v1 + v2           # Vector(4.0, 6.0)
+v4 = v1 * 2.0          # Vector(2.0, 4.0)
+v5 = -v1               # Vector(-1.0, -2.0)
+```
+
+### Comparison Operators
+
+```python
+class Point:
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+
+    def __eq__(self, other: Point) -> bool:
+        """Overload == operator."""
+        return self.x == other.x and self.y == other.y
+
+    def __lt__(self, other: Point) -> bool:
+        """Overload < operator (for sorting)."""
+        return (self.x, self.y) < (other.x, other.y)
+
+    def __le__(self, other: Point) -> bool:
+        """Overload <= operator."""
+        return self < other or self == other
+
+# Usage
+p1 = Point(1, 2)
+p2 = Point(1, 2)
+p3 = Point(2, 3)
+
+print(p1 == p2)  # True
+print(p1 < p3)   # True
+```
+
+### Container Operators
+
+```python
+class Grid:
+    def __init__(self, width: int, height: int):
+        self._data = [[0] * width for _ in range(height)]
+
+    def __getitem__(self, key: tuple[int, int]) -> int:
+        """Overload indexing: grid[x, y]."""
+        x, y = key
+        return self._data[y][x]
+
+    def __setitem__(self, key: tuple[int, int], value: int):
+        """Overload assignment: grid[x, y] = value."""
+        x, y = key
+        self._data[y][x] = value
+
+# Usage
+grid = Grid(10, 10)
+grid[5, 3] = 42
+value = grid[5, 3]  # 42
+```
+
+See [Type System - Dunder Methods](type_system.md#dunder-methods) for complete list.
+
+## Type Aliases and Enums
+
+### Type Aliases
+
+Type aliases create readable names for complex types:
+
+```python
+# Simple aliases
+type UserId = int
+type Coordinate = tuple[double, double]
+
+# Generic aliases
+type Matrix = list[list[double]]
+
+# Callback type aliases
+type Callback[T] = (T) -> None
+type Comparator[T] = (T, T) -> int
+
+# Usage
+def process_user(id: UserId) -> None:
+    pass
+
+def distance(p1: Coordinate, p2: Coordinate) -> double:
+    pass
+```
+
+Note that union types e.g. `int | str | None` are not allowed in Sharpy.
+
+### Enumerations
+
+Enums define a set of named constants:
+
+```python
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+# Usage
+favorite = Color.RED
+print(favorite)  # Color.RED
+
+# Comparison
+if favorite == Color.RED:
+    print("Red is your favorite")
+
+# Enums with methods
+enum Status:
+    PENDING = 0
+    ACTIVE = 1
+    COMPLETED = 2
+
+    def is_done(self) -> bool:
+        return self == Status.COMPLETED
+
+# Usage
+status = Status.ACTIVE
+if not status.is_done():
+    print("Still processing")
+```
+
+### Enum with String Values
+
+```python
+enum HttpMethod:
+    GET = "GET"
+    POST = "POST"
+    PUT = "PUT"
+    DELETE = "DELETE"
+
+# Usage
+method = HttpMethod.GET
+request_type = method.value  # "GET"
+```
+
+## Assertions
+
+Assertions verify conditions during development:
+
+```python
+def divide(a: double, b: double) -> double:
+    assert b != 0, "Division by zero"
+    return a / b
+
+def process_list(items: list[int]):
+    assert len(items) > 0, "List must not be empty"
+    assert all(x >= 0 for x in items), "All items must be non-negative"
+    # Process items...
+```
+
+**Behavior:**
+- In debug builds: Throws `AssertionError` if condition is false
+- In release builds: Assertions may be removed for performance
+
+## Del Statement
+
+The `del` statement removes items from collections:
+
+```python
+# Remove dictionary entries
+d = {"a": 1, "b": 2, "c": 3}
+del d["b"]
+# d is now {"a": 1, "c": 3}
+
+# Remove list elements by index
+numbers = [1, 2, 3, 4, 5]
+del numbers[2]
+# numbers is now [1, 2, 4, 5]
+
+# Remove slices
+numbers = [1, 2, 3, 4, 5]
+del numbers[1:3]
+# numbers is now [1, 4, 5]
+```
+
+**Note:** Unlike Python, `del` in Sharpy:
+- Only works for objects that define the `__delitem__()` dunder method, e.g. dictionaries, lists, etc.
+- Does not trigger `__del__` destructors (use interface `IDisposable` instead)
+- Cannot delete class attributes or module-level names
+
 ## Control Flow
 
 ### Conditional Statements
@@ -795,6 +1264,10 @@ with open("file.txt", "r") as f:
 with open("input.txt") as input_file, open("output.txt", "w") as output_file:
     output_file.write(input_file.read())
 ```
+
+Objects created in the initial expression and/or in the body are scoped to the `with`-block. If an object is passed into the `with`-block's initializer expression and it implements `IContextManager` (and therefore has the `__enter__()` and/or `__exit__()` dunder methods), its `__enter__()` method will be invoked to produce an object (could be itself) that is scoped to the `with`-block with an optional alias via the `as`-statement. If the object returned here implements `IDisposable` and therefore implements a `dispose()` method, that will be invoked when the `with`-block exits. At the end of the `with`-block, the `__exit__()` method on the object passed in will be invoked.
+
+The order of `dispose()` and `__exit__()` calls is as follows: for every pair of a returned object from `__enter__()` and its originating context manager (the object that had the `__enter__()` method), in reverse order of declaration in the `with`-block (LIFO order), invoke `dispose()` on the returned object from `__enter__()` if that object implements `IDisposable`, then invoke `__exit__()` on its context manager.
 
 ## Async Programming
 
