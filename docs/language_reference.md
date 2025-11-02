@@ -37,6 +37,7 @@ The following are hard keywords in Sharpy and are always reserved:
 | `await` | Await for async operations |
 | `break` | Break statement for loops |
 | `class` | Keyword for classes (reference types) |
+| `const` | Constant declaration |
 | `continue` | Continue statement for loops |
 | `def` | Function definition |
 | `del` | Delete statement for dictionaries |
@@ -242,9 +243,96 @@ x: str = str(x)       # Explicit type for shadowing
 x: auto = [x]         # Type inferred as list[str]
 ```
 
+## Constants
+
+Constants are immutable values declared with the `const` keyword. They must be initialized with a compile-time constant expression and cannot be reassigned.
+
+### Module-Level Constants
+
+```python
+const PI: double = 3.14159
+const MAX_SIZE: int = 1000
+const APP_NAME: str = "MyApp"
+const DEBUG_MODE: bool = False
+
+# Type inference works with const
+const MAX_RETRIES = 3           # Inferred as int
+const DEFAULT_TIMEOUT = 30.0    # Inferred as double
+```
+
+### Class Constants
+
+```python
+class MathConstants:
+    const E: double = 2.71828
+    const PHI: double = 1.61803
+    const TAU: double = 2 * PI  # Compile-time expression
+
+    @static
+    def circle_area(radius: double) -> double:
+        return PI * radius ** 2
+
+class Config:
+    const VERSION = "1.0.0"
+    const API_BASE_URL = "https://api.example.com"
+```
+
+### Constant Rules
+
+**Must be initialized at declaration:**
+```python
+const X = 10           # OK
+const Y: double        # ERROR: Must be initialized
+```
+
+**Value must be compile-time constant:**
+```python
+const MAX = 100                 # OK - literal
+const DOUBLE_MAX = MAX * 2      # OK - compile-time expression
+const RUNTIME = get_value()     # ERROR: Not compile-time constant
+```
+
+**Cannot be reassigned:**
+```python
+const LIMIT = 100
+LIMIT = 200            # ERROR: Cannot assign to constant
+```
+
+**Type can be inferred or explicit:**
+```python
+const X = 42           # Inferred as int
+const Y: double = 42   # Explicit type (with conversion)
+```
+
+### Naming Convention
+
+By convention (not requirement), constants use `CAPS_SNAKE_CASE`:
+
+```python
+const MAX_RETRIES = 3
+const DEFAULT_TIMEOUT = 30
+const API_BASE_URL = "https://api.example.com"
+
+# Also valid, but not conventional
+const maxRetries = 3
+const default_timeout = 30
+```
+
+**Note:** The `CAPS_SNAKE_CASE` naming is only a convention. Variables using this naming style without the `const` keyword are **not** constants and can be reassigned:
+
+```python
+# This is NOT a constant - can be reassigned
+MAX_VALUE: int = 100
+MAX_VALUE = 200  # OK - no const keyword
+
+# This IS a constant - cannot be reassigned
+const MAX_VALUE: int = 100
+MAX_VALUE = 200  # ERROR - declared with const
+```
+
 ## Modules and Imports
 
-Sharpy modules map to C# namespaces with static classes for module-level members.
+Sharpy modules map to .NET namespaces with static classes for module-level members.
 
 See [Type System - Modules](type_system.md#modules) for implementation details.
 
@@ -276,8 +364,8 @@ result = sqrt(16)
 """Module docstring."""
 
 # Module-level constants
-VERSION: str = "1.0.0"
-MAX_SIZE: int = 1000
+const VERSION: str = "1.0.0"
+const MAX_SIZE: int = 1000
 
 # Module-level functions
 def helper_function(x: int) -> int:
@@ -377,7 +465,7 @@ Default parameters generate a **single** constructor with optional parameters, n
 
 ```python
 class Point:
-    # Generates ONE C# constructor: Point(double x = 0.0, double y = 0.0)
+    # Generates ONE constructor
     def __init__(self, x: double = 0.0, y: double = 0.0):
         self.x = x
         self.y = y
@@ -414,7 +502,7 @@ struct Vector2:
 
 ## Interfaces
 
-Interfaces define structural contracts that types must satisfy. They compile to C# interfaces.
+Interfaces define structural contracts that types must satisfy.
 
 See [Type System - Interfaces](type_system.md#interfaces-and-interfaces) for type checking rules.
 
@@ -1310,19 +1398,31 @@ async def use_resource():
 
 Sharpy follows specific naming conventions with automatic case conversion for .NET interop.
 
-| Identifier Type | Sharpy Convention | Compiled Form |
-|----------------|-------------------|---------------|
-| Module | `snake_case` | `PascalCase` |
-| Class | `PascalCase` | (unchanged) |
-| Struct | `PascalCase` | (unchanged) |
-| Interface | `IPascalCase` | (unchanged) |
-| Members | `snake_case` | `PascalCase` |
-| Enum | `PascalCase` | (unchanged) |
-| Enum values | `CAPS_SNAKE_CASE` | `PascalCase` |
-| Function | `snake_case` | `PascalCase` |
-| Parameters | `snake_case` | `camelCase` |
-| Local variables | `snake_case` | (unchanged) |
-| Constants | `CAPS_SNAKE_CASE` | (unchanged) |
+| Identifier Type | Sharpy Convention | Compiled Form | Notes |
+|----------------|-------------------|---------------|-------|
+| Module | `snake_case` | `PascalCase` | - |
+| Class | `PascalCase` | (unchanged) | - |
+| Struct | `PascalCase` | (unchanged) | - |
+| Interface | `IPascalCase` | (unchanged) | - |
+| Members | `snake_case` | `PascalCase` | - |
+| Enum | `PascalCase` | (unchanged) | - |
+| Enum values | `CAPS_SNAKE_CASE` | `PascalCase` | - |
+| Function | `snake_case` | `PascalCase` | - |
+| Parameters | `snake_case` | `camelCase` | - |
+| Local variables | `snake_case` | (unchanged) | - |
+| Constants | `CAPS_SNAKE_CASE` | (unchanged) | **Convention only** - use `const` keyword for true constants |
+
+**Note on Constants:** The `CAPS_SNAKE_CASE` naming style is a convention for readability, but does **not** make a variable constant. Only the `const` keyword creates true compile-time constants:
+
+```python
+# Convention suggests this is constant, but it's NOT - can be reassigned
+MAX_SIZE: int = 100
+MAX_SIZE = 200  # OK - no const keyword
+
+# This IS a constant - cannot be reassigned
+const MAX_SIZE: int = 100
+MAX_SIZE = 200  # ERROR - const keyword used
+```
 
 ### Examples
 
@@ -1330,10 +1430,12 @@ Sharpy follows specific naming conventions with automatic case conversion for .N
 # Module: my_module.spy -> namespace MyModule
 # Function: add_numbers() -> AddNumbers()
 # Parameter: user_name -> userName
+# Constant: const MAX_VALUE -> const MAX_VALUE
 
 def calculate_total(item_count: int, price_per_item: double) -> double:
     """Calculate total price."""
-    return item_count * price_per_item
+    const TAX_RATE = 0.08  # By convention, use CAPS_SNAKE_CASE
+    return item_count * price_per_item * (1 + TAX_RATE)
 ```
 
 ## Program Entry Point
