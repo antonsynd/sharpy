@@ -235,13 +235,48 @@ print(y)  # Ok
 
 ### Variable Shadowing
 
-Variables can be redeclared in the same scope with a different type. Use the `auto` keyword for automatic type inference:
+Variables can be redeclared in the same scope with a different type. **Type annotation is required** for shadowing to distinguish it from simple assignment:
+
+```python
+x: int = 5              # Initial declaration
+x = 10                  # Assignment (same type)
+x: str = "hello"        # Shadowing (new type, explicit annotation required)
+x = "world"             # Assignment to shadowed variable
+
+# Type inference with auto
+x: int = 5
+x: auto = "hello"       # Shadowing with inferred type (saves keystrokes)
+x: auto = [x]           # Type inferred as list[str]
+```
+
+**Rules:**
+- **Simple assignment** (`x = value`) assigns to existing variable, type must match
+- **Shadowing** requires type annotation (explicit type or `auto`)
+- **Type mismatch** without annotation is a compile-time error
 
 ```python
 x: int = 5
-x: str = str(x)       # Explicit type for shadowing
-x: auto = [x]         # Type inferred as list[str]
+x = "hello"             # ERROR: Type mismatch (str cannot assign to int)
+x: str = "hello"        # OK: Shadowing with explicit type
+x: auto = "hello"       # OK: Shadowing with type inference
 ```
+
+**The `auto` keyword:**
+
+Use `auto` to shadow a variable when you want the compiler to infer the new type:
+
+```python
+x: int = 5
+x: str = str(x)                          # Explicit type
+x: auto = [x]                            # Inferred as list[str]
+x: auto = {"value": x}                   # Inferred as dict[str, str]
+x: auto = very_long_generic_type_here()  # Saves typing the long type name
+```
+
+`auto` is particularly useful when:
+- The type is obvious from the expression
+- The type name is very long or complex
+- You want to acknowledge the type change without spelling it out
 
 ## Constants
 
@@ -384,9 +419,13 @@ See [Type System - Classes](type_system.md#classes-and-inheritance) for details 
 
 ### Basic Class Definition
 
+Class members must be declared along with their type.
+
 ```python
 class Person:
     """A person with a name and age."""
+    name: str
+    age: int
 
     def __init__(self, name: str, age: int):
         self.name = name
@@ -396,13 +435,24 @@ class Person:
         return f"Hello, I'm {self.name}"
 ```
 
-Note that constructor methods do not have return types.
+Constructor methods do not have return types, but if a type annotation is required, it is `None`:
+
+```python
+class Person:
+    name: str
+    age: int
+
+   def __init__(self, name: str, age: int) -> None:
+        self.name = name
+        self.age = age
+```
 
 ### Inheritance
 
 ```python
 class Employee(Person):
     """An employee extends Person."""
+    employee_id: str
 
     def __init__(self, name: str, age: int, employee_id: str):
         super().__init__(name, age)
@@ -415,7 +465,7 @@ class Employee(Person):
 ### Interface Implementation
 
 ```python
-class IJSONSerializable(ISerializable, IComparable):
+class SomeSerializableObject(ISerializable, IComparable):
     """Class implementing multiple interfaces."""
 
     def serialize(self) -> str:
@@ -434,6 +484,8 @@ Multiple `__init__` methods with different parameter signatures are allowed:
 ```python
 class Point:
     """A 2D point with multiple constructors."""
+    x: double
+    y: double
 
     def __init__(self):
         """Default constructor - origin point."""
@@ -465,6 +517,9 @@ Default parameters generate a **single** constructor with optional parameters, n
 
 ```python
 class Point:
+    x: double
+    y: double
+
     # Generates ONE constructor
     def __init__(self, x: double = 0.0, y: double = 0.0):
         self.x = x
@@ -745,6 +800,7 @@ See [Type System - Generic Types](type_system.md#generic-types) for constraint d
 ```python
 class Box[T]:
     """A container for a single value."""
+    _value: T
 
     def __init__(self, value: T):
         self._value = value
@@ -1056,6 +1112,9 @@ Classes can define special methods (dunder methods) to customize operator behavi
 
 ```python
 class Vector:
+    x: double
+    y: double
+
     def __init__(self, x: double, y: double):
         self.x = x
         self.y = y
@@ -1088,6 +1147,9 @@ v5 = -v1               # Vector(-1.0, -2.0)
 
 ```python
 class Point:
+    x: int
+    y: int
+
     def __init__(self, x: int, y: int):
         self.x = x
         self.y = y
@@ -1117,6 +1179,8 @@ print(p1 < p3)   # True
 
 ```python
 class Grid:
+    _data: list[list[int]]
+
     def __init__(self, width: int, height: int):
         self._data = [[0] * width for _ in range(height)]
 
