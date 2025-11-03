@@ -1,5 +1,15 @@
 # Sharpy Language Reference
 
+## Version Guide
+
+Features are marked with their target version:
+
+- **[v0.5]** - P0: Core features required for C# interop and Unity development
+- **[v1.0]** - P1: Enhanced features and Pythonic additions
+- **[v1.5+]** - P2: Advanced features and language extensions
+
+---
+
 ## Introduction
 
 Sharpy is a modern, statically-typed Pythonic language targeting .NET. While Python code will not run in Sharpy without modifications, the additions and changes in Sharpy over Python should be intuitive to and welcomed by all Python developers.
@@ -21,7 +31,7 @@ These principles are ordered in descending order of importance and should guide 
 
 Sharpy believes that static typing is key to writing safe, predictable, and performant programs, at both the development stage and at runtime.
 
-## Keywords and Operators
+## Keywords and Operators **[v0.5]**
 
 ### Hard Keywords
 
@@ -129,7 +139,7 @@ Operators are listed from highest to lowest precedence:
 - The walrus operator `:=` allows assignment within expressions (see [Walrus Operator](#walrus-operator))
 - The `??` operator has lower precedence than `or`, so `a or b ?? c` is `(a or b) ?? c`
 
-## Literals and Special Values
+## Literals and Special Values **[v0.5]**
 
 ### Special Literals
 
@@ -183,7 +193,7 @@ def `ExactMethodName`():
     pass
 ```
 
-## Type Syntax
+## Type Syntax **[v0.5]**
 
 See [Type System](type_system.md) for detailed type semantics.
 
@@ -268,7 +278,7 @@ from system.collections.generic import hash_set
 numbers = hash_set[int]()
 ```
 
-## Variable Assignment and Scope
+## Variable Assignment and Scope **[v0.5]**
 
 Sharpy allows variables to be declared without assignment. However, they must be given a value before their first use. Note that the first declaration of a variable in a scope does not need an explicit type annotation if it can be inferred by an accompanying assignment in the same declaration.
 
@@ -392,7 +402,7 @@ gen = (x ** 2 for x in range(10))
 
 **Note:** This differs from Python 2 behavior where loop variables leaked into the outer scope. Sharpy follows Python 3+ scoping rules.
 
-## Constants
+## Constants **[v0.5]**
 
 Constants are immutable values declared with the `const` keyword. They must be initialized with a compile-time constant expression and cannot be reassigned.
 
@@ -581,7 +591,7 @@ list4 = append_to_safe(2)  # [2] - different list
 
 **Best Practice:** Never use mutable objects (lists, dicts, sets) as default parameter values. Use `None` and create the instance inside the function.
 
-## Modules and Imports
+## Modules and Imports **[v0.5]**
 
 Sharpy modules map to .NET namespaces with static classes for module-level members.
 
@@ -627,7 +637,7 @@ class MyClass:
     pass
 ```
 
-## Classes
+## Classes **[v0.5]**
 
 Classes are reference types that support single inheritance and multiple interface implementation.
 
@@ -803,7 +813,7 @@ class Point:
     def __init__(self, a: double, b: double): pass  # ERROR: Duplicate signature
 ```
 
-## Structs
+## Structs **[v0.5]**
 
 Structs are value types that do not support inheritance but can implement interfaces.
 
@@ -823,7 +833,7 @@ struct Vector2:
         return (self.x ** 2 + self.y ** 2) ** 0.5
 ```
 
-## Interfaces
+## Interfaces **[v0.5]**
 
 Interfaces define structural contracts that types must satisfy.
 
@@ -870,7 +880,7 @@ interface ILogger:
         self.log(f"ERROR: {error}")
 ```
 
-## Properties
+## Properties **[v0.5]**
 
 Properties provide computed access to object state with flexible syntax.
 
@@ -959,7 +969,7 @@ interface Measurable:
     property height(self, value: double): ...
 ```
 
-## Access Modifiers
+## Access Modifiers **[v0.5]**
 
 Access modifiers control visibility of members. They can be specified using decorators or underscore naming hints.
 
@@ -1013,7 +1023,7 @@ class Example:
 | `@internal` | N/A | `internal` | Same assembly |
 | `@file` | N/A | `file` | Same file |
 
-## Events
+## Events **[v1.0]**
 
 Events provide a publish-subscribe pattern for notifications. They are similar to properties but designed for multicast delegates.
 
@@ -1092,7 +1102,7 @@ counter.value = 42  # Prints: "Value changed from 0 to 42"
 - Event handlers are invoked in subscription order
 - If no subscribers exist, event is `None`
 
-## Decorators
+## Decorators **[v0.5]**
 
 Decorators modify the behavior of functions, methods, and classes.
 
@@ -1125,7 +1135,7 @@ class Example:
 
 TODO: Should behave like C# annotations.
 
-## Functions
+## Functions **[v0.5]**
 
 ### Function Definition
 
@@ -1170,7 +1180,7 @@ numbers = [1, 2, 3, 4, 5]
 evens = filter(lambda x: x % 2 == 0, numbers)
 ```
 
-## Generics
+## Generics **[v0.5]**
 
 Classes, structs, interfaces, and functions can be generic with type parameters.
 
@@ -1226,7 +1236,7 @@ def find_max[T: IComparable[T]](items: list[T]) -> T:
     return max_item
 ```
 
-## Tuples
+## Tuples **[v0.5]**
 
 Tuples are immutable, fixed-size collections that can hold values of different types.
 
@@ -1287,7 +1297,7 @@ for i, value in enumerate(triple):
 
 See [Type System - Tuples](type_system.md#tuples) for implementation details.
 
-## Collection Literals
+## Collection Literals **[v0.5]**
 
 ### Lists
 
@@ -1386,7 +1396,7 @@ immutable_unique = frozenset(unique)
 text = "hello"  # Always immutable
 ```
 
-## Walrus Operator
+## Walrus Operator **[v1.0]**
 
 The walrus operator `:=` allows assignment within expressions. This is useful for capturing values in comprehensions, conditionals, and other expressions:
 
@@ -1435,7 +1445,7 @@ if (x := get_value()) > 0:  # x inferred as int (or whatever get_value returns)
     print(x + 1)
 ```
 
-## String Formatting
+## String Formatting **[v0.5]**
 
 ### F-Strings (Interpolated Strings)
 
@@ -1514,7 +1524,7 @@ Status: Active
 """
 ```
 
-## Comprehensions
+## Comprehensions **[v1.0]**
 
 Comprehensions provide concise syntax for creating collections.
 
@@ -1570,7 +1580,7 @@ consonants = {c for c in "hello world" if c not in "aeiou "}
 # Result: {'h', 'l', 'w', 'r', 'd'}
 ```
 
-## Slicing
+## Slicing **[v0.5]**
 
 Slicing extracts portions of sequences (lists, tuples, strings).
 
@@ -1615,7 +1625,7 @@ world = text[7:12]         # "World"
 reversed = text[::-1]      # "!dlroW ,olleH"
 ```
 
-## Operator Overloading
+## Operator Overloading **[v0.5]**
 
 Classes can define special methods (dunder methods) to customize operator behavior.
 
@@ -1713,9 +1723,9 @@ value = grid[5, 3]  # 42
 
 See [Type System - Dunder Methods](type_system.md#dunder-methods) for complete list.
 
-## Type Aliases and Enums
+## Type Aliases and Enums **[v0.5]**
 
-### Type Aliases
+### Type Aliases **[v0.5]**
 
 Type aliases create readable names for complex types:
 
@@ -1796,11 +1806,11 @@ def broken() -> None:
 z: None = None                   # ERROR - None is not a valid variable type
 ```
 
-### Enumerations
+### Enumerations **[v0.5]**
 
 Sharpy supports two kinds of enumerations: **simple enums** (C#-style) and **tagged unions** (Rust/Swift-style algebraic data types).
 
-#### Simple Enums
+#### Simple Enums **[v0.5]**
 
 Simple enums define a set of named constants and map directly to C# enums:
 
@@ -1836,7 +1846,7 @@ name = favorite.name    # "RED"
 - No associated data with cases
 - Compiles to C# `enum` type
 
-#### Tagged Unions (Algebraic Data Types)
+#### Tagged Unions (Algebraic Data Types) **[v1.0]**
 
 Tagged unions allow cases to carry associated data, enabling type-safe representation of variants:
 
@@ -2072,7 +2082,7 @@ if (result is Result<int, string>.Ok(var value))
 }
 ```
 
-## Assertions
+## Assertions **[v0.5]**
 
 Assertions verify conditions during development:
 
@@ -2091,7 +2101,7 @@ def process_list(items: list[int]):
 - In debug builds: Throws `AssertionError` if condition is false
 - In release builds: Assertions may be removed for performance
 
-## Del Statement
+## Del Statement **[v1.0]**
 
 The `del` statement removes items from collections:
 
@@ -2117,7 +2127,7 @@ del numbers[1:3]
 - Does not trigger `__del__` destructors (use interface `IDisposable` instead)
 - Cannot delete class attributes or module-level names
 
-## Control Flow
+## Control Flow **[v0.5]**
 
 ### Conditional Statements
 
@@ -2168,7 +2178,7 @@ else:
     print("None value not found")
 ```
 
-### Match Statements
+### Match Statements **[v1.0]**
 
 ```python
 def describe(value):
@@ -2389,7 +2399,7 @@ match color:
         print("Other color")
 ```
 
-## Exception Handling
+## Exception Handling **[v0.5]**
 
 ```python
 # Basic try/except
@@ -2408,7 +2418,7 @@ def validate(value: int):
         raise ValueError("Value must be non-negative")
 ```
 
-## Context Managers
+## Context Managers **[v1.0]**
 
 ```python
 # Using context managers
@@ -2424,7 +2434,7 @@ Objects created in the initial expression and/or in the body are scoped to the `
 
 The order of `dispose()` and `__exit__()` calls is as follows: for every pair of a returned object from `__enter__()` and its originating context manager (the object that had the `__enter__()` method), in reverse order of declaration in the `with`-block (LIFO order), invoke `dispose()` on the returned object from `__enter__()` if that object implements `IDisposable`, then invoke `__exit__()` on its context manager.
 
-## Async Programming
+## Async Programming **[v1.5+]**
 
 Async programming enables concurrent execution of I/O-bound operations without blocking.
 
@@ -2574,7 +2584,7 @@ async def main():
         await res.process()
 ```
 
-## Defer Statement
+## Defer Statement **[v1.5+]**
 
 The `defer` statement schedules a block of code to execute when the current scope exits, regardless of how it exits (normal return, exception, etc.). This is useful for cleanup operations.
 
@@ -2676,7 +2686,7 @@ def example():
 - Reusable resource management logic
 - Standard library integration
 
-## Naming Conventions
+## Naming Conventions **[v0.5]**
 
 Sharpy follows specific naming conventions with automatic case conversion for .NET interop.
 
@@ -2720,7 +2730,7 @@ def calculate_total(item_count: int, price_per_item: double) -> double:
     return item_count * price_per_item * (1 + TAX_RATE)
 ```
 
-## Program Entry Point
+## Program Entry Point **[v0.5]**
 
 The entry point is either a file with top-level statements or a `main()` function:
 
@@ -2735,7 +2745,7 @@ def main():
 
 **Note**: The Python idiom `if __name__ == "__main__":` does not exist in Sharpy. The `__name__` variable is not available and attempting to use it causes a compilation error.
 
-## .NET Interop
+## .NET Interop **[v0.5]**
 
 Sharpy provides seamless interop with .NET libraries and frameworks.
 
