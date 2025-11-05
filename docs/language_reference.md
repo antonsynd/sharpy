@@ -8,6 +8,184 @@ Features are marked with their target version:
 - **[v1.0]** - P1: Enhanced features and Pythonic additions
 - **[v1.5+]** - P2: Advanced features and language extensions
 
+### Implementation Requirements for v0.5
+
+**Lexical Rules:**
+- Indentation: **Always 4 spaces**, no tabs allowed
+- Line endings: LF (`\n`) or CRLF (`\r\n`)
+- Encoding: UTF-8
+- Comments: `#` starts single-line comment to end of line
+- Multi-line strings: Triple quotes (`"""` or `'''`)
+
+**Literals Supported in v0.5:**
+- Integer literals: Decimal only (e.g., `42`, `0`, `-10`)
+  - No binary (`0b1010`), octal (`0o777`), or hex (`0xFF`) in v0.5
+- Float literals: Decimal only (e.g., `3.14`, `0.5`, `-2.718`)
+  - No scientific notation (`1e10`) in v0.5
+- String literals: Double-quoted (`"hello"`) or single-quoted (`'hello'`)
+- Boolean literals: `True`, `False`
+- None literal: `None`
+
+**Features Deferred to v1.0:**
+- Properties (both explicit and auto-generated)
+- Special integer/float literal formats (binary, octal, hex, scientific)
+- Type aliases
+- Walrus operator (`:=`)
+- Comprehensions
+- Match statements/pattern matching
+- Context managers (`with` statement)
+- Del statement
+- Events
+- Tagged unions
+
+**Features Deferred to v1.5+:**
+- Async/await
+- Defer statement
+- Generators (`yield`)
+
+---
+
+## Lexical Structure **[v0.5]**
+
+### Source Files
+
+- File extension: `.spy`
+- Encoding: UTF-8 (required)
+- Line endings: LF (`\n`) or CRLF (`\r\n`)
+- Byte Order Mark (BOM): Optional but not recommended
+
+### Line Structure
+
+Sharpy uses indentation to denote code blocks (like Python):
+
+```python
+if condition:
+    statement1  # 4 spaces indentation
+    statement2  # 4 spaces indentation
+else:
+    statement3  # 4 spaces indentation
+```
+
+**Indentation Rules:**
+- **Exactly 4 spaces per indentation level** (enforced)
+- Tabs are **not allowed** for indentation
+- Mixed spaces and tabs cause a lexical error
+- Indentation must be consistent within a file
+
+### Comments
+
+```python
+# This is a single-line comment
+
+x = 42  # Comment at end of line
+
+# Comments can span multiple lines
+# by using # at the start of each line
+
+"""
+This is a docstring, not a comment.
+Docstrings are string literals used for documentation.
+"""
+```
+
+**Comment Rules:**
+- Single-line comments start with `#` and continue to end of line
+- `#` inside string literals is not a comment
+- No multi-line comment syntax (like `/* */` in C)
+- Docstrings (triple-quoted strings) can serve as multi-line documentation
+
+### Identifiers
+
+Identifiers are names for variables, functions, classes, etc.
+
+**Syntax:**
+```
+identifier ::= (letter | '_') (letter | digit | '_')*
+letter     ::= 'a'..'z' | 'A'..'Z'
+digit      ::= '0'..'9'
+```
+
+**Rules:**
+- Must start with letter or underscore
+- Can contain letters, digits, and underscores
+- Case-sensitive: `myVar`, `myvar`, and `MYVAR` are different identifiers
+- Cannot be a keyword
+- Unicode letters are allowed but discouraged for interop
+
+**Examples:**
+```python
+# Valid identifiers
+x
+my_variable
+_private
+ClassName
+MAX_SIZE
+value2
+_internal_counter
+
+# Invalid identifiers
+2fast      # Cannot start with digit
+my-var     # Hyphen not allowed
+class      # Keyword
+```
+
+**Naming Conventions:**
+
+| Type | Convention | Example |
+|------|------------|---------|
+| Local variable | `snake_case` | `user_name`, `item_count` |
+| Function/method | `snake_case` | `calculate_total`, `get_user` |
+| Class | `PascalCase` | `UserAccount`, `HttpClient` |
+| Struct | `PascalCase` | `Vector2`, `Point3D` |
+| Interface | `IPascalCase` | `IDrawable`, `ISerializable` |
+| Constant | `CAPS_SNAKE_CASE` | `MAX_SIZE`, `PI` |
+| Module | `snake_case` | `user_service`, `http_client` |
+| Enum type | `PascalCase` | `Color`, `Status` |
+| Enum value | `CAPS_SNAKE_CASE` | `RED`, `ACTIVE` |
+
+### Whitespace
+
+- Spaces (` `), tabs (`\t`), and form feeds (`\f`) are whitespace
+- Whitespace is used to separate tokens
+- Leading whitespace (indentation) is significant
+- Trailing whitespace is ignored
+- Blank lines are ignored
+
+### Physical Lines vs Logical Lines
+
+**Physical line:** A sequence of characters terminated by end-of-line
+
+**Logical line:** A statement (may span multiple physical lines)
+
+```python
+# Single logical line
+x = 42
+
+# Logical line split across physical lines (explicit)
+total = value1 + \
+        value2 + \
+        value3
+
+# Implicit line continuation inside brackets
+items = [
+    1, 2, 3,
+    4, 5, 6
+]
+
+# Function call with multiple arguments
+result = function(
+    arg1,
+    arg2,
+    arg3
+)
+```
+
+**Line Continuation Rules:**
+- Explicit: Use backslash `\` at end of line
+- Implicit: Inside `()`, `[]`, `{}` brackets
+- Cannot continue in middle of identifier or keyword
+- Cannot continue inside single-line strings
+
 ---
 
 ## Introduction
@@ -34,64 +212,63 @@ Sharpy believes that static typing is key to writing safe, predictable, and perf
 
 ### Hard Keywords
 
-The following are hard keywords in Sharpy and are always reserved:
+The following are hard keywords in Sharpy v0.5 and are always reserved:
 
 | Sharpy | Notes |
 | ------ | ----- |
 | `and` | Boolean and |
-| `as` | Aliasing for imports, assignments, etc. |
-| `assert` | Assertion |
-| `async` | Async modifier on functions, iterators, etc. |
+| `as` | Aliasing for imports, type casting |
+| `assert` | Assertion statement |
 | `auto` | Inferred type declaration |
-| `await` | Await for async operations |
 | `break` | Break statement for loops |
-| `class` | Keyword for classes (reference types) |
+| `class` | Class (reference type) declaration |
 | `const` | Constant declaration |
 | `continue` | Continue statement for loops |
-| `def` | Function definition |
-| `defer` | Deferral of cleanup expressions |
-| `del` | Delete statement for dictionaries |
-| `elif` | Else if block for conditionals |
+| `def` | Function/method definition |
+| `elif` | Else-if block for conditionals |
 | `else` | Else block for conditionals and loops |
-| `enum` | Enumeration (tagged union) |
-| `except` | Except block for exception handling |
+| `enum` | Enumeration declaration (simple enums only in v0.5) |
+| `except` | Exception handler block |
 | `False` | Boolean false literal |
 | `finally` | Finally block for exception handling |
 | `for` | For loop |
-| `from` | Selective imports and generator delegation |
+| `from` | Selective imports |
 | `if` | If block for conditionals |
-| `import` | Import statement for modules |
-| `in` | Membership check in collections |
-| `interface` | Keyword for interfaces |
-| `is` | Reference equality operator |
+| `import` | Import statement |
+| `in` | Membership test operator |
+| `interface` | Interface declaration |
+| `is` | Identity comparison operator |
 | `lambda` | Lambda expression |
-| `None` | None literal |
-| `not` | Boolean not |
-| `or` | Boolean or |
+| `None` | None/null literal |
+| `not` | Boolean not operator |
+| `or` | Boolean or operator |
 | `pass` | No-op placeholder statement |
-| `raise` | Raise statement for exceptions |
+| `raise` | Raise exception statement |
 | `return` | Return statement |
-| `struct` | Keyword for structs (value types) |
+| `struct` | Struct (value type) declaration |
 | `True` | Boolean true literal |
 | `try` | Try block for exception handling |
 | `while` | While loop |
-| `with` | With block for context managers |
-| `yield` | Yield for generators |
 
-### Soft Keywords (Context-Dependent)
+**Reserved for Future Use (v1.0+):**
+These keywords are reserved but not implemented in v0.5:
+- `async`, `await` - Async programming (v1.5+)
+- `case`, `match` - Pattern matching (v1.0)
+- `defer` - Deferred execution (v1.5+)
+- `del` - Delete statement (v1.0)
+- `event` - Event declarations (v1.0)
+- `get`, `set`, `property` - Properties (v1.0)
+- `type` - Type aliases (v1.0)
+- `with` - Context managers (v1.0)
+- `yield` - Generators (v1.5+)
 
-The following are soft keywords that are only treated as keywords in specific contexts:
+### Soft Keywords (Context-Dependent) **[v0.5]**
 
-| Sharpy | Notes |
-| ------ | ----- |
-| `case` | Case block for match statements |
-| `event` | Event handler definition |
-| `get` | Property getter definition |
-| `match` | Match statement for pattern matching |
-| `property` | Property definition |
-| `set` | Property setter definition |
-| `type` | Type alias declaration |
-| `_` | Wildcard in match blocks |
+The following identifiers have special meaning only in specific contexts:
+
+| Sharpy | Context | Notes |
+| ------ | ------- | ----- |
+| `_` | Pattern matching, destructuring | Single underscore as wildcard (v1.0+) |
 
 ## Type Aliases **[v1.0]**
 
@@ -168,32 +345,74 @@ def process_data[T, E](
 - Function-level aliases can reference the function's generic type parameters
 - Type aliases are evaluated at compile time, not runtime
 
-### Operators
+### Operators **[v0.5]**
 
-**Standard Python operators:**
-- Arithmetic: `+`, `-`, `*`, `/`, `//`, `%`, `**`
-- Comparison: `==`, `!=`, `<`, `>`, `<=`, `>=`
-- Logical: `and`, `or`, `not`
-- Bitwise: `&`, `|`, `^`, `~`, `<<`, `>>`
-- Matrix: `@`
-- Membership: `in`, `not in`
-- Identity: `is`, `is not`
-- Assignment: `=`, `+=`, `-=`, `*=`, `/=`, `:=`, etc.
+**Arithmetic Operators:**
+- `+` - Addition or unary plus
+- `-` - Subtraction or unary minus
+- `*` - Multiplication
+- `/` - Division (always returns double)
+- `//` - Floor division (integer division)
+- `%` - Modulo (remainder)
+- `**` - Exponentiation
 
-**Sharpy-specific operators:**
-- `?.` - None (null) conditional member access
-- `??` - None (null) coalescing operator
+**Comparison Operators:**
+- `==` - Equality
+- `!=` - Inequality
+- `<` - Less than
+- `>` - Greater than
+- `<=` - Less than or equal
+- `>=` - Greater than or equal
 
-### Operator Precedence
+**Logical Operators:**
+- `and` - Logical AND (short-circuit)
+- `or` - Logical OR (short-circuit)
+- `not` - Logical NOT
+
+**Bitwise Operators:**
+- `&` - Bitwise AND
+- `|` - Bitwise OR
+- `^` - Bitwise XOR
+- `~` - Bitwise NOT (unary)
+- `<<` - Left shift
+- `>>` - Right shift
+
+**Membership Operators:**
+- `in` - Membership test (e.g., `x in list`)
+- `not in` - Negated membership test
+
+**Identity Operators:**
+- `is` - Identity comparison (reference equality)
+- `is not` - Negated identity comparison
+
+**Assignment Operators:**
+- `=` - Simple assignment
+- `+=`, `-=`, `*=`, `/=`, `//=`, `%=`, `**=` - Augmented arithmetic assignment
+- `&=`, `|=`, `^=`, `<<=`, `>>=` - Augmented bitwise assignment
+
+**Sharpy-Specific Operators:**
+- `?.` - Null-conditional member access (e.g., `obj?.method()`)
+- `??` - Null coalescing (e.g., `value ?? default`)
+
+**Member Access:**
+- `.` - Member access (attribute, method)
+- `[]` - Indexing and slicing
+- `()` - Function/method call
+
+**Not in v0.5:**
+- `:=` - Walrus operator (v1.0)
+- `@` - Matrix multiply (v1.0)
+
+### Operator Precedence **[v0.5]**
 
 Operators are listed from highest to lowest precedence:
 
 | Precedence | Operators | Description | Associativity |
 |------------|-----------|-------------|---------------|
-| 1 | `()`, `[]`, `.`, `?.` | Grouping, indexing, attribute access, null-conditional access | Left-to-right |
+| 1 | `()`, `[]`, `.`, `?.` | Grouping, indexing, member access, null-conditional | Left-to-right |
 | 2 | `**` | Exponentiation | Right-to-left |
 | 3 | `+x`, `-x`, `~x` | Unary plus, minus, bitwise NOT | Right-to-left |
-| 4 | `*`, `/`, `//`, `%`, `@` | Multiplication, division, floor division, modulo, matrix multiply | Left-to-right |
+| 4 | `*`, `/`, `//`, `%` | Multiplication, division, floor division, modulo | Left-to-right |
 | 5 | `+`, `-` | Addition, subtraction | Left-to-right |
 | 6 | `<<`, `>>` | Bitwise shifts | Left-to-right |
 | 7 | `&` | Bitwise AND | Left-to-right |
@@ -204,53 +423,176 @@ Operators are listed from highest to lowest precedence:
 | 12 | `and` | Logical AND | Left-to-right |
 | 13 | `or` | Logical OR | Left-to-right |
 | 14 | `??` | Null coalescing | Left-to-right |
-| 15 | `if`-`else` | Conditional expression | Right-to-left |
+| 15 | `if`-`else` | Ternary conditional expression | Right-to-left |
 | 16 | `lambda` | Lambda expression | N/A |
-| 17 | `:=` | Walrus operator (assignment expression) | Right-to-left |
 
 **Notes:**
 - Comparison operators can be chained: `a < b < c` is equivalent to `a < b and b < c`
-- The walrus operator `:=` allows assignment within expressions (see [Walrus Operator](#walrus-operator))
 - The `??` operator has lower precedence than `or`, so `a or b ?? c` is `(a or b) ?? c`
+- All binary operators except `**` are left-associative
+- `**` is right-associative: `2 ** 3 ** 2` is `2 ** (3 ** 2)` = 512
 
 ## Literals and Special Values **[v0.5]**
 
-### Special Literals
+### Integer Literals **[v0.5]**
 
-| Sharpy | Python Equivalent | C# Equivalent | Notes |
-|--------|-------------------|---------------|-------|
-| `...` | `...` | - | Ellipsis literal as a placeholder or for slices |
-| `False` | `False` | `false` | Boolean false |
-| `None` | `None` | `null` | Null/absence of value |
-| `True` | `True` | `true` | Boolean true |
-| `{/}` | `set()` | - | Empty set literal, borrowed from PEP 802 |
-
-**Ellipsis (`...`) Usage:**
-
-The ellipsis literal has several uses:
+In v0.5, only decimal integer literals are supported:
 
 ```python
-# 1. Placeholder in interface/abstract method definitions
+# Decimal integers
+x = 0
+y = 42
+z = -10
+large = 1000000
+
+# Underscores for readability (optional)
+million = 1_000_000
+billion = 1_000_000_000
+```
+
+**Type inference:**
+- Integer literals are inferred as `int` (maps to `System.Int32`)
+- Suffix notation for explicit sizing (optional):
+  - `L` or `l` for `long` (System.Int64): `42L`
+  - `u` or `U` for `uint` (System.UInt32): `42u`
+  - `ul` or `UL` for `ulong` (System.UInt64): `42ul`
+
+**Not in v0.5:**
+- Binary literals (`0b1010`) - v1.0
+- Octal literals (`0o755`) - v1.0
+- Hexadecimal literals (`0xFF`, `0xff`) - v1.0
+
+### Float Literals **[v0.5]**
+
+In v0.5, only decimal float literals are supported:
+
+```python
+# Decimal floats (64-bit)
+pi = 3.14159
+half = 0.5
+negative = -2.718
+
+# Must have digit before or after decimal point
+valid1 = 0.5
+valid2 = 5.0
+invalid = .5  # ERROR: Must have digit before decimal
+
+# Underscores for readability (optional)
+precise = 3.141_592_653
+```
+
+**Type inference:**
+- Float literals with decimal point are inferred as `double` (System.Double)
+- Suffix notation for explicit typing (optional):
+  - `f` or `F` for `float` (System.Single): `3.14f`
+  - `d` or `D` for `double` (System.Double): `3.14d` (redundant but allowed)
+  - `m` or `M` for `decimal` (System.Decimal): `3.14m`
+
+**Not in v0.5:**
+- Scientific notation (`1.5e10`, `3.14E-5`) - v1.0
+- Hexadecimal floats (`0x1.2p3`) - v1.0
+
+### String Literals **[v0.5]**
+
+```python
+# Single-quoted strings
+name = 'Alice'
+greeting = 'Hello, World!'
+
+# Double-quoted strings
+message = "Hello, World!"
+quote = "She said, 'Hello'"
+
+# F-strings (formatted string literals)
+name = "Alice"
+age = 30
+msg = f"My name is {name} and I'm {age} years old"
+
+# Raw strings (backslashes not escaped)
+path = r"C:\Users\Alice\Documents"
+regex = r"\d+\.\d+"
+
+# Multi-line strings (triple-quoted)
+multi = """
+This is a
+multi-line string
+"""
+
+# Multi-line f-strings
+report = f"""
+Name: {name}
+Age: {age}
+Status: Active
+"""
+```
+
+**Escape Sequences:**
+
+| Escape | Meaning |
+|--------|---------|
+| `\\` | Backslash |
+| `\'` | Single quote |
+| `\"` | Double quote |
+| `\n` | Newline |
+| `\r` | Carriage return |
+| `\t` | Tab |
+| `\b` | Backspace |
+| `\f` | Form feed |
+| `\0` | Null character |
+| `\xHH` | Character with hex value HH (e.g., `\x41` = 'A') |
+| `\uHHHH` | Unicode character with 16-bit hex value HHHH |
+| `\UHHHHHHHH` | Unicode character with 32-bit hex value HHHHHHHH |
+
+### Boolean Literals **[v0.5]**
+
+```python
+is_ready = True
+is_complete = False
+```
+
+- `True` maps to `true` (System.Boolean)
+- `False` maps to `false` (System.Boolean)
+
+### None Literal **[v0.5]**
+
+```python
+value: str? = None
+result = None  # Compile-time error, cannot determine T for implied T? in this context
+```
+
+- `None` maps to `null` in the compiled output
+- Can be assigned to any nullable type
+
+### Special Literals **[v0.5]**
+
+| Sharpy | Notes |
+|--------|-------|
+| `...` | Ellipsis - placeholder for unimplemented code (like `pass`) |
+| `{/}` | Empty set literal |
+
+**Ellipsis (`...`) Usage in v0.5:**
+
+```python
+# 1. Placeholder in interface method definitions
 interface IDrawable:
     def draw(self) -> None:
         ...
 
-# 2. Placeholder for unimplemented code (like 'pass')
+# 2. Placeholder for unimplemented code (alternative to 'pass')
 def todo_function():
     ...
 
-# 3. Open-ended slicing (take all remaining elements)
-matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
-first_row = matrix[0, ...]  # [1, 2, 3]
-first_col = matrix[..., 0]  # [1, 4, 7]
-
-# 4. Type hint for variable-length homogeneous tuples
-def process(values: tuple[int, ...]) -> None:
-    # Accepts tuples of any length containing ints
-    pass
+# 3. Abstract method body
+class AbstractBase:
+    def abstract_method(self) -> int:
+        ...  # Subclasses must implement
 ```
 
-### Literal Names
+**Not in v0.5:**
+- Ellipsis in slicing (`matrix[0, ...]`) - v1.0
+- Ellipsis in type hints (`tuple[int, ...]`) - v1.0
+
+### Literal Names **[v0.5]**
 
 Any symbol in Sharpy can be surrounded with backticks `` ` `` to tell the compiler not to transform the name during resolution. This is equivalent to C#'s `@` prefix:
 
@@ -271,77 +613,169 @@ def `ExactMethodName`():
 
 See [Type System](type_system.md) for detailed type semantics.
 
-### Basic Type Annotations
+### Built-in Types **[v0.5]**
+
+Sharpy provides built-in types that map directly to .NET types:
+
+**Numeric Types:**
+
+| Sharpy Type | .NET Type | Size | Range | Notes |
+|-------------|-----------|------|-------|-------|
+| `int` | `System.Int32` | 32-bit | -2,147,483,648 to 2,147,483,647 | Default integer type |
+| `long` | `System.Int64` | 64-bit | -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807 | Large integers |
+| `short` | `System.Int16` | 16-bit | -32,768 to 32,767 | Small integers |
+| `byte` | `System.Byte` | 8-bit | 0 to 255 | Unsigned byte |
+| `uint` | `System.UInt32` | 32-bit | 0 to 4,294,967,295 | Unsigned 32-bit |
+| `ulong` | `System.UInt64` | 64-bit | 0 to 18,446,744,073,709,551,615 | Unsigned 64-bit |
+| `ushort` | `System.UInt16` | 16-bit | 0 to 65,535 | Unsigned 16-bit |
+| `sbyte` | `System.SByte` | 8-bit | -128 to 127 | Signed byte |
+| `float` | `System.Single` | 32-bit | ±1.5 × 10^-45 to ±3.4 × 10^38 | Single-precision float |
+| `double` | `System.Double` | 64-bit | ±5.0 × 10^-324 to ±1.7 × 10^308 | Double-precision float (default) |
+| `decimal` | `System.Decimal` | 128-bit | ±1.0 × 10^-28 to ±7.9 × 10^28 | High-precision decimal |
+
+**Other Built-in Types:**
+
+| Sharpy Type | .NET Type | Notes |
+|-------------|-----------|-------|
+| `bool` | `System.Boolean` | `True` or `False` |
+| `str` | `System.String` | Immutable Unicode string |
+| `object` | `System.Object` | Base type for all types |
+| `char` | `System.Char` | Single Unicode character |
+
+The `str` type has a Sharpy-specific extension intrinsic to the compiler to expose a Pythonic API where possible, excluding dunders, which are mapped by the compiler to idiomatic C# constructs.
+
+**Collection Types:**
+
+| Sharpy Type | .NET Type | Notes |
+|-------------|-----------|-------|
+| `list[T]` | `System.Generic.List<T>` | Mutable list |
+| `dict[K, V]` | `System.Collections.Generic.Dictionary<K, V>` | Hash map |
+| `set[T]` | `System.Collections.Generic.HashSet<T>` | Unique elements |
+| `tuple[T1, T2, ...]` | `System.Tuple<T1, T2, ...>` or `System.ValueTuple<...>` | Fixed-size tuple |
+
+The collection types above have Sharpy-specific extensions intrinsic to the compiler to expose a Pythonic API where possible, excluding dunders, which are mapped by the compiler to idiomatic C# constructs.
+
+### Basic Type Annotations **[v0.5]**
 
 ```python
 # Simple types
 x: int = 42
 name: str = "Alice"
 flag: bool = True
+pi: double = 3.14159
+
+# Explicit type conversions
+x: int = 42
+y: long = long(x)  # Convert int to long
+z: double = double(x)  # Convert int to double
 
 # Type inference
 y = 42              # Inferred as int
 pi = 3.14159        # Inferred as double
 ```
 
-### Generic Types
+### Generic Types **[v0.5]**
+
+Generic types use square brackets `[]` for type parameters:
 
 ```python
-# Collection types
+# Collection types with type parameters
 numbers: list[int] = [1, 2, 3]
+names: list[str] = ["Alice", "Bob", "Charlie"]
+
+# Dictionary (key-value pairs)
 mapping: dict[str, int] = {"a": 1, "b": 2}
+scores: dict[str, double] = {"Alice": 95.5, "Bob": 87.0}
+
+# Set (unique values)
 unique: set[str] = {"x", "y", "z"}
+ids: set[int] = {1, 2, 3}
 
 # Nested generics
 matrix: list[list[double]] = [[1.0, 2.0], [3.0, 4.0]]
+complex_map: dict[str, list[int]] = {"evens": [2, 4, 6], "odds": [1, 3, 5]}
+
+# Tuples with type parameters
+point: tuple[int, int] = (10, 20)
+person: tuple[str, int, bool] = ("Alice", 30, True)
 ```
 
-### Nullable Types
+**Type Parameter Syntax:**
+- Type parameters use square brackets: `list[int]`, `dict[str, double]`
+- Comma-separated for multiple parameters: `dict[K, V]`
+- Can be nested: `list[list[T]]`, `dict[str, list[int]]`
+- Spaces around brackets are allowed: `list [int]`, `list [ int ]`, `list[ int ]`, etc.
+
+### Nullable Types **[v0.5]**
+
+Nullable types allow variables to hold either a value or `None` (null):
 
 ```python
-# Nullable types
-maybe_name: str? = None
+# Nullable type annotations (type followed by ?)
 result: int? = get_value()
+optional_score: double? = None
+
+# Non-nullable by default
+exists: bool = False  # Cannot be None
+count: int = 42      # Cannot be None
+
+# Assigning None requires nullable type
+value: int? = None   # OK
+other: int = None    # ERROR: Cannot assign None to non-nullable type
 
 # Type narrowing via 'is None' check
 if result is not None:
-    print(result + 10)  # Safe: result is int here
+    # Inside this block, 'result' is narrowed from 'int?' to 'int'
+    print(result + 10)  # Safe: result is definitely int here
+else:
+    # result is still int? here
+    print("No value")
 ```
 
-### Type Narrowing
+### Type Narrowing **[v0.5]**
 
-Sharpy performs type narrowing in conditional branches:
+Sharpy performs type narrowing in conditional branches for nullable types and `isinstance` checks:
 
 ```python
 # Nullable type narrowing
 value: str? = get_optional_string()
 
 if value is not None:
-    # Inside this block, 'value' is narrowed to 'str'
+    # Inside this block, 'value' is narrowed from 'str?' to 'str'
     print(value.upper())  # OK - value is str, not str?
+    print(len(value))     # OK - can call str methods
+else:
+    # value is still str? here
+    print("No value provided")
 
 # isinstance() narrowing
 obj: object = get_value()
 
 if isinstance(obj, str):
-    # Inside this block, 'obj' is narrowed to 'str'
-    print(obj.upper())  # OK
+    # Inside this block, 'obj' is narrowed from 'object' to 'str'
+    print(obj.upper())  # OK - compiler knows obj is str
+elif isinstance(obj, int):
+    # Inside this block, 'obj' is narrowed to 'int'
+    print(obj + 1)  # OK - compiler knows obj is int
 
-# Pattern matching narrowing (see Match Statements)
-match value:
-    case int() as i:
-        # 'i' is narrowed to 'int'
-        print(i + 1)
-    case str() as s:
-        # 's' is narrowed to 'str'
-        print(s.upper())
+# Combining conditions
+data: object? = get_data()
+
+if data is not None and isinstance(data, str):
+    # Both narrowing rules apply
+    # data is narrowed from 'object?' to 'str'
+    print(data.upper())
 ```
 
-**Narrowing Rules:**
-- `is not None` narrows nullable type to non-nullable
-- `isinstance(x, Type)` narrows to that type
-- Pattern matching with type patterns narrows to matched type
+**Narrowing Rules in v0.5:**
+- `is not None` narrows nullable type (`T?`) to non-nullable (`T`)
+- `is None` narrows to never-type in the `if` branch (value is definitely None)
+- `isinstance(x, Type)` narrows `x` to `Type` in the `if` branch
 - Narrowing only affects the scope of the conditional block
+- Combined with `and`, both conditions must hold for narrowing
+
+**Not in v0.5:**
+- Pattern matching narrowing (requires match statements - v1.0)
 
 ### Qualified Types
 
@@ -475,6 +909,8 @@ gen = (x ** 2 for x in range(10))
 ```
 
 **Note:** This differs from Python 2 behavior where loop variables leaked into the outer scope. Sharpy follows Python 3+ scoping rules.
+
+Also, variables declared inside the comprehension, specifically the variables holding the iterator's items on each iteration, e.g. `x` in `x for x in ...`, shadow any from the outer scope.
 
 ## Constants **[v0.5]**
 
@@ -667,49 +1103,207 @@ list4 = append_to_safe(2)  # [2] - different list
 
 ## Modules and Imports **[v0.5]**
 
-Sharpy modules map to .NET namespaces with static classes for module-level members.
+Sharpy modules map to .NET namespaces and static classes. Each `.spy` file is a module, and the file system structure determines the namespace hierarchy.
 
 See [Type System - Modules](type_system.md#modules) for implementation details.
 
-### Import Syntax
+### Module Files **[v0.5]**
 
 ```python
-# Import entire module
-import math
-result = math.sqrt(16)
+# File: my_package/my_module.spy
+# Maps to namespace: MyPackage.MyModule
 
-# Import specific items
-from math import sqrt, pi
-result = sqrt(16)
+"""Module-level docstring.
 
-# Import with alias
-import collections as col
-d = col.defaultdict()
-
-# Import all public members
-from math import *
-result = sqrt(16)
-```
-
-### Module Structure
-
-```python
-# my_module.spy
-
-"""Module docstring."""
+This describes the purpose and contents of the module.
+"""
 
 # Module-level constants
 const VERSION: str = "1.0.0"
 const MAX_SIZE: int = 1000
 
+# Module-level variables (avoid in v0.5, prefer constants or class fields)
+__counter: int = 0  # Private module variable
+
 # Module-level functions
 def helper_function(x: int) -> int:
+    """Double the input value."""
     return x * 2
+
+def public_api(data: str) -> str:
+    """Public module function."""
+    return data.upper()
 
 # Classes
 class MyClass:
+    """A class in this module."""
+    pass
+
+class __PrivateClass:
+    """A private class (leading double underscore)."""
     pass
 ```
+
+**Module Structure Rules:**
+- File name determines module name: `my_module.spy` -> `MyModule`
+- Directory structure determines namespace: `src/utils/helpers.spy` where `src` is the root of the source directory -> `Utils.Helpers`
+- Module docstring should be the first statement (triple-quoted string)
+
+### Import Statements **[v0.5]**
+
+#### Import Entire Module
+
+```python
+# Import the math module
+import math
+
+# Use with qualified name
+result = math.sqrt(16.0)
+pi_value = math.pi
+
+# Import with alias
+import math as m
+result = m.sqrt(16.0)
+```
+
+**Syntax:**
+```python
+import module_name
+import module_name as alias
+```
+
+#### Import Specific Names
+
+```python
+# Import specific functions/classes
+from math import sqrt, pi, cos
+result = sqrt(16.0)
+
+# Import with aliases
+from math import sqrt as square_root
+result = square_root(16.0)
+
+# Import multiple with mixed aliases
+from collections import defaultdict, Counter as CounterClass
+```
+
+**Syntax:**
+```python
+from module_name import name1, name2, ...
+from module_name import name as alias
+```
+
+#### Import All Public Names **[v0.5]**
+
+```python
+# Import all public names
+from math import *
+
+# Now all public names are directly available
+result = sqrt(16.0)
+pi_value = pi
+```
+
+**Warning:** Wildcard imports can cause name collisions and reduce code clarity. Use sparingly.
+
+### Module Resolution **[v0.5]**
+
+**Standard Library Modules:**
+- Built-in .NET types: `System`, `System.Collections.Generic`, etc.
+- Sharpy standard library: Available without imports for built-in types
+
+**Project Modules:**
+```
+project/
+    main.spy              # import utils.helpers
+    utils/
+        __init__.spy      # Optional, can be empty
+        helpers.spy       # Defines helpers module
+        math/
+            __init__.spy
+            vector.spy    # import utils.math.vector
+```
+
+**Import Search Order:**
+1. Sharpy built-in types (list, dict, int, str, etc.)
+2. .NET standard library (System.*, etc.)
+3. Project modules (relative to source root)
+4. Installed packages
+
+### Namespace Mapping **[v0.5]**
+
+Sharpy imports map to .NET namespaces:
+
+```python
+# Sharpy import
+import system.collections.generic
+
+# Maps to .NET using directive
+using System.Collections.Generic;
+
+# Sharpy import
+from system.io import File, Directory
+
+# Maps to .NET
+using System.IO;
+// File and Directory are used directly
+```
+
+**Naming Conventions:**
+- Sharpy uses snake_case for module names: `my_module`
+- .NET uses PascalCase for namespaces: `MyModule`
+- Compiler automatically converts between conventions
+
+### Circular Import Handling **[v0.5]**
+
+Circular imports are resolved through forward declarations:
+
+```python
+# module_a.spy
+from module_b import ClassB  # Forward reference
+
+class ClassA:
+    def use_b(self, b: ClassB) -> None:
+        b.method()
+
+# module_b.spy
+from module_a import ClassA  # Forward reference
+
+class ClassB:
+    def use_a(self, a: ClassA) -> None:
+        a.method()
+```
+
+**Rules:**
+- Imports at module level create forward declarations
+- Types are resolved after all modules are parsed
+- Circular references allowed for type annotations
+- Circular references allowed for instance usage (not for base classes)
+
+### Special Imports **[v0.5]**
+
+```python
+# Import from .NET assemblies
+from system import Console, Environment
+from system.collections.generic import List, Dictionary
+
+# Use .NET types directly
+Console.write_line("Hello from .NET!")
+env_vars = Environment.get_environment_variables()
+
+# Import .NET generic types
+from system.collections.generic import List
+
+# Instantiate with type parameter
+numbers: List[int] = List[int]()
+numbers.add(42)
+```
+
+**Not in v0.5:**
+- Relative imports (`.` and `..` syntax)
+- Import hooks
+- Dynamic imports
+- Package management beyond .NET NuGet
 
 ## Classes **[v0.5]**
 
@@ -717,35 +1311,82 @@ Classes are reference types that support single inheritance and multiple interfa
 
 See [Type System - Classes](type_system.md#classes-and-inheritance) for details on the type hierarchy.
 
-### Basic Class Definition
+### Basic Class Definition **[v0.5]**
 
-Class members must be declared along with their type.
+Class members must be declared at the class level with their types:
 
 ```python
 class Person:
     """A person with a name and age."""
+
+    # Field declarations (required)
     name: str
     age: int
 
+    # Constructor
     def __init__(self, name: str, age: int):
         self.name = name
         self.age = age
 
+    # Instance method
     def greet(self) -> str:
         return f"Hello, I'm {self.name}"
+
+    # Instance method with no return value
+    def celebrate_birthday(self) -> None:
+        self.age += 1
 ```
 
-Constructor methods do not have return types, but if a type annotation is required, it is `None`:
+**Class Definition Rules:**
+- All instance fields must be declared at class level with type annotations
+- Fields can have initializers at class level
+- The `self` parameter is required for instance methods
+- The `self` parameter is **not** type-annotated
+- Methods must have return type annotations if they return a value
+- Methods returning no value do not require a return type annotation, but may specify `-> None` for consistency
+
+**Field Declaration Examples:**
+```python
+class Example:
+    # Valid field declarations
+    name: str = "default"
+    count: int
+    items: list[str]
+    mapping: dict[str, int]
+    optional: str?
+
+    def __init__(self):
+        self.count = 0
+        self.items = []
+        self.mapping = {}
+        self.optional = None
+```
+
+### Constructor (`__init__`) **[v0.5]**
+
+The constructor is always named `__init__` and has no return type (or `-> None`):
 
 ```python
 class Person:
     name: str
     age: int
 
-   def __init__(self, name: str, age: int) -> None:
+    # Constructor with no return type annotation
+    def __init__(self, name: str, age: int):
+        self.name = name
+        self.age = age
+
+    # Or explicitly annotated as -> None
+    def __init__(self, name: str, age: int) -> None:
         self.name = name
         self.age = age
 ```
+
+**Constructor Rules:**
+- Must be named `__init__`
+- Return type is omitted or `-> None`
+- Can be overloaded with different parameter signatures (see Constructor Overloading)
+- Must initialize all non-nullable fields before the constructor returns
 
 ### Inheritance
 
@@ -889,31 +1530,119 @@ class Point:
 
 ## Structs **[v0.5]**
 
-Structs are value types that do not support inheritance but can implement interfaces.
+Structs are value types that do not support inheritance but can implement interfaces. They are allocated on the stack and passed by value.
 
 See [Type System - Structs](type_system.md#structs-value-types) for runtime behavior.
+
+### Struct Definition **[v0.5]**
 
 ```python
 struct Vector2:
     """A 2D vector value type."""
+
+    # Field declarations (required)
     x: double
     y: double
 
+    # Constructor
     def __init__(self, x: double, y: double):
         self.x = x
         self.y = y
 
+    # Instance methods
     def magnitude(self) -> double:
+        """Calculate the length of the vector."""
         return (self.x ** 2 + self.y ** 2) ** 0.5
+
+    def normalized(self) -> Vector2:
+        """Return a unit vector in the same direction."""
+        mag = self.magnitude()
+        if mag == 0:
+            return Vector2(0, 0)
+        return Vector2(self.x / mag, self.y / mag)
+
+    # Operator overloading
+    def __add__(self, other: Vector2) -> Vector2:
+        """Add two vectors."""
+        return Vector2(self.x + other.x, self.y + other.y)
+
+    def __str__(self) -> str:
+        """String representation."""
+        return f"Vector2({self.x}, {self.y})"
+
+# Usage
+v1 = Vector2(3.0, 4.0)
+v2 = Vector2(1.0, 2.0)
+v3 = v1 + v2           # Vector2(4.0, 6.0)
+mag = v1.magnitude()   # 5.0
 ```
+
+**Struct Rules:**
+- All fields must be declared at struct level with type annotations
+- Must have a constructor that initializes all fields
+- Cannot inherit from other structs or classes
+- Can implement interfaces
+- Value semantics: copied when assigned or passed to functions
+- Stack-allocated (better performance for small types)
+
+### Struct with Interfaces **[v0.5]**
+
+```python
+interface IEquatable[T]:
+    def equals(self, other: T) -> bool: ...
+
+struct Point(IEquatable[Point]):
+    """A point that can be compared for equality."""
+
+    x: int
+    y: int
+
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+
+    def equals(self, other: Point) -> bool:
+        """Implement IEquatable interface."""
+        return self.x == other.x and self.y == other.y
+
+    def __eq__(self, other: object) -> bool:
+        """Overload == operator."""
+        if not isinstance(other, Point):
+            return False
+        return self.equals(other)
+
+    def __hash__(self) -> int:
+        """Hash for use in dictionaries."""
+        return hash((self.x, self.y))
+
+# Usage
+p1 = Point(10, 20)
+p2 = Point(10, 20)
+p3 = Point(30, 40)
+
+print(p1 == p2)        # True
+print(p1.equals(p3))   # False
+```
+
+**When to Use Structs:**
+- Small data structures (typically < 16 bytes)
+- Immutable value types (like Vector2, Point, Color)
+- Frequently allocated temporary objects
+- Types that benefit from value semantics
+
+**When to Use Classes Instead:**
+- Large data structures
+- Objects with identity (need reference equality)
+- Objects that need inheritance
+- Mutable shared state
 
 ## Interfaces **[v0.5]**
 
-Interfaces define structural contracts that types must satisfy.
+Interfaces define structural contracts that types must satisfy. They specify method signatures that implementing types must provide.
 
 See [Type System - Interfaces](type_system.md#interfaces-and-interfaces) for type checking rules.
 
-### Interface Definition
+### Interface Definition **[v0.5]**
 
 ```python
 interface IDrawable:
@@ -926,35 +1655,252 @@ interface IDrawable:
     def get_bounds(self) -> tuple[double, double, double, double]:
         """Get bounding box (x, y, width, height)."""
         ...
+
+# Implementation in class
+class Circle(IDrawable):
+    """A circle that implements IDrawable."""
+
+    radius: double
+    x: double
+    y: double
+
+    def __init__(self, x: double, y: double, radius: double):
+        self.x = x
+        self.y = y
+        self.radius = radius
+
+    def draw(self) -> None:
+        """Implement the draw method."""
+        print(f"Drawing circle at ({self.x}, {self.y}) with radius {self.radius}")
+
+    def get_bounds(self) -> tuple[double, double, double, double]:
+        """Implement the get_bounds method."""
+        return (self.x - self.radius, self.y - self.radius,
+                self.radius * 2, self.radius * 2)
+
+# Usage
+shape: IDrawable = Circle(10.0, 20.0, 5.0)
+shape.draw()
+bounds = shape.get_bounds()
 ```
 
-### Interface Inheritance
+**Interface Rules:**
+- All methods must have `...` (ellipsis) as body
+- Methods cannot have implementations in v0.5
+- All methods are implicitly abstract
+- Implementing types must provide all methods
+- Use `...` instead of `pass` for abstract methods
+
+### Multiple Interfaces **[v0.5]**
 
 ```python
 interface ISerializable:
+    """Interface for serializable objects."""
+    def serialize(self) -> str: ...
+
+interface IComparable[T]:
+    """Interface for comparable objects."""
+    def compare_to(self, other: T) -> int: ...
+
+class Person(ISerializable, IComparable[Person]):
+    """A person implementing multiple interfaces."""
+
+    name: str
+    age: int
+
+    def __init__(self, name: str, age: int):
+        self.name = name
+        self.age = age
+
+    def serialize(self) -> str:
+        """Implement ISerializable."""
+        return f"{self.name},{self.age}"
+
+    def compare_to(self, other: Person) -> int:
+        """Implement IComparable."""
+        if self.age < other.age:
+            return -1
+        elif self.age > other.age:
+            return 1
+        else:
+            return 0
+
+# Usage
+person = Person("Alice", 30)
+json_str = person.serialize()
+```
+
+### Interface Inheritance **[v0.5]**
+
+```python
+interface ISerializable:
+    """Base interface for serialization."""
     def serialize(self) -> str: ...
 
 interface IJSONSerializable(ISerializable):
-    """Extends Serializable interface."""
+    """Extends ISerializable with JSON-specific methods."""
     def to_json(self) -> str: ...
+    def from_json(self, json: str) -> None: ...
+
+class User(IJSONSerializable):
+    """A user that supports JSON serialization."""
+
+    username: str
+    email: str
+
+    def __init__(self, username: str, email: str):
+        self.username = username
+        self.email = email
+
+    def serialize(self) -> str:
+        """Implement base ISerializable."""
+        return f"{self.username}|{self.email}"
+
+    def to_json(self) -> str:
+        """Implement IJSONSerializable."""
+        return f'{{"username": "{self.username}", "email": "{self.email}"}}'
+
+    def from_json(self, json: str) -> None:
+        """Implement IJSONSerializable."""
+        # Parse JSON and update fields
+        pass  # Simplified for example
 ```
 
-### Interface with Default Implementation
+### Generic Interfaces **[v0.5]**
+
+```python
+interface IContainer[T]:
+    """Generic container interface."""
+    def add(self, item: T) -> None: ...
+    def get(self, index: int) -> T: ...
+    def count(self) -> int: ...
+
+class ListContainer[T](IContainer[T]):
+    """A list-based container."""
+
+    _items: list[T]
+
+    def __init__(self):
+        self._items = []
+
+    def add(self, item: T) -> None:
+        self._items.append(item)
+
+    def get(self, index: int) -> T:
+        return self._items[index]
+
+    def count(self) -> int:
+        return len(self._items)
+
+# Usage
+container: IContainer[str] = ListContainer[str]()
+container.add("hello")
+container.add("world")
+print(container.count())  # 2
+```
+
+### Interface Type Checking **[v0.5]**
+
+```python
+def draw_all(shapes: list[IDrawable]) -> None:
+    """Draw all shapes in the list."""
+    for shape in shapes:
+        shape.draw()
+
+# Usage with different types that implement IDrawable
+shapes: list[IDrawable] = [
+    Circle(10.0, 20.0, 5.0),
+    Rectangle(0.0, 0.0, 100.0, 50.0),
+]
+draw_all(shapes)
+
+# Type checking with isinstance
+def process_shape(obj: object) -> None:
+    if isinstance(obj, IDrawable):
+        obj.draw()  # Type narrowing applies
+        bounds = obj.get_bounds()
+```
+
+**Not in v0.5:**
+- Default interface implementations
+- Static interface members
+- Interface properties (use getter/setter methods instead)
 
 ```python
 interface ILogger:
-    """Interface with default behavior."""
-
-    def log(self, message: str) -> None:
-        """Must be implemented."""
-        ...
+    def log(self, error: str) -> None: ...
 
     def log_error(self, error: str) -> None:
         """Default implementation provided."""
         self.log(f"ERROR: {error}")
 ```
 
-## Properties **[v0.5]**
+## Properties **[v1.0]**
+
+**Note:** Properties are not implemented in v0.5. Use public fields with methods for getters/setters in v0.5.
+
+### v0.5 Alternative: Fields with Methods
+
+In v0.5, use public fields and explicit getter/setter methods:
+
+```python
+class Temperature:
+    """Temperature in v0.5 style."""
+
+    # Public field (direct access)
+    celsius: double
+
+    def __init__(self, celsius: double = 0.0):
+        self.celsius = celsius
+
+    # Getter method
+    def get_fahrenheit(self) -> double:
+        return self.celsius * 9/5 + 32
+
+    # Setter method
+    def set_fahrenheit(self, value: double):
+        self.celsius = (value - 32) * 5/9
+
+# Usage
+temp = Temperature(25.0)
+print(temp.celsius)  # Direct field access: 25.0
+f = temp.get_fahrenheit()  # Method call: 77.0
+temp.set_fahrenheit(32.0)
+print(temp.celsius)  # 0.0
+```
+
+For simple encapsulation, use naming conventions:
+
+```python
+class Person:
+    # Public fields (direct access allowed)
+    name: str
+    age: int
+
+    # Protected field (naming convention)
+    _internal_id: int
+
+    # Private field (naming convention)
+    __secret: str
+
+    def __init__(self, name: str, age: int):
+        self.name = name
+        self.age = age
+        self._internal_id = 0
+        self.__secret = "hidden"
+
+    # Explicit getter
+    def get_secret(self) -> str:
+        return self.__secret
+
+    # Explicit setter with validation
+    def set_age(self, value: int):
+        if value < 0:
+            raise ValueError("Age cannot be negative")
+        self.age = value
+```
+
+### v1.0 Properties (Not in v0.5)
 
 Properties provide computed access to object state with flexible syntax.
 
@@ -1178,81 +2124,265 @@ counter.value = 42  # Prints: "Value changed from 0 to 42"
 
 ## Decorators **[v0.5]**
 
-Decorators modify the behavior of functions, methods, and classes.
+Decorators modify the behavior of functions, methods, and classes. They are applied using the `@decorator` syntax and map to .NET attributes.
 
-### Built-in Decorators
+### Built-in Decorators **[v0.5]**
+
+#### Method Decorators
 
 ```python
-class Example:
-    # Static method
+class Calculator:
+    """A calculator class demonstrating method decorators."""
+
+    _value: int
+
+    def __init__(self):
+        self._value = 0
+
+    # Static method (no self parameter)
     @static
-    def static_method():
-        pass
+    def add(x: int, y: int) -> int:
+        """Static method, no instance required."""
+        return x + y
 
     # Override base class method
     @override
-    def virtual_method(self):
-        pass
+    def __str__(self) -> str:
+        """Override object's __str__ method."""
+        return f"Calculator(value={self._value})"
 
-    # Final (sealed) class
-    @final
-    class SealedClass:
-        pass
-
-    # Property decorators
-    @property
-    def computed_value(self) -> int:
-        return self._value * 2
+# Usage
+result = Calculator.add(5, 3)  # Call static method
+calc = str(Calculator())  # Call overridden method
 ```
 
-### Custom Decorators
+**Method Decorator Reference:**
 
-TODO: Should behave like C# annotations.
+| Decorator | Description | .NET Equivalent |
+|-----------|-------------|-----------------|
+| `@static` | Static method (no instance) | `static` keyword |
+| `@override` | Explicitly marks method override | `override` keyword |
+| `@virtual` | Method can be overridden | `virtual` keyword |
+| `@abstract` | Method must be implemented by subclass | `abstract` keyword |
+| `@final` | Method cannot be overridden | `sealed` keyword |
+
+#### Class Decorators
+
+```python
+# Sealed class (cannot be inherited)
+@final
+class SealedClass:
+    """This class cannot be subclassed."""
+    pass
+
+# Abstract class (cannot be instantiated)
+@abstract
+class AbstractShape:
+    """Base class for shapes."""
+
+    @abstract
+    def area(self) -> double:
+        """Calculate area (must be implemented by subclass)."""
+        pass
+
+# Attempt to subclass sealed class
+class Derived(SealedClass):  # ERROR: Cannot inherit from sealed class
+    pass
+
+# Attempt to instantiate abstract class
+shape = AbstractShape()  # ERROR: Cannot instantiate abstract class
+```
+
+**Class Decorator Reference:**
+
+| Decorator | Description | .NET Equivalent |
+|-----------|-------------|-----------------|
+| `@final` | Class cannot be inherited | `sealed` keyword |
+| `@abstract` | Class cannot be instantiated | `abstract` keyword |
+
+### Decorator Syntax **[v0.5]**
+
+```python
+# Single decorator
+@decorator
+def function():
+    pass
+
+# Multiple decorators (applied bottom-to-top)
+@decorator1
+@decorator2
+@decorator3
+def function():
+    pass
+
+# Decorators with arguments (v1.0+)
+@decorator(arg1, arg2)
+def function():
+    pass
+```
+
+**Decorator Application Order:**
+
+When multiple decorators are applied, they execute from bottom to top:
+
+```python
+@first
+@second
+@third
+def example():
+    pass
+
+# Equivalent to:
+# example = first(second(third(example)))
+```
+
+### Custom Decorators **[v1.0]**
+
+Custom decorators can be defined in v1.0. In v0.5, use only built-in decorators.
+
+**Not in v0.5:**
+- Custom decorator definitions
+- Decorators with arguments
+- Property decorators (deferred to v1.0)
+- Parameterized decorators
 
 ## Functions **[v0.5]**
 
-### Function Definition
+### Function Definition **[v0.5]**
+
+Functions are defined using the `def` keyword:
 
 ```python
+# Basic function with return type
 def greet(name: str) -> str:
     """Greet a person by name."""
     return f"Hello, {name}!"
 
-# With default arguments
+# Function with no return value
+def print_greeting(name: str) -> None:
+    print(f"Hello, {name}!")
+
+# Function with multiple parameters
+def add(x: int, y: int) -> int:
+    return x + y
+
+# Function with default arguments
 def power(base: double, exponent: double = 2.0) -> double:
     return base ** exponent
 
-# Multiple return values (tuple)
+# Multiple return values via tuple
 def min_max(values: list[int]) -> tuple[int, int]:
     return (min(values), max(values))
+
+# Unpack multiple return values
+minimum, maximum = min_max([1, 5, 3, 9, 2])
 ```
 
-### Function Overloading
+**Function Signature Rules:**
+- All parameters must have type annotations
+- Return type annotation is required if the function returns a value
+- Return type annotation can be omitted if the function returns no value, or can use `-> None` for consistency
+- Parameters are comma-separated
+- Default parameter values must be compile-time constants or literals
+- Parameters with defaults must come after parameters without defaults
+
+**Parameter Types:**
 
 ```python
+# Required parameters
+def required(x: int, y: str) -> None:
+    pass
+
+# Optional parameters (with defaults)
+def optional(x: int, y: str = "default") -> None:
+    pass
+
+# Cannot mix order
+def invalid(x: int = 0, y: str) -> None:  # ERROR: Required after optional
+    pass
+```
+
+### Function Overloading **[v0.5]**
+
+Functions can be overloaded with different parameter signatures:
+
+```python
+# Overload by parameter count
 def process(value: int) -> str:
     return f"Integer: {value}"
 
+def process(value: int, multiplier: int) -> str:
+    return f"Result: {value * multiplier}"
+
+# Overload by parameter type
 def process(value: str) -> str:
     return f"String: {value}"
 
 def process(value: double) -> str:
-    return f"Float: {value}"
+    return f"Float: {value:.2f}"
+
+# Usage - compiler selects correct overload
+print(process(42))           # Calls process(int)
+print(process(42, 2))        # Calls process(int, int)
+print(process("hello"))      # Calls process(str)
+print(process(3.14))         # Calls process(double)
 ```
 
-### Lambda Expressions
+**Overload Resolution Rules:**
+- Based on parameter count and types
+- Parameter names do not affect overload resolution
+- Most specific match is chosen
+- Ambiguous overloads cause compile error
 
 ```python
-# Single expression
+# ERROR: Ambiguous overloads (same signature)
+def duplicate(x: int, y: int) -> None:
+    pass
+
+def duplicate(a: int, b: int) -> None:  # ERROR: Same signature as above
+    pass
+```
+
+### Lambda Expressions **[v0.5]**
+
+Lambda expressions create anonymous functions:
+
+```python
+# Single expression lambda
 square = lambda x: x ** 2
 
 # Multiple parameters
 add = lambda x, y: x + y
+multiply = lambda x, y, z: x * y * z
 
-# In function calls
-numbers = [1, 2, 3, 4, 5]
+# Type inference from context
+numbers: list[int] = [1, 2, 3, 4, 5]
 evens = filter(lambda x: x % 2 == 0, numbers)
+doubled = map(lambda x: x * 2, numbers)
+
+# Lambda as function argument
+def apply(value: int, func: (int) -> int) -> int:
+    return func(value)
+
+result = apply(5, lambda x: x * x)  # 25
 ```
+
+**Lambda Syntax:**
+```
+lambda parameters: expression
+```
+
+**Lambda Rules:**
+- Single expression only (no statements)
+- No return statement (expression value is returned)
+- Type annotations on parameters and return value can be omitted if they can be inferred from context
+- Can capture variables from enclosing scope
+- Expression is evaluated and returned
+
+**Not in v0.5:**
+- Multi-line lambdas
+- Lambda with statements
+- Explicit type annotations in lambda parameters and return type
 
 ## Generics **[v0.5]**
 
@@ -1373,53 +2503,249 @@ See [Type System - Tuples](type_system.md#tuples) for implementation details.
 
 ## Collection Literals **[v0.5]**
 
-### Lists
+Sharpy provides literal syntax for creating lists, dictionaries, sets, and tuples.
+
+### List Literals **[v0.5]**
 
 ```python
-# List literals
-numbers = [1, 2, 3]
+# Empty list (type annotation required)
 empty: list[int] = []
 
-# Type annotations
-values: list[str] = ["a", "b", "c"]
+# List with elements
+numbers = [1, 2, 3, 4, 5]
+names = ["Alice", "Bob", "Charlie"]
+
+# Mixed types require common type
+values: list[object] = [1, "hello", 3.14]  # All are objects
+
+# Explicit type annotation
+scores: list[double] = [95.5, 87.0, 92.3]
 
 # Nested lists
-matrix: list[list[int]] = [[1, 2], [3, 4]]
+matrix: list[list[int]] = [
+    [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 9]
+]
+
+# List with trailing comma (allowed)
+colors = [
+    "red",
+    "green",
+    "blue",
+]
 ```
 
-### Dictionaries
+**List Literal Syntax:**
+```
+[element1, element2, ...]
+```
+
+**List Operations:**
+```python
+numbers = [1, 2, 3]
+
+# Append element
+numbers.append(4)      # [1, 2, 3, 4]
+
+# Insert at index
+numbers.insert(0, 0)   # [0, 1, 2, 3, 4]
+
+# Remove element
+numbers.remove(2)      # [0, 1, 3, 4]
+
+# Index access
+first = numbers[0]     # 0
+last = numbers[-1]     # 4
+
+# Slicing
+subset = numbers[1:3]  # [1, 3]
+
+# Length
+count = len(numbers)   # 4
+
+# Iteration
+for num in numbers:
+    print(num)
+```
+
+### Dictionary Literals **[v0.5]**
 
 ```python
-# Dict literals
-mapping = {"a": 1, "b": 2}
-empty_dict: dict[str, int] = {}
+# Empty dictionary (type annotation required)
+empty: dict[str, int] = {}
 
-# Type annotations
-scores: dict[str, double] = {"Alice": 95.5, "Bob": 87.0}
+# Dictionary with entries
+ages = {"Alice": 30, "Bob": 25, "Charlie": 35}
 
-# Nested dicts
+# Explicit type annotation
+scores: dict[str, double] = {
+    "Alice": 95.5,
+    "Bob": 87.0,
+    "Charlie": 92.3
+}
+
+# Nested dictionaries
 config: dict[str, dict[str, int]] = {
-    "server": {"port": 8080, "timeout": 30}
+    "server": {"port": 8080, "timeout": 30},
+    "database": {"port": 5432, "pool_size": 10}
+}
+
+# Dictionary with trailing comma (allowed)
+settings = {
+    "debug": True,
+    "verbose": False,
 }
 ```
 
-### Sets
-
-```python
-# Set literals
-unique = {1, 2, 3}
-words = {"apple", "banana", "cherry"}
-
-# Empty set (special syntax to distinguish from empty dict)
-empty_set: set[int] = {/}
-
-# Type annotations
-numbers: set[int] = {1, 2, 3, 4, 5}
+**Dictionary Literal Syntax:**
+```
+{key1: value1, key2: value2, ...}
 ```
 
-### Collection Mutability
+**Dictionary Operations:**
+```python
+mapping = {"a": 1, "b": 2}
 
-Collections have different mutability characteristics:
+# Add/update entry
+mapping["c"] = 3       # {"a": 1, "b": 2, "c": 3}
+mapping["a"] = 10      # {"a": 10, "b": 2, "c": 3}
+
+# Access value
+value = mapping["a"]   # 10
+
+# Get with default
+value = mapping.get("d", 0)  # 0 (key not found)
+
+# Check key existence
+has_key = "a" in mapping  # True
+
+# Remove entry
+del mapping["b"]       # {"a": 10, "c": 3}
+
+# Iteration over keys
+for key in mapping:
+    print(f"{key}: {mapping[key]}")
+
+# Iteration over items
+for key, value in mapping.items():
+    print(f"{key}: {value}")
+```
+
+### Set Literals **[v0.5]**
+
+```python
+# Empty set (special syntax)
+empty_set: set[int] = {/}
+
+# Set with elements
+numbers = {1, 2, 3, 4, 5}
+words = {"apple", "banana", "cherry"}
+
+# Explicit type annotation
+primes: set[int] = {2, 3, 5, 7, 11}
+
+# Set with trailing comma (allowed)
+colors = {
+    "red",
+    "green",
+    "blue",
+}
+
+# Note: {} creates an empty dict, not a set
+empty_dict: dict[str, int] = {}  # This is a dict
+empty_set: set[int] = {/}        # This is a set
+```
+
+**Set Literal Syntax:**
+```
+{element1, element2, ...}  # Set with elements
+{/}                         # Empty set
+```
+
+**Set Operations:**
+```python
+numbers = {1, 2, 3}
+
+# Add element
+numbers.add(4)         # {1, 2, 3, 4}
+
+# Remove element
+numbers.remove(2)      # {1, 3, 4}
+
+# Check membership
+has_three = 3 in numbers  # True
+
+# Set operations
+odds = {1, 3, 5}
+evens = {2, 4, 6}
+all_nums = odds | evens      # Union: {1, 2, 3, 4, 5, 6}
+intersection = odds & evens  # Intersection: set()
+difference = odds - evens    # Difference: {1, 3, 5}
+```
+
+### Tuple Literals **[v0.5]**
+
+```python
+# Empty tuple
+empty: tuple[()] = ()
+
+# Single element tuple (note the comma)
+single = (42,)
+single_str = ("hello",)
+
+# Multiple elements
+point = (10, 20)
+color = (255, 128, 0)
+
+# Explicit type annotation
+coordinates: tuple[int, int] = (100, 200)
+rgb: tuple[int, int, int] = (255, 128, 64)
+
+# Tuples with different types
+mixed: tuple[str, int, bool] = ("Alice", 30, True)
+
+# Nested tuples
+matrix: tuple[tuple[int, int], tuple[int, int]] = (
+    (1, 2),
+    (3, 4)
+)
+
+# Parentheses are optional (except for empty tuple)
+point = 10, 20         # Same as (10, 20)
+color = 255, 128, 0    # Same as (255, 128, 0)
+```
+
+**Tuple Literal Syntax:**
+```
+()                # Empty tuple
+(element,)        # Single element (comma required)
+(elem1, elem2)    # Multiple elements
+elem1, elem2      # Multiple elements (parentheses optional)
+```
+
+**Tuple Operations:**
+```python
+point = (10, 20)
+
+# Index access
+x = point[0]       # 10 (as object?, needs cast)
+y = point[1]       # 20 (as object?, needs cast)
+
+# Unpacking
+x, y = point       # x=10, y=20
+
+# Length
+size = len(point)  # 2
+
+# Immutable - cannot modify
+point[0] = 30      # ERROR: tuple is immutable
+
+# Concatenation creates new tuple
+extended = point + (30,)  # (10, 20, 30)
+```
+
+### Collection Mutability **[v0.5]**
 
 | Collection | Mutable? | Notes |
 |------------|----------|-------|
@@ -1427,10 +2753,7 @@ Collections have different mutability characteristics:
 | `dict[K, V]` | ✅ Yes | Can add, remove, modify entries |
 | `set[T]` | ✅ Yes | Can add, remove elements |
 | `tuple[...]` | ❌ No | Immutable, fixed-size |
-| `frozenset[T]` | ❌ No | Immutable set |
 | `str` | ❌ No | Immutable string |
-| `bytes` | ❌ No | Immutable byte array |
-| `bytearray` | ✅ Yes | Mutable byte array |
 
 ```python
 # Mutable collections
@@ -1450,9 +2773,6 @@ point[0] = 30          # ERROR - tuple is immutable
 
 text = "hello"
 text[0] = "H"          # ERROR - string is immutable
-
-frozen = frozenset([1, 2, 3])
-frozen.add(4)          # ERROR - frozenset is immutable
 ```
 
 **Creating Immutable Copies:**
@@ -1462,13 +2782,15 @@ frozen.add(4)          # ERROR - frozenset is immutable
 numbers = [1, 2, 3]
 immutable_numbers = tuple(numbers)
 
-# Set to frozenset (immutable)
-unique = {1, 2, 3}
-immutable_unique = frozenset(unique)
-
-# String is already immutable
-text = "hello"  # Always immutable
+# Tuple to list (mutable)
+point = (10, 20)
+mutable_point = list(point)
 ```
+
+**Not in v0.5:**
+- `frozenset[T]` - Immutable set type
+- `bytes` and `bytearray` - Byte sequence types
+- List/dict/set comprehensions (deferred to v1.0)
 
 ## Walrus Operator **[v1.0]**
 
@@ -1494,7 +2816,7 @@ filtered = [y for x in data if (y := x * 2) > 5]
 
 **Scoping Rules:**
 
-The walrus operator creates or assigns to a variable in the **enclosing scope**, not a new scope:
+The walrus operator creates or assigns to a variable in the **enclosing scope**, not a new scope, and shadows any conflicting variable from the outer scope:
 
 ```python
 # Variable created in function scope
@@ -1701,12 +3023,14 @@ reversed = text[::-1]      # "!dlroW ,olleH"
 
 ## Operator Overloading **[v0.5]**
 
-Classes can define special methods (dunder methods) to customize operator behavior.
+Classes can define special methods (dunder methods) to customize operator behavior. Dunder methods (double-underscore methods) map to .NET operator overloading.
 
-### Arithmetic Operators
+### Arithmetic Operators **[v0.5]**
 
 ```python
 class Vector:
+    """A 2D vector with operator overloading."""
+
     x: double
     y: double
 
@@ -1714,6 +3038,7 @@ class Vector:
         self.x = x
         self.y = y
 
+    # Binary arithmetic operators
     def __add__(self, other: Vector) -> Vector:
         """Overload + operator."""
         return Vector(self.x + other.x, self.y + other.y)
@@ -1726,22 +3051,55 @@ class Vector:
         """Overload * operator for scalar multiplication."""
         return Vector(self.x * scalar, self.y * scalar)
 
+    def __truediv__(self, scalar: double) -> Vector:
+        """Overload / operator for scalar division."""
+        return Vector(self.x / scalar, self.y / scalar)
+
+    # Unary operators
     def __neg__(self) -> Vector:
         """Overload unary - operator."""
         return Vector(-self.x, -self.y)
+
+    def __pos__(self) -> Vector:
+        """Overload unary + operator."""
+        return Vector(self.x, self.y)
+
+    # String representation
+    def __str__(self) -> str:
+        """String representation for print()."""
+        return f"Vector({self.x}, {self.y})"
 
 # Usage
 v1 = Vector(1.0, 2.0)
 v2 = Vector(3.0, 4.0)
 v3 = v1 + v2           # Vector(4.0, 6.0)
-v4 = v1 * 2.0          # Vector(2.0, 4.0)
-v5 = -v1               # Vector(-1.0, -2.0)
+v4 = v1 - v2           # Vector(-2.0, -2.0)
+v5 = v1 * 2.0          # Vector(2.0, 4.0)
+v6 = v1 / 2.0          # Vector(0.5, 1.0)
+v7 = -v1               # Vector(-1.0, -2.0)
+print(v1)              # "Vector(1.0, 2.0)"
 ```
 
-### Comparison Operators
+**Arithmetic Dunder Methods:**
+
+| Operator | Dunder Method | Description |
+|----------|---------------|-------------|
+| `+` | `__add__(self, other)` | Addition |
+| `-` | `__sub__(self, other)` | Subtraction |
+| `*` | `__mul__(self, other)` | Multiplication |
+| `/` | `__truediv__(self, other)` | True division |
+| `//` | `__floordiv__(self, other)` | Floor division |
+| `%` | `__mod__(self, other)` | Modulo |
+| `**` | `__pow__(self, other)` | Exponentiation |
+| `-x` | `__neg__(self)` | Unary negation |
+| `+x` | `__pos__(self)` | Unary plus |
+
+### Comparison Operators **[v0.5]**
 
 ```python
 class Point:
+    """A point in 2D space with comparison support."""
+
     x: int
     y: int
 
@@ -1749,17 +3107,33 @@ class Point:
         self.x = x
         self.y = y
 
-    def __eq__(self, other: Point) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Overload == operator."""
+        if not isinstance(other, Point):
+            return False
         return self.x == other.x and self.y == other.y
 
+    def __ne__(self, other: object) -> bool:
+        """Overload != operator."""
+        return not self.__eq__(other)
+
     def __lt__(self, other: Point) -> bool:
-        """Overload < operator (for sorting)."""
-        return (self.x, self.y) < (other.x, other.y)
+        """Overload < operator (for sorting by distance from origin)."""
+        self_dist = self.x ** 2 + self.y ** 2
+        other_dist = other.x ** 2 + other.y ** 2
+        return self_dist < other_dist
 
     def __le__(self, other: Point) -> bool:
         """Overload <= operator."""
         return self < other or self == other
+
+    def __gt__(self, other: Point) -> bool:
+        """Overload > operator."""
+        return not self <= other
+
+    def __ge__(self, other: Point) -> bool:
+        """Overload >= operator."""
+        return not self < other
 
 # Usage
 p1 = Point(1, 2)
@@ -1767,39 +3141,194 @@ p2 = Point(1, 2)
 p3 = Point(2, 3)
 
 print(p1 == p2)  # True
-print(p1 < p3)   # True
+print(p1 != p3)  # True
+print(p1 < p3)   # True (closer to origin)
+print(p3 > p1)   # True
 ```
 
-### Container Operators
+**Comparison Dunder Methods:**
+
+| Operator | Dunder Method | Description |
+|----------|---------------|-------------|
+| `==` | `__eq__(self, other)` | Equal to |
+| `!=` | `__ne__(self, other)` | Not equal to |
+| `<` | `__lt__(self, other)` | Less than |
+| `<=` | `__le__(self, other)` | Less than or equal |
+| `>` | `__gt__(self, other)` | Greater than |
+| `>=` | `__ge__(self, other)` | Greater than or equal |
+
+**Note:** Only `__eq__` and `__lt__` are required. The others can be derived, but explicit implementations are recommended for performance.
+
+### Container Operators **[v0.5]**
 
 ```python
 class Grid:
+    """A 2D grid with indexing support."""
+
     _data: list[list[int]]
+    _width: int
+    _height: int
 
     def __init__(self, width: int, height: int):
-        self._data = [[0] * width for _ in range(height)]
+        self._width = width
+        self._height = height
+        self._data = [[0 for _ in range(width)] for _ in range(height)]
 
     def __getitem__(self, key: tuple[int, int]) -> int:
-        """Overload indexing: grid[x, y]."""
+        """Overload indexing: value = grid[x, y]."""
         x, y = key
+        if x < 0 or x >= self._width or y < 0 or y >= self._height:
+            raise IndexError(f"Index ({x}, {y}) out of bounds")
         return self._data[y][x]
 
-    def __setitem__(self, key: tuple[int, int], value: int):
+    def __setitem__(self, key: tuple[int, int], value: int) -> None:
         """Overload assignment: grid[x, y] = value."""
         x, y = key
+        if x < 0 or x >= self._width or y < 0 or y >= self._height:
+            raise IndexError(f"Index ({x}, {y}) out of bounds")
         self._data[y][x] = value
+
+    def __contains__(self, value: int) -> bool:
+        """Overload 'in' operator: value in grid."""
+        for row in self._data:
+            if value in row:
+                return True
+        return False
+
+    def __len__(self) -> int:
+        """Overload len() function."""
+        return self._width * self._height
 
 # Usage
 grid = Grid(10, 10)
-grid[5, 3] = 42
-value = grid[5, 3]  # 42
+grid[5, 3] = 42        # Calls __setitem__
+value = grid[5, 3]     # Calls __getitem__, returns 42
+has_42 = 42 in grid    # Calls __contains__, returns True
+size = len(grid)       # Calls __len__, returns 100
 ```
 
-See [Type System - Dunder Methods](type_system.md#dunder-methods) for complete list.
+**Container Dunder Methods:**
+
+| Syntax | Dunder Method | Description |
+|--------|---------------|-------------|
+| `obj[key]` | `__getitem__(self, key)` | Index access |
+| `obj[key] = value` | `__setitem__(self, key, value)` | Index assignment |
+| `del obj[key]` | `__delitem__(self, key)` | Index deletion |
+| `value in obj` | `__contains__(self, value)` | Membership test |
+| `len(obj)` | `__len__(self)` | Length |
+| `iter(obj)` | `__iter__(self)` | Iterator |
+
+### String Representation **[v0.5]**
+
+```python
+class Person:
+    """A person with string representations."""
+
+    name: str
+    age: int
+
+    def __init__(self, name: str, age: int):
+        self.name = name
+        self.age = age
+
+    def __str__(self) -> str:
+        """User-friendly string representation (for print, str)."""
+        return f"{self.name}, age {self.age}"
+
+    def __repr__(self) -> str:
+        """Developer-friendly representation (for debugging)."""
+        return f"Person(name='{self.name}', age={self.age})"
+
+# Usage
+person = Person("Alice", 30)
+print(person)          # Uses __str__: "Alice, age 30"
+print(repr(person))    # Uses __repr__: "Person(name='Alice', age=30)"
+```
+
+**String Representation Methods:**
+
+| Function | Dunder Method | Purpose |
+|----------|---------------|---------|
+| `str(obj)` | `__str__(self)` | User-friendly string |
+| `repr(obj)` | `__repr__(self)` | Developer/debug string |
+| `print(obj)` | `__str__(self)` | Uses `__str__` if available |
+
+### Callable Objects **[v1.0]**
+
+```python
+class Multiplier:
+    """A callable object that multiplies by a factor."""
+
+    factor: int
+
+    def __init__(self, factor: int):
+        self.factor = factor
+
+    def __call__(self, value: int) -> int:
+        """Make the object callable like a function."""
+        return value * self.factor
+
+# Usage
+times_three = Multiplier(3)
+result = times_three(10)  # Calls __call__, returns 30
+```
+
+**Callable Dunder Method:**
+
+| Syntax | Dunder Method | Description |
+|--------|---------------|-------------|
+| `obj(args)` | `__call__(self, args)` | Makes object callable |
+
+### Hash and Equality **[v0.5]**
+
+For objects to be used as dictionary keys or in sets, they must implement `__hash__` and `__eq__`:
+
+```python
+class Coordinate:
+    """An immutable coordinate that can be used as a dict key."""
+
+    x: int
+    y: int
+
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+
+    def __eq__(self, other: object) -> bool:
+        """Equality comparison."""
+        if not isinstance(other, Coordinate):
+            return False
+        return self.x == other.x and self.y == other.y
+
+    def __hash__(self) -> int:
+        """Hash value for use in dicts/sets."""
+        return hash((self.x, self.y))
+
+# Usage
+locations: dict[Coordinate, str] = {}
+coord = Coordinate(10, 20)
+locations[coord] = "Home"  # Works because __hash__ and __eq__ defined
+```
+
+**Rules for Hashable Objects:**
+- If `__eq__` is defined, `__hash__` must also be defined, and vice versa
+- If `a == b`, then `hash(a) == hash(b)` must be true
+- Hash value should not change during object lifetime
+- Mutable objects should not implement `__hash__`
+
+### Complete Dunder Method Reference **[v0.5]**
+
+See [Type System - Dunder Methods](type_system.md#dunder-methods) for complete list of all available dunder methods.
+
+**Not in v0.5:**
+- Right-hand operator overloads (`__radd__`, `__rmul__`, etc.)
+- In-place operator overloads (`__iadd__`, `__imul__`, etc.)
+- Context manager protocol (`__enter__`, `__exit__`)
+- Async dunder methods (`__aiter__`, `__anext__`)
 
 ## Type Aliases and Enums **[v0.5]**
 
-### Type Aliases **[v0.5]**
+### Type Aliases **[v1.0]**
 
 Type aliases create readable names for complex types:
 
@@ -1871,7 +3400,7 @@ def do_work() -> None:           # OK - return type
     pass
 
 x: str? = None                   # OK - nullable variable with None value
-y = None                         # OK - inferred as object? (nullable object)
+y = None                         # ERROR - cannot infer T from implied T? type from None assignment
 
 # Invalid uses of None
 def broken() -> None:
@@ -2203,10 +3732,14 @@ del numbers[1:3]
 
 ## Control Flow **[v0.5]**
 
-### Conditional Statements
+### Conditional Statements **[v0.5]**
 
 ```python
-# if/elif/else
+# Basic if statement
+if x > 0:
+    print("positive")
+
+# if/elif/else chain
 if x > 0:
     print("positive")
 elif x < 0:
@@ -2214,43 +3747,206 @@ elif x < 0:
 else:
     print("zero")
 
-# Conditional expression
+# Multiple elif branches
+if score >= 90:
+    grade = "A"
+elif score >= 80:
+    grade = "B"
+elif score >= 70:
+    grade = "C"
+elif score >= 60:
+    grade = "D"
+else:
+    grade = "F"
+
+# Nested if statements
+if user is not None:
+    if user.is_active:
+        print("Active user")
+    else:
+        print("Inactive user")
+
+# Conditional expression (ternary operator)
 result = "even" if x % 2 == 0 else "odd"
+
+# Conditional expressions can be nested (though readability suffers)
+category = "small" if x < 10 else ("medium" if x < 100 else "large")
 ```
 
-### Loops
+**If Statement Syntax:**
+```
+if condition:
+    statements
+[elif condition:
+    statements]*
+[else:
+    statements]
+```
+
+**Conditional Expression Syntax:**
+```
+true_value if condition else false_value
+```
+
+**Rules:**
+- Condition must be a boolean expression
+- Each branch must be indented (4 spaces)
+- `elif` and `else` are optional
+- Parentheses around condition are optional (but allowed)
+- Conditional expressions evaluate to a value
+
+### Loops **[v0.5]**
+
+#### While Loops
 
 ```python
-# while loop
+# Basic while loop
 count = 0
 while count < 10:
     print(count)
     count += 1
 
-# for loop with range
-for i in range(10):
+# While with condition using nullable types
+current: Node? = head
+while current is not None:
+    print(current.value)
+    current = current.next  # Type narrowing in effect
+
+# Infinite loop (requires break to exit)
+while True:
+    command = input("Enter command: ")
+    if command == "quit":
+        break
+    process(command)
+```
+
+**While Loop Syntax:**
+```
+while condition:
+    statements
+[else:
+    statements]
+```
+
+#### For Loops
+
+```python
+# For loop with range (exclusive upper bound)
+for i in range(10):           # 0 through 9
     print(i)
 
-# for loop with collection
-names = ["Alice", "Bob", "Charlie"]
+# Range with start and stop
+for i in range(5, 10):        # 5 through 9
+    print(i)
+
+# Range with step
+for i in range(0, 10, 2):     # 0, 2, 4, 6, 8
+    print(i)
+
+# Iterate over list
+names: list[str] = ["Alice", "Bob", "Charlie"]
 for name in names:
     print(name)
 
-# Loop control
+# Iterate over dictionary keys
+scores: dict[str, int] = {"Alice": 95, "Bob": 87}
+for name in scores:
+    print(f"{name}: {scores[name]}")
+
+# Enumerate for index and value
+for index, name in enumerate(names):
+    print(f"{index}: {name}")
+```
+
+**For Loop Syntax:**
+```
+for variable in iterable:
+    statements
+[else:
+    statements]
+```
+
+**Iterable Types:**
+- `range(stop)` or `range(start, stop)` or `range(start, stop, step)`
+- Lists: `list[T]`
+- Dictionaries: `dict[K, V]` (iterates over keys)
+- Sets: `set[T]`
+- Strings: `str` (iterates over characters)
+- Tuples: `tuple[...]`
+
+#### Loop Control **[v0.5]**
+
+```python
+# break - exit loop immediately
 for i in range(100):
     if i == 50:
-        break  # Exit loop
-    if i % 2 == 0:
-        continue  # Skip to next iteration
+        break  # Exit the loop
+    print(i)
 
-# Else block after loops (both for and while) that don't
-# exit via break
-for i in some_values:
-    if i is None:
+# continue - skip to next iteration
+for i in range(10):
+    if i % 2 == 0:
+        continue  # Skip even numbers
+    print(i)  # Only prints odd numbers
+
+# else clause - executes if loop completes without break
+found = False
+for item in items:
+    if item == target:
+        found = True
         break
 else:
-    print("None value not found")
+    # This runs only if break was NOT executed
+    print("Target not found")
+
+# else clause with while
+attempts = 0
+while attempts < 3:
+    password = input("Enter password: ")
+    if check_password(password):
+        break
+    attempts += 1
+else:
+    # Executes if all attempts failed (no break)
+    print("Too many failed attempts")
 ```
+
+**Loop Control Keywords:**
+- `break`: Exit the innermost enclosing loop immediately
+- `continue`: Skip to the next iteration of the innermost loop
+- `else`: Executed when loop completes normally (without `break`)
+
+**Rules:**
+- `break` and `continue` only valid inside loops
+- `break` exits only the innermost loop (no labeled breaks in v0.5)
+- `else` clause is optional
+- `else` clause skipped if loop exits via `break`
+
+### Pattern Matching **[v1.0]**
+
+Match statements are not available in v0.5. Use if/elif/else chains instead:
+
+```python
+# v0.5 approach using if/elif/else
+def describe(value: object) -> str:
+    if isinstance(value, int):
+        if value == 0:
+            return "zero"
+        elif value == 1:
+            return "one"
+        else:
+            return "other integer"
+    elif isinstance(value, str):
+        return f"string: {value}"
+    else:
+        return "unknown type"
+```
+
+**Not in v0.5:**
+- `match` statements
+- Pattern matching syntax
+- Destructuring in match cases
+- Guard clauses in patterns
 
 ### Match Statements **[v1.0]**
 
@@ -2475,22 +4171,269 @@ match color:
 
 ## Exception Handling **[v0.5]**
 
+Sharpy provides exception handling through try/except/finally blocks that map directly to .NET exception handling.
+
+### Try/Except Blocks **[v0.5]**
+
 ```python
-# Basic try/except
+# Basic exception handling
 try:
     result = risky_operation()
-except ValueError as e:
-    print(f"ValueError: {e}")
+    print(f"Success: {result}")
 except Exception as e:
-    print(f"General error: {e}")
+    print(f"Error occurred: {e}")
+
+# Multiple exception handlers
+try:
+    value = int(input("Enter a number: "))
+    result = 100 / value
+except ValueError as e:
+    print(f"Invalid number: {e}")
+except ZeroDivisionError as e:
+    print(f"Cannot divide by zero: {e}")
+except Exception as e:
+    print(f"Unexpected error: {e}")
+
+# Exception handler without binding
+try:
+    risky_operation()
+except ValueError:
+    print("Got a ValueError")
+except (TypeError, KeyError):
+    print("Got TypeError or KeyError")
+```
+
+**Try/Except Syntax:**
+```
+try:
+    statements
+except ExceptionType [as variable]:
+    statements
+[except ExceptionType [as variable]:
+    statements]*
+[else:
+    statements]
+[finally:
+    statements]
+```
+
+### Finally Blocks **[v0.5]**
+
+```python
+# Finally always executes
+try:
+    file = open("data.txt", "r")
+    data = file.read()
+    process(data)
+except FileNotFoundError:
+    print("File not found")
+finally:
+    # Always executes, even if exception occurs
+    if file is not None:
+        file.close()
+
+# Finally with successful execution
+try:
+    result = compute()
+except Exception as e:
+    print(f"Error: {e}")
+finally:
+    # Executes after try or except completes
+    cleanup_resources()
+```
+
+**Finally Rules:**
+- Executes after try block completes successfully
+- Executes after except block handles exception
+- Executes even if exception is not caught
+- Executes even if return/break/continue in try/except
+
+### Else Blocks **[v0.5]**
+
+```python
+# Else executes if no exception occurs
+try:
+    result = safe_operation()
+except Exception as e:
+    print(f"Error: {e}")
+else:
+    # Only runs if no exception in try block
+    print(f"Success: {result}")
 finally:
     cleanup()
 
-# Raising exceptions
-def validate(value: int):
-    if value < 0:
-        raise ValueError("Value must be non-negative")
+# Common pattern for file processing
+try:
+    file = open("data.txt", "r")
+except FileNotFoundError:
+    print("File not found")
+else:
+    # File opened successfully
+    data = file.read()
+    process(data)
+    file.close()
 ```
+
+**Else Rules:**
+- Executes only if try block completes without exception
+- Executes before finally block
+- Not executed if exception occurs (even if caught)
+
+### Raising Exceptions **[v0.5]**
+
+```python
+# Raise built-in exception
+def validate_age(age: int) -> None:
+    if age < 0:
+        raise ValueError("Age cannot be negative")
+    if age > 150:
+        raise ValueError("Age is unrealistic")
+
+# Raise with exception instance
+def check_value(value: int) -> None:
+    if value < 0:
+        raise ValueError(f"Invalid value: {value}")
+
+# Re-raise current exception
+try:
+    risky_operation()
+except Exception as e:
+    log_error(e)
+    raise  # Re-raise the same exception
+
+# Raise different exception while preserving original
+try:
+    parse_data(data)
+except ValueError as e:
+    raise RuntimeError("Failed to parse data") from e
+```
+
+**Raise Syntax:**
+```
+raise ExceptionType(message)
+raise exception_instance
+raise  # Re-raise current exception
+raise NewException(...) from original_exception
+```
+
+### Exception Types **[v0.5]**
+
+Sharpy uses .NET exception types directly:
+
+```python
+# Common .NET exceptions
+from system import (
+    Exception,           # Base exception
+    ArgumentException,   # Invalid argument
+    ArgumentNullException,  # Null argument
+    InvalidOperationException,  # Invalid state
+    NotImplementedException,  # Not implemented
+    NotSupportedException,  # Not supported
+)
+
+from system.io import (
+    IOException,         # I/O error
+    FileNotFoundException,  # File not found
+    DirectoryNotFoundException,  # Directory not found
+)
+
+# Using .NET exceptions
+def read_file(path: str) -> str:
+    if path is None:
+        raise ArgumentNullException("path")
+    if path == "":
+        raise ArgumentException("Path cannot be empty", "path")
+
+    try:
+        return File.ReadAllText(path)
+    except FileNotFoundException as e:
+        raise IOException(f"Cannot read file: {path}") from e
+```
+
+**Common Exception Hierarchy:**
+- `Exception` - Base class for all exceptions
+  - `SystemException` - System-level exceptions
+    - `ArgumentException` - Invalid argument value
+      - `ArgumentNullException` - Null argument
+      - `ArgumentOutOfRangeException` - Argument out of range
+    - `InvalidOperationException` - Invalid state for operation
+    - `NotSupportedException` - Operation not supported
+    - `NotImplementedException` - Not yet implemented
+  - `IOException` - I/O errors
+    - `FileNotFoundException` - File not found
+    - `DirectoryNotFoundException` - Directory not found
+
+### Custom Exceptions **[v0.5]**
+
+```python
+# Define custom exception
+class ValidationError(Exception):
+    """Raised when validation fails."""
+
+    message: str
+    field_name: str
+
+    def __init__(self, message: str, field_name: str):
+        self.message = message
+        self.field_name = field_name
+        super().__init__(f"{field_name}: {message}")
+
+# Use custom exception
+def validate_username(username: str) -> None:
+    if len(username) < 3:
+        raise ValidationError("Username too short", "username")
+    if not username.isalnum():
+        raise ValidationError("Username must be alphanumeric", "username")
+
+# Catch custom exception
+try:
+    validate_username("ab")
+except ValidationError as e:
+    print(f"Validation failed: {e.message} (field: {e.field_name})")
+```
+
+**Custom Exception Rules:**
+- Must inherit from `Exception` or a subclass
+- Should call `super().__init__(message)` in constructor
+- Can add custom fields and methods
+- Follow .NET exception naming: end with "Exception"
+
+### Exception Best Practices **[v0.5]**
+
+```python
+# Catch specific exceptions, not general Exception
+try:
+    value = int(user_input)
+except ValueError:  # Good: specific exception
+    print("Invalid number")
+
+# Avoid catching Exception unless necessary
+try:
+    operation()
+except Exception:  # Avoid: too broad
+    pass
+
+# Use finally for cleanup
+file: File? = None
+try:
+    file = File.Open("data.txt")
+    process(file)
+finally:
+    if file is not None:
+        file.close()
+
+# Provide context in exception messages
+def withdraw(amount: double) -> None:
+    if amount > self.balance:
+        raise InvalidOperationException(
+            f"Insufficient funds: requested {amount}, balance {self.balance}"
+        )
+```
+
+**Not in v0.5:**
+- Exception groups
+- Exception notes
+- `except*` syntax
 
 ## Context Managers **[v1.0]**
 
