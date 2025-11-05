@@ -23,6 +23,16 @@ DOTNET_CSHARP_SRC_DIR: Path = ROOT_DIR / "dotnet/src/Sharpy"
 DOTNET_CSHARP_DOCS_DIR: Path = ROOT_DIR / "dotnet/docs"
 DOTNET_CSHARP_TEST_DIR: Path = ROOT_DIR / "dotnet/src/Sharpy.Tests"
 
+CSHARP_SRC_DIR: Path = ROOT_DIR / "src"
+
+CSHARP_PROJECTS: Sequence[Path] = [
+    DOTNET_CSHARP_SRC_DIR / "Sharpy.csproj",
+    DOTNET_CSHARP_TEST_DIR / "Sharpy.Tests.csproj",
+    CSHARP_SRC_DIR / "Sharpy.Compiler" / "Sharpy.Compiler.csproj",
+    CSHARP_SRC_DIR / "Sharpy.Compiler.Tests" / "Sharpy.Compiler.Tests.csproj",
+    CSHARP_SRC_DIR / "Sharpy.Runtime" / "Sharpy.Runtime.csproj",
+]
+
 RUST_ROOT_DIR: Path = ROOT_DIR / "rust"
 RUST_SRC_DIR: Path = RUST_ROOT_DIR / "src"
 
@@ -351,31 +361,23 @@ def format(args: argparse.Namespace, rest: Sequence[str]) -> None:
 
 def format_with_dotnet_format() -> None:
     try:
-        get_logger().info("Formatting source files with dotnet-format...")
-        subprocess.run(
-            [
-                "dotnet",
-                "format",
-                "whitespace",
-                "-v",
-                "detailed",
-                str(DOTNET_CSHARP_SRC_DIR / "Sharpy.csproj"),
-            ],
-            check=True,
-        )
+        for project in CSHARP_PROJECTS:
+            if not project.exists():
+                get_logger().error(f"Project file '{project}' does not exist.")
+                sys.exit(1)
 
-        get_logger().info("Formatting test files with dotnet-format...")
-        subprocess.run(
-            [
-                "dotnet",
-                "format",
-                "whitespace",
-                "-v",
-                "detailed",
-                str(DOTNET_CSHARP_TEST_DIR / "Sharpy.Tests.csproj"),
-            ],
-            check=True,
-        )
+            get_logger().info(f"Formatting source files from {project.name} with dotnet-format...")
+            subprocess.run(
+                [
+                    "dotnet",
+                    "format",
+                    "whitespace",
+                    "-v",
+                    "detailed",
+                    str(project),
+                ],
+                check=True,
+            )
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -402,7 +404,7 @@ def test(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
         )
         try:
             subprocess.run(
-                ["dotnet", "test", "-c", build_type, str(CSHARP_TEST_DIR), *rest],
+                ["dotnet", "test", "-c", build_type, str(DOTNET_CSHARP_TEST_DIR), *rest],
                 check=True,
             )
         except subprocess.CalledProcessError as e:
