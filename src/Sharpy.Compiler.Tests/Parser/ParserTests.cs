@@ -1328,6 +1328,39 @@ for i in range(10):
 
     #endregion
 
+    #region Auto Type Inference Tests
+
+    [Fact]
+    public void ParseAutoDeclaration()
+    {
+        var module = Parse("x: auto = 42");
+        var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
+        varDecl.Name.Should().Be("x");
+        varDecl.IsConst.Should().BeFalse();
+        varDecl.Type.Name.Should().Be("auto");
+        varDecl.InitialValue.Should().BeOfType<IntegerLiteral>().Which.Value.Should().Be("42");
+    }
+
+    [Fact]
+    public void ParseAutoShadowing()
+    {
+        var source = @"x: int = 5
+x: auto = ""hello""";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(2);
+
+        var firstDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
+        firstDecl.Name.Should().Be("x");
+        firstDecl.Type.Name.Should().Be("int");
+
+        var secondDecl = module.Body[1].Should().BeOfType<VariableDeclaration>().Subject;
+        secondDecl.Name.Should().Be("x");
+        secondDecl.Type.Name.Should().Be("auto");
+        secondDecl.InitialValue.Should().BeOfType<StringLiteral>();
+    }
+
+    #endregion
+
     #region Generic Type Tests
 
     [Fact]

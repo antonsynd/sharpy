@@ -1979,7 +1979,18 @@ public class Parser
         var startLine = Current.Line;
         var startColumn = Current.Column;
 
-        var name = ExpectIdentifier();
+        // Handle 'auto' keyword for type inference
+        string name;
+        if (Current.Type == TokenType.Auto)
+        {
+            name = "auto";
+            Advance();
+        }
+        else
+        {
+            name = ExpectIdentifier();
+        }
+
         var typeArgs = new List<TypeAnnotation>();
         var isNullable = false;
 
