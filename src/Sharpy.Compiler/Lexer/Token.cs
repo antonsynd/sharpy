@@ -9,14 +9,20 @@ public enum TokenType
     Integer,
     Float,
     String,
+    FString,        // f-string
     True,
     False,
     None,
 
-    // Identifiers and Keywords
+    // Identifiers and Keywords (v0.5)
     Identifier,
+
+    // Keywords - Control Flow
     Def,
     Class,
+    Struct,
+    Interface,
+    Enum,
     If,
     Else,
     Elif,
@@ -27,11 +33,29 @@ public enum TokenType
     Break,
     Continue,
     Pass,
+    Try,
+    Except,
+    Finally,
+    Raise,
+    Assert,
+
+    // Keywords - Import
     Import,
     From,
     As,
 
-    // Operators
+    // Keywords - Type/Value
+    Auto,           // Type inference
+    Const,
+    Lambda,
+
+    // Boolean operators (keywords)
+    And,
+    Or,
+    Not,
+    Is,
+
+    // Operators - Arithmetic
     Plus,           // +
     Minus,          // -
     Star,           // *
@@ -40,7 +64,7 @@ public enum TokenType
     Percent,        // %
     DoubleStar,     // **
 
-    // Comparison
+    // Operators - Comparison
     Equal,          // ==
     NotEqual,       // !=
     Less,           // <
@@ -48,8 +72,33 @@ public enum TokenType
     LessEqual,      // <=
     GreaterEqual,   // >=
 
-    // Assignment
+    // Operators - Bitwise
+    Ampersand,      // &
+    Pipe,           // |
+    Caret,          // ^
+    Tilde,          // ~
+    LeftShift,      // <<
+    RightShift,     // >>
+
+    // Operators - Assignment
     Assign,         // =
+    PlusAssign,     // +=
+    MinusAssign,    // -=
+    StarAssign,     // *=
+    SlashAssign,    // /=
+    DoubleSlashAssign, // //=
+    PercentAssign,  // %=
+    DoubleStarAssign,  // **=
+    AmpersandAssign,   // &=
+    PipeAssign,        // |=
+    CaretAssign,       // ^=
+    LeftShiftAssign,   // <<=
+    RightShiftAssign,  // >>=
+
+    // Operators - Special
+    NullConditional,   // ?.
+    NullCoalesce,      // ??
+    Ellipsis,          // ...
 
     // Delimiters
     LeftParen,      // (
@@ -63,6 +112,8 @@ public enum TokenType
     Semicolon,      // ;
     Dot,            // .
     Arrow,          // ->
+    At,             // @ (decorators)
+    Backslash,      // \ (line continuation)
 
     // Special
     Newline,
@@ -70,10 +121,8 @@ public enum TokenType
     Dedent,
     Eof,
 
-    // Access modifiers
-    Public,
-    Private,
-    Protected,
+    // Comment (usually skipped but useful for documentation tools)
+    Comment,
 }
 
 /// <summary>

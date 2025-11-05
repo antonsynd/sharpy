@@ -1,11 +1,28 @@
 namespace Sharpy.Compiler.Parser.Ast;
 
 /// <summary>
-/// Type annotation
+/// Type annotation (int, list[str], dict[str, int], Optional[T], etc.)
 /// </summary>
 public record TypeAnnotation
 {
-    public string Name { get; init; } = string.Empty;
+    public string Name { get; init; } = "";
     public List<TypeAnnotation> TypeArguments { get; init; } = new();
-    public bool IsOptional { get; init; }
+    public bool IsNullable { get; init; }  // T? syntax
+}
+
+/// <summary>
+/// Function type annotation ((int, str) -> bool)
+/// </summary>
+public record FunctionType
+{
+    public List<TypeAnnotation> ParameterTypes { get; init; } = new();
+    public TypeAnnotation ReturnType { get; init; } = null!;
+}
+
+/// <summary>
+/// Tuple type annotation (tuple[int, str, float])
+/// </summary>
+public record TupleType
+{
+    public List<TypeAnnotation> ElementTypes { get; init; } = new();
 }

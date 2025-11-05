@@ -61,8 +61,8 @@ public class RoslynEmitter
         return stmt switch
         {
             FunctionDef funcDef => GenerateFunctionDeclaration(funcDef),
-            Return ret => GenerateReturn(ret),
-            Assign assign => GenerateAssignment(assign),
+            ReturnStatement ret => GenerateReturn(ret),
+            Assignment assign => GenerateAssignment(assign),
             // Add more statement types...
             _ => null
         };
@@ -73,12 +73,8 @@ public class RoslynEmitter
         var mangledName = NameMangler.ToPascalCase(func.Name);
         var returnType = PredefinedType(Token(SyntaxKind.VoidKeyword)); // TODO: Infer return type
 
-        var modifiers = func.AccessModifier switch
-        {
-            "public" => TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)),
-            "private" => TokenList(Token(SyntaxKind.PrivateKeyword), Token(SyntaxKind.StaticKeyword)),
-            _ => TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword))
-        };
+        // Default to public static for now
+        var modifiers = TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword));
 
         var parameters = func.Parameters
             .Select(p => Parameter(Identifier(NameMangler.ToCamelCase(p.Name)))
@@ -97,15 +93,15 @@ public class RoslynEmitter
     {
         return stmt switch
         {
-            Return ret => GenerateReturn(ret),
-            Assign assign => GenerateAssignment(assign),
+            ReturnStatement ret => GenerateReturn(ret),
+            Assignment assign => GenerateAssignment(assign),
             ExpressionStatement exprStmt => ExpressionStatement(GenerateExpression(exprStmt.Expression)),
             // Add more...
             _ => null
         };
     }
 
-    private ReturnStatementSyntax GenerateReturn(Return ret)
+    private ReturnStatementSyntax GenerateReturn(ReturnStatement ret)
     {
         if (ret.Value != null)
         {
@@ -114,11 +110,11 @@ public class RoslynEmitter
         return ReturnStatement();
     }
 
-    private LocalDeclarationStatementSyntax GenerateAssignment(Assign assign)
+    private LocalDeclarationStatementSyntax GenerateAssignment(Assignment assign)
     {
-        if (assign.Target is Name name)
+        if (assign.Target is Identifier name)
         {
-            var varName = NameMangler.ToCamelCase(name.Id);
+            var varName = NameMangler.ToCamelCase(name.Name);
             var value = GenerateExpression(assign.Value);
 
             var declaration = VariableDeclaration(IdentifierName("var"))
@@ -136,34 +132,41 @@ public class RoslynEmitter
     {
         return expr switch
         {
-            Constant constant => GenerateConstant(constant),
-            Name name => IdentifierName(NameMangler.ToCamelCase(name.Id)),
-            Call call => GenerateCall(call),
+            IntegerLiteral intLit => GenerateIntegerLiteral(intLit),
+            FloatLiteral floatLit => GenerateFloatLiteral(floatLit),
+            StringLiteral strLit => GenerateStringLiteral(strLit),
+            BooleanLiteral boolLit => LiteralExpression(boolLit.Value ? SyntaxKind.TrueLiteralExpression : SyntaxKind.FalseLiteralExpression),
+            NoneLiteral => LiteralExpression(SyntaxKind.NullLiteralExpression),
+            Identifier name => IdentifierName(NameMangler.ToCamelCase(name.Name)),
+            FunctionCall call => GenerateCall(call),
             BinaryOp binOp => GenerateBinaryOp(binOp),
             // Add more...
             _ => throw new NotImplementedException($"Expression type not implemented: {expr.GetType().Name}")
         };
     }
 
-    private ExpressionSyntax GenerateConstant(Constant constant)
+    private ExpressionSyntax GenerateIntegerLiteral(IntegerLiteral literal)
     {
-        return constant.Value switch
-        {
-            null => LiteralExpression(SyntaxKind.NullLiteralExpression),
-            int i => LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(i)),
-            string s => LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(s)),
-            bool b => LiteralExpression(b ? SyntaxKind.TrueLiteralExpression : SyntaxKind.FalseLiteralExpression),
-            _ => throw new NotImplementedException($"Constant type not implemented: {constant.Value?.GetType().Name}")
-        };
+        return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(int.Parse(literal.Value)));
     }
 
-    private ExpressionSyntax GenerateCall(Call call)
+    private ExpressionSyntax GenerateFloatLiteral(FloatLiteral literal)
     {
-        if (call.Function is Name funcName)
+        return LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(double.Parse(literal.Value)));
+    }
+
+    private ExpressionSyntax GenerateStringLiteral(StringLiteral literal)
+    {
+        return LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(literal.Value));
+    }
+
+    private ExpressionSyntax GenerateCall(FunctionCall call)
+    {
+        if (call.Function is Identifier funcName)
         {
-            var name = _context.IsBuiltinFunction(funcName.Id)
-                ? $"Sharpy.Exports.{NameMangler.ToPascalCase(funcName.Id)}"
-                : NameMangler.ToPascalCase(funcName.Id);
+            var name = _context.IsBuiltinFunction(funcName.Name)
+                ? $"Sharpy.Exports.{NameMangler.ToPascalCase(funcName.Name)}"
+                : NameMangler.ToPascalCase(funcName.Name);
 
             var args = call.Arguments.Select(GenerateExpression).ToArray();
 
@@ -182,9 +185,9 @@ public class RoslynEmitter
         var kind = binOp.Operator switch
         {
             BinaryOperator.Add => SyntaxKind.AddExpression,
-            BinaryOperator.Sub => SyntaxKind.SubtractExpression,
-            BinaryOperator.Mult => SyntaxKind.MultiplyExpression,
-            BinaryOperator.Div => SyntaxKind.DivideExpression,
+            BinaryOperator.Subtract => SyntaxKind.SubtractExpression,
+            BinaryOperator.Multiply => SyntaxKind.MultiplyExpression,
+            BinaryOperator.Divide => SyntaxKind.DivideExpression,
             _ => throw new NotImplementedException($"Binary operator not implemented: {binOp.Operator}")
         };
 

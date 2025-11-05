@@ -12,19 +12,10 @@ public abstract record Node
 }
 
 /// <summary>
-/// Base class for all statement nodes
-/// </summary>
-public abstract record Statement : Node;
-
-/// <summary>
-/// Base class for all expression nodes
-/// </summary>
-public abstract record Expression : Node;
-
-/// <summary>
-/// Root module node
+/// Root module node containing top-level statements and definitions
 /// </summary>
 public record Module : Node
 {
     public List<Statement> Body { get; init; } = new();
+    public string? DocString { get; init; }
 }

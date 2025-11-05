@@ -1,17 +1,177 @@
 namespace Sharpy.Compiler.Parser.Ast;
 
 /// <summary>
-/// Binary operation expression
+/// Base class for all expression nodes
 /// </summary>
-public record BinaryOp : Expression
+public abstract record Expression : Node;
+
+#region Literals
+
+/// <summary>
+/// Integer literal (42, 1_000_000, 42L, etc.)
+/// </summary>
+public record IntegerLiteral : Expression
 {
-    public Expression Left { get; init; } = null!;
-    public BinaryOperator Operator { get; init; }
-    public Expression Right { get; init; } = null!;
+    public string Value { get; init; } = "";
+    public string? Suffix { get; init; }  // L, U, UL, etc.
 }
 
 /// <summary>
-/// Unary operation expression
+/// Float literal (3.14, 3.14f, 3.14m, etc.)
+/// </summary>
+public record FloatLiteral : Expression
+{
+    public string Value { get; init; } = "";
+    public string? Suffix { get; init; }  // f, F, d, D, m, M
+}
+
+/// <summary>
+/// String literal ("hello", 'world', r"C:\path", """multi-line""")
+/// </summary>
+public record StringLiteral : Expression
+{
+    public string Value { get; init; } = "";
+    public bool IsRaw { get; init; }
+}
+
+/// <summary>
+/// F-string literal (f"Hello {name}")
+/// </summary>
+public record FStringLiteral : Expression
+{
+    public List<FStringPart> Parts { get; init; } = new();
+}
+
+public record FStringPart
+{
+    public string? Text { get; init; }
+    public Expression? Expression { get; init; }
+}
+
+/// <summary>
+/// Boolean literal (True or False)
+/// </summary>
+public record BooleanLiteral : Expression
+{
+    public bool Value { get; init; }
+}
+
+/// <summary>
+/// None literal
+/// </summary>
+public record NoneLiteral : Expression;
+
+/// <summary>
+/// Ellipsis literal (...)
+/// </summary>
+public record EllipsisLiteral : Expression;
+
+#endregion
+
+#region Collections
+
+/// <summary>
+/// List literal [1, 2, 3]
+/// </summary>
+public record ListLiteral : Expression
+{
+    public List<Expression> Elements { get; init; } = new();
+}
+
+/// <summary>
+/// Dictionary literal {"a": 1, "b": 2}
+/// </summary>
+public record DictLiteral : Expression
+{
+    public List<DictEntry> Entries { get; init; } = new();
+}
+
+public record DictEntry
+{
+    public Expression Key { get; init; } = null!;
+    public Expression Value { get; init; } = null!;
+}
+
+/// <summary>
+/// Set literal {1, 2, 3}
+/// </summary>
+public record SetLiteral : Expression
+{
+    public List<Expression> Elements { get; init; } = new();
+}
+
+/// <summary>
+/// Tuple literal (1, 2, 3) or (1,)
+/// </summary>
+public record TupleLiteral : Expression
+{
+    public List<Expression> Elements { get; init; } = new();
+}
+
+#endregion
+
+#region Primary Expressions
+
+/// <summary>
+/// Identifier/name reference
+/// </summary>
+public record Identifier : Expression
+{
+    public string Name { get; init; } = "";
+}
+
+/// <summary>
+/// Member access (obj.member or obj?.member)
+/// </summary>
+public record MemberAccess : Expression
+{
+    public Expression Object { get; init; } = null!;
+    public string Member { get; init; } = "";
+    public bool IsNullConditional { get; init; }  // obj?.member
+}
+
+/// <summary>
+/// Index access (obj[index])
+/// </summary>
+public record IndexAccess : Expression
+{
+    public Expression Object { get; init; } = null!;
+    public Expression Index { get; init; } = null!;
+}
+
+/// <summary>
+/// Slice access (obj[start:stop:step])
+/// </summary>
+public record SliceAccess : Expression
+{
+    public Expression Object { get; init; } = null!;
+    public Expression? Start { get; init; }
+    public Expression? Stop { get; init; }
+    public Expression? Step { get; init; }
+}
+
+/// <summary>
+/// Function call (func(arg1, arg2, key=value))
+/// </summary>
+public record FunctionCall : Expression
+{
+    public Expression Function { get; init; } = null!;
+    public List<Expression> Arguments { get; init; } = new();
+    public List<KeywordArgument> KeywordArguments { get; init; } = new();
+}
+
+public record KeywordArgument
+{
+    public string Name { get; init; } = "";
+    public Expression Value { get; init; } = null!;
+}
+
+#endregion
+
+#region Operators
+
+/// <summary>
+/// Unary operation (+x, -x, not x, ~x)
 /// </summary>
 public record UnaryOp : Expression
 {
@@ -19,119 +179,134 @@ public record UnaryOp : Expression
     public Expression Operand { get; init; } = null!;
 }
 
-/// <summary>
-/// Comparison expression
-/// </summary>
-public record Compare : Expression
+public enum UnaryOperator
 {
+    Plus,      // +x
+    Minus,     // -x
+    Not,       // not x
+    BitwiseNot // ~x
+}
+
+/// <summary>
+/// Binary operation (a + b, a * b, a and b, etc.)
+/// </summary>
+public record BinaryOp : Expression
+{
+    public BinaryOperator Operator { get; init; }
     public Expression Left { get; init; } = null!;
-    public List<CompareOperator> Operators { get; init; } = new();
-    public List<Expression> Comparators { get; init; } = new();
-}
-
-/// <summary>
-/// Function call expression
-/// </summary>
-public record Call : Expression
-{
-    public Expression Function { get; init; } = null!;
-    public List<Expression> Arguments { get; init; } = new();
-    public List<Keyword> Keywords { get; init; } = new();
-}
-
-/// <summary>
-/// Attribute access expression (e.g., obj.attr)
-/// </summary>
-public record Attribute : Expression
-{
-    public Expression Value { get; init; } = null!;
-    public string AttributeName { get; init; } = string.Empty;
-}
-
-/// <summary>
-/// Subscript expression (e.g., obj[key])
-/// </summary>
-public record Subscript : Expression
-{
-    public Expression Value { get; init; } = null!;
-    public Expression Index { get; init; } = null!;
-}
-
-/// <summary>
-/// Name/identifier expression
-/// </summary>
-public record Name : Expression
-{
-    public string Id { get; init; } = string.Empty;
-}
-
-/// <summary>
-/// Constant literal expression
-/// </summary>
-public record Constant : Expression
-{
-    public object? Value { get; init; }
-
-    public ConstantKind Kind => Value switch
-    {
-        null => ConstantKind.None,
-        int => ConstantKind.Integer,
-        long => ConstantKind.Integer,
-        double => ConstantKind.Float,
-        string => ConstantKind.String,
-        bool => ConstantKind.Boolean,
-        _ => ConstantKind.Other
-    };
-}
-
-/// <summary>
-/// List literal expression
-/// </summary>
-public record ListExpr : Expression
-{
-    public List<Expression> Elements { get; init; } = new();
-}
-
-/// <summary>
-/// Dictionary literal expression
-/// </summary>
-public record DictExpr : Expression
-{
-    public List<(Expression Key, Expression Value)> Items { get; init; } = new();
-}
-
-/// <summary>
-/// Keyword argument in function call
-/// </summary>
-public record Keyword
-{
-    public string Name { get; init; } = string.Empty;
-    public Expression Value { get; init; } = null!;
-}
-
-public enum ConstantKind
-{
-    None,
-    Integer,
-    Float,
-    String,
-    Boolean,
-    Other
+    public Expression Right { get; init; } = null!;
 }
 
 public enum BinaryOperator
 {
-    Add, Sub, Mult, Div, FloorDiv, Mod, Pow,
-    BitAnd, BitOr, BitXor, LeftShift, RightShift,
-    And, Or
+    // Arithmetic
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    FloorDivide,
+    Modulo,
+    Power,
+
+    // Comparison
+    Equal,
+    NotEqual,
+    LessThan,
+    LessThanOrEqual,
+    GreaterThan,
+    GreaterThanOrEqual,
+
+    // Logical
+    And,
+    Or,
+
+    // Bitwise
+    BitwiseAnd,
+    BitwiseOr,
+    BitwiseXor,
+    LeftShift,
+    RightShift,
+
+    // Membership and Identity
+    In,
+    NotIn,
+    Is,
+    IsNot,
+
+    // Null coalescing
+    NullCoalesce
 }
 
-public enum UnaryOperator
+/// <summary>
+/// Comparison chain (a < b < c)
+/// </summary>
+public record ComparisonChain : Expression
 {
-    Not, Invert, Plus, Minus
+    public List<Expression> Operands { get; init; } = new();
+    public List<ComparisonOperator> Operators { get; init; } = new();
 }
 
-public enum CompareOperator
+public enum ComparisonOperator
 {
-    Eq, NotEq, Lt, LtE, Gt, GtE, Is, IsNot, In, NotIn
+    Equal,
+    NotEqual,
+    LessThan,
+    LessThanOrEqual,
+    GreaterThan,
+    GreaterThanOrEqual,
+    In,
+    NotIn,
+    Is,
+    IsNot
 }
+
+#endregion
+
+#region Advanced Expressions
+
+/// <summary>
+/// Conditional/ternary expression (value if test else other)
+/// </summary>
+public record ConditionalExpression : Expression
+{
+    public Expression Test { get; init; } = null!;
+    public Expression ThenValue { get; init; } = null!;
+    public Expression ElseValue { get; init; } = null!;
+}
+
+/// <summary>
+/// Lambda expression (lambda x, y: x + y)
+/// </summary>
+public record LambdaExpression : Expression
+{
+    public List<Parameter> Parameters { get; init; } = new();
+    public Expression Body { get; init; } = null!;
+}
+
+/// <summary>
+/// Type cast (value as Type)
+/// </summary>
+public record TypeCast : Expression
+{
+    public Expression Value { get; init; } = null!;
+    public TypeAnnotation TargetType { get; init; } = null!;
+}
+
+/// <summary>
+/// Type check (value is Type)
+/// </summary>
+public record TypeCheck : Expression
+{
+    public Expression Value { get; init; } = null!;
+    public TypeAnnotation CheckType { get; init; } = null!;
+}
+
+/// <summary>
+/// Parenthesized expression ((expression))
+/// </summary>
+public record Parenthesized : Expression
+{
+    public Expression Expression { get; init; } = null!;
+}
+
+#endregion
