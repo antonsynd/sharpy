@@ -1,3 +1,4 @@
+using System.Text;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Parser.Ast;
 
@@ -19,6 +20,7 @@ public class Parser
     }
 
     private Token Current => _position < _tokens.Count ? _tokens[_position] : _tokens[^1];
+    private Token Previous => _position > 0 ? _tokens[_position - 1] : _tokens[0];
     private Token Peek(int offset = 1) => _position + offset < _tokens.Count ? _tokens[_position + offset] : _tokens[^1];
     private bool IsAtEnd => Current.Type == TokenType.Eof;
 
@@ -1222,6 +1224,33 @@ public class Parser
     {
         var left = ParseBitwiseOr();
 
+        // Special case: "is" followed by a type name should be parsed as TypeCheck
+        if (Current.Type == TokenType.Is && Peek(1).Type == TokenType.Identifier)
+        {
+            var nextTokenValue = Peek(1).Value;
+            // Check if it's a type name (starts with uppercase or is a known primitive type)
+            if (IsTypeName(nextTokenValue))
+            {
+                var startLine = left.LineStart;
+                var startColumn = left.ColumnStart;
+                Advance(); // skip 'is'
+                var typeStartLine = Current.Line;
+                var typeStartColumn = Current.Column;
+                var typeAnnotation = ParseTypeAnnotation();
+                var endLine = Previous.Line;
+                var endColumn = Previous.Column;
+                return new TypeCheck
+                {
+                    Value = left,
+                    CheckType = typeAnnotation,
+                    LineStart = startLine,
+                    ColumnStart = startColumn,
+                    LineEnd = endLine,
+                    ColumnEnd = endColumn
+                };
+            }
+        }
+
         // Check for comparison chain (a < b < c)
         var operators = new List<ComparisonOperator>();
         var operands = new List<Expression> { left };
@@ -1695,16 +1724,47 @@ public class Parser
         {
             case TokenType.Integer:
                 {
-                    var value = Current.Value;
+                    var tokenValue = Current.Value;
                     Advance();
-                    return new IntegerLiteral { Value = value, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+
+                    // Extract suffix if present (L, U, UL, etc.)
+                    string value = tokenValue;
+                    string? suffix = null;
+
+                    if (tokenValue.Length > 0 && char.IsLetter(tokenValue[tokenValue.Length - 1]))
+                    {
+                        // Check for two-letter suffix
+                        if (tokenValue.Length > 1 && char.IsLetter(tokenValue[tokenValue.Length - 2]))
+                        {
+                            suffix = tokenValue.Substring(tokenValue.Length - 2);
+                            value = tokenValue.Substring(0, tokenValue.Length - 2);
+                        }
+                        else
+                        {
+                            suffix = tokenValue.Substring(tokenValue.Length - 1);
+                            value = tokenValue.Substring(0, tokenValue.Length - 1);
+                        }
+                    }
+
+                    return new IntegerLiteral { Value = value, Suffix = suffix, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
                 }
 
             case TokenType.Float:
                 {
-                    var value = Current.Value;
+                    var tokenValue = Current.Value;
                     Advance();
-                    return new FloatLiteral { Value = value, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+
+                    // Extract suffix if present (f, F, d, D, m, M)
+                    string value = tokenValue;
+                    string? suffix = null;
+
+                    if (tokenValue.Length > 0 && char.IsLetter(tokenValue[tokenValue.Length - 1]))
+                    {
+                        suffix = tokenValue.Substring(tokenValue.Length - 1);
+                        value = tokenValue.Substring(0, tokenValue.Length - 1);
+                    }
+
+                    return new FloatLiteral { Value = value, Suffix = suffix, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
                 }
 
             case TokenType.String:
@@ -1724,9 +1784,11 @@ public class Parser
             case TokenType.FString:
                 {
                     var value = Current.Value;
+                    var endLine = Current.Line;
+                    var endColumn = Current.Column;
                     Advance();
-                    // TODO: Parse f-string parts
-                    return new FStringLiteral { Parts = new List<FStringPart>(), LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                    var parts = ParseFStringParts(value);
+                    return new FStringLiteral { Parts = parts, LineStart = startLine, ColumnStart = startColumn, LineEnd = endLine, ColumnEnd = endColumn };
                 }
 
             case TokenType.True:
@@ -1998,6 +2060,86 @@ public class Parser
     {
         while (Current.Type == TokenType.Newline)
             Advance();
+    }
+
+    private bool IsTypeName(string name)
+    {
+        // Primitive types
+        if (name is "int" or "float" or "str" or "bool" or "list" or "dict" or "set" or "tuple" or "object" or "any")
+            return true;
+
+        // User-defined types typically start with uppercase letter
+        if (name.Length > 0 && char.IsUpper(name[0]))
+            return true;
+
+        return false;
+    }
+
+    private List<FStringPart> ParseFStringParts(string fstringValue)
+    {
+        var parts = new List<FStringPart>();
+        var i = 0;
+        var textBuffer = new StringBuilder();
+
+        while (i < fstringValue.Length)
+        {
+            if (fstringValue[i] == '{')
+            {
+                // Save any accumulated text before the expression
+                if (textBuffer.Length > 0)
+                {
+                    parts.Add(new FStringPart { Text = textBuffer.ToString(), Expression = null });
+                    textBuffer.Clear();
+                }
+
+                // Find the matching closing brace
+                i++; // Skip '{'
+                var exprStart = i;
+                var braceDepth = 1;
+
+                while (i < fstringValue.Length && braceDepth > 0)
+                {
+                    if (fstringValue[i] == '{') braceDepth++;
+                    else if (fstringValue[i] == '}') braceDepth--;
+
+                    if (braceDepth > 0) i++;
+                }
+
+                // Extract and parse the expression
+                var exprText = fstringValue.Substring(exprStart, i - exprStart);
+
+                // Parse the expression by creating a mini lexer/parser
+                var exprLexer = new Lexer.Lexer(exprText);
+                var exprTokens = new List<Token>();
+                while (true)
+                {
+                    var token = exprLexer.NextToken();
+                    exprTokens.Add(token);
+                    if (token.Type == TokenType.Eof)
+                        break;
+                }
+
+                var exprParser = new Parser(exprTokens);
+                var expr = exprParser.ParseExpression();
+
+                parts.Add(new FStringPart { Text = null, Expression = expr });
+
+                i++; // Skip '}'
+            }
+            else
+            {
+                textBuffer.Append(fstringValue[i]);
+                i++;
+            }
+        }
+
+        // Add any remaining text
+        if (textBuffer.Length > 0)
+        {
+            parts.Add(new FStringPart { Text = textBuffer.ToString(), Expression = null });
+        }
+
+        return parts;
     }
 
     #endregion

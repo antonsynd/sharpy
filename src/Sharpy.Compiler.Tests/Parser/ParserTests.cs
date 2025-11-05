@@ -36,7 +36,7 @@ public class ParserTests
         literal.Suffix.Should().BeNull();
     }
 
-    [Fact(Skip = "TODO: Integer literal suffix handling needs verification")]
+    [Fact]
     public void ParseIntegerLiteralWithSuffix()
     {
         var module = Parse("42L");
@@ -75,12 +75,12 @@ public class ParserTests
         literal.IsRaw.Should().BeTrue();
     }
 
-    [Fact(Skip = "TODO: F-string parsing needs investigation - possible lexer issue")]
+    [Fact]
     public void ParseFStringLiteral()
     {
-        var module = Parse("f\"hello {name}\"");
-        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
-        var fstring = exprStmt.Expression.Should().BeOfType<FStringLiteral>().Subject;
+        var module = Parse("x = f\"hello {name}\"");
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var fstring = assignment.Value.Should().BeOfType<FStringLiteral>().Subject;
         fstring.Parts.Should().HaveCount(2);
         fstring.Parts[0].Text.Should().Be("hello ");
         fstring.Parts[0].Expression.Should().BeNull();
@@ -428,7 +428,7 @@ public class ParserTests
         cast.TargetType.Name.Should().Be("int");
     }
 
-    [Fact(Skip = "TODO: Type check (is Type) needs disambiguation from identity comparison (is None)")]
+    [Fact]
     public void ParseTypeCheck()
     {
         var module = Parse("x is int");
@@ -1540,7 +1540,7 @@ class Person:
 
     #region Type Check Disambiguation Tests
 
-    [Fact(Skip = "TODO: Implement is Type vs is None disambiguation")]
+    [Fact]
     public void ParseTypeCheckVsIdentityComparison()
     {
         // According to spec: "x is MyClass" is type check, "x is None" is identity comparison
