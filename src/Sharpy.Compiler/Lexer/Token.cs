@@ -121,6 +121,7 @@ public enum TokenType
     Indent,
     Dedent,
     Eof,
+    Backtick,       // ` (for literal names)
 
     // Comment (usually skipped but useful for documentation tools)
     Comment,

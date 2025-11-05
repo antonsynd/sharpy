@@ -260,6 +260,10 @@ public class Lexer
             (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
             return ReadRawString();
 
+        // Backtick-delimited literal names
+        if (current == '`')
+            return ReadLiteralName();
+
         // Numbers
         if (char.IsDigit(current))
             return ReadNumber();
@@ -1008,6 +1012,41 @@ public class Lexer
             return new Token(tokenType, value, startLine, startColumn);
 
         return new Token(TokenType.Identifier, value, startLine, startColumn);
+    }
+
+    private Token ReadLiteralName()
+    {
+        var startLine = _line;
+        var startColumn = _column;
+        var sb = new StringBuilder();
+
+        // Skip opening backtick
+        _position++;
+        _column++;
+
+        while (_position < _source.Length)
+        {
+            var c = _source[_position];
+
+            if (c == '`')
+            {
+                // Found closing backtick
+                _position++;
+                _column++;
+                return new Token(TokenType.Identifier, sb.ToString(), startLine, startColumn);
+            }
+
+            if (c == '\n' || c == '\r')
+            {
+                throw new LexerError("Unterminated literal name (backtick-delimited identifier)", _line, _column);
+            }
+
+            sb.Append(c);
+            _position++;
+            _column++;
+        }
+
+        throw new LexerError("Unterminated literal name (backtick-delimited identifier)", _line, _column);
     }
 
     private Token ReadOperatorOrDelimiter()

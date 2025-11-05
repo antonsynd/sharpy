@@ -1079,4 +1079,157 @@ y = 2";
     }
 
     #endregion
+
+    #region Literal Name (Backtick) Tests
+
+    [Fact]
+    public void Tokenize_SimpleLiteralName_ProducesIdentifierToken()
+    {
+        var source = "`simple_name`";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.Identifier);
+        token.Value.Should().Be("simple_name");
+    }
+
+    [Fact]
+    public void Tokenize_LiteralNameWithKeyword_ProducesIdentifierNotKeyword()
+    {
+        var source = "`class`";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.Identifier);
+        token.Value.Should().Be("class");
+    }
+
+    [Fact]
+    public void Tokenize_LiteralNameWithSpaces_ProducesIdentifierWithSpaces()
+    {
+        var source = "`name with spaces`";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.Identifier);
+        token.Value.Should().Be("name with spaces");
+    }
+
+    [Fact]
+    public void Tokenize_LiteralNameWithSpecialChars_ProducesCorrectToken()
+    {
+        var source = "`ExactMethodName`";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.Identifier);
+        token.Value.Should().Be("ExactMethodName");
+    }
+
+    [Fact]
+    public void Tokenize_LiteralNameInImport_ProducesCorrectTokens()
+    {
+        var source = "from foo_bar.`abc` import *";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.From);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "foo_bar");
+        tokens.Should().Contain(t => t.Type == TokenType.Dot);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "abc");
+        tokens.Should().Contain(t => t.Type == TokenType.Import);
+    }
+
+    [Fact]
+    public void Tokenize_LiteralNameAsFunction_ProducesCorrectTokens()
+    {
+        var source = "def `ExactMethodName`():";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.Def);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "ExactMethodName");
+        tokens.Should().Contain(t => t.Type == TokenType.LeftParen);
+        tokens.Should().Contain(t => t.Type == TokenType.RightParen);
+        tokens.Should().Contain(t => t.Type == TokenType.Colon);
+    }
+
+    [Fact]
+    public void Tokenize_UnterminatedLiteralName_ThrowsError()
+    {
+        var source = "`unterminated";
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>().WithMessage("*Unterminated literal name*");
+    }
+
+    [Fact]
+    public void Tokenize_LiteralNameWithNewline_ThrowsError()
+    {
+        var source = "`name\nwith newline`";
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>().WithMessage("*Unterminated literal name*");
+    }
+
+    [Fact]
+    public void Tokenize_EmptyLiteralName_ProducesEmptyIdentifier()
+    {
+        var source = "``";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.Identifier);
+        token.Value.Should().Be("");
+    }
+
+    [Fact]
+    public void Tokenize_LiteralNameWithNumbers_ProducesCorrectToken()
+    {
+        var source = "`name123`";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.Identifier);
+        token.Value.Should().Be("name123");
+    }
+
+    [Fact]
+    public void Tokenize_LiteralNameWithUnderscore_ProducesCorrectToken()
+    {
+        var source = "`_private_name_`";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.Identifier);
+        token.Value.Should().Be("_private_name_");
+    }
+
+    [Fact]
+    public void Tokenize_MultipleLiteralNames_ProducesCorrectTokens()
+    {
+        var source = "`first` `second` `third`";
+        var tokens = Tokenize(source);
+
+        var identifiers = tokens.Where(t => t.Type == TokenType.Identifier).ToList();
+        identifiers.Should().HaveCount(3);
+        identifiers[0].Value.Should().Be("first");
+        identifiers[1].Value.Should().Be("second");
+        identifiers[2].Value.Should().Be("third");
+    }
+
+    #endregion
+
+    #region Ellipsis Literal Tests (v0.5 Placeholder)
+
+    [Fact]
+    public void Tokenize_EllipsisAsPlaceholder_ProducesEllipsisToken()
+    {
+        var source = "def todo_function():\n    ...";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.Ellipsis);
+    }
+
+    [Fact]
+    public void Tokenize_EllipsisInInterfaceMethod_ProducesCorrectTokens()
+    {
+        var source = "def draw(self) -> None:\n    ...";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.Def);
+        tokens.Should().Contain(t => t.Type == TokenType.Ellipsis);
+    }
+
+    [Fact]
+    public void Tokenize_EllipsisStandalone_ProducesEllipsisToken()
+    {
+        var token = SingleToken("...");
+        token.Type.Should().Be(TokenType.Ellipsis);
+        token.Value.Should().Be("...");
+    }
+
+    #endregion
 }
