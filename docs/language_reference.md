@@ -30,7 +30,6 @@ These principles are ordered in descending order of importance and should guide 
 ### Philosophy
 
 Sharpy believes that static typing is key to writing safe, predictable, and performant programs, at both the development stage and at runtime.
-
 ## Keywords and Operators **[v0.5]**
 
 ### Hard Keywords
@@ -50,6 +49,7 @@ The following are hard keywords in Sharpy and are always reserved:
 | `const` | Constant declaration |
 | `continue` | Continue statement for loops |
 | `def` | Function definition |
+| `defer` | Deferral of cleanup expressions |
 | `del` | Delete statement for dictionaries |
 | `elif` | Else if block for conditionals |
 | `else` | Else block for conditionals and loops |
@@ -65,7 +65,6 @@ The following are hard keywords in Sharpy and are always reserved:
 | `interface` | Keyword for interfaces |
 | `is` | Reference equality operator |
 | `lambda` | Lambda expression |
-| `match` | Match block for expressive, structural matching |
 | `None` | None literal |
 | `not` | Boolean not |
 | `or` | Boolean or |
@@ -85,14 +84,89 @@ The following are soft keywords that are only treated as keywords in specific co
 
 | Sharpy | Notes |
 | ------ | ----- |
-| `case` | Case block for match blocks |
-| `defer` | Deferral of cleanup expressions |
+| `case` | Case block for match statements |
 | `event` | Event handler definition |
 | `get` | Property getter definition |
+| `match` | Match statement for pattern matching |
 | `property` | Property definition |
 | `set` | Property setter definition |
-| `type` | Type alias |
+| `type` | Type alias declaration |
 | `_` | Wildcard in match blocks |
+
+## Type Aliases **[v1.0]**
+
+Type aliases create readable names for complex types. They can be declared at module, class, or function level:
+
+### Module-Level Type Aliases
+
+```python
+# Simple aliases
+type UserId = int
+type Coordinate = tuple[double, double]
+
+# Generic aliases
+type Matrix = list[list[double]]
+type Callback[T] = (T) -> None
+type Result[T, E] = Result[T, E]  # Re-export with friendly name
+```
+
+### Class-Level Type Aliases
+
+```python
+class Geometry:
+    """Geometric calculations."""
+
+    # Type alias scoped to class
+    type Point3D = tuple[double, double, double]
+    type Vector3D = Point3D
+
+    def distance(p1: Point3D, p2: Point3D) -> double:
+        dx, dy, dz = p1[0] - p2[0], p1[1] - p2[1], p1[2] - p2[2]
+        return (dx**2 + dy**2 + dz**2) ** 0.5
+```
+
+### Function-Level Type Aliases
+
+Function-level type aliases are scoped to the function and particularly useful for complex generic types:
+
+```python
+def process_data[T, E](
+    items: dict[str, list[Result[T, E]]],
+    transform: (T) -> Result[T, E]
+) -> dict[str, list[Result[T, E]]]:
+
+    # Function-local type aliases improve readability
+    type DataMap = dict[str, list[Result[T, E]]]
+    type Transform = (T) -> Result[T, E]
+    type ItemResult = Result[T, E]
+
+    result: DataMap = {}
+
+    for key, values in items.items():
+        transformed: list[ItemResult] = []
+        for item_result in values:
+            match item_result:
+                case Result.Ok(value):
+                    new_result: ItemResult = transform(value)
+                    transformed.append(new_result)
+                case Result.Err(error):
+                    transformed.append(Result.err(error))
+        result[key] = transformed
+
+    return result
+```
+
+**Benefits of function-level type aliases:**
+- Reduce repetition of complex generic types
+- Improve readability of type signatures
+- Document semantic meaning of types
+- Can reference enclosing function's generic parameters
+
+**Scope rules:**
+- Type aliases are scoped to their declaration level (module/class/function)
+- Function-level aliases can shadow module/class-level aliases
+- Function-level aliases can reference the function's generic type parameters
+- Type aliases are evaluated at compile time, not runtime
 
 ### Operators
 
