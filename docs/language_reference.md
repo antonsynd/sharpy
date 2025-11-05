@@ -1007,6 +1007,419 @@ func(first(), second(), third())
 - Await expressions
 - Yield expressions
 
+## Parsing Disambiguation **[v0.5]**
+
+This section provides guidance for parser implementation when syntax is ambiguous.
+
+### Tuple vs Parenthesized Expression **[v0.5]**
+
+**Disambiguation Rule:** Presence of comma determines tuple vs expression.
+
+```python
+# Single element in parentheses - NOT a tuple
+x = (42)             # Parenthesized expression, x is int
+
+# Single element with trailing comma - IS a tuple
+y = (42,)            # Tuple with one element, y is tuple[int]
+
+# Multiple elements - IS a tuple (parentheses optional)
+point = (10, 20)     # Tuple, point is tuple[int, int]
+point = 10, 20       # Also a tuple (same as above)
+
+# Empty parentheses - empty tuple
+empty = ()           # Empty tuple, type is tuple[()]
+```
+
+**Parsing Strategy:**
+1. If expression starts with `(`:
+   - Look ahead for comma before closing `)`
+   - If comma found (or empty): parse as tuple
+   - If no comma: parse as parenthesized expression
+2. If expression has comma at top level (not in nested brackets):
+   - Parse as tuple without parentheses
+
+### Type Annotation vs Generic Call **[v0.5]**
+
+**Disambiguation Rule:** Context determines if `[]` is type parameter or indexing.
+
+```python
+# Type annotation context (after : or in type position)
+x: list[int] = []         # list[int] is type annotation
+
+# Generic type instantiation (constructor call)
+items = list[int]()       # list[int] is generic instantiation
+map = dict[str, int]()    # dict[str, int] is generic instantiation
+
+# Indexing operation (on expression)
+value = items[0]          # items[0] is indexing
+subset = items[1:5]       # items[1:5] is slicing
+```
+
+**Parsing Strategy:**
+1. After `:` in variable declaration → type annotation
+2. After `:` in function signature → type annotation
+3. After `()` (constructor/function call) → likely generic instantiation
+4. After identifier in expression position → could be either:
+   - If followed by `()`: generic instantiation
+   - Otherwise: indexing/slicing
+
+### Dictionary vs Set Literal **[v0.5]**
+
+**Disambiguation Rule:** Presence of `:` determines dict vs set.
+
+```python
+# Empty braces with special syntax {/} - SET
+empty_set: set[int] = {/}
+
+# Empty braces {} - DICTIONARY
+empty_dict: dict[str, int] = {}
+
+# Braces with colon - DICTIONARY
+mapping = {"a": 1, "b": 2}
+
+# Braces without colon - SET
+numbers = {1, 2, 3}
+```
+
+**Parsing Strategy:**
+1. `{}` → empty dictionary
+2. `{/}` → empty set
+3. `{` followed by expression:
+   - Look ahead for `:` before `,` or `}`
+   - If `:` found: parse as dictionary
+   - If no `:`: parse as set
+
+### Function Call vs Type Cast **[v0.5]**
+
+**Disambiguation Rule:** Type names can be called like functions for casting.
+
+```python
+# Type cast (function-like syntax)
+x = int("42")         # Cast string to int
+y = double(10)        # Cast int to double
+s = str(42)           # Cast int to string
+
+# Regular function call
+result = calculate(10, 20)
+
+# Cannot distinguish syntactically - both are function calls
+# Semantic analysis determines if it's a type constructor
+```
+
+**Parsing Strategy:**
+- Parse both as function calls
+- Semantic analysis determines if calling a type constructor
+
+### Assignment vs Comparison **[v0.5]**
+
+**Disambiguation Rule:** Context determines `=` vs `==`.
+
+```python
+# Assignment (statement position)
+x = 42
+
+# Comparison (expression position)
+if x == 42:
+    pass
+
+# ILLEGAL: Assignment in expression (no walrus operator in v0.5)
+if x = 42:    # ERROR: Cannot use = in expression
+```
+
+**Parsing Strategy:**
+- Statement position: `=` is assignment
+- Expression position: `==` is comparison
+- `=` in expression position is syntax error in v0.5
+
+### Member Access Chain Parsing **[v0.5]**
+
+**Associativity Rule:** All left-to-right.
+
+```python
+# Member access chains
+obj.field.method().another_field
+
+# Parsed as:
+# ((obj.field).method()).another_field
+
+# Null-conditional chains
+obj?.method()?.field
+
+# Short-circuits at first None:
+# if obj is None: result is None
+# elif obj.method() is None: result is None
+# else: result is obj.method().field
+```
+
+**Parsing Strategy:**
+- Parse left-to-right
+- Each `.` or `?.` or `[]` or `()` extends the current expression
+- Build AST as nested member access nodes
+
+### Operator Chaining **[v0.5]**
+
+**Comparison Chaining:**
+
+```python
+# Chained comparisons
+a < b < c
+
+# Parsed as: a < b and b < c (with b evaluated once)
+# NOT: (a < b) < c
+```
+
+**Parsing Strategy:**
+- Special case for comparison operators
+- Transform `a < b < c` into `a < b and b < c`
+- Ensure middle expression evaluated only once
+
+### Lambda vs Expression Statement **[v0.5]**
+
+**Disambiguation Rule:** `lambda` keyword starts lambda expression.
+
+```python
+# Lambda expression
+func = lambda x: x * 2
+
+# Cannot start statement with lambda
+lambda x: x * 2     # ERROR: Lambda cannot be statement (assign or pass to function)
+```
+
+**Parsing Strategy:**
+- `lambda` always starts lambda expression
+- Lambda cannot appear at statement level (must be in expression context)
+
+### Indentation and Block Parsing **[v0.5]**
+
+**Critical Rules:**
+
+1. **Indentation increases** → Start new block
+2. **Indentation decreases** → End current block(s)
+3. **Indentation must decrease to a previous level** (not arbitrary)
+
+```python
+if condition:         # Indent 0
+    statement1        # Indent 4 (increase → start block)
+    if nested:        # Indent 4
+        statement2    # Indent 8 (increase → start nested block)
+        statement3    # Indent 8 (same level)
+    statement4        # Indent 4 (decrease → end nested block)
+statement5            # Indent 0 (decrease → end all blocks)
+```
+
+**Parsing Strategy:**
+
+1. Maintain stack of indentation levels
+2. On each line:
+   - Measure leading whitespace
+   - Compare to current indentation level:
+     - **Increase:** Push new level, emit INDENT token
+     - **Same:** Continue current block
+     - **Decrease:** Pop levels until match found, emit DEDENT tokens
+     - **No match:** Indentation error
+3. At end of file: Emit DEDENT for each remaining level
+
+**Token Stream Example:**
+
+```python
+if x:        # INDENT expected after this
+    y = 1    # INDENT emitted here
+    z = 2
+a = 3        # DEDENT emitted here
+```
+
+Becomes token stream:
+```
+IF IDENTIFIER COLON NEWLINE INDENT
+IDENTIFIER EQUALS NUMBER NEWLINE
+IDENTIFIER EQUALS NUMBER NEWLINE DEDENT
+IDENTIFIER EQUALS NUMBER NEWLINE
+```
+
+### Newline Significance **[v0.5]**
+
+**Rules:**
+
+1. **Newlines are significant** and terminate statements
+2. **Except** inside brackets `()`, `[]`, `{}`
+3. **Except** after backslash `\` continuation
+
+```python
+# Statement per line
+x = 1
+y = 2
+
+# Implicit continuation (inside brackets)
+items = [
+    1, 2, 3,
+    4, 5, 6
+]
+
+# Explicit continuation (backslash)
+total = value1 + \
+        value2 + \
+        value3
+
+# Newline inside string literal is literal newline
+text = """Line 1
+Line 2"""
+```
+
+**Parsing Strategy:**
+
+1. Track bracket depth: `()`, `[]`, `{}`
+2. If depth > 0: ignore newlines
+3. If backslash at end of line: ignore next newline
+4. Otherwise: newline terminates statement
+
+### F-String Parsing **[v0.5]**
+
+**F-strings require special lexing:** Interpolated expressions must be parsed within string context.
+
+```python
+# F-string with expression
+name = "Alice"
+greeting = f"Hello, {name}!"
+
+# F-string with complex expression
+result = f"Result: {x + y * 2}"
+
+# F-string with format specifier
+pi = 3.14159
+formatted = f"Pi: {pi:.2f}"
+
+# Nested braces (literal braces)
+text = f"Use {{braces}} for literal braces"  # "Use {braces} for literal braces"
+```
+
+**Parsing Strategy:**
+
+1. **Recognize f-string prefix:** `f"..."` or `F"..."` or `fr"..."` etc.
+
+2. **Scan string content** with two modes:
+   - **Text mode:** Regular string content
+   - **Expression mode:** Inside `{...}`
+
+3. **Mode switching:**
+   - `{` (not `{{`) → Enter expression mode, push on stack
+   - `}` (not `}}`) → Exit expression mode, pop stack
+   - `{{` → Literal `{` in text mode
+   - `}}` → Literal `}` in text mode
+
+4. **Expression parsing:**
+   - Inside `{...}`, parse full Python expression
+   - Nested `{...}` in nested f-strings is allowed
+   - Format spec after `:` (e.g., `{value:.2f}`)
+
+5. **Format specifier:**
+   - After expression, optional `:` followed by format spec
+   - Format spec extends to closing `}`
+   - Format spec can itself contain `{...}` for dynamic formatting
+
+**Token Generation:**
+
+```python
+f"Hello, {name}!"
+```
+
+Generates conceptual tokens:
+```
+F_STRING_START "Hello, "
+LBRACE
+IDENTIFIER "name"
+RBRACE
+F_STRING_END "!"
+```
+
+**Nested F-Strings:**
+
+```python
+# F-string inside f-string expression
+width = 10
+value = 42
+result = f"{value:{width}}"  # Dynamic width
+```
+
+**Complex Example:**
+
+```python
+# Multiple expressions with format specs
+x, y = 10, 20
+text = f"Point({x:>3}, {y:>3}) = {x + y}"
+# "Point( 10,  20) = 30"
+```
+
+**Implementation Note:**
+- F-string parsing typically requires a multi-pass approach or sophisticated lexer state machine
+- Consider lexing f-string as a whole, then parsing interpolated expressions
+- Track brace depth to handle nested expressions
+
+### Decorator Parsing **[v0.5]**
+
+**Decorators precede** function, method, or class definitions.
+
+```python
+# Single decorator
+@override
+def method(self) -> str:
+    return "overridden"
+
+# Multiple decorators (applied bottom-to-top)
+@decorator1
+@decorator2
+@decorator3
+def function():
+    pass
+
+# Decorator with arguments (future - not in v0.5)
+# @decorator(arg1, arg2)  # v1.0+
+# def function():
+#     pass
+```
+
+**Parsing Strategy:**
+
+1. **Recognize decorator:** Line starting with `@` at statement level
+2. **Parse decorator name:** Identifier after `@`
+3. **Collect all decorators:** Before definition
+4. **Parse definition:** `def`, `class`, `struct`, etc.
+5. **Apply decorators:** Associate with definition (bottom-to-top order)
+
+**Token Sequence:**
+
+```python
+@override
+def method(self):
+    pass
+```
+
+Becomes:
+```
+AT IDENTIFIER(override) NEWLINE
+DEF IDENTIFIER(method) LPAREN IDENTIFIER(self) RPAREN COLON NEWLINE
+INDENT PASS NEWLINE DEDENT
+```
+
+**Multiple Decorators:**
+
+```python
+@static
+@override
+def method():
+    pass
+```
+
+Applied as: `override(static(method))`
+(Bottom decorator applied first, then working up)
+
+**Not in v0.5:**
+- Decorator arguments: `@decorator(args)`
+- Decorator expressions: `@module.decorator`
+- Only simple identifier decorators supported in v0.5
+
+3. If backslash at end of line: ignore next newline
+4. Otherwise: newline terminates statement
+
 ## Type Syntax **[v0.5]**
 
 See [Type System](type_system.md) for detailed type semantics.
