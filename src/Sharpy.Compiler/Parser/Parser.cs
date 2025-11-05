@@ -656,7 +656,11 @@ public class Parser
         var startColumn = Current.Column;
 
         Expect(TokenType.For);
-        var target = ParseExpression();  // Loop variable(s)
+
+        // Parse target - this should be a simple identifier or tuple, not a full expression
+        // We need to stop before consuming 'in' as a comparison operator
+        var target = ParseForTarget();
+
         Expect(TokenType.In);
         var iterator = ParseExpression();
         Expect(TokenType.Colon);
@@ -675,6 +679,44 @@ public class Parser
             LineEnd = Current.Line,
             ColumnEnd = Current.Column
         };
+    }
+
+    private Expression ParseForTarget()
+    {
+        // For target can be:
+        // - Simple identifier: for x in ...
+        // - Tuple: for x, y in ...
+        // We parse up to but not including the 'in' keyword
+
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+
+        var first = ParsePrimary();
+
+        // Check if it's a tuple (comma-separated)
+        if (Current.Type == TokenType.Comma)
+        {
+            var elements = new List<Expression> { first };
+
+            while (Current.Type == TokenType.Comma)
+            {
+                Advance();
+                if (Current.Type == TokenType.In)
+                    break;  // Trailing comma before 'in'
+                elements.Add(ParsePrimary());
+            }
+
+            return new TupleLiteral
+            {
+                Elements = elements,
+                LineStart = startLine,
+                ColumnStart = startColumn,
+                LineEnd = Current.Line,
+                ColumnEnd = Current.Column
+            };
+        }
+
+        return first;
     }
 
     private TryStatement ParseTryStatement()
@@ -755,10 +797,10 @@ public class Parser
         Expect(TokenType.Return);
 
         Expression? value = null;
-        if (Current.Type != TokenType.Newline && !IsAtEnd)
+        if (Current.Type != TokenType.Newline && Current.Type != TokenType.Dedent && !IsAtEnd)
             value = ParseExpression();
 
-        ExpectNewline();
+        ExpectStatementEnd();
 
         return new ReturnStatement
         {
@@ -839,7 +881,7 @@ public class Parser
         var startColumn = Current.Column;
 
         Expect(TokenType.Pass);
-        ExpectNewline();
+        ExpectStatementEnd();
 
         return new PassStatement
         {
@@ -856,7 +898,7 @@ public class Parser
         var startColumn = Current.Column;
 
         Expect(TokenType.Break);
-        ExpectNewline();
+        ExpectStatementEnd();
 
         return new BreakStatement
         {
@@ -873,7 +915,7 @@ public class Parser
         var startColumn = Current.Column;
 
         Expect(TokenType.Continue);
-        ExpectNewline();
+        ExpectStatementEnd();
 
         return new ContinueStatement
         {
@@ -1514,7 +1556,6 @@ public class Parser
                 var index = ParseSliceOrIndex();
                 Expect(TokenType.RightBracket);
 
-                expr = index;
                 if (index is IndexAccess ia)
                     expr = ia with { Object = expr };
                 else if (index is SliceAccess sa)
@@ -1890,12 +1931,8 @@ public class Parser
         }
 
         // Nullable type suffix T?
-        if (Current.Type == TokenType.NullConditional)
+        if (Current.Type == TokenType.Question)
         {
-            // This is a bit of a hack - we're using NullConditional token for both
-            // obj?.member and Type? syntax
-            // Need to differentiate context
-            // For now, assume it's nullable type annotation
             isNullable = true;
             Advance();
         }
@@ -1936,6 +1973,18 @@ public class Parser
             Advance();
         else if (!IsAtEnd)
             throw new ParserError($"Expected newline, got {Current.Type}", Current.Line, Current.Column);
+    }
+
+    private void ExpectStatementEnd()
+    {
+        // Simple statements can end with:
+        // 1. Newline (normal case)
+        // 2. Dedent (last statement in a block)
+        // 3. EOF (last statement in file)
+        if (Current.Type == TokenType.Newline)
+            Advance();
+        else if (Current.Type != TokenType.Dedent && !IsAtEnd)
+            throw new ParserError($"Expected end of statement, got {Current.Type}", Current.Line, Current.Column);
     }
 
     private void SkipNewlines()

@@ -55,7 +55,7 @@ public class ParserTests
         literal.Value.Should().Be("3.14");
     }
 
-    [Fact(Skip = "TODO: String escape sequence handling in lexer may have issues")]
+    [Fact(Skip = "TODO: String literal tokenization in lexer needs investigation - empty module body")]
     public void ParseStringLiteral()
     {
         var module = Parse("\"hello\"");
@@ -291,7 +291,7 @@ public class ParserTests
         member.IsNullConditional.Should().BeTrue();
     }
 
-    [Fact(Skip = "TODO: Index/slice access parsing needs debugging")]
+    [Fact]
     public void ParseIndexAccess()
     {
         var module = Parse("arr[0]");
@@ -301,7 +301,7 @@ public class ParserTests
         index.Index.Should().BeOfType<IntegerLiteral>().Which.Value.Should().Be("0");
     }
 
-    [Fact(Skip = "TODO: Slice access parsing needs debugging")]
+    [Fact]
     public void ParseSliceAccess()
     {
         var module = Parse("arr[1:5]");
@@ -410,7 +410,7 @@ public class ParserTests
         varDecl.Type.IsNullable.Should().BeFalse();
     }
 
-    [Fact(Skip = "TODO: Nullable type syntax (?) needs parser support")]
+    [Fact]
     public void ParseNullableTypeAnnotation()
     {
         var module = Parse("x: int?");
@@ -486,7 +486,7 @@ public class ParserTests
         module.Body[0].Should().BeOfType<PassStatement>();
     }
 
-    [Fact(Skip = "TODO: Break statement in while loop - indentation or block parsing issue")]
+    [Fact]
     public void ParseBreakStatement()
     {
         var module = Parse("while True:\n    break");
@@ -495,7 +495,7 @@ public class ParserTests
         whileStmt.Body[0].Should().BeOfType<BreakStatement>();
     }
 
-    [Fact(Skip = "TODO: Continue statement in while loop - indentation or block parsing issue")]
+    [Fact]
     public void ParseContinueStatement()
     {
         var module = Parse("while True:\n    continue");
@@ -503,7 +503,7 @@ public class ParserTests
         whileStmt.Body[0].Should().BeOfType<ContinueStatement>();
     }
 
-    [Fact(Skip = "TODO: Return statement in function - indentation or block parsing issue")]
+    [Fact]
     public void ParseReturnStatement()
     {
         var module = Parse("def foo():\n    return 42");
@@ -512,7 +512,7 @@ public class ParserTests
         ret.Value.Should().BeOfType<IntegerLiteral>().Which.Value.Should().Be("42");
     }
 
-    [Fact(Skip = "TODO: Return void statement - indentation or block parsing issue")]
+    [Fact]
     public void ParseReturnVoid()
     {
         var module = Parse("def foo():\n    return");
@@ -581,7 +581,7 @@ while x > 0:
         whileStmt.Body.Should().HaveCount(1);
     }
 
-    [Fact(Skip = "TODO: For loop parsing needs investigation - possible 'in' keyword collision with comparison")]
+    [Fact]
     public void ParseForStatement()
     {
         var source = @"
@@ -999,7 +999,7 @@ class BankAccount:
         classDef.Body.All(s => s is FunctionDef).Should().BeTrue();
     }
 
-    [Fact(Skip = "TODO: Nested for/if/else structures - complex indentation/block parsing issue")]
+    [Fact]
     public void ParseNestedStructures()
     {
         var source = @"
@@ -1019,11 +1019,11 @@ for i in range(10):
 
     #region Error Cases
 
-    [Fact(Skip = "TODO: Error handling - missing colon detection needs verification")]
+    [Fact]
     public void ParseError_MissingColon()
     {
         Action act = () => Parse("if True\n    pass");
-        act.Should().Throw<ParserError>().WithMessage("*Expected ':'*");
+        act.Should().Throw<ParserError>().WithMessage("*Expected Colon*");
     }
 
     [Fact]
@@ -1040,11 +1040,11 @@ for i in range(10):
         act.Should().Throw<ParserError>();
     }
 
-    [Fact(Skip = "TODO: Error handling - unclosed bracket detection needs verification")]
+    [Fact]
     public void ParseError_UnclosedBracket()
     {
         Action act = () => Parse("[1, 2, 3");
-        act.Should().Throw<ParserError>().WithMessage("*Expected ']'*");
+        act.Should().Throw<ParserError>().WithMessage("*Expected RightBracket*");
     }
 
     #endregion
@@ -1444,7 +1444,7 @@ class Pair[T, U]:
         inner.Object.Should().BeOfType<Identifier>().Which.Name.Should().Be("a");
     }
 
-    [Fact(Skip = "TODO: Chained index access needs debugging")]
+    [Fact]
     public void ParseChainedIndexAccess()
     {
         var module = Parse("matrix[0][1]");
@@ -1457,7 +1457,7 @@ class Pair[T, U]:
         inner.Object.Should().BeOfType<Identifier>().Which.Name.Should().Be("matrix");
     }
 
-    [Fact(Skip = "TODO: Mixed member and index access needs debugging")]
+    [Fact]
     public void ParseMixedMemberAndIndexAccess()
     {
         var module = Parse("obj.list[0].field");
@@ -1587,7 +1587,7 @@ if x > 0:
         outer.ThenBody[0].Should().BeOfType<IfStatement>();
     }
 
-    [Fact(Skip = "TODO: Tuple unpacking in for loop - parsing needs investigation")]
+    [Fact]
     public void ParseForWithTupleUnpacking()
     {
         var source = @"
