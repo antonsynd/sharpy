@@ -110,7 +110,7 @@ public class Lexer
         }
 
         // Handle indentation at line start
-        if (_atLineStart && !_parenDepth)
+        if (_atLineStart && _bracketDepth == 0)
         {
             var indentLevel = MeasureIndentation();
             var currentIndent = _indentStack.Peek();
@@ -158,6 +158,62 @@ public class Lexer
         // Comments
         if (current == '#')
             return ReadComment();
+
+        // Backslash line continuation
+        if (current == '\\')
+        {
+            var nextPos = _position + 1;
+
+            // If next character doesn't exist
+            if (nextPos >= _source.Length)
+            {
+                // Backslash at EOF - check if it's the only token
+                if (_position == 0)
+                {
+                    // Just a standalone backslash token
+                    // Fall through to treat as backslash operator/delimiter
+                }
+                else
+                {
+                    // Backslash at EOF after other content - likely a mistake
+                    throw new LexerError("Backslash at end of file", _line, _column);
+                }
+            }
+            else
+            {
+                // Check for trailing whitespace after backslash
+                var tempPos = nextPos;
+                while (tempPos < _source.Length && (_source[tempPos] == ' ' || _source[tempPos] == '\t'))
+                    tempPos++;
+
+                // After skipping whitespace, check if we have a newline
+                if (tempPos < _source.Length && (_source[tempPos] == '\n' || _source[tempPos] == '\r'))
+                {
+                    if (tempPos != nextPos)
+                    {
+                        // There was whitespace between \ and newline
+                        throw new LexerError("Backslash line continuation cannot have trailing whitespace", _line, _column);
+                    }
+
+                    // Valid line continuation - skip the backslash and newline
+                    _position = tempPos;
+                    if (_source[_position] == '\r' && _position + 1 < _source.Length && _source[_position + 1] == '\n')
+                        _position += 2;
+                    else
+                        _position++;
+
+                    _line++;
+                    _column = 1;
+                    return NextToken();
+                }
+                else if (tempPos >= _source.Length && tempPos != nextPos)
+                {
+                    // Backslash followed by whitespace at end of file
+                    throw new LexerError("Backslash at end of file", _line, _column);
+                }
+                // Otherwise, fall through to treat backslash as operator
+            }
+        }
 
         // Newlines
         if (current == '\n' || (current == '\r' && Peek() == '\n'))
@@ -220,6 +276,8 @@ public class Lexer
     {
         var indent = 0;
         var tempPos = _position;
+        var hasSpaces = false;
+        var hasTabs = false;
 
         while (tempPos < _source.Length)
         {
@@ -227,12 +285,14 @@ public class Lexer
 
             if (c == ' ')
             {
+                hasSpaces = true;
                 indent++;
                 tempPos++;
             }
             else if (c == '\t')
             {
-                throw new LexerError("Tabs are not allowed for indentation. Use 4 spaces.", _line, indent + 1);
+                hasTabs = true;
+                tempPos++;
             }
             else if (c == '\n' || c == '\r' || c == '#')
             {
@@ -255,6 +315,14 @@ public class Lexer
         {
             return _indentStack.Peek();
         }
+
+        // Check for mixed tabs and spaces
+        if (hasSpaces && hasTabs)
+            throw new LexerError("Mixed tabs and spaces in indentation", _line, 1);
+
+        // No tabs allowed at all
+        if (hasTabs)
+            throw new LexerError("Tabs are not allowed for indentation. Use 4 spaces.", _line, 1);
 
         // Validate 4-space indentation
         if (indent % 4 != 0)
@@ -692,7 +760,9 @@ public class Lexer
             '\\' => '\\',
             '\'' => '\'',
             '"' => '"',
-            _ => escaped  // Unknown escape, keep as-is
+            'a' => '\a',
+            'v' => '\v',
+            _ => throw new LexerError($"Invalid escape sequence: \\{escaped}", _line, _column)
         };
     }
 
@@ -702,6 +772,27 @@ public class Lexer
         var startColumn = _column;
         var sb = new StringBuilder();
         var isFloat = false;
+
+        // Check for hex, binary, or octal prefix
+        if (_source[_position] == '0' && _position + 1 < _source.Length)
+        {
+            var nextChar = _source[_position + 1];
+            if (nextChar == 'x' || nextChar == 'X')
+            {
+                // Hexadecimal
+                return ReadHexNumber(startLine, startColumn);
+            }
+            else if (nextChar == 'b' || nextChar == 'B')
+            {
+                // Binary
+                return ReadBinaryNumber(startLine, startColumn);
+            }
+            else if (nextChar == 'o' || nextChar == 'O')
+            {
+                // Octal
+                return ReadOctalNumber(startLine, startColumn);
+            }
+        }
 
         // Read integer part
         while (_position < _source.Length && (char.IsDigit(_source[_position]) || _source[_position] == '_'))
@@ -722,6 +813,35 @@ public class Lexer
             _column++;
 
             // Read fractional part
+            while (_position < _source.Length && (char.IsDigit(_source[_position]) || _source[_position] == '_'))
+            {
+                if (_source[_position] != '_')
+                    sb.Append(_source[_position]);
+                _position++;
+                _column++;
+            }
+        }
+
+        // Check for scientific notation (e or E)
+        if (_position < _source.Length && (_source[_position] == 'e' || _source[_position] == 'E'))
+        {
+            isFloat = true;
+            sb.Append(_source[_position]);
+            _position++;
+            _column++;
+
+            // Check for optional sign
+            if (_position < _source.Length && (_source[_position] == '+' || _source[_position] == '-'))
+            {
+                sb.Append(_source[_position]);
+                _position++;
+                _column++;
+            }
+
+            // Read exponent digits
+            if (_position >= _source.Length || !char.IsDigit(_source[_position]))
+                throw new LexerError("Invalid scientific notation: expected exponent digits", startLine, startColumn);
+
             while (_position < _source.Length && (char.IsDigit(_source[_position]) || _source[_position] == '_'))
             {
                 if (_source[_position] != '_')
@@ -760,6 +880,111 @@ public class Lexer
 
         var tokenType = isFloat ? TokenType.Float : TokenType.Integer;
         return new Token(tokenType, sb.ToString(), startLine, startColumn);
+    }
+
+    private Token ReadHexNumber(int startLine, int startColumn)
+    {
+        var sb = new StringBuilder();
+        sb.Append("0x");
+        _position += 2;
+        _column += 2;
+
+        var hasDigits = false;
+        while (_position < _source.Length)
+        {
+            var c = _source[_position];
+            if (char.IsDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
+            {
+                sb.Append(c);
+                hasDigits = true;
+                _position++;
+                _column++;
+            }
+            else if (c == '_')
+            {
+                _position++;
+                _column++;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        if (!hasDigits)
+            throw new LexerError("Invalid hexadecimal literal: no digits after 0x", startLine, startColumn);
+
+        return new Token(TokenType.Integer, sb.ToString(), startLine, startColumn);
+    }
+
+    private Token ReadBinaryNumber(int startLine, int startColumn)
+    {
+        var sb = new StringBuilder();
+        sb.Append("0b");
+        _position += 2;
+        _column += 2;
+
+        var hasDigits = false;
+        while (_position < _source.Length)
+        {
+            var c = _source[_position];
+            if (c == '0' || c == '1')
+            {
+                sb.Append(c);
+                hasDigits = true;
+                _position++;
+                _column++;
+            }
+            else if (c == '_')
+            {
+                _position++;
+                _column++;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        if (!hasDigits)
+            throw new LexerError("Invalid binary literal: no digits after 0b", startLine, startColumn);
+
+        return new Token(TokenType.Integer, sb.ToString(), startLine, startColumn);
+    }
+
+    private Token ReadOctalNumber(int startLine, int startColumn)
+    {
+        var sb = new StringBuilder();
+        sb.Append("0o");
+        _position += 2;
+        _column += 2;
+
+        var hasDigits = false;
+        while (_position < _source.Length)
+        {
+            var c = _source[_position];
+            if (c >= '0' && c <= '7')
+            {
+                sb.Append(c);
+                hasDigits = true;
+                _position++;
+                _column++;
+            }
+            else if (c == '_')
+            {
+                _position++;
+                _column++;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        if (!hasDigits)
+            throw new LexerError("Invalid octal literal: no digits after 0o", startLine, startColumn);
+
+        return new Token(TokenType.Integer, sb.ToString(), startLine, startColumn);
     }
 
     private Token ReadIdentifierOrKeyword()
