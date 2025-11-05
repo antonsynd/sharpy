@@ -9,6 +9,7 @@ public enum TokenType
     Integer,
     Float,
     String,
+    RawString,      // r-string (raw string)
     FString,        // f-string
     True,
     False,

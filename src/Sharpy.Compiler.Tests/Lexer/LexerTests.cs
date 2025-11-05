@@ -209,7 +209,7 @@ public class LexerTests
     public void Tokenize_RawString_DoesNotProcessEscapes()
     {
         var token = SingleToken("r\"C:\\Users\\Alice\\Documents\"");
-        token.Type.Should().Be(TokenType.String);
+        token.Type.Should().Be(TokenType.RawString);
         token.Value.Should().Be("C:\\Users\\Alice\\Documents");
     }
 
@@ -732,7 +732,7 @@ y = 2";
     {
         var source = @"r""C:\path\to\file""";
         var token = SingleToken(source);
-        token.Type.Should().Be(TokenType.String);
+        token.Type.Should().Be(TokenType.RawString);
         token.Value.Should().Be(@"C:\path\to\file");
     }
 

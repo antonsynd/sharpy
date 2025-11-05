@@ -55,22 +55,22 @@ public class ParserTests
         literal.Value.Should().Be("3.14");
     }
 
-    [Fact(Skip = "TODO: String literal tokenization in lexer needs investigation - empty module body")]
+    [Fact]
     public void ParseStringLiteral()
     {
-        var module = Parse("\"hello\"");
-        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
-        var literal = exprStmt.Expression.Should().BeOfType<StringLiteral>().Subject;
+        var module = Parse("x = \"hello\"");
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var literal = assignment.Value.Should().BeOfType<StringLiteral>().Subject;
         literal.Value.Should().Be("hello");
         literal.IsRaw.Should().BeFalse();
     }
 
-    [Fact(Skip = "TODO: Raw string literal parsing needs verification")]
+    [Fact]
     public void ParseRawStringLiteral()
     {
-        var module = Parse("r\"hello\\n\"");
-        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
-        var literal = exprStmt.Expression.Should().BeOfType<StringLiteral>().Subject;
+        var module = Parse("x = r\"hello\\n\"");
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var literal = assignment.Value.Should().BeOfType<StringLiteral>().Subject;
         literal.Value.Should().Be("hello\\n");
         literal.IsRaw.Should().BeTrue();
     }

@@ -143,7 +143,7 @@ public class Parser
             var op = TokenTypeToAssignmentOperator(Current.Type);
             Advance();
             var value = ParseExpression();
-            ExpectNewline();
+            ExpectStatementEnd();
 
             return new Assignment
             {
@@ -173,7 +173,7 @@ public class Parser
                 initialValue = ParseExpression();
             }
 
-            ExpectNewline();
+            ExpectStatementEnd();
 
             return new VariableDeclaration
             {
@@ -188,7 +188,7 @@ public class Parser
             };
         }
 
-        ExpectNewline();
+        ExpectStatementEnd();
 
         return new ExpressionStatement
         {
@@ -1711,7 +1711,14 @@ public class Parser
                 {
                     var value = Current.Value;
                     Advance();
-                    return new StringLiteral { Value = value, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                    return new StringLiteral { Value = value, IsRaw = false, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                }
+
+            case TokenType.RawString:
+                {
+                    var value = Current.Value;
+                    Advance();
+                    return new StringLiteral { Value = value, IsRaw = true, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
                 }
 
             case TokenType.FString:

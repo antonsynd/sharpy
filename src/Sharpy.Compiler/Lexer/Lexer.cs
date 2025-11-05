@@ -706,7 +706,7 @@ public class Lexer
                 {
                     _position += 3;
                     _column += 3;
-                    return new Token(TokenType.String, sb.ToString(), startLine, startColumn);
+                    return new Token(TokenType.RawString, sb.ToString(), startLine, startColumn);
                 }
 
                 var c = _source[_position];
@@ -737,7 +737,7 @@ public class Lexer
             {
                 _position++;
                 _column++;
-                return new Token(TokenType.String, sb2.ToString(), startLine, startColumn);
+                return new Token(TokenType.RawString, sb2.ToString(), startLine, startColumn);
             }
 
             if (c == '\n' || c == '\r')
