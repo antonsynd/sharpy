@@ -922,6 +922,7 @@ public class Lexer
             '=' => new Token(TokenType.Assign, "=", startLine, startColumn),
             '<' => new Token(TokenType.Less, "<", startLine, startColumn),
             '>' => new Token(TokenType.Greater, ">", startLine, startColumn),
+            '?' => new Token(TokenType.Question, "?", startLine, startColumn),
             '(' => new Token(TokenType.LeftParen, "(", startLine, startColumn),
             ')' => new Token(TokenType.RightParen, ")", startLine, startColumn),
             '[' => new Token(TokenType.LeftBracket, "[", startLine, startColumn),

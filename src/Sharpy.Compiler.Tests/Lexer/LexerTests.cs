@@ -605,4 +605,478 @@ y = 2";
     }
 
     #endregion
+
+    #region Nullable Type Operator Tests
+
+    [Fact]
+    public void Tokenize_QuestionMark_SingleToken()
+    {
+        var token = SingleToken("?");
+        token.Type.Should().Be(TokenType.Question);
+        token.Value.Should().Be("?");
+    }
+
+    [Fact]
+    public void Tokenize_NullableTypeAnnotation_ProducesCorrectTokens()
+    {
+        var source = "int?";
+        var tokens = Tokenize(source);
+
+        tokens.Should().HaveCount(3); // Identifier, Question, EOF
+        tokens[0].Type.Should().Be(TokenType.Identifier);
+        tokens[0].Value.Should().Be("int");
+        tokens[1].Type.Should().Be(TokenType.Question);
+    }
+
+    [Fact]
+    public void Tokenize_NullConditional_ProducesCorrectToken()
+    {
+        var token = SingleToken("?.");
+        token.Type.Should().Be(TokenType.NullConditional);
+        token.Value.Should().Be("?.");
+    }
+
+    [Fact]
+    public void Tokenize_NullCoalesce_ProducesCorrectToken()
+    {
+        var token = SingleToken("??");
+        token.Type.Should().Be(TokenType.NullCoalesce);
+        token.Value.Should().Be("??");
+    }
+
+    [Fact]
+    public void Tokenize_MixedQuestionOperators_ProducesCorrectTokens()
+    {
+        var source = "x? y?. z??";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.Question && t.Value == "?");
+        tokens.Should().Contain(t => t.Type == TokenType.NullConditional && t.Value == "?.");
+        tokens.Should().Contain(t => t.Type == TokenType.NullCoalesce && t.Value == "??");
+    }
+
+    #endregion
+
+    #region Unicode and Special Character Tests
+
+    [Fact]
+    public void Tokenize_UnicodeIdentifiers_ProducesCorrectTokens()
+    {
+        var source = "café résumé λ μ Σ";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "café");
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "résumé");
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "λ");
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "μ");
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "Σ");
+    }
+
+    [Fact]
+    public void Tokenize_EmojiInIdentifier_ThrowsError()
+    {
+        var source = "emoji😀name";
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>();
+    }
+
+    #endregion
+
+    #region String Literal Edge Cases
+
+    [Fact]
+    public void Tokenize_VeryLongString_ProducesCorrectToken()
+    {
+        var longString = new string('a', 10000);
+        var source = $"\"{longString}\"";
+        var token = SingleToken(source);
+
+        token.Type.Should().Be(TokenType.String);
+        token.Value.Should().Be(longString);
+    }
+
+    [Fact]
+    public void Tokenize_EmptyString_ProducesCorrectToken()
+    {
+        var token = SingleToken("\"\"");
+        token.Type.Should().Be(TokenType.String);
+        token.Value.Should().Be("");
+    }
+
+    [Fact]
+    public void Tokenize_StringWithAllEscapeSequences_ProducesCorrectToken()
+    {
+        var source = @"""\\n\\t\\r\\\\\\'\\\""\\\a\\\b\\\f\\\v\\\0""";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.String);
+    }
+
+    [Fact]
+    public void Tokenize_StringWithInvalidEscape_ThrowsError()
+    {
+        var source = @"""invalid\xescape""";
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>().WithMessage("*escape sequence*");
+    }
+
+    [Fact]
+    public void Tokenize_UnterminatedString_ThrowsError()
+    {
+        var source = "\"unterminated";
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>().WithMessage("*Unterminated string*");
+    }
+
+    [Fact]
+    public void Tokenize_RawString_PreservesBackslashes()
+    {
+        var source = @"r""C:\path\to\file""";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.String);
+        token.Value.Should().Be(@"C:\path\to\file");
+    }
+
+    [Fact]
+    public void Tokenize_TripleQuotedString_HandlesMultiline()
+    {
+        var source = "\"\"\"line1\nline2\nline3\"\"\"";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.String);
+        token.Value.Should().Contain("line1");
+        token.Value.Should().Contain("line2");
+        token.Value.Should().Contain("line3");
+    }
+
+    [Fact]
+    public void Tokenize_UnterminatedTripleQuotedString_ThrowsError()
+    {
+        var source = "\"\"\"unterminated";
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>().WithMessage("*Unterminated string*");
+    }
+
+    #endregion
+
+    #region F-String Edge Cases
+
+    [Fact]
+    public void Tokenize_EmptyFString_ProducesCorrectToken()
+    {
+        var source = "f\"\"";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.FString);
+    }
+
+    [Fact]
+    public void Tokenize_FStringWithExpression_ProducesCorrectToken()
+    {
+        var source = "f\"value: {x}\"";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.FString);
+        token.Value.Should().Contain("{x}");
+    }
+
+    [Fact]
+    public void Tokenize_FStringWithMultipleExpressions_ProducesCorrectToken()
+    {
+        var source = "f\"x={x}, y={y}\"";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.FString);
+        token.Value.Should().Contain("{x}");
+        token.Value.Should().Contain("{y}");
+    }
+
+    [Fact]
+    public void Tokenize_UnterminatedFString_ThrowsError()
+    {
+        var source = "f\"unterminated";
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>();
+    }
+
+    #endregion
+
+    #region Number Literal Edge Cases
+
+    [Fact]
+    public void Tokenize_VeryLargeInteger_ProducesCorrectToken()
+    {
+        var source = "999999999999999999999999999999";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.Integer);
+        token.Value.Should().Be(source);
+    }
+
+    [Fact]
+    public void Tokenize_VerySmallFloat_ProducesCorrectToken()
+    {
+        var source = "0.00000000000000000001";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.Float);
+        token.Value.Should().Be(source);
+    }
+
+    [Fact]
+    public void Tokenize_ScientificNotationEdgeCases_ProducesCorrectTokens()
+    {
+        var cases = new[] { "1e100", "1e-100", "1.5e50", "1.5e-50" };
+
+        foreach (var source in cases)
+        {
+            var token = SingleToken(source);
+            token.Type.Should().Be(TokenType.Float);
+            token.Value.Should().Be(source);
+        }
+    }
+
+    [Fact]
+    public void Tokenize_HexWithAllDigits_ProducesCorrectToken()
+    {
+        var source = "0x0123456789ABCDEF";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.Integer);
+        token.Value.Should().Be(source);
+    }
+
+    [Fact]
+    public void Tokenize_BinaryWithLongSequence_ProducesCorrectToken()
+    {
+        var source = "0b" + new string('1', 64);
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.Integer);
+        token.Value.Should().Be(source);
+    }
+
+    [Fact]
+    public void Tokenize_OctalWithAllDigits_ProducesCorrectToken()
+    {
+        var source = "0o01234567";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.Integer);
+        token.Value.Should().Be(source);
+    }
+
+    [Fact]
+    public void Tokenize_NumbersWithUnderscores_ProducesCorrectTokens()
+    {
+        var cases = new[] { "1_000_000", "0x_DEAD_BEEF", "0b_1111_0000", "3.14_159_265" };
+
+        foreach (var source in cases)
+        {
+            var tokens = Tokenize(source);
+            tokens.Should().Contain(t => t.Type == TokenType.Integer || t.Type == TokenType.Float);
+        }
+    }
+
+    [Fact]
+    public void Tokenize_InvalidNumberFormat_ThrowsError()
+    {
+        var invalidCases = new[] { "0x", "0b", "0o", "1e", "1.2.3" };
+
+        foreach (var source in invalidCases)
+        {
+            Action act = () => Tokenize(source);
+            act.Should().Throw<LexerError>();
+        }
+    }
+
+    #endregion
+
+    #region Indentation Edge Cases
+
+    [Fact]
+    public void Tokenize_MixedTabsAndSpaces_ThrowsError()
+    {
+        var source = "if x:\n\ty = 1\n    z = 2";
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>().WithMessage("*Cannot mix tabs and spaces*");
+    }
+
+    [Fact]
+    public void Tokenize_InconsistentIndentation_ThrowsError()
+    {
+        var source = "if x:\n  y = 1\n   z = 2";
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>().WithMessage("*Inconsistent indentation*");
+    }
+
+    [Fact]
+    public void Tokenize_VeryDeeplyNestedIndentation_ProducesCorrectTokens()
+    {
+        var source = "if x:\n";
+        for (int i = 1; i <= 20; i++)
+        {
+            source += new string(' ', i * 4) + $"level{i} = {i}\n";
+        }
+
+        var tokens = Tokenize(source);
+        tokens.Count(t => t.Type == TokenType.Indent).Should().Be(20);
+    }
+
+    [Fact]
+    public void Tokenize_IndentationInsideBrackets_NoIndentTokens()
+    {
+        var source = @"x = [
+    1,
+    2,
+    3
+]";
+        var tokens = Tokenize(source);
+        tokens.Should().NotContain(t => t.Type == TokenType.Indent);
+        tokens.Should().NotContain(t => t.Type == TokenType.Dedent);
+    }
+
+    [Fact]
+    public void Tokenize_EmptyLinesInIndentedBlock_HandledCorrectly()
+    {
+        var source = @"if x:
+    y = 1
+
+    z = 2";
+        var tokens = Tokenize(source);
+        tokens.Should().Contain(t => t.Type == TokenType.Indent);
+        tokens.Count(t => t.Type == TokenType.Newline).Should().BeGreaterThan(0);
+    }
+
+    #endregion
+
+    #region Operator Combination Tests
+
+    [Fact]
+    public void Tokenize_AllCompoundAssignmentOperators_ProducesCorrectTokens()
+    {
+        var operators = new Dictionary<string, TokenType>
+        {
+            { "+=", TokenType.PlusAssign },
+            { "-=", TokenType.MinusAssign },
+            { "*=", TokenType.StarAssign },
+            { "/=", TokenType.SlashAssign },
+            { "//=", TokenType.DoubleSlashAssign },
+            { "%=", TokenType.PercentAssign },
+            { "**=", TokenType.DoubleStarAssign },
+            { "&=", TokenType.AmpersandAssign },
+            { "|=", TokenType.PipeAssign },
+            { "^=", TokenType.CaretAssign },
+            { "<<=", TokenType.LeftShiftAssign },
+            { ">>=", TokenType.RightShiftAssign }
+        };
+
+        foreach (var (op, tokenType) in operators)
+        {
+            var token = SingleToken(op);
+            token.Type.Should().Be(tokenType);
+            token.Value.Should().Be(op);
+        }
+    }
+
+    [Fact]
+    public void Tokenize_OperatorWithoutSpaces_ProducesCorrectTokens()
+    {
+        var source = "x+y*z/w-v%u**p//q&r|s^t<<a>>b";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.Plus);
+        tokens.Should().Contain(t => t.Type == TokenType.Star);
+        tokens.Should().Contain(t => t.Type == TokenType.Slash);
+        tokens.Should().Contain(t => t.Type == TokenType.Minus);
+        tokens.Should().Contain(t => t.Type == TokenType.Percent);
+        tokens.Should().Contain(t => t.Type == TokenType.DoubleStar);
+        tokens.Should().Contain(t => t.Type == TokenType.DoubleSlash);
+        tokens.Should().Contain(t => t.Type == TokenType.Ampersand);
+        tokens.Should().Contain(t => t.Type == TokenType.Pipe);
+        tokens.Should().Contain(t => t.Type == TokenType.Caret);
+        tokens.Should().Contain(t => t.Type == TokenType.LeftShift);
+        tokens.Should().Contain(t => t.Type == TokenType.RightShift);
+    }
+
+    [Fact]
+    public void Tokenize_ThreeCharacterOperatorSequence_ProducesCorrectTokens()
+    {
+        // Test that >>= is parsed as RightShiftAssign, not RightShift + Assign
+        var token = SingleToken(">>=");
+        token.Type.Should().Be(TokenType.RightShiftAssign);
+        token.Value.Should().Be(">>=");
+    }
+
+    #endregion
+
+    #region Line Continuation Tests
+
+    [Fact]
+    public void Tokenize_BackslashLineContinuation_ProducesCorrectTokens()
+    {
+        var source = "x = 1 + \\\n    2";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "x");
+        tokens.Should().Contain(t => t.Type == TokenType.Integer && t.Value == "1");
+        tokens.Should().Contain(t => t.Type == TokenType.Plus);
+        tokens.Should().Contain(t => t.Type == TokenType.Integer && t.Value == "2");
+    }
+
+    [Fact]
+    public void Tokenize_BackslashAtEndOfFile_ThrowsError()
+    {
+        var source = "x = 1 \\";
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>();
+    }
+
+    [Fact]
+    public void Tokenize_BackslashWithSpaceAfter_ThrowsError()
+    {
+        var source = "x = 1 \\ \n2";
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>();
+    }
+
+    #endregion
+
+    #region Comment Edge Cases
+
+    [Fact]
+    public void Tokenize_VeryLongComment_IsIgnored()
+    {
+        var longComment = new string('x', 10000);
+        var source = $"x = 1 # {longComment}\ny = 2";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "x");
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "y");
+        tokens.Should().NotContain(t => t.Value.Contains(longComment));
+    }
+
+    [Fact]
+    public void Tokenize_CommentWithUnicodeCharacters_IsIgnored()
+    {
+        var source = "x = 1 # Comment with émojis 😀 and symbols ∑∫∆\ny = 2";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "x");
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "y");
+    }
+
+    #endregion
+
+    #region Error Recovery Tests
+
+    [Fact]
+    public void Tokenize_UnexpectedNullCharacter_ThrowsError()
+    {
+        var source = "x = \0 1";
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>();
+    }
+
+    [Fact]
+    public void Tokenize_ErrorMessageIncludesLineAndColumn()
+    {
+        var source = "x = 1\ny = $";
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>()
+            .WithMessage("*line*2*")
+            .WithMessage("*column*");
+    }
+
+    #endregion
 }

@@ -114,4 +114,19 @@ public class Wrapper<T>(T value) : Object, IEquatable<Wrapper<T>>, IInequatable<
     {
         return !__Eq__(other);
     }
+
+    public override bool Equals(object obj)
+    {
+        if (ReferenceEquals(this, obj))
+        {
+            return true;
+        }
+
+        if (ReferenceEquals(obj, null))
+        {
+            return false;
+        }
+
+        throw new NotImplementedException();
+    }
 }

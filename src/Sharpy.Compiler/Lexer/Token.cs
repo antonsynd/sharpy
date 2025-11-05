@@ -96,6 +96,7 @@ public enum TokenType
     RightShiftAssign,  // >>=
 
     // Operators - Special
+    Question,          // ?
     NullConditional,   // ?.
     NullCoalesce,      // ??
     Ellipsis,          // ...

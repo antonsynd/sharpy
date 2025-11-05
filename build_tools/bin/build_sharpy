@@ -18,10 +18,10 @@ RESOURCE_DIR: Path = ROOT_DIR / "__resources"
 TOOLS_DIR: Path = ROOT_DIR / "tools"
 DATA_DIR: Path = ROOT_DIR / "data"
 
-CSHARP_ROOT_DIR: Path = ROOT_DIR / "dotnet"
-CSHARP_SRC_DIR: Path = ROOT_DIR / "dotnet/src/Sharpy"
-CSHARP_DOCS_DIR: Path = ROOT_DIR / "dotnet/docs"
-CSHARP_TEST_DIR: Path = ROOT_DIR / "dotnet/src/Sharpy.Tests"
+DOTNET_CSHARP_ROOT_DIR: Path = ROOT_DIR / "dotnet"
+DOTNET_CSHARP_SRC_DIR: Path = ROOT_DIR / "dotnet/src/Sharpy"
+DOTNET_CSHARP_DOCS_DIR: Path = ROOT_DIR / "dotnet/docs"
+DOTNET_CSHARP_TEST_DIR: Path = ROOT_DIR / "dotnet/src/Sharpy.Tests"
 
 RUST_ROOT_DIR: Path = ROOT_DIR / "rust"
 RUST_SRC_DIR: Path = RUST_ROOT_DIR / "src"
@@ -208,7 +208,7 @@ def build_lib(release: bool) -> None:
             f"Building standard library with {build_type.lower()} configuration..."
         )
         subprocess.run(
-            ["dotnet", "build", "-c", build_type, str(CSHARP_SRC_DIR)], check=True
+            ["dotnet", "build", "-c", build_type, str(DOTNET_CSHARP_SRC_DIR)], check=True
         )
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
@@ -221,7 +221,7 @@ def build_tests(release: bool) -> None:
     try:
         get_logger().info(f"Building tests with {build_type.lower()} configuration...")
         subprocess.run(
-            ["dotnet", "build", "-c", build_type, str(CSHARP_TEST_DIR)], check=True
+            ["dotnet", "build", "-c", build_type, str(DOTNET_CSHARP_TEST_DIR)], check=True
         )
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
@@ -319,7 +319,7 @@ def docs(args: argparse.Namespace, rest: Sequence[str]) -> None:
     get_logger().info("Generating documentation...")
 
     try:
-        subprocess.run(["docfx", str(CSHARP_DOCS_DIR / "docfx.json")], check=True)
+        subprocess.run(["docfx", str(DOTNET_CSHARP_DOCS_DIR / "docfx.json")], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -329,7 +329,7 @@ def view_docs(args: argparse.Namespace, rest: Sequence[str]) -> None:
     get_logger().info("Starting documentation server...")
 
     try:
-        subprocess.run(["docfx", "serve", str(CSHARP_DOCS_DIR / "_site")], check=True)
+        subprocess.run(["docfx", "serve", str(DOTNET_CSHARP_DOCS_DIR / "_site")], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -359,7 +359,7 @@ def format_with_dotnet_format() -> None:
                 "whitespace",
                 "-v",
                 "detailed",
-                str(CSHARP_SRC_DIR / "Sharpy.csproj"),
+                str(DOTNET_CSHARP_SRC_DIR / "Sharpy.csproj"),
             ],
             check=True,
         )
@@ -372,7 +372,7 @@ def format_with_dotnet_format() -> None:
                 "whitespace",
                 "-v",
                 "detailed",
-                str(CSHARP_TEST_DIR / "Sharpy.Tests.csproj"),
+                str(DOTNET_CSHARP_TEST_DIR / "Sharpy.Tests.csproj"),
             ],
             check=True,
         )
