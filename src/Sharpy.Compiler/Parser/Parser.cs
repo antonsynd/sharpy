@@ -89,6 +89,7 @@ public class Parser
             TokenType.Continue => ParseContinueStatement(),
             TokenType.Import => ParseImportStatement(),
             TokenType.From => ParseFromImportStatement(),
+            TokenType.Const => ParseConstDeclaration(),
             _ => ParseSimpleStatement()
         };
     }
@@ -538,6 +539,32 @@ public class Parser
             Name = name,
             Members = members,
             DocString = docString,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = Current.Line,
+            ColumnEnd = Current.Column
+        };
+    }
+
+    private VariableDeclaration ParseConstDeclaration()
+    {
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+
+        Expect(TokenType.Const);
+        var name = ExpectIdentifier();
+        Expect(TokenType.Colon);
+        var type = ParseTypeAnnotation();
+        Expect(TokenType.Assign);
+        var value = ParseExpression();
+        ExpectNewline();
+
+        return new VariableDeclaration
+        {
+            Name = name,
+            Type = type,
+            InitialValue = value,
+            IsConst = true,
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = Current.Line,
@@ -1159,8 +1186,25 @@ public class Parser
 
         while (IsComparisonOperator(Current.Type))
         {
-            operators.Add(TokenTypeToComparisonOperator(Current.Type));
+            var op = Current.Type;
             Advance();
+
+            // Handle multi-token operators: "is not" and "not in"
+            if (op == TokenType.Is && Current.Type == TokenType.Not)
+            {
+                Advance();
+                operators.Add(ComparisonOperator.IsNot);
+            }
+            else if (op == TokenType.Not && Current.Type == TokenType.In)
+            {
+                Advance();
+                operators.Add(ComparisonOperator.NotIn);
+            }
+            else
+            {
+                operators.Add(TokenTypeToComparisonOperator(op));
+            }
+
             operands.Add(ParseBitwiseOr());
         }
 
@@ -1199,7 +1243,7 @@ public class Parser
         TokenType.Equal or TokenType.NotEqual or
         TokenType.Less or TokenType.LessEqual or
         TokenType.Greater or TokenType.GreaterEqual or
-        TokenType.In or TokenType.Is => true,
+        TokenType.In or TokenType.Is or TokenType.Not => true,
         _ => false
     };
 
@@ -1212,7 +1256,7 @@ public class Parser
         TokenType.Greater => ComparisonOperator.GreaterThan,
         TokenType.GreaterEqual => ComparisonOperator.GreaterThanOrEqual,
         TokenType.In => ComparisonOperator.In,
-        TokenType.Is => Current.Type == TokenType.Not ? ComparisonOperator.IsNot : ComparisonOperator.Is,
+        TokenType.Is => ComparisonOperator.Is,
         _ => throw new ParserError($"Not a comparison operator: {type}", Current.Line, Current.Column)
     };
 
@@ -1720,7 +1764,15 @@ public class Parser
                 {
                     Advance();
 
-                    // Empty dict/set {}
+                    // Empty set {/} - special v0.5 syntax
+                    if (Current.Type == TokenType.Slash)
+                    {
+                        Advance();
+                        Expect(TokenType.RightBrace);
+                        return new SetLiteral { Elements = new List<Expression>(), LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                    }
+
+                    // Empty dict {}
                     if (Current.Type == TokenType.RightBrace)
                     {
                         Advance();
