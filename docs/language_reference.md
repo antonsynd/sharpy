@@ -609,6 +609,404 @@ def `ExactMethodName`():
     pass
 ```
 
+## Expressions **[v0.5]**
+
+Expressions are combinations of values, variables, operators, and function calls that evaluate to a value.
+
+### Primary Expressions **[v0.5]**
+
+The simplest forms of expressions:
+
+```python
+# Literals
+42                  # Integer literal
+3.14                # Float literal
+"hello"             # String literal
+True                # Boolean literal
+None                # None literal
+
+# Identifiers (variables)
+x                   # Variable reference
+my_variable         # Variable reference
+
+# Parenthesized expressions
+(x + y)             # Grouping
+(2 + 3) * 4         # Precedence control
+
+# Collection literals
+[1, 2, 3]           # List literal
+{"a": 1, "b": 2}    # Dictionary literal
+{1, 2, 3}           # Set literal
+(1, 2)              # Tuple literal
+```
+
+### Member Access Expressions **[v0.5]**
+
+Access members (fields, properties, methods) of objects:
+
+```python
+# Attribute access
+obj.field           # Access field
+obj.method          # Access method (returns function object)
+obj.method()        # Call method
+
+# Chained access
+person.address.city
+customer.get_account().get_balance()
+
+# Null-conditional access (short-circuits if None)
+obj?.method()       # Returns None if obj is None
+obj?.field          # Returns None if obj is None
+obj?.field?.nested  # Chains null checks
+
+# Example with null-conditional
+result = person?.address?.city  # None if person or address is None
+```
+
+**Member Access Rules:**
+- `.` requires left operand to be non-None (runtime check)
+- `?.` short-circuits to None if left operand is None
+- Both work with fields, properties, and methods
+
+### Indexing and Slicing Expressions **[v0.5]**
+
+Access elements in collections:
+
+```python
+# Single index
+arr[0]              # First element
+arr[-1]             # Last element
+arr[i]              # Element at index i
+
+# Tuple indexing (multi-dimensional)
+matrix[i, j]        # 2D indexing
+grid[x, y, z]       # 3D indexing
+
+# Slicing
+arr[1:5]            # Elements 1 through 4
+arr[:3]             # First 3 elements
+arr[3:]             # From index 3 to end
+arr[:]              # Copy all elements
+arr[1:10:2]         # Every 2nd element from 1 to 9
+arr[::-1]           # Reverse
+
+# Slicing with negative indices
+arr[-3:]            # Last 3 elements
+arr[:-1]            # All but last element
+```
+
+### Function Call Expressions **[v0.5]**
+
+Invoke functions and methods:
+
+```python
+# Simple function call
+print("Hello")
+len(items)
+calculate_total(100, 0.08)
+
+# Method calls
+obj.method()
+obj.method(arg1, arg2)
+
+# Chained calls
+get_object().get_value().to_string()
+
+# Constructor calls (type instantiation)
+Person("Alice", 30)
+Vector2(10.0, 20.0)
+List[int]()
+
+# Generic type instantiation
+container = ListContainer[str]()
+dict = Dictionary[str, int]()
+```
+
+**Function Call Rules:**
+- Arguments passed by position
+- All required parameters must be provided
+- Default parameters can be omitted
+- No keyword arguments in v0.5
+- No variadic arguments (`*args`, `**kwargs`) in v0.5
+
+### Arithmetic Expressions **[v0.5]**
+
+Binary and unary arithmetic operations:
+
+```python
+# Binary operators
+x + y               # Addition
+x - y               # Subtraction
+x * y               # Multiplication
+x / y               # Division (always returns float/double)
+x // y              # Floor division (returns int if both int)
+x % y               # Modulo (remainder)
+x ** y              # Exponentiation (right-associative)
+
+# Unary operators
++x                  # Unary plus (identity)
+-x                  # Unary minus (negation)
+
+# Examples
+result = 2 + 3 * 4          # 14 (multiplication first)
+power = 2 ** 3 ** 2         # 512 (right-associative: 2 ** (3 ** 2))
+quotient = 10 / 3           # 3.333...
+floor_quotient = 10 // 3    # 3
+remainder = 10 % 3          # 1
+```
+
+### Comparison Expressions **[v0.5]**
+
+Compare values, evaluate to bool:
+
+```python
+# Comparison operators
+x == y              # Equal
+x != y              # Not equal
+x < y               # Less than
+x <= y              # Less than or equal
+x > y               # Greater than
+x >= y              # Greater than or equal
+
+# Identity operators
+x is y              # Same object identity
+x is not y          # Different object identity
+
+# Membership operators
+item in collection          # Contains
+item not in collection      # Does not contain
+
+# Comparison chaining
+a < b < c           # Equivalent to: a < b and b < c
+x == y == z         # Equivalent to: x == y and y == z
+```
+
+**Comparison Rules:**
+- Comparisons return `bool` type
+- Can chain comparisons (evaluated left-to-right)
+- `is` checks object identity (reference equality)
+- `==` checks value equality (calls `__eq__` if defined)
+
+### Logical Expressions **[v0.5]**
+
+Boolean logic operations:
+
+```python
+# Logical operators
+x and y             # Logical AND (short-circuits)
+x or y              # Logical OR (short-circuits)
+not x               # Logical NOT
+
+# Short-circuit evaluation
+result = expensive_check() and another_check()  # second only if first is True
+result = quick_check() or fallback_check()      # second only if first is False
+
+# Examples
+if is_valid and has_permission:
+    do_something()
+
+value = input_value or default_value  # Use default if input_value is falsy
+```
+
+**Logical Operator Behavior:**
+- `and` returns first falsy value, or last value if all truthy
+- `or` returns first truthy value, or last value if all falsy
+- `not` always returns `bool`
+
+### Bitwise Expressions **[v0.5]**
+
+Bit-level operations on integers:
+
+```python
+# Bitwise operators
+x & y               # Bitwise AND
+x | y               # Bitwise OR
+x ^ y               # Bitwise XOR
+~x                  # Bitwise NOT (complement)
+x << n              # Left shift
+x >> n              # Right shift
+
+# Examples
+flags = FLAG_READ | FLAG_WRITE      # Combine flags
+has_read = (flags & FLAG_READ) != 0 # Test flag
+toggle = flags ^ FLAG_EXECUTE       # Toggle flag
+mask = ~0xFF                        # Create mask
+shifted = value << 8                # Shift left 8 bits
+```
+
+### Conditional Expressions **[v0.5]**
+
+Ternary conditional (if-else expression):
+
+```python
+# Syntax: true_value if condition else false_value
+result = x if x > 0 else -x         # Absolute value
+status = "even" if n % 2 == 0 else "odd"
+max_val = a if a > b else b
+
+# Can be nested (but reduces readability)
+category = "small" if x < 10 else ("medium" if x < 100 else "large")
+```
+
+**Rules:**
+- Evaluates to one of two values based on condition
+- Condition must be boolean expression
+- Both branches must be present
+- Only the selected branch is evaluated
+
+### Lambda Expressions **[v0.5]**
+
+Anonymous function expressions:
+
+```python
+# Syntax: lambda parameters: expression
+square = lambda x: x ** 2
+add = lambda x, y: x + y
+
+# Used in higher-order functions
+numbers = [1, 2, 3, 4, 5]
+evens = filter(lambda x: x % 2 == 0, numbers)
+doubled = map(lambda x: x * 2, numbers)
+
+# As function arguments
+def apply(value: int, func: (int) -> int) -> int:
+    return func(value)
+
+result = apply(10, lambda x: x ** 2)  # 100
+```
+
+**Lambda Rules:**
+- Single expression only (no statements)
+- Parameters types and return type can be omitted if they can be inferred from context
+- Cannot have multi-line body
+- Expression result is automatically returned
+
+### Type Cast Expressions **[v0.5]**
+
+Explicit type conversions:
+
+```python
+# Casting with type name (constructor-style)
+x = int(3.14)           # 3
+y = double(42)          # 42.0
+s = str(123)            # "123"
+
+# as operator for explicit casts
+obj = value as BaseType
+result = expression as TargetType
+
+# Type test and narrowing
+if isinstance(obj, SpecificType):
+    # obj is narrowed to SpecificType here
+    obj.specific_method()
+```
+
+### Null-Coalescing Expressions **[v0.5]**
+
+Provide default for None values:
+
+```python
+# Syntax: value ?? default
+name = user_name ?? "Anonymous"
+count = get_count() ?? 0
+
+# Chaining
+result = first_option() ?? second_option() ?? default_value
+
+# Left-associative
+x ?? y ?? z  # Equivalent to: (x ?? y) ?? z
+```
+
+**Null-Coalescing Rules:**
+- Returns left operand if not None
+- Returns right operand if left is None
+- Only evaluates right operand if needed (short-circuits)
+- Lower precedence than `or`
+
+### Type Check Expressions **[v0.5]**
+
+Check and narrow types:
+
+```python
+# isinstance for type checking
+if isinstance(obj, str):
+    # obj is narrowed to str type here
+    length = len(obj)
+
+if isinstance(value, int):
+    # value is narrowed to int
+    squared = value ** 2
+
+# Multiple types
+if isinstance(obj, (str, int)):
+    # obj is str or int
+    process(obj)
+
+# is None check (type narrowing)
+if obj is not None:
+    # obj type is narrowed (None removed)
+    obj.method()  # Safe to call
+```
+
+**Type Narrowing:**
+- `isinstance()` narrows type in true branch
+- `is not None` removes `None` from nullable type
+- `is None` narrows to `None` in true branch
+- Narrowing applies within the conditional scope
+
+### String Formatting Expressions **[v0.5]**
+
+F-string interpolation:
+
+```python
+# Basic interpolation
+name = "Alice"
+greeting = f"Hello, {name}!"
+
+# Expressions in f-strings
+x = 10
+message = f"The value is {x * 2}"
+
+# Format specifiers
+pi = 3.14159
+formatted = f"Pi: {pi:.2f}"  # "Pi: 3.14"
+
+# Multiple interpolations
+result = f"{name} scored {score} points in {time:.1f} seconds"
+```
+
+### Expression Evaluation Order **[v0.5]**
+
+**General Rules:**
+1. Expressions evaluated left-to-right
+2. Operator precedence determines sub-expression grouping
+3. Short-circuit operators (`and`, `or`, `??`, `?.`) stop early when possible
+4. Function arguments evaluated left-to-right before call
+5. Chained comparisons evaluated left-to-right
+
+**Examples:**
+
+```python
+# Left-to-right evaluation
+result = f1() + f2() * f3()
+# Order: f2(), f3(), multiply, f1(), add
+
+# Short-circuit
+result = cheap() and expensive()
+# If cheap() is False, expensive() never called
+
+# Argument evaluation
+func(first(), second(), third())
+# Order: first(), second(), third(), then func() called
+```
+
+**Not in v0.5:**
+- Walrus operator (`:=`)
+- Comprehensions (list/dict/set/generator)
+- Generator expressions
+- Await expressions
+- Yield expressions
+
 ## Type Syntax **[v0.5]**
 
 See [Type System](type_system.md) for detailed type semantics.
@@ -3685,6 +4083,429 @@ if (result is Result<int, string>.Ok(var value))
 }
 ```
 
+## Statements **[v0.5]**
+
+Statements are instructions that perform actions. Unlike expressions, statements do not evaluate to a value.
+
+### Statement Types **[v0.5]**
+
+Sharpy supports several categories of statements:
+
+1. **Simple Statements** - Single-line statements
+2. **Compound Statements** - Multi-line statements with blocks
+3. **Declaration Statements** - Define variables, constants, functions, classes
+
+### Simple Statements **[v0.5]**
+
+#### Expression Statements
+
+Any expression can be a statement:
+
+```python
+# Function calls
+print("Hello")
+calculate_total()
+obj.method()
+
+# Assignments (see below)
+x = 42
+
+# Method calls with side effects
+list.append(item)
+dict.clear()
+```
+
+#### Assignment Statements **[v0.5]**
+
+```python
+# Simple assignment
+x = 10
+name = "Alice"
+
+# Multiple assignment (unpacking)
+x, y = 10, 20
+first, second = get_pair()
+
+# Tuple unpacking
+point = (10, 20)
+x, y = point
+
+# List unpacking
+values = [1, 2, 3]
+a, b, c = values
+
+# Augmented assignment
+x += 5              # x = x + 5
+count *= 2          # count = count * 2
+total -= amount     # total = total - amount
+value //= 3         # value = value // 3
+flags |= new_flag   # flags = flags | new_flag
+
+# Chained assignment
+x = y = z = 0       # All assigned to 0
+```
+
+**Assignment Rules:**
+- Left side must be a valid target (variable, index, attribute)
+- Right side is evaluated first
+- Type must match for existing variables
+- Shadowing requires explicit type annotation
+- Cannot assign to literals or expressions
+
+#### Declaration Statements **[v0.5]**
+
+```python
+# Variable declaration (without assignment)
+x: int
+name: str
+values: list[int]
+
+# Variable declaration with assignment
+x: int = 42
+name: str = "Alice"
+values: list[int] = []
+
+# Type inference
+x = 42              # Inferred as int
+name = "Alice"      # Inferred as str
+
+# Constant declaration
+const PI: double = 3.14159
+const MAX_SIZE = 1000  # Inferred as int
+```
+
+#### Assert Statements **[v0.5]**
+
+```python
+# Simple assertion
+assert condition
+
+# Assertion with message
+assert x > 0, "Value must be positive"
+assert len(items) > 0, "List cannot be empty"
+
+# Multiple conditions
+assert is_valid and is_ready, "Invalid state"
+```
+
+#### Pass Statement **[v0.5]**
+
+Null statement that does nothing (placeholder):
+
+```python
+# Empty function
+def todo():
+    pass
+
+# Empty class
+class Placeholder:
+    pass
+
+# Empty exception handler
+try:
+    risky_operation()
+except Exception:
+    pass  # Ignore errors
+```
+
+#### Break and Continue **[v0.5]**
+
+Loop control statements:
+
+```python
+# break - exit loop
+for item in items:
+    if item == target:
+        break  # Exit the loop
+
+# continue - skip to next iteration
+for i in range(10):
+    if i % 2 == 0:
+        continue  # Skip even numbers
+    print(i)
+```
+
+**Rules:**
+- `break` exits the innermost loop
+- `continue` skips to next iteration of innermost loop
+- Only valid inside loops (`for`, `while`)
+- Not valid in v0.5 to break out of nested loops
+
+#### Return Statement **[v0.5]**
+
+```python
+# Return with value
+def add(x: int, y: int) -> int:
+    return x + y
+
+# Return without value (None)
+def print_message() -> None:
+    print("Hello")
+    return  # Optional
+
+# Return tuple (multiple values)
+def get_coordinates() -> tuple[int, int]:
+    return (10, 20)
+
+# Early return
+def find_item(items: list[str], target: str) -> int:
+    for i, item in enumerate(items):
+        if item == target:
+            return i  # Early return
+    return -1  # Not found
+```
+
+**Return Rules:**
+- Must match function return type
+- Functions with `-> None` can omit `return`
+- Functions with return type must return on all code paths
+- Can return early from anywhere in function
+
+#### Raise Statement **[v0.5]**
+
+```python
+# Raise exception with message
+raise ValueError("Invalid input")
+
+# Raise exception instance
+raise ArgumentException("parameter", "Invalid value")
+
+# Re-raise current exception
+except Exception as e:
+    log_error(e)
+    raise  # Re-raise same exception
+
+# Raise new exception from original
+except IOError as e:
+    raise RuntimeError("Failed to process") from e
+```
+
+### Compound Statements **[v0.5]**
+
+Statements that contain other statements (blocks).
+
+#### If Statement **[v0.5]**
+
+```python
+# Simple if
+if condition:
+    statement
+
+# If-else
+if condition:
+    statement
+else:
+    statement
+
+# If-elif-else
+if condition1:
+    statement1
+elif condition2:
+    statement2
+elif condition3:
+    statement3
+else:
+    statement4
+```
+
+**If Statement Rules:**
+- Condition must be boolean expression
+- Each block must be indented (4 spaces)
+- `elif` and `else` are optional
+- Evaluated top-to-bottom, first true condition executes
+
+#### While Statement **[v0.5]**
+
+```python
+# Basic while loop
+while condition:
+    statements
+
+# While with else
+while condition:
+    statements
+else:
+    # Executed if loop completes without break
+    statements
+
+# Infinite loop
+while True:
+    if should_exit:
+        break
+```
+
+#### For Statement **[v0.5]**
+
+```python
+# Iterate over collection
+for item in collection:
+    statements
+
+# For with range
+for i in range(10):
+    statements
+
+# For with else
+for item in items:
+    if item == target:
+        break
+else:
+    # Executed if loop completes without break
+    print("Not found")
+
+# For with enumerate
+for index, value in enumerate(items):
+    print(f"{index}: {value}")
+```
+
+**For Statement Rules:**
+- Loop variable automatically declared
+- Collection must be iterable
+- `else` clause optional
+- `break` and `continue` work as expected
+
+#### Try Statement **[v0.5]**
+
+```python
+# Try-except
+try:
+    statements
+except ExceptionType:
+    handler
+
+# Try-except with binding
+try:
+    statements
+except ExceptionType as e:
+    handler
+
+# Multiple except clauses
+try:
+    statements
+except ValueError as e:
+    handler1
+except TypeError as e:
+    handler2
+except Exception as e:
+    handler3
+
+# Try-except-else
+try:
+    statements
+except Exception as e:
+    handler
+else:
+    # Executed if no exception
+    statements
+
+# Try-except-finally
+try:
+    statements
+except Exception as e:
+    handler
+finally:
+    # Always executed
+    cleanup
+
+# Try-except-else-finally
+try:
+    statements
+except Exception as e:
+    handler
+else:
+    success_statements
+finally:
+    cleanup
+```
+
+**Try Statement Rules:**
+- At least one `except` clause required
+- `else` only runs if no exception occurred
+- `finally` always runs (even with return/break)
+- Exceptions checked in order, first match handles
+- Bare `raise` only valid in except clause
+
+### Declaration Statements **[v0.5]**
+
+#### Function Definition **[v0.5]**
+
+```python
+def function_name(param1: type1, param2: type2) -> return_type:
+    """Docstring."""
+    statements
+    return value
+```
+
+#### Class Definition **[v0.5]**
+
+```python
+class ClassName:
+    """Class docstring."""
+
+    # Field declarations
+    field1: type1
+    field2: type2
+
+    # Methods
+    def method(self) -> return_type:
+        statements
+```
+
+#### Struct Definition **[v0.5]**
+
+```python
+struct StructName:
+    """Struct docstring."""
+
+    # Field declarations
+    field1: type1
+    field2: type2
+
+    # Methods
+    def method(self) -> return_type:
+        statements
+```
+
+#### Interface Definition **[v0.5]**
+
+```python
+interface IInterfaceName:
+    """Interface docstring."""
+
+    def method(self, param: type) -> return_type:
+        ...
+```
+
+#### Enum Definition **[v0.5]**
+
+```python
+enum EnumName:
+    """Enum docstring."""
+
+    VALUE1 = 1
+    VALUE2 = 2
+    VALUE3 = 3
+```
+
+### Statement Execution Order **[v0.5]**
+
+**General Rules:**
+1. Statements execute top-to-bottom in sequence
+2. Control flow statements (`if`, `while`, `for`) can alter order
+3. `break` exits innermost loop
+4. `continue` skips to next iteration
+5. `return` exits function immediately
+6. `raise` transfers to exception handler
+7. Block statements execute their bodies
+
+**Not in v0.5:**
+- `with` statement (context managers)
+- `match` statement (pattern matching)
+- `del` statement (collection item deletion)
+- `yield` statement (generators)
+- `async`/`await` statements
+- Global/nonlocal declarations
+
 ## Assertions **[v0.5]**
 
 Assertions verify conditions during development:
@@ -4702,6 +5523,233 @@ def example():
 - Established resource management patterns (files, locks, connections)
 - Reusable resource management logic
 - Standard library integration
+
+## Built-in Functions **[v0.5]**
+
+Sharpy provides a set of built-in functions that are always available without imports.
+
+### Type Conversion Functions **[v0.5]**
+
+```python
+# Integer conversion
+int("42")           # 42
+int(3.14)           # 3
+int(True)           # 1
+
+# Float conversion
+double("3.14")      # 3.14
+double(42)          # 42.0
+double(True)        # 1.0
+
+# String conversion
+str(42)             # "42"
+str(3.14)           # "3.14"
+str(True)           # "True"
+str([1, 2, 3])      # "[1, 2, 3]"
+
+# Boolean conversion
+bool(1)             # True
+bool(0)             # False
+bool("")            # False
+bool("text")        # True
+bool([])            # False
+bool([1])           # True
+
+# Collection conversions
+list((1, 2, 3))     # [1, 2, 3]
+tuple([1, 2, 3])    # (1, 2, 3)
+set([1, 2, 2, 3])   # {1, 2, 3}
+```
+
+### Type Checking Functions **[v0.5]**
+
+```python
+# Type checking
+isinstance(obj, type)           # Check if obj is instance of type
+isinstance(42, int)             # True
+isinstance("hello", str)        # True
+isinstance([1, 2], list)        # True
+
+# Multiple types
+isinstance(value, (list[int], set[int]))   # True if list[int] or set[int]
+
+# Type information
+type(obj)                       # Get type of object
+type(42)                        # <class 'int'>
+type("hello")                   # <class 'str'>
+```
+
+### Collection Functions **[v0.5]**
+
+```python
+# Length
+len(collection)                 # Number of items
+len([1, 2, 3])                 # 3
+len("hello")                   # 5
+len({"a": 1, "b": 2})          # 2
+
+# Min/Max
+min(iterable)                  # Smallest item
+max(iterable)                  # Largest item
+min([3, 1, 4, 2])             # 1
+max([3, 1, 4, 2])             # 4
+
+# Sum
+sum(iterable)                  # Sum of all items
+sum([1, 2, 3, 4])             # 10
+
+# Sorting
+sorted(iterable)               # Return sorted list
+sorted([3, 1, 4, 2])          # [1, 2, 3, 4]
+sorted(items, reverse=True)    # Descending order
+
+# Reversed
+reversed(sequence)             # Reverse iterator
+list(reversed([1, 2, 3]))     # [3, 2, 1]
+
+# Enumerate
+enumerate(iterable)            # Iterator of (index, value) pairs
+list(enumerate(["a", "b"]))   # [(0, "a"), (1, "b")]
+for i, val in enumerate(items):
+    print(f"{i}: {val}")
+
+# Zip
+zip(iter1, iter2)              # Combine iterables
+list(zip([1, 2], ["a", "b"])) # [(1, "a"), (2, "b")]
+
+# Range
+range(stop)                    # 0 to stop-1
+range(start, stop)             # start to stop-1
+range(start, stop, step)       # With step
+list(range(5))                 # [0, 1, 2, 3, 4]
+list(range(2, 7))             # [2, 3, 4, 5, 6]
+list(range(0, 10, 2))         # [0, 2, 4, 6, 8]
+
+# Filter
+filter(predicate, iterable)    # Filter items
+evens = filter(lambda x: x % 2 == 0, [1, 2, 3, 4])
+list(evens)                    # [2, 4]
+
+# Map
+map(function, iterable)        # Transform items
+doubled = map(lambda x: x * 2, [1, 2, 3])
+list(doubled)                  # [2, 4, 6]
+
+# All/Any
+all(iterable)                  # True if all items truthy
+any(iterable)                  # True if any item truthy
+all([True, True, True])        # True
+any([False, False, True])      # True
+```
+
+### I/O Functions **[v0.5]**
+
+```python
+# Print to console
+print(value)                   # Print value
+print(val1, val2, val3)       # Print multiple values
+print("Name:", name)           # Print with label
+print(f"Value: {x}")          # Print f-string
+
+# Input from console
+input()                        # Read line from stdin
+input("Enter name: ")         # Read with prompt
+name = input("Name: ")        # Store input
+```
+
+### Mathematical Functions **[v0.5]**
+
+```python
+# Absolute value
+abs(-5)                        # 5
+abs(3.14)                      # 3.14
+
+# Power
+pow(2, 3)                      # 8 (2 ** 3)
+pow(10, 2)                     # 100
+
+# Round
+round(3.14159)                 # 3
+round(3.14159, 2)             # 3.14
+
+# Division
+divmod(10, 3)                  # (3, 1) - quotient and remainder
+```
+
+### Object Functions **[v0.5]**
+
+```python
+# Hash value
+hash(obj)                      # Hash code for object
+hash("hello")                  # Integer hash
+
+# String representation
+str(obj)                       # User-friendly string (__str__)
+repr(obj)                      # Developer string (__repr__)
+```
+
+### Utility Functions **[v0.5]**
+
+```python
+# Object comparison
+hash(obj)                      # Hash code (for dicts/sets)
+
+# Assertions (see Assertions section)
+assert condition
+assert condition, "message"
+```
+
+### Built-in Constants **[v0.5]**
+
+```python
+# Boolean constants
+True
+False
+
+# None
+None
+
+# Not a Number / Infinity (from math module)
+# (These are in math module, not built-in in v0.5)
+```
+
+### Function Reference Table **[v0.5]**
+
+| Function | Purpose | Example |
+|----------|---------|---------|
+| `int()` | Convert to integer | `int("42")` → `42` |
+| `double()` | Convert to double | `double(42)` → `42.0` |
+| `str()` | Convert to string | `str(42)` → `"42"` |
+| `bool()` | Convert to boolean | `bool(1)` → `True` |
+| `len()` | Get length | `len([1,2,3])` → `3` |
+| `min()` | Minimum value | `min([1,2,3])` → `1` |
+| `max()` | Maximum value | `max([1,2,3])` → `3` |
+| `sum()` | Sum of values | `sum([1,2,3])` → `6` |
+| `abs()` | Absolute value | `abs(-5)` → `5` |
+| `round()` | Round number | `round(3.7)` → `4` |
+| `sorted()` | Sort collection | `sorted([3,1,2])` → `[1,2,3]` |
+| `reversed()` | Reverse sequence | `list(reversed([1,2]))` → `[2,1]` |
+| `enumerate()` | Index+value pairs | `enumerate(["a","b"])` |
+| `zip()` | Combine iterables | `zip([1,2], ["a","b"])` |
+| `range()` | Number sequence | `range(5)` → 0..4 |
+| `filter()` | Filter items | `filter(pred, items)` |
+| `map()` | Transform items | `map(func, items)` |
+| `all()` | All truthy | `all([True,True])` → `True` |
+| `any()` | Any truthy | `any([False,True])` → `True` |
+| `isinstance()` | Type check | `isinstance(x, int)` |
+| `type()` | Get type | `type(42)` → `<class 'int'>` |
+| `print()` | Output to console | `print("hello")` |
+| `input()` | Read from console | `input("Name: ")` |
+| `hash()` | Get hash code | `hash("text")` |
+| `id()` | Object identity | `id(obj)` |
+| `hasattr()` | Has attribute | `hasattr(obj, "x")` |
+| `getattr()` | Get attribute | `getattr(obj, "x")` |
+| `setattr()` | Set attribute | `setattr(obj, "x", 10)` |
+
+**Note:** Additional mathematical functions (sin, cos, sqrt, etc.) are available in the `math` module, not as built-ins.
+
+**Not in v0.5:**
+- `open()` for file I/O (use .NET `System.IO` instead)
 
 ## Naming Conventions **[v0.5]**
 
