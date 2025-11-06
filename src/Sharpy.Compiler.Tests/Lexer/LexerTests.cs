@@ -1,23 +1,25 @@
 using FluentAssertions;
-using Sharpy.Compiler.Lexer;
+using LexerNs = Sharpy.Compiler.Lexer;
+using TokenType = Sharpy.Compiler.Lexer.TokenType;
+using LexerError = Sharpy.Compiler.Lexer.LexerError;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.Lexer;
 
 public class LexerTests
 {
-    private static List<Token> Tokenize(string source)
+    private static List<LexerNs.Token> Tokenize(string source)
     {
-        var lexer = new Compiler.Lexer.Lexer(source);
+        var lexer = new LexerNs.Lexer(source);
         return lexer.TokenizeAll();
     }
 
-    private static Token SingleToken(string source)
+    private static LexerNs.Token SingleToken(string source)
     {
         var tokens = Tokenize(source);
         // Should have exactly 2 tokens: the token we want + EOF
         tokens.Should().HaveCount(2);
-        tokens[1].Type.Should().Be(TokenType.Eof);
+        tokens[1].Type.Should().Be(LexerNs.TokenType.Eof);
         return tokens[0];
     }
 

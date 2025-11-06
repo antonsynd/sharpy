@@ -15,58 +15,62 @@ public class BuiltinRegistry
 
     private void LoadBuiltins()
     {
-        // TODO: Use reflection to load from Sharpy.Runtime assembly
-        // For now, manually register core types
+        // Numeric types
+        RegisterType("int", typeof(int), TypeKind.Struct);
+        RegisterType("long", typeof(long), TypeKind.Struct);
+        RegisterType("float", typeof(float), TypeKind.Struct);
+        RegisterType("double", typeof(double), TypeKind.Struct);
+        RegisterType("decimal", typeof(decimal), TypeKind.Struct);
 
-        RegisterType("int", typeof(int));
-        RegisterType("float", typeof(double));
-        RegisterType("str", typeof(string));
-        RegisterType("bool", typeof(bool));
+        // Boolean
+        RegisterType("bool", typeof(bool), TypeKind.Struct);
+
+        // String
+        RegisterType("str", typeof(string), TypeKind.Class);
+
+        // Collections (generic)
+        RegisterType("list", typeof(System.Collections.Generic.List<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
+        RegisterType("dict", typeof(System.Collections.Generic.Dictionary<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
+        RegisterType("set", typeof(System.Collections.Generic.HashSet<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
+
+        // Special
+        RegisterType("object", typeof(object), TypeKind.Class);
+        RegisterType("None", typeof(void), TypeKind.Struct); // void for return type
 
         // Register builtin functions
-        RegisterFunction("print", typeof(void));
-        RegisterFunction("len", typeof(int), typeof(object));
+        RegisterFunction("print", SemanticType.Void, new ParameterSymbol { Name = "value", Type = SemanticType.Str });
+        RegisterFunction("len", SemanticType.Int, new ParameterSymbol { Name = "obj", Type = SemanticType.Str });
+        RegisterFunction("range", new GenericType { Name = "list", TypeArguments = new() { SemanticType.Int } },
+            new ParameterSymbol { Name = "stop", Type = SemanticType.Int });
     }
 
-    private void RegisterType(string name, Type clrType)
+    private void RegisterType(string sharpyName, Type clrType, TypeKind kind, bool isGeneric = false, int typeParamCount = 0)
     {
-        _types[name] = new TypeSymbol
+        var typeSymbol = new TypeSymbol
         {
-            Name = name,
+            Name = sharpyName,
+            Kind = SymbolKind.Type,
+            TypeKind = kind,
             ClrType = clrType,
-            Kind = SymbolKind.Type
+            TypeParameters = isGeneric
+                ? Enumerable.Range(0, typeParamCount).Select(i => $"T{i}").ToList()
+                : new List<string>(),
+            AccessLevel = AccessLevel.Public
         };
+
+        _types[sharpyName] = typeSymbol;
     }
 
-    private void RegisterFunction(string name, Type returnType, params Type[] parameterTypes)
+    private void RegisterFunction(string name, SemanticType returnType, params ParameterSymbol[] parameters)
     {
         _functions[name] = new FunctionSymbol
         {
             Name = name,
             Kind = SymbolKind.Function,
-            ReturnType = MapClrType(returnType),
-            Parameters = parameterTypes.Select((t, i) => new ParameterSymbol
-            {
-                Name = $"arg{i}",
-                Type = MapClrType(t)
-            }).ToList()
+            ReturnType = returnType,
+            Parameters = parameters.ToList(),
+            AccessLevel = AccessLevel.Public
         };
-    }
-
-    private SemanticType MapClrType(Type clrType)
-    {
-        if (clrType == typeof(void))
-            return SemanticType.None;
-        if (clrType == typeof(int) || clrType == typeof(long))
-            return SemanticType.Int;
-        if (clrType == typeof(double) || clrType == typeof(float))
-            return SemanticType.Float;
-        if (clrType == typeof(string))
-            return SemanticType.Str;
-        if (clrType == typeof(bool))
-            return SemanticType.Bool;
-
-        return SemanticType.Unknown;
     }
 
     public TypeSymbol? GetType(string name) => _types.GetValueOrDefault(name);

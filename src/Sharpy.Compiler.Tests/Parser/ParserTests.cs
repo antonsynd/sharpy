@@ -1,8 +1,9 @@
 using FluentAssertions;
 using Xunit;
 using Sharpy.Compiler.Parser.Ast;
-using Sharpy.Compiler.Lexer;
-using Sharpy.Compiler.Parser;
+using LexerNs = Sharpy.Compiler.Lexer;
+using ParserNs = Sharpy.Compiler.Parser;
+using ParserError = Sharpy.Compiler.Parser.ParserError;
 
 namespace Sharpy.Compiler.Tests.Parser;
 
@@ -10,16 +11,16 @@ public class ParserTests
 {
     private static Module Parse(string source)
     {
-        var lexer = new Compiler.Lexer.Lexer(source);
-        var tokens = new List<Token>();
+        var lexer = new LexerNs.Lexer(source);
+        var tokens = new List<LexerNs.Token>();
         while (true)
         {
             var token = lexer.NextToken();
             tokens.Add(token);
-            if (token.Type == TokenType.Eof)
+            if (token.Type == LexerNs.TokenType.Eof)
                 break;
         }
-        var parser = new Compiler.Parser.Parser(tokens);
+        var parser = new ParserNs.Parser(tokens);
         return parser.ParseModule();
     }
 

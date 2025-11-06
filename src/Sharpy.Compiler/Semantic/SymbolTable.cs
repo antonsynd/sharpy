@@ -5,42 +5,76 @@ namespace Sharpy.Compiler.Semantic;
 /// </summary>
 public class SymbolTable
 {
-    private Scope _currentScope;
+    private readonly Stack<Scope> _scopeStack = new();
     private readonly Scope _globalScope;
+    private readonly BuiltinRegistry _builtins;
 
-    public SymbolTable()
+    public SymbolTable(BuiltinRegistry builtins)
     {
+        _builtins = builtins;
         _globalScope = new Scope("global");
-        _currentScope = _globalScope;
+        _scopeStack.Push(_globalScope);
+
+        // Populate global scope with builtins
+        PopulateBuiltins();
+    }
+
+    private void PopulateBuiltins()
+    {
+        // Add builtin types
+        foreach (var (name, typeSymbol) in _builtins.GetAllTypes())
+        {
+            _globalScope.Define(typeSymbol);
+        }
+
+        // Add builtin functions
+        foreach (var (name, funcSymbol) in _builtins.GetAllFunctions())
+        {
+            _globalScope.Define(funcSymbol);
+        }
     }
 
     public void EnterScope(string name)
     {
-        _currentScope = new Scope(name, _currentScope);
+        var newScope = new Scope(name, CurrentScope);
+        _scopeStack.Push(newScope);
     }
 
     public void ExitScope()
     {
-        if (_currentScope == _globalScope)
+        if (_scopeStack.Count <= 1)
         {
             throw new InvalidOperationException("Cannot exit global scope");
         }
-
-        _currentScope = _currentScope != null && _currentScope != _globalScope
-            ? new Scope("parent", null) // Simplified - need proper parent tracking
-            : _globalScope;
+        _scopeStack.Pop();
     }
 
     public void Define(Symbol symbol)
     {
-        _currentScope.Define(symbol);
+        CurrentScope.Define(symbol);
     }
 
-    public Symbol? Lookup(string name)
+    public Symbol? Lookup(string name, bool searchParents = true)
     {
-        return _currentScope.Lookup(name);
+        return CurrentScope.Lookup(name, searchParents);
     }
 
-    public Scope CurrentScope => _currentScope;
+    public TypeSymbol? LookupType(string name)
+    {
+        return Lookup(name) as TypeSymbol;
+    }
+
+    public FunctionSymbol? LookupFunction(string name)
+    {
+        return Lookup(name) as FunctionSymbol;
+    }
+
+    public VariableSymbol? LookupVariable(string name)
+    {
+        return Lookup(name) as VariableSymbol;
+    }
+
+    public Scope CurrentScope => _scopeStack.Peek();
     public Scope GlobalScope => _globalScope;
+    public int ScopeDepth => _scopeStack.Count;
 }

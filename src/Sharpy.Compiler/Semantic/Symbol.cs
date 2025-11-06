@@ -1,3 +1,5 @@
+using Sharpy.Compiler.Parser.Ast;
+
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
@@ -8,58 +10,90 @@ public abstract record Symbol
     public string Name { get; init; } = string.Empty;
     public SymbolKind Kind { get; init; }
     public AccessLevel AccessLevel { get; init; } = AccessLevel.Public;
+    public int? DeclarationLine { get; init; }
+    public int? DeclarationColumn { get; init; }
 }
 
 /// <summary>
-/// Variable symbol
+/// Variable or field symbol
 /// </summary>
 public record VariableSymbol : Symbol
 {
     public SemanticType Type { get; init; } = SemanticType.Unknown;
     public bool IsParameter { get; init; }
+    public bool IsConstant { get; init; }
+    public bool HasDefaultValue { get; init; }
 }
 
 /// <summary>
-/// Function symbol
+/// Function or method symbol
 /// </summary>
 public record FunctionSymbol : Symbol
 {
     public List<ParameterSymbol> Parameters { get; init; } = new();
     public SemanticType ReturnType { get; init; } = SemanticType.Unknown;
+    public bool IsStatic { get; init; }
+    public bool IsAbstract { get; init; }
+    public bool IsVirtual { get; init; }
+    public bool IsOverride { get; init; }
+
+    // For .NET interop
     public System.Reflection.MethodInfo? ClrMethod { get; init; }
 }
 
 /// <summary>
-/// Type symbol
+/// Type symbol (class, struct, interface, enum)
 /// </summary>
 public record TypeSymbol : Symbol
 {
+    public TypeKind TypeKind { get; init; }
     public Type? ClrType { get; init; }
-    public List<MethodSymbol> Methods { get; init; } = new();
-    public bool IsGeneric { get; init; }
+
+    // Generic type parameters
     public List<string> TypeParameters { get; init; } = new();
+    public bool IsGeneric => TypeParameters.Count > 0;
+
+    // Members
+    public List<VariableSymbol> Fields { get; init; } = new();
+    public List<FunctionSymbol> Methods { get; init; } = new();
+    public List<PropertySymbol> Properties { get; init; } = new();
+
+    // Inheritance
+    public TypeSymbol? BaseType { get; init; }
+    public List<TypeSymbol> Interfaces { get; init; } = new();
 }
 
 /// <summary>
-/// Method symbol
+/// Property symbol (for future use)
 /// </summary>
-public record MethodSymbol
+public record PropertySymbol
 {
     public string Name { get; init; } = string.Empty;
-    public List<ParameterSymbol> Parameters { get; init; } = new();
-    public SemanticType ReturnType { get; init; } = SemanticType.Unknown;
-    public System.Reflection.MethodInfo? ClrMethod { get; init; }
-    public bool IsStatic { get; init; }
+    public SemanticType Type { get; init; } = SemanticType.Unknown;
+    public bool HasGetter { get; init; }
+    public bool HasSetter { get; init; }
+    public AccessLevel GetterAccess { get; init; } = AccessLevel.Public;
+    public AccessLevel SetterAccess { get; init; } = AccessLevel.Public;
 }
 
 /// <summary>
-/// Parameter symbol
+/// Parameter symbol for functions/methods
 /// </summary>
 public record ParameterSymbol
 {
     public string Name { get; init; } = string.Empty;
     public SemanticType Type { get; init; } = SemanticType.Unknown;
     public bool HasDefault { get; init; }
+    public Expression? DefaultValue { get; init; }
+}
+
+/// <summary>
+/// Module symbol
+/// </summary>
+public record ModuleSymbol : Symbol
+{
+    public string FilePath { get; init; } = string.Empty;
+    public List<Symbol> Exports { get; init; } = new();
 }
 
 public enum SymbolKind
@@ -68,49 +102,21 @@ public enum SymbolKind
     Parameter,
     Function,
     Type,
-    Module
+    Module,
+    Property
+}
+
+public enum TypeKind
+{
+    Class,
+    Struct,
+    Interface,
+    Enum
 }
 
 public enum AccessLevel
 {
     Public,
-    Private,
-    Protected
-}
-
-/// <summary>
-/// Represents a type in the semantic analysis
-/// </summary>
-public abstract record SemanticType
-{
-    public static readonly SemanticType Unknown = new UnknownType();
-    public static readonly SemanticType Int = new BuiltinType("int");
-    public static readonly SemanticType Float = new BuiltinType("float");
-    public static readonly SemanticType Str = new BuiltinType("str");
-    public static readonly SemanticType Bool = new BuiltinType("bool");
-    public static readonly SemanticType None = new BuiltinType("None");
-}
-
-public record UnknownType : SemanticType;
-
-public record BuiltinType : SemanticType
-{
-    public string Name { get; init; }
-
-    public BuiltinType(string name)
-    {
-        Name = name;
-    }
-}
-
-public record GenericType : SemanticType
-{
-    public string Name { get; init; } = string.Empty;
-    public List<SemanticType> TypeArguments { get; init; } = new();
-}
-
-public record UserDefinedType : SemanticType
-{
-    public string Name { get; init; } = string.Empty;
-    public TypeSymbol? Symbol { get; init; }
+    Protected,
+    Private
 }
