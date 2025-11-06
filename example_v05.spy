@@ -1,0 +1,51 @@
+# Example Sharpy program demonstrating v0.5 features
+
+# Const declaration
+const PI: float = 3.14159
+
+# Class with auto type inference
+class Calculator:
+    def __init__(self, name: str):
+        self.name: str = name
+        self.history: auto = []  # Type inferred as list
+
+    def add(self, a: int, b: int) -> int:
+        result: auto = a + b
+        self.history.append(f"{a} + {b} = {result}")
+        return result
+
+    def get_history(self) -> list[str]:
+        return self.history
+
+# Function with f-string
+def greet(name: str, age: int) -> None:
+    message: str = f"Hello, {name}! You are {age} years old."
+    print(message)
+
+# Control flow
+def process_numbers(numbers: list[int]) -> None:
+    for num in numbers:
+        if num > 0:
+            print(f"{num} is positive")
+        elif num < 0:
+            print(f"{num} is negative")
+        else:
+            print(f"{num} is zero")
+
+# Exception handling
+def safe_divide(a: float, b: float) -> float?:
+    try:
+        return a / b
+    except ZeroDivisionError:
+        print("Cannot divide by zero")
+        return None
+
+# Null-conditional and null-coalescing operators
+def process_optional(value: str?) -> str:
+    length: int? = value?.length
+    return value ?? "default"
+
+# Main execution
+calc: auto = Calculator("MyCalc")
+result: int = calc.add(5, 3)
+greet("Alice", 30)
