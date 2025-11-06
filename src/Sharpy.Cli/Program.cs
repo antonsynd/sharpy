@@ -1,5 +1,6 @@
 ﻿using System.CommandLine;
 using Sharpy.Compiler.Lexer;
+using Sharpy.Compiler.Logging;
 
 namespace Sharpy.Cli;
 
@@ -56,6 +57,18 @@ class Program
         { AllowMultipleArgumentsPerToken = true };
         projectReferenceOption.AddAlias("-p");
 
+        // Logging options
+        var logLevelOption = new Option<CompilerLogLevel>(
+            name: "--log-level",
+            description: "Set logging verbosity (None, Error, Warning, Info, Debug, Trace)",
+            getDefaultValue: () => CompilerLogLevel.None
+        );
+
+        var logFileOption = new Option<FileInfo?>(
+            name: "--log-file",
+            description: "Write logs to file instead of stderr"
+        );
+
         // Add options to command
         rootCommand.AddArgument(inputFileArgument);
         rootCommand.AddOption(emitTokensOption);
@@ -64,17 +77,51 @@ class Program
         rootCommand.AddOption(outputOption);
         rootCommand.AddOption(referenceOption);
         rootCommand.AddOption(projectReferenceOption);
+        rootCommand.AddOption(logLevelOption);
+        rootCommand.AddOption(logFileOption);
 
-        rootCommand.SetHandler(
-            HandleCommand,
-            inputFileArgument,
-            emitTokensOption,
-            emitAstOption,
-            outputTypeOption,
-            outputOption,
-            referenceOption,
-            projectReferenceOption
-        );
+        rootCommand.SetHandler((context) =>
+        {
+            var inputFile = context.ParseResult.GetValueForArgument(inputFileArgument);
+            var emitTokens = context.ParseResult.GetValueForOption(emitTokensOption);
+            var emitAst = context.ParseResult.GetValueForOption(emitAstOption);
+            var outputType = context.ParseResult.GetValueForOption(outputTypeOption);
+            var output = context.ParseResult.GetValueForOption(outputOption);
+            var references = context.ParseResult.GetValueForOption(referenceOption);
+            var projectReferences = context.ParseResult.GetValueForOption(projectReferenceOption);
+            var logLevel = context.ParseResult.GetValueForOption(logLevelOption);
+            var logFile = context.ParseResult.GetValueForOption(logFileOption);
+
+            // Create logger and optional file stream that needs disposal
+            StreamWriter? fileStream = null;
+            try
+            {
+                ICompilerLogger logger;
+                if (logLevel == CompilerLogLevel.None)
+                {
+                    logger = NullLogger.Instance;
+                }
+                else if (logFile != null)
+                {
+                    fileStream = new StreamWriter(logFile.FullName, append: false);
+                    logger = new ConsoleCompilerLogger(logLevel, fileStream, fileStream);
+                }
+                else
+                {
+                    logger = new ConsoleCompilerLogger(logLevel);
+                }
+
+                HandleCommand(inputFile!, emitTokens, emitAst, outputType!, output,
+                             references ?? Array.Empty<string>(),
+                             projectReferences ?? Array.Empty<string>(),
+                             logger);
+            }
+            finally
+            {
+                fileStream?.Flush();
+                fileStream?.Dispose();
+            }
+        });
 
         return await rootCommand.InvokeAsync(args);
     }
@@ -86,7 +133,8 @@ class Program
         string outputType,
         FileInfo? output,
         string[] references,
-        string[] projectReferences)
+        string[] projectReferences,
+        ICompilerLogger logger)
     {
         // Validate input file
         if (!inputFile.Exists)
@@ -110,7 +158,7 @@ class Program
         // Handle emit-tokens mode (IMPLEMENTED)
         if (emitTokens)
         {
-            EmitTokens(inputFile);
+            EmitTokens(inputFile, logger);
             return;
         }
 
@@ -133,12 +181,12 @@ class Program
         Environment.Exit(1);
     }
 
-    static void EmitTokens(FileInfo inputFile)
+    static void EmitTokens(FileInfo inputFile, ICompilerLogger logger)
     {
         try
         {
             var source = File.ReadAllText(inputFile.FullName);
-            var lexer = new Lexer(source);
+            var lexer = new Lexer(source, logger);
             var tokens = lexer.TokenizeAll();
 
             Console.WriteLine($"Tokens for {inputFile.Name}:");

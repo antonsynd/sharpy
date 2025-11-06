@@ -1,4 +1,5 @@
 using System.Text;
+using Sharpy.Compiler.Logging;
 
 namespace Sharpy.Compiler.Lexer;
 
@@ -17,6 +18,7 @@ public class Lexer
     private bool _atLineStart = true;
     private bool _parenDepth = false;  // Track if we're inside (), [], or {}
     private int _bracketDepth = 0;
+    private readonly ICompilerLogger _logger;
 
     // Keywords mapping
     private static readonly Dictionary<string, TokenType> Keywords = new()
@@ -63,10 +65,12 @@ public class Lexer
         { "is", TokenType.Is },
     };
 
-    public Lexer(string source)
+    public Lexer(string source, ICompilerLogger? logger = null)
     {
         _source = source;
         _indentStack.Push(0);  // Base indentation level
+        _logger = logger ?? NullLogger.Instance;
+        _logger.LogInfo($"Lexer initialized, source length: {source.Length}");
     }
 
     /// <summary>
@@ -119,6 +123,7 @@ public class Lexer
             {
                 _indentStack.Push(indentLevel);
                 _atLineStart = false;
+                _logger.LogIndentChange(currentIndent, indentLevel);
                 return new Token(TokenType.Indent, "", _line, 1);
             }
             else if (indentLevel < currentIndent)
@@ -134,6 +139,7 @@ public class Lexer
                 // No need to check here - MeasureIndentation already validated
 
                 _atLineStart = false;
+                _logger.LogIndentChange(currentIndent, indentLevel);
 
                 // Queue remaining dedents and return first
                 for (int i = 1; i < dedents.Count; i++)
@@ -243,37 +249,43 @@ public class Lexer
             _line++;
             _column = 1;
             _atLineStart = true;
-            return new Token(TokenType.Newline, "\n", startLine, startColumn);
+            return LogAndReturn(new Token(TokenType.Newline, "\n", startLine, startColumn));
         }
 
         // String literals
         if (current == '"' || current == '\'')
-            return ReadString();
+            return LogAndReturn(ReadString());
 
         // F-strings
         if (current == 'f' && (_position + 1 < _source.Length) &&
             (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
-            return ReadFString();
+            return LogAndReturn(ReadFString());
 
         // Raw strings
         if (current == 'r' && (_position + 1 < _source.Length) &&
             (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
-            return ReadRawString();
+            return LogAndReturn(ReadRawString());
 
         // Backtick-delimited literal names
         if (current == '`')
-            return ReadLiteralName();
+            return LogAndReturn(ReadLiteralName());
 
         // Numbers
         if (char.IsDigit(current))
-            return ReadNumber();
+            return LogAndReturn(ReadNumber());
 
         // Identifiers and keywords
         if (char.IsLetter(current) || current == '_')
-            return ReadIdentifierOrKeyword();
+            return LogAndReturn(ReadIdentifierOrKeyword());
 
         // Operators and delimiters
-        return ReadOperatorOrDelimiter();
+        return LogAndReturn(ReadOperatorOrDelimiter());
+    }
+
+    private Token LogAndReturn(Token token)
+    {
+        _logger.LogTokenRead(token.Type.ToString(), token.Line, token.Column, token.Value);
+        return token;
     }
 
     private int MeasureIndentation()

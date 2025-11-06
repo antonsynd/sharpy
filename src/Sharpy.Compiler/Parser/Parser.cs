@@ -1,5 +1,6 @@
 using System.Text;
 using Sharpy.Compiler.Lexer;
+using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Parser;
@@ -12,11 +13,14 @@ public class Parser
 {
     private readonly List<Token> _tokens;
     private int _position;
+    private readonly ICompilerLogger _logger;
 
-    public Parser(List<Token> tokens)
+    public Parser(List<Token> tokens, ICompilerLogger? logger = null)
     {
         _tokens = tokens;
         _position = 0;
+        _logger = logger ?? NullLogger.Instance;
+        _logger.LogInfo($"Parser initialized, token count: {tokens.Count}");
     }
 
     private Token Current => _position < _tokens.Count ? _tokens[_position] : _tokens[^1];
@@ -29,6 +33,9 @@ public class Parser
     /// </summary>
     public Module ParseModule()
     {
+        _logger.LogInfo("Starting module parsing");
+        var startTime = System.Diagnostics.Stopwatch.StartNew();
+
         var statements = new List<Statement>();
         string? docString = null;
 
@@ -52,6 +59,8 @@ public class Parser
             statements.Add(stmt);
             SkipNewlines();
         }
+
+        _logger.LogInfo($"Module parsing completed in {startTime.ElapsedMilliseconds}ms, {statements.Count} statements");
 
         return new Module
         {
