@@ -1,5 +1,0 @@
-public def _should_be_protected():
-    pass
-
-private def __should_be_private():
-    pass

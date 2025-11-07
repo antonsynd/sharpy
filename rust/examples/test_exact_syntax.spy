@@ -1,7 +1,0 @@
-"""Test the exact syntax requested"""
-
-protocol Simple:
-    def foobar(self): ...
-
-def test_exact_syntax():
-    pass

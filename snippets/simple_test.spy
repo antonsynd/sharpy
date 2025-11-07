@@ -1,2 +1,2 @@
-regular = "hello world"
-escaped = "hello\nworld"
+public def test():
+    pass

@@ -34,9 +34,6 @@ CSHARP_PROJECTS: Sequence[Path] = [
     CSHARP_SRC_DIR / "Sharpy.Runtime" / "Sharpy.Runtime.csproj",
 ]
 
-RUST_ROOT_DIR: Path = ROOT_DIR / "rust"
-RUST_SRC_DIR: Path = RUST_ROOT_DIR / "src"
-
 
 _expected_resources: Sequence[Path] = []
 
@@ -63,8 +60,6 @@ def main() -> None:
         build(args=args, rest=rest, release=args.release)
     elif command == "setup":
         setup(args=args, rest=rest)
-    elif command == "cargo":
-        run_cargo(args=args, rest=rest)
     elif command == "clean":
         clean(args=args, rest=rest)
     elif command == "install":
@@ -102,7 +97,6 @@ def create_parser() -> argparse.ArgumentParser:
     setup_parser = subparsers.add_parser(
         "setup", help="Downloads resources and generates required code."
     )
-    cargo_parser = subparsers.add_parser("cargo", help="Delegates to cargo.")
 
     build_parser = subparsers.add_parser("build", help="Builds the package.")
     build_parser.add_argument(
@@ -180,19 +174,6 @@ def build(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
         build_tests(release=release)
 
 
-def run_cargo(args: argparse.Namespace, rest: Sequence[str]) -> None:
-    get_logger().info("Running cargo...")
-
-    try:
-        cargo_args: MutableSequence[str] = ["cargo"]
-        cargo_args.extend(rest)
-
-        subprocess.run(cargo_args, check=True, cwd=RUST_ROOT_DIR)
-    except subprocess.CalledProcessError as e:
-        print(f"Encountered error {e}", file=sys.stderr)
-        sys.exit(1)
-
-
 def build_compiler(release: bool) -> None:
     build_type: str = "Release" if release else "Debug"
 
@@ -200,12 +181,8 @@ def build_compiler(release: bool) -> None:
         get_logger().info(
             f"Building compiler with {build_type.lower()} configuration..."
         )
-        args: MutableSequence[str] = ["cargo", "build", "--release"]
 
-        if release:
-            args.append("--release")
-
-        subprocess.run(args, check=True, cwd=RUST_SRC_DIR)
+        # subprocess.run(args, check=True, cwd=RUST_SRC_DIR)
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -351,16 +328,6 @@ def install(args: argparse.Namespace, rest: Sequence[str]) -> None:
 
 
 def format(args: argparse.Namespace, rest: Sequence[str]) -> None:
-    targets: AbstractSet[str] = get_targets(args)
-
-    if "cs" in targets or "csharp" in targets:
-        format_with_dotnet_format()
-
-    if "rs" in targets or "rust" in targets:
-        format_with_cargo()
-
-
-def format_with_dotnet_format() -> None:
     try:
         for project in CSHARP_PROJECTS:
             if not project.exists():
@@ -384,41 +351,21 @@ def format_with_dotnet_format() -> None:
         sys.exit(1)
 
 
-def format_with_cargo() -> None:
-    get_logger().info("Formatting with cargo...")
-
-    try:
-        subprocess.run(["cargo", "fmt", "--all"], check=True, cwd=RUST_ROOT_DIR)
-    except subprocess.CalledProcessError as e:
-        print(f"Encountered error {e}", file=sys.stderr)
-        sys.exit(1)
-
 
 def test(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
-    targets: AbstractSet[str] = get_targets(args)
+    build_type: str = "Release" if release else "Debug"
 
-    if "cs" in targets or "csharp" in targets:
-        build_type: str = "Release" if release else "Debug"
-
-        get_logger().info(
-            f"Running tests with dotnet with {build_type.lower()} configuration..."
+    get_logger().info(
+        f"Running tests with dotnet with {build_type.lower()} configuration..."
+    )
+    try:
+        subprocess.run(
+            ["dotnet", "test", "-c", build_type, str(DOTNET_CSHARP_TEST_DIR), *rest],
+            check=True,
         )
-        try:
-            subprocess.run(
-                ["dotnet", "test", "-c", build_type, str(DOTNET_CSHARP_TEST_DIR), *rest],
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            get_logger().error(f"Encountered error {e}")
-            sys.exit(1)
-
-    if "rs" in targets or "rust" in targets:
-        get_logger().info("Running tests with cargo...")
-        try:
-            subprocess.run(["cargo", "test", "--all"], check=True, cwd=RUST_ROOT_DIR)
-        except subprocess.CalledProcessError as e:
-            get_logger().error(f"Encountered error {e}")
-            sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        get_logger().error(f"Encountered error {e}")
+        sys.exit(1)
 
 
 def get_logger() -> logging.Logger:

@@ -1,5 +1,0 @@
-def _protected_test():
-    pass
-
-def __private_test():
-    pass
