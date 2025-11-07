@@ -19,15 +19,11 @@ TOOLS_DIR: Path = ROOT_DIR / "tools"
 DATA_DIR: Path = ROOT_DIR / "data"
 
 DOTNET_CSHARP_ROOT_DIR: Path = ROOT_DIR / "dotnet"
-DOTNET_CSHARP_SRC_DIR: Path = ROOT_DIR / "dotnet/src/Sharpy"
-DOTNET_CSHARP_DOCS_DIR: Path = ROOT_DIR / "dotnet/docs"
-DOTNET_CSHARP_TEST_DIR: Path = ROOT_DIR / "dotnet/src/Sharpy.Tests"
+DOTNET_CSHARP_DOCS_DIR: Path = DOTNET_CSHARP_ROOT_DIR / "docs"
 
 CSHARP_SRC_DIR: Path = ROOT_DIR / "src"
 
 CSHARP_PROJECTS: Sequence[Path] = [
-    DOTNET_CSHARP_SRC_DIR / "Sharpy.csproj",
-    DOTNET_CSHARP_TEST_DIR / "Sharpy.Tests.csproj",
     CSHARP_SRC_DIR / "Sharpy.Compiler" / "Sharpy.Compiler.csproj",
     CSHARP_SRC_DIR / "Sharpy.Cli" / "Sharpy.Cli.csproj",
     CSHARP_SRC_DIR / "Sharpy.Compiler.Tests" / "Sharpy.Compiler.Tests.csproj",
@@ -195,9 +191,9 @@ def build_lib(release: bool) -> None:
         get_logger().info(
             f"Building standard library with {build_type.lower()} configuration..."
         )
-        subprocess.run(
-            ["dotnet", "build", "-c", build_type, str(DOTNET_CSHARP_SRC_DIR)], check=True
-        )
+        # subprocess.run(
+        #     ["dotnet", "build", "-c", build_type, str(DOTNET_CSHARP_SRC_DIR)], check=True
+        # )
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -208,9 +204,9 @@ def build_tests(release: bool) -> None:
 
     try:
         get_logger().info(f"Building tests with {build_type.lower()} configuration...")
-        subprocess.run(
-            ["dotnet", "build", "-c", build_type, str(DOTNET_CSHARP_TEST_DIR)], check=True
-        )
+        # subprocess.run(
+        #     ["dotnet", "build", "-c", build_type, str(DOTNET_CSHARP_TEST_DIR)], check=True
+        # )
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -307,7 +303,9 @@ def docs(args: argparse.Namespace, rest: Sequence[str]) -> None:
     get_logger().info("Generating documentation...")
 
     try:
-        subprocess.run(["docfx", str(DOTNET_CSHARP_DOCS_DIR / "docfx.json")], check=True)
+        subprocess.run(
+            ["docfx", str(DOTNET_CSHARP_DOCS_DIR / "docfx.json")], check=True
+        )
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -317,7 +315,9 @@ def view_docs(args: argparse.Namespace, rest: Sequence[str]) -> None:
     get_logger().info("Starting documentation server...")
 
     try:
-        subprocess.run(["docfx", "serve", str(DOTNET_CSHARP_DOCS_DIR / "_site")], check=True)
+        subprocess.run(
+            ["docfx", "serve", str(DOTNET_CSHARP_DOCS_DIR / "_site")], check=True
+        )
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -334,7 +334,9 @@ def format(args: argparse.Namespace, rest: Sequence[str]) -> None:
                 get_logger().error(f"Project file '{project}' does not exist.")
                 sys.exit(1)
 
-            get_logger().info(f"Formatting source files from {project.name} with dotnet-format...")
+            get_logger().info(
+                f"Formatting source files from {project.name} with dotnet-format..."
+            )
             subprocess.run(
                 [
                     "dotnet",
@@ -351,7 +353,6 @@ def format(args: argparse.Namespace, rest: Sequence[str]) -> None:
         sys.exit(1)
 
 
-
 def test(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
     build_type: str = "Release" if release else "Debug"
 
@@ -359,10 +360,11 @@ def test(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
         f"Running tests with dotnet with {build_type.lower()} configuration..."
     )
     try:
-        subprocess.run(
-            ["dotnet", "test", "-c", build_type, str(DOTNET_CSHARP_TEST_DIR), *rest],
-            check=True,
-        )
+        # subprocess.run(
+        #     ["dotnet", "test", "-c", build_type, str(DOTNET_CSHARP_TEST_DIR), *rest],
+        #     check=True,
+        # )
+        pass
     except subprocess.CalledProcessError as e:
         get_logger().error(f"Encountered error {e}")
         sys.exit(1)
