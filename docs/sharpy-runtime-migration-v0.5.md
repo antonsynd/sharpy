@@ -17,6 +17,7 @@ This migration is **largely complete** with all critical v0.5 features implement
 - Tuple types (deferred as ValueTuple works for v0.5)
 - Built-in functions: range(), enumerate(), zip() (can use .NET equivalents)
 - Type conversion functions: int(), double() (can use constructors)
+- Python-style negative indexing in Str methods (currently clamps to 0, can be enhanced in v1.0)
 - Additional integration testing
 - Documentation improvements
 - Performance benchmarks
