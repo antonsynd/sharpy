@@ -162,7 +162,7 @@ numbers: auto = [1, 2, 3]
         genericType.TypeArguments[0].Should().Be(SemanticType.Int);
     }
 
-    [Fact(Skip = "Class member access with self parameter requires tracking current class context - to be implemented in Phase 3")]
+    [Fact]
     public void ChecksClassMethods()
     {
         var source = @"

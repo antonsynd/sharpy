@@ -11,11 +11,16 @@ public class TypeChecker
     private readonly SymbolTable _symbolTable;
     private readonly SemanticInfo _semanticInfo;
     private readonly TypeResolver _typeResolver;
+    private readonly ControlFlowValidator _controlFlowValidator;
+    private readonly AccessValidator _accessValidator;
     private readonly ICompilerLogger _logger;
     private readonly List<SemanticError> _errors = new();
 
     // Track current function return type for return statement checking
     private SemanticType? _currentFunctionReturnType = null;
+
+    // Track current class being checked (for self parameter typing)
+    private TypeSymbol? _currentClass = null;
 
     // Configuration
     public bool ContinueAfterError { get; set; } = true;
@@ -27,9 +32,21 @@ public class TypeChecker
         _semanticInfo = semanticInfo;
         _typeResolver = typeResolver;
         _logger = logger ?? NullLogger.Instance;
+        _controlFlowValidator = new ControlFlowValidator(_logger);
+        _accessValidator = new AccessValidator(_symbolTable, _semanticInfo, _logger);
     }
 
-    public IReadOnlyList<SemanticError> Errors => _errors;
+    public IReadOnlyList<SemanticError> Errors
+    {
+        get
+        {
+            // Combine errors from type checker, control flow validator, and access validator
+            var allErrors = new List<SemanticError>(_errors);
+            allErrors.AddRange(_controlFlowValidator.Errors);
+            allErrors.AddRange(_accessValidator.Errors);
+            return allErrors;
+        }
+    }
 
     /// <summary>
     /// Type check all statements in a module
@@ -131,15 +148,35 @@ public class TypeChecker
 
         // Resolve return type
         var returnType = _typeResolver.ResolveTypeAnnotation(functionDef.ReturnType);
+
+        // Special case: __init__ always returns None/void
+        if (functionDef.Name == "__init__")
+        {
+            returnType = SemanticType.Void;
+        }
+        // Functions without explicit return type annotation default to void
+        else if (returnType == SemanticType.Unknown && functionDef.ReturnType == null)
+        {
+            returnType = SemanticType.Void;
+        }
+
         _currentFunctionReturnType = returnType;
 
         // Enter function scope
         _symbolTable.EnterScope($"function:{functionDef.Name}");
 
         // Register parameters in scope
-        foreach (var param in functionDef.Parameters)
+        for (int i = 0; i < functionDef.Parameters.Count; i++)
         {
+            var param = functionDef.Parameters[i];
             var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+
+            // Special handling for 'self' parameter in methods
+            if (i == 0 && param.Name == "self" && _currentClass != null)
+            {
+                paramType = new UserDefinedType { Symbol = _currentClass };
+            }
+
             var paramSymbol = new VariableSymbol
             {
                 Name = param.Name,
@@ -169,6 +206,9 @@ public class TypeChecker
             CheckStatement(statement);
         }
 
+        // Validate control flow
+        _controlFlowValidator.ValidateFunction(functionDef, returnType);
+
         _symbolTable.ExitScope();
         _currentFunctionReturnType = null;
     }
@@ -177,14 +217,50 @@ public class TypeChecker
     {
         _logger.LogDebug($"Type checking class: {classDef.Name}");
 
+        // Look up the class symbol
+        var classSymbol = _symbolTable.Lookup(classDef.Name) as TypeSymbol;
+        if (classSymbol == null)
+        {
+            AddError($"Class symbol for '{classDef.Name}' not found", classDef.LineStart, classDef.ColumnStart);
+            return;
+        }
+
         // Enter class scope
         _symbolTable.EnterScope($"class:{classDef.Name}");
+
+        // Resolve field types first (before checking methods that might reference them)
+        for (int i = 0; i < classSymbol.Fields.Count; i++)
+        {
+            var fieldSymbol = classSymbol.Fields[i];
+            if (fieldSymbol.Type == SemanticType.Unknown)
+            {
+                // Find the corresponding VariableDeclaration in the AST
+                var fieldDecl = classDef.Body
+                    .OfType<VariableDeclaration>()
+                    .FirstOrDefault(v => v.Name == fieldSymbol.Name);
+
+                if (fieldDecl != null)
+                {
+                    var resolvedType = _typeResolver.ResolveTypeAnnotation(fieldDecl.Type);
+                    classSymbol.Fields[i] = fieldSymbol with { Type = resolvedType };
+                }
+            }
+        }
+
+        // Set current class for method type checking and access validation
+        var previousClass = _currentClass;
+        _currentClass = classSymbol;
+        _accessValidator.EnterClass(classSymbol);
 
         // Check all members
         foreach (var statement in classDef.Body)
         {
             CheckStatement(statement);
         }
+
+        // Restore previous class
+        _currentClass = previousClass;
+        _accessValidator.ExitClass();
 
         _symbolTable.ExitScope();
     }
@@ -494,12 +570,19 @@ public class TypeChecker
             // Look for field or property
             var field = udt.Symbol.Fields.FirstOrDefault(f => f.Name == memberAccess.Member);
             if (field != null)
+            {
+                // Validate access level
+                _accessValidator.ValidateFieldAccess(field, udt.Symbol, memberAccess.LineStart, memberAccess.ColumnStart);
                 return field.Type;
+            }
 
             // Look for method
             var method = udt.Symbol.Methods.FirstOrDefault(m => m.Name == memberAccess.Member);
             if (method != null)
             {
+                // Validate access level
+                _accessValidator.ValidateMethodAccess(method, udt.Symbol, memberAccess.LineStart, memberAccess.ColumnStart);
+
                 return new FunctionType
                 {
                     ParameterTypes = method.Parameters.Select(p => p.Type).ToList(),

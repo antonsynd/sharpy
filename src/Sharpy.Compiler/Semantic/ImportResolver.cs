@@ -1,0 +1,312 @@
+using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Parser;
+using Sharpy.Compiler.Parser.Ast;
+
+namespace Sharpy.Compiler.Semantic;
+
+/// <summary>
+/// Resolves imports and loads symbols from imported modules
+/// </summary>
+public class ImportResolver
+{
+    private readonly ICompilerLogger _logger;
+    private readonly List<SemanticError> _errors = new();
+    private readonly HashSet<string> _loadedModules = new();
+    private readonly HashSet<string> _loadingModules = new(); // For circular import detection
+    private readonly Dictionary<string, ModuleInfo> _moduleCache = new();
+
+    private string? _currentModulePath = null;
+
+    public ImportResolver(ICompilerLogger? logger = null)
+    {
+        _logger = logger ?? NullLogger.Instance;
+    }
+
+    public IReadOnlyList<SemanticError> Errors => _errors;
+
+    /// <summary>
+    /// Set the current module path for resolving relative imports
+    /// </summary>
+    public void SetCurrentModule(string modulePath)
+    {
+        _currentModulePath = modulePath;
+    }
+
+    /// <summary>
+    /// Resolve an import statement
+    /// </summary>
+    public List<ModuleInfo> ResolveImport(ImportStatement importStmt, string? searchPath = null)
+    {
+        _logger.LogDebug($"Resolving import: {string.Join(", ", importStmt.Names.Select(n => n.Name))}");
+
+        var result = new List<ModuleInfo>();
+
+        foreach (var importAlias in importStmt.Names)
+        {
+            var modulePath = ResolveModulePath(importAlias.Name, searchPath);
+            if (modulePath == null)
+            {
+                AddError($"Cannot find module '{importAlias.Name}'",
+                    importAlias.LineStart, importAlias.ColumnStart);
+                continue;
+            }
+
+            var moduleInfo = LoadModule(modulePath, importAlias.LineStart, importAlias.ColumnStart);
+            if (moduleInfo != null)
+            {
+                result.Add(moduleInfo);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Resolve a from-import statement
+    /// </summary>
+    public ModuleInfo? ResolveFromImport(FromImportStatement fromImport, string? searchPath = null)
+    {
+        _logger.LogDebug($"Resolving from-import: from {fromImport.Module} import {string.Join(", ", fromImport.Names.Select(n => n.Name))}");
+
+        var modulePath = ResolveModulePath(fromImport.Module, searchPath);
+        if (modulePath == null)
+        {
+            AddError($"Cannot find module '{fromImport.Module}'",
+                fromImport.LineStart, fromImport.ColumnStart);
+            return null;
+        }
+
+        var moduleInfo = LoadModule(modulePath, fromImport.LineStart, fromImport.ColumnStart);
+
+        // Validate that imported names exist in the module (unless it's import *)
+        if (moduleInfo != null && !fromImport.ImportAll)
+        {
+            foreach (var importAlias in fromImport.Names)
+            {
+                if (!moduleInfo.ExportedSymbols.ContainsKey(importAlias.Name))
+                {
+                    AddError($"Module '{fromImport.Module}' has no exported symbol '{importAlias.Name}'",
+                        importAlias.LineStart, importAlias.ColumnStart);
+                }
+            }
+        }
+
+        return moduleInfo;
+    }
+
+    /// <summary>
+    /// Load and parse a module
+    /// </summary>
+    private ModuleInfo? LoadModule(string modulePath, int? lineStart, int? columnStart)
+    {
+        // Check cache first
+        if (_moduleCache.TryGetValue(modulePath, out var cached))
+            return cached;
+
+        // Check for circular imports
+        if (_loadingModules.Contains(modulePath))
+        {
+            AddError($"Circular import detected for module '{modulePath}'", lineStart, columnStart);
+            return null;
+        }
+
+        // Check if already loaded
+        if (_loadedModules.Contains(modulePath))
+            return _moduleCache.GetValueOrDefault(modulePath);
+
+        _logger.LogInfo($"Loading module: {modulePath}");
+        _loadingModules.Add(modulePath);
+
+        try
+        {
+            // Read the source file
+            if (!File.Exists(modulePath))
+            {
+                AddError($"Module file not found: {modulePath}", lineStart, columnStart);
+                return null;
+            }
+
+            var source = File.ReadAllText(modulePath);
+
+            // Parse the module
+            var lexer = new Lexer.Lexer(source, _logger);
+            var tokens = lexer.TokenizeAll();
+            var parser = new Parser.Parser(tokens, _logger);
+            var module = parser.ParseModule();
+
+            // Create module info
+            var moduleInfo = new ModuleInfo
+            {
+                Path = modulePath,
+                Module = module,
+                ExportedSymbols = new Dictionary<string, Symbol>()
+            };
+
+            // Extract exported symbols (all top-level declarations)
+            foreach (var statement in module.Body)
+            {
+                ExtractExportedSymbol(statement, moduleInfo);
+            }
+
+            _moduleCache[modulePath] = moduleInfo;
+            _loadedModules.Add(modulePath);
+
+            return moduleInfo;
+        }
+        catch (Exception ex)
+        {
+            AddError($"Error loading module '{modulePath}': {ex.Message}", lineStart, columnStart);
+            return null;
+        }
+        finally
+        {
+            _loadingModules.Remove(modulePath);
+        }
+    }
+
+    /// <summary>
+    /// Extract exported symbols from a statement
+    /// </summary>
+    private void ExtractExportedSymbol(Statement statement, ModuleInfo moduleInfo)
+    {
+        switch (statement)
+        {
+            case FunctionDef functionDef:
+                // Functions are exported
+                var funcSymbol = new FunctionSymbol
+                {
+                    Name = functionDef.Name,
+                    Kind = SymbolKind.Function,
+                    AccessLevel = AccessLevel.Public,
+                    DeclarationLine = functionDef.LineStart,
+                    DeclarationColumn = functionDef.ColumnStart
+                };
+                moduleInfo.ExportedSymbols[functionDef.Name] = funcSymbol;
+                break;
+
+            case ClassDef classDef:
+                // Classes are exported
+                var classSymbol = new TypeSymbol
+                {
+                    Name = classDef.Name,
+                    Kind = SymbolKind.Type,
+                    TypeKind = TypeKind.Class,
+                    AccessLevel = AccessLevel.Public,
+                    DeclarationLine = classDef.LineStart,
+                    DeclarationColumn = classDef.ColumnStart
+                };
+                moduleInfo.ExportedSymbols[classDef.Name] = classSymbol;
+                break;
+
+            case StructDef structDef:
+                // Structs are exported
+                var structSymbol = new TypeSymbol
+                {
+                    Name = structDef.Name,
+                    Kind = SymbolKind.Type,
+                    TypeKind = TypeKind.Struct,
+                    AccessLevel = AccessLevel.Public,
+                    DeclarationLine = structDef.LineStart,
+                    DeclarationColumn = structDef.ColumnStart
+                };
+                moduleInfo.ExportedSymbols[structDef.Name] = structSymbol;
+                break;
+
+            case InterfaceDef interfaceDef:
+                // Interfaces are exported
+                var interfaceSymbol = new TypeSymbol
+                {
+                    Name = interfaceDef.Name,
+                    Kind = SymbolKind.Type,
+                    TypeKind = TypeKind.Interface,
+                    AccessLevel = AccessLevel.Public,
+                    DeclarationLine = interfaceDef.LineStart,
+                    DeclarationColumn = interfaceDef.ColumnStart
+                };
+                moduleInfo.ExportedSymbols[interfaceDef.Name] = interfaceSymbol;
+                break;
+
+            case EnumDef enumDef:
+                // Enums are exported
+                var enumSymbol = new TypeSymbol
+                {
+                    Name = enumDef.Name,
+                    Kind = SymbolKind.Type,
+                    TypeKind = TypeKind.Enum,
+                    AccessLevel = AccessLevel.Public,
+                    DeclarationLine = enumDef.LineStart,
+                    DeclarationColumn = enumDef.ColumnStart
+                };
+                moduleInfo.ExportedSymbols[enumDef.Name] = enumSymbol;
+                break;
+
+            case VariableDeclaration varDecl when varDecl.IsConst:
+                // Constants are exported
+                var constSymbol = new VariableSymbol
+                {
+                    Name = varDecl.Name,
+                    Kind = SymbolKind.Variable,
+                    IsConstant = true,
+                    AccessLevel = AccessLevel.Public,
+                    DeclarationLine = varDecl.LineStart,
+                    DeclarationColumn = varDecl.ColumnStart
+                };
+                moduleInfo.ExportedSymbols[varDecl.Name] = constSymbol;
+                break;
+
+            default:
+                // Other statements don't export symbols
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Resolve a module name to a file path
+    /// </summary>
+    private string? ResolveModulePath(string moduleName, string? searchPath = null)
+    {
+        // Convert module.submodule to module/submodule.spy
+        var relativePath = moduleName.Replace('.', Path.DirectorySeparatorChar) + ".spy";
+
+        // Try current directory first
+        if (_currentModulePath != null)
+        {
+            var currentDir = Path.GetDirectoryName(_currentModulePath);
+            if (currentDir != null)
+            {
+                var path = Path.Combine(currentDir, relativePath);
+                if (File.Exists(path))
+                    return Path.GetFullPath(path);
+            }
+        }
+
+        // Try search path
+        if (searchPath != null)
+        {
+            var path = Path.Combine(searchPath, relativePath);
+            if (File.Exists(path))
+                return Path.GetFullPath(path);
+        }
+
+        // Try current working directory
+        if (File.Exists(relativePath))
+            return Path.GetFullPath(relativePath);
+
+        return null;
+    }
+
+    private void AddError(string message, int? line, int? column)
+    {
+        _errors.Add(new SemanticError(message, line, column));
+    }
+}
+
+/// <summary>
+/// Information about a loaded module
+/// </summary>
+public class ModuleInfo
+{
+    public string Path { get; init; } = string.Empty;
+    public Module Module { get; init; } = null!;
+    public Dictionary<string, Symbol> ExportedSymbols { get; init; } = new();
+}
