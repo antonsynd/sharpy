@@ -332,7 +332,7 @@ The migration focuses on:
        {
            0 => Item1,
            1 => Item2,
-           _ => throw new IndexError($"tuple index out of range: {index}")
+           _ => throw new IndexError($"tuple index out of range: {index}") // IndexError exists in Sharpy.Runtime
        };
        
        // Implicit conversions
@@ -412,6 +412,7 @@ This section provides the **bidirectional mapping** between Python dunder method
 **Example Implementation**:
 ```csharp
 public interface IAddable<TLeft, TRight, TResult>
+    where TLeft : IAddable<TLeft, TRight, TResult>
 {
     TResult __Add__(TRight other);
     
@@ -419,6 +420,7 @@ public interface IAddable<TLeft, TRight, TResult>
     {
         if (left is null || right is null)
             throw TypeError.OpNotSupported("+", "NoneType");
+        // The generic constraint ensures left implements IAddable
         return left.__Add__(right);
     }
 }
@@ -447,6 +449,7 @@ When the left operand doesn't support the operation with the right operand, try 
 **Example**:
 ```csharp
 public interface IRightAddable<TLeft, TRight, TResult>
+    where TRight : IRightAddable<TLeft, TRight, TResult>
 {
     TResult __RAdd__(TLeft other);
     
@@ -454,6 +457,7 @@ public interface IRightAddable<TLeft, TRight, TResult>
     {
         if (left is null || right is null)
             throw TypeError.OpNotSupported("+", "NoneType");
+        // The generic constraint ensures right implements IRightAddable
         return right.__RAdd__(left);
     }
 }
@@ -490,6 +494,7 @@ public interface IInplaceAddable<T>
 **Example**:
 ```csharp
 public interface INegatable<T>
+    where T : INegatable<T>
 {
     T __Neg__();
     
@@ -497,6 +502,7 @@ public interface INegatable<T>
     {
         if (value is null)
             throw TypeError.OpNotSupported("-", "NoneType");
+        // The generic constraint ensures value implements INegatable
         return value.__Neg__();
     }
 }
@@ -603,7 +609,7 @@ public interface IIterable<T>
 
 public abstract class Iterator<T>
 {
-    public abstract T __Next__(); // Throws StopIteration when exhausted
+    public abstract T __Next__(); // Throws StopIteration when exhausted (StopIteration exists in Sharpy.Runtime)
 }
 ```
 
