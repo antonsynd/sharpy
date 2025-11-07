@@ -38,6 +38,7 @@ public class Compiler
             _logger.LogInfo("Phase 3: Semantic Analysis");
             var builtinRegistry = new BuiltinRegistry();
             var symbolTable = new SymbolTable(builtinRegistry);
+            var semanticInfo = new SemanticInfo();
 
             // Pass 1: Name resolution (declarations)
             var nameResolver = new NameResolver(symbolTable, _logger);
@@ -52,7 +53,20 @@ public class Compiler
                 };
             }
 
-            // TODO: Pass 2: Type checking (will implement in Phase 2)
+            // Pass 2: Type resolution and type checking
+            var typeResolver = new TypeResolver(symbolTable, semanticInfo, _logger);
+            var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, _logger);
+            typeChecker.CheckModule(module);
+
+            if (typeChecker.Errors.Any())
+            {
+                return new CompilationResult
+                {
+                    Success = false,
+                    Errors = typeChecker.Errors.Select(e => e.Message).ToList()
+                };
+            }
+
             // TODO: Pass 3: Semantic validation (will implement in Phase 3)
 
             // Phase 4: Code Generation (placeholder)
@@ -63,7 +77,8 @@ public class Compiler
             {
                 Success = true,
                 Module = module,
-                SymbolTable = symbolTable
+                SymbolTable = symbolTable,
+                SemanticInfo = semanticInfo
             };
         }
         catch (Exception ex)
@@ -87,4 +102,5 @@ public class CompilationResult
     public List<string> Errors { get; init; } = new();
     public Module? Module { get; init; }
     public SymbolTable? SymbolTable { get; init; }
+    public SemanticInfo? SemanticInfo { get; init; }
 }
