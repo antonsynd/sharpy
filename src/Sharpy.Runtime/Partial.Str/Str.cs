@@ -493,9 +493,12 @@ public readonly partial struct Str
     {
     }
 
+    /// <summary>
+    /// Return a copy of the string converted to uppercase.
+    /// </summary>
     public Str Upper()
     {
-        return _s.ToUpper();
+        return new Str(_s.ToUpper());
     }
 
     public void ZFill(uint width)
