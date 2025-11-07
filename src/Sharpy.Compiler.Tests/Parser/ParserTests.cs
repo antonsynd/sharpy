@@ -1634,4 +1634,449 @@ for x, y in pairs:
     }
 
     #endregion
+
+    #region v0.5 Comprehensive Edge Cases
+
+    [Fact]
+    public void ParseEmptyClassWithPass()
+    {
+        var source = @"
+class Empty:
+    pass
+";
+        var module = Parse(source);
+        var classDef = module.Body[0].Should().BeOfType<ClassDef>().Subject;
+        classDef.Name.Should().Be("Empty");
+        classDef.Body.Should().HaveCount(1);
+        classDef.Body[0].Should().BeOfType<PassStatement>();
+    }
+
+    [Fact]
+    public void ParseEmptyStructWithPass()
+    {
+        var source = @"
+struct EmptyStruct:
+    pass
+";
+        var module = Parse(source);
+        var structDef = module.Body[0].Should().BeOfType<StructDef>().Subject;
+        structDef.Name.Should().Be("EmptyStruct");
+        structDef.Body.Should().HaveCount(1);
+        structDef.Body[0].Should().BeOfType<PassStatement>();
+    }
+
+    [Fact]
+    public void ParseEmptyInterfaceWithPass()
+    {
+        var source = @"
+interface IEmpty:
+    pass
+";
+        var module = Parse(source);
+        var interfaceDef = module.Body[0].Should().BeOfType<InterfaceDef>().Subject;
+        interfaceDef.Name.Should().Be("IEmpty");
+        interfaceDef.Body.Should().HaveCount(1);
+        interfaceDef.Body[0].Should().BeOfType<PassStatement>();
+    }
+
+    [Fact]
+    public void ParseError_EmptyEnum_ThrowsError()
+    {
+        var source = @"
+enum Empty:
+    pass
+";
+        Action act = () => Parse(source);
+        act.Should().Throw<ParserError>().WithMessage("*must have at least one member*");
+    }
+
+    [Fact]
+    public void ParseMultipleDecoratorsOnClass()
+    {
+        var source = @"
+@sealed
+@dataclass
+class Point:
+    x: int
+    y: int
+";
+        var module = Parse(source);
+        var classDef = module.Body[0].Should().BeOfType<ClassDef>().Subject;
+        classDef.Decorators.Should().HaveCount(2);
+        classDef.Decorators[0].Name.Should().Be("sealed");
+        classDef.Decorators[1].Name.Should().Be("dataclass");
+    }
+
+    [Fact]
+    public void ParseDeeplyNestedGenerics()
+    {
+        var source = "x: dict[str, list[tuple[int, float]]]";
+        var module = Parse(source);
+        var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
+        varDecl.Type.Name.Should().Be("dict");
+        varDecl.Type.TypeArguments[1].Name.Should().Be("list");
+        varDecl.Type.TypeArguments[1].TypeArguments[0].Name.Should().Be("tuple");
+        varDecl.Type.TypeArguments[1].TypeArguments[0].TypeArguments.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void ParseNullableGenericType()
+    {
+        var source = "x: list[int]?";
+        var module = Parse(source);
+        var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
+        varDecl.Type.Name.Should().Be("list");
+        varDecl.Type.IsNullable.Should().BeTrue();
+        varDecl.Type.TypeArguments[0].Name.Should().Be("int");
+    }
+
+    [Fact]
+    public void ParseNullableNestedGenericType()
+    {
+        var source = "x: dict[str, list[int]?]";
+        var module = Parse(source);
+        var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
+        varDecl.Type.Name.Should().Be("dict");
+        varDecl.Type.TypeArguments[1].Name.Should().Be("list");
+        varDecl.Type.TypeArguments[1].IsNullable.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ParseConstWithExplicitType()
+    {
+        var source = "const MAX_SIZE: int = 100";
+        var module = Parse(source);
+        var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
+        varDecl.Name.Should().Be("MAX_SIZE");
+        varDecl.IsConst.Should().BeTrue();
+        varDecl.Type.Name.Should().Be("int");
+    }
+
+    [Fact]
+    public void ParseComplexMemberAccessChain()
+    {
+        var source = "result = obj.method().property.nested_method(arg).field";
+        var module = Parse(source);
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+
+        var memberAccess = assignment.Value;
+        memberAccess.Should().BeOfType<MemberAccess>();
+    }
+
+    [Fact]
+    public void ParseChainedIndexingAndMemberAccess()
+    {
+        var source = "value = array[0].method()[key].property";
+        var module = Parse(source);
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+
+        // Should parse without throwing
+        assignment.Value.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void ParseLambdaWithMultipleParameters()
+    {
+        var source = "add = lambda x, y: x + y";
+        var module = Parse(source);
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var lambda = assignment.Value.Should().BeOfType<LambdaExpression>().Subject;
+        lambda.Parameters.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void ParseComplexConditionalExpression()
+    {
+        var source = "result = a if x > 0 else b if x < 0 else c";
+        var module = Parse(source);
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        assignment.Value.Should().BeOfType<ConditionalExpression>();
+    }
+
+    [Fact]
+    public void ParseNullCoalescingChain()
+    {
+        var source = "value = a ?? b ?? c ?? default";
+        var module = Parse(source);
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+
+        // Should create nested binary operations
+        assignment.Value.Should().BeOfType<BinaryOp>();
+    }
+
+    [Fact]
+    public void ParseNullCoalescingAssignment()
+    {
+        var source = "x = a ?? b";
+        var module = Parse(source);
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        assignment.Value.Should().BeOfType<BinaryOp>().Which.Operator.Should().Be(BinaryOperator.NullCoalesce);
+    }
+
+    [Fact]
+    public void ParseTypeCheckExpression()
+    {
+        var source = "result = value is int";
+        var module = Parse(source);
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        assignment.Value.Should().BeOfType<TypeCheck>();
+    }
+
+    [Fact]
+    public void ParseGenericClassWithDefaultTypeParameter()
+    {
+        var source = @"
+class Container[T]:
+    def __init__(self, value: T):
+        self.value = value
+";
+        var module = Parse(source);
+        var classDef = module.Body[0].Should().BeOfType<ClassDef>().Subject;
+        classDef.TypeParameters.Should().HaveCount(1);
+        classDef.Body.Should().HaveCount(1);
+        classDef.Body[0].Should().BeOfType<FunctionDef>();
+    }
+
+    [Fact]
+    public void ParseStructWithGenericFields()
+    {
+        var source = @"
+struct Pair[T, U]:
+    first: T
+    second: U
+";
+        var module = Parse(source);
+        var structDef = module.Body[0].Should().BeOfType<StructDef>().Subject;
+        structDef.TypeParameters.Should().HaveCount(2);
+        structDef.Body.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void ParseInterfaceWithGenericMethods()
+    {
+        var source = @"
+interface IConverter[TInput, TOutput]:
+    def convert(self, input: TInput) -> TOutput:
+        ...
+";
+        var module = Parse(source);
+        var interfaceDef = module.Body[0].Should().BeOfType<InterfaceDef>().Subject;
+        interfaceDef.TypeParameters.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void ParseNestedClassDefinitions()
+    {
+        var source = @"
+class Outer:
+    class Inner:
+        pass
+";
+        var module = Parse(source);
+        var outerClass = module.Body[0].Should().BeOfType<ClassDef>().Subject;
+        outerClass.Body[0].Should().BeOfType<ClassDef>().Which.Name.Should().Be("Inner");
+    }
+
+    [Fact]
+    public void ParseDecoratorWithSimpleExpression()
+    {
+        var source = @"
+@decorator
+def func():
+    pass
+";
+        var module = Parse(source);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Decorators.Should().HaveCount(1);
+        funcDef.Decorators[0].Name.Should().Be("decorator");
+    }
+
+    [Fact]
+    public void ParseError_MalformedDecorator_ThrowsError()
+    {
+        var source = "@\ndef func():\n    pass";
+        Action act = () => Parse(source);
+        act.Should().Throw<ParserError>();
+    }
+
+    [Fact]
+    public void ParseComplexTryExceptFinally()
+    {
+        var source = @"
+try:
+    risky_operation()
+except ValueError as e:
+    handle_value_error(e)
+except KeyError as e:
+    handle_key_error(e)
+except Exception as e:
+    handle_generic(e)
+finally:
+    cleanup()
+";
+        var module = Parse(source);
+        var tryStmt = module.Body[0].Should().BeOfType<TryStatement>().Subject;
+        tryStmt.Handlers.Should().HaveCount(3);
+        tryStmt.FinallyBody.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void ParseSlicingWithAllComponents()
+    {
+        var source = "subset = array[start:stop:step]";
+        var module = Parse(source);
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        assignment.Value.Should().BeOfType<SliceAccess>();
+    }
+
+    [Fact]
+    public void ParseSlicingWithOmittedComponents()
+    {
+        var source = "subset = array[::2]";
+        var module = Parse(source);
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        assignment.Value.Should().BeOfType<SliceAccess>();
+    }
+
+    [Fact]
+    public void ParseMultidimensionalIndexing()
+    {
+        var source = "value = matrix[(i, j)]";  // Use tuple syntax
+        var module = Parse(source);
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        assignment.Value.Should().BeOfType<IndexAccess>();
+    }
+
+    [Fact]
+    public void ParseComplexBitwiseExpression()
+    {
+        var source = "result = (a & b) | (c ^ d) << 2";
+        var module = Parse(source);
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        assignment.Value.Should().BeOfType<BinaryOp>();
+    }
+
+    [Fact]
+    public void ParseChainedComparisons()
+    {
+        var source = "valid = 0 <= x < 10";
+        var module = Parse(source);
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+
+        // Should parse as chained comparison
+        assignment.Value.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void ParseAllAugmentedAssignments()
+    {
+        var source = @"
+x += 1
+y -= 2
+z *= 3
+a /= 4
+b //= 5
+c %= 6
+d **= 2
+e &= 0xFF
+f |= 0x01
+g ^= 0x0F
+h <<= 1
+i >>= 2
+";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(12);
+        module.Body.Should().AllBeOfType<Assignment>();
+    }
+
+    [Fact]
+    public void ParseFunctionWithComplexReturnType()
+    {
+        var source = @"
+def complex_func() -> dict[str, list[tuple[int, float]]]:
+    pass
+";
+        var module = Parse(source);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.ReturnType.Should().NotBeNull();
+        funcDef.ReturnType.Name.Should().Be("dict");
+    }
+
+    [Fact]
+    public void ParseFunctionReturningNullableType()
+    {
+        var source = @"
+def find(key: str) -> int?:
+    pass
+";
+        var module = Parse(source);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.ReturnType.Should().NotBeNull();
+        funcDef.ReturnType.IsNullable.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ParseClassWithMultipleInheritance()
+    {
+        var source = @"
+class Child(Base1, Base2, IInterface):
+    pass
+";
+        var module = Parse(source);
+        var classDef = module.Body[0].Should().BeOfType<ClassDef>().Subject;
+        classDef.BaseClasses.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void ParseEnumWithExplicitValues()
+    {
+        var source = @"
+enum Status:
+    PENDING = 0
+    ACTIVE = 1
+    COMPLETE = 2
+";
+        var module = Parse(source);
+        var enumDef = module.Body[0].Should().BeOfType<EnumDef>().Subject;
+        enumDef.Members.Should().HaveCount(3);
+        enumDef.Members.Should().AllSatisfy(m => m.Value.Should().NotBeNull());
+    }
+
+    [Fact]
+    public void ParseLiteralNameAsClassMember()
+    {
+        var source = @"
+class MyClass:
+    `special-property`: int
+";
+        var module = Parse(source);
+        var classDef = module.Body[0].Should().BeOfType<ClassDef>().Subject;
+        classDef.Body.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ParseError_InconsistentIndentation_ThrowsLexerError()
+    {
+        var source = "if True:\n    x = 1\n  y = 2";  // Mixed indentation
+        Action act = () => Parse(source);
+        act.Should().Throw<Exception>();  // Either ParserError or LexerError is fine
+    }
+
+    [Fact]
+    public void ParseError_MissingGenericCloseBracket_ThrowsError()
+    {
+        var source = "x: list[int";
+        Action act = () => Parse(source);
+        act.Should().Throw<ParserError>();
+    }
+
+    [Fact]
+    public void ParseError_InvalidTypeParameter_ThrowsError()
+    {
+        var source = "class Generic[123]:\n    pass";
+        Action act = () => Parse(source);
+        act.Should().Throw<ParserError>();
+    }
+
+    #endregion
 }

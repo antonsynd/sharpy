@@ -1234,4 +1234,368 @@ y = 2";
     }
 
     #endregion
+
+    #region v0.5 Comprehensive Edge Cases
+
+    [Fact]
+    public void Tokenize_MultilineStringWithEscapedQuotes_TokenizesCorrectly()
+    {
+        var source = "\"\"\"Line one\\\"quoted\\\" text\nLine two\n\"\"\"";
+        var tokens = Tokenize(source);
+
+        var stringToken = tokens.Should().ContainSingle(t => t.Type == TokenType.String).Subject;
+        stringToken.Value.Should().Contain("Line one");
+        stringToken.Value.Should().Contain("quoted");
+        stringToken.Value.Should().Contain("Line two");
+    }
+
+    [Fact]
+    public void Tokenize_RawStringWithBackslashes_PreservesBackslashes()
+    {
+        var source = "r\"C:\\\\Users\\\\test\\\\file.txt\"";
+        var tokens = Tokenize(source);
+
+        var stringToken = tokens.Should().ContainSingle(t => t.Type == TokenType.RawString).Subject;
+        stringToken.Value.Should().Contain("\\\\");
+    }
+
+    [Fact]
+    public void Tokenize_ComplexOperatorChain_TokenizesAllOperators()
+    {
+        var source = "x ?? y";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "x");
+        tokens.Should().Contain(t => t.Type == TokenType.NullCoalesce);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "y");
+    }
+
+    [Fact]
+    public void Tokenize_DecoratorWithArguments_TokenizesCorrectly()
+    {
+        var source = "@decorator(arg1, arg2)";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.At);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "decorator");
+        tokens.Should().Contain(t => t.Type == TokenType.LeftParen);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "arg1");
+        tokens.Should().Contain(t => t.Type == TokenType.Comma);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "arg2");
+        tokens.Should().Contain(t => t.Type == TokenType.RightParen);
+    }
+
+    [Fact]
+    public void Tokenize_ComplexGenericSyntax_TokenizesAllBrackets()
+    {
+        var source = "dict[str, list[int]]";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.LeftBracket);
+        tokens.Should().Contain(t => t.Type == TokenType.Comma);
+        var leftBrackets = tokens.Where(t => t.Type == TokenType.LeftBracket).ToList();
+        var rightBrackets = tokens.Where(t => t.Type == TokenType.RightBracket).ToList();
+        leftBrackets.Should().HaveCount(2);
+        rightBrackets.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void Tokenize_NullableGenericType_TokenizesNullOperator()
+    {
+        var source = "list[int]?";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "list");
+        tokens.Should().Contain(t => t.Type == TokenType.LeftBracket);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "int");
+        tokens.Should().Contain(t => t.Type == TokenType.RightBracket);
+        tokens.Should().Contain(t => t.Type == TokenType.Question);
+    }
+
+    [Fact]
+    public void Tokenize_LiteralNameWithSpaces_TokenizesCorrectly()
+    {
+        var source = "`class name with spaces`";
+        var tokens = Tokenize(source);
+
+        var identifier = tokens.Should().ContainSingle(t => t.Type == TokenType.Identifier).Subject;
+        identifier.Value.Should().Be("class name with spaces");
+    }
+
+    [Fact]
+    public void Tokenize_LiteralNameWithKeyword_TokenizesAsIdentifier()
+    {
+        var source = "`class`";
+        var tokens = Tokenize(source);
+
+        var identifier = tokens.Should().ContainSingle(t => t.Type == TokenType.Identifier).Subject;
+        identifier.Value.Should().Be("class");
+    }
+
+    [Fact]
+    public void Tokenize_LiteralNameWithSpecialChars_TokenizesCorrectly()
+    {
+        var source = "`method-name+special`";
+        var tokens = Tokenize(source);
+
+        var identifier = tokens.Should().ContainSingle(t => t.Type == TokenType.Identifier).Subject;
+        identifier.Value.Should().Be("method-name+special");
+    }
+
+    [Fact]
+    public void Tokenize_FStringWithNestedBraces_TokenizesCorrectly()
+    {
+        var source = "f\"value: {x + 1}\"";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.FString);
+    }
+
+    [Fact]
+    public void Tokenize_FStringWithMultipleExpressions_TokenizesCorrectly()
+    {
+        var source = "f\"{x} and {y}\"";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.FString);
+    }
+
+    [Fact]
+    public void Tokenize_BitwiseShiftOperators_TokenizesSeparately()
+    {
+        var source = "x << 2 >> 1";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.LeftShift);
+        tokens.Should().Contain(t => t.Type == TokenType.RightShift);
+    }
+
+    [Fact]
+    public void Tokenize_AllAugmentedAssignmentOperators_TokenizesCorrectly()
+    {
+        var source = "a += 1\nb -= 1\nc *= 2\nd /= 2\ne //= 2\nf %= 3\ng **= 2\nh &= 1\ni |= 1\nj ^= 1\nk <<= 1\nl >>= 1";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.PlusAssign);
+        tokens.Should().Contain(t => t.Type == TokenType.MinusAssign);
+        tokens.Should().Contain(t => t.Type == TokenType.StarAssign);
+        tokens.Should().Contain(t => t.Type == TokenType.SlashAssign);
+        tokens.Should().Contain(t => t.Type == TokenType.DoubleSlashAssign);
+        tokens.Should().Contain(t => t.Type == TokenType.PercentAssign);
+        tokens.Should().Contain(t => t.Type == TokenType.DoubleStarAssign);
+        tokens.Should().Contain(t => t.Type == TokenType.AmpersandAssign);
+        tokens.Should().Contain(t => t.Type == TokenType.PipeAssign);
+        tokens.Should().Contain(t => t.Type == TokenType.CaretAssign);
+        tokens.Should().Contain(t => t.Type == TokenType.LeftShiftAssign);
+        tokens.Should().Contain(t => t.Type == TokenType.RightShiftAssign);
+    }
+
+    [Fact]
+    public void Tokenize_ConstWithAutoKeywords_TokenizesBothKeywords()
+    {
+        var source = "const auto x = 5";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.Const);
+        tokens.Should().Contain(t => t.Type == TokenType.Auto);
+    }
+
+    [Fact]
+    public void Tokenize_AllStructuralKeywords_TokenizesCorrectly()
+    {
+        var source = "class struct interface enum";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.Class);
+        tokens.Should().Contain(t => t.Type == TokenType.Struct);
+        tokens.Should().Contain(t => t.Type == TokenType.Interface);
+        tokens.Should().Contain(t => t.Type == TokenType.Enum);
+    }
+
+    [Fact]
+    public void Tokenize_ComplexNestedBrackets_TokenizesAllPairs()
+    {
+        var source = "[[{()}]]";
+        var tokens = Tokenize(source);
+
+        var leftBrackets = tokens.Where(t => t.Type == TokenType.LeftBracket).Count();
+        var rightBrackets = tokens.Where(t => t.Type == TokenType.RightBracket).Count();
+        var leftBraces = tokens.Where(t => t.Type == TokenType.LeftBrace).Count();
+        var rightBraces = tokens.Where(t => t.Type == TokenType.RightBrace).Count();
+        var leftParens = tokens.Where(t => t.Type == TokenType.LeftParen).Count();
+        var rightParens = tokens.Where(t => t.Type == TokenType.RightParen).Count();
+
+        leftBrackets.Should().Be(2);
+        rightBrackets.Should().Be(2);
+        leftBraces.Should().Be(1);
+        rightBraces.Should().Be(1);
+        leftParens.Should().Be(1);
+        rightParens.Should().Be(1);
+    }
+
+    [Fact]
+    public void Tokenize_NumericLiteralsWithAllSuffixes_TokenizesCorrectly()
+    {
+        var source = "42L 3.14f 2.5d";
+        var tokens = Tokenize(source);
+
+        var numbers = tokens.Where(t => t.Type == TokenType.Integer || t.Type == TokenType.Float).ToList();
+        numbers.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void Tokenize_HexBinaryOctalLiterals_TokenizesCorrectly()
+    {
+        var source = "0xFF 0b1010 0o77";
+        var tokens = Tokenize(source);
+
+        var numbers = tokens.Where(t => t.Type == TokenType.Integer).ToList();
+        numbers.Should().HaveCount(3);
+        numbers[0].Value.Should().StartWith("0x");
+        numbers[1].Value.Should().StartWith("0b");
+        numbers[2].Value.Should().StartWith("0o");
+    }
+
+    [Fact]
+    public void Tokenize_CodeWithoutComment_TokenizesWithoutComment()
+    {
+        var source = "x = 5";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "x");
+        tokens.Should().Contain(t => t.Type == TokenType.Assign);
+        tokens.Should().Contain(t => t.Type == TokenType.Integer);
+        // Comments are typically stripped by the lexer
+    }
+
+    [Fact]
+    public void Tokenize_LineContinuationInExpression_HandlesCorrectly()
+    {
+        var source = "x = 1 + \\\n    2 + 3";
+        var tokens = Tokenize(source);
+
+        var numbers = tokens.Where(t => t.Type == TokenType.Integer).ToList();
+        numbers.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void Tokenize_ImplicitLineContinuationInList_HandlesCorrectly()
+    {
+        var source = "[\n    1,\n    2,\n    3\n]";
+        var tokens = Tokenize(source);
+
+        var numbers = tokens.Where(t => t.Type == TokenType.Integer).ToList();
+        numbers.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void Tokenize_ChainedComparisonOperators_TokenizesAll()
+    {
+        var source = "a < b <= c == d != e";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.Less);
+        tokens.Should().Contain(t => t.Type == TokenType.LessEqual);
+        tokens.Should().Contain(t => t.Type == TokenType.Equal);
+        tokens.Should().Contain(t => t.Type == TokenType.NotEqual);
+    }
+
+    [Fact]
+    public void Tokenize_LambdaArrow_TokenizesCorrectly()
+    {
+        var source = "lambda x: x + 1";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.Lambda);
+        tokens.Should().Contain(t => t.Type == TokenType.Colon);
+    }
+
+    [Fact]
+    public void Tokenize_DoubleStarInGeneric_TokenizesAsPower()
+    {
+        var source = "x**2";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.DoubleStar);
+    }
+
+    [Fact]
+    public void Tokenize_AllBooleanLiterals_TokenizesAsKeywords()
+    {
+        var source = "True False None";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.True);
+        tokens.Should().Contain(t => t.Type == TokenType.False);
+        tokens.Should().Contain(t => t.Type == TokenType.None);
+    }
+
+    [Fact]
+    public void Tokenize_ComplexIndentationMix_HandlesCorrectly()
+    {
+        var source = @"if True:
+    if False:
+        pass
+    else:
+        pass";
+        var tokens = Tokenize(source);
+
+        var indents = tokens.Where(t => t.Type == TokenType.Indent).Count();
+        var dedents = tokens.Where(t => t.Type == TokenType.Dedent).Count();
+        indents.Should().BeGreaterThan(0);
+        dedents.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public void Tokenize_EmptyTripleQuotedString_TokenizesCorrectly()
+    {
+        var source = "\"\"\"\"\"\"";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.String);
+    }
+
+    [Fact]
+    public void Tokenize_StringWithAllEscapeSequences_TokenizesCorrectly()
+    {
+        var source = "\"\\n\\t\\r\\\\\\\"\"";
+        var tokens = Tokenize(source);
+
+        var stringToken = tokens.Should().ContainSingle(t => t.Type == TokenType.String).Subject;
+        stringToken.Value.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void Tokenize_UnderscoreInNumbers_TokenizesCorrectly()
+    {
+        var source = "1_000_000";
+        var tokens = Tokenize(source);
+
+        // Lexer may strip underscores during tokenization
+        var numberToken = tokens.Should().ContainSingle(t => t.Type == TokenType.Integer).Subject;
+        numberToken.Value.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void Tokenize_MultipleDecoratorsOnSeparateLines_TokenizesAll()
+    {
+        var source = "@staticmethod\n@override\ndef method():\n    pass";
+        var tokens = Tokenize(source);
+
+        var ats = tokens.Where(t => t.Type == TokenType.At).ToList();
+        ats.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void Tokenize_AllLogicalOperators_TokenizesCorrectly()
+    {
+        var source = "a and b or c not d";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.And);
+        tokens.Should().Contain(t => t.Type == TokenType.Or);
+        tokens.Should().Contain(t => t.Type == TokenType.Not);
+    }
+
+    #endregion
 }
