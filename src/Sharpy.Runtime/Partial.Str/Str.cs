@@ -1,5 +1,6 @@
 namespace Sharpy;
 
+using System.Text;
 using Collections.Interfaces;
 
 public static partial class Exports
@@ -287,13 +288,7 @@ public readonly partial struct Str
             throw TypeError.IsNotInterface("NoneType", "iterable");
         }
 
-        var stringArray = new System.Collections.Generic.List<string>();
-        foreach (var item in iterable)
-        {
-            stringArray.Add((string)item);
-        }
-
-        return new Str(string.Join(_s, stringArray));
+        return new Str(string.Join(_s, iterable.Select(item => (string)item)));
     }
 
     public void LJust(uint width, string fillchar)
@@ -368,22 +363,28 @@ public readonly partial struct Str
         }
 
         // Replace only the first 'count' occurrences
-        var result = _s;
         var oldStr = (string)old;
         var newStr = (string)@new;
-
-        for (int i = 0; i < count; i++)
+        var builder = new StringBuilder(_s);
+        
+        int replacements = 0;
+        int searchIndex = 0;
+        
+        while (replacements < count && searchIndex < builder.Length)
         {
-            var index = result.IndexOf(oldStr);
+            var index = builder.ToString().IndexOf(oldStr, searchIndex);
             if (index < 0)
             {
                 break;
             }
 
-            result = result.Substring(0, index) + newStr + result.Substring(index + oldStr.Length);
+            builder.Remove(index, oldStr.Length);
+            builder.Insert(index, newStr);
+            searchIndex = index + newStr.Length;
+            replacements++;
         }
 
-        return new Str(result);
+        return new Str(builder.ToString());
     }
 
     public void RFind(string sub, int start = 0, int end = -1)
