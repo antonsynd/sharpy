@@ -69,7 +69,7 @@ public class NameResolver
                 ResolveFromImport(fromImport);
                 break;
 
-            // Other statements are handled in later passes
+                // Other statements are handled in later passes
         }
     }
 
@@ -335,9 +335,12 @@ public class NameResolver
     private AccessLevel DetermineAccessLevel(string name)
     {
         // Python naming conventions:
-        // __name (but not __name__) = private
+        // __name__ (dunder methods) = public (special methods)
+        // __name (but not __name__) = private (name mangling)
         // _name = protected
         // name = public
+        if (name.StartsWith("__") && name.EndsWith("__"))
+            return AccessLevel.Public; // Special methods like __init__, __str__
         if (name.StartsWith("__") && !name.EndsWith("__"))
             return AccessLevel.Private;
         if (name.StartsWith("_"))
