@@ -296,5 +296,148 @@ public class Str_Tests
         
         Assert.Throws<StopIteration>(() => iterator.__Next__());
     }
+
+    [Fact]
+    public void Find_FindsSubstringAtStart()
+    {
+        var s = new Str("hello world");
+        var result = s.Find(new Str("hello"));
+        result.Should().Be(0);
+    }
+
+    [Fact]
+    public void Find_FindsSubstringInMiddle()
+    {
+        var s = new Str("hello world");
+        var result = s.Find(new Str("world"));
+        result.Should().Be(6);
+    }
+
+    [Fact]
+    public void Find_ReturnsMinusOneWhenNotFound()
+    {
+        var s = new Str("hello world");
+        var result = s.Find(new Str("xyz"));
+        result.Should().Be(-1);
+    }
+
+    [Fact]
+    public void Find_WithStartParameter()
+    {
+        var s = new Str("hello hello");
+        var result = s.Find(new Str("hello"), start: 1);
+        result.Should().Be(6);
+    }
+
+    [Fact]
+    public void Find_WithEndParameter()
+    {
+        var s = new Str("hello world");
+        var result = s.Find(new Str("world"), start: 0, end: 5);
+        result.Should().Be(-1);
+    }
+
+    [Fact]
+    public void Index_FindsSubstring()
+    {
+        var s = new Str("hello world");
+        var result = s.Index(new Str("world"));
+        result.Should().Be(6);
+    }
+
+    [Fact]
+    public void Index_ThrowsWhenNotFound()
+    {
+        var s = new Str("hello world");
+        Assert.Throws<ValueError>(() => s.Index(new Str("xyz")));
+    }
+
+    [Fact]
+    public void StartsWith_ReturnsTrueForPrefix()
+    {
+        var s = new Str("hello world");
+        s.StartsWith(new Str("hello")).Should().BeTrue();
+    }
+
+    [Fact]
+    public void StartsWith_ReturnsFalseForNonPrefix()
+    {
+        var s = new Str("hello world");
+        s.StartsWith(new Str("world")).Should().BeFalse();
+    }
+
+    [Fact]
+    public void StartsWith_WithStartParameter()
+    {
+        var s = new Str("hello world");
+        s.StartsWith(new Str("world"), start: 6).Should().BeTrue();
+    }
+
+    [Fact]
+    public void StartsWith_WithEndParameter()
+    {
+        var s = new Str("hello world");
+        s.StartsWith(new Str("hello"), start: 0, end: 5).Should().BeTrue();
+    }
+
+    [Fact]
+    public void EndsWith_ReturnsTrueForSuffix()
+    {
+        var s = new Str("hello world");
+        s.EndsWith(new Str("world")).Should().BeTrue();
+    }
+
+    [Fact]
+    public void EndsWith_ReturnsFalseForNonSuffix()
+    {
+        var s = new Str("hello world");
+        s.EndsWith(new Str("hello")).Should().BeFalse();
+    }
+
+    [Fact]
+    public void EndsWith_WithStartParameter()
+    {
+        var s = new Str("hello world");
+        s.EndsWith(new Str("hello"), start: 0, end: 5).Should().BeTrue();
+    }
+
+    [Fact]
+    public void EndsWith_WithEndParameter()
+    {
+        var s = new Str("hello world");
+        s.EndsWith(new Str("world"), start: 6).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Title_ConvertsToTitleCase()
+    {
+        var s = new Str("hello world");
+        var result = s.Title();
+        result.Should().Be(new Str("Hello World"));
+    }
+
+    [Fact]
+    public void Title_HandlesMultipleWords()
+    {
+        var s = new Str("the quick brown fox");
+        var result = s.Title();
+        result.Should().Be(new Str("The Quick Brown Fox"));
+    }
+
+    [Fact]
+    public void Title_HandlesMixedCase()
+    {
+        var s = new Str("hELLo WoRLd");
+        var result = s.Title();
+        result.Should().Be(new Str("Hello World"));
+    }
+
+    [Fact]
+    public void Title_HandlesEmptyString()
+    {
+        var s = new Str("");
+        var result = s.Title();
+        result.Should().Be(new Str(""));
+    }
 }
 

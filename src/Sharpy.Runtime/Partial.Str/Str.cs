@@ -154,9 +154,18 @@ public readonly partial struct Str
         return _s;
     }
 
-    public string EndsWith(string encoding = "utf-8", string errors = "strict")
+    /// <summary>
+    /// Return True if the string ends with the specified suffix, otherwise return False.
+    /// </summary>
+    public bool EndsWith(Str suffix, int start = 0, int? end = null)
     {
-        return _s;
+        var actualEnd = end ?? _s.Length;
+        if (start < 0) start = 0;
+        if (actualEnd > _s.Length) actualEnd = _s.Length;
+        if (start >= actualEnd) return false;
+
+        var substring = _s.Substring(start, actualEnd - start);
+        return substring.EndsWith((string)suffix);
     }
 
     public string ExpandTabs(string encoding = "utf-8", string errors = "strict")
@@ -164,9 +173,21 @@ public readonly partial struct Str
         return _s;
     }
 
-    public string Find(string encoding = "utf-8", string errors = "strict")
+    /// <summary>
+    /// Return the lowest index in the string where substring sub is found within the slice s[start:end].
+    /// Return -1 if sub is not found.
+    /// </summary>
+    public int Find(Str sub, int start = 0, int? end = null)
     {
-        return _s;
+        var actualEnd = end ?? _s.Length;
+        if (start < 0) start = 0;
+        if (actualEnd > _s.Length) actualEnd = _s.Length;
+        if (start >= actualEnd) return -1;
+
+        var substring = _s.Substring(start, actualEnd - start);
+        var index = substring.IndexOf((string)sub);
+        
+        return index >= 0 ? start + index : -1;
     }
 
     public Str Format(string encoding = "utf-8", string errors = "strict")
@@ -179,9 +200,17 @@ public readonly partial struct Str
         return _s;
     }
 
-    public Str Index(string encoding = "utf-8", string errors = "strict")
+    /// <summary>
+    /// Like Find(), but raise ValueError when the substring is not found.
+    /// </summary>
+    public int Index(Str sub, int start = 0, int? end = null)
     {
-        return _s;
+        var index = Find(sub, start, end);
+        if (index < 0)
+        {
+            throw new ValueError($"substring not found");
+        }
+        return index;
     }
 
     /// <summary>
@@ -463,8 +492,18 @@ public readonly partial struct Str
     {
     }
 
-    public void StartsWith(string prefix, int start = 0, int end = -1)
+    /// <summary>
+    /// Return True if string starts with the prefix, otherwise return False.
+    /// </summary>
+    public bool StartsWith(Str prefix, int start = 0, int? end = null)
     {
+        var actualEnd = end ?? _s.Length;
+        if (start < 0) start = 0;
+        if (actualEnd > _s.Length) actualEnd = _s.Length;
+        if (start >= actualEnd) return false;
+
+        var substring = _s.Substring(start, actualEnd - start);
+        return substring.StartsWith((string)prefix);
     }
 
     /// <summary>
@@ -486,8 +525,42 @@ public readonly partial struct Str
     {
     }
 
-    public void Title()
+    /// <summary>
+    /// Return a titlecased version of the string where words start with an uppercase character
+    /// and the remaining characters are lowercase.
+    /// </summary>
+    public Str Title()
     {
+        if (string.IsNullOrEmpty(_s))
+        {
+            return this;
+        }
+
+        var result = new StringBuilder(_s.Length);
+        bool previousWasLetter = false;
+
+        foreach (char c in _s)
+        {
+            if (char.IsLetter(c))
+            {
+                if (!previousWasLetter)
+                {
+                    result.Append(char.ToUpper(c));
+                }
+                else
+                {
+                    result.Append(char.ToLower(c));
+                }
+                previousWasLetter = true;
+            }
+            else
+            {
+                result.Append(c);
+                previousWasLetter = false;
+            }
+        }
+
+        return new Str(result.ToString());
     }
 
     public void Translate(uint table)
