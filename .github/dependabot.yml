@@ -8,7 +8,7 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "02:00"
-      timezone: "UTC"
+      timezone: "America/New_York"
     labels: ["dependencies", "github-actions"]
     open-pull-requests-limit: 10
     rebase-strategy: "auto"
@@ -23,10 +23,9 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "02:00"
-      timezone: "UTC"
+      timezone: "America/New_York"
     labels: ["dependencies", "dotnet", "nuget"]
     open-pull-requests-limit: 10
-    versioning-strategy: "auto"
     # Group some common packages to reduce PR noise
     groups:
       test-dependencies:
@@ -49,10 +48,9 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "02:00"
-      timezone: "UTC"
+      timezone: "America/New_York"
     labels: ["dependencies", "python", "pip"]
     open-pull-requests-limit: 10
-    versioning-strategy: "auto"
     groups:
       pip-minor-and-patch:
         applies-to: "version-updates"
