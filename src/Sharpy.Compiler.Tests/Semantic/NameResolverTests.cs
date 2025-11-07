@@ -1047,21 +1047,35 @@ def my_function():
         Assert.True(func.DeclarationLine!.Value > 0);
     }
 
-    [Fact(Skip = "Parser does not support empty enums with pass statement")]
+    [Fact]
     public void TestEnumWithoutMembers()
     {
         var source = @"
 enum EmptyEnum:
     pass
 ";
+
+        // Parser should throw error for empty enum
+        var exception = Assert.Throws<ParserNs.ParserError>(() => CreateResolver(source));
+        Assert.Contains("EmptyEnum", exception.Message);
+        Assert.Contains("must have at least one member", exception.Message);
+    }
+
+    [Fact]
+    public void TestEnumWithSingleMember()
+    {
+        var source = @"
+enum Status:
+    ACTIVE = 1
+";
         var (resolver, module, symbolTable) = CreateResolver(source);
         resolver.ResolveDeclarations(module);
 
         Assert.Empty(resolver.Errors);
 
-        var enumType = symbolTable.LookupType("EmptyEnum");
-        Assert.NotNull(enumType);
-        Assert.Equal(TypeKind.Enum, enumType.TypeKind);
+        var statusType = symbolTable.LookupType("Status");
+        Assert.NotNull(statusType);
+        Assert.Equal(TypeKind.Enum, statusType.TypeKind);
     }
 
     [Fact]

@@ -529,6 +529,15 @@ public class Parser
 
         while (Current.Type != TokenType.Dedent && !IsAtEnd)
         {
+            // Handle pass statement in empty enum
+            if (Current.Type == TokenType.Pass)
+            {
+                Advance();
+                ExpectNewline();
+                SkipNewlines();
+                continue;
+            }
+
             var memberName = ExpectIdentifier();
             Expression? value = null;
 
@@ -544,6 +553,12 @@ public class Parser
         }
 
         Expect(TokenType.Dedent);
+
+        // Validate enum has at least one member
+        if (members.Count == 0)
+        {
+            throw new ParserError($"Enum '{name}' must have at least one member", startLine, startColumn);
+        }
 
         return new EnumDef
         {

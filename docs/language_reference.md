@@ -4255,6 +4255,7 @@ name = favorite.name    # "RED"
 ```
 
 **Simple Enum Rules:**
+- Enums must have at least one variant (empty enums are not allowed)
 - All cases must have explicit constant values
 - Values must be integers or strings
 - No associated data with cases
