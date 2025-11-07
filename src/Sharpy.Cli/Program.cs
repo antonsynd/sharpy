@@ -1,6 +1,7 @@
 ﻿using System.CommandLine;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Parser;
 
 namespace Sharpy.Cli;
 
@@ -24,7 +25,7 @@ class Program
 
         var emitAstOption = new Option<bool>(
             name: "--emit-ast",
-            description: "Emit the abstract syntax tree (AST) [NOT IMPLEMENTED]"
+            description: "Emit the abstract syntax tree (AST)"
         );
 
         // Output type option
@@ -162,18 +163,18 @@ class Program
             return;
         }
 
-        // Handle emit-ast mode (NOT IMPLEMENTED)
+        // Handle emit-ast mode (IMPLEMENTED)
         if (emitAst)
         {
-            Console.Error.WriteLine("Error: --emit-ast is not implemented yet");
-            Environment.Exit(1);
+            EmitAst(inputFile, logger);
+            return;
         }
 
         // Handle compilation mode (NOT IMPLEMENTED)
         Console.Error.WriteLine("Error: Compilation to binary/library is not implemented yet");
         Console.Error.WriteLine("Available options:");
         Console.Error.WriteLine("  --emit-tokens    Emit lexer tokens (implemented)");
-        Console.Error.WriteLine("  --emit-ast       Emit AST (not implemented)");
+        Console.Error.WriteLine("  --emit-ast       Emit AST (implemented)");
         Console.Error.WriteLine("  --output-type    Specify output type (not implemented)");
         Console.Error.WriteLine("  --output         Specify output file (not implemented)");
         Console.Error.WriteLine("  --reference      Add .NET DLL reference (not implemented)");
@@ -215,4 +216,41 @@ class Program
         }
     }
 
+    static void EmitAst(FileInfo inputFile, ICompilerLogger logger)
+    {
+        try
+        {
+            var source = File.ReadAllText(inputFile.FullName);
+            var lexer = new Lexer(source, logger);
+            var tokens = lexer.TokenizeAll();
+            var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
+            var module = parser.ParseModule();
+
+            Console.WriteLine($"AST for {inputFile.Name}:");
+            Console.WriteLine(new string('=', 80));
+
+            var dumper = new AstDumper();
+            var ast = dumper.Dump(module);
+            Console.Write(ast);
+
+            Console.WriteLine(new string('=', 80));
+        }
+        catch (LexerError ex)
+        {
+            Console.Error.WriteLine($"Lexer error at line {ex.Line}, column {ex.Column}:");
+            Console.Error.WriteLine($"  {ex.Message}");
+            Environment.Exit(1);
+        }
+        catch (ParserError ex)
+        {
+            Console.Error.WriteLine($"Parser error at line {ex.Line}, column {ex.Column}:");
+            Console.Error.WriteLine($"  {ex.Message}");
+            Environment.Exit(1);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Unexpected error: {ex.Message}");
+            Environment.Exit(1);
+        }
+    }
 }
