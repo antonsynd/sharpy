@@ -35,7 +35,7 @@ The migration focuses on:
 | `double` | `float` | `System.Double` | No | 64-bit floating point (default for float literals) |
 | `decimal` | `float` | `System.Decimal` | No | 128-bit decimal for precise arithmetic |
 | `bool` | `bool` | `System.Boolean` | No | Boolean value |
-| `char` | `int` | `System.Char` | No | Single UTF-16 character |
+| `char` | `int` | `System.Char` | No | Single UTF-16 character (Python treats chars as integer unicode code points) |
 
 **Migration Status**: Most numeric types can use .NET types directly. No wrapper needed.
 
@@ -184,7 +184,7 @@ The migration focuses on:
 
 **Wrapper Details**: `Sharpy.Dict<K, V>` wraps `System.Collections.Generic.Dictionary<K, V>`.
 
-**Note**: Python 3.7+ dicts are insertion-ordered. As per [type_system.md](type_system.md) (line 58), the wrapper "wraps `OrderedDictionary<K,V>`". However, .NET's `Dictionary<K,V>` is already insertion-ordered as of .NET Core 3.0+, so verify your target .NET version and implementation details.
+**Note**: Python 3.7+ dicts are insertion-ordered. As per [type_system.md](type_system.md) line 58, the wrapper wraps `OrderedDictionary<K,V>`. However, .NET's `Dictionary<K,V>` is already insertion-ordered as of .NET Core 3.0+, so verify your target .NET version and implementation details.
 
 **Migration Tasks**:
 
