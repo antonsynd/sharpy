@@ -404,6 +404,32 @@ public class TypeChecker
         var iterType = CheckExpression(forStmt.Iterator);
         // TODO: Check that iterType is iterable
 
+        // Add loop variable to scope
+        // The target is typically an Identifier or TupleExpression
+        if (forStmt.Target is Identifier id)
+        {
+            // Infer the type of the loop variable from the iterator
+            // For now, use Unknown - proper iteration type inference would extract element type
+            var loopVarSymbol = new VariableSymbol
+            {
+                Name = id.Name,
+                Kind = SymbolKind.Variable,
+                AccessLevel = AccessLevel.Public,
+                DeclarationLine = id.LineStart,
+                DeclarationColumn = id.ColumnStart
+            };
+
+            // Check if already defined in this scope
+            if (_symbolTable.Lookup(id.Name, searchParents: false) == null)
+            {
+                _symbolTable.Define(loopVarSymbol);
+                _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
+            }
+
+            // TODO: Infer element type from iterable
+            _semanticInfo.SetExpressionType(forStmt.Target, SemanticType.Unknown);
+        }
+
         foreach (var stmt in forStmt.Body)
             CheckStatement(stmt);
     }
@@ -418,19 +444,28 @@ public class TypeChecker
 
     private void CheckTry(TryStatement tryStmt)
     {
+        // Try block has its own scope
+        _symbolTable.EnterScope("try");
         foreach (var stmt in tryStmt.Body)
             CheckStatement(stmt);
+        _symbolTable.ExitScope();
 
+        // Each exception handler has its own scope
         foreach (var handler in tryStmt.Handlers)
         {
+            _symbolTable.EnterScope("except");
             foreach (var stmt in handler.Body)
                 CheckStatement(stmt);
+            _symbolTable.ExitScope();
         }
 
+        // Finally block has its own scope
         if (tryStmt.FinallyBody != null && tryStmt.FinallyBody.Count > 0)
         {
+            _symbolTable.EnterScope("finally");
             foreach (var stmt in tryStmt.FinallyBody)
                 CheckStatement(stmt);
+            _symbolTable.ExitScope();
         }
     }
 
@@ -516,7 +551,10 @@ public class TypeChecker
 
         return binOp.Operator switch
         {
-            BinaryOperator.Add or BinaryOperator.Subtract or
+            // Special handling for Add - supports both arithmetic and string concatenation
+            BinaryOperator.Add => InferAdditionType(leftType, rightType),
+
+            BinaryOperator.Subtract or
             BinaryOperator.Multiply or BinaryOperator.Divide or
             BinaryOperator.FloorDivide or BinaryOperator.Modulo or
             BinaryOperator.Power => InferArithmeticType(leftType, rightType),
@@ -617,10 +655,11 @@ public class TypeChecker
     {
         var funcType = CheckExpression(call.Function);
 
-        // Check arguments
+        // Check arguments and collect their types
+        var argTypes = new List<SemanticType>();
         foreach (var arg in call.Arguments)
         {
-            CheckExpression(arg);
+            argTypes.Add(CheckExpression(arg));
         }
 
         foreach (var kwarg in call.KeywordArguments)
@@ -630,7 +669,25 @@ public class TypeChecker
 
         if (funcType is FunctionType ft)
         {
-            // TODO: Validate argument count and types
+            // Validate argument count (ignoring keyword arguments for now)
+            if (argTypes.Count != ft.ParameterTypes.Count)
+            {
+                AddError($"Function expects {ft.ParameterTypes.Count} arguments but got {argTypes.Count}",
+                    call.LineStart, call.ColumnStart);
+            }
+            else
+            {
+                // Validate argument types
+                for (int i = 0; i < argTypes.Count; i++)
+                {
+                    if (!argTypes[i].IsAssignableTo(ft.ParameterTypes[i]))
+                    {
+                        AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{ft.ParameterTypes[i].GetDisplayName()}'",
+                            call.Arguments[i].LineStart, call.Arguments[i].ColumnStart);
+                    }
+                }
+            }
+
             return ft.ReturnType;
         }
 
@@ -790,6 +847,16 @@ public class TypeChecker
         if (left == SemanticType.Long || right == SemanticType.Long)
             return SemanticType.Long;
         return SemanticType.Int;
+    }
+
+    private SemanticType InferAdditionType(SemanticType left, SemanticType right)
+    {
+        // String concatenation
+        if (left == SemanticType.Str && right == SemanticType.Str)
+            return SemanticType.Str;
+
+        // Otherwise, use arithmetic type inference
+        return InferArithmeticType(left, right);
     }
 
     private void AddError(string message, int? line = null, int? column = null)
