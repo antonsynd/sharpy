@@ -35,7 +35,7 @@ The migration focuses on:
 | `double` | `float` | `System.Double` | No | 64-bit floating point (default for float literals) |
 | `decimal` | `float` | `System.Decimal` | No | 128-bit decimal for precise arithmetic |
 | `bool` | `bool` | `System.Boolean` | No | Boolean value |
-| `char` | `str` | `System.Char` | No | Single UTF-16 character |
+| `char` | `int` | `System.Char` | No | Single UTF-16 character (Python represents chars as integer Unicode code points) |
 
 **Migration Status**: Most numeric types can use .NET types directly. No wrapper needed.
 
@@ -184,7 +184,7 @@ The migration focuses on:
 
 **Wrapper Details**: `Sharpy.Dict<K, V>` wraps `System.Collections.Generic.Dictionary<K, V>`.
 
-**Note**: Python 3.7+ dicts are insertion-ordered. The docs specify using `OrderedDictionary<K,V>` but .NET's `Dictionary<K,V>` is already insertion-ordered as of .NET Core 3.0+. Verify target .NET version.
+**Note**: Python 3.7+ dicts are insertion-ordered. According to type_system.md line 58, the wrapper uses `OrderedDictionary<K,V>`. However, .NET's `Dictionary<K,V>` is already insertion-ordered as of .NET Core 3.0+, so verify your target .NET version and implementation details.
 
 **Migration Tasks**:
 
@@ -465,23 +465,7 @@ public interface IRightAddable<TLeft, TRight, TResult>
 
 #### In-place Operators
 
-| Sharpy Operator | Dunder Method | C# Implementation | Notes |
-|-----------------|---------------|-------------------|-------|
-| `+=` | `__iadd__(self, other)` | Mutates self | `IInplaceAddable<T>` |
-| `-=` | `__isub__(self, other)` | Mutates self | `IInplaceSubtractable<T>` |
-| `*=` | `__imul__(self, other)` | Mutates self | `IInplaceMultipliable<T>` (exists) |
-| `/=` | `__itruediv__(self, other)` | Mutates self | `IInplaceDivisible<T>` |
-| `//=` | `__ifloordiv__(self, other)` | Mutates self | `IInplaceFloorDivisible<T>` |
-| `%=` | `__imod__(self, other)` | Mutates self | `IInplaceModulable<T>` |
-| `**=` | `__ipow__(self, other)` | Mutates self | `IInplacePowerable<T>` |
-
-**Example**:
-```csharp
-public interface IInplaceAddable<T>
-{
-    void __IAdd__(T other); // Mutates self
-}
-```
+**Note**: In-place operators (`+=`, `-=`, `*=`, `/=`, `//=`, `%=`, `**=`) and their corresponding dunder methods (`__iadd__`, `__isub__`, `__imul__`, `__itruediv__`, `__ifloordiv__`, `__imod__`, `__ipow__`) are **not available in v0.5** because C# does not support overloading compound assignment operators. These operators cannot be defined as custom operator overloads in C#. The compiler will automatically translate compound assignments to their equivalent binary operations (e.g., `a += b` becomes `a = a + b`).
 
 #### Unary Operators
 
@@ -534,12 +518,7 @@ public interface INegatable<T>
 | `<<` (left shift) | `__lshift__(self, other)` | `operator <<(T left, int right)` | `ILeftShiftable<T>` |
 | `>>` (right shift) | `__rshift__(self, other)` | `operator >>(T left, int right)` | `IRightShiftable<T>` |
 
-**In-place variants**:
-- `&=` → `__iand__`
-- `|=` → `__ior__`
-- `^=` → `__ixor__`
-- `<<=` → `__ilshift__`
-- `>>=` → `__irshift__`
+**In-place variants**: In-place bitwise operators (`&=`, `|=`, `^=`, `<<=`, `>>=`) and their corresponding dunder methods (`__iand__`, `__ior__`, `__ixor__`, `__ilshift__`, `__irshift__`) are **not available in v0.5** because C# does not support overloading compound assignment operators.
 
 ### Collection/Sequence Operators
 
@@ -1027,13 +1006,15 @@ Use this checklist to track migration progress:
 For quick reference, here's the complete list of dunder methods needed for v0.5:
 
 **Arithmetic**:
-- `__add__`, `__radd__`, `__iadd__`
-- `__sub__`, `__rsub__`, `__isub__`
-- `__mul__`, `__rmul__`, `__imul__`
-- `__truediv__`, `__rtruediv__`, `__itruediv__`
-- `__floordiv__`, `__rfloordiv__`, `__ifloordiv__`
-- `__mod__`, `__rmod__`, `__imod__`
-- `__pow__`, `__rpow__`, `__ipow__`
+- `__add__`, `__radd__`
+- `__sub__`, `__rsub__`
+- `__mul__`, `__rmul__`
+- `__truediv__`, `__rtruediv__`
+- `__floordiv__`, `__rfloordiv__`
+- `__mod__`, `__rmod__`
+- `__pow__`, `__rpow__`
+
+**Note**: In-place arithmetic operators (`__iadd__`, `__isub__`, `__imul__`, `__itruediv__`, `__ifloordiv__`, `__imod__`, `__ipow__`) are not available in v0.5 because C# does not support overloading compound assignment operators.
 
 **Unary**:
 - `__pos__`, `__neg__`, `__invert__`
@@ -1042,11 +1023,13 @@ For quick reference, here's the complete list of dunder methods needed for v0.5:
 - `__eq__`, `__ne__`, `__lt__`, `__le__`, `__gt__`, `__ge__`
 
 **Bitwise**:
-- `__and__`, `__rand__`, `__iand__`
-- `__or__`, `__ror__`, `__ior__`
-- `__xor__`, `__rxor__`, `__ixor__`
-- `__lshift__`, `__rlshift__`, `__ilshift__`
-- `__rshift__`, `__rrshift__`, `__irshift__`
+- `__and__`, `__rand__`
+- `__or__`, `__ror__`
+- `__xor__`, `__rxor__`
+- `__lshift__`, `__rlshift__`
+- `__rshift__`, `__rrshift__`
+
+**Note**: In-place bitwise operators (`__iand__`, `__ior__`, `__ixor__`, `__ilshift__`, `__irshift__`) are not available in v0.5 for the same reason.
 
 **Collection**:
 - `__len__`, `__getitem__`, `__setitem__`, `__contains__`, `__iter__`, `__next__`
