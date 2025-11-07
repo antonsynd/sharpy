@@ -136,7 +136,7 @@ public class AstDumper
                         var elif = ifStmt.ElifClauses[i];
                         var elifIndent = new string(' ', (depth + 2) * IndentUnit.Length);
                         var elifPrefix = i == ifStmt.ElifClauses.Count - 1 && ifStmt.ElseBody.Count == 0 ? "└─ " : "├─ ";
-                        _output.AppendLine($"{elifIndent}{elifPrefix}ElifClause");
+                        _output.AppendLine($"{elifIndent}{elifPrefix}ElifClause @ L{elif.LineStart}:C{elif.ColumnStart}");
                         _output.AppendLine($"{elifIndent}   Test:");
                         DumpNode(elif.Test, depth + 3, false);
                         _output.AppendLine($"{elifIndent}   Body: [{elif.Body.Count} statement(s)]");
@@ -195,7 +195,7 @@ public class AstDumper
                         var handler = tryStmt.Handlers[i];
                         var handlerIndent = new string(' ', (depth + 2) * IndentUnit.Length);
                         var handlerPrefix = i == tryStmt.Handlers.Count - 1 && tryStmt.FinallyBody.Count == 0 ? "└─ " : "├─ ";
-                        _output.AppendLine($"{handlerIndent}{handlerPrefix}ExceptHandler");
+                        _output.AppendLine($"{handlerIndent}{handlerPrefix}ExceptHandler @ L{handler.LineStart}:C{handler.ColumnStart}");
                         if (handler.ExceptionType != null)
                         {
                             _output.AppendLine($"{handlerIndent}   ExceptionType:");
@@ -237,7 +237,7 @@ public class AstDumper
                         var decorator = funcDef.Decorators[i];
                         var decIndent = new string(' ', (depth + 2) * IndentUnit.Length);
                         var decPrefix = i == funcDef.Decorators.Count - 1 ? "└─ " : "├─ ";
-                        _output.AppendLine($"{decIndent}{decPrefix}@{decorator.Name}");
+                        _output.AppendLine($"{decIndent}{decPrefix}@{decorator.Name} @ L{decorator.LineStart}:C{decorator.ColumnStart}");
                     }
                 }
                 if (funcDef.Parameters.Count > 0)
@@ -279,7 +279,7 @@ public class AstDumper
                         var decorator = classDef.Decorators[i];
                         var decIndent = new string(' ', (depth + 2) * IndentUnit.Length);
                         var decPrefix = i == classDef.Decorators.Count - 1 ? "└─ " : "├─ ";
-                        _output.AppendLine($"{decIndent}{decPrefix}@{decorator.Name}");
+                        _output.AppendLine($"{decIndent}{decPrefix}@{decorator.Name} @ L{decorator.LineStart}:C{decorator.ColumnStart}");
                     }
                 }
                 if (classDef.BaseClasses.Count > 0)
@@ -364,12 +364,12 @@ public class AstDumper
                     var memPrefix = i == enumDef.Members.Count - 1 ? "└─ " : "├─ ";
                     if (member.Value != null)
                     {
-                        _output.AppendLine($"{memIndent}{memPrefix}{member.Name} =");
+                        _output.AppendLine($"{memIndent}{memPrefix}{member.Name} @ L{member.LineStart}:C{member.ColumnStart} =");
                         DumpNode(member.Value, depth + 3, true);
                     }
                     else
                     {
-                        _output.AppendLine($"{memIndent}{memPrefix}{member.Name}");
+                        _output.AppendLine($"{memIndent}{memPrefix}{member.Name} @ L{member.LineStart}:C{member.ColumnStart}");
                     }
                 }
                 break;
@@ -384,11 +384,11 @@ public class AstDumper
                     var impPrefix = i == importStmt.Names.Count - 1 ? "└─ " : "├─ ";
                     if (import.AsName != null)
                     {
-                        _output.AppendLine($"{impIndent}{impPrefix}{import.Name} as {import.AsName}");
+                        _output.AppendLine($"{impIndent}{impPrefix}{import.Name} as {import.AsName} @ L{import.LineStart}:C{import.ColumnStart}");
                     }
                     else
                     {
-                        _output.AppendLine($"{impIndent}{impPrefix}{import.Name}");
+                        _output.AppendLine($"{impIndent}{impPrefix}{import.Name} @ L{import.LineStart}:C{import.ColumnStart}");
                     }
                 }
                 break;
@@ -410,11 +410,11 @@ public class AstDumper
                         var impPrefix = i == fromImportStmt.Names.Count - 1 ? "└─ " : "├─ ";
                         if (import.AsName != null)
                         {
-                            _output.AppendLine($"{impIndent}{impPrefix}{import.Name} as {import.AsName}");
+                            _output.AppendLine($"{impIndent}{impPrefix}{import.Name} as {import.AsName} @ L{import.LineStart}:C{import.ColumnStart}");
                         }
                         else
                         {
-                            _output.AppendLine($"{impIndent}{impPrefix}{import.Name}");
+                            _output.AppendLine($"{impIndent}{impPrefix}{import.Name} @ L{import.LineStart}:C{import.ColumnStart}");
                         }
                     }
                 }
@@ -572,7 +572,7 @@ public class AstDumper
                         var kwarg = funcCall.KeywordArguments[i];
                         var kwIndent = new string(' ', (depth + 2) * IndentUnit.Length);
                         var kwPrefix = i == funcCall.KeywordArguments.Count - 1 ? "└─ " : "├─ ";
-                        _output.AppendLine($"{kwIndent}{kwPrefix}{kwarg.Name}:");
+                        _output.AppendLine($"{kwIndent}{kwPrefix}{kwarg.Name} @ L{kwarg.LineStart}:C{kwarg.ColumnStart}:");
                         DumpNode(kwarg.Value, depth + 3, true);
                     }
                 }
@@ -659,7 +659,7 @@ public class AstDumper
         var prefix = isLast ? "└─ " : "├─ ";
         var childPrefix = isLast ? "   " : "│  ";
 
-        _output.Append($"{indent}{prefix}Parameter: {param.Name}");
+        _output.Append($"{indent}{prefix}Parameter: {param.Name} @ L{param.LineStart}:C{param.ColumnStart}");
         if (param.Type != null)
         {
             _output.Append($" : {FormatType(param.Type)}");
@@ -679,7 +679,7 @@ public class AstDumper
     {
         var indent = new string(' ', depth * IndentUnit.Length);
         var prefix = isLast ? "└─ " : "├─ ";
-        _output.AppendLine($"{indent}{prefix}{FormatType(type)}");
+        _output.AppendLine($"{indent}{prefix}{FormatType(type)} @ L{type.LineStart}:C{type.ColumnStart}");
     }
 
     private string FormatType(TypeAnnotation type)

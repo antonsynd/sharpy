@@ -164,6 +164,12 @@ public record KeywordArgument
 {
     public string Name { get; init; } = "";
     public Expression Value { get; init; } = null!;
+
+    // Source location
+    public int LineStart { get; init; }
+    public int ColumnStart { get; init; }
+    public int LineEnd { get; init; }
+    public int ColumnEnd { get; init; }
 }
 
 #endregion

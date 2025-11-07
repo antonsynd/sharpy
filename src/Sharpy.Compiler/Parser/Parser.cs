@@ -111,12 +111,25 @@ public class Parser
 
         while (Current.Type == TokenType.At)
         {
+            var decoratorStartLine = Current.Line;
+            var decoratorStartColumn = Current.Column;
             Advance();  // Skip @
             if (Current.Type != TokenType.Identifier)
                 throw new ParserError("Expected decorator name", Current.Line, Current.Column);
 
-            decorators.Add(new Decorator { Name = Current.Value });
+            var decoratorName = Current.Value;
             Advance();
+            var decoratorEndLine = Peek(-1).Line;
+            var decoratorEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+            decorators.Add(new Decorator
+            {
+                Name = decoratorName,
+                LineStart = decoratorStartLine,
+                ColumnStart = decoratorStartColumn,
+                LineEnd = decoratorEndLine,
+                ColumnEnd = decoratorEndColumn
+            });
             ExpectNewline();
         }
 
@@ -538,6 +551,8 @@ public class Parser
                 continue;
             }
 
+            var memberStartLine = Current.Line;
+            var memberStartColumn = Current.Column;
             var memberName = ExpectIdentifier();
             Expression? value = null;
 
@@ -547,7 +562,18 @@ public class Parser
                 value = ParseExpression();
             }
 
-            members.Add(new EnumMember { Name = memberName, Value = value });
+            var memberEndLine = Peek(-1).Line;
+            var memberEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+            members.Add(new EnumMember
+            {
+                Name = memberName,
+                Value = value,
+                LineStart = memberStartLine,
+                ColumnStart = memberStartColumn,
+                LineEnd = memberEndLine,
+                ColumnEnd = memberEndColumn
+            });
             ExpectNewline();
             SkipNewlines();
         }
@@ -617,6 +643,8 @@ public class Parser
         // Elif clauses
         while (Current.Type == TokenType.Elif)
         {
+            var elifStartLine = Current.Line;
+            var elifStartColumn = Current.Column;
             Advance();
             var elifTest = ParseExpression();
             Expect(TokenType.Colon);
@@ -624,8 +652,18 @@ public class Parser
             Expect(TokenType.Indent);
             var elifBody = ParseBlock();
             Expect(TokenType.Dedent);
+            var elifEndLine = Peek(-1).Line;
+            var elifEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
 
-            elifClauses.Add(new ElifClause { Test = elifTest, Body = elifBody });
+            elifClauses.Add(new ElifClause
+            {
+                Test = elifTest,
+                Body = elifBody,
+                LineStart = elifStartLine,
+                ColumnStart = elifStartColumn,
+                LineEnd = elifEndLine,
+                ColumnEnd = elifEndColumn
+            });
         }
 
         // Else clause
@@ -761,6 +799,8 @@ public class Parser
 
         while (Current.Type == TokenType.Except)
         {
+            var handlerStartLine = Current.Line;
+            var handlerStartColumn = Current.Column;
             Advance();
 
             TypeAnnotation? exceptionType = null;
@@ -783,12 +823,18 @@ public class Parser
             Expect(TokenType.Indent);
             var handlerBody = ParseBlock();
             Expect(TokenType.Dedent);
+            var handlerEndLine = Peek(-1).Line;
+            var handlerEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
 
             handlers.Add(new ExceptHandler
             {
                 ExceptionType = exceptionType,
                 Name = name,
-                Body = handlerBody
+                Body = handlerBody,
+                LineStart = handlerStartLine,
+                ColumnStart = handlerStartColumn,
+                LineEnd = handlerEndLine,
+                ColumnEnd = handlerEndColumn
             });
         }
 
@@ -963,6 +1009,8 @@ public class Parser
 
         do
         {
+            var aliasStartLine = Current.Line;
+            var aliasStartColumn = Current.Column;
             var name = ParseDottedName();
             string? asName = null;
 
@@ -972,7 +1020,18 @@ public class Parser
                 asName = ExpectIdentifier();
             }
 
-            names.Add(new ImportAlias { Name = name, AsName = asName });
+            var aliasEndLine = Peek(-1).Line;
+            var aliasEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+            names.Add(new ImportAlias
+            {
+                Name = name,
+                AsName = asName,
+                LineStart = aliasStartLine,
+                ColumnStart = aliasStartColumn,
+                LineEnd = aliasEndLine,
+                ColumnEnd = aliasEndColumn
+            });
 
             if (Current.Type == TokenType.Comma)
                 Advance();
@@ -1013,6 +1072,8 @@ public class Parser
         {
             do
             {
+                var aliasStartLine = Current.Line;
+                var aliasStartColumn = Current.Column;
                 var name = ExpectIdentifier();
                 string? asName = null;
 
@@ -1022,7 +1083,18 @@ public class Parser
                     asName = ExpectIdentifier();
                 }
 
-                names.Add(new ImportAlias { Name = name, AsName = asName });
+                var aliasEndLine = Peek(-1).Line;
+                var aliasEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+                names.Add(new ImportAlias
+                {
+                    Name = name,
+                    AsName = asName,
+                    LineStart = aliasStartLine,
+                    ColumnStart = aliasStartColumn,
+                    LineEnd = aliasEndLine,
+                    ColumnEnd = aliasEndColumn
+                });
 
                 if (Current.Type == TokenType.Comma)
                     Advance();
@@ -1084,6 +1156,9 @@ public class Parser
 
         do
         {
+            var startLine = Current.Line;
+            var startColumn = Current.Column;
+
             var name = ExpectIdentifier();
             TypeAnnotation? type = null;
             Expression? defaultValue = null;
@@ -1100,11 +1175,18 @@ public class Parser
                 defaultValue = ParseExpression();
             }
 
+            var endLine = Peek(-1).Line;
+            var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
             parameters.Add(new Parameter
             {
                 Name = name,
                 Type = type,
-                DefaultValue = defaultValue
+                DefaultValue = defaultValue,
+                LineStart = startLine,
+                ColumnStart = startColumn,
+                LineEnd = endLine,
+                ColumnEnd = endColumn
             });
 
             if (Current.Type == TokenType.Comma)
@@ -1627,11 +1709,24 @@ public class Parser
                         // Check for keyword argument
                         if (Current.Type == TokenType.Identifier && Peek().Type == TokenType.Assign)
                         {
+                            var kwargStartLine = Current.Line;
+                            var kwargStartColumn = Current.Column;
                             var name = Current.Value;
                             Advance();  // Skip name
                             Advance();  // Skip =
                             var value = ParseExpression();
-                            kwargs.Add(new KeywordArgument { Name = name, Value = value });
+                            var kwargEndLine = Peek(-1).Line;
+                            var kwargEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+                            kwargs.Add(new KeywordArgument
+                            {
+                                Name = name,
+                                Value = value,
+                                LineStart = kwargStartLine,
+                                ColumnStart = kwargStartColumn,
+                                LineEnd = kwargEndLine,
+                                ColumnEnd = kwargEndColumn
+                            });
                         }
                         else
                         {
@@ -2041,11 +2136,18 @@ public class Parser
             Advance();
         }
 
+        var endLine = Peek(-1).Line;
+        var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
         return new TypeAnnotation
         {
             Name = name,
             TypeArguments = typeArgs,
-            IsNullable = isNullable
+            IsNullable = isNullable,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = endLine,
+            ColumnEnd = endColumn
         };
     }
 

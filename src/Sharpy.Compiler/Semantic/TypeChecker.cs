@@ -1,0 +1,736 @@
+using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Logging;
+
+namespace Sharpy.Compiler.Semantic;
+
+/// <summary>
+/// Type checks expressions and statements
+/// </summary>
+public class TypeChecker
+{
+    private readonly SymbolTable _symbolTable;
+    private readonly SemanticInfo _semanticInfo;
+    private readonly TypeResolver _typeResolver;
+    private readonly ICompilerLogger _logger;
+    private readonly List<SemanticError> _errors = new();
+
+    // Track current function return type for return statement checking
+    private SemanticType? _currentFunctionReturnType = null;
+
+    // Configuration
+    public bool ContinueAfterError { get; set; } = true;
+    public int MaxErrors { get; set; } = 100;
+
+    public TypeChecker(SymbolTable symbolTable, SemanticInfo semanticInfo, TypeResolver typeResolver, ICompilerLogger? logger = null)
+    {
+        _symbolTable = symbolTable;
+        _semanticInfo = semanticInfo;
+        _typeResolver = typeResolver;
+        _logger = logger ?? NullLogger.Instance;
+    }
+
+    public IReadOnlyList<SemanticError> Errors => _errors;
+
+    /// <summary>
+    /// Type check all statements in a module
+    /// </summary>
+    public void CheckModule(Module module)
+    {
+        _logger.LogInfo("Type checking module");
+
+        foreach (var statement in module.Body)
+        {
+            CheckStatement(statement);
+        }
+    }
+
+    private void CheckStatement(Statement statement)
+    {
+        switch (statement)
+        {
+            case FunctionDef functionDef:
+                CheckFunction(functionDef);
+                break;
+
+            case ClassDef classDef:
+                CheckClass(classDef);
+                break;
+
+            case StructDef structDef:
+                CheckStruct(structDef);
+                break;
+
+            case InterfaceDef interfaceDef:
+                // Interface methods don't have bodies to check
+                break;
+
+            case EnumDef enumDef:
+                // Enums don't need type checking
+                break;
+
+            case Assignment assignment:
+                CheckAssignment(assignment);
+                break;
+
+            case VariableDeclaration varDecl:
+                CheckVariableDeclaration(varDecl);
+                break;
+
+            case ReturnStatement returnStmt:
+                CheckReturn(returnStmt);
+                break;
+
+            case IfStatement ifStmt:
+                CheckIf(ifStmt);
+                break;
+
+            case WhileStatement whileStmt:
+                CheckWhile(whileStmt);
+                break;
+
+            case ForStatement forStmt:
+                CheckFor(forStmt);
+                break;
+
+            case RaiseStatement raiseStmt:
+                CheckRaise(raiseStmt);
+                break;
+
+            case TryStatement tryStmt:
+                CheckTry(tryStmt);
+                break;
+
+            case AssertStatement assertStmt:
+                CheckAssert(assertStmt);
+                break;
+
+            case ExpressionStatement exprStmt:
+                CheckExpression(exprStmt.Expression);
+                break;
+
+            case PassStatement:
+            case BreakStatement:
+            case ContinueStatement:
+                // No type checking needed
+                break;
+
+            case ImportStatement:
+            case FromImportStatement:
+                // Import validation handled elsewhere
+                break;
+
+            default:
+                _logger.LogWarning($"Unhandled statement type: {statement.GetType().Name}", 0, 0);
+                break;
+        }
+    }
+
+    private void CheckFunction(FunctionDef functionDef)
+    {
+        _logger.LogDebug($"Type checking function: {functionDef.Name}");
+
+        // Resolve return type
+        var returnType = _typeResolver.ResolveTypeAnnotation(functionDef.ReturnType);
+        _currentFunctionReturnType = returnType;
+
+        // Enter function scope
+        _symbolTable.EnterScope($"function:{functionDef.Name}");
+
+        // Register parameters in scope
+        foreach (var param in functionDef.Parameters)
+        {
+            var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+            var paramSymbol = new VariableSymbol
+            {
+                Name = param.Name,
+                Kind = SymbolKind.Parameter,
+                Type = paramType,
+                IsParameter = true,
+                DeclarationLine = null,
+                DeclarationColumn = null
+            };
+            _symbolTable.Define(paramSymbol);
+
+            // Type check default value if present
+            if (param.DefaultValue != null)
+            {
+                var defaultType = CheckExpression(param.DefaultValue);
+                if (!defaultType.IsAssignableTo(paramType))
+                {
+                    AddError($"Default value type '{defaultType.GetDisplayName()}' is not assignable to parameter type '{paramType.GetDisplayName()}'",
+                        null, null);
+                }
+            }
+        }
+
+        // Check function body
+        foreach (var statement in functionDef.Body)
+        {
+            CheckStatement(statement);
+        }
+
+        _symbolTable.ExitScope();
+        _currentFunctionReturnType = null;
+    }
+
+    private void CheckClass(ClassDef classDef)
+    {
+        _logger.LogDebug($"Type checking class: {classDef.Name}");
+
+        // Enter class scope
+        _symbolTable.EnterScope($"class:{classDef.Name}");
+
+        // Check all members
+        foreach (var statement in classDef.Body)
+        {
+            CheckStatement(statement);
+        }
+
+        _symbolTable.ExitScope();
+    }
+
+    private void CheckStruct(StructDef structDef)
+    {
+        _logger.LogDebug($"Type checking struct: {structDef.Name}");
+
+        // Enter struct scope
+        _symbolTable.EnterScope($"struct:{structDef.Name}");
+
+        foreach (var statement in structDef.Body)
+        {
+            CheckStatement(statement);
+        }
+
+        _symbolTable.ExitScope();
+    }
+
+    private void CheckAssignment(Assignment assignment)
+    {
+        var targetType = CheckExpression(assignment.Target);
+        var valueType = CheckExpression(assignment.Value);
+
+        if (!valueType.IsAssignableTo(targetType))
+        {
+            AddError($"Cannot assign type '{valueType.GetDisplayName()}' to '{targetType.GetDisplayName()}'",
+                assignment.LineStart, assignment.ColumnStart);
+        }
+    }
+
+    private void CheckVariableDeclaration(VariableDeclaration varDecl)
+    {
+        var declaredType = _typeResolver.ResolveTypeAnnotation(varDecl.Type);
+
+        if (varDecl.InitialValue != null)
+        {
+            var initType = CheckExpression(varDecl.InitialValue);
+
+            // Handle type inference for 'auto'
+            if (declaredType is UnknownType)
+            {
+                declaredType = initType;
+                if (varDecl.Type != null)
+                {
+                    _semanticInfo.SetTypeAnnotation(varDecl.Type, initType);
+                }
+            }
+            else if (!initType.IsAssignableTo(declaredType))
+            {
+                AddError($"Cannot assign type '{initType.GetDisplayName()}' to variable of type '{declaredType.GetDisplayName()}'",
+                    varDecl.LineStart, varDecl.ColumnStart);
+            }
+        }
+        else if (declaredType is UnknownType)
+        {
+            AddError($"Variable '{varDecl.Name}' declared with 'auto' must have an initializer",
+                varDecl.LineStart, varDecl.ColumnStart);
+        }
+
+        // Define or update symbol with resolved type
+        var existingSymbol = _symbolTable.Lookup(varDecl.Name, searchParents: false);
+        if (existingSymbol is VariableSymbol varSymbol)
+        {
+            // Update existing symbol with resolved type
+            var updatedSymbol = varSymbol with { Type = declaredType };
+            _symbolTable.Define(updatedSymbol);
+        }
+        else
+        {
+            // Create new variable symbol
+            var newSymbol = new VariableSymbol
+            {
+                Name = varDecl.Name,
+                Kind = SymbolKind.Variable,
+                Type = declaredType,
+                IsConstant = varDecl.IsConst,
+                DeclarationLine = varDecl.LineStart,
+                DeclarationColumn = varDecl.ColumnStart
+            };
+            _symbolTable.Define(newSymbol);
+        }
+    }
+
+    private void CheckReturn(ReturnStatement returnStmt)
+    {
+        if (_currentFunctionReturnType == null)
+        {
+            AddError("Return statement outside of function",
+                returnStmt.LineStart, returnStmt.ColumnStart);
+            return;
+        }
+
+        if (returnStmt.Value != null)
+        {
+            var returnType = CheckExpression(returnStmt.Value);
+            if (!returnType.IsAssignableTo(_currentFunctionReturnType))
+            {
+                AddError($"Cannot return type '{returnType.GetDisplayName()}' from function expecting '{_currentFunctionReturnType.GetDisplayName()}'",
+                    returnStmt.LineStart, returnStmt.ColumnStart);
+            }
+        }
+        else if (_currentFunctionReturnType != SemanticType.Void)
+        {
+            AddError($"Function expects return type '{_currentFunctionReturnType.GetDisplayName()}' but got no return value",
+                returnStmt.LineStart, returnStmt.ColumnStart);
+        }
+    }
+
+    private void CheckIf(IfStatement ifStmt)
+    {
+        var condType = CheckExpression(ifStmt.Test);
+        if (condType != SemanticType.Bool && !(condType is UnknownType))
+        {
+            AddError($"If condition must be boolean, got '{condType.GetDisplayName()}'",
+                ifStmt.LineStart, ifStmt.ColumnStart);
+        }
+
+        foreach (var stmt in ifStmt.ThenBody)
+            CheckStatement(stmt);
+
+        foreach (var stmt in ifStmt.ElseBody)
+            CheckStatement(stmt);
+    }
+
+    private void CheckWhile(WhileStatement whileStmt)
+    {
+        var condType = CheckExpression(whileStmt.Test);
+        if (condType != SemanticType.Bool && !(condType is UnknownType))
+        {
+            AddError($"While condition must be boolean, got '{condType.GetDisplayName()}'",
+                whileStmt.LineStart, whileStmt.ColumnStart);
+        }
+
+        foreach (var stmt in whileStmt.Body)
+            CheckStatement(stmt);
+    }
+
+    private void CheckFor(ForStatement forStmt)
+    {
+        var iterType = CheckExpression(forStmt.Iterator);
+        // TODO: Check that iterType is iterable
+
+        foreach (var stmt in forStmt.Body)
+            CheckStatement(stmt);
+    }
+
+    private void CheckRaise(RaiseStatement raiseStmt)
+    {
+        if (raiseStmt.Exception != null)
+        {
+            CheckExpression(raiseStmt.Exception);
+        }
+    }
+
+    private void CheckTry(TryStatement tryStmt)
+    {
+        foreach (var stmt in tryStmt.Body)
+            CheckStatement(stmt);
+
+        foreach (var handler in tryStmt.Handlers)
+        {
+            foreach (var stmt in handler.Body)
+                CheckStatement(stmt);
+        }
+
+        if (tryStmt.FinallyBody != null && tryStmt.FinallyBody.Count > 0)
+        {
+            foreach (var stmt in tryStmt.FinallyBody)
+                CheckStatement(stmt);
+        }
+    }
+
+    private void CheckAssert(AssertStatement assertStmt)
+    {
+        var testType = CheckExpression(assertStmt.Test);
+        if (assertStmt.Message != null)
+        {
+            CheckExpression(assertStmt.Message);
+        }
+    }
+
+    /// <summary>
+    /// Type check an expression and return its type
+    /// </summary>
+    public SemanticType CheckExpression(Expression expr)
+    {
+        // Check cache
+        var cached = _semanticInfo.GetExpressionType(expr);
+        if (cached != null)
+            return cached;
+
+        SemanticType type = expr switch
+        {
+            IntegerLiteral => SemanticType.Int,
+            FloatLiteral => SemanticType.Double,
+            StringLiteral => SemanticType.Str,
+            BooleanLiteral => SemanticType.Bool,
+            NoneLiteral => SemanticType.Void,
+            Identifier id => CheckIdentifier(id),
+            BinaryOp binOp => CheckBinaryOp(binOp),
+            UnaryOp unOp => CheckUnaryOp(unOp),
+            ComparisonChain chain => CheckComparisonChain(chain),
+            MemberAccess memberAccess => CheckMemberAccess(memberAccess),
+            IndexAccess indexAccess => CheckIndexAccess(indexAccess),
+            FunctionCall call => CheckFunctionCall(call),
+            ListLiteral list => CheckListLiteral(list),
+            DictLiteral dict => CheckDictLiteral(dict),
+            SetLiteral set => CheckSetLiteral(set),
+            TupleLiteral tuple => CheckTupleLiteral(tuple),
+            ConditionalExpression cond => CheckConditionalExpression(cond),
+            LambdaExpression lambda => CheckLambda(lambda),
+            TypeCast cast => CheckTypeCast(cast),
+            TypeCheck typeCheck => CheckTypeCheck(typeCheck),
+            Parenthesized paren => CheckExpression(paren.Expression),
+            _ => SemanticType.Unknown
+        };
+
+        // Cache the result
+        _semanticInfo.SetExpressionType(expr, type);
+        return type;
+    }
+
+    private SemanticType CheckIdentifier(Identifier id)
+    {
+        var symbol = _symbolTable.Lookup(id.Name);
+        if (symbol == null)
+        {
+            AddError($"Undefined identifier '{id.Name}'",
+                id.LineStart, id.ColumnStart);
+            return SemanticType.Unknown;
+        }
+
+        _semanticInfo.SetIdentifierSymbol(id, symbol);
+
+        return symbol switch
+        {
+            VariableSymbol varSymbol => varSymbol.Type,
+            FunctionSymbol funcSymbol => new FunctionType
+            {
+                ParameterTypes = funcSymbol.Parameters.Select(p => p.Type).ToList(),
+                ReturnType = funcSymbol.ReturnType
+            },
+            TypeSymbol => SemanticType.Unknown, // Type names used as values need special handling
+            _ => SemanticType.Unknown
+        };
+    }
+
+    private SemanticType CheckBinaryOp(BinaryOp binOp)
+    {
+        var leftType = CheckExpression(binOp.Left);
+        var rightType = CheckExpression(binOp.Right);
+
+        return binOp.Operator switch
+        {
+            BinaryOperator.Add or BinaryOperator.Subtract or
+            BinaryOperator.Multiply or BinaryOperator.Divide or
+            BinaryOperator.FloorDivide or BinaryOperator.Modulo or
+            BinaryOperator.Power => InferArithmeticType(leftType, rightType),
+
+            BinaryOperator.BitwiseAnd or BinaryOperator.BitwiseOr or
+            BinaryOperator.BitwiseXor or BinaryOperator.LeftShift or
+            BinaryOperator.RightShift => SemanticType.Int,
+
+            BinaryOperator.And or BinaryOperator.Or => SemanticType.Bool,
+
+            BinaryOperator.Equal or BinaryOperator.NotEqual or
+            BinaryOperator.LessThan or BinaryOperator.LessThanOrEqual or
+            BinaryOperator.GreaterThan or BinaryOperator.GreaterThanOrEqual => SemanticType.Bool,
+
+            BinaryOperator.In or BinaryOperator.NotIn or
+            BinaryOperator.Is or BinaryOperator.IsNot => SemanticType.Bool,
+
+            _ => SemanticType.Unknown
+        };
+    }
+
+    private SemanticType CheckUnaryOp(UnaryOp unOp)
+    {
+        var operandType = CheckExpression(unOp.Operand);
+
+        return unOp.Operator switch
+        {
+            UnaryOperator.Not => SemanticType.Bool,
+            UnaryOperator.Minus or UnaryOperator.Plus => operandType,
+            UnaryOperator.BitwiseNot => SemanticType.Int,
+            _ => SemanticType.Unknown
+        };
+    }
+
+    private SemanticType CheckComparisonChain(ComparisonChain chain)
+    {
+        // All comparison chains return bool
+        foreach (var operand in chain.Operands)
+        {
+            CheckExpression(operand);
+        }
+        return SemanticType.Bool;
+    }
+
+    private SemanticType CheckMemberAccess(MemberAccess memberAccess)
+    {
+        var objectType = CheckExpression(memberAccess.Object);
+
+        if (objectType is UserDefinedType udt)
+        {
+            // Look for field or property
+            var field = udt.Symbol.Fields.FirstOrDefault(f => f.Name == memberAccess.Member);
+            if (field != null)
+                return field.Type;
+
+            // Look for method
+            var method = udt.Symbol.Methods.FirstOrDefault(m => m.Name == memberAccess.Member);
+            if (method != null)
+            {
+                return new FunctionType
+                {
+                    ParameterTypes = method.Parameters.Select(p => p.Type).ToList(),
+                    ReturnType = method.ReturnType
+                };
+            }
+
+            AddError($"Type '{objectType.GetDisplayName()}' has no member '{memberAccess.Member}'",
+                memberAccess.LineStart, memberAccess.ColumnStart);
+        }
+
+        return SemanticType.Unknown;
+    }
+
+    private SemanticType CheckIndexAccess(IndexAccess indexAccess)
+    {
+        var objectType = CheckExpression(indexAccess.Object);
+        var indexType = CheckExpression(indexAccess.Index);
+
+        if (objectType is GenericType generic)
+        {
+            if (generic.Name == "list" && generic.TypeArguments.Count > 0)
+                return generic.TypeArguments[0];
+            if (generic.Name == "dict" && generic.TypeArguments.Count > 1)
+                return generic.TypeArguments[1];
+        }
+
+        return SemanticType.Unknown;
+    }
+
+    private SemanticType CheckFunctionCall(FunctionCall call)
+    {
+        var funcType = CheckExpression(call.Function);
+
+        // Check arguments
+        foreach (var arg in call.Arguments)
+        {
+            CheckExpression(arg);
+        }
+
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            CheckExpression(kwarg.Value);
+        }
+
+        if (funcType is FunctionType ft)
+        {
+            // TODO: Validate argument count and types
+            return ft.ReturnType;
+        }
+
+        return SemanticType.Unknown;
+    }
+
+    private SemanticType CheckListLiteral(ListLiteral list)
+    {
+        if (list.Elements.Count == 0)
+        {
+            return new GenericType
+            {
+                Name = "list",
+                TypeArguments = new List<SemanticType> { SemanticType.Unknown }
+            };
+        }
+
+        var elementTypes = list.Elements.Select(CheckExpression).ToList();
+        var commonType = elementTypes[0];
+
+        // Try to find common type
+        foreach (var elemType in elementTypes.Skip(1))
+        {
+            if (!elemType.IsAssignableTo(commonType))
+            {
+                commonType = SemanticType.Unknown;
+                break;
+            }
+        }
+
+        return new GenericType
+        {
+            Name = "list",
+            TypeArguments = new List<SemanticType> { commonType }
+        };
+    }
+
+    private SemanticType CheckDictLiteral(DictLiteral dict)
+    {
+        if (dict.Entries.Count == 0)
+        {
+            return new GenericType
+            {
+                Name = "dict",
+                TypeArguments = new List<SemanticType> { SemanticType.Unknown, SemanticType.Unknown }
+            };
+        }
+
+        var keyTypes = dict.Entries.Select(e => CheckExpression(e.Key)).ToList();
+        var valueTypes = dict.Entries.Select(e => CheckExpression(e.Value)).ToList();
+
+        var commonKeyType = keyTypes[0];
+        var commonValueType = valueTypes[0];
+
+        return new GenericType
+        {
+            Name = "dict",
+            TypeArguments = new List<SemanticType> { commonKeyType, commonValueType }
+        };
+    }
+
+    private SemanticType CheckSetLiteral(SetLiteral set)
+    {
+        if (set.Elements.Count == 0)
+        {
+            return new GenericType
+            {
+                Name = "set",
+                TypeArguments = new List<SemanticType> { SemanticType.Unknown }
+            };
+        }
+
+        var elementTypes = set.Elements.Select(CheckExpression).ToList();
+        var commonType = elementTypes[0];
+
+        return new GenericType
+        {
+            Name = "set",
+            TypeArguments = new List<SemanticType> { commonType }
+        };
+    }
+
+    private SemanticType CheckTupleLiteral(TupleLiteral tuple)
+    {
+        var elementTypes = tuple.Elements.Select(CheckExpression).ToList();
+        return new TupleType { ElementTypes = elementTypes };
+    }
+
+    private SemanticType CheckConditionalExpression(ConditionalExpression cond)
+    {
+        CheckExpression(cond.Test);
+        var thenType = CheckExpression(cond.ThenValue);
+        var elseType = CheckExpression(cond.ElseValue);
+
+        // Return common type
+        if (thenType.IsAssignableTo(elseType))
+            return elseType;
+        if (elseType.IsAssignableTo(thenType))
+            return thenType;
+
+        return SemanticType.Unknown;
+    }
+
+    private SemanticType CheckLambda(LambdaExpression lambda)
+    {
+        var paramTypes = lambda.Parameters
+            .Select(p => _typeResolver.ResolveTypeAnnotation(p.Type))
+            .ToList();
+
+        // Enter lambda scope
+        _symbolTable.EnterScope("lambda");
+
+        foreach (var param in lambda.Parameters)
+        {
+            var paramType = _typeResolver.ResolveTypeAnnotation(param.Type);
+            var paramSymbol = new VariableSymbol
+            {
+                Name = param.Name,
+                Kind = SymbolKind.Parameter,
+                Type = paramType,
+                IsParameter = true
+            };
+            _symbolTable.Define(paramSymbol);
+        }
+
+        var bodyType = CheckExpression(lambda.Body);
+
+        _symbolTable.ExitScope();
+
+        return new FunctionType
+        {
+            ParameterTypes = paramTypes,
+            ReturnType = bodyType
+        };
+    }
+
+    private SemanticType CheckTypeCast(TypeCast cast)
+    {
+        CheckExpression(cast.Value);
+        return _typeResolver.ResolveTypeAnnotation(cast.TargetType);
+    }
+
+    private SemanticType CheckTypeCheck(TypeCheck typeCheck)
+    {
+        CheckExpression(typeCheck.Value);
+        _typeResolver.ResolveTypeAnnotation(typeCheck.CheckType);
+        return SemanticType.Bool;
+    }
+
+    private SemanticType InferArithmeticType(SemanticType left, SemanticType right)
+    {
+        // Simplified: promote to widest type
+        if (left == SemanticType.Double || right == SemanticType.Double)
+            return SemanticType.Double;
+        if (left == SemanticType.Float || right == SemanticType.Float)
+            return SemanticType.Float;
+        if (left == SemanticType.Long || right == SemanticType.Long)
+            return SemanticType.Long;
+        return SemanticType.Int;
+    }
+
+    private void AddError(string message, int? line = null, int? column = null)
+    {
+        if (_errors.Count >= MaxErrors)
+        {
+            if (_errors.Count == MaxErrors)
+            {
+                _logger.LogError("Maximum error count reached, stopping type checking", 0, 0);
+            }
+            if (!ContinueAfterError)
+            {
+                throw new SemanticAnalysisException("Type checking failed with too many errors");
+            }
+            return;
+        }
+
+        var error = new SemanticError(message, line, column);
+        _errors.Add(error);
+        _logger.LogError(error.Message, line ?? 0, column ?? 0);
+    }
+}
+
+public class SemanticAnalysisException : Exception
+{
+    public SemanticAnalysisException(string message) : base(message) { }
+}

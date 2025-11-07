@@ -8,6 +8,12 @@ public record TypeAnnotation
     public string Name { get; init; } = "";
     public List<TypeAnnotation> TypeArguments { get; init; } = new();
     public bool IsNullable { get; init; }  // T? syntax
+
+    // Source location
+    public int LineStart { get; init; }
+    public int ColumnStart { get; init; }
+    public int LineEnd { get; init; }
+    public int ColumnEnd { get; init; }
 }
 
 /// <summary>

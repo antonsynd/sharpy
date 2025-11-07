@@ -113,6 +113,12 @@ public record ElifClause
 {
     public Expression Test { get; init; } = null!;
     public List<Statement> Body { get; init; } = new();
+
+    // Source location
+    public int LineStart { get; init; }
+    public int ColumnStart { get; init; }
+    public int LineEnd { get; init; }
+    public int ColumnEnd { get; init; }
 }
 
 /// <summary>
@@ -149,6 +155,12 @@ public record ExceptHandler
     public TypeAnnotation? ExceptionType { get; init; }
     public string? Name { get; init; }  // except Exception as e:
     public List<Statement> Body { get; init; } = new();
+
+    // Source location
+    public int LineStart { get; init; }
+    public int ColumnStart { get; init; }
+    public int LineEnd { get; init; }
+    public int ColumnEnd { get; init; }
 }
 
 #endregion
@@ -220,6 +232,12 @@ public record EnumMember
 {
     public string Name { get; init; } = "";
     public Expression? Value { get; init; }  // Optional explicit value
+
+    // Source location
+    public int LineStart { get; init; }
+    public int ColumnStart { get; init; }
+    public int LineEnd { get; init; }
+    public int ColumnEnd { get; init; }
 }
 
 /// <summary>
@@ -230,6 +248,12 @@ public record Decorator
     public string Name { get; init; } = "";
     // Note: v0.5 only supports simple identifier decorators
     // No arguments or dotted names in v0.5
+
+    // Source location
+    public int LineStart { get; init; }
+    public int ColumnStart { get; init; }
+    public int LineEnd { get; init; }
+    public int ColumnEnd { get; init; }
 }
 
 /// <summary>
@@ -240,6 +264,12 @@ public record Parameter
     public string Name { get; init; } = "";
     public TypeAnnotation? Type { get; init; }
     public Expression? DefaultValue { get; init; }
+
+    // Source location
+    public int LineStart { get; init; }
+    public int ColumnStart { get; init; }
+    public int LineEnd { get; init; }
+    public int ColumnEnd { get; init; }
 }
 
 #endregion
@@ -258,6 +288,12 @@ public record ImportAlias
 {
     public string Name { get; init; } = "";  // module.submodule
     public string? AsName { get; init; }  // Optional alias
+
+    // Source location
+    public int LineStart { get; init; }
+    public int ColumnStart { get; init; }
+    public int LineEnd { get; init; }
+    public int ColumnEnd { get; init; }
 }
 
 /// <summary>
