@@ -12,8 +12,8 @@
     <!-- <ProjectReference Include="../Sharpy.Runtime/Sharpy.Runtime.csproj" /> -->
 
     <!-- Roslyn for code generation and compilation -->
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.8.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.14.0" />
   </ItemGroup>
 
 </Project>
