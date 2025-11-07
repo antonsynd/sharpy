@@ -7,91 +7,58 @@ namespace Sharpy.Cli;
 
 class Program
 {
-    static async Task<int> Main(string[] args)
+    static int Main(string[] args)
     {
         var rootCommand = new RootCommand("sharpyc - Sharpy Compiler");
 
         // Input file argument
-        var inputFileArgument = new Argument<FileInfo>(
-            name: "input",
-            description: "The .spy file to compile"
-        );
+        var inputFileArgument = new Argument<FileInfo>("input");
 
         // Emit mode options
-        var emitTokensOption = new Option<bool>(
-            name: "--emit-tokens",
-            description: "Emit lexer tokens for the input file"
-        );
-
-        var emitAstOption = new Option<bool>(
-            name: "--emit-ast",
-            description: "Emit the abstract syntax tree (AST)"
-        );
+        var emitTokensOption = new Option<bool>("--emit-tokens");
+        var emitAstOption = new Option<bool>("--emit-ast");
 
         // Output type option
-        var outputTypeOption = new Option<string>(
-            name: "--output-type",
-            description: "Output type: 'library' or 'exe' [NOT IMPLEMENTED]",
-            getDefaultValue: () => "library"
-        );
-        outputTypeOption.AddAlias("-t");
+        var outputTypeOption = new Option<string?>("--output-type");
+        outputTypeOption.Aliases.Add("-t");
 
         // Output file option
-        var outputOption = new Option<FileInfo?>(
-            name: "--output",
-            description: "Output file path [NOT IMPLEMENTED]"
-        );
-        outputOption.AddAlias("-o");
+        var outputOption = new Option<FileInfo?>("--output");
+        outputOption.Aliases.Add("-o");
 
         // .NET reference options
-        var referenceOption = new Option<string[]>(
-            name: "--reference",
-            description: ".NET DLL references [NOT IMPLEMENTED]"
-        )
-        { AllowMultipleArgumentsPerToken = true };
-        referenceOption.AddAlias("-r");
+        var referenceOption = new Option<string[]>("--reference") { AllowMultipleArgumentsPerToken = true };
+        referenceOption.Aliases.Add("-r");
 
-        var projectReferenceOption = new Option<string[]>(
-            name: "--project-reference",
-            description: ".NET project references [NOT IMPLEMENTED]"
-        )
-        { AllowMultipleArgumentsPerToken = true };
-        projectReferenceOption.AddAlias("-p");
+        var projectReferenceOption = new Option<string[]>("--project-reference") { AllowMultipleArgumentsPerToken = true };
+        projectReferenceOption.Aliases.Add("-p");
 
         // Logging options
-        var logLevelOption = new Option<CompilerLogLevel>(
-            name: "--log-level",
-            description: "Set logging verbosity (None, Error, Warning, Info, Debug, Trace)",
-            getDefaultValue: () => CompilerLogLevel.None
-        );
-
-        var logFileOption = new Option<FileInfo?>(
-            name: "--log-file",
-            description: "Write logs to file instead of stderr"
-        );
+        var logLevelOption = new Option<CompilerLogLevel?>("--log-level");
+        var logFileOption = new Option<FileInfo?>("--log-file");
 
         // Add options to command
-        rootCommand.AddArgument(inputFileArgument);
-        rootCommand.AddOption(emitTokensOption);
-        rootCommand.AddOption(emitAstOption);
-        rootCommand.AddOption(outputTypeOption);
-        rootCommand.AddOption(outputOption);
-        rootCommand.AddOption(referenceOption);
-        rootCommand.AddOption(projectReferenceOption);
-        rootCommand.AddOption(logLevelOption);
-        rootCommand.AddOption(logFileOption);
+        rootCommand.Arguments.Add(inputFileArgument);
+        rootCommand.Options.Add(emitTokensOption);
+        rootCommand.Options.Add(emitAstOption);
+        rootCommand.Options.Add(outputTypeOption);
+        rootCommand.Options.Add(outputOption);
+        rootCommand.Options.Add(referenceOption);
+        rootCommand.Options.Add(projectReferenceOption);
+        rootCommand.Options.Add(logLevelOption);
+        rootCommand.Options.Add(logFileOption);
 
-        rootCommand.SetHandler((context) =>
+        rootCommand.SetAction((parseResult) =>
         {
-            var inputFile = context.ParseResult.GetValueForArgument(inputFileArgument);
-            var emitTokens = context.ParseResult.GetValueForOption(emitTokensOption);
-            var emitAst = context.ParseResult.GetValueForOption(emitAstOption);
-            var outputType = context.ParseResult.GetValueForOption(outputTypeOption);
-            var output = context.ParseResult.GetValueForOption(outputOption);
-            var references = context.ParseResult.GetValueForOption(referenceOption);
-            var projectReferences = context.ParseResult.GetValueForOption(projectReferenceOption);
-            var logLevel = context.ParseResult.GetValueForOption(logLevelOption);
-            var logFile = context.ParseResult.GetValueForOption(logFileOption);
+            var inputFile = parseResult.GetValue(inputFileArgument);
+            var emitTokens = parseResult.GetValue(emitTokensOption);
+            var emitAst = parseResult.GetValue(emitAstOption);
+            var outputType = parseResult.GetValue(outputTypeOption) ?? "library";
+            var output = parseResult.GetValue(outputOption);
+            var references = parseResult.GetValue(referenceOption);
+            var projectReferences = parseResult.GetValue(projectReferenceOption);
+            var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
+            var logFile = parseResult.GetValue(logFileOption);
 
             // Create logger and optional file stream that needs disposal
             StreamWriter? fileStream = null;
@@ -112,7 +79,7 @@ class Program
                     logger = new ConsoleCompilerLogger(logLevel);
                 }
 
-                HandleCommand(inputFile!, emitTokens, emitAst, outputType!, output,
+                HandleCommand(inputFile!, emitTokens, emitAst, outputType, output,
                              references ?? Array.Empty<string>(),
                              projectReferences ?? Array.Empty<string>(),
                              logger);
@@ -124,7 +91,7 @@ class Program
             }
         });
 
-        return await rootCommand.InvokeAsync(args);
+        return rootCommand.Parse(args).Invoke();
     }
 
     static void HandleCommand(
