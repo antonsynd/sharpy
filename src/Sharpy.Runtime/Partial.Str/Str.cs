@@ -1,5 +1,6 @@
 namespace Sharpy;
 
+using System.Text;
 using Collections.Interfaces;
 
 public static partial class Exports
@@ -91,6 +92,11 @@ public readonly partial struct Str
 
     public override bool Equals(object? obj)
     {
+        if (obj is Str str)
+        {
+            return _s == str._s;
+        }
+
         if (obj is string s)
         {
             return _s == s;
@@ -178,19 +184,48 @@ public readonly partial struct Str
         return _s;
     }
 
+    /// <summary>
+    /// Return True if all characters in the string are alphanumeric and there is at least one character, False otherwise.
+    /// </summary>
     public bool IsAlnum()
     {
-        return false;
+        if (string.IsNullOrEmpty(_s))
+        {
+            return false;
+        }
+
+        return _s.All(char.IsLetterOrDigit);
     }
 
+    /// <summary>
+    /// Return True if all characters in the string are alphabetic and there is at least one character, False otherwise.
+    /// </summary>
     public bool IsAlpha()
     {
-        return false;
+        if (string.IsNullOrEmpty(_s))
+        {
+            return false;
+        }
+
+        return _s.All(char.IsLetter);
     }
 
     public bool IsAscii()
     {
         return false;
+    }
+
+    /// <summary>
+    /// Return True if all characters in the string are digits and there is at least one character, False otherwise.
+    /// </summary>
+    public bool IsDigit()
+    {
+        if (string.IsNullOrEmpty(_s))
+        {
+            return false;
+        }
+
+        return _s.All(char.IsDigit);
     }
 
     public bool IsDecimal()
@@ -218,9 +253,17 @@ public readonly partial struct Str
         return false;
     }
 
+    /// <summary>
+    /// Return True if all characters in the string are whitespace and there is at least one character, False otherwise.
+    /// </summary>
     public bool IsSpace()
     {
-        return false;
+        if (string.IsNullOrEmpty(_s))
+        {
+            return false;
+        }
+
+        return _s.All(char.IsWhiteSpace);
     }
 
     public bool IsTitle()
@@ -233,22 +276,46 @@ public readonly partial struct Str
         return false;
     }
 
-    public string Join(IIterable<string> iterable)
+    /// <summary>
+    /// Return a string which is the concatenation of the strings in iterable.
+    /// A TypeError will be raised if there are any non-string values in iterable.
+    /// The separator between elements is the string providing this method.
+    /// </summary>
+    public Str Join(IEnumerable<Str> iterable)
     {
-        return _s;
+        if (iterable is null)
+        {
+            throw TypeError.IsNotInterface("NoneType", "iterable");
+        }
+
+        return new Str(string.Join(_s, iterable.Select(item => (string)item)));
     }
 
     public void LJust(uint width, string fillchar)
     {
     }
 
-    public string Lower()
+    /// <summary>
+    /// Return a copy of the string converted to lowercase.
+    /// </summary>
+    public Str Lower()
     {
-        return _s.ToLower();
+        return new Str(_s.ToLower());
     }
 
-    public void LStrip(string chars)
+    /// <summary>
+    /// Return a copy of the string with leading characters removed.
+    /// The chars argument is a string specifying the set of characters to be removed.
+    /// If omitted or None, the chars argument defaults to removing whitespace.
+    /// </summary>
+    public Str LStrip(Str? chars = null)
     {
+        if (chars is null)
+        {
+            return new Str(_s.TrimStart());
+        }
+
+        return new Str(_s.TrimStart(((string)chars).ToCharArray()));
     }
 
     public void MakeTrans(IMapping<string, string?> mapping)
@@ -279,8 +346,45 @@ public readonly partial struct Str
     {
     }
 
-    public void Replace(string old, string @new, uint count)
+    /// <summary>
+    /// Return a copy of the string with all occurrences of substring old replaced by new.
+    /// If the optional argument count is given, only the first count occurrences are replaced.
+    /// </summary>
+    public Str Replace(Str old, Str @new, int count = -1)
     {
+        if (count == 0)
+        {
+            return this;
+        }
+
+        if (count < 0)
+        {
+            return new Str(_s.Replace((string)old, (string)@new));
+        }
+
+        // Replace only the first 'count' occurrences
+        var oldStr = (string)old;
+        var newStr = (string)@new;
+        var builder = new StringBuilder(_s);
+        
+        int replacements = 0;
+        int searchIndex = 0;
+        
+        while (replacements < count && searchIndex < builder.Length)
+        {
+            var index = builder.ToString().IndexOf(oldStr, searchIndex);
+            if (index < 0)
+            {
+                break;
+            }
+
+            builder.Remove(index, oldStr.Length);
+            builder.Insert(index, newStr);
+            searchIndex = index + newStr.Length;
+            replacements++;
+        }
+
+        return new Str(builder.ToString());
     }
 
     public void RFind(string sub, int start = 0, int end = -1)
@@ -303,12 +407,56 @@ public readonly partial struct Str
     {
     }
 
-    public void RStrip(string chars)
+    /// <summary>
+    /// Return a copy of the string with trailing characters removed.
+    /// The chars argument is a string specifying the set of characters to be removed.
+    /// If omitted or None, the chars argument defaults to removing whitespace.
+    /// </summary>
+    public Str RStrip(Str? chars = null)
     {
+        if (chars is null)
+        {
+            return new Str(_s.TrimEnd());
+        }
+
+        return new Str(_s.TrimEnd(((string)chars).ToCharArray()));
     }
 
-    public void Split(string sep, uint maxsplit)
+    /// <summary>
+    /// Return a list of the words in the string, using sep as the delimiter string.
+    /// If maxsplit is given, at most maxsplit splits are done (thus, the list will
+    /// have at most maxsplit+1 elements). If maxsplit is not specified or -1,
+    /// then there is no limit on the number of splits (all possible splits are made).
+    /// </summary>
+    public List<Str> Split(Str? sep = null, int maxsplit = -1)
     {
+        var result = new List<Str>();
+
+        if (sep is null)
+        {
+            // Split on whitespace
+            var parts = maxsplit < 0
+                ? _s.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+                : _s.Split((char[]?)null, maxsplit + 1, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var part in parts)
+            {
+                result.Add(new Str(part));
+            }
+        }
+        else
+        {
+            var parts = maxsplit < 0
+                ? _s.Split(new[] { (string)sep }, StringSplitOptions.None)
+                : _s.Split(new[] { (string)sep }, maxsplit + 1, StringSplitOptions.None);
+
+            foreach (var part in parts)
+            {
+                result.Add(new Str(part));
+            }
+        }
+
+        return result;
     }
 
     public void SplitLines(bool keepends = false)
@@ -319,8 +467,19 @@ public readonly partial struct Str
     {
     }
 
-    public void Strip(string chars)
+    /// <summary>
+    /// Return a copy of the string with leading and trailing characters removed.
+    /// The chars argument is a string specifying the set of characters to be removed.
+    /// If omitted or None, the chars argument defaults to removing whitespace.
+    /// </summary>
+    public Str Strip(Str? chars = null)
     {
+        if (chars is null)
+        {
+            return new Str(_s.Trim());
+        }
+
+        return new Str(_s.Trim(((string)chars).ToCharArray()));
     }
 
     public void SwapCase()
@@ -335,9 +494,12 @@ public readonly partial struct Str
     {
     }
 
+    /// <summary>
+    /// Return a copy of the string converted to uppercase.
+    /// </summary>
     public Str Upper()
     {
-        return _s.ToUpper();
+        return new Str(_s.ToUpper());
     }
 
     public void ZFill(uint width)

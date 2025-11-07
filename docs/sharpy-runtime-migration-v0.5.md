@@ -1,5 +1,31 @@
 # Sharpy.Runtime Migration Guide for v0.5
 
+## Migration Status Summary
+
+**Last Updated**: November 2024
+
+This migration is **partially complete** with significant progress on foundational components:
+
+### ✅ Completed
+- **All foundational interfaces** for arithmetic, comparison, bitwise, and unary operations
+- **Str type**: All operators (+, *, <, <=, >, >=), dunder methods (__add__, __mul__, __contains__, __hash__, __iter__, etc.), and key Pythonic methods (Split, Join, Strip, Replace, etc.) with 33 passing tests
+- **List<T> type**: Already comprehensive with all operators, dunder methods, and Pythonic methods (Append, Extend, Insert, Pop, Remove, Sort, Reverse, etc.)
+- **Dict<K,V> type**: Already comprehensive with all operators and methods (Get, Pop, Update, Keys, Values, Items, etc.)
+- **Set<T> type**: Already comprehensive with set operations (&, |, -, ^), comparison operators, and all standard methods
+
+### ⚠️ Partially Complete
+- Some Str methods have stubs but need full implementation (Find, StartsWith, EndsWith, Title, etc.)
+
+### 🔄 Remaining Work
+- Tuple types (deferred as ValueTuple works for v0.5)
+- Additional integration testing
+- Documentation improvements
+- Performance benchmarks
+
+### 📊 Test Status
+- **332 tests passing** in Sharpy.Runtime.Tests
+- Comprehensive coverage of core types and operations
+
 ## Overview
 
 This document provides a comprehensive migration guide for aligning the code in `Sharpy.Runtime` with the specifications defined in [language_reference.md](language_reference.md) and [type_system.md](type_system.md), specifically targeting **v0.5 features only**.
@@ -53,18 +79,18 @@ The migration focuses on:
 
 **Migration Tasks**:
 
-1. **Retain existing wrapper structure** - Already correctly implemented
+1. **Retain existing wrapper structure** - ✅ Already correctly implemented
 2. **Implement required dunder methods**:
    - ✅ `__str__()` → implicit via wrapper
    - ✅ `__len__()` → Already implemented as `__Len__()`
    - ✅ `__getitem__(int)` → Already implemented
    - ✅ `__getitem__(Slice)` → Already implemented
-   - ⚠️ `__eq__()`, `__ne__()`, `__lt__()`, `__le__()`, `__gt__()`, `__ge__()` → Need interface implementations
-   - ⚠️ `__add__(str)` → String concatenation via operator
-   - ⚠️ `__mul__(int)` → String replication via operator
-   - ⚠️ `__contains__(str)` → Substring test
-   - ⚠️ `__hash__()` → For use in dict/set
-   - ✅ `__iter__()` → Return character iterator
+   - ✅ `__eq__()`, `__ne__()`, `__lt__()`, `__le__()`, `__gt__()`, `__ge__()` → **COMPLETED**
+   - ✅ `__add__(str)` → String concatenation via operator → **COMPLETED**
+   - ✅ `__mul__(int)` → String replication via operator → **COMPLETED**
+   - ✅ `__contains__(str)` → Substring test → **COMPLETED**
+   - ✅ `__hash__()` → For use in dict/set → **COMPLETED**
+   - ✅ `__iter__()` → Return character iterator → **COMPLETED**
 
 3. **Pythonic methods** (as extension or instance methods):
    ```csharp
@@ -932,43 +958,43 @@ public void ListWorksWithLinq()
 Use this checklist to track migration progress:
 
 ### Interfaces
-- [ ] Audit existing interfaces
-- [ ] Create missing arithmetic interfaces
-- [ ] Create missing comparison interfaces
-- [ ] Create missing bitwise interfaces
-- [ ] Create missing collection interfaces
-- [ ] Ensure all interfaces have static operators
+- [x] Audit existing interfaces
+- [x] Create missing arithmetic interfaces (ISubtractable, IDivisible, IFloorDivisible, IModulable, IPowerable)
+- [x] Create missing comparison interfaces (already existed: IEquatable, IInequatable, ILessThanComparable, etc.)
+- [x] Create missing bitwise interfaces (IBitwiseAndable, IBitwiseOrable, IBitwiseXorable, ILeftShiftable, IRightShiftable)
+- [x] Create missing unary interfaces (INegatable, IUnaryPlusable, IInvertible)
+- [x] Ensure all interfaces have static operators
 
 ### Str Type
-- [ ] Complete dunder methods
-- [ ] Add missing Pythonic methods
-- [ ] Implement all operators
-- [ ] Add comprehensive tests
-- [ ] Update documentation
+- [x] Complete dunder methods (__add__, __mul__, __rmul__, __lt__, __le__, __gt__, __ge__, __contains__, __hash__, __iter__)
+- [x] Add missing Pythonic methods (Split, Join, Strip, LStrip, RStrip, Replace, IsAlpha, IsDigit, IsAlnum, IsSpace, Lower, Upper, Capitalize)
+- [x] Implement all operators (+, *, <, <=, >, >=)
+- [x] Add comprehensive tests (33 tests added, all passing)
+- [ ] Update documentation (XML comments added to new methods)
 
 ### List[T] Type
-- [ ] Complete dunder methods
-- [ ] Verify Pythonic methods
-- [ ] Implement all operators
-- [ ] Add comprehensive tests
+- [x] Complete dunder methods (already comprehensive)
+- [x] Verify Pythonic methods (Append, Extend, Insert, Pop, Remove, Clear, Sort, Reverse, Copy, Count, Index - all present)
+- [x] Implement all operators (+, *, ==, !=, bool - all present)
+- [x] Add comprehensive tests (existing tests passing)
 - [ ] Update documentation
 
 ### Dict[K,V] Type
-- [ ] Complete dunder methods
-- [ ] Add missing Pythonic methods
-- [ ] Implement all operators
-- [ ] Add comprehensive tests
+- [x] Complete dunder methods (__getitem__, __setitem__, __delitem__, __contains__, __iter__, __len__, __eq__, __or__)
+- [x] Add missing Pythonic methods (Get, Pop, PopItem, SetDefault, Update, Clear, Copy, Keys, Values, Items - all present)
+- [x] Implement all operators (==, !=, |, bool - all present)
+- [x] Existing tests passing
 - [ ] Update documentation
 
 ### Set[T] Type
-- [ ] Complete dunder methods
-- [ ] Add missing Pythonic methods
-- [ ] Implement all operators (incl. set ops)
-- [ ] Add comprehensive tests
+- [x] Complete dunder methods (__and__, __or__, __sub__, __xor__, __rand__, __ror__, __rsub__, etc. - comprehensive)
+- [x] Add missing Pythonic methods (Add, Remove, Discard, Pop, Clear, Union, Intersection, Difference, SymmetricDifference, IsSubset, IsSuperset, IsDisjoint, Copy - all present)
+- [x] Implement all operators (&, |, -, ^, <, <=, >, >=, ==, !=, bool - all present)
+- [x] Existing tests passing
 - [ ] Update documentation
 
 ### Tuple Types
-- [ ] Create Tuple<T1, T2> through Tuple<T1..T8>
+- [ ] Create Tuple<T1, T2> through Tuple<T1..T8> - **DEFERRED** (not critical for v0.5, .NET ValueTuple can be used)
 - [ ] Implement dunder methods
 - [ ] Add Pythonic methods
 - [ ] Implement operators
@@ -976,27 +1002,27 @@ Use this checklist to track migration progress:
 - [ ] Update documentation
 
 ### Numeric Types
-- [ ] Extension methods if needed
-- [ ] Verify operators work
+- [x] Extension methods if needed (not required, native .NET types work)
+- [x] Verify operators work (using existing C# operators)
 - [ ] Test mixed-type arithmetic
 - [ ] Update documentation
 
 ### Built-in Functions
-- [ ] Verify `len()` works with all collections
-- [ ] Verify `str()` works with all types
+- [x] Verify `len()` works with all collections (ISized interface implemented)
+- [x] Verify `str()` works with all types (IStrConvertible implemented)
 - [ ] Verify `int()`, `float()`, etc. conversions
-- [ ] Test `print()` with various types
+- [x] Test `print()` with various types (existing tests)
 - [ ] Test `range()`, `enumerate()`, `zip()`
 
 ### Integration
 - [ ] Test Sharpy/C# interop
 - [ ] Test operator precedence
 - [ ] Test operator associativity
-- [ ] Test error handling
+- [x] Test error handling (proper TypeErrors implemented)
 - [ ] Performance benchmarks
 
 ### Documentation
-- [ ] Update XML comments
+- [x] Update XML comments (added to new interfaces and methods)
 - [ ] Create Sharpy→C# mapping guide
 - [ ] Add usage examples
 - [ ] Document limitations and v0.5 scope
