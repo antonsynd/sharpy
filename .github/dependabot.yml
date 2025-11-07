@@ -1,0 +1,66 @@
+version: 2
+
+updates:
+  # Keep GitHub Actions up to date (if/when workflows exist)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "02:00"
+      timezone: "UTC"
+    labels: ["dependencies", "github-actions"]
+    open-pull-requests-limit: 10
+    rebase-strategy: "auto"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+  # .NET (NuGet) — scans all projects under the repo (includes /src and /dotnet)
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "02:00"
+      timezone: "UTC"
+    labels: ["dependencies", "dotnet", "nuget"]
+    open-pull-requests-limit: 10
+    versioning-strategy: "auto"
+    # Group some common packages to reduce PR noise
+    groups:
+      test-dependencies:
+        patterns:
+          - "xunit"
+          - "xunit.runner.visualstudio"
+          - "FluentAssertions"
+          - "Microsoft.NET.Test.Sdk"
+      roslyn:
+        patterns:
+          - "Microsoft.CodeAnalysis.*"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+  # Python (requirements.txt at repo root)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "02:00"
+      timezone: "UTC"
+    labels: ["dependencies", "python", "pip"]
+    open-pull-requests-limit: 10
+    versioning-strategy: "auto"
+    groups:
+      pip-minor-and-patch:
+        applies-to: "version-updates"
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
