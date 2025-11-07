@@ -159,12 +159,10 @@ public readonly partial struct Str
     /// </summary>
     public bool EndsWith(Str suffix, int start = 0, int? end = null)
     {
-        var actualEnd = end ?? _s.Length;
-        if (start < 0) start = 0;
-        if (actualEnd > _s.Length) actualEnd = _s.Length;
-        if (start >= actualEnd) return false;
+        var (actualStart, actualEnd) = NormalizeSliceIndices(start, end);
+        if (actualStart >= actualEnd) return false;
 
-        var substring = _s.Substring(start, actualEnd - start);
+        var substring = _s.Substring(actualStart, actualEnd - actualStart);
         return substring.EndsWith((string)suffix);
     }
 
@@ -179,15 +177,13 @@ public readonly partial struct Str
     /// </summary>
     public int Find(Str sub, int start = 0, int? end = null)
     {
-        var actualEnd = end ?? _s.Length;
-        if (start < 0) start = 0;
-        if (actualEnd > _s.Length) actualEnd = _s.Length;
-        if (start >= actualEnd) return -1;
+        var (actualStart, actualEnd) = NormalizeSliceIndices(start, end);
+        if (actualStart >= actualEnd) return -1;
 
-        var substring = _s.Substring(start, actualEnd - start);
+        var substring = _s.Substring(actualStart, actualEnd - actualStart);
         var index = substring.IndexOf((string)sub);
         
-        return index >= 0 ? start + index : -1;
+        return index >= 0 ? actualStart + index : -1;
     }
 
     public Str Format(string encoding = "utf-8", string errors = "strict")
@@ -208,7 +204,7 @@ public readonly partial struct Str
         var index = Find(sub, start, end);
         if (index < 0)
         {
-            throw new ValueError($"substring not found");
+            throw new ValueError($"substring '{(string)sub}' not found");
         }
         return index;
     }
@@ -497,13 +493,22 @@ public readonly partial struct Str
     /// </summary>
     public bool StartsWith(Str prefix, int start = 0, int? end = null)
     {
+        var (actualStart, actualEnd) = NormalizeSliceIndices(start, end);
+        if (actualStart >= actualEnd) return false;
+
+        var substring = _s.Substring(actualStart, actualEnd - actualStart);
+        return substring.StartsWith((string)prefix);
+    }
+
+    /// <summary>
+    /// Helper method to normalize slice indices for string methods.
+    /// </summary>
+    private (int start, int end) NormalizeSliceIndices(int start, int? end)
+    {
         var actualEnd = end ?? _s.Length;
         if (start < 0) start = 0;
         if (actualEnd > _s.Length) actualEnd = _s.Length;
-        if (start >= actualEnd) return false;
-
-        var substring = _s.Substring(start, actualEnd - start);
-        return substring.StartsWith((string)prefix);
+        return (start, actualEnd);
     }
 
     /// <summary>
