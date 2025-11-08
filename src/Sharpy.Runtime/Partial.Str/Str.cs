@@ -508,6 +508,7 @@ public readonly partial struct Str
         var actualEnd = end ?? _s.Length;
         if (start < 0) start = 0;
         if (actualEnd > _s.Length) actualEnd = _s.Length;
+        if (actualEnd < 0) actualEnd = 0;
         return (start, actualEnd);
     }
 
