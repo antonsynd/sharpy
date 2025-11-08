@@ -182,7 +182,7 @@ public readonly partial struct Str
 
         var substring = _s.Substring(actualStart, actualEnd - actualStart);
         var index = substring.IndexOf((string)sub);
-        
+
         return index >= 0 ? actualStart + index : -1;
     }
 
@@ -391,10 +391,10 @@ public readonly partial struct Str
         var oldStr = (string)old;
         var newStr = (string)@new;
         var builder = new StringBuilder(_s);
-        
+
         int replacements = 0;
         int searchIndex = 0;
-        
+
         while (replacements < count && searchIndex < builder.Length)
         {
             var index = builder.ToString().IndexOf(oldStr, searchIndex);
