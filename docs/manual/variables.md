@@ -8,9 +8,9 @@ Sharpy has two kinds of variables:
 * Explicitly-declared variables are created with the `var` keyword.
 
   ```sharpy {doctest="foo"}
-  var a = 5
-  var b: Float64 = 3.14
-  var c: str
+  a = 5
+  b: Float64 = 3.14
+  c: str
   ```
 
 * Implicitly-declared variables are created the first time the variable is used,
@@ -39,7 +39,7 @@ other types. For example, an integer value can implicitly convert to a
 floating-point value:
 
 ```sharpy
-var temperature: Float64 = 99
+temperature: Float64 = 99
 print(temperature)
 ```
 
@@ -87,8 +87,8 @@ explicitly- and implicitly-declared variables.
 You can declare a variable with the `var` keyword. For example:
 
 ```sharpy
-var name = "Sam"
-var user_id: Int
+name = "Sam"
+user_id: Int
 ```
 
 The `name` variable is initialized to the string "Sam". The `user_id` variable
@@ -100,7 +100,7 @@ value of a different type, unless those types can be
 not compile:
 
 ```sharpy
-var user_id: Int = "Sam"
+user_id: Int = "Sam"
 ```
 
 Explicitly-declared variables follow [lexical scoping](#variable-scopes), unlike
@@ -115,7 +115,7 @@ annotations provide a more explicit way of specifying the variable's type.
 To specify the type for a variable, add a colon followed by the type name:
 
 ```sharpy
-var name: str = get_name()
+name: str = get_name()
 # Or
 name: str = get_name()
 ```
@@ -128,9 +128,9 @@ If a type has a constructor with just one argument, you can initialize it in
 two ways:
 
 ```sharpy
-var name1: str = "Sam"
-var name2 = str("Sam")
-var name3 = "Sam"
+name1: str = "Sam"
+name2 = str("Sam")
+name3 = "Sam"
 ```
 
 All of these lines invoke the same constructor to create a `str` from a
@@ -144,7 +144,7 @@ assigned later:
 
 ```sharpy
 fn my_function(x: Int):
-    var z: Float32
+    z: Float32
     if x != 0:
         z = 1.0
     else:
@@ -159,8 +159,8 @@ If you try to pass an uninitialized variable to a function or use
 it on the right-hand side of an assignment statement, compilation fails.
 
 ```sharpy
-var z: Float32
-var y = z # Error: use of uninitialized value 'z'
+z: Float32
+y = z # Error: use of uninitialized value 'z'
 ```
 
 :::note
@@ -177,7 +177,7 @@ its own type. For example, if you assign an integer to a variable that has a
 floating-point type, it converts the value instead of giving a compiler error:
 
 ```sharpy
-var number: Float64 = Int(1)
+number: Float64 = Int(1)
 print(number)
 ```
 
@@ -206,7 +206,7 @@ type, it can be invoked for implicit conversion.
 So assigning an integer to a `Float64` variable is exactly the same as this:
 
 ```sharpy
-var number = Float64(1)
+number = Float64(1)
 ```
 
 Similarly, if you call a function that requires an argument of a certain type
@@ -223,7 +223,7 @@ fn take_float(value: Float64):
     print(value)
 
 fn pass_integer():
-    var value: Int = 1
+    value: Int = 1
     take_float(value)
 ```
 
@@ -244,11 +244,11 @@ beyond the scope of the `if` block:
 
 ```sharpy
 def lexical_scopes():
-    var num = 1
-    var dig = 1
+    num = 1
+    dig = 1
     if num == 1:
         print("num:", num)  # Reads the outer-scope "num"
-        var num = 2         # Creates new inner-scope "num"
+        num = 2         # Creates new inner-scope "num"
         print("num:", num)  # Reads the inner-scope "num"
         dig = 2             # Updates the outer-scope "dig"
     print("num:", num)      # Reads the outer-scope "num"
@@ -301,31 +301,3 @@ function_scopes()
 Now, the last `print()` function sees the updated `num` value from the inner
 scope, because implicitly-declared variables (Python-style variables) use function-level
 scope (instead of lexical scope).
-
-## Reference bindings
-
-Some APIs return
-[references](/sharpy/manual/values/lifetimes#working-with-references) to values
-owned elsewhere. References can be useful to avoid copying values. For example,
-when you retrieve a value from a collection, the collection returns a reference.
-Assigning a reference to a variable creates a copy:
-
-```sharpy
-items = [99, 77, 33, 12]
-item = items[1]  # item is a copy of items[1]
-item += 1  # increments item
-```
-
-To hold on to reference, use the `ref` keyword to create a reference binding:
-
-```sharpy
-ref item_ref = items[1] # item_ref is a reference to item[1]
-item_ref += 1 # increments items[1]
-```
-
-Here the name `item_ref` is bound to the reference to `items[1]`. Once this
-binding is assigned, it can't be changed. All reads and writes to `item_ref` go
-to the referenced item.
-
-For more information on references, see
-[Working with references](/sharpy/manual/values/lifetimes#working-with-references).

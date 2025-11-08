@@ -1,9 +1,8 @@
 Sharpy includes a variety of operators for manipulating values of different types.
-Generally, the operators are equivalent to those found in Python, though many
-operators also work with additional Sharpy types such as `SIMD` vectors.
-Additionally, Sharpy allows you to define the behavior of most of these operators
-for your own custom types by implementing special *dunder* (double underscore)
-methods.
+Generally, the operators are equivalent to those found in Python, working with
+basic .NET types. Additionally, Sharpy allows you to define the behavior of most
+of these operators for your own custom types by implementing special *dunder*
+(double underscore) methods.
 
 This document contains the following three sections:
 
@@ -125,13 +124,13 @@ and the other `UInt` the result is an `Int`. The one exception for these types
 is true division, `/`, which always returns a `Float64` type value.
 
 ```sharpy
-var a_int: Int = -7
-var b_int: Int = 4
+a_int: Int = -7
+b_int: Int = 4
 sum_int = a_int + b_int  # Result is type Int
 print("Int sum:", sum_int)
 
-var i_uint: UInt = 9
-var j_uint: UInt = 8
+i_uint: UInt = 9
+j_uint: UInt = 8
 sum_uint = i_uint + j_uint  # Result is type UInt
 print("UInt sum:", sum_uint)
 
@@ -152,324 +151,125 @@ Int quotient: -1.75
 UInt quotient: 1.125
 ```
 
-#### `SIMD` values
+#### `int` and `float` values
 
-The Sharpy standard library defines the [`SIMD`](/sharpy/stdlib/builtin/simd/SIMD)
-type to represent a fixed-size array of values that can fit into a processor's
-register. This allows you to take advantage of [single instruction, multiple
-data](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data)
-operations in hardware to efficiently process multiple values in parallel.
-`SIMD` values of a numeric [`DType`](/sharpy/stdlib/builtin/dtype/DType) support
-all arithmetic operators except for matrix multiplication (`@`), though the left
-shift (`<<`) and right shift (`>>`) operators support only integral types.
-Additionally, `SIMD` values of an integral or boolean type support all bitwise
-operators. `SIMD` values apply the operators in an *elementwise* fashion, as
-shown in the following example:
+The `int` and `float` types represent the standard .NET integer and floating-point
+numeric types.
+
+The `int` type supports all arithmetic operators except matrix multiplication (`@`),
+as well as all bitwise and shift operators. The `float` type supports arithmetic
+operators but not bitwise operations.
 
 ```sharpy
-simd1 = SIMD[DType.int32, 4](2, 3, 4, 5)
-simd2 = SIMD[DType.int32, 4](-1, 2, -3, 4)
-simd3 = simd1 * simd2
-print(simd3)
+a_int: int = -7
+b_int: int = 4
+sum_int = a_int + b_int  # Result is type int
+print("int sum:", sum_int)
+
+x_float: float = 3.5
+y_float: float = 2.0
+sum_float = x_float + y_float  # Result is type float
+print("float sum:", sum_float)
+
+quotient_int = a_int / b_int  # Result is type float
+print("int quotient:", quotient_int)
 ```
 
 ```output
-[-2, 6, -12, 20]
-```
-
-[`Scalar`](/sharpy/stdlib/builtin/simd/) values are simply aliases for
-single-element `SIMD` vectors, so `Float16` is just an alias for
-`SIMD[DType.float16, 1]`. Therefore `Scalar` values support the same set of
-arithmetic and bitwise operators.
-
-```sharpy
-var f1: Float16 = 2.5
-var f2: Float16 = -4.0
-var f3 = f1 * f2  # Implicitly of type Float16
-print(f3)
-```
-
-```output
--10.0
-```
-
-When using these operators on `SIMD` values, Sharpy requires both to have the same
-size and `DType`, and the result is a `SIMD` of the same size and `DType`. The
-operators do *not* automatically widen lower precision `SIMD` values to higher
-precision. This means that the `DType` of each value must be the same or else
-the result is a compilation error.
-
-```sharpy
-var i8: Int8 = 8
-var f64: Float64 = 64.0
-result = i8 * f64
-```
-
-```output
-error: invalid call to '__mul__': could not deduce parameter 'type' of parent struct 'SIMD'
-    result = i8 * f64
-             ~~~^~~~~
-```
-
-If you need to perform an arithmetic or bitwise operator on two `SIMD` values of
-different types, you can explicitly convert a value to the desired type either
-by invoking its [`cast()`](/sharpy/stdlib/builtin/simd/SIMD#cast) method or by
-passing it as an argument to the constructor of the target type.
-
-For example, to fix the previous example, add an explicit conversion:
-
-```sharpy
-var i8: Int8 = 8
-var f64: Float64 = 64.0
-result = Float64(i8) * f64
-```
-
-Here are some more examples of converting SIMD values using both constructors
-and the `cast()` method:
-
-```sharpy
-simd4 = SIMD[DType.float32, 4](2.2, 3.3, 4.4, 5.5)
-simd5 = SIMD[DType.int16, 4](-1, 2, -3, 4)
-simd6 = simd4 * simd5.cast[DType.float32]()  # Convert with cast() method
-print("simd6:", simd6)
-simd7 = simd5 + SIMD[DType.int16, 4](simd4)  # Convert with SIMD constructor
-print("simd7:", simd7)
-```
-
-```output
-simd6: [-2.2, 6.6, -13.200001, 22.0]
-simd7: [1, 5, 1, 9]```
-
-One exception is that the exponentiation operator, `**`, is overloaded so that
-you can specify an `Int` type exponent. All values in the `SIMD` are
-exponentiated to the same power.
-
-```sharpy
-base_simd = SIMD[DType.float64, 4](1.1, 2.2, 3.3, 4.4)
-var power: Int = 2
-pow_simd = base_simd ** power  # Result is SIMD[DType.float64, 4]
-print(pow_simd)
-```
-
-```output
-[1.2100000000000002, 4.8400000000000007, 10.889999999999999, 19.360000000000003]
+int sum: -3
+float sum: 5.5
+int quotient: -1.75
 ```
 
 There are three operators related to division:
 
-- `/`, the "true division" operator, performs floating point division for `SIMD`
-  values with a floating point `DType`. For `SIMD` values with an integral
-  `DType`, true division *truncates* the quotient to an integral result.
+- `/`, the "true division" operator, performs division and returns a floating-point
+  result. For example:
 
     ```sharpy
-    num_float16 = SIMD[DType.float16, 4](3.5, -3.5, 3.5, -3.5)
-    denom_float16 = SIMD[DType.float16, 4](2.5, 2.5, -2.5, -2.5)
+    num_float = 7.0
+    denom_float = 2.0
+    num_int = 7
+    denom_int = 2
 
-    num_int32 = SIMD[DType.int32, 4](5, -6, 7, -8)
-    denom_int32 = SIMD[DType.int32, 4](2, 3, -4, -5)
+    # Result is float
+    true_quotient_float = num_float / denom_float
+    print("True float division:", true_quotient_float)
 
-    # Result is SIMD[DType.float16, 4]
-    true_quotient_float16 = num_float16 / denom_float16
-    print("True float16 division:", true_quotient_float16)
-
-    # Result is SIMD[DType.int32, 4]
-    true_quotient_int32 = num_int32 / denom_int32
-    print("True int32 division:", true_quotient_int32)
+    # Result is float (converts from int)
+    true_quotient_int = num_int / denom_int
+    print("True int division:", true_quotient_int)
     ```
 
     ```output
-    True float16 division: [1.4003906, -1.4003906, -1.4003906, 1.4003906]
-    True int32 division: [2, -2, -1, 1]
+    True float division: 3.5
+    True int division: 3.5
     ```
 
 - `//`, the "floor division" operator, performs division and *rounds down* the
-  result to the nearest integer. The resulting `SIMD` is still the same type as
-  the original operands. For example:
+  result to the nearest integer. For example:
 
     ```sharpy
-    # Result is SIMD[DType.float16, 4]
-    var floor_quotient_float16 = num_float16 // denom_float16
-    print("Floor float16 division:", floor_quotient_float16)
+    # Result is float
+    floor_quotient_float = num_float // denom_float
+    print("Floor float division:", floor_quotient_float)
 
-    # Result is SIMD[DType.int32, 4]
-    var floor_quotient_int32 = num_int32 // denom_int32
-    print("Floor int32 division:", floor_quotient_int32)
+    # Result is int
+    floor_quotient_int = num_int // denom_int
+    print("Floor int division:", floor_quotient_int)
     ```
 
     ```output
-    Floor float16 division: [1.0, -2.0, -2.0, 1.0]
-    Floor int32 division: [2, -2, -2, 1]
+    Floor float division: 3.0
+    Floor int division: 3
     ```
 
 - `%`, the modulo operator, returns the remainder after dividing the numerator
-  by the denominator an integral number of times. The relationship between the
-  `//` and `%` operators can be defined as `num == denom * (num // denom) + (num
-  % denom)`. For example:
+  by the denominator an integral number of times. For example:
 
     ```sharpy
-    # Result is SIMD[DType.float16, 4]
-    var remainder_float16 = num_float16 % denom_float16
-    print("Modulo float16:", remainder_float16)
+    remainder_int = num_int % denom_int
+    print("Modulo int:", remainder_int)
 
-    # Result is SIMD[DType.int32, 4]
-    var remainder_int32 = num_int32 % denom_int32
-    print("Modulo int32:", remainder_int32)
-
-    print()
-
-    # Result is SIMD[DType.float16, 4]
-    var result_float16 = denom_float16 * floor_quotient_float16 + remainder_float16
-    print("Result float16:", result_float16)
-
-    # Result is SIMD[DType.int32, 4]
-    var result_int32 = denom_int32 * floor_quotient_int32 + remainder_int32
-    print("Result int32:", result_int32)
+    # Relationship: num == denom * (num // denom) + (num % denom)
+    result_int = denom_int * floor_quotient_int + remainder_int
+    print("Result int:", result_int)
     ```
 
     ```output
-    Modulo float16: [1.0, 1.5, -1.5, -1.0]
-    Modulo int32: [1, 0, -1, -3]
-
-    Result float16: [3.5, -3.5, 3.5, -3.5]
-    Result int32: [5, -6, 7, -8]
+    Modulo int: 1
+    Result int: 7
     ```
 
 
-#### `IntLiteral` and `FloatLiteral` values
+#### Literal values
 
-[`IntLiteral`](/sharpy/stdlib/builtin/int_literal/IntLiteral) and
-[`FloatLiteral`](/sharpy/stdlib/builtin/float_literal/FloatLiteral) are
-compile-time, numeric values. When they are used in a compile-time context, they
-are arbitrary-precision values. When they are used in a run-time context, they
-are materialized as `Int` and `Float64` type values, respectively.
-
-As an example, the following code causes a compile-time error because the
-calculated `IntLiteral` value is too large to store in an `Int` variable:
+Literal numeric values in Sharpy are implicitly typed as `int` or `float` based on
+context. When used directly, integer literals become `int` values and decimal
+literals become `float` values.
 
 ```sharpy
-alias big_int = (1 << 65) + 123456789  # IntLiteral
-var too_big_int: Int = big_int
-print("Result:", too_big_int)
+x = 42      # int
+y = 3.14    # float
 ```
 
-```output
-note: integer value 36893488147542560021 requires 67 bits to store, but the destination bit width is only 64 bits wide
-```
-
-However in the following example, taking that same `IntLiteral` value, dividing
-by the `IntLiteral` 10 and then assigning the result to an `Int` variable
-compiles and runs successfully, because the final `IntLiteral` quotient can fit
-in a 64-bit `Int`.
-
-```sharpy
-alias big_int = (1 << 65) + 123456789  # IntLiteral
-var not_too_big_int: Int = big_int // 10
-print("Result:", not_too_big_int)
-```
-
-```output
-Result: 3689348814754256002
-```
-
-In a compile-time context, `IntLiteral` and `FloatLiteral` values support all
-arithmetic operators *except* exponentiation (`**`), and `IntLiteral` values
-support all bitwise and shift operators. In a run-time context, materialized
-`IntLiteral` values are `Int` values and therefore support the same operators as
-`Int`, and materialized `FloatLiteral` values are `Float64` values and therefore
-support the same operators as `Float64`.
+Literal values support all standard arithmetic operators. Integer literals support
+bitwise and shift operators as well.
 
 ### Comparison operators
 
 Sharpy supports a standard set of comparison operators: `==`, `!=`, `<`, `<=`,
-`>`, and `>=`. However their behavior depends on the type of values being
-compared.
+`>`, and `>=`. These operators perform standard numerical comparison and return a
+`bool` result.
 
-- `Int`, `UInt`, `IntLiteral`, and any type that can be implicitly converted to
-  `Int` or `UInt` do standard numerical comparison with a `Bool` result.
-- Two `SIMD` values can be compared only if they are the same `DType` and size.
-  (If you need to compare two `SIMD` values of different types, you can
-  explicitly convert a value so that they have the same type either by invoking
-  its [`cast()`](/sharpy/stdlib/builtin/simd/SIMD#cast) method or by passing it as
-  an argument to the constructor of the target type.) Sharpy performs elementwise
-  comparison with a `SIMD[DType.bool]` result. For example:
+```sharpy
+a = 5
+b = 10
+result = a < b  # true
+```
 
-    ```sharpy
-    simd1 = SIMD[DType.int16, 4](-1, 2, -3, 4)
-    simd2 = SIMD[DType.int16, 4](0, 1, 2, 3)
-    simd3 = simd1.gt(simd2)  # SIMD[DType.bool, 4]
-    print(simd3)
-    ```
-
-    ```output
-    [False, True, False, True]
-    ```
-
-- An integral type `SIMD` can be compared to an `IntLiteral`, `Int`, `UInt`, or
-  any type that can be implicitly converted to `Int` or `UInt`. Sharpy performs
-  elementwise comparison against the value provided and produces a
-  `SIMD[DType.bool]` result. For example:
-
-    ```sharpy
-    simd4 = SIMD[DType.int16, 4](-1, 2, -3, 4)
-    simd5 = simd4 > 2  # SIMD[DType.bool, 4]
-    print(simd5)
-    ```
-
-    ```output
-    [False, False, False, True]
-    ```
-
-- A floating point type `SIMD` can be compared to a `FloatLiteral`,
-  `IntLiteral`, `Int`, `UInt`, or any type that can be implicitly converted to
-  `Int` or `UInt`. Sharpy performs elementwise comparison against the value
-  provided and produces a `SIMD[DType.bool]` result. For example:
-
-    ```sharpy
-    simd6 = SIMD[DType.float32, 4](1.1, -2.2, 3.3, -4.4)
-    simd7 = simd6 > 0.5  # SIMD[DType.bool, 4]
-    print(simd7)
-    ```
-
-    ```output
-    [True, False, True, False]
-    ```
-
-- `Scalar` values are simply aliases for single-element `SIMD` vectors.
-  Therefore, the same restrictions apply against comparing different types. In
-  other words, you can't compare a `Float16` value to a `Float32` value unless
-  you convert the values to the same type. You can convert a `Scalar` value by
-  passing it as an argument to the constructor of the target type:
-
-    ```sharpy
-    var float1: Float16 = 12.345         # SIMD[DType.float16, 1]
-    var float2: Float32 = 0.5            # SIMD[DType.float32, 1]
-    result = Float32(float1) > float2    # Result is SIMD[DType.bool, 1]
-    print(result)
-    ```
-
-    ```output
-    True
-    ```
-
-    :::note
-
-    Note that the result of comparing a `Scalar` value is a `SIMD[DType.bool, 1]`,
-    which is not the same as a `Bool` value. However, `SIMD` values of size
-    1 implement the `Boolable` trait, which provides for implicit conversion to
-    a `Bool` value when used in a boolean expression.
-
-    :::
-
-- `String` and `StringLiteral` values can be compared using standard
-  lexicographical ordering, producing a `Bool`. (For example, "Zebra" is treated
-  as less than "ant" because upper case letters occur before lower case letters
-  in the character encoding.) String comparisons are discussed further in the
-  [String operators](#string-operators) section below.
-
-Several other types in the Sharpy standard library support various comparison
-operators, in particular the equality and inequality comparisons. Consult the
-[API documentation](/sharpy/lib) for a type to determine whether any comparison
-operators are supported.
+For custom types, comparison operators can be overloaded by implementing the
+appropriate dunder methods (see [Comparison operator dunder methods](#comparison-operator-dunder-methods)).
 
 ### String operators
 
@@ -541,7 +341,7 @@ and memcpy to the heap once.
 The `*` operator replicates a `String` a specified number of times. For example:
 
 ```sharpy
-var str1: String = "la"
+str1: String = "la"
 str2 = str1 * 5
 print(str2)
 ```
@@ -600,7 +400,7 @@ less than "ant" because upper case letters occur before lower case letters in
 the character encoding.
 
 ```sharpy
-var animal: String = "bird"
+animal: String = "bird"
 
 is_cat_eq = "cat" == animal
 print('Is "cat" equal to "{}"?'.format(animal), is_cat_eq)
@@ -634,7 +434,7 @@ another string. The operator is overloaded so that you can use any combination
 of `String` and `StringLiteral` for both the substring and the string to test.
 
 ```sharpy
-var food: String = "peanut butter"
+food: String = "peanut butter"
 
 if "nut" in food:
     print("It contains a nut")
@@ -656,7 +456,7 @@ by index -1. Specifying an index beyond the bounds of the string results in a
 run-time error.
 
 ```sharpy
-var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"  # String type value
+alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"  # String type value
 print(alphabet[0], alphabet[-1])
 
 # The following would produce a run-time error
@@ -676,7 +476,7 @@ end values. Omitting `start` is the same as specifying `0`, and omitting `end`
 is the same as specifying 1 plus the length of the string.
 
 ```sharpy
-var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" # String type value
+alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" # String type value
 print(alphabet[1:4])  # The 2nd through 4th characters
 print(alphabet[:6])   # The first 6 characters
 print(alphabet[-6:])  # The last 6 characters
@@ -822,7 +622,7 @@ Individual structs can define custom type merging logic by defining a
 ```sharpy
 @fieldwise_init
 struct MyType(Movable, Copyable):
-    var val: Int
+    val: Int
 
     def __bool__(self) -> Bool:
         return self.val > 0
@@ -895,7 +695,7 @@ operator. For example, you could implement the `-` negative operator for a
 ```sharpy
 @fieldwise_init
 struct MyInt:
-    var value: Int
+    value: Int
 
     def __neg__(self) -> Self:
         return Self(-self.value)
@@ -958,7 +758,7 @@ type.
 ```sharpy
 @fieldwise_init
 struct MyInt:
-    var value: Int
+    value: Int
 
     def __add__(self, rhs: MyInt) -> Self:
         return MyInt(self.value + rhs.value)
@@ -1025,7 +825,7 @@ dunder methods for a custom `MyInt` struct.
 struct MyInt(
     Comparable
 ):
-    var value: Int
+    value: Int
 
     fn __eq__(self, rhs: MyInt) -> Bool:
         return self.value == rhs.value
@@ -1126,13 +926,13 @@ corresponding elements of your collection being referenced.
 
 ```sharpy
 struct MySeq[type: Copyable & Movable]:
-    var size: Int
+    size: Int
 
     # Return a new MySeq with a subset of elements
     fn __getitem__(self, span: Slice) -> Self:
-        var start: Int
-        var end: Int
-        var step: Int
+        start: Int
+        end: Int
+        step: Int
         start, end, step = span.indices(self.size)
         ...
 
@@ -1179,8 +979,8 @@ for each field).
 @fieldwise_init
 @register_passable("trivial")
 struct Complex:
-    var re: Float64
-    var im: Float64
+    re: Float64
+    im: Float64
 ```
 
 This definition is enough for us to create `Complex` instances and access their
@@ -1201,8 +1001,8 @@ creating a `Complex` instance with an imaginary component of 0.
 ```sharpy
 @register_passable("trivial")
 struct Complex():
-    var re: Float64
-    var im: Float64
+    re: Float64
+    im: Float64
 
     fn __init__(out self, re: Float64, im: Float64 = 0.0):
         self.re = re
@@ -1272,7 +1072,7 @@ constructs a new `String` from all the arguments passed to it.
 c3 = Complex(3.14159, -2.71828)
 print("c3 =", c3)
 
-var msg = String("The value is: ", c3)
+msg = String("The value is: ", c3)
 print(msg)
 ```
 

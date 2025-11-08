@@ -46,12 +46,10 @@ specify the type of each argument. If you wanted to write this example in Sharpy
 *without* protocols, you'd need to write a function overload for each input type.
 
 ```sharpy title="🔥 Sharpy"
-@fieldwise_init
 struct Duck(Copyable, Movable):
     fn quack(self):
         print("Quack")
 
-@fieldwise_init
 struct StealthCow(Copyable, Movable):
     fn quack(self):
         print("Moo!")
@@ -116,12 +114,10 @@ the struct name. You can also include multiple protocols, separated by commas.
 syntax.)
 
 ```sharpy
-@fieldwise_init
 struct Duck(Copyable, Movable, Quackable):
     fn quack(self):
         print("Quack")
 
-@fieldwise_init
 struct StealthCow(Copyable, Movable, Quackable):
     fn quack(self):
         print("Moo!")
@@ -131,16 +127,16 @@ The struct needs to implement any methods that are declared in the protocol. The
 compiler enforces conformance: if a struct says it conforms to a protocol, it must
 implement everything required by the protocol or the code won't compile.
 
-Finally, you can define a function that takes a `Quackable` like this:
+Finally, you can define a generic function that takes any type conforming to
+`Quackable` like this:
 
 ```sharpy
-fn make_it_quack[type: Quackable](maybe_a_duck: type):
+fn make_it_quack[T: Quackable](maybe_a_duck: T):
     maybe_a_duck.quack()
 ```
 
-This syntax may look a little unfamiliar if you haven't dealt with Sharpy
-[parameters](/sharpy/manual/parameters/) before. What this signature
-means is that `maybe_a_duck` is an argument of type `type`, where `type` is a
+This syntax uses Sharpy's generic type parameters. What this signature
+means is that `maybe_a_duck` is an argument of type `T`, where `T` is a
 type that must conform to the `Quackable` protocol.
 
 Using the method is simple enough:
@@ -192,7 +188,6 @@ fn quack_and_go[type: Quackable & Flyable](quacker: type):
     quacker.quack()
     quacker.fly()
 
-@fieldwise_init
 struct FlyingDuck(Copyable, Movable, Quackable, Flyable):
     fn quack(self):
         print("Quack")
@@ -313,7 +308,7 @@ fn factory[type: MassProducible]() -> type:
     return type()
 
 struct Thing(MassProducible):
-    var id: Int
+    id: Int
 
     fn __init__(out self):
         self.id = 0
@@ -321,36 +316,8 @@ struct Thing(MassProducible):
     fn __moveinit__(out self, deinit existing: Self):
         self.id = existing.id
 
-var thing = factory[Thing]()
+thing = factory[Thing]()
 ```
-
-### Register-passable protocols
-
-A protocol can be declared with either the
-[`@register_passable`](/sharpy/manual/decorators/register-passable)
-decorator or the
-[`@register_passable("trivial")`](/sharpy/manual/decorators/register-passable#register_passabletrivial)
-decorator. These decorators add requirements for conforming structs:
-
-- If the protocol is declared as `@register_passable`, every struct that conforms
-  to the protocol must be either `@register_passable` or
-  `@register_passable("trivial")`.
-
-- If the protocol is declared as `@register_passable("trivial")`, every struct that
-  conforms to the protocol must be
-  struct must be `@register_passable("trivial")`, too.
-
-For the purpose of protocol conformance, a protocol or struct that's defined with
-`@register_passable` should automatically conform to the `Movable` protocol, and a
-protocol or struct that's defined with `@register_passable("trivial")` should
-automatically conform to the `Copyable` and `Movable` protocols.
-
-:::note
-
-In some cases, the compiler may not track these automatic conformances
-correctly. If you run into an issue, add the protocols to your struct explicitly.
-
-:::
 
 ## Built-in protocols
 
@@ -395,7 +362,7 @@ implement this protocol so your type works with `len()`:
 
 ```sharpy
 struct MyList(Copyable, Movable, Sized):
-    var size: Int
+    size: Int
     # ...
 
     fn __init__(out self):
@@ -422,11 +389,10 @@ Both of these protocols require the type to implement the `__int__()` method. Fo
 example:
 
 ```sharpy
-@fieldwise_init
 struct IntLike(Intable):
-    var i: Int
+    i: int
 
-    fn __int__(self) -> Int:
+    fn __int__(self) -> int:
         return self.i
 
 value = IntLike(42)
@@ -483,10 +449,9 @@ function to implement the type's `strable` implementation in terms of its
 all of the `strable`, `Representable`, and `Writable` protocols:
 
 ```sharpy
-@fieldwise_init
 struct Dog(Copyable, strable, Representable, Writable):
-    var name: str
-    var age: Int
+    name: str
+    age: int
 
     # Allows the type to be written into any `Writer`
     fn write_to[W: Writer](self, mut writer: W) -> None:
@@ -506,7 +471,7 @@ dog = Dog("Rex", 5)
 print(repr(dog))
 print(dog)
 
-var dog_info = "str: {!s}\nRepresentation: {!r}".format(dog, dog)
+dog_info = "str: {!s}\nRepresentation: {!r}".format(dog, dog)
 print(dog_info)
 ```
 
@@ -549,57 +514,35 @@ generate a move constructor for that type.
 
 :::
 
-### The `AnyType` protocol
+### The `Copyable` and `Movable` protocols
 
-When building a generic container type, one challenge is knowing how to dispose
-of the contained items when the container is destroyed. Any type that
-dynamically allocates memory needs to supply a
-[destructor](/sharpy/manual/lifecycle/death#destructor) (`__del__()` method)
-that must be called to free the allocated memory. But not all types have a
-destructor.
+When building container types, you need to know how to handle the contained
+items. The `Copyable` and `Movable` protocols define the basic requirements
+for types that can be copied or moved.
 
-The [`AnyType`](/sharpy/stdlib/builtin/anytype/AnyType) protocol (also provided as
-the
-[`ImplicitlyDestructible`](/sharpy/stdlib/builtin/anytype/#implicitlydestructible)
-alias) represents a type with a destructor. Almost all protocols inherit from
-`AnyType`, and all structs conform to `AnyType` by default. For any type that
-conforms to `AnyType` and doesn't define a destructor, Sharpy generates a no-op
-destructor. This means you can call the destructor on any type that inherits
-from `AnyType`/`ImplicitlyDestructible`.
-
-:::note TODO
-
-In the Sharpy standard library docs you will also see a protocol called
-[`UnknownDestructability`](/sharpy/stdlib/builtin/anytype/UnknownDestructibility),
-which represents a type that may or may not have a destructor. All structs
-implicitly conform to this protocol.
-
-This protocol exists to support a planned future feature called *linear* or
-*explicitly-destroyed* types.
-
-:::
+Almost all structs conform to `Copyable` and `Movable` by default. These protocols
+ensure that types can be safely stored in containers and passed around in your code.
 
 ## Generic structs with protocols
 
-You can also use protocols when defining a generic container. A generic container
+You can use protocols when defining a generic container. A generic container
 is a container (for example, an array or hashmap) that can hold different data
-types. In a dynamic language like Python it's easy to add  different types of
-items to a container. But in a statically-typed environment the compiler needs
-to be able to identify the types at compile time. For example, if the container
-needs to copy a value, the compiler needs to verify that the type can be copied.
+types. In a statically-typed environment the compiler needs to be able to
+identify the types at compile time.
 
 The [`List`](/sharpy/stdlib/collections/list) type is an example of a
 generic container. A single `List` can only hold a single type of data.
-The list elments must conform to the `Copyable` and `Movable` protocols:
+The list elements must conform to the `Copyable` and `Movable` protocols:
 
 ```sharpy
-struct List[T: Copyable & Movable, hint_trivial_type: Bool = False]:
+struct List[T: Copyable & Movable]:
+    ...
 ```
 
 For example, you can create a list of integer values like this:
 
 ```sharpy
-var list: List[Int]
+list: List[int]
 list = [1, 2, 3, 4]
 for i in range(len(list)):
     print(list[i], end=" ")
@@ -612,13 +555,7 @@ for i in range(len(list)):
 You can use protocols to define requirements for elements that are stored in a
 container. For example, `List` requires elements that can be moved and
 copied. To store a struct in a `List`, the struct needs to conform to
-the `Copyable` and `Movable` protocols, which require a
-[copy constructor](/sharpy/manual/lifecycle/life#copy-constructor) and a
-[move constructor](/sharpy/manual/lifecycle/life#move-constructor).
-
-Building generic containers is an advanced topic. For an introduction, see the
-section on
-[parameterized structs](/sharpy/manual/parameters/#parameterized-structs).
+the `Copyable` and `Movable` protocols.
 
 ### Associated aliases for generics
 
@@ -666,7 +603,7 @@ generic methods on the protocol:
 protocol Stacklike:
     alias EltType: Copyable & Movable
 
-    fn push(mut self, var item: Self.EltType):
+    fn push(mut self, item: Self.EltType):
         ...
 
     fn pop(mut self) -> Self.EltType:
@@ -682,12 +619,12 @@ struct MyStack[type: Copyable & Movable](Stacklike):
     alias EltType = type
     alias list_type = List[Self.EltType]
 
-    var list: Self.list_type
+    list: Self.list_type
 
     fn __init__(out self):
         self.list = Self.list_type()
 
-    fn push(mut self, var item: Self.EltType):
+    fn push(mut self, item: Self.EltType):
         self.list.append(item)
 
     fn pop(mut self) -> Self.EltType:

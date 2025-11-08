@@ -32,8 +32,8 @@ filesystem and getting system information, and so on.
 
 ## Numeric types
 
-Sharpy's most basic numeric type is `Int`, which represents a signed integer of
-the largest size supported by the system—typically 64 bits or 32 bits.
+Sharpy's most basic numeric types are `int` for integers and `float` for
+floating-point numbers. These map to the standard .NET numeric types.
 
 Sharpy also has built-in types for integer, unsigned integer, and floating-point
 values of various precisions:
@@ -42,43 +42,31 @@ values of various precisions:
 
 | Type name | Description                                           |
 | --------- | ----------------------------------------------------- |
-| `Int8`    | 8-bit signed integer                                  |
-| `UInt8`   | 8-bit unsigned integer                                |
-| `Int16`   | 16-bit signed integer                                 |
-| `UInt16`  | 16-bit unsigned integer                               |
-| `Int32`   | 32-bit signed integer                                 |
-| `UInt32`  | 32-bit unsigned integer                               |
-| `Int64`   | 64-bit signed integer                                 |
-| `UInt64`  | 64-bit unsigned integer                               |
-| `Int128`  | 128-bit signed integer                                |
-| `UInt128` | 128-bit unsigned integer                              |
-| `Int256`  | 256-bit signed integer                                |
-| `UInt256` | 256-bit unsigned integer                              |
-| `Float16` | 16-bit floating point number (IEEE 754-2008 binary16) |
-| `Float32` | 32-bit floating point number (IEEE 754-2008 binary32) |
-| `Float64` | 64-bit floating point number (IEEE 754-2008 binary64) |
+| `int8`    | 8-bit signed integer                                  |
+| `uint8`   | 8-bit unsigned integer                                |
+| `int16`   | 16-bit signed integer                                 |
+| `uint16`  | 16-bit unsigned integer                               |
+| `int32`   | 32-bit signed integer                                 |
+| `uint32`  | 32-bit unsigned integer                               |
+| `int64`   | 64-bit signed integer                                 |
+| `uint64`  | 64-bit unsigned integer                               |
+| `float32` | 32-bit floating point number (IEEE 754 single)        |
+| `float64` | 64-bit floating point number (IEEE 754 double)        |
 
 <figcaption><b>Table 1.</b> Numeric types with specific precision</figcaption>
 </figure>
 
-The types in Table 1 are actually all aliases to a single type,
-[`SIMD`](/sharpy/stdlib/builtin/simd/SIMD), which is discussed later.
+All of the numeric types support the usual numeric and bitwise operators.
 
-All of the numeric types support the usual numeric and bitwise operators. The
-[`math`](/sharpy/stdlib/math/) module provides a number of additional math
-functions.
-
-You may wonder when to use `Int` and when to use the other integer
-types. In general, `Int` is a good safe default when you need an integer type
-and you don't require a specific bit width. Using `Int` as the default integer
+You may wonder when to use `int` and when to use the other integer
+types. In general, `int` is a good safe default when you need an integer type
+and you don't require a specific bit width. Using `int` as the default integer
 type for APIs makes APIs more consistent and predictable.
 
 ### Signed and unsigned integers
 
-Sharpy supports both signed (`Int`) and unsigned (`UInt`) integers. You can use
-the general `Int` or `UInt` types when you do not require a specific bit width.
-Note that any alias to a fixed-precision type will be of type
-[`SIMD`](/sharpy/stdlib/builtin/simd/SIMD).
+Sharpy supports both signed (`int`) and unsigned (`uint`) integers. You can use
+the general `int` or `uint` types when you do not require a specific bit width.
 
 You might prefer to use unsigned integers over signed integers in conditions
 where you don't need negative numbers, are not writing for a public API, or need
@@ -99,10 +87,10 @@ represents a range of 0 to 255.
 Signed and unsigned integers also have different overflow behavior. When a
 signed integer overflows outside the range of values that its type can
 represent, the value overflows to negative numbers. For example, adding `1` to
-`var si: Int8 = 127` results in `-128`.
+`si: Int8 = 127` results in `-128`.
 
 When an unsigned integer overflows outside the range of values that its type can
-represent, the value overflows to zero. So, adding `1` to `var ui: UInt8 = 255`
+represent, the value overflows to zero. So, adding `1` to `ui: UInt8 = 255`
 is equal to `0`.
 
 ### Floating-point numbers
@@ -151,8 +139,8 @@ Because the values are approximate, it is rarely useful to compare them with
 the equality operator (`==`). Consider the following example:
 
 ```sharpy
-var big_num = 1.0e16
-var bigger_num = big_num+1.0
+big_num = 1.0e16
+bigger_num = big_num+1.0
 print(big_num == bigger_num)
 ```
 
@@ -205,10 +193,10 @@ calculation and the same calculation done using `Float64` values at runtime,
 which suffers from rounding errors.
 
 ```sharpy
-var arbitrary_precision = 3.0 * (4.0 / 3.0 - 1.0)
+arbitrary_precision = 3.0 * (4.0 / 3.0 - 1.0)
 # use a variable to force the following calculation to occur at runtime
-var three = 3.0
-var finite_precision = three * (4.0 / three - 1.0)
+three = 3.0
+finite_precision = three * (4.0 / three - 1.0)
 print(arbitrary_precision, finite_precision)
 ```
 
@@ -216,110 +204,20 @@ print(arbitrary_precision, finite_precision)
 1.0 0.99999999999999978
 ```
 
-### `SIMD` and `DType`
-
-To support high-performance numeric processing, Sharpy uses the
-[`SIMD`](/sharpy/stdlib/builtin/simd/SIMD) type as the basis for its numeric
-types. SIMD (single instruction, multiple data) is a processor technology that
-allows you to perform an operation on an entire set of operands at once. Sharpy's
-`SIMD` type abstracts SIMD operations. A `SIMD` value represents a SIMD
-*vector*—that is, a fixed-size array of values that can fit into a processor's
-register. SIMD vectors are defined by two
-[*parameters*](/sharpy/manual/parameters/):
-
-* A `DType` value, defining the data type in the vector (for example,
-  32-bit floating-point numbers).
-* The number of elements in the vector, which must be a power of two.
-
-For example, you can define a vector of four `Float32` values like this:
-
-```sharpy
-var vec = SIMD[DType.float32, 4](3.0, 2.0, 2.0, 1.0)
-```
-
-Math operations on SIMD values are
-applied *elementwise*, on each individual element in the vector. For example:
-
-```sharpy
-var vec1 = SIMD[DType.int8, 4](2, 3, 5, 7)
-var vec2 = SIMD[DType.int8, 4](1, 2, 3, 4)
-var product = vec1 * vec2
-print(product)
-```
-
-```output
-[2, 6, 15, 28]
-```
-
-### Scalar values
-
-The `SIMD` module defines several *type aliases* that are shorthand for
-different types of `SIMD` vectors. In particular, the `Scalar` type is just a
-`SIMD` vector with a single element. The numeric types listed in
-[Table 1](#table-1), like `Int8` and `Float32` are actually type aliases for
-different types of scalar values:
-
-```sharpy
-alias Scalar = SIMD[size=1]
-alias Int8 = Scalar[DType.int8]
-alias Float32 = Scalar[DType.float32]
-```
-
-This may seem a little confusing at first, but it means that whether you're
-working with a single `Float32` value or a vector of float32 values,
-the math operations go through exactly the same code path.
-
-#### The `DType` type
-
-The `DType` struct describes the different data types that a `SIMD` vector can
-hold, and defines a number of utility functions for operating on those data
-types. The `DType` struct defines a set of aliases that act as identifiers for
-the different data types, like `DType.int8` and `DType.float32`. You use
-these aliases when declaring a `SIMD` vector:
-
-```sharpy
-var v: SIMD[DType.float64, 16]
-```
-
-Note that `DType.float64` isn't a *type*, it's a value that describes a data
-type. You can't create a variable with the type `DType.float64`. You can create
-a variable with the type `SIMD[DType.float64, 1]` (or  `Float64`, which is the
-same thing).
-
-```sharpy
-from utils.numerics import max_finite, min_finite
-
-def describeDType[dtype: DType]():
-    print(dtype, "is floating point:", dtype.is_floating_point())
-    print(dtype, "is integral:", dtype.is_integral())
-    print("Min/max finite values for", dtype)
-    print(min_finite[dtype](), max_finite[dtype]())
-
-describeDType[DType.float32]()
-```
-
-```output
-float32 is floating point: True
-float32 is integral: False
-Min/max finite values for float32
--3.4028234663852886e+38 3.4028234663852886e+38
-```
-
-There are several other data types in the standard library that also use
-the `DType` abstraction.
-
 ### Numeric type conversion
 
-[Constructors and implicit conversion](/sharpy/manual/lifecycle/life/#constructors-and-implicit-conversion)
-documents the circumstances in which Sharpy automatically converts a value from
-one type to another. Importantly, numeric [operators](/sharpy/manual/operators)
-**don't** automatically narrow or widen operands to a common type.
-
-You can explicitly convert a `SIMD` value to a different `SIMD` type either
-by invoking its [`cast()`](/sharpy/stdlib/builtin/simd/SIMD#cast) method or by
-passing it as an argument to the constructor of the target type. For example:
+Sharpy does not automatically convert between numeric types in most operations.
+You must explicitly convert values when needed:
 
 ```sharpy
+i: int = 42
+f: float = float(i)  # Explicit conversion
+print(f)
+```
+
+```output
+42.0
+```
 simd1 = SIMD[DType.float32, 4](2.2, 3.3, 4.4, 5.5)
 simd2 = SIMD[DType.int16, 4](-1, 2, -3, 4)
 simd3 = simd1 * simd2.cast[DType.float32]()  # Convert with cast() method
@@ -337,8 +235,8 @@ You can convert a `Scalar` value by passing it as an argument to the constructor
 of the target type. For example:
 
 ```sharpy
-var my_int: Int16 = 12                 # SIMD[DType.int16, 1]
-var my_float: Float32 = 0.75           # SIMD[DType.float32, 1]
+my_int: Int16 = 12                 # SIMD[DType.int16, 1]
+my_float: Float32 = 0.75           # SIMD[DType.float32, 1]
 result = Float32(my_int) * my_float    # Result is SIMD[DType.float32, 1]
 print("Result:", result)
 ```
@@ -366,7 +264,7 @@ that this is different from Python's standard string, which is immutable.)
 strs support a variety of operators and common methods.
 
 ```sharpy
-var s: str = "Testing"
+s: str = "Testing"
 s += " Sharpy strings"
 print(s)
 ```
@@ -381,7 +279,7 @@ a type that can be converted to a string. Use `str(value)` to
 explicitly convert a value to a string:
 
 ```sharpy
-var s = "Items in list: " + str(5)
+s = "Items in list: " + str(5)
 print(s)
 ```
 
@@ -393,7 +291,7 @@ Or use `str.write` to take variadic `strable` types, so you don't have to
 call `str()` on each value:
 
 ```sharpy
-var s = str("Items in list: ", 5)
+s = str("Items in list: ", 5)
 print(s)
 ```
 
@@ -432,8 +330,8 @@ A `strLiteral` will materialize to a `str` when used at run-time:
 
 ```sharpy
 alias param = "foo"        # type = strLiteral
-var runtime_value = "bar"  # type = str
-var runtime_value2 = param # type = str
+runtime_value = "bar"  # type = str
+runtime_value2 = param # type = str
 ```
 
 ## Booleans
@@ -442,8 +340,8 @@ Sharpy's `Bool` type represents a boolean value. It can take one of two values,
 `True` or `False`. You can negate a boolean value using the `not` operator.
 
 ```sharpy
-var conditionA = False
-var conditionB: Bool
+conditionA = False
+conditionB: Bool
 conditionB = not conditionA
 print(conditionA, conditionB)
 ```
@@ -525,7 +423,7 @@ type at compile time using a [parameter](/sharpy/manual/parameters/). For
 example, you can create a `List` of `Int` values like this:
 
 ```sharpy
-var l: List[Int] = [1, 2, 3, 4]
+l: List[Int] = [1, 2, 3, 4]
 # l.append(3.14) # error: FloatLiteral cannot be converted to Int
 ```
 
@@ -535,7 +433,7 @@ integer literals, Sharpy creates a `List[Int]`.
 
 ```sharpy
 # Inferred type == List[Int]
-var l1 = [1, 2, 3, 4]
+l1 = [1, 2, 3, 4]
 ```
 
 Where you need a more flexible collection, the
@@ -558,7 +456,7 @@ protocol. You can create a `List` by passing the element type as a parameter,  l
 this:
 
 ```sharpy
-var l = List[str]()
+l = List[str]()
 ```
 
 The `List` type supports a subset of the Python `list` API, including the
@@ -566,7 +464,7 @@ ability to append to the list, pop items out of the list, and access list items
 using subscript notation.
 
 ```sharpy
-var list = [2, 3, 5]
+list = [2, 3, 5]
 list.append(7)
 list.append(11)
 print("Popping last item from list: ", list.pop())
@@ -588,19 +486,19 @@ the list. Because the list is being created with a set of `Int` values, Sharpy c
 
   ```sharpy
   # List literal, element type infers to Int.
-  var nums = [2, 3, 5]
+  nums = [2, 3, 5]
   ```
 
   You can also use an explicit type if you want a specific element type:
 
   ```sharpy
-  var list : List[UInt8] = [2, 3, 5]
+  list : List[UInt8] = [2, 3, 5]
   ```
 
   You can also use list "comprehensions" for compact conditional initialization:
 
   ```sharpy
-  var list2 = [x*Int(y) for x in nums for y in list if x != 3]
+  list2 = [x*Int(y) for x in nums for y in list if x != 3]
   ```
 
 * You can't `print()` a list, or convert it directly into a string.
@@ -618,7 +516,7 @@ the list. Because the list is being created with a set of `Int` values, Sharpy c
   item:
 
 ```sharpy
-var list = [2, 3, 4]
+list = [2, 3, 4]
 for item in list:
       print(item, end=", ")
 ```
@@ -631,7 +529,7 @@ If you would like to mutate the elements of the list, capture the reference to
 the element with `ref` instead of making a copy:
 
 ```sharpy
-var list = [2, 3, 4]
+list = [2, 3, 4]
 for ref item in list:     # Capture a ref to the list element
       print(item, end=", ")
       item = 0  # Mutates the element inside the list
@@ -653,16 +551,16 @@ and value type as parameters and using dictionary literals:
 
 ```sharpy
 # Empty dictionary
-var empty_dict: Dict[str, Float64] = {}
+empty_dict: Dict[str, Float64] = {}
 
 # Dictionary with initial key-value pairs
-var values: Dict[str, Float64] = {"pi": 3.14159, "e": 2.71828}
+values: Dict[str, Float64] = {"pi": 3.14159, "e": 2.71828}
 ```
 
 You can also use the constructor syntax:
 
 ```sharpy
-var values = Dict[str, Float64]()
+values = Dict[str, Float64]()
 ```
 
 The dictionary's key type must conform to the
@@ -679,7 +577,7 @@ copied into the declared name by default, but you can use the `ref` marker to
 avoid the copy:
 
 ```sharpy
-var d: Dict[str, Float64] = {
+d: Dict[str, Float64] = {
     "plasticity": 3.1,
     "elasticity": 1.3,
     "electricity": 9.7
@@ -735,11 +633,11 @@ generic, and can hold any type that conforms to the
 
 ```sharpy
 # Two ways to initialize an Optional with a value
-var opt1 = Optional(5)
-var opt2: Optional[Int] = 5
+opt1 = Optional(5)
+opt2: Optional[Int] = 5
 # Two ways to initialize an Optional with no value
-var opt3 = Optional[Int]()
-var opt4: Optional[Int] = None
+opt3 = Optional[Int]()
+opt4: Optional[Int] = None
 ```
 
 An `Optional` evaluates as `True` when it holds a value, `False` otherwise. If
@@ -749,9 +647,9 @@ results in undefined behavior, so you should always guard a call to `value()`
 inside a conditional that checks whether a value exists.
 
 ```sharpy
-var opt: Optional[str] = "Testing"
+opt: Optional[str] = "Testing"
 if opt:
-    var value_ref = opt.value()
+    value_ref = opt.value()
     print(value_ref)
 ```
 
@@ -763,7 +661,7 @@ Alternately, you can use the `or_else()` method, which returns the stored
 value if there is one, or a user-specified default value otherwise:
 
 ```sharpy
-var custom_greeting: Optional[str] = None
+custom_greeting: Optional[str] = None
 print(custom_greeting.or_else("Hello"))
 
 custom_greeting = "Hi"

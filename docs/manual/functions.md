@@ -1,16 +1,16 @@
-As mentioned in the [syntax overview](/sharpy/manual/basics), Sharpy supports two
-keywords to declare functions: `def` and `fn`. You can use either declaration
-with any function, including the `main()` function, but they have different
-default behaviors, as described on this page.
+# Functions
 
-We believe both `def` and `fn` have good use cases and don't consider either to
-be better than the other. Deciding which to use is a matter of personal taste as
-to which style best fits a given task.
+Sharpy supports two keywords to declare functions: `def` and `fn`. You can use
+either declaration with any function, including the `main()` function, but they
+have different default behaviors, as described on this page.
+
+Both `def` and `fn` have good use cases. Deciding which to use is a matter of
+personal taste and which style best fits a given task.
 
 :::note
 
-Functions declared inside a [`struct`](/sharpy/manual/structs) are called
-"methods," but they have all the same qualities as "functions" described here.
+Functions declared inside a struct are called "methods," but they have all the
+same qualities as "functions" described here.
 
 :::
 
@@ -20,9 +20,7 @@ Both `def` and `fn` function declarations have the same basic components (here
 demonstrated with a `def` function):
 
 <pre>
-<strong>def</strong> <var>function_name</var><strong>[
-&#8203;    </strong><var>parameters ...</var><strong>
-](
+<strong>def</strong> <var>function_name</var><strong>(
 &#8203;    </strong><var>arguments ...</var><strong>
 ) -&gt;</strong> <var>return_value_type</var>:
 &#8203;    <var>function_body</var>
@@ -30,10 +28,7 @@ demonstrated with a `def` function):
 
 Functions can have:
 
-- Parameters: A function can optionally take one or more compile-time
-  _parameter_ values used for metaprogramming.
-- Arguments: A function can also optionally take one or more run-time
-  _arguments_.
+- Arguments: A function can optionally take one or more arguments.
 - Return value: A function can optionally return a value.
 - Function body: Statements that are executed when you call the function.
   Function definitions must include a body.
@@ -46,67 +41,27 @@ def do_nothing():
     pass
 ```
 
-If a function takes no parameters, you can omit the square brackets, but the
-parentheses are always required.
+The parentheses are always required.
 
 Although you can't leave out the function body, you can use the `pass` statement
 to define a function that does nothing.
 
-### Arguments and parameters
+### Arguments
 
-Functions take two kinds of inputs: _arguments_ and _parameters_. Arguments are
-familiar from many other languages: they are run-time values passed into the
-function.
-
-```sharpy
-def add(a: Int, b: Int) -> Int:
-    return a+b
-```
-
-On the other hand, you can think of a parameter as a compile-time variable that
-becomes a run-time constant. For example, consider the following function with a
-parameter:
+Functions take arguments as inputs. Arguments are run-time values passed into
+the function.
 
 ```sharpy
-def add_tensors[rank: Int](a: MyTensor[rank], b: MyTensor[rank]) -> MyTensor[rank]:
-    # ...
+def add(a: int, b: int) -> int:
+    return a + b
 ```
-
-In this case, the `rank` value needs to be specified in a way that can be
-determined at compilation time, such as a literal or expression.
-
-When you compile a program that uses this code, the compiler produces a unique
-version of the function for each unique `rank` value used in the program, with
-`rank` treated as a constant within each specialized version.
-
-This usage of "parameter"
-is probably different from what you're used to from other languages, where
-"parameter" and "argument" are often used interchangeably. In Sharpy, "parameter"
-and "parameter expression" refer to compile-time values, and "argument" and
-"expression" refer to run-time values.
-
-By default, both arguments and parameters can be specified either by position or
-by keyword. These forms can also be mixed in the same function call.
-
-```sharpy
-# positional
-x = add(5, 7)      # Positionally, a=5 and b=7
-# keyword
-y = add(b=3, a=9)
-# mixed
-z = add(5, b=7)    # Positionally, a=5
-```
-
-For more information on arguments, see [Function arguments](#function-arguments)
-on this page. For more information on parameters, see
-[Parameterization: compile-time metaprogramming](/sharpy/manual/parameters/).
 
 ## `def` and `fn` comparison
 
 Defining a function using `def` and `fn` have much in common. They both have the
 following requirements:
 
-* You must declare the type of each function parameter and argument.
+* You must declare the type of each function argument.
 
 * If a function doesn't return a value, you can either omit the return type or
   declare `None` as the return type.
@@ -115,37 +70,26 @@ following requirements:
   # The following function definitions are equivalent
 
   def greet(name: str):
-    print("Hello," name)
+    print("Hello,", name)
 
   def greet(name: str) -> None:
-    print("Hello," name)
+    print("Hello,", name)
   ```
 
-* If the function returns a value, you must either declare the return type using
-  the <code><strong>-></strong> <var>type</var></code> syntax or provide a
-  [named result](#named-results) in the argument list.
+* If the function returns a value, you must declare the return type using
+  the <code><strong>-></strong> <var>type</var></code> syntax.
 
   ```sharpy
-  # The following function definitions are equivalent
-
-  def incr(a: Int) -> Int:
+  def incr(a: int) -> int:
     return a + 1
-
-  def incr(a: Int, out b: Int):
-    b = a + 1
   ```
-
-  For more information, see the [Return values](#return-values) section of this
-  page.
 
 Where `def` and `fn` differ is error handling.
 
 * The compiler doesn't allow a function declared with `fn` to raise an error
   condition unless it explicitly includes a `raises` declaration. In contrast,
   the compiler assumes that *all* functions declared with `def` *might* raise an
-  error. See the [Raising and non-raising
-  functions](#raising-and-non-raising-functions) section of this page for more
-  information.
+  error.
 
 As far as a function caller is concerned, there is no difference between
 invoking a function declared with `def` vs a function declared with `fn`. You
@@ -193,7 +137,7 @@ fn my_pow(base: Int, exp: Int = 2) -> Int:
 
 fn use_defaults():
     # Uses the default value for `exp`
-    var z = my_pow(3)
+    z = my_pow(3)
     print(z)
 ```
 
@@ -218,7 +162,7 @@ fn my_pow(base: Int, exp: Int = 2) -> Int:
 
 fn use_keywords():
     # Uses keyword argument names (with order reversed)
-    var z = my_pow(exp=3, base=2)
+    z = my_pow(exp=3, base=2)
     print(z)
 ```
 
@@ -229,215 +173,20 @@ define a function that takes a variadic argument, use the variadic argument
 syntax <code>*<var>argument_name</var></code>:
 
 ```sharpy
-fn sum(*values: Int) -> Int:
-  var sum: Int = 0
+def sum(*values: int) -> int:
+  total: int = 0
   for value in values:
-    sum = sum + value
-  return sum
+    total = total + value
+  return total
 ```
 
 The variadic argument `values` here is a placeholder that accepts any number of
-passed positional arguments.
+passed positional arguments. All variadic arguments must be the same type.
 
 You can define zero or more arguments before the variadic argument. When calling
 the function, any remaining positional arguments are assigned to the variadic
 argument, so any arguments declared **after** the variadic argument can only be
-specified by keyword (see
-[Positional-only and keyword-only arguments](#positional-only-and-keyword-only-arguments)).
-
-Variadic arguments can be divided into two categories:
-
-* Homogeneous variadic arguments, where all of the passed arguments are the same
-  type—all `Int`, or all `str`, for example.
-* Heterogeneous variadic arguments, which can accept a set of different argument
-  types.
-
-The following sections describe how to work with homogeneous and heterogeneous
-variadic arguments.
-
-:::note Variadic parameters
-
-Sharpy also supports variadic *parameters*, but with some limitations—for details
-see [variadic parameters](/sharpy/manual/parameters/#variadic-parameters).
-
-:::
-
-#### Homogeneous variadic arguments
-
-When defining a homogeneous variadic argument (all arguments must be the same
-type), use <code>*<var>argument_name</var>: <var>argument_type</var></code>:
-
-```sharpy
-def greet(*names: str):
-    ...
-```
-
-Inside the function body, the variadic argument is available as an iterable list
-for ease of use. Currently there are some differences in handling the list
-depending on whether the arguments are register-passable types (such as `Int`)
-or memory-only types (such as `str`).
-
-:::note TODO
-
-We hope to remove these differences in the future.
-
-:::
-
-Register-passable types, such as `Int`, are available as a
-[`VariadicList`](/sharpy/stdlib/builtin/variadics/VariadicList) type. As
-shown in the previous example, you can iterate over the values using a `for..in`
-loop.
-
-```sharpy
-fn sum(*values: Int) -> Int:
-  var sum: Int = 0
-  for value in values:
-    sum = sum+value
-  return sum
-```
-
-Memory-only types, such as `str`, are available as a
-[`VariadicListMem`](/sharpy/stdlib/builtin/variadics/VariadicListMem).
-Iterating over this list directly with a `for..in` loop currently produces a
-reference to the element, which can be mutable with a `mut` variadic list. Use
-the `ref` binding pattern to capture a mutable reference if you
-want to mutate the elements of the list:
-
-```sharpy
-def make_worldly(mut *strs: str):
-    for ref i in strs:
-        i += " world"
-```
-
-You can also directly index the list with integers as well:
-
-```sharpy
-fn make_worldly(mut *strs: str):
-    for i in range(len(strs)):
-        strs[i] += " world"
-```
-
-#### Heterogeneous variadic arguments
-
-Implementing heterogeneous variadic arguments (each argument type may be
-different) is somewhat more complicated than homogeneous variadic arguments. To
-handle multiple argument types, the function must be
-[generic](/sharpy/manual/functions/#variadic-arguments), which requires using
-[protocols](/sharpy/manual/protocols) and [parameters](/sharpy/manual/parameters/). So
-the syntax may look a little unfamiliar if you haven't worked with those
-features.
-
-The signature for a function with a heterogeneous variadic argument looks like
-this:
-
-```sharpy
-def count_many_things[*ArgTypes: Intable](*args: *ArgTypes):
-    ...
-```
-
-The parameter list, `[*ArgTypes: Intable]` specifies that the function takes an
-`ArgTypes` parameter, which is a list of types, all of which conform to the
-[`Intable`](/sharpy/stdlib/builtin/int/Intable) protocol. The asterisk in `*ArgTypes`
-indicates that `ArgTypes` is a **variadic type parameter** (a list of types).
-
-The argument list, `(*args: *ArgTypes)` has the familiar `*args` for the
-variadic argument, but instead of a single type, its type is defined as the
-variadic type list `*ArgTypes`. The asterisk in `*args` indicates a
-**variadic argument**, and the asterisk in `*ArgTypes` refers to the
-variadic type parameter.
-
-This means that each argument in `args` has a corresponding type in `ArgTypes`,
-so <code>args[<var>n</var>]</code> is of type <code>ArgTypes[<var>n</var>]</code>.
-
-Inside the function, `args` becomes a
-[`VariadicPack`](/sharpy/stdlib/builtin/variadics/VariadicPack) because the
-syntax `*args: *ArgTypes` creates a heterogeneous variadic argument. That means
-each element in `args` can be a different type that requires a different amount
-of memory. To iterate through the `VariadicPack`, the compiler must know each
-element's type (its memory size), so you must use a [parametric `for`
-loop](/sharpy/manual/decorators/parameter/#parametric-for-statement):
-
-```sharpy
-fn count_many_things[*ArgTypes: Intable](*args: *ArgTypes) -> Int:
-    var total = 0
-
-    @parameter
-    for i in range(args.__len__()):
-        total += Int(args[i])
-
-    return total
-
-def main():
-    print(count_many_things(5, 11.7, 12))
-```
-
-```output
-28
-```
-
-Notice that when calling `count_many_things()`, you don't actually pass in
-a list of argument types. You only need to pass in the arguments, and Sharpy
-generates the `ArgTypes` list itself.
-
-
-#### Variadic keyword arguments
-
-Sharpy functions also support variadic keyword arguments (`**kwargs`). Variadic
-keyword arguments allow the user to pass an arbitrary number of keyword
-arguments. To define a function that takes a variadic keyword argument, use the
-variadic keyword argument syntax <code>**<var>kw_argument_name</var></code>:
-
-```sharpy
-fn print_nicely(**kwargs: Int) raises:
-  for key in kwargs.keys():
-      print(key, "=", kwargs[key])
-
- # prints:
- # `a = 7`
- # `y = 8`
-print_nicely(a=7, y=8)
-```
-
-In this example, the argument name `kwargs` is a placeholder that accepts any
-number of keyword arguments. Inside the body of the function, you can access
-the arguments as a dictionary of keywords and argument values (specifically,
-an instance of
-[`OwnedKwargsDict`](/sharpy/stdlib/collections/dict/OwnedKwargsDict)).
-
-There are currently a few limitations:
-
-* Variadic keyword arguments are always implicitly treated as if they
-  were declared with the `owned` [argument
-  convention](/sharpy/manual/values/ownership#argument-conventions), and
-  can't be declared otherwise:
-
-  ```sharpy
-  # Not supported yet.
-  fn read_var_kwargs(read **kwargs: Int): ...
-  ```
-
-* All the variadic keyword arguments must have the same type, and this
-  determines the type of the argument dictionary. For example, if the argument
-  is `**kwargs: Float64` then the argument dictionary will be a
-  `OwnedKwargsDict[Float64]`.
-
-* The argument type must conform to both the
-  [`Movable`](/sharpy/stdlib/builtin/value/Movable) and
-  [`Copyable`](/sharpy/stdlib/builtin/value/Copyable) protocols.
-
-* Dictionary unpacking is not supported yet:
-
-  ```sharpy
-  fn takes_dict(d: Dict[str, Int]):
-    print_nicely(**d)  # Not supported yet.
-  ```
-
-* Variadic keyword *parameters* are not supported yet:
-
-  ```sharpy
-  # Not supported yet.
-  fn var_kwparams[**kwparams: Int](): ...
-  ```
+specified by keyword.
 
 ### Positional-only and keyword-only arguments
 
@@ -483,7 +232,7 @@ In this example, the user can pass any number of `Float64` values, optionally
 followed by the keyword `ascending` argument:
 
 ```sharpy
-var a = sort(1.1, 6.5, 4.3, ascending=False)
+a = sort(1.1, 6.5, 4.3, ascending=False)
 ```
 
 If the function doesn't accept variadic arguments, you can add a single star
@@ -491,7 +240,7 @@ If the function doesn't accept variadic arguments, you can add a single star
 
 ```sharpy
 fn kw_only_args(a1: Int, a2: Int, *, double: Bool) -> Int:
-    var product = a1 * a2
+    product = a1 * a2
     if double:
         return product * 2
     else:
@@ -583,83 +332,19 @@ declarations.
 ### Overload resolution
 
 When resolving an overloaded function, Sharpy does not consider the return type
-or other contextual information at the call site—it considers only parameter and
-argument types and whether the functions are instance methods or static methods.
+or other contextual information at the call site—it considers only argument
+types and whether the functions are instance methods or static methods.
 
 The overload resolution logic filters for candidates according to the following
 rules, in order of precedence:
 
-1. Candidates requiring the smallest number of implicit conversions (in both
-   arguments and parameters).
+1. Candidates requiring the smallest number of implicit conversions.
 2. Candidates without variadic arguments.
-3. Candidates without variadic parameters.
-4. Candidates with the shortest parameter signature.
-5. Non-`@staticmethod` candidates (over `@staticmethod` ones, if available).
+3. Candidates with the shortest argument signature.
+4. Non-`@staticmethod` candidates (over `@staticmethod` ones, if available).
 
 If there is more than one candidate after applying these rules, the overload
-resolution fails. For example:
-
-```sharpy
-@register_passable("trivial")
-struct MyInt:
-    """A type that is implicitly convertible to `Int`."""
-    var value: Int
-
-    @implicit
-    fn __init__(out self, _a: Int):
-        self.value = _a
-
-fn foo[x: MyInt, a: Int]():
-    print("foo[x: MyInt, a: Int]()")
-
-fn foo[x: MyInt, y: MyInt]():
-    print("foo[x: MyInt, y: MyInt]()")
-
-fn bar[a: Int](b: Int):
-    print("bar[a: Int](b: Int)")
-
-fn bar[a: Int](*b: Int):
-    print("bar[a: Int](*b: Int)")
-
-fn bar[*a: Int](b: Int):
-    print("bar[*a: Int](b: Int)")
-
-fn parameter_overloads[a: Int, b: Int, x: MyInt]():
-    # `foo[x: MyInt, a: Int]()` is called because it requires no implicit
-    # conversions, whereas `foo[x: MyInt, y: MyInt]()` requires one.
-    foo[x, a]()
-
-    # `bar[a: Int](b: Int)` is called because it does not have variadic
-    # arguments or parameters.
-    bar[a](b)
-
-    # `bar[*a: Int](b: Int)` is called because it has variadic parameters.
-    bar[a, a, a](b)
-
-parameter_overloads[1, 2, MyInt(3)]()
-
-struct MyStruct:
-    fn __init__(out self):
-        pass
-
-    fn foo(mut self):
-        print("calling instance method")
-
-    @staticmethod
-    fn foo():
-        print("calling static method")
-
-fn test_static_overload():
-    var a = MyStruct()
-    # `foo(mut self)` takes precedence over a static method.
-    a.foo()
-```
-
-```output
-foo[x: MyInt, a: Int]()
-bar[a: Int](b: Int)
-bar[*a: Int](b: Int)
-```
+resolution fails.
 
 ## Return values
 
@@ -674,101 +359,9 @@ def get_greeting() -> str:
 ```
 
 By default, the value is returned to the caller as an owned value. As with
-arguments, a return value may be [implicitly
-converted](/sharpy/manual/lifecycle/life#constructors-and-implicit-conversion) to
-the named return type. For example, the previous example calls `return` with a
-string literal, `"Hello"`, which is implicitly converted to a `str`.
-
-:::note Returning a reference
-
-A function can also return a mutable or immutable reference using a `ref` return
-value. For details, see
-[Lifetimes, origins, and references](/sharpy/manual/values/lifetimes).
-
-:::
-
-### Named results
-
-Named function results allow a function to return a value that can't be moved or
-copied. Named result syntax lets you specify a named, uninitialized variable to
-return to the caller using the `out` argument convention:
-
-```sharpy
-def get_name_tag(var name: str, out name_tag: NameTag):
-    name_tag = NameTag(name^)
-```
-
-The `out` argument convention identifies an uninitialized variable that the
-function must initialize. (This is the same as the `out` convention used in
-[struct constructors](/sharpy/manual/lifecycle/life#constructor).) The `out`
-argument for a named result can appear anywhere in the argument list, but by
-convention, it should be the last argument in the list.
-
-A function can declare only one return value, whether it's declared using an
-`out` argument or using the standard <code><strong>-></strong>
-<var>type</var></code> syntax.
-
-A function with a named result argument doesn't need to include an explicit
-`return` statement, as shown above. If the function terminates without a `return`,
-or at a `return` statement with no value, the value of the `out` argument is
-returned to the caller. If it includes a `return` statement with a value, that
-value is returned to the caller, as usual.
-
-The fact that a function uses a named result is transparent to the caller. That
-is, these two signatures are interchangeable to the caller:
-
-```sharpy
-def get_name_tag(var name: str) -> NameTag:
-    ...
-def get_name_tag(var name: str, out name_tag: NameTag):
-    ...
-```
-
-In both cases, the call looks like this:
-
-```sharpy
-tag = get_name_tag("Judith")
-```
-
-Because the return value is assigned to this special `out` variable, it doesn't
-need to be moved or copied when it's returned to the caller. This means that you
-can create a function that returns a type that can't be moved or copied, and
-which takes several steps to initialize:
-
-```sharpy
-struct ImmovableObject:
-    var name: str
-
-    fn __init__(out self, var name: str):
-        self.name = name^
-
-def create_immovable_object(var name: str, out obj: ImmovableObject):
-    obj = ImmovableObject(name^)
-    obj.name += "!"
-    # obj is implicitly returned
-
-def main():
-    my_obj = create_immovable_object("Blob")
-```
-
-By contrast, the following function with a standard return value doesn't work:
-
-```sharpy
-def create_immovable_object2(var name: str) -> ImmovableObject:
-    obj = ImmovableObject(name^)
-    obj.name += "!"
-    return obj^ # Error: ImmovableObject is not copyable or movable
-```
-
-Because `create_immovable_object2` uses a local variable to store the object
-while it's under construction, the return call requires it to be either moved
-or copied to the callee. This isn't an issue if the newly-created value is
-returned immediately:
-
-```sharpy
-def create_immovable_object3(var name: str) -> ImmovableObject:
-    return ImmovableObject(name^) # OK
-```
+arguments, a return value may be implicitly converted to the named return type.
+For example, the previous example calls `return` with a string literal,
+`"Hello"`, which is implicitly converted to a `str`.
 
 ## Raising and non-raising functions
 

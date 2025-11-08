@@ -27,8 +27,8 @@ You can define a simple struct called `MyPair` with two fields like this:
 
 ```sharpy
 struct MyPair:
-    var first: Int
-    var second: Int
+    first: int
+    second: int
 ```
 
 However, you can't instantiate this struct because it has no constructor
@@ -36,10 +36,10 @@ method. So here it is with a constructor to initialize the two fields:
 
 ```sharpy
 struct MyPair:
-    var first: Int
-    var second: Int
+    first: int
+    second: int
 
-    fn __init__(out self, first: Int, second: Int):
+    fn __init__(out self, first: int, second: int):
         self.first = first
         self.second = second
 ```
@@ -54,20 +54,6 @@ The `out` portion of `out self` is an [argument
 convention](/sharpy/manual/values/ownership#argument-conventions) that declares
 `self` as a mutable reference that starts out as uninitialized and must be
 initialized before the function returns.
-
-Many types use a field-wise constructor like the one shown for `MyPair` above:
-it takes an argument for each field, and initializes the fields directly from
-the arguments.  To save typing, Sharpy provides a
-[`@fieldwise_init`](/sharpy/manual/decorators/fieldwise-init) decorator, which
-generates a field-wise constructor for the struct. So you can rewrite the
-`MyPair` example above like this:
-
-```sharpy
-@fieldwise_init
-struct MyPair:
-    var first: Int
-    var second: Int
-```
 
 The `__init__()` method is one of many [special methods](#special-methods)
 (also known as "dunder methods" because they have *d*ouble *under*scores) with
@@ -85,7 +71,7 @@ Once you have a constructor, you can create an instance of `MyPair` and set the
 fields:
 
 ```sharpy
-var mine = MyPair(2, 4)
+mine = MyPair(2, 4)
 print(mine.first)
 ```
 
@@ -99,8 +85,8 @@ Sharpy structs are not copyable or movable by default. For example, the followin
 code produces an error:
 
 ```sharpy
-var a = MyPair(1, 2)
-var b = a  # 'MyPair' is not copyable because it has no '__copyinit__'sharpy
+a = MyPair(1, 2)
+b = a  # 'MyPair' is not copyable because it has no '__copyinit__'sharpy
 ```
 
 Making a struct copyable and movable requires two more special methods, the copy
@@ -137,18 +123,21 @@ because you can make your struct copyable and movable using
 Here's a movable and copyable version of `MyPair`:
 
 ```sharpy
-@fieldwise_init
 struct MyPair(Copyable, Movable):
-    var first: Int
-    var second: Int
+    first: int
+    second: int
+
+    fn __init__(out self, first: int, second: int):
+        self.first = first
+        self.second = second
 ```
 
 And here's how to exercise the copy and move constructors:
 
 ```sharpy
-var original_pair = MyPair(2, 6)
-var copied_pair = original_pair  # copy
-var moved_pair = original_pair^  # move
+original_pair = MyPair(2, 6)
+copied_pair = original_pair  # copy
+moved_pair = original_pair^  # move
 ```
 
 
@@ -158,17 +147,20 @@ In addition to special methods like `__init__()`, you can add any other method
 you want to your struct. For example:
 
 ```sharpy
-@fieldwise_init
 struct MyPair:
-    var first: Int
-    var second: Int
+    first: int
+    second: int
 
-    fn get_sum(self) -> Int:
+    fn __init__(out self, first: int, second: int):
+        self.first = first
+        self.second = second
+
+    fn get_sum(self) -> int:
         return self.first + self.second
 ```
 
 ```sharpy
-var mine = MyPair(6, 8)
+mine = MyPair(6, 8)
 print(mine.get_sum())
 ```
 
@@ -235,7 +227,7 @@ shown below:
 
 ```sharpy
 Logger.log_info("Static method called.")
-var l = Logger()
+l = Logger()
 l.log_info("Static method called from instance.")
 ```
 
@@ -329,29 +321,7 @@ and they usually accomplish one of two types of tasks:
 You can learn all about the lifecycle special methods in the [Value
 lifecycle](/sharpy/manual/lifecycle/) section. However, most structs are simple
 aggregations of other types, so unless your type requires custom behaviors when
-an instance is created, copied, moved, or destroyed, you can synthesize the
-essential lifecycle methods you need (and save yourself some time) using the
-`@fieldwise_init` decorator (described in
-[Struct definition](#struct-definition)), and the `Copyable` and `Movable`
-protocols (described in
-[Making a struct copyable and movable](#making-a-struct-copyable-and-movable)).
-
-
-### `@value` decorator
-
-When you add the [`@value` decorator](/sharpy/manual/decorators/value) to a
-struct, Sharpy will synthesize the essential [lifecycle
-methods](/sharpy/manual/lifecycle/life) so your object provides full value
-semantics. Specifically, it generates the `__init__()`, `__copyinit__()`, and
-`__moveinit__()` methods, which allow you to construct, copy, and move your
-struct type in a manner that's value semantic and compatible with Sharpy's
-ownership model.
-
-:::caution @value is Deprecated
-
-The `@value` decorator was deprecated in v25.5, in favor of the `@fieldwise_init`
-decorator (described in [Struct definition](#struct-definition)), and the
-`Copyable` and `Movable` protocols (described in
-[Making a struct copyable and movable](#making-a-struct-copyable-and-movable)).
-
-:::
+an instance is created, copied, moved, or destroyed, you can use the `Copyable`
+and `Movable` protocols (described in
+[Making a struct copyable and movable](#making-a-struct-copyable-and-movable))
+to have Sharpy generate the necessary lifecycle methods for you.
