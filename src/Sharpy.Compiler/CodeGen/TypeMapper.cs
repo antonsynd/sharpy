@@ -112,7 +112,7 @@ public class TypeMapper
     /// <summary>
     /// Maps a FunctionType to a C# delegate or Func/Action type
     /// </summary>
-    public TypeSyntax MapFunctionType(FunctionType funcType)
+    public TypeSyntax MapFunctionType(Parser.Ast.FunctionType funcType)
     {
         var paramTypes = funcType.ParameterTypes
             .Select(MapType)
@@ -151,7 +151,7 @@ public class TypeMapper
     /// <summary>
     /// Maps a TupleType to a C# ValueTuple type
     /// </summary>
-    public TypeSyntax MapTupleType(TupleType tupleType)
+    public TypeSyntax MapTupleType(Parser.Ast.TupleType tupleType)
     {
         if (tupleType.ElementTypes.Count == 0)
         {

@@ -169,7 +169,7 @@ public static class NameMangler
     /// </summary>
     public static bool IsDunderMethod(string name)
     {
-        return name.StartsWith("__") && name.EndsWith("__") && name.Length > 4;
+        return name.StartsWith("__") && name.EndsWith("__") && name.Length > 5;
     }
 
     /// <summary>
