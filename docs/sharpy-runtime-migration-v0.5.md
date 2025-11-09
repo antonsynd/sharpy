@@ -2,14 +2,14 @@
 
 ## Migration Status Summary
 
-**Last Updated**: November 2024
+**Last Updated**: November 2024 (Updated: November 2025)
 
 This migration is **largely complete** with all critical v0.5 features implemented:
 
 ### ✅ Completed
 - **All foundational interfaces** for arithmetic, comparison, bitwise, and unary operations
-- **Str type**: All operators (+, *, <, <=, >, >=), dunder methods (__add__, __mul__, __contains__, __hash__, __iter__, etc.), and all required Pythonic methods (Split, Join, Strip, Replace, Find, Index, StartsWith, EndsWith, Title, etc.) with 52 passing tests
-- **List<T> type**: Already comprehensive with all operators, dunder methods, and Pythonic methods (Append, Extend, Insert, Pop, Remove, Sort, Reverse, etc.)
+- **Str type**: All operators (+, *, <, <=, >, >=, ==, !=), dunder methods (__add__, __mul__, __contains__, __hash__, __iter__, __eq__, __lt__, __le__, __gt__, __ge__), and all required Pythonic methods (Split, Join, Strip, Replace, Find, Index, StartsWith, EndsWith, Title, etc.) with 52 passing tests. Also implements IEquatable<Str>, ILessThanComparable<Str>, ILessThanOrEquatable<Str>, IGreaterThanComparable<Str>, IGreaterThanOrEquatable<Str>.
+- **List<T> type**: Comprehensive implementation with all operators (+, *, ==, !=, <, <=, >, >=, bool), dunder methods (including __lt__, __le__, __gt__, __ge__ for lexicographical comparison), and Pythonic methods (Append, Extend, Insert, Pop, Remove, Sort, Reverse, etc.) with comprehensive test coverage including 31 new comparison tests
 - **Dict<K,V> type**: Already comprehensive with all operators and methods (Get, Pop, Update, Keys, Values, Items, etc.)
 - **Set<T> type**: Already comprehensive with set operations (&, |, -, ^), comparison operators, and all standard methods
 
@@ -18,12 +18,12 @@ This migration is **largely complete** with all critical v0.5 features implement
 - Built-in functions: range(), enumerate(), zip() (can use .NET equivalents)
 - Type conversion functions: int(), double() (can use constructors)
 - Python-style negative indexing in Str methods (currently clamps to 0, can be enhanced in v1.0)
+- XML documentation comments for collection types (List<T>, Dict<K,V>, Set<T>)
 - Additional integration testing
-- Documentation improvements
 - Performance benchmarks
 
 ### 📊 Test Status
-- **351 tests passing** in Sharpy.Runtime.Tests
+- **382 tests passing** in Sharpy.Runtime.Tests (31 new comparison tests added)
 - **516 tests passing** in Sharpy.Compiler.Tests (1 skipped)
 - Comprehensive coverage of core types and operations
 
@@ -102,25 +102,25 @@ The migration focuses on:
        public Str Lower() => new Str(_s.ToLower());
        public Str Capitalize();
        public Str Title();
-       
+
        // Searching
        public int Find(Str sub, int start = 0, int? end = null);
        public int Index(Str sub, int start = 0, int? end = null); // Throws if not found
        public bool StartsWith(Str prefix, int start = 0, int? end = null);
        public bool EndsWith(Str suffix, int start = 0, int? end = null);
-       
+
        // Splitting/Joining
        public List<Str> Split(Str? sep = null, int maxsplit = -1);
        public Str Join(IEnumerable<Str> items);
-       
+
        // Trimming
        public Str Strip(Str? chars = null);
        public Str LStrip(Str? chars = null);
        public Str RStrip(Str? chars = null);
-       
+
        // Replacement
        public Str Replace(Str old, Str @new, int count = -1);
-       
+
        // Type checks
        public bool IsAlpha();
        public bool IsDigit();
@@ -181,12 +181,12 @@ The migration focuses on:
        public T Pop(int index = -1);
        public void Remove(T item);
        public void Clear();
-       
+
        // Non-mutating
        public int Index(T item, int start = 0, int? stop = null);
        public int Count(T item);
        public List<T> Copy();
-       
+
        // Sorting
        public void Sort(bool reverse = false);
        public void Sort<TKey>(Func<T, TKey> key, bool reverse = false);
@@ -235,18 +235,18 @@ The migration focuses on:
        public V Pop(K key, V? default);
        public (K, V) PopItem(); // Removes and returns arbitrary item
        public V SetDefault(K key, V? default = default);
-       
+
        // View operations
        public IKeysView<K> Keys();
        public IValuesView<V> Values();
        public IItemsView<K, V> Items();
-       
+
        // Bulk operations
        public void Update(Dict<K, V> other);
        public void Update(IEnumerable<(K, V)> items);
        public void Clear();
        public Dict<K, V> Copy();
-       
+
        // Factory methods
        public static Dict<K, V> FromKeys(IEnumerable<K> keys, V? value = default);
    }
@@ -256,7 +256,7 @@ The migration focuses on:
    ```csharp
    // Indexer already provides __getitem__/__setitem__
    public V this[K key] { get; set; }
-   
+
    // Equality
    public static bool operator ==(Dict<K, V> left, Dict<K, V> right);
    public static bool operator !=(Dict<K, V> left, Dict<K, V> right);
@@ -294,24 +294,24 @@ The migration focuses on:
        public void Discard(T item); // No-op if not present
        public T Pop(); // Remove and return arbitrary element
        public void Clear();
-       
+
        // Set operations (mutating)
        public void Update(Set<T> other);
        public void IntersectionUpdate(Set<T> other);
        public void DifferenceUpdate(Set<T> other);
        public void SymmetricDifferenceUpdate(Set<T> other);
-       
+
        // Set operations (non-mutating)
        public Set<T> Union(Set<T> other);
        public Set<T> Intersection(Set<T> other);
        public Set<T> Difference(Set<T> other);
        public Set<T> SymmetricDifference(Set<T> other);
-       
+
        // Tests
        public bool IsDisjoint(Set<T> other);
        public bool IsSubset(Set<T> other);
        public bool IsSuperset(Set<T> other);
-       
+
        // Other
        public Set<T> Copy();
    }
@@ -346,14 +346,14 @@ The migration focuses on:
    public readonly struct Tuple<T1, T2> : ITuple, IEnumerable<object?>
    {
        private readonly (T1, T2) _value;
-       
+
        public Tuple(T1 item1, T2 item2) => _value = (item1, item2);
-       
+
        public T1 Item1 => _value.Item1;
        public T2 Item2 => _value.Item2;
-       
+
        public int Length => 2;
-       
+
        // Dynamic indexing (returns object?)
        public object? this[int index] => index switch
        {
@@ -361,11 +361,11 @@ The migration focuses on:
            1 => Item2,
            _ => throw new IndexError($"tuple index out of range: {index}") // IndexError exists in Sharpy.Runtime
        };
-       
+
        // Implicit conversions
        public static implicit operator (T1, T2)(Tuple<T1, T2> tuple) => tuple._value;
        public static implicit operator Tuple<T1, T2>((T1, T2) tuple) => new(tuple.Item1, tuple.Item2);
-       
+
        // IEnumerable for iteration
        public IEnumerator<object?> GetEnumerator()
        {
@@ -442,7 +442,7 @@ public interface IAddable<TLeft, TRight, TResult>
     where TLeft : IAddable<TLeft, TRight, TResult>
 {
     TResult __Add__(TRight other);
-    
+
     static virtual TResult operator +(TLeft left, TRight right)
     {
         if (left is null || right is null)
@@ -479,7 +479,7 @@ public interface IRightAddable<TLeft, TRight, TResult>
     where TRight : IRightAddable<TLeft, TRight, TResult>
 {
     TResult __RAdd__(TLeft other);
-    
+
     static virtual TResult operator +(TLeft left, TRight right)
     {
         if (left is null || right is null)
@@ -508,7 +508,7 @@ public interface INegatable<T>
     where T : INegatable<T>
 {
     T __Neg__();
-    
+
     static virtual T operator -(T value)
     {
         if (value is null)
@@ -567,18 +567,18 @@ public sealed partial class List<T>
     // Single index
     public T __GetItem__(int index) { /* ... */ }
     public void __SetItem__(int index, T value) { /* ... */ }
-    
+
     // Indexer delegates to dunder methods
     public T this[int index]
     {
         get => __GetItem__(index);
         set => __SetItem__(index, value);
     }
-    
+
     // Slice
     public List<T> __GetItem__(Slice slice) { /* ... */ }
     public void __SetItem__(Slice slice, IEnumerable<T> values) { /* ... */ }
-    
+
     public List<T> this[Slice slice]
     {
         get => __GetItem__(slice);
@@ -677,14 +677,14 @@ public class Person
 {
     private string _name;
     private int _age;
-    
+
     // __init__(self, name: str, age: int)
     public Person(string name, int age)
     {
         _name = name;
         _age = age;
     }
-    
+
     // Overload: __init__(self, name: str)
     public Person(string name) : this(name, 0) { }
 }
@@ -743,7 +743,7 @@ ICollection (for collections)
 ├── IContainer<T> (__contains__)
 ├── IIterable<T> (__iter__)
 └── IIterator<T> (__next__)
-    
+
 ISequence<T> : ISized, IContainer<T>, IIterable<T>
 ├── IMutableSequence<T> (supports __setitem__, __delitem__)
 └── IMapping<K, V> (for dict-like)
@@ -862,7 +862,7 @@ public class StrTests
         var result = s1.__Add__(s2);
         Assert.Equal("Hello World", result);
     }
-    
+
     [Fact]
     public void OperatorPlus_DelegatesToAdd()
     {
@@ -871,7 +871,7 @@ public class StrTests
         var result = s1 + s2;
         Assert.Equal("Hello World", result);
     }
-    
+
     [Fact]
     public void Mul_ReplicatesString()
     {
@@ -879,7 +879,7 @@ public class StrTests
         var result = s.__Mul__(3);
         Assert.Equal("HaHaHa", result);
     }
-    
+
     // ... more tests
 }
 ```
@@ -967,17 +967,18 @@ Use this checklist to track migration progress:
 - [x] Ensure all interfaces have static operators
 
 ### Str Type
-- [x] Complete dunder methods (__add__, __mul__, __rmul__, __lt__, __le__, __gt__, __ge__, __contains__, __hash__, __iter__)
+- [x] Complete dunder methods (__add__, __mul__, __rmul__, __lt__, __le__, __gt__, __ge__, __contains__, __hash__, __iter__, __eq__)
 - [x] Add missing Pythonic methods (Split, Join, Strip, LStrip, RStrip, Replace, IsAlpha, IsDigit, IsAlnum, IsSpace, Lower, Upper, Capitalize, Find, Index, StartsWith, EndsWith, Title)
-- [x] Implement all operators (+, *, <, <=, >, >=)
+- [x] Implement all operators (+, *, <, <=, >, >=, ==, !=)
+- [x] Implement comparison interfaces (ILessThanComparable, ILessThanOrEquatable, IGreaterThanComparable, IGreaterThanOrEquatable, IEquatable)
 - [x] Add comprehensive tests (52 tests added, all passing)
 - [x] Update documentation (XML comments added to all new methods)
 
 ### List[T] Type
-- [x] Complete dunder methods (already comprehensive)
+- [x] Complete dunder methods (all comprehensive, including comparison operators)
 - [x] Verify Pythonic methods (Append, Extend, Insert, Pop, Remove, Clear, Sort, Reverse, Copy, Count, Index - all present)
-- [x] Implement all operators (+, *, ==, !=, bool - all present)
-- [x] Add comprehensive tests (existing tests passing)
+- [x] Implement all operators (+, *, ==, !=, <, <=, >, >=, bool - all present)
+- [x] Add comprehensive tests (existing tests passing, 31 new comparison tests added)
 - [ ] Update documentation
 
 ### Dict[K,V] Type

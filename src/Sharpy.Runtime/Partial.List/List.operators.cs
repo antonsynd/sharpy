@@ -57,4 +57,44 @@ public sealed partial class List<T>
     {
         return !(list?.__Bool__() ?? false);
     }
+
+    public static bool operator <(List<T> left, List<T> right)
+    {
+        if (left is null)
+        {
+            throw TypeError.OpNotSupported("<", "NoneType");
+        }
+
+        return left.__Lt__(right);
+    }
+
+    public static bool operator <=(List<T> left, List<T> right)
+    {
+        if (left is null)
+        {
+            throw TypeError.OpNotSupported("<=", "NoneType");
+        }
+
+        return left.__Le__(right);
+    }
+
+    public static bool operator >(List<T> left, List<T> right)
+    {
+        if (left is null)
+        {
+            throw TypeError.OpNotSupported(">", "NoneType");
+        }
+
+        return left.__Gt__(right);
+    }
+
+    public static bool operator >=(List<T> left, List<T> right)
+    {
+        if (left is null)
+        {
+            throw TypeError.OpNotSupported(">=", "NoneType");
+        }
+
+        return left.__Ge__(right);
+    }
 }
