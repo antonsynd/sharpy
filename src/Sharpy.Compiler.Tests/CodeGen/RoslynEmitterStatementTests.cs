@@ -25,7 +25,7 @@ public class RoslynEmitterStatementTests
     {
         // Reset NameMangler state before each test
         NameMangler.Reset();
-        
+
         // Use reflection to call the private GenerateBodyStatement method
         var method = typeof(RoslynEmitter).GetMethod("GenerateBodyStatement",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
