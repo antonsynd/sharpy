@@ -97,8 +97,17 @@ public class RoslynEmitter
         {
             ReturnStatement ret => GenerateReturn(ret),
             Assignment assign => GenerateAssignment(assign),
+            VariableDeclaration varDecl => GenerateVariableDeclaration(varDecl),
             ExpressionStatement exprStmt => ExpressionStatement(GenerateExpression(exprStmt.Expression)),
-            // Add more...
+            PassStatement => EmptyStatement(),
+            Sharpy.Compiler.Parser.Ast.BreakStatement => SyntaxFactory.BreakStatement(),
+            Sharpy.Compiler.Parser.Ast.ContinueStatement => SyntaxFactory.ContinueStatement(),
+            AssertStatement assert => GenerateAssert(assert),
+            RaiseStatement raise => GenerateRaise(raise),
+            IfStatement ifStmt => GenerateIf(ifStmt),
+            WhileStatement whileStmt => GenerateWhile(whileStmt),
+            ForStatement forStmt => GenerateFor(forStmt),
+            TryStatement tryStmt => GenerateTry(tryStmt),
             _ => null
         };
     }
@@ -112,22 +121,294 @@ public class RoslynEmitter
         return ReturnStatement();
     }
 
-    private LocalDeclarationStatementSyntax GenerateAssignment(Assignment assign)
+    private StatementSyntax GenerateAssignment(Assignment assign)
     {
+        var value = GenerateExpression(assign.Value);
+
+        // Handle simple identifier assignment
         if (assign.Target is Identifier name)
         {
             var varName = NameMangler.ToCamelCase(name.Name);
-            var value = GenerateExpression(assign.Value);
 
-            var declaration = VariableDeclaration(IdentifierName("var"))
-                .WithVariables(SingletonSeparatedList(
-                    VariableDeclarator(Identifier(varName))
-                        .WithInitializer(EqualsValueClause(value))));
+            // Check if this is a simple assignment or augmented assignment
+            if (assign.Operator == AssignmentOperator.Assign)
+            {
+                // Simple assignment: x = value
+                // For now, treat as variable declaration (TODO: track if variable exists)
+                var declaration = VariableDeclaration(IdentifierName("var"))
+                    .WithVariables(SingletonSeparatedList(
+                        VariableDeclarator(Identifier(varName))
+                            .WithInitializer(EqualsValueClause(value))));
 
-            return LocalDeclarationStatement(declaration);
+                return LocalDeclarationStatement(declaration);
+            }
+            else
+            {
+                // Augmented assignment: x += value
+                var left = IdentifierName(varName);
+                var binaryOp = GetAugmentedAssignmentOperator(assign.Operator);
+                var augmentedValue = BinaryExpression(binaryOp, left, value);
+
+                return ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        left,
+                        augmentedValue));
+            }
         }
 
-        throw new NotImplementedException("Complex assignment targets not yet supported");
+        // Handle index assignment: arr[0] = value
+        if (assign.Target is IndexAccess indexAccess)
+        {
+            var obj = GenerateExpression(indexAccess.Object);
+            var index = GenerateExpression(indexAccess.Index);
+
+            var elementAccess = ElementAccessExpression(obj)
+                .WithArgumentList(BracketedArgumentList(
+                    SingletonSeparatedList(Argument(index))));
+
+            var assignmentValue = assign.Operator == AssignmentOperator.Assign
+                ? value
+                : BinaryExpression(GetAugmentedAssignmentOperator(assign.Operator), elementAccess, value);
+
+            return ExpressionStatement(
+                AssignmentExpression(
+                    SyntaxKind.SimpleAssignmentExpression,
+                    elementAccess,
+                    assignmentValue));
+        }
+
+        // Handle member assignment: obj.field = value
+        if (assign.Target is MemberAccess memberAccess)
+        {
+            var target = GenerateMemberAccess(memberAccess);
+
+            var assignmentValue = assign.Operator == AssignmentOperator.Assign
+                ? value
+                : BinaryExpression(GetAugmentedAssignmentOperator(assign.Operator), target, value);
+
+            return ExpressionStatement(
+                AssignmentExpression(
+                    SyntaxKind.SimpleAssignmentExpression,
+                    target,
+                    assignmentValue));
+        }
+
+        // Handle tuple unpacking: x, y = 1, 2
+        if (assign.Target is TupleLiteral tuple)
+        {
+            // For tuple unpacking, we need to generate multiple assignment statements
+            // For now, we'll use deconstruction syntax
+            throw new NotImplementedException("Tuple unpacking assignment not yet supported");
+        }
+
+        throw new NotImplementedException($"Assignment target type not supported: {assign.Target.GetType().Name}");
+    }
+
+    private SyntaxKind GetAugmentedAssignmentOperator(AssignmentOperator op)
+    {
+        return op switch
+        {
+            AssignmentOperator.PlusAssign => SyntaxKind.AddExpression,
+            AssignmentOperator.MinusAssign => SyntaxKind.SubtractExpression,
+            AssignmentOperator.StarAssign => SyntaxKind.MultiplyExpression,
+            AssignmentOperator.SlashAssign => SyntaxKind.DivideExpression,
+            AssignmentOperator.PercentAssign => SyntaxKind.ModuloExpression,
+            AssignmentOperator.AndAssign => SyntaxKind.BitwiseAndExpression,
+            AssignmentOperator.OrAssign => SyntaxKind.BitwiseOrExpression,
+            AssignmentOperator.XorAssign => SyntaxKind.ExclusiveOrExpression,
+            AssignmentOperator.LeftShiftAssign => SyntaxKind.LeftShiftExpression,
+            AssignmentOperator.RightShiftAssign => SyntaxKind.RightShiftExpression,
+            // Special cases for floor division and power
+            AssignmentOperator.DoubleSlashAssign => SyntaxKind.DivideExpression, // Will need cast to int
+            AssignmentOperator.PowerAssign => SyntaxKind.None, // Will need Math.Pow
+            _ => throw new NotImplementedException($"Augmented assignment operator not supported: {op}")
+        };
+    }
+
+    private StatementSyntax GenerateVariableDeclaration(VariableDeclaration varDecl)
+    {
+        var varName = varDecl.IsConst
+            ? NameMangler.ToConstantCase(varDecl.Name)
+            : NameMangler.ToCamelCase(varDecl.Name);
+        var typeSyntax = _typeMapper.MapType(varDecl.Type);
+
+        VariableDeclaratorSyntax declarator;
+        if (varDecl.InitialValue != null)
+        {
+            var value = GenerateExpression(varDecl.InitialValue);
+            declarator = VariableDeclarator(Identifier(varName))
+                .WithInitializer(EqualsValueClause(value));
+        }
+        else
+        {
+            declarator = VariableDeclarator(Identifier(varName));
+        }
+
+        var declaration = VariableDeclaration(typeSyntax)
+            .WithVariables(SingletonSeparatedList(declarator));
+
+        var modifiers = varDecl.IsConst
+            ? TokenList(Token(SyntaxKind.ConstKeyword))
+            : TokenList();
+
+        return LocalDeclarationStatement(declaration)
+            .WithModifiers(modifiers);
+    }
+
+    private StatementSyntax GenerateAssert(AssertStatement assert)
+    {
+        // assert condition, message → Debug.Assert(condition, message)
+        var condition = GenerateExpression(assert.Test);
+
+        InvocationExpressionSyntax invocation;
+        if (assert.Message != null)
+        {
+            var message = GenerateExpression(assert.Message);
+            invocation = InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("System.Diagnostics.Debug"),
+                    IdentifierName("Assert")))
+                .AddArgumentListArguments(
+                    Argument(condition),
+                    Argument(message));
+        }
+        else
+        {
+            invocation = InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("System.Diagnostics.Debug"),
+                    IdentifierName("Assert")))
+                .AddArgumentListArguments(Argument(condition));
+        }
+
+        return ExpressionStatement(invocation);
+    }
+
+    private StatementSyntax GenerateRaise(RaiseStatement raise)
+    {
+        if (raise.Exception != null)
+        {
+            var exception = GenerateExpression(raise.Exception);
+            return ThrowStatement(exception);
+        }
+
+        // Re-throw the current exception
+        return ThrowStatement();
+    }
+
+    private StatementSyntax GenerateIf(IfStatement ifStmt)
+    {
+        var condition = GenerateExpression(ifStmt.Test);
+        var thenBlock = Block(ifStmt.ThenBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+
+        ElseClauseSyntax? elseClause = null;
+
+        // Process elif clauses from last to first to build nested if-else structure
+        if (ifStmt.ElifClauses.Count > 0 || ifStmt.ElseBody.Count > 0)
+        {
+            StatementSyntax? currentElse = null;
+
+            // Start with the final else block if it exists
+            if (ifStmt.ElseBody.Count > 0)
+            {
+                currentElse = Block(ifStmt.ElseBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+            }
+
+            // Process elif clauses in reverse order
+            for (int i = ifStmt.ElifClauses.Count - 1; i >= 0; i--)
+            {
+                var elif = ifStmt.ElifClauses[i];
+                var elifCondition = GenerateExpression(elif.Test);
+                var elifBody = Block(elif.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+
+                var elifElseClause = currentElse != null ? ElseClause(currentElse) : null;
+                var elifStatement = IfStatement(elifCondition, elifBody, elifElseClause);
+
+                currentElse = elifStatement;
+            }
+
+            if (currentElse != null)
+            {
+                elseClause = ElseClause(currentElse);
+            }
+        }
+
+        return IfStatement(condition, thenBlock, elseClause);
+    }
+
+    private StatementSyntax GenerateWhile(WhileStatement whileStmt)
+    {
+        var condition = GenerateExpression(whileStmt.Test);
+        var body = Block(whileStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+
+        return WhileStatement(condition, body);
+    }
+
+    private StatementSyntax GenerateFor(ForStatement forStmt)
+    {
+        // For-in loop: for item in items: → foreach (var item in items)
+        var iterator = GenerateExpression(forStmt.Iterator);
+        var body = Block(forStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+
+        if (forStmt.Target is Identifier varName)
+        {
+            var loopVar = NameMangler.ToCamelCase(varName.Name);
+            return ForEachStatement(
+                IdentifierName("var"),
+                Identifier(loopVar),
+                iterator,
+                body);
+        }
+
+        // TODO: Handle tuple unpacking in for loops (for x, y in items:)
+        throw new NotImplementedException("Complex for loop targets not yet supported");
+    }
+
+    private StatementSyntax GenerateTry(TryStatement tryStmt)
+    {
+        var tryBlock = Block(tryStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+
+        // Generate catch clauses
+        var catchClauses = tryStmt.Handlers.Select(handler =>
+        {
+            var catchBlock = Block(handler.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+
+            if (handler.ExceptionType != null)
+            {
+                var exceptionType = _typeMapper.MapType(handler.ExceptionType);
+
+                if (handler.Name != null)
+                {
+                    var exceptionVar = NameMangler.ToCamelCase(handler.Name);
+                    var declaration = CatchDeclaration(exceptionType, Identifier(exceptionVar));
+                    return CatchClause(declaration, null, catchBlock);
+                }
+                else
+                {
+                    var declaration = CatchDeclaration(exceptionType);
+                    return CatchClause(declaration, null, catchBlock);
+                }
+            }
+            else
+            {
+                // Catch all exceptions
+                return CatchClause()
+                    .WithBlock(catchBlock);
+            }
+        }).ToList();
+
+        // Generate finally block if present
+        FinallyClauseSyntax? finallyClause = null;
+        if (tryStmt.FinallyBody.Count > 0)
+        {
+            var finallyBlock = Block(tryStmt.FinallyBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+            finallyClause = FinallyClause(finallyBlock);
+        }
+
+        return TryStatement(tryBlock, List(catchClauses), finallyClause);
     }
 
     private ExpressionSyntax GenerateExpression(Sharpy.Compiler.Parser.Ast.Expression expr)
