@@ -97,8 +97,24 @@ public class RoslynEmitter
         {
             ReturnStatement ret => GenerateReturn(ret),
             Assignment assign => GenerateAssignment(assign),
+            VariableDeclaration varDecl => GenerateVariableDeclaration(varDecl),
             ExpressionStatement exprStmt => ExpressionStatement(GenerateExpression(exprStmt.Expression)),
-            // Add more...
+            
+            // Simple statements
+            PassStatement => EmptyStatement(),
+            Sharpy.Compiler.Parser.Ast.BreakStatement => BreakStatement(),
+            Sharpy.Compiler.Parser.Ast.ContinueStatement => ContinueStatement(),
+            AssertStatement assert => GenerateAssert(assert),
+            RaiseStatement raise => GenerateRaise(raise),
+            
+            // Control flow
+            IfStatement ifStmt => GenerateIf(ifStmt),
+            WhileStatement whileStmt => GenerateWhile(whileStmt),
+            ForStatement forStmt => GenerateFor(forStmt),
+            
+            // Exception handling
+            TryStatement tryStmt => GenerateTry(tryStmt),
+            
             _ => null
         };
     }
@@ -112,13 +128,58 @@ public class RoslynEmitter
         return ReturnStatement();
     }
 
-    private LocalDeclarationStatementSyntax GenerateAssignment(Assignment assign)
+    private StatementSyntax GenerateAssignment(Assignment assign)
     {
-        if (assign.Target is Identifier name)
+        var value = GenerateExpression(assign.Value);
+        
+        // Handle different assignment operators
+        var kind = assign.Operator switch
+        {
+            AssignmentOperator.Assign => SyntaxKind.SimpleAssignmentExpression,
+            AssignmentOperator.PlusAssign => SyntaxKind.AddAssignmentExpression,
+            AssignmentOperator.MinusAssign => SyntaxKind.SubtractAssignmentExpression,
+            AssignmentOperator.StarAssign => SyntaxKind.MultiplyAssignmentExpression,
+            AssignmentOperator.SlashAssign => SyntaxKind.DivideAssignmentExpression,
+            AssignmentOperator.PercentAssign => SyntaxKind.ModuloAssignmentExpression,
+            AssignmentOperator.AndAssign => SyntaxKind.AndAssignmentExpression,
+            AssignmentOperator.OrAssign => SyntaxKind.OrAssignmentExpression,
+            AssignmentOperator.XorAssign => SyntaxKind.ExclusiveOrAssignmentExpression,
+            AssignmentOperator.LeftShiftAssign => SyntaxKind.LeftShiftAssignmentExpression,
+            AssignmentOperator.RightShiftAssign => SyntaxKind.RightShiftAssignmentExpression,
+            AssignmentOperator.DoubleSlashAssign => SyntaxKind.SimpleAssignmentExpression, // Special case
+            AssignmentOperator.PowerAssign => SyntaxKind.SimpleAssignmentExpression, // Special case
+            _ => throw new NotImplementedException($"Assignment operator {assign.Operator} not implemented")
+        };
+
+        // Special handling for //= and **=
+        if (assign.Operator == AssignmentOperator.DoubleSlashAssign)
+        {
+            // target //= value → target = (int)(target / value)
+            var target = GenerateExpression(assign.Target);
+            var divideExpr = BinaryExpression(SyntaxKind.DivideExpression, target, value);
+            var castExpr = CastExpression(PredefinedType(Token(SyntaxKind.IntKeyword)), divideExpr);
+            return ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, target, castExpr));
+        }
+        else if (assign.Operator == AssignmentOperator.PowerAssign)
+        {
+            // target **= value → target = Math.Pow(target, value)
+            var target = GenerateExpression(assign.Target);
+            var powCall = InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("Math"),
+                    IdentifierName("Pow")))
+                .AddArgumentListArguments(Argument(target), Argument(value));
+            return ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, target, powCall));
+        }
+        
+        // For simple assignment to identifier, might be first declaration
+        if (assign.Operator == AssignmentOperator.Assign && assign.Target is Identifier name)
         {
             var varName = NameMangler.ToCamelCase(name.Name);
-            var value = GenerateExpression(assign.Value);
-
+            
+            // Check if this is the first assignment (declaration)
+            // For now, always use var declaration for simple assignments
+            // TODO: Track variable scope to know if re-assignment
             var declaration = VariableDeclaration(IdentifierName("var"))
                 .WithVariables(SingletonSeparatedList(
                     VariableDeclarator(Identifier(varName))
@@ -127,7 +188,9 @@ public class RoslynEmitter
             return LocalDeclarationStatement(declaration);
         }
 
-        throw new NotImplementedException("Complex assignment targets not yet supported");
+        // For all other cases (re-assignment, augmented assignment, complex targets)
+        var targetExpr = GenerateExpression(assign.Target);
+        return ExpressionStatement(AssignmentExpression(kind, targetExpr, value));
     }
 
     private ExpressionSyntax GenerateExpression(Sharpy.Compiler.Parser.Ast.Expression expr)
@@ -546,5 +609,288 @@ public class RoslynEmitter
 
         return InterpolatedStringExpression(Token(SyntaxKind.InterpolatedStringStartToken))
             .WithContents(List(parts));
+    }
+
+    private StatementSyntax GenerateVariableDeclaration(VariableDeclaration varDecl)
+    {
+        var varName = NameMangler.ToCamelCase(varDecl.Name);
+        var varType = varDecl.Type != null ? _typeMapper.MapType(varDecl.Type) : IdentifierName("var");
+        
+        if (varDecl.InitialValue != null)
+        {
+            var value = GenerateExpression(varDecl.InitialValue);
+            var declaration = VariableDeclaration(varType)
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier(varName))
+                        .WithInitializer(EqualsValueClause(value))));
+
+            if (varDecl.IsConst)
+            {
+                return LocalDeclarationStatement(declaration)
+                    .WithModifiers(TokenList(Token(SyntaxKind.ConstKeyword)));
+            }
+            return LocalDeclarationStatement(declaration);
+        }
+        else
+        {
+            // Declaration without initialization
+            var declaration = VariableDeclaration(varType)
+                .WithVariables(SingletonSeparatedList(VariableDeclarator(Identifier(varName))));
+            return LocalDeclarationStatement(declaration);
+        }
+    }
+
+    private StatementSyntax GenerateAssert(AssertStatement assert)
+    {
+        // assert condition, message → if (!condition) throw new AssertionException(message)
+        var condition = GenerateExpression(assert.Test);
+        var negatedCondition = PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, condition);
+        
+        ExpressionSyntax throwExpr;
+        if (assert.Message != null)
+        {
+            var message = GenerateExpression(assert.Message);
+            throwExpr = ObjectCreationExpression(ParseTypeName("System.Diagnostics.Debug"))
+                .WithArgumentList(ArgumentList());
+            
+            // Use Debug.Assert in C#
+            var assertCall = InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("System.Diagnostics.Debug"),
+                    IdentifierName("Assert")))
+                .AddArgumentListArguments(Argument(condition), Argument(message));
+            
+            return ExpressionStatement(assertCall);
+        }
+        else
+        {
+            var assertCall = InvocationExpression(
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("System.Diagnostics.Debug"),
+                    IdentifierName("Assert")))
+                .AddArgumentListArguments(Argument(condition));
+            
+            return ExpressionStatement(assertCall);
+        }
+    }
+
+    private StatementSyntax GenerateRaise(RaiseStatement raise)
+    {
+        if (raise.Exception != null)
+        {
+            var exception = GenerateExpression(raise.Exception);
+            return ThrowStatement(exception);
+        }
+        else
+        {
+            // Re-throw current exception
+            return ThrowStatement();
+        }
+    }
+
+    private StatementSyntax GenerateIf(IfStatement ifStmt)
+    {
+        var condition = GenerateExpression(ifStmt.Test);
+        var thenBlock = Block(ifStmt.ThenBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+        
+        IfStatementSyntax result = IfStatement(condition, thenBlock);
+        
+        // Handle elif clauses by chaining else-if
+        foreach (var elifClause in ifStmt.ElifClauses)
+        {
+            var elifCondition = GenerateExpression(elifClause.Test);
+            var elifBlock = Block(elifClause.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+            var elifStmt = IfStatement(elifCondition, elifBlock);
+            
+            result = result.WithElse(ElseClause(elifStmt));
+        }
+        
+        // Handle else clause
+        if (ifStmt.ElseBody.Count > 0)
+        {
+            var elseBlock = Block(ifStmt.ElseBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+            
+            if (ifStmt.ElifClauses.Count > 0)
+            {
+                // Need to find the last elif and attach else to it
+                // This is complex, so we'll rebuild the chain properly
+                result = BuildIfElifElseChain(ifStmt);
+            }
+            else
+            {
+                result = result.WithElse(ElseClause(elseBlock));
+            }
+        }
+        
+        return result;
+    }
+
+    private IfStatementSyntax BuildIfElifElseChain(IfStatement ifStmt)
+    {
+        var condition = GenerateExpression(ifStmt.Test);
+        var thenBlock = Block(ifStmt.ThenBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+        
+        if (ifStmt.ElifClauses.Count == 0)
+        {
+            var result = IfStatement(condition, thenBlock);
+            if (ifStmt.ElseBody.Count > 0)
+            {
+                var elseBlock = Block(ifStmt.ElseBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+                result = result.WithElse(ElseClause(elseBlock));
+            }
+            return result;
+        }
+        
+        // Build the chain from the last elif backwards
+        StatementSyntax currentElse;
+        if (ifStmt.ElseBody.Count > 0)
+        {
+            currentElse = Block(ifStmt.ElseBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+        }
+        else
+        {
+            currentElse = null!;
+        }
+        
+        // Build elif chain from last to first
+        for (int i = ifStmt.ElifClauses.Count - 1; i >= 0; i--)
+        {
+            var elifClause = ifStmt.ElifClauses[i];
+            var elifCondition = GenerateExpression(elifClause.Test);
+            var elifBlock = Block(elifClause.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+            
+            var elifStmt = IfStatement(elifCondition, elifBlock);
+            if (currentElse != null)
+            {
+                elifStmt = elifStmt.WithElse(ElseClause(currentElse));
+            }
+            currentElse = elifStmt;
+        }
+        
+        var mainIf = IfStatement(condition, thenBlock);
+        if (currentElse != null)
+        {
+            mainIf = mainIf.WithElse(ElseClause(currentElse));
+        }
+        
+        return mainIf;
+    }
+
+    private StatementSyntax GenerateWhile(WhileStatement whileStmt)
+    {
+        var condition = GenerateExpression(whileStmt.Test);
+        var body = Block(whileStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+        
+        return WhileStatement(condition, body);
+    }
+
+    private StatementSyntax GenerateFor(ForStatement forStmt)
+    {
+        // Python-style for loop: for item in iterable:
+        // Translates to: foreach (var item in iterable)
+        
+        var iterator = GenerateExpression(forStmt.Iterator);
+        var body = Block(forStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+        
+        // Handle different target types
+        if (forStmt.Target is Identifier id)
+        {
+            var varName = NameMangler.ToCamelCase(id.Name);
+            return ForEachStatement(
+                IdentifierName("var"),
+                Identifier(varName),
+                iterator,
+                body);
+        }
+        else if (forStmt.Target is TupleLiteral tuple)
+        {
+            // Tuple unpacking: for (x, y) in items:
+            // For now, use a temporary variable and destructure in the loop body
+            var tempVar = "_item";
+            var loopBody = new List<StatementSyntax>();
+            
+            // Add destructuring statements
+            for (int i = 0; i < tuple.Elements.Count; i++)
+            {
+                if (tuple.Elements[i] is Identifier elemId)
+                {
+                    var elemName = NameMangler.ToCamelCase(elemId.Name);
+                    var itemAccess = MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(tempVar),
+                        IdentifierName($"Item{i + 1}"));
+                    
+                    var decl = VariableDeclaration(IdentifierName("var"))
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(Identifier(elemName))
+                                .WithInitializer(EqualsValueClause(itemAccess))));
+                    loopBody.Add(LocalDeclarationStatement(decl));
+                }
+            }
+            
+            // Add original loop body
+            loopBody.AddRange(forStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+            
+            return ForEachStatement(
+                IdentifierName("var"),
+                Identifier(tempVar),
+                iterator,
+                Block(loopBody));
+        }
+        else
+        {
+            throw new NotImplementedException($"For loop target type {forStmt.Target.GetType().Name} not supported");
+        }
+    }
+
+    private StatementSyntax GenerateTry(TryStatement tryStmt)
+    {
+        var tryBlock = Block(tryStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+        
+        var catches = new List<CatchClauseSyntax>();
+        foreach (var handler in tryStmt.Handlers)
+        {
+            CatchClauseSyntax catchClause;
+            
+            if (handler.ExceptionType != null)
+            {
+                var exceptionType = _typeMapper.MapType(handler.ExceptionType);
+                
+                if (handler.Name != null)
+                {
+                    var varName = NameMangler.ToCamelCase(handler.Name);
+                    var catchDecl = CatchDeclaration(exceptionType)
+                        .WithIdentifier(Identifier(varName));
+                    catchClause = CatchClause()
+                        .WithDeclaration(catchDecl);
+                }
+                else
+                {
+                    var catchDecl = CatchDeclaration(exceptionType);
+                    catchClause = CatchClause()
+                        .WithDeclaration(catchDecl);
+                }
+            }
+            else
+            {
+                // Catch all exceptions
+                catchClause = CatchClause();
+            }
+            
+            var catchBody = Block(handler.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+            catchClause = catchClause.WithBlock(catchBody);
+            catches.Add(catchClause);
+        }
+        
+        var result = TryStatement(tryBlock, List(catches), null);
+        
+        // Add finally block if present
+        if (tryStmt.FinallyBody.Count > 0)
+        {
+            var finallyBlock = Block(tryStmt.FinallyBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+            result = result.WithFinally(FinallyClause(finallyBlock));
+        }
+        
+        return result;
     }
 }
