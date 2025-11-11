@@ -4,6 +4,7 @@ using Xunit;
 
 namespace Sharpy.Compiler.Tests.CodeGen;
 
+[Collection("Sequential")]
 public class NameManglerTests
 {
     public NameManglerTests()
