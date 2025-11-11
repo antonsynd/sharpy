@@ -125,7 +125,7 @@ public class LexerTests
     // Note: According to the v0.5 spec, hyphens are not allowed in identifiers.
     // The current lexer behavior is correct: it tokenizes "my-var" as "my", "-", "var".
     // This is not a bug, but proper tokenization.
-    
+
     [Fact]
     public void Tokenize_IdentifierWithHyphen_TokenizesAsThreeSeparateTokens()
     {
@@ -133,7 +133,7 @@ public class LexerTests
         // so "my-var" is tokenized as identifier "my", minus operator "-", and identifier "var"
         var source = "my-var";
         var tokens = Tokenize(source);
-        
+
         // Should have: identifier("my"), minus("-"), identifier("var"), EOF
         tokens.Should().HaveCount(4);
         tokens[0].Type.Should().Be(TokenType.Identifier);
