@@ -114,6 +114,36 @@ public class LexerTests
         token.Value.Should().Be(identifier);
     }
 
+    [Fact]
+    public void Tokenize_IdentifierStartingWithDigit_ThrowsLexerError()
+    {
+        var source = "2fast";
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>();
+    }
+
+    // Note: According to the v0.5 spec, hyphens are not allowed in identifiers.
+    // The current lexer behavior is correct: it tokenizes "my-var" as "my", "-", "var".
+    // This is not a bug, but proper tokenization.
+    
+    [Fact]
+    public void Tokenize_IdentifierWithHyphen_TokenizesAsThreeSeparateTokens()
+    {
+        // This test documents the correct behavior: hyphens are not part of identifiers,
+        // so "my-var" is tokenized as identifier "my", minus operator "-", and identifier "var"
+        var source = "my-var";
+        var tokens = Tokenize(source);
+        
+        // Should have: identifier("my"), minus("-"), identifier("var"), EOF
+        tokens.Should().HaveCount(4);
+        tokens[0].Type.Should().Be(TokenType.Identifier);
+        tokens[0].Value.Should().Be("my");
+        tokens[1].Type.Should().Be(TokenType.Minus);
+        tokens[2].Type.Should().Be(TokenType.Identifier);
+        tokens[2].Value.Should().Be("var");
+        tokens[3].Type.Should().Be(TokenType.Eof);
+    }
+
     #endregion
 
     #region Numeric Literals
@@ -167,6 +197,56 @@ public class LexerTests
         var token = SingleToken(input);
         token.Type.Should().Be(TokenType.Float);
         token.Value.Should().Be(expected);
+    }
+
+    // Note: The following tests document features that should be rejected in v0.5
+    // but are not currently implemented in the lexer. They are skipped until
+    // the proper error handling is implemented.
+
+    [Theory(Skip = "Binary literal rejection not implemented in v0.5 lexer yet")]
+    [InlineData("0b1010")]
+    [InlineData("0B1111")]
+    public void Tokenize_BinaryLiteral_ThrowsLexerError(string input)
+    {
+        Action act = () => Tokenize(input);
+        act.Should().Throw<LexerError>().WithMessage("*not supported*");
+    }
+
+    [Theory(Skip = "Octal literal rejection not implemented in v0.5 lexer yet")]
+    [InlineData("0o755")]
+    [InlineData("0O644")]
+    public void Tokenize_OctalLiteral_ThrowsLexerError(string input)
+    {
+        Action act = () => Tokenize(input);
+        act.Should().Throw<LexerError>().WithMessage("*not supported*");
+    }
+
+    [Theory(Skip = "Hexadecimal literal rejection not implemented in v0.5 lexer yet")]
+    [InlineData("0xFF")]
+    [InlineData("0xff")]
+    [InlineData("0xABCD")]
+    public void Tokenize_HexadecimalLiteral_ThrowsLexerError(string input)
+    {
+        Action act = () => Tokenize(input);
+        act.Should().Throw<LexerError>().WithMessage("*not supported*");
+    }
+
+    [Fact(Skip = "Float without leading digit rejection not implemented in v0.5 lexer yet")]
+    public void Tokenize_FloatWithoutDigitBeforeDecimal_ThrowsLexerError()
+    {
+        var source = ".5";
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>();
+    }
+
+    [Theory(Skip = "Scientific notation rejection not implemented in v0.5 lexer yet")]
+    [InlineData("1e10")]
+    [InlineData("3.14E-5")]
+    [InlineData("1.5e10")]
+    public void Tokenize_ScientificNotation_ThrowsLexerError(string input)
+    {
+        Action act = () => Tokenize(input);
+        act.Should().Throw<LexerError>().WithMessage("*not supported*");
     }
 
     #endregion
@@ -431,6 +511,15 @@ x = 1";
         tokens.Should().Contain(t => t.Type == TokenType.Integer);
     }
 
+    [Fact]
+    public void Tokenize_TripleQuotedString_NotTreatedAsComment()
+    {
+        var source = "\"\"\"This is a string, not a comment\"\"\"";
+        var token = SingleToken(source);
+        token.Type.Should().Be(TokenType.String);
+        token.Value.Should().Be("This is a string, not a comment");
+    }
+
     #endregion
 
     #region Line Continuation
@@ -467,6 +556,23 @@ x = 1";
 
         tokens.Skip(bracketStart).Take(bracketEnd - bracketStart)
             .Should().NotContain(t => t.Type == TokenType.Newline);
+    }
+
+    [Fact]
+    public void Tokenize_ExplicitLineContinuation_WithBackslash_JoinsLines()
+    {
+        var source = @"total = value1 + \
+        value2 + \
+        value3";
+        var tokens = Tokenize(source);
+
+        // Should have: identifier, assign, identifier, plus, identifier, plus, identifier, EOF
+        // No newline tokens should appear
+        tokens.Should().NotContain(t => t.Type == TokenType.Newline);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "total");
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "value1");
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "value2");
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "value3");
     }
 
     #endregion
