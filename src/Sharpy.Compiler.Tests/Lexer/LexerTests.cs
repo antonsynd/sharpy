@@ -122,10 +122,9 @@ public class LexerTests
         act.Should().Throw<LexerError>();
     }
 
-    // TODO: Implement hyphen rejection in identifiers
-    // Currently the lexer treats "my-var" as "my", "-", "var" tokens
-    // [Fact]
-    // public void Tokenize_IdentifierWithHyphen_ThrowsLexerError() { ... }
+    // Note: According to the v0.5 spec, hyphens are not allowed in identifiers.
+    // The current lexer behavior is correct: it tokenizes "my-var" as "my", "-", "var".
+    // This is not a bug, but proper tokenization. A test could be added for documentation purposes.
 
     #endregion
 
@@ -183,38 +182,54 @@ public class LexerTests
     }
 
     // Note: The following tests document features that should be rejected in v0.5
-    // but are not currently implemented in the lexer. These are placeholders for
-    // future implementation of proper error handling.
+    // but are not currently implemented in the lexer. They are skipped until
+    // the proper error handling is implemented.
 
-    // TODO: Implement binary literal rejection
-    // [Theory]
-    // [InlineData("0b1010")]
-    // [InlineData("0B1111")]
-    // public void Tokenize_BinaryLiteral_ThrowsLexerError(string input) { ... }
+    [Theory(Skip = "Binary literal rejection not implemented in v0.5 lexer yet")]
+    [InlineData("0b1010")]
+    [InlineData("0B1111")]
+    public void Tokenize_BinaryLiteral_ThrowsLexerError(string input)
+    {
+        Action act = () => Tokenize(input);
+        act.Should().Throw<LexerError>().WithMessage("*not supported*");
+    }
 
-    // TODO: Implement octal literal rejection
-    // [Theory]
-    // [InlineData("0o755")]
-    // [InlineData("0O644")]
-    // public void Tokenize_OctalLiteral_ThrowsLexerError(string input) { ... }
+    [Theory(Skip = "Octal literal rejection not implemented in v0.5 lexer yet")]
+    [InlineData("0o755")]
+    [InlineData("0O644")]
+    public void Tokenize_OctalLiteral_ThrowsLexerError(string input)
+    {
+        Action act = () => Tokenize(input);
+        act.Should().Throw<LexerError>().WithMessage("*not supported*");
+    }
 
-    // TODO: Implement hexadecimal literal rejection
-    // [Theory]
-    // [InlineData("0xFF")]
-    // [InlineData("0xff")]
-    // [InlineData("0xABCD")]
-    // public void Tokenize_HexadecimalLiteral_ThrowsLexerError(string input) { ... }
+    [Theory(Skip = "Hexadecimal literal rejection not implemented in v0.5 lexer yet")]
+    [InlineData("0xFF")]
+    [InlineData("0xff")]
+    [InlineData("0xABCD")]
+    public void Tokenize_HexadecimalLiteral_ThrowsLexerError(string input)
+    {
+        Action act = () => Tokenize(input);
+        act.Should().Throw<LexerError>().WithMessage("*not supported*");
+    }
 
-    // TODO: Implement float without digit before decimal rejection
-    // [Fact]
-    // public void Tokenize_FloatWithoutDigitBeforeDecimal_ThrowsLexerError() { ... }
+    [Fact(Skip = "Float without leading digit rejection not implemented in v0.5 lexer yet")]
+    public void Tokenize_FloatWithoutDigitBeforeDecimal_ThrowsLexerError()
+    {
+        var source = ".5";
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>();
+    }
 
-    // TODO: Implement scientific notation rejection
-    // [Theory]
-    // [InlineData("1e10")]
-    // [InlineData("3.14E-5")]
-    // [InlineData("1.5e10")]
-    // public void Tokenize_ScientificNotation_ThrowsLexerError(string input) { ... }
+    [Theory(Skip = "Scientific notation rejection not implemented in v0.5 lexer yet")]
+    [InlineData("1e10")]
+    [InlineData("3.14E-5")]
+    [InlineData("1.5e10")]
+    public void Tokenize_ScientificNotation_ThrowsLexerError(string input)
+    {
+        Action act = () => Tokenize(input);
+        act.Should().Throw<LexerError>().WithMessage("*not supported*");
+    }
 
     #endregion
 
