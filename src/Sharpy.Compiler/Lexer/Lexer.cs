@@ -841,30 +841,8 @@ public class Lexer
         // Check for scientific notation (e or E)
         if (_position < _source.Length && (_source[_position] == 'e' || _source[_position] == 'E'))
         {
-            isFloat = true;
-            sb.Append(_source[_position]);
-            _position++;
-            _column++;
-
-            // Check for optional sign
-            if (_position < _source.Length && (_source[_position] == '+' || _source[_position] == '-'))
-            {
-                sb.Append(_source[_position]);
-                _position++;
-                _column++;
-            }
-
-            // Read exponent digits
-            if (_position >= _source.Length || !char.IsDigit(_source[_position]))
-                throw new LexerError("Invalid scientific notation: expected exponent digits", startLine, startColumn);
-
-            while (_position < _source.Length && (char.IsDigit(_source[_position]) || _source[_position] == '_'))
-            {
-                if (_source[_position] != '_')
-                    sb.Append(_source[_position]);
-                _position++;
-                _column++;
-            }
+            // Scientific notation is not supported in v0.5
+            throw new LexerError("Scientific notation (e.g., 1e10, 3.14E-5) is not supported in v0.5. This feature is planned for v1.0+.", startLine, startColumn);
         }
 
         // Check for suffix (f, L, ul, etc.)
@@ -900,107 +878,20 @@ public class Lexer
 
     private Token ReadHexNumber(int startLine, int startColumn)
     {
-        var sb = new StringBuilder();
-        sb.Append("0x");
-        _position += 2;
-        _column += 2;
-
-        var hasDigits = false;
-        while (_position < _source.Length)
-        {
-            var c = _source[_position];
-            if (char.IsDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
-            {
-                sb.Append(c);
-                hasDigits = true;
-                _position++;
-                _column++;
-            }
-            else if (c == '_')
-            {
-                _position++;
-                _column++;
-            }
-            else
-            {
-                break;
-            }
-        }
-
-        if (!hasDigits)
-            throw new LexerError("Invalid hexadecimal literal: no digits after 0x", startLine, startColumn);
-
-        return new Token(TokenType.Integer, sb.ToString(), startLine, startColumn);
+        // Hexadecimal literals are not supported in v0.5
+        throw new LexerError("Hexadecimal literals (0x...) are not supported in v0.5. This feature is planned for v1.0+.", startLine, startColumn);
     }
 
     private Token ReadBinaryNumber(int startLine, int startColumn)
     {
-        var sb = new StringBuilder();
-        sb.Append("0b");
-        _position += 2;
-        _column += 2;
-
-        var hasDigits = false;
-        while (_position < _source.Length)
-        {
-            var c = _source[_position];
-            if (c == '0' || c == '1')
-            {
-                sb.Append(c);
-                hasDigits = true;
-                _position++;
-                _column++;
-            }
-            else if (c == '_')
-            {
-                _position++;
-                _column++;
-            }
-            else
-            {
-                break;
-            }
-        }
-
-        if (!hasDigits)
-            throw new LexerError("Invalid binary literal: no digits after 0b", startLine, startColumn);
-
-        return new Token(TokenType.Integer, sb.ToString(), startLine, startColumn);
+        // Binary literals are not supported in v0.5
+        throw new LexerError("Binary literals (0b...) are not supported in v0.5. This feature is planned for v1.0+.", startLine, startColumn);
     }
 
     private Token ReadOctalNumber(int startLine, int startColumn)
     {
-        var sb = new StringBuilder();
-        sb.Append("0o");
-        _position += 2;
-        _column += 2;
-
-        var hasDigits = false;
-        while (_position < _source.Length)
-        {
-            var c = _source[_position];
-            if (c >= '0' && c <= '7')
-            {
-                sb.Append(c);
-                hasDigits = true;
-                _position++;
-                _column++;
-            }
-            else if (c == '_')
-            {
-                _position++;
-                _column++;
-            }
-            else
-            {
-                break;
-            }
-        }
-
-        if (!hasDigits)
-            throw new LexerError("Invalid octal literal: no digits after 0o", startLine, startColumn);
-
-        return new Token(TokenType.Integer, sb.ToString(), startLine, startColumn);
+        // Octal literals are not supported in v0.5
+        throw new LexerError("Octal literals (0o...) are not supported in v0.5. This feature is planned for v1.0+.", startLine, startColumn);
     }
 
     private Token ReadIdentifierOrKeyword()
@@ -1178,6 +1069,12 @@ public class Lexer
                     _column += 2;
                     return new Token(TokenType.CaretAssign, twoChar, startLine, startColumn);
             }
+        }
+
+        // Check for float starting with decimal point (not allowed in v0.5)
+        if (c == '.' && _position + 1 < _source.Length && char.IsDigit(_source[_position + 1]))
+        {
+            throw new LexerError("Float literals must have at least one digit before the decimal point (e.g., use '0.5' instead of '.5'). This restriction is for v0.5.", startLine, startColumn);
         }
 
         // Single-character operators and delimiters

@@ -1275,7 +1275,7 @@ for i in range(10):
     [Fact]
     public void ParseBitwiseAndAssign()
     {
-        var module = Parse("x &= 0xFF");
+        var module = Parse("x &= 255");  // Changed from 0xFF to decimal
         var assign = module.Body[0].Should().BeOfType<Assignment>().Subject;
         assign.Operator.Should().Be(AssignmentOperator.AndAssign);
     }
@@ -1283,7 +1283,7 @@ for i in range(10):
     [Fact]
     public void ParseBitwiseOrAssign()
     {
-        var module = Parse("x |= 0x01");
+        var module = Parse("x |= 1");  // Changed from 0x01 to decimal
         var assign = module.Body[0].Should().BeOfType<Assignment>().Subject;
         assign.Operator.Should().Be(AssignmentOperator.OrAssign);
     }
@@ -1291,7 +1291,7 @@ for i in range(10):
     [Fact]
     public void ParseBitwiseXorAssign()
     {
-        var module = Parse("x ^= 0x10");
+        var module = Parse("x ^= 16");  // Changed from 0x10 to decimal
         var assign = module.Body[0].Should().BeOfType<Assignment>().Subject;
         assign.Operator.Should().Be(AssignmentOperator.XorAssign);
     }
@@ -1978,9 +1978,9 @@ a /= 4
 b //= 5
 c %= 6
 d **= 2
-e &= 0xFF
-f |= 0x01
-g ^= 0x0F
+e &= 255
+f |= 1
+g ^= 15
 h <<= 1
 i >>= 2
 ";

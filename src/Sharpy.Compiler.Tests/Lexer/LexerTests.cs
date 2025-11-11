@@ -203,7 +203,7 @@ public class LexerTests
     // but are not currently implemented in the lexer. They are skipped until
     // the proper error handling is implemented.
 
-    [Theory(Skip = "Binary literal rejection not implemented in v0.5 lexer yet")]
+    [Theory]
     [InlineData("0b1010")]
     [InlineData("0B1111")]
     public void Tokenize_BinaryLiteral_ThrowsLexerError(string input)
@@ -212,7 +212,7 @@ public class LexerTests
         act.Should().Throw<LexerError>().WithMessage("*not supported*");
     }
 
-    [Theory(Skip = "Octal literal rejection not implemented in v0.5 lexer yet")]
+    [Theory]
     [InlineData("0o755")]
     [InlineData("0O644")]
     public void Tokenize_OctalLiteral_ThrowsLexerError(string input)
@@ -221,7 +221,7 @@ public class LexerTests
         act.Should().Throw<LexerError>().WithMessage("*not supported*");
     }
 
-    [Theory(Skip = "Hexadecimal literal rejection not implemented in v0.5 lexer yet")]
+    [Theory]
     [InlineData("0xFF")]
     [InlineData("0xff")]
     [InlineData("0xABCD")]
@@ -231,7 +231,7 @@ public class LexerTests
         act.Should().Throw<LexerError>().WithMessage("*not supported*");
     }
 
-    [Fact(Skip = "Float without leading digit rejection not implemented in v0.5 lexer yet")]
+    [Fact]
     public void Tokenize_FloatWithoutDigitBeforeDecimal_ThrowsLexerError()
     {
         var source = ".5";
@@ -239,7 +239,7 @@ public class LexerTests
         act.Should().Throw<LexerError>();
     }
 
-    [Theory(Skip = "Scientific notation rejection not implemented in v0.5 lexer yet")]
+    [Theory]
     [InlineData("1e10")]
     [InlineData("3.14E-5")]
     [InlineData("1.5e10")]
@@ -924,7 +924,7 @@ y = 2";
         token.Value.Should().Be(source);
     }
 
-    [Fact]
+    [Fact(Skip = "Scientific notation is a v1.0+ feature, not supported in v0.5")]
     public void Tokenize_ScientificNotationEdgeCases_ProducesCorrectTokens()
     {
         var cases = new[] { "1e100", "1e-100", "1.5e50", "1.5e-50" };
@@ -937,7 +937,7 @@ y = 2";
         }
     }
 
-    [Fact]
+    [Fact(Skip = "Hexadecimal literals are a v1.0+ feature, not supported in v0.5")]
     public void Tokenize_HexWithAllDigits_ProducesCorrectToken()
     {
         var source = "0x0123456789ABCDEF";
@@ -946,7 +946,7 @@ y = 2";
         token.Value.Should().Be(source);
     }
 
-    [Fact]
+    [Fact(Skip = "Binary literals are a v1.0+ feature, not supported in v0.5")]
     public void Tokenize_BinaryWithLongSequence_ProducesCorrectToken()
     {
         var source = "0b" + new string('1', 64);
@@ -955,7 +955,7 @@ y = 2";
         token.Value.Should().Be(source);
     }
 
-    [Fact]
+    [Fact(Skip = "Octal literals are a v1.0+ feature, not supported in v0.5")]
     public void Tokenize_OctalWithAllDigits_ProducesCorrectToken()
     {
         var source = "0o01234567";
@@ -967,7 +967,8 @@ y = 2";
     [Fact]
     public void Tokenize_NumbersWithUnderscores_ProducesCorrectTokens()
     {
-        var cases = new[] { "1_000_000", "0x_DEAD_BEEF", "0b_1111_0000", "3.14_159_265" };
+        // Only test decimal numbers with underscores (hex, binary, octal are v1.0+)
+        var cases = new[] { "1_000_000", "3.14_159_265" };
 
         foreach (var source in cases)
         {
@@ -1549,7 +1550,7 @@ y = 2";
         numbers.Should().HaveCount(3);
     }
 
-    [Fact]
+    [Fact(Skip = "Hex/Binary/Octal literals are v1.0+ features, not supported in v0.5")]
     public void Tokenize_HexBinaryOctalLiterals_TokenizesCorrectly()
     {
         var source = "0xFF 0b1010 0o77";
