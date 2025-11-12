@@ -63,6 +63,10 @@ public class RoslynEmitter
         return stmt switch
         {
             FunctionDef funcDef => GenerateFunctionDeclaration(funcDef),
+            ClassDef classDef => GenerateClassDeclaration(classDef),
+            StructDef structDef => GenerateStructDeclaration(structDef),
+            InterfaceDef interfaceDef => GenerateInterfaceDeclaration(interfaceDef),
+            EnumDef enumDef => GenerateEnumDeclaration(enumDef),
             ReturnStatement ret => GenerateReturn(ret),
             Assignment assign => GenerateAssignment(assign),
             // Add more statement types...
@@ -72,24 +76,689 @@ public class RoslynEmitter
 
     private MethodDeclarationSyntax GenerateFunctionDeclaration(FunctionDef func)
     {
-        var mangledName = NameMangler.ToPascalCase(func.Name);
-        var returnType = PredefinedType(Token(SyntaxKind.VoidKeyword)); // TODO: Infer return type
+        // Transform name using NameMangler
+        var mangledName = NameMangler.Transform(func.Name, NameContext.Method);
 
-        // Default to public static for now
-        var modifiers = TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword));
+        // Determine return type from annotation or infer void
+        TypeSyntax returnType;
+        if (func.ReturnType != null)
+        {
+            returnType = _typeMapper.MapType(func.ReturnType);
+        }
+        else
+        {
+            // Default to void if no return type specified
+            returnType = PredefinedType(Token(SyntaxKind.VoidKeyword));
+        }
 
+        // Process decorators to determine modifiers
+        var modifiers = GenerateModifiersFromDecorators(func.Decorators);
+
+        // Generate parameters with type annotations
         var parameters = func.Parameters
-            .Select(p => Parameter(Identifier(NameMangler.ToCamelCase(p.Name)))
-                .WithType(PredefinedType(Token(SyntaxKind.ObjectKeyword))))
+            .Select(GenerateParameter)
             .ToArray();
 
+        // Generate method body
         var body = Block(func.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
 
-        return MethodDeclaration(returnType, mangledName)
+        var method = MethodDeclaration(returnType, mangledName)
             .WithModifiers(modifiers)
             .WithParameterList(ParameterList(SeparatedList(parameters)))
             .WithBody(body);
+
+        // Add XML documentation from docstring if present
+        if (!string.IsNullOrEmpty(func.DocString))
+        {
+            method = method.WithLeadingTrivia(GenerateXmlDocComment(func.DocString));
+        }
+
+        return method;
     }
+
+    private ParameterSyntax GenerateParameter(Parameter param)
+    {
+        var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+        
+        // Get parameter type from annotation or default to object
+        TypeSyntax paramType;
+        if (param.Type != null)
+        {
+            paramType = _typeMapper.MapType(param.Type);
+        }
+        else
+        {
+            paramType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        }
+
+        var parameter = Parameter(Identifier(paramName))
+            .WithType(paramType);
+
+        // Add default value if present
+        if (param.DefaultValue != null)
+        {
+            var defaultExpr = GenerateExpression(param.DefaultValue);
+            parameter = parameter.WithDefault(EqualsValueClause(defaultExpr));
+        }
+
+        return parameter;
+    }
+
+    private SyntaxTokenList GenerateModifiersFromDecorators(List<Decorator> decorators)
+    {
+        var tokens = new List<SyntaxToken>();
+
+        // Check for access modifiers
+        bool hasAccessModifier = false;
+        foreach (var decorator in decorators)
+        {
+            switch (decorator.Name)
+            {
+                case "private":
+                    tokens.Add(Token(SyntaxKind.PrivateKeyword));
+                    hasAccessModifier = true;
+                    break;
+                case "protected":
+                    tokens.Add(Token(SyntaxKind.ProtectedKeyword));
+                    hasAccessModifier = true;
+                    break;
+                case "internal":
+                    tokens.Add(Token(SyntaxKind.InternalKeyword));
+                    hasAccessModifier = true;
+                    break;
+                case "public":
+                    tokens.Add(Token(SyntaxKind.PublicKeyword));
+                    hasAccessModifier = true;
+                    break;
+            }
+        }
+
+        // Default to public if no access modifier specified
+        if (!hasAccessModifier)
+        {
+            tokens.Add(Token(SyntaxKind.PublicKeyword));
+        }
+
+        // Check for other modifiers
+        foreach (var decorator in decorators)
+        {
+            switch (decorator.Name)
+            {
+                case "staticmethod":
+                case "static":
+                    tokens.Add(Token(SyntaxKind.StaticKeyword));
+                    break;
+                case "abstractmethod":
+                case "abstract":
+                    tokens.Add(Token(SyntaxKind.AbstractKeyword));
+                    break;
+                case "virtual":
+                    tokens.Add(Token(SyntaxKind.VirtualKeyword));
+                    break;
+                case "override":
+                    tokens.Add(Token(SyntaxKind.OverrideKeyword));
+                    break;
+            }
+        }
+
+        // For module-level functions, add static modifier if not already present
+        // and if it's not a method (we'll handle this differently in classes)
+        if (!tokens.Any(t => t.IsKind(SyntaxKind.StaticKeyword) || 
+                            t.IsKind(SyntaxKind.AbstractKeyword) ||
+                            t.IsKind(SyntaxKind.VirtualKeyword) ||
+                            t.IsKind(SyntaxKind.OverrideKeyword)))
+        {
+            tokens.Add(Token(SyntaxKind.StaticKeyword));
+        }
+
+        return TokenList(tokens);
+    }
+
+    private SyntaxTriviaList GenerateXmlDocComment(string docString)
+    {
+        // Convert Python docstring to C# XML documentation
+        var lines = docString.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+        
+        var triviaList = new List<SyntaxTrivia>();
+        triviaList.Add(Comment("/// <summary>"));
+        triviaList.Add(EndOfLine("\n"));
+        
+        foreach (var line in lines)
+        {
+            var trimmedLine = line.Trim();
+            if (!string.IsNullOrEmpty(trimmedLine))
+            {
+                triviaList.Add(Comment($"/// {trimmedLine}"));
+                triviaList.Add(EndOfLine("\n"));
+            }
+        }
+        
+        triviaList.Add(Comment("/// </summary>"));
+        triviaList.Add(EndOfLine("\n"));
+        
+        return TriviaList(triviaList);
+    }
+
+    #region Class, Struct, Interface, and Enum Generation
+
+    private ClassDeclarationSyntax GenerateClassDeclaration(ClassDef classDef)
+    {
+        // Transform class name
+        var className = NameMangler.Transform(classDef.Name, NameContext.Type);
+
+        // Process decorators to determine modifiers
+        var modifiers = GenerateTypeModifiersFromDecorators(classDef.Decorators);
+
+        // Create class declaration
+        var classDecl = ClassDeclaration(className)
+            .WithModifiers(modifiers);
+
+        // Add type parameters if generic
+        if (classDef.TypeParameters.Count > 0)
+        {
+            var typeParams = classDef.TypeParameters
+                .Select(tp => TypeParameter(tp))
+                .ToArray();
+            classDecl = classDecl.WithTypeParameterList(
+                TypeParameterList(SeparatedList(typeParams)));
+        }
+
+        // Add base class and interfaces
+        if (classDef.BaseClasses.Count > 0)
+        {
+            var baseTypes = classDef.BaseClasses
+                .Select(bc => SimpleBaseType(_typeMapper.MapType(bc)))
+                .ToArray();
+            classDecl = classDecl.WithBaseList(BaseList(SeparatedList<BaseTypeSyntax>(baseTypes)));
+        }
+
+        // Generate class members from body
+        var members = GenerateClassMembers(classDef.Body);
+        classDecl = classDecl.WithMembers(List(members));
+
+        // Add XML documentation from docstring if present
+        if (!string.IsNullOrEmpty(classDef.DocString))
+        {
+            classDecl = classDecl.WithLeadingTrivia(GenerateXmlDocComment(classDef.DocString));
+        }
+
+        return classDecl;
+    }
+
+    private StructDeclarationSyntax GenerateStructDeclaration(StructDef structDef)
+    {
+        // Transform struct name
+        var structName = NameMangler.Transform(structDef.Name, NameContext.Type);
+
+        // Process decorators to determine modifiers
+        var modifiers = GenerateTypeModifiersFromDecorators(structDef.Decorators);
+
+        // Create struct declaration
+        var structDecl = StructDeclaration(structName)
+            .WithModifiers(modifiers);
+
+        // Add type parameters if generic
+        if (structDef.TypeParameters.Count > 0)
+        {
+            var typeParams = structDef.TypeParameters
+                .Select(tp => TypeParameter(tp))
+                .ToArray();
+            structDecl = structDecl.WithTypeParameterList(
+                TypeParameterList(SeparatedList(typeParams)));
+        }
+
+        // Add interfaces (structs can only implement interfaces, not inherit)
+        if (structDef.BaseClasses.Count > 0)
+        {
+            var baseTypes = structDef.BaseClasses
+                .Select(bc => SimpleBaseType(_typeMapper.MapType(bc)))
+                .ToArray();
+            structDecl = structDecl.WithBaseList(BaseList(SeparatedList<BaseTypeSyntax>(baseTypes)));
+        }
+
+        // Generate struct members from body
+        var members = GenerateClassMembers(structDef.Body);
+        structDecl = structDecl.WithMembers(List(members));
+
+        // Add XML documentation from docstring if present
+        if (!string.IsNullOrEmpty(structDef.DocString))
+        {
+            structDecl = structDecl.WithLeadingTrivia(GenerateXmlDocComment(structDef.DocString));
+        }
+
+        return structDecl;
+    }
+
+    private InterfaceDeclarationSyntax GenerateInterfaceDeclaration(InterfaceDef interfaceDef)
+    {
+        // Transform interface name
+        var interfaceName = NameMangler.Transform(interfaceDef.Name, NameContext.Type);
+
+        // Interfaces are always public by default
+        var modifiers = TokenList(Token(SyntaxKind.PublicKeyword));
+
+        // Create interface declaration
+        var interfaceDecl = InterfaceDeclaration(interfaceName)
+            .WithModifiers(modifiers);
+
+        // Add type parameters if generic
+        if (interfaceDef.TypeParameters.Count > 0)
+        {
+            var typeParams = interfaceDef.TypeParameters
+                .Select(tp => TypeParameter(tp))
+                .ToArray();
+            interfaceDecl = interfaceDecl.WithTypeParameterList(
+                TypeParameterList(SeparatedList(typeParams)));
+        }
+
+        // Add base interfaces
+        if (interfaceDef.BaseInterfaces.Count > 0)
+        {
+            var baseTypes = interfaceDef.BaseInterfaces
+                .Select(bi => SimpleBaseType(_typeMapper.MapType(bi)))
+                .ToArray();
+            interfaceDecl = interfaceDecl.WithBaseList(BaseList(SeparatedList<BaseTypeSyntax>(baseTypes)));
+        }
+
+        // Generate interface members (methods only, no implementation)
+        var members = GenerateInterfaceMembers(interfaceDef.Body);
+        interfaceDecl = interfaceDecl.WithMembers(List(members));
+
+        // Add XML documentation from docstring if present
+        if (!string.IsNullOrEmpty(interfaceDef.DocString))
+        {
+            interfaceDecl = interfaceDecl.WithLeadingTrivia(GenerateXmlDocComment(interfaceDef.DocString));
+        }
+
+        return interfaceDecl;
+    }
+
+    private EnumDeclarationSyntax GenerateEnumDeclaration(EnumDef enumDef)
+    {
+        // Transform enum name
+        var enumName = NameMangler.Transform(enumDef.Name, NameContext.Type);
+
+        // Enums are always public by default
+        var modifiers = TokenList(Token(SyntaxKind.PublicKeyword));
+
+        // Generate enum members
+        var members = enumDef.Members
+            .Select(GenerateEnumMember)
+            .ToArray();
+
+        var enumDecl = EnumDeclaration(enumName)
+            .WithModifiers(modifiers)
+            .WithMembers(SeparatedList(members));
+
+        // Add XML documentation from docstring if present
+        if (!string.IsNullOrEmpty(enumDef.DocString))
+        {
+            enumDecl = enumDecl.WithLeadingTrivia(GenerateXmlDocComment(enumDef.DocString));
+        }
+
+        return enumDecl;
+    }
+
+    private EnumMemberDeclarationSyntax GenerateEnumMember(EnumMember member)
+    {
+        // Use constant case transformation for enum members
+        var memberName = NameMangler.Transform(member.Name, NameContext.Constant);
+
+        var enumMember = EnumMemberDeclaration(Identifier(memberName));
+
+        // Add explicit value if present
+        if (member.Value != null)
+        {
+            var valueExpr = GenerateExpression(member.Value);
+            enumMember = enumMember.WithEqualsValue(EqualsValueClause(valueExpr));
+        }
+
+        return enumMember;
+    }
+
+    private SyntaxTokenList GenerateTypeModifiersFromDecorators(List<Decorator> decorators)
+    {
+        var tokens = new List<SyntaxToken>();
+
+        // Check for access modifiers
+        bool hasAccessModifier = false;
+        foreach (var decorator in decorators)
+        {
+            switch (decorator.Name)
+            {
+                case "private":
+                    tokens.Add(Token(SyntaxKind.PrivateKeyword));
+                    hasAccessModifier = true;
+                    break;
+                case "protected":
+                    tokens.Add(Token(SyntaxKind.ProtectedKeyword));
+                    hasAccessModifier = true;
+                    break;
+                case "internal":
+                    tokens.Add(Token(SyntaxKind.InternalKeyword));
+                    hasAccessModifier = true;
+                    break;
+                case "public":
+                    tokens.Add(Token(SyntaxKind.PublicKeyword));
+                    hasAccessModifier = true;
+                    break;
+            }
+        }
+
+        // Default to public if no access modifier specified
+        if (!hasAccessModifier)
+        {
+            tokens.Add(Token(SyntaxKind.PublicKeyword));
+        }
+
+        // Check for other modifiers
+        foreach (var decorator in decorators)
+        {
+            switch (decorator.Name)
+            {
+                case "abstract":
+                    tokens.Add(Token(SyntaxKind.AbstractKeyword));
+                    break;
+                case "sealed":
+                    tokens.Add(Token(SyntaxKind.SealedKeyword));
+                    break;
+                case "static":
+                    tokens.Add(Token(SyntaxKind.StaticKeyword));
+                    break;
+            }
+        }
+
+        return TokenList(tokens);
+    }
+
+    private List<MemberDeclarationSyntax> GenerateClassMembers(List<Statement> body)
+    {
+        var members = new List<MemberDeclarationSyntax>();
+
+        foreach (var stmt in body)
+        {
+            switch (stmt)
+            {
+                case FunctionDef funcDef:
+                    // Check if this is a constructor (__init__)
+                    if (funcDef.Name == "__init__")
+                    {
+                        // TODO: Generate constructor
+                        // For now, generate as a regular method
+                        members.Add(GenerateClassMethod(funcDef));
+                    }
+                    else
+                    {
+                        members.Add(GenerateClassMethod(funcDef));
+                    }
+                    break;
+
+                case VariableDeclaration varDecl:
+                    // Generate field declaration
+                    members.Add(GenerateField(varDecl));
+                    break;
+
+                case PassStatement:
+                    // Ignore pass in class body
+                    break;
+
+                case ExpressionStatement exprStmt when exprStmt.Expression is EllipsisLiteral:
+                    // Ignore ellipsis in class body
+                    break;
+
+                default:
+                    // Ignore other statements for now
+                    break;
+            }
+        }
+
+        return members;
+    }
+
+    private MethodDeclarationSyntax GenerateClassMethod(FunctionDef func)
+    {
+        // For class methods, use the same logic as module functions but handle special cases
+        var mangledName = NameMangler.Transform(func.Name, NameContext.Method);
+
+        // Map dunder methods to C# equivalents
+        if (func.Name.StartsWith("__") && func.Name.EndsWith("__"))
+        {
+            mangledName = MapDunderMethod(func.Name);
+        }
+
+        // Determine return type from annotation or infer void
+        TypeSyntax returnType;
+        if (func.ReturnType != null)
+        {
+            returnType = _typeMapper.MapType(func.ReturnType);
+        }
+        else
+        {
+            // Default to void if no return type specified
+            returnType = PredefinedType(Token(SyntaxKind.VoidKeyword));
+        }
+
+        // Process decorators to determine modifiers
+        var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
+
+        // Generate parameters with type annotations, skipping 'self' parameter
+        var parameters = func.Parameters
+            .Where(p => p.Name != "self" && p.Name != "cls")
+            .Select(GenerateParameter)
+            .ToArray();
+
+        // Generate method body
+        var body = Block(func.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+
+        var method = MethodDeclaration(returnType, mangledName)
+            .WithModifiers(modifiers)
+            .WithParameterList(ParameterList(SeparatedList(parameters)))
+            .WithBody(body);
+
+        // Add XML documentation from docstring if present
+        if (!string.IsNullOrEmpty(func.DocString))
+        {
+            method = method.WithLeadingTrivia(GenerateXmlDocComment(func.DocString));
+        }
+
+        return method;
+    }
+
+    private string MapDunderMethod(string dunderName)
+    {
+        // Map Python dunder methods to C# equivalents
+        return dunderName switch
+        {
+            "__init__" => "Constructor",  // Will be handled specially
+            "__str__" => "ToString",
+            "__repr__" => "ToString",
+            "__eq__" => "Equals",
+            "__ne__" => "NotEquals",
+            "__lt__" => "CompareTo",
+            "__le__" => "CompareTo",
+            "__gt__" => "CompareTo",
+            "__ge__" => "CompareTo",
+            "__hash__" => "GetHashCode",
+            "__len__" => "Count",
+            "__getitem__" => "Get",
+            "__setitem__" => "Set",
+            "__contains__" => "Contains",
+            "__iter__" => "GetEnumerator",
+            "__add__" => "Add",
+            "__sub__" => "Subtract",
+            "__mul__" => "Multiply",
+            "__div__" => "Divide",
+            "__mod__" => "Modulo",
+            "__pow__" => "Power",
+            _ => NameMangler.Transform(dunderName, NameContext.Method)
+        };
+    }
+
+    private SyntaxTokenList GenerateMethodModifiersFromDecorators(List<Decorator> decorators)
+    {
+        var tokens = new List<SyntaxToken>();
+
+        // Check for access modifiers
+        bool hasAccessModifier = false;
+        foreach (var decorator in decorators)
+        {
+            switch (decorator.Name)
+            {
+                case "private":
+                    tokens.Add(Token(SyntaxKind.PrivateKeyword));
+                    hasAccessModifier = true;
+                    break;
+                case "protected":
+                    tokens.Add(Token(SyntaxKind.ProtectedKeyword));
+                    hasAccessModifier = true;
+                    break;
+                case "internal":
+                    tokens.Add(Token(SyntaxKind.InternalKeyword));
+                    hasAccessModifier = true;
+                    break;
+                case "public":
+                    tokens.Add(Token(SyntaxKind.PublicKeyword));
+                    hasAccessModifier = true;
+                    break;
+            }
+        }
+
+        // Default to public if no access modifier specified
+        if (!hasAccessModifier)
+        {
+            tokens.Add(Token(SyntaxKind.PublicKeyword));
+        }
+
+        // Check for other modifiers
+        foreach (var decorator in decorators)
+        {
+            switch (decorator.Name)
+            {
+                case "staticmethod":
+                case "static":
+                    tokens.Add(Token(SyntaxKind.StaticKeyword));
+                    break;
+                case "abstractmethod":
+                case "abstract":
+                    tokens.Add(Token(SyntaxKind.AbstractKeyword));
+                    break;
+                case "virtual":
+                    tokens.Add(Token(SyntaxKind.VirtualKeyword));
+                    break;
+                case "override":
+                    tokens.Add(Token(SyntaxKind.OverrideKeyword));
+                    break;
+            }
+        }
+
+        return TokenList(tokens);
+    }
+
+    private FieldDeclarationSyntax GenerateField(VariableDeclaration varDecl)
+    {
+        var fieldName = NameMangler.Transform(varDecl.Name, NameContext.Field);
+        
+        // Get field type from annotation or default to object
+        TypeSyntax fieldType;
+        if (varDecl.Type != null)
+        {
+            fieldType = _typeMapper.MapType(varDecl.Type);
+        }
+        else
+        {
+            fieldType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        }
+
+        var variable = VariableDeclarator(Identifier(fieldName));
+        
+        // Add initializer if present
+        if (varDecl.InitialValue != null)
+        {
+            var initExpr = GenerateExpression(varDecl.InitialValue);
+            variable = variable.WithInitializer(EqualsValueClause(initExpr));
+        }
+
+        var declaration = VariableDeclaration(fieldType)
+            .WithVariables(SingletonSeparatedList(variable));
+
+        // Fields are public by default (can be changed with decorators later)
+        var modifiers = TokenList(Token(SyntaxKind.PublicKeyword));
+        
+        if (varDecl.IsConst)
+        {
+            modifiers = modifiers.Add(Token(SyntaxKind.ConstKeyword));
+        }
+
+        return FieldDeclaration(declaration)
+            .WithModifiers(modifiers);
+    }
+
+    private List<MemberDeclarationSyntax> GenerateInterfaceMembers(List<Statement> body)
+    {
+        var members = new List<MemberDeclarationSyntax>();
+
+        foreach (var stmt in body)
+        {
+            switch (stmt)
+            {
+                case FunctionDef funcDef:
+                    // Interface methods have no body
+                    members.Add(GenerateInterfaceMethod(funcDef));
+                    break;
+
+                case PassStatement:
+                    // Ignore pass in interface body
+                    break;
+
+                case ExpressionStatement exprStmt when exprStmt.Expression is EllipsisLiteral:
+                    // Ignore ellipsis in interface body
+                    break;
+
+                default:
+                    // Ignore other statements
+                    break;
+            }
+        }
+
+        return members;
+    }
+
+    private MethodDeclarationSyntax GenerateInterfaceMethod(FunctionDef func)
+    {
+        var mangledName = NameMangler.Transform(func.Name, NameContext.Method);
+
+        // Determine return type from annotation or infer void
+        TypeSyntax returnType;
+        if (func.ReturnType != null)
+        {
+            returnType = _typeMapper.MapType(func.ReturnType);
+        }
+        else
+        {
+            returnType = PredefinedType(Token(SyntaxKind.VoidKeyword));
+        }
+
+        // Interface methods have no modifiers and no body
+        var parameters = func.Parameters
+            .Where(p => p.Name != "self")
+            .Select(GenerateParameter)
+            .ToArray();
+
+        var method = MethodDeclaration(returnType, mangledName)
+            .WithParameterList(ParameterList(SeparatedList(parameters)))
+            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+
+        // Add XML documentation from docstring if present
+        if (!string.IsNullOrEmpty(func.DocString))
+        {
+            method = method.WithLeadingTrivia(GenerateXmlDocComment(func.DocString));
+        }
+
+        return method;
+    }
+
+    #endregion
+
 
     private StatementSyntax? GenerateBodyStatement(Statement stmt)
     {
