@@ -1180,6 +1180,12 @@ public class Lexer
             }
         }
 
+        // Check for float starting with decimal point (not allowed in v0.5)
+        if (c == '.' && _position + 1 < _source.Length && char.IsDigit(_source[_position + 1]))
+        {
+            throw new LexerError("Float literals must have at least one digit before the decimal point (e.g., use '0.5' instead of '.5'). This restriction is for v0.5.", startLine, startColumn);
+        }
+
         // Single-character operators and delimiters
         _position++;
         _column++;
