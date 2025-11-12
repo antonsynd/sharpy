@@ -247,4 +247,141 @@ x: float = 42 as float
 
         typeChecker.Errors.Should().BeEmpty();
     }
+
+    [Fact(Skip = "None assignment to nullable types not yet implemented in type checker")]
+    public void AllowsNoneForNullableTypes()
+    {
+        var source = @"
+x: int? = None
+y: str? = None
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RejectsNoneForNonNullableTypes()
+    {
+        var source = @"
+x: int = None
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Errors[0].Message.Should().Contain("None");
+    }
+
+    [Fact(Skip = "Type narrowing with is not None not yet implemented in type checker")]
+    public void InfersNullableTypeFromNone()
+    {
+        var source = @"
+value: str? = None
+if value is not None:
+    x: str = value
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        // This test validates that type narrowing is working
+        // In the if branch, value should be narrowed from str? to str
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ChecksDivisionProducesDouble()
+    {
+        var source = @"
+x: int = 10
+y: int = 3
+result: double = x / y
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ChecksFloorDivisionProducesInt()
+    {
+        var source = @"
+x: int = 10
+y: int = 3
+result: int = x // y
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ChecksPowerOperatorType()
+    {
+        var source = @"
+x: int = 2
+y: int = 3
+result: int = x ** y
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ChecksBooleanLiterals()
+    {
+        var source = @"
+x: bool = True
+y: bool = False
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ChecksLogicalOperators()
+    {
+        var source = @"
+x: bool = True and False
+y: bool = True or False
+z: bool = not True
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ChecksMembershipOperator()
+    {
+        var source = @"
+items: list[int] = [1, 2, 3]
+result: bool = 2 in items
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact(Skip = "None assignment to nullable types not yet implemented in type checker")]
+    public void ChecksIdentityOperator()
+    {
+        var source = @"
+x: str? = None
+result: bool = x is None
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
 }
