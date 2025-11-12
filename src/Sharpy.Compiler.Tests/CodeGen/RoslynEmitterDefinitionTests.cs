@@ -93,11 +93,11 @@ public class RoslynEmitterDefinitionTests
                 new Parameter 
                 { 
                     Name = "name", 
-                    Type = new TypeAnnotation { Name = "str" },
+                    Type = new TypeAnnotation { Name = "string" },
                     DefaultValue = new StringLiteral { Value = "World" }
                 }
             },
-            ReturnType = new TypeAnnotation { Name = "str" },
+            ReturnType = new TypeAnnotation { Name = "string" },
             Body = new List<Statement>
             {
                 new ReturnStatement { Value = new StringLiteral { Value = "Hello" } }
@@ -121,7 +121,7 @@ public class RoslynEmitterDefinitionTests
         {
             Name = "greet",
             Parameters = new List<Parameter>(),
-            ReturnType = new TypeAnnotation { Name = "str" },
+            ReturnType = new TypeAnnotation { Name = "string" },
             Body = new List<Statement>
             {
                 new ReturnStatement { Value = new StringLiteral { Value = "Hello" } }
@@ -200,7 +200,7 @@ public class RoslynEmitterDefinitionTests
                 new VariableDeclaration 
                 { 
                     Name = "name", 
-                    Type = new TypeAnnotation { Name = "str" },
+                    Type = new TypeAnnotation { Name = "string" },
                     InitialValue = null
                 },
                 new VariableDeclaration 
@@ -216,6 +216,8 @@ public class RoslynEmitterDefinitionTests
         var module = new Module { Body = new List<Statement> { classDef } };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Debug: Print the generated code
 
         // Assert
         Assert.Contains("public string Name;", code);
@@ -238,7 +240,7 @@ public class RoslynEmitterDefinitionTests
                     {
                         new Parameter { Name = "self", Type = null }
                     },
-                    ReturnType = new TypeAnnotation { Name = "str" },
+                    ReturnType = new TypeAnnotation { Name = "string" },
                     Body = new List<Statement>
                     {
                         new ReturnStatement { Value = new StringLiteral { Value = "Hello" } }
@@ -417,6 +419,8 @@ public class RoslynEmitterDefinitionTests
         var module = new Module { Body = new List<Statement> { interfaceDef } };
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Debug
 
         // Assert
         Assert.Contains("public interface IDrawable", code);

@@ -656,7 +656,8 @@ public class RoslynEmitter
 
     private FieldDeclarationSyntax GenerateField(VariableDeclaration varDecl)
     {
-        var fieldName = NameMangler.Transform(varDecl.Name, NameContext.Field);
+        // Use PascalCase for public fields (C# property-like convention)
+        var fieldName = NameMangler.Transform(varDecl.Name, NameContext.Type);
         
         // Get field type from annotation or default to object
         TypeSyntax fieldType;

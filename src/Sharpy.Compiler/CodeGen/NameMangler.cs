@@ -79,6 +79,11 @@ public static class NameMangler
             return name;
         }
 
+        // Special case: Interface names starting with I followed by uppercase letter
+        // (e.g., IDrawable, IRepository) should be preserved as-is
+        if (name.Length >= 2 && name[0] == 'I' && char.IsUpper(name[1]) && !name.Contains('_'))
+            return EscapeKeywordIfNeeded(EnsureUnique(name));
+
         // Handle private names (single underscore prefix)
         var hasPrivatePrefix = name.StartsWith("_") && !name.StartsWith("__");
         var cleanName = hasPrivatePrefix ? name[1..] : name;
