@@ -190,7 +190,10 @@ public class RoslynEmitter
 
         // For module-level functions, add static modifier if not already present
         // and if it's not a method (we'll handle this differently in classes)
-        if (!tokens.Any(t => t.IsKind(SyntaxKind.StaticKeyword)))
+        if (!tokens.Any(t => t.IsKind(SyntaxKind.StaticKeyword) || 
+                            t.IsKind(SyntaxKind.AbstractKeyword) ||
+                            t.IsKind(SyntaxKind.VirtualKeyword) ||
+                            t.IsKind(SyntaxKind.OverrideKeyword)))
         {
             tokens.Add(Token(SyntaxKind.StaticKeyword));
         }
