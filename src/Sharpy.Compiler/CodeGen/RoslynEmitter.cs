@@ -729,15 +729,9 @@ public class RoslynEmitter
         var mangledName = NameMangler.Transform(func.Name, NameContext.Method);
 
         // Determine return type from annotation or infer void
-        TypeSyntax returnType;
-        if (func.ReturnType != null)
-        {
-            returnType = _typeMapper.MapType(func.ReturnType);
-        }
-        else
-        {
-            returnType = PredefinedType(Token(SyntaxKind.VoidKeyword));
-        }
+        TypeSyntax returnType = func.ReturnType != null
+            ? _typeMapper.MapType(func.ReturnType)
+            : PredefinedType(Token(SyntaxKind.VoidKeyword));
 
         // Interface methods have no modifiers and no body
         var parameters = func.Parameters
