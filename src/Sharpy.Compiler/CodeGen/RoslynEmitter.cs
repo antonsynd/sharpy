@@ -170,7 +170,7 @@ public class RoslynEmitter
     private string ConvertModuleNameToNamespace(string moduleName)
     {
         // Convert Python module naming to C# namespace naming
-        // e.g., "system.io" -> "System.Io"
+        // e.g., "system.io" -> "System.IO"
         // e.g., "my_module.sub_module" -> "MyModule.SubModule"
         
         // Note: We don't use NameMangler.Transform here because:
@@ -190,6 +190,19 @@ public class RoslynEmitter
         // Handle literal names (backtick-escaped)
         if (name.StartsWith("`") && name.EndsWith("`"))
             return name[1..^1];
+
+        // Special cases for common .NET namespace acronyms
+        // These should be all uppercase instead of PascalCase
+        var upperCaseAcronyms = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "io", "ui", "xml", "html", "api", "sql", "db", "http", "ftp", 
+            "smtp", "tcp", "udp", "ip", "uri", "url", "json", "csv", "guid"
+        };
+
+        if (upperCaseAcronyms.Contains(name))
+        {
+            return name.ToUpperInvariant();
+        }
 
         // Split by underscore and capitalize each part
         var parts = name.Split('_', StringSplitOptions.RemoveEmptyEntries);

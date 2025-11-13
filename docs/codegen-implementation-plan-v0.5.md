@@ -386,7 +386,8 @@ Created comprehensive unit test suite for Phase 5 module structure generation:
 - Added `SourceFilePath` property to `CodeGenContext` for namespace generation
 - Created `SimpleToPascalCase` helper to avoid NameMangler uniqueness tracking for namespaces
 - Import statements are processed and converted to using directives, then excluded from module class members
-- Module name conversions properly handle multi-level namespaces (e.g., "system.io.file" → "System.Io.File")
+- Module name conversions properly handle multi-level namespaces with acronym support (e.g., "system.io.file" → "System.IO.File")
+- Common .NET acronyms (IO, UI, XML, etc.) are preserved in uppercase
 
 ---
 

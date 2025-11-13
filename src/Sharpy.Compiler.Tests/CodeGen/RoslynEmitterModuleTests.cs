@@ -106,7 +106,7 @@ public class RoslynEmitterModuleTests
         var code = result.ToFullString();
 
         // Assert
-        Assert.Contains("using System.Io;", code);
+        Assert.Contains("using System.IO;", code);
     }
 
     [Fact]
@@ -161,7 +161,7 @@ public class RoslynEmitterModuleTests
         var code = result.ToFullString();
 
         // Assert
-        Assert.Contains("using System.Io;", code);
+        Assert.Contains("using System.IO;", code);
     }
 
     [Fact]
@@ -219,7 +219,7 @@ public class RoslynEmitterModuleTests
         var code = result.ToFullString();
 
         // Assert
-        Assert.Contains("using System.Io;", code);
+        Assert.Contains("using System.IO;", code);
         Assert.Contains("using System.Text;", code);
         Assert.Contains("using System.Linq;", code);
         
@@ -259,7 +259,7 @@ public class RoslynEmitterModuleTests
 
         // Assert
         // Import should be in using directives
-        Assert.Contains("using System.Io;", code);
+        Assert.Contains("using System.IO;", code);
         // Function should be in module class
         Assert.Contains("MyFunction", code);
         // Import statement should not appear as a member
