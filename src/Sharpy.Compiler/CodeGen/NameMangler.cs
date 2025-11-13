@@ -154,6 +154,7 @@ public static class NameMangler
         return context switch
         {
             NameContext.Type => ToPascalCase(name),
+            NameContext.Interface => ToInterfaceName(name),
             NameContext.Method => ToPascalCase(name),
             NameContext.Function => ToPascalCase(name),
             NameContext.Variable => ToCamelCase(name),
@@ -162,6 +163,27 @@ public static class NameMangler
             NameContext.Field => ToCamelCase(name),
             _ => name
         };
+    }
+
+    /// <summary>
+    /// Convert interface names to PascalCase, preserving I prefix pattern
+    /// </summary>
+    public static string ToInterfaceName(string name)
+    {
+        if (string.IsNullOrEmpty(name))
+            return name;
+
+        // Handle literal names (backtick-escaped) - strip backticks and return as-is
+        if (name.StartsWith("`") && name.EndsWith("`"))
+            return name[1..^1];
+
+        // Special case: Interface names starting with I followed by uppercase letter
+        // (e.g., IDrawable, IRepository) should be preserved as-is
+        if (name.Length >= 2 && name[0] == 'I' && char.IsUpper(name[1]) && !name.Contains('_'))
+            return EscapeKeywordIfNeeded(EnsureUnique(name));
+
+        // Otherwise, apply normal PascalCase transformation
+        return ToPascalCase(name);
     }
 
     /// <summary>
@@ -222,7 +244,8 @@ public static class NameMangler
 /// </summary>
 public enum NameContext
 {
-    Type,       // Classes, structs, interfaces, enums
+    Type,       // Classes, structs, enums
+    Interface,  // Interfaces (special handling for I prefix)
     Method,     // Instance and static methods
     Function,   // Top-level functions
     Variable,   // Local variables
