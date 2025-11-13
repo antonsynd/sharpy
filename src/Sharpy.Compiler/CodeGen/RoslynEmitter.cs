@@ -660,15 +660,9 @@ public class RoslynEmitter
         var fieldName = NameMangler.Transform(varDecl.Name, NameContext.Type);
         
         // Get field type from annotation or default to object
-        TypeSyntax fieldType;
-        if (varDecl.Type != null)
-        {
-            fieldType = _typeMapper.MapType(varDecl.Type);
-        }
-        else
-        {
-            fieldType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
-        }
+        TypeSyntax fieldType = varDecl.Type != null
+            ? _typeMapper.MapType(varDecl.Type)
+            : PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
         var variable = VariableDeclarator(Identifier(fieldName));
         
