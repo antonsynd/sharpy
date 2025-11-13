@@ -80,16 +80,9 @@ public class RoslynEmitter
         var mangledName = NameMangler.Transform(func.Name, NameContext.Method);
 
         // Determine return type from annotation or infer void
-        TypeSyntax returnType;
-        if (func.ReturnType != null)
-        {
-            returnType = _typeMapper.MapType(func.ReturnType);
-        }
-        else
-        {
-            // Default to void if no return type specified
-            returnType = PredefinedType(Token(SyntaxKind.VoidKeyword));
-        }
+        TypeSyntax returnType = func.ReturnType != null
+            ? _typeMapper.MapType(func.ReturnType)
+            : PredefinedType(Token(SyntaxKind.VoidKeyword));
 
         // Process decorators to determine modifiers
         var modifiers = GenerateModifiersFromDecorators(func.Decorators);
