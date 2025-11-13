@@ -22,7 +22,7 @@ public class RoslynEmitterDefinitionTests
         var symbolTable = new SymbolTable(builtins);
         _context = new CodeGenContext(symbolTable, builtins);
         _emitter = new RoslynEmitter(_context);
-        
+
         // Reset NameMangler to ensure consistent test behavior
         NameMangler.Reset();
     }
@@ -90,9 +90,9 @@ public class RoslynEmitterDefinitionTests
             Name = "greet",
             Parameters = new List<Parameter>
             {
-                new Parameter 
-                { 
-                    Name = "name", 
+                new Parameter
+                {
+                    Name = "name",
                     Type = new TypeAnnotation { Name = "string" },
                     DefaultValue = new StringLiteral { Value = "World" }
                 }
@@ -197,15 +197,15 @@ public class RoslynEmitterDefinitionTests
             Name = "Person",
             Body = new List<Statement>
             {
-                new VariableDeclaration 
-                { 
-                    Name = "name", 
+                new VariableDeclaration
+                {
+                    Name = "name",
                     Type = new TypeAnnotation { Name = "string" },
                     InitialValue = null
                 },
-                new VariableDeclaration 
-                { 
-                    Name = "age", 
+                new VariableDeclaration
+                {
+                    Name = "age",
                     Type = new TypeAnnotation { Name = "int" },
                     InitialValue = null
                 }
@@ -356,15 +356,15 @@ public class RoslynEmitterDefinitionTests
             Name = "Point",
             Body = new List<Statement>
             {
-                new VariableDeclaration 
-                { 
-                    Name = "x", 
+                new VariableDeclaration
+                {
+                    Name = "x",
                     Type = new TypeAnnotation { Name = "double" },
                     InitialValue = null
                 },
-                new VariableDeclaration 
-                { 
-                    Name = "y", 
+                new VariableDeclaration
+                {
+                    Name = "y",
                     Type = new TypeAnnotation { Name = "double" },
                     InitialValue = null
                 }

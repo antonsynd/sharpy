@@ -112,7 +112,7 @@ public class RoslynEmitter
     private ParameterSyntax GenerateParameter(Parameter param)
     {
         var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
-        
+
         // Get parameter type from annotation or default to object
         TypeSyntax paramType = param.Type != null
             ? _typeMapper.MapType(param.Type)
@@ -190,7 +190,7 @@ public class RoslynEmitter
 
         // For module-level functions, add static modifier if not already present
         // and if it's not a method (we'll handle this differently in classes)
-        if (!tokens.Any(t => t.IsKind(SyntaxKind.StaticKeyword) || 
+        if (!tokens.Any(t => t.IsKind(SyntaxKind.StaticKeyword) ||
                             t.IsKind(SyntaxKind.AbstractKeyword) ||
                             t.IsKind(SyntaxKind.VirtualKeyword) ||
                             t.IsKind(SyntaxKind.OverrideKeyword)))
@@ -205,13 +205,13 @@ public class RoslynEmitter
     {
         // Convert Python docstring to C# XML documentation
         var lines = docString.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-        
+
         var triviaList = new List<SyntaxTrivia>
         {
             Comment("/// <summary>"),
             EndOfLine("\n")
         };
-        
+
         triviaList.AddRange(lines
             .Select(line => line.Trim())
             .Where(trimmedLine => !string.IsNullOrEmpty(trimmedLine))
@@ -220,10 +220,10 @@ public class RoslynEmitter
                 Comment($"/// {trimmedLine}"),
                 EndOfLine("\n")
             }));
-        
+
         triviaList.Add(Comment("/// </summary>"));
         triviaList.Add(EndOfLine("\n"));
-        
+
         return TriviaList(triviaList);
     }
 
@@ -520,7 +520,7 @@ public class RoslynEmitter
 
         // Generate parameters with type annotations, skipping 'self' and 'cls' parameters
         var parameters = func.Parameters
-            .Where(p => 
+            .Where(p =>
                 !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase) &&
                 !string.Equals(p.Name, "cls", StringComparison.OrdinalIgnoreCase))
             .Select(GenerateParameter)
@@ -607,14 +607,14 @@ public class RoslynEmitter
     {
         // Use PascalCase for public fields (C# property-like convention)
         var fieldName = NameMangler.Transform(varDecl.Name, NameContext.Type);
-        
+
         // Get field type from annotation or default to object
         TypeSyntax fieldType = varDecl.Type != null
             ? _typeMapper.MapType(varDecl.Type)
             : PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
         var variable = VariableDeclarator(Identifier(fieldName));
-        
+
         // Add initializer if present
         if (varDecl.InitialValue != null)
         {
@@ -627,7 +627,7 @@ public class RoslynEmitter
 
         // Fields are public by default (can be changed with decorators later)
         var modifiers = TokenList(Token(SyntaxKind.PublicKeyword));
-        
+
         if (varDecl.IsConst)
         {
             modifiers = modifiers.Add(Token(SyntaxKind.ConstKeyword));
