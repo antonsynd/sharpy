@@ -63,13 +63,13 @@ public class RoslynEmitter
         // Split path and filter out common directory names
         var parts = path.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
             .Where(p => p != "src" && p != "lib" && p != ".")
-            .Select(p => NameMangler.Transform(p, NameContext.Type))
+            .Select(p => SimpleToPascalCase(p))
             .ToList();
 
         // Add file name as final namespace component
         if (!string.IsNullOrEmpty(fileName))
         {
-            parts.Add(NameMangler.Transform(fileName, NameContext.Type));
+            parts.Add(SimpleToPascalCase(fileName));
         }
 
         // If no parts, use default
@@ -108,7 +108,18 @@ public class RoslynEmitter
             }
         }
 
-        return usings;
+        // Deduplicate using directives by their normalized string representation
+        var seen = new HashSet<string>();
+        var dedupedUsings = new List<UsingDirectiveSyntax>();
+        foreach (var u in usings)
+        {
+            var key = u.NormalizeWhitespace().ToFullString();
+            if (seen.Add(key))
+            {
+                dedupedUsings.Add(u);
+            }
+        }
+        return dedupedUsings;
     }
 
     private IEnumerable<UsingDirectiveSyntax> GenerateImportUsings(ImportStatement import)

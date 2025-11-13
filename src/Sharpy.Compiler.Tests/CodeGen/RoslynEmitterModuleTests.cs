@@ -222,6 +222,10 @@ public class RoslynEmitterModuleTests
         Assert.Contains("using System.Io;", code);
         Assert.Contains("using System.Text;", code);
         Assert.Contains("using System.Linq;", code);
+        
+        // Verify no duplicates - each using should appear only once
+        var linqCount = System.Text.RegularExpressions.Regex.Matches(code, @"using System\.Linq;").Count;
+        Assert.Equal(1, linqCount);
     }
 
     [Fact]
