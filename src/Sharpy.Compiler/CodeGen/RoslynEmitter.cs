@@ -1,3 +1,4 @@
+using System.IO;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -23,30 +24,174 @@ public class RoslynEmitter
 
     public CompilationUnitSyntax GenerateCompilationUnit(Module module)
     {
-        // Add using directives
-        var usings = new[]
-        {
-            UsingDirective(ParseName("System")),
-            UsingDirective(ParseName("Sharpy"))
-        };
+        // Collect all using directives from import statements
+        var usingDirectives = GenerateUsingDirectives(module);
 
-        // Generate module class wrapper
-        var moduleClass = GenerateModuleClass(module);
+        // Separate imports from other statements
+        var nonImportStatements = module.Body
+            .Where(s => s is not ImportStatement && s is not FromImportStatement)
+            .ToList();
 
-        // Create namespace
-        var namespaceName = ParseName("SharpyGenerated");
+        // Generate module class wrapper with non-import statements
+        var moduleClass = GenerateModuleClass(nonImportStatements);
+
+        // Generate namespace from source file path (if available)
+        var namespaceName = GenerateNamespaceName();
         var namespaceDecl = FileScopedNamespaceDeclaration(namespaceName)
             .WithMembers(SingletonList<MemberDeclarationSyntax>(moduleClass));
 
         return CompilationUnit()
-            .WithUsings(List(usings))
+            .WithUsings(List(usingDirectives))
             .WithMembers(SingletonList<MemberDeclarationSyntax>(namespaceDecl))
             .NormalizeWhitespace();
     }
 
-    private ClassDeclarationSyntax GenerateModuleClass(Module module)
+    private NameSyntax GenerateNamespaceName()
     {
-        var members = module.Body
+        // Get namespace from context source file path
+        // Default to "SharpyGenerated" if no source file specified
+        if (string.IsNullOrEmpty(_context.SourceFilePath))
+        {
+            return ParseName("SharpyGenerated");
+        }
+
+        // Convert file path to namespace
+        // e.g., "src/myapp/utils.spy" -> "MyApp.Utils"
+        var path = Path.GetDirectoryName(_context.SourceFilePath) ?? "";
+        var fileName = Path.GetFileNameWithoutExtension(_context.SourceFilePath);
+
+        // Split path and filter out common directory names
+        var parts = path.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
+            .Where(p => p != "src" && p != "lib" && p != ".")
+            .Select(p => NameMangler.Transform(p, NameContext.Type))
+            .ToList();
+
+        // Add file name as final namespace component
+        if (!string.IsNullOrEmpty(fileName))
+        {
+            parts.Add(NameMangler.Transform(fileName, NameContext.Type));
+        }
+
+        // If no parts, use default
+        if (parts.Count == 0)
+        {
+            return ParseName("SharpyGenerated");
+        }
+
+        // Build namespace name
+        return ParseName(string.Join(".", parts));
+    }
+
+    private List<UsingDirectiveSyntax> GenerateUsingDirectives(Module module)
+    {
+        var usings = new List<UsingDirectiveSyntax>();
+
+        // Add default System usings
+        usings.Add(UsingDirective(ParseName("System")));
+        usings.Add(UsingDirective(ParseName("System.Collections.Generic")));
+        usings.Add(UsingDirective(ParseName("System.Linq")));
+
+        // Add Sharpy runtime usings
+        usings.Add(UsingDirective(ParseName("Sharpy")));
+        usings.Add(UsingDirective(ParseName("Sharpy.Runtime")));
+
+        // Process import statements
+        foreach (var stmt in module.Body)
+        {
+            if (stmt is ImportStatement importStmt)
+            {
+                usings.AddRange(GenerateImportUsings(importStmt));
+            }
+            else if (stmt is FromImportStatement fromImportStmt)
+            {
+                usings.AddRange(GenerateFromImportUsings(fromImportStmt));
+            }
+        }
+
+        return usings;
+    }
+
+    private IEnumerable<UsingDirectiveSyntax> GenerateImportUsings(ImportStatement import)
+    {
+        foreach (var alias in import.Names)
+        {
+            // Convert Python module name to C# namespace
+            // e.g., "system.io" -> "System.IO"
+            var namespaceName = ConvertModuleNameToNamespace(alias.Name);
+
+            if (alias.AsName != null)
+            {
+                // import module as alias -> using alias = Module;
+                yield return UsingDirective(
+                    NameEquals(alias.AsName),
+                    ParseName(namespaceName));
+            }
+            else
+            {
+                // import module -> using Module;
+                yield return UsingDirective(ParseName(namespaceName));
+            }
+        }
+    }
+
+    private IEnumerable<UsingDirectiveSyntax> GenerateFromImportUsings(FromImportStatement fromImport)
+    {
+        // Convert module name to namespace
+        var namespaceName = ConvertModuleNameToNamespace(fromImport.Module);
+
+        if (fromImport.ImportAll)
+        {
+            // from module import * -> using Module;
+            yield return UsingDirective(ParseName(namespaceName));
+        }
+        else
+        {
+            // For selective imports, we still need the namespace
+            // from module import Name -> using Module;
+            // The specific types will be available through the namespace
+            yield return UsingDirective(ParseName(namespaceName));
+
+            // Note: C# doesn't have direct equivalent to Python's selective imports
+            // All types from the namespace become available
+        }
+    }
+
+    private string ConvertModuleNameToNamespace(string moduleName)
+    {
+        // Convert Python module naming to C# namespace naming
+        // e.g., "system.io" -> "System.Io"
+        // e.g., "my_module.sub_module" -> "MyModule.SubModule"
+        
+        // Note: We don't use NameMangler.Transform here because:
+        // 1. It tracks unique names which causes "system" to become System, System1, System2, etc.
+        // 2. Namespaces should use simple PascalCase without uniqueness tracking
+        
+        var parts = moduleName.Split('.');
+        var convertedParts = parts.Select(part => SimpleToPascalCase(part));
+        return string.Join(".", convertedParts);
+    }
+
+    private static string SimpleToPascalCase(string name)
+    {
+        if (string.IsNullOrEmpty(name))
+            return name;
+
+        // Handle literal names (backtick-escaped)
+        if (name.StartsWith("`") && name.EndsWith("`"))
+            return name[1..^1];
+
+        // Split by underscore and capitalize each part
+        var parts = name.Split('_', StringSplitOptions.RemoveEmptyEntries);
+        var result = string.Join("", parts.Select(p =>
+            char.ToUpperInvariant(p[0]) + (p.Length > 1 ? p.Substring(1) : "")
+        ));
+
+        return result;
+    }
+
+    private ClassDeclarationSyntax GenerateModuleClass(List<Statement> statements)
+    {
+        var members = statements
             .Select(GenerateStatement)
             .OfType<MemberDeclarationSyntax>()
             .ToArray();

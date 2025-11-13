@@ -12,6 +12,7 @@ public class CodeGenContext
 
     public SymbolTable SymbolTable { get; }
     public BuiltinRegistry Builtins { get; }
+    public string? SourceFilePath { get; set; }
 
     public CodeGenContext(SymbolTable symbolTable, BuiltinRegistry builtins)
     {
