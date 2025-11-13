@@ -56,7 +56,7 @@ public class RoslynEmitter
         }
 
         // Convert file path to namespace
-        // e.g., "src/myapp/utils.spy" -> "MyApp.Utils"
+        // e.g., "src/myapp/utils.spy" -> "Myapp.Utils"
         var path = Path.GetDirectoryName(_context.SourceFilePath) ?? "";
         var fileName = Path.GetFileNameWithoutExtension(_context.SourceFilePath);
 
