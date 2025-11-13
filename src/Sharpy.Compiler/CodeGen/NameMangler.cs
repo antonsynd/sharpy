@@ -81,6 +81,8 @@ public static class NameMangler
 
         // Special case: Interface names starting with I followed by uppercase letter
         // (e.g., IDrawable, IRepository) should be preserved as-is
+        // Note: This also applies to classes/structs with the same naming pattern,
+        // which is acceptable since the I prefix convention is typically reserved for interfaces
         if (name.Length >= 2 && name[0] == 'I' && char.IsUpper(name[1]) && !name.Contains('_'))
             return EscapeKeywordIfNeeded(EnsureUnique(name));
 

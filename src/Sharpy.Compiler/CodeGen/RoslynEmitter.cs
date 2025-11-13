@@ -190,10 +190,7 @@ public class RoslynEmitter
 
         // For module-level functions, add static modifier if not already present
         // and if it's not a method (we'll handle this differently in classes)
-        if (!tokens.Any(t => t.IsKind(SyntaxKind.StaticKeyword) || 
-                            t.IsKind(SyntaxKind.AbstractKeyword) ||
-                            t.IsKind(SyntaxKind.VirtualKeyword) ||
-                            t.IsKind(SyntaxKind.OverrideKeyword)))
+        if (!tokens.Any(t => t.IsKind(SyntaxKind.StaticKeyword)))
         {
             tokens.Add(Token(SyntaxKind.StaticKeyword));
         }
@@ -206,19 +203,20 @@ public class RoslynEmitter
         // Convert Python docstring to C# XML documentation
         var lines = docString.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
         
-        var triviaList = new List<SyntaxTrivia>();
-        triviaList.Add(Comment("/// <summary>"));
-        triviaList.Add(EndOfLine("\n"));
-        
-        foreach (var line in lines)
+        var triviaList = new List<SyntaxTrivia>
         {
-            var trimmedLine = line.Trim();
-            if (!string.IsNullOrEmpty(trimmedLine))
+            Comment("/// <summary>"),
+            EndOfLine("\n")
+        };
+        
+        triviaList.AddRange(lines
+            .Select(line => line.Trim())
+            .Where(trimmedLine => !string.IsNullOrEmpty(trimmedLine))
+            .SelectMany(trimmedLine => new[]
             {
-                triviaList.Add(Comment($"/// {trimmedLine}"));
-                triviaList.Add(EndOfLine("\n"));
-            }
-        }
+                Comment($"/// {trimmedLine}"),
+                EndOfLine("\n")
+            }));
         
         triviaList.Add(Comment("/// </summary>"));
         triviaList.Add(EndOfLine("\n"));
@@ -505,13 +503,8 @@ public class RoslynEmitter
     private MethodDeclarationSyntax GenerateClassMethod(FunctionDef func)
     {
         // For class methods, use the same logic as module functions but handle special cases
+        // Transform name using NameMangler (handles dunder methods automatically)
         var mangledName = NameMangler.Transform(func.Name, NameContext.Method);
-
-        // Map dunder methods to C# equivalents
-        if (func.Name.StartsWith("__") && func.Name.EndsWith("__"))
-        {
-            mangledName = MapDunderMethod(func.Name);
-        }
 
         // Determine return type from annotation or infer void
         // Default to void if no return type specified
@@ -522,9 +515,11 @@ public class RoslynEmitter
         // Process decorators to determine modifiers
         var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
 
-        // Generate parameters with type annotations, skipping 'self' parameter
+        // Generate parameters with type annotations, skipping 'self' and 'cls' parameters
         var parameters = func.Parameters
-            .Where(p => p.Name != "self" && p.Name != "cls")
+            .Where(p => 
+                !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(p.Name, "cls", StringComparison.OrdinalIgnoreCase))
             .Select(GenerateParameter)
             .ToArray();
 
@@ -543,36 +538,6 @@ public class RoslynEmitter
         }
 
         return method;
-    }
-
-    private string MapDunderMethod(string dunderName)
-    {
-        // Map Python dunder methods to C# equivalents
-        return dunderName switch
-        {
-            "__init__" => "Constructor",  // Will be handled specially
-            "__str__" => "ToString",
-            "__repr__" => "ToString",
-            "__eq__" => "Equals",
-            "__ne__" => "NotEquals",
-            "__lt__" => "CompareTo",
-            "__le__" => "CompareTo",
-            "__gt__" => "CompareTo",
-            "__ge__" => "CompareTo",
-            "__hash__" => "GetHashCode",
-            "__len__" => "Count",
-            "__getitem__" => "Get",
-            "__setitem__" => "Set",
-            "__contains__" => "Contains",
-            "__iter__" => "GetEnumerator",
-            "__add__" => "Add",
-            "__sub__" => "Subtract",
-            "__mul__" => "Multiply",
-            "__div__" => "Divide",
-            "__mod__" => "Modulo",
-            "__pow__" => "Power",
-            _ => NameMangler.Transform(dunderName, NameContext.Method)
-        };
     }
 
     private SyntaxTokenList GenerateMethodModifiersFromDecorators(List<Decorator> decorators)
