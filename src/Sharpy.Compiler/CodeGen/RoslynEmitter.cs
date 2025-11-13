@@ -121,15 +121,9 @@ public class RoslynEmitter
         var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
         
         // Get parameter type from annotation or default to object
-        TypeSyntax paramType;
-        if (param.Type != null)
-        {
-            paramType = _typeMapper.MapType(param.Type);
-        }
-        else
-        {
-            paramType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
-        }
+        TypeSyntax paramType = param.Type != null
+            ? _typeMapper.MapType(param.Type)
+            : PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
         var parameter = Parameter(Identifier(paramName))
             .WithType(paramType);
