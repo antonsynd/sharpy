@@ -521,16 +521,10 @@ public class RoslynEmitter
         }
 
         // Determine return type from annotation or infer void
-        TypeSyntax returnType;
-        if (func.ReturnType != null)
-        {
-            returnType = _typeMapper.MapType(func.ReturnType);
-        }
-        else
-        {
-            // Default to void if no return type specified
-            returnType = PredefinedType(Token(SyntaxKind.VoidKeyword));
-        }
+        // Default to void if no return type specified
+        TypeSyntax returnType = func.ReturnType != null
+            ? _typeMapper.MapType(func.ReturnType)
+            : PredefinedType(Token(SyntaxKind.VoidKeyword));
 
         // Process decorators to determine modifiers
         var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
