@@ -589,32 +589,32 @@ Based on the language reference, these are **must-have** for v0.5:
 13. ✅ While loops
 14. ✅ For loops
 15. ✅ Try/except/finally
-16. ❌ Function definitions
-17. ❌ Class definitions
-18. ❌ Struct definitions
-19. ❌ Interface definitions
-20. ❌ Enum definitions
-21. ❌ Import statements
+16. ✅ Function definitions
+17. ✅ Class definitions
+18. ✅ Struct definitions
+19. ✅ Interface definitions
+20. ✅ Enum definitions
+21. ✅ Import statements
 
 ### P1 (Important - Usability)
 22. ✅ Comparison chains
 23. ✅ Conditional expressions (ternary)
 24. ✅ Lambda expressions
 25. ✅ Type casts and checks
-26. ❌ Decorators (@staticmethod, @abstractmethod, etc.)
+26. ✅ Decorators (@staticmethod, @abstractmethod, etc.)
 27. ❌ Dunder method → operator overload synthesis
-28. ❌ Module organization and namespaces
+28. ✅ Module organization and namespaces
 29. ✅ Null-conditional operator (?.)
 30. ✅ Null-coalescing operator (??)
 
 ### P2 (Nice to Have - Polish)
-31. ❌ XML documentation from docstrings
+31. ✅ XML documentation from docstrings (partial)
 32. ❌ Code optimization (constant folding, etc.)
-33. ❌ Pretty formatting
+33. ✅ Pretty formatting (via Roslyn NormalizeWhitespace)
 34. ❌ Error recovery
 35. ❌ Source maps (debugging)
 
-**Summary**: 15 of 21 P0 features complete (71%), 8 of 9 P1 features complete (89%)
+**Summary**: 21 of 21 P0 features complete (100%), 8 of 9 P1 features complete (89%)
 
 ---
 
