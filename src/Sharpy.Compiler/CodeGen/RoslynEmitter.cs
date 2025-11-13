@@ -316,8 +316,8 @@ public class RoslynEmitter
 
     private InterfaceDeclarationSyntax GenerateInterfaceDeclaration(InterfaceDef interfaceDef)
     {
-        // Transform interface name
-        var interfaceName = NameMangler.Transform(interfaceDef.Name, NameContext.Type);
+        // Transform interface name using Interface context to preserve I prefix pattern
+        var interfaceName = NameMangler.Transform(interfaceDef.Name, NameContext.Interface);
 
         // Interfaces are always public by default
         var modifiers = TokenList(Token(SyntaxKind.PublicKeyword));
