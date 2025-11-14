@@ -972,10 +972,10 @@ The following are explicitly **deferred** to later versions:
      - Proper handling of multi-level namespaces
    - Updated CodeGenContext (~1 line)
      - Added SourceFilePath property for namespace generation
-   - Created comprehensive test suite (12 new tests, all passing)
+   - Created comprehensive test suite (13 new tests, all passing)
 
 2. **Test Infrastructure**
-   - Created RoslynEmitterModuleTests.cs (12 tests)
+   - Created RoslynEmitterModuleTests.cs (13 tests)
    - All tests passing: namespace generation, imports, module organization
 
 ### Files Modified
