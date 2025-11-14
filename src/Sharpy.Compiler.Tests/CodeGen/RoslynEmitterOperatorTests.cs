@@ -401,4 +401,113 @@ public class RoslynEmitterOperatorTests
         Assert.Contains("public static bool operator ==(Number left", code);
         Assert.Contains("public override bool Equals(object", code);
     }
+
+    [Fact]
+    public void GenerateClass_WithAddOperator_GeneratesMethodAndOperator()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "Vector",
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "__add__",
+                    Parameters = new List<Parameter>
+                    {
+                        new() { Name = "self", Type = null },
+                        new() { Name = "other", Type = new TypeAnnotation { Name = "Vector" } }
+                    },
+                    ReturnType = new TypeAnnotation { Name = "Vector" },
+                    Body = new List<Statement>
+                    {
+                        new ReturnStatement { Value = new Identifier { Name = "self" } }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert - should have both the method and the operator
+        Assert.Contains("public Vector Add(Vector other)", code);
+        Assert.Contains("public static Vector operator +(Vector left, Vector right)", code);
+        Assert.Contains("left.Add(right)", code);
+    }
+
+    [Fact]
+    public void GenerateClass_WithEqOnly_GeneratesComplementaryNotEquals()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "Point",
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "__eq__",
+                    Parameters = new List<Parameter>
+                    {
+                        new() { Name = "self", Type = null },
+                        new() { Name = "other", Type = new TypeAnnotation { Name = "object" } }
+                    },
+                    ReturnType = new TypeAnnotation { Name = "bool" },
+                    Body = new List<Statement>
+                    {
+                        new ReturnStatement { Value = new BooleanLiteral { Value = true } }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert - should have both operator == and complementary operator !=
+        Assert.Contains("public static bool operator ==(Point left", code);
+        Assert.Contains("public static bool operator !=(Point left", code);
+    }
+
+    [Fact]
+    public void GenerateClass_WithNeOnly_GeneratesComplementaryEquals()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "Point",
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "__ne__",
+                    Parameters = new List<Parameter>
+                    {
+                        new() { Name = "self", Type = null },
+                        new() { Name = "other", Type = new TypeAnnotation { Name = "Point" } }
+                    },
+                    ReturnType = new TypeAnnotation { Name = "bool" },
+                    Body = new List<Statement>
+                    {
+                        new ReturnStatement { Value = new BooleanLiteral { Value = false } }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert - should have both operator != and complementary operator ==
+        Assert.Contains("public static bool operator !=(Point left", code);
+        Assert.Contains("public static bool operator ==(Point left", code);
+    }
 }

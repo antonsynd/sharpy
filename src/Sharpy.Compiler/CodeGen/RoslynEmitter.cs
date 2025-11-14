@@ -653,6 +653,16 @@ public class RoslynEmitter
         members.AddRange(fieldMembers);
 
         // Second pass: generate methods, constructors, and operator overloads
+        // Track which dunder methods are present for complementary operator generation
+        var dunders = new HashSet<string>();
+        foreach (var stmt in body)
+        {
+            if (stmt is FunctionDef fd && NameMangler.IsDunderMethod(fd.Name))
+            {
+                dunders.Add(fd.Name);
+            }
+        }
+        
         foreach (var stmt in body)
         {
             switch (stmt)
@@ -667,17 +677,14 @@ public class RoslynEmitter
                     // Check if this is a dunder method that needs operator synthesis
                     else if (NameMangler.IsDunderMethod(funcDef.Name))
                     {
-                        // Try to generate operator overload
+                        // Always generate the dunder method itself first
+                        members.Add(GenerateClassMethod(funcDef));
+                        
+                        // Then try to generate operator overload that delegates to the dunder method
                         var operatorMember = TryGenerateOperatorOverload(funcDef, className);
                         if (operatorMember != null)
                         {
                             members.Add(operatorMember);
-                        }
-                        
-                        // Also generate the method itself for special methods like __str__, __eq__, etc.
-                        if (ShouldGenerateMethodForDunder(funcDef.Name))
-                        {
-                            members.Add(GenerateClassMethod(funcDef));
                         }
                     }
                     else
@@ -702,6 +709,18 @@ public class RoslynEmitter
                     // Ignore other statements for now
                     break;
             }
+        }
+        
+        // Generate complementary operators for C# requirements
+        // If __eq__ is defined but not __ne__, generate operator !=
+        if (dunders.Contains("__eq__") && !dunders.Contains("__ne__"))
+        {
+            members.Add(GenerateComplementaryNotEqualsOperator(className));
+        }
+        // If __ne__ is defined but not __eq__, generate operator ==
+        if (dunders.Contains("__ne__") && !dunders.Contains("__eq__"))
+        {
+            members.Add(GenerateComplementaryEqualsOperator(className));
         }
 
         return members;
@@ -1905,8 +1924,9 @@ public class RoslynEmitter
         var param2 = Parameter(Identifier("right"))
             .WithType(param2Type);
 
-        // Generate body - call the dunder method on left operand
-        var methodName = NameMangler.GetDunderMethodMapping(funcDef.Name) ?? funcDef.Name;
+        // Generate body - call the actual dunder method on left operand
+        // Use the transformed dunder name (e.g., __add__ -> Add)
+        var methodName = NameMangler.Transform(funcDef.Name, NameContext.Method);
         var invocation = InvocationExpression(
             MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
@@ -1951,8 +1971,8 @@ public class RoslynEmitter
         var param2 = Parameter(Identifier("right"))
             .WithType(param2Type);
 
-        // Generate body - call the dunder method on left operand
-        var methodName = NameMangler.GetDunderMethodMapping(funcDef.Name) ?? funcDef.Name;
+        // Generate body - call the actual dunder method on left operand
+        var methodName = NameMangler.Transform(funcDef.Name, NameContext.Method);
         var invocation = InvocationExpression(
             MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
@@ -1984,8 +2004,8 @@ public class RoslynEmitter
         var param = Parameter(Identifier("value"))
             .WithType(IdentifierName(className));
 
-        // Generate body - call the dunder method on the operand
-        var methodName = NameMangler.GetDunderMethodMapping(funcDef.Name) ?? funcDef.Name;
+        // Generate body - call the actual dunder method on the operand
+        var methodName = NameMangler.Transform(funcDef.Name, NameContext.Method);
         var invocation = InvocationExpression(
             MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
@@ -1998,6 +2018,60 @@ public class RoslynEmitter
         return OperatorDeclaration(returnType, Token(operatorToken))
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
             .WithParameterList(ParameterList(SingletonSeparatedList(param)))
+            .WithBody(body);
+    }
+    
+    /// <summary>
+    /// Generate complementary operator == when only __ne__ is defined
+    /// </summary>
+    private OperatorDeclarationSyntax GenerateComplementaryEqualsOperator(string className)
+    {
+        var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
+        
+        var param1 = Parameter(Identifier("left"))
+            .WithType(IdentifierName(className));
+        var param2 = Parameter(Identifier("right"))
+            .WithType(IdentifierName(className));
+        
+        // operator == returns !(left != right)
+        var body = Block(ReturnStatement(
+            PrefixUnaryExpression(
+                SyntaxKind.LogicalNotExpression,
+                BinaryExpression(
+                    SyntaxKind.NotEqualsExpression,
+                    IdentifierName("left"),
+                    IdentifierName("right")))));
+        
+        return OperatorDeclaration(returnType, Token(SyntaxKind.EqualsEqualsToken))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(new[] { param1, param2 })))
+            .WithBody(body);
+    }
+    
+    /// <summary>
+    /// Generate complementary operator != when only __eq__ is defined
+    /// </summary>
+    private OperatorDeclarationSyntax GenerateComplementaryNotEqualsOperator(string className)
+    {
+        var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
+        
+        var param1 = Parameter(Identifier("left"))
+            .WithType(IdentifierName(className));
+        var param2 = Parameter(Identifier("right"))
+            .WithType(IdentifierName(className));
+        
+        // operator != returns !(left == right)
+        var body = Block(ReturnStatement(
+            PrefixUnaryExpression(
+                SyntaxKind.LogicalNotExpression,
+                BinaryExpression(
+                    SyntaxKind.EqualsExpression,
+                    IdentifierName("left"),
+                    IdentifierName("right")))));
+        
+        return OperatorDeclaration(returnType, Token(SyntaxKind.ExclamationEqualsToken))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(new[] { param1, param2 })))
             .WithBody(body);
     }
 }
