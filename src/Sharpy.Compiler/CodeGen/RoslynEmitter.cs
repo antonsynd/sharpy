@@ -189,7 +189,11 @@ public class RoslynEmitter
 
         // Handle literal names (backtick-escaped)
         if (name.StartsWith("`") && name.EndsWith("`"))
+        {
+            if (name.Length <= 2)
+                return name;
             return name[1..^1];
+        }
 
         // Special cases for common .NET namespace acronyms
         // These should be all uppercase instead of PascalCase
