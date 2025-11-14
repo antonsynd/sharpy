@@ -677,10 +677,12 @@ public class RoslynEmitter
                     // Check if this is a dunder method that needs operator synthesis
                     else if (NameMangler.IsDunderMethod(funcDef.Name))
                     {
-                        // Always generate the dunder method itself first
+                        // Dunder methods that map to C# overrides should use the override name
+                        // Other dunder methods should preserve their dunder name (e.g., __add__ -> __Add__)
+                        // to avoid conflicts with user-defined methods
                         members.Add(GenerateClassMethod(funcDef));
                         
-                        // Then try to generate operator overload that delegates to the dunder method
+                        // Then try to generate operator overload
                         var operatorMember = TryGenerateOperatorOverload(funcDef, className);
                         if (operatorMember != null)
                         {
@@ -1828,23 +1830,26 @@ public class RoslynEmitter
     }
 
     /// <summary>
-    /// Determines if a dunder method should also generate the method itself (not just operator)
+    /// Determines if a dunder method should generate a C# method (for overrides or special methods)
+    /// Most dunder methods should NOT generate methods to avoid conflicts with user-defined methods
     /// </summary>
-    private bool ShouldGenerateMethodForDunder(string dunderName)
+    private bool ShouldGenerateDunderMethod(string dunderName)
     {
-        // These dunder methods should generate the method in addition to any operator
+        // Only generate methods for dunder methods that map to C# overrides or special constructs
         return dunderName switch
         {
             "__str__" => true,     // ToString() override
-            "__repr__" => true,    // ToString() override
+            "__repr__" => true,    // ToString() override  
             "__eq__" => true,      // Equals() override
             "__hash__" => true,    // GetHashCode() override
-            "__bool__" => true,    // ToBoolean() method
-            "__len__" => true,     // Length property/method
-            "__contains__" => true, // Contains() method
-            "__getitem__" => true, // Indexer get
-            "__setitem__" => true, // Indexer set
-            "__iter__" => true,    // GetEnumerator()
+            "__bool__" => true,    // ToBoolean() method (no operator equivalent)
+            "__len__" => true,     // Length property/method (no operator equivalent)
+            "__contains__" => true, // Contains() method (no operator equivalent)
+            "__getitem__" => true, // Indexer get (no operator equivalent)
+            "__setitem__" => true, // Indexer set (no operator equivalent)
+            "__iter__" => true,    // GetEnumerator() (no operator equivalent)
+            // Arithmetic and comparison operators should NOT generate methods
+            // They only generate operators that inline the dunder method body
             _ => false
         };
     }

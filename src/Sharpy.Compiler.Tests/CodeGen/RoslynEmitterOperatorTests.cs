@@ -433,10 +433,10 @@ public class RoslynEmitterOperatorTests
         var compilationUnit = _emitter.GenerateCompilationUnit(module);
         var code = compilationUnit.NormalizeWhitespace().ToFullString();
 
-        // Assert - should have both the method and the operator
-        Assert.Contains("public Vector Add(Vector other)", code);
+        // Assert - should have both the dunder method and the operator
+        Assert.Contains("public Vector __Add__(Vector other)", code);
         Assert.Contains("public static Vector operator +(Vector left, Vector right)", code);
-        Assert.Contains("left.Add(right)", code);
+        Assert.Contains("left.__Add__(right)", code);
     }
 
     [Fact]

@@ -25,36 +25,24 @@ public static class NameMangler
     };
 
     // Dunder method name mappings to C# equivalents
+    // Only map dunder methods that have C# override equivalents or special constructs
+    // Operator-related dunder methods should preserve their dunder name
     private static readonly Dictionary<string, string> _dunderMethodMap = new()
     {
         { "__init__", "Constructor" },  // Special handling needed
         { "__str__", "ToString" },
         { "__repr__", "ToString" },
         { "__eq__", "Equals" },
-        { "__ne__", "NotEquals" },
-        { "__lt__", "LessThan" },
-        { "__le__", "LessThanOrEquals" },
-        { "__gt__", "GreaterThan" },
-        { "__ge__", "GreaterThanOrEquals" },
-        { "__add__", "Add" },
-        { "__sub__", "Subtract" },
-        { "__mul__", "Multiply" },
-        { "__div__", "Divide" },
-        { "__mod__", "Modulo" },
-        { "__pow__", "Power" },
-        { "__and__", "BitwiseAnd" },
-        { "__or__", "BitwiseOr" },
-        { "__xor__", "BitwiseXor" },
-        { "__invert__", "BitwiseNot" },
-        { "__lshift__", "LeftShift" },
-        { "__rshift__", "RightShift" },
-        { "__getitem__", "GetItem" },
-        { "__setitem__", "SetItem" },
-        { "__len__", "Length" },
-        { "__contains__", "Contains" },
-        { "__iter__", "GetEnumerator" },
         { "__hash__", "GetHashCode" },
-        { "__bool__", "ToBoolean" },
+        { "__getitem__", "GetItem" },  // For indexer properties
+        { "__setitem__", "SetItem" },  // For indexer properties
+        { "__len__", "Length" },  // For Length property
+        { "__contains__", "Contains" },  // For Contains method
+        { "__iter__", "GetEnumerator" },  // For IEnumerable
+        { "__bool__", "ToBoolean" },  // For explicit boolean conversion
+        // Operator dunder methods are NOT in this map - they preserve their dunder name
+        // e.g., __add__ becomes __Add__, __sub__ becomes __Sub__, etc.
+        // This avoids conflicts with user-defined Add(), Sub(), etc. methods
     };
 
     /// <summary>
@@ -75,8 +63,11 @@ public static class NameMangler
             if (_dunderMethodMap.TryGetValue(name, out var mapped))
                 return mapped;
 
-            // Unknown dunder method - keep as-is
-            return name;
+            // Unknown dunder method - preserve dunder but capitalize the middle part
+            // e.g., __add__ -> __Add__, __custom_method__ -> __CustomMethod__
+            var middle = name[2..^2]; // Remove leading and trailing __
+            var capitalizedMiddle = string.Join("", middle.Split('_').Select(Capitalize));
+            return $"__{capitalizedMiddle}__";
         }
 
         // Handle private names (single underscore prefix)
