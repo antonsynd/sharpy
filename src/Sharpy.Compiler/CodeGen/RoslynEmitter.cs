@@ -662,7 +662,7 @@ public class RoslynEmitter
                 dunders.Add(fd.Name);
             }
         }
-        
+
         foreach (var stmt in body)
         {
             switch (stmt)
@@ -681,7 +681,7 @@ public class RoslynEmitter
                         // Other dunder methods should preserve their dunder name (e.g., __add__ -> __Add__)
                         // to avoid conflicts with user-defined methods
                         members.Add(GenerateClassMethod(funcDef));
-                        
+
                         // Then try to generate operator overload
                         var operatorMember = TryGenerateOperatorOverload(funcDef, className);
                         if (operatorMember != null)
@@ -712,7 +712,7 @@ public class RoslynEmitter
                     break;
             }
         }
-        
+
         // Generate complementary operators for C# requirements
         // If __eq__ is defined but not __ne__, generate operator !=
         if (dunders.Contains("__eq__") && !dunders.Contains("__ne__"))
@@ -827,7 +827,7 @@ public class RoslynEmitter
         TypeSyntax returnType = func.ReturnType != null
             ? _typeMapper.MapType(func.ReturnType)
             : PredefinedType(Token(SyntaxKind.VoidKeyword));
-        
+
         // Special handling for known override methods
         if (func.Name == "__str__" || func.Name == "__repr__")
         {
@@ -847,10 +847,10 @@ public class RoslynEmitter
 
         // Process decorators to determine modifiers
         var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
-        
+
         // Add override keyword for methods that override Object methods
         // Add override keyword for methods that override Object methods, if not already present
-        if ((func.Name == "__str__" || func.Name == "__repr__" || 
+        if ((func.Name == "__str__" || func.Name == "__repr__" ||
             func.Name == "__eq__" || func.Name == "__hash__") &&
             !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword)))
         {
@@ -864,7 +864,7 @@ public class RoslynEmitter
                 !string.Equals(p.Name, "cls", StringComparison.OrdinalIgnoreCase))
             .Select(GenerateParameter)
             .ToArray();
-        
+
         // Special handling for Equals() - parameter should be object type
         if (func.Name == "__eq__" && parameters.Length > 0)
         {
@@ -1867,14 +1867,14 @@ public class RoslynEmitter
             "__mul__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.AsteriskToken),
             "__div__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.SlashToken),
             "__mod__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.PercentToken),
-            
+
             // Bitwise operators (binary)
             "__and__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.AmpersandToken),
             "__or__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.BarToken),
             "__xor__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.CaretToken),
             "__lshift__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.LessThanLessThanToken),
             "__rshift__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.GreaterThanGreaterThanToken),
-            
+
             // Comparison operators (binary)
             "__eq__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.EqualsEqualsToken),
             "__ne__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.ExclamationEqualsToken),
@@ -1882,17 +1882,17 @@ public class RoslynEmitter
             "__le__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.LessThanEqualsToken),
             "__gt__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.GreaterThanToken),
             "__ge__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.GreaterThanEqualsToken),
-            
+
             // Unary operators
             "__neg__" => GenerateUnaryOperator(funcDef, className, SyntaxKind.MinusToken),
             "__pos__" => GenerateUnaryOperator(funcDef, className, SyntaxKind.PlusToken),
             "__invert__" => GenerateUnaryOperator(funcDef, className, SyntaxKind.TildeToken),
-            
+
             // Not supported as operators (handled as methods)
             "__pow__" => null,     // No ** operator in C#, use Math.Pow
             "__getitem__" => null, // Requires indexer syntax, not operator
             "__setitem__" => null, // Requires indexer syntax, not operator
-            
+
             _ => null
         };
     }
@@ -1907,7 +1907,7 @@ public class RoslynEmitter
         var otherParam = funcDef.Parameters
             .Where(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase))
             .FirstOrDefault();
-        
+
         if (otherParam == null)
         {
             throw new InvalidOperationException($"Binary operator {funcDef.Name} must have at least 2 parameters");
@@ -1921,11 +1921,11 @@ public class RoslynEmitter
         // Generate parameter for the operator
         var param1 = Parameter(Identifier("left"))
             .WithType(IdentifierName(className));
-        
+
         var param2Type = otherParam.Type != null
             ? _typeMapper.MapType(otherParam.Type)
             : IdentifierName(className);
-        
+
         var param2 = Parameter(Identifier("right"))
             .WithType(param2Type);
 
@@ -1956,7 +1956,7 @@ public class RoslynEmitter
         var otherParam = funcDef.Parameters
             .Where(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase))
             .FirstOrDefault();
-        
+
         if (otherParam == null)
         {
             throw new InvalidOperationException($"Comparison operator {funcDef.Name} must have at least 2 parameters");
@@ -1968,11 +1968,11 @@ public class RoslynEmitter
         // Generate parameters
         var param1 = Parameter(Identifier("left"))
             .WithType(IdentifierName(className));
-        
+
         var param2Type = otherParam.Type != null
             ? _typeMapper.MapType(otherParam.Type)
             : IdentifierName(className);
-        
+
         var param2 = Parameter(Identifier("right"))
             .WithType(param2Type);
 
@@ -1999,7 +1999,7 @@ public class RoslynEmitter
     private OperatorDeclarationSyntax GenerateUnaryOperator(FunctionDef funcDef, string className, SyntaxKind operatorToken)
     {
         // Unary operators should have only 1 parameter: self
-        
+
         // Determine return type - default to class type if not specified
         var returnType = funcDef.ReturnType != null
             ? _typeMapper.MapType(funcDef.ReturnType)
@@ -2025,19 +2025,19 @@ public class RoslynEmitter
             .WithParameterList(ParameterList(SingletonSeparatedList(param)))
             .WithBody(body);
     }
-    
+
     /// <summary>
     /// Generate complementary operator == when only __ne__ is defined
     /// </summary>
     private OperatorDeclarationSyntax GenerateComplementaryEqualsOperator(string className)
     {
         var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
-        
+
         var param1 = Parameter(Identifier("left"))
             .WithType(IdentifierName(className));
         var param2 = Parameter(Identifier("right"))
             .WithType(IdentifierName(className));
-        
+
         // operator == returns !(left != right)
         var body = Block(ReturnStatement(
             PrefixUnaryExpression(
@@ -2046,25 +2046,25 @@ public class RoslynEmitter
                     SyntaxKind.NotEqualsExpression,
                     IdentifierName("left"),
                     IdentifierName("right")))));
-        
+
         return OperatorDeclaration(returnType, Token(SyntaxKind.EqualsEqualsToken))
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
             .WithParameterList(ParameterList(SeparatedList(new[] { param1, param2 })))
             .WithBody(body);
     }
-    
+
     /// <summary>
     /// Generate complementary operator != when only __eq__ is defined
     /// </summary>
     private OperatorDeclarationSyntax GenerateComplementaryNotEqualsOperator(string className)
     {
         var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
-        
+
         var param1 = Parameter(Identifier("left"))
             .WithType(IdentifierName(className));
         var param2 = Parameter(Identifier("right"))
             .WithType(IdentifierName(className));
-        
+
         // operator != returns !(left == right)
         var body = Block(ReturnStatement(
             PrefixUnaryExpression(
@@ -2073,7 +2073,7 @@ public class RoslynEmitter
                     SyntaxKind.EqualsExpression,
                     IdentifierName("left"),
                     IdentifierName("right")))));
-        
+
         return OperatorDeclaration(returnType, Token(SyntaxKind.ExclamationEqualsToken))
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
             .WithParameterList(ParameterList(SeparatedList(new[] { param1, param2 })))
