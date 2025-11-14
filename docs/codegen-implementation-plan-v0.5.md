@@ -986,7 +986,7 @@ The following are explicitly **deferred** to later versions:
   - Added module name conversion utilities
 - `src/Sharpy.Compiler/CodeGen/CodeGenContext.cs` (~1 line added)
   - Added SourceFilePath property
-- `src/Sharpy.Compiler.Tests/CodeGen/RoslynEmitterModuleTests.cs` (new, ~280 lines)
+- `src/Sharpy.Compiler.Tests/CodeGen/RoslynEmitterModuleTests.cs` (new, 387 lines)
   - Comprehensive test coverage for module structure
 
 ### Key Achievements
