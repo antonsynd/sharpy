@@ -1138,7 +1138,7 @@ The code generator has achieved 85% completion and is functionally ready for v0.
 1. **Membership Operators**: Use `__Contains__` method from Sharpy.Runtime.IContainer interface
 2. **Identity Operators**: Use `object.ReferenceEquals` for general case
 3. **Identity Optimization**: Direct null checks for `is None` and `is not None` patterns
-4. **Constructor Field Names**: Use direct PascalCase transformation without NameMangler uniqueness tracking to avoid conflicts
+4. **Constructor Field Names**: Always use `NameMangler.Transform(varDecl.Name, NameContext.Type)` for field name references in constructors to ensure consistency with field generation and avoid mismatches.
 5. **Constructor Parameter Names**: Map parameters correctly using NameMangler.Transform result from parameter generation
 
 ### Remaining Work for v0.5
