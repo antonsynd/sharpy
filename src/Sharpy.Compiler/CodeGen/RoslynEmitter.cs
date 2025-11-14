@@ -828,14 +828,12 @@ public class RoslynEmitter
         var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
         
         // Add override keyword for methods that override Object methods
-        if (func.Name == "__str__" || func.Name == "__repr__" || 
-            func.Name == "__eq__" || func.Name == "__hash__")
+        // Add override keyword for methods that override Object methods, if not already present
+        if ((func.Name == "__str__" || func.Name == "__repr__" || 
+            func.Name == "__eq__" || func.Name == "__hash__") &&
+            !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword)))
         {
-            // Check if override is not already present
-            if (!modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword)))
-            {
-                modifiers = modifiers.Add(Token(SyntaxKind.OverrideKeyword));
-            }
+            modifiers = modifiers.Add(Token(SyntaxKind.OverrideKeyword));
         }
 
         // Generate parameters with type annotations, skipping 'self' and 'cls' parameters
