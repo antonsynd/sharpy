@@ -705,24 +705,8 @@ public class RoslynEmitter
                 {
                     // Transform field name to PascalCase for C# property/field access
                     // Use direct case transformation without uniqueness tracking
-                    string fieldName;
-                    if (memberAccess.Member.Contains('_'))
-                    {
-                        // Handle snake_case to PascalCase
-                        fieldName = string.Concat(memberAccess.Member.Split('_')
-                            .Where(part => part.Length > 0)
-                            .Select(part => char.ToUpper(part[0]) + part.Substring(1)));
-                    }
-                    else if (memberAccess.Member.Length > 0)
-                    {
-                        // Simple PascalCase
-                        fieldName = char.ToUpper(memberAccess.Member[0]) + memberAccess.Member.Substring(1);
-                    }
-                    else
-                    {
-                        // Handle empty field name gracefully
-                        fieldName = memberAccess.Member;
-                    }
+                    // Use NameMangler to ensure consistent field naming and handle edge cases
+                    string fieldName = NameMangler.Transform(memberAccess.Member, NameContext.Type);
                     
                     // Generate: this.Field = value;
                     var thisAccess = MemberAccessExpression(
