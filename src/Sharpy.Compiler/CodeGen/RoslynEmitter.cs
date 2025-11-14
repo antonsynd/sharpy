@@ -727,16 +727,9 @@ public class RoslynEmitter
                     string.Equals(id.Name, "self", StringComparison.OrdinalIgnoreCase))
                 {
                     // Look up the field name from the field mapping to ensure consistency
-                    string fieldName;
-                    if (fieldMapping.TryGetValue(memberAccess.Member, out var mappedFieldName))
-                    {
-                        fieldName = mappedFieldName;
-                    }
-                    else
-                    {
-                        // Fallback for fields not in mapping (shouldn't happen in well-formed code)
-                        fieldName = NameMangler.Transform(memberAccess.Member, NameContext.Type);
-                    }
+                    string fieldName = fieldMapping.TryGetValue(memberAccess.Member, out var mappedFieldName)
+                        ? mappedFieldName
+                        : NameMangler.Transform(memberAccess.Member, NameContext.Type);
                     
                     // Generate: this.Field = value;
                     var thisAccess = MemberAccessExpression(
