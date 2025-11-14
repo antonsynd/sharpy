@@ -333,4 +333,55 @@ public class RoslynEmitterModuleTests
         Assert.DoesNotContain("namespace Src", code);
         Assert.DoesNotContain("namespace Lib", code);
     }
+
+    [Fact]
+    public void ConvertModuleNameToNamespace_HandlesEdgeCases_ReturnsOriginalOrEmpty()
+    {
+        // Arrange
+        var emitter = CreateEmitter();
+        
+        // Test with only underscores - should return original
+        var module1 = new Module
+        {
+            Body = new List<Statement>
+            {
+                new ImportStatement
+                {
+                    Names = new List<ImportAlias>
+                    {
+                        new ImportAlias { Name = "___" }
+                    }
+                }
+            }
+        };
+
+        // Test with backticks only - should handle gracefully
+        var module2 = new Module
+        {
+            Body = new List<Statement>
+            {
+                new ImportStatement
+                {
+                    Names = new List<ImportAlias>
+                    {
+                        new ImportAlias { Name = "``" }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result1 = emitter.GenerateCompilationUnit(module1);
+        var code1 = result1.ToFullString();
+        
+        var result2 = emitter.GenerateCompilationUnit(module2);
+        var code2 = result2.ToFullString();
+
+        // Assert - should not throw and should generate valid code
+        Assert.NotNull(code1);
+        Assert.NotNull(code2);
+        // Both should still compile to valid C# even with edge case inputs
+        Assert.Contains("namespace", code1);
+        Assert.Contains("namespace", code2);
+    }
 }

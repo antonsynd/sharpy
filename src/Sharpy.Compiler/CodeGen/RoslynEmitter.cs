@@ -210,6 +210,11 @@ public class RoslynEmitter
 
         // Split by underscore and capitalize each part
         var parts = name.Split('_', StringSplitOptions.RemoveEmptyEntries);
+        
+        // Handle edge case where name is only underscores (e.g., "___")
+        if (parts.Length == 0)
+            return name;
+        
         var result = string.Join("", parts.Select(p =>
             char.ToUpperInvariant(p[0]) + (p.Length > 1 ? p.Substring(1) : "")
         ));
