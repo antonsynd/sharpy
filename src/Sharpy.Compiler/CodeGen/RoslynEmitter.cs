@@ -150,21 +150,11 @@ public class RoslynEmitter
         // Convert module name to namespace
         var namespaceName = ConvertModuleNameToNamespace(fromImport.Module);
 
-        if (fromImport.ImportAll)
-        {
-            // from module import * -> using Module;
-            yield return UsingDirective(ParseName(namespaceName));
-        }
-        else
-        {
-            // For selective imports, we still need the namespace
-            // from module import Name -> using Module;
-            // The specific types will be available through the namespace
-            yield return UsingDirective(ParseName(namespaceName));
-
-            // Note: C# doesn't have direct equivalent to Python's selective imports
-            // All types from the namespace become available
-        }
+        // from module import * -> using Module;
+        // from module import Name -> using Module;
+        // Note: C# doesn't have direct equivalent to Python's selective imports
+        // All types from the namespace become available
+        yield return UsingDirective(ParseName(namespaceName));
     }
 
     private string ConvertModuleNameToNamespace(string moduleName)
@@ -177,7 +167,7 @@ public class RoslynEmitter
         // 1. It tracks unique names which causes "system" to become System, System1, System2, etc.
         // 2. Namespaces should use simple PascalCase without uniqueness tracking
         
-        var parts = moduleName.Split('.');
+        var parts = moduleName.Split('.', StringSplitOptions.RemoveEmptyEntries);
         var convertedParts = parts.Select(part => SimpleToPascalCase(part));
         return string.Join(".", convertedParts);
     }

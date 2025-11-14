@@ -994,7 +994,7 @@ The following are explicitly **deferred** to later versions:
 - ✅ Import statements properly converted to using directives
 - ✅ Namespace generation from file paths working
 - ✅ Module organization with proper separation of imports and code
-- ✅ Test suite now at 744 tests (739 passing, 5 skipped)
+- ✅ Test suite now at 751 tests (739 passing, 12 skipped: 7 integration + 5 semantic)
 - ✅ Overall progress: 80% (5 of 10 phases complete)
 
 ### Technical Decisions Made
