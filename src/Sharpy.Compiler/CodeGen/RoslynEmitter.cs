@@ -19,7 +19,7 @@ public class RoslynEmitter
     // Common .NET namespace acronyms that should be all uppercase
     private static readonly HashSet<string> UpperCaseAcronyms = new(StringComparer.OrdinalIgnoreCase)
     {
-        "io", "ui", "xml", "html", "api", "sql", "db", "http", "ftp", 
+        "io", "ui", "xml", "html", "api", "sql", "db", "http", "ftp",
         "smtp", "tcp", "udp", "ip", "uri", "url", "json", "csv", "guid"
     };
 
@@ -169,11 +169,11 @@ public class RoslynEmitter
         // Convert Python module naming to C# namespace naming
         // e.g., "system.io" -> "System.IO"
         // e.g., "my_module.sub_module" -> "MyModule.SubModule"
-        
+
         // Note: We don't use NameMangler.Transform here because:
         // 1. It tracks unique names which causes "system" to become System, System1, System2, etc.
         // 2. Namespaces should use simple PascalCase without uniqueness tracking
-        
+
         var parts = moduleName.Split('.', StringSplitOptions.RemoveEmptyEntries);
         var convertedParts = parts.Select(part => SimpleToPascalCase(part));
         return string.Join(".", convertedParts);
@@ -200,11 +200,11 @@ public class RoslynEmitter
 
         // Split by underscore and capitalize each part
         var parts = name.Split('_', StringSplitOptions.RemoveEmptyEntries);
-        
+
         // Handle edge case where name is only underscores (e.g., "___")
         if (parts.Length == 0)
             return name;
-        
+
         var result = string.Join("", parts.Select(p =>
             char.ToUpperInvariant(p[0]) + (p.Length > 1 ? p[1..] : "")
         ));
@@ -630,25 +630,25 @@ public class RoslynEmitter
     private List<MemberDeclarationSyntax> GenerateClassMembers(List<Statement> body, string className)
     {
         var members = new List<MemberDeclarationSyntax>();
-        
+
         // First pass: generate fields and build a mapping for use in constructor
         var fieldMapping = new Dictionary<string, string>();
         var fieldMembers = new List<MemberDeclarationSyntax>();
-        
+
         foreach (var stmt in body.Where(s => s is VariableDeclaration))
         {
             var varDecl = (VariableDeclaration)stmt;
             // Generate the field and capture the mangled name
             var fieldDecl = GenerateField(varDecl);
             fieldMembers.Add(fieldDecl);
-            
+
             // Extract the field name from the generated declaration
             // The field name is in the VariableDeclarator
             var variable = ((FieldDeclarationSyntax)fieldDecl).Declaration.Variables.First();
             var fieldName = variable.Identifier.Text;
             fieldMapping[varDecl.Name] = fieldName;
         }
-        
+
         // Add field members first
         members.AddRange(fieldMembers);
 
@@ -713,7 +713,7 @@ public class RoslynEmitter
         // In Python __init__, assignments like self.name = name set instance fields
         // In C#, these become this.Name = name in the constructor body
         var bodyStatements = new List<StatementSyntax>();
-        
+
         foreach (var stmt in func.Body)
         {
             // Convert self.field = value to this.Field = value (capitalized)
@@ -728,18 +728,18 @@ public class RoslynEmitter
                     string fieldName = fieldMapping.TryGetValue(memberAccess.Member, out var mappedFieldName)
                         ? mappedFieldName
                         : NameMangler.Transform(memberAccess.Member, NameContext.Type);
-                    
+
                     // Generate: this.Field = value;
                     var thisAccess = MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
                         ThisExpression(),
                         IdentifierName(fieldName));
-                    
+
                     // For the right-hand side, check if it's an identifier that matches a parameter
                     var assignValue = (assign.Value is Identifier valueId && parameterMapping.TryGetValue(valueId.Name, out var mappedName))
                         ? IdentifierName(mappedName)
                         : GenerateExpression(assign.Value);
-                    
+
                     bodyStatements.Add(ExpressionStatement(
                         AssignmentExpression(
                             SyntaxKind.SimpleAssignmentExpression,
