@@ -1243,6 +1243,390 @@ Custom operators like `+=`, `*=` for user types.
 
 ---
 
+---
+
+## Appendix: Extensions vs Wrapper Classes for Pythonic APIs
+
+### Question: Should Sharpy use C# Extensions or Wrapper Classes?
+
+Based on the analysis of C# 14's extension members and Sharpy's current implementation patterns, here's a comprehensive evaluation of both approaches for implementing compiler-intrinsic Pythonic APIs for built-in types like `list`, `set`, `str`, etc.
+
+### Current Sharpy Implementation Strategy
+
+Sharpy currently uses a **hybrid approach**:
+
+1. **Wrapper Classes/Structs** for core collection types:
+   - `List<T>` wraps `System.Collections.Generic.List<T>`
+   - `Str` wraps `System.String` as a readonly struct
+   - `Set<T>` wraps `System.Collections.Generic.HashSet<T>`
+
+2. **Extension Methods** for limited scenarios:
+   - `RangeExtensions` for System.Range
+   - `IndexExtensions` for System.Index
+
+### Recommended Strategy: Hybrid Approach with Extensions for New Features
+
+**Primary Recommendation**: Continue using **wrapper classes/structs** for core types, but leverage **C# 14 Extension Members** for enhanced capabilities.
+
+---
+
+### Analysis: Extensions vs Wrappers
+
+#### Option 1: Extension Members (C# 14)
+
+**Pros:**
+- ✅ **Zero runtime overhead** - Direct access to native .NET types
+- ✅ **No conversion costs** - Seamless interop with .NET libraries
+- ✅ **Extension properties** - Can add Pythonic properties (e.g., `list.is_empty`)
+- ✅ **Grouped extensions** - C# 14 allows organizing related extensions
+- ✅ **Static extensions** - Can add factory methods like `list.from_csv()`
+- ✅ **No object allocation** - For value types, avoids boxing
+
+**Cons:**
+- ❌ **Cannot override behavior** - Can't change existing .NET methods
+- ❌ **Cannot add operators** - Extension methods don't support operator overloading
+- ❌ **No state management** - Cannot add fields to existing types
+- ❌ **Pythonic equality conflicts** - Can't override `==` for value-based equality
+- ❌ **Method resolution complexity** - Python-like methods may clash with .NET methods
+- ❌ **Limited control** - Cannot control construction or internal implementation
+
+**Best Use Cases:**
+- Adding **supplementary** Pythonic methods to .NET types
+- Providing **convenience** properties (e.g., `my_string.is_empty`)
+- Factory methods and static utilities
+- Non-breaking enhancements to existing .NET APIs
+
+#### Option 2: Wrapper Classes/Structs
+
+**Pros:**
+- ✅ **Full control** - Complete ownership of API surface
+- ✅ **Operator overloading** - Can implement Python-like `+`, `*`, `==`, etc.
+- ✅ **Value-based equality** - Override `==` for Pythonic behavior
+- ✅ **Pythonic semantics** - Exact match to Python behavior
+- ✅ **Clear separation** - Sharpy types vs .NET types are distinct
+- ✅ **State management** - Can add internal state for optimization
+- ✅ **Interface implementation** - Implement Sharpy-specific interfaces (`IAddable`, `IHashable`, etc.)
+
+**Cons:**
+- ❌ **Conversion overhead** - Requires wrapping/unwrapping for .NET interop
+- ❌ **Memory allocation** - Additional object allocation (though minimal with structs)
+- ❌ **Interop friction** - Need implicit conversions to/from .NET types
+- ❌ **Maintenance burden** - Must keep wrapper in sync with .NET updates
+- ❌ **API surface duplication** - Reimplementing .NET methods
+
+**Best Use Cases:**
+- Core collection types (`list`, `set`, `dict`)
+- Types requiring Pythonic semantics (value equality, custom operators)
+- Types needing complete API control
+- Types with significant behavioral differences from .NET
+
+---
+
+### Recommendation by Type
+
+#### Core Collection Types: **Wrapper Classes** ✓
+
+**Types:** `list[T]`, `set[T]`, `dict[K,V]`
+
+**Rationale:**
+1. **Pythonic Operators**: Need `+` for concatenation, `*` for repetition
+2. **Value Equality**: Python lists compare by value, not reference
+3. **Custom Methods**: Python's `append()`, `extend()`, `pop()`, etc.
+4. **Interface Compliance**: Implement Sharpy-specific interfaces
+
+**Current Implementation (Keep):**
+```csharp
+public sealed partial class List<T> : 
+    Object,
+    IMutableSequence<List<T>, T>,
+    IAddable<List<T>>,
+    IMultipliable<List<T>, int>
+{
+    private System.Collections.Generic.List<T> _list;
+    
+    // Pythonic operators
+    public static List<T> operator +(List<T> left, List<T> right) { ... }
+    public static List<T> operator *(List<T> left, int right) { ... }
+    
+    // Pythonic methods
+    public void append(T item) => _list.Add(item);
+    public T pop(int index = -1) { ... }
+}
+```
+
+**Enhancement with C# 14 Extensions:**
+```python
+# Add supplementary Pythonic properties via extensions
+extension List[T]:
+    @property
+    def is_empty(self) -> bool:
+        return len(self) == 0
+    
+    @staticmethod
+    def filled(value: T, count: int) -> List[T]:
+        return List[T](value for _ in range(count))
+```
+
+---
+
+#### String Type: **Wrapper Struct** ✓
+
+**Type:** `str`
+
+**Rationale:**
+1. **Value Semantics**: Strings should be value types (immutable)
+2. **Pythonic Methods**: `str.upper()`, `str.split()`, `str.strip()`, etc.
+3. **Zero-Cost Abstraction**: Struct with implicit conversions
+4. **No Conversion Overhead**: Direct passthrough to System.String
+
+**Current Implementation (Keep):**
+```csharp
+public readonly partial struct Str
+{
+    private readonly string _s;
+    
+    // Implicit conversions
+    public static implicit operator Str(string value) => new Str(value);
+    public static implicit operator string(Str value) => value._s;
+    
+    // Pythonic methods
+    public Str upper() => _s.ToUpper();
+    public List<Str> split(Str? sep = null) { ... }
+}
+```
+
+**Enhancement with C# 14 Extensions:**
+```python
+# Add Python 3.9+ string methods via extensions
+extension Str:
+    def removeprefix(self, prefix: str) -> str:
+        # C# 14 extension property
+        pass
+    
+    def removesuffix(self, suffix: str) -> str:
+        pass
+```
+
+---
+
+#### Numeric Types: **Extensions Only** ✓
+
+**Types:** `int`, `double`, `float`, etc.
+
+**Rationale:**
+1. **Performance Critical**: Zero conversion overhead
+2. **Direct .NET Interop**: Native numeric types
+3. **No Custom Behavior Needed**: Standard arithmetic
+4. **Extension Methods Sufficient**: Add utility methods only
+
+**Recommendation:**
+```python
+# Use C# 14 extensions for Pythonic utilities
+extension int:
+    def bit_length(self) -> int:
+        # Returns number of bits needed to represent the integer
+        pass
+    
+    def to_bytes(self, length: int, byteorder: str) -> bytes:
+        pass
+
+extension double:
+    def is_integer(self) -> bool:
+        return self == floor(self)
+```
+
+---
+
+#### Complex Number Type: **Wrapper Struct** ✓
+
+**Type:** `complex`
+
+**Rationale:**
+1. **Pythonic Properties**: `real`, `imag` (not `Real`, `Imaginary`)
+2. **Custom Methods**: `conjugate()` as instance method
+3. **Value Semantics**: Natural for complex numbers
+4. **Minimal Overhead**: Struct with implicit conversion to/from `System.Numerics.Complex`
+
+**From builtins.md (Keep Current Approach):**
+```csharp
+public readonly struct Complex
+{
+    private readonly System.Numerics.Complex _value;
+    
+    // Pythonic property aliases
+    public double real => _value.Real;
+    public double imag => _value.Imaginary;
+    
+    // Instance method (not static)
+    public Complex conjugate() => System.Numerics.Complex.Conjugate(_value);
+    
+    // Implicit conversions
+    public static implicit operator Complex(System.Numerics.Complex c) => new Complex(c);
+    public static implicit operator System.Numerics.Complex(Complex c) => c._value;
+}
+```
+
+---
+
+#### Range and Slice Types: **Extensions Only** ✓
+
+**Types:** `range`, `slice`
+
+**Rationale:**
+1. **Utility Types**: Primarily for iteration and indexing
+2. **Performance**: Avoid allocation
+3. **Limited API Surface**: Few methods needed
+
+**Current Implementation (Keep):**
+```csharp
+// Extensions for System.Range and custom Slice
+public static class RangeExtensions
+{
+    public static Slice ToSlice(this System.Range range, uint max, bool forInsertion)
+    {
+        // Convert Range to Sharpy Slice
+    }
+}
+```
+
+---
+
+### Hybrid Strategy for Future Types
+
+For **new types** being added to Sharpy, use this decision tree:
+
+```
+Does the type need custom operators (+, *, ==, etc.)?
+├─ YES → Wrapper Class/Struct
+└─ NO → Extensions possible
+    │
+    ├─ Does it need value-based equality?
+    │  ├─ YES → Wrapper Struct
+    │  └─ NO → Continue
+    │
+    ├─ Does it need significant API differences from .NET?
+    │  ├─ YES → Wrapper Class/Struct
+    │  └─ NO → Extensions
+    │
+    └─ Is it a performance-critical primitive?
+       ├─ YES → Extensions (zero overhead)
+       └─ NO → Wrapper if Pythonic semantics needed
+```
+
+---
+
+### C# 14 Extension Members: New Opportunities
+
+C# 14's extension members unlock new capabilities that complement wrapper classes:
+
+#### 1. **Extension Properties** (Previously Impossible)
+
+```python
+# Add Pythonic properties to existing wrappers
+extension List[T]:
+    @property
+    def is_empty(self) -> bool:
+        return self.count == 0
+    
+    @property
+    def first(self) -> T?:
+        return self[0] if len(self) > 0 else None
+    
+    @property
+    def last(self) -> T?:
+        return self[-1] if len(self) > 0 else None
+```
+
+#### 2. **Static Extension Methods** (Factory Patterns)
+
+```python
+# Factory methods as static extensions
+extension List[T]:
+    @staticmethod
+    def filled(value: T, count: int) -> List[T]:
+        return List[T](value for _ in range(count))
+    
+    @staticmethod
+    def from_csv(csv: str) -> List[str]:
+        return List[str](csv.split(','))
+```
+
+#### 3. **Grouped Extensions** (Organization)
+
+```python
+# Group related extensions together
+extension Str:
+    # String validation properties
+    @property
+    def is_numeric(self) -> bool:
+        return self.isnumeric()
+    
+    @property
+    def is_alpha(self) -> bool:
+        return self.isalpha()
+    
+    # String transformation methods
+    def capitalize_words(self) -> str:
+        return ' '.join(word.capitalize() for word in self.split())
+```
+
+---
+
+### Practical Implementation Guide
+
+#### For Core Types (list, set, dict, str):
+
+1. **Keep wrapper classes** - They provide essential Pythonic semantics
+2. **Add extension properties** - Enhance with convenient properties
+3. **Add static extensions** - Factory methods and utilities
+4. **Maintain implicit conversions** - Seamless .NET interop
+
+#### For Numeric Types (int, double, float):
+
+1. **Use extensions only** - Performance is critical
+2. **Add Pythonic utility methods** - `bit_length()`, `is_integer()`, etc.
+3. **No wrapping** - Direct .NET type usage
+
+#### For New Types:
+
+1. **Evaluate using decision tree** above
+2. **Prefer wrappers** for Pythonic semantics
+3. **Use extensions** for supplementary features
+4. **Consider performance** vs API control tradeoffs
+
+---
+
+### Conclusion: Best of Both Worlds
+
+**Primary Strategy**: **Wrapper classes/structs** for core types with **C# 14 extension members** for enhancement.
+
+**Key Insights:**
+1. **Wrappers are essential** for types requiring Pythonic operators, value equality, or custom semantics
+2. **Extensions are perfect** for supplementary features, properties, and utilities
+3. **C# 14 extensions unlock** new capabilities (properties, static methods) that complement wrappers
+4. **Hybrid approach** provides both Pythonic semantics AND zero-cost enhancements
+
+**Implementation Priority:**
+
+**Phase 1 (v1.0)**: Maintain current wrapper approach
+- Core types (`list`, `set`, `dict`, `str`) as wrappers
+- Keep implicit conversions for .NET interop
+- Add Pythonic operators and methods
+
+**Phase 2 (v1.0-v1.5)**: Add C# 14 extension members
+- Extension properties for convenience (`.is_empty`, `.first`, `.last`)
+- Static extension methods for factories
+- Grouped extensions for organization
+
+**Phase 3 (v1.5+)**: Optimize with extensions where possible
+- Performance-critical paths
+- Supplementary utilities
+- .NET library enhancements
+
+This hybrid strategy leverages the best of both approaches: wrapper classes provide Pythonic semantics and full API control, while C# 14 extension members add convenient properties and utilities without overhead.
+
+---
+
 ## Conclusion
 
 C# 9-14 introduces many features that align beautifully with Sharpy's Pythonic philosophy. The highest-value features for Sharpy are:
