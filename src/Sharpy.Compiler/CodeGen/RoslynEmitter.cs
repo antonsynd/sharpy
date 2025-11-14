@@ -630,7 +630,31 @@ public class RoslynEmitter
     private List<MemberDeclarationSyntax> GenerateClassMembers(List<Statement> body, string className)
     {
         var members = new List<MemberDeclarationSyntax>();
+        
+        // First pass: generate fields and build a mapping for use in constructor
+        var fieldMapping = new Dictionary<string, string>();
+        var fieldMembers = new List<MemberDeclarationSyntax>();
+        
+        foreach (var stmt in body)
+        {
+            if (stmt is VariableDeclaration varDecl)
+            {
+                // Generate the field and capture the mangled name
+                var fieldDecl = GenerateField(varDecl);
+                fieldMembers.Add(fieldDecl);
+                
+                // Extract the field name from the generated declaration
+                // The field name is in the VariableDeclarator
+                var variable = ((FieldDeclarationSyntax)fieldDecl).Declaration.Variables.First();
+                var fieldName = variable.Identifier.Text;
+                fieldMapping[varDecl.Name] = fieldName;
+            }
+        }
+        
+        // Add field members first
+        members.AddRange(fieldMembers);
 
+        // Second pass: generate methods and constructors
         foreach (var stmt in body)
         {
             switch (stmt)
@@ -639,8 +663,8 @@ public class RoslynEmitter
                     // Check if this is a constructor (__init__)
                     if (funcDef.Name == "__init__")
                     {
-                        // Generate constructor
-                        members.Add(GenerateConstructor(funcDef, className));
+                        // Generate constructor with field mapping
+                        members.Add(GenerateConstructor(funcDef, className, fieldMapping));
                     }
                     else
                     {
@@ -648,9 +672,8 @@ public class RoslynEmitter
                     }
                     break;
 
-                case VariableDeclaration varDecl:
-                    // Generate field declaration
-                    members.Add(GenerateField(varDecl));
+                case VariableDeclaration varDecl2:
+                    // Already processed in first pass
                     break;
 
                 case PassStatement:
@@ -670,7 +693,7 @@ public class RoslynEmitter
         return members;
     }
 
-    private ConstructorDeclarationSyntax GenerateConstructor(FunctionDef func, string className)
+    private ConstructorDeclarationSyntax GenerateConstructor(FunctionDef func, string className, Dictionary<string, string> fieldMapping)
     {
         // Process decorators to determine modifiers
         var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
@@ -703,10 +726,17 @@ public class RoslynEmitter
                     memberAccess.Object is Identifier id &&
                     string.Equals(id.Name, "self", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Transform field name to PascalCase for C# property/field access
-                    // Use direct case transformation without uniqueness tracking
-                    // Use NameMangler to ensure consistent field naming and handle edge cases
-                    string fieldName = NameMangler.Transform(memberAccess.Member, NameContext.Type);
+                    // Look up the field name from the field mapping to ensure consistency
+                    string fieldName;
+                    if (fieldMapping.TryGetValue(memberAccess.Member, out var mappedFieldName))
+                    {
+                        fieldName = mappedFieldName;
+                    }
+                    else
+                    {
+                        // Fallback for fields not in mapping (shouldn't happen in well-formed code)
+                        fieldName = NameMangler.Transform(memberAccess.Member, NameContext.Type);
+                    }
                     
                     // Generate: this.Field = value;
                     var thisAccess = MemberAccessExpression(
