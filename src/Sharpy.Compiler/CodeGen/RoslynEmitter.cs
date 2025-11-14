@@ -429,7 +429,7 @@ public class RoslynEmitter
         }
 
         // Generate class members from body
-        var members = GenerateClassMembers(classDef.Body);
+        var members = GenerateClassMembers(classDef.Body, className);
         classDecl = classDecl.WithMembers(List(members));
 
         // Add XML documentation from docstring if present
@@ -473,7 +473,7 @@ public class RoslynEmitter
         }
 
         // Generate struct members from body
-        var members = GenerateClassMembers(structDef.Body);
+        var members = GenerateClassMembers(structDef.Body, structName);
         structDecl = structDecl.WithMembers(List(members));
 
         // Add XML documentation from docstring if present
@@ -627,10 +627,32 @@ public class RoslynEmitter
         return TokenList(tokens);
     }
 
-    private List<MemberDeclarationSyntax> GenerateClassMembers(List<Statement> body)
+    private List<MemberDeclarationSyntax> GenerateClassMembers(List<Statement> body, string className)
     {
         var members = new List<MemberDeclarationSyntax>();
+        
+        // First pass: generate fields and build a mapping for use in constructor
+        var fieldMapping = new Dictionary<string, string>();
+        var fieldMembers = new List<MemberDeclarationSyntax>();
+        
+        foreach (var stmt in body.Where(s => s is VariableDeclaration))
+        {
+            var varDecl = (VariableDeclaration)stmt;
+            // Generate the field and capture the mangled name
+            var fieldDecl = GenerateField(varDecl);
+            fieldMembers.Add(fieldDecl);
+            
+            // Extract the field name from the generated declaration
+            // The field name is in the VariableDeclarator
+            var variable = ((FieldDeclarationSyntax)fieldDecl).Declaration.Variables.First();
+            var fieldName = variable.Identifier.Text;
+            fieldMapping[varDecl.Name] = fieldName;
+        }
+        
+        // Add field members first
+        members.AddRange(fieldMembers);
 
+        // Second pass: generate methods and constructors
         foreach (var stmt in body)
         {
             switch (stmt)
@@ -639,9 +661,8 @@ public class RoslynEmitter
                     // Check if this is a constructor (__init__)
                     if (funcDef.Name == "__init__")
                     {
-                        // TODO: Generate constructor
-                        // For now, generate as a regular method
-                        members.Add(GenerateClassMethod(funcDef));
+                        // Generate constructor with field mapping
+                        members.Add(GenerateConstructor(funcDef, className, fieldMapping));
                     }
                     else
                     {
@@ -649,9 +670,8 @@ public class RoslynEmitter
                     }
                     break;
 
-                case VariableDeclaration varDecl:
-                    // Generate field declaration
-                    members.Add(GenerateField(varDecl));
+                case VariableDeclaration _:
+                    // Already processed in first pass
                     break;
 
                 case PassStatement:
@@ -669,6 +689,94 @@ public class RoslynEmitter
         }
 
         return members;
+    }
+
+    private ConstructorDeclarationSyntax GenerateConstructor(FunctionDef func, string className, Dictionary<string, string> fieldMapping)
+    {
+        // Process decorators to determine modifiers
+        var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
+
+        // Generate parameters with type annotations, skipping 'self' parameter
+        var parameters = func.Parameters
+            .Where(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase))
+            .Select(GenerateParameter)
+            .ToArray();
+
+        // Create a mapping of parameter names (original) to their mangled names
+        var parameterMapping = func.Parameters
+            .Where(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(
+                p => p.Name,
+                p => NameMangler.Transform(p.Name, NameContext.Parameter));
+
+        // Generate constructor body
+        // In Python __init__, assignments like self.name = name set instance fields
+        // In C#, these become this.Name = name in the constructor body
+        var bodyStatements = new List<StatementSyntax>();
+        
+        foreach (var stmt in func.Body)
+        {
+            // Convert self.field = value to this.Field = value (capitalized)
+            if (stmt is Assignment assign)
+            {
+                // Check if this is a self.field assignment
+                if (assign.Target is MemberAccess memberAccess &&
+                    memberAccess.Object is Identifier id &&
+                    string.Equals(id.Name, "self", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Look up the field name from the field mapping to ensure consistency
+                    string fieldName = fieldMapping.TryGetValue(memberAccess.Member, out var mappedFieldName)
+                        ? mappedFieldName
+                        : NameMangler.Transform(memberAccess.Member, NameContext.Type);
+                    
+                    // Generate: this.Field = value;
+                    var thisAccess = MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        ThisExpression(),
+                        IdentifierName(fieldName));
+                    
+                    // For the right-hand side, check if it's an identifier that matches a parameter
+                    var assignValue = (assign.Value is Identifier valueId && parameterMapping.TryGetValue(valueId.Name, out var mappedName))
+                        ? IdentifierName(mappedName)
+                        : GenerateExpression(assign.Value);
+                    
+                    bodyStatements.Add(ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            thisAccess,
+                            assignValue)));
+                }
+                else
+                {
+                    // Other assignments, generate normally
+                    bodyStatements.Add(GenerateBodyStatement(stmt));
+                }
+            }
+            else
+            {
+                // Other statements, generate normally
+                var genStmt = GenerateBodyStatement(stmt);
+                if (genStmt != null)
+                {
+                    bodyStatements.Add(genStmt);
+                }
+            }
+        }
+
+        var body = Block(bodyStatements);
+
+        var constructor = ConstructorDeclaration(className)
+            .WithModifiers(modifiers)
+            .WithParameterList(ParameterList(SeparatedList(parameters)))
+            .WithBody(body);
+
+        // Add XML documentation from docstring if present
+        if (!string.IsNullOrEmpty(func.DocString))
+        {
+            constructor = constructor.WithLeadingTrivia(GenerateXmlDocComment(func.DocString));
+        }
+
+        return constructor;
     }
 
     private MethodDeclarationSyntax GenerateClassMethod(FunctionDef func)
@@ -1286,6 +1394,58 @@ public class RoslynEmitter
                 return CastExpression(
                     PredefinedType(Token(SyntaxKind.IntKeyword)),
                     BinaryExpression(SyntaxKind.DivideExpression, left, right));
+
+            case BinaryOperator.In:
+                // x in y → y.__Contains__(x)
+                return InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        right,
+                        IdentifierName("__Contains__")))
+                    .AddArgumentListArguments(Argument(left));
+
+            case BinaryOperator.NotIn:
+                // x not in y → !y.__Contains__(x)
+                return PrefixUnaryExpression(SyntaxKind.LogicalNotExpression,
+                    InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            right,
+                            IdentifierName("__Contains__")))
+                        .AddArgumentListArguments(Argument(left)));
+
+            case BinaryOperator.Is:
+                // x is y → object.ReferenceEquals(x, y)
+                // Special optimization for None: x is None → x == null
+                if (binOp.Right is NoneLiteral)
+                {
+                    return BinaryExpression(SyntaxKind.EqualsExpression,
+                        left,
+                        LiteralExpression(SyntaxKind.NullLiteralExpression));
+                }
+                return InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        PredefinedType(Token(SyntaxKind.ObjectKeyword)),
+                        IdentifierName("ReferenceEquals")))
+                    .AddArgumentListArguments(
+                        Argument(left),
+                        Argument(right));
+
+            case BinaryOperator.IsNot:
+                // x is not y → !object.ReferenceEquals(x, y)
+                // Special optimization for None: x is not None → x != null
+                if (binOp.Right is NoneLiteral)
+                {
+                    return BinaryExpression(SyntaxKind.NotEqualsExpression,
+                        left,
+                        LiteralExpression(SyntaxKind.NullLiteralExpression));
+                }
+                return PrefixUnaryExpression(SyntaxKind.LogicalNotExpression,
+                    InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            PredefinedType(Token(SyntaxKind.ObjectKeyword)),
+                            IdentifierName("ReferenceEquals")))
+                        .AddArgumentListArguments(
+                            Argument(left),
+                            Argument(right)));
         }
 
         // Standard binary operators
@@ -1319,12 +1479,6 @@ public class RoslynEmitter
 
             // Null coalescing
             BinaryOperator.NullCoalesce => SyntaxKind.CoalesceExpression,
-
-            // Membership and identity operators need special handling
-            BinaryOperator.In => throw new NotImplementedException("'in' operator requires runtime support"),
-            BinaryOperator.NotIn => throw new NotImplementedException("'not in' operator requires runtime support"),
-            BinaryOperator.Is => throw new NotImplementedException("'is' operator requires type check support"),
-            BinaryOperator.IsNot => throw new NotImplementedException("'is not' operator requires type check support"),
 
             _ => throw new NotImplementedException($"Binary operator not implemented: {binOp.Operator}")
         };

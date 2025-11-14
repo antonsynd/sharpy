@@ -1,8 +1,8 @@
 # Code Generation Implementation Plan for Sharpy v0.5
 
-**Status:** � Active Development
+**Status:** 🚀 Active Development
 **Created:** 2025-11-09
-**Last Updated:** 2025-11-09 (Session 1)
+**Last Updated:** 2025-11-14 (Session 7)
 
 ## Overview
 
@@ -87,8 +87,9 @@ Most of the v0.5 feature set (see detailed sections below)
 - [x] Comparison: ==, !=, <, >, <=, >=
 - [x] Logical: and, or (with short-circuit)
 - [x] Bitwise: &, |, ^, <<, >>
-- [x] Membership: `in`, `not in` (marked for runtime support)
-- [x] Identity: `is`, `is not` (marked for runtime support)
+- [x] Membership: `in` → `__Contains__()`, `not in` → `!__Contains__()`
+- [x] Identity: `is` → `object.ReferenceEquals()`, `is not` → `!object.ReferenceEquals()`
+- [x] Identity optimization: `is None` → `== null`, `is not None` → `!= null`
 - [x] Null coalescing: `??`
 
 ### 2.4 Unary Operations ✅ COMPLETE
@@ -271,10 +272,10 @@ Created comprehensive unit test suite for Phase 3 statement generation:
   - [x] Field declarations (public fields with PascalCase names)
   - [ ] Property declarations (deferred - not in v0.5)
   - [x] Method declarations
-  - [ ] Constructor from `__init__` (TODO - needs special handling)
+  - [x] Constructor from `__init__` (generates C# constructor with self.field = param assignments)
   - [x] Static fields and methods
 - [ ] **Dunder Methods** (partial):
-  - [ ] `__init__` → constructor (TODO - needs constructor generation)
+  - [x] `__init__` → constructor (generates C# constructor, skips self parameter)
   - [x] `__str__` → `ToString()` override (name mapping done, needs override keyword)
   - [x] `__eq__` → `Equals()` and `==` operator (name mapping done, needs operator overload)
   - [x] Other dunder methods mapped but operator overloads not generated yet
@@ -703,22 +704,22 @@ The following are explicitly **deferred** to later versions:
 
 ## Current Status Summary
 
-**Overall Progress**: 85% Complete (significantly ahead of schedule)
+**Overall Progress**: 88% Complete (significantly ahead of schedule)
 
 | Phase | Status | Completion |
 |-------|--------|------------|
 | Phase 1: Core Infrastructure | ✅ Complete | 100% |
 | Phase 2: Expressions | ✅ Complete | 100% |
 | Phase 3: Statements | ✅ Complete | 100% |
-| Phase 4: Definitions | ✅ Complete | 95% |
+| Phase 4: Definitions | ✅ Complete | 98% |
 | Phase 5: Module Structure | ✅ Complete | 100% |
 | Phase 6: Special Features | ✅ Complete | 95% |
 | Phase 7: Error Handling | ❌ Not Started | 0% |
 | Phase 8: Optimization | 🔄 Partial | 10% |
 | Phase 9: Runtime Integration | ❌ Not Started | 0% |
-| Phase 10: Documentation | 🔄 Partial | 20% |
+| Phase 10: Documentation | 🔄 Partial | 25% |
 
-**Test Coverage**: 739 passing, 12 skipped (7 integration + 5 semantic), 0 failing
+**Test Coverage**: 747 passing, 12 skipped (7 integration + 5 semantic), 0 failing
 
 ---
 
@@ -1088,6 +1089,71 @@ The code generator has achieved 85% completion and is functionally ready for v0.
 1. Error handling and validation (Phase 7)
 2. Integration with the broader compiler pipeline
 3. End-to-end testing when Sharpy.Runtime is available
+
+---
+
+## Session 7 Summary (2025-11-14)
+
+### Completed Work
+1. **Membership and Identity Operators** ✅ COMPLETE
+   - Implemented `in` operator → `container.__Contains__(item)`
+   - Implemented `not in` operator → `!container.__Contains__(item)`
+   - Implemented `is` operator → `object.ReferenceEquals(left, right)`
+   - Implemented `is not` operator → `!object.ReferenceEquals(left, right)`
+   - Added optimization for `is None` → `== null` and `is not None` → `!= null`
+   - Created 6 comprehensive unit tests for all operators (all passing)
+
+2. **Constructor Generation** ✅ COMPLETE
+   - Implemented GenerateConstructor method to convert `__init__` to C# constructors
+   - Handles `self.field = param` assignments in constructor body
+   - Transforms field names to PascalCase (Name, Age) for C# conventions
+   - Maps parameter names correctly without double-transformation
+   - Skips `self` parameter in constructor signature
+   - Created comprehensive unit test for constructor generation
+
+3. **Test Infrastructure**
+   - Added RoslynEmitterExpressionTests for membership/identity operators (6 tests)
+   - Added RoslynEmitterDefinitionTests for constructor generation (1 test)
+   - All tests passing: 747 passed, 12 skipped
+
+### Files Modified
+- `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` (~150 lines added)
+  - Enhanced GenerateBinaryOp with membership and identity operators
+  - Added GenerateConstructor method for __init__ conversion
+  - Modified GenerateClassMembers to accept className parameter
+  - Updated both ClassDeclaration and StructDeclaration calls
+- `src/Sharpy.Compiler.Tests/CodeGen/RoslynEmitterExpressionTests.cs` (~120 lines added)
+  - Added 6 new tests for membership and identity operators
+- `src/Sharpy.Compiler.Tests/CodeGen/RoslynEmitterDefinitionTests.cs` (~70 lines added)
+  - Added 1 new test for constructor generation
+- `docs/codegen-implementation-plan-v0.5.md` (updated with progress)
+
+### Key Achievements
+- ✅ All v0.5 binary operators now implemented (100%)
+- ✅ Constructor generation from __init__ working
+- ✅ Test suite comprehensive: 747 passing, 12 skipped
+- ✅ Overall progress: 88% (Phase 4 essentially complete)
+
+### Technical Decisions Made
+1. **Membership Operators**: Use `__Contains__` method from Sharpy.Runtime.IContainer interface
+2. **Identity Operators**: Use `object.ReferenceEquals` for general case
+3. **Identity Optimization**: Direct null checks for `is None` and `is not None` patterns
+4. **Constructor Field Names**: Always use `NameMangler.Transform(varDecl.Name, NameContext.Type)` for field name references in constructors to ensure consistency with field generation and avoid mismatches.
+5. **Constructor Parameter Names**: Map parameters correctly using NameMangler.Transform result from parameter generation
+
+### Remaining Work for v0.5
+1. Tuple unpacking in assignments and for loops (currently throws NotImplementedException)
+2. Error handling and validation (Phase 7)
+3. Code optimization (Phase 8)
+4. Runtime integration testing (Phase 9) - blocked on Sharpy.Runtime
+5. Operator overload synthesis from dunder methods (P1 feature, complex)
+
+### Next Steps (Immediate Priority)
+1. ~~Implement membership and identity operators~~ ✅ Done
+2. ~~Implement constructor generation from __init__~~ ✅ Done
+3. Consider implementing tuple unpacking or marking as deferred
+4. Begin Phase 7: Error handling and validation
+5. Update documentation with final status
 
 ---
 
