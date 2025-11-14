@@ -738,15 +738,9 @@ public class RoslynEmitter
                         IdentifierName(fieldName));
                     
                     // For the right-hand side, check if it's an identifier that matches a parameter
-                    ExpressionSyntax assignValue;
-                    if (assign.Value is Identifier valueId && parameterMapping.TryGetValue(valueId.Name, out var mappedName))
-                    {
-                        assignValue = IdentifierName(mappedName);
-                    }
-                    else
-                    {
-                        assignValue = GenerateExpression(assign.Value);
-                    }
+                    var assignValue = (assign.Value is Identifier valueId && parameterMapping.TryGetValue(valueId.Name, out var mappedName))
+                        ? IdentifierName(mappedName)
+                        : GenerateExpression(assign.Value);
                     
                     bodyStatements.Add(ExpressionStatement(
                         AssignmentExpression(
