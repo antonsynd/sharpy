@@ -1286,6 +1286,58 @@ public class RoslynEmitter
                 return CastExpression(
                     PredefinedType(Token(SyntaxKind.IntKeyword)),
                     BinaryExpression(SyntaxKind.DivideExpression, left, right));
+
+            case BinaryOperator.In:
+                // x in y → y.__Contains__(x)
+                return InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        right,
+                        IdentifierName("__Contains__")))
+                    .AddArgumentListArguments(Argument(left));
+
+            case BinaryOperator.NotIn:
+                // x not in y → !y.__Contains__(x)
+                return PrefixUnaryExpression(SyntaxKind.LogicalNotExpression,
+                    InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            right,
+                            IdentifierName("__Contains__")))
+                        .AddArgumentListArguments(Argument(left)));
+
+            case BinaryOperator.Is:
+                // x is y → object.ReferenceEquals(x, y)
+                // Special optimization for None: x is None → x == null
+                if (binOp.Right is NoneLiteral)
+                {
+                    return BinaryExpression(SyntaxKind.EqualsExpression,
+                        left,
+                        LiteralExpression(SyntaxKind.NullLiteralExpression));
+                }
+                return InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        PredefinedType(Token(SyntaxKind.ObjectKeyword)),
+                        IdentifierName("ReferenceEquals")))
+                    .AddArgumentListArguments(
+                        Argument(left),
+                        Argument(right));
+
+            case BinaryOperator.IsNot:
+                // x is not y → !object.ReferenceEquals(x, y)
+                // Special optimization for None: x is not None → x != null
+                if (binOp.Right is NoneLiteral)
+                {
+                    return BinaryExpression(SyntaxKind.NotEqualsExpression,
+                        left,
+                        LiteralExpression(SyntaxKind.NullLiteralExpression));
+                }
+                return PrefixUnaryExpression(SyntaxKind.LogicalNotExpression,
+                    InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            PredefinedType(Token(SyntaxKind.ObjectKeyword)),
+                            IdentifierName("ReferenceEquals")))
+                        .AddArgumentListArguments(
+                            Argument(left),
+                            Argument(right)));
         }
 
         // Standard binary operators
@@ -1319,12 +1371,6 @@ public class RoslynEmitter
 
             // Null coalescing
             BinaryOperator.NullCoalesce => SyntaxKind.CoalesceExpression,
-
-            // Membership and identity operators need special handling
-            BinaryOperator.In => throw new NotImplementedException("'in' operator requires runtime support"),
-            BinaryOperator.NotIn => throw new NotImplementedException("'not in' operator requires runtime support"),
-            BinaryOperator.Is => throw new NotImplementedException("'is' operator requires type check support"),
-            BinaryOperator.IsNot => throw new NotImplementedException("'is not' operator requires type check support"),
 
             _ => throw new NotImplementedException($"Binary operator not implemented: {binOp.Operator}")
         };
