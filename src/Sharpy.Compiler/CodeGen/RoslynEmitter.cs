@@ -635,20 +635,18 @@ public class RoslynEmitter
         var fieldMapping = new Dictionary<string, string>();
         var fieldMembers = new List<MemberDeclarationSyntax>();
         
-        foreach (var stmt in body)
+        foreach (var stmt in body.Where(s => s is VariableDeclaration))
         {
-            if (stmt is VariableDeclaration varDecl)
-            {
-                // Generate the field and capture the mangled name
-                var fieldDecl = GenerateField(varDecl);
-                fieldMembers.Add(fieldDecl);
-                
-                // Extract the field name from the generated declaration
-                // The field name is in the VariableDeclarator
-                var variable = ((FieldDeclarationSyntax)fieldDecl).Declaration.Variables.First();
-                var fieldName = variable.Identifier.Text;
-                fieldMapping[varDecl.Name] = fieldName;
-            }
+            var varDecl = (VariableDeclaration)stmt;
+            // Generate the field and capture the mangled name
+            var fieldDecl = GenerateField(varDecl);
+            fieldMembers.Add(fieldDecl);
+            
+            // Extract the field name from the generated declaration
+            // The field name is in the VariableDeclarator
+            var variable = ((FieldDeclarationSyntax)fieldDecl).Declaration.Variables.First();
+            var fieldName = variable.Identifier.Text;
+            fieldMapping[varDecl.Name] = fieldName;
         }
         
         // Add field members first
@@ -672,7 +670,7 @@ public class RoslynEmitter
                     }
                     break;
 
-                case VariableDeclaration varDecl2:
+                case VariableDeclaration _:
                     // Already processed in first pass
                     break;
 
