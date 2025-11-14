@@ -720,17 +720,9 @@ public class RoslynEmitter
                         IdentifierName(fieldName));
                     
                     // For the right-hand side, check if it's an identifier that matches a parameter
-                    ExpressionSyntax assignValue;
-                    if (assign.Value is Identifier valueId && parameterMapping.ContainsKey(valueId.Name))
-                    {
-                        // Use the mangled parameter name directly
-                        assignValue = IdentifierName(parameterMapping[valueId.Name]);
-                    }
-                    else
-                    {
-                        // Generate normally for other expressions
-                        assignValue = GenerateExpression(assign.Value);
-                    }
+                    var assignValue = (assign.Value is Identifier valueId && parameterMapping.ContainsKey(valueId.Name))
+                        ? IdentifierName(parameterMapping[valueId.Name])
+                        : GenerateExpression(assign.Value);
                     
                     bodyStatements.Add(ExpressionStatement(
                         AssignmentExpression(
