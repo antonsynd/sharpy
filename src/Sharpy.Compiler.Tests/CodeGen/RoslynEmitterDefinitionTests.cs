@@ -324,6 +324,73 @@ public class RoslynEmitterDefinitionTests
         Assert.Contains("/// </summary>", code);
     }
 
+    [Fact]
+    public void GenerateClassDeclaration_WithConstructor_GeneratesConstructorMethod()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "Person",
+            Body = new List<Statement>
+            {
+                new VariableDeclaration
+                {
+                    Name = "name",
+                    Type = new TypeAnnotation { Name = "string" },
+                    InitialValue = null
+                },
+                new VariableDeclaration
+                {
+                    Name = "age",
+                    Type = new TypeAnnotation { Name = "int" },
+                    InitialValue = null
+                },
+                new FunctionDef
+                {
+                    Name = "__init__",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self", Type = null },
+                        new Parameter { Name = "name", Type = new TypeAnnotation { Name = "string" } },
+                        new Parameter { Name = "age", Type = new TypeAnnotation { Name = "int" } }
+                    },
+                    ReturnType = null,
+                    Body = new List<Statement>
+                    {
+                        new Assignment
+                        {
+                            Target = new MemberAccess
+                            {
+                                Object = new Identifier { Name = "self" },
+                                Member = "name"
+                            },
+                            Value = new Identifier { Name = "name" }
+                        },
+                        new Assignment
+                        {
+                            Target = new MemberAccess
+                            {
+                                Object = new Identifier { Name = "self" },
+                                Member = "age"
+                            },
+                            Value = new Identifier { Name = "age" }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public Person(string name, int age)", code);
+        Assert.Contains("Name = name", code);
+        Assert.Contains("Age = age", code);
+    }
+
     #endregion
 
     #region Struct Definition Tests

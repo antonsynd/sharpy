@@ -429,7 +429,7 @@ public class RoslynEmitter
         }
 
         // Generate class members from body
-        var members = GenerateClassMembers(classDef.Body);
+        var members = GenerateClassMembers(classDef.Body, className);
         classDecl = classDecl.WithMembers(List(members));
 
         // Add XML documentation from docstring if present
@@ -473,7 +473,7 @@ public class RoslynEmitter
         }
 
         // Generate struct members from body
-        var members = GenerateClassMembers(structDef.Body);
+        var members = GenerateClassMembers(structDef.Body, structName);
         structDecl = structDecl.WithMembers(List(members));
 
         // Add XML documentation from docstring if present
@@ -627,7 +627,7 @@ public class RoslynEmitter
         return TokenList(tokens);
     }
 
-    private List<MemberDeclarationSyntax> GenerateClassMembers(List<Statement> body)
+    private List<MemberDeclarationSyntax> GenerateClassMembers(List<Statement> body, string className)
     {
         var members = new List<MemberDeclarationSyntax>();
 
@@ -639,9 +639,8 @@ public class RoslynEmitter
                     // Check if this is a constructor (__init__)
                     if (funcDef.Name == "__init__")
                     {
-                        // TODO: Generate constructor
-                        // For now, generate as a regular method
-                        members.Add(GenerateClassMethod(funcDef));
+                        // Generate constructor
+                        members.Add(GenerateConstructor(funcDef, className));
                     }
                     else
                     {
@@ -669,6 +668,107 @@ public class RoslynEmitter
         }
 
         return members;
+    }
+
+    private ConstructorDeclarationSyntax GenerateConstructor(FunctionDef func, string className)
+    {
+        // Process decorators to determine modifiers
+        var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
+
+        // Generate parameters with type annotations, skipping 'self' parameter
+        var parameters = func.Parameters
+            .Where(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase))
+            .Select(GenerateParameter)
+            .ToArray();
+
+        // Create a mapping of parameter names (original) to their mangled names
+        var parameterMapping = func.Parameters
+            .Where(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(
+                p => p.Name,
+                p => NameMangler.Transform(p.Name, NameContext.Parameter));
+
+        // Generate constructor body
+        // In Python __init__, assignments like self.name = name set instance fields
+        // In C#, these become this.Name = name in the constructor body
+        var bodyStatements = new List<StatementSyntax>();
+        
+        foreach (var stmt in func.Body)
+        {
+            // Convert self.field = value to this.Field = value (capitalized)
+            if (stmt is Assignment assign)
+            {
+                // Check if this is a self.field assignment
+                if (assign.Target is MemberAccess memberAccess &&
+                    memberAccess.Object is Identifier id &&
+                    string.Equals(id.Name, "self", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Transform field name to PascalCase for C# property/field access
+                    // Use direct case transformation without uniqueness tracking
+                    var fieldName = char.ToUpper(memberAccess.Member[0]) + memberAccess.Member.Substring(1);
+                    if (memberAccess.Member.Contains('_'))
+                    {
+                        // Handle snake_case to PascalCase
+                        fieldName = string.Concat(memberAccess.Member.Split('_')
+                            .Select(part => part.Length > 0 ? char.ToUpper(part[0]) + part.Substring(1) : ""));
+                    }
+                    
+                    // Generate: this.Field = value;
+                    var thisAccess = MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        ThisExpression(),
+                        IdentifierName(fieldName));
+                    
+                    // For the right-hand side, check if it's an identifier that matches a parameter
+                    ExpressionSyntax assignValue;
+                    if (assign.Value is Identifier valueId && parameterMapping.ContainsKey(valueId.Name))
+                    {
+                        // Use the mangled parameter name directly
+                        assignValue = IdentifierName(parameterMapping[valueId.Name]);
+                    }
+                    else
+                    {
+                        // Generate normally for other expressions
+                        assignValue = GenerateExpression(assign.Value);
+                    }
+                    
+                    bodyStatements.Add(ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            thisAccess,
+                            assignValue)));
+                }
+                else
+                {
+                    // Other assignments, generate normally
+                    bodyStatements.Add(GenerateBodyStatement(stmt));
+                }
+            }
+            else
+            {
+                // Other statements, generate normally
+                var genStmt = GenerateBodyStatement(stmt);
+                if (genStmt != null)
+                {
+                    bodyStatements.Add(genStmt);
+                }
+            }
+        }
+
+        var body = Block(bodyStatements);
+
+        var constructor = ConstructorDeclaration(className)
+            .WithModifiers(modifiers)
+            .WithParameterList(ParameterList(SeparatedList(parameters)))
+            .WithBody(body);
+
+        // Add XML documentation from docstring if present
+        if (!string.IsNullOrEmpty(func.DocString))
+        {
+            constructor = constructor.WithLeadingTrivia(GenerateXmlDocComment(func.DocString));
+        }
+
+        return constructor;
     }
 
     private MethodDeclarationSyntax GenerateClassMethod(FunctionDef func)
