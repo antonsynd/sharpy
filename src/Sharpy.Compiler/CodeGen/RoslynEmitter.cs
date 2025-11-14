@@ -16,6 +16,13 @@ public class RoslynEmitter
     private readonly CodeGenContext _context;
     private readonly TypeMapper _typeMapper;
 
+    // Common .NET namespace acronyms that should be all uppercase
+    private static readonly HashSet<string> UpperCaseAcronyms = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "io", "ui", "xml", "html", "api", "sql", "db", "http", "ftp", 
+        "smtp", "tcp", "udp", "ip", "uri", "url", "json", "csv", "guid"
+    };
+
     public RoslynEmitter(CodeGenContext context)
     {
         _context = context;
@@ -185,15 +192,8 @@ public class RoslynEmitter
             return name[1..^1];
         }
 
-        // Special cases for common .NET namespace acronyms
-        // These should be all uppercase instead of PascalCase
-        var upperCaseAcronyms = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "io", "ui", "xml", "html", "api", "sql", "db", "http", "ftp", 
-            "smtp", "tcp", "udp", "ip", "uri", "url", "json", "csv", "guid"
-        };
-
-        if (upperCaseAcronyms.Contains(name))
+        // Check if this is a known acronym that should be all uppercase
+        if (UpperCaseAcronyms.Contains(name))
         {
             return name.ToUpperInvariant();
         }
