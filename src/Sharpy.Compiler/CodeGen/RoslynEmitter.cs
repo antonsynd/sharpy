@@ -206,7 +206,7 @@ public class RoslynEmitter
             return name;
         
         var result = string.Join("", parts.Select(p =>
-            char.ToUpperInvariant(p[0]) + (p.Length > 1 ? p.Substring(1) : "")
+            char.ToUpperInvariant(p[0]) + (p.Length > 1 ? p[1..] : "")
         ));
 
         return result;
