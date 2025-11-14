@@ -1046,7 +1046,7 @@ The following are explicitly **deferred** to later versions:
   - Phase 6 status clarification
   - Priority features accuracy improvements
   - Session summaries
-- `src/Sharpy.Compiler.Tests/CodeGen/RoslynEmitterIntegrationTests.cs` (new, ~280 lines)
+- `src/Sharpy.Compiler.Tests/CodeGen/RoslynEmitterIntegrationTests.cs` (new, ~290 lines)
   - Integration test infrastructure
   - 7 tests (currently skipped)
 
