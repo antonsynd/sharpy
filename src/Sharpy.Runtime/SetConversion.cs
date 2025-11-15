@@ -36,12 +36,7 @@ public static partial class Exports
     /// </summary>
     public static Set<T> Set<T>(IEnumerable<T> enumerable)
     {
-        var set = new Set<T>();
-        foreach (var item in enumerable)
-        {
-            set.Add(item);
-        }
-        return set;
+        return new Set<T>(enumerable);
     }
 
     /// <summary>
@@ -57,11 +52,6 @@ public static partial class Exports
     /// </summary>
     public static Set<T> Set<T>(Set<T> other)
     {
-        var set = new Set<T>();
-        foreach (var item in other)
-        {
-            set.Add(item);
-        }
-        return set;
+        return new Set<T>(other);
     }
 }

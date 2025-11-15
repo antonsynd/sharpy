@@ -36,12 +36,7 @@ public static partial class Exports
     /// </summary>
     public static List<T> List<T>(IEnumerable<T> enumerable)
     {
-        var list = new List<T>();
-        foreach (var item in enumerable)
-        {
-            list.Add(item);
-        }
-        return list;
+        return new List<T>(enumerable);
     }
 
     /// <summary>
@@ -57,11 +52,6 @@ public static partial class Exports
     /// </summary>
     public static List<T> List<T>(List<T> other)
     {
-        var list = new List<T>();
-        foreach (var item in other)
-        {
-            list.Add(item);
-        }
-        return list;
+        return other.Copy();
     }
 }
