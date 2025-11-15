@@ -50,6 +50,14 @@ public static class NameMangler
     /// </summary>
     public static string ToPascalCase(string name)
     {
+        return ToPascalCase(name, ensureUnique: true);
+    }
+
+    /// <summary>
+    /// Convert snake_case to PascalCase for methods and types
+    /// </summary>
+    public static string ToPascalCase(string name, bool ensureUnique)
+    {
         if (string.IsNullOrEmpty(name))
             return name;
 
@@ -81,13 +89,21 @@ public static class NameMangler
         if (hasPrivatePrefix)
             result = "_" + result;
 
-        return EscapeKeywordIfNeeded(EnsureUnique(result));
+        return EscapeKeywordIfNeeded(ensureUnique ? EnsureUnique(result) : result);
     }
 
     /// <summary>
     /// Convert snake_case to camelCase for variables and parameters
     /// </summary>
     public static string ToCamelCase(string name)
+    {
+        return ToCamelCase(name, ensureUnique: true);
+    }
+
+    /// <summary>
+    /// Convert snake_case to camelCase for variables and parameters
+    /// </summary>
+    public static string ToCamelCase(string name, bool ensureUnique)
     {
         if (string.IsNullOrEmpty(name))
             return name;
@@ -118,7 +134,7 @@ public static class NameMangler
         if (hasPrivatePrefix)
             result = "_" + result;
 
-        return EscapeKeywordIfNeeded(EnsureUnique(result));
+        return EscapeKeywordIfNeeded(ensureUnique ? EnsureUnique(result) : result);
     }
 
     /// <summary>

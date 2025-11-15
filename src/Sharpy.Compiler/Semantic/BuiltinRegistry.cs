@@ -38,7 +38,8 @@ public class BuiltinRegistry
         RegisterType("None", typeof(void), TypeKind.Struct); // void for return type
 
         // Register builtin functions
-        RegisterFunction("print", SemanticType.Void, new ParameterSymbol { Name = "value", Type = SemanticType.Str });
+        // print() accepts object - can print any type
+        RegisterFunction("print", SemanticType.Void, new ParameterSymbol { Name = "value", Type = SemanticType.Object });
         RegisterFunction("len", SemanticType.Int, new ParameterSymbol { Name = "obj", Type = SemanticType.Str });
         RegisterFunction("range", new GenericType { Name = "list", TypeArguments = new() { SemanticType.Int } },
             new ParameterSymbol { Name = "stop", Type = SemanticType.Int });

@@ -1432,7 +1432,7 @@ public class RoslynEmitter
             TupleLiteral tupleLit => GenerateTupleLiteral(tupleLit),
 
             // Primary expressions
-            Identifier name => IdentifierName(NameMangler.ToCamelCase(name.Name)),
+            Identifier name => IdentifierName(NameMangler.ToCamelCase(name.Name, ensureUnique: false)),
             MemberAccess memberAccess => GenerateMemberAccess(memberAccess),
             IndexAccess indexAccess => GenerateIndexAccess(indexAccess),
             SliceAccess sliceAccess => GenerateSliceAccess(sliceAccess),
@@ -1477,8 +1477,8 @@ public class RoslynEmitter
         if (call.Function is Identifier funcName)
         {
             var name = _context.IsBuiltinFunction(funcName.Name)
-                ? $"Sharpy.Core.Exports.{NameMangler.ToPascalCase(funcName.Name)}"
-                : NameMangler.ToPascalCase(funcName.Name);
+                ? $"Sharpy.Core.Exports.{NameMangler.ToPascalCase(funcName.Name, ensureUnique: false)}"
+                : NameMangler.ToPascalCase(funcName.Name, ensureUnique: false);
 
             var args = call.Arguments.Select(GenerateExpression).ToArray();
 

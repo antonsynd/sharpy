@@ -248,7 +248,7 @@ x: float = 42 as float
         typeChecker.Errors.Should().BeEmpty();
     }
 
-    [Fact(Skip = "None assignment to nullable types not yet implemented in type checker")]
+    [Fact]
     public void AllowsNoneForNullableTypes()
     {
         var source = @"
@@ -372,7 +372,7 @@ result: bool = 2 in items
         typeChecker.Errors.Should().BeEmpty();
     }
 
-    [Fact(Skip = "None assignment to nullable types not yet implemented in type checker")]
+    [Fact]
     public void ChecksIdentityOperator()
     {
         var source = @"

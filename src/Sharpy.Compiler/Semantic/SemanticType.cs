@@ -14,12 +14,17 @@ public abstract record SemanticType
     public static readonly SemanticType Double = new BuiltinType { Name = "double", ClrType = typeof(double) };
     public static readonly SemanticType Bool = new BuiltinType { Name = "bool", ClrType = typeof(bool) };
     public static readonly SemanticType Str = new BuiltinType { Name = "str", ClrType = typeof(string) };
+    public static readonly SemanticType Object = new UserDefinedType { Name = "object" };
 
     /// <summary>
     /// Check if this type is assignable to another type
     /// </summary>
     public virtual bool IsAssignableTo(SemanticType other)
     {
+        // All types are assignable to object
+        if (other is UserDefinedType { Name: "object" })
+            return true;
+
         return this.Equals(other);
     }
 
@@ -45,6 +50,15 @@ public record UnknownType : SemanticType
 public record VoidType : SemanticType
 {
     public override string GetDisplayName() => "None";
+
+    public override bool IsAssignableTo(SemanticType other)
+    {
+        // None can be assigned to any nullable type
+        if (other is NullableType)
+            return true;
+
+        return base.IsAssignableTo(other);
+    }
 }
 
 /// <summary>

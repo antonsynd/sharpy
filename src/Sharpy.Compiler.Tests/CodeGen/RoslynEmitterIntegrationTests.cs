@@ -9,14 +9,9 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 
 /// <summary>
 /// Integration tests that verify generated C# code compiles successfully
-/// Note: These tests are currently skipped because they require the Sharpy.Core assembly
-/// which is not available during unit test execution. They serve as documentation
-/// of the expected compilation behavior.
 /// </summary>
 public class RoslynEmitterIntegrationTests
 {
-    private const string SkipReason = "Requires Sharpy.Core assembly which is not available during unit tests";
-
     private RoslynEmitter CreateEmitter(string? sourceFilePath = null)
     {
         var builtins = new BuiltinRegistry();
@@ -40,6 +35,7 @@ public class RoslynEmitterIntegrationTests
                 MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(Console).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(System.Linq.Enumerable).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(Sharpy.Core.Exports).Assembly.Location),
             },
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
@@ -50,7 +46,7 @@ public class RoslynEmitterIntegrationTests
         return errorDiagnostics.Count == 0;
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void GeneratedCode_EmptyModule_CompilesSuccessfully()
     {
         // Arrange
@@ -69,7 +65,7 @@ public class RoslynEmitterIntegrationTests
         Assert.True(compiles, $"Generated code should compile. Errors:\n{errors}");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void GeneratedCode_SimpleFunctionDeclaration_CompilesSuccessfully()
     {
         // Arrange
@@ -100,7 +96,7 @@ public class RoslynEmitterIntegrationTests
         Assert.True(compiles, $"Generated code should compile. Errors:\n{errors}");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void GeneratedCode_FunctionWithParameters_CompilesSuccessfully()
     {
         // Arrange
@@ -143,7 +139,7 @@ public class RoslynEmitterIntegrationTests
         Assert.True(compiles, $"Generated code should compile. Errors:\n{errors}");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void GeneratedCode_SimpleClassDeclaration_CompilesSuccessfully()
     {
         // Arrange
@@ -181,7 +177,7 @@ public class RoslynEmitterIntegrationTests
         Assert.True(compiles, $"Generated code should compile. Errors:\n{errors}");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void GeneratedCode_EnumDeclaration_CompilesSuccessfully()
     {
         // Arrange
@@ -212,7 +208,7 @@ public class RoslynEmitterIntegrationTests
         Assert.True(compiles, $"Generated code should compile. Errors:\n{errors}");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void GeneratedCode_InterfaceDeclaration_CompilesSuccessfully()
     {
         // Arrange
@@ -250,7 +246,7 @@ public class RoslynEmitterIntegrationTests
         Assert.True(compiles, $"Generated code should compile. Errors:\n{errors}");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void GeneratedCode_WithImports_CompilesSuccessfully()
     {
         // Arrange

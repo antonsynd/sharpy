@@ -67,17 +67,17 @@ print(result)
 def fibonacci(n: int) -> int:
     if n <= 1:
         return n
-    
+
     a: int = 0
     b: int = 1
     i: int = 2
-    
+
     while i <= n:
         temp: int = a + b
         a = b
         b = temp
         i = i + 1
-    
+
     return b
 
 result: int = fibonacci(10)
@@ -90,7 +90,7 @@ print(result)
         Assert.Equal("55\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "print() builtin currently only accepts string arguments, needs polymorphic support")]
+    [Fact]
     public void SimpleArithmetic_WorksCorrectly()
     {
         var source = @"
@@ -133,7 +133,7 @@ print(flag)
         Assert.Equal(expectedOutput, result.StandardOutput);
     }
 
-    [Fact(Skip = "print() builtin currently only accepts string arguments, needs polymorphic support")]
+    [Fact]
     public void VariableAssignment_WorksCorrectly()
     {
         var source = @"
@@ -154,7 +154,7 @@ print(x)
         Assert.Equal(expectedOutput, result.StandardOutput);
     }
 
-    [Fact(Skip = "print() builtin currently only accepts string arguments, needs polymorphic support")]
+    [Fact]
     public void AugmentedAssignment_WorksCorrectly()
     {
         var source = @"
@@ -180,7 +180,7 @@ print(x)
         Assert.Equal(expectedOutput, result.StandardOutput);
     }
 
-    [Fact(Skip = "print() builtin currently only accepts string arguments, needs polymorphic support")]
+    [Fact]
     public void Comments_AreIgnored()
     {
         var source = @"
@@ -196,7 +196,7 @@ print(x)
         Assert.Equal("42\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Multiple print calls generating Print1, Print2, etc. - name mangling issue")]
+    [Fact]
     public void MultipleStatements_ExecuteInOrder()
     {
         var source = @"
