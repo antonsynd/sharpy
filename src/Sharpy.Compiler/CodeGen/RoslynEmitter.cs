@@ -263,6 +263,7 @@ public class RoslynEmitter
                 // There's a main function - put executable statements in module initializer
                 // For now, just ignore them or add to Main after the user's main is called
                 // This is a corner case we'll handle later
+                Console.WriteLine($"Warning: {executableStatements.Count} module-level statement(s) ignored because a 'main' function is defined");
             }
         }
 

@@ -253,12 +253,9 @@ public abstract class IntegrationTestBase
         }
         catch (TargetInvocationException ex)
         {
-            var errorMessage = $"Unexpected error during execution: {ex.Message}";
-            if (ex.InnerException != null)
-            {
-                errorMessage = $"Unexpected error during execution: {ex.InnerException.Message}";
-                errorMessage += $"\nStack Trace: {ex.InnerException.StackTrace}";
-            }
+            var errorMessage = ex.InnerException != null
+                ? $"Unexpected error during execution: {ex.InnerException.Message}\nStack Trace: {ex.InnerException.StackTrace}"
+                : $"Unexpected error during execution: {ex.Message}";
             
             return new ExecutionResult
             {
