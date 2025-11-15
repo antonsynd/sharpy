@@ -12,7 +12,7 @@ public class ControlFlowTests : IntegrationTestBase
     {
     }
 
-    [Fact(Skip = "Variable naming conflict - variables getting renamed with numeric suffixes")]
+    [Fact]
     public void IfStatement_SimpleCondition_WorksCorrectly()
     {
         var source = @"

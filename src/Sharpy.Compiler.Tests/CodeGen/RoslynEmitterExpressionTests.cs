@@ -135,7 +135,7 @@ public class RoslynEmitterExpressionTests
         var result = InvokeGenerateExpression(expr);
 
         // Assert
-        result.ToString().Should().Contain("Sharpy.List");
+        result.ToString().Should().Contain("Sharpy.Core.List");
     }
 
     [Fact]
@@ -157,7 +157,7 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        code.Should().Contain("Sharpy.List<int>");
+        code.Should().Contain("Sharpy.Core.List<int>");
         code.Should().Contain("1");
         code.Should().Contain("2");
         code.Should().Contain("3");
@@ -189,7 +189,7 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        code.Should().Contain("Sharpy.Dict");
+        code.Should().Contain("Sharpy.Core.Dict");
         code.Should().Contain("\"a\"");
         code.Should().Contain("\"b\"");
     }
@@ -212,7 +212,7 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        code.Should().Contain("Sharpy.Set<int>");
+        code.Should().Contain("Sharpy.Core.Set<int>");
     }
 
     [Fact]
@@ -828,7 +828,7 @@ public class RoslynEmitterExpressionTests
         var code = result.ToString();
         code.Should().Contain("obj");
         code.Should().Contain("is");
-        code.Should().Contain("Sharpy.Str");
+        code.Should().Contain("Sharpy.Core.Str");
     }
 
     #endregion

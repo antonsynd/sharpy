@@ -146,6 +146,9 @@ public class TypeChecker
     {
         _logger.LogDebug($"Type checking function: {functionDef.Name}");
 
+        // Look up the function symbol to update its types
+        var functionSymbol = _symbolTable.LookupFunction(functionDef.Name);
+
         // Resolve return type
         var returnType = _typeResolver.ResolveTypeAnnotation(functionDef.ReturnType);
 
@@ -165,7 +168,7 @@ public class TypeChecker
         // Enter function scope
         _symbolTable.EnterScope($"function:{functionDef.Name}");
 
-        // Register parameters in scope
+        // Register parameters in scope and update the function symbol's parameter types
         for (int i = 0; i < functionDef.Parameters.Count; i++)
         {
             var param = functionDef.Parameters[i];
@@ -188,6 +191,12 @@ public class TypeChecker
             };
             _symbolTable.Define(paramSymbol);
 
+            // Update the function symbol's parameter type
+            if (functionSymbol != null && i < functionSymbol.Parameters.Count)
+            {
+                functionSymbol.Parameters[i] = functionSymbol.Parameters[i] with { Type = paramType };
+            }
+
             // Type check default value if present
             if (param.DefaultValue != null)
             {
@@ -198,6 +207,16 @@ public class TypeChecker
                         null, null);
                 }
             }
+        }
+
+        // Update the function symbol's return type
+        if (functionSymbol != null)
+        {
+            // Create a new FunctionSymbol with updated return type
+            var updatedSymbol = functionSymbol with { ReturnType = returnType };
+            // The symbol table stores symbols by reference, so we need to update it
+            // Unfortunately, we can't directly update a record in the symbol table
+            // This is a limitation of the current design
         }
 
         // Check function body

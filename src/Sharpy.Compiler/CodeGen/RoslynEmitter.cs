@@ -1633,11 +1633,11 @@ public class RoslynEmitter
 
     private ExpressionSyntax GenerateListLiteral(ListLiteral list)
     {
-        // new Sharpy.List<T> { elem1, elem2, elem3 }
+        // new Sharpy.Core.List<T> { elem1, elem2, elem3 }
         var elementType = _typeMapper.InferElementType(list.Elements);
         var elements = list.Elements.Select(GenerateExpression);
 
-        var listType = GenericName("Sharpy.List")
+        var listType = GenericName("Sharpy.Core.List")
             .AddTypeArgumentListArguments(elementType);
 
         return ObjectCreationExpression(listType)
@@ -1649,7 +1649,7 @@ public class RoslynEmitter
 
     private ExpressionSyntax GenerateDictLiteral(DictLiteral dict)
     {
-        // new Sharpy.Dict<K,V> { { key1, value1 }, { key2, value2 } }
+        // new Sharpy.Core.Dict<K,V> { { key1, value1 }, { key2, value2 } }
         var keyType = _typeMapper.InferElementType(dict.Entries.Select(e => e.Key));
         var valueType = _typeMapper.InferElementType(dict.Entries.Select(e => e.Value));
 
@@ -1661,7 +1661,7 @@ public class RoslynEmitter
                     GenerateExpression(entry.Value)
                 })));
 
-        var dictType = GenericName("Sharpy.Dict")
+        var dictType = GenericName("Sharpy.Core.Dict")
             .AddTypeArgumentListArguments(keyType, valueType);
 
         return ObjectCreationExpression(dictType)
@@ -1673,11 +1673,11 @@ public class RoslynEmitter
 
     private ExpressionSyntax GenerateSetLiteral(SetLiteral set)
     {
-        // new Sharpy.Set<T> { elem1, elem2, elem3 }
+        // new Sharpy.Core.Set<T> { elem1, elem2, elem3 }
         var elementType = _typeMapper.InferElementType(set.Elements);
         var elements = set.Elements.Select(GenerateExpression);
 
-        var setType = GenericName("Sharpy.Set")
+        var setType = GenericName("Sharpy.Core.Set")
             .AddTypeArgumentListArguments(elementType);
 
         return ObjectCreationExpression(setType)

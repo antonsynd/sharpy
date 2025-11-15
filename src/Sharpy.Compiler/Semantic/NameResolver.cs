@@ -231,11 +231,19 @@ public class NameResolver
             return;
         }
 
+        // Add parameters to the function symbol (types will be resolved later by TypeChecker)
+        var parameters = functionDef.Parameters.Select(p => new ParameterSymbol
+        {
+            Name = p.Name,
+            Type = SemanticType.Unknown  // Will be resolved during type checking
+        }).ToList();
+
         var funcSymbol = new FunctionSymbol
         {
             Name = functionDef.Name,
             Kind = SymbolKind.Function,
             AccessLevel = AccessLevel.Public,
+            Parameters = parameters,
             DeclarationLine = functionDef.LineStart,
             DeclarationColumn = functionDef.ColumnStart
         };
@@ -256,11 +264,19 @@ public class NameResolver
         bool isVirtual = method.Decorators.Any(d => d.Name == "virtual");
         bool isOverride = method.Decorators.Any(d => d.Name == "override");
 
+        // Add parameters to the method symbol (types will be resolved later by TypeChecker)
+        var parameters = method.Parameters.Select(p => new ParameterSymbol
+        {
+            Name = p.Name,
+            Type = SemanticType.Unknown  // Will be resolved during type checking
+        }).ToList();
+
         var funcSymbol = new FunctionSymbol
         {
             Name = method.Name,
             Kind = SymbolKind.Function,
             AccessLevel = accessLevel,
+            Parameters = parameters,
             IsStatic = isStatic,
             IsAbstract = isAbstract,
             IsVirtual = isVirtual,

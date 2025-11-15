@@ -46,7 +46,7 @@ public class TypeMapperTests
     }
 
     [Theory]
-    [InlineData("str", "Sharpy.Str")]
+    [InlineData("str", "Sharpy.Core.Str")]
     [InlineData("string", "string")]
     public void MapType_StringTypes_MapsCorrectly(string sharpyType, string expectedCSharpType)
     {
@@ -105,7 +105,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("Sharpy.Str?");
+        result.ToString().Should().Be("Sharpy.Core.Str?");
     }
 
     #endregion
@@ -129,7 +129,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("Sharpy.List<int>");
+        result.ToString().Should().Be("Sharpy.Core.List<int>");
     }
 
     [Fact]
@@ -150,7 +150,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("Sharpy.Dict<Sharpy.Str,int>");
+        result.ToString().Should().Be("Sharpy.Core.Dict<Sharpy.Core.Str,int>");
     }
 
     [Fact]
@@ -170,7 +170,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("Sharpy.Set<Sharpy.Str>");
+        result.ToString().Should().Be("Sharpy.Core.Set<Sharpy.Core.Str>");
     }
 
     [Fact]
@@ -191,7 +191,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("Sharpy.List<int>?");
+        result.ToString().Should().Be("Sharpy.Core.List<int>?");
     }
 
     #endregion
@@ -417,7 +417,7 @@ public class TypeMapperTests
         var result = _typeMapper.CreateCollectionType("list", elementType);
 
         // Assert
-        result.ToString().Should().Be("Sharpy.List<int>");
+        result.ToString().Should().Be("Sharpy.Core.List<int>");
     }
 
     [Fact]
@@ -431,7 +431,7 @@ public class TypeMapperTests
         var result = _typeMapper.CreateDictType(keyType, valueType);
 
         // Assert
-        result.ToString().Should().Be("Sharpy.Dict<string,int>");
+        result.ToString().Should().Be("Sharpy.Core.Dict<string,int>");
     }
 
     [Fact]

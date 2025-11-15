@@ -32,10 +32,10 @@ public class TypeMapper
         { "object", "object" },
 
         // Sharpy runtime types
-        { "str", "Sharpy.Str" },
-        { "list", "Sharpy.List" },
-        { "dict", "Sharpy.Dict" },
-        { "set", "Sharpy.Set" },
+        { "str", "Sharpy.Core.Str" },
+        { "list", "Sharpy.Core.List" },
+        { "dict", "Sharpy.Core.Dict" },
+        { "set", "Sharpy.Core.Set" },
         { "tuple", "System.ValueTuple" },
 
         // Common .NET types
