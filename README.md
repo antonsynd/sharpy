@@ -1,7 +1,7 @@
 # sharpy
 
-[![.NET 9 Build](https://github.com/antonsynd/sharpy/actions/workflows/dotnet.yml/badge.svg)](https://github.com/antonsynd/sharpy/actions/workflows/dotnet9.yml)
-[![.NET 10 Build](https://github.com/antonsynd/sharpy/actions/workflows/dotnet.yml/badge.svg)](https://github.com/antonsynd/sharpy/actions/workflows/dotnet10.yml)
+[![.NET 9 Build](https://github.com/antonsynd/sharpy/actions/workflows/dotnet9.yml/badge.svg)](https://github.com/antonsynd/sharpy/actions/workflows/dotnet9.yml)
+[![.NET 10 Build](https://github.com/antonsynd/sharpy/actions/workflows/dotnet10.yml/badge.svg)](https://github.com/antonsynd/sharpy/actions/workflows/dotnet10.yml)
 ![.NET](https://img.shields.io/badge/.NET-9.0-blue)
 ![.NET](https://img.shields.io/badge/.NET-10.0-blue)
 
