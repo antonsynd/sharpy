@@ -92,7 +92,7 @@ public static partial class Exports
         }
 
         s = s.Trim();
-        
+
         if (!int.TryParse(s, out int result))
         {
             throw new ValueError($"invalid literal for int() with base 10: '{s}'");

@@ -58,7 +58,7 @@ public class CodeGenException : Exception
     /// <summary>
     /// Create a code generation exception with source location and inner exception
     /// </summary>
-    public CodeGenException(string message, int line, int column, Exception innerException) 
+    public CodeGenException(string message, int line, int column, Exception innerException)
         : base(message, innerException)
     {
         Line = line;

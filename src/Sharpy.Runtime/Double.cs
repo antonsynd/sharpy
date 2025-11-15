@@ -64,7 +64,7 @@ public static partial class Exports
         }
 
         s = s.Trim();
-        
+
         if (!double.TryParse(s, out double result))
         {
             throw new ValueError($"could not convert string to float: '{s}'");

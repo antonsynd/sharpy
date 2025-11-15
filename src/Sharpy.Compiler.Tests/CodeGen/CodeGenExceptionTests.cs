@@ -37,13 +37,13 @@ public class CodeGenExceptionTests
     public void CodeGenException_WithNode_IncludesNodeLocation()
     {
         // Arrange
-        var node = new IntegerLiteral 
-        { 
+        var node = new IntegerLiteral
+        {
             Value = "42",
             LineStart = 15,
             ColumnStart = 10
         };
-        
+
         // Act
         var exception = new CodeGenException("Invalid integer", node);
 
@@ -59,7 +59,7 @@ public class CodeGenExceptionTests
     {
         // Arrange
         var innerException = new InvalidOperationException("Inner error");
-        
+
         // Act
         var exception = new CodeGenException("Outer error", innerException);
 
@@ -73,7 +73,7 @@ public class CodeGenExceptionTests
     {
         // Arrange
         var innerException = new InvalidOperationException("Inner error");
-        
+
         // Act
         var exception = new CodeGenException("Outer error", 20, 15, innerException);
 

@@ -14,7 +14,7 @@ public static partial class Exports
     {
         var set = new Set<T>();
         var iterator = iterable.__Iter__();
-        
+
         while (true)
         {
             try
@@ -27,7 +27,7 @@ public static partial class Exports
                 break;
             }
         }
-        
+
         return set;
     }
 
