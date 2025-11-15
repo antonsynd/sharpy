@@ -18,14 +18,14 @@ public static partial class Exports
 
         var quotient = x / y;
         var remainder = x % y;
-        
+
         // Adjust for floored division: if remainder is non-zero and signs differ, adjust quotient and remainder
         if (remainder != 0 && ((x < 0) != (y < 0)))
         {
             quotient--;
             remainder += y;
         }
-        
+
         return (quotient, remainder);
     }
 
@@ -45,14 +45,14 @@ public static partial class Exports
 
         var quotient = x / y;
         var remainder = x % y;
-        
+
         // Adjust for floored division: if remainder is non-zero and signs differ, adjust quotient and remainder
         if (remainder != 0 && ((x < 0) != (y < 0)))
         {
             quotient--;
             remainder += y;
         }
-        
+
         return (quotient, remainder);
     }
 
