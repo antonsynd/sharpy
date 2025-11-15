@@ -18,6 +18,26 @@ public sealed partial class Set<T>
         return !(left == right);
     }
 
+    public static bool operator ==(Set<T> left, object? right)
+    {
+        return left?.__Eq__(right) ?? right is null;
+    }
+
+    public static bool operator !=(Set<T> left, object? right)
+    {
+        return !(left == right);
+    }
+
+    public static bool operator ==(object? left, Set<T> right)
+    {
+        return right?.__Eq__(left) ?? left is null;
+    }
+
+    public static bool operator !=(object? left, Set<T> right)
+    {
+        return !(left == right);
+    }
+
     public static bool operator <(Set<T> left, Set<T> right)
     {
         return left.__Lt__(right);

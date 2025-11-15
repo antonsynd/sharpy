@@ -3,8 +3,8 @@ namespace Sharpy.Core;
 public sealed partial class Set<T>
 {
     /// <inheritdoc/>
-    public bool __Bool__()
+    public string __Str__()
     {
-        return _set.Count > 0;
+        return __Repr__();
     }
 }

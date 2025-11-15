@@ -1,4 +1,3 @@
-using Object = Sharpy.Core.Object;
 using Sharpy.Core;
 
 namespace Sharpy.Operator;
@@ -15,10 +14,5 @@ public static partial class Exports
     public static bool Not(ISized sized)
     {
         return sized.__Len__() == 0;
-    }
-
-    public static bool Not(Object obj)
-    {
-        return !obj.__Bool__();
     }
 }

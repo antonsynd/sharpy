@@ -2,9 +2,11 @@ using System.Text;
 
 namespace Sharpy.Core;
 
-public sealed partial class ByteArray : Object
+using static Sharpy.Core.Exports;
+
+public sealed partial class ByteArray
 {
-    public override bool __Bool__()
+    public bool __Bool__()
     {
         if (_data == null) {
             return false;
@@ -23,17 +25,32 @@ public sealed partial class ByteArray : Object
         return false;
     }
 
-    public override bool __Eq__(Object obj)
+    public bool __Eq__(object obj)
     {
         if (obj is ByteArray other)
         {
-            return __Eq__(other);
+            if (_data == null && other._data == null)
+            {
+                return true;
+            }
+
+            if (_data == null || other._data == null)
+            {
+                return false;
+            }
+
+            return _data.SequenceEqual(other._data);
         }
 
         return false;
     }
 
-    public override int __Hash__()
+    public bool __Ne__(object other)
+    {
+        return !__Eq__(other);
+    }
+
+    public int __Hash__()
     {
         if (_data == null) {
             return 0;
@@ -48,7 +65,7 @@ public sealed partial class ByteArray : Object
         return hash.ToHashCode();
     }
 
-    public override string __Repr__()
+    public string __Repr__()
     {
         var builder = new StringBuilder();
         builder.Append('[');
@@ -71,5 +88,15 @@ public sealed partial class ByteArray : Object
         builder.Append(']');
 
         return builder.ToString();
+    }
+
+    public string __Str__()
+    {
+        return __Repr__();
+    }
+
+    public int __Id__()
+    {
+        return GetHashCode();
     }
 }

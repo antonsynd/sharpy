@@ -11,7 +11,7 @@ public partial class List_Tests
         // If
         List<int> l = [1, 3, 5, 7];
         var listRef = l;
-        Object objectRef = l;
+        object objectRef = l;
         object objRef = l;
 
         // When/then
@@ -32,7 +32,7 @@ public partial class List_Tests
         // If
         List<int> l = [1, 3, 5, 7];
         var listRef = l;
-        Object objectRef = l;
+        object objectRef = l;
         object objRef = l;
 
         // When/then
@@ -43,7 +43,7 @@ public partial class List_Tests
         objectRef.Equals(l).Should().BeTrue();
         objRef.Equals(l).Should().BeTrue();
         listRef.__Eq__(l).Should().BeTrue();
-        objectRef.__Eq__(l).Should().BeTrue();
+        ((IEquatableWith<object>)objectRef).__Eq__(l).Should().BeTrue();
     }
 
     [Fact]
@@ -54,13 +54,10 @@ public partial class List_Tests
 
         // When/then
         (l == (List<int>)null).Should().BeFalse();
-        (l == (Object)null).Should().BeFalse();
         (l == (object)null).Should().BeFalse();
         l.Equals((List<int>)null).Should().BeFalse();
-        l.Equals((Object)null).Should().BeFalse();
         l.Equals((object)null).Should().BeFalse();
         l.__Eq__((List<int>)null).Should().BeFalse();
-        l.__Eq__((Object)null).Should().BeFalse();
         l.__Eq__((object)null).Should().BeFalse();
     }
 
@@ -82,7 +79,7 @@ public partial class List_Tests
         // If
         List<int> l = [1, 3, 5, 7];
         var listRef = l;
-        Object objectRef = l;
+        object objectRef = l;
         object objRef = l;
 
         // When/then
@@ -100,14 +97,14 @@ public partial class List_Tests
         // If
         List<int> l = [1, 3, 5, 7];
         var listRef = l;
-        Object objectRef = l;
+        object objectRef = l;
         object objRef = l;
 
         (listRef != l).Should().BeFalse();
         (objectRef != l).Should().BeFalse();
         (objRef != l).Should().BeFalse();
         listRef.__Ne__(l).Should().BeFalse();
-        objectRef.__Ne__(l).Should().BeFalse();
+        ((IInequatableWith<object>)objectRef).__Ne__(l).Should().BeFalse();
     }
 
     [Fact]
@@ -142,7 +139,7 @@ public partial class List_Tests
         // If
         List<int> l = [1, 3, 5, 7];
         List<int> m = [1, 3, 5, 7, 9];
-        Object objectRef = m;
+        object objectRef = m;
         object objRef = m;
 
         // When/then
@@ -177,7 +174,7 @@ public partial class List_Tests
         // If
         List<int> l = [1, 3, 5, 7];
         List<int> m = [1, 3, 5, 7, 9];
-        Object objectRef = m;
+        object objectRef = m;
         object objRef = m;
 
         // When/then
@@ -188,7 +185,7 @@ public partial class List_Tests
         objectRef.Equals(l).Should().BeFalse();
         objRef.Equals(l).Should().BeFalse();
         m.__Eq__(l).Should().BeFalse();
-        objectRef.__Eq__(l).Should().BeFalse();
+        ((IEquatableWith<object>)objectRef).__Eq__(l).Should().BeFalse();
 
         // When
         m.Pop();
@@ -201,7 +198,7 @@ public partial class List_Tests
         objectRef.Equals(l).Should().BeTrue();
         l.Equals(objRef).Should().BeTrue();
         m.__Eq__(l).Should().BeTrue();
-        objectRef.__Eq__(l).Should().BeTrue();
+        ((IEquatableWith<object>)objectRef).__Eq__(l).Should().BeTrue();
     }
 
     [Fact]
@@ -210,7 +207,7 @@ public partial class List_Tests
         // If
         List<int> l = [1, 3, 5, 7];
         List<int> m = [1, 3, 5, 7, 9];
-        Object objectRef = m;
+        object objectRef = m;
         object objRef = m;
 
         // When/then
@@ -239,7 +236,7 @@ public partial class List_Tests
         // If
         List<int> l = [1, 3, 5, 7];
         List<int> m = [1, 3, 5, 7, 9];
-        Object objectRef = m;
+        object objectRef = m;
         object objRef = m;
 
         // When/then
@@ -247,7 +244,7 @@ public partial class List_Tests
         (objectRef != l).Should().BeTrue();
         (objRef != l).Should().BeTrue();
         m.__Ne__(l).Should().BeTrue();
-        objectRef.__Ne__(l).Should().BeTrue();
+        ((IInequatableWith<object>)objectRef).__Ne__(l).Should().BeTrue();
 
         // When
         m.Pop();
@@ -257,7 +254,7 @@ public partial class List_Tests
         (objectRef != l).Should().BeFalse();
         (objRef != l).Should().BeFalse();
         m.__Ne__(l).Should().BeFalse();
-        objectRef.__Ne__(l).Should().BeFalse();
+        ((IInequatableWith<object>)objectRef).__Ne__(l).Should().BeFalse();
     }
 
     [Fact]
@@ -266,11 +263,11 @@ public partial class List_Tests
         // If
         List<int> l = [1, 3, 5, 7];
         List<double> m = [1.0, 3.0, 5.0, 7.0];
-        Object objectRef = m;
+        object objectRef = m;
         object objRef = m;
 
         // When/then
-        (l == m).Should().BeFalse();
+        ((object)l == (object)m).Should().BeFalse();
         (l == objectRef).Should().BeFalse();
         (l == objRef).Should().BeFalse();
         l.Equals(m).Should().BeFalse();
@@ -287,18 +284,18 @@ public partial class List_Tests
         // If
         List<int> l = [1, 3, 5, 7];
         List<double> m = [1.0, 3.0, 5.0, 7.0];
-        Object objectRef = m;
+        object objectRef = m;
         object objRef = m;
 
         // When/then
-        (m == l).Should().BeFalse();
+        ((object)m == (object)l).Should().BeFalse();
         (objectRef == l).Should().BeFalse();
         (objRef == l).Should().BeFalse();
         m.Equals(l).Should().BeFalse();
         objectRef.Equals(l).Should().BeFalse();
         objRef.Equals(l).Should().BeFalse();
         m.__Eq__(l).Should().BeFalse();
-        objectRef.__Eq__(l).Should().BeFalse();
+        ((IEquatableWith<object>)objectRef).__Eq__(l).Should().BeFalse();
     }
 
     [Fact]
@@ -307,11 +304,11 @@ public partial class List_Tests
         // If
         List<int> l = [1, 3, 5, 7];
         List<double> m = [1.0, 3.0, 5.0, 7.0];
-        Object objectRef = m;
+        object objectRef = m;
         object objRef = m;
 
         // When/then
-        (l != m).Should().BeTrue();
+        ((object)l != (object)m).Should().BeTrue();
         (l != objectRef).Should().BeTrue();
         (l != objRef).Should().BeTrue();
         l.__Ne__(m).Should().BeTrue();
@@ -325,14 +322,14 @@ public partial class List_Tests
         // If
         List<int> l = [1, 3, 5, 7];
         List<double> m = [1.0, 3.0, 5.0, 7.0];
-        Object objectRef = m;
+        object objectRef = m;
         object objRef = m;
 
         // When/then
-        (m != l).Should().BeTrue();
+        ((object)m != (object)l).Should().BeTrue();
         (objectRef != l).Should().BeTrue();
         (objRef != l).Should().BeTrue();
         m.__Ne__(l).Should().BeTrue();
-        objectRef.__Ne__(l).Should().BeTrue();
+        ((IInequatableWith<object>)objectRef).__Ne__(l).Should().BeTrue();
     }
 }

@@ -7,7 +7,15 @@ using Collections.Interfaces;
 using Operator;
 using static Sharpy.Core.Exports;
 
-public sealed partial class Dict<K, V> : Object, IMutableMapping<K, V> where K : notnull
+public sealed partial class Dict<K, V> : object, IMutableMapping<K, V>,
+    IEquatableWith<object>,
+    IInequatableWith<object>,
+    IBoolConvertible,
+    IHashable,
+    IRepresentable,
+    IStrConvertible,
+    IIdentifiable
+    where K : notnull
 {
     private readonly Dictionary<K, V> _dict;
 
@@ -194,7 +202,7 @@ public sealed partial class Dict<K, V> : Object, IMutableMapping<K, V> where K :
         return (uint)_dict.Count;
     }
 
-    public override bool __Eq__(Object obj)
+    public bool __Eq__(object obj)
     {
         if (obj is Dict<K, V> other)
         {
@@ -312,7 +320,7 @@ public sealed partial class Dict<K, V> : Object, IMutableMapping<K, V> where K :
         return !(left == right);
     }
 
-    public override int __Hash__()
+    public int __Hash__()
     {
         var hashCode = new HashCode();
         hashCode.Add(typeof(Dict<K, V>).GetHashCode());
@@ -321,7 +329,7 @@ public sealed partial class Dict<K, V> : Object, IMutableMapping<K, V> where K :
         return hashCode.ToHashCode();
     }
 
-    public override string __Repr__()
+    public string __Repr__()
     {
         var builder = new StringBuilder();
         builder.Append('{');
@@ -346,7 +354,27 @@ public sealed partial class Dict<K, V> : Object, IMutableMapping<K, V> where K :
         return builder.ToString();
     }
 
-    public override bool __Bool__()
+    public string __Str__()
+    {
+        return __Repr__();
+    }
+
+    public override string ToString()
+    {
+        return __Str__();
+    }
+
+    public int __Id__()
+    {
+        return GetHashCode();
+    }
+
+    public bool __Ne__(object other)
+    {
+        return !__Eq__(other);
+    }
+
+    public bool __Bool__()
     {
         return _dict.Count > 0;
     }

@@ -3,8 +3,8 @@ namespace Sharpy.Core;
 public sealed partial class List<T>
 {
     /// <inheritdoc/>
-    public bool __Bool__()
+    public bool __Ne__(object other)
     {
-        return _list.Count > 0;
+        return !__Eq__(other);
     }
 }

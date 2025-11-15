@@ -30,13 +30,20 @@ public readonly partial struct Str
     }
 
     /// <remarks>
-    /// <see cref="Object.ToString"/> calls <see cref="Object.__Str__"/>
-    /// so this implementation covers all native C# objects and Sharpy
-    /// objects.
+    /// Checks if the object implements IStrConvertible and calls __Str__(),
+    /// otherwise falls back to ToString(). This covers all native C# objects
+    /// and Sharpy objects.
     /// </remarks>
     public Str(object x)
     {
-        _s = x.ToString() ?? "";
+        if (x is IStrConvertible strConvertible)
+        {
+            _s = strConvertible.__Str__();
+        }
+        else
+        {
+            _s = x.ToString() ?? "";
+        }
     }
 
     public Str(Bytes bytes, string encoding = "utf-8", string errors = "strict")

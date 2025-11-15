@@ -18,6 +18,26 @@ public sealed partial class List<T>
         return !(left == right);
     }
 
+    public static bool operator ==(List<T> left, object? right)
+    {
+        return left?.__Eq__(right) ?? right is null;
+    }
+
+    public static bool operator !=(List<T> left, object? right)
+    {
+        return !(left == right);
+    }
+
+    public static bool operator ==(object? left, List<T> right)
+    {
+        return right?.__Eq__(left) ?? left is null;
+    }
+
+    public static bool operator !=(object? left, List<T> right)
+    {
+        return !(left == right);
+    }
+
     public static List<T> operator +(List<T> left, List<T> right)
     {
         if (left is null)

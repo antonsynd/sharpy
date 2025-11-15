@@ -1,8 +1,6 @@
-using Object = Sharpy.Core.Object;
-
 namespace Sharpy.Core.Tests;
 
-public class Wrapper<T>(T value) : Object, Sharpy.Core.IEquatable<Wrapper<T>>, Sharpy.Core.IInequatable<Wrapper<T>>
+public class Wrapper<T>(T value) : object, Sharpy.Core.IEquatable<Wrapper<T>>, Sharpy.Core.IInequatable<Wrapper<T>>, Sharpy.Core.IEquatableWith<object>, Sharpy.Core.IInequatableWith<object>, Sharpy.Core.IBoolConvertible, Sharpy.Core.IRepresentable, Sharpy.Core.IHashable, Sharpy.Core.IIdentifiable, Sharpy.Core.IStrConvertible
 {
     private static uint _id;
 
@@ -21,13 +19,13 @@ public class Wrapper<T>(T value) : Object, Sharpy.Core.IEquatable<Wrapper<T>>, S
     }
 
     // Identifiable
-    public override int __Id__()
+    public int __Id__()
     {
         return (int)Id;
     }
 
     // BoolConvertible
-    public override bool __Bool__()
+    public bool __Bool__()
     {
         return Bool(Value);
     }
@@ -43,13 +41,19 @@ public class Wrapper<T>(T value) : Object, Sharpy.Core.IEquatable<Wrapper<T>>, S
     }
 
     // Representable
-    public override string __Repr__()
+    public string __Repr__()
     {
         return $"<Wrapper object with id {Id} and value {Repr(Value)}>";
     }
 
+    // StrConvertible
+    public string __Str__()
+    {
+        return __Repr__();
+    }
+
     // Hashable
-    public override int __Hash__()
+    public int __Hash__()
     {
         var hashCode = new HashCode();
         hashCode.Add(typeof(Wrapper<T>).GetHashCode());
@@ -59,8 +63,8 @@ public class Wrapper<T>(T value) : Object, Sharpy.Core.IEquatable<Wrapper<T>>, S
         return hashCode.ToHashCode();
     }
 
-    // Equatable<Object>
-    public override bool __Eq__(Object other)
+    // Equatable<object>
+    public bool __Eq__(object other)
     {
         if (other is Wrapper<T> wrapper)
         {
@@ -68,6 +72,12 @@ public class Wrapper<T>(T value) : Object, Sharpy.Core.IEquatable<Wrapper<T>>, S
         }
 
         return false;
+    }
+
+    // Inequatable<object>
+    public bool __Ne__(object other)
+    {
+        return !__Eq__(other);
     }
 
     // Equatable<Wrapper<T>>
@@ -117,19 +127,18 @@ public class Wrapper<T>(T value) : Object, Sharpy.Core.IEquatable<Wrapper<T>>, S
         return !__Eq__(other);
     }
 
-    // TODO: Fix Equals override - cannot override sealed Object.Equals
-    // public override bool Equals(object obj)
-    // {
-    //     if (ReferenceEquals(this, obj))
-    //     {
-    //         return true;
-    //     }
-    //
-    //     if (ReferenceEquals(obj, null))
-    //     {
-    //         return false;
-    //     }
-    //
-    //     throw new NotImplementedException();
-    // }
+    public override bool Equals(object? obj)
+    {
+        return __Eq__(obj);
+    }
+
+    public override int GetHashCode()
+    {
+        return __Hash__();
+    }
+
+    public override string ToString()
+    {
+        return __Str__();
+    }
 }

@@ -7,7 +7,7 @@ using static Sharpy.Core.Exports;
 public sealed partial class Set<T>
 {
     /// <inheritdoc/>
-    public override string __Repr__()
+    public string __Repr__()
     {
         var builder = new StringBuilder();
         builder.Append('{');
