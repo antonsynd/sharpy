@@ -3,7 +3,7 @@ namespace Sharpy.Core;
 public sealed partial class List<T>
 {
     /// <inheritdoc/>
-    public bool __Bool__()
+    public override bool __Bool__()
     {
         return _list.Count > 0;
     }

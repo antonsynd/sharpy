@@ -1,3 +1,5 @@
+using Object = Sharpy.Core.Object;
+
 namespace Sharpy.Operator;
 
 public static partial class Exports
@@ -12,7 +14,7 @@ public static partial class Exports
         return left?.__Ne__(right) ?? !(right is null);
     }
 
-    public static bool Ne(Sharpy.Core.IEquatableWith<object> left, object right)
+    public static bool Ne(Object left, Object right)
     {
         if (ReferenceEquals(left, right))
         {
@@ -49,7 +51,7 @@ public static partial class Exports
 
     public static bool __Ne__<T>(T left, T right) where T : Sharpy.Core.IInequatable<T> => Ne(left, right);
 
-    public static bool __Ne__(Sharpy.Core.IEquatableWith<object> left, object right) => Ne(left, right);
+    public static bool __Ne__(Object left, Object right) => Eq(left, right);
 
     public static bool __Ne__<T>(IComparable<T> left, T right) => Eq(left, right);
 

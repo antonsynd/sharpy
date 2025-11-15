@@ -72,7 +72,7 @@ public class Wrapper_Tests
     public void Wrapper_Equatable()
     {
         // If
-        typeof(Wrapper<int>).IsAssignableTo(typeof(IEquatableWith<object>)).Should().BeTrue();
+        typeof(Wrapper<int>).IsAssignableTo(typeof(IEquatable<Object>)).Should().BeTrue();
         typeof(Wrapper<int>).IsAssignableTo(typeof(IEquatable<Wrapper<int>>)).Should().BeTrue();
         var wrapper0 = new Wrapper<int>(0);
         var wrapper1_0 = new Wrapper<int>(1);
@@ -99,7 +99,7 @@ public class Wrapper_Tests
     public void Wrapper_Inequatable()
     {
         // If
-        typeof(Wrapper<int>).IsAssignableTo(typeof(IInequatableWith<object>)).Should().BeTrue();
+        typeof(Wrapper<int>).IsAssignableTo(typeof(IInequatable<Object>)).Should().BeTrue();
         typeof(Wrapper<int>).IsAssignableTo(typeof(IInequatable<Wrapper<int>>)).Should().BeTrue();
         var wrapper0 = new Wrapper<int>(0);
         var wrapper1_0 = new Wrapper<int>(1);
@@ -126,7 +126,7 @@ public class Wrapper_Tests
     public void Wrapper_IEquatable()
     {
         // If
-        typeof(Wrapper<int>).IsAssignableTo(typeof(IEquatableWith<object>)).Should().BeTrue();
+        typeof(Wrapper<int>).IsAssignableTo(typeof(IEquatable<Object>)).Should().BeTrue();
         typeof(Wrapper<int>).IsAssignableTo(typeof(IEquatable<Wrapper<int>>)).Should().BeTrue();
 
         var wrapper0 = new Wrapper<int>(0);

@@ -3,7 +3,7 @@ namespace Sharpy.Core;
 public sealed partial class Set<T>
 {
     /// <inheritdoc/>
-    public bool __Eq__(object obj)
+    public override bool __Eq__(Object obj)
     {
         if (obj is Set<T> other)
         {

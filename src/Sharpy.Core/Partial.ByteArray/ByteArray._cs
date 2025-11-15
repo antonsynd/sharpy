@@ -3,14 +3,7 @@ using Sharpy.Collections.Interfaces;
 
 namespace Sharpy.Core;
 
-public sealed partial class ByteArray : object, MutableSequence<ByteArray, byte>,
-    IEquatableWith<object>,
-    IInequatableWith<object>,
-    IBoolConvertible,
-    IHashable,
-    IRepresentable,
-    IStrConvertible,
-    IIdentifiable
+public sealed partial class ByteArray : Object, MutableSequence<ByteArray, byte>
 {
     private byte[] _data;
 

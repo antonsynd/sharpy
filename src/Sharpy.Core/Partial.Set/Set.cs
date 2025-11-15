@@ -3,14 +3,7 @@ namespace Sharpy.Core;
 using Collections.Interfaces;
 
 public sealed partial class Set<T>
-    : object, IMutableSet<Set<T>, T>,
-      IEquatableWith<object>,
-      IInequatableWith<object>,
-      IBoolConvertible,
-      IHashable,
-      IRepresentable,
-      IStrConvertible,
-      IIdentifiable,
+    : Object, IMutableSet<Set<T>, T>,
       ILessThanOrEquatable<Set<T>>, IGreaterThanOrEquatable<Set<T>>
 {
     private readonly HashSet<T> _set;
@@ -86,18 +79,19 @@ public sealed partial class Set<T>
         return result;
     }
 
-    public override bool Equals(object? obj)
-    {
-        return __Eq__(obj);
-    }
-
-    public override int GetHashCode()
-    {
-        return __Hash__();
-    }
-
-    public override string ToString()
-    {
-        return __Str__();
-    }
+    // TODO: Fix Equals override - cannot override sealed Object.Equals
+    // public override bool Equals(object obj)
+    // {
+    //     if (ReferenceEquals(this, obj))
+    //     {
+    //         return true;
+    //     }
+    //
+    //     if (ReferenceEquals(obj, null))
+    //     {
+    //         return false;
+    //     }
+    //
+    //     throw new NotImplementedException();
+    // }
 }

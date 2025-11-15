@@ -6,16 +6,9 @@ using Collections.Interfaces;
 /// A list of elements.
 /// </summary>
 public sealed partial class List<T>
-    : object,
+    : Object,
       IMutableSequence<List<T>, T>,
       IEquatable<List<T>>,
-      IEquatableWith<object>,
-      IInequatableWith<object>,
-      IBoolConvertible,
-      IHashable,
-      IRepresentable,
-      IStrConvertible,
-      IIdentifiable,
       IAddable<List<T>>,
       IRightAddable<List<T>>,
       IInplaceAddable<List<T>>,
@@ -109,18 +102,19 @@ public sealed partial class List<T>
         return [.. _list];
     }
 
-    public override bool Equals(object? obj)
-    {
-        return __Eq__(obj);
-    }
-
-    public override int GetHashCode()
-    {
-        return __Hash__();
-    }
-
-    public override string ToString()
-    {
-        return __Str__();
-    }
+    // TODO: Fix Equals override - cannot override sealed Object.Equals
+    // public override bool Equals(object obj)
+    // {
+    //     if (ReferenceEquals(this, obj))
+    //     {
+    //         return true;
+    //     }
+    //
+    //     if (ReferenceEquals(obj, null))
+    //     {
+    //         return false;
+    //     }
+    //
+    //     throw new NotImplementedException();
+    // }
 }

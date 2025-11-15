@@ -1,3 +1,5 @@
+using Object = Sharpy.Core.Object;
+
 namespace Sharpy.Operator;
 
 public static partial class Exports
@@ -19,7 +21,7 @@ public static partial class Exports
         return left?.__Eq__(right) ?? right is null;
     }
 
-    public static bool Eq(Sharpy.Core.IEquatableWith<object> left, object right)
+    public static bool Eq(Object left, Object right)
     {
         if (ReferenceEquals(left, right))
         {
@@ -56,17 +58,17 @@ public static partial class Exports
             return true;
         }
 
-        if (left is Sharpy.Core.IEquatableWith<object> objLeft)
+        if (left is Object objLeft)
         {
-            if (right is Sharpy.Core.IEquatableWith<object> objRight)
+            if (right is Object objRight)
             {
-                // Delegate to IEquatableWith version above
-                return Eq(objLeft, (object)objRight);
+                // Delegate to Object version above
+                return Eq(objLeft, objRight);
             }
 
             return objLeft.__Eq__(right);
         }
-        else if (right is Sharpy.Core.IEquatableWith<object> objRight)
+        else if (right is Object objRight)
         {
             return objRight.__Eq__(left);
         }
@@ -76,7 +78,7 @@ public static partial class Exports
 
     public static bool __Eq__<T>(T left, T right) where T : Sharpy.Core.IEquatable<T> => Eq(left, right);
 
-    public static bool __Eq__(Sharpy.Core.IEquatableWith<object> left, object right) => Eq(left, right);
+    public static bool __Eq__(Object left, Object right) => Eq(left, right);
 
     public static bool __Eq__<T>(IComparable<T> left, T right) => Eq(left, right);
 

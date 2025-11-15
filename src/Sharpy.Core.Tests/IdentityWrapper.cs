@@ -1,3 +1,5 @@
+using Object = Sharpy.Core.Object;
+
 namespace Sharpy.Core.Tests;
 
 public sealed class IdentityWrapper<T> : Wrapper<T>
@@ -6,7 +8,7 @@ public sealed class IdentityWrapper<T> : Wrapper<T>
     {
     }
 
-    public new bool __Eq__(object other)
+    public override bool __Eq__(Object other)
     {
         if (other is IdentityWrapper<T> wrapper)
         {
@@ -41,18 +43,24 @@ public sealed class IdentityWrapper<T> : Wrapper<T>
         return !(left == right);
     }
 
-    public new bool __Bool__()
+    public override bool __Bool__()
     {
         return Bool(Value);
     }
 
-    public override bool Equals(object? obj)
-    {
-        return __Eq__(obj);
-    }
-
-    public override int GetHashCode()
-    {
-        return __Hash__();
-    }
+    // TODO: Fix Equals override - cannot override sealed Object.Equals
+    // public override bool Equals(object obj)
+    // {
+    //     if (ReferenceEquals(this, obj))
+    //     {
+    //         return true;
+    //     }
+    //
+    //     if (ReferenceEquals(obj, null))
+    //     {
+    //         return false;
+    //     }
+    //
+    //     throw new NotImplementedException();
+    // }
 }

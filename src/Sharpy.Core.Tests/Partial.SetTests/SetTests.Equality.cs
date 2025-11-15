@@ -11,7 +11,7 @@ public partial class Set_Tests
         // If
         Set<int> s = [1, 3, 5, 7];
         var setRef = s;
-        object objectRef = s;
+        Object objectRef = s;
         object objRef = s;
 
         // When/then
@@ -32,7 +32,7 @@ public partial class Set_Tests
         // If
         Set<int> s = [1, 3, 5, 7];
         var setRef = s;
-        object objectRef = s;
+        Object objectRef = s;
         object objRef = s;
 
         // When/then
@@ -43,7 +43,7 @@ public partial class Set_Tests
         objectRef.Equals(s).Should().BeTrue();
         objRef.Equals(s).Should().BeTrue();
         setRef.__Eq__(s).Should().BeTrue();
-        ((IEquatableWith<object>)objectRef).__Eq__(s).Should().BeTrue();
+        objectRef.__Eq__(s).Should().BeTrue();
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public partial class Set_Tests
         // If
         Set<int> s = [1, 3, 5, 7];
         var setRef = s;
-        object objectRef = s;
+        Object objectRef = s;
         object objRef = s;
 
         // When/then
@@ -100,14 +100,14 @@ public partial class Set_Tests
         // If
         Set<int> s = [1, 3, 5, 7];
         var setRef = s;
-        object objectRef = s;
+        Object objectRef = s;
         object objRef = s;
 
         (setRef != s).Should().BeFalse();
         (objectRef != s).Should().BeFalse();
         (objRef != s).Should().BeFalse();
         setRef.__Ne__(s).Should().BeFalse();
-        ((IInequatableWith<object>)objectRef).__Ne__(s).Should().BeFalse();
+        objectRef.__Ne__(s).Should().BeFalse();
     }
 
     [Fact]
@@ -142,7 +142,7 @@ public partial class Set_Tests
         // If
         Set<int> s = [1, 3, 5, 7];
         Set<int> m = [1, 3, 5, 7, 9];
-        object objectRef = m;
+        Object objectRef = m;
         object objRef = m;
 
         // When/then
@@ -177,7 +177,7 @@ public partial class Set_Tests
         // If
         Set<int> s = [1, 3, 5, 7];
         Set<int> m = [1, 3, 5, 7, 9];
-        object objectRef = m;
+        Object objectRef = m;
         object objRef = m;
 
         // When/then
@@ -188,7 +188,7 @@ public partial class Set_Tests
         objectRef.Equals(s).Should().BeFalse();
         objRef.Equals(s).Should().BeFalse();
         m.__Eq__(s).Should().BeFalse();
-        ((IEquatableWith<object>)objectRef).__Eq__(s).Should().BeFalse();
+        objectRef.__Eq__(s).Should().BeFalse();
 
         // When
         m.Pop();
@@ -201,7 +201,7 @@ public partial class Set_Tests
         objectRef.Equals(s).Should().BeTrue();
         s.Equals(objRef).Should().BeTrue();
         m.__Eq__(s).Should().BeTrue();
-        ((IEquatableWith<object>)objectRef).__Eq__(s).Should().BeTrue();
+        objectRef.__Eq__(s).Should().BeTrue();
     }
 
     [Fact]
@@ -210,7 +210,7 @@ public partial class Set_Tests
         // If
         Set<int> s = [1, 3, 5, 7];
         Set<int> m = [1, 3, 5, 7, 9];
-        object objectRef = m;
+        Object objectRef = m;
         object objRef = m;
 
         // When/then
@@ -239,7 +239,7 @@ public partial class Set_Tests
         // If
         Set<int> s = [1, 3, 5, 7];
         Set<int> m = [1, 3, 5, 7, 9];
-        object objectRef = m;
+        Object objectRef = m;
         object objRef = m;
 
         // When/then
@@ -247,7 +247,7 @@ public partial class Set_Tests
         (objectRef != s).Should().BeTrue();
         (objRef != s).Should().BeTrue();
         m.__Ne__(s).Should().BeTrue();
-        ((IInequatableWith<object>)objectRef).__Ne__(s).Should().BeTrue();
+        objectRef.__Ne__(s).Should().BeTrue();
 
         // When
         m.Pop();
@@ -257,7 +257,7 @@ public partial class Set_Tests
         (objectRef != s).Should().BeFalse();
         (objRef != s).Should().BeFalse();
         m.__Ne__(s).Should().BeFalse();
-        ((IInequatableWith<object>)objectRef).__Ne__(s).Should().BeFalse();
+        objectRef.__Ne__(s).Should().BeFalse();
     }
 
     [Fact]
@@ -266,11 +266,11 @@ public partial class Set_Tests
         // If
         Set<int> s = [1, 3, 5, 7];
         Set<double> m = [1.0, 3.0, 5.0, 7.0];
-        object objectRef = m;
+        Object objectRef = m;
         object objRef = m;
 
         // When/then
-        ((object)s == (object)m).Should().BeFalse();
+        (s == m).Should().BeFalse();
         (s == objectRef).Should().BeFalse();
         (s == objRef).Should().BeFalse();
         s.Equals(m).Should().BeFalse();
@@ -287,18 +287,18 @@ public partial class Set_Tests
         // If
         Set<int> s = [1, 3, 5, 7];
         Set<double> m = [1.0, 3.0, 5.0, 7.0];
-        object objectRef = m;
+        Object objectRef = m;
         object objRef = m;
 
         // When/then
-        ((object)m == (object)s).Should().BeFalse();
+        (m == s).Should().BeFalse();
         (objectRef == s).Should().BeFalse();
         (objRef == s).Should().BeFalse();
         m.Equals(s).Should().BeFalse();
         objectRef.Equals(s).Should().BeFalse();
         objRef.Equals(s).Should().BeFalse();
         m.__Eq__(s).Should().BeFalse();
-        ((IEquatableWith<object>)objectRef).__Eq__(s).Should().BeFalse();
+        objectRef.__Eq__(s).Should().BeFalse();
     }
 
     [Fact]
@@ -307,11 +307,11 @@ public partial class Set_Tests
         // If
         Set<int> s = [1, 3, 5, 7];
         Set<double> m = [1.0, 3.0, 5.0, 7.0];
-        object objectRef = m;
+        Object objectRef = m;
         object objRef = m;
 
         // When/then
-        ((object)s != (object)m).Should().BeTrue();
+        (s != m).Should().BeTrue();
         (s != objectRef).Should().BeTrue();
         (s != objRef).Should().BeTrue();
         s.__Ne__(m).Should().BeTrue();
@@ -325,14 +325,14 @@ public partial class Set_Tests
         // If
         Set<int> s = [1, 3, 5, 7];
         Set<double> m = [1.0, 3.0, 5.0, 7.0];
-        object objectRef = m;
+        Object objectRef = m;
         object objRef = m;
 
         // When/then
-        ((object)m != (object)s).Should().BeTrue();
+        (m != s).Should().BeTrue();
         (objectRef != s).Should().BeTrue();
         (objRef != s).Should().BeTrue();
         m.__Ne__(s).Should().BeTrue();
-        ((IInequatableWith<object>)objectRef).__Ne__(s).Should().BeTrue();
+        objectRef.__Ne__(s).Should().BeTrue();
     }
 }

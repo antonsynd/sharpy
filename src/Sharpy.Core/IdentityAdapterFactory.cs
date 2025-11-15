@@ -7,7 +7,7 @@ internal static class IdentityAdapterFactory<T>
     private static Func<T, T, bool> GetAdapter()
     {
         // Prefer __Id__()
-        if (typeof(IIdentifiable).IsAssignableFrom(typeof(T)))
+        if (typeof(T).IsSubclassOf(typeof(Object)))
         {
             return IdentityAdapter.AreSame;
         }
@@ -25,8 +25,8 @@ internal static class IdentityAdapterFactory<T>
     {
         public static bool AreSame(T lhs, T rhs)
         {
-            var lhsObject = lhs as IIdentifiable;
-            var rhsObject = rhs as IIdentifiable;
+            var lhsObject = lhs as Object;
+            var rhsObject = rhs as Object;
 
             if (lhsObject is null)
             {

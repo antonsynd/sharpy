@@ -5,7 +5,7 @@ using Operator;
 public sealed partial class List<T>
 {
     /// <inheritdoc/>
-    public bool __Eq__(object obj)
+    public override bool __Eq__(Object obj)
     {
         if (obj is List<T> other)
         {

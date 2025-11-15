@@ -7,7 +7,7 @@ using static Sharpy.Core.Exports;
 public sealed partial class List<T>
 {
     /// <inheritdoc/>
-    public string __Repr__()
+    public override string __Repr__()
     {
         var builder = new StringBuilder();
         builder.Append('[');

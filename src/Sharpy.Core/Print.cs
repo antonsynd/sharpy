@@ -4,17 +4,31 @@ using static Sharpy.Sys.Exports;
 
 public static partial class Exports
 {
+    public static void Print(Object? obj, uint file = Stdout, bool flush = false)
+    {
+        var result = obj?.__Str__() ?? "None";
+
+        _Print(result, file, flush);
+    }
+
+    public static void Print(PrintArguments<Object?> args, uint file = Stdout, bool flush = false)
+    {
+        var lastIndex = (uint)args.args.Length - 1;
+        uint i = 0;
+
+        foreach (var obj in args.args)
+        {
+            var result = obj?.__Str__() ?? "None";
+
+            _Print(result, file, flush && i == lastIndex, i == lastIndex);
+
+            ++i;
+        }
+    }
+
     public static void Print(object? obj, uint file = Stdout, bool flush = false)
     {
-        string result;
-        if (obj is IStrConvertible strConv)
-        {
-            result = strConv.__Str__();
-        }
-        else
-        {
-            result = obj?.ToString() ?? "None";
-        }
+        var result = obj?.ToString() ?? "None";
 
         _Print(result, file, flush);
     }
@@ -26,15 +40,7 @@ public static partial class Exports
 
         foreach (var obj in args.args)
         {
-            string result;
-            if (obj is IStrConvertible strConv)
-            {
-                result = strConv.__Str__();
-            }
-            else
-            {
-                result = obj?.ToString() ?? "None";
-            }
+            var result = obj?.ToString() ?? "None";
 
             _Print(result, file, flush && i == lastIndex, i == lastIndex);
 

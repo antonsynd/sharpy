@@ -72,6 +72,11 @@ public static partial class Exports
         return s.Length > 0;
     }
 
+    public static bool Bool(Object obj)
+    {
+        return obj?.__Bool__() ?? false;
+    }
+
     public static bool Bool(IBoolConvertible b)
     {
         return b?.__Bool__() ?? false;
@@ -82,6 +87,13 @@ public static partial class Exports
         if (obj is null)
         {
             return false;
+        }
+
+        // This is super shitty, but C# doesn't do overload resolution
+        // correctly on generic types, treating them as object.
+        if (obj is Object o)
+        {
+            return Bool(o);
         }
 
         if (obj is IBoolConvertible b)

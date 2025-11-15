@@ -3,7 +3,7 @@ namespace Sharpy.Core;
 public sealed partial class List<T>
 {
     /// <inheritdoc/>
-    public int __Hash__()
+    public override int __Hash__()
     {
         var hashCode = new HashCode();
         hashCode.Add(typeof(List<T>).GetHashCode());
