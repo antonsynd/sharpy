@@ -46,7 +46,7 @@ public abstract class IntegrationTestBase
         // Set up assembly resolution for Sharpy.Runtime
         string? runtimePath = null;
         ResolveEventHandler? resolveHandler = null;
-        
+
         try
         {
             // Phase 1: Lex Sharpy code
@@ -104,7 +104,7 @@ public abstract class IntegrationTestBase
 
             // Phase 5: Compile C# to assembly
             var syntaxTree = CSharpSyntaxTree.ParseText(generatedCSharp);
-            
+
             // Get references to required assemblies
             var references = new List<MetadataReference>
             {
@@ -123,12 +123,12 @@ public abstract class IntegrationTestBase
                 var testDir = Path.GetDirectoryName(testAssemblyPath);
                 runtimePath = Path.Combine(testDir!, "..", "..", "..", "..", "Sharpy.Runtime", "bin", "Debug", "net9.0", "Sharpy.Runtime.dll");
                 runtimePath = Path.GetFullPath(runtimePath);
-                
+
                 if (File.Exists(runtimePath))
                 {
                     references.Add(MetadataReference.CreateFromFile(runtimePath));
                     Output.WriteLine($"Loaded Sharpy.Runtime from: {runtimePath}");
-                    
+
                     // Set up assembly resolver for runtime execution
                     resolveHandler = (sender, args) =>
                     {
@@ -256,7 +256,7 @@ public abstract class IntegrationTestBase
             var errorMessage = ex.InnerException != null
                 ? $"Unexpected error during execution: {ex.InnerException.Message}\nStack Trace: {ex.InnerException.StackTrace}"
                 : $"Unexpected error during execution: {ex.Message}";
-            
+
             return new ExecutionResult
             {
                 Success = false,
@@ -301,7 +301,7 @@ public abstract class IntegrationTestBase
                 errorMessage += $"\nInner Exception: {ex.InnerException.Message}";
                 errorMessage += $"\nStack Trace: {ex.InnerException.StackTrace}";
             }
-            
+
             return new ExecutionResult
             {
                 Success = false,

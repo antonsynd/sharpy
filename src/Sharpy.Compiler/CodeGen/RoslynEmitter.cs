@@ -225,7 +225,7 @@ public class RoslynEmitter
             {
                 hasMainFunction = true;
             }
-            
+
             var member = GenerateStatement(stmt);
             if (member is MemberDeclarationSyntax memberDecl)
             {
