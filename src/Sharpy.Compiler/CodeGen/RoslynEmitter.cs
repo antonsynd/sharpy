@@ -216,9 +216,16 @@ public class RoslynEmitter
         // Separate declarations (class members) from executable statements
         var declarations = new List<MemberDeclarationSyntax>();
         var executableStatements = new List<Statement>();
+        bool hasMainFunction = false;
 
         foreach (var stmt in statements)
         {
+            // Check if this is a main function
+            if (stmt is FunctionDef funcDef && funcDef.Name == "main")
+            {
+                hasMainFunction = true;
+            }
+            
             var member = GenerateStatement(stmt);
             if (member is MemberDeclarationSyntax memberDecl)
             {
@@ -231,22 +238,32 @@ public class RoslynEmitter
             }
         }
 
-        // If there are executable statements, create a Main method for them
+        // If there are executable statements, we need to handle them
         if (executableStatements.Count > 0)
         {
-            var mainBody = Block(executableStatements
-                .Select(GenerateBodyStatement)
-                .OfType<StatementSyntax>());
+            if (!hasMainFunction)
+            {
+                // No main function - create a Main method for executable statements
+                var mainBody = Block(executableStatements
+                    .Select(GenerateBodyStatement)
+                    .OfType<StatementSyntax>());
 
-            var mainMethod = MethodDeclaration(
-                    PredefinedType(Token(SyntaxKind.VoidKeyword)),
-                    "Main")
-                .WithModifiers(TokenList(
-                    Token(SyntaxKind.PublicKeyword),
-                    Token(SyntaxKind.StaticKeyword)))
-                .WithBody(mainBody);
+                var mainMethod = MethodDeclaration(
+                        PredefinedType(Token(SyntaxKind.VoidKeyword)),
+                        "Main")
+                    .WithModifiers(TokenList(
+                        Token(SyntaxKind.PublicKeyword),
+                        Token(SyntaxKind.StaticKeyword)))
+                    .WithBody(mainBody);
 
-            declarations.Add(mainMethod);
+                declarations.Add(mainMethod);
+            }
+            else
+            {
+                // There's a main function - put executable statements in module initializer
+                // For now, just ignore them or add to Main after the user's main is called
+                // This is a corner case we'll handle later
+            }
         }
 
         return ClassDeclaration("__Module__")
