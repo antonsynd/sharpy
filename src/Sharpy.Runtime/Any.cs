@@ -1,6 +1,7 @@
 namespace Sharpy;
 
 using Collections.Interfaces;
+using System.Linq;
 
 public static partial class Exports
 {
@@ -17,14 +18,6 @@ public static partial class Exports
             throw TypeError.ArgNone("any", "iterable");
         }
 
-        foreach (var item in iterable)
-        {
-            if (Bool(item))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return iterable.Any(item => Bool(item));
     }
 }

@@ -16,8 +16,16 @@ public static partial class Exports
             throw new DivideByZeroException("integer division or modulo by zero");
         }
 
-        var quotient = (int)Math.Floor((double)x / y);
-        var remainder = x - quotient * y;
+        var quotient = x / y;
+        var remainder = x % y;
+        
+        // Adjust for floored division: if remainder is non-zero and signs differ, adjust quotient and remainder
+        if (remainder != 0 && ((x < 0) != (y < 0)))
+        {
+            quotient--;
+            remainder += y;
+        }
+        
         return (quotient, remainder);
     }
 
@@ -35,8 +43,16 @@ public static partial class Exports
             throw new DivideByZeroException("integer division or modulo by zero");
         }
 
-        var quotient = (long)Math.Floor((double)x / y);
-        var remainder = x - quotient * y;
+        var quotient = x / y;
+        var remainder = x % y;
+        
+        // Adjust for floored division: if remainder is non-zero and signs differ, adjust quotient and remainder
+        if (remainder != 0 && ((x < 0) != (y < 0)))
+        {
+            quotient--;
+            remainder += y;
+        }
+        
         return (quotient, remainder);
     }
 
