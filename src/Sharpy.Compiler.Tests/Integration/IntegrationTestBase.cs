@@ -43,6 +43,10 @@ public abstract class IntegrationTestBase
     /// </summary>
     protected ExecutionResult CompileAndExecute(string sharpySource, string fileName = "test.spy")
     {
+        // Set up assembly resolution for Sharpy.Runtime
+        string? runtimePath = null;
+        ResolveEventHandler? resolveHandler = null;
+        
         try
         {
             // Phase 1: Lex Sharpy code
@@ -114,13 +118,37 @@ public abstract class IntegrationTestBase
             // Try to add Sharpy.Runtime reference if available
             try
             {
-                var runtimeAssembly = Assembly.Load("Sharpy.Runtime");
-                references.Add(MetadataReference.CreateFromFile(runtimeAssembly.Location));
+                // Find Sharpy.Runtime.dll in the build output directory
+                var testAssemblyPath = Assembly.GetExecutingAssembly().Location;
+                var testDir = Path.GetDirectoryName(testAssemblyPath);
+                runtimePath = Path.Combine(testDir!, "..", "..", "..", "..", "Sharpy.Runtime", "bin", "Debug", "net9.0", "Sharpy.Runtime.dll");
+                runtimePath = Path.GetFullPath(runtimePath);
+                
+                if (File.Exists(runtimePath))
+                {
+                    references.Add(MetadataReference.CreateFromFile(runtimePath));
+                    Output.WriteLine($"Loaded Sharpy.Runtime from: {runtimePath}");
+                    
+                    // Set up assembly resolver for runtime execution
+                    resolveHandler = (sender, args) =>
+                    {
+                        if (args.Name.StartsWith("Sharpy.Runtime,"))
+                        {
+                            return Assembly.LoadFrom(runtimePath);
+                        }
+                        return null;
+                    };
+                    AppDomain.CurrentDomain.AssemblyResolve += resolveHandler;
+                }
+                else
+                {
+                    Output.WriteLine($"Warning: Sharpy.Runtime not found at: {runtimePath}");
+                }
             }
-            catch
+            catch (Exception ex)
             {
                 // Sharpy.Runtime not available, continue without it
-                Output.WriteLine("Warning: Sharpy.Runtime assembly not available");
+                Output.WriteLine($"Warning: Failed to load Sharpy.Runtime: {ex.Message}");
             }
 
             var compilation = CSharpCompilation.Create(
@@ -217,12 +245,27 @@ public abstract class IntegrationTestBase
         }
         catch (Exception ex)
         {
+            var errorMessage = $"Unexpected error: {ex.Message}";
+            if (ex.InnerException != null)
+            {
+                errorMessage += $"\nInner Exception: {ex.InnerException.Message}";
+                errorMessage += $"\nStack Trace: {ex.InnerException.StackTrace}";
+            }
+            
             return new ExecutionResult
             {
                 Success = false,
                 Exception = ex,
-                CompilationErrors = new List<string> { $"Unexpected error: {ex.Message}" }
+                CompilationErrors = new List<string> { errorMessage }
             };
+        }
+        finally
+        {
+            // Clean up assembly resolver
+            if (resolveHandler != null)
+            {
+                AppDomain.CurrentDomain.AssemblyResolve -= resolveHandler;
+            }
         }
     }
 

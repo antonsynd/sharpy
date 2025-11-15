@@ -100,7 +100,6 @@ public class RoslynEmitter
 
         // Add Sharpy runtime usings
         usings.Add(UsingDirective(ParseName("Sharpy")));
-        usings.Add(UsingDirective(ParseName("Sharpy.Runtime")));
 
         // Process import statements
         foreach (var stmt in module.Body)
@@ -214,16 +213,47 @@ public class RoslynEmitter
 
     private ClassDeclarationSyntax GenerateModuleClass(List<Statement> statements)
     {
-        var members = statements
-            .Select(GenerateStatement)
-            .OfType<MemberDeclarationSyntax>()
-            .ToArray();
+        // Separate declarations (class members) from executable statements
+        var declarations = new List<MemberDeclarationSyntax>();
+        var executableStatements = new List<Statement>();
+
+        foreach (var stmt in statements)
+        {
+            var member = GenerateStatement(stmt);
+            if (member is MemberDeclarationSyntax memberDecl)
+            {
+                declarations.Add(memberDecl);
+            }
+            else
+            {
+                // This is an executable statement (expression, assignment, etc.)
+                executableStatements.Add(stmt);
+            }
+        }
+
+        // If there are executable statements, create a Main method for them
+        if (executableStatements.Count > 0)
+        {
+            var mainBody = Block(executableStatements
+                .Select(GenerateBodyStatement)
+                .OfType<StatementSyntax>());
+
+            var mainMethod = MethodDeclaration(
+                    PredefinedType(Token(SyntaxKind.VoidKeyword)),
+                    "Main")
+                .WithModifiers(TokenList(
+                    Token(SyntaxKind.PublicKeyword),
+                    Token(SyntaxKind.StaticKeyword)))
+                .WithBody(mainBody);
+
+            declarations.Add(mainMethod);
+        }
 
         return ClassDeclaration("__Module__")
             .WithModifiers(TokenList(
                 Token(SyntaxKind.PublicKeyword),
                 Token(SyntaxKind.StaticKeyword)))
-            .WithMembers(List(members));
+            .WithMembers(List(declarations));
     }
 
     private SyntaxNode? GenerateStatement(Statement stmt)
