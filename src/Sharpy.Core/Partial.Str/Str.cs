@@ -134,19 +134,63 @@ public readonly partial struct Str
         return char.ToUpper(_s[0]) + _s[1..].ToLower();
     }
 
-    public string CaseFold()
+    /// <summary>
+    /// Return a casefolded copy of the string. Casefolded strings may be used for caseless matching.
+    /// </summary>
+    public Str CaseFold()
     {
-        return _s;
+        return new Str(_s.ToLowerInvariant());
     }
 
-    public string Center(uint width, string fillchar = " ")
+    /// <summary>
+    /// Return centered in a string of length width. Padding is done using the specified fill character (default is a space).
+    /// </summary>
+    public Str Center(uint width, Str fillchar = default)
     {
-        return _s;
+        var fill = fillchar._s ?? " ";
+        if (fill.Length != 1)
+        {
+            throw new ValueError("The fill character must be exactly one character long");
+        }
+
+        var len = _s.Length;
+        if (len >= width)
+        {
+            return this;
+        }
+
+        var totalPadding = (int)width - len;
+        var leftPadding = totalPadding / 2;
+        var rightPadding = totalPadding - leftPadding;
+
+        return new Str(new string(fill[0], leftPadding) + _s + new string(fill[0], rightPadding));
     }
 
-    public string Count(string sub, int start, int end)
+    /// <summary>
+    /// Return the number of non-overlapping occurrences of substring sub in the range [start, end].
+    /// </summary>
+    public int Count(Str sub, int start = 0, int? end = null)
     {
-        return _s;
+        var (actualStart, actualEnd) = NormalizeSliceIndices(start, end);
+        if (actualStart >= actualEnd) return 0;
+
+        var substring = _s.Substring(actualStart, actualEnd - actualStart);
+        var subStr = (string)sub;
+
+        if (string.IsNullOrEmpty(subStr))
+        {
+            return substring.Length + 1; // Python behavior: empty string occurs before, between, and after every character
+        }
+
+        int count = 0;
+        int index = 0;
+        while ((index = substring.IndexOf(subStr, index)) >= 0)
+        {
+            count++;
+            index += subStr.Length; // Move past this occurrence
+        }
+
+        return count;
     }
 
     public string Encode(string encoding = "utf-8", string errors = "strict")
@@ -263,9 +307,30 @@ public readonly partial struct Str
         return false;
     }
 
+    /// <summary>
+    /// Return True if all cased characters in the string are lowercase and there is at least one cased character, False otherwise.
+    /// </summary>
     public bool IsLower()
     {
-        return false;
+        if (string.IsNullOrEmpty(_s))
+        {
+            return false;
+        }
+
+        bool hasCased = false;
+        foreach (char c in _s)
+        {
+            if (char.IsUpper(c))
+            {
+                return false;
+            }
+            if (char.IsLower(c))
+            {
+                hasCased = true;
+            }
+        }
+
+        return hasCased;
     }
 
     public bool IsNumeric()
@@ -291,14 +356,71 @@ public readonly partial struct Str
         return _s.All(char.IsWhiteSpace);
     }
 
+    /// <summary>
+    /// Return True if the string is a titlecased string and there is at least one character.
+    /// </summary>
     public bool IsTitle()
     {
-        return false;
+        if (string.IsNullOrEmpty(_s))
+        {
+            return false;
+        }
+
+        bool previousWasLetter = false;
+        bool hasLetter = false;
+
+        foreach (char c in _s)
+        {
+            if (char.IsUpper(c))
+            {
+                if (previousWasLetter)
+                {
+                    return false;
+                }
+                previousWasLetter = true;
+                hasLetter = true;
+            }
+            else if (char.IsLower(c))
+            {
+                if (!previousWasLetter)
+                {
+                    return false;
+                }
+                hasLetter = true;
+            }
+            else
+            {
+                previousWasLetter = false;
+            }
+        }
+
+        return hasLetter;
     }
 
+    /// <summary>
+    /// Return True if all cased characters in the string are uppercase and there is at least one cased character, False otherwise.
+    /// </summary>
     public bool IsUpper()
     {
-        return false;
+        if (string.IsNullOrEmpty(_s))
+        {
+            return false;
+        }
+
+        bool hasCased = false;
+        foreach (char c in _s)
+        {
+            if (char.IsLower(c))
+            {
+                return false;
+            }
+            if (char.IsUpper(c))
+            {
+                hasCased = true;
+            }
+        }
+
+        return hasCased;
     }
 
     /// <summary>

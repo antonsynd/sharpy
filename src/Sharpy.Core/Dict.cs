@@ -88,7 +88,7 @@ public sealed partial class Dict<K, V> : Object, IMutableMapping<K, V> where K :
 
     public IItemsView<K, V> Items()
     {
-        throw new NotImplementedException();
+        return new DictItemsView<K, V>(_dict);
     }
 
     public IKeysView<K> Keys()
@@ -152,7 +152,7 @@ public sealed partial class Dict<K, V> : Object, IMutableMapping<K, V> where K :
 
     public IValuesView<V> Values()
     {
-        throw new NotImplementedException();
+        return new DictValuesView<K, V>(_dict.Values);
     }
 
     public bool __Contains__(K key)

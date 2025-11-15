@@ -25,13 +25,8 @@ public readonly partial struct Str
         return "TODO";
     }
 
-    /// <summary>
-    /// Return the number of times x appears in the list.
-    /// </summary>
-    public uint Count(Str x)
-    {
-        return (uint)_s.Count(y => x.Equals(y));
-    }
+    // Count method moved to main Str.cs to handle both single chars and substrings
+    // with proper start/end parameters matching Python's str.count()
 
     /// <summary>
     /// Return zero-based index in the list of the first item whose value

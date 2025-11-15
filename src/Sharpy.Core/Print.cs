@@ -4,14 +4,14 @@ using static Sharpy.Sys.Exports;
 
 public static partial class Exports
 {
-    public static void Print(Object? obj, uint file = Stdout, bool flush = false)
+    public static void Print(Object? obj, string sep = " ", string end = "\n", uint file = Stdout, bool flush = false)
     {
         var result = obj?.__Str__() ?? "None";
 
-        _Print(result, file, flush);
+        _Print(result, end, file, flush);
     }
 
-    public static void Print(PrintArguments<Object?> args, uint file = Stdout, bool flush = false)
+    public static void Print(PrintArguments<Object?> args, string sep = " ", string end = "\n", uint file = Stdout, bool flush = false)
     {
         var lastIndex = (uint)args.args.Length - 1;
         uint i = 0;
@@ -20,20 +20,27 @@ public static partial class Exports
         {
             var result = obj?.__Str__() ?? "None";
 
-            _Print(result, file, flush && i == lastIndex, i == lastIndex);
+            if (i < lastIndex)
+            {
+                _Print(result, sep, file, false, true);  // Print separator after non-last items
+            }
+            else
+            {
+                _Print(result, end, file, flush, true);  // Print end terminator after last item
+            }
 
             ++i;
         }
     }
 
-    public static void Print(object? obj, uint file = Stdout, bool flush = false)
+    public static void Print(object? obj, string sep = " ", string end = "\n", uint file = Stdout, bool flush = false)
     {
         var result = obj?.ToString() ?? "None";
 
-        _Print(result, file, flush);
+        _Print(result, end, file, flush);
     }
 
-    public static void Print(PrintArguments<object?> args, uint file = Stdout, bool flush = false)
+    public static void Print(PrintArguments<object?> args, string sep = " ", string end = "\n", uint file = Stdout, bool flush = false)
     {
         var lastIndex = (uint)args.args.Length - 1;
         uint i = 0;
@@ -42,13 +49,20 @@ public static partial class Exports
         {
             var result = obj?.ToString() ?? "None";
 
-            _Print(result, file, flush && i == lastIndex, i == lastIndex);
+            if (i < lastIndex)
+            {
+                _Print(result, sep, file, false, true);  // Print separator after non-last items
+            }
+            else
+            {
+                _Print(result, end, file, flush, true);  // Print end terminator after last item
+            }
 
             ++i;
         }
     }
 
-    private static void _Print(string s, uint file = Stdout, bool flush = false, bool newline = true)
+    private static void _Print(string s, string terminator, uint file = Stdout, bool flush = false, bool useTerminator = true)
     {
         if (file == Stddev)
         {
@@ -57,13 +71,17 @@ public static partial class Exports
 
         var textWriter = file == Stdout ? Console.Out : Console.Error;
 
-        if (newline)
+        if (useTerminator && terminator == "\n")
         {
             textWriter.WriteLine(s);
         }
         else
         {
             textWriter.Write(s);
+            if (useTerminator && !string.IsNullOrEmpty(terminator))
+            {
+                textWriter.Write(terminator);
+            }
         }
 
         if (flush)

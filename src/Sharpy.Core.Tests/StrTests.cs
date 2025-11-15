@@ -289,11 +289,11 @@ public class Str_Tests
     {
         var s = new Str("abc");
         var iterator = s.__Iter__();
-        
+
         iterator.__Next__().Should().Be(new Str("a"));
         iterator.__Next__().Should().Be(new Str("b"));
         iterator.__Next__().Should().Be(new Str("c"));
-        
+
         Assert.Throws<StopIteration>(() => iterator.__Next__());
     }
 
@@ -439,5 +439,98 @@ public class Str_Tests
         var result = s.Title();
         result.Should().Be(new Str(""));
     }
-}
 
+    [Fact]
+    public void Count_CountsOccurrences()
+    {
+        var s = new Str("hello hello hello");
+        var count = s.Count(new Str("hello"));
+        count.Should().Be(3);
+    }
+
+    [Fact]
+    public void Count_NonOverlapping()
+    {
+        var s = new Str("aaaa");
+        var count = s.Count(new Str("aa"));
+        count.Should().Be(2); // Non-overlapping
+    }
+
+    [Fact]
+    public void Count_WithStartAndEnd()
+    {
+        var s = new Str("hello hello hello");
+        var count = s.Count(new Str("hello"), start: 6, end: 17);
+        count.Should().Be(2);
+    }
+
+    [Fact]
+    public void Count_NotFound()
+    {
+        var s = new Str("hello world");
+        var count = s.Count(new Str("xyz"));
+        count.Should().Be(0);
+    }
+
+    [Fact]
+    public void Center_PadsString()
+    {
+        var s = new Str("hello");
+        var result = s.Center(11);
+        result.Should().Be(new Str("   hello   "));
+    }
+
+    [Fact]
+    public void Center_WithCustomFillChar()
+    {
+        var s = new Str("hello");
+        var result = s.Center(11, new Str("*"));
+        result.Should().Be(new Str("***hello***"));
+    }
+
+    [Fact]
+    public void Center_NoNeedToPad()
+    {
+        var s = new Str("hello");
+        var result = s.Center(3);
+        result.Should().Be(new Str("hello"));
+    }
+
+    [Fact]
+    public void CaseFold_LowersCaseInsensitive()
+    {
+        var s = new Str("HELLO World");
+        var result = s.CaseFold();
+        result.Should().Be(new Str("hello world"));
+    }
+
+    [Fact]
+    public void IsLower_ReturnsTrueForLowercase()
+    {
+        new Str("hello").IsLower().Should().BeTrue();
+        new Str("Hello").IsLower().Should().BeFalse();
+        new Str("HELLO").IsLower().Should().BeFalse();
+        new Str("123").IsLower().Should().BeFalse();
+        new Str("").IsLower().Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsUpper_ReturnsTrueForUppercase()
+    {
+        new Str("HELLO").IsUpper().Should().BeTrue();
+        new Str("Hello").IsUpper().Should().BeFalse();
+        new Str("hello").IsUpper().Should().BeFalse();
+        new Str("123").IsUpper().Should().BeFalse();
+        new Str("").IsUpper().Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsTitle_ReturnsTrueForTitleCase()
+    {
+        new Str("Hello World").IsTitle().Should().BeTrue();
+        new Str("Hello world").IsTitle().Should().BeFalse();
+        new Str("HELLO WORLD").IsTitle().Should().BeFalse();
+        new Str("hello world").IsTitle().Should().BeFalse();
+        new Str("").IsTitle().Should().BeFalse();
+    }
+}
