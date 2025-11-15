@@ -1,5 +1,7 @@
 namespace Sharpy;
 
+using System.Linq;
+
 public static partial class Exports
 {
     /// <summary>
@@ -53,14 +55,6 @@ public static partial class Exports
             return false;
         }
 
-        foreach (var type in classInfo)
-        {
-            if (type is not null && type.IsInstanceOfType(obj))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return classInfo.Where(type => type is not null).Any(type => type.IsInstanceOfType(obj));
     }
 }
