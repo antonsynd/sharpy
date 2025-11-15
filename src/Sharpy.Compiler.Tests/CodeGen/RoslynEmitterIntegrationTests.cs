@@ -27,6 +27,12 @@ public class RoslynEmitterIntegrationTests
     private bool CompileCode(string code, out string errors)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(code);
+
+        // Get path to System.Runtime
+        var systemRuntimePath = Path.Combine(
+            Path.GetDirectoryName(typeof(object).Assembly.Location)!,
+            "System.Runtime.dll");
+
         var compilation = CSharpCompilation.Create(
             "TestAssembly",
             new[] { syntaxTree },
@@ -36,6 +42,7 @@ public class RoslynEmitterIntegrationTests
                 MetadataReference.CreateFromFile(typeof(Console).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(System.Linq.Enumerable).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(Sharpy.Core.Exports).Assembly.Location),
+                MetadataReference.CreateFromFile(systemRuntimePath),
             },
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 

@@ -1,37 +1,32 @@
 #!/usr/bin/env python3
 import argparse
-import hashlib
-import json
 import logging
-import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import AbstractSet, Iterable, Mapping, MutableSequence, Sequence
-
-import requests
+from typing import AbstractSet, Mapping, MutableSequence, Sequence
 
 _logger: logging.Logger = logging.getLogger(name="build_sharpy")
 
 ROOT_DIR: Path = Path(__file__).parent.parent.parent
-RESOURCE_DIR: Path = ROOT_DIR / "__resources"
 TOOLS_DIR: Path = ROOT_DIR / "tools"
 DATA_DIR: Path = ROOT_DIR / "data"
 
-DOTNET_CSHARP_ROOT_DIR: Path = ROOT_DIR / "dotnet"
-DOTNET_CSHARP_DOCS_DIR: Path = DOTNET_CSHARP_ROOT_DIR / "docs"
+SRC_DIR: Path = ROOT_DIR / "src"
 
-CSHARP_SRC_DIR: Path = ROOT_DIR / "src"
+COMPILER_DIR: Path = SRC_DIR / "Sharpy.Compiler"
+COMPILER_TEST_DIR: Path = SRC_DIR / "Sharpy.Compiler.Tests"
+CORE_DIR: Path = SRC_DIR / "Sharpy.Core"
+CORE_TEST_DIR: Path = SRC_DIR / "Sharpy.Core.Tests"
+CLI_DIR: Path = SRC_DIR / "Sharpy.Cli"
 
 CSHARP_PROJECTS: Sequence[Path] = [
-    CSHARP_SRC_DIR / "Sharpy.Compiler" / "Sharpy.Compiler.csproj",
-    CSHARP_SRC_DIR / "Sharpy.Cli" / "Sharpy.Cli.csproj",
-    CSHARP_SRC_DIR / "Sharpy.Compiler.Tests" / "Sharpy.Compiler.Tests.csproj",
-    CSHARP_SRC_DIR / "Sharpy.Core" / "Sharpy.Core.csproj",
+    COMPILER_DIR / "Sharpy.Compiler.csproj",
+    CLI_DIR / "Sharpy.Cli.csproj",
+    COMPILER_TEST_DIR / "Sharpy.Compiler.Tests.csproj",
+    CORE_DIR / "Sharpy.Core.csproj",
+    CORE_TEST_DIR / "Sharpy.Core.Tests.csproj",
 ]
-
-
-_expected_resources: Sequence[Path] = []
 
 
 def main() -> None:
@@ -60,10 +55,6 @@ def main() -> None:
         clean(args=args, rest=rest)
     elif command == "install":
         install(args=args, rest=rest)
-    elif command == "docs" or command == "build-docs":
-        docs(args=args, rest=rest)
-    elif command == "view-docs":
-        view_docs(args=args, rest=rest)
     elif command == "format":
         format(args=args, rest=rest)
     elif command == "debug":
@@ -76,7 +67,6 @@ def main() -> None:
         test(args=args, rest=rest, release=False)
         build(args=args, rest=rest, release=True)
         test(args=args, rest=rest, release=True)
-        docs(args=args, rest=rest)
         install(args=args, rest=rest)
     elif command == "test":
         test(args=args, rest=rest, release=False)
@@ -90,9 +80,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="")
     subparsers = parser.add_subparsers(dest="command")
 
-    setup_parser = subparsers.add_parser(
-        "setup", help="Downloads resources and generates required code."
-    )
+    _ = subparsers.add_parser("setup", help="Restores the project.")
 
     build_parser = subparsers.add_parser("build", help="Builds the package.")
     build_parser.add_argument(
@@ -108,7 +96,7 @@ def create_parser() -> argparse.ArgumentParser:
     clean_parser.add_argument(
         "--clean-resources", action="store_true", help="Cleans up generated resources."
     )
-    install_parser = subparsers.add_parser("install", help="TODO: No-op")
+    _ = subparsers.add_parser("install", help="TODO: No-op")
     format_parser = subparsers.add_parser("format", help="Runs code formatters.")
     format_parser.add_argument(
         "--target",
@@ -137,13 +125,7 @@ def create_parser() -> argparse.ArgumentParser:
         choices=("cs", "csharp", "rs", "rust"),
         default=None,
     )
-    build_docs_parser = subparsers.add_parser(
-        "build-docs", aliases=["docs"], help="Generates documentation."
-    )
-    view_docs_parser = subparsers.add_parser(
-        "view-docs", help="Starts the documentation server for viewing."
-    )
-    help_parser = subparsers.add_parser("help", help="Prints this help message.")
+    _ = subparsers.add_parser("help", help="Prints this help message.")
 
     return parser
 
@@ -156,18 +138,31 @@ def get_targets(args: argparse.Namespace) -> AbstractSet[str]:
 
 
 def build(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
-    check_for_expected_resources()
-
     argdict: Mapping[str, str] = vars(args)
-
-    if "project" not in argdict or argdict["project"] in {"all", "compiler"}:
-        build_compiler(release=release)
 
     if "project" not in argdict or argdict["project"] in {"all", "lib"}:
         build_lib(release=release)
 
+    if "project" not in argdict or argdict["project"] in {"all", "compiler"}:
+        build_compiler(release=release)
+
+    if "project" not in argdict or argdict["project"] in {"all", "cli"}:
+        build_cli(release=release)
+
     if "project" not in argdict or argdict["project"] in {"all", "tests"}:
         build_tests(release=release)
+
+
+def build_cli(release: bool) -> None:
+    build_type: str = "Release" if release else "Debug"
+
+    try:
+        get_logger().info(f"Building CLI with {build_type.lower()} configuration...")
+
+        subprocess.run(["dotnet", "build", "-c", build_type, str(CLI_DIR)], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Encountered error {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def build_compiler(release: bool) -> None:
@@ -178,7 +173,9 @@ def build_compiler(release: bool) -> None:
             f"Building compiler with {build_type.lower()} configuration..."
         )
 
-        # subprocess.run(args, check=True, cwd=RUST_SRC_DIR)
+        subprocess.run(
+            ["dotnet", "build", "-c", build_type, str(COMPILER_DIR)], check=True
+        )
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -191,9 +188,7 @@ def build_lib(release: bool) -> None:
         get_logger().info(
             f"Building standard library with {build_type.lower()} configuration..."
         )
-        # subprocess.run(
-        #     ["dotnet", "build", "-c", build_type, str(DOTNET_CSHARP_SRC_DIR)], check=True
-        # )
+        subprocess.run(["dotnet", "build", "-c", build_type, str(CORE_DIR)], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -204,9 +199,12 @@ def build_tests(release: bool) -> None:
 
     try:
         get_logger().info(f"Building tests with {build_type.lower()} configuration...")
-        # subprocess.run(
-        #     ["dotnet", "build", "-c", build_type, str(DOTNET_CSHARP_TEST_DIR)], check=True
-        # )
+        subprocess.run(
+            ["dotnet", "build", "-c", build_type, str(CORE_TEST_DIR)], check=True
+        )
+        subprocess.run(
+            ["dotnet", "build", "-c", build_type, str(COMPILER_TEST_DIR)], check=True
+        )
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -214,110 +212,20 @@ def build_tests(release: bool) -> None:
 
 def setup(args: argparse.Namespace, rest: Sequence[str]) -> None:
     get_logger().info("Setting up...")
-
-    RESOURCE_DIR.mkdir(exist_ok=True)
-    old_cwd: Path = Path.cwd()
+    get_logger().info("Restoring project...")
 
     try:
-        get_logger().info("Downloading resources...")
-        download_data_files()
+        subprocess.run(["dotnet", "restore"], check=True, cwd=ROOT_DIR)
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
-        os.chdir(old_cwd)
         sys.exit(1)
-
-    os.chdir(old_cwd)
-
-
-def check_for_expected_resources() -> None:
-    if not RESOURCE_DIR.exists():
-        print(f"Resources not generated, please run 'setup' target", file=sys.stderr)
-        sys.exit(1)
-
-    missing_files: Sequence[Path] = []
-
-    for file_path in _expected_resources:
-        if not file_path.exists() or file_path.stat().st_size == 0:
-            missing_files.append(file_path)
-
-    if missing_files:
-        print(f"Missing the following files:", file=sys.stderr)
-
-        for file_path in missing_files:
-            print(f"  {file_path}", file=sys.stderr)
-
-        print(f"Please run 'setup' target", file=sys.stderr)
-        sys.exit(1)
-
-
-def download_data_files() -> None:
-    download_files_from_jsons(specs=DATA_DIR.glob("*.json"), target_dir=RESOURCE_DIR)
-
-
-def download_files_from_jsons(specs: Iterable[Path], target_dir: Path) -> None:
-    for spec in specs:
-        download_file_from_json(spec=spec, target_dir=target_dir)
-
-
-def download_file_from_json(spec: Path, target_dir: Path) -> None:
-    spec_json: Mapping[str, str] = json.loads(spec.read_text())
-    url: str = spec_json["url"]
-    dest_path: Path = target_dir / spec_json["destination"]
-    expected_checksum: str = spec_json["checksum"]
-
-    response: requests.Response = requests.get(url)
-
-    if response.status_code != 200:
-        print(
-            f"Failed to download '{url}' with status code {response.status_code}",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    retrieved_bytes: bytes = response.content
-    actual_checksum: str = hashlib.sha256(retrieved_bytes).hexdigest()
-
-    if expected_checksum != actual_checksum:
-        print(
-            f"Downloaded file '{url}' has checksum {actual_checksum}, but expected {expected_checksum}",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    dest_path.write_bytes(retrieved_bytes)
 
 
 def clean(args: argparse.Namespace, rest: Sequence[str]) -> None:
-    get_logger().info("Removing __pycache__ directories...")
-
-    remove_pycache_dirs(root_path=RESOURCE_DIR)
-
-    if args.clean_resources:
-        get_logger().info("Removing generated resources...")
-
-        for resource in RESOURCE_DIR.rglob("*"):
-            resource.unlink()
-
-
-def docs(args: argparse.Namespace, rest: Sequence[str]) -> None:
-    get_logger().info("Generating documentation...")
+    get_logger().info("Cleaning project...")
 
     try:
-        subprocess.run(
-            ["docfx", str(DOTNET_CSHARP_DOCS_DIR / "docfx.json")], check=True
-        )
-    except subprocess.CalledProcessError as e:
-        print(f"Encountered error {e}", file=sys.stderr)
-        sys.exit(1)
-
-
-def view_docs(args: argparse.Namespace, rest: Sequence[str]) -> None:
-    get_logger().info("Starting documentation server...")
-
-    try:
-        subprocess.run(
-            ["docfx", "serve", str(DOTNET_CSHARP_DOCS_DIR / "_site")], check=True
-        )
+        subprocess.run(["dotnet", "clean"], check=True, cwd=ROOT_DIR)
     except subprocess.CalledProcessError as e:
         print(f"Encountered error {e}", file=sys.stderr)
         sys.exit(1)
@@ -360,11 +268,15 @@ def test(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
         f"Running tests with dotnet with {build_type.lower()} configuration..."
     )
     try:
-        # subprocess.run(
-        #     ["dotnet", "test", "-c", build_type, str(DOTNET_CSHARP_TEST_DIR), *rest],
-        #     check=True,
-        # )
-        pass
+        subprocess.run(
+            ["dotnet", "test", "-c", build_type, str(CORE_TEST_DIR), *rest],
+            check=True,
+        )
+
+        subprocess.run(
+            ["dotnet", "test", "-c", build_type, str(COMPILER_TEST_DIR), *rest],
+            check=True,
+        )
     except subprocess.CalledProcessError as e:
         get_logger().error(f"Encountered error {e}")
         sys.exit(1)

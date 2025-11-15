@@ -188,11 +188,11 @@ public class TypeMapper
     }
 
     /// <summary>
-    /// Creates a Sharpy.Dict type with key and value types
+    /// Creates a Sharpy.Core.Dict type with key and value types
     /// </summary>
     public TypeSyntax CreateDictType(TypeSyntax keyType, TypeSyntax valueType)
     {
-        return GenericName("Sharpy.Dict")
+        return GenericName("Sharpy.Core.Dict")
             .WithTypeArgumentList(
                 TypeArgumentList(SeparatedList(new[] { keyType, valueType })));
     }

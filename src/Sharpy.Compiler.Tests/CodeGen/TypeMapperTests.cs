@@ -232,7 +232,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapFunctionType(funcType);
 
         // Assert
-        result.ToString().Should().Be("System.Func<int,Sharpy.Str>");
+        result.ToString().Should().Be("System.Func<int,Sharpy.Core.Str>");
     }
 
     [Fact]
@@ -253,7 +253,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapFunctionType(funcType);
 
         // Assert
-        result.ToString().Should().Be("System.Action<int,Sharpy.Str>");
+        result.ToString().Should().Be("System.Action<int,Sharpy.Core.Str>");
     }
 
     [Fact]
@@ -329,7 +329,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapTupleType(tupleType);
 
         // Assert
-        result.ToString().Should().Be("System.ValueTuple<int,Sharpy.Str>");
+        result.ToString().Should().Be("System.ValueTuple<int,Sharpy.Core.Str>");
     }
 
     #endregion

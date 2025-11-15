@@ -15,6 +15,7 @@ public class RoslynEmitter
 {
     private readonly CodeGenContext _context;
     private readonly TypeMapper _typeMapper;
+    private readonly HashSet<string> _declaredVariables = new();
 
     // Common .NET namespace acronyms that should be all uppercase
     private static readonly HashSet<string> UpperCaseAcronyms = new(StringComparer.OrdinalIgnoreCase)
@@ -244,6 +245,9 @@ public class RoslynEmitter
             if (!hasMainFunction)
             {
                 // No main function - create a Main method for executable statements
+                // Clear declared variables for Main method scope
+                _declaredVariables.Clear();
+
                 var mainBody = Block(executableStatements
                     .Select(GenerateBodyStatement)
                     .OfType<StatementSyntax>());
@@ -292,6 +296,9 @@ public class RoslynEmitter
 
     private MethodDeclarationSyntax GenerateFunctionDeclaration(FunctionDef func)
     {
+        // Clear declared variables for new function scope
+        _declaredVariables.Clear();
+
         // Transform name using NameMangler
         var mangledName = NameMangler.Transform(func.Name, NameContext.Method);
 
@@ -307,6 +314,13 @@ public class RoslynEmitter
         var parameters = func.Parameters
             .Select(GenerateParameter)
             .ToArray();
+
+        // Track parameters as declared variables
+        foreach (var param in func.Parameters)
+        {
+            var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
+            _declaredVariables.Add(paramName);
+        }
 
         // Generate method body
         var body = Block(func.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
@@ -1130,19 +1144,34 @@ public class RoslynEmitter
         // Handle simple identifier assignment
         if (assign.Target is Identifier name)
         {
-            var varName = NameMangler.ToCamelCase(name.Name);
+            // Use ensureUnique: false for assignments since we're referencing an existing variable
+            var varName = NameMangler.ToCamelCase(name.Name, ensureUnique: false);
 
             // Check if this is a simple assignment or augmented assignment
             if (assign.Operator == AssignmentOperator.Assign)
             {
                 // Simple assignment: x = value
-                // For now, treat as variable declaration (TODO: track if variable exists)
-                var declaration = VariableDeclaration(IdentifierName("var"))
-                    .WithVariables(SingletonSeparatedList(
-                        VariableDeclarator(Identifier(varName))
-                            .WithInitializer(EqualsValueClause(value))));
+                // Check if this is the first time we're seeing this variable
+                if (!_declaredVariables.Contains(varName))
+                {
+                    // First assignment - treat as declaration
+                    _declaredVariables.Add(varName);
+                    var declaration = VariableDeclaration(IdentifierName("var"))
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(Identifier(varName))
+                                .WithInitializer(EqualsValueClause(value))));
 
-                return LocalDeclarationStatement(declaration);
+                    return LocalDeclarationStatement(declaration);
+                }
+                else
+                {
+                    // Reassignment to existing variable
+                    return ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            IdentifierName(varName),
+                            value));
+                }
             }
             else
             {
@@ -1234,6 +1263,9 @@ public class RoslynEmitter
             ? NameMangler.ToConstantCase(varDecl.Name)
             : NameMangler.ToCamelCase(varDecl.Name);
         var typeSyntax = _typeMapper.MapType(varDecl.Type);
+
+        // Track this variable as declared
+        _declaredVariables.Add(varName);
 
         VariableDeclaratorSyntax declarator;
         if (varDecl.InitialValue != null)
