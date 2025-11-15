@@ -136,12 +136,9 @@ public class CodeValidator
         // Check for var without initializer
         if (varDecl.Type.IsVar)
         {
-            foreach (var variable in varDecl.Variables)
+            foreach (var variable in varDecl.Variables.Where(v => v.Initializer == null))
             {
-                if (variable.Initializer == null)
-                {
-                    _warnings.Add($"Variable {variable.Identifier.Text} uses 'var' without initializer");
-                }
+                _warnings.Add($"Variable {variable.Identifier.Text} uses 'var' without initializer");
             }
         }
     }

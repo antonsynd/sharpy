@@ -784,7 +784,7 @@ The following are explicitly **deferred** to later versions:
 | Phase 9: Runtime Integration | ✅ Complete | 100% |
 | Phase 10: Documentation | 🔄 Partial | 35% |
 
-**Test Coverage**: 775 passing (760 compiler + 15 codegen infrastructure), 12 skipped, 0 failing
+**Test Coverage**: 775 passing (760 compiler + 15 codegen infrastructure), plus X runtime tests passing separately; 12 skipped, 0 failing
 
 ---
 

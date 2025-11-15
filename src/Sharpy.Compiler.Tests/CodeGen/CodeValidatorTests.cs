@@ -93,7 +93,7 @@ public class MyClass
         var validator = new CodeValidator();
 
         // Act
-        var result = validator.Validate(syntaxTree);
+        validator.Validate(syntaxTree);
 
         // Assert
         // Note: This will have syntax errors due to duplicate method names, but we also check for warnings
