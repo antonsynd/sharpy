@@ -1,10 +1,12 @@
 # High-level layout of the `sharpy` repository
 
 The Sharpy standard library (implemented as a .NET library in C#) is located
-at `./dotnet` relative to the root of this repository. Eventually it should
-be migrated to the main source directory under `./src/` but for not it is
-kept separate until it's ready to integrate. The compiler toolchain and some
-other stubs are under `./src/Sharpy*`.
+at `./src/Sharpy.Core` relative to the root of this repository. The compiler
+toolchain is under `./src/Sharpy.Compiler`. There is also compiler CLI located
+under `./src/Sharpy.Cli`.
+
+Tests are located under `./src/Sharpy.Core.Tests` and
+`./src/Sharpy.Compiler.Tests`.
 
 # Invocable tools in the workspace
 

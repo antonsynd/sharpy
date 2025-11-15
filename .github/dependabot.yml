@@ -40,25 +40,3 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-
-  # Python (requirements.txt at repo root)
-  - package-ecosystem: "pip"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "02:00"
-      timezone: "America/New_York"
-    labels: ["dependencies", "python", "pip"]
-    open-pull-requests-limit: 10
-    groups:
-      pip-minor-and-patch:
-        applies-to: "version-updates"
-        update-types:
-          - "minor"
-          - "patch"
-        patterns:
-          - "*"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
