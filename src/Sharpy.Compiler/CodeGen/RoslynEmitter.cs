@@ -1477,7 +1477,7 @@ public class RoslynEmitter
         if (call.Function is Identifier funcName)
         {
             var name = _context.IsBuiltinFunction(funcName.Name)
-                ? $"Sharpy.Exports.{NameMangler.ToPascalCase(funcName.Name)}"
+                ? $"Sharpy.Core.Exports.{NameMangler.ToPascalCase(funcName.Name)}"
                 : NameMangler.ToPascalCase(funcName.Name);
 
             var args = call.Arguments.Select(GenerateExpression).ToArray();
