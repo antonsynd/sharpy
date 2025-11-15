@@ -23,14 +23,9 @@ public static partial class Exports
             systemList.Add(item);
         }
 
-        systemList.Sort();
+        systemList.Sort(ComparerAdapter<T>.Instance);
         
-        var result = new List<T>();
-        foreach (var item in systemList)
-        {
-            result.Append(item);
-        }
-        return result;
+        return new List<T>(systemList);
     }
 
     /// <summary>
@@ -59,14 +54,9 @@ public static partial class Exports
             systemList.Add(item);
         }
 
-        systemList.Sort((a, b) => Comparer<TKey>.Default.Compare(key(a), key(b)));
+        systemList.Sort(KeyComparerFactory<T, TKey>.Create(key));
         
-        var result = new List<T>();
-        foreach (var item in systemList)
-        {
-            result.Append(item);
-        }
-        return result;
+        return new List<T>(systemList);
     }
 
     /// <summary>
@@ -89,18 +79,13 @@ public static partial class Exports
             systemList.Add(item);
         }
 
-        systemList.Sort();
+        systemList.Sort(ComparerAdapter<T>.Instance);
         if (reverse)
         {
             systemList.Reverse();
         }
         
-        var result = new List<T>();
-        foreach (var item in systemList)
-        {
-            result.Append(item);
-        }
-        return result;
+        return new List<T>(systemList);
     }
 
     /// <summary>
@@ -130,17 +115,12 @@ public static partial class Exports
             systemList.Add(item);
         }
 
-        systemList.Sort((a, b) =>
+        systemList.Sort(KeyComparerFactory<T, TKey>.Create(key));
+        if (reverse)
         {
-            var comparison = Comparer<TKey>.Default.Compare(key(a), key(b));
-            return reverse ? -comparison : comparison;
-        });
-        
-        var result = new List<T>();
-        foreach (var item in systemList)
-        {
-            result.Append(item);
+            systemList.Reverse();
         }
-        return result;
+        
+        return new List<T>(systemList);
     }
 }

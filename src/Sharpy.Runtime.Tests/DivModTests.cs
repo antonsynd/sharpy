@@ -22,9 +22,9 @@ public class DivMod_Tests
         // When
         var (quotient, remainder) = DivMod(-17, 5);
 
-        // Then
-        quotient.Should().Be(-3);
-        remainder.Should().Be(-2);
+        // Then (Python floored division: -17 // 5 = -4, -17 % 5 = 3)
+        quotient.Should().Be(-4);
+        remainder.Should().Be(3);
     }
 
     [Fact]
@@ -33,9 +33,9 @@ public class DivMod_Tests
         // When
         var (quotient, remainder) = DivMod(17, -5);
 
-        // Then
-        quotient.Should().Be(-3);
-        remainder.Should().Be(2);
+        // Then (Python floored division: 17 // -5 = -4, 17 % -5 = -3)
+        quotient.Should().Be(-4);
+        remainder.Should().Be(-3);
     }
 
     [Fact]

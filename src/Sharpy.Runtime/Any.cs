@@ -19,22 +19,7 @@ public static partial class Exports
 
         foreach (var item in iterable)
         {
-            // Check truthiness - for bool, check directly; for others use Operator.Truth
-            if (item is bool b)
-            {
-                if (b)
-                {
-                    return true;
-                }
-            }
-            else if (item is IBoolConvertible convertible)
-            {
-                if (Operator.Exports.Truth(convertible))
-                {
-                    return true;
-                }
-            }
-            else if (item is not null && !((item is int i && i == 0) || (item is string s && s.Length == 0)))
+            if (Bool(item))
             {
                 return true;
             }

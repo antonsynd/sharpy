@@ -19,7 +19,7 @@ public static partial class Exports
     /// <returns>The input string (without trailing newline)</returns>
     public static string Input(string prompt)
     {
-        if (prompt != null)
+        if (prompt is not null)
         {
             Console.Write(prompt);
         }

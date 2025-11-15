@@ -11,7 +11,8 @@ public static partial class Exports
     {
         if (obj is null)
         {
-            // In Python, type(None) returns NoneType, but in C# we return the actual type
+            // In Python, type(None) returns NoneType. In C#, we use typeof(object) as
+            // there's no direct NoneType equivalent since null represents None.
             return typeof(object);
         }
 

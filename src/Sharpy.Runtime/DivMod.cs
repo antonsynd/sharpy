@@ -4,6 +4,7 @@ public static partial class Exports
 {
     /// <summary>
     /// Return the quotient and remainder of dividing x by y.
+    /// Uses Python's floored division semantics where the remainder has the same sign as the divisor.
     /// </summary>
     /// <param name="x">The dividend</param>
     /// <param name="y">The divisor</param>
@@ -15,13 +16,14 @@ public static partial class Exports
             throw new DivideByZeroException("integer division or modulo by zero");
         }
 
-        var quotient = x / y;
-        var remainder = x % y;
+        var quotient = (int)Math.Floor((double)x / y);
+        var remainder = x - quotient * y;
         return (quotient, remainder);
     }
 
     /// <summary>
     /// Return the quotient and remainder of dividing x by y.
+    /// Uses Python's floored division semantics where the remainder has the same sign as the divisor.
     /// </summary>
     /// <param name="x">The dividend</param>
     /// <param name="y">The divisor</param>
@@ -33,20 +35,22 @@ public static partial class Exports
             throw new DivideByZeroException("integer division or modulo by zero");
         }
 
-        var quotient = x / y;
-        var remainder = x % y;
+        var quotient = (long)Math.Floor((double)x / y);
+        var remainder = x - quotient * y;
         return (quotient, remainder);
     }
 
     /// <summary>
     /// Return the quotient and remainder of dividing x by y.
+    /// Uses Python's floored division semantics where the remainder has the same sign as the divisor.
     /// </summary>
     /// <param name="x">The dividend</param>
     /// <param name="y">The divisor</param>
     /// <returns>A tuple of (quotient, remainder)</returns>
     public static (double, double) DivMod(double x, double y)
     {
-        if (y == 0)
+        const double epsilon = 1e-10;
+        if (Math.Abs(y) < epsilon)
         {
             throw new DivideByZeroException("float division or modulo by zero");
         }
@@ -58,13 +62,15 @@ public static partial class Exports
 
     /// <summary>
     /// Return the quotient and remainder of dividing x by y.
+    /// Uses Python's floored division semantics where the remainder has the same sign as the divisor.
     /// </summary>
     /// <param name="x">The dividend</param>
     /// <param name="y">The divisor</param>
     /// <returns>A tuple of (quotient, remainder)</returns>
     public static (float, float) DivMod(float x, float y)
     {
-        if (y == 0)
+        const float epsilon = 1e-7f;
+        if (Math.Abs(y) < epsilon)
         {
             throw new DivideByZeroException("float division or modulo by zero");
         }
