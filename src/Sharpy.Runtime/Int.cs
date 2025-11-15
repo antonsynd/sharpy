@@ -58,7 +58,11 @@ public static partial class Exports
     /// </summary>
     public static int Int(double d)
     {
-        if (double.IsNaN(d) || double.IsInfinity(d) || d < int.MinValue || d > int.MaxValue)
+        if (double.IsNaN(d))
+        {
+            throw new ValueError("cannot convert float NaN to int");
+        }
+        if (double.IsInfinity(d) || d < int.MinValue || d > int.MaxValue)
         {
             throw new OverflowException($"Value {d} is out of range for int");
         }

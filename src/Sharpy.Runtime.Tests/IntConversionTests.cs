@@ -47,10 +47,46 @@ public class IntConversionTests
     }
 
     [Fact]
+    public void Int_FromFloat_NaN_ThrowsValueError()
+    {
+        Assert.Throws<ValueError>(() => Exports.Int(float.NaN));
+    }
+
+    [Fact]
+    public void Int_FromFloat_PositiveInfinity_ThrowsOverflowException()
+    {
+        Assert.Throws<OverflowException>(() => Exports.Int(float.PositiveInfinity));
+    }
+
+    [Fact]
+    public void Int_FromFloat_NegativeInfinity_ThrowsOverflowException()
+    {
+        Assert.Throws<OverflowException>(() => Exports.Int(float.NegativeInfinity));
+    }
+
+    [Fact]
     public void Int_FromDouble_Truncates()
     {
         var result = Exports.Int(3.9);
         Assert.Equal(3, result);
+    }
+
+    [Fact]
+    public void Int_FromDouble_NaN_ThrowsValueError()
+    {
+        Assert.Throws<ValueError>(() => Exports.Int(double.NaN));
+    }
+
+    [Fact]
+    public void Int_FromDouble_PositiveInfinity_ThrowsOverflowException()
+    {
+        Assert.Throws<OverflowException>(() => Exports.Int(double.PositiveInfinity));
+    }
+
+    [Fact]
+    public void Int_FromDouble_NegativeInfinity_ThrowsOverflowException()
+    {
+        Assert.Throws<OverflowException>(() => Exports.Int(double.NegativeInfinity));
     }
 
     [Fact]

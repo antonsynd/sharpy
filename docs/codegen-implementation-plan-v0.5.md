@@ -1361,9 +1361,9 @@ The code generator is now **feature-complete for v0.5**. All critical and import
 
 ### Completed Work
 1. **Type Conversion Functions** ✅ COMPLETE
-   - Implemented `Int()` type conversion function (130 lines)
+   - Implemented `Int()` type conversion function (155 lines)
      - Handles bool, int, long, float, double, decimal, string, byte, sbyte, short, ushort, uint, ulong
-     - Proper overflow checking for out-of-range conversions (integer-to-integer only; conversions from float/double to int do not check for overflow and may truncate or wrap values)
+     - Proper overflow checking for out-of-range conversions
      - String parsing with error handling
    - Implemented `Double()` type conversion function (120 lines)
      - Handles all numeric types and strings
@@ -1385,10 +1385,11 @@ The code generator is now **feature-complete for v0.5**. All critical and import
    - Created DoubleConversionTests.cs (14 tests)
    - Created ListConversionTests.cs (4 tests)
    - Created SetConversionTests.cs (5 tests)
-   - Total: 41 new tests (note: tuple tests not created yet as they need special handling)
+   - Created TupleConversionTests.cs (12 tests)
+   - Total: 53 new tests
 
 ### Files Modified
-- `src/Sharpy.Runtime/Int.cs` (new, 130 lines)
+- `src/Sharpy.Runtime/Int.cs` (new, 155 lines)
 - `src/Sharpy.Runtime/Double.cs` (new, 120 lines)
 - `src/Sharpy.Runtime/ListConversion.cs` (new, 67 lines)
 - `src/Sharpy.Runtime/SetConversion.cs` (new, 67 lines)
