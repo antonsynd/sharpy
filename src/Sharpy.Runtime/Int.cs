@@ -38,6 +38,18 @@ public static partial class Exports
     /// </summary>
     public static int Int(float f)
     {
+        if (float.IsNaN(f))
+        {
+            throw new ValueError("cannot convert float NaN to int");
+        }
+        if (float.IsPositiveInfinity(f) || float.IsNegativeInfinity(f))
+        {
+            throw new OverflowException($"Value {f} is out of range for int");
+        }
+        if (f < int.MinValue || f > int.MaxValue)
+        {
+            throw new OverflowException($"Value {f} is out of range for int");
+        }
         return (int)f;
     }
 
@@ -46,6 +58,10 @@ public static partial class Exports
     /// </summary>
     public static int Int(double d)
     {
+        if (double.IsNaN(d) || double.IsInfinity(d) || d < int.MinValue || d > int.MaxValue)
+        {
+            throw new OverflowException($"Value {d} is out of range for int");
+        }
         return (int)d;
     }
 
@@ -54,6 +70,10 @@ public static partial class Exports
     /// </summary>
     public static int Int(decimal m)
     {
+        if (m < int.MinValue || m > int.MaxValue)
+        {
+            throw new OverflowException($"Value {m} is out of range for int");
+        }
         return (int)m;
     }
 
@@ -126,7 +146,7 @@ public static partial class Exports
     /// </summary>
     public static int Int(ulong ul)
     {
-        if (ul > int.MaxValue)
+        if (ul > (ulong)int.MaxValue)
         {
             throw new OverflowException($"Value {ul} is out of range for int");
         }
