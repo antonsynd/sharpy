@@ -100,7 +100,6 @@ public class RoslynEmitter
 
         // Add Sharpy runtime usings
         usings.Add(UsingDirective(ParseName("Sharpy")));
-        usings.Add(UsingDirective(ParseName("Sharpy.Runtime")));
 
         // Process import statements
         foreach (var stmt in module.Body)
@@ -214,16 +213,65 @@ public class RoslynEmitter
 
     private ClassDeclarationSyntax GenerateModuleClass(List<Statement> statements)
     {
-        var members = statements
-            .Select(GenerateStatement)
-            .OfType<MemberDeclarationSyntax>()
-            .ToArray();
+        // Separate declarations (class members) from executable statements
+        var declarations = new List<MemberDeclarationSyntax>();
+        var executableStatements = new List<Statement>();
+        bool hasMainFunction = false;
+
+        foreach (var stmt in statements)
+        {
+            // Check if this is a main function
+            if (stmt is FunctionDef funcDef && funcDef.Name == "main")
+            {
+                hasMainFunction = true;
+            }
+            
+            var member = GenerateStatement(stmt);
+            if (member is MemberDeclarationSyntax memberDecl)
+            {
+                declarations.Add(memberDecl);
+            }
+            else
+            {
+                // This is an executable statement (expression, assignment, etc.)
+                executableStatements.Add(stmt);
+            }
+        }
+
+        // If there are executable statements, we need to handle them
+        if (executableStatements.Count > 0)
+        {
+            if (!hasMainFunction)
+            {
+                // No main function - create a Main method for executable statements
+                var mainBody = Block(executableStatements
+                    .Select(GenerateBodyStatement)
+                    .OfType<StatementSyntax>());
+
+                var mainMethod = MethodDeclaration(
+                        PredefinedType(Token(SyntaxKind.VoidKeyword)),
+                        "Main")
+                    .WithModifiers(TokenList(
+                        Token(SyntaxKind.PublicKeyword),
+                        Token(SyntaxKind.StaticKeyword)))
+                    .WithBody(mainBody);
+
+                declarations.Add(mainMethod);
+            }
+            else
+            {
+                // There's a main function - put executable statements in module initializer
+                // For now, just ignore them or add to Main after the user's main is called
+                // This is a corner case we'll handle later
+                Console.WriteLine($"Warning: {executableStatements.Count} module-level statement(s) ignored because a 'main' function is defined");
+            }
+        }
 
         return ClassDeclaration("__Module__")
             .WithModifiers(TokenList(
                 Token(SyntaxKind.PublicKeyword),
                 Token(SyntaxKind.StaticKeyword)))
-            .WithMembers(List(members));
+            .WithMembers(List(declarations));
     }
 
     private SyntaxNode? GenerateStatement(Statement stmt)
