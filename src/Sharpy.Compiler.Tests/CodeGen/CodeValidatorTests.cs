@@ -80,14 +80,14 @@ public abstract class Base
     }
 
     [Fact]
-    public void Validate_DuplicateMembers_AddsWarning()
+    public void Validate_DuplicateNonMethodMembers_AddsWarning()
     {
-        // Arrange
+        // Arrange - Use fields instead of methods to avoid method overloading
         var code = @"
 public class MyClass
 {
-    public void DoSomething() { }
-    public void DoSomething() { }
+    public int Value;
+    public int Value;
 }";
         var syntaxTree = CSharpSyntaxTree.ParseText(code);
         var validator = new CodeValidator();
@@ -96,8 +96,29 @@ public class MyClass
         validator.Validate(syntaxTree);
 
         // Assert
-        // Note: This will have syntax errors due to duplicate method names, but we also check for warnings
+        // This will have syntax errors due to duplicate field names, but we also check for custom warnings
         validator.Warnings.Should().Contain(w => w.Contains("duplicate member"));
+    }
+
+    [Fact]
+    public void Validate_MethodOverloads_DoesNotWarnAboutDuplicates()
+    {
+        // Arrange - Method overloading is valid in C#
+        var code = @"
+public class MyClass
+{
+    public void DoSomething() { }
+    public void DoSomething(int x) { }
+}";
+        var syntaxTree = CSharpSyntaxTree.ParseText(code);
+        var validator = new CodeValidator();
+
+        // Act
+        var result = validator.Validate(syntaxTree);
+
+        // Assert
+        result.Should().BeTrue();
+        validator.Warnings.Should().NotContain(w => w.Contains("duplicate member"));
     }
 
     [Fact]
@@ -139,7 +160,9 @@ public class MyClass
         validator.Validate(syntaxTree);
 
         // Assert
-        // Note: This will also have syntax errors, but check for the warning
+        // Note: var without initializer is a syntax error in C#, but our validator
+        // detects it during AST traversal and adds a custom warning before Roslyn reports the error.
+        // This warning provides additional context specific to the Sharpy → C# compilation process.
         validator.Warnings.Should().Contain(w => w.Contains("var") && w.Contains("without initializer"));
     }
 
@@ -150,8 +173,8 @@ public class MyClass
         var code = @"
 public class MyClass
 {
-    public void Method1() { }
-    public void Method1() { }
+    public int Value;
+    public int Value;
     
     public abstract void AbstractWithBody()
     {

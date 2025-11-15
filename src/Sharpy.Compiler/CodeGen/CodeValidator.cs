@@ -83,13 +83,15 @@ public class CodeValidator
             _errors.Add("Class declaration has empty name");
         }
 
-        // Check for duplicate members
-        var memberNames = classDecl.Members
+        // Check for duplicate non-method members (fields, properties)
+        // Note: Methods can be overloaded in C#, so we only check non-method members
+        var nonMethodMembers = classDecl.Members
+            .Where(m => m is not MethodDeclarationSyntax)
             .Select(m => GetMemberName(m))
             .Where(name => name != null)
             .ToList();
 
-        var duplicates = memberNames
+        var duplicates = nonMethodMembers
             .GroupBy(name => name)
             .Where(g => g.Count() > 1)
             .Select(g => g.Key)
