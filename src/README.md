@@ -32,11 +32,11 @@ Sharpy.Compiler/
     └── CodeGenContext.cs # Code generation state
 ```
 
-### Sharpy.Runtime
+### Sharpy.Core
 The runtime library that compiled Sharpy code depends on.
 
 ```
-Sharpy.Runtime/
+Sharpy.Core/
 ├── Builtins/           # Always-available types and functions
 │   ├── Exports.cs      # Global functions (print, len, etc.)
 │   └── Exceptions.cs   # Exception types
@@ -85,7 +85,7 @@ dotnet build
 dotnet build src/Sharpy.Compiler
 
 # Build just the runtime
-dotnet build src/Sharpy.Runtime
+dotnet build src/Sharpy.Core
 ```
 
 ## Usage (Future)

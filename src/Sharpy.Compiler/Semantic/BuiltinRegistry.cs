@@ -1,7 +1,7 @@
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
-/// Registry of builtin types and functions from Sharpy.Runtime
+/// Registry of builtin types and functions from Sharpy.Core
 /// </summary>
 public class BuiltinRegistry
 {

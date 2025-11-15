@@ -115,24 +115,24 @@ public abstract class IntegrationTestBase
                 MetadataReference.CreateFromFile(Assembly.Load("System.Collections").Location),
             };
 
-            // Try to add Sharpy.Runtime reference if available
+            // Try to add Sharpy.Core reference if available
             try
             {
-                // Find Sharpy.Runtime.dll in the build output directory
+                // Find Sharpy.Core.dll in the build output directory
                 var testAssemblyPath = Assembly.GetExecutingAssembly().Location;
                 var testDir = Path.GetDirectoryName(testAssemblyPath);
-                runtimePath = Path.Combine(testDir!, "..", "..", "..", "..", "Sharpy.Runtime", "bin", "Debug", "net9.0", "Sharpy.Runtime.dll");
+                runtimePath = Path.Combine(testDir!, "..", "..", "..", "..", "Sharpy.Core", "bin", "Debug", "net9.0", "Sharpy.Core.dll");
                 runtimePath = Path.GetFullPath(runtimePath);
 
                 if (File.Exists(runtimePath))
                 {
                     references.Add(MetadataReference.CreateFromFile(runtimePath));
-                    Output.WriteLine($"Loaded Sharpy.Runtime from: {runtimePath}");
+                    Output.WriteLine($"Loaded Sharpy.Core from: {runtimePath}");
 
                     // Set up assembly resolver for runtime execution
                     resolveHandler = (sender, args) =>
                     {
-                        if (args.Name.StartsWith("Sharpy.Runtime,"))
+                        if (args.Name.StartsWith("Sharpy.Core,"))
                         {
                             return Assembly.LoadFrom(runtimePath);
                         }
@@ -142,21 +142,21 @@ public abstract class IntegrationTestBase
                 }
                 else
                 {
-                    Output.WriteLine($"Warning: Sharpy.Runtime not found at: {runtimePath}");
+                    Output.WriteLine($"Warning: Sharpy.Core not found at: {runtimePath}");
                 }
             }
             catch (FileNotFoundException ex)
             {
-                // Sharpy.Runtime not available, continue without it
-                Output.WriteLine($"Warning: Failed to load Sharpy.Runtime: {ex.Message}");
+                // Sharpy.Core not available, continue without it
+                Output.WriteLine($"Warning: Failed to load Sharpy.Core: {ex.Message}");
             }
             catch (DirectoryNotFoundException ex)
             {
-                Output.WriteLine($"Warning: Failed to load Sharpy.Runtime: {ex.Message}");
+                Output.WriteLine($"Warning: Failed to load Sharpy.Core: {ex.Message}");
             }
             catch (BadImageFormatException ex)
             {
-                Output.WriteLine($"Warning: Failed to load Sharpy.Runtime: {ex.Message}");
+                Output.WriteLine($"Warning: Failed to load Sharpy.Core: {ex.Message}");
             }
 
             var compilation = CSharpCompilation.Create(

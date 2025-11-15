@@ -1,0 +1,47 @@
+namespace Sharpy.Core;
+
+using Collections.Interfaces;
+
+public static partial class Exports
+{
+    public static T Sum<T>(IIterable<T> iterable) where T : IAddable<T>
+    {
+        if (iterable is null)
+        {
+            throw TypeError.ArgNone("sum", "iterable");
+        }
+
+        var iterator = iterable.__Iter__();
+
+        try
+        {
+            var result = iterator.__Next__();
+
+            // This sentinel is needed to ensure linters don't think this
+            // is an infinite loop
+            var shouldLoop = true;
+
+            while (shouldLoop)
+            {
+                try
+                {
+                    var elem = iterator.__Next__();
+
+                    result = result.__Add__(elem);
+                }
+                catch (StopIteration)
+                {
+                    shouldLoop = false;
+
+                    break;
+                }
+            }
+
+            return result;
+        }
+        catch (StopIteration)
+        {
+            throw new ValueError("Sum() iterable argument is empty");
+        }
+    }
+}

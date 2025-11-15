@@ -11,9 +11,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sharpy.Compiler.Tests", "sr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sharpy.Compiler", "src\Sharpy.Compiler\Sharpy.Compiler.csproj", "{69B7E74E-49FD-4EFB-B30F-20588DC06F42}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sharpy.Runtime.Tests", "src\Sharpy.Runtime.Tests\Sharpy.Runtime.Tests.csproj", "{D30F2526-100C-4A74-9A06-8F98F5972866}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sharpy.Core.Tests", "src\Sharpy.Core.Tests\Sharpy.Core.Tests.csproj", "{D30F2526-100C-4A74-9A06-8F98F5972866}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sharpy.Runtime", "src\Sharpy.Runtime\Sharpy.Runtime.csproj", "{18026D63-5C02-432E-B9BF-C0A5426B6BF9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sharpy.Core", "src\Sharpy.Core\Sharpy.Core.csproj", "{18026D63-5C02-432E-B9BF-C0A5426B6BF9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <!-- Reference to Sharpy runtime for metadata access -->
-    <!-- <ProjectReference Include="../Sharpy.Runtime/Sharpy.Runtime.csproj" /> -->
+    <!-- <ProjectReference Include="../Sharpy.Core/Sharpy.Core.csproj" /> -->
 
     <!-- Roslyn for code generation and compilation -->
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />

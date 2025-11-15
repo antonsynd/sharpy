@@ -99,7 +99,7 @@ public class RoslynEmitter
         usings.Add(UsingDirective(ParseName("System.Linq")));
 
         // Add Sharpy runtime usings
-        usings.Add(UsingDirective(ParseName("Sharpy")));
+        usings.Add(UsingDirective(ParseName("Sharpy.Core")));
 
         // Process import statements
         foreach (var stmt in module.Body)
@@ -1729,7 +1729,7 @@ public class RoslynEmitter
     private ExpressionSyntax GenerateSliceAccess(SliceAccess sliceAccess)
     {
         // arr[start:stop:step]
-        // Translates to: Sharpy.Runtime.Slice(arr, start, stop, step)
+        // Translates to: Sharpy.Core.Slice(arr, start, stop, step)
         var obj = GenerateExpression(sliceAccess.Object);
         var start = sliceAccess.Start != null
             ? GenerateExpression(sliceAccess.Start)
@@ -1743,7 +1743,9 @@ public class RoslynEmitter
 
         return InvocationExpression(
             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                IdentifierName("Sharpy.Runtime"),
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("Sharpy"),
+                    IdentifierName("Core")),
                 IdentifierName("Slice")))
             .AddArgumentListArguments(
                 Argument(obj),
@@ -1887,7 +1889,7 @@ public class RoslynEmitter
         return dunderName switch
         {
             "__str__" => true,     // ToString() override
-            "__repr__" => true,    // ToString() override  
+            "__repr__" => true,    // ToString() override
             "__eq__" => true,      // Equals() override
             "__hash__" => true,    // GetHashCode() override
             "__bool__" => true,    // ToBoolean() method (no operator equivalent)

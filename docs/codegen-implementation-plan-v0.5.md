@@ -383,7 +383,7 @@ Created comprehensive unit test suite for Phase 4 definition generation:
   - [x] Module-level constants
 - [x] **Using Directives**:
   - [x] System namespaces (System, System.Collections.Generic, System.Linq)
-  - [x] Sharpy runtime namespace (Sharpy, Sharpy.Runtime)
+  - [x] Sharpy runtime namespace (Sharpy, Sharpy.Core)
   - [x] Imported module namespaces
 
 ### 5.2 Import Statement Handling ✅ COMPLETE
@@ -539,7 +539,7 @@ Created comprehensive unit test suite for Phase 5 module structure generation:
 ## Phase 9: Runtime Integration ✅ COMPLETE
 
 ### 9.1 Runtime Library References ✅ COMPLETE
-- [x] Reference Sharpy.Runtime assembly
+- [x] Reference Sharpy.Core assembly
 - [x] Use Sharpy.Exports for builtins
 - [x] Use Sharpy.List, Sharpy.Dict, etc. for collections
 - [x] Use Sharpy.Object as base class
@@ -872,7 +872,7 @@ The following are explicitly **deferred** to later versions:
 
 2. **Operator Support**: All v0.5 operators implemented. Membership (`in`, `not in`) and identity with type (`is Type`) operators marked for runtime support rather than compile-time transformation.
 
-3. **Slicing**: Using `Sharpy.Runtime.Slice()` helper method for Python-style slicing semantics.
+3. **Slicing**: Using `Sharpy.Slice()` helper method for Python-style slicing semantics.
 
 4. **Comparison Chains**: Simple expansion with re-evaluation for v0.5. Optimization to cache intermediate values deferred to Phase 8.
 
@@ -1052,7 +1052,7 @@ The following are explicitly **deferred** to later versions:
      - Separation of imports from module body
    - Added GenerateUsingDirectives (~45 lines)
      - Default System usings (System, Collections.Generic, Linq)
-     - Sharpy runtime usings (Sharpy, Sharpy.Runtime)
+     - Sharpy runtime usings (Sharpy, Sharpy.Core)
      - Dynamic import-based using generation
    - Added GenerateNamespaceName (~35 lines)
      - File path to namespace conversion
@@ -1092,7 +1092,7 @@ The following are explicitly **deferred** to later versions:
 1. **Namespace Generation**: Convert file paths to namespaces, filtering common directories (src, lib)
 2. **Import Handling**: All import statements become using directives, then excluded from module class
 3. **Module Name Conversion**: Use SimpleToPascalCase to avoid NameMangler uniqueness tracking
-4. **Default Usings**: Always include System, Collections.Generic, Linq, Sharpy, Sharpy.Runtime
+4. **Default Usings**: Always include System, Collections.Generic, Linq, Sharpy, Sharpy.Core
 5. **C# Import Limitations**: Selective from-imports map to entire namespace (C# limitation)
 
 ### Implementation Notes
@@ -1123,7 +1123,7 @@ The following are explicitly **deferred** to later versions:
 2. **Integration Tests**
    - Created RoslynEmitterIntegrationTests.cs (7 tests)
    - Tests verify generated C# code structure
-   - Currently skipped pending Sharpy.Runtime assembly
+   - Currently skipped pending Sharpy.Core assembly
    - Serve as documentation of expected behavior
 
 3. **Documentation Updates**
@@ -1186,7 +1186,7 @@ The code generator has achieved 90% completion and is functionally ready for v0.
 
 ### Completed Work
 1. **Phase 9: Runtime Integration - Builtin Functions** ✅ COMPLETE
-   - Implemented 13 missing v0.5 builtin functions in Sharpy.Runtime
+   - Implemented 13 missing v0.5 builtin functions in Sharpy.Core
    - All required builtin functions for v0.5 are now available
    
 2. **New Builtin Functions Implemented:**
@@ -1218,35 +1218,35 @@ The code generator has achieved 90% completion and is functionally ready for v0.
 - `docs/codegen-implementation-plan-v0.5.md` (updated with Session 7 progress)
 
 ### Files Added (Runtime Implementation)
-- `src/Sharpy.Runtime/All.cs` (35 lines)
-- `src/Sharpy.Runtime/Any.cs` (35 lines)
-- `src/Sharpy.Runtime/DivMod.cs` (75 lines)
-- `src/Sharpy.Runtime/Enumerate.cs` (60 lines)
-- `src/Sharpy.Runtime/Filter.cs` (60 lines)
-- `src/Sharpy.Runtime/Input.cs` (30 lines)
-- `src/Sharpy.Runtime/IsInstance.cs` (65 lines)
-- `src/Sharpy.Runtime/Map.cs` (60 lines)
-- `src/Sharpy.Runtime/Pow.cs` (50 lines)
-- `src/Sharpy.Runtime/Range.cs` (95 lines)
-- `src/Sharpy.Runtime/Round.cs` (75 lines)
-- `src/Sharpy.Runtime/Sorted.cs` (100 lines)
-- `src/Sharpy.Runtime/Type.cs` (20 lines)
-- `src/Sharpy.Runtime/Zip.cs` (160 lines)
+- `src/Sharpy.Core/All.cs` (35 lines)
+- `src/Sharpy.Core/Any.cs` (35 lines)
+- `src/Sharpy.Core/DivMod.cs` (75 lines)
+- `src/Sharpy.Core/Enumerate.cs` (60 lines)
+- `src/Sharpy.Core/Filter.cs` (60 lines)
+- `src/Sharpy.Core/Input.cs` (30 lines)
+- `src/Sharpy.Core/IsInstance.cs` (65 lines)
+- `src/Sharpy.Core/Map.cs` (60 lines)
+- `src/Sharpy.Core/Pow.cs` (50 lines)
+- `src/Sharpy.Core/Range.cs` (95 lines)
+- `src/Sharpy.Core/Round.cs` (75 lines)
+- `src/Sharpy.Core/Sorted.cs` (100 lines)
+- `src/Sharpy.Core/Type.cs` (20 lines)
+- `src/Sharpy.Core/Zip.cs` (160 lines)
 
 ### Files Added (Tests)
-- `src/Sharpy.Runtime.Tests/AllTests.cs` (6 tests)
-- `src/Sharpy.Runtime.Tests/AnyTests.cs` (6 tests)
-- `src/Sharpy.Runtime.Tests/DivModTests.cs` (5 tests)
-- `src/Sharpy.Runtime.Tests/EnumerateTests.cs` (4 tests)
-- `src/Sharpy.Runtime.Tests/FilterTests.cs` (6 tests)
-- `src/Sharpy.Runtime.Tests/IsInstanceTests.cs` (8 tests)
-- `src/Sharpy.Runtime.Tests/MapTests.cs` (5 tests)
-- `src/Sharpy.Runtime.Tests/PowTests.cs` (5 tests)
-- `src/Sharpy.Runtime.Tests/RangeTests.cs` (6 tests)
-- `src/Sharpy.Runtime.Tests/RoundTests.cs` (5 tests)
-- `src/Sharpy.Runtime.Tests/SortedTests.cs` (5 tests)
-- `src/Sharpy.Runtime.Tests/TypeTests.cs` (4 tests)
-- `src/Sharpy.Runtime.Tests/ZipTests.cs` (6 tests)
+- `src/Sharpy.Core.Tests/AllTests.cs` (6 tests)
+- `src/Sharpy.Core.Tests/AnyTests.cs` (6 tests)
+- `src/Sharpy.Core.Tests/DivModTests.cs` (5 tests)
+- `src/Sharpy.Core.Tests/EnumerateTests.cs` (4 tests)
+- `src/Sharpy.Core.Tests/FilterTests.cs` (6 tests)
+- `src/Sharpy.Core.Tests/IsInstanceTests.cs` (8 tests)
+- `src/Sharpy.Core.Tests/MapTests.cs` (5 tests)
+- `src/Sharpy.Core.Tests/PowTests.cs` (5 tests)
+- `src/Sharpy.Core.Tests/RangeTests.cs` (6 tests)
+- `src/Sharpy.Core.Tests/RoundTests.cs` (5 tests)
+- `src/Sharpy.Core.Tests/SortedTests.cs` (5 tests)
+- `src/Sharpy.Core.Tests/TypeTests.cs` (4 tests)
+- `src/Sharpy.Core.Tests/ZipTests.cs` (6 tests)
 
 ### Key Achievements
 - ✅ Phase 9 (Runtime Integration) now 100% complete
@@ -1263,7 +1263,7 @@ The code generator has achieved 90% completion and is functionally ready for v0.
 5. **Range Semantics**: Fully implements Python range() semantics with positive/negative steps
 
 ### Implementation Notes
-- All implementations follow existing Sharpy.Runtime patterns
+- All implementations follow existing Sharpy.Core patterns
 - Proper error handling with TypeError and ValueError exceptions
 - Iterator implementations follow the StopIteration exception pattern
 - Type conversions and truthiness match Python semantics
@@ -1320,7 +1320,7 @@ The code generator has achieved 90% completion and is functionally ready for v0.
 - ✅ Overall progress: 88% (Phase 4 essentially complete)
 
 ### Technical Decisions Made
-1. **Membership Operators**: Use `__Contains__` method from Sharpy.Runtime.IContainer interface
+1. **Membership Operators**: Use `__Contains__` method from Sharpy.Core.IContainer interface
 2. **Identity Operators**: Use `object.ReferenceEquals` for general case
 3. **Identity Optimization**: Direct null checks for `is None` and `is not None` patterns
 4. **Constructor Field Names**: Always use `NameMangler.Transform(varDecl.Name, NameContext.Type)` for field name references in constructors to ensure consistency with field generation and avoid mismatches.
@@ -1330,7 +1330,7 @@ The code generator has achieved 90% completion and is functionally ready for v0.
 1. Tuple unpacking in assignments and for loops (currently throws NotImplementedException)
 2. Error handling and validation (Phase 7)
 3. Code optimization (Phase 8)
-4. Runtime integration testing (Phase 9) - blocked on Sharpy.Runtime
+4. Runtime integration testing (Phase 9) - blocked on Sharpy.Core
 5. ~~Operator overload synthesis from dunder methods (P1 feature, complex)~~ ✅ Done
 
 ### Next Steps (Immediate Priority)
@@ -1402,7 +1402,7 @@ The code generator has achieved 100% completion of all critical (P0) and importa
 ### Recommendation
 The code generator is now **feature-complete for v0.5**. All critical and important features are implemented and tested. Remaining work:
 1. Error handling and validation (Phase 7) - Important for production use
-2. Runtime integration testing (Phase 9) - Requires Sharpy.Runtime completion
+2. Runtime integration testing (Phase 9) - Requires Sharpy.Core completion
 3. Documentation updates (Phase 10) - Ongoing
 4. Polish features (P2) - Optional enhancements
 
@@ -1440,15 +1440,15 @@ The code generator is now **feature-complete for v0.5**. All critical and import
    - Total: 53 new tests
 
 ### Files Modified
-- `src/Sharpy.Runtime/Int.cs` (new, 155 lines)
-- `src/Sharpy.Runtime/Double.cs` (new, 120 lines)
-- `src/Sharpy.Runtime/ListConversion.cs` (new, 67 lines)
-- `src/Sharpy.Runtime/SetConversion.cs` (new, 67 lines)
-- `src/Sharpy.Runtime/TupleConversion.cs` (new, 105 lines)
-- `src/Sharpy.Runtime.Tests/IntConversionTests.cs` (new, 18 tests)
-- `src/Sharpy.Runtime.Tests/DoubleConversionTests.cs` (new, 14 tests)
-- `src/Sharpy.Runtime.Tests/ListConversionTests.cs` (new, 4 tests)
-- `src/Sharpy.Runtime.Tests/SetConversionTests.cs` (new, 5 tests)
+- `src/Sharpy.Core/Int.cs` (new, 155 lines)
+- `src/Sharpy.Core/Double.cs` (new, 120 lines)
+- `src/Sharpy.Core/ListConversion.cs` (new, 67 lines)
+- `src/Sharpy.Core/SetConversion.cs` (new, 67 lines)
+- `src/Sharpy.Core/TupleConversion.cs` (new, 105 lines)
+- `src/Sharpy.Core.Tests/IntConversionTests.cs` (new, 18 tests)
+- `src/Sharpy.Core.Tests/DoubleConversionTests.cs` (new, 14 tests)
+- `src/Sharpy.Core.Tests/ListConversionTests.cs` (new, 4 tests)
+- `src/Sharpy.Core.Tests/SetConversionTests.cs` (new, 5 tests)
 - `docs/codegen-implementation-plan-v0.5.md` (updated with Session 8 progress)
 
 ### Key Achievements
@@ -1590,7 +1590,7 @@ The code generator is now **feature-complete for v0.5**. All critical and import
    - Distinguished between codegen responsibility (✅ complete) and other components:
      - Lexer/parser features (not codegen's responsibility)
      - Semantic analyzer features (type checking, type narrowing)
-     - Runtime features (builtin implementations, Sharpy.Runtime)
+     - Runtime features (builtin implementations, Sharpy.Core)
    
 2. **Documentation Updates**
    - Updated codegen-implementation-plan-v0.5.md status to "v0.5 Feature Complete"

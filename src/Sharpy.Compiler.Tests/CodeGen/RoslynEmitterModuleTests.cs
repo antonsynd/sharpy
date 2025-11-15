@@ -78,7 +78,7 @@ public class RoslynEmitterModuleTests
         Assert.Contains("using System;", code);
         Assert.Contains("using System.Collections.Generic;", code);
         Assert.Contains("using System.Linq;", code);
-        Assert.Contains("using Sharpy;", code);
+        Assert.Contains("using Sharpy.Core;", code);
     }
 
     [Fact]

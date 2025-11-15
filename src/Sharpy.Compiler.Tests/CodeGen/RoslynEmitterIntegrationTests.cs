@@ -9,13 +9,13 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 
 /// <summary>
 /// Integration tests that verify generated C# code compiles successfully
-/// Note: These tests are currently skipped because they require the Sharpy.Runtime assembly
+/// Note: These tests are currently skipped because they require the Sharpy.Core assembly
 /// which is not available during unit test execution. They serve as documentation
 /// of the expected compilation behavior.
 /// </summary>
 public class RoslynEmitterIntegrationTests
 {
-    private const string SkipReason = "Requires Sharpy.Runtime assembly which is not available during unit tests";
+    private const string SkipReason = "Requires Sharpy.Core assembly which is not available during unit tests";
 
     private RoslynEmitter CreateEmitter(string? sourceFilePath = null)
     {

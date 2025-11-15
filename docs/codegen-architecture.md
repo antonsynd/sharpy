@@ -928,7 +928,7 @@ private ExpressionSyntax GenerateFString(FStringLiteral fstring)
 private ExpressionSyntax GenerateSliceAccess(SliceAccess slice)
 {
     // arr[start:stop:step]
-    // Translates to: Sharpy.Runtime.Slice(arr, start, stop, step)
+    // Translates to: Sharpy.Slice(arr, start, stop, step)
 
     var obj = GenerateExpression(slice.Object);
     var start = slice.Start != null ? GenerateExpression(slice.Start) : SF.LiteralExpression(SyntaxKind.NullLiteralExpression);
@@ -937,7 +937,7 @@ private ExpressionSyntax GenerateSliceAccess(SliceAccess slice)
 
     return SF.InvocationExpression(
         SF.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-            SF.IdentifierName("Sharpy.Runtime"),
+            SF.IdentifierName("Sharpy"),
             SF.IdentifierName("Slice")))
         .AddArgumentListArguments(
             SF.Argument(obj),

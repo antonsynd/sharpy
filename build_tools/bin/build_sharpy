@@ -27,7 +27,7 @@ CSHARP_PROJECTS: Sequence[Path] = [
     CSHARP_SRC_DIR / "Sharpy.Compiler" / "Sharpy.Compiler.csproj",
     CSHARP_SRC_DIR / "Sharpy.Cli" / "Sharpy.Cli.csproj",
     CSHARP_SRC_DIR / "Sharpy.Compiler.Tests" / "Sharpy.Compiler.Tests.csproj",
-    CSHARP_SRC_DIR / "Sharpy.Runtime" / "Sharpy.Runtime.csproj",
+    CSHARP_SRC_DIR / "Sharpy.Core" / "Sharpy.Core.csproj",
 ]
 
 

@@ -639,7 +639,7 @@ Tuples are fixed-size, immutable collections implemented as custom wrappers arou
 ### Tuple Implementation
 
 ```csharp
-namespace Sharpy;
+namespace Sharpy.Core;
 
 public interface ITuple
 {

@@ -1,0 +1,75 @@
+using System.Text;
+
+namespace Sharpy.Core;
+
+public sealed partial class ByteArray : Object
+{
+    public override bool __Bool__()
+    {
+        if (_data == null) {
+            return false;
+        }
+
+        if (_data.Length == 0) {
+            return false;
+        }
+
+        foreach (var b in _data) {
+            if (b > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public override bool __Eq__(Object obj)
+    {
+        if (obj is ByteArray other)
+        {
+            return __Eq__(other);
+        }
+
+        return false;
+    }
+
+    public override int __Hash__()
+    {
+        if (_data == null) {
+            return 0;
+        }
+
+        var hash = new HashCode();
+
+        foreach (var b in _data) {
+            hash.Add(b);
+        }
+
+        return hash.ToHashCode();
+    }
+
+    public override string __Repr__()
+    {
+        var builder = new StringBuilder();
+        builder.Append('[');
+
+        uint i = 1;
+        var numElems = _data.Length;
+
+        foreach (var item in _data)
+        {
+            builder.Append(Repr(item));
+
+            if (i < numElems)
+            {
+                builder.Append(", ");
+            }
+
+            ++i;
+        }
+
+        builder.Append(']');
+
+        return builder.ToString();
+    }
+}

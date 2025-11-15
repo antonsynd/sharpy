@@ -639,7 +639,7 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        code.Should().Contain("Sharpy.Runtime.Slice");
+        code.Should().Contain("Sharpy.Slice");
         code.Should().Contain("arr");
         code.Should().Contain("1");
         code.Should().Contain("5");
