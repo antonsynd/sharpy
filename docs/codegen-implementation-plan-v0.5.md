@@ -521,7 +521,7 @@ All v0.5 required builtin functions are now implemented:
 
 **Test Coverage (Session 8):**
 - Added 71 comprehensive unit tests for Session 7 builtins
-- Added 40 comprehensive unit tests for type conversion functions (Session 8)
+- Added 41 comprehensive unit tests for type conversion functions (Session 8) (excluding tuple tests)
 - All 493 runtime tests passing (100% pass rate)
 - Test coverage includes edge cases, error handling, and type variations
 
@@ -1363,7 +1363,7 @@ The code generator is now **feature-complete for v0.5**. All critical and import
 1. **Type Conversion Functions** ✅ COMPLETE
    - Implemented `Int()` type conversion function (130 lines)
      - Handles bool, int, long, float, double, decimal, string, byte, sbyte, short, ushort, uint, ulong
-     - Proper overflow checking for out-of-range conversions
+     - Proper overflow checking for out-of-range conversions (integer-to-integer only; conversions from float/double to int do not check for overflow and may truncate or wrap values)
      - String parsing with error handling
    - Implemented `Double()` type conversion function (120 lines)
      - Handles all numeric types and strings
