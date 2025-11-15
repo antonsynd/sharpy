@@ -538,6 +538,20 @@ class Person(name: str, age: int):
     def greet(self):
         print(f"Hello, I'm {self.name} and I'm {self.age} years old")
 
+# With inheritance - base class comes first, then constructor params
+class Employee(Person, employee_id: str, department: str):
+    # Inherits from Person, adds employee_id and department
+    pass
+
+# With interfaces - interfaces use 'implements' keyword to avoid ambiguity
+class JSONEmployee(Employee, employee_id: str) implements ISerializable, IComparable:
+    # Or alternative: use explicit marker
+    pass
+
+# Alternative syntax: Use 'with' keyword for primary constructor
+class Manager with (manager_id: str, team_size: int) extends Employee:
+    pass
+
 # Record with primary constructor (already covered)
 record Point(x: double, y: double)
 
@@ -556,18 +570,57 @@ public class Person(string name, int age)
         Console.WriteLine($"Hello, I'm {name} and I'm {age} years old");
     }
 }
+
+public class Employee(string employeeId, string department) : Person
+{
+}
 ```
 
 **Benefits**:
-- **Extremely Pythonic** - matches Python class syntax
+- **Extremely Pythonic** - matches Python class syntax (for simple cases)
 - Massive reduction in boilerplate
 - Natural fit for data classes
 - Easy code generation
+
+**Syntax Disambiguation**:
+
+The primary constructor syntax introduces potential ambiguity with inheritance. Several resolution strategies:
+
+**Strategy 1: Type Annotation Requirement**
+- Constructor parameters MUST have type annotations (`: type`)
+- Base classes and interfaces are simple identifiers (no `:`)
+- Parser distinguishes: `class Foo(Bar)` = inheritance, `class Foo(bar: int)` = constructor
+
+**Strategy 2: Positional Rules**
+- Base class (if any) is first parameter without type annotation
+- All subsequent parameters with type annotations are constructor parameters
+- Example: `class Employee(Person, id: str, name: str)` - Person is base, id and name are constructor params
+
+**Strategy 3: Explicit Keywords** (Most Clear)
+- Use `extends` for inheritance: `class Employee extends Person with (id: str):`
+- Use `implements` for interfaces: `class Foo implements IBar with (x: int):`
+- Use `with` to introduce primary constructor parameters
+- This is more verbose but completely unambiguous
+
+**Recommended: Strategy 1 + Strategy 2 Hybrid**
+```python
+# No ambiguity - type annotations distinguish constructor params
+class Person(name: str, age: int):  # Primary constructor
+    pass
+
+class Employee(Person, employee_id: str):  # Person = base (no :), employee_id = param (has :)
+    pass
+
+class Manager(Employee, manager_id: str) implements ISerializable:  # Use 'implements' for interfaces
+    pass
+```
 
 **Implementation Notes**:
 - Primary constructor parameters available in entire class scope
 - Can be combined with additional fields
 - Auto-generates backing fields
+- Parser uses type annotations to distinguish base classes from constructor parameters
+- For classes with both inheritance and primary constructors, base class appears first (without type annotation)
 
 ---
 
@@ -1104,6 +1157,10 @@ Custom operators like `+=`, `*=` for user types.
    ```python
    class Person(name: str, age: int):
        pass
+   
+   # With inheritance - type annotations disambiguate
+   class Employee(Person, employee_id: str):
+       pass  # Person = base class, employee_id = constructor param
    ```
 
 2. **Records** - Immutable data classes
