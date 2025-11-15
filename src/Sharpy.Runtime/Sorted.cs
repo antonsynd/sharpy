@@ -12,115 +12,50 @@ public static partial class Exports
     /// <returns>A new sorted list</returns>
     public static List<T> Sorted<T>(IIterable<T> iterable)
     {
-        if (iterable is null)
-        {
-            throw TypeError.ArgNone("sorted", "iterable");
-        }
-
-        var systemList = new System.Collections.Generic.List<T>();
-        foreach (var item in iterable)
-        {
-            systemList.Add(item);
-        }
-
-        systemList.Sort(ComparerAdapter<T>.Instance);
-        
-        return new List<T>(systemList);
+        return SortedImpl(iterable, ComparerAdapter<T>.Instance, reverse: false);
     }
 
-    /// <summary>
-    /// Return a new sorted list from the items in iterable using a key function.
-    /// </summary>
-    /// <typeparam name="T">The type of elements in the iterable</typeparam>
-    /// <typeparam name="TKey">The type of the key to sort by</typeparam>
-    /// <param name="iterable">The iterable to sort</param>
-    /// <param name="key">A function to extract a comparison key from each element</param>
-    /// <returns>A new sorted list</returns>
     public static List<T> Sorted<T, TKey>(IIterable<T> iterable, Func<T, TKey> key)
     {
-        if (iterable is null)
-        {
-            throw TypeError.ArgNone("sorted", "iterable");
-        }
-
         if (key is null)
         {
             throw TypeError.ArgNone("sorted", "key");
         }
-
-        var systemList = new System.Collections.Generic.List<T>();
-        foreach (var item in iterable)
-        {
-            systemList.Add(item);
-        }
-
-        systemList.Sort(KeyComparerFactory<T, TKey>.Create(key));
-        
-        return new List<T>(systemList);
+        return SortedImpl(iterable, KeyComparerFactory<T, TKey>.Create(key), reverse: false);
     }
 
-    /// <summary>
-    /// Return a new sorted list from the items in iterable in reverse order.
-    /// </summary>
-    /// <typeparam name="T">The type of elements in the iterable</typeparam>
-    /// <param name="iterable">The iterable to sort</param>
-    /// <param name="reverse">If true, sort in descending order</param>
-    /// <returns>A new sorted list</returns>
     public static List<T> Sorted<T>(IIterable<T> iterable, bool reverse)
     {
-        if (iterable is null)
-        {
-            throw TypeError.ArgNone("sorted", "iterable");
-        }
-
-        var systemList = new System.Collections.Generic.List<T>();
-        foreach (var item in iterable)
-        {
-            systemList.Add(item);
-        }
-
-        systemList.Sort(ComparerAdapter<T>.Instance);
-        if (reverse)
-        {
-            systemList.Reverse();
-        }
-        
-        return new List<T>(systemList);
+        return SortedImpl(iterable, ComparerAdapter<T>.Instance, reverse);
     }
 
-    /// <summary>
-    /// Return a new sorted list from the items in iterable using a key function in reverse order.
-    /// </summary>
-    /// <typeparam name="T">The type of elements in the iterable</typeparam>
-    /// <typeparam name="TKey">The type of the key to sort by</typeparam>
-    /// <param name="iterable">The iterable to sort</param>
-    /// <param name="key">A function to extract a comparison key from each element</param>
-    /// <param name="reverse">If true, sort in descending order</param>
-    /// <returns>A new sorted list</returns>
     public static List<T> Sorted<T, TKey>(IIterable<T> iterable, Func<T, TKey> key, bool reverse)
+    {
+        if (key is null)
+        {
+            throw TypeError.ArgNone("sorted", "key");
+        }
+        return SortedImpl(iterable, KeyComparerFactory<T, TKey>.Create(key), reverse);
+    }
+
+    private static List<T> SortedImpl<T>(IIterable<T> iterable, IComparer<T> comparer, bool reverse)
     {
         if (iterable is null)
         {
             throw TypeError.ArgNone("sorted", "iterable");
         }
 
-        if (key is null)
-        {
-            throw TypeError.ArgNone("sorted", "key");
-        }
-
         var systemList = new System.Collections.Generic.List<T>();
         foreach (var item in iterable)
         {
             systemList.Add(item);
         }
 
-        systemList.Sort(KeyComparerFactory<T, TKey>.Create(key));
+        systemList.Sort(comparer);
         if (reverse)
         {
             systemList.Reverse();
         }
-        
         return new List<T>(systemList);
     }
 }
