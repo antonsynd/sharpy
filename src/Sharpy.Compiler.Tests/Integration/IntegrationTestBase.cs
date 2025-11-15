@@ -145,9 +145,17 @@ public abstract class IntegrationTestBase
                     Output.WriteLine($"Warning: Sharpy.Runtime not found at: {runtimePath}");
                 }
             }
-            catch (Exception ex)
+            catch (FileNotFoundException ex)
             {
                 // Sharpy.Runtime not available, continue without it
+                Output.WriteLine($"Warning: Failed to load Sharpy.Runtime: {ex.Message}");
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                Output.WriteLine($"Warning: Failed to load Sharpy.Runtime: {ex.Message}");
+            }
+            catch (BadImageFormatException ex)
+            {
                 Output.WriteLine($"Warning: Failed to load Sharpy.Runtime: {ex.Message}");
             }
 
@@ -241,6 +249,31 @@ public abstract class IntegrationTestBase
             {
                 Success = false,
                 CompilationErrors = new List<string> { $"Parser error at line {ex.Line}, column {ex.Column}: {ex.Message}" }
+            };
+        }
+        catch (TargetInvocationException ex)
+        {
+            var errorMessage = $"Unexpected error during execution: {ex.Message}";
+            if (ex.InnerException != null)
+            {
+                errorMessage = $"Unexpected error during execution: {ex.InnerException.Message}";
+                errorMessage += $"\nStack Trace: {ex.InnerException.StackTrace}";
+            }
+            
+            return new ExecutionResult
+            {
+                Success = false,
+                Exception = ex,
+                CompilationErrors = new List<string> { errorMessage }
+            };
+        }
+        catch (InvalidOperationException ex)
+        {
+            return new ExecutionResult
+            {
+                Success = false,
+                Exception = ex,
+                CompilationErrors = new List<string> { $"Invalid operation: {ex.Message}" }
             };
         }
         catch (Exception ex)
