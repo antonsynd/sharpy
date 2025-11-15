@@ -273,6 +273,26 @@ public abstract class IntegrationTestBase
                 CompilationErrors = new List<string> { $"Invalid operation: {ex.Message}" }
             };
         }
+        catch (FileNotFoundException ex)
+        {
+            return new ExecutionResult
+            {
+                Success = false,
+                Exception = ex,
+                CompilationErrors = new List<string> { $"File not found: {ex.Message}" }
+            };
+        }
+        catch (TypeLoadException ex)
+        {
+            return new ExecutionResult
+            {
+                Success = false,
+                Exception = ex,
+                CompilationErrors = new List<string> { $"Type load error: {ex.Message}" }
+            };
+        }
+        // Generic catch as final fallback for any unexpected exceptions during compilation/execution
+        // This is intentional as test infrastructure needs to handle arbitrary code gracefully
         catch (Exception ex)
         {
             var errorMessage = $"Unexpected error: {ex.Message}";
