@@ -36,17 +36,9 @@ public class ZipIterator<T1, T2> : Iterator<(T1, T2)>
     /// <inheritdoc/>
     public override (T1, T2) __Next__()
     {
-        try
-        {
-            var value1 = _iterator1.__Next__();
-            var value2 = _iterator2.__Next__();
-            return (value1, value2);
-        }
-        catch (StopIteration)
-        {
-            // If either iterator is exhausted, stop
-            throw;
-        }
+        var value1 = _iterator1.__Next__();
+        var value2 = _iterator2.__Next__();
+        return (value1, value2);
     }
 }
 

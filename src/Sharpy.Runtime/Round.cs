@@ -7,6 +7,9 @@ public static partial class Exports
     /// </summary>
     /// <param name="x">The number to round</param>
     /// <returns>The rounded value</returns>
+    /// <remarks>
+    /// Uses .NET's banker's rounding (round half to even). For example, Round(2.5) returns 2, not 3.
+    /// </remarks>
     public static int Round(double x)
     {
         return (int)Math.Round(x);
@@ -18,6 +21,9 @@ public static partial class Exports
     /// <param name="x">The number to round</param>
     /// <param name="n">The number of decimal places</param>
     /// <returns>The rounded value</returns>
+    /// <remarks>
+    /// Uses .NET's banker's rounding (round half to even).
+    /// </remarks>
     public static double Round(double x, int n)
     {
         return Math.Round(x, n);
@@ -28,6 +34,9 @@ public static partial class Exports
     /// </summary>
     /// <param name="x">The number to round</param>
     /// <returns>The rounded value</returns>
+    /// <remarks>
+    /// Uses .NET's banker's rounding (round half to even).
+    /// </remarks>
     public static int Round(float x)
     {
         return (int)Math.Round(x);
@@ -39,6 +48,9 @@ public static partial class Exports
     /// <param name="x">The number to round</param>
     /// <param name="n">The number of decimal places</param>
     /// <returns>The rounded value</returns>
+    /// <remarks>
+    /// Uses .NET's banker's rounding (round half to even).
+    /// </remarks>
     public static float Round(float x, int n)
     {
         return (float)Math.Round(x, n);
@@ -49,6 +61,9 @@ public static partial class Exports
     /// </summary>
     /// <param name="x">The number to round</param>
     /// <returns>The rounded value</returns>
+    /// <remarks>
+    /// Uses .NET's banker's rounding (round half to even).
+    /// </remarks>
     public static int Round(decimal x)
     {
         return (int)Math.Round(x);
@@ -60,6 +75,9 @@ public static partial class Exports
     /// <param name="x">The number to round</param>
     /// <param name="n">The number of decimal places</param>
     /// <returns>The rounded value</returns>
+    /// <remarks>
+    /// Uses .NET's banker's rounding (round half to even).
+    /// </remarks>
     public static decimal Round(decimal x, int n)
     {
         return Math.Round(x, n);
