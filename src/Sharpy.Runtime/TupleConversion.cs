@@ -9,9 +9,9 @@ namespace Sharpy;
 public static partial class Exports
 {
     /// <summary>
-    /// Convert iterable to tuple (ValueTuple)
+    /// Helper method to convert iterable to list
     /// </summary>
-    public static (T1, T2) Tuple<T1, T2>(Collections.Interfaces.IIterable<object> iterable)
+    private static System.Collections.Generic.List<object> IterableToList(Collections.Interfaces.IIterable<object> iterable)
     {
         var items = new System.Collections.Generic.List<object>();
         var iterator = iterable.__Iter__();
@@ -20,14 +20,22 @@ public static partial class Exports
         {
             try
             {
-                var item = iterator.__Next__();
-                items.Add(item);
+                items.Add(iterator.__Next__());
             }
             catch (StopIteration)
             {
                 break;
             }
         }
+        return items;
+    }
+
+    /// <summary>
+    /// Convert iterable to tuple (ValueTuple)
+    /// </summary>
+    public static (T1, T2) Tuple<T1, T2>(Collections.Interfaces.IIterable<object> iterable)
+    {
+        var items = IterableToList(iterable);
 
         if (items.Count != 2)
         {
@@ -42,21 +50,7 @@ public static partial class Exports
     /// </summary>
     public static (T1, T2, T3) Tuple<T1, T2, T3>(Collections.Interfaces.IIterable<object> iterable)
     {
-        var items = new System.Collections.Generic.List<object>();
-        var iterator = iterable.__Iter__();
-        
-        while (true)
-        {
-            try
-            {
-                var item = iterator.__Next__();
-                items.Add(item);
-            }
-            catch (StopIteration)
-            {
-                break;
-            }
-        }
+        var items = IterableToList(iterable);
 
         if (items.Count != 3)
         {
