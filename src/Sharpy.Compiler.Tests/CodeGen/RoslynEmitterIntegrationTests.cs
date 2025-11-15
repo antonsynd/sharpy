@@ -45,7 +45,7 @@ public class RoslynEmitterIntegrationTests
 
         var diagnostics = compilation.GetDiagnostics();
         var errorDiagnostics = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
-        
+
         errors = string.Join("\n", errorDiagnostics.Select(d => d.ToString()));
         return errorDiagnostics.Count == 0;
     }

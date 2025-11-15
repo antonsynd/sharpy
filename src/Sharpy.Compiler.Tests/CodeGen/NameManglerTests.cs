@@ -138,11 +138,11 @@ public class NameManglerTests
     [InlineData("__str__", "ToString")]
     [InlineData("__repr__", "ToString")]
     [InlineData("__eq__", "Equals")]
-    [InlineData("__add__", "Add")]
-    [InlineData("__sub__", "Subtract")]
-    [InlineData("__mul__", "Multiply")]
-    [InlineData("__div__", "Divide")]
-    [InlineData("__getitem__", "GetItem")]
+    [InlineData("__add__", "__Add__")]  // Operators preserve dunder to avoid user method conflicts
+    [InlineData("__sub__", "__Sub__")]
+    [InlineData("__mul__", "__Mul__")]
+    [InlineData("__div__", "__Div__")]
+    [InlineData("__getitem__", "GetItem")]  // Special methods for indexers
     [InlineData("__setitem__", "SetItem")]
     public void ToPascalCase_DunderMethod_MapsToCorrectName(string dunderName, string expected)
     {

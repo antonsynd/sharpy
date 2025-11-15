@@ -396,6 +396,136 @@ public class RoslynEmitterExpressionTests
 
     #endregion
 
+    #region Membership and Identity Operator Tests
+
+    [Fact]
+    public void GenerateExpression_InOperator_GeneratesContainsCall()
+    {
+        // Arrange
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.In,
+            Left = new IntegerLiteral { Value = "5" },
+            Right = new Identifier { Name = "items" }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Contain("__Contains__");
+        code.Should().Contain("items");
+        code.Should().Contain("5");
+    }
+
+    [Fact]
+    public void GenerateExpression_NotInOperator_GeneratesNegatedContainsCall()
+    {
+        // Arrange
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.NotIn,
+            Left = new IntegerLiteral { Value = "5" },
+            Right = new Identifier { Name = "items" }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Contain("!");
+        code.Should().Contain("__Contains__");
+        code.Should().Contain("items");
+        code.Should().Contain("5");
+    }
+
+    [Fact]
+    public void GenerateExpression_IsOperator_GeneratesReferenceEquals()
+    {
+        // Arrange
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.Is,
+            Left = new Identifier { Name = "obj1" },
+            Right = new Identifier { Name = "obj2" }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Contain("ReferenceEquals");
+        code.Should().Contain("obj1");
+        code.Should().Contain("obj2");
+    }
+
+    [Fact]
+    public void GenerateExpression_IsNotOperator_GeneratesNegatedReferenceEquals()
+    {
+        // Arrange
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.IsNot,
+            Left = new Identifier { Name = "obj1" },
+            Right = new Identifier { Name = "obj2" }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Contain("!");
+        code.Should().Contain("ReferenceEquals");
+        code.Should().Contain("obj1");
+        code.Should().Contain("obj2");
+    }
+
+    [Fact]
+    public void GenerateExpression_IsNone_GeneratesNullCheck()
+    {
+        // Arrange
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.Is,
+            Left = new Identifier { Name = "value" },
+            Right = new NoneLiteral()
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        // Should generate: value == null (optimized from ReferenceEquals)
+        (code.Contains("==null") || code.Contains("== null") || code.Contains("is null") || code.Contains("ReferenceEquals")).Should().BeTrue();
+    }
+
+    [Fact]
+    public void GenerateExpression_IsNotNone_GeneratesNotNullCheck()
+    {
+        // Arrange
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.IsNot,
+            Left = new Identifier { Name = "value" },
+            Right = new NoneLiteral()
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        // Should generate: value != null (optimized from !ReferenceEquals)
+        (code.Contains("!=null") || code.Contains("!= null") || code.Contains("is not null") || (code.Contains("!") && code.Contains("ReferenceEquals"))).Should().BeTrue();
+    }
+
+    #endregion
+
     #region Unary Operation Tests
 
     [Theory]

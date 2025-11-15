@@ -222,7 +222,7 @@ public class RoslynEmitterModuleTests
         Assert.Contains("using System.IO;", code);
         Assert.Contains("using System.Text;", code);
         Assert.Contains("using System.Linq;", code);
-        
+
         // Verify no duplicates - each using should appear only once
         var linqCount = System.Text.RegularExpressions.Regex.Matches(code, @"using System\.Linq;").Count;
         Assert.Equal(1, linqCount);
@@ -339,7 +339,7 @@ public class RoslynEmitterModuleTests
     {
         // Arrange
         var emitter = CreateEmitter();
-        
+
         // Test with only underscores - should return original
         var module1 = new Module
         {
@@ -373,7 +373,7 @@ public class RoslynEmitterModuleTests
         // Act
         var result1 = emitter.GenerateCompilationUnit(module1);
         var code1 = result1.ToFullString();
-        
+
         var result2 = emitter.GenerateCompilationUnit(module2);
         var code2 = result2.ToFullString();
 

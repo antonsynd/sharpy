@@ -19,7 +19,7 @@ public class RoslynEmitter
     // Common .NET namespace acronyms that should be all uppercase
     private static readonly HashSet<string> UpperCaseAcronyms = new(StringComparer.OrdinalIgnoreCase)
     {
-        "io", "ui", "xml", "html", "api", "sql", "db", "http", "ftp", 
+        "io", "ui", "xml", "html", "api", "sql", "db", "http", "ftp",
         "smtp", "tcp", "udp", "ip", "uri", "url", "json", "csv", "guid"
     };
 
@@ -169,11 +169,11 @@ public class RoslynEmitter
         // Convert Python module naming to C# namespace naming
         // e.g., "system.io" -> "System.IO"
         // e.g., "my_module.sub_module" -> "MyModule.SubModule"
-        
+
         // Note: We don't use NameMangler.Transform here because:
         // 1. It tracks unique names which causes "system" to become System, System1, System2, etc.
         // 2. Namespaces should use simple PascalCase without uniqueness tracking
-        
+
         var parts = moduleName.Split('.', StringSplitOptions.RemoveEmptyEntries);
         var convertedParts = parts.Select(part => SimpleToPascalCase(part));
         return string.Join(".", convertedParts);
@@ -200,11 +200,11 @@ public class RoslynEmitter
 
         // Split by underscore and capitalize each part
         var parts = name.Split('_', StringSplitOptions.RemoveEmptyEntries);
-        
+
         // Handle edge case where name is only underscores (e.g., "___")
         if (parts.Length == 0)
             return name;
-        
+
         var result = string.Join("", parts.Select(p =>
             char.ToUpperInvariant(p[0]) + (p.Length > 1 ? p[1..] : "")
         ));
@@ -429,7 +429,7 @@ public class RoslynEmitter
         }
 
         // Generate class members from body
-        var members = GenerateClassMembers(classDef.Body);
+        var members = GenerateClassMembers(classDef.Body, className);
         classDecl = classDecl.WithMembers(List(members));
 
         // Add XML documentation from docstring if present
@@ -473,7 +473,7 @@ public class RoslynEmitter
         }
 
         // Generate struct members from body
-        var members = GenerateClassMembers(structDef.Body);
+        var members = GenerateClassMembers(structDef.Body, structName);
         structDecl = structDecl.WithMembers(List(members));
 
         // Add XML documentation from docstring if present
@@ -627,9 +627,41 @@ public class RoslynEmitter
         return TokenList(tokens);
     }
 
-    private List<MemberDeclarationSyntax> GenerateClassMembers(List<Statement> body)
+    private List<MemberDeclarationSyntax> GenerateClassMembers(List<Statement> body, string className)
     {
         var members = new List<MemberDeclarationSyntax>();
+
+        // First pass: generate fields and build a mapping for use in constructor
+        var fieldMapping = new Dictionary<string, string>();
+        var fieldMembers = new List<MemberDeclarationSyntax>();
+
+        foreach (var stmt in body.Where(s => s is VariableDeclaration))
+        {
+            var varDecl = (VariableDeclaration)stmt;
+            // Generate the field and capture the mangled name
+            var fieldDecl = GenerateField(varDecl);
+            fieldMembers.Add(fieldDecl);
+
+            // Extract the field name from the generated declaration
+            // The field name is in the VariableDeclarator
+            var variable = ((FieldDeclarationSyntax)fieldDecl).Declaration.Variables.First();
+            var fieldName = variable.Identifier.Text;
+            fieldMapping[varDecl.Name] = fieldName;
+        }
+
+        // Add field members first
+        members.AddRange(fieldMembers);
+
+        // Second pass: generate methods, constructors, and operator overloads
+        // Track which dunder methods are present for complementary operator generation
+        var dunders = new HashSet<string>();
+        foreach (var stmt in body)
+        {
+            if (stmt is FunctionDef fd && NameMangler.IsDunderMethod(fd.Name))
+            {
+                dunders.Add(fd.Name);
+            }
+        }
 
         foreach (var stmt in body)
         {
@@ -639,9 +671,23 @@ public class RoslynEmitter
                     // Check if this is a constructor (__init__)
                     if (funcDef.Name == "__init__")
                     {
-                        // TODO: Generate constructor
-                        // For now, generate as a regular method
+                        // Generate constructor with field mapping
+                        members.Add(GenerateConstructor(funcDef, className, fieldMapping));
+                    }
+                    // Check if this is a dunder method that needs operator synthesis
+                    else if (NameMangler.IsDunderMethod(funcDef.Name))
+                    {
+                        // Dunder methods that map to C# overrides should use the override name
+                        // Other dunder methods should preserve their dunder name (e.g., __add__ -> __Add__)
+                        // to avoid conflicts with user-defined methods
                         members.Add(GenerateClassMethod(funcDef));
+
+                        // Then try to generate operator overload
+                        var operatorMember = TryGenerateOperatorOverload(funcDef, className);
+                        if (operatorMember != null)
+                        {
+                            members.Add(operatorMember);
+                        }
                     }
                     else
                     {
@@ -649,9 +695,8 @@ public class RoslynEmitter
                     }
                     break;
 
-                case VariableDeclaration varDecl:
-                    // Generate field declaration
-                    members.Add(GenerateField(varDecl));
+                case VariableDeclaration _:
+                    // Already processed in first pass
                     break;
 
                 case PassStatement:
@@ -668,7 +713,107 @@ public class RoslynEmitter
             }
         }
 
+        // Generate complementary operators for C# requirements
+        // If __eq__ is defined but not __ne__, generate operator !=
+        if (dunders.Contains("__eq__") && !dunders.Contains("__ne__"))
+        {
+            members.Add(GenerateComplementaryNotEqualsOperator(className));
+        }
+        // If __ne__ is defined but not __eq__, generate operator ==
+        if (dunders.Contains("__ne__") && !dunders.Contains("__eq__"))
+        {
+            members.Add(GenerateComplementaryEqualsOperator(className));
+        }
+
         return members;
+    }
+
+    private ConstructorDeclarationSyntax GenerateConstructor(FunctionDef func, string className, Dictionary<string, string> fieldMapping)
+    {
+        // Process decorators to determine modifiers
+        var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
+
+        // Generate parameters with type annotations, skipping 'self' parameter
+        var parameters = func.Parameters
+            .Where(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase))
+            .Select(GenerateParameter)
+            .ToArray();
+
+        // Create a mapping of parameter names (original) to their mangled names
+        var parameterMapping = func.Parameters
+            .Where(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(
+                p => p.Name,
+                p => NameMangler.Transform(p.Name, NameContext.Parameter));
+
+        // Generate constructor body
+        // In Python __init__, assignments like self.name = name set instance fields
+        // In C#, these become this.Name = name in the constructor body
+        var bodyStatements = new List<StatementSyntax>();
+
+        foreach (var stmt in func.Body)
+        {
+            // Convert self.field = value to this.Field = value (capitalized)
+            if (stmt is Assignment assign)
+            {
+                // Check if this is a self.field assignment
+                if (assign.Target is MemberAccess memberAccess &&
+                    memberAccess.Object is Identifier id &&
+                    string.Equals(id.Name, "self", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Look up the field name from the field mapping to ensure consistency
+                    string fieldName = fieldMapping.TryGetValue(memberAccess.Member, out var mappedFieldName)
+                        ? mappedFieldName
+                        : NameMangler.Transform(memberAccess.Member, NameContext.Type);
+
+                    // Generate: this.Field = value;
+                    var thisAccess = MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        ThisExpression(),
+                        IdentifierName(fieldName));
+
+                    // For the right-hand side, check if it's an identifier that matches a parameter
+                    var assignValue = (assign.Value is Identifier valueId && parameterMapping.TryGetValue(valueId.Name, out var mappedName))
+                        ? IdentifierName(mappedName)
+                        : GenerateExpression(assign.Value);
+
+                    bodyStatements.Add(ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            thisAccess,
+                            assignValue)));
+                }
+                else
+                {
+                    // Other assignments, generate normally
+                    bodyStatements.Add(GenerateBodyStatement(stmt));
+                }
+            }
+            else
+            {
+                // Other statements, generate normally
+                var genStmt = GenerateBodyStatement(stmt);
+                if (genStmt != null)
+                {
+                    bodyStatements.Add(genStmt);
+                }
+            }
+        }
+
+        var body = Block(bodyStatements);
+
+        var constructor = ConstructorDeclaration(className)
+            .WithModifiers(modifiers)
+            .WithParameterList(ParameterList(SeparatedList(parameters)))
+            .WithBody(body);
+
+        // Add XML documentation from docstring if present
+        if (!string.IsNullOrEmpty(func.DocString))
+        {
+            constructor = constructor.WithLeadingTrivia(GenerateXmlDocComment(func.DocString));
+        }
+
+        return constructor;
     }
 
     private MethodDeclarationSyntax GenerateClassMethod(FunctionDef func)
@@ -683,8 +828,34 @@ public class RoslynEmitter
             ? _typeMapper.MapType(func.ReturnType)
             : PredefinedType(Token(SyntaxKind.VoidKeyword));
 
+        // Special handling for known override methods
+        if (func.Name == "__str__" || func.Name == "__repr__")
+        {
+            // ToString() should return string
+            returnType = PredefinedType(Token(SyntaxKind.StringKeyword));
+        }
+        else if (func.Name == "__eq__")
+        {
+            // Equals() should return bool and take object parameter
+            returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
+        }
+        else if (func.Name == "__hash__")
+        {
+            // GetHashCode() should return int
+            returnType = PredefinedType(Token(SyntaxKind.IntKeyword));
+        }
+
         // Process decorators to determine modifiers
         var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
+
+        // Add override keyword for methods that override Object methods
+        // Add override keyword for methods that override Object methods, if not already present
+        if ((func.Name == "__str__" || func.Name == "__repr__" ||
+            func.Name == "__eq__" || func.Name == "__hash__") &&
+            !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword)))
+        {
+            modifiers = modifiers.Add(Token(SyntaxKind.OverrideKeyword));
+        }
 
         // Generate parameters with type annotations, skipping 'self' and 'cls' parameters
         var parameters = func.Parameters
@@ -693,6 +864,14 @@ public class RoslynEmitter
                 !string.Equals(p.Name, "cls", StringComparison.OrdinalIgnoreCase))
             .Select(GenerateParameter)
             .ToArray();
+
+        // Special handling for Equals() - parameter should be object type
+        if (func.Name == "__eq__" && parameters.Length > 0)
+        {
+            var objParam = Parameter(Identifier(parameters[0].Identifier.Text))
+                .WithType(PredefinedType(Token(SyntaxKind.ObjectKeyword)));
+            parameters = new[] { objParam };
+        }
 
         // Generate method body
         var body = Block(func.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
@@ -1286,6 +1465,58 @@ public class RoslynEmitter
                 return CastExpression(
                     PredefinedType(Token(SyntaxKind.IntKeyword)),
                     BinaryExpression(SyntaxKind.DivideExpression, left, right));
+
+            case BinaryOperator.In:
+                // x in y → y.__Contains__(x)
+                return InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        right,
+                        IdentifierName("__Contains__")))
+                    .AddArgumentListArguments(Argument(left));
+
+            case BinaryOperator.NotIn:
+                // x not in y → !y.__Contains__(x)
+                return PrefixUnaryExpression(SyntaxKind.LogicalNotExpression,
+                    InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            right,
+                            IdentifierName("__Contains__")))
+                        .AddArgumentListArguments(Argument(left)));
+
+            case BinaryOperator.Is:
+                // x is y → object.ReferenceEquals(x, y)
+                // Special optimization for None: x is None → x == null
+                if (binOp.Right is NoneLiteral)
+                {
+                    return BinaryExpression(SyntaxKind.EqualsExpression,
+                        left,
+                        LiteralExpression(SyntaxKind.NullLiteralExpression));
+                }
+                return InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        PredefinedType(Token(SyntaxKind.ObjectKeyword)),
+                        IdentifierName("ReferenceEquals")))
+                    .AddArgumentListArguments(
+                        Argument(left),
+                        Argument(right));
+
+            case BinaryOperator.IsNot:
+                // x is not y → !object.ReferenceEquals(x, y)
+                // Special optimization for None: x is not None → x != null
+                if (binOp.Right is NoneLiteral)
+                {
+                    return BinaryExpression(SyntaxKind.NotEqualsExpression,
+                        left,
+                        LiteralExpression(SyntaxKind.NullLiteralExpression));
+                }
+                return PrefixUnaryExpression(SyntaxKind.LogicalNotExpression,
+                    InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            PredefinedType(Token(SyntaxKind.ObjectKeyword)),
+                            IdentifierName("ReferenceEquals")))
+                        .AddArgumentListArguments(
+                            Argument(left),
+                            Argument(right)));
         }
 
         // Standard binary operators
@@ -1319,12 +1550,6 @@ public class RoslynEmitter
 
             // Null coalescing
             BinaryOperator.NullCoalesce => SyntaxKind.CoalesceExpression,
-
-            // Membership and identity operators need special handling
-            BinaryOperator.In => throw new NotImplementedException("'in' operator requires runtime support"),
-            BinaryOperator.NotIn => throw new NotImplementedException("'not in' operator requires runtime support"),
-            BinaryOperator.Is => throw new NotImplementedException("'is' operator requires type check support"),
-            BinaryOperator.IsNot => throw new NotImplementedException("'is not' operator requires type check support"),
 
             _ => throw new NotImplementedException($"Binary operator not implemented: {binOp.Operator}")
         };
@@ -1602,5 +1827,256 @@ public class RoslynEmitter
 
         return InterpolatedStringExpression(Token(SyntaxKind.InterpolatedStringStartToken))
             .WithContents(List(parts));
+    }
+
+    /// <summary>
+    /// Determines if a dunder method should generate a C# method (for overrides or special methods)
+    /// Most dunder methods should NOT generate methods to avoid conflicts with user-defined methods
+    /// </summary>
+    private bool ShouldGenerateDunderMethod(string dunderName)
+    {
+        // Only generate methods for dunder methods that map to C# overrides or special constructs
+        return dunderName switch
+        {
+            "__str__" => true,     // ToString() override
+            "__repr__" => true,    // ToString() override  
+            "__eq__" => true,      // Equals() override
+            "__hash__" => true,    // GetHashCode() override
+            "__bool__" => true,    // ToBoolean() method (no operator equivalent)
+            "__len__" => true,     // Length property/method (no operator equivalent)
+            "__contains__" => true, // Contains() method (no operator equivalent)
+            "__getitem__" => true, // Indexer get (no operator equivalent)
+            "__setitem__" => true, // Indexer set (no operator equivalent)
+            "__iter__" => true,    // GetEnumerator() (no operator equivalent)
+            // Arithmetic and comparison operators should NOT generate methods
+            // They only generate operators that inline the dunder method body
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Try to generate an operator overload from a dunder method
+    /// </summary>
+    private MemberDeclarationSyntax? TryGenerateOperatorOverload(FunctionDef funcDef, string className)
+    {
+        return funcDef.Name switch
+        {
+            // Arithmetic operators (binary)
+            "__add__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.PlusToken),
+            "__sub__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.MinusToken),
+            "__mul__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.AsteriskToken),
+            "__div__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.SlashToken),
+            "__mod__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.PercentToken),
+
+            // Bitwise operators (binary)
+            "__and__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.AmpersandToken),
+            "__or__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.BarToken),
+            "__xor__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.CaretToken),
+            "__lshift__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.LessThanLessThanToken),
+            "__rshift__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.GreaterThanGreaterThanToken),
+
+            // Comparison operators (binary)
+            "__eq__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.EqualsEqualsToken),
+            "__ne__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.ExclamationEqualsToken),
+            "__lt__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.LessThanToken),
+            "__le__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.LessThanEqualsToken),
+            "__gt__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.GreaterThanToken),
+            "__ge__" => GenerateComparisonOperator(funcDef, className, SyntaxKind.GreaterThanEqualsToken),
+
+            // Unary operators
+            "__neg__" => GenerateUnaryOperator(funcDef, className, SyntaxKind.MinusToken),
+            "__pos__" => GenerateUnaryOperator(funcDef, className, SyntaxKind.PlusToken),
+            "__invert__" => GenerateUnaryOperator(funcDef, className, SyntaxKind.TildeToken),
+
+            // Not supported as operators (handled as methods)
+            "__pow__" => null,     // No ** operator in C#, use Math.Pow
+            "__getitem__" => null, // Requires indexer syntax, not operator
+            "__setitem__" => null, // Requires indexer syntax, not operator
+
+            _ => null
+        };
+    }
+
+    /// <summary>
+    /// Generate a binary operator overload (e.g., operator +, operator -, etc.)
+    /// </summary>
+    private OperatorDeclarationSyntax GenerateBinaryOperator(FunctionDef funcDef, string className, SyntaxKind operatorToken)
+    {
+        // Binary operators should have 2 parameters: self and other
+        // We skip 'self' and use the other parameter
+        var otherParam = funcDef.Parameters
+            .Where(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault();
+
+        if (otherParam == null)
+        {
+            throw new InvalidOperationException($"Binary operator {funcDef.Name} must have at least 2 parameters");
+        }
+
+        // Determine return type - default to class type if not specified
+        var returnType = funcDef.ReturnType != null
+            ? _typeMapper.MapType(funcDef.ReturnType)
+            : IdentifierName(className);
+
+        // Generate parameter for the operator
+        var param1 = Parameter(Identifier("left"))
+            .WithType(IdentifierName(className));
+
+        var param2Type = otherParam.Type != null
+            ? _typeMapper.MapType(otherParam.Type)
+            : IdentifierName(className);
+
+        var param2 = Parameter(Identifier("right"))
+            .WithType(param2Type);
+
+        // Generate body - call the actual dunder method on left operand
+        // Use the transformed dunder name (e.g., __add__ -> Add)
+        var methodName = NameMangler.Transform(funcDef.Name, NameContext.Method);
+        var invocation = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName("left"),
+                IdentifierName(methodName)))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(IdentifierName("right")))));
+
+        var body = Block(ReturnStatement(invocation));
+
+        return OperatorDeclaration(returnType, Token(operatorToken))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(new[] { param1, param2 })))
+            .WithBody(body);
+    }
+
+    /// <summary>
+    /// Generate a comparison operator overload (==, !=, <, >, <=, >=)
+    /// </summary>
+    private OperatorDeclarationSyntax GenerateComparisonOperator(FunctionDef funcDef, string className, SyntaxKind operatorToken)
+    {
+        // Similar to binary operators but always returns bool
+        var otherParam = funcDef.Parameters
+            .Where(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault();
+
+        if (otherParam == null)
+        {
+            throw new InvalidOperationException($"Comparison operator {funcDef.Name} must have at least 2 parameters");
+        }
+
+        // Comparison operators always return bool
+        var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
+
+        // Generate parameters
+        var param1 = Parameter(Identifier("left"))
+            .WithType(IdentifierName(className));
+
+        var param2Type = otherParam.Type != null
+            ? _typeMapper.MapType(otherParam.Type)
+            : IdentifierName(className);
+
+        var param2 = Parameter(Identifier("right"))
+            .WithType(param2Type);
+
+        // Generate body - call the actual dunder method on left operand
+        var methodName = NameMangler.Transform(funcDef.Name, NameContext.Method);
+        var invocation = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName("left"),
+                IdentifierName(methodName)))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(IdentifierName("right")))));
+
+        var body = Block(ReturnStatement(invocation));
+
+        return OperatorDeclaration(returnType, Token(operatorToken))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(new[] { param1, param2 })))
+            .WithBody(body);
+    }
+
+    /// <summary>
+    /// Generate a unary operator overload (-, +, ~)
+    /// </summary>
+    private OperatorDeclarationSyntax GenerateUnaryOperator(FunctionDef funcDef, string className, SyntaxKind operatorToken)
+    {
+        // Unary operators should have only 1 parameter: self
+
+        // Determine return type - default to class type if not specified
+        var returnType = funcDef.ReturnType != null
+            ? _typeMapper.MapType(funcDef.ReturnType)
+            : IdentifierName(className);
+
+        // Generate parameter for the operator
+        var param = Parameter(Identifier("value"))
+            .WithType(IdentifierName(className));
+
+        // Generate body - call the actual dunder method on the operand
+        var methodName = NameMangler.Transform(funcDef.Name, NameContext.Method);
+        var invocation = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName("value"),
+                IdentifierName(methodName)))
+            .WithArgumentList(ArgumentList());
+
+        var body = Block(ReturnStatement(invocation));
+
+        return OperatorDeclaration(returnType, Token(operatorToken))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SingletonSeparatedList(param)))
+            .WithBody(body);
+    }
+
+    /// <summary>
+    /// Generate complementary operator == when only __ne__ is defined
+    /// </summary>
+    private OperatorDeclarationSyntax GenerateComplementaryEqualsOperator(string className)
+    {
+        var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
+
+        var param1 = Parameter(Identifier("left"))
+            .WithType(IdentifierName(className));
+        var param2 = Parameter(Identifier("right"))
+            .WithType(IdentifierName(className));
+
+        // operator == returns !(left != right)
+        var body = Block(ReturnStatement(
+            PrefixUnaryExpression(
+                SyntaxKind.LogicalNotExpression,
+                BinaryExpression(
+                    SyntaxKind.NotEqualsExpression,
+                    IdentifierName("left"),
+                    IdentifierName("right")))));
+
+        return OperatorDeclaration(returnType, Token(SyntaxKind.EqualsEqualsToken))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(new[] { param1, param2 })))
+            .WithBody(body);
+    }
+
+    /// <summary>
+    /// Generate complementary operator != when only __eq__ is defined
+    /// </summary>
+    private OperatorDeclarationSyntax GenerateComplementaryNotEqualsOperator(string className)
+    {
+        var returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
+
+        var param1 = Parameter(Identifier("left"))
+            .WithType(IdentifierName(className));
+        var param2 = Parameter(Identifier("right"))
+            .WithType(IdentifierName(className));
+
+        // operator != returns !(left == right)
+        var body = Block(ReturnStatement(
+            PrefixUnaryExpression(
+                SyntaxKind.LogicalNotExpression,
+                BinaryExpression(
+                    SyntaxKind.EqualsExpression,
+                    IdentifierName("left"),
+                    IdentifierName("right")))));
+
+        return OperatorDeclaration(returnType, Token(SyntaxKind.ExclamationEqualsToken))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(new[] { param1, param2 })))
+            .WithBody(body);
     }
 }
