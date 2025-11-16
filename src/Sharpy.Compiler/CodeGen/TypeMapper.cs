@@ -32,7 +32,7 @@ public class TypeMapper
         { "object", "object" },
 
         // Sharpy runtime types
-        { "str", "Sharpy.Core.Str" },
+        { "str", "string" },  // Use C# string instead of Sharpy.Core.Str for better interop
         { "list", "Sharpy.Core.List" },
         { "dict", "Sharpy.Core.Dict" },
         { "set", "Sharpy.Core.Set" },

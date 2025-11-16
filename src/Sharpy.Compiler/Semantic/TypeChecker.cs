@@ -684,9 +684,14 @@ public class TypeChecker
             CheckExpression(kwarg.Value);
         }
 
-        // Special handling for builtin functions with overloads
+        // Try to get the function symbol directly for better validation
+        FunctionSymbol? funcSymbol = null;
         if (call.Function is Identifier id)
         {
+            var symbol = _symbolTable.Lookup(id.Name);
+            funcSymbol = symbol as FunctionSymbol;
+
+            // Special handling for builtin functions with overloads
             var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
             if (overloads != null && overloads.Count > 1)
             {
@@ -731,6 +736,44 @@ public class TypeChecker
             }
         }
 
+        // If we have a FunctionSymbol, use it for validation (supports default parameters)
+        if (funcSymbol != null)
+        {
+            // Count required parameters (those without defaults)
+            var requiredParamCount = funcSymbol.Parameters.Count(p => !p.HasDefault);
+            var totalParamCount = funcSymbol.Parameters.Count;
+
+            // Validate argument count considering defaults
+            if (argTypes.Count < requiredParamCount || argTypes.Count > totalParamCount)
+            {
+                if (requiredParamCount == totalParamCount)
+                {
+                    AddError($"Function expects {totalParamCount} arguments but got {argTypes.Count}",
+                        call.LineStart, call.ColumnStart);
+                }
+                else
+                {
+                    AddError($"Function expects {requiredParamCount} to {totalParamCount} arguments but got {argTypes.Count}",
+                        call.LineStart, call.ColumnStart);
+                }
+            }
+            else
+            {
+                // Validate argument types for the provided arguments
+                for (int i = 0; i < argTypes.Count; i++)
+                {
+                    if (!argTypes[i].IsAssignableTo(funcSymbol.Parameters[i].Type))
+                    {
+                        AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{funcSymbol.Parameters[i].Type.GetDisplayName()}'",
+                            call.Arguments[i].LineStart, call.Arguments[i].ColumnStart);
+                    }
+                }
+            }
+
+            return funcSymbol.ReturnType;
+        }
+
+        // Fallback to FunctionType validation (no default parameter support)
         var funcType = CheckExpression(call.Function);
 
         if (funcType is FunctionType ft)

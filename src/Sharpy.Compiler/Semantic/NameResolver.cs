@@ -235,7 +235,9 @@ public class NameResolver
         var parameters = functionDef.Parameters.Select(p => new ParameterSymbol
         {
             Name = p.Name,
-            Type = SemanticType.Unknown  // Will be resolved during type checking
+            Type = SemanticType.Unknown,  // Will be resolved during type checking
+            HasDefault = p.DefaultValue != null,
+            DefaultValue = p.DefaultValue
         }).ToList();
 
         var funcSymbol = new FunctionSymbol
@@ -268,7 +270,9 @@ public class NameResolver
         var parameters = method.Parameters.Select(p => new ParameterSymbol
         {
             Name = p.Name,
-            Type = SemanticType.Unknown  // Will be resolved during type checking
+            Type = SemanticType.Unknown,  // Will be resolved during type checking
+            HasDefault = p.DefaultValue != null,
+            DefaultValue = p.DefaultValue
         }).ToList();
 
         var funcSymbol = new FunctionSymbol

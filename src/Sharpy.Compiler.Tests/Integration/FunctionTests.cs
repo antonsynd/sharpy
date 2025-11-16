@@ -64,7 +64,7 @@ print(result)
         Assert.Equal("120\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Function call semantics issue - parameter count mismatch")]
+    [Fact]
     public void FunctionWithDefaultParameter_WorksCorrectly()
     {
         var source = @"
