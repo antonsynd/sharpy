@@ -828,7 +828,7 @@ public class RoslynEmitterExpressionTests
         var code = result.ToString();
         code.Should().Contain("obj");
         code.Should().Contain("is");
-        code.Should().Contain("Sharpy.Core.Str");
+        code.Should().Contain("string");
     }
 
     #endregion

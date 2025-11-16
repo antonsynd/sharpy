@@ -46,7 +46,7 @@ public class TypeMapperTests
     }
 
     [Theory]
-    [InlineData("str", "Sharpy.Core.Str")]
+    [InlineData("str", "string")]
     [InlineData("string", "string")]
     public void MapType_StringTypes_MapsCorrectly(string sharpyType, string expectedCSharpType)
     {
@@ -105,7 +105,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("Sharpy.Core.Str?");
+        result.ToString().Should().Be("string?");
     }
 
     #endregion
@@ -150,7 +150,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("Sharpy.Core.Dict<Sharpy.Core.Str,int>");
+        result.ToString().Should().Be("Sharpy.Core.Dict<string,int>");
     }
 
     [Fact]
@@ -170,7 +170,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("Sharpy.Core.Set<Sharpy.Core.Str>");
+        result.ToString().Should().Be("Sharpy.Core.Set<string>");
     }
 
     [Fact]
@@ -232,7 +232,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapFunctionType(funcType);
 
         // Assert
-        result.ToString().Should().Be("System.Func<int,Sharpy.Core.Str>");
+        result.ToString().Should().Be("System.Func<int,string>");
     }
 
     [Fact]
@@ -253,7 +253,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapFunctionType(funcType);
 
         // Assert
-        result.ToString().Should().Be("System.Action<int,Sharpy.Core.Str>");
+        result.ToString().Should().Be("System.Action<int,string>");
     }
 
     [Fact]
@@ -329,7 +329,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapTupleType(tupleType);
 
         // Assert
-        result.ToString().Should().Be("System.ValueTuple<int,Sharpy.Core.Str>");
+        result.ToString().Should().Be("System.ValueTuple<int,string>");
     }
 
     #endregion
