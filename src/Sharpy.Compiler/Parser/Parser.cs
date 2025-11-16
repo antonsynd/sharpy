@@ -2060,13 +2060,54 @@ public class Parser
                     {
                         do
                         {
+                            var paramStartLine = Current.Line;
+                            var paramStartColumn = Current.Column;
                             var name = ExpectIdentifier();
-                            parameters.Add(new Parameter { Name = name });
+                            
+                            TypeAnnotation? paramType = null;
+                            
+                            // Check for type annotation (name: type)
+                            if (Current.Type == TokenType.Colon)
+                            {
+                                // Look ahead to see if this is a parameter type annotation or the lambda body separator
+                                // If the next token is a type name, it's a parameter type annotation
+                                // Otherwise, it's the lambda body separator
+                                var savedPos = _position;
+                                Advance(); // skip :
+                                
+                                // Check if next token looks like a type (identifier or keyword)
+                                if (Current.Type == TokenType.Identifier || IsTypeKeyword(Current.Type))
+                                {
+                                    // This is a type annotation
+                                    _position = savedPos; // restore position
+                                    Advance(); // skip : again
+                                    paramType = ParseTypeAnnotation();
+                                }
+                                else
+                                {
+                                    // This is the lambda body separator, restore position
+                                    _position = savedPos;
+                                }
+                            }
+                            
+                            parameters.Add(new Parameter 
+                            { 
+                                Name = name,
+                                Type = paramType,
+                                LineStart = paramStartLine,
+                                ColumnStart = paramStartColumn,
+                                LineEnd = Current.Line,
+                                ColumnEnd = Current.Column
+                            });
 
                             if (Current.Type == TokenType.Comma)
+                            {
                                 Advance();
+                            }
                             else
+                            {
                                 break;
+                            }
                         } while (true);
                     }
 
@@ -2210,6 +2251,16 @@ public class Parser
             return true;
 
         return false;
+    }
+
+    private bool IsTypeKeyword(TokenType type)
+    {
+        return type switch
+        {
+            TokenType.Auto => true,
+            TokenType.Identifier => true,
+            _ => false
+        };
     }
 
     private List<FStringPart> ParseFStringParts(string fstringValue)

@@ -194,7 +194,7 @@ y: bool = 10 > 5
         typeChecker.Errors.Should().BeEmpty();
     }
 
-    [Fact(Skip = "Lambda with type annotations not yet supported - parser expects simpler syntax")]
+    [Fact]
     public void ChecksLambdaExpressions()
     {
         var source = @"
