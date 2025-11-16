@@ -697,7 +697,8 @@ public class TypeChecker
             if (overloads != null && overloads.Count > 1)
             {
                 // First pass: filter by argument count (considering default parameters)
-                var candidateOverloads = overloads.Where(o => {
+                var candidateOverloads = overloads.Where(o =>
+                {
                     var requiredParams = o.Parameters.Count(p => !p.HasDefault);
                     var totalParams = o.Parameters.Count;
                     return argTypes.Count >= requiredParams && argTypes.Count <= totalParams;
@@ -732,7 +733,8 @@ public class TypeChecker
                 else
                 {
                     // No matching overload found
-                    var expectedCounts = string.Join(" or ", overloads.Select(o => {
+                    var expectedCounts = string.Join(" or ", overloads.Select(o =>
+                    {
                         var required = o.Parameters.Count(p => !p.HasDefault);
                         var total = o.Parameters.Count;
                         return required == total ? total.ToString() : $"{required}-{total}";
