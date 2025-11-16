@@ -319,7 +319,8 @@ public class TypeChecker
                     Type = inferredType,
                     IsConstant = false,
                     DeclarationLine = assignment.LineStart,
-                    DeclarationColumn = assignment.ColumnStart
+                    DeclarationColumn = assignment.ColumnStart,
+                    AccessLevel = AccessLevel.Public
                 };
                 _symbolTable.Define(newSymbol);
                 _semanticInfo.SetIdentifierSymbol(targetId, newSymbol);
