@@ -28,7 +28,7 @@ if x > 5:
         Assert.Equal("x is greater than 5\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Function call semantics issue - parameter count mismatch")]
+    [Fact]
     public void IfElseStatement_WorksCorrectly()
     {
         var source = @"
@@ -49,7 +49,7 @@ check_number(0)
         Assert.Equal("positive\nnon-positive\nnon-positive\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Function call semantics issue - parameter count mismatch")]
+    [Fact]
     public void IfElifElseStatement_WorksCorrectly()
     {
         var source = @"
@@ -72,7 +72,7 @@ classify_number(0)
         Assert.Equal("positive\nnegative\nzero\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Function call semantics issue - parameter count mismatch")]
+    [Fact]
     public void MultipleElif_WorksCorrectly()
     {
         var source = @"
@@ -101,7 +101,7 @@ grade(55)
         Assert.Equal("A\nB\nC\nD\nF\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Function call semantics issue - parameter count mismatch")]
+    [Fact]
     public void NestedIfStatements_WorkCorrectly()
     {
         var source = @"
@@ -125,7 +125,7 @@ check_range(-5)
         Assert.Equal("single digit positive\nmulti digit positive\nnon-positive\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Variable assignment semantics - assignment creates new variable instead of modifying existing")]
+    [Fact]
     public void WhileLoop_SimpleCount_WorksCorrectly()
     {
         var source = @"
@@ -141,7 +141,7 @@ while i < 5:
         Assert.Equal("0\n1\n2\n3\n4\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Variable assignment semantics issue")]
+    [Fact]
     public void WhileLoop_WithBreak_WorksCorrectly()
     {
         var source = @"
@@ -159,7 +159,7 @@ while True:
         Assert.Equal("0\n1\n2\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "print() builtin only accepts strings and variable assignment semantics issue")]
+    [Fact]
     public void WhileLoop_WithContinue_WorksCorrectly()
     {
         var source = @"
@@ -177,7 +177,7 @@ while i < 5:
         Assert.Equal("1\n2\n4\n5\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "For loop iteration over range not yet implemented")]
+    [Fact]
     public void ForLoop_WithRange_WorksCorrectly()
     {
         var source = @"
@@ -191,7 +191,7 @@ for i in range(5):
         Assert.Equal("0\n1\n2\n3\n4\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Range with start and stop parameters not yet fully implemented")]
+    [Fact]
     public void ForLoop_WithRangeStartStop_WorksCorrectly()
     {
         var source = @"
@@ -205,7 +205,7 @@ for i in range(2, 7):
         Assert.Equal("2\n3\n4\n5\n6\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Range with step parameter not yet fully implemented")]
+    [Fact]
     public void ForLoop_WithRangeStep_WorksCorrectly()
     {
         var source = @"
@@ -219,7 +219,7 @@ for i in range(0, 10, 2):
         Assert.Equal("0\n2\n4\n6\n8\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "For loop iteration over range not yet implemented")]
+    [Fact]
     public void ForLoop_WithBreak_WorksCorrectly()
     {
         var source = @"
@@ -235,7 +235,7 @@ for i in range(10):
         Assert.Equal("0\n1\n2\n3\n4\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "For loop iteration over range not yet implemented - variable naming conflict")]
+    [Fact]
     public void ForLoop_WithContinue_WorksCorrectly()
     {
         var source = @"
@@ -251,7 +251,7 @@ for i in range(6):
         Assert.Equal("0\n1\n2\n4\n5\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Nested for loops - variable naming and range iteration issues")]
+    [Fact]
     public void NestedLoops_WorkCorrectly()
     {
         var source = @"
@@ -266,7 +266,7 @@ for i in range(3):
         Assert.Equal("0,0\n0,1\n1,0\n1,1\n2,0\n2,1\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Function call semantics issue - parameter count mismatch")]
+    [Fact]
     public void LogicalOperators_InConditions_WorkCorrectly()
     {
         var source = @"
@@ -290,7 +290,7 @@ test_logical(-5, -3)
         Assert.Equal("both positive\nat least one positive\nat least one positive\nnone positive\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Variable naming conflicts and multiple print call name mangling")]
+    [Fact]
     public void NotOperator_WorksCorrectly()
     {
         var source = @"

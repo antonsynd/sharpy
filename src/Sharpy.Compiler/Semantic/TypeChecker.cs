@@ -672,8 +672,6 @@ public class TypeChecker
 
     private SemanticType CheckFunctionCall(FunctionCall call)
     {
-        var funcType = CheckExpression(call.Function);
-
         // Check arguments and collect their types
         var argTypes = new List<SemanticType>();
         foreach (var arg in call.Arguments)
@@ -685,6 +683,106 @@ public class TypeChecker
         {
             CheckExpression(kwarg.Value);
         }
+
+        // Try to get the function symbol directly for better validation
+        FunctionSymbol? funcSymbol = null;
+        if (call.Function is Identifier id)
+        {
+            var symbol = _symbolTable.Lookup(id.Name);
+            funcSymbol = symbol as FunctionSymbol;
+
+            // Special handling for builtin functions with overloads
+            // If there is exactly one overload, it will be handled by the regular function symbol validation below.
+            var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
+            if (overloads != null && overloads.Count > 1)
+            {
+                // First pass: filter by argument count (considering default parameters)
+                var candidateOverloads = overloads.Where(o => {
+                    var requiredParams = o.Parameters.Count(p => !p.HasDefault);
+                    var totalParams = o.Parameters.Count;
+                    return argTypes.Count >= requiredParams && argTypes.Count <= totalParams;
+                }).ToList();
+
+                // Second pass: check type compatibility
+                FunctionSymbol? matchingOverload = null;
+                foreach (var overload in candidateOverloads)
+                {
+                    bool typesMatch = true;
+                    for (int i = 0; i < argTypes.Count; i++)
+                    {
+                        if (!argTypes[i].IsAssignableTo(overload.Parameters[i].Type))
+                        {
+                            typesMatch = false;
+                            break;
+                        }
+                    }
+                    if (typesMatch)
+                    {
+                        matchingOverload = overload;
+                        break;
+                    }
+                }
+
+                if (matchingOverload != null)
+                {
+                    // Update the identifier symbol to point to the matching overload
+                    _semanticInfo.SetIdentifierSymbol(id, matchingOverload);
+                    return matchingOverload.ReturnType;
+                }
+                else
+                {
+                    // No matching overload found
+                    var expectedCounts = string.Join(" or ", overloads.Select(o => {
+                        var required = o.Parameters.Count(p => !p.HasDefault);
+                        var total = o.Parameters.Count;
+                        return required == total ? total.ToString() : $"{required}-{total}";
+                    }).Distinct());
+                    AddError($"Function '{id.Name}' expects {expectedCounts} arguments but got {argTypes.Count}",
+                        call.LineStart, call.ColumnStart);
+                    return SemanticType.Unknown;
+                }
+            }
+        }
+
+        // If we have a FunctionSymbol, use it for validation (supports default parameters)
+        if (funcSymbol != null)
+        {
+            // Count required parameters (those without defaults)
+            var requiredParamCount = funcSymbol.Parameters.Count(p => !p.HasDefault);
+            var totalParamCount = funcSymbol.Parameters.Count;
+
+            // Validate argument count considering defaults
+            if (argTypes.Count < requiredParamCount || argTypes.Count > totalParamCount)
+            {
+                if (requiredParamCount == totalParamCount)
+                {
+                    AddError($"Function expects {totalParamCount} arguments but got {argTypes.Count}",
+                        call.LineStart, call.ColumnStart);
+                }
+                else
+                {
+                    AddError($"Function expects {requiredParamCount} to {totalParamCount} arguments but got {argTypes.Count}",
+                        call.LineStart, call.ColumnStart);
+                }
+            }
+            else
+            {
+                // Validate argument types for the provided arguments
+                for (int i = 0; i < argTypes.Count; i++)
+                {
+                    if (!argTypes[i].IsAssignableTo(funcSymbol.Parameters[i].Type))
+                    {
+                        AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{funcSymbol.Parameters[i].Type.GetDisplayName()}'",
+                            call.Arguments[i].LineStart, call.Arguments[i].ColumnStart);
+                    }
+                }
+            }
+
+            return funcSymbol.ReturnType;
+        }
+
+        // Fallback to FunctionType validation (no default parameter support)
+        var funcType = CheckExpression(call.Function);
 
         if (funcType is FunctionType ft)
         {

@@ -27,10 +27,17 @@ public class SymbolTable
             _globalScope.Define(typeSymbol);
         }
 
-        // Add builtin functions
+        // Add builtin functions (only add one symbol per function name, overload resolution happens later)
+        // For functions with multiple overloads, only the first overload is added to the global scope.
+        // The TypeChecker uses BuiltinRegistry.GetFunctionOverloads() for proper overload resolution.
+        var addedFunctions = new HashSet<string>();
         foreach (var (name, funcSymbol) in _builtins.GetAllFunctions())
         {
-            _globalScope.Define(funcSymbol);
+            if (!addedFunctions.Contains(name))
+            {
+                _globalScope.Define(funcSymbol);
+                addedFunctions.Add(name);
+            }
         }
     }
 
@@ -77,4 +84,5 @@ public class SymbolTable
     public Scope CurrentScope => _scopeStack.Peek();
     public Scope GlobalScope => _globalScope;
     public int ScopeDepth => _scopeStack.Count;
+    public BuiltinRegistry BuiltinRegistry => _builtins;
 }

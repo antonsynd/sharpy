@@ -274,7 +274,7 @@ x: int = None
         typeChecker.Errors[0].Message.Should().Contain("None");
     }
 
-    [Fact(Skip = "Type narrowing with is not None not yet implemented in type checker")]
+    [Fact]
     public void InfersNullableTypeFromNone()
     {
         var source = @"

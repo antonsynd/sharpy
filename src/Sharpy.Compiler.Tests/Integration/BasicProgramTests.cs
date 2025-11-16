@@ -41,7 +41,7 @@ main()
         Assert.Equal("Hello, World!\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Function call semantics issue - recursive calls not resolving correctly")]
+    [Fact]
     public void Fibonacci_Recursive_ComputesCorrectly()
     {
         var source = @"
@@ -60,7 +60,7 @@ print(result)
         Assert.Equal("55\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Function call semantics issue and print() builtin only accepts strings")]
+    [Fact]
     public void Fibonacci_Iterative_ComputesCorrectly()
     {
         var source = @"

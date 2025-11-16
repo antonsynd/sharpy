@@ -12,7 +12,7 @@ public class FunctionTests : IntegrationTestBase
     {
     }
 
-    [Fact(Skip = "Function call semantics issue - parameter count mismatch and print() builtin limitation")]
+    [Fact]
     public void SimpleFunction_WithReturn_WorksCorrectly()
     {
         var source = @"
@@ -45,7 +45,7 @@ greet(""World"")
         Assert.Equal("Hello, World!\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Function call semantics issue - parameter count mismatch and print() builtin limitation")]
+    [Fact]
     public void RecursiveFunction_Factorial_WorksCorrectly()
     {
         var source = @"
@@ -64,7 +64,7 @@ print(result)
         Assert.Equal("120\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Function call semantics issue - parameter count mismatch")]
+    [Fact]
     public void FunctionWithDefaultParameter_WorksCorrectly()
     {
         var source = @"
@@ -81,7 +81,7 @@ greet(""Bob"", ""Hi"")
         Assert.Equal("Hello, Alice!\nHi, Bob!\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Function call semantics issue - parameter count mismatch and print() builtin limitation")]
+    [Fact]
     public void MultipleFunctions_CallEachOther_WorksCorrectly()
     {
         var source = @"
