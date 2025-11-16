@@ -2099,9 +2099,10 @@ public class Parser
                                             _position = savedPos;
                                         }
                                     }
-                                    catch (ParserError)
+                                    catch (ParserError ex)
                                     {
                                         // Failed to parse as type - must be lambda body
+                                        _logger.LogDebug($"Type annotation parse failed in lambda (treating as body separator): {ex.Message}");
                                         _position = savedPos;
                                     }
                                 }
