@@ -759,7 +759,7 @@ public class RoslynEmitterExpressionTests
         code.Should().Contain("2");
     }
 
-    [Fact(Skip = "TODO: Lambda parameters get unique suffixes from NameMangler - need to preserve original names in lambda scope")]
+    [Fact]
     public void GenerateExpression_LambdaTwoParams_GeneratesParenthesizedLambda()
     {
         // Arrange
