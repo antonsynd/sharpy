@@ -6,7 +6,7 @@ namespace Sharpy.Compiler.Semantic;
 public class BuiltinRegistry
 {
     private readonly Dictionary<string, TypeSymbol> _types = new();
-    private readonly Dictionary<string, FunctionSymbol> _functions = new();
+    private readonly Dictionary<string, List<FunctionSymbol>> _functions = new();
 
     public BuiltinRegistry()
     {
@@ -41,8 +41,18 @@ public class BuiltinRegistry
         // print() accepts object - can print any type
         RegisterFunction("print", SemanticType.Void, new ParameterSymbol { Name = "value", Type = SemanticType.Object });
         RegisterFunction("len", SemanticType.Int, new ParameterSymbol { Name = "obj", Type = SemanticType.Str });
-        RegisterFunction("range", new GenericType { Name = "list", TypeArguments = new() { SemanticType.Int } },
+        
+        // range() has three overloads: range(stop), range(start, stop), range(start, stop, step)
+        var rangeReturnType = new GenericType { Name = "list", TypeArguments = new() { SemanticType.Int } };
+        RegisterFunction("range", rangeReturnType,
             new ParameterSymbol { Name = "stop", Type = SemanticType.Int });
+        RegisterFunction("range", rangeReturnType,
+            new ParameterSymbol { Name = "start", Type = SemanticType.Int },
+            new ParameterSymbol { Name = "stop", Type = SemanticType.Int });
+        RegisterFunction("range", rangeReturnType,
+            new ParameterSymbol { Name = "start", Type = SemanticType.Int },
+            new ParameterSymbol { Name = "stop", Type = SemanticType.Int },
+            new ParameterSymbol { Name = "step", Type = SemanticType.Int });
     }
 
     private void RegisterType(string sharpyName, Type clrType, TypeKind kind, bool isGeneric = false, int typeParamCount = 0)
@@ -64,7 +74,7 @@ public class BuiltinRegistry
 
     private void RegisterFunction(string name, SemanticType returnType, params ParameterSymbol[] parameters)
     {
-        _functions[name] = new FunctionSymbol
+        var functionSymbol = new FunctionSymbol
         {
             Name = name,
             Kind = SymbolKind.Function,
@@ -72,11 +82,19 @@ public class BuiltinRegistry
             Parameters = parameters.ToList(),
             AccessLevel = AccessLevel.Public
         };
+
+        if (!_functions.ContainsKey(name))
+        {
+            _functions[name] = new List<FunctionSymbol>();
+        }
+        _functions[name].Add(functionSymbol);
     }
 
     public TypeSymbol? GetType(string name) => _types.GetValueOrDefault(name);
-    public FunctionSymbol? GetFunction(string name) => _functions.GetValueOrDefault(name);
+    public FunctionSymbol? GetFunction(string name) => _functions.GetValueOrDefault(name)?.FirstOrDefault();
+    public List<FunctionSymbol>? GetFunctionOverloads(string name) => _functions.GetValueOrDefault(name);
 
     public IEnumerable<(string Name, TypeSymbol Type)> GetAllTypes() => _types.Select(kv => (kv.Key, kv.Value));
-    public IEnumerable<(string Name, FunctionSymbol Function)> GetAllFunctions() => _functions.Select(kv => (kv.Key, kv.Value));
+    public IEnumerable<(string Name, FunctionSymbol Function)> GetAllFunctions() => 
+        _functions.SelectMany(kv => kv.Value.Select(f => (kv.Key, f)));
 }

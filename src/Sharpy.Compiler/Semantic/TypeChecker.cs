@@ -672,8 +672,6 @@ public class TypeChecker
 
     private SemanticType CheckFunctionCall(FunctionCall call)
     {
-        var funcType = CheckExpression(call.Function);
-
         // Check arguments and collect their types
         var argTypes = new List<SemanticType>();
         foreach (var arg in call.Arguments)
@@ -685,6 +683,55 @@ public class TypeChecker
         {
             CheckExpression(kwarg.Value);
         }
+
+        // Special handling for builtin functions with overloads
+        if (call.Function is Identifier id)
+        {
+            var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
+            if (overloads != null && overloads.Count > 1)
+            {
+                // Try to find a matching overload based on argument count
+                FunctionSymbol? matchingOverload = null;
+                foreach (var overload in overloads)
+                {
+                    if (overload.Parameters.Count == argTypes.Count)
+                    {
+                        // Check if argument types match
+                        bool typesMatch = true;
+                        for (int i = 0; i < argTypes.Count; i++)
+                        {
+                            if (!argTypes[i].IsAssignableTo(overload.Parameters[i].Type))
+                            {
+                                typesMatch = false;
+                                break;
+                            }
+                        }
+                        if (typesMatch)
+                        {
+                            matchingOverload = overload;
+                            break;
+                        }
+                    }
+                }
+
+                if (matchingOverload != null)
+                {
+                    // Update the identifier symbol to point to the matching overload
+                    _semanticInfo.SetIdentifierSymbol(id, matchingOverload);
+                    return matchingOverload.ReturnType;
+                }
+                else
+                {
+                    // No matching overload found
+                    var expectedCounts = string.Join(" or ", overloads.Select(o => o.Parameters.Count.ToString()).Distinct());
+                    AddError($"Function '{id.Name}' expects {expectedCounts} arguments but got {argTypes.Count}",
+                        call.LineStart, call.ColumnStart);
+                    return SemanticType.Unknown;
+                }
+            }
+        }
+
+        var funcType = CheckExpression(call.Function);
 
         if (funcType is FunctionType ft)
         {

@@ -191,7 +191,7 @@ for i in range(5):
         Assert.Equal("0\n1\n2\n3\n4\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Range with start and stop parameters not yet fully implemented")]
+    [Fact]
     public void ForLoop_WithRangeStartStop_WorksCorrectly()
     {
         var source = @"
@@ -205,7 +205,7 @@ for i in range(2, 7):
         Assert.Equal("2\n3\n4\n5\n6\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Range with step parameter not yet fully implemented")]
+    [Fact]
     public void ForLoop_WithRangeStep_WorksCorrectly()
     {
         var source = @"
