@@ -111,7 +111,7 @@ print(x % y)
         Assert.Equal(expectedOutput, result.StandardOutput);
     }
 
-    [Fact(Skip = "Type inference without type annotation not yet fully implemented")]
+    [Fact]
     public void TypeInference_WorksCorrectly()
     {
         var source = @"
