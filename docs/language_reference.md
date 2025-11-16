@@ -877,7 +877,7 @@ result = apply(10, lambda x: x ** 2)  # 100
 
 **Lambda Rules:**
 - Single expression only (no statements)
-- Parameters types and return type can be omitted if they can be inferred from context
+- Parameters types and return type cannot be specified and must be inferred from context
 - Cannot have multi-line body
 - Expression result is automatically returned
 
