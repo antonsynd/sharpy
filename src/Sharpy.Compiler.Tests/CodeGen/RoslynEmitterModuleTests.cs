@@ -19,7 +19,6 @@ public class RoslynEmitterModuleTests
         {
             SourceFilePath = sourceFilePath
         };
-        NameMangler.Reset(); // Reset name mangler state for consistent tests
         return new RoslynEmitter(context);
     }
 

@@ -1144,8 +1144,7 @@ public class RoslynEmitter
         // Handle simple identifier assignment
         if (assign.Target is Identifier name)
         {
-            // Use ensureUnique: false for assignments since we're referencing an existing variable
-            var varName = NameMangler.ToCamelCase(name.Name, ensureUnique: false);
+            var varName = NameMangler.ToCamelCase(name.Name);
 
             // Check if this is a simple assignment or augmented assignment
             if (assign.Operator == AssignmentOperator.Assign)
@@ -1464,7 +1463,7 @@ public class RoslynEmitter
             TupleLiteral tupleLit => GenerateTupleLiteral(tupleLit),
 
             // Primary expressions
-            Identifier name => IdentifierName(NameMangler.ToCamelCase(name.Name, ensureUnique: false)),
+            Identifier name => IdentifierName(NameMangler.ToCamelCase(name.Name)),
             MemberAccess memberAccess => GenerateMemberAccess(memberAccess),
             IndexAccess indexAccess => GenerateIndexAccess(indexAccess),
             SliceAccess sliceAccess => GenerateSliceAccess(sliceAccess),
@@ -1509,8 +1508,8 @@ public class RoslynEmitter
         if (call.Function is Identifier funcName)
         {
             var name = _context.IsBuiltinFunction(funcName.Name)
-                ? $"Sharpy.Core.Exports.{NameMangler.ToPascalCase(funcName.Name, ensureUnique: false)}"
-                : NameMangler.ToPascalCase(funcName.Name, ensureUnique: false);
+                ? $"Sharpy.Core.Exports.{NameMangler.ToPascalCase(funcName.Name)}"
+                : NameMangler.ToPascalCase(funcName.Name);
 
             var args = call.Arguments.Select(GenerateExpression).ToArray();
 
