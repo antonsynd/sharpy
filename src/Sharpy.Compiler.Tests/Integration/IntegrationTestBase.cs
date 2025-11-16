@@ -19,6 +19,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 public abstract class IntegrationTestBase
 {
     protected readonly ITestOutputHelper Output;
+    private static readonly object ConsoleLock = new object();
 
     protected IntegrationTestBase(ITestOutputHelper output)
     {
@@ -93,7 +94,6 @@ public abstract class IntegrationTestBase
             {
                 SourceFilePath = fileName
             };
-            NameMangler.Reset();
             var emitter = new RoslynEmitter(codeGenContext);
             var compilationUnit = emitter.GenerateCompilationUnit(module);
             var generatedCSharp = compilationUnit.ToFullString();
@@ -190,41 +190,45 @@ public abstract class IntegrationTestBase
             var stdout = new StringBuilder();
             var stderr = new StringBuilder();
 
-            var originalOut = Console.Out;
-            var originalErr = Console.Error;
-
-            try
+            // Lock console I/O to prevent interference from parallel tests
+            lock (ConsoleLock)
             {
-                using var outWriter = new StringWriter(stdout);
-                using var errWriter = new StringWriter(stderr);
-                Console.SetOut(outWriter);
-                Console.SetError(errWriter);
+                var originalOut = Console.Out;
+                var originalErr = Console.Error;
 
-                // Find and invoke the entry point
-                var entryPoint = assembly.EntryPoint;
-                if (entryPoint == null)
+                try
                 {
-                    // Try to find a Main method or main function
-                    var moduleType = assembly.GetTypes().FirstOrDefault(t => t.Name.Contains("Module"));
-                    if (moduleType != null)
+                    using var outWriter = new StringWriter(stdout);
+                    using var errWriter = new StringWriter(stderr);
+                    Console.SetOut(outWriter);
+                    Console.SetError(errWriter);
+
+                    // Find and invoke the entry point
+                    var entryPoint = assembly.EntryPoint;
+                    if (entryPoint == null)
                     {
-                        var mainMethod = moduleType.GetMethod("Main", BindingFlags.Public | BindingFlags.Static)
-                                      ?? moduleType.GetMethod("main", BindingFlags.Public | BindingFlags.Static);
-                        if (mainMethod != null)
+                        // Try to find a Main method or main function
+                        var moduleType = assembly.GetTypes().FirstOrDefault(t => t.Name.Contains("Module"));
+                        if (moduleType != null)
                         {
-                            mainMethod.Invoke(null, mainMethod.GetParameters().Length == 0 ? null : new object[] { Array.Empty<string>() });
+                            var mainMethod = moduleType.GetMethod("Main", BindingFlags.Public | BindingFlags.Static)
+                                          ?? moduleType.GetMethod("main", BindingFlags.Public | BindingFlags.Static);
+                            if (mainMethod != null)
+                            {
+                                mainMethod.Invoke(null, mainMethod.GetParameters().Length == 0 ? null : new object[] { Array.Empty<string>() });
+                            }
                         }
                     }
+                    else
+                    {
+                        entryPoint.Invoke(null, entryPoint.GetParameters().Length == 0 ? null : new object[] { Array.Empty<string>() });
+                    }
                 }
-                else
+                finally
                 {
-                    entryPoint.Invoke(null, entryPoint.GetParameters().Length == 0 ? null : new object[] { Array.Empty<string>() });
+                    Console.SetOut(originalOut);
+                    Console.SetError(originalErr);
                 }
-            }
-            finally
-            {
-                Console.SetOut(originalOut);
-                Console.SetError(originalErr);
             }
 
             return new ExecutionResult

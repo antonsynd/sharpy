@@ -22,9 +22,6 @@ public class RoslynEmitterDefinitionTests
         var symbolTable = new SymbolTable(builtins);
         _context = new CodeGenContext(symbolTable, builtins);
         _emitter = new RoslynEmitter(_context);
-
-        // Reset NameMangler to ensure consistent test behavior
-        NameMangler.Reset();
     }
 
     #region Function Definition Tests

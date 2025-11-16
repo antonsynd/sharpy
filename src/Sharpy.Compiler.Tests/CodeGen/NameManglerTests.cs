@@ -7,12 +7,6 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 [Collection("Sequential")]
 public class NameManglerTests
 {
-    public NameManglerTests()
-    {
-        // Reset state before each test
-        NameMangler.Reset();
-    }
-
     #region PascalCase Conversion Tests
 
     [Theory]
@@ -248,35 +242,6 @@ public class NameManglerTests
 
     #region Uniqueness Tests
 
-    [Fact]
-    public void ToPascalCase_DuplicateName_AddsCounter()
-    {
-        // Act
-        var first = NameMangler.ToPascalCase("my_method");
-        var second = NameMangler.ToPascalCase("my_method");
-        var third = NameMangler.ToPascalCase("my_method");
-
-        // Assert
-        first.Should().Be("MyMethod");
-        second.Should().Be("MyMethod1");
-        third.Should().Be("MyMethod2");
-    }
-
-    [Fact]
-    public void Reset_ClearsUsedNames()
-    {
-        // Arrange
-        var first = NameMangler.ToPascalCase("test");
-        NameMangler.Reset();
-
-        // Act
-        var afterReset = NameMangler.ToPascalCase("test");
-
-        // Assert
-        first.Should().Be("Test");
-        afterReset.Should().Be("Test"); // Should be the same since we reset
-    }
-
     #endregion
 
     #region Context-Aware Transform Tests
@@ -291,9 +256,6 @@ public class NameManglerTests
     [InlineData(NameContext.Constant, "MAX_SIZE", "MAX_SIZE")]
     public void Transform_WithContext_TransformsCorrectly(NameContext context, string input, string expected)
     {
-        // Arrange
-        NameMangler.Reset();
-
         // Act
         var result = NameMangler.Transform(input, context);
 

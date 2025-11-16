@@ -5,8 +5,6 @@ namespace Sharpy.Compiler.CodeGen;
 /// </summary>
 public static class NameMangler
 {
-    private static readonly HashSet<string> _usedNames = new();
-
     // C# keywords that need @ prefix when used as identifiers
     private static readonly HashSet<string> _csharpKeywords = new()
     {
@@ -50,14 +48,6 @@ public static class NameMangler
     /// </summary>
     public static string ToPascalCase(string name)
     {
-        return ToPascalCase(name, ensureUnique: true);
-    }
-
-    /// <summary>
-    /// Convert snake_case to PascalCase for methods and types
-    /// </summary>
-    public static string ToPascalCase(string name, bool ensureUnique)
-    {
         if (string.IsNullOrEmpty(name))
             return name;
 
@@ -89,21 +79,13 @@ public static class NameMangler
         if (hasPrivatePrefix)
             result = "_" + result;
 
-        return EscapeKeywordIfNeeded(ensureUnique ? EnsureUnique(result) : result);
+        return EscapeKeywordIfNeeded(result);
     }
 
     /// <summary>
     /// Convert snake_case to camelCase for variables and parameters
     /// </summary>
     public static string ToCamelCase(string name)
-    {
-        return ToCamelCase(name, ensureUnique: true);
-    }
-
-    /// <summary>
-    /// Convert snake_case to camelCase for variables and parameters
-    /// </summary>
-    public static string ToCamelCase(string name, bool ensureUnique)
     {
         if (string.IsNullOrEmpty(name))
             return name;
@@ -134,7 +116,7 @@ public static class NameMangler
         if (hasPrivatePrefix)
             result = "_" + result;
 
-        return EscapeKeywordIfNeeded(ensureUnique ? EnsureUnique(result) : result);
+        return EscapeKeywordIfNeeded(result);
     }
 
     /// <summary>
@@ -187,7 +169,7 @@ public static class NameMangler
         // Special case: Interface names starting with I followed by uppercase letter
         // (e.g., IDrawable, IRepository) should be preserved as-is
         if (name.Length >= 2 && name[0] == 'I' && char.IsUpper(name[1]) && !name.Contains('_'))
-            return EscapeKeywordIfNeeded(EnsureUnique(name));
+            return EscapeKeywordIfNeeded(name);
 
         // Otherwise, apply normal PascalCase transformation
         return ToPascalCase(name);
@@ -223,26 +205,6 @@ public static class NameMangler
         return _csharpKeywords.Contains(name.ToLowerInvariant())
             ? "@" + name
             : name;
-    }
-
-    private static string EnsureUnique(string name)
-    {
-        var original = name;
-        var counter = 1;
-
-        while (_usedNames.Contains(name))
-        {
-            name = $"{original}{counter}";
-            counter++;
-        }
-
-        _usedNames.Add(name);
-        return name;
-    }
-
-    public static void Reset()
-    {
-        _usedNames.Clear();
     }
 }
 

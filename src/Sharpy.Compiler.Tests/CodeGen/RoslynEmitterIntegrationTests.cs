@@ -20,7 +20,6 @@ public class RoslynEmitterIntegrationTests
         {
             SourceFilePath = sourceFilePath
         };
-        NameMangler.Reset();
         return new RoslynEmitter(context);
     }
 
