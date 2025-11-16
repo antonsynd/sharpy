@@ -304,7 +304,7 @@ public class TypeChecker
         // Special case: If target is an undefined identifier, treat as implicit variable declaration with type inference
         if (assignment.Target is Identifier targetId && assignment.Operator == AssignmentOperator.Assign)
         {
-            var existingSymbol = _symbolTable.Lookup(targetId.Name, searchParents: true);
+            var existingSymbol = _symbolTable.Lookup(targetId.Name, searchParents: false);
             
             if (existingSymbol == null)
             {

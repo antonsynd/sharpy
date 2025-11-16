@@ -2065,6 +2065,8 @@ public class Parser
                             var name = ExpectIdentifier();
                             
                             TypeAnnotation? paramType = null;
+                            int paramEndLine = Current.Line;
+                            int paramEndColumn = Current.Column;
                             
                             // Check for type annotation (name: type, ... or name: type:)
                             if (Current.Type == TokenType.Colon)
@@ -2075,19 +2077,21 @@ public class Parser
                                 
                                 // Check if this looks like a type annotation
                                 bool isTypeAnnotation = false;
+                                TypeAnnotation? speculativeType = null;
                                 
                                 if (IsTypeKeyword(Current.Type))
                                 {
                                     // Try to parse the type
                                     try
                                     {
-                                        var tempType = ParseTypeAnnotation();
+                                        speculativeType = ParseTypeAnnotation();
                                         // Type annotation if followed by comma (more params) or colon (last param before body)
                                         if (Current.Type == TokenType.Comma || Current.Type == TokenType.Colon)
                                         {
                                             isTypeAnnotation = true;
-                                            // Restore to parse it properly
-                                            _position = savedPos;
+                                            // Capture end position after type annotation
+                                            paramEndLine = Current.Line;
+                                            paramEndColumn = Current.Column;
                                         }
                                         else
                                         {
@@ -2095,7 +2099,7 @@ public class Parser
                                             _position = savedPos;
                                         }
                                     }
-                                    catch
+                                    catch (ParserError)
                                     {
                                         // Failed to parse as type - must be lambda body
                                         _position = savedPos;
@@ -2109,8 +2113,8 @@ public class Parser
                                 
                                 if (isTypeAnnotation)
                                 {
-                                    Advance(); // skip : again
-                                    paramType = ParseTypeAnnotation();
+                                    // Reuse the speculatively parsed type instead of parsing again
+                                    paramType = speculativeType;
                                 }
                             }
                             
@@ -2120,8 +2124,8 @@ public class Parser
                                 Type = paramType,
                                 LineStart = paramStartLine,
                                 ColumnStart = paramStartColumn,
-                                LineEnd = Current.Line,
-                                ColumnEnd = Current.Column
+                                LineEnd = paramEndLine,
+                                ColumnEnd = paramEndColumn
                             });
 
                             if (Current.Type == TokenType.Comma)
