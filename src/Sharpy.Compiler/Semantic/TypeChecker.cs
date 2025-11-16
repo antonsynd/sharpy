@@ -692,30 +692,34 @@ public class TypeChecker
             funcSymbol = symbol as FunctionSymbol;
 
             // Special handling for builtin functions with overloads
+            // If there is exactly one overload, it will be handled by the regular function symbol validation below.
             var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
             if (overloads != null && overloads.Count > 1)
             {
-                // Try to find a matching overload based on argument count
+                // First pass: filter by argument count (considering default parameters)
+                var candidateOverloads = overloads.Where(o => {
+                    var requiredParams = o.Parameters.Count(p => !p.HasDefault);
+                    var totalParams = o.Parameters.Count;
+                    return argTypes.Count >= requiredParams && argTypes.Count <= totalParams;
+                }).ToList();
+
+                // Second pass: check type compatibility
                 FunctionSymbol? matchingOverload = null;
-                foreach (var overload in overloads)
+                foreach (var overload in candidateOverloads)
                 {
-                    if (overload.Parameters.Count == argTypes.Count)
+                    bool typesMatch = true;
+                    for (int i = 0; i < argTypes.Count; i++)
                     {
-                        // Check if argument types match
-                        bool typesMatch = true;
-                        for (int i = 0; i < argTypes.Count; i++)
+                        if (!argTypes[i].IsAssignableTo(overload.Parameters[i].Type))
                         {
-                            if (!argTypes[i].IsAssignableTo(overload.Parameters[i].Type))
-                            {
-                                typesMatch = false;
-                                break;
-                            }
-                        }
-                        if (typesMatch)
-                        {
-                            matchingOverload = overload;
+                            typesMatch = false;
                             break;
                         }
+                    }
+                    if (typesMatch)
+                    {
+                        matchingOverload = overload;
+                        break;
                     }
                 }
 
@@ -728,7 +732,11 @@ public class TypeChecker
                 else
                 {
                     // No matching overload found
-                    var expectedCounts = string.Join(" or ", overloads.Select(o => o.Parameters.Count.ToString()).Distinct());
+                    var expectedCounts = string.Join(" or ", overloads.Select(o => {
+                        var required = o.Parameters.Count(p => !p.HasDefault);
+                        var total = o.Parameters.Count;
+                        return required == total ? total.ToString() : $"{required}-{total}";
+                    }).Distinct());
                     AddError($"Function '{id.Name}' expects {expectedCounts} arguments but got {argTypes.Count}",
                         call.LineStart, call.ColumnStart);
                     return SemanticType.Unknown;

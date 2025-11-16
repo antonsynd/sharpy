@@ -28,6 +28,8 @@ public class SymbolTable
         }
 
         // Add builtin functions (only add one symbol per function name, overload resolution happens later)
+        // For functions with multiple overloads, only the first overload is added to the global scope.
+        // The TypeChecker uses BuiltinRegistry.GetFunctionOverloads() for proper overload resolution.
         var addedFunctions = new HashSet<string>();
         foreach (var (name, funcSymbol) in _builtins.GetAllFunctions())
         {

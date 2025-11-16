@@ -42,6 +42,12 @@ public class BuiltinRegistry
         RegisterFunction("print", SemanticType.Void, new ParameterSymbol { Name = "value", Type = SemanticType.Object });
         RegisterFunction("len", SemanticType.Int, new ParameterSymbol { Name = "obj", Type = SemanticType.Str });
         
+        // Register range() function with its three overloads
+        RegisterRangeOverloads();
+    }
+
+    private void RegisterRangeOverloads()
+    {
         // range() has three overloads: range(stop), range(start, stop), range(start, stop, step)
         var rangeReturnType = new GenericType { Name = "list", TypeArguments = new() { SemanticType.Int } };
         RegisterFunction("range", rangeReturnType,
@@ -91,7 +97,16 @@ public class BuiltinRegistry
     }
 
     public TypeSymbol? GetType(string name) => _types.GetValueOrDefault(name);
+    
+    /// <summary>
+    /// Returns the first function symbol with the given name.
+    /// For functions with multiple overloads, use GetFunctionOverloads instead.
+    /// </summary>
     public FunctionSymbol? GetFunction(string name) => _functions.GetValueOrDefault(name)?.FirstOrDefault();
+    
+    /// <summary>
+    /// Returns all function overloads with the given name, or null if no function with that name exists.
+    /// </summary>
     public List<FunctionSymbol>? GetFunctionOverloads(string name) => _functions.GetValueOrDefault(name);
 
     public IEnumerable<(string Name, TypeSymbol Type)> GetAllTypes() => _types.Select(kv => (kv.Key, kv.Value));
