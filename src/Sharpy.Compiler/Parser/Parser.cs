@@ -2066,27 +2066,51 @@ public class Parser
                             
                             TypeAnnotation? paramType = null;
                             
-                            // Check for type annotation (name: type)
+                            // Check for type annotation (name: type, ... or name: type:)
                             if (Current.Type == TokenType.Colon)
                             {
                                 // Look ahead to see if this is a parameter type annotation or the lambda body separator
-                                // If the next token is a type name, it's a parameter type annotation
-                                // Otherwise, it's the lambda body separator
                                 var savedPos = _position;
                                 Advance(); // skip :
                                 
-                                // Check if next token looks like a type (identifier or keyword)
-                                if (Current.Type == TokenType.Identifier || IsTypeKeyword(Current.Type))
+                                // Check if this looks like a type annotation
+                                bool isTypeAnnotation = false;
+                                
+                                if (IsTypeKeyword(Current.Type))
                                 {
-                                    // This is a type annotation
-                                    _position = savedPos; // restore position
-                                    Advance(); // skip : again
-                                    paramType = ParseTypeAnnotation();
+                                    // Try to parse the type
+                                    try
+                                    {
+                                        var tempType = ParseTypeAnnotation();
+                                        // Type annotation if followed by comma (more params) or colon (last param before body)
+                                        if (Current.Type == TokenType.Comma || Current.Type == TokenType.Colon)
+                                        {
+                                            isTypeAnnotation = true;
+                                            // Restore to parse it properly
+                                            _position = savedPos;
+                                        }
+                                        else
+                                        {
+                                            // Not followed by comma or colon - this must be the lambda body
+                                            _position = savedPos;
+                                        }
+                                    }
+                                    catch
+                                    {
+                                        // Failed to parse as type - must be lambda body
+                                        _position = savedPos;
+                                    }
                                 }
                                 else
                                 {
-                                    // This is the lambda body separator, restore position
+                                    // Not a type keyword - this is the lambda body separator
                                     _position = savedPos;
+                                }
+                                
+                                if (isTypeAnnotation)
+                                {
+                                    Advance(); // skip : again
+                                    paramType = ParseTypeAnnotation();
                                 }
                             }
                             
