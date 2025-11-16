@@ -301,6 +301,36 @@ public class TypeChecker
 
     private void CheckAssignment(Assignment assignment)
     {
+        // Check if this is a simple assignment to an undefined identifier (type inference case)
+        if (assignment.Operator == AssignmentOperator.Assign && assignment.Target is Identifier targetId)
+        {
+            var existingSymbol = _symbolTable.Lookup(targetId.Name, searchParents: true);
+            
+            // If the identifier doesn't exist, this is an implicit variable declaration with type inference
+            if (existingSymbol == null)
+            {
+                var inferredType = CheckExpression(assignment.Value);
+                
+                // Create a new variable symbol with the inferred type
+                var newSymbol = new VariableSymbol
+                {
+                    Name = targetId.Name,
+                    Kind = SymbolKind.Variable,
+                    Type = inferredType,
+                    IsConstant = false,
+                    DeclarationLine = assignment.LineStart,
+                    DeclarationColumn = assignment.ColumnStart
+                };
+                _symbolTable.Define(newSymbol);
+                _semanticInfo.SetIdentifierSymbol(targetId, newSymbol);
+                
+                // Cache the expression type for the identifier
+                _semanticInfo.SetExpressionType(targetId, inferredType);
+                return;
+            }
+        }
+        
+        // Otherwise, check as a regular assignment
         var targetType = CheckExpression(assignment.Target);
         var valueType = CheckExpression(assignment.Value);
 
