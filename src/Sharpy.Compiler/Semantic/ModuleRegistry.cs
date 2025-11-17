@@ -146,6 +146,9 @@ public class ModuleRegistry
     /// 1. Absolute path if file exists
     /// 2. Relative to current directory
     /// 3. Module search paths
+    /// Note: TOCTOU (Time-of-Check-Time-of-Use) race condition is acceptable here
+    /// as any file system changes between this check and Assembly.LoadFrom() are
+    /// handled by exception catching (IOException, UnauthorizedAccessException) in LoadReference().
     /// </summary>
     private string? ResolveAssemblyPath(string assemblyPath)
     {
