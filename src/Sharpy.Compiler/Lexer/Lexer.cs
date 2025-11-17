@@ -831,19 +831,19 @@ public class Lexer
         while (_position < _source.Length && (char.IsDigit(_source[_position]) || _source[_position] == '_'))
         {
             var c = _source[_position];
-            
+
             // Check for consecutive underscores
             if (c == '_' && lastChar == '_')
                 throw new LexerError("Invalid number: consecutive underscores not allowed", startLine, startColumn);
-            
+
             if (c != '_')
                 sb.Append(c);
-            
+
             lastChar = c;
             _position++;
             _column++;
         }
-        
+
         // Check if number ends with underscore
         if (lastChar == '_')
             throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn);
@@ -862,19 +862,19 @@ public class Lexer
             while (_position < _source.Length && (char.IsDigit(_source[_position]) || _source[_position] == '_'))
             {
                 var c = _source[_position];
-                
+
                 // Check for consecutive underscores
                 if (c == '_' && lastChar == '_')
                     throw new LexerError("Invalid number: consecutive underscores not allowed", startLine, startColumn);
-                
+
                 if (c != '_')
                     sb.Append(c);
-                
+
                 lastChar = c;
                 _position++;
                 _column++;
             }
-            
+
             // Check if fractional part ends with underscore
             if (lastChar == '_')
                 throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn);
@@ -904,19 +904,19 @@ public class Lexer
             while (_position < _source.Length && (char.IsDigit(_source[_position]) || _source[_position] == '_'))
             {
                 var c = _source[_position];
-                
+
                 // Check for consecutive underscores
                 if (c == '_' && lastChar == '_')
                     throw new LexerError("Invalid number: consecutive underscores not allowed", startLine, startColumn);
-                
+
                 if (c != '_')
                     sb.Append(c);
-                
+
                 lastChar = c;
                 _position++;
                 _column++;
             }
-            
+
             // Check if exponent ends with underscore
             if (lastChar == '_')
                 throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn);
@@ -962,7 +962,7 @@ public class Lexer
 
         var hasDigits = false;
         char? lastChar = null;
-        
+
         while (_position < _source.Length)
         {
             var c = _source[_position];
@@ -979,7 +979,7 @@ public class Lexer
                 // Check for consecutive underscores
                 if (lastChar == '_')
                     throw new LexerError("Invalid number: consecutive underscores not allowed", startLine, startColumn);
-                
+
                 lastChar = '_';
                 _position++;
                 _column++;
@@ -992,7 +992,7 @@ public class Lexer
 
         if (!hasDigits)
             throw new LexerError("Invalid hexadecimal literal: no digits after 0x", startLine, startColumn);
-        
+
         // Check if number ends with underscore
         if (lastChar == '_')
             throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn);
@@ -1009,7 +1009,7 @@ public class Lexer
 
         var hasDigits = false;
         char? lastChar = null;
-        
+
         while (_position < _source.Length)
         {
             var c = _source[_position];
@@ -1026,7 +1026,7 @@ public class Lexer
                 // Check for consecutive underscores
                 if (lastChar == '_')
                     throw new LexerError("Invalid number: consecutive underscores not allowed", startLine, startColumn);
-                
+
                 lastChar = '_';
                 _position++;
                 _column++;
@@ -1044,7 +1044,7 @@ public class Lexer
 
         if (!hasDigits)
             throw new LexerError("Invalid binary literal: no digits after 0b", startLine, startColumn);
-        
+
         // Check if number ends with underscore
         if (lastChar == '_')
             throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn);
@@ -1061,7 +1061,7 @@ public class Lexer
 
         var hasDigits = false;
         char? lastChar = null;
-        
+
         while (_position < _source.Length)
         {
             var c = _source[_position];
@@ -1078,7 +1078,7 @@ public class Lexer
                 // Check for consecutive underscores
                 if (lastChar == '_')
                     throw new LexerError("Invalid number: consecutive underscores not allowed", startLine, startColumn);
-                
+
                 lastChar = '_';
                 _position++;
                 _column++;
@@ -1096,7 +1096,7 @@ public class Lexer
 
         if (!hasDigits)
             throw new LexerError("Invalid octal literal: no digits after 0o", startLine, startColumn);
-        
+
         // Check if number ends with underscore
         if (lastChar == '_')
             throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn);

@@ -322,7 +322,7 @@ public class LexerNegativeTests
         // Lexer will emit INDENT token - parser should reject this, not lexer
         // So this should NOT throw from lexer
         act.Should().NotThrow();
-        
+
         // But verify it does produce an INDENT token
         var tokens = Tokenize(source);
         tokens.Should().Contain(t => t.Type == TokenType.Indent);
@@ -450,7 +450,7 @@ public class LexerNegativeTests
             sb.Append(new string(' ', i * 4)).Append("pass\n");
         }
         var source = sb.ToString();
-        
+
         // Should not crash, but may have depth limits
         try
         {

@@ -419,7 +419,7 @@ public class ParserNegativeTests
         var module = Parse(source);
         module.Body.Should().HaveCount(1);
     }
-    
+
     [Fact]
     public void RejectsMultipleStatementsOnOneLine()
     {
