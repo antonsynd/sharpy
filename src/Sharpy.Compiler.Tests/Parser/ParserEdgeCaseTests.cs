@@ -138,7 +138,11 @@ if True:
         
         var assign = module.Body[0] as Assignment;
         assign.Should().NotBeNull();
-        // Empty dict could be parsed as DictLiteral or SetLiteral
+        if (assign != null)
+        {
+            // Empty dict could be parsed as DictLiteral or SetLiteral
+            assign.Value.Should().NotBeNull();
+        }
     }
 
     [Fact]
@@ -372,9 +376,14 @@ def foo(a: int, b: int = 10, c: str = 'default'):
 ";
         var module = Parse(source);
         module.Body.Should().HaveCount(1);
-        var funcDef = module.Body[0] as FunctionDef;
-        funcDef.Should().NotBeNull();
-        funcDef!.Parameters.Should().HaveCount(3);
+        if (module.Body[0] is FunctionDef funcDef)
+        {
+            funcDef.Parameters.Should().HaveCount(3);
+        }
+        else
+        {
+            Assert.Fail("Expected first module body element to be a FunctionDef.");
+        }
     }
 
     [Fact(Skip = "Unimplemented: *args variable arguments not yet supported")]
@@ -877,7 +886,7 @@ match value:
             var module = Parse(source);
             module.Body.Should().HaveCount(1);
         }
-        catch
+        catch (ParserError)
         {
             // Match might not be supported
         }
