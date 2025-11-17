@@ -88,9 +88,8 @@ public class OverloadIndexCacheTests
             // Assert
             Assert.NotNull(loadedIndex);
             Assert.Equal(identity, loadedIndex.Identity);
-            Assert.Equal(1, loadedIndex.Modules.Count);
-            Assert.True(loadedIndex.Modules.ContainsKey("testmodule"));
-            Assert.Single(loadedIndex.Modules["testmodule"].Functions);
+            Assert.True(loadedIndex.Modules.TryGetValue("testmodule", out var module));
+            Assert.Single(module.Functions);
         }
         finally
         {

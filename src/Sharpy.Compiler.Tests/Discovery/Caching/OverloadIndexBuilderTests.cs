@@ -35,11 +35,9 @@ public class OverloadIndexBuilderTests
         var index = _builder.BuildFromAssembly(assembly);
 
         // Assert
-        Assert.True(index.Modules.ContainsKey("builtins"));
-        var builtins = index.Modules["builtins"];
+        Assert.True(index.Modules.TryGetValue("builtins", out var builtins), "Should discover builtins module");
         
-        Assert.True(builtins.Functions.ContainsKey("range"), "Should discover range function");
-        var rangeOverloads = builtins.Functions["range"];
+        Assert.True(builtins.Functions.TryGetValue("range", out var rangeOverloads), "Should discover range function");
         
         Assert.Equal(3, rangeOverloads.Count);
         
@@ -60,9 +58,7 @@ public class OverloadIndexBuilderTests
 
         // Assert
         var builtins = index.Modules["builtins"];
-        Assert.True(builtins.Functions.ContainsKey("print"), "Should discover print function");
-        
-        var printOverloads = builtins.Functions["print"];
+        Assert.True(builtins.Functions.TryGetValue("print", out var printOverloads), "Should discover print function");
         Assert.NotEmpty(printOverloads);
         
         // Print should have a params array parameter
@@ -82,9 +78,7 @@ public class OverloadIndexBuilderTests
 
         // Assert
         var builtins = index.Modules["builtins"];
-        Assert.True(builtins.Functions.ContainsKey("len"), "Should discover len function");
-        
-        var lenOverloads = builtins.Functions["len"];
+        Assert.True(builtins.Functions.TryGetValue("len", out var lenOverloads), "Should discover len function");
         Assert.NotEmpty(lenOverloads);
         
         var lenSig = lenOverloads[0];

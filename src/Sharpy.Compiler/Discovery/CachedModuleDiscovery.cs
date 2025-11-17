@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Semantic;
@@ -7,13 +8,14 @@ namespace Sharpy.Compiler.Discovery;
 /// <summary>
 /// Discovers and caches function overloads from assemblies.
 /// Uses reflection on first load, then caches results for subsequent loads.
+/// Thread-safe for concurrent use.
 /// </summary>
 public class CachedModuleDiscovery
 {
     private readonly OverloadIndexCache _cache;
     private readonly OverloadIndexBuilder _builder;
     private readonly TypeMapper _typeMapper;
-    private readonly Dictionary<string, OverloadIndex> _loadedIndices = new();
+    private readonly ConcurrentDictionary<string, OverloadIndex> _loadedIndices = new();
 
     public CachedModuleDiscovery()
     {
@@ -30,21 +32,21 @@ public class CachedModuleDiscovery
     {
         var identity = AssemblyIdentity.FromAssembly(assembly);
         
-        // Check if already loaded
-        if (_loadedIndices.ContainsKey(identity.Name))
-            return;
-
-        // Try to load from cache
-        var index = _cache.TryLoad(identity);
-        
-        if (index == null)
+        // Use GetOrAdd for thread-safe loading
+        _loadedIndices.GetOrAdd(identity.Name, _ =>
         {
-            // Cache miss - build from reflection
-            index = _builder.BuildFromAssembly(assembly);
-            _cache.Save(index);
-        }
+            // Try to load from cache
+            var index = _cache.TryLoad(identity);
+            
+            if (index == null)
+            {
+                // Cache miss - build from reflection
+                index = _builder.BuildFromAssembly(assembly);
+                _cache.Save(index);
+            }
 
-        _loadedIndices[identity.Name] = index;
+            return index;
+        });
     }
 
     /// <summary>
@@ -54,16 +56,14 @@ public class CachedModuleDiscovery
     {
         var functions = new List<FunctionSymbol>();
 
-        foreach (var index in _loadedIndices.Values)
+        foreach (var index in _loadedIndices.Values.Where(idx => idx.Modules.ContainsKey(moduleName)))
         {
-            if (index.Modules.TryGetValue(moduleName, out var moduleOverloads))
+            var moduleOverloads = index.Modules[moduleName];
+            foreach (var (functionName, signatures) in moduleOverloads.Functions)
             {
-                foreach (var (functionName, signatures) in moduleOverloads.Functions)
+                foreach (var signature in signatures)
                 {
-                    foreach (var signature in signatures)
-                    {
-                        functions.Add(ConvertToFunctionSymbol(signature, moduleName));
-                    }
+                    functions.Add(ConvertToFunctionSymbol(signature, moduleName));
                 }
             }
         }
@@ -133,7 +133,10 @@ public class CachedModuleDiscovery
         {
             return new GenericType
             {
-                Name = signature.Name.Split('[')[0],  // Get base name before [
+                // Extract base name before '[' if present; otherwise use the whole name.
+                Name = signature.Name.Contains('[')
+                    ? signature.Name.Substring(0, signature.Name.IndexOf('['))
+                    : signature.Name,
                 TypeArguments = signature.TypeArguments
                     .Select(ConvertTypeSignature)
                     .ToList()

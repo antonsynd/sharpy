@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Reflection;
 using Sharpy.Compiler.Semantic;
 
@@ -6,23 +7,19 @@ namespace Sharpy.Compiler.Discovery;
 
 /// <summary>
 /// Maps CLR types to Sharpy SemanticType instances.
+/// Thread-safe for concurrent use.
 /// </summary>
 public class TypeMapper
 {
-    private readonly Dictionary<Type, SemanticType> _typeCache = new();
+    private readonly ConcurrentDictionary<Type, SemanticType> _typeCache = new();
 
     /// <summary>
     /// Map a CLR type to a Sharpy SemanticType.
     /// </summary>
     public SemanticType MapClrTypeToSemanticType(Type clrType)
     {
-        // Check cache first
-        if (_typeCache.TryGetValue(clrType, out var cached))
-            return cached;
-
-        var result = MapTypeInternal(clrType);
-        _typeCache[clrType] = result;
-        return result;
+        // Use GetOrAdd for thread-safe caching
+        return _typeCache.GetOrAdd(clrType, MapTypeInternal);
     }
 
     private SemanticType MapTypeInternal(Type clrType)
@@ -156,6 +153,6 @@ public class TypeMapper
 
     private bool IsGenericTypeDefinition(Type type, Type genericTypeDef)
     {
-        return type == genericTypeDef || type.FullName == genericTypeDef.FullName;
+        return type == genericTypeDef;
     }
 }

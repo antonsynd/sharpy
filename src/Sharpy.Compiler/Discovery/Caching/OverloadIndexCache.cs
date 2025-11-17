@@ -57,7 +57,14 @@ public class OverloadIndexCache
         catch (Exception)
         {
             // Cache file is corrupted, delete it
-            try { File.Delete(cachePath); } catch { }
+            try 
+            { 
+                File.Delete(cachePath); 
+            } 
+            catch (Exception ex) 
+            { 
+                System.Diagnostics.Debug.WriteLine($"Failed to delete corrupted cache file '{cachePath}': {ex}"); 
+            }
             return null;
         }
     }
@@ -95,7 +102,14 @@ public class OverloadIndexCache
         {
             foreach (var file in Directory.GetFiles(_cacheDirectory, "*.json.gz"))
             {
-                try { File.Delete(file); } catch { }
+                try 
+                { 
+                    File.Delete(file); 
+                } 
+                catch (Exception ex) 
+                { 
+                    Console.Error.WriteLine($"Warning: Failed to delete cache file '{file}': {ex.Message}"); 
+                }
             }
         }
     }
@@ -110,7 +124,14 @@ public class OverloadIndexCache
         
         foreach (var file in oldFiles)
         {
-            try { File.Delete(file); } catch { }
+            try 
+            { 
+                File.Delete(file); 
+            } 
+            catch (Exception ex) 
+            { 
+                Console.Error.WriteLine($"Failed to delete cache file '{file}': {ex.Message}"); 
+            }
         }
     }
 

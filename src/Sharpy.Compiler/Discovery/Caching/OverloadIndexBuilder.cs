@@ -90,10 +90,20 @@ public class OverloadIndexBuilder
                     var signature = CreateFunctionSignature(method);
                     signatures.Add(signature);
                 }
-                catch (Exception ex)
+                catch (ArgumentException ex)
                 {
                     // Skip methods that can't be mapped
-                    Console.WriteLine($"Warning: Skipping {exportType.Name}.{method.Name}: {ex.Message}");
+                    Console.Error.WriteLine($"Warning: Skipping {exportType.Name}.{method.Name}: {ex.Message}");
+                }
+                catch (InvalidOperationException ex)
+                {
+                    // Skip methods that can't be mapped
+                    Console.Error.WriteLine($"Warning: Skipping {exportType.Name}.{method.Name}: {ex.Message}");
+                }
+                catch (NotSupportedException ex)
+                {
+                    // Skip methods that can't be mapped
+                    Console.Error.WriteLine($"Warning: Skipping {exportType.Name}.{method.Name}: {ex.Message}");
                 }
             }
 

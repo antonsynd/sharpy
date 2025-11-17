@@ -55,7 +55,7 @@ public class AssemblyIdentity
     /// </summary>
     public string ToCacheKey()
     {
-        var hash = ContentHash.Length > 12 ? ContentHash.Substring(0, 12) : ContentHash;
+        var hash = ContentHash.Length > 12 ? ContentHash[..12] : ContentHash;
         return $"{Name.ToLowerInvariant()}-{Version}-{hash}.json.gz";
     }
 
