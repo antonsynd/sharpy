@@ -33,6 +33,10 @@ class Program
         var projectReferenceOption = new Option<string[]>("--project-reference") { AllowMultipleArgumentsPerToken = true };
         projectReferenceOption.Aliases.Add("-p");
 
+        // Module path option for searching assemblies
+        var modulePathOption = new Option<string[]>("--module-path") { AllowMultipleArgumentsPerToken = true };
+        modulePathOption.Aliases.Add("-m");
+
         // Logging options
         var logLevelOption = new Option<CompilerLogLevel?>("--log-level");
         var logFileOption = new Option<FileInfo?>("--log-file");
@@ -45,6 +49,7 @@ class Program
         rootCommand.Options.Add(outputOption);
         rootCommand.Options.Add(referenceOption);
         rootCommand.Options.Add(projectReferenceOption);
+        rootCommand.Options.Add(modulePathOption);
         rootCommand.Options.Add(logLevelOption);
         rootCommand.Options.Add(logFileOption);
 
@@ -57,6 +62,7 @@ class Program
             var output = parseResult.GetValue(outputOption);
             var references = parseResult.GetValue(referenceOption);
             var projectReferences = parseResult.GetValue(projectReferenceOption);
+            var modulePaths = parseResult.GetValue(modulePathOption);
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
 
@@ -82,6 +88,7 @@ class Program
                 HandleCommand(inputFile!, emitTokens, emitAst, outputType, output,
                              references ?? Array.Empty<string>(),
                              projectReferences ?? Array.Empty<string>(),
+                             modulePaths ?? Array.Empty<string>(),
                              logger);
             }
             finally
@@ -102,6 +109,7 @@ class Program
         FileInfo? output,
         string[] references,
         string[] projectReferences,
+        string[] modulePaths,
         ICompilerLogger logger)
     {
         // Validate input file
@@ -140,12 +148,13 @@ class Program
         // Handle compilation mode (NOT IMPLEMENTED)
         Console.Error.WriteLine("Error: Compilation to binary/library is not implemented yet");
         Console.Error.WriteLine("Available options:");
-        Console.Error.WriteLine("  --emit-tokens    Emit lexer tokens (implemented)");
-        Console.Error.WriteLine("  --emit-ast       Emit AST (implemented)");
-        Console.Error.WriteLine("  --output-type    Specify output type (not implemented)");
-        Console.Error.WriteLine("  --output         Specify output file (not implemented)");
-        Console.Error.WriteLine("  --reference      Add .NET DLL reference (not implemented)");
-        Console.Error.WriteLine("  --project-reference  Add .NET project reference (not implemented)");
+        Console.Error.WriteLine("  --emit-tokens       Emit lexer tokens (implemented)");
+        Console.Error.WriteLine("  --emit-ast          Emit AST (implemented)");
+        Console.Error.WriteLine("  --output-type       Specify output type (not implemented)");
+        Console.Error.WriteLine("  --output            Specify output file (not implemented)");
+        Console.Error.WriteLine("  --reference         Add .NET DLL reference (not implemented)");
+        Console.Error.WriteLine("  --module-path       Add module search path (not implemented)");
+        Console.Error.WriteLine("  --project-reference Add .NET project reference (not implemented)");
         Environment.Exit(1);
     }
 
