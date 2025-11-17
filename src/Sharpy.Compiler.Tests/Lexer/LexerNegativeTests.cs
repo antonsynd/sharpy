@@ -632,11 +632,11 @@ public class LexerNegativeTests
     {
         // Per PEP 515, underscores can immediately follow prefix for readability
         var sources = new[] { "0x_FF", "0b_1010", "0o_77" };
-        sources.ToList().ForEach(source =>
+        foreach (var source in sources)
         {
             var tokens = Tokenize(source);
             tokens.Should().Contain(t => t.Type == TokenType.Integer);
-        });
+        }
     }
 
     [Fact]
