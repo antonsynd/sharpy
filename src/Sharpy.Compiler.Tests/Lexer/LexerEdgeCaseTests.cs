@@ -493,7 +493,7 @@ x = 5
             "as", "try", "except", "finally", "raise", "with", "assert",
             "True", "False", "None", "and", "or", "not", "is", "lambda"
         };
-        
+
         foreach (var keyword in keywords)
         {
             var source = $"{keyword} x";

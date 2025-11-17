@@ -85,7 +85,7 @@ def foo():
     x: int = 2  # redefinition
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
-        
+
         // This is actually caught at name resolution, not type checking
         // So we expect an exception during parsing/resolution
         Action act = () => typeChecker.CheckModule(module);

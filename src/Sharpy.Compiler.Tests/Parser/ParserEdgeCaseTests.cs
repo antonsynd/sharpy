@@ -123,7 +123,7 @@ if True:
         var source = "x = []";
         var module = Parse(source);
         module.Body.Should().HaveCount(1);
-        
+
         var assign = module.Body[0] as Assignment;
         assign.Should().NotBeNull();
         assign!.Value.Should().BeOfType<ListLiteral>();
@@ -135,7 +135,7 @@ if True:
         var source = "x = {}";
         var module = Parse(source);
         module.Body.Should().HaveCount(1);
-        
+
         var assign = module.Body[0] as Assignment;
         assign.Should().NotBeNull();
         if (assign != null)
