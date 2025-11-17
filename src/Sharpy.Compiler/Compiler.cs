@@ -19,14 +19,14 @@ public class Compiler
     {
         _logger = logger ?? NullLogger.Instance;
         _moduleRegistry = null;
-        _importResolver = new ImportResolver(_logger);
+        _importResolver = new ImportResolver(_logger, null);
     }
 
     public Compiler(CompilerOptions options, ICompilerLogger? logger = null)
     {
         _logger = logger ?? NullLogger.Instance;
         _moduleRegistry = new ModuleRegistry(_logger);
-        _importResolver = new ImportResolver(_logger);
+        _importResolver = new ImportResolver(_logger, _moduleRegistry);
 
         // Add module search paths
         if (options.ModulePaths != null)

@@ -5,7 +5,7 @@ using Sharpy.Compiler.Parser.Ast;
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
-/// Resolves imports and loads symbols from imported modules
+/// Resolves imports and loads symbols from imported modules (both .spy files and .NET assemblies)
 /// </summary>
 public class ImportResolver
 {
@@ -14,12 +14,14 @@ public class ImportResolver
     private readonly HashSet<string> _loadedModules = new();
     private readonly HashSet<string> _loadingModules = new(); // For circular import detection
     private readonly Dictionary<string, ModuleInfo> _moduleCache = new();
+    private readonly ModuleRegistry? _moduleRegistry;
 
     private string? _currentModulePath = null;
 
-    public ImportResolver(ICompilerLogger? logger = null)
+    public ImportResolver(ICompilerLogger? logger = null, ModuleRegistry? moduleRegistry = null)
     {
         _logger = logger ?? NullLogger.Instance;
+        _moduleRegistry = moduleRegistry;
     }
 
     public IReadOnlyList<SemanticError> Errors => _errors;
@@ -43,15 +45,23 @@ public class ImportResolver
 
         foreach (var importAlias in importStmt.Names)
         {
-            var modulePath = ResolveModulePath(importAlias.Name, searchPath);
-            if (modulePath == null)
+            // First, try to resolve as .NET assembly module through ModuleRegistry
+            var moduleInfo = TryResolveNetModule(importAlias.Name, importAlias.LineStart, importAlias.ColumnStart);
+            
+            // If not found in .NET assemblies, try .spy file
+            if (moduleInfo == null)
             {
-                AddError($"Cannot find module '{importAlias.Name}'",
-                    importAlias.LineStart, importAlias.ColumnStart);
-                continue;
-            }
+                var modulePath = ResolveModulePath(importAlias.Name, searchPath);
+                if (modulePath == null)
+                {
+                    AddError($"Cannot find module '{importAlias.Name}'",
+                        importAlias.LineStart, importAlias.ColumnStart);
+                    continue;
+                }
 
-            var moduleInfo = LoadModule(modulePath, importAlias.LineStart, importAlias.ColumnStart);
+                moduleInfo = LoadModule(modulePath, importAlias.LineStart, importAlias.ColumnStart);
+            }
+            
             if (moduleInfo != null)
             {
                 result.Add(moduleInfo);
@@ -68,15 +78,22 @@ public class ImportResolver
     {
         _logger.LogDebug($"Resolving from-import: from {fromImport.Module} import {string.Join(", ", fromImport.Names.Select(n => n.Name))}");
 
-        var modulePath = ResolveModulePath(fromImport.Module, searchPath);
-        if (modulePath == null)
-        {
-            AddError($"Cannot find module '{fromImport.Module}'",
-                fromImport.LineStart, fromImport.ColumnStart);
-            return null;
-        }
+        // First, try to resolve as .NET assembly module
+        var moduleInfo = TryResolveNetModule(fromImport.Module, fromImport.LineStart, fromImport.ColumnStart);
 
-        var moduleInfo = LoadModule(modulePath, fromImport.LineStart, fromImport.ColumnStart);
+        // If not found in .NET assemblies, try .spy file
+        if (moduleInfo == null)
+        {
+            var modulePath = ResolveModulePath(fromImport.Module, searchPath);
+            if (modulePath == null)
+            {
+                AddError($"Cannot find module '{fromImport.Module}'",
+                    fromImport.LineStart, fromImport.ColumnStart);
+                return null;
+            }
+
+            moduleInfo = LoadModule(modulePath, fromImport.LineStart, fromImport.ColumnStart);
+        }
 
         // Validate that imported names exist in the module (unless it's import *)
         if (moduleInfo != null && !fromImport.ImportAll)
@@ -261,6 +278,56 @@ public class ImportResolver
     }
 
     /// <summary>
+    /// Try to resolve a module from loaded .NET assemblies through ModuleRegistry
+    /// </summary>
+    private ModuleInfo? TryResolveNetModule(string moduleName, int? lineStart, int? columnStart)
+    {
+        if (_moduleRegistry == null)
+            return null;
+
+        // Check if this module is loaded in the registry
+        if (!_moduleRegistry.IsModuleLoaded(moduleName))
+            return null;
+
+        // Check cache first
+        var cacheKey = $".net:{moduleName}";
+        if (_moduleCache.TryGetValue(cacheKey, out var cached))
+            return cached;
+
+        _logger.LogDebug($"Resolving .NET module: {moduleName}");
+
+        // Get functions from the module
+        var functions = _moduleRegistry.GetModuleFunctions(moduleName);
+        if (functions.Count == 0)
+        {
+            _logger.LogWarning($".NET module '{moduleName}' has no exported functions", lineStart ?? 0, columnStart ?? 0);
+            return null;
+        }
+
+        // Create ModuleInfo for the .NET module
+        var moduleInfo = new ModuleInfo
+        {
+            Path = $".net:{moduleName}",
+            Module = null!, // No AST module for .NET assemblies
+            ExportedSymbols = new Dictionary<string, Symbol>(),
+            IsNetModule = true
+        };
+
+        // Add all functions as exported symbols
+        foreach (var function in functions)
+        {
+            moduleInfo.ExportedSymbols[function.Name] = function;
+        }
+
+        _moduleCache[cacheKey] = moduleInfo;
+        _loadedModules.Add(cacheKey);
+
+        _logger.LogInfo($"Loaded .NET module '{moduleName}' with {functions.Count} functions");
+
+        return moduleInfo;
+    }
+
+    /// <summary>
     /// Resolve a module name to a file path
     /// </summary>
     private string? ResolveModulePath(string moduleName, string? searchPath = null)
@@ -309,4 +376,5 @@ public class ModuleInfo
     public string Path { get; init; } = string.Empty;
     public Module Module { get; init; } = null!;
     public Dictionary<string, Symbol> ExportedSymbols { get; init; } = new();
+    public bool IsNetModule { get; init; } = false;
 }
