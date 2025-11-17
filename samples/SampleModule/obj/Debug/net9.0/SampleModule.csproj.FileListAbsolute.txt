@@ -1,0 +1,12 @@
+/home/runner/work/sharpy/sharpy/samples/SampleModule/obj/Debug/net9.0/SampleModule.GeneratedMSBuildEditorConfig.editorconfig
+/home/runner/work/sharpy/sharpy/samples/SampleModule/obj/Debug/net9.0/SampleModule.AssemblyInfoInputs.cache
+/home/runner/work/sharpy/sharpy/samples/SampleModule/obj/Debug/net9.0/SampleModule.AssemblyInfo.cs
+/home/runner/work/sharpy/sharpy/samples/SampleModule/obj/Debug/net9.0/SampleModule.csproj.CoreCompileInputs.cache
+/home/runner/work/sharpy/sharpy/samples/SampleModule/obj/Debug/net9.0/SampleModule.sourcelink.json
+/home/runner/work/sharpy/sharpy/build/modules/SampleModule.deps.json
+/home/runner/work/sharpy/sharpy/build/modules/SampleModule.dll
+/home/runner/work/sharpy/sharpy/build/modules/SampleModule.pdb
+/home/runner/work/sharpy/sharpy/samples/SampleModule/obj/Debug/net9.0/SampleModule.dll
+/home/runner/work/sharpy/sharpy/samples/SampleModule/obj/Debug/net9.0/refint/SampleModule.dll
+/home/runner/work/sharpy/sharpy/samples/SampleModule/obj/Debug/net9.0/SampleModule.pdb
+/home/runner/work/sharpy/sharpy/samples/SampleModule/obj/Debug/net9.0/ref/SampleModule.dll
