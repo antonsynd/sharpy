@@ -24,6 +24,9 @@ dotnet/src/Sharpy.Tests/bin/
 dotnet/src/Sharpy.Tests/obj/
 src/Sharpy.*/bin/
 src/Sharpy.*/obj/
+samples/**/bin/
+samples/**/obj/
+build/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
