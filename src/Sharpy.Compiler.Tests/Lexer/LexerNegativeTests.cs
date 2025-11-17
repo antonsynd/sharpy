@@ -1,4 +1,5 @@
 using FluentAssertions;
+using System.Text;
 using LexerNs = Sharpy.Compiler.Lexer;
 using TokenType = Sharpy.Compiler.Lexer.TokenType;
 using LexerError = Sharpy.Compiler.Lexer.LexerError;
@@ -443,11 +444,12 @@ public class LexerNegativeTests
     [Fact]
     public void RejectsVeryDeeplyNestedIndentation()
     {
-        var source = "if True:\n";
+        var sb = new StringBuilder("if True:\n");
         for (int i = 1; i <= 1000; i++)
         {
-            source += new string(' ', i * 4) + "pass\n";
+            sb.Append(new string(' ', i * 4)).Append("pass\n");
         }
+        var source = sb.ToString();
         
         // Should not crash, but may have depth limits
         try
@@ -496,7 +498,6 @@ public class LexerNegativeTests
     public void RejectsInvalidUnicodeEscape()
     {
         var source = "\"\\u123\"";  // Incomplete unicode escape
-        Action act = () => Tokenize(source);
         // Depending on implementation, this might be accepted or rejected
         // Document the behavior
         try
@@ -631,11 +632,11 @@ public class LexerNegativeTests
     {
         // Per PEP 515, underscores can immediately follow prefix for readability
         var sources = new[] { "0x_FF", "0b_1010", "0o_77" };
-        foreach (var source in sources)
+        sources.ToList().ForEach(source =>
         {
             var tokens = Tokenize(source);
             tokens.Should().Contain(t => t.Type == TokenType.Integer);
-        }
+        });
     }
 
     [Fact]
