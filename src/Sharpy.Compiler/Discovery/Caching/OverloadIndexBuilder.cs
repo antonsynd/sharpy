@@ -72,6 +72,7 @@ public class OverloadIndexBuilder
             .Where(m => !m.Name.StartsWith("set_"))
             .Where(m => !m.IsSpecialName)
             .Where(m => !m.IsGenericMethodDefinition)  // Skip generic methods for now
+            .Where(m => !IsTypeConstructor(m))  // Skip type constructors like Bool, Int, Str
             .ToList();
 
         // Group by function name
@@ -103,6 +104,18 @@ public class OverloadIndexBuilder
         }
 
         return moduleOverloads;
+    }
+
+    private bool IsTypeConstructor(MethodInfo method)
+    {
+        // Type constructor functions have the same name as built-in types
+        // and their return type matches their name
+        var typeConstructors = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Bool", "Int", "Long", "Float", "Double", "Str", "List", "Dict", "Set", "Tuple"
+        };
+        
+        return typeConstructors.Contains(method.Name);
     }
 
     private string GetFunctionName(MethodInfo method)

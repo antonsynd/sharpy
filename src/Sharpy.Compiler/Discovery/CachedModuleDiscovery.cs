@@ -1,0 +1,146 @@
+using System.Reflection;
+using Sharpy.Compiler.Discovery.Caching;
+using Sharpy.Compiler.Semantic;
+
+namespace Sharpy.Compiler.Discovery;
+
+/// <summary>
+/// Discovers and caches function overloads from assemblies.
+/// Uses reflection on first load, then caches results for subsequent loads.
+/// </summary>
+public class CachedModuleDiscovery
+{
+    private readonly OverloadIndexCache _cache;
+    private readonly OverloadIndexBuilder _builder;
+    private readonly TypeMapper _typeMapper;
+    private readonly Dictionary<string, OverloadIndex> _loadedIndices = new();
+
+    public CachedModuleDiscovery()
+    {
+        _cache = new OverloadIndexCache();
+        _builder = new OverloadIndexBuilder();
+        _typeMapper = new TypeMapper();
+    }
+
+    /// <summary>
+    /// Load an assembly and discover its functions.
+    /// Uses cache if available, otherwise builds and caches.
+    /// </summary>
+    public void LoadAssembly(Assembly assembly)
+    {
+        var identity = AssemblyIdentity.FromAssembly(assembly);
+        
+        // Check if already loaded
+        if (_loadedIndices.ContainsKey(identity.Name))
+            return;
+
+        // Try to load from cache
+        var index = _cache.TryLoad(identity);
+        
+        if (index == null)
+        {
+            // Cache miss - build from reflection
+            index = _builder.BuildFromAssembly(assembly);
+            _cache.Save(index);
+        }
+
+        _loadedIndices[identity.Name] = index;
+    }
+
+    /// <summary>
+    /// Get all function symbols from a specific module.
+    /// </summary>
+    public List<FunctionSymbol> GetModuleFunctions(string moduleName)
+    {
+        var functions = new List<FunctionSymbol>();
+
+        foreach (var index in _loadedIndices.Values)
+        {
+            if (index.Modules.TryGetValue(moduleName, out var moduleOverloads))
+            {
+                foreach (var (functionName, signatures) in moduleOverloads.Functions)
+                {
+                    foreach (var signature in signatures)
+                    {
+                        functions.Add(ConvertToFunctionSymbol(signature, moduleName));
+                    }
+                }
+            }
+        }
+
+        return functions;
+    }
+
+    /// <summary>
+    /// Get all loaded modules.
+    /// </summary>
+    public IEnumerable<string> GetLoadedModules()
+    {
+        return _loadedIndices.Values
+            .SelectMany(index => index.Modules.Keys)
+            .Distinct();
+    }
+
+    /// <summary>
+    /// Clear all cached data.
+    /// </summary>
+    public void ClearCache()
+    {
+        _cache.ClearAll();
+    }
+
+    /// <summary>
+    /// Convert a cached FunctionSignature back to a FunctionSymbol.
+    /// </summary>
+    private FunctionSymbol ConvertToFunctionSymbol(FunctionSignature signature, string moduleName)
+    {
+        return new FunctionSymbol
+        {
+            Name = signature.Name,
+            Kind = SymbolKind.Function,
+            ReturnType = ConvertTypeSignature(signature.ReturnType),
+            Parameters = signature.Parameters
+                .Select(p => new ParameterSymbol
+                {
+                    Name = p.Name,
+                    Type = ConvertTypeSignature(p.Type),
+                    HasDefault = p.HasDefault,
+                    // Note: DefaultValue Expression reconstruction is simplified
+                    DefaultValue = null  // TODO: Reconstruct from cached string
+                })
+                .ToList(),
+            AccessLevel = AccessLevel.Public
+        };
+    }
+
+    /// <summary>
+    /// Convert a TypeSignature back to a SemanticType.
+    /// </summary>
+    private SemanticType ConvertTypeSignature(TypeSignature signature)
+    {
+        // Handle primitive types
+        if (signature.Name == "int") return SemanticType.Int;
+        if (signature.Name == "long") return SemanticType.Long;
+        if (signature.Name == "float") return SemanticType.Float;
+        if (signature.Name == "double") return SemanticType.Double;
+        if (signature.Name == "bool") return SemanticType.Bool;
+        if (signature.Name == "str") return SemanticType.Str;
+        if (signature.Name == "None") return SemanticType.Void;
+        if (signature.Name == "object") return SemanticType.Object;
+
+        // Handle generic types
+        if (signature.IsGeneric)
+        {
+            return new GenericType
+            {
+                Name = signature.Name.Split('[')[0],  // Get base name before [
+                TypeArguments = signature.TypeArguments
+                    .Select(ConvertTypeSignature)
+                    .ToList()
+            };
+        }
+
+        // Fallback
+        return SemanticType.Object;
+    }
+}

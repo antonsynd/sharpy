@@ -1,15 +1,20 @@
+using Sharpy.Compiler.Discovery;
+
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
 /// Registry of builtin types and functions from Sharpy.Core
+/// Now uses cached reflection-based discovery for functions.
 /// </summary>
 public class BuiltinRegistry
 {
     private readonly Dictionary<string, TypeSymbol> _types = new();
     private readonly Dictionary<string, List<FunctionSymbol>> _functions = new();
+    private readonly CachedModuleDiscovery _discovery;
 
     public BuiltinRegistry()
     {
+        _discovery = new CachedModuleDiscovery();
         LoadBuiltins();
     }
 
@@ -37,28 +42,28 @@ public class BuiltinRegistry
         RegisterType("object", typeof(object), TypeKind.Class);
         RegisterType("None", typeof(void), TypeKind.Struct); // void for return type
 
-        // Register builtin functions
-        // print() accepts object - can print any type
-        RegisterFunction("print", SemanticType.Void, new ParameterSymbol { Name = "value", Type = SemanticType.Object });
-        RegisterFunction("len", SemanticType.Int, new ParameterSymbol { Name = "obj", Type = SemanticType.Str });
-
-        // Register range() function with its three overloads
-        RegisterRangeOverloads();
+        // Load builtin functions using reflection-based discovery
+        LoadBuiltinFunctions();
     }
 
-    private void RegisterRangeOverloads()
+    private void LoadBuiltinFunctions()
     {
-        // range() has three overloads: range(stop), range(start, stop), range(start, stop, step)
-        var rangeReturnType = new GenericType { Name = "list", TypeArguments = new() { SemanticType.Int } };
-        RegisterFunction("range", rangeReturnType,
-            new ParameterSymbol { Name = "stop", Type = SemanticType.Int });
-        RegisterFunction("range", rangeReturnType,
-            new ParameterSymbol { Name = "start", Type = SemanticType.Int },
-            new ParameterSymbol { Name = "stop", Type = SemanticType.Int });
-        RegisterFunction("range", rangeReturnType,
-            new ParameterSymbol { Name = "start", Type = SemanticType.Int },
-            new ParameterSymbol { Name = "stop", Type = SemanticType.Int },
-            new ParameterSymbol { Name = "step", Type = SemanticType.Int });
+        // Load Sharpy.Core assembly and discover all builtin functions automatically
+        var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly;
+        _discovery.LoadAssembly(sharpyCoreAssembly);
+
+        // Get all functions from the "builtins" module
+        var builtinFunctions = _discovery.GetModuleFunctions("builtins");
+        
+        // Register them in our internal dictionary
+        foreach (var function in builtinFunctions)
+        {
+            if (!_functions.ContainsKey(function.Name))
+            {
+                _functions[function.Name] = new List<FunctionSymbol>();
+            }
+            _functions[function.Name].Add(function);
+        }
     }
 
     private void RegisterType(string sharpyName, Type clrType, TypeKind kind, bool isGeneric = false, int typeParamCount = 0)
@@ -76,24 +81,6 @@ public class BuiltinRegistry
         };
 
         _types[sharpyName] = typeSymbol;
-    }
-
-    private void RegisterFunction(string name, SemanticType returnType, params ParameterSymbol[] parameters)
-    {
-        var functionSymbol = new FunctionSymbol
-        {
-            Name = name,
-            Kind = SymbolKind.Function,
-            ReturnType = returnType,
-            Parameters = parameters.ToList(),
-            AccessLevel = AccessLevel.Public
-        };
-
-        if (!_functions.ContainsKey(name))
-        {
-            _functions[name] = new List<FunctionSymbol>();
-        }
-        _functions[name].Add(functionSymbol);
     }
 
     public TypeSymbol? GetType(string name) => _types.GetValueOrDefault(name);
