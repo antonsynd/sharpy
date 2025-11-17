@@ -222,7 +222,7 @@ public class Lexer
         }
 
         // Newlines
-        if (current == '\n' || (current == '\r' && Peek() == '\n'))
+        if (current == '\n' || current == '\r')
         {
             if (_bracketDepth > 0)
             {
@@ -231,8 +231,16 @@ public class Lexer
                 {
                     _position++;
                     _column++;
+                    // Check for \r\n sequence
+                    if (_position < _source.Length && _source[_position] == '\n')
+                    {
+                        _position++;
+                    }
                 }
-                _position++;
+                else
+                {
+                    _position++;
+                }
                 _line++;
                 _column = 1;
                 _atLineStart = true;
@@ -244,8 +252,16 @@ public class Lexer
             {
                 _position++;
                 _column++;
+                // Check for \r\n sequence
+                if (_position < _source.Length && _source[_position] == '\n')
+                {
+                    _position++;
+                }
             }
-            _position++;
+            else
+            {
+                _position++;
+            }
             _line++;
             _column = 1;
             _atLineStart = true;
@@ -811,13 +827,26 @@ public class Lexer
         }
 
         // Read integer part
+        char? lastChar = null;
         while (_position < _source.Length && (char.IsDigit(_source[_position]) || _source[_position] == '_'))
         {
-            if (_source[_position] != '_')
-                sb.Append(_source[_position]);
+            var c = _source[_position];
+            
+            // Check for consecutive underscores
+            if (c == '_' && lastChar == '_')
+                throw new LexerError("Invalid number: consecutive underscores not allowed", startLine, startColumn);
+            
+            if (c != '_')
+                sb.Append(c);
+            
+            lastChar = c;
             _position++;
             _column++;
         }
+        
+        // Check if number ends with underscore
+        if (lastChar == '_')
+            throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn);
 
         // Check for decimal point
         if (_position < _source.Length && _source[_position] == '.' &&
@@ -829,13 +858,26 @@ public class Lexer
             _column++;
 
             // Read fractional part
+            lastChar = '.';  // Reset for fractional part
             while (_position < _source.Length && (char.IsDigit(_source[_position]) || _source[_position] == '_'))
             {
-                if (_source[_position] != '_')
-                    sb.Append(_source[_position]);
+                var c = _source[_position];
+                
+                // Check for consecutive underscores
+                if (c == '_' && lastChar == '_')
+                    throw new LexerError("Invalid number: consecutive underscores not allowed", startLine, startColumn);
+                
+                if (c != '_')
+                    sb.Append(c);
+                
+                lastChar = c;
                 _position++;
                 _column++;
             }
+            
+            // Check if fractional part ends with underscore
+            if (lastChar == '_')
+                throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn);
         }
 
         // Check for scientific notation (e or E)
@@ -858,13 +900,26 @@ public class Lexer
             if (_position >= _source.Length || !char.IsDigit(_source[_position]))
                 throw new LexerError("Invalid scientific notation: expected exponent digits", startLine, startColumn);
 
+            lastChar = null;
             while (_position < _source.Length && (char.IsDigit(_source[_position]) || _source[_position] == '_'))
             {
-                if (_source[_position] != '_')
-                    sb.Append(_source[_position]);
+                var c = _source[_position];
+                
+                // Check for consecutive underscores
+                if (c == '_' && lastChar == '_')
+                    throw new LexerError("Invalid number: consecutive underscores not allowed", startLine, startColumn);
+                
+                if (c != '_')
+                    sb.Append(c);
+                
+                lastChar = c;
                 _position++;
                 _column++;
             }
+            
+            // Check if exponent ends with underscore
+            if (lastChar == '_')
+                throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn);
         }
 
         // Check for suffix (f, L, ul, etc.)
@@ -906,6 +961,8 @@ public class Lexer
         _column += 2;
 
         var hasDigits = false;
+        char? lastChar = null;
+        
         while (_position < _source.Length)
         {
             var c = _source[_position];
@@ -913,11 +970,17 @@ public class Lexer
             {
                 sb.Append(c);
                 hasDigits = true;
+                lastChar = c;
                 _position++;
                 _column++;
             }
             else if (c == '_')
             {
+                // Check for consecutive underscores
+                if (lastChar == '_')
+                    throw new LexerError("Invalid number: consecutive underscores not allowed", startLine, startColumn);
+                
+                lastChar = '_';
                 _position++;
                 _column++;
             }
@@ -929,6 +992,10 @@ public class Lexer
 
         if (!hasDigits)
             throw new LexerError("Invalid hexadecimal literal: no digits after 0x", startLine, startColumn);
+        
+        // Check if number ends with underscore
+        if (lastChar == '_')
+            throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn);
 
         return new Token(TokenType.Integer, sb.ToString(), startLine, startColumn);
     }
@@ -941,6 +1008,8 @@ public class Lexer
         _column += 2;
 
         var hasDigits = false;
+        char? lastChar = null;
+        
         while (_position < _source.Length)
         {
             var c = _source[_position];
@@ -948,13 +1017,24 @@ public class Lexer
             {
                 sb.Append(c);
                 hasDigits = true;
+                lastChar = c;
                 _position++;
                 _column++;
             }
             else if (c == '_')
             {
+                // Check for consecutive underscores
+                if (lastChar == '_')
+                    throw new LexerError("Invalid number: consecutive underscores not allowed", startLine, startColumn);
+                
+                lastChar = '_';
                 _position++;
                 _column++;
+            }
+            else if (char.IsDigit(c))
+            {
+                // Invalid binary digit (2-9)
+                throw new LexerError($"Invalid binary digit: '{c}' (only 0 and 1 allowed)", startLine, startColumn);
             }
             else
             {
@@ -964,6 +1044,10 @@ public class Lexer
 
         if (!hasDigits)
             throw new LexerError("Invalid binary literal: no digits after 0b", startLine, startColumn);
+        
+        // Check if number ends with underscore
+        if (lastChar == '_')
+            throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn);
 
         return new Token(TokenType.Integer, sb.ToString(), startLine, startColumn);
     }
@@ -976,6 +1060,8 @@ public class Lexer
         _column += 2;
 
         var hasDigits = false;
+        char? lastChar = null;
+        
         while (_position < _source.Length)
         {
             var c = _source[_position];
@@ -983,13 +1069,24 @@ public class Lexer
             {
                 sb.Append(c);
                 hasDigits = true;
+                lastChar = c;
                 _position++;
                 _column++;
             }
             else if (c == '_')
             {
+                // Check for consecutive underscores
+                if (lastChar == '_')
+                    throw new LexerError("Invalid number: consecutive underscores not allowed", startLine, startColumn);
+                
+                lastChar = '_';
                 _position++;
                 _column++;
+            }
+            else if (char.IsDigit(c))
+            {
+                // Invalid octal digit (8-9)
+                throw new LexerError($"Invalid octal digit: '{c}' (only 0-7 allowed)", startLine, startColumn);
             }
             else
             {
@@ -999,6 +1096,10 @@ public class Lexer
 
         if (!hasDigits)
             throw new LexerError("Invalid octal literal: no digits after 0o", startLine, startColumn);
+        
+        // Check if number ends with underscore
+        if (lastChar == '_')
+            throw new LexerError("Invalid number: cannot end with underscore", startLine, startColumn);
 
         return new Token(TokenType.Integer, sb.ToString(), startLine, startColumn);
     }
