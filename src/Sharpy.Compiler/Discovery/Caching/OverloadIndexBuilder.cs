@@ -130,10 +130,13 @@ public class OverloadIndexBuilder
 
     private string GetFunctionName(MethodInfo method)
     {
-        // Convert PascalCase to snake_case
+        // Convert PascalCase to snake_case, handling acronyms
         var name = method.Name;
-        name = Regex.Replace(name, "([a-z])([A-Z])", "$1_$2").ToLowerInvariant();
-        return name;
+        // Handle sequences of capitals followed by lowercase (acronyms like "XMLParser" -> "xml_parser")
+        name = Regex.Replace(name, "([A-Z]+)([A-Z][a-z])", "$1_$2");
+        // Handle lowercase followed by uppercase
+        name = Regex.Replace(name, "([a-z])([A-Z])", "$1_$2");
+        return name.ToLowerInvariant();
     }
 
     private FunctionSignature CreateFunctionSignature(MethodInfo method)
@@ -209,6 +212,7 @@ public class OverloadIndexBuilder
         return value switch
         {
             string s => $"\"{s}\"",
+            char c => $"'{c}'",
             bool b => b.ToString().ToLowerInvariant(),
             int or long or short or byte or sbyte or uint or ulong or ushort => value.ToString(),
             float f => f.ToString("G9"),

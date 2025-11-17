@@ -56,9 +56,11 @@ public class CachedModuleDiscovery
     {
         var functions = new List<FunctionSymbol>();
 
-        foreach (var index in _loadedIndices.Values.Where(idx => idx.Modules.ContainsKey(moduleName)))
+        foreach (var index in _loadedIndices.Values)
         {
-            var moduleOverloads = index.Modules[moduleName];
+            if (!index.Modules.TryGetValue(moduleName, out var moduleOverloads))
+                continue;
+                
             foreach (var (functionName, signatures) in moduleOverloads.Functions)
             {
                 foreach (var signature in signatures)
@@ -135,7 +137,7 @@ public class CachedModuleDiscovery
             {
                 // Extract base name before '[' if present; otherwise use the whole name.
                 Name = signature.Name.Contains('[')
-                    ? signature.Name.Substring(0, signature.Name.IndexOf('['))
+                    ? signature.Name[..signature.Name.IndexOf('[')]
                     : signature.Name,
                 TypeArguments = signature.TypeArguments
                     .Select(ConvertTypeSignature)

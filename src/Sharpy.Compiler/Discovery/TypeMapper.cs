@@ -37,7 +37,10 @@ public class TypeMapper
         // Handle arrays
         if (clrType.IsArray)
         {
-            var elementType = clrType.GetElementType()!;
+            var elementType = clrType.GetElementType();
+            if (elementType == null)
+                return SemanticType.Object; // Defensive fallback for safety
+            
             return new GenericType
             {
                 Name = "list",
@@ -127,7 +130,9 @@ public class TypeMapper
         {
             return new GenericType
             {
-                Name = "list",  // Treat iterables as lists for simplicity
+                // Note: IEnumerable<T> is mapped to list for simplicity, losing lazy evaluation semantics.
+                // This is a known limitation - iterables are treated as eager lists in the type system.
+                Name = "list",
                 TypeArguments = new List<SemanticType>
                 {
                     MapClrTypeToSemanticType(typeArgs[0])

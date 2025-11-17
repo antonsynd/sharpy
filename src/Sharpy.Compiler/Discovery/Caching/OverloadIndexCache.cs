@@ -10,10 +10,13 @@ namespace Sharpy.Compiler.Discovery.Caching;
 public class OverloadIndexCache
 {
     private readonly string _cacheDirectory;
+    // Using camelCase for JSON serialization to reduce file size and follow common conventions.
+    // DefaultIgnoreCondition.WhenWritingNull reduces cache file size by omitting null properties.
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = false,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
     };
 
     public OverloadIndexCache()
@@ -54,16 +57,17 @@ public class OverloadIndexCache
             File.Delete(cachePath);
             return null;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Cache file is corrupted, delete it
+            // Cache file is corrupted or incompatible, delete it
+            System.Diagnostics.Debug.WriteLine($"Failed to load cache from '{cachePath}': {ex.GetType().Name} - {ex.Message}");
             try 
             { 
                 File.Delete(cachePath); 
             } 
-            catch (Exception ex) 
+            catch (Exception deleteEx) 
             { 
-                System.Diagnostics.Debug.WriteLine($"Failed to delete corrupted cache file '{cachePath}': {ex}"); 
+                System.Diagnostics.Debug.WriteLine($"Failed to delete corrupted cache file '{cachePath}': {deleteEx}"); 
             }
             return null;
         }
@@ -77,8 +81,8 @@ public class OverloadIndexCache
         var cacheKey = index.Identity.ToCacheKey();
         var cachePath = Path.Combine(_cacheDirectory, cacheKey);
         
-        // Clean up old cache files for this assembly (different versions/hashes)
-        CleanupOldCaches(index.Identity.Name);
+        // Clean up old cache files for this assembly (different versions/hashes older than 7 days)
+        CleanupOldCaches(index.Identity.Name, cacheKey);
 
         try
         {
@@ -116,21 +120,32 @@ public class OverloadIndexCache
 
     /// <summary>
     /// Clean up old cache files for a specific assembly name.
+    /// Only deletes cache files that are not the current cache key and are older than 7 days.
     /// </summary>
-    private void CleanupOldCaches(string assemblyName)
+    private void CleanupOldCaches(string assemblyName, string currentCacheKey)
     {
         var pattern = $"{assemblyName.ToLowerInvariant()}-*.json.gz";
         var oldFiles = Directory.GetFiles(_cacheDirectory, pattern);
-        
+        var threshold = TimeSpan.FromDays(7);
+        var now = DateTime.UtcNow;
+
         foreach (var file in oldFiles)
         {
-            try 
-            { 
-                File.Delete(file); 
-            } 
-            catch (Exception ex) 
-            { 
-                Console.Error.WriteLine($"Failed to delete cache file '{file}': {ex.Message}"); 
+            var fileName = Path.GetFileName(file);
+            if (fileName == currentCacheKey)
+                continue;
+
+            try
+            {
+                var lastWrite = File.GetLastWriteTimeUtc(file);
+                if (now - lastWrite > threshold)
+                {
+                    File.Delete(file);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Failed to delete old cache file '{file}': {ex.Message}");
             }
         }
     }

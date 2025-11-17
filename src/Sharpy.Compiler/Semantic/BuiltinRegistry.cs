@@ -56,6 +56,7 @@ public class BuiltinRegistry
         var builtinFunctions = _discovery.GetModuleFunctions("builtins");
         
         // Register them in our internal dictionary
+        // Note: This is called during construction, so no concurrent access is expected here
         foreach (var function in builtinFunctions)
         {
             if (!_functions.ContainsKey(function.Name))
