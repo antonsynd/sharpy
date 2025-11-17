@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Logging;
@@ -7,14 +8,15 @@ namespace Sharpy.Compiler.Semantic;
 /// <summary>
 /// Registry for managing third-party .NET modules.
 /// Handles loading and discovery of functions from external assemblies.
+/// Thread-safe for concurrent use.
 /// </summary>
 public class ModuleRegistry
 {
     private readonly CachedModuleDiscovery _discovery;
     private readonly ICompilerLogger _logger;
-    private readonly Dictionary<string, Assembly> _loadedAssemblies = new();
-    private readonly List<string> _modulePaths = new();
-    private readonly List<SemanticError> _errors = new();
+    private readonly ConcurrentDictionary<string, Assembly> _loadedAssemblies = new();
+    private readonly ConcurrentBag<string> _modulePaths = new();
+    private readonly ConcurrentBag<SemanticError> _errors = new();
 
     public ModuleRegistry(ICompilerLogger? logger = null)
     {
@@ -22,7 +24,7 @@ public class ModuleRegistry
         _logger = logger ?? NullLogger.Instance;
     }
 
-    public IReadOnlyList<SemanticError> Errors => _errors;
+    public IReadOnlyList<SemanticError> Errors => _errors.ToList();
 
     /// <summary>
     /// Add a path to search for module assemblies.
@@ -35,11 +37,10 @@ public class ModuleRegistry
             return;
         }
 
-        if (!_modulePaths.Contains(path))
-        {
-            _modulePaths.Add(path);
-            _logger.LogDebug($"Added module search path: {path}");
-        }
+        // Note: ConcurrentBag allows duplicates, but this is acceptable as
+        // ResolveAssemblyPath will find the assembly on first match anyway
+        _modulePaths.Add(path);
+        _logger.LogDebug($"Added module search path: {path}");
     }
 
     /// <summary>
@@ -62,8 +63,8 @@ public class ModuleRegistry
             var assembly = Assembly.LoadFrom(resolvedPath);
             var assemblyName = assembly.GetName().Name ?? Path.GetFileNameWithoutExtension(resolvedPath);
 
-            // Check if already loaded
-            if (_loadedAssemblies.ContainsKey(assemblyName))
+            // Use TryAdd for atomic check-and-add operation
+            if (!_loadedAssemblies.TryAdd(assemblyName, assembly))
             {
                 _logger.LogDebug($"Assembly '{assemblyName}' already loaded");
                 return true;
@@ -71,14 +72,23 @@ public class ModuleRegistry
 
             // Discover functions from the assembly
             _discovery.LoadAssembly(assembly);
-            _loadedAssemblies[assemblyName] = assembly;
 
             _logger.LogInfo($"Loaded module reference: {assemblyName} from {resolvedPath}");
             return true;
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
             AddError($"Failed to load assembly '{assemblyPath}': {ex.Message}");
+            return false;
+        }
+        catch (BadImageFormatException ex)
+        {
+            AddError($"Invalid assembly format '{assemblyPath}': {ex.Message}");
+            return false;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            AddError($"Access denied loading assembly '{assemblyPath}': {ex.Message}");
             return false;
         }
     }
@@ -93,7 +103,12 @@ public class ModuleRegistry
         {
             return _discovery.GetModuleFunctions(moduleName);
         }
-        catch (Exception ex)
+        catch (KeyNotFoundException ex)
+        {
+            _logger.LogWarning($"Module '{moduleName}' not found: {ex.Message}", 0, 0);
+            return new List<FunctionSymbol>();
+        }
+        catch (InvalidOperationException ex)
         {
             _logger.LogWarning($"Error getting functions for module '{moduleName}': {ex.Message}", 0, 0);
             return new List<FunctionSymbol>();

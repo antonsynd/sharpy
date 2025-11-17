@@ -14,10 +14,7 @@ public class ThirdPartyModuleTests
 
         // Skip if module doesn't exist (e.g., in CI before build)
         if (!File.Exists(SampleModulePath))
-        {
-            Assert.True(true, "Sample module not built yet, skipping test");
             return;
-        }
 
         var result = registry.LoadReference(SampleModulePath);
 
@@ -32,10 +29,7 @@ public class ThirdPartyModuleTests
 
         // Skip if module doesn't exist
         if (!File.Exists(SampleModulePath))
-        {
-            Assert.True(true, "Sample module not built yet, skipping test");
             return;
-        }
 
         registry.LoadReference(SampleModulePath);
         var functions = registry.GetModuleFunctions("samplemodule");
@@ -55,10 +49,7 @@ public class ThirdPartyModuleTests
 
         // Skip if module doesn't exist
         if (!File.Exists(SampleModulePath))
-        {
-            Assert.True(true, "Sample module not built yet, skipping test");
             return;
-        }
 
         registry.LoadReference(SampleModulePath);
         var functions = registry.GetModuleFunctions("samplemodule");
@@ -78,10 +69,7 @@ public class ThirdPartyModuleTests
 
         // Skip if module doesn't exist
         if (!File.Exists(SampleModulePath))
-        {
-            Assert.True(true, "Sample module not built yet, skipping test");
             return;
-        }
 
         registry.LoadReference(SampleModulePath);
         var functions = registry.GetModuleFunctions("samplemodule");

@@ -58,10 +58,7 @@ public class ModuleDiscoveryWorkflowTests
         // Skip if sample module doesn't exist
         const string sampleModulePath = "../../../../build/modules/SampleModule.dll";
         if (!File.Exists(sampleModulePath))
-        {
-            Assert.True(true, "Sample module not built, skipping test");
             return;
-        }
 
         // Arrange
         var registry = new ModuleRegistry();
@@ -106,10 +103,7 @@ public class ModuleDiscoveryWorkflowTests
         // Skip if sample module doesn't exist
         const string sampleModulePath = "../../../../build/modules/SampleModule.dll";
         if (!File.Exists(sampleModulePath))
-        {
-            Assert.True(true, "Sample module not built, skipping test");
             return;
-        }
 
         // Arrange
         var registry = new ModuleRegistry();
@@ -135,10 +129,7 @@ public class ModuleDiscoveryWorkflowTests
         // Skip if sample module doesn't exist
         const string sampleModulePath = "../../../../build/modules/SampleModule.dll";
         if (!File.Exists(sampleModulePath))
-        {
-            Assert.True(true, "Sample module not built, skipping test");
             return;
-        }
 
         // Arrange
         var registry = new ModuleRegistry();

@@ -109,7 +109,7 @@ class Program
         FileInfo? output,
         string[] references,
         string[] projectReferences,
-        string[] modulePaths,
+        string[] modulePaths, // TODO: Use modulePaths when compiler integration is implemented
         ICompilerLogger logger)
     {
         // Validate input file
