@@ -33,7 +33,7 @@ const PI: float = 3.14159
 # Classes with auto type inference
 class Calculator:
     name: str
-    history = ["foo"]  # Type inferre as list[str]
+    history = ["foo"]  # Type inferred as list[str]
 
     def __init__(self, name: str):
         self.name = name
