@@ -45,10 +45,7 @@ public class ImportResolverNetModuleTests
     [Fact]
     public void ImportResolver_WithSampleModule_ResolvesSuccessfully()
     {
-        var sampleModulePath = Path.Combine(
-            Directory.GetCurrentDirectory(),
-            "..", "..", "..", "..", "..",
-            "samples", "SampleModule", "bin", "Debug", "net9.0", "SampleModule.dll");
+        var sampleModulePath = "../../../../build/modules/SampleModule.dll";
 
         // Only run test if SampleModule exists
         if (!File.Exists(sampleModulePath))

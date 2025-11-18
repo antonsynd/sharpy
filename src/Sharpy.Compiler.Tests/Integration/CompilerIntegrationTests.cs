@@ -52,10 +52,7 @@ result = range(5)
 x = 5
 ";
         // Get the path to SampleModule.dll
-        var sampleModulePath = Path.Combine(
-            Directory.GetCurrentDirectory(),
-            "..", "..", "..", "..", "..",
-            "samples", "SampleModule", "bin", "Debug", "net9.0", "SampleModule.dll");
+        var sampleModulePath = "../../../../build/modules/SampleModule.dll";
 
         // Only run test if SampleModule exists
         if (!File.Exists(sampleModulePath))
@@ -132,10 +129,7 @@ x = 5
 x = 5
 ";
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
-        var sampleModulePath = Path.Combine(
-            Directory.GetCurrentDirectory(),
-            "..", "..", "..", "..", "..",
-            "samples", "SampleModule", "bin", "Debug", "net9.0", "SampleModule.dll");
+        var sampleModulePath = "../../../../build/modules/SampleModule.dll";
 
         // Only include SampleModule if it exists
         var references = File.Exists(sampleModulePath)
