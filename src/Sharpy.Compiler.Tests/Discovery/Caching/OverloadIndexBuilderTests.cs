@@ -36,11 +36,11 @@ public class OverloadIndexBuilderTests
 
         // Assert
         Assert.True(index.Modules.TryGetValue("builtins", out var builtins), "Should discover builtins module");
-        
+
         Assert.True(builtins.Functions.TryGetValue("range", out var rangeOverloads), "Should discover range function");
-        
+
         Assert.Equal(3, rangeOverloads.Count);
-        
+
         // Verify the three overloads
         Assert.Contains(rangeOverloads, s => s.Parameters.Count == 1);  // range(stop)
         Assert.Contains(rangeOverloads, s => s.Parameters.Count == 2);  // range(start, stop)
@@ -60,7 +60,7 @@ public class OverloadIndexBuilderTests
         var builtins = index.Modules["builtins"];
         Assert.True(builtins.Functions.TryGetValue("print", out var printOverloads), "Should discover print function");
         Assert.NotEmpty(printOverloads);
-        
+
         // Print should have a params array parameter
         var printSig = printOverloads[0];
         Assert.NotEmpty(printSig.Parameters);
@@ -80,7 +80,7 @@ public class OverloadIndexBuilderTests
         var builtins = index.Modules["builtins"];
         Assert.True(builtins.Functions.TryGetValue("len", out var lenOverloads), "Should discover len function");
         Assert.NotEmpty(lenOverloads);
-        
+
         var lenSig = lenOverloads[0];
         Assert.Single(lenSig.Parameters);
         Assert.Equal("obj", lenSig.Parameters[0].Name);
@@ -98,7 +98,7 @@ public class OverloadIndexBuilderTests
         // Assert
         var builtins = index.Modules["builtins"];
         var anyFunction = builtins.Functions.Values.First().First();
-        
+
         Assert.NotEmpty(anyFunction.MethodToken);
         Assert.Contains("|", anyFunction.MethodToken);  // Should have delimiter
     }

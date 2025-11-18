@@ -94,7 +94,7 @@ public class ThirdPartyModuleTests
         if (File.Exists(SampleModulePath))
         {
             registry.LoadReference(SampleModulePath);
-            
+
             var modules = registry.GetLoadedModules().ToList();
             Assert.Contains("builtins", modules);
             Assert.Contains("samplemodule", modules);

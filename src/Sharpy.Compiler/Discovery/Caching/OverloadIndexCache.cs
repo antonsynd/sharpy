@@ -23,7 +23,7 @@ public class OverloadIndexCache
     {
         var userHome = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         _cacheDirectory = Path.Combine(userHome, ".sharpy", "cache", "overload-index");
-        
+
         if (!Directory.Exists(_cacheDirectory))
         {
             Directory.CreateDirectory(_cacheDirectory);
@@ -46,7 +46,7 @@ public class OverloadIndexCache
             using var fileStream = File.OpenRead(cachePath);
             using var gzipStream = new GZipStream(fileStream, CompressionMode.Decompress);
             var index = JsonSerializer.Deserialize<OverloadIndex>(gzipStream, JsonOptions);
-            
+
             // Verify the identity matches
             if (index?.Identity.Equals(identity) == true)
             {
@@ -61,13 +61,13 @@ public class OverloadIndexCache
         {
             // Cache file is corrupted or incompatible, delete it
             System.Diagnostics.Debug.WriteLine($"Failed to load cache from '{cachePath}': {ex.GetType().Name} - {ex.Message}");
-            try 
-            { 
-                File.Delete(cachePath); 
-            } 
-            catch (Exception deleteEx) 
-            { 
-                System.Diagnostics.Debug.WriteLine($"Failed to delete corrupted cache file '{cachePath}': {deleteEx}"); 
+            try
+            {
+                File.Delete(cachePath);
+            }
+            catch (Exception deleteEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to delete corrupted cache file '{cachePath}': {deleteEx}");
             }
             return null;
         }
@@ -80,7 +80,7 @@ public class OverloadIndexCache
     {
         var cacheKey = index.Identity.ToCacheKey();
         var cachePath = Path.Combine(_cacheDirectory, cacheKey);
-        
+
         // Clean up old cache files for this assembly (different versions/hashes older than 7 days)
         CleanupOldCaches(index.Identity.Name, cacheKey);
 
@@ -106,13 +106,13 @@ public class OverloadIndexCache
         {
             foreach (var file in Directory.GetFiles(_cacheDirectory, "*.json.gz"))
             {
-                try 
-                { 
-                    File.Delete(file); 
-                } 
-                catch (Exception ex) 
-                { 
-                    Console.Error.WriteLine($"Warning: Failed to delete cache file '{file}': {ex.Message}"); 
+                try
+                {
+                    File.Delete(file);
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"Warning: Failed to delete cache file '{file}': {ex.Message}");
                 }
             }
         }

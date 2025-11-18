@@ -40,7 +40,7 @@ public class TypeMapper
             var elementType = clrType.GetElementType();
             if (elementType == null)
                 return SemanticType.Object; // Defensive fallback for safety
-            
+
             return new GenericType
             {
                 Name = "list",

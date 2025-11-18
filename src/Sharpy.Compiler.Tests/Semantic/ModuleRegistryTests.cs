@@ -9,7 +9,7 @@ public class ModuleRegistryTests
     public void Constructor_InitializesSuccessfully()
     {
         var registry = new ModuleRegistry();
-        
+
         Assert.NotNull(registry);
         Assert.Empty(registry.Errors);
     }
@@ -127,10 +127,10 @@ public class ModuleRegistryTests
     public void ClearCache_DoesNotThrow()
     {
         var registry = new ModuleRegistry();
-        
+
         // Should not throw
         registry.ClearCache();
-        
+
         Assert.Empty(registry.Errors);
     }
 }

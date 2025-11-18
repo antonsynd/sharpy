@@ -47,7 +47,7 @@ public class ImportResolver
         {
             // First, try to resolve as .NET assembly module through ModuleRegistry
             var moduleInfo = TryResolveNetModule(importAlias.Name, importAlias.LineStart, importAlias.ColumnStart);
-            
+
             // If not found in .NET assemblies, try .spy file
             if (moduleInfo == null)
             {
@@ -61,7 +61,7 @@ public class ImportResolver
 
                 moduleInfo = LoadModule(modulePath, importAlias.LineStart, importAlias.ColumnStart);
             }
-            
+
             if (moduleInfo != null)
             {
                 result.Add(moduleInfo);

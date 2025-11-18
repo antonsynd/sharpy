@@ -62,7 +62,7 @@ public class ModuleDiscoveryWorkflowTests
     public void Workflow_AddModulePath_ResolvesAssembly()
     {
         const string sampleModulePath = "../../../../build/modules/SampleModule.dll";
-        
+
         // Skip test if SampleModule hasn't been built
         if (!File.Exists(sampleModulePath))
         {
@@ -111,7 +111,7 @@ public class ModuleDiscoveryWorkflowTests
     public void Workflow_FunctionSignatures_MappedCorrectly()
     {
         const string sampleModulePath = "../../../../build/modules/SampleModule.dll";
-        
+
         // Skip test if SampleModule hasn't been built
         if (!File.Exists(sampleModulePath))
         {
@@ -141,7 +141,7 @@ public class ModuleDiscoveryWorkflowTests
     public void Workflow_MultipleModules_IndependentFunctions()
     {
         const string sampleModulePath = "../../../../build/modules/SampleModule.dll";
-        
+
         // Skip test if SampleModule hasn't been built
         if (!File.Exists(sampleModulePath))
         {
@@ -213,7 +213,7 @@ public class ModuleDiscoveryWorkflowTests
         // Use median (middle value) which is more robust against outliers
         var sortedFirstLoads = firstLoadTimes.OrderBy(x => x).ToList();
         var sortedSecondLoads = secondLoadTimes.OrderBy(x => x).ToList();
-        
+
         var medianFirstLoad = sortedFirstLoads[sortedFirstLoads.Count / 2];
         var medianSecondLoad = sortedSecondLoads[sortedSecondLoads.Count / 2];
 
@@ -225,7 +225,7 @@ public class ModuleDiscoveryWorkflowTests
             $"First loads: [{string.Join(", ", firstLoadTimes)}]ms, " +
             $"Cached loads: [{string.Join(", ", secondLoadTimes)}]ms, " +
             $"Fast cached loads: {fastCachedLoads}/{TotalCachedLoadRuns}");
-        
+
         // Additionally verify that median cached load is reasonable (allow up to 5x median first load, with a minimum threshold of 100ms)
         var maxReasonableTime = Math.Max(medianFirstLoad * MaxCachedLoadMultiplier, MinReasonableTimeMs);
         Assert.True(medianSecondLoad <= maxReasonableTime,

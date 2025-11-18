@@ -61,7 +61,7 @@ public class CachedDiscoveryPerformanceTests
         // First load to build cache (clear cache first)
         var cache = new OverloadIndexCache();
         cache.ClearAll();
-        
+
         var discovery1 = new CachedModuleDiscovery();
         var firstLoadWatch = Stopwatch.StartNew();
         discovery1.LoadAssembly(sharpyCoreAssembly);
@@ -75,7 +75,7 @@ public class CachedDiscoveryPerformanceTests
 
         _output.WriteLine($"First load: {firstLoadWatch.ElapsedMilliseconds}ms");
         _output.WriteLine($"Second load (cached): {secondLoadWatch.ElapsedMilliseconds}ms");
-        
+
         // Only calculate speedup if times are measurable
         if (firstLoadWatch.ElapsedMilliseconds > MinMeasurableMilliseconds && secondLoadWatch.ElapsedMilliseconds > MinMeasurableMilliseconds)
         {

@@ -128,7 +128,7 @@ public class ModuleRegistry
     /// </summary>
     public bool IsModuleLoaded(string moduleName)
     {
-        return GetLoadedModules().Any(m => 
+        return GetLoadedModules().Any(m =>
             m.Equals(moduleName, StringComparison.OrdinalIgnoreCase));
     }
 

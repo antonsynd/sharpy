@@ -34,7 +34,7 @@ public class OverloadIndexBuilder
         {
             var moduleName = DeriveModuleName(exportType);
             var moduleOverloads = DiscoverModuleFunctions(exportType);
-            
+
             if (moduleOverloads.Functions.Count > 0)
             {
                 index.Modules[moduleName] = moduleOverloads;
@@ -124,7 +124,7 @@ public class OverloadIndexBuilder
         {
             "Bool", "Int", "Long", "Float", "Double", "Str", "List", "Dict", "Set", "Tuple"
         };
-        
+
         return typeConstructors.Contains(method.Name);
     }
 
@@ -171,7 +171,7 @@ public class OverloadIndexBuilder
     private TypeSignature CreateTypeSignature(Type clrType)
     {
         var semanticType = _typeMapper.MapClrTypeToSemanticType(clrType);
-        
+
         var signature = new TypeSignature
         {
             Name = semanticType.GetDisplayName(),
@@ -199,7 +199,7 @@ public class OverloadIndexBuilder
         var typeName = method.DeclaringType?.FullName ?? "Unknown";
         var methodName = method.Name;
         var paramCount = method.GetParameters().Length;
-        
+
         return $"{assemblyName}|{typeName}|{methodName}|{paramCount}";
     }
 

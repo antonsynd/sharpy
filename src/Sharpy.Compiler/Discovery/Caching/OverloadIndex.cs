@@ -30,7 +30,7 @@ public class FunctionSignature
     public string Name { get; set; } = string.Empty;
     public List<ParameterSignature> Parameters { get; set; } = new();
     public TypeSignature ReturnType { get; set; } = new();
-    
+
     /// <summary>
     /// Method reference for rehydration: AssemblyName|TypeName|MethodName|ParamCount
     /// </summary>
@@ -57,7 +57,7 @@ public class TypeSignature
     public string Name { get; set; } = string.Empty;
     public bool IsGeneric { get; set; }
     public List<TypeSignature> TypeArguments { get; set; } = new();
-    
+
     /// <summary>
     /// CLR type name for mapping back.
     /// </summary>

@@ -15,7 +15,7 @@ public class ImportResolverNetModuleTests
     {
         var logger = NullLogger.Instance;
         var registry = new ModuleRegistry(logger);
-        
+
         // Load Sharpy.Core
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
         registry.LoadReference(sharpyCoreAssembly);
@@ -109,7 +109,7 @@ public class ImportResolverNetModuleTests
     {
         var logger = NullLogger.Instance;
         var registry = new ModuleRegistry(logger);
-        
+
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
         registry.LoadReference(sharpyCoreAssembly);
 
@@ -140,7 +140,7 @@ public class ImportResolverNetModuleTests
     {
         var logger = NullLogger.Instance;
         var registry = new ModuleRegistry(logger);
-        
+
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
         registry.LoadReference(sharpyCoreAssembly);
 
@@ -168,7 +168,7 @@ public class ImportResolverNetModuleTests
     {
         var logger = NullLogger.Instance;
         var registry = new ModuleRegistry(logger);
-        
+
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
         registry.LoadReference(sharpyCoreAssembly);
 
@@ -195,7 +195,7 @@ public class ImportResolverNetModuleTests
     {
         var logger = NullLogger.Instance;
         var registry = new ModuleRegistry(logger);
-        
+
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
         registry.LoadReference(sharpyCoreAssembly);
 

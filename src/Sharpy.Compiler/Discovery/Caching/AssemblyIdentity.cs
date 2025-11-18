@@ -22,7 +22,7 @@ public class AssemblyIdentity
     {
         var assembly = Assembly.LoadFrom(assemblyPath);
         var assemblyName = assembly.GetName();
-        
+
         return new AssemblyIdentity
         {
             Name = assemblyName.Name ?? Path.GetFileNameWithoutExtension(assemblyPath),
@@ -39,7 +39,7 @@ public class AssemblyIdentity
     {
         var assemblyName = assembly.GetName();
         var location = assembly.Location;
-        
+
         return new AssemblyIdentity
         {
             Name = assemblyName.Name ?? "Unknown",

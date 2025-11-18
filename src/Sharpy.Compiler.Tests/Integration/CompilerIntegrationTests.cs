@@ -148,7 +148,7 @@ x = 5
         Assert.Empty(result.Errors);
         Assert.NotNull(result.ModuleRegistry);
         Assert.Contains("builtins", result.ModuleRegistry.GetLoadedModules());
-        
+
         if (File.Exists(sampleModulePath))
         {
             Assert.Contains("samplemodule", result.ModuleRegistry.GetLoadedModules());

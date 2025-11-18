@@ -31,13 +31,13 @@ public class CachedModuleDiscovery
     public void LoadAssembly(Assembly assembly)
     {
         var identity = AssemblyIdentity.FromAssembly(assembly);
-        
+
         // Use GetOrAdd for thread-safe loading
         _loadedIndices.GetOrAdd(identity.Name, _ =>
         {
             // Try to load from cache
             var index = _cache.TryLoad(identity);
-            
+
             if (index == null)
             {
                 // Cache miss - build from reflection
@@ -60,7 +60,7 @@ public class CachedModuleDiscovery
         {
             if (!index.Modules.TryGetValue(moduleName, out var moduleOverloads))
                 continue;
-                
+
             foreach (var (functionName, signatures) in moduleOverloads.Functions)
             {
                 foreach (var signature in signatures)
