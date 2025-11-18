@@ -384,4 +384,114 @@ result: bool = x is None
 
         typeChecker.Errors.Should().BeEmpty();
     }
+
+    [Fact]
+    public void TypeNarrowingWithIsInstance()
+    {
+        var source = @"
+class Animal:
+    ...
+
+class Dog(Animal):
+    ...
+
+animal: Animal = Dog()
+if isinstance(animal, Dog):
+    result: Dog = animal
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        // Type narrowing should allow assignment of animal to Dog type
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TypeNarrowingWithIsInstanceDoesNotAffectElseBranch()
+    {
+        var source = @"
+class Animal:
+    ...
+
+class Dog(Animal):
+    ...
+
+animal: Animal = Dog()
+if isinstance(animal, Dog):
+    d: Dog = animal
+else:
+    a: Animal = animal
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TypeNarrowingWithIsInstanceInWhileLoop()
+    {
+        var source = @"
+class Animal:
+    ...
+
+class Dog(Animal):
+    ...
+
+animals: list[Animal] = [Dog(), Dog()]
+i: int = 0
+while i < len(animals) and isinstance(animals[i], Dog):
+    dog: Dog = animals[i]
+    i = i + 1
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void IsInstanceWithMultipleTypeChecks()
+    {
+        var source = @"
+class Animal:
+    ...
+
+class Dog(Animal):
+    ...
+
+class Cat(Animal):
+    ...
+
+pet: Animal = Dog()
+if isinstance(pet, Dog):
+    d: Dog = pet
+if isinstance(pet, Cat):
+    c: Cat = pet
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void CombinedTypeNarrowingIsNotNoneAndIsInstance()
+    {
+        var source = @"
+class Animal:
+    ...
+
+class Dog(Animal):
+    ...
+
+animal: Animal? = Dog()
+if animal is not None and isinstance(animal, Dog):
+    d: Dog = animal
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
 }

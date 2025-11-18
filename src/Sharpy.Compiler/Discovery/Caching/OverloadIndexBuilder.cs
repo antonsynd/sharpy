@@ -12,6 +12,15 @@ public class OverloadIndexBuilder
     private readonly TypeMapper _typeMapper = new();
 
     /// <summary>
+    /// Special case mappings for C# method names that don't follow the standard PascalCase to snake_case conversion.
+    /// Maps C# method name to the desired Python/Sharpy function name.
+    /// </summary>
+    private static readonly Dictionary<string, string> SpecialNameMappings = new()
+    {
+        { "IsInstance", "isinstance" }
+    };
+
+    /// <summary>
     /// Build an index from an assembly by discovering all public static methods
     /// in classes named "Exports".
     /// </summary>
@@ -130,6 +139,12 @@ public class OverloadIndexBuilder
 
     private string GetFunctionName(MethodInfo method)
     {
+        // Check for special case mappings first
+        if (SpecialNameMappings.TryGetValue(method.Name, out var specialName))
+        {
+            return specialName;
+        }
+
         // Convert PascalCase to snake_case, handling acronyms
         var name = method.Name;
         // Handle sequences of capitals followed by lowercase (acronyms like "XMLParser" -> "xml_parser")
