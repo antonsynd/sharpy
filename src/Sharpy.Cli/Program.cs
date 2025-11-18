@@ -46,6 +46,7 @@ class Program
         var logFileOption = new Option<FileInfo?>("--log-file");
 
         // Cache management options
+        var cacheDirOption = new Option<string?>("--cache-dir") { Description = "Specify a custom cache directory (default: ~/.sharpy/cache/overload-index)" };
         var clearCacheOption = new Option<bool>("--clear-cache") { Description = "Clear the overload discovery cache" };
         var cacheInfoOption = new Option<bool>("--cache-info") { Description = "Display information about the overload discovery cache" };
 
@@ -61,6 +62,7 @@ class Program
         rootCommand.Options.Add(modulePathOption);
         rootCommand.Options.Add(logLevelOption);
         rootCommand.Options.Add(logFileOption);
+        rootCommand.Options.Add(cacheDirOption);
         rootCommand.Options.Add(clearCacheOption);
         rootCommand.Options.Add(cacheInfoOption);
 
@@ -77,19 +79,20 @@ class Program
             var modulePaths = parseResult.GetValue(modulePathOption);
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
+            var cacheDir = parseResult.GetValue(cacheDirOption);
             var clearCache = parseResult.GetValue(clearCacheOption);
             var cacheInfo = parseResult.GetValue(cacheInfoOption);
 
             // Handle cache management commands (no input file required)
             if (clearCache)
             {
-                ClearCache();
+                ClearCache(cacheDir);
                 return;
             }
 
             if (cacheInfo)
             {
-                ShowCacheInfo();
+                ShowCacheInfo(cacheDir);
                 return;
             }
 
@@ -337,13 +340,17 @@ class Program
         }
     }
 
-    static void ClearCache()
+    static void ClearCache(string? cacheDir)
     {
         try
         {
-            var cache = new OverloadIndexCache();
+            var cache = new OverloadIndexCache(cacheDir);
             cache.ClearAll();
             Console.WriteLine("Overload discovery cache cleared successfully.");
+            if (cacheDir != null)
+            {
+                Console.WriteLine($"Cache directory: {cacheDir}");
+            }
         }
         catch (Exception ex)
         {
@@ -352,11 +359,11 @@ class Program
         }
     }
 
-    static void ShowCacheInfo()
+    static void ShowCacheInfo(string? cacheDir)
     {
         try
         {
-            var cache = new OverloadIndexCache();
+            var cache = new OverloadIndexCache(cacheDir);
             var info = cache.GetInfo();
 
             Console.WriteLine("Overload Discovery Cache Information:");
