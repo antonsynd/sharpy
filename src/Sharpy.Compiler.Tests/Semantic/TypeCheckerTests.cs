@@ -23,6 +23,7 @@ public class TypeCheckerTests
         // Name resolution first
         var nameResolver = new NameResolver(symbolTable, NullLogger.Instance);
         nameResolver.ResolveDeclarations(module);
+        nameResolver.ResolveInheritance(); // Second pass: resolve inheritance
 
         // Type checking
         var typeResolver = new TypeResolver(symbolTable, semanticInfo, NullLogger.Instance);

@@ -59,7 +59,7 @@ public record TypeSymbol : Symbol
     public List<PropertySymbol> Properties { get; init; } = new();
 
     // Inheritance
-    public TypeSymbol? BaseType { get; init; }
+    public TypeSymbol? BaseType { get; set; }
     public List<TypeSymbol> Interfaces { get; init; } = new();
 }
 

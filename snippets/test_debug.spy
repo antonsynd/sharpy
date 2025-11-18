@@ -1,0 +1,7 @@
+class Animal:
+    ...
+
+class Dog(Animal):
+    ...
+
+animal: Animal = Dog()

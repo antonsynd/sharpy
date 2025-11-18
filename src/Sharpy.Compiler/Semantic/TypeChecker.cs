@@ -204,7 +204,7 @@ public class TypeChecker
             if (param.DefaultValue != null)
             {
                 var defaultType = CheckExpression(param.DefaultValue);
-                if (!defaultType.IsAssignableTo(paramType))
+                if (!IsAssignable(defaultType, paramType))
                 {
                     AddError($"Default value type '{defaultType.GetDisplayName()}' is not assignable to parameter type '{paramType.GetDisplayName()}'",
                         null, null);
@@ -356,7 +356,7 @@ public class TypeChecker
                     {
                         // Check type compatibility for existing variable
                         var targetElemType = CheckExpression(targetElem);
-                        if (!valueElemType.IsAssignableTo(targetElemType))
+                        if (!IsAssignable(valueElemType, targetElemType))
                         {
                             AddError($"Cannot assign type '{valueElemType.GetDisplayName()}' to '{targetElemType.GetDisplayName()}' in tuple unpacking",
                                 targetElem.LineStart, targetElem.ColumnStart);
@@ -367,7 +367,7 @@ public class TypeChecker
                 {
                     // For more complex targets (like attributes), just check type compatibility
                     var targetElemType = CheckExpression(targetElem);
-                    if (!valueElemType.IsAssignableTo(targetElemType))
+                    if (!IsAssignable(valueElemType, targetElemType))
                     {
                         AddError($"Cannot assign type '{valueElemType.GetDisplayName()}' to '{targetElemType.GetDisplayName()}' in tuple unpacking",
                             targetElem.LineStart, targetElem.ColumnStart);
@@ -412,7 +412,7 @@ public class TypeChecker
         var targetType = CheckExpression(assignment.Target);
         var valueType = CheckExpression(assignment.Value);
 
-        if (!valueType.IsAssignableTo(targetType))
+        if (!IsAssignable(valueType, targetType))
         {
             // Special case: Allow None for nullable types but provide better error message
             if (valueType is VoidType && targetType is not NullableType)
@@ -445,7 +445,7 @@ public class TypeChecker
                     _semanticInfo.SetTypeAnnotation(varDecl.Type, initType);
                 }
             }
-            else if (!initType.IsAssignableTo(declaredType))
+            else if (!IsAssignable(initType, declaredType))
             {
                 // Special case: Allow None for nullable types (VoidType.IsAssignableTo handles this)
                 // but provide better error message for non-nullable types
@@ -503,7 +503,7 @@ public class TypeChecker
         if (returnStmt.Value != null)
         {
             var returnType = CheckExpression(returnStmt.Value);
-            if (!returnType.IsAssignableTo(_currentFunctionReturnType))
+            if (!IsAssignable(returnType, _currentFunctionReturnType))
             {
                 AddError($"Cannot return type '{returnType.GetDisplayName()}' from function expecting '{_currentFunctionReturnType.GetDisplayName()}'",
                     returnStmt.LineStart, returnStmt.ColumnStart);
@@ -560,8 +560,21 @@ public class TypeChecker
                 whileStmt.LineStart, whileStmt.ColumnStart);
         }
 
+        // Check for type narrowing patterns (similar to if statement)
+        var narrowedTypesInBody = ExtractNarrowedTypes(whileStmt.Test, true);
+
+        // Apply narrowed types in the loop body
+        var savedNarrowedTypes = new Dictionary<string, SemanticType>(_narrowedTypes);
+        foreach (var kvp in narrowedTypesInBody)
+        {
+            _narrowedTypes[kvp.Key] = kvp.Value;
+        }
+
         foreach (var stmt in whileStmt.Body)
             CheckStatement(stmt);
+
+        // Restore original narrowed types
+        _narrowedTypes = savedNarrowedTypes;
     }
 
     private void CheckFor(ForStatement forStmt)
@@ -866,6 +879,13 @@ public class TypeChecker
 
     private SemanticType CheckIndexAccess(IndexAccess indexAccess)
     {
+        // Check if this subscript expression has a narrowed type
+        var narrowingKey = ExtractNarrowingKey(indexAccess);
+        if (narrowingKey != null && _narrowedTypes.TryGetValue(narrowingKey, out var narrowedType))
+        {
+            return narrowedType;
+        }
+
         var objectType = CheckExpression(indexAccess.Object);
         var indexType = CheckExpression(indexAccess.Index);
 
@@ -899,6 +919,14 @@ public class TypeChecker
         if (call.Function is Identifier id)
         {
             var symbol = _symbolTable.Lookup(id.Name);
+
+            // Special handling for constructor calls (calling a type)
+            if (symbol is TypeSymbol typeSymbol)
+            {
+                // Constructor call returns an instance of the type
+                return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
+            }
+
             funcSymbol = symbol as FunctionSymbol;
 
             // Special handling for builtin functions with overloads
@@ -921,7 +949,7 @@ public class TypeChecker
                     bool typesMatch = true;
                     for (int i = 0; i < argTypes.Count; i++)
                     {
-                        if (!argTypes[i].IsAssignableTo(overload.Parameters[i].Type))
+                        if (!IsAssignable(argTypes[i], overload.Parameters[i].Type))
                         {
                             typesMatch = false;
                             break;
@@ -982,7 +1010,7 @@ public class TypeChecker
                 // Validate argument types for the provided arguments
                 for (int i = 0; i < argTypes.Count; i++)
                 {
-                    if (!argTypes[i].IsAssignableTo(funcSymbol.Parameters[i].Type))
+                    if (!IsAssignable(argTypes[i], funcSymbol.Parameters[i].Type))
                     {
                         AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{funcSymbol.Parameters[i].Type.GetDisplayName()}'",
                             call.Arguments[i].LineStart, call.Arguments[i].ColumnStart);
@@ -1009,7 +1037,7 @@ public class TypeChecker
                 // Validate argument types
                 for (int i = 0; i < argTypes.Count; i++)
                 {
-                    if (!argTypes[i].IsAssignableTo(ft.ParameterTypes[i]))
+                    if (!IsAssignable(argTypes[i], ft.ParameterTypes[i]))
                     {
                         AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{ft.ParameterTypes[i].GetDisplayName()}'",
                             call.Arguments[i].LineStart, call.Arguments[i].ColumnStart);
@@ -1040,7 +1068,7 @@ public class TypeChecker
         // Try to find common type
         foreach (var elemType in elementTypes.Skip(1))
         {
-            if (!elemType.IsAssignableTo(commonType))
+            if (!IsAssignable(elemType, commonType))
             {
                 commonType = SemanticType.Unknown;
                 break;
@@ -1195,6 +1223,28 @@ public class TypeChecker
     {
         var narrowedTypes = new Dictionary<string, SemanticType>();
 
+        // Handle 'A and B' pattern - combine narrowings from both sides
+        if (condition is BinaryOp { Operator: BinaryOperator.And } andOp && isPositiveBranch)
+        {
+            // In the positive branch, both conditions must be true, so we combine narrowings
+            var leftNarrowed = ExtractNarrowedTypes(andOp.Left, true);
+            var rightNarrowed = ExtractNarrowedTypes(andOp.Right, true);
+
+            // Merge the dictionaries, with right side taking precedence if there's overlap
+            foreach (var kvp in leftNarrowed)
+            {
+                narrowedTypes[kvp.Key] = kvp.Value;
+            }
+            foreach (var kvp in rightNarrowed)
+            {
+                // If we have a narrowing for this variable from both sides,
+                // use the more specific one (from the right side)
+                narrowedTypes[kvp.Key] = kvp.Value;
+            }
+
+            return narrowedTypes;
+        }
+
         // Handle 'x is not None' pattern
         if (condition is BinaryOp { Operator: BinaryOperator.IsNot } binOp)
         {
@@ -1230,18 +1280,21 @@ public class TypeChecker
         // Handle 'isinstance(x, Type)' pattern
         else if (condition is FunctionCall { Function: Identifier { Name: "isinstance" } } call)
         {
-            if (call.Arguments.Count >= 2 && call.Arguments[0] is Identifier targetId)
+            if (call.Arguments.Count >= 2)
             {
                 if (isPositiveBranch)
                 {
-                    // For isinstance, the second argument is an identifier referring to a type
-                    // We need to look it up in the symbol table
-                    if (call.Arguments[1] is Identifier typeId)
+                    // Extract the narrowing key from the first argument
+                    string? narrowingKey = ExtractNarrowingKey(call.Arguments[0]);
+
+                    if (narrowingKey != null && call.Arguments[1] is Identifier typeId)
                     {
+                        // For isinstance, the second argument is an identifier referring to a type
+                        // We need to look it up in the symbol table
                         var typeSymbol = _symbolTable.Lookup(typeId.Name) as TypeSymbol;
                         if (typeSymbol != null)
                         {
-                            narrowedTypes[targetId.Name] = new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
+                            narrowedTypes[narrowingKey] = new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
                         }
                     }
                 }
@@ -1249,6 +1302,54 @@ public class TypeChecker
         }
 
         return narrowedTypes;
+    }
+
+    /// <summary>
+    /// Extract a key to use for type narrowing from an expression.
+    /// For simple identifiers, returns the name. For subscript expressions like arr[i], returns "arr[i]".
+    /// </summary>
+    private string? ExtractNarrowingKey(Expression expr)
+    {
+        return expr switch
+        {
+            Identifier id => id.Name,
+            IndexAccess indexAccess => $"{ExtractNarrowingKey(indexAccess.Object)}[{ExtractNarrowingKey(indexAccess.Index)}]",
+            _ => null
+        };
+    }
+
+    /// <summary>
+    /// Check if a source type can be assigned to a target type.
+    /// This extends the basic IsAssignableTo to handle nullable types and generic variance.
+    /// </summary>
+    private bool IsAssignable(SemanticType source, SemanticType target)
+    {
+        // First check the standard assignability
+        if (source.IsAssignableTo(target))
+            return true;
+
+        // Non-nullable type can be assigned to nullable version of the same type
+        if (target is NullableType nullable)
+        {
+            return source.IsAssignableTo(nullable.UnderlyingType);
+        }
+
+        // Handle covariance for generic collection types (list, set)
+        if (source is GenericType sourceGeneric && target is GenericType targetGeneric)
+        {
+            if (sourceGeneric.Name == targetGeneric.Name &&
+                sourceGeneric.TypeArguments.Count == targetGeneric.TypeArguments.Count)
+            {
+                // For list and set, allow covariant assignment (e.g., list[Dog] to list[Animal])
+                if (sourceGeneric.Name == "list" || sourceGeneric.Name == "set")
+                {
+                    // Check if element type is assignable
+                    return IsAssignable(sourceGeneric.TypeArguments[0], targetGeneric.TypeArguments[0]);
+                }
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

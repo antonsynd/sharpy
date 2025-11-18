@@ -88,6 +88,7 @@ public class Compiler
             // Pass 1: Name resolution (declarations)
             var nameResolver = new NameResolver(symbolTable, _logger);
             nameResolver.ResolveDeclarations(module);
+            nameResolver.ResolveInheritance(); // Second pass: resolve inheritance after all types are declared
 
             if (nameResolver.Errors.Any())
             {

@@ -137,17 +137,21 @@ public record UserDefinedType : SemanticType
 
         if (other is UserDefinedType otherUdt && Symbol != null)
         {
+            // Same type
+            if (Symbol == otherUdt.Symbol || Name == otherUdt.Name)
+                return true;
+
             // Check inheritance chain
             var current = Symbol.BaseType;
             while (current != null)
             {
-                if (current.Name == otherUdt.Name)
+                if (current == otherUdt.Symbol || current.Name == otherUdt.Name)
                     return true;
                 current = current.BaseType;
             }
 
             // Check interfaces
-            return Symbol.Interfaces.Any(i => i.Name == otherUdt.Name);
+            return Symbol.Interfaces.Any(i => i == otherUdt.Symbol || i.Name == otherUdt.Name);
         }
 
         return false;

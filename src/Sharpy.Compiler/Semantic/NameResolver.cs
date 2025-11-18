@@ -11,6 +11,9 @@ public class NameResolver
     private readonly SymbolTable _symbolTable;
     private readonly ICompilerLogger _logger;
     private readonly List<SemanticError> _errors = new();
+    private readonly List<ClassDef> _classDefs = new();
+    private readonly List<StructDef> _structDefs = new();
+    private readonly List<InterfaceDef> _interfaceDefs = new();
 
     public NameResolver(SymbolTable symbolTable, ICompilerLogger? logger = null)
     {
@@ -30,6 +33,29 @@ public class NameResolver
         foreach (var statement in module.Body)
         {
             ResolveDeclaration(statement);
+        }
+    }
+
+    /// <summary>
+    /// Resolve inheritance relationships (second pass: after all types are declared)
+    /// </summary>
+    public void ResolveInheritance()
+    {
+        _logger.LogInfo("Name resolution pass 2: Inheritance relationships");
+
+        foreach (var classDef in _classDefs)
+        {
+            ResolveClassInheritance(classDef);
+        }
+
+        foreach (var structDef in _structDefs)
+        {
+            ResolveStructInheritance(structDef);
+        }
+
+        foreach (var interfaceDef in _interfaceDefs)
+        {
+            ResolveInterfaceInheritance(interfaceDef);
         }
     }
 
@@ -100,6 +126,9 @@ public class NameResolver
         // Define in current scope
         _symbolTable.Define(typeSymbol);
 
+        // Store for second pass (inheritance resolution)
+        _classDefs.Add(classDef);
+
         // Enter class scope to resolve members
         _symbolTable.EnterScope($"class:{classDef.Name}");
 
@@ -142,6 +171,9 @@ public class NameResolver
 
         _symbolTable.Define(typeSymbol);
 
+        // Store for second pass (inheritance resolution)
+        _structDefs.Add(structDef);
+
         _symbolTable.EnterScope($"struct:{structDef.Name}");
 
         foreach (var statement in structDef.Body)
@@ -182,6 +214,9 @@ public class NameResolver
         };
 
         _symbolTable.Define(typeSymbol);
+
+        // Store for second pass (inheritance resolution)
+        _interfaceDefs.Add(interfaceDef);
 
         _symbolTable.EnterScope($"interface:{interfaceDef.Name}");
 
@@ -373,5 +408,119 @@ public class NameResolver
         var error = new SemanticError(message, line, column);
         _errors.Add(error);
         _logger.LogError(error.Message, line ?? 0, column ?? 0);
+    }
+
+    private void ResolveClassInheritance(ClassDef classDef)
+    {
+        if (classDef.BaseClasses.Count == 0)
+            return;
+
+        var typeSymbol = _symbolTable.Lookup(classDef.Name) as TypeSymbol;
+        if (typeSymbol == null)
+            return;
+
+        // Resolve first base class as the base type (C# single inheritance model)
+        var baseClassAnnot = classDef.BaseClasses[0];
+        var baseSymbol = _symbolTable.Lookup(baseClassAnnot.Name) as TypeSymbol;
+        if (baseSymbol == null)
+        {
+            AddError($"Base class '{baseClassAnnot.Name}' not found",
+                classDef.LineStart, classDef.ColumnStart);
+            return;
+        }
+
+        if (baseSymbol.TypeKind != TypeKind.Class && baseSymbol.TypeKind != TypeKind.Interface)
+        {
+            AddError($"'{baseClassAnnot.Name}' is not a class or interface",
+                classDef.LineStart, classDef.ColumnStart);
+            return;
+        }
+
+        // Update the type symbol with the base type
+        typeSymbol.BaseType = baseSymbol;
+
+        // Handle remaining base classes as interfaces
+        for (int i = 1; i < classDef.BaseClasses.Count; i++)
+        {
+            var interfaceAnnot = classDef.BaseClasses[i];
+            var interfaceSymbol = _symbolTable.Lookup(interfaceAnnot.Name) as TypeSymbol;
+            if (interfaceSymbol == null)
+            {
+                AddError($"Interface '{interfaceAnnot.Name}' not found",
+                    classDef.LineStart, classDef.ColumnStart);
+                continue;
+            }
+
+            if (interfaceSymbol.TypeKind != TypeKind.Interface)
+            {
+                AddError($"'{interfaceAnnot.Name}' is not an interface",
+                    classDef.LineStart, classDef.ColumnStart);
+                continue;
+            }
+
+            typeSymbol.Interfaces.Add(interfaceSymbol);
+        }
+    }
+
+    private void ResolveStructInheritance(StructDef structDef)
+    {
+        if (structDef.BaseClasses.Count == 0)
+            return;
+
+        var typeSymbol = _symbolTable.Lookup(structDef.Name) as TypeSymbol;
+        if (typeSymbol == null)
+            return;
+
+        // Structs can only implement interfaces
+        foreach (var baseAnnot in structDef.BaseClasses)
+        {
+            var interfaceSymbol = _symbolTable.Lookup(baseAnnot.Name) as TypeSymbol;
+            if (interfaceSymbol == null)
+            {
+                AddError($"Interface '{baseAnnot.Name}' not found",
+                    structDef.LineStart, structDef.ColumnStart);
+                continue;
+            }
+
+            if (interfaceSymbol.TypeKind != TypeKind.Interface)
+            {
+                AddError($"Structs can only implement interfaces, '{baseAnnot.Name}' is not an interface",
+                    structDef.LineStart, structDef.ColumnStart);
+                continue;
+            }
+
+            typeSymbol.Interfaces.Add(interfaceSymbol);
+        }
+    }
+
+    private void ResolveInterfaceInheritance(InterfaceDef interfaceDef)
+    {
+        if (interfaceDef.BaseInterfaces.Count == 0)
+            return;
+
+        var typeSymbol = _symbolTable.Lookup(interfaceDef.Name) as TypeSymbol;
+        if (typeSymbol == null)
+            return;
+
+        // Interfaces can extend other interfaces
+        foreach (var baseAnnot in interfaceDef.BaseInterfaces)
+        {
+            var baseInterfaceSymbol = _symbolTable.Lookup(baseAnnot.Name) as TypeSymbol;
+            if (baseInterfaceSymbol == null)
+            {
+                AddError($"Interface '{baseAnnot.Name}' not found",
+                    interfaceDef.LineStart, interfaceDef.ColumnStart);
+                continue;
+            }
+
+            if (baseInterfaceSymbol.TypeKind != TypeKind.Interface)
+            {
+                AddError($"'{baseAnnot.Name}' is not an interface",
+                    interfaceDef.LineStart, interfaceDef.ColumnStart);
+                continue;
+            }
+
+            typeSymbol.Interfaces.Add(baseInterfaceSymbol);
+        }
     }
 }
