@@ -5,7 +5,7 @@ namespace Sharpy.Compiler.Discovery.Caching;
 
 /// <summary>
 /// Manages persistent caching of overload indexes.
-/// Cache location: ~/.sharpy/cache/overload-index/
+/// Cache location: ~/.sharpy/cache/overload-index/ (or custom directory if specified)
 /// </summary>
 public class OverloadIndexCache
 {
@@ -19,10 +19,31 @@ public class OverloadIndexCache
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
     };
 
-    public OverloadIndexCache()
+    /// <summary>
+    /// Create a cache using the default cache directory (~/.sharpy/cache/overload-index/).
+    /// </summary>
+    public OverloadIndexCache() : this(null)
     {
-        var userHome = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        _cacheDirectory = Path.Combine(userHome, ".sharpy", "cache", "overload-index");
+    }
+
+    /// <summary>
+    /// Create a cache using a custom cache directory.
+    /// </summary>
+    /// <param name="cacheDirectory">
+    /// Custom cache directory path. If null, uses the default location.
+    /// Useful for tests to avoid conflicts between parallel test runs.
+    /// </param>
+    public OverloadIndexCache(string? cacheDirectory)
+    {
+        if (cacheDirectory != null)
+        {
+            _cacheDirectory = cacheDirectory;
+        }
+        else
+        {
+            var userHome = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            _cacheDirectory = Path.Combine(userHome, ".sharpy", "cache", "overload-index");
+        }
 
         if (!Directory.Exists(_cacheDirectory))
         {

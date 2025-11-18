@@ -3,9 +3,33 @@ using Xunit;
 
 namespace Sharpy.Compiler.Tests.Discovery.Caching;
 
-public class OverloadIndexCacheTests
+public class OverloadIndexCacheTests : IDisposable
 {
-    private readonly OverloadIndexCache _cache = new();
+    private readonly string _testCacheDir;
+    private readonly OverloadIndexCache _cache;
+
+    public OverloadIndexCacheTests()
+    {
+        // Use a unique temporary directory for each test instance to avoid conflicts
+        _testCacheDir = Path.Combine(Path.GetTempPath(), "sharpy-test-cache", Guid.NewGuid().ToString());
+        _cache = new OverloadIndexCache(_testCacheDir);
+    }
+
+    public void Dispose()
+    {
+        // Clean up test cache directory
+        if (Directory.Exists(_testCacheDir))
+        {
+            try
+            {
+                Directory.Delete(_testCacheDir, recursive: true);
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
+    }
 
     [Fact]
     public void GetInfo_ReturnsValidInfo()

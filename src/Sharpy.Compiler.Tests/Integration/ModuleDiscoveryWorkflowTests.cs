@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Semantic;
 using Xunit;
 
@@ -6,7 +7,7 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// <summary>
 /// End-to-end tests demonstrating the full module discovery workflow
 /// </summary>
-public class ModuleDiscoveryWorkflowTests
+public class ModuleDiscoveryWorkflowTests : IDisposable
 {
     // Performance test thresholds for caching validation
     private const int MaxCachedLoadMultiplier = 5;
@@ -14,11 +15,37 @@ public class ModuleDiscoveryWorkflowTests
     private const int MinFastCachedLoadsRequired = 3;
     private const int TotalCachedLoadRuns = 5;
 
+    private readonly string _testCacheDir;
+    private readonly OverloadIndexCache _cache;
+
+    public ModuleDiscoveryWorkflowTests()
+    {
+        // Use a unique temporary directory for each test instance to avoid conflicts
+        _testCacheDir = Path.Combine(Path.GetTempPath(), "sharpy-test-cache", Guid.NewGuid().ToString());
+        _cache = new OverloadIndexCache(_testCacheDir);
+    }
+
+    public void Dispose()
+    {
+        // Clean up test cache directory
+        if (Directory.Exists(_testCacheDir))
+        {
+            try
+            {
+                Directory.Delete(_testCacheDir, recursive: true);
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
+    }
+
     [Fact]
     public void Workflow_LoadBuiltinsAndSampleModule_Success()
     {
         // Arrange
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
 
         // Act - Load builtins
@@ -71,7 +98,7 @@ public class ModuleDiscoveryWorkflowTests
         }
 
         // Arrange
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
         var modulesDir = Path.GetDirectoryName(Path.GetFullPath(sampleModulePath))!;
 
         // Act - Add module search path
@@ -89,7 +116,7 @@ public class ModuleDiscoveryWorkflowTests
     public void Workflow_FunctionOverloads_DiscoveredCorrectly()
     {
         // Arrange
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
 
         // Act
@@ -120,7 +147,7 @@ public class ModuleDiscoveryWorkflowTests
         }
 
         // Arrange
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
 
         // Act
         registry.LoadReference(sampleModulePath);
@@ -150,7 +177,7 @@ public class ModuleDiscoveryWorkflowTests
         }
 
         // Arrange
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
 
         // Act - Load both modules
@@ -181,7 +208,7 @@ public class ModuleDiscoveryWorkflowTests
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
 
         // Warmup to ensure JIT compilation is complete
-        var warmup = new ModuleRegistry();
+        var warmup = new ModuleRegistry(cache: _cache);
         warmup.LoadReference(sharpyCoreAssembly);
 
         // Measure first load (cache build) - take best of 3 runs
@@ -189,10 +216,10 @@ public class ModuleDiscoveryWorkflowTests
         for (int i = 0; i < 3; i++)
         {
             // Clear cache to force rebuild
-            var cache = new Sharpy.Compiler.Discovery.Caching.OverloadIndexCache();
+            var cache = new Sharpy.Compiler.Discovery.Caching.OverloadIndexCache(_testCacheDir);
             cache.ClearAll();
 
-            var registry1 = new ModuleRegistry();
+            var registry1 = new ModuleRegistry(cache: cache);
             var sw1 = System.Diagnostics.Stopwatch.StartNew();
             registry1.LoadReference(sharpyCoreAssembly);
             sw1.Stop();
@@ -203,7 +230,7 @@ public class ModuleDiscoveryWorkflowTests
         var secondLoadTimes = new List<long>();
         for (int i = 0; i < 5; i++)
         {
-            var registry2 = new ModuleRegistry();
+            var registry2 = new ModuleRegistry(cache: _cache);
             var sw2 = System.Diagnostics.Stopwatch.StartNew();
             registry2.LoadReference(sharpyCoreAssembly);
             sw2.Stop();

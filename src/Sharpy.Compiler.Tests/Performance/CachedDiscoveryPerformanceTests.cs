@@ -11,9 +11,10 @@ namespace Sharpy.Compiler.Tests.Performance;
 /// <summary>
 /// Performance benchmarks for the cached overload discovery system
 /// </summary>
-public class CachedDiscoveryPerformanceTests
+public class CachedDiscoveryPerformanceTests : IDisposable
 {
     private readonly ITestOutputHelper _output;
+    private readonly string _testCacheDir;
 
     // Performance test thresholds
     private const int MinMeasurableMilliseconds = 1;
@@ -25,16 +26,34 @@ public class CachedDiscoveryPerformanceTests
     public CachedDiscoveryPerformanceTests(ITestOutputHelper output)
     {
         _output = output;
+        // Use a unique temporary directory for this test instance to avoid conflicts
+        _testCacheDir = Path.Combine(Path.GetTempPath(), "sharpy-test-cache", Guid.NewGuid().ToString());
+    }
+
+    public void Dispose()
+    {
+        // Clean up test cache directory
+        if (Directory.Exists(_testCacheDir))
+        {
+            try
+            {
+                Directory.Delete(_testCacheDir, recursive: true);
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
     }
 
     [Fact]
     public void CachedDiscovery_FirstLoad_BuildsCacheWithinTime()
     {
-        // Clear all caches to ensure fresh build (note: this clears all cached assemblies)
-        var cache = new OverloadIndexCache();
+        // Use test-specific cache directory to avoid conflicts
+        var cache = new OverloadIndexCache(_testCacheDir);
         cache.ClearAll();
 
-        var discovery = new CachedModuleDiscovery();
+        var discovery = new CachedModuleDiscovery(cache);
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly;
         var stopwatch = Stopwatch.StartNew();
 
@@ -54,21 +73,23 @@ public class CachedDiscoveryPerformanceTests
     {
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly;
 
+        // Use test-specific cache directory
+        var cache = new OverloadIndexCache(_testCacheDir);
+
         // Warmup to ensure JIT compilation is complete
-        var warmup = new CachedModuleDiscovery();
+        var warmup = new CachedModuleDiscovery(cache);
         warmup.LoadAssembly(sharpyCoreAssembly);
 
         // First load to build cache (clear cache first)
-        var cache = new OverloadIndexCache();
         cache.ClearAll();
 
-        var discovery1 = new CachedModuleDiscovery();
+        var discovery1 = new CachedModuleDiscovery(cache);
         var firstLoadWatch = Stopwatch.StartNew();
         discovery1.LoadAssembly(sharpyCoreAssembly);
         firstLoadWatch.Stop();
 
         // Second load from cache
-        var discovery2 = new CachedModuleDiscovery();
+        var discovery2 = new CachedModuleDiscovery(cache);
         var secondLoadWatch = Stopwatch.StartNew();
         discovery2.LoadAssembly(sharpyCoreAssembly);
         secondLoadWatch.Stop();
@@ -98,12 +119,15 @@ public class CachedDiscoveryPerformanceTests
     {
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly;
 
+        // Use test-specific cache directory
+        var cache = new OverloadIndexCache(_testCacheDir);
+
         // Ensure cache exists
-        var warmup = new CachedModuleDiscovery();
+        var warmup = new CachedModuleDiscovery(cache);
         warmup.LoadAssembly(sharpyCoreAssembly);
 
         // Measure cached load
-        var discovery = new CachedModuleDiscovery();
+        var discovery = new CachedModuleDiscovery(cache);
         var stopwatch = Stopwatch.StartNew();
         discovery.LoadAssembly(sharpyCoreAssembly);
         stopwatch.Stop();
@@ -211,11 +235,12 @@ z = x + y
     [Fact]
     public void CacheFile_SizeReasonable()
     {
-        var cache = new OverloadIndexCache();
+        // Use test-specific cache directory
+        var cache = new OverloadIndexCache(_testCacheDir);
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly;
 
         // Ensure cache exists
-        var discovery = new CachedModuleDiscovery();
+        var discovery = new CachedModuleDiscovery(cache);
         discovery.LoadAssembly(sharpyCoreAssembly);
 
         // Get cache info

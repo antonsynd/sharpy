@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using Sharpy.Compiler.Discovery;
+using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Logging;
 
 namespace Sharpy.Compiler.Semantic;
@@ -18,9 +19,9 @@ public class ModuleRegistry
     private readonly ConcurrentBag<string> _modulePaths = new();
     private readonly ConcurrentBag<SemanticError> _errors = new();
 
-    public ModuleRegistry(ICompilerLogger? logger = null)
+    public ModuleRegistry(ICompilerLogger? logger = null, OverloadIndexCache? cache = null)
     {
-        _discovery = new CachedModuleDiscovery();
+        _discovery = new CachedModuleDiscovery(cache);
         _logger = logger ?? NullLogger.Instance;
     }
 

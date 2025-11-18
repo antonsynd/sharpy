@@ -17,9 +17,20 @@ public class CachedModuleDiscovery
     private readonly TypeMapper _typeMapper;
     private readonly ConcurrentDictionary<string, OverloadIndex> _loadedIndices = new();
 
-    public CachedModuleDiscovery()
+    /// <summary>
+    /// Create a discovery instance using the default cache directory.
+    /// </summary>
+    public CachedModuleDiscovery() : this(null)
     {
-        _cache = new OverloadIndexCache();
+    }
+
+    /// <summary>
+    /// Create a discovery instance with a custom cache.
+    /// </summary>
+    /// <param name="cache">Custom cache instance. If null, creates a default cache.</param>
+    public CachedModuleDiscovery(OverloadIndexCache? cache)
+    {
+        _cache = cache ?? new OverloadIndexCache();
         _builder = new OverloadIndexBuilder();
         _typeMapper = new TypeMapper();
     }

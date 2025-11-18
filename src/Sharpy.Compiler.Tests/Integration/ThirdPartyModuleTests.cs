@@ -1,16 +1,42 @@
+using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Semantic;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.Integration;
 
-public class ThirdPartyModuleTests
+public class ThirdPartyModuleTests : IDisposable
 {
     private const string SampleModulePath = "../../../../build/modules/SampleModule.dll";
+    private readonly string _testCacheDir;
+    private readonly OverloadIndexCache _cache;
+
+    public ThirdPartyModuleTests()
+    {
+        // Use a unique temporary directory for each test instance to avoid conflicts
+        _testCacheDir = Path.Combine(Path.GetTempPath(), "sharpy-test-cache", Guid.NewGuid().ToString());
+        _cache = new OverloadIndexCache(_testCacheDir);
+    }
+
+    public void Dispose()
+    {
+        // Clean up test cache directory
+        if (Directory.Exists(_testCacheDir))
+        {
+            try
+            {
+                Directory.Delete(_testCacheDir, recursive: true);
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
+    }
 
     [Fact]
     public void LoadSampleModule_LoadsSuccessfully()
     {
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
 
         // Skip if module doesn't exist (e.g., in CI before build)
         if (!File.Exists(SampleModulePath))
@@ -25,7 +51,7 @@ public class ThirdPartyModuleTests
     [Fact]
     public void SampleModule_ExportsFunctions()
     {
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
 
         // Skip if module doesn't exist
         if (!File.Exists(SampleModulePath))
@@ -45,7 +71,7 @@ public class ThirdPartyModuleTests
     [Fact]
     public void SampleModule_SquareFunction_HasCorrectSignature()
     {
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
 
         // Skip if module doesn't exist
         if (!File.Exists(SampleModulePath))
@@ -65,7 +91,7 @@ public class ThirdPartyModuleTests
     [Fact]
     public void SampleModule_AverageFunction_HasVariadicParameter()
     {
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
 
         // Skip if module doesn't exist
         if (!File.Exists(SampleModulePath))
@@ -85,7 +111,7 @@ public class ThirdPartyModuleTests
     [Fact]
     public void ModuleRegistry_LoadsMultipleModules()
     {
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
 
         registry.LoadReference(sharpyCoreAssembly);

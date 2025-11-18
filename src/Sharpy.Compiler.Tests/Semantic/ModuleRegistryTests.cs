@@ -1,14 +1,41 @@
+using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Semantic;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
-public class ModuleRegistryTests
+public class ModuleRegistryTests : IDisposable
 {
+    private readonly string _testCacheDir;
+    private readonly OverloadIndexCache _cache;
+
+    public ModuleRegistryTests()
+    {
+        // Use a unique temporary directory for each test instance to avoid conflicts
+        _testCacheDir = Path.Combine(Path.GetTempPath(), "sharpy-test-cache", Guid.NewGuid().ToString());
+        _cache = new OverloadIndexCache(_testCacheDir);
+    }
+
+    public void Dispose()
+    {
+        // Clean up test cache directory
+        if (Directory.Exists(_testCacheDir))
+        {
+            try
+            {
+                Directory.Delete(_testCacheDir, recursive: true);
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
+    }
+
     [Fact]
     public void Constructor_InitializesSuccessfully()
     {
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
 
         Assert.NotNull(registry);
         Assert.Empty(registry.Errors);
@@ -17,7 +44,7 @@ public class ModuleRegistryTests
     [Fact]
     public void LoadReference_WithSharpyCore_LoadsSuccessfully()
     {
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
 
         var result = registry.LoadReference(sharpyCoreAssembly);
@@ -30,7 +57,7 @@ public class ModuleRegistryTests
     [Fact]
     public void LoadReference_WithNonExistentAssembly_ReturnsFalse()
     {
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
 
         var result = registry.LoadReference("NonExistent.dll");
 
@@ -41,7 +68,7 @@ public class ModuleRegistryTests
     [Fact]
     public void LoadReference_SameAssemblyTwice_DoesNotDuplicate()
     {
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
 
         var result1 = registry.LoadReference(sharpyCoreAssembly);
@@ -55,7 +82,7 @@ public class ModuleRegistryTests
     [Fact]
     public void GetModuleFunctions_WithBuiltins_ReturnsFunctions()
     {
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
         registry.LoadReference(sharpyCoreAssembly);
 
@@ -70,7 +97,7 @@ public class ModuleRegistryTests
     [Fact]
     public void GetModuleFunctions_WithNonExistentModule_ReturnsEmpty()
     {
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
 
         var functions = registry.GetModuleFunctions("nonexistent");
 
@@ -80,7 +107,7 @@ public class ModuleRegistryTests
     [Fact]
     public void IsModuleLoaded_WithLoadedModule_ReturnsTrue()
     {
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
         registry.LoadReference(sharpyCoreAssembly);
 
@@ -92,7 +119,7 @@ public class ModuleRegistryTests
     [Fact]
     public void IsModuleLoaded_WithNonLoadedModule_ReturnsFalse()
     {
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
 
         var result = registry.IsModuleLoaded("nonexistent");
 
@@ -102,7 +129,7 @@ public class ModuleRegistryTests
     [Fact]
     public void AddModulePath_WithValidPath_AddsSuccessfully()
     {
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
         var tempPath = Path.GetTempPath();
 
         registry.AddModulePath(tempPath);
@@ -114,7 +141,7 @@ public class ModuleRegistryTests
     [Fact]
     public void AddModulePath_WithNonExistentPath_LogsWarning()
     {
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
         var nonExistentPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
 
         // Should not throw, just log warning
@@ -126,7 +153,7 @@ public class ModuleRegistryTests
     [Fact]
     public void ClearCache_DoesNotThrow()
     {
-        var registry = new ModuleRegistry();
+        var registry = new ModuleRegistry(cache: _cache);
 
         // Should not throw
         registry.ClearCache();
