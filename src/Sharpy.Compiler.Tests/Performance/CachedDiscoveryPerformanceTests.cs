@@ -112,10 +112,7 @@ public class CachedDiscoveryPerformanceTests
     public void ModuleRegistry_LoadMultipleReferences_CompletesWithinTime()
     {
         var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly.Location;
-        var sampleModulePath = Path.Combine(
-            Directory.GetCurrentDirectory(),
-            "..", "..", "..", "..", "..",
-            "samples", "SampleModule", "bin", "Debug", "net9.0", "SampleModule.dll");
+        var sampleModulePath = "../../../../build/modules/SampleModule.dll";
 
         var references = File.Exists(sampleModulePath)
             ? new[] { sharpyCoreAssembly, sampleModulePath }
