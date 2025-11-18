@@ -80,10 +80,8 @@ public sealed partial class Dict<K, V> : Object, IMutableMapping<K, V> where K :
 
     public IEnumerator<K> GetEnumerator()
     {
-        foreach (var key in _dict.Keys)
-        {
-            yield return key;
-        }
+        // Delegate to __Iter__() to ensure consistent iteration behavior
+        return __Iter__();
     }
 
     public IItemsView<K, V> Items()

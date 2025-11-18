@@ -7,10 +7,8 @@ public sealed partial class Set<T>
     /// <inheritdoc/>
     public IEnumerator<T> GetEnumerator()
     {
-        foreach (var elem in _set)
-        {
-            yield return elem;
-        }
+        // Delegate to __Iter__() to ensure consistent iteration behavior
+        return __Iter__();
     }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

@@ -6,7 +6,8 @@ public sealed partial class Set<T>
     : Object, IMutableSet<Set<T>, T>,
       ILessThanOrEquatable<Set<T>>, IGreaterThanOrEquatable<Set<T>>
 {
-    private readonly HashSet<T> _set;
+    // Internal for SetIterator access to avoid infinite recursion when GetEnumerator delegates to __Iter__
+    internal readonly HashSet<T> _set;
 
     public Set()
     {
