@@ -12,10 +12,45 @@ namespace Sharpy.Compiler;
 public class Compiler
 {
     private readonly ICompilerLogger _logger;
+    private readonly ModuleRegistry? _moduleRegistry;
 
     public Compiler(ICompilerLogger? logger = null)
     {
         _logger = logger ?? NullLogger.Instance;
+        _moduleRegistry = null;
+    }
+
+    public Compiler(CompilerOptions options, ICompilerLogger? logger = null)
+    {
+        _logger = logger ?? NullLogger.Instance;
+        _moduleRegistry = new ModuleRegistry(_logger);
+
+        // Add module search paths
+        if (options.ModulePaths != null)
+        {
+            foreach (var path in options.ModulePaths)
+            {
+                _moduleRegistry.AddModulePath(path);
+                _logger.LogDebug($"Added module search path: {path}");
+            }
+        }
+
+        // Load referenced assemblies
+        if (options.References != null)
+        {
+            foreach (var reference in options.References)
+            {
+                var success = _moduleRegistry.LoadReference(reference);
+                if (success)
+                {
+                    _logger.LogInfo($"Loaded module reference: {reference}");
+                }
+                else
+                {
+                    _logger.LogWarning($"Failed to load module reference: {reference}", 0, 0);
+                }
+            }
+        }
     }
 
     public CompilationResult Compile(string sourceCode, string filePath)
@@ -39,6 +74,16 @@ public class Compiler
             var builtinRegistry = new BuiltinRegistry();
             var symbolTable = new SymbolTable(builtinRegistry);
             var semanticInfo = new SemanticInfo();
+
+            // Check for module registry errors
+            if (_moduleRegistry != null && _moduleRegistry.Errors.Any())
+            {
+                return new CompilationResult
+                {
+                    Success = false,
+                    Errors = _moduleRegistry.Errors.Select(e => e.Message).ToList()
+                };
+            }
 
             // Pass 1: Name resolution (declarations)
             var nameResolver = new NameResolver(symbolTable, _logger);
@@ -78,7 +123,8 @@ public class Compiler
                 Success = true,
                 Module = module,
                 SymbolTable = symbolTable,
-                SemanticInfo = semanticInfo
+                SemanticInfo = semanticInfo,
+                ModuleRegistry = _moduleRegistry
             };
         }
         catch (Exception ex)
@@ -103,4 +149,21 @@ public class CompilationResult
     public Module? Module { get; init; }
     public SymbolTable? SymbolTable { get; init; }
     public SemanticInfo? SemanticInfo { get; init; }
+    public ModuleRegistry? ModuleRegistry { get; init; }
+}
+
+/// <summary>
+/// Options for configuring the compiler
+/// </summary>
+public class CompilerOptions
+{
+    /// <summary>
+    /// Paths to search for module assemblies
+    /// </summary>
+    public string[]? ModulePaths { get; set; }
+
+    /// <summary>
+    /// Paths to .NET assemblies to reference
+    /// </summary>
+    public string[]? References { get; set; }
 }
