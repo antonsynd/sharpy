@@ -193,9 +193,55 @@ public readonly partial struct Str
         return count;
     }
 
-    public string Encode(string encoding = "utf-8", string errors = "strict")
+    /// <summary>
+    /// Encode the string to bytes using the specified encoding.
+    /// </summary>
+    /// <param name="encoding">The encoding to use (default: "utf-8")</param>
+    /// <param name="errors">Error handling scheme (default: "strict")</param>
+    /// <returns>Bytes representation of the string</returns>
+    public Bytes Encode(string encoding = "utf-8", string errors = "strict")
     {
-        return _s;
+        Encoding enc = encoding.ToLowerInvariant() switch
+        {
+            "utf-8" or "utf8" => Encoding.UTF8,
+            "utf-16" or "utf16" => Encoding.Unicode,
+            "utf-32" or "utf32" => Encoding.UTF32,
+            "ascii" => Encoding.ASCII,
+            "latin-1" or "latin1" or "iso-8859-1" => Encoding.Latin1,
+            _ => throw new ValueError($"Unknown encoding: {encoding}")
+        };
+
+        try
+        {
+            byte[] bytes = enc.GetBytes(_s);
+            return new Bytes(bytes);
+        }
+        catch (EncoderFallbackException ex)
+        {
+            if (errors == "strict")
+            {
+                throw new UnicodeEncodeError($"Cannot encode character: {ex.Message}");
+            }
+            else if (errors == "ignore")
+            {
+                // Encode with replacement fallback that skips unencodable characters
+                var encoderFallback = new EncoderReplacementFallback(string.Empty);
+                var encodingWithFallback = (Encoding)enc.Clone();
+                encodingWithFallback.EncoderFallback = encoderFallback;
+                byte[] bytes = encodingWithFallback.GetBytes(_s);
+                return new Bytes(bytes);
+            }
+            else if (errors == "replace")
+            {
+                // Encode with '?' replacement for unencodable characters (default behavior)
+                byte[] bytes = enc.GetBytes(_s);
+                return new Bytes(bytes);
+            }
+            else
+            {
+                throw new ValueError($"Unknown error handling scheme: {errors}");
+            }
+        }
     }
 
     /// <summary>

@@ -22,6 +22,9 @@ public class TypeChecker
     // Track current class being checked (for self parameter typing)
     private TypeSymbol? _currentClass = null;
 
+    // Track type narrowing in conditional contexts
+    private Dictionary<string, SemanticType> _narrowedTypes = new();
+
     // Configuration
     public bool ContinueAfterError { get; set; } = true;
     public int MaxErrors { get; set; } = 100;
@@ -337,8 +340,17 @@ public class TypeChecker
 
         if (!valueType.IsAssignableTo(targetType))
         {
-            AddError($"Cannot assign type '{valueType.GetDisplayName()}' to '{targetType.GetDisplayName()}'",
-                assignment.LineStart, assignment.ColumnStart);
+            // Special case: Allow None for nullable types but provide better error message
+            if (valueType is VoidType && targetType is not NullableType)
+            {
+                AddError($"Cannot assign 'None' to non-nullable type '{targetType.GetDisplayName()}'",
+                    assignment.LineStart, assignment.ColumnStart);
+            }
+            else
+            {
+                AddError($"Cannot assign type '{valueType.GetDisplayName()}' to '{targetType.GetDisplayName()}'",
+                    assignment.LineStart, assignment.ColumnStart);
+            }
         }
     }
 
@@ -361,8 +373,18 @@ public class TypeChecker
             }
             else if (!initType.IsAssignableTo(declaredType))
             {
-                AddError($"Cannot assign type '{initType.GetDisplayName()}' to variable of type '{declaredType.GetDisplayName()}'",
-                    varDecl.LineStart, varDecl.ColumnStart);
+                // Special case: Allow None for nullable types (VoidType.IsAssignableTo handles this)
+                // but provide better error message for non-nullable types
+                if (initType is VoidType && declaredType is not NullableType)
+                {
+                    AddError($"Cannot assign 'None' to non-nullable type '{declaredType.GetDisplayName()}'",
+                        varDecl.LineStart, varDecl.ColumnStart);
+                }
+                else
+                {
+                    AddError($"Cannot assign type '{initType.GetDisplayName()}' to variable of type '{declaredType.GetDisplayName()}'",
+                        varDecl.LineStart, varDecl.ColumnStart);
+                }
             }
         }
         else if (declaredType is UnknownType)
@@ -429,11 +451,30 @@ public class TypeChecker
                 ifStmt.LineStart, ifStmt.ColumnStart);
         }
 
+        // Check for type narrowing patterns
+        var narrowedTypesInThen = ExtractNarrowedTypes(ifStmt.Test, true);
+        var narrowedTypesInElse = ExtractNarrowedTypes(ifStmt.Test, false);
+
+        // Apply narrowed types in then branch
+        var savedNarrowedTypes = new Dictionary<string, SemanticType>(_narrowedTypes);
+        foreach (var kvp in narrowedTypesInThen)
+        {
+            _narrowedTypes[kvp.Key] = kvp.Value;
+        }
         foreach (var stmt in ifStmt.ThenBody)
             CheckStatement(stmt);
 
+        // Apply narrowed types in else branch
+        _narrowedTypes = new Dictionary<string, SemanticType>(savedNarrowedTypes);
+        foreach (var kvp in narrowedTypesInElse)
+        {
+            _narrowedTypes[kvp.Key] = kvp.Value;
+        }
         foreach (var stmt in ifStmt.ElseBody)
             CheckStatement(stmt);
+
+        // Restore original narrowed types
+        _narrowedTypes = savedNarrowedTypes;
     }
 
     private void CheckWhile(WhileStatement whileStmt)
@@ -452,18 +493,20 @@ public class TypeChecker
     private void CheckFor(ForStatement forStmt)
     {
         var iterType = CheckExpression(forStmt.Iterator);
-        // TODO: Check that iterType is iterable
+
+        // Extract element type from iterable
+        var elementType = ExtractElementType(iterType);
 
         // Add loop variable to scope
         // The target is typically an Identifier or TupleExpression
         if (forStmt.Target is Identifier id)
         {
             // Infer the type of the loop variable from the iterator
-            // For now, use Unknown - proper iteration type inference would extract element type
             var loopVarSymbol = new VariableSymbol
             {
                 Name = id.Name,
                 Kind = SymbolKind.Variable,
+                Type = elementType,
                 AccessLevel = AccessLevel.Public,
                 DeclarationLine = id.LineStart,
                 DeclarationColumn = id.ColumnStart
@@ -476,8 +519,7 @@ public class TypeChecker
                 _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
             }
 
-            // TODO: Infer element type from iterable
-            _semanticInfo.SetExpressionType(forStmt.Target, SemanticType.Unknown);
+            _semanticInfo.SetExpressionType(forStmt.Target, elementType);
         }
 
         foreach (var stmt in forStmt.Body)
@@ -581,6 +623,12 @@ public class TypeChecker
 
         _semanticInfo.SetIdentifierSymbol(id, symbol);
 
+        // Check if this identifier has a narrowed type in the current context
+        if (_narrowedTypes.TryGetValue(id.Name, out var narrowedType))
+        {
+            return narrowedType;
+        }
+
         return symbol switch
         {
             VariableSymbol varSymbol => varSymbol.Type,
@@ -653,7 +701,7 @@ public class TypeChecker
     {
         var objectType = CheckExpression(memberAccess.Object);
 
-        if (objectType is UserDefinedType udt)
+        if (objectType is UserDefinedType udt && udt.Symbol != null)
         {
             // Look for field or property
             var field = udt.Symbol.Fields.FirstOrDefault(f => f.Name == memberAccess.Member);
@@ -1007,6 +1055,105 @@ public class TypeChecker
 
         // Otherwise, use arithmetic type inference
         return InferArithmeticType(left, right);
+    }
+
+    /// <summary>
+    /// Extract narrowed types from a conditional expression
+    /// </summary>
+    private Dictionary<string, SemanticType> ExtractNarrowedTypes(Expression condition, bool isPositiveBranch)
+    {
+        var narrowedTypes = new Dictionary<string, SemanticType>();
+
+        // Handle 'x is not None' pattern
+        if (condition is BinaryOp { Operator: BinaryOperator.IsNot } binOp)
+        {
+            if (binOp.Left is Identifier id && binOp.Right is NoneLiteral)
+            {
+                if (isPositiveBranch)
+                {
+                    // In the positive branch (x is not None), narrow nullable to non-nullable
+                    var symbol = _symbolTable.Lookup(id.Name);
+                    if (symbol is VariableSymbol varSymbol && varSymbol.Type is NullableType nullable)
+                    {
+                        narrowedTypes[id.Name] = nullable.UnderlyingType;
+                    }
+                }
+            }
+        }
+        // Handle 'x is None' pattern
+        else if (condition is BinaryOp { Operator: BinaryOperator.Is } isOp)
+        {
+            if (isOp.Left is Identifier id && isOp.Right is NoneLiteral)
+            {
+                if (!isPositiveBranch)
+                {
+                    // In the negative branch (else after 'x is None'), narrow to non-nullable
+                    var symbol = _symbolTable.Lookup(id.Name);
+                    if (symbol is VariableSymbol varSymbol && varSymbol.Type is NullableType nullable)
+                    {
+                        narrowedTypes[id.Name] = nullable.UnderlyingType;
+                    }
+                }
+            }
+        }
+        // Handle 'isinstance(x, Type)' pattern
+        else if (condition is FunctionCall { Function: Identifier { Name: "isinstance" } } call)
+        {
+            if (call.Arguments.Count >= 2 && call.Arguments[0] is Identifier targetId)
+            {
+                if (isPositiveBranch)
+                {
+                    // For isinstance, the second argument is an identifier referring to a type
+                    // We need to look it up in the symbol table
+                    if (call.Arguments[1] is Identifier typeId)
+                    {
+                        var typeSymbol = _symbolTable.Lookup(typeId.Name) as TypeSymbol;
+                        if (typeSymbol != null)
+                        {
+                            narrowedTypes[targetId.Name] = new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
+                        }
+                    }
+                }
+            }
+        }
+
+        return narrowedTypes;
+    }
+
+    /// <summary>
+    /// Extract element type from an iterable type
+    /// </summary>
+    private SemanticType ExtractElementType(SemanticType iterType)
+    {
+        // Handle generic iterable types
+        if (iterType is GenericType generic)
+        {
+            // list[T], set[T] -> T
+            if ((generic.Name == "list" || generic.Name == "set") && generic.TypeArguments.Count > 0)
+            {
+                return generic.TypeArguments[0];
+            }
+            // dict[K, V] -> K (when iterating, we get keys by default)
+            if (generic.Name == "dict" && generic.TypeArguments.Count > 0)
+            {
+                return generic.TypeArguments[0];
+            }
+        }
+        // Handle tuple types
+        else if (iterType is TupleType tuple && tuple.ElementTypes.Count > 0)
+        {
+            // For simplicity, return the first element type
+            // In a more sophisticated implementation, we'd handle heterogeneous tuples
+            return tuple.ElementTypes[0];
+        }
+        // Handle string iteration -> str
+        else if (iterType == SemanticType.Str)
+        {
+            return SemanticType.Str;
+        }
+
+        // Unknown iterable type
+        return SemanticType.Unknown;
     }
 
     private void AddError(string message, int? line = null, int? column = null)

@@ -661,7 +661,7 @@ def foo():
 
     #region Null and Optional Type Errors
 
-    [Fact(Skip = "Type checking: Null assignment validation not yet implemented")]
+    [Fact]
     public void RejectsNullAssignmentToNonNullableType()
     {
         var source = @"
@@ -671,7 +671,8 @@ def foo():
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Nullable type checking might not be implemented
+        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Errors[0].Message.Should().Contain("None");
     }
 
     [Fact]
