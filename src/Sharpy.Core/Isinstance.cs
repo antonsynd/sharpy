@@ -10,7 +10,7 @@ public static partial class Exports
     /// <typeparam name="T">The type to check against</typeparam>
     /// <param name="obj">The object to check</param>
     /// <returns>True if obj is an instance of T, False otherwise</returns>
-    public static bool IsInstance<T>(object? obj)
+    public static bool Isinstance<T>(object? obj)
     {
         return obj is T;
     }
@@ -22,7 +22,7 @@ public static partial class Exports
     /// <param name="obj">The object to check</param>
     /// <param name="classInfo">The type to check against</param>
     /// <returns>True if obj is an instance of classInfo, False otherwise</returns>
-    public static bool IsInstance(object? obj, Type classInfo)
+    public static bool Isinstance(object? obj, Type classInfo)
     {
         if (classInfo is null)
         {
@@ -43,7 +43,7 @@ public static partial class Exports
     /// <param name="obj">The object to check</param>
     /// <param name="classInfo">A tuple of types to check against</param>
     /// <returns>True if obj is an instance of any type in classInfo, False otherwise</returns>
-    public static bool IsInstance(object? obj, params Type[] classInfo)
+    public static bool Isinstance(object? obj, params Type[] classInfo)
     {
         if (classInfo is null || classInfo.Length == 0)
         {
