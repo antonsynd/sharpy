@@ -49,7 +49,7 @@ public class ModuleRegistryTests
 
         Assert.True(result1);
         Assert.True(result2);
-        Assert.Single(registry.GetLoadedModules().Where(m => m == "builtins"));
+        Assert.Single(registry.GetLoadedModules(), m => m == "builtins");
     }
 
     [Fact]

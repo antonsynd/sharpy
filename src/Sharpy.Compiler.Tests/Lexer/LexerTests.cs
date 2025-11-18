@@ -1506,12 +1506,12 @@ y = 2";
         var source = "[[{()}]]";
         var tokens = Tokenize(source);
 
-        var leftBrackets = tokens.Where(t => t.Type == TokenType.LeftBracket).Count();
-        var rightBrackets = tokens.Where(t => t.Type == TokenType.RightBracket).Count();
-        var leftBraces = tokens.Where(t => t.Type == TokenType.LeftBrace).Count();
-        var rightBraces = tokens.Where(t => t.Type == TokenType.RightBrace).Count();
-        var leftParens = tokens.Where(t => t.Type == TokenType.LeftParen).Count();
-        var rightParens = tokens.Where(t => t.Type == TokenType.RightParen).Count();
+        var leftBrackets = tokens.Count(t => t.Type == TokenType.LeftBracket);
+        var rightBrackets = tokens.Count(t => t.Type == TokenType.RightBracket);
+        var leftBraces = tokens.Count(t => t.Type == TokenType.LeftBrace);
+        var rightBraces = tokens.Count(t => t.Type == TokenType.RightBrace);
+        var leftParens = tokens.Count(t => t.Type == TokenType.LeftParen);
+        var rightParens = tokens.Count(t => t.Type == TokenType.RightParen);
 
         leftBrackets.Should().Be(2);
         rightBrackets.Should().Be(2);
@@ -1629,8 +1629,8 @@ y = 2";
         pass";
         var tokens = Tokenize(source);
 
-        var indents = tokens.Where(t => t.Type == TokenType.Indent).Count();
-        var dedents = tokens.Where(t => t.Type == TokenType.Dedent).Count();
+        var indents = tokens.Count(t => t.Type == TokenType.Indent);
+        var dedents = tokens.Count(t => t.Type == TokenType.Dedent);
         indents.Should().BeGreaterThan(0);
         dedents.Should().BeGreaterThan(0);
     }
