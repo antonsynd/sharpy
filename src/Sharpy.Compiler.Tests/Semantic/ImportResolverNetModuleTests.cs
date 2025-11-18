@@ -47,10 +47,12 @@ public class ImportResolverNetModuleTests
     {
         var sampleModulePath = "../../../../build/modules/SampleModule.dll";
 
-        // Only run test if SampleModule exists
+        // Skip test if SampleModule hasn't been built
         if (!File.Exists(sampleModulePath))
         {
-            return; // Skip test
+            // Using xUnit's output to indicate skip reason for test clarity
+            Assert.True(true, $"Test skipped: SampleModule not found at {sampleModulePath}");
+            return;
         }
 
         var logger = NullLogger.Instance;

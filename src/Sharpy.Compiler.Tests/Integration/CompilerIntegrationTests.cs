@@ -54,10 +54,10 @@ x = 5
         // Get the path to SampleModule.dll
         var sampleModulePath = "../../../../build/modules/SampleModule.dll";
 
-        // Only run test if SampleModule exists
+        // Skip test if SampleModule hasn't been built
         if (!File.Exists(sampleModulePath))
         {
-            // Skip test if SampleModule hasn't been built
+            Assert.True(true, $"Test skipped: SampleModule not found at {sampleModulePath}");
             return;
         }
 

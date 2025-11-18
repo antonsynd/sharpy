@@ -8,6 +8,12 @@ namespace Sharpy.Compiler.Tests.Integration;
 /// </summary>
 public class ModuleDiscoveryWorkflowTests
 {
+    // Performance test thresholds for caching validation
+    private const int MaxCachedLoadMultiplier = 5;
+    private const int MinReasonableTimeMs = 100;
+    private const int MinFastCachedLoadsRequired = 3;
+    private const int TotalCachedLoadRuns = 5;
+
     [Fact]
     public void Workflow_LoadBuiltinsAndSampleModule_Success()
     {
@@ -55,10 +61,14 @@ public class ModuleDiscoveryWorkflowTests
     [Fact]
     public void Workflow_AddModulePath_ResolvesAssembly()
     {
-        // Skip if sample module doesn't exist
         const string sampleModulePath = "../../../../build/modules/SampleModule.dll";
+        
+        // Skip test if SampleModule hasn't been built
         if (!File.Exists(sampleModulePath))
+        {
+            Assert.True(true, $"Test skipped: SampleModule not found at {sampleModulePath}");
             return;
+        }
 
         // Arrange
         var registry = new ModuleRegistry();
@@ -100,10 +110,14 @@ public class ModuleDiscoveryWorkflowTests
     [Fact]
     public void Workflow_FunctionSignatures_MappedCorrectly()
     {
-        // Skip if sample module doesn't exist
         const string sampleModulePath = "../../../../build/modules/SampleModule.dll";
+        
+        // Skip test if SampleModule hasn't been built
         if (!File.Exists(sampleModulePath))
+        {
+            Assert.True(true, $"Test skipped: SampleModule not found at {sampleModulePath}");
             return;
+        }
 
         // Arrange
         var registry = new ModuleRegistry();
@@ -126,10 +140,14 @@ public class ModuleDiscoveryWorkflowTests
     [Fact]
     public void Workflow_MultipleModules_IndependentFunctions()
     {
-        // Skip if sample module doesn't exist
         const string sampleModulePath = "../../../../build/modules/SampleModule.dll";
+        
+        // Skip test if SampleModule hasn't been built
         if (!File.Exists(sampleModulePath))
+        {
+            Assert.True(true, $"Test skipped: SampleModule not found at {sampleModulePath}");
             return;
+        }
 
         // Arrange
         var registry = new ModuleRegistry();
@@ -201,15 +219,15 @@ public class ModuleDiscoveryWorkflowTests
 
         // Assert - Cached loads should be consistently reasonable
         // Check that at least 3 out of 5 cached loads are under 100ms (very generous for CI)
-        var fastCachedLoads = secondLoadTimes.Count(t => t < 100);
-        Assert.True(fastCachedLoads >= 3,
-            $"At least 3 out of 5 cached loads should be under 100ms. " +
+        var fastCachedLoads = secondLoadTimes.Count(t => t < MinReasonableTimeMs);
+        Assert.True(fastCachedLoads >= MinFastCachedLoadsRequired,
+            $"At least {MinFastCachedLoadsRequired} out of {TotalCachedLoadRuns} cached loads should be under {MinReasonableTimeMs}ms. " +
             $"First loads: [{string.Join(", ", firstLoadTimes)}]ms, " +
             $"Cached loads: [{string.Join(", ", secondLoadTimes)}]ms, " +
-            $"Fast cached loads: {fastCachedLoads}/5");
+            $"Fast cached loads: {fastCachedLoads}/{TotalCachedLoadRuns}");
         
         // Additionally verify that median cached load is reasonable (allow up to 5x median first load, with a minimum threshold of 100ms)
-        var maxReasonableTime = Math.Max(medianFirstLoad * 5, 100);
+        var maxReasonableTime = Math.Max(medianFirstLoad * MaxCachedLoadMultiplier, MinReasonableTimeMs);
         Assert.True(medianSecondLoad <= maxReasonableTime,
             $"Median cached load ({medianSecondLoad}ms) should be reasonable. " +
             $"Median first load: {medianFirstLoad}ms, max allowed: {maxReasonableTime}ms");

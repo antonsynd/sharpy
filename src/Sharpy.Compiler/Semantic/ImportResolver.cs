@@ -371,6 +371,11 @@ public class ImportResolver
 /// <summary>
 /// Information about a loaded module
 /// </summary>
+/// <remarks>
+/// When <see cref="IsNetModule"/> is true, the <see cref="Module"/> property will be null
+/// because .NET assemblies don't have an AST representation. Always check <see cref="IsNetModule"/>
+/// before accessing <see cref="Module"/> to avoid null reference errors.
+/// </remarks>
 public class ModuleInfo
 {
     public string Path { get; init; } = string.Empty;

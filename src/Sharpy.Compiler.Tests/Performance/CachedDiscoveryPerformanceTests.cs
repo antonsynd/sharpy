@@ -15,6 +15,13 @@ public class CachedDiscoveryPerformanceTests
 {
     private readonly ITestOutputHelper _output;
 
+    // Performance test thresholds
+    private const int MinMeasurableMilliseconds = 1;
+    private const int MaxCachedLoadMultiplier = 5;
+    private const int MinReasonableTimeMs = 100;
+    private const int MinFastCachedLoadsRequired = 3;
+    private const int TotalCachedLoadRuns = 5;
+
     public CachedDiscoveryPerformanceTests(ITestOutputHelper output)
     {
         _output = output;
@@ -69,8 +76,8 @@ public class CachedDiscoveryPerformanceTests
         _output.WriteLine($"First load: {firstLoadWatch.ElapsedMilliseconds}ms");
         _output.WriteLine($"Second load (cached): {secondLoadWatch.ElapsedMilliseconds}ms");
         
-        // Only calculate speedup if times are measurable (> 1ms)
-        if (firstLoadWatch.ElapsedMilliseconds > 1 && secondLoadWatch.ElapsedMilliseconds > 1)
+        // Only calculate speedup if times are measurable
+        if (firstLoadWatch.ElapsedMilliseconds > MinMeasurableMilliseconds && secondLoadWatch.ElapsedMilliseconds > MinMeasurableMilliseconds)
         {
             var speedup = (double)firstLoadWatch.ElapsedMilliseconds / secondLoadWatch.ElapsedMilliseconds;
             _output.WriteLine($"Speedup: {speedup:F2}x");
