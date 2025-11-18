@@ -161,6 +161,55 @@ public class Parser
 
         var expr = ParseExpression();
 
+        // Check for tuple unpacking: x, y = ...
+        // If we see a comma after the expression, it might be a tuple target for assignment
+        if (Current.Type == TokenType.Comma)
+        {
+            var startLine = expr.LineStart;
+            var startColumn = expr.ColumnStart;
+            var elements = new List<Expression> { expr };
+
+            // Parse remaining tuple elements
+            while (Current.Type == TokenType.Comma)
+            {
+                Advance();
+                elements.Add(ParseExpression());
+            }
+
+            // Now check if we have an assignment operator
+            if (Current.Type >= TokenType.Assign && Current.Type <= TokenType.RightShiftAssign)
+            {
+                // This is a tuple unpacking assignment
+                var tuple = new TupleLiteral
+                {
+                    Elements = elements,
+                    LineStart = startLine,
+                    ColumnStart = startColumn,
+                    LineEnd = Current.Line,
+                    ColumnEnd = Current.Column
+                };
+
+                var op = TokenTypeToAssignmentOperator(Current.Type);
+                Advance();
+                var value = ParseExpression();
+                ExpectStatementEnd();
+
+                return new Assignment
+                {
+                    Target = tuple,
+                    Value = value,
+                    Operator = op,
+                    LineStart = startLine,
+                    ColumnStart = startColumn,
+                    LineEnd = value.LineEnd,
+                    ColumnEnd = value.ColumnEnd
+                };
+            }
+
+            // If not an assignment, this is an error (tuple expression statements not allowed)
+            throw new ParserError("Tuple expression not allowed as a statement", Current.Line, Current.Column);
+        }
+
         // Check for assignment operators
         if (Current.Type >= TokenType.Assign && Current.Type <= TokenType.RightShiftAssign)
         {

@@ -16,6 +16,7 @@ public class RoslynEmitter
     private readonly CodeGenContext _context;
     private readonly TypeMapper _typeMapper;
     private readonly HashSet<string> _declaredVariables = new();
+    private int _tempVarCounter = 0;
 
     // Common .NET namespace acronyms that should be all uppercase
     private static readonly HashSet<string> UpperCaseAcronyms = new(StringComparer.OrdinalIgnoreCase)
@@ -1227,9 +1228,70 @@ public class RoslynEmitter
         // Handle tuple unpacking: x, y = 1, 2
         if (assign.Target is TupleLiteral tuple)
         {
-            // For tuple unpacking, we need to generate multiple assignment statements
-            // For now, we'll use deconstruction syntax
-            throw new NotImplementedException("Tuple unpacking assignment not yet supported");
+            // Generate C# tuple deconstruction
+            // C#: var (x, y) = (1, 2) or (x, y) = (1, 2) for existing variables
+
+            // Check if all elements are identifiers
+            bool allIdentifiers = tuple.Elements.All(e => e is Identifier);
+
+            if (allIdentifiers)
+            {
+                var identifiers = tuple.Elements.Cast<Identifier>().ToList();
+
+                // Check if all are new variables (not yet declared)
+                bool allNew = identifiers.All(id => !_declaredVariables.Contains(NameMangler.ToCamelCase(id.Name)));
+
+                if (allNew)
+                {
+                    // Use: var (x, y) = expr
+                    var variables = identifiers
+                        .Select(id =>
+                        {
+                            var varName = NameMangler.ToCamelCase(id.Name);
+                            _declaredVariables.Add(varName);
+                            return SingleVariableDesignation(Identifier(varName));
+                        })
+                        .ToList();
+
+                    var tuplePattern = ParenthesizedVariableDesignation(
+                        SeparatedList<VariableDesignationSyntax>(variables));
+
+                    // Create a declaration expression
+                    var declExpr = DeclarationExpression(
+                        IdentifierName("var"),
+                        tuplePattern);
+
+                    return ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            declExpr,
+                            value));
+                }
+                else
+                {
+                    // Use: (x, y) = expr for existing variables
+                    var tupleElements = identifiers
+                        .Select(id =>
+                        {
+                            var varName = NameMangler.ToCamelCase(id.Name);
+                            if (!_declaredVariables.Contains(varName))
+                            {
+                                _declaredVariables.Add(varName);
+                            }
+                            return Argument(IdentifierName(varName));
+                        });
+
+                    var tupleExpr = TupleExpression(SeparatedList(tupleElements));
+
+                    return ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            tupleExpr,
+                            value));
+                }
+            }
+
+            throw new NotImplementedException("Complex tuple unpacking (non-identifier targets) not yet supported");
         }
 
         throw new NotImplementedException($"Assignment target type not supported: {assign.Target.GetType().Name}");
@@ -1396,8 +1458,42 @@ public class RoslynEmitter
                 body);
         }
 
-        // TODO: Handle tuple unpacking in for loops (for x, y in items:)
-        throw new NotImplementedException("Complex for loop targets not yet supported");
+        // Handle tuple unpacking in for loops: for x, y in items
+        if (forStmt.Target is TupleLiteral tuple)
+        {
+            // Check if all elements are identifiers
+            bool allIdentifiers = tuple.Elements.All(e => e is Identifier);
+
+            if (allIdentifiers)
+            {
+                var identifiers = tuple.Elements.Cast<Identifier>().ToList();
+
+                // Generate: foreach (var (x, y) in items)
+                var variables = identifiers
+                    .Select(id =>
+                    {
+                        var varName = NameMangler.ToCamelCase(id.Name);
+                        return SingleVariableDesignation(Identifier(varName));
+                    })
+                    .ToList();
+
+                var tuplePattern = ParenthesizedVariableDesignation(
+                    SeparatedList<VariableDesignationSyntax>(variables));
+
+                var declExpr = DeclarationExpression(
+                    IdentifierName("var"),
+                    tuplePattern);
+
+                return ForEachVariableStatement(
+                    declExpr,
+                    iterator,
+                    body);
+            }
+
+            throw new NotImplementedException("Complex for loop tuple unpacking (non-identifier targets) not yet supported");
+        }
+
+        throw new NotImplementedException($"For loop target type not supported: {forStmt.Target.GetType().Name}");
     }
 
     private StatementSyntax GenerateTry(TryStatement tryStmt)

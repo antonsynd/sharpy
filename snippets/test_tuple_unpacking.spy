@@ -1,0 +1,18 @@
+# Test tuple unpacking
+
+# Assignment unpacking
+x, y = (1, 2)
+print(f"x={x}, y={y}")
+
+a, b, c = (10, 20, 30)
+print(f"a={a}, b={b}, c={c}")
+
+# For-loop unpacking
+pairs = [(1, 2), (3, 4), (5, 6)]
+for first, second in pairs:
+    print(f"first={first}, second={second}")
+
+# Dictionary iteration with unpacking
+my_dict = {"apple": 1, "banana": 2, "cherry": 3}
+for key, value in my_dict.items():
+    print(f"{key}: {value}")

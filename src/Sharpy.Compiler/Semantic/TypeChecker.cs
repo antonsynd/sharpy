@@ -304,6 +304,80 @@ public class TypeChecker
 
     private void CheckAssignment(Assignment assignment)
     {
+        // Handle tuple unpacking: x, y = expr
+        if (assignment.Operator == AssignmentOperator.Assign && assignment.Target is TupleLiteral targetTuple)
+        {
+            var tupleValueType = CheckExpression(assignment.Value);
+
+            // Value must be a tuple type
+            if (tupleValueType is not TupleType tupleType)
+            {
+                AddError($"Cannot unpack non-tuple type '{tupleValueType.GetDisplayName()}' into tuple",
+                    assignment.LineStart, assignment.ColumnStart);
+                return;
+            }
+
+            // Check element count matches
+            if (targetTuple.Elements.Count != tupleType.ElementTypes.Count)
+            {
+                AddError($"Cannot unpack {tupleType.ElementTypes.Count} values into {targetTuple.Elements.Count} variables",
+                    assignment.LineStart, assignment.ColumnStart);
+                return;
+            }
+
+            // Type-check each unpacking element
+            for (int i = 0; i < targetTuple.Elements.Count; i++)
+            {
+                var targetElem = targetTuple.Elements[i];
+                var valueElemType = tupleType.ElementTypes[i];
+
+                if (targetElem is Identifier tupleTargetId)
+                {
+                    var existingSymbol = _symbolTable.Lookup(tupleTargetId.Name, searchParents: true);
+
+                    // If the identifier doesn't exist, create it with inferred type
+                    if (existingSymbol == null)
+                    {
+                        var newSymbol = new VariableSymbol
+                        {
+                            Name = tupleTargetId.Name,
+                            Kind = SymbolKind.Variable,
+                            Type = valueElemType,
+                            IsConstant = false,
+                            DeclarationLine = tupleTargetId.LineStart,
+                            DeclarationColumn = tupleTargetId.ColumnStart,
+                            AccessLevel = AccessLevel.Public
+                        };
+                        _symbolTable.Define(newSymbol);
+                        _semanticInfo.SetIdentifierSymbol(tupleTargetId, newSymbol);
+                        _semanticInfo.SetExpressionType(tupleTargetId, valueElemType);
+                    }
+                    else
+                    {
+                        // Check type compatibility for existing variable
+                        var targetElemType = CheckExpression(targetElem);
+                        if (!valueElemType.IsAssignableTo(targetElemType))
+                        {
+                            AddError($"Cannot assign type '{valueElemType.GetDisplayName()}' to '{targetElemType.GetDisplayName()}' in tuple unpacking",
+                                targetElem.LineStart, targetElem.ColumnStart);
+                        }
+                    }
+                }
+                else
+                {
+                    // For more complex targets (like attributes), just check type compatibility
+                    var targetElemType = CheckExpression(targetElem);
+                    if (!valueElemType.IsAssignableTo(targetElemType))
+                    {
+                        AddError($"Cannot assign type '{valueElemType.GetDisplayName()}' to '{targetElemType.GetDisplayName()}' in tuple unpacking",
+                            targetElem.LineStart, targetElem.ColumnStart);
+                    }
+                }
+            }
+
+            return;
+        }
+
         // Check if this is a simple assignment to an undefined identifier (type inference case)
         if (assignment.Operator == AssignmentOperator.Assign && assignment.Target is Identifier targetId)
         {
@@ -497,9 +571,66 @@ public class TypeChecker
         // Extract element type from iterable
         var elementType = ExtractElementType(iterType);
 
+        // Handle tuple unpacking: for x, y in items
+        if (forStmt.Target is TupleLiteral targetTuple)
+        {
+            // Element type must be a tuple type
+            if (elementType is not TupleType tupleType)
+            {
+                AddError($"Cannot unpack non-tuple type '{elementType.GetDisplayName()}' in for loop",
+                    forStmt.LineStart, forStmt.ColumnStart);
+            }
+            else
+            {
+                // Check element count matches
+                if (targetTuple.Elements.Count != tupleType.ElementTypes.Count)
+                {
+                    AddError($"Cannot unpack {tupleType.ElementTypes.Count} values into {targetTuple.Elements.Count} variables in for loop",
+                        forStmt.LineStart, forStmt.ColumnStart);
+                }
+                else
+                {
+                    // Define loop variables with inferred types
+                    for (int i = 0; i < targetTuple.Elements.Count; i++)
+                    {
+                        var targetElem = targetTuple.Elements[i];
+                        var elemType = tupleType.ElementTypes[i];
+
+                        if (targetElem is Identifier id)
+                        {
+                            var loopVarSymbol = new VariableSymbol
+                            {
+                                Name = id.Name,
+                                Kind = SymbolKind.Variable,
+                                Type = elemType,
+                                AccessLevel = AccessLevel.Public,
+                                DeclarationLine = id.LineStart,
+                                DeclarationColumn = id.ColumnStart
+                            };
+
+                            // Check if already defined in this scope
+                            if (_symbolTable.Lookup(id.Name, searchParents: false) == null)
+                            {
+                                _symbolTable.Define(loopVarSymbol);
+                                _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
+                            }
+
+                            _semanticInfo.SetExpressionType(targetElem, elemType);
+                        }
+                        else
+                        {
+                            // For more complex targets, just check the expression
+                            CheckExpression(targetElem);
+                        }
+                    }
+                }
+            }
+
+            _semanticInfo.SetExpressionType(forStmt.Target, elementType);
+        }
         // Add loop variable to scope
         // The target is typically an Identifier or TupleExpression
-        if (forStmt.Target is Identifier id)
+        else if (forStmt.Target is Identifier id)
         {
             // Infer the type of the loop variable from the iterator
             var loopVarSymbol = new VariableSymbol
