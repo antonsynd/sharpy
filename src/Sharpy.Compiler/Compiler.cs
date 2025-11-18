@@ -13,20 +13,17 @@ public class Compiler
 {
     private readonly ICompilerLogger _logger;
     private readonly ModuleRegistry? _moduleRegistry;
-    private readonly ImportResolver _importResolver;
 
     public Compiler(ICompilerLogger? logger = null)
     {
         _logger = logger ?? NullLogger.Instance;
         _moduleRegistry = null;
-        _importResolver = new ImportResolver(_logger, null);
     }
 
     public Compiler(CompilerOptions options, ICompilerLogger? logger = null)
     {
         _logger = logger ?? NullLogger.Instance;
         _moduleRegistry = new ModuleRegistry(_logger);
-        _importResolver = new ImportResolver(_logger, _moduleRegistry);
 
         // Add module search paths
         if (options.ModulePaths != null)
@@ -169,9 +166,4 @@ public class CompilerOptions
     /// Paths to .NET assemblies to reference
     /// </summary>
     public string[]? References { get; set; }
-
-    /// <summary>
-    /// Whether to include builtin functions from Sharpy.Core
-    /// </summary>
-    public bool IncludeBuiltins { get; set; } = true;
 }
