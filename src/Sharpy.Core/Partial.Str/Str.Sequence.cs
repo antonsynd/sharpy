@@ -22,7 +22,23 @@ public readonly partial struct Str
 
         (int start, int end) = ((int, int))Slice.Normalize(slice.start, slice.end, (uint)_s.Length);
 
-        return "TODO";
+        if (start >= end)
+        {
+            return "";
+        }
+
+        if (slice.step == 1)
+        {
+            return new Str(_s.Substring(start, end - start));
+        }
+
+        // Handle step > 1
+        var chars = new System.Text.StringBuilder();
+        for (int i = start; i < end; i += slice.step)
+        {
+            chars.Append(_s[i]);
+        }
+        return new Str(chars.ToString());
     }
 
     // Count method moved to main Str.cs to handle both single chars and substrings
