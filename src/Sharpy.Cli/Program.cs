@@ -2,6 +2,7 @@
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser;
+using Sharpy.Compiler.Discovery.Caching;
 
 namespace Sharpy.Cli;
 
@@ -11,8 +12,8 @@ class Program
     {
         var rootCommand = new RootCommand("sharpyc - Sharpy Compiler");
 
-        // Input file argument
-        var inputFileArgument = new Argument<FileInfo>("input");
+        // Input file argument (optional when using cache commands)
+        var inputFileArgument = new Argument<FileInfo?>("input") { Arity = ArgumentArity.ZeroOrOne };
 
         // Emit mode options
         var emitTokensOption = new Option<bool>("--emit-tokens");
@@ -41,6 +42,10 @@ class Program
         var logLevelOption = new Option<CompilerLogLevel?>("--log-level");
         var logFileOption = new Option<FileInfo?>("--log-file");
 
+        // Cache management options
+        var clearCacheOption = new Option<bool>("--clear-cache") { Description = "Clear the overload discovery cache" };
+        var cacheInfoOption = new Option<bool>("--cache-info") { Description = "Display information about the overload discovery cache" };
+
         // Add options to command
         rootCommand.Arguments.Add(inputFileArgument);
         rootCommand.Options.Add(emitTokensOption);
@@ -52,6 +57,8 @@ class Program
         rootCommand.Options.Add(modulePathOption);
         rootCommand.Options.Add(logLevelOption);
         rootCommand.Options.Add(logFileOption);
+        rootCommand.Options.Add(clearCacheOption);
+        rootCommand.Options.Add(cacheInfoOption);
 
         rootCommand.SetAction((parseResult) =>
         {
@@ -65,6 +72,29 @@ class Program
             var modulePaths = parseResult.GetValue(modulePathOption);
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
+            var clearCache = parseResult.GetValue(clearCacheOption);
+            var cacheInfo = parseResult.GetValue(cacheInfoOption);
+
+            // Handle cache management commands (no input file required)
+            if (clearCache)
+            {
+                ClearCache();
+                return;
+            }
+
+            if (cacheInfo)
+            {
+                ShowCacheInfo();
+                return;
+            }
+
+            // For compilation commands, input file is required
+            if (inputFile == null)
+            {
+                Console.Error.WriteLine("Error: Input file is required for compilation.");
+                Console.Error.WriteLine("Use --clear-cache or --cache-info for cache management.");
+                Environment.Exit(1);
+            }
 
             // Create logger and optional file stream that needs disposal
             StreamWriter? fileStream = null;
@@ -85,7 +115,7 @@ class Program
                     logger = new ConsoleCompilerLogger(logLevel);
                 }
 
-                HandleCommand(inputFile!, emitTokens, emitAst, outputType, output,
+                HandleCommand(inputFile, emitTokens, emitAst, outputType, output,
                              references ?? Array.Empty<string>(),
                              projectReferences ?? Array.Empty<string>(),
                              modulePaths ?? Array.Empty<string>(),
@@ -150,6 +180,8 @@ class Program
         Console.Error.WriteLine("Available options:");
         Console.Error.WriteLine("  --emit-tokens       Emit lexer tokens (implemented)");
         Console.Error.WriteLine("  --emit-ast          Emit AST (implemented)");
+        Console.Error.WriteLine("  --clear-cache       Clear overload discovery cache (implemented)");
+        Console.Error.WriteLine("  --cache-info        Show overload discovery cache info (implemented)");
         Console.Error.WriteLine("  --output-type       Specify output type (not implemented)");
         Console.Error.WriteLine("  --output            Specify output file (not implemented)");
         Console.Error.WriteLine("  --reference         Add .NET DLL reference (not implemented)");
@@ -228,5 +260,56 @@ class Program
             Console.Error.WriteLine($"Unexpected error: {ex.Message}");
             Environment.Exit(1);
         }
+    }
+
+    static void ClearCache()
+    {
+        try
+        {
+            var cache = new OverloadIndexCache();
+            cache.ClearAll();
+            Console.WriteLine("Overload discovery cache cleared successfully.");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error clearing cache: {ex.Message}");
+            Environment.Exit(1);
+        }
+    }
+
+    static void ShowCacheInfo()
+    {
+        try
+        {
+            var cache = new OverloadIndexCache();
+            var info = cache.GetInfo();
+
+            Console.WriteLine("Overload Discovery Cache Information:");
+            Console.WriteLine(new string('=', 50));
+            Console.WriteLine($"Cache Directory: {info.CacheDirectory}");
+            Console.WriteLine($"Cached Assemblies: {info.CachedAssemblies}");
+            Console.WriteLine($"Total Size: {FormatBytes(info.TotalSizeBytes)}");
+            Console.WriteLine(new string('=', 50));
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error retrieving cache info: {ex.Message}");
+            Environment.Exit(1);
+        }
+    }
+
+    static string FormatBytes(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len /= 1024;
+        }
+
+        return $"{len:0.##} {sizes[order]}";
     }
 }
