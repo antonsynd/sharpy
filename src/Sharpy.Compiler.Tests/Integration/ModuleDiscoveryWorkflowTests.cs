@@ -208,7 +208,7 @@ public class ModuleDiscoveryWorkflowTests
             $"Cached loads: [{string.Join(", ", secondLoadTimes)}]ms, " +
             $"Fast cached loads: {fastCachedLoads}/5");
         
-        // Additionally verify that median cached load is reasonable (allow up to 5x median first load or 100ms max)
+        // Additionally verify that median cached load is reasonable (allow up to 5x median first load, with a minimum threshold of 100ms)
         var maxReasonableTime = Math.Max(medianFirstLoad * 5, 100);
         Assert.True(medianSecondLoad <= maxReasonableTime,
             $"Median cached load ({medianSecondLoad}ms) should be reasonable. " +

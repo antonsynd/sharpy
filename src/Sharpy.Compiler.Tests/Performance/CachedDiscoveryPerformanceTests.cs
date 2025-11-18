@@ -70,7 +70,7 @@ public class CachedDiscoveryPerformanceTests
         _output.WriteLine($"Second load (cached): {secondLoadWatch.ElapsedMilliseconds}ms");
         
         // Only calculate speedup if times are measurable (> 1ms)
-        if (firstLoadWatch.ElapsedMilliseconds > 1 && secondLoadWatch.ElapsedMilliseconds > 0)
+        if (firstLoadWatch.ElapsedMilliseconds > 1 && secondLoadWatch.ElapsedMilliseconds > 1)
         {
             var speedup = (double)firstLoadWatch.ElapsedMilliseconds / secondLoadWatch.ElapsedMilliseconds;
             _output.WriteLine($"Speedup: {speedup:F2}x");

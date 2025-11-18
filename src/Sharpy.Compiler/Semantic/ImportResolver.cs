@@ -308,7 +308,7 @@ public class ImportResolver
         var moduleInfo = new ModuleInfo
         {
             Path = $".net:{moduleName}",
-            Module = null!, // No AST module for .NET assemblies
+            Module = null!, // No AST module exists for .NET assemblies; consumers must check IsNetModule before accessing Module
             ExportedSymbols = new Dictionary<string, Symbol>(),
             IsNetModule = true
         };
