@@ -3,6 +3,8 @@ using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Discovery.Caching;
+using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Semantic;
 
 namespace Sharpy.Cli;
 
@@ -18,6 +20,7 @@ class Program
         // Emit mode options
         var emitTokensOption = new Option<bool>("--emit-tokens");
         var emitAstOption = new Option<bool>("--emit-ast");
+        var emitCSharpOption = new Option<bool>("--emit-csharp");
 
         // Output type option
         var outputTypeOption = new Option<string?>("--output-type");
@@ -50,6 +53,7 @@ class Program
         rootCommand.Arguments.Add(inputFileArgument);
         rootCommand.Options.Add(emitTokensOption);
         rootCommand.Options.Add(emitAstOption);
+        rootCommand.Options.Add(emitCSharpOption);
         rootCommand.Options.Add(outputTypeOption);
         rootCommand.Options.Add(outputOption);
         rootCommand.Options.Add(referenceOption);
@@ -65,6 +69,7 @@ class Program
             var inputFile = parseResult.GetValue(inputFileArgument);
             var emitTokens = parseResult.GetValue(emitTokensOption);
             var emitAst = parseResult.GetValue(emitAstOption);
+            var emitCSharp = parseResult.GetValue(emitCSharpOption);
             var outputType = parseResult.GetValue(outputTypeOption) ?? "library";
             var output = parseResult.GetValue(outputOption);
             var references = parseResult.GetValue(referenceOption);
@@ -115,7 +120,7 @@ class Program
                     logger = new ConsoleCompilerLogger(logLevel);
                 }
 
-                HandleCommand(inputFile, emitTokens, emitAst, outputType, output,
+                HandleCommand(inputFile, emitTokens, emitAst, emitCSharp, outputType, output,
                              references ?? Array.Empty<string>(),
                              projectReferences ?? Array.Empty<string>(),
                              modulePaths ?? Array.Empty<string>(),
@@ -135,6 +140,7 @@ class Program
         FileInfo inputFile,
         bool emitTokens,
         bool emitAst,
+        bool emitCSharp,
         string outputType,
         FileInfo? output,
         string[] references,
@@ -155,9 +161,10 @@ class Program
         }
 
         // Check for conflicting options
-        if (emitTokens && emitAst)
+        var emitOptions = new[] { emitTokens, emitAst, emitCSharp };
+        if (emitOptions.Count(x => x) > 1)
         {
-            Console.Error.WriteLine("Error: Cannot specify both --emit-tokens and --emit-ast");
+            Console.Error.WriteLine("Error: Cannot specify multiple emit options (--emit-tokens, --emit-ast, --emit-csharp)");
             Environment.Exit(1);
         }
 
@@ -175,11 +182,19 @@ class Program
             return;
         }
 
+        // Handle emit-csharp mode (IMPLEMENTED)
+        if (emitCSharp)
+        {
+            EmitCSharp(inputFile, output, logger);
+            return;
+        }
+
         // Handle compilation mode (NOT IMPLEMENTED)
         Console.Error.WriteLine("Error: Compilation to binary/library is not implemented yet");
         Console.Error.WriteLine("Available options:");
         Console.Error.WriteLine("  --emit-tokens       Emit lexer tokens (implemented)");
         Console.Error.WriteLine("  --emit-ast          Emit AST (implemented)");
+        Console.Error.WriteLine("  --emit-csharp       Emit C# code (implemented)");
         Console.Error.WriteLine("  --clear-cache       Clear overload discovery cache (implemented)");
         Console.Error.WriteLine("  --cache-info        Show overload discovery cache info (implemented)");
         Console.Error.WriteLine("  --output-type       Specify output type (not implemented)");
@@ -242,6 +257,66 @@ class Program
             Console.Write(ast);
 
             Console.WriteLine(new string('=', 80));
+        }
+        catch (LexerError ex)
+        {
+            Console.Error.WriteLine($"Lexer error at line {ex.Line}, column {ex.Column}:");
+            Console.Error.WriteLine($"  {ex.Message}");
+            Environment.Exit(1);
+        }
+        catch (ParserError ex)
+        {
+            Console.Error.WriteLine($"Parser error at line {ex.Line}, column {ex.Column}:");
+            Console.Error.WriteLine($"  {ex.Message}");
+            Environment.Exit(1);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Unexpected error: {ex.Message}");
+            Environment.Exit(1);
+        }
+    }
+
+    static void EmitCSharp(FileInfo inputFile, FileInfo? output, ICompilerLogger logger)
+    {
+        try
+        {
+            // Parse the Sharpy source file
+            var source = File.ReadAllText(inputFile.FullName);
+            var lexer = new Lexer(source, logger);
+            var tokens = lexer.TokenizeAll();
+            var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
+            var module = parser.ParseModule();
+
+            // Set up code generation context
+            var builtins = new BuiltinRegistry();
+            var symbolTable = new SymbolTable(builtins);
+            var context = new CodeGenContext(symbolTable, builtins)
+            {
+                SourceFilePath = inputFile.FullName
+            };
+
+            // Generate C# code using RoslynEmitter
+            var emitter = new RoslynEmitter(context);
+            var compilationUnit = emitter.GenerateCompilationUnit(module);
+            var csharpCode = compilationUnit.ToFullString();
+
+            // Determine output file
+            FileInfo outputFile;
+            if (output != null)
+            {
+                outputFile = output;
+            }
+            else
+            {
+                // Default: replace .spy extension with .cs
+                var outputPath = Path.ChangeExtension(inputFile.FullName, ".cs");
+                outputFile = new FileInfo(outputPath);
+            }
+
+            // Write C# code to output file
+            File.WriteAllText(outputFile.FullName, csharpCode);
+            Console.WriteLine($"Generated C# code written to: {outputFile.FullName}");
         }
         catch (LexerError ex)
         {

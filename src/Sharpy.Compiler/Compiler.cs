@@ -3,6 +3,8 @@ using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.CodeGen;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace Sharpy.Compiler;
 
@@ -115,9 +117,15 @@ public class Compiler
 
             // TODO: Pass 3: Semantic validation (will implement in Phase 3)
 
-            // Phase 4: Code Generation (placeholder)
+            // Phase 4: Code Generation - Generate C# code from AST using RoslynEmitter
             _logger.LogInfo("Phase 4: Code Generation");
-            // TODO: Implement code generation
+            var codeGenContext = new CodeGenContext(symbolTable, builtinRegistry)
+            {
+                SourceFilePath = filePath
+            };
+            var emitter = new RoslynEmitter(codeGenContext);
+            var compilationUnit = emitter.GenerateCompilationUnit(module);
+            var csharpCode = compilationUnit.ToFullString();
 
             return new CompilationResult
             {
@@ -125,7 +133,8 @@ public class Compiler
                 Module = module,
                 SymbolTable = symbolTable,
                 SemanticInfo = semanticInfo,
-                ModuleRegistry = _moduleRegistry
+                ModuleRegistry = _moduleRegistry,
+                GeneratedCSharpCode = csharpCode
             };
         }
         catch (Exception ex)
@@ -151,6 +160,7 @@ public class CompilationResult
     public SymbolTable? SymbolTable { get; init; }
     public SemanticInfo? SemanticInfo { get; init; }
     public ModuleRegistry? ModuleRegistry { get; init; }
+    public string? GeneratedCSharpCode { get; init; }
 }
 
 /// <summary>
