@@ -12,7 +12,7 @@ public static partial class Exports
     /// </remarks>
     public static int Round(double x)
     {
-        return (int)Math.Round(x);
+        return (int)System.Math.Round(x);
     }
 
     /// <summary>
@@ -26,7 +26,7 @@ public static partial class Exports
     /// </remarks>
     public static double Round(double x, int n)
     {
-        return Math.Round(x, n);
+        return System.Math.Round(x, n);
     }
 
     /// <summary>
@@ -39,7 +39,7 @@ public static partial class Exports
     /// </remarks>
     public static int Round(float x)
     {
-        return (int)Math.Round(x);
+        return (int)System.Math.Round(x);
     }
 
     /// <summary>
@@ -53,7 +53,7 @@ public static partial class Exports
     /// </remarks>
     public static float Round(float x, int n)
     {
-        return (float)Math.Round(x, n);
+        return (float)System.Math.Round(x, n);
     }
 
     /// <summary>
@@ -66,7 +66,7 @@ public static partial class Exports
     /// </remarks>
     public static int Round(decimal x)
     {
-        return (int)Math.Round(x);
+        return (int)System.Math.Round(x);
     }
 
     /// <summary>
@@ -80,6 +80,6 @@ public static partial class Exports
     /// </remarks>
     public static decimal Round(decimal x, int n)
     {
-        return Math.Round(x, n);
+        return System.Math.Round(x, n);
     }
 }

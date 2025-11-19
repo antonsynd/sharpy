@@ -1,4 +1,4 @@
-namespace Sharpy.DatetimeModule;
+namespace Sharpy.Datetime;
 
 /// <summary>
 /// Represents a date (year, month, day).

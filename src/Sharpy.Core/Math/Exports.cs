@@ -1,4 +1,4 @@
-namespace Sharpy.MathModule;
+namespace Sharpy.Math;
 
 using Sharpy.Core;
 

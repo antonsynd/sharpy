@@ -20,7 +20,7 @@ internal static class Index
                 i = (int)max + i;
             }
 
-            return (uint)Math.Clamp(i, 0, max);
+            return (uint)System.Math.Clamp(i, 0, max);
         }
 
         if (i >= max || i < -max)

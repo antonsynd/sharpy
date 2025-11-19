@@ -34,27 +34,27 @@ public class ModuleIntegrationTests
     public void MathModule_BasicFunctions_WorkCorrectly()
     {
         // Test sqrt
-        Sharpy.MathModule.Exports.Sqrt(16.0).Should().Be(4.0);
+        Sharpy.Math.Exports.Sqrt(16.0).Should().Be(4.0);
 
         // Test pow
-        Sharpy.MathModule.Exports.Pow(2.0, 3.0).Should().Be(8.0);
+        Sharpy.Math.Exports.Pow(2.0, 3.0).Should().Be(8.0);
 
         // Test floor and ceil
-        Sharpy.MathModule.Exports.Floor(3.7).Should().Be(3.0);
-        Sharpy.MathModule.Exports.Ceil(3.2).Should().Be(4.0);
+        Sharpy.Math.Exports.Floor(3.7).Should().Be(3.0);
+        Sharpy.Math.Exports.Ceil(3.2).Should().Be(4.0);
 
         // Test trigonometric
-        System.Math.Round(Sharpy.MathModule.Exports.Sin(Sharpy.MathModule.Exports.Pi / 2), 10).Should().Be(1.0);
+        System.Math.Round(Sharpy.Math.Exports.Sin(Sharpy.Math.Exports.Pi / 2), 10).Should().Be(1.0);
 
         // Test constants
-        Sharpy.MathModule.Exports.Pi.Should().BeApproximately(3.14159, 0.00001);
-        Sharpy.MathModule.Exports.E.Should().BeApproximately(2.71828, 0.00001);
+        Sharpy.Math.Exports.Pi.Should().BeApproximately(3.14159, 0.00001);
+        Sharpy.Math.Exports.E.Should().BeApproximately(2.71828, 0.00001);
 
         // Test factorial
-        Sharpy.MathModule.Exports.Factorial(5).Should().Be(120);
+        Sharpy.Math.Exports.Factorial(5).Should().Be(120);
 
         // Test gcd
-        Sharpy.MathModule.Exports.Gcd(48, 18).Should().Be(6);
+        Sharpy.Math.Exports.Gcd(48, 18).Should().Be(6);
     }
 
     [Fact]
@@ -82,18 +82,18 @@ public class ModuleIntegrationTests
     public void DatetimeModule_BasicFunctions_WorkCorrectly()
     {
         // Test DateObject
-        var date = new Sharpy.DatetimeModule.DateObject(2024, 1, 15);
+        var date = new Sharpy.Datetime.DateObject(2024, 1, 15);
         date.Year.Should().Be(2024);
         date.Month.Should().Be(1);
         date.Day.Should().Be(15);
 
         // Test TimeObject
-        var time = new Sharpy.DatetimeModule.TimeObject(14, 30, 0);
+        var time = new Sharpy.Datetime.TimeObject(14, 30, 0);
         time.Hour.Should().Be(14);
         time.Minute.Should().Be(30);
 
         // Test DateTimeObject
-        var dt = new Sharpy.DatetimeModule.DateTimeObject(2024, 1, 15, 14, 30, 0);
+        var dt = new Sharpy.Datetime.DateTimeObject(2024, 1, 15, 14, 30, 0);
         dt.Year.Should().Be(2024);
         dt.Month.Should().Be(1);
         dt.Day.Should().Be(15);
@@ -101,7 +101,7 @@ public class ModuleIntegrationTests
         dt.Minute.Should().Be(30);
 
         // Test Now (should return a valid datetime)
-        var now = Sharpy.DatetimeModule.DateTimeObject.Now();
+        var now = Sharpy.Datetime.DateTimeObject.Now();
         now.Should().NotBeNull();
         now.Year.Should().BeGreaterThan(2020);
     }

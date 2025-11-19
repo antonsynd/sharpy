@@ -18,7 +18,7 @@ public sealed partial class List<T> : IGreaterThanComparable<List<T>>
         }
 
         // Lexicographical comparison
-        var minLen = Math.Min(_list.Count, other._list.Count);
+        var minLen = System.Math.Min(_list.Count, other._list.Count);
 
         for (int i = 0; i < minLen; i++)
         {
