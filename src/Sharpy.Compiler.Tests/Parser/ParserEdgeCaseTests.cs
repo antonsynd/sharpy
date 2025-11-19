@@ -339,22 +339,6 @@ def foo(a, b, c,):
         module.Body.Should().HaveCount(1);
     }
 
-    [Fact(Skip = "Unimplemented: Union types (|) not yet supported")]
-    public void ParsesUnionTypes()
-    {
-        var source = "x: int | str | None";
-        var module = Parse(source);
-        module.Body.Should().HaveCount(1);
-    }
-
-    [Fact(Skip = "Unimplemented: Optional types (T | None) not yet supported")]
-    public void ParsesOptionalType()
-    {
-        var source = "x: int | None = None";
-        var module = Parse(source);
-        module.Body.Should().HaveCount(1);
-    }
-
     [Fact(Skip = "Unimplemented: Callable type syntax not yet supported")]
     public void ParsesCallableType()
     {

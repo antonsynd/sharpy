@@ -334,6 +334,7 @@ public class ImportResolver
     {
         // Convert module.submodule to module/submodule.spy
         var relativePath = moduleName.Replace('.', Path.DirectorySeparatorChar) + ".spy";
+        var searchedPaths = new List<string>();
 
         // Try current directory first
         if (_currentModulePath != null)
@@ -342,8 +343,16 @@ public class ImportResolver
             if (currentDir != null)
             {
                 var path = Path.Combine(currentDir, relativePath);
+                searchedPaths.Add(path);
                 if (File.Exists(path))
                     return Path.GetFullPath(path);
+
+                // Try as package directory with __init__.spy
+                var packageDir = Path.Combine(currentDir, moduleName.Replace('.', Path.DirectorySeparatorChar));
+                var initPath = Path.Combine(packageDir, "__init__.spy");
+                searchedPaths.Add(initPath);
+                if (File.Exists(initPath))
+                    return Path.GetFullPath(initPath);
             }
         }
 
@@ -351,20 +360,43 @@ public class ImportResolver
         if (searchPath != null)
         {
             var path = Path.Combine(searchPath, relativePath);
+            searchedPaths.Add(path);
             if (File.Exists(path))
                 return Path.GetFullPath(path);
+
+            // Try as package directory with __init__.spy
+            var packageDir = Path.Combine(searchPath, moduleName.Replace('.', Path.DirectorySeparatorChar));
+            var initPath = Path.Combine(packageDir, "__init__.spy");
+            searchedPaths.Add(initPath);
+            if (File.Exists(initPath))
+                return Path.GetFullPath(initPath);
         }
 
         // Try current working directory
+        searchedPaths.Add(Path.GetFullPath(relativePath));
         if (File.Exists(relativePath))
             return Path.GetFullPath(relativePath);
+
+        // Try as package directory with __init__.spy in current working directory
+        var cwd = Directory.GetCurrentDirectory();
+        var cwdPackageDir = Path.Combine(cwd, moduleName.Replace('.', Path.DirectorySeparatorChar));
+        var cwdInitPath = Path.Combine(cwdPackageDir, "__init__.spy");
+        searchedPaths.Add(cwdInitPath);
+        if (File.Exists(cwdInitPath))
+            return Path.GetFullPath(cwdInitPath);
+
+        // Log where we looked
+        _logger.LogDebug($"Module '{moduleName}' not found. Searched: {string.Join(", ", searchedPaths)}");
 
         return null;
     }
 
     private void AddError(string message, int? line, int? column)
     {
-        _errors.Add(new SemanticError(message, line, column));
+        var errorMessage = _currentModulePath != null
+            ? $"{message} (in {Path.GetFileName(_currentModulePath)})"
+            : message;
+        _errors.Add(new SemanticError(errorMessage, line, column));
     }
 }
 

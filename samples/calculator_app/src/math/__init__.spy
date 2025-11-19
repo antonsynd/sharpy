@@ -1,0 +1,5 @@
+# Package-level exports for the math module
+# This file is automatically loaded when importing 'from math import ...'
+
+from basic import add, subtract, multiply, divide
+from advanced import power, square

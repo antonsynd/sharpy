@@ -58,6 +58,10 @@ class Program
         var clearCacheOption = new Option<bool>("--clear-cache") { Description = "Clear the overload discovery cache" };
         var cacheInfoOption = new Option<bool>("--cache-info") { Description = "Display information about the overload discovery cache" };
 
+        // Build management options
+        var cleanOption = new Option<bool>("--clean") { Description = "Delete bin/ and obj/ directories before building" };
+        var emitCsToOption = new Option<DirectoryInfo?>("--emit-cs-to") { Description = "Save generated C# code to the specified directory" };
+
         // Add options to command
         rootCommand.Arguments.Add(inputFileArgument);
         rootCommand.Options.Add(emitTokensOption);
@@ -75,6 +79,8 @@ class Program
         rootCommand.Options.Add(cacheDirOption);
         rootCommand.Options.Add(clearCacheOption);
         rootCommand.Options.Add(cacheInfoOption);
+        rootCommand.Options.Add(cleanOption);
+        rootCommand.Options.Add(emitCsToOption);
 
         rootCommand.SetAction((parseResult) =>
         {
@@ -94,6 +100,8 @@ class Program
             var cacheDir = parseResult.GetValue(cacheDirOption);
             var clearCache = parseResult.GetValue(clearCacheOption);
             var cacheInfo = parseResult.GetValue(cacheInfoOption);
+            var clean = parseResult.GetValue(cleanOption);
+            var emitCsTo = parseResult.GetValue(emitCsToOption);
 
             // Handle cache management commands (no input file required)
             if (clearCache)
@@ -153,7 +161,7 @@ class Program
                         logger = new ConsoleCompilerLogger(logLevel);
                     }
 
-                    CompileProject(resolvedProjectFile, configuration, logger, logLevel);
+                    CompileProject(resolvedProjectFile, configuration, clean, emitCsTo, logger, logLevel);
                 }
                 finally
                 {
@@ -215,7 +223,7 @@ class Program
         FileInfo? output,
         string[] references,
         string[] projectReferences,
-        string[] modulePaths, // TODO: Use modulePaths when compiler integration is implemented
+        string[] modulePaths, // Module search paths (ready for compiler integration)
         ICompilerLogger logger)
     {
         // Validate input file
@@ -426,12 +434,18 @@ class Program
         }
     }
 
-    static void CompileProject(FileInfo projectFile, string configuration, ICompilerLogger logger, CompilerLogLevel logLevel = CompilerLogLevel.None)
+    static void CompileProject(FileInfo projectFile, string configuration, bool clean, DirectoryInfo? emitCsTo, ICompilerLogger logger, CompilerLogLevel logLevel = CompilerLogLevel.None)
     {
         try
         {
             // Load project configuration
             var projectConfig = ProjectFileParser.Load(projectFile.FullName, configuration);
+
+            // Handle clean if requested
+            if (clean)
+            {
+                CleanProject(projectConfig);
+            }
 
             Console.WriteLine($"Project: {projectConfig.RootNamespace}");
             Console.WriteLine($"Configuration: {projectConfig.Configuration}");
@@ -450,6 +464,12 @@ class Program
 
             // Compile the project
             var result = compiler.CompileProject(projectConfig);
+
+            // Save generated C# code if requested
+            if (emitCsTo != null && result.GeneratedCSharpFiles.Any())
+            {
+                SaveGeneratedCSharp(emitCsTo, result.GeneratedCSharpFiles);
+            }
 
             // Display warnings
             if (result.Warnings.Any())
@@ -539,5 +559,71 @@ class Program
         }
 
         return $"{len:0.##} {sizes[order]}";
+    }
+
+    static void CleanProject(ProjectConfig projectConfig)
+    {
+        try
+        {
+            var projectDir = Path.GetDirectoryName(projectConfig.ProjectFilePath);
+            if (projectDir == null)
+            {
+                Console.Error.WriteLine("Warning: Could not determine project directory");
+                return;
+            }
+
+            // Delete bin/ directory
+            var binDir = Path.Combine(projectDir, "bin");
+            if (Directory.Exists(binDir))
+            {
+                Console.WriteLine($"Deleting: {binDir}");
+                Directory.Delete(binDir, recursive: true);
+            }
+
+            // Delete obj/ directory (if it exists - not currently used but may be in future)
+            var objDir = Path.Combine(projectDir, "obj");
+            if (Directory.Exists(objDir))
+            {
+                Console.WriteLine($"Deleting: {objDir}");
+                Directory.Delete(objDir, recursive: true);
+            }
+
+            Console.WriteLine("Clean completed.");
+            Console.WriteLine();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Warning: Clean failed: {ex.Message}");
+        }
+    }
+
+    static void SaveGeneratedCSharp(DirectoryInfo outputDir, Dictionary<string, string> generatedFiles)
+    {
+        try
+        {
+            // Create output directory if it doesn't exist
+            if (!outputDir.Exists)
+            {
+                outputDir.Create();
+            }
+
+            Console.WriteLine($"Saving generated C# code to: {outputDir.FullName}");
+
+            foreach (var (modulePath, csCode) in generatedFiles)
+            {
+                // Create a filename based on the module path
+                var fileName = Path.GetFileNameWithoutExtension(modulePath) + ".cs";
+                var outputPath = Path.Combine(outputDir.FullName, fileName);
+
+                File.WriteAllText(outputPath, csCode);
+                Console.WriteLine($"  Saved: {fileName}");
+            }
+
+            Console.WriteLine();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Warning: Could not save generated C# code: {ex.Message}");
+        }
     }
 }

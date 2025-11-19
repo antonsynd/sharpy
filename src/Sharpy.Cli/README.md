@@ -11,41 +11,52 @@ dotnet build
 
 ## Usage
 
+### Single File Compilation
+
 ```bash
 sharpyc <input.spy> [options]
 ```
+
+### Project Compilation
+
+```bash
+sharpyc [--project <path.spyproj>] [options]
+```
+
+If `--project` is not specified, the compiler will automatically search for a `.spyproj` file in the current directory.
 
 ### Options
 
 #### Emit Modes
 
-- `--emit-tokens` - Emit lexer tokens for the input file (IMPLEMENTED)
+- `--emit-tokens` - Emit lexer tokens for the input file (single-file mode only)
   - Displays all tokens produced by the lexer with their types, positions, and values
   - Useful for debugging lexical analysis
 
 - `--emit-ast` - Emit the abstract syntax tree (NOT IMPLEMENTED YET)
   - Will display the parsed AST structure
 
+#### Project Options
+
+- `--project <path>` - Compile a Sharpy project file
+  - Auto-discovers `.spyproj` file if not specified
+  - Compiles all source files in the project
+
+- `-c, --configuration <Debug|Release>` - Build configuration (default: Debug)
+  - Determines output directory: `bin/Debug` or `bin/Release`
+
 #### Compilation Options (NOT IMPLEMENTED YET)
 
-- `-t, --output-type <library|exe>` - Specify output type (default: library)
-  - `library` - Compile to a .NET DLL
-  - `exe` - Compile to a .NET executable
-
-- `-o, --output <path>` - Specify output file path
+- `-o, --output <path>` - Specify output file path (single-file mode)
   - Default output name is based on input file name
 
-- `-r, --reference <path>` - Add .NET DLL reference(s)
-  - Can be specified multiple times for multiple references
-  - Example: `-r System.Drawing.dll -r MyLib.dll`
-
-- `-p, --project-reference <path>` - Add .NET project reference(s)
-  - Can be specified multiple times for multiple references
-  - Example: `-p ../MyLib/MyLib.csproj`
+- `--module-path <path>` - Add module search path(s) (single-file mode)
+  - Can be specified multiple times for multiple paths
+  - Example: `--module-path ./libs --module-path ../common`
 
 ## Examples
 
-### Emit Tokens (Currently Implemented)
+### Emit Tokens (Single-File Mode)
 
 ```bash
 # Display tokens for a Sharpy file
@@ -64,20 +75,74 @@ Tokens for hello.spy:
 Total tokens: 37
 ```
 
+### Project Compilation
+
+```bash
+# Compile a project in Debug mode (default)
+sharpyc
+
+# Compile a specific project file
+sharpyc --project myapp.spyproj
+
+# Compile in Release mode
+sharpyc --configuration Release
+```
+
+### Project File Format
+
+Create a `.spyproj` file to define your multi-file Sharpy project:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+    <PropertyGroup>
+        <RootNamespace>MyApp</RootNamespace>
+        <OutputType>exe</OutputType>
+        <Configuration>Debug</Configuration>
+    </PropertyGroup>
+    <ItemGroup>
+        <!-- Include specific files -->
+        <SpyFile Include="src/main.spy" />
+        <SpyFile Include="src/utils.spy" />
+
+        <!-- Or use glob patterns -->
+        <SpyFile Include="src/**/*.spy" />
+    </ItemGroup>
+</Project>
+```
+
+**Property Groups:**
+- `RootNamespace` - Root namespace for generated C# code (e.g., `MyApp`)
+- `OutputType` - `exe` for executable, `library` for DLL (default: `library`)
+- `Configuration` - Build configuration (default: `Debug`)
+
+**Item Groups:**
+- `SpyFile Include="..."` - Source files to compile
+  - Supports glob patterns: `**/*.spy`, `src/**/*.spy`, etc.
+  - Uses Microsoft.Extensions.FileSystemGlobbing
+
+**Output Structure:**
+```
+bin/
+  Debug/
+    net9.0/
+      MyApp.exe
+      MyApp.dll
+      MyApp.pdb
+  Release/
+    net9.0/
+      MyApp.exe
+      MyApp.dll
+```
+
 ### Future Examples (Not Implemented Yet)
 
 ```bash
-# Compile to a library
-sharpyc mylib.spy -t library -o mylib.dll
+# Compile single file with custom output
+sharpyc myfile.spy -o output.dll
 
-# Compile to an executable
-sharpyc main.spy -t exe -o main.exe
-
-# Compile with .NET references
-sharpyc myapp.spy -r System.Drawing.dll -r ../libs/MyLib.dll
-
-# Compile with project references
-sharpyc myapp.spy -p ../MyLib/MyLib.csproj
+# Compile with module search paths
+sharpyc main.spy --module-path ./libs --module-path ../common
 
 # Emit AST
 sharpyc myfile.spy --emit-ast
@@ -90,13 +155,22 @@ sharpyc myfile.spy --emit-ast
 - Input file validation
 - `--emit-tokens` mode with formatted token output
 - Error handling for lexer errors
+- **Project compilation** with `.spyproj` files
+  - Glob pattern support for source files
+  - Multi-file compilation with shared symbol table
+  - Cross-module imports and resolution
+  - Namespace generation from project structure
+  - Debug/Release configuration support
+  - Assembly generation (.exe/.dll)
+- **`__init__.spy` support** for package-level exports
+- **Improved error messages** with file context
 
 ### 🚧 Not Implemented Yet
 - `--emit-ast` - AST emission
-- Compilation to library/executable
-- .NET reference handling (`--reference`, `--project-reference`)
-- Output file generation (`--output`)
-- Output type selection (`--output-type`)
+- `--module-path` option for single-file compilation
+- `--output` option for single-file compilation
+- `--clean` command to delete bin/ directories
+- `--emit-cs-to` option to save intermediate C# code
 
 ## Development
 

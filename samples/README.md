@@ -48,7 +48,39 @@ Comprehensive demonstration of Sharpy's rich type system.
 - Interfaces
 - Polymorphism
 
-### 3. **SampleModule/** (Multi-file project)
+### 3. **calculator_app/** (Multi-file project with packages)
+A complete multi-file Sharpy project demonstrating project compilation and package organization.
+
+**Structure:**
+```
+calculator_app/
+├── calculator.spyproj    # Project file
+├── README.md             # Project documentation
+└── src/
+    ├── main.spy          # Entry point
+    ├── ui.spy            # User interface
+    └── math/             # Math operations package
+        ├── __init__.spy  # Package exports
+        ├── basic.spy     # Basic operations
+        └── advanced.spy  # Advanced operations
+```
+
+**Features showcased:**
+- `.spyproj` project files with glob patterns
+- Multi-file compilation
+- Package structure with `__init__.spy`
+- Cross-module imports
+- Namespace generation from directory structure
+- Debug/Release build configurations
+
+**Topics covered:**
+- Project organization
+- Package-level exports
+- Module imports
+- Build configurations
+- Assembly generation
+
+### 4. **SampleModule/** (Legacy multi-file example)
 A complete multi-file Sharpy module demonstrating project organization.
 
 **Structure:**
@@ -69,7 +101,7 @@ SampleModule/
 
 ## Running the Examples
 
-### Using the Sharpy CLI (Tokenization)
+### Single-File Examples
 
 ```bash
 # Tokenize an example to see the lexer output
@@ -77,6 +109,20 @@ dotnet run --project ../src/Sharpy.Cli -- dotnet_interop_example.spy --emit-toke
 
 # Parse an example to see the AST
 dotnet run --project ../src/Sharpy.Cli -- type_system_showcase.spy --emit-ast
+```
+
+### Project Examples
+
+```bash
+# Compile the calculator project
+cd calculator_app
+sharpyc
+
+# Or compile in Release mode
+sharpyc --configuration Release
+
+# Run the compiled application
+./bin/Debug/net9.0/Calculator.exe
 ```
 
 ### Integration Testing
@@ -133,10 +179,15 @@ Assert.True(result.Success);
    - Understand namespace imports
    - See LINQ integration
 
-3. **Study `SampleModule/`**
-   - Understand multi-file projects
-   - Learn module organization
-   - See import patterns
+3. **Build `calculator_app/`**
+   - Understand project files (`.spyproj`)
+   - Learn multi-file compilation
+   - See package organization with `__init__.spy`
+   - Build and run a complete application
+
+4. **Study `SampleModule/`**
+   - Alternative module organization approach
+   - See different import patterns
 
 ## Contributing Examples
 
