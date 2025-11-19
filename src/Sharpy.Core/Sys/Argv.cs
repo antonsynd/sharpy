@@ -10,7 +10,7 @@ public sealed partial class Exports
     /// The list of command line arguments passed to the program.
     /// argv[0] is the program name (or empty string).
     /// </summary>
-    public static string[] Argv => _argv;
+    public static string[] Argv => (string[])_argv.Clone();
 
     /// <summary>
     /// Exit the program with the given status code.
@@ -67,5 +67,5 @@ public sealed partial class Exports
     /// A list of strings that specifies the search path for modules.
     /// In Sharpy, this is simplified to just return the current directory.
     /// </summary>
-    public static string[] Path => _path;
+    public static string[] Path => (string[])_path.Clone();
 }
