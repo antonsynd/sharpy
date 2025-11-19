@@ -15,218 +15,371 @@ class Program
     {
         var rootCommand = new RootCommand("sharpyc - Sharpy Compiler");
 
-        // Input file argument (optional when using cache commands or project mode)
-        var inputFileArgument = new Argument<FileInfo?>("input") { Arity = ArgumentArity.ZeroOrOne };
+        // === Global Options ===
+        var logLevelOption = new Option<CompilerLogLevel?>("--log-level") { Description = "Set compiler log level (None, Error, Warning, Info, Debug)" };
+        var logFileOption = new Option<FileInfo?>("--log-file") { Description = "Write compiler logs to the specified file" };
 
-        // Emit mode options
-        var emitTokensOption = new Option<bool>("--emit-tokens");
-        var emitAstOption = new Option<bool>("--emit-ast");
-        var emitCSharpOption = new Option<bool>("--emit-csharp");
-
-        // Project option
-        var projectOption = new Option<FileInfo?>("--project") { Description = "Path to .spyproj file (auto-discovers if not specified)" };
-
-        // Build configuration
-        var configurationOption = new Option<string?>("--configuration") { Description = "Build configuration (Debug or Release)" };
-        configurationOption.Aliases.Add("-c");
-
-        // Output type option
-        var outputTypeOption = new Option<string?>("--output-type");
-        outputTypeOption.Aliases.Add("-t");
-
-        // Output file option
-        var outputOption = new Option<FileInfo?>("--output");
-        outputOption.Aliases.Add("-o");
-
-        // .NET reference options
-        var referenceOption = new Option<string[]>("--reference") { AllowMultipleArgumentsPerToken = true };
-        referenceOption.Aliases.Add("-r");
-
-        var projectReferenceOption = new Option<string[]>("--project-reference") { AllowMultipleArgumentsPerToken = true };
-        projectReferenceOption.Aliases.Add("-p");
-
-        // Module path option for searching assemblies
-        var modulePathOption = new Option<string[]>("--module-path") { AllowMultipleArgumentsPerToken = true };
-        modulePathOption.Aliases.Add("-m");
-
-        // Logging options
-        var logLevelOption = new Option<CompilerLogLevel?>("--log-level");
-        var logFileOption = new Option<FileInfo?>("--log-file");
-
-        // Cache management options
-        var cacheDirOption = new Option<string?>("--cache-dir") { Description = "Specify a custom cache directory (default: ~/.sharpy/cache/overload-index)" };
-        var clearCacheOption = new Option<bool>("--clear-cache") { Description = "Clear the overload discovery cache" };
-        var cacheInfoOption = new Option<bool>("--cache-info") { Description = "Display information about the overload discovery cache" };
-
-        // Build management options
-        var cleanOption = new Option<bool>("--clean") { Description = "Delete bin/ and obj/ directories before building" };
-        var emitCsToOption = new Option<DirectoryInfo?>("--emit-cs-to") { Description = "Save generated C# code to the specified directory" };
-
-        // Add options to command
-        rootCommand.Arguments.Add(inputFileArgument);
-        rootCommand.Options.Add(emitTokensOption);
-        rootCommand.Options.Add(emitAstOption);
-        rootCommand.Options.Add(emitCSharpOption);
-        rootCommand.Options.Add(projectOption);
-        rootCommand.Options.Add(configurationOption);
-        rootCommand.Options.Add(outputTypeOption);
-        rootCommand.Options.Add(outputOption);
-        rootCommand.Options.Add(referenceOption);
-        rootCommand.Options.Add(projectReferenceOption);
-        rootCommand.Options.Add(modulePathOption);
         rootCommand.Options.Add(logLevelOption);
         rootCommand.Options.Add(logFileOption);
-        rootCommand.Options.Add(cacheDirOption);
-        rootCommand.Options.Add(clearCacheOption);
-        rootCommand.Options.Add(cacheInfoOption);
-        rootCommand.Options.Add(cleanOption);
-        rootCommand.Options.Add(emitCsToOption);
 
-        rootCommand.SetAction((parseResult) =>
+        // === Build Command ===
+        var buildCommand = new Command("build", "Compile a Sharpy source file to a binary or library");
+
+        var buildInputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file to compile" };
+        var buildTypeOpt = new Option<string?>("--type") { Description = "Output type: 'exe' or 'library' (default: library)" };
+        buildTypeOpt.Aliases.Add("-t");
+        var buildOutputOpt = new Option<FileInfo?>("--output") { Description = "Output file path" };
+        buildOutputOpt.Aliases.Add("-o");
+        var buildRefOpt = new Option<string[]>("--reference") { Description = "Add .NET assembly references", AllowMultipleArgumentsPerToken = true };
+        buildRefOpt.Aliases.Add("-r");
+        var buildProjRefOpt = new Option<string[]>("--project-reference") { Description = "Add .NET project references", AllowMultipleArgumentsPerToken = true };
+        buildProjRefOpt.Aliases.Add("-p");
+        var buildModPathOpt = new Option<string[]>("--module-path") { Description = "Additional paths to search for modules", AllowMultipleArgumentsPerToken = true };
+        buildModPathOpt.Aliases.Add("-m");
+
+        buildCommand.Arguments.Add(buildInputArg);
+        buildCommand.Options.Add(buildTypeOpt);
+        buildCommand.Options.Add(buildOutputOpt);
+        buildCommand.Options.Add(buildRefOpt);
+        buildCommand.Options.Add(buildProjRefOpt);
+        buildCommand.Options.Add(buildModPathOpt);
+
+        buildCommand.SetAction((parseResult) =>
         {
-            var inputFile = parseResult.GetValue(inputFileArgument);
-            var emitTokens = parseResult.GetValue(emitTokensOption);
-            var emitAst = parseResult.GetValue(emitAstOption);
-            var emitCSharp = parseResult.GetValue(emitCSharpOption);
-            var projectFile = parseResult.GetValue(projectOption);
-            var configuration = parseResult.GetValue(configurationOption) ?? "Debug";
-            var outputType = parseResult.GetValue(outputTypeOption) ?? "library";
-            var output = parseResult.GetValue(outputOption);
-            var references = parseResult.GetValue(referenceOption);
-            var projectReferences = parseResult.GetValue(projectReferenceOption);
-            var modulePaths = parseResult.GetValue(modulePathOption);
+            var input = parseResult.GetValue(buildInputArg)!;
+            var type = parseResult.GetValue(buildTypeOpt) ?? "library";
+            var output = parseResult.GetValue(buildOutputOpt);
+            var reference = parseResult.GetValue(buildRefOpt) ?? Array.Empty<string>();
+            var projectReference = parseResult.GetValue(buildProjRefOpt) ?? Array.Empty<string>();
+            var modulePath = parseResult.GetValue(buildModPathOpt) ?? Array.Empty<string>();
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
-            var cacheDir = parseResult.GetValue(cacheDirOption);
-            var clearCache = parseResult.GetValue(clearCacheOption);
-            var cacheInfo = parseResult.GetValue(cacheInfoOption);
-            var clean = parseResult.GetValue(cleanOption);
-            var emitCsTo = parseResult.GetValue(emitCsToOption);
 
-            // Handle cache management commands (no input file required)
-            if (clearCache)
-            {
-                ClearCache(cacheDir);
-                return;
-            }
-
-            if (cacheInfo)
-            {
-                ShowCacheInfo(cacheDir);
-                return;
-            }
-
-            // Check if project mode or single-file mode
-            var isProjectMode = projectFile != null || (inputFile == null && !emitTokens && !emitAst && !emitCSharp);
-
-            if (isProjectMode)
-            {
-                // Project compilation mode
-                FileInfo? resolvedProjectFile = projectFile;
-
-                if (resolvedProjectFile == null)
-                {
-                    // Auto-discover .spyproj file in current directory
-                    var currentDir = Directory.GetCurrentDirectory();
-                    var discoveredPath = ProjectFileParser.FindProjectFile(currentDir);
-
-                    if (discoveredPath == null)
-                    {
-                        Console.Error.WriteLine("Error: No .spyproj file found in current directory.");
-                        Console.Error.WriteLine("Use --project <file.spyproj> to specify a project file, or provide an input .spy file.");
-                        Environment.Exit(1);
-                        return;
-                    }
-
-                    resolvedProjectFile = new FileInfo(discoveredPath);
-                    Console.WriteLine($"Building project: {Path.GetFileName(discoveredPath)}");
-                }
-
-                // Create logger
-                ICompilerLogger logger;
-                StreamWriter? projectFileStream = null;
-                try
-                {
-                    if (logLevel == CompilerLogLevel.None)
-                    {
-                        logger = NullLogger.Instance;
-                    }
-                    else if (logFile != null)
-                    {
-                        projectFileStream = new StreamWriter(logFile.FullName, append: false);
-                        logger = new ConsoleCompilerLogger(logLevel, projectFileStream, projectFileStream);
-                    }
-                    else
-                    {
-                        logger = new ConsoleCompilerLogger(logLevel);
-                    }
-
-                    CompileProject(resolvedProjectFile, configuration, clean, emitCsTo, logger, logLevel);
-                }
-                finally
-                {
-                    projectFileStream?.Flush();
-                    projectFileStream?.Dispose();
-                }
-                return;
-            }
-
-            // For compilation commands, input file is required
-            if (inputFile == null)
-            {
-                Console.Error.WriteLine("Error: Input file is required for compilation.");
-                Console.Error.WriteLine("Use --clear-cache or --cache-info for cache management.");
-                Environment.Exit(1);
-            }
-
-            // Create logger and optional file stream that needs disposal
-            StreamWriter? fileStream = null;
-            try
-            {
-                ICompilerLogger logger;
-                if (logLevel == CompilerLogLevel.None)
-                {
-                    logger = NullLogger.Instance;
-                }
-                else if (logFile != null)
-                {
-                    fileStream = new StreamWriter(logFile.FullName, append: false);
-                    logger = new ConsoleCompilerLogger(logLevel, fileStream, fileStream);
-                }
-                else
-                {
-                    logger = new ConsoleCompilerLogger(logLevel);
-                }
-
-                HandleCommand(inputFile, emitTokens, emitAst, emitCSharp, outputType, output,
-                             references ?? Array.Empty<string>(),
-                             projectReferences ?? Array.Empty<string>(),
-                             modulePaths ?? Array.Empty<string>(),
-                             logger);
-            }
-            finally
-            {
-                fileStream?.Flush();
-                fileStream?.Dispose();
-            }
+            var logger = CreateLogger(logLevel, logFile);
+            HandleBuildCommand(input, type, output, reference, projectReference, modulePath, logger);
         });
+
+        // === Run Command ===
+        var runCommand = new Command("run", "Compile and execute a Sharpy source file");
+
+        var runInputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file to run" };
+        var runOutputOpt = new Option<FileInfo?>("--output") { Description = "Output file path (temporary if not specified)" };
+        runOutputOpt.Aliases.Add("-o");
+        var runRefOpt = new Option<string[]>("--reference") { Description = "Add .NET assembly references", AllowMultipleArgumentsPerToken = true };
+        runRefOpt.Aliases.Add("-r");
+        var runProjRefOpt = new Option<string[]>("--project-reference") { Description = "Add .NET project references", AllowMultipleArgumentsPerToken = true };
+        runProjRefOpt.Aliases.Add("-p");
+        var runModPathOpt = new Option<string[]>("--module-path") { Description = "Additional paths to search for modules", AllowMultipleArgumentsPerToken = true };
+        runModPathOpt.Aliases.Add("-m");
+        var runArgsOpt = new Option<string[]>("--args") { Description = "Arguments to pass to the program", AllowMultipleArgumentsPerToken = true };
+
+        runCommand.Arguments.Add(runInputArg);
+        runCommand.Options.Add(runOutputOpt);
+        runCommand.Options.Add(runRefOpt);
+        runCommand.Options.Add(runProjRefOpt);
+        runCommand.Options.Add(runModPathOpt);
+        runCommand.Options.Add(runArgsOpt);
+
+        runCommand.SetAction((parseResult) =>
+        {
+            var input = parseResult.GetValue(runInputArg)!;
+            var output = parseResult.GetValue(runOutputOpt);
+            var reference = parseResult.GetValue(runRefOpt) ?? Array.Empty<string>();
+            var projectReference = parseResult.GetValue(runProjRefOpt) ?? Array.Empty<string>();
+            var modulePath = parseResult.GetValue(runModPathOpt) ?? Array.Empty<string>();
+            var progArgs = parseResult.GetValue(runArgsOpt) ?? Array.Empty<string>();
+            var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
+            var logFile = parseResult.GetValue(logFileOption);
+
+            var logger = CreateLogger(logLevel, logFile);
+            HandleRunCommand(input, output, reference, projectReference, modulePath, progArgs, logger);
+        });
+
+        // === Project Command ===
+        var projectCommand = new Command("project", "Build a Sharpy project from a .spyproj file");
+
+        var projFileArg = new Argument<FileInfo?>("project") { Description = "Path to .spyproj file (auto-discovers if not specified)", Arity = ArgumentArity.ZeroOrOne };
+        var projConfigOpt = new Option<string?>("--configuration") { Description = "Build configuration (Debug or Release)" };
+        projConfigOpt.Aliases.Add("-c");
+        var projCleanOpt = new Option<bool>("--clean") { Description = "Delete bin/ and obj/ directories before building" };
+        var projEmitCsOpt = new Option<DirectoryInfo?>("--emit-cs-to") { Description = "Save generated C# code to the specified directory" };
+
+        projectCommand.Arguments.Add(projFileArg);
+        projectCommand.Options.Add(projConfigOpt);
+        projectCommand.Options.Add(projCleanOpt);
+        projectCommand.Options.Add(projEmitCsOpt);
+
+        projectCommand.SetAction((parseResult) =>
+        {
+            var project = parseResult.GetValue(projFileArg);
+            var configuration = parseResult.GetValue(projConfigOpt) ?? "Debug";
+            var clean = parseResult.GetValue(projCleanOpt);
+            var emitCsTo = parseResult.GetValue(projEmitCsOpt);
+            var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
+            var logFile = parseResult.GetValue(logFileOption);
+
+            var logger = CreateLogger(logLevel, logFile);
+            HandleProjectCommand(project, configuration, clean, emitCsTo, logger, logLevel);
+        });
+
+        // === Emit Command (with subcommands) ===
+        var emitCommand = new Command("emit", "Emit compiler intermediate representations");
+
+        var emitTokensCommand = new Command("tokens", "Emit tokenized output");
+        var emitTokensInputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file" };
+        emitTokensCommand.Arguments.Add(emitTokensInputArg);
+        emitTokensCommand.SetAction((parseResult) =>
+        {
+            var input = parseResult.GetValue(emitTokensInputArg)!;
+            var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
+            var logFile = parseResult.GetValue(logFileOption);
+            var logger = CreateLogger(logLevel, logFile);
+            EmitTokens(input, logger);
+        });
+
+        var emitAstCommand = new Command("ast", "Emit abstract syntax tree");
+        var emitAstInputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file" };
+        emitAstCommand.Arguments.Add(emitAstInputArg);
+        emitAstCommand.SetAction((parseResult) =>
+        {
+            var input = parseResult.GetValue(emitAstInputArg)!;
+            var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
+            var logFile = parseResult.GetValue(logFileOption);
+            var logger = CreateLogger(logLevel, logFile);
+            EmitAst(input, logger);
+        });
+
+        var emitCsharpCommand = new Command("csharp", "Emit generated C# code");
+        var emitCsharpInputArg = new Argument<FileInfo>("input") { Description = "Sharpy source file" };
+        var emitCsharpOutputOpt = new Option<FileInfo?>("--output") { Description = "Output file path" };
+        emitCsharpOutputOpt.Aliases.Add("-o");
+        emitCsharpCommand.Arguments.Add(emitCsharpInputArg);
+        emitCsharpCommand.Options.Add(emitCsharpOutputOpt);
+        emitCsharpCommand.SetAction((parseResult) =>
+        {
+            var input = parseResult.GetValue(emitCsharpInputArg)!;
+            var output = parseResult.GetValue(emitCsharpOutputOpt);
+            var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
+            var logFile = parseResult.GetValue(logFileOption);
+            var logger = CreateLogger(logLevel, logFile);
+            EmitCSharp(input, output, logger);
+        });
+
+        emitCommand.Subcommands.Add(emitTokensCommand);
+        emitCommand.Subcommands.Add(emitAstCommand);
+        emitCommand.Subcommands.Add(emitCsharpCommand);
+
+        // === Cache Command (with subcommands) ===
+        var cacheCommand = new Command("cache", "Manage the overload discovery cache");
+
+        var cacheClearCommand = new Command("clear", "Clear the cache");
+        var cacheClearDirOpt = new Option<string?>("--cache-dir") { Description = "Custom cache directory" };
+        cacheClearCommand.Options.Add(cacheClearDirOpt);
+        cacheClearCommand.SetAction((parseResult) =>
+        {
+            var cacheDir = parseResult.GetValue(cacheClearDirOpt);
+            ClearCache(cacheDir);
+        });
+
+        var cacheInfoCommand = new Command("info", "Display cache information");
+        var cacheInfoDirOpt = new Option<string?>("--cache-dir") { Description = "Custom cache directory" };
+        cacheInfoCommand.Options.Add(cacheInfoDirOpt);
+        cacheInfoCommand.SetAction((parseResult) =>
+        {
+            var cacheDir = parseResult.GetValue(cacheInfoDirOpt);
+            ShowCacheInfo(cacheDir);
+        });
+
+        cacheCommand.Subcommands.Add(cacheClearCommand);
+        cacheCommand.Subcommands.Add(cacheInfoCommand);
+
+        // === Add all commands to root ===
+        rootCommand.Subcommands.Add(buildCommand);
+        rootCommand.Subcommands.Add(runCommand);
+        rootCommand.Subcommands.Add(projectCommand);
+        rootCommand.Subcommands.Add(emitCommand);
+        rootCommand.Subcommands.Add(cacheCommand);
 
         return rootCommand.Parse(args).Invoke();
     }
 
-    static void HandleCommand(
+    static ICompilerLogger CreateLogger(CompilerLogLevel logLevel, FileInfo? logFile)
+    {
+        if (logLevel == CompilerLogLevel.None)
+        {
+            return NullLogger.Instance;
+        }
+        else if (logFile != null)
+        {
+            var stream = new StreamWriter(logFile.FullName, append: false);
+            return new ConsoleCompilerLogger(logLevel, stream, stream);
+        }
+        else
+        {
+            return new ConsoleCompilerLogger(logLevel);
+        }
+    }
+
+    static void HandleBuildCommand(
         FileInfo inputFile,
-        bool emitTokens,
-        bool emitAst,
-        bool emitCSharp,
         string outputType,
         FileInfo? output,
         string[] references,
         string[] projectReferences,
-        string[] modulePaths, // Module search paths (ready for compiler integration)
+        string[] modulePaths,
         ICompilerLogger logger)
     {
-        // Validate input file
+        ValidateInputFile(inputFile);
+        CompileToBinary(inputFile, outputType, output, references, projectReferences, modulePaths, logger);
+    }
+
+    static void HandleRunCommand(
+        FileInfo inputFile,
+        FileInfo? output,
+        string[] references,
+        string[] projectReferences,
+        string[] modulePaths,
+        string[] args,
+        ICompilerLogger logger)
+    {
+        ValidateInputFile(inputFile);
+
+        // Determine output path - use temp file if not specified
+        var outputPath = output?.FullName;
+        var isTempOutput = false;
+        var tempBaseName = "";
+
+        if (outputPath == null)
+        {
+            var tempDir = Path.GetTempPath();
+            var inputFileName = Path.GetFileNameWithoutExtension(inputFile.Name);
+            tempBaseName = $"{inputFileName}_{Guid.NewGuid():N}";
+            outputPath = Path.Combine(tempDir, tempBaseName + ".exe");
+            isTempOutput = true;
+        }
+
+        try
+        {
+            // Compile to executable
+            CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, projectReferences, modulePaths, logger);
+
+            // Copy Sharpy.Core.dll to the output directory so the executable can find it
+            var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly;
+            var sharpyCorePath = sharpyCoreAssembly.Location;
+            var outputDir = Path.GetDirectoryName(outputPath)!;
+            var sharpyCoreDestPath = Path.Combine(outputDir, "Sharpy.Core.dll");
+            File.Copy(sharpyCorePath, sharpyCoreDestPath, overwrite: true);
+
+            // TODO: Implement self-contained publish mode to bundle runtime + all dependencies
+            // instead of manually copying Sharpy.Core.dll. This would make the run command
+            // truly standalone without requiring dotnet to be installed.
+
+            // Run the compiled executable
+            Console.WriteLine();
+            Console.WriteLine("=== Running Program ===");
+            Console.WriteLine();
+
+            var startInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "dotnet",
+                ArgumentList = { outputPath },
+                UseShellExecute = false
+            };
+
+            // Add program arguments
+            foreach (var arg in args)
+            {
+                startInfo.ArgumentList.Add(arg);
+            }
+
+            var process = System.Diagnostics.Process.Start(startInfo);
+            if (process != null)
+            {
+                process.WaitForExit();
+
+                // Clean up temp files after execution if needed
+                if (isTempOutput)
+                {
+                    try
+                    {
+                        var basePath = Path.GetDirectoryName(outputPath)!;
+                        File.Delete(outputPath);
+                        File.Delete(Path.Combine(basePath, tempBaseName + ".runtimeconfig.json"));
+                        File.Delete(Path.Combine(basePath, tempBaseName + ".deps.json"));
+                        File.Delete(Path.Combine(basePath, tempBaseName + ".pdb"));
+                        File.Delete(sharpyCoreDestPath);
+                    }
+                    catch
+                    {
+                        // Ignore cleanup errors
+                    }
+                }
+
+                Environment.Exit(process.ExitCode);
+            }
+        }
+        catch (Exception)
+        {
+            // Clean up temp files on error if needed
+            if (isTempOutput && File.Exists(outputPath))
+            {
+                try
+                {
+                    var basePath = Path.GetDirectoryName(outputPath)!;
+                    File.Delete(outputPath);
+                    File.Delete(Path.Combine(basePath, tempBaseName + ".runtimeconfig.json"));
+                    File.Delete(Path.Combine(basePath, tempBaseName + ".deps.json"));
+                    File.Delete(Path.Combine(basePath, tempBaseName + ".pdb"));
+
+                    // Also clean up Sharpy.Core.dll
+                    var sharpyCoreDestPath = Path.Combine(basePath, "Sharpy.Core.dll");
+                    if (File.Exists(sharpyCoreDestPath))
+                    {
+                        File.Delete(sharpyCoreDestPath);
+                    }
+                }
+                catch
+                {
+                    // Ignore cleanup errors
+                }
+            }
+            throw;
+        }
+    }
+
+    static void HandleProjectCommand(
+        FileInfo? projectFile,
+        string configuration,
+        bool clean,
+        DirectoryInfo? emitCsTo,
+        ICompilerLogger logger,
+        CompilerLogLevel logLevel)
+    {
+        FileInfo? resolvedProjectFile = projectFile;
+
+        if (resolvedProjectFile == null)
+        {
+            // Auto-discover .spyproj file in current directory
+            var currentDir = Directory.GetCurrentDirectory();
+            var discoveredPath = ProjectFileParser.FindProjectFile(currentDir);
+
+            if (discoveredPath == null)
+            {
+                Console.Error.WriteLine("Error: No .spyproj file found in current directory.");
+                Console.Error.WriteLine("Specify a project file with the first argument, or use 'sharpyc build' for single-file compilation.");
+                Environment.Exit(1);
+                return;
+            }
+
+            resolvedProjectFile = new FileInfo(discoveredPath);
+            Console.WriteLine($"Building project: {Path.GetFileName(discoveredPath)}");
+        }
+
+        CompileProject(resolvedProjectFile, configuration, clean, emitCsTo, logger, logLevel);
+    }
+
+    static void ValidateInputFile(FileInfo inputFile)
+    {
         if (!inputFile.Exists)
         {
             Console.Error.WriteLine($"Error: Input file '{inputFile.FullName}' does not exist.");
@@ -237,38 +390,6 @@ class Program
         {
             Console.Error.WriteLine($"Warning: Input file '{inputFile.Name}' does not have .spy extension.");
         }
-
-        // Check for conflicting options
-        var emitOptions = new[] { emitTokens, emitAst, emitCSharp };
-        if (emitOptions.Count(x => x) > 1)
-        {
-            Console.Error.WriteLine("Error: Cannot specify multiple emit options (--emit-tokens, --emit-ast, --emit-csharp)");
-            Environment.Exit(1);
-        }
-
-        // Handle emit-tokens mode (IMPLEMENTED)
-        if (emitTokens)
-        {
-            EmitTokens(inputFile, logger);
-            return;
-        }
-
-        // Handle emit-ast mode (IMPLEMENTED)
-        if (emitAst)
-        {
-            EmitAst(inputFile, logger);
-            return;
-        }
-
-        // Handle emit-csharp mode (IMPLEMENTED)
-        if (emitCSharp)
-        {
-            EmitCSharp(inputFile, output, logger);
-            return;
-        }
-
-        // Handle compilation mode - compile to binary/library
-        CompileToBinary(inputFile, outputType, output, references, projectReferences, modulePaths, logger);
     }
 
     static void EmitTokens(FileInfo inputFile, ICompilerLogger logger)
