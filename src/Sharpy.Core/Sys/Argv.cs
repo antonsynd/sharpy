@@ -2,17 +2,15 @@ namespace Sharpy.Sys;
 
 public sealed partial class Exports
 {
+    private static readonly string[] _argv = Environment.GetCommandLineArgs();
+    private static readonly string _platform = GetPlatform();
+    private static readonly string[] _path = new[] { Environment.CurrentDirectory };
+
     /// <summary>
     /// The list of command line arguments passed to the program.
     /// argv[0] is the program name (or empty string).
     /// </summary>
-    public static string[] Argv
-    {
-        get
-        {
-            return Environment.GetCommandLineArgs();
-        }
-    }
+    public static string[] Argv => _argv;
 
     /// <summary>
     /// Exit the program with the given status code.
@@ -32,26 +30,25 @@ public sealed partial class Exports
     /// <summary>
     /// This string contains a platform identifier.
     /// </summary>
-    public static string Platform
+    public static string Platform => _platform;
+
+    private static string GetPlatform()
     {
-        get
+        if (OperatingSystem.IsWindows())
         {
-            if (OperatingSystem.IsWindows())
-            {
-                return "win32";
-            }
-            else if (OperatingSystem.IsLinux())
-            {
-                return "linux";
-            }
-            else if (OperatingSystem.IsMacOS())
-            {
-                return "darwin";
-            }
-            else
-            {
-                return "unknown";
-            }
+            return "win32";
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            return "linux";
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            return "darwin";
+        }
+        else
+        {
+            return "unknown";
         }
     }
 
@@ -70,5 +67,5 @@ public sealed partial class Exports
     /// A list of strings that specifies the search path for modules.
     /// In Sharpy, this is simplified to just return the current directory.
     /// </summary>
-    public static string[] Path => new[] { Environment.CurrentDirectory };
+    public static string[] Path => _path;
 }
