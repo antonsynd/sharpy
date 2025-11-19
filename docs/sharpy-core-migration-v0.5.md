@@ -23,8 +23,8 @@ This migration is **largely complete** with all critical v0.5 features implement
 - Performance benchmarks
 
 ### 📊 Test Status
-- **382 tests passing** in Sharpy.Core.Tests (31 new comparison tests added)
-- **516 tests passing** in Sharpy.Compiler.Tests (1 skipped)
+- **716 tests passing** in Sharpy.Core.Tests
+- **1,189 tests passing** in Sharpy.Compiler.Tests (43 skipped)
 - Comprehensive coverage of core types and operations
 
 ## Overview
