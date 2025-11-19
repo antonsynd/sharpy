@@ -71,18 +71,20 @@ public class IsliceIterator<T> : Iterator<T>
         _step = step;
         _currentIndex = 0;
 
-        // Skip to start
+        // Skip to start - if iterator is exhausted before start, just mark it
         for (int i = 0; i < start; i++)
         {
             try
             {
                 _iterator.__Next__();
+                _currentIndex++;
             }
             catch (StopIteration)
             {
-                throw new StopIteration();
+                // Iterator exhausted before reaching start - mark as past stop
+                _currentIndex = stop;
+                break;
             }
-            _currentIndex++;
         }
     }
 
@@ -106,7 +108,9 @@ public class IsliceIterator<T> : Iterator<T>
             }
             catch (StopIteration)
             {
-                throw new StopIteration();
+                // Iterator exhausted mid-step - just stop here
+                _currentIndex = _stop;
+                break;
             }
         }
 

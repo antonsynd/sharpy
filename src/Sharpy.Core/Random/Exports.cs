@@ -8,7 +8,7 @@ using Sharpy.Core;
 /// </summary>
 public static class Exports
 {
-    private static readonly System.Random _random = new System.Random();
+    private static System.Random _random = new System.Random();
     private static readonly object _lock = new object();
 
     /// <summary>
@@ -19,10 +19,7 @@ public static class Exports
     {
         lock (_lock)
         {
-            // Create a new Random instance with the seed
-            // Note: We can't actually replace the static _random field easily,
-            // so this is a simplified implementation
-            System.Random.Shared.GetItems(new[] { seed }, 1);
+            _random = new System.Random(seed);
         }
     }
 
@@ -179,19 +176,38 @@ public static class Exports
 
         lock (_lock)
         {
-            var indices = new System.Collections.Generic.HashSet<int>();
-            var result = new System.Collections.Generic.List<T>();
-
-            while (indices.Count < k)
+            // Use Fisher-Yates shuffle for large k, HashSet for small k
+            if (k > population.Count / 2)
             {
-                int index = _random.Next(population.Count);
-                if (indices.Add(index))
+                // Fisher-Yates shuffle: copy population, shuffle first k elements
+                var copy = new System.Collections.Generic.List<T>(population);
+                int n = copy.Count;
+                for (int i = 0; i < k; i++)
                 {
-                    result.Add(population[index]);
+                    int j = _random.Next(i, n);
+                    // Swap copy[i] and copy[j]
+                    T temp = copy[i];
+                    copy[i] = copy[j];
+                    copy[j] = temp;
                 }
+                return new Sharpy.Core.List<T>(copy.GetRange(0, k));
             }
+            else
+            {
+                var indices = new System.Collections.Generic.HashSet<int>();
+                var result = new System.Collections.Generic.List<T>();
 
-            return new Sharpy.Core.List<T>(result);
+                while (indices.Count < k)
+                {
+                    int index = _random.Next(population.Count);
+                    if (indices.Add(index))
+                    {
+                        result.Add(population[index]);
+                    }
+                }
+
+                return new Sharpy.Core.List<T>(result);
+            }
         }
     }
 }

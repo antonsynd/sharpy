@@ -190,13 +190,18 @@ public static class Exports
     }
 
     /// <summary>
-    /// Return the factorial of n. Raises ValueError if n is negative.
+    /// Return the factorial of n. Raises ValueError if n is negative or OverflowException if n is too large (n > 20).
     /// </summary>
     public static long Factorial(int n)
     {
         if (n < 0)
         {
             throw new ValueError("factorial() not defined for negative values");
+        }
+
+        if (n > 20)
+        {
+            throw new OverflowException("factorial() result too large for long type (n > 20)");
         }
 
         if (n == 0 || n == 1)

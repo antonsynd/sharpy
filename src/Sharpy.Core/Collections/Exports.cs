@@ -128,9 +128,9 @@ public class Counter<T> where T : notnull
         _counts = new System.Collections.Generic.Dictionary<T, int>();
         foreach (var item in iterable)
         {
-            if (_counts.ContainsKey(item))
+            if (_counts.TryGetValue(item, out int count))
             {
-                _counts[item]++;
+                _counts[item] = count + 1;
             }
             else
             {
@@ -184,9 +184,9 @@ public class Counter<T> where T : notnull
     {
         foreach (var item in iterable)
         {
-            if (_counts.ContainsKey(item))
+            if (_counts.TryGetValue(item, out int count))
             {
-                _counts[item]++;
+                _counts[item] = count + 1;
             }
             else
             {
