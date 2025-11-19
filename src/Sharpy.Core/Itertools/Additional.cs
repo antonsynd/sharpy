@@ -46,6 +46,8 @@ public class ChainIterator<T> : Iterator<T>
 
 /// <summary>
 /// Make an iterator that returns selected elements from the iterable.
+/// Note: The constructor consumes elements from the underlying iterator to skip to the start position.
+/// If the iterator is exhausted before reaching the start index, an empty iterator is created.
 /// </summary>
 public class IsliceIterator<T> : Iterator<T>
 {

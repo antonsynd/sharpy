@@ -1,7 +1,8 @@
-namespace Sharpy.Collections;
-
 using Sharpy.Collections.Interfaces;
 using Sharpy.Core;
+using System.Linq;
+
+namespace Sharpy.Collections;
 
 /// <summary>
 /// A deque (double-ended queue) is a generalization of stacks and queues
@@ -143,10 +144,22 @@ public class Counter<T> where T : notnull
 
     /// <summary>
     /// Return a list of the n most common elements and their counts.
+    /// Elements with equal counts are ordered by their key if T implements IComparable, otherwise in arbitrary order.
     /// </summary>
     public System.Collections.Generic.List<(T, int)> MostCommon(int? n = null)
     {
-        IEnumerable<System.Collections.Generic.KeyValuePair<T, int>> sorted = _counts.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key);
+        var ordered = _counts.OrderByDescending(kv => kv.Value);
+        
+        // Only apply ThenBy if T implements IComparable to avoid runtime exceptions
+        IEnumerable<System.Collections.Generic.KeyValuePair<T, int>> sorted;
+        if (typeof(IComparable<T>).IsAssignableFrom(typeof(T)) || typeof(IComparable).IsAssignableFrom(typeof(T)))
+        {
+            sorted = ordered.ThenBy(kv => kv.Key);
+        }
+        else
+        {
+            sorted = ordered;
+        }
 
         if (n.HasValue)
         {
