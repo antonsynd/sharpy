@@ -134,6 +134,11 @@ public sealed partial class Dict<K, V> : Object, IMutableMapping<K, V> where K :
 
     public void Update(IMapping<K, V> other)
     {
+        if (other == null)
+        {
+            throw new ArgumentNullException(nameof(other));
+        }
+
         foreach (var key in other.Keys())
         {
             _dict[key] = other.__GetItem__(key);
@@ -155,7 +160,14 @@ public sealed partial class Dict<K, V> : Object, IMutableMapping<K, V> where K :
 
     public bool __Contains__(K key)
     {
-        return _dict.ContainsKey(key);
+        try
+        {
+            return _dict.ContainsKey(key);
+        }
+        catch (NullReferenceException)
+        {
+            throw new ArgumentNullException(nameof(key));
+        }
     }
 
     public void __DelItem__(K key)

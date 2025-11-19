@@ -391,4 +391,122 @@ public class Dict_Tests
         dict.Clear();
         dict.__Len__().Should().Be(0);
     }
+
+    [Fact]
+    public void Indexer_Get_WithNullKey_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var dict = new Dict<Str?, int>();
+
+        // Act & Assert
+        dict.Invoking(d => { var _ = d[null!]; })
+            .Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Indexer_Set_WithNullKey_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var dict = new Dict<Str?, int>();
+
+        // Act & Assert
+        dict.Invoking(d => d[null!] = 42)
+            .Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Update_WithNullMapping_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var dict = new Dict<Str, int>();
+
+        // Act & Assert
+        dict.Invoking(d => d.Update((Dict<Str, int>)null!))
+            .Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Contains_WithNullKey_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var dict = new Dict<Str, int>();
+        dict["a"] = 1;
+
+        // Act & Assert
+        dict.Invoking(d => d.__Contains__(null!))
+            .Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Or_WithEmptyDicts_ReturnsEmptyDict()
+    {
+        // Arrange
+        var dict1 = new Dict<Str, int>();
+        var dict2 = new Dict<Str, int>();
+
+        // Act
+        var result = dict1 | dict2;
+
+        // Assert
+        result.__Len__().Should().Be(0);
+    }
+
+    [Fact]
+    public void Copy_ModifyingOriginal_DoesNotAffectCopy()
+    {
+        // Arrange
+        var original = new Dict<Str, int>();
+        original["a"] = 1;
+        var copy = original.Copy();
+
+        // Act
+        original["a"] = 999;
+        original["b"] = 2;
+
+        // Assert
+        copy["a"].Should().Be(1); // Copy unchanged
+        copy.__Contains__("b").Should().BeFalse();
+    }
+
+    [Fact]
+    public void SetDefault_WithNullDefault_SetsNull()
+    {
+        // Arrange
+        var dict = new Dict<Str, int?>();
+
+        // Act
+        var value = dict.SetDefault("key", null);
+
+        // Assert
+        value.Should().BeNull();
+        dict["key"].Should().BeNull();
+    }
+
+    [Fact]
+    public void Equality_WithDifferentSizes_ReturnsFalse()
+    {
+        // Arrange
+        var dict1 = new Dict<Str, int>();
+        dict1["a"] = 1;
+
+        var dict2 = new Dict<Str, int>();
+        dict2["a"] = 1;
+        dict2["b"] = 2;
+
+        // Act & Assert
+        (dict1 == dict2).Should().BeFalse();
+        (dict1 != dict2).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Equality_WithNull_ReturnsFalse()
+    {
+        // Arrange
+        var dict = new Dict<Str, int>();
+        dict["a"] = 1;
+
+        // Act & Assert
+        (dict == null).Should().BeFalse();
+        (dict != null).Should().BeTrue();
+    }
 }
