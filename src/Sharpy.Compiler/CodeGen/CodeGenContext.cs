@@ -31,7 +31,7 @@ public class CodeGenContext
     }
 
     public void Indent() => _indentLevel++;
-    public void Dedent() => _indentLevel = Math.Max(0, _indentLevel - 1);
+    public void Dedent() => _indentLevel = System.Math.Max(0, _indentLevel - 1);
 
     public string GetIndent() => new string(' ', _indentLevel * IndentSize);
 

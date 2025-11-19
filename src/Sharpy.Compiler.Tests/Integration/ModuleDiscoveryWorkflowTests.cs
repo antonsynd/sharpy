@@ -254,7 +254,7 @@ public class ModuleDiscoveryWorkflowTests : IDisposable
             $"Fast cached loads: {fastCachedLoads}/{TotalCachedLoadRuns}");
 
         // Additionally verify that median cached load is reasonable (allow up to 5x median first load, with a minimum threshold of 100ms)
-        var maxReasonableTime = Math.Max(medianFirstLoad * MaxCachedLoadMultiplier, MinReasonableTimeMs);
+        var maxReasonableTime = System.Math.Max(medianFirstLoad * MaxCachedLoadMultiplier, MinReasonableTimeMs);
         Assert.True(medianSecondLoad <= maxReasonableTime,
             $"Median cached load ({medianSecondLoad}ms) should be reasonable. " +
             $"Median first load: {medianFirstLoad}ms, max allowed: {maxReasonableTime}ms");
