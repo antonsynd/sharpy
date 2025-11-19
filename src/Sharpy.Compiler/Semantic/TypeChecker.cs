@@ -742,6 +742,9 @@ public class TypeChecker
             DictLiteral dict => CheckDictLiteral(dict),
             SetLiteral set => CheckSetLiteral(set),
             TupleLiteral tuple => CheckTupleLiteral(tuple),
+            ListComprehension listComp => CheckListComprehension(listComp),
+            SetComprehension setComp => CheckSetComprehension(setComp),
+            DictComprehension dictComp => CheckDictComprehension(dictComp),
             ConditionalExpression cond => CheckConditionalExpression(cond),
             LambdaExpression lambda => CheckLambda(lambda),
             TypeCast cast => CheckTypeCast(cast),
@@ -1131,6 +1134,191 @@ public class TypeChecker
     {
         var elementTypes = tuple.Elements.Select(CheckExpression).ToList();
         return new TupleType { ElementTypes = elementTypes };
+    }
+
+    private SemanticType CheckListComprehension(ListComprehension listComp)
+    {
+        // Enter comprehension scope (variables don't leak)
+        _symbolTable.EnterScope("list-comprehension");
+
+        // Process clauses in order
+        foreach (var clause in listComp.Clauses)
+        {
+            if (clause is ForClause forClause)
+            {
+                // Check iterator type
+                var iterType = CheckExpression(forClause.Iterator);
+                var elemType = ExtractElementType(iterType);
+
+                // Define loop variable (single identifier only for now)
+                if (forClause.Target is Identifier id)
+                {
+                    var loopVarSymbol = new VariableSymbol
+                    {
+                        Name = id.Name,
+                        Kind = SymbolKind.Variable,
+                        Type = elemType,
+                        AccessLevel = AccessLevel.Public,
+                        DeclarationLine = id.LineStart,
+                        DeclarationColumn = id.ColumnStart
+                    };
+                    _symbolTable.Define(loopVarSymbol);
+                    _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
+                    _semanticInfo.SetExpressionType(forClause.Target, elemType);
+                }
+                else
+                {
+                    // For tuple unpacking or other complex targets
+                    // TODO: Implement tuple unpacking in comprehensions
+                    AddError($"Tuple unpacking in comprehensions not yet supported",
+                        forClause.LineStart, forClause.ColumnStart);
+                }
+            }
+            else if (clause is IfClause ifClause)
+            {
+                // Check condition is boolean
+                var condType = CheckExpression(ifClause.Condition);
+                if (!condType.IsAssignableTo(SemanticType.Bool))
+                {
+                    AddError($"Comprehension filter must be bool, got '{condType.GetDisplayName()}'",
+                        ifClause.LineStart, ifClause.ColumnStart);
+                }
+            }
+        }
+
+        // Check element expression
+        var elementType = CheckExpression(listComp.Element);
+
+        _symbolTable.ExitScope();
+
+        return new GenericType
+        {
+            Name = "list",
+            TypeArguments = new List<SemanticType> { elementType }
+        };
+    }
+
+    private SemanticType CheckSetComprehension(SetComprehension setComp)
+    {
+        // Enter comprehension scope (variables don't leak)
+        _symbolTable.EnterScope("set-comprehension");
+
+        // Process clauses in order
+        foreach (var clause in setComp.Clauses)
+        {
+            if (clause is ForClause forClause)
+            {
+                // Check iterator type
+                var iterType = CheckExpression(forClause.Iterator);
+                var elemType = ExtractElementType(iterType);
+
+                // Define loop variable (single identifier only for now)
+                if (forClause.Target is Identifier id)
+                {
+                    var loopVarSymbol = new VariableSymbol
+                    {
+                        Name = id.Name,
+                        Kind = SymbolKind.Variable,
+                        Type = elemType,
+                        AccessLevel = AccessLevel.Public,
+                        DeclarationLine = id.LineStart,
+                        DeclarationColumn = id.ColumnStart
+                    };
+                    _symbolTable.Define(loopVarSymbol);
+                    _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
+                    _semanticInfo.SetExpressionType(forClause.Target, elemType);
+                }
+                else
+                {
+                    // For tuple unpacking or other complex targets
+                    AddError($"Tuple unpacking in comprehensions not yet supported",
+                        forClause.LineStart, forClause.ColumnStart);
+                }
+            }
+            else if (clause is IfClause ifClause)
+            {
+                // Check condition is boolean
+                var condType = CheckExpression(ifClause.Condition);
+                if (!condType.IsAssignableTo(SemanticType.Bool))
+                {
+                    AddError($"Comprehension filter must be bool, got '{condType.GetDisplayName()}'",
+                        ifClause.LineStart, ifClause.ColumnStart);
+                }
+            }
+        }
+
+        // Check element expression
+        var elementType = CheckExpression(setComp.Element);
+
+        _symbolTable.ExitScope();
+
+        return new GenericType
+        {
+            Name = "set",
+            TypeArguments = new List<SemanticType> { elementType }
+        };
+    }
+
+    private SemanticType CheckDictComprehension(DictComprehension dictComp)
+    {
+        // Enter comprehension scope (variables don't leak)
+        _symbolTable.EnterScope("dict-comprehension");
+
+        // Process clauses in order
+        foreach (var clause in dictComp.Clauses)
+        {
+            if (clause is ForClause forClause)
+            {
+                // Check iterator type
+                var iterType = CheckExpression(forClause.Iterator);
+                var elemType = ExtractElementType(iterType);
+
+                // Define loop variable (single identifier only for now)
+                if (forClause.Target is Identifier id)
+                {
+                    var loopVarSymbol = new VariableSymbol
+                    {
+                        Name = id.Name,
+                        Kind = SymbolKind.Variable,
+                        Type = elemType,
+                        AccessLevel = AccessLevel.Public,
+                        DeclarationLine = id.LineStart,
+                        DeclarationColumn = id.ColumnStart
+                    };
+                    _symbolTable.Define(loopVarSymbol);
+                    _semanticInfo.SetIdentifierSymbol(id, loopVarSymbol);
+                    _semanticInfo.SetExpressionType(forClause.Target, elemType);
+                }
+                else
+                {
+                    // For tuple unpacking or other complex targets
+                    AddError($"Tuple unpacking in comprehensions not yet supported",
+                        forClause.LineStart, forClause.ColumnStart);
+                }
+            }
+            else if (clause is IfClause ifClause)
+            {
+                // Check condition is boolean
+                var condType = CheckExpression(ifClause.Condition);
+                if (!condType.IsAssignableTo(SemanticType.Bool))
+                {
+                    AddError($"Comprehension filter must be bool, got '{condType.GetDisplayName()}'",
+                        ifClause.LineStart, ifClause.ColumnStart);
+                }
+            }
+        }
+
+        // Check key and value expressions
+        var keyType = CheckExpression(dictComp.Key);
+        var valueType = CheckExpression(dictComp.Value);
+
+        _symbolTable.ExitScope();
+
+        return new GenericType
+        {
+            Name = "dict",
+            TypeArguments = new List<SemanticType> { keyType, valueType }
+        };
     }
 
     private SemanticType CheckConditionalExpression(ConditionalExpression cond)

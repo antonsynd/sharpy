@@ -548,23 +548,36 @@ class Foo:
 
     #region Comprehensions
 
-    [Fact(Skip = "Unimplemented: List comprehensions not yet supported")]
+    [Fact]
     public void ParsesListComprehension()
     {
         var source = "x = [i * 2 for i in range(10)]";
         var module = Parse(source);
         module.Body.Should().HaveCount(1);
+
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var listComp = assignment.Value.Should().BeOfType<ListComprehension>().Subject;
+
+        listComp.Clauses.Should().HaveCount(1);
+        listComp.Clauses[0].Should().BeOfType<ForClause>();
     }
 
-    [Fact(Skip = "Unimplemented: List comprehensions with conditions not yet supported")]
+    [Fact]
     public void ParsesListComprehensionWithCondition()
     {
         var source = "x = [i * 2 for i in range(10) if i % 2 == 0]";
         var module = Parse(source);
         module.Body.Should().HaveCount(1);
+
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var listComp = assignment.Value.Should().BeOfType<ListComprehension>().Subject;
+
+        listComp.Clauses.Should().HaveCount(2);
+        listComp.Clauses[0].Should().BeOfType<ForClause>();
+        listComp.Clauses[1].Should().BeOfType<IfClause>();
     }
 
-    [Fact(Skip = "Unimplemented: Nested list comprehensions not yet supported")]
+    [Fact(Skip = "TODO: Nested list comprehensions (multiple for clauses) not yet supported")]
     public void ParsesNestedListComprehension()
     {
         var source = "x = [[j for j in range(i)] for i in range(5)]";
@@ -572,7 +585,7 @@ class Foo:
         module.Body.Should().HaveCount(1);
     }
 
-    [Fact(Skip = "Unimplemented: Dict comprehensions not yet supported")]
+    [Fact(Skip = "TODO: Tuple unpacking in comprehensions not yet supported")]
     public void ParsesDictComprehension()
     {
         var source = "x = {k: v for k, v in items}";
@@ -580,12 +593,18 @@ class Foo:
         module.Body.Should().HaveCount(1);
     }
 
-    [Fact(Skip = "Unimplemented: Set comprehensions not yet supported")]
+    [Fact]
     public void ParsesSetComprehension()
     {
         var source = "x = {i * 2 for i in range(10)}";
         var module = Parse(source);
         module.Body.Should().HaveCount(1);
+
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var setComp = assignment.Value.Should().BeOfType<SetComprehension>().Subject;
+
+        setComp.Clauses.Should().HaveCount(1);
+        setComp.Clauses[0].Should().BeOfType<ForClause>();
     }
 
     #endregion

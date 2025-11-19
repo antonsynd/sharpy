@@ -832,6 +832,64 @@ public class Parser
         return first;
     }
 
+    /// <summary>
+    /// Parse comprehension clauses: for x in iterable [if condition] [for y in iterable2] ...
+    /// For now, only supporting single variable (no tuple unpacking in comprehensions)
+    /// </summary>
+    private List<ComprehensionClause> ParseComprehensionClauses()
+    {
+        var clauses = new List<ComprehensionClause>();
+
+        while (true)
+        {
+            if (Current.Type == TokenType.For)
+            {
+                var startLine = Current.Line;
+                var startColumn = Current.Column;
+                Advance();
+
+                // Parse target (single identifier for now)
+                var target = ParseForTarget();
+
+                Expect(TokenType.In);
+                var iterator = ParseLogicalOr(); // Use lower precedence to avoid consuming too much
+
+                clauses.Add(new ForClause
+                {
+                    Target = target,
+                    Iterator = iterator,
+                    LineStart = startLine,
+                    ColumnStart = startColumn,
+                    LineEnd = Current.Line,
+                    ColumnEnd = Current.Column
+                });
+            }
+            else if (Current.Type == TokenType.If)
+            {
+                var startLine = Current.Line;
+                var startColumn = Current.Column;
+                Advance();
+
+                var condition = ParseLogicalOr(); // Use lower precedence to avoid consuming too much
+
+                clauses.Add(new IfClause
+                {
+                    Condition = condition,
+                    LineStart = startLine,
+                    ColumnStart = startColumn,
+                    LineEnd = Current.Line,
+                    ColumnEnd = Current.Column
+                });
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        return clauses;
+    }
+
     private TryStatement ParseTryStatement()
     {
         var startLine = Current.Line;
@@ -2019,19 +2077,41 @@ public class Parser
             case TokenType.LeftBracket:
                 {
                     Advance();
-                    var elements = new List<Expression>();
 
-                    if (Current.Type != TokenType.RightBracket)
+                    // Empty list []
+                    if (Current.Type == TokenType.RightBracket)
                     {
-                        do
-                        {
-                            elements.Add(ParseExpression());
+                        Advance();
+                        return new ListLiteral { Elements = new List<Expression>(), LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                    }
 
-                            if (Current.Type == TokenType.Comma)
-                                Advance();
-                            else
-                                break;
-                        } while (true);
+                    var firstExpr = ParseExpression();
+
+                    // Check for list comprehension: [expr for x in iterable]
+                    if (Current.Type == TokenType.For)
+                    {
+                        var clauses = ParseComprehensionClauses();
+                        Expect(TokenType.RightBracket);
+                        return new ListComprehension
+                        {
+                            Element = firstExpr,
+                            Clauses = clauses,
+                            LineStart = startLine,
+                            ColumnStart = startColumn,
+                            LineEnd = Current.Line,
+                            ColumnEnd = Current.Column
+                        };
+                    }
+
+                    // Regular list literal [elem1, elem2, ...]
+                    var elements = new List<Expression> { firstExpr };
+
+                    while (Current.Type == TokenType.Comma)
+                    {
+                        Advance();
+                        if (Current.Type == TokenType.RightBracket)
+                            break;
+                        elements.Add(ParseExpression());
                     }
 
                     Expect(TokenType.RightBracket);
@@ -2059,11 +2139,30 @@ public class Parser
 
                     var firstExpr = ParseExpression();
 
-                    // Dict {key: value, ...}
+                    // Dict {key: value, ...} or dict comprehension {key: value for x in iterable}
                     if (Current.Type == TokenType.Colon)
                     {
                         Advance();
                         var firstValue = ParseExpression();
+
+                        // Check for dict comprehension: {key: value for x in iterable}
+                        if (Current.Type == TokenType.For)
+                        {
+                            var clauses = ParseComprehensionClauses();
+                            Expect(TokenType.RightBrace);
+                            return new DictComprehension
+                            {
+                                Key = firstExpr,
+                                Value = firstValue,
+                                Clauses = clauses,
+                                LineStart = startLine,
+                                ColumnStart = startColumn,
+                                LineEnd = Current.Line,
+                                ColumnEnd = Current.Column
+                            };
+                        }
+
+                        // Regular dict literal
                         var entries = new List<DictEntry> { new DictEntry { Key = firstExpr, Value = firstValue } };
 
                         while (Current.Type == TokenType.Comma)
@@ -2081,9 +2180,26 @@ public class Parser
                         Expect(TokenType.RightBrace);
                         return new DictLiteral { Entries = entries, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
                     }
-                    // Set {elem1, elem2, ...}
+                    // Set {elem1, elem2, ...} or set comprehension {expr for x in iterable}
                     else
                     {
+                        // Check for set comprehension: {expr for x in iterable}
+                        if (Current.Type == TokenType.For)
+                        {
+                            var clauses = ParseComprehensionClauses();
+                            Expect(TokenType.RightBrace);
+                            return new SetComprehension
+                            {
+                                Element = firstExpr,
+                                Clauses = clauses,
+                                LineStart = startLine,
+                                ColumnStart = startColumn,
+                                LineEnd = Current.Line,
+                                ColumnEnd = Current.Column
+                            };
+                        }
+
+                        // Regular set literal
                         var elements = new List<Expression> { firstExpr };
 
                         while (Current.Type == TokenType.Comma)

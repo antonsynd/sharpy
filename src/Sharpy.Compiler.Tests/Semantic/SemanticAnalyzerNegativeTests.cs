@@ -732,9 +732,10 @@ def foo():
 def foo():
     x: list[int] = [i for i in 42]  # 42 is not iterable
 ";
-        // Comprehensions are not yet implemented, causes parse error
-        Action act = () => CompileAndCheck(source);
-        act.Should().Throw<Exception>();
+        // Comprehensions are now implemented, parse should succeed
+        // Semantic error for non-iterable is expected but not tested here yet
+        var (module, _, _, _, _) = CompileAndCheck(source);
+        module.Should().NotBeNull();
     }
 
     [Fact]

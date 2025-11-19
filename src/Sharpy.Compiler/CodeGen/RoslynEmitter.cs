@@ -1558,6 +1558,11 @@ public class RoslynEmitter
             SetLiteral setLit => GenerateSetLiteral(setLit),
             TupleLiteral tupleLit => GenerateTupleLiteral(tupleLit),
 
+            // Comprehensions
+            ListComprehension listComp => GenerateListComprehension(listComp),
+            SetComprehension setComp => GenerateSetComprehension(setComp),
+            DictComprehension dictComp => GenerateDictComprehension(dictComp),
+
             // Primary expressions
             Identifier name => IdentifierName(NameMangler.ToCamelCase(name.Name)),
             MemberAccess memberAccess => GenerateMemberAccess(memberAccess),
@@ -1821,6 +1826,216 @@ public class RoslynEmitter
 
         return TupleExpression(SeparatedList(
             elements.Select(e => Argument(e))));
+    }
+
+    // TODO: For nested or complex comprehensions, consider switching to imperative code generation
+    // (using foreach loops and temporary lists) to improve readability and handle edge cases.
+    // A complexity heuristic could be: multiple for clauses, or deeply nested comprehensions.
+
+    private ExpressionSyntax GenerateListComprehension(ListComprehension listComp)
+    {
+        // Generate LINQ method chain: iterator.Where(...).Select(...).ToList()
+        // Example: [x * 2 for x in items if x > 0]
+        // becomes: items.Where(x => x > 0).Select(x => x * 2).ToList()
+
+        if (listComp.Clauses.Count == 0 || listComp.Clauses[0] is not ForClause firstFor)
+        {
+            throw new InvalidOperationException("List comprehension must start with a for clause");
+        }
+
+        // Get the loop variable name (single identifier only)
+        if (firstFor.Target is not Identifier loopVar)
+        {
+            throw new NotImplementedException("Tuple unpacking in comprehensions not yet supported");
+        }
+
+        var varName = NameMangler.ToCamelCase(loopVar.Name);
+        var param = Parameter(Identifier(varName));
+
+        // Start with the iterator expression
+        ExpressionSyntax current = GenerateExpression(firstFor.Iterator);
+
+        // Apply each if clause as .Where(x => condition)
+        foreach (var clause in listComp.Clauses.Skip(1))
+        {
+            if (clause is IfClause ifClause)
+            {
+                var condition = GenerateExpression(ifClause.Condition);
+                var lambda = SimpleLambdaExpression(param)
+                    .WithExpressionBody(condition);
+
+                current = InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        current,
+                        IdentifierName("Where")))
+                    .AddArgumentListArguments(Argument(lambda));
+            }
+            else if (clause is ForClause)
+            {
+                // Multiple for clauses (nested iteration) - requires more complex LINQ
+                // For now, throw NotImplementedException
+                throw new NotImplementedException("Nested comprehensions (multiple for clauses) not yet supported");
+            }
+        }
+
+        // Apply .Select(x => element_expression)
+        var elementExpr = GenerateExpression(listComp.Element);
+        var selectLambda = SimpleLambdaExpression(param)
+            .WithExpressionBody(elementExpr);
+
+        current = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                current,
+                IdentifierName("Select")))
+            .AddArgumentListArguments(Argument(selectLambda));
+
+        // Apply .ToList()
+        current = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                current,
+                IdentifierName("ToList")))
+            .WithArgumentList(ArgumentList());
+
+        return current;
+    }
+
+    private ExpressionSyntax GenerateSetComprehension(SetComprehension setComp)
+    {
+        // Generate LINQ method chain: iterator.Where(...).Select(...).ToHashSet()
+        // Example: {x * 2 for x in items if x > 0}
+        // becomes: items.Where(x => x > 0).Select(x => x * 2).ToHashSet()
+
+        if (setComp.Clauses.Count == 0 || setComp.Clauses[0] is not ForClause firstFor)
+        {
+            throw new InvalidOperationException("Set comprehension must start with a for clause");
+        }
+
+        // Get the loop variable name (single identifier only)
+        if (firstFor.Target is not Identifier loopVar)
+        {
+            throw new NotImplementedException("Tuple unpacking in comprehensions not yet supported");
+        }
+
+        var varName = NameMangler.ToCamelCase(loopVar.Name);
+        var param = Parameter(Identifier(varName));
+
+        // Start with the iterator expression
+        ExpressionSyntax current = GenerateExpression(firstFor.Iterator);
+
+        // Apply each if clause as .Where(x => condition)
+        foreach (var clause in setComp.Clauses.Skip(1))
+        {
+            if (clause is IfClause ifClause)
+            {
+                var condition = GenerateExpression(ifClause.Condition);
+                var lambda = SimpleLambdaExpression(param)
+                    .WithExpressionBody(condition);
+
+                current = InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        current,
+                        IdentifierName("Where")))
+                    .AddArgumentListArguments(Argument(lambda));
+            }
+            else if (clause is ForClause)
+            {
+                throw new NotImplementedException("Nested comprehensions (multiple for clauses) not yet supported");
+            }
+        }
+
+        // Apply .Select(x => element_expression)
+        var elementExpr = GenerateExpression(setComp.Element);
+        var selectLambda = SimpleLambdaExpression(param)
+            .WithExpressionBody(elementExpr);
+
+        current = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                current,
+                IdentifierName("Select")))
+            .AddArgumentListArguments(Argument(selectLambda));
+
+        // Apply .ToHashSet()
+        current = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                current,
+                IdentifierName("ToHashSet")))
+            .WithArgumentList(ArgumentList());
+
+        return current;
+    }
+
+    private ExpressionSyntax GenerateDictComprehension(DictComprehension dictComp)
+    {
+        // Generate LINQ method chain: iterator.Where(...).ToDictionary(x => key, x => value)
+        // Example: {k: v for k, v in pairs if v > 0}
+        // For now, only support single variable (not tuple unpacking)
+        // becomes: pairs.Where(p => p.v > 0).ToDictionary(p => p.k, p => p.v)
+
+        if (dictComp.Clauses.Count == 0 || dictComp.Clauses[0] is not ForClause firstFor)
+        {
+            throw new InvalidOperationException("Dict comprehension must start with a for clause");
+        }
+
+        // Get the loop variable name (single identifier only)
+        if (firstFor.Target is not Identifier loopVar)
+        {
+            throw new NotImplementedException("Tuple unpacking in comprehensions not yet supported");
+        }
+
+        var varName = NameMangler.ToCamelCase(loopVar.Name);
+        var param = Parameter(Identifier(varName));
+
+        // Start with the iterator expression
+        ExpressionSyntax current = GenerateExpression(firstFor.Iterator);
+
+        // Apply each if clause as .Where(x => condition)
+        foreach (var clause in dictComp.Clauses.Skip(1))
+        {
+            if (clause is IfClause ifClause)
+            {
+                var condition = GenerateExpression(ifClause.Condition);
+                var lambda = SimpleLambdaExpression(param)
+                    .WithExpressionBody(condition);
+
+                current = InvocationExpression(
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        current,
+                        IdentifierName("Where")))
+                    .AddArgumentListArguments(Argument(lambda));
+            }
+            else if (clause is ForClause)
+            {
+                throw new NotImplementedException("Nested comprehensions (multiple for clauses) not yet supported");
+            }
+        }
+
+        // Generate key and value selector lambdas
+        var keyExpr = GenerateExpression(dictComp.Key);
+        var valueExpr = GenerateExpression(dictComp.Value);
+
+        var keyLambda = SimpleLambdaExpression(param)
+            .WithExpressionBody(keyExpr);
+        var valueLambda = SimpleLambdaExpression(param)
+            .WithExpressionBody(valueExpr);
+
+        // Apply .ToDictionary(x => key, x => value)
+        current = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                current,
+                IdentifierName("ToDictionary")))
+            .AddArgumentListArguments(
+                Argument(keyLambda),
+                Argument(valueLambda));
+
+        return current;
     }
 
     private ExpressionSyntax GenerateMemberAccess(MemberAccess memberAccess)

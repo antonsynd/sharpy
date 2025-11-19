@@ -511,6 +511,41 @@ public class AstDumper
                 }
                 break;
 
+            case ListComprehension listComp:
+                _output.AppendLine($"{indent}{prefix}ListComprehension @ L{node.LineStart}:C{node.ColumnStart}");
+                _output.AppendLine($"{indent}{childPrefix}Element:");
+                DumpNode(listComp.Element, depth + 2, false);
+                _output.AppendLine($"{indent}{childPrefix}Clauses: [{listComp.Clauses.Count}]");
+                for (int i = 0; i < listComp.Clauses.Count; i++)
+                {
+                    DumpComprehensionClause(listComp.Clauses[i], depth + 2, i == listComp.Clauses.Count - 1);
+                }
+                break;
+
+            case SetComprehension setComp:
+                _output.AppendLine($"{indent}{prefix}SetComprehension @ L{node.LineStart}:C{node.ColumnStart}");
+                _output.AppendLine($"{indent}{childPrefix}Element:");
+                DumpNode(setComp.Element, depth + 2, false);
+                _output.AppendLine($"{indent}{childPrefix}Clauses: [{setComp.Clauses.Count}]");
+                for (int i = 0; i < setComp.Clauses.Count; i++)
+                {
+                    DumpComprehensionClause(setComp.Clauses[i], depth + 2, i == setComp.Clauses.Count - 1);
+                }
+                break;
+
+            case DictComprehension dictComp:
+                _output.AppendLine($"{indent}{prefix}DictComprehension @ L{node.LineStart}:C{node.ColumnStart}");
+                _output.AppendLine($"{indent}{childPrefix}Key:");
+                DumpNode(dictComp.Key, depth + 2, false);
+                _output.AppendLine($"{indent}{childPrefix}Value:");
+                DumpNode(dictComp.Value, depth + 2, false);
+                _output.AppendLine($"{indent}{childPrefix}Clauses: [{dictComp.Clauses.Count}]");
+                for (int i = 0; i < dictComp.Clauses.Count; i++)
+                {
+                    DumpComprehensionClause(dictComp.Clauses[i], depth + 2, i == dictComp.Clauses.Count - 1);
+                }
+                break;
+
             case Identifier ident:
                 _output.AppendLine($"{indent}{prefix}Identifier: {ident.Name} @ L{node.LineStart}:C{node.ColumnStart}");
                 break;
@@ -705,5 +740,33 @@ public class AstDumper
             .Replace("\r", "\\r")
             .Replace("\t", "\\t")
             .Replace("\"", "\\\"");
+    }
+
+    private void DumpComprehensionClause(ComprehensionClause clause, int depth, bool isLast)
+    {
+        var indent = new string(' ', depth * IndentUnit.Length);
+        var prefix = isLast ? "└─ " : "├─ ";
+        var childPrefix = isLast ? "   " : "│  ";
+
+        switch (clause)
+        {
+            case ForClause forClause:
+                _output.AppendLine($"{indent}{prefix}ForClause @ L{clause.LineStart}:C{clause.ColumnStart}");
+                _output.AppendLine($"{indent}{childPrefix}Target:");
+                DumpNode(forClause.Target, depth + 2, false);
+                _output.AppendLine($"{indent}{childPrefix}Iterator:");
+                DumpNode(forClause.Iterator, depth + 2, true);
+                break;
+
+            case IfClause ifClause:
+                _output.AppendLine($"{indent}{prefix}IfClause @ L{clause.LineStart}:C{clause.ColumnStart}");
+                _output.AppendLine($"{indent}{childPrefix}Condition:");
+                DumpNode(ifClause.Condition, depth + 2, true);
+                break;
+
+            default:
+                _output.AppendLine($"{indent}{prefix}{clause.GetType().Name} @ L{clause.LineStart}:C{clause.ColumnStart}");
+                break;
+        }
     }
 }

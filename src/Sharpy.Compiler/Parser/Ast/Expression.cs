@@ -110,6 +110,60 @@ public record TupleLiteral : Expression
 
 #endregion
 
+#region Comprehensions
+
+/// <summary>
+/// List comprehension [expr for x in iterable if condition]
+/// </summary>
+public record ListComprehension : Expression
+{
+    public Expression Element { get; init; } = null!;
+    public List<ComprehensionClause> Clauses { get; init; } = new();
+}
+
+/// <summary>
+/// Set comprehension {expr for x in iterable if condition}
+/// </summary>
+public record SetComprehension : Expression
+{
+    public Expression Element { get; init; } = null!;
+    public List<ComprehensionClause> Clauses { get; init; } = new();
+}
+
+/// <summary>
+/// Dictionary comprehension {key: value for x in iterable if condition}
+/// </summary>
+public record DictComprehension : Expression
+{
+    public Expression Key { get; init; } = null!;
+    public Expression Value { get; init; } = null!;
+    public List<ComprehensionClause> Clauses { get; init; } = new();
+}
+
+/// <summary>
+/// Base class for comprehension clauses (for/if)
+/// </summary>
+public abstract record ComprehensionClause : Node;
+
+/// <summary>
+/// For clause in comprehension (for x in iterable)
+/// </summary>
+public record ForClause : ComprehensionClause
+{
+    public Expression Target { get; init; } = null!;  // Loop variable (single identifier only for now)
+    public Expression Iterator { get; init; } = null!;
+}
+
+/// <summary>
+/// If clause in comprehension (if condition)
+/// </summary>
+public record IfClause : ComprehensionClause
+{
+    public Expression Condition { get; init; } = null!;
+}
+
+#endregion
+
 #region Primary Expressions
 
 /// <summary>
