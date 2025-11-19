@@ -8,42 +8,42 @@ public static partial class Exports
 {
     public static decimal Abs(decimal x)
     {
-        return Math.Abs(x);
+        return System.Math.Abs(x);
     }
 
     public static double Abs(double x)
     {
-        return Math.Abs(x);
+        return System.Math.Abs(x);
     }
 
     public static int Abs(int x)
     {
-        return Math.Abs(x);
+        return System.Math.Abs(x);
     }
 
     public static IntPtr Abs(IntPtr x)
     {
-        return Math.Abs(x);
+        return System.Math.Abs(x);
     }
 
     public static short Abs(short x)
     {
-        return Math.Abs(x);
+        return System.Math.Abs(x);
     }
 
     public static long Abs(long x)
     {
-        return Math.Abs(x);
+        return System.Math.Abs(x);
     }
 
     public static float Abs(float x)
     {
-        return Math.Abs(x);
+        return System.Math.Abs(x);
     }
 
     public static sbyte Abs(sbyte x)
     {
-        return Math.Abs(x);
+        return System.Math.Abs(x);
     }
 
     public static T Abs<T>(T? x) where T : INumberBase<T>
