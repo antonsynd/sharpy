@@ -1,5 +1,6 @@
 using Xunit;
 using FluentAssertions;
+using Sharpy.Collections.Interfaces;
 
 namespace Sharpy.Core.Tests;
 
@@ -951,6 +952,376 @@ public class StrMethods_Tests
         str.Invoking(s => s.FormatMap(mapping))
             .Should().Throw<NotImplementedException>()
             .WithMessage("*v1.0*");
+    }
+
+    #endregion
+
+    #region Negative Tests
+
+    [Fact]
+    public void RJust_WithNullFillChar_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var str = new Str("test");
+
+        // Act & Assert
+        str.Invoking(s => s.RJust(10, null!))
+            .Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void ZFill_WithZeroWidth_ReturnsOriginalString()
+    {
+        // Arrange
+        var str = new Str("42");
+
+        // Act
+        var result = str.ZFill(0u);
+
+        // Assert
+        ((string)result).Should().Be("42");
+    }
+
+    [Fact]
+    public void RFind_WithNullSubstring_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var str = new Str("hello world");
+
+        // Act & Assert
+        str.Invoking(s => s.RFind(null!))
+            .Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void RIndex_WithNonexistentSubstring_ThrowsValueError()
+    {
+        // Arrange
+        var str = new Str("hello");
+
+        // Act & Assert
+        str.Invoking(s => s.RIndex("xyz"))
+            .Should().Throw<ValueError>()
+            .WithMessage("*not found*");
+    }
+
+    [Fact]
+    public void RSplit_WithNullSeparator_SplitsOnWhitespace()
+    {
+        // Arrange
+        var str = new Str("hello  world  test");
+
+        // Act
+        var result = str.RSplit(null, 1);
+
+        // Assert
+        result.__Len__().Should().Be(2);
+        ((string)result[0]).Should().Be("hello  world");
+        ((string)result[1]).Should().Be("test");
+    }
+
+    [Fact]
+    public void RSplit_WithEmptyString_ThrowsValueError()
+    {
+        // Arrange
+        var str = new Str("hello");
+
+        // Act & Assert
+        str.Invoking(s => s.RSplit("", 1))
+            .Should().Throw<ValueError>()
+            .WithMessage("*empty separator*");
+    }
+
+    [Fact]
+    public void Partition_WithNullSeparator_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var str = new Str("hello world");
+
+        // Act & Assert
+        str.Invoking(s => s.Partition(null!))
+            .Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void RPartition_WithNullSeparator_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var str = new Str("hello world hello");
+
+        // Act & Assert
+        str.Invoking(s => s.RPartition(null!))
+            .Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void RPartition_WithEmptySeparator_ThrowsValueError()
+    {
+        // Arrange
+        var str = new Str("hello");
+
+        // Act & Assert
+        str.Invoking(s => s.RPartition(""))
+            .Should().Throw<ValueError>()
+            .WithMessage("*empty separator*");
+    }
+
+    [Fact]
+    public void IsIdentifier_WithEmptyString_ReturnsFalse()
+    {
+        // Arrange
+        var str = new Str("");
+
+        // Act
+        var result = str.IsIdentifier();
+
+        // Assert
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsNumeric_WithEmptyString_ReturnsFalse()
+    {
+        // Arrange
+        var str = new Str("");
+
+        // Act
+        var result = str.IsNumeric();
+
+        // Assert
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public void RemovePrefix_WithNullPrefix_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var str = new Str("hello");
+
+        // Act & Assert
+        str.Invoking(s => s.RemovePrefix(null!))
+            .Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void RemoveSuffix_WithNullSuffix_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var str = new Str("hello");
+
+        // Act & Assert
+        str.Invoking(s => s.RemoveSuffix(null!))
+            .Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void MakeTrans_WithMismatchedLengths_ThrowsValueError()
+    {
+        // Arrange & Act & Assert
+        var invoking = () => Str.MakeTrans("abc", "xy");
+
+        invoking.Should().Throw<ValueError>()
+            .WithMessage("*equal length*");
+    }
+
+    [Fact]
+    public void MakeTrans_WithNullX_ThrowsArgumentNullException()
+    {
+        // Arrange & Act & Assert
+        var invoking = () => Str.MakeTrans(null!, "abc");
+
+        invoking.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void MakeTrans_WithNullY_ThrowsArgumentNullException()
+    {
+        // Arrange & Act & Assert
+        var invoking = () => Str.MakeTrans("abc", null!);
+
+        invoking.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void MakeTrans_WithNullMapping_ThrowsArgumentNullException()
+    {
+        // Arrange & Act & Assert
+        var invoking = () => Str.MakeTrans((IMapping<Str, Str?>)null!);
+
+        invoking.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Translate_WithNullTable_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var str = new Str("hello");
+
+        // Act & Assert
+        str.Invoking(s => s.Translate(null!))
+            .Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void ExpandTabs_WithZeroTabSize_UsesEmptyString()
+    {
+        // Arrange
+        var str = new Str("hello\tworld");
+
+        // Act
+        var result = str.ExpandTabs(0);
+
+        // Assert
+        ((string)result).Should().Be("helloworld");
+    }
+
+    [Fact]
+    public void SwapCase_WithEmptyString_ReturnsEmptyString()
+    {
+        // Arrange
+        var str = new Str("");
+
+        // Act
+        var result = str.SwapCase();
+
+        // Assert
+        ((string)result).Should().Be("");
+    }
+
+    [Fact]
+    public void LJust_WithZeroWidth_ReturnsOriginalString()
+    {
+        // Arrange
+        var str = new Str("hello");
+
+        // Act
+        var result = str.LJust(0);
+
+        // Assert
+        ((string)result).Should().Be("hello");
+    }
+
+    [Fact]
+    public void RJust_WithEmptyString_PadsCorrectly()
+    {
+        // Arrange
+        var str = new Str("");
+
+        // Act
+        var result = str.RJust(5, "*");
+
+        // Assert
+        ((string)result).Should().Be("*****");
+    }
+
+    [Fact]
+    public void ZFill_WithEmptyString_PadsCorrectly()
+    {
+        // Arrange
+        var str = new Str("");
+
+        // Act
+        var result = str.ZFill(5);
+
+        // Assert
+        ((string)result).Should().Be("00000");
+    }
+
+    [Fact]
+    public void RFind_WithEmptySubstring_ThrowsValueError()
+    {
+        // Arrange
+        var str = new Str("hello");
+
+        // Act & Assert
+        str.Invoking(s => s.RFind(""))
+            .Should().Throw<ValueError>()
+            .WithMessage("*empty*");
+    }
+
+    [Fact]
+    public void RIndex_WithEmptySubstring_ThrowsValueError()
+    {
+        // Arrange
+        var str = new Str("hello");
+
+        // Act & Assert
+        str.Invoking(s => s.RIndex(""))
+            .Should().Throw<ValueError>()
+            .WithMessage("*empty*");
+    }
+
+    [Fact]
+    public void IsIdentifier_WithNumberStart_ReturnsFalse()
+    {
+        // Arrange
+        var str = new Str("123abc");
+
+        // Act
+        var result = str.IsIdentifier();
+
+        // Assert
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsIdentifier_WithSpecialChars_ReturnsFalse()
+    {
+        // Arrange
+        var str = new Str("hello-world");
+
+        // Act
+        var result = str.IsIdentifier();
+
+        // Assert
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public void SplitLines_WithOnlyLineBreaks_ReturnsEmptyStrings()
+    {
+        // Arrange
+        var str = new Str("\n\n\n");
+
+        // Act
+        var result = str.SplitLines();
+
+        // Assert
+        result.__Len__().Should().Be(3);
+        foreach (var line in result)
+        {
+            ((string)line).Should().Be("");
+        }
+    }
+
+    [Fact]
+    public void Partition_WithNonexistentSeparator_ReturnsStringAndEmptyParts()
+    {
+        // Arrange
+        var str = new Str("hello world");
+
+        // Act
+        var result = str.Partition("xyz");
+
+        // Assert
+        ((string)result.Item1).Should().Be("hello world");
+        ((string)result.Item2).Should().Be("");
+        ((string)result.Item3).Should().Be("");
+    }
+
+    [Fact]
+    public void RPartition_WithNonexistentSeparator_ReturnsEmptyPartsAndString()
+    {
+        // Arrange
+        var str = new Str("hello world");
+
+        // Act
+        var result = str.RPartition("xyz");
+
+        // Assert
+        ((string)result.Item1).Should().Be("");
+        ((string)result.Item2).Should().Be("");
+        ((string)result.Item3).Should().Be("hello world");
     }
 
     #endregion

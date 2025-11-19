@@ -272,6 +272,12 @@ public readonly partial struct Str
             return this;
         }
 
+        // Handle tabsize == 0: remove all tabs
+        if (tabsize == 0)
+        {
+            return new Str(_s.Replace("\t", ""));
+        }
+
         var result = new StringBuilder(_s.Length);
         int column = 0;
 
@@ -665,6 +671,11 @@ public readonly partial struct Str
     /// </summary>
     public static Dict<uint, Str?> MakeTrans(IMapping<Str, Str?> mapping)
     {
+        if (mapping is null)
+        {
+            throw new ArgumentNullException(nameof(mapping));
+        }
+
         var table = new Dict<uint, Str?>();
 
         foreach (var key in mapping.Keys())
@@ -705,6 +716,16 @@ public readonly partial struct Str
     /// </summary>
     public static Dict<uint, Str?> MakeTrans(Str fromChars, Str toChars)
     {
+        if (fromChars._s is null)
+        {
+            throw new ArgumentNullException(nameof(fromChars));
+        }
+
+        if (toChars._s is null)
+        {
+            throw new ArgumentNullException(nameof(toChars));
+        }
+
         var from = (string)fromChars;
         var to = (string)toChars;
 
@@ -729,6 +750,21 @@ public readonly partial struct Str
     /// </summary>
     public static Dict<uint, Str?> MakeTrans(Str fromChars, Str toChars, Str ignoreChars)
     {
+        if (fromChars._s is null)
+        {
+            throw new ArgumentNullException(nameof(fromChars));
+        }
+
+        if (toChars._s is null)
+        {
+            throw new ArgumentNullException(nameof(toChars));
+        }
+
+        if (ignoreChars._s is null)
+        {
+            throw new ArgumentNullException(nameof(ignoreChars));
+        }
+
         var from = (string)fromChars;
         var to = (string)toChars;
         var ignore = (string)ignoreChars;
@@ -762,6 +798,11 @@ public readonly partial struct Str
     /// </summary>
     public (Str, Str, Str) Partition(Str sep)
     {
+        if (sep._s is null)
+        {
+            throw new ArgumentNullException(nameof(sep));
+        }
+
         if (string.IsNullOrEmpty((string)sep))
         {
             throw new ValueError("empty separator");
@@ -847,8 +888,18 @@ public readonly partial struct Str
     /// Return the highest index in the string where substring sub is found, such that sub is contained within s[start:end].
     /// Optional arguments start and end are interpreted as in slice notation. Return -1 on failure.
     /// </summary>
-    public int RFind(Str sub, int start = 0, int? end = null)
+    public int RFind(Str? sub, int start = 0, int? end = null)
     {
+        if (sub is null)
+        {
+            throw new ArgumentNullException(nameof(sub));
+        }
+
+        if (string.IsNullOrEmpty((string)sub))
+        {
+            throw new ValueError("empty substring");
+        }
+
         var (actualStart, actualEnd) = NormalizeSliceIndices(start, end);
         if (actualStart >= actualEnd) return -1;
 
@@ -861,8 +912,18 @@ public readonly partial struct Str
     /// <summary>
     /// Like RFind(), but raise ValueError when the substring is not found.
     /// </summary>
-    public int RIndex(Str sub, int start = 0, int? end = null)
+    public int RIndex(Str? sub, int start = 0, int? end = null)
     {
+        if (sub is null)
+        {
+            throw new ArgumentNullException(nameof(sub));
+        }
+
+        if (string.IsNullOrEmpty((string)sub))
+        {
+            throw new ValueError("empty substring");
+        }
+
         var index = RFind(sub, start, end);
         if (index < 0)
         {
@@ -876,6 +937,11 @@ public readonly partial struct Str
     /// </summary>
     public Str RJust(uint width, string fillchar = " ")
     {
+        if (fillchar is null)
+        {
+            throw new ArgumentNullException(nameof(fillchar));
+        }
+
         if (fillchar.Length != 1)
         {
             throw new TypeError("The fill character must be exactly one character long");
@@ -896,6 +962,11 @@ public readonly partial struct Str
     /// </summary>
     public (Str, Str, Str) RPartition(Str sep)
     {
+        if (sep._s is null)
+        {
+            throw new ArgumentNullException(nameof(sep));
+        }
+
         if (string.IsNullOrEmpty((string)sep))
         {
             throw new ValueError("empty separator");
@@ -934,9 +1005,17 @@ public readonly partial struct Str
             }
             else
             {
-                // Need to keep the first parts together
+                // Need to keep the first parts together, preserving original whitespace
                 var keepTogether = parts.Length - maxsplit;
-                var combined = string.Join(" ", parts.Take(keepTogether));
+                // Find the position in the original string where the last kept part ends
+                int endPos = 0;
+                for (int i = 0; i < keepTogether; i++)
+                {
+                    int partIndex = _s.IndexOf(parts[i], endPos);
+                    endPos = partIndex + parts[i].Length;
+                }
+                // Extract substring up to this position, then trim trailing whitespace
+                var combined = _s.Substring(0, endPos).TrimEnd();
                 result.Add(new Str(combined));
 
                 foreach (var part in parts.Skip(keepTogether))
@@ -948,6 +1027,11 @@ public readonly partial struct Str
         else
         {
             var sepStr = (string)sep;
+            if (string.IsNullOrEmpty(sepStr))
+            {
+                throw new ValueError("empty separator");
+            }
+
             var parts = _s.Split(new[] { sepStr }, StringSplitOptions.None);
 
             if (maxsplit < 0 || maxsplit >= parts.Length - 1)
@@ -1205,6 +1289,11 @@ public readonly partial struct Str
     /// </summary>
     public Str Translate(Dict<uint, Str?> table)
     {
+        if (table is null)
+        {
+            throw new ArgumentNullException(nameof(table));
+        }
+
         var result = new StringBuilder(_s.Length);
 
         foreach (char c in _s)
