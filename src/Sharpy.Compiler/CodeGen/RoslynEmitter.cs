@@ -57,6 +57,15 @@ public class RoslynEmitter
 
     private NameSyntax GenerateNamespaceName()
     {
+        // If project namespace is specified, use project-based namespace generation
+        if (!string.IsNullOrEmpty(_context.ProjectNamespace) &&
+            !string.IsNullOrEmpty(_context.ProjectRootPath) &&
+            !string.IsNullOrEmpty(_context.SourceFilePath))
+        {
+            return GenerateProjectNamespace();
+        }
+
+        // Fallback to file-based namespace generation for single-file compilation
         // Get namespace from context source file path
         // Default to "SharpyGenerated" if no source file specified
         if (string.IsNullOrEmpty(_context.SourceFilePath))
@@ -89,6 +98,35 @@ public class RoslynEmitter
 
         // Build namespace name
         return ParseName(string.Join(".", parts));
+    }
+
+    private NameSyntax GenerateProjectNamespace()
+    {
+        // Start with project root namespace
+        var namespaceParts = new List<string> { _context.ProjectNamespace! };
+
+        // Get relative path from project src directory to source file
+        var relativePath = Path.GetRelativePath(_context.ProjectRootPath!, _context.SourceFilePath!);
+
+        // Extract directory path (without filename)
+        var relativeDir = Path.GetDirectoryName(relativePath) ?? "";
+        var fileName = Path.GetFileNameWithoutExtension(_context.SourceFilePath);
+
+        // Add directory parts to namespace (if not at root)
+        if (!string.IsNullOrEmpty(relativeDir) && relativeDir != ".")
+        {
+            var dirParts = relativeDir.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(p => SimpleToPascalCase(p));
+            namespaceParts.AddRange(dirParts);
+        }
+
+        // Add file name as final namespace component
+        if (!string.IsNullOrEmpty(fileName))
+        {
+            namespaceParts.Add(SimpleToPascalCase(fileName));
+        }
+
+        return ParseName(string.Join(".", namespaceParts));
     }
 
     private List<UsingDirectiveSyntax> GenerateUsingDirectives(Module module)

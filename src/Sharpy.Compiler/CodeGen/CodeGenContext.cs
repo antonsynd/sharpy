@@ -14,6 +14,16 @@ public class CodeGenContext
     public BuiltinRegistry Builtins { get; }
     public string? SourceFilePath { get; set; }
 
+    /// <summary>
+    /// Project root namespace (for multi-file compilation)
+    /// </summary>
+    public string? ProjectNamespace { get; set; }
+
+    /// <summary>
+    /// Project root directory path (for computing relative namespaces)
+    /// </summary>
+    public string? ProjectRootPath { get; set; }
+
     public CodeGenContext(SymbolTable symbolTable, BuiltinRegistry builtins)
     {
         SymbolTable = symbolTable;

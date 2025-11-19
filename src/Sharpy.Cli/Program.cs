@@ -1,4 +1,5 @@
 ﻿using System.CommandLine;
+using Sharpy.Compiler;
 using Sharpy.Compiler.Lexer;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser;
@@ -14,13 +15,20 @@ class Program
     {
         var rootCommand = new RootCommand("sharpyc - Sharpy Compiler");
 
-        // Input file argument (optional when using cache commands)
+        // Input file argument (optional when using cache commands or project mode)
         var inputFileArgument = new Argument<FileInfo?>("input") { Arity = ArgumentArity.ZeroOrOne };
 
         // Emit mode options
         var emitTokensOption = new Option<bool>("--emit-tokens");
         var emitAstOption = new Option<bool>("--emit-ast");
         var emitCSharpOption = new Option<bool>("--emit-csharp");
+
+        // Project option
+        var projectOption = new Option<FileInfo?>("--project") { Description = "Path to .spyproj file (auto-discovers if not specified)" };
+
+        // Build configuration
+        var configurationOption = new Option<string?>("--configuration") { Description = "Build configuration (Debug or Release)" };
+        configurationOption.Aliases.Add("-c");
 
         // Output type option
         var outputTypeOption = new Option<string?>("--output-type");
@@ -55,6 +63,8 @@ class Program
         rootCommand.Options.Add(emitTokensOption);
         rootCommand.Options.Add(emitAstOption);
         rootCommand.Options.Add(emitCSharpOption);
+        rootCommand.Options.Add(projectOption);
+        rootCommand.Options.Add(configurationOption);
         rootCommand.Options.Add(outputTypeOption);
         rootCommand.Options.Add(outputOption);
         rootCommand.Options.Add(referenceOption);
@@ -72,6 +82,8 @@ class Program
             var emitTokens = parseResult.GetValue(emitTokensOption);
             var emitAst = parseResult.GetValue(emitAstOption);
             var emitCSharp = parseResult.GetValue(emitCSharpOption);
+            var projectFile = parseResult.GetValue(projectOption);
+            var configuration = parseResult.GetValue(configurationOption) ?? "Debug";
             var outputType = parseResult.GetValue(outputTypeOption) ?? "library";
             var output = parseResult.GetValue(outputOption);
             var references = parseResult.GetValue(referenceOption);
@@ -93,6 +105,61 @@ class Program
             if (cacheInfo)
             {
                 ShowCacheInfo(cacheDir);
+                return;
+            }
+
+            // Check if project mode or single-file mode
+            var isProjectMode = projectFile != null || (inputFile == null && !emitTokens && !emitAst && !emitCSharp);
+
+            if (isProjectMode)
+            {
+                // Project compilation mode
+                FileInfo? resolvedProjectFile = projectFile;
+
+                if (resolvedProjectFile == null)
+                {
+                    // Auto-discover .spyproj file in current directory
+                    var currentDir = Directory.GetCurrentDirectory();
+                    var discoveredPath = ProjectFileParser.FindProjectFile(currentDir);
+
+                    if (discoveredPath == null)
+                    {
+                        Console.Error.WriteLine("Error: No .spyproj file found in current directory.");
+                        Console.Error.WriteLine("Use --project <file.spyproj> to specify a project file, or provide an input .spy file.");
+                        Environment.Exit(1);
+                        return;
+                    }
+
+                    resolvedProjectFile = new FileInfo(discoveredPath);
+                    Console.WriteLine($"Building project: {Path.GetFileName(discoveredPath)}");
+                }
+
+                // Create logger
+                ICompilerLogger logger;
+                StreamWriter? projectFileStream = null;
+                try
+                {
+                    if (logLevel == CompilerLogLevel.None)
+                    {
+                        logger = NullLogger.Instance;
+                    }
+                    else if (logFile != null)
+                    {
+                        projectFileStream = new StreamWriter(logFile.FullName, append: false);
+                        logger = new ConsoleCompilerLogger(logLevel, projectFileStream, projectFileStream);
+                    }
+                    else
+                    {
+                        logger = new ConsoleCompilerLogger(logLevel);
+                    }
+
+                    CompileProject(resolvedProjectFile, configuration, logger, logLevel);
+                }
+                finally
+                {
+                    projectFileStream?.Flush();
+                    projectFileStream?.Dispose();
+                }
                 return;
             }
 
@@ -355,6 +422,85 @@ class Program
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Error clearing cache: {ex.Message}");
+            Environment.Exit(1);
+        }
+    }
+
+    static void CompileProject(FileInfo projectFile, string configuration, ICompilerLogger logger, CompilerLogLevel logLevel = CompilerLogLevel.None)
+    {
+        try
+        {
+            // Load project configuration
+            var projectConfig = ProjectFileParser.Load(projectFile.FullName, configuration);
+
+            Console.WriteLine($"Project: {projectConfig.RootNamespace}");
+            Console.WriteLine($"Configuration: {projectConfig.Configuration}");
+            Console.WriteLine($"Output: {projectConfig.OutputType}");
+            Console.WriteLine($"Source files: {projectConfig.SourceFiles.Count}");
+            Console.WriteLine();
+
+            // Create compiler with options
+            var compilerOptions = new CompilerOptions
+            {
+                References = projectConfig.References.ToArray(),
+                ModulePaths = projectConfig.ModulePaths.ToArray()
+            };
+
+            var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);
+
+            // Compile the project
+            var result = compiler.CompileProject(projectConfig);
+
+            // Display warnings
+            if (result.Warnings.Any())
+            {
+                Console.WriteLine("Warnings:");
+                foreach (var warning in result.Warnings)
+                {
+                    Console.WriteLine($"  {warning}");
+                }
+                Console.WriteLine();
+            }
+
+            // Check for errors
+            if (!result.Success)
+            {
+                Console.Error.WriteLine("Build FAILED.");
+                Console.Error.WriteLine();
+                Console.Error.WriteLine("Errors:");
+                foreach (var error in result.Errors)
+                {
+                    Console.Error.WriteLine($"  {error}");
+                }
+                Environment.Exit(1);
+            }
+
+            // Success
+            Console.WriteLine("Build succeeded.");
+            Console.WriteLine($"Output: {result.OutputAssemblyPath}");
+        }
+        catch (FileNotFoundException ex)
+        {
+            Console.Error.WriteLine($"Error: {ex.Message}");
+            Environment.Exit(1);
+        }
+        catch (InvalidDataException ex)
+        {
+            Console.Error.WriteLine($"Error: {ex.Message}");
+            Environment.Exit(1);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Console.Error.WriteLine($"Error: {ex.Message}");
+            Environment.Exit(1);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Unexpected error: {ex.Message}");
+            if (logLevel == CompilerLogLevel.Debug)
+            {
+                Console.Error.WriteLine(ex.StackTrace);
+            }
             Environment.Exit(1);
         }
     }
