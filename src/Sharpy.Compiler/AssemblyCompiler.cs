@@ -110,6 +110,12 @@ public class AssemblyCompiler
 
             _logger.LogInfo($"Successfully compiled assembly to: {outputPath}");
 
+            // Generate runtime configuration file
+            GenerateRuntimeConfig(outputPath, projectConfig);
+
+            // Generate dependencies file
+            GenerateDepsFile(outputPath, projectConfig);
+
             return new AssemblyCompilationResult
             {
                 Success = true,
@@ -184,6 +190,116 @@ public class AssemblyCompiler
         }
 
         return $"{diagnostic.Severity.ToString().ToLower()} {diagnostic.Id}: {diagnostic.GetMessage()}";
+    }
+
+    /// <summary>
+    /// Generate a .runtimeconfig.json file for the assembly
+    /// </summary>
+    private void GenerateRuntimeConfig(string assemblyPath, ProjectConfig projectConfig)
+    {
+        try
+        {
+            var runtimeConfigPath = Path.ChangeExtension(assemblyPath, ".runtimeconfig.json");
+
+            // Get the current runtime version
+            var runtimeVersion = Environment.Version;
+            var frameworkVersion = $"{runtimeVersion.Major}.{runtimeVersion.Minor}.{runtimeVersion.Build}";
+
+            // Create runtime config JSON
+            var runtimeConfig = $$"""
+{
+  "runtimeOptions": {
+    "tfm": "{{projectConfig.TargetFramework}}",
+    "framework": {
+      "name": "Microsoft.NETCore.App",
+      "version": "{{frameworkVersion}}"
+    },
+    "configProperties": {
+      "System.Reflection.Metadata.MetadataUpdater.IsSupported": false
+    }
+  }
+}
+""";
+
+            File.WriteAllText(runtimeConfigPath, runtimeConfig);
+            _logger.LogDebug($"Generated runtime config: {runtimeConfigPath}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning($"Failed to generate runtime config: {ex.Message}", 0, 0);
+        }
+    }
+
+    /// <summary>
+    /// Generate a .deps.json file for the assembly
+    /// </summary>
+    private void GenerateDepsFile(string assemblyPath, ProjectConfig projectConfig)
+    {
+        try
+        {
+            var depsPath = Path.ChangeExtension(assemblyPath, ".deps.json");
+            var assemblyName = projectConfig.AssemblyName ?? projectConfig.RootNamespace;
+
+            // Get Sharpy.Core assembly info
+            var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly;
+            var sharpyCoreLocation = sharpyCoreAssembly.Location;
+            var sharpyCoreName = sharpyCoreAssembly.GetName();
+            var sharpyCoreVersion = sharpyCoreName.Version?.ToString() ?? "1.0.0";
+
+            // Get the current runtime version
+            var runtimeVersion = Environment.Version;
+            var frameworkVersion = $"{runtimeVersion.Major}.{runtimeVersion.Minor}.{runtimeVersion.Build}";
+
+            // Create deps.json content
+            var depsJson = $$"""
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v{{runtimeVersion.Major}}.{{runtimeVersion.Minor}}",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v{{runtimeVersion.Major}}.{{runtimeVersion.Minor}}": {
+      "{{assemblyName}}/1.0.0": {
+        "dependencies": {
+          "Sharpy.Core": "{{sharpyCoreVersion}}"
+        },
+        "runtime": {
+          "{{Path.GetFileName(assemblyPath)}}": {}
+        }
+      },
+      "Sharpy.Core/{{sharpyCoreVersion}}": {
+        "runtime": {
+          "{{Path.GetFileName(sharpyCoreLocation)}}": {
+            "assemblyVersion": "{{sharpyCoreVersion}}",
+            "fileVersion": "{{sharpyCoreVersion}}"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "{{assemblyName}}/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Sharpy.Core/{{sharpyCoreVersion}}": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
+""";
+
+            File.WriteAllText(depsPath, depsJson);
+            _logger.LogDebug($"Generated deps file: {depsPath}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning($"Failed to generate deps file: {ex.Message}", 0, 0);
+        }
     }
 }
 

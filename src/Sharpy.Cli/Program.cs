@@ -267,20 +267,8 @@ class Program
             return;
         }
 
-        // Handle compilation mode (NOT IMPLEMENTED)
-        Console.Error.WriteLine("Error: Compilation to binary/library is not implemented yet");
-        Console.Error.WriteLine("Available options:");
-        Console.Error.WriteLine("  --emit-tokens       Emit lexer tokens (implemented)");
-        Console.Error.WriteLine("  --emit-ast          Emit AST (implemented)");
-        Console.Error.WriteLine("  --emit-csharp       Emit C# code (implemented)");
-        Console.Error.WriteLine("  --clear-cache       Clear overload discovery cache (implemented)");
-        Console.Error.WriteLine("  --cache-info        Show overload discovery cache info (implemented)");
-        Console.Error.WriteLine("  --output-type       Specify output type (not implemented)");
-        Console.Error.WriteLine("  --output            Specify output file (not implemented)");
-        Console.Error.WriteLine("  --reference         Add .NET DLL reference (not implemented)");
-        Console.Error.WriteLine("  --module-path       Add module search path (not implemented)");
-        Console.Error.WriteLine("  --project-reference Add .NET project reference (not implemented)");
-        Environment.Exit(1);
+        // Handle compilation mode - compile to binary/library
+        CompileToBinary(inputFile, outputType, output, references, projectReferences, modulePaths, logger);
     }
 
     static void EmitTokens(FileInfo inputFile, ICompilerLogger logger)
@@ -625,5 +613,169 @@ class Program
         {
             Console.Error.WriteLine($"Warning: Could not save generated C# code: {ex.Message}");
         }
+    }
+
+    static void CompileToBinary(
+        FileInfo inputFile,
+        string outputType,
+        FileInfo? output,
+        string[] references,
+        string[] projectReferences,
+        string[] modulePaths,
+        ICompilerLogger logger)
+    {
+        try
+        {
+            // Read source file
+            var source = File.ReadAllText(inputFile.FullName);
+
+            // Create compiler with options
+            var compilerOptions = new CompilerOptions
+            {
+                References = references,
+                ModulePaths = modulePaths
+            };
+
+            var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);
+
+            // Compile to get C# code
+            var result = compiler.Compile(source, inputFile.FullName);
+
+            if (!result.Success)
+            {
+                Console.Error.WriteLine("Compilation failed:");
+                foreach (var error in result.Errors)
+                {
+                    Console.Error.WriteLine($"  {error}");
+                }
+                Environment.Exit(1);
+            }
+
+            // Determine output path
+            var inputFileName = Path.GetFileNameWithoutExtension(inputFile.Name);
+            var outputDir = output != null
+                ? Path.GetDirectoryName(output.FullName) ?? Directory.GetCurrentDirectory()
+                : Directory.GetCurrentDirectory();
+
+            var assemblyName = output != null
+                ? Path.GetFileNameWithoutExtension(output.Name)
+                : inputFileName;
+
+            var extension = outputType.ToLowerInvariant() == "exe" ? ".exe" : ".dll";
+            var finalOutputPath = output != null
+                ? output.FullName
+                : Path.Combine(outputDir, assemblyName + extension);
+
+            // Create output directory if needed
+            var outputDirectory = Path.GetDirectoryName(finalOutputPath);
+            if (!string.IsNullOrEmpty(outputDirectory) && !Directory.Exists(outputDirectory))
+            {
+                Directory.CreateDirectory(outputDirectory);
+            }
+
+            // Create a minimal project config for single-file compilation
+            var projectConfig = new SingleFileProjectConfig(
+                projectFilePath: inputFile.FullName,
+                projectDirectory: Path.GetDirectoryName(inputFile.FullName) ?? Directory.GetCurrentDirectory(),
+                rootNamespace: inputFileName,
+                assemblyName: assemblyName,
+                outputType: outputType,
+                targetFramework: "net8.0",
+                configuration: "Debug",
+                sourceFiles: new List<string> { inputFile.FullName },
+                references: references.ToList(),
+                modulePaths: modulePaths.ToList(),
+                outputAssemblyPath: finalOutputPath
+            );
+
+            // Prepare C# sources for compilation
+            var csharpSources = new Dictionary<string, string>
+            {
+                { Path.ChangeExtension(inputFile.FullName, ".cs"), result.GeneratedCSharpCode! }
+            };
+
+            // Compile to assembly
+            var assemblyCompiler = new AssemblyCompiler(logger);
+            var assemblyResult = assemblyCompiler.CompileToAssembly(csharpSources, projectConfig);
+
+            if (!assemblyResult.Success)
+            {
+                Console.Error.WriteLine("Assembly compilation failed:");
+                foreach (var error in assemblyResult.Errors)
+                {
+                    Console.Error.WriteLine($"  {error}");
+                }
+                Environment.Exit(1);
+            }
+
+            // Display warnings
+            if (assemblyResult.Warnings.Any())
+            {
+                Console.WriteLine("Warnings:");
+                foreach (var warning in assemblyResult.Warnings)
+                {
+                    Console.WriteLine($"  {warning}");
+                }
+                Console.WriteLine();
+            }
+
+            // Success
+            Console.WriteLine($"Successfully compiled to: {assemblyResult.OutputAssemblyPath}");
+        }
+        catch (LexerError ex)
+        {
+            Console.Error.WriteLine($"Lexer error at line {ex.Line}, column {ex.Column}:");
+            Console.Error.WriteLine($"  {ex.Message}");
+            Environment.Exit(1);
+        }
+        catch (ParserError ex)
+        {
+            Console.Error.WriteLine($"Parser error at line {ex.Line}, column {ex.Column}:");
+            Console.Error.WriteLine($"  {ex.Message}");
+            Environment.Exit(1);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Unexpected error: {ex.Message}");
+            Environment.Exit(1);
+        }
+    }
+
+    /// <summary>
+    /// Wrapper for ProjectConfig to override OutputAssemblyPath for single-file compilation
+    /// </summary>
+    private class SingleFileProjectConfig : ProjectConfig
+    {
+        private readonly string _outputAssemblyPath;
+
+        public SingleFileProjectConfig(
+            string projectFilePath,
+            string projectDirectory,
+            string rootNamespace,
+            string assemblyName,
+            string outputType,
+            string targetFramework,
+            string configuration,
+            List<string> sourceFiles,
+            List<string> references,
+            List<string> modulePaths,
+            string outputAssemblyPath)
+        {
+            _outputAssemblyPath = outputAssemblyPath;
+
+            // Set properties
+            ProjectFilePath = projectFilePath;
+            ProjectDirectory = projectDirectory;
+            RootNamespace = rootNamespace;
+            AssemblyName = assemblyName;
+            OutputType = outputType;
+            TargetFramework = targetFramework;
+            Configuration = configuration;
+            SourceFiles = sourceFiles;
+            References = references;
+            ModulePaths = modulePaths;
+        }
+
+        public override string OutputAssemblyPath => _outputAssemblyPath;
     }
 }

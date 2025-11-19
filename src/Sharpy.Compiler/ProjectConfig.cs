@@ -74,7 +74,7 @@ public class ProjectConfig
     /// <summary>
     /// Full path to the output assembly
     /// </summary>
-    public string OutputAssemblyPath
+    public virtual string OutputAssemblyPath
     {
         get
         {

@@ -1,8 +1,6 @@
-# Rust
-rust/target/
-
-# ANTLR generated files
-.antlr/
+# .NET compiled artifacts
+*.dll
+*.pdb
 
 # Local VSCode configs
 .vscode/launch.json
@@ -18,10 +16,6 @@ __resources/
 **/.DS_Store
 
 # C#/.NET files
-dotnet/src/Sharpy/bin/
-dotnet/src/Sharpy/obj/
-dotnet/src/Sharpy.Tests/bin/
-dotnet/src/Sharpy.Tests/obj/
 src/Sharpy.*/bin/
 src/Sharpy.*/obj/
 samples/**/bin/
