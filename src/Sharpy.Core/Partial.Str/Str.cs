@@ -256,9 +256,47 @@ public readonly partial struct Str
         return substring.EndsWith((string)suffix);
     }
 
-    public string ExpandTabs(string encoding = "utf-8", string errors = "strict")
+    /// <summary>
+    /// Return a copy of the string where all tab characters are replaced by one or more spaces,
+    /// depending on the current column and the given tab size. Tab positions occur every tabsize characters (default is 8).
+    /// </summary>
+    public Str ExpandTabs(int tabsize = 8)
     {
-        return _s;
+        if (tabsize < 0)
+        {
+            throw new ValueError("tabsize must be non-negative");
+        }
+
+        if (!_s.Contains('\t'))
+        {
+            return this;
+        }
+
+        var result = new StringBuilder(_s.Length);
+        int column = 0;
+
+        foreach (char c in _s)
+        {
+            if (c == '\t')
+            {
+                // Calculate spaces needed to reach next tab stop
+                var spacesNeeded = tabsize - (column % tabsize);
+                result.Append(new string(' ', spacesNeeded));
+                column += spacesNeeded;
+            }
+            else if (c == '\n' || c == '\r')
+            {
+                result.Append(c);
+                column = 0;
+            }
+            else
+            {
+                result.Append(c);
+                column++;
+            }
+        }
+
+        return new Str(result.ToString());
     }
 
     /// <summary>
@@ -276,14 +314,27 @@ public readonly partial struct Str
         return index >= 0 ? actualStart + index : -1;
     }
 
-    public Str Format(string encoding = "utf-8", string errors = "strict")
+    /// <summary>
+    /// Perform a string formatting operation. The string on which this method is called can contain literal text
+    /// or replacement fields delimited by braces {}. Each replacement field contains either the numeric index of a
+    /// positional argument, or the name of a keyword argument.
+    /// TODO: Full implementation requires Python format string parser - planned for v1.0
+    /// </summary>
+    public Str Format(params object[] args)
     {
-        return _s;
+        // TODO: Implement full Python format string parsing
+        throw new NotImplementedException("str.format() requires full format string parser - planned for v1.0");
     }
 
-    public Str FormatMap(string encoding = "utf-8", string errors = "strict")
+    /// <summary>
+    /// Similar to Format(**mapping), except that mapping is used directly and not copied to a dict.
+    /// This is useful if for example mapping is a dict subclass.
+    /// TODO: Full implementation requires Python format string parser - planned for v1.0
+    /// </summary>
+    public Str FormatMap<K, V>(IMapping<K, V> mapping) where K : notnull
     {
-        return _s;
+        // TODO: Implement full Python format string parsing with mapping
+        throw new NotImplementedException("str.format_map() requires full format string parser - planned for v1.0");
     }
 
     /// <summary>
@@ -325,9 +376,18 @@ public readonly partial struct Str
         return _s.All(char.IsLetter);
     }
 
+    /// <summary>
+    /// Return True if all characters in the string are ASCII, False otherwise.
+    /// ASCII characters have code points in the range U+0000-U+007F.
+    /// </summary>
     public bool IsAscii()
     {
-        return false;
+        if (string.IsNullOrEmpty(_s))
+        {
+            return true; // Empty string is considered ASCII
+        }
+
+        return _s.All(c => c <= 127);
     }
 
     /// <summary>
@@ -343,14 +403,46 @@ public readonly partial struct Str
         return _s.All(char.IsDigit);
     }
 
+    /// <summary>
+    /// Return True if all characters in the string are decimal characters, and there is at least one character, False otherwise.
+    /// Decimal characters are those that can be used to form numbers in base 10.
+    /// </summary>
     public bool IsDecimal()
     {
-        return false;
+        if (string.IsNullOrEmpty(_s))
+        {
+            return false;
+        }
+
+        return _s.All(c => char.GetUnicodeCategory(c) == System.Globalization.UnicodeCategory.DecimalDigitNumber);
     }
 
+    /// <summary>
+    /// Return True if the string is a valid identifier according to Python language definition.
+    /// </summary>
     public bool IsIdentifier()
     {
-        return false;
+        if (string.IsNullOrEmpty(_s))
+        {
+            return false;
+        }
+
+        // First character must be letter or underscore
+        if (!char.IsLetter(_s[0]) && _s[0] != '_')
+        {
+            return false;
+        }
+
+        // Rest must be letters, digits, or underscores
+        for (int i = 1; i < _s.Length; i++)
+        {
+            if (!char.IsLetterOrDigit(_s[i]) && _s[i] != '_')
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -379,14 +471,56 @@ public readonly partial struct Str
         return hasCased;
     }
 
+    /// <summary>
+    /// Return True if all characters in the string are numeric characters, and there is at least one character, False otherwise.
+    /// Numeric characters include digit characters, and all characters that have the Unicode numeric value property.
+    /// </summary>
     public bool IsNumeric()
     {
-        return false;
+        if (string.IsNullOrEmpty(_s))
+        {
+            return false;
+        }
+
+        return _s.All(c => char.IsNumber(c));
     }
 
+    /// <summary>
+    /// Return True if all characters in the string are printable or the string is empty, False otherwise.
+    /// Nonprintable characters are those characters defined in the Unicode character database as "Other" or "Separator",
+    /// excepting the ASCII space (0x20) which is considered printable.
+    /// </summary>
     public bool IsPrintable()
     {
-        return false;
+        if (string.IsNullOrEmpty(_s))
+        {
+            return true; // Empty string is considered printable
+        }
+
+        foreach (char c in _s)
+        {
+            var category = char.GetUnicodeCategory(c);
+
+            // ASCII space is printable
+            if (c == ' ')
+            {
+                continue;
+            }
+
+            // Control characters, format characters, surrogate characters, private use, and non-assigned are not printable
+            if (category == System.Globalization.UnicodeCategory.Control ||
+                category == System.Globalization.UnicodeCategory.Format ||
+                category == System.Globalization.UnicodeCategory.Surrogate ||
+                category == System.Globalization.UnicodeCategory.PrivateUse ||
+                category == System.Globalization.UnicodeCategory.OtherNotAssigned ||
+                category == System.Globalization.UnicodeCategory.LineSeparator ||
+                category == System.Globalization.UnicodeCategory.ParagraphSeparator)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -484,8 +618,22 @@ public readonly partial struct Str
         return new Str(string.Join(_s, iterable.Select(item => (string)item)));
     }
 
-    public void LJust(uint width, string fillchar)
+    /// <summary>
+    /// Return a left-justified string of length width. Padding is done using the specified fill character (default is a space).
+    /// </summary>
+    public Str LJust(uint width, string fillchar = " ")
     {
+        if (fillchar.Length != 1)
+        {
+            throw new TypeError("The fill character must be exactly one character long");
+        }
+
+        if (_s.Length >= width)
+        {
+            return this;
+        }
+
+        return new Str(_s.PadRight((int)width, fillchar[0]));
     }
 
     /// <summary>
@@ -511,32 +659,147 @@ public readonly partial struct Str
         return new Str(_s.TrimStart(((string)chars).ToCharArray()));
     }
 
-    public void MakeTrans(IMapping<string, string?> mapping)
+    /// <summary>
+    /// Static method to create a translation table usable for Translate().
+    /// This version accepts a dictionary mapping strings to their replacements.
+    /// </summary>
+    public static Dict<uint, Str?> MakeTrans(IMapping<Str, Str?> mapping)
     {
+        var table = new Dict<uint, Str?>();
+
+        foreach (var key in mapping.Keys())
+        {
+            var keyStr = (string)key;
+            if (keyStr.Length != 1)
+            {
+                throw new ValueError("string keys in translate table must be of length 1");
+            }
+
+            var codePoint = (uint)keyStr[0];
+            var value = mapping[key];
+            table[codePoint] = value;
+        }
+
+        return table;
     }
 
-    public void MakeTrans(IMapping<uint, string?> mapping)
+    /// <summary>
+    /// Static method to create a translation table usable for Translate().
+    /// This version accepts a dictionary mapping Unicode code points to their replacements.
+    /// </summary>
+    public static Dict<uint, Str?> MakeTrans(IMapping<uint, Str?> mapping)
     {
+        var table = new Dict<uint, Str?>();
+
+        foreach (var key in mapping.Keys())
+        {
+            table[key] = mapping[key];
+        }
+
+        return table;
     }
 
-    public void MakeTrans(string fromChars, string toChars)
+    /// <summary>
+    /// Static method to create a translation table usable for Translate().
+    /// Maps characters in fromChars to characters in toChars at corresponding positions.
+    /// </summary>
+    public static Dict<uint, Str?> MakeTrans(Str fromChars, Str toChars)
     {
+        var from = (string)fromChars;
+        var to = (string)toChars;
+
+        if (from.Length != to.Length)
+        {
+            throw new ValueError("the first two maketrans arguments must have equal length");
+        }
+
+        var table = new Dict<uint, Str?>();
+        for (int i = 0; i < from.Length; i++)
+        {
+            table[(uint)from[i]] = new Str(to[i]);
+        }
+
+        return table;
     }
 
-    public void MakeTrans(string fromChars, string toChars, string ignoreChars)
+    /// <summary>
+    /// Static method to create a translation table usable for Translate().
+    /// Maps characters in fromChars to characters in toChars at corresponding positions,
+    /// and maps characters in ignoreChars to None (deletion).
+    /// </summary>
+    public static Dict<uint, Str?> MakeTrans(Str fromChars, Str toChars, Str ignoreChars)
     {
+        var from = (string)fromChars;
+        var to = (string)toChars;
+        var ignore = (string)ignoreChars;
+
+        if (from.Length != to.Length)
+        {
+            throw new ValueError("the first two maketrans arguments must have equal length");
+        }
+
+        var table = new Dict<uint, Str?>();
+
+        // Map fromChars to toChars
+        for (int i = 0; i < from.Length; i++)
+        {
+            table[(uint)from[i]] = new Str(to[i]);
+        }
+
+        // Map ignoreChars to None for deletion
+        foreach (char c in ignore)
+        {
+            table[(uint)c] = null;
+        }
+
+        return table;
     }
 
-    public void Partition(string sep)
+    /// <summary>
+    /// Split the string at the first occurrence of sep, and return a 3-tuple containing the part before the separator,
+    /// the separator itself, and the part after the separator. If the separator is not found, return a 3-tuple containing
+    /// the string itself, followed by two empty strings.
+    /// </summary>
+    public (Str, Str, Str) Partition(Str sep)
     {
+        if (string.IsNullOrEmpty((string)sep))
+        {
+            throw new ValueError("empty separator");
+        }
+
+        var index = _s.IndexOf((string)sep);
+        if (index < 0)
+        {
+            return (this, "", "");
+        }
+
+        var before = new Str(_s.Substring(0, index));
+        var after = new Str(_s.Substring(index + ((string)sep).Length));
+        return (before, sep, after);
     }
 
-    public void RemovePrefix(string prefix)
+    /// <summary>
+    /// If the string starts with the prefix string, return string[len(prefix):]. Otherwise, return a copy of the original string.
+    /// </summary>
+    public Str RemovePrefix(Str prefix)
     {
+        if (_s.StartsWith((string)prefix))
+        {
+            return new Str(_s.Substring(((string)prefix).Length));
+        }
+        return this;
     }
 
-    public void RemoveSuffix(string suffix)
+    /// <summary>
+    /// If the string ends with the suffix string, return string[:-len(suffix)]. Otherwise, return a copy of the original string.
+    /// </summary>
+    public Str RemoveSuffix(Str suffix)
     {
+        if (_s.EndsWith((string)suffix))
+        {
+            return new Str(_s.Substring(0, _s.Length - ((string)suffix).Length));
+        }
+        return this;
     }
 
     /// <summary>
@@ -580,24 +843,135 @@ public readonly partial struct Str
         return new Str(builder.ToString());
     }
 
-    public void RFind(string sub, int start = 0, int end = -1)
+    /// <summary>
+    /// Return the highest index in the string where substring sub is found, such that sub is contained within s[start:end].
+    /// Optional arguments start and end are interpreted as in slice notation. Return -1 on failure.
+    /// </summary>
+    public int RFind(Str sub, int start = 0, int? end = null)
     {
+        var (actualStart, actualEnd) = NormalizeSliceIndices(start, end);
+        if (actualStart >= actualEnd) return -1;
+
+        var substring = _s.Substring(actualStart, actualEnd - actualStart);
+        var index = substring.LastIndexOf((string)sub);
+
+        return index >= 0 ? actualStart + index : -1;
     }
 
-    public void RIndex(string sub, int start = 0, int end = -1)
+    /// <summary>
+    /// Like RFind(), but raise ValueError when the substring is not found.
+    /// </summary>
+    public int RIndex(Str sub, int start = 0, int? end = null)
     {
+        var index = RFind(sub, start, end);
+        if (index < 0)
+        {
+            throw new ValueError($"substring '{(string)sub}' not found");
+        }
+        return index;
     }
 
-    public void RJust(uint width, string fillchar)
+    /// <summary>
+    /// Return a right-justified string of length width. Padding is done using the specified fill character (default is a space).
+    /// </summary>
+    public Str RJust(uint width, string fillchar = " ")
     {
+        if (fillchar.Length != 1)
+        {
+            throw new TypeError("The fill character must be exactly one character long");
+        }
+
+        if (_s.Length >= width)
+        {
+            return this;
+        }
+
+        return new Str(_s.PadLeft((int)width, fillchar[0]));
     }
 
-    public void RPartition(string sep)
+    /// <summary>
+    /// Split the string at the last occurrence of sep, and return a 3-tuple containing the part before the separator,
+    /// the separator itself, and the part after the separator. If the separator is not found, return a 3-tuple containing
+    /// two empty strings, followed by the string itself.
+    /// </summary>
+    public (Str, Str, Str) RPartition(Str sep)
     {
+        if (string.IsNullOrEmpty((string)sep))
+        {
+            throw new ValueError("empty separator");
+        }
+
+        var index = _s.LastIndexOf((string)sep);
+        if (index < 0)
+        {
+            return ("", "", this);
+        }
+
+        var before = new Str(_s.Substring(0, index));
+        var after = new Str(_s.Substring(index + ((string)sep).Length));
+        return (before, sep, after);
     }
 
-    public void RSplit(string sep, uint maxsplit)
+    /// <summary>
+    /// Return a list of the words in the string, using sep as the delimiter string, splitting from the right.
+    /// If maxsplit is given, at most maxsplit splits are done (the rightmost ones).
+    /// </summary>
+    public List<Str> RSplit(Str? sep = null, int maxsplit = -1)
     {
+        var result = new List<Str>();
+
+        if (sep is null)
+        {
+            // Split on whitespace from right
+            var parts = _s.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+
+            if (maxsplit < 0 || maxsplit >= parts.Length - 1)
+            {
+                foreach (var part in parts)
+                {
+                    result.Add(new Str(part));
+                }
+            }
+            else
+            {
+                // Need to keep the first parts together
+                var keepTogether = parts.Length - maxsplit;
+                var combined = string.Join(" ", parts.Take(keepTogether));
+                result.Add(new Str(combined));
+
+                foreach (var part in parts.Skip(keepTogether))
+                {
+                    result.Add(new Str(part));
+                }
+            }
+        }
+        else
+        {
+            var sepStr = (string)sep;
+            var parts = _s.Split(new[] { sepStr }, StringSplitOptions.None);
+
+            if (maxsplit < 0 || maxsplit >= parts.Length - 1)
+            {
+                foreach (var part in parts)
+                {
+                    result.Add(new Str(part));
+                }
+            }
+            else
+            {
+                // Need to keep the first parts together
+                var keepTogether = parts.Length - maxsplit;
+                var combined = string.Join(sepStr, parts.Take(keepTogether));
+                result.Add(new Str(combined));
+
+                foreach (var part in parts.Skip(keepTogether))
+                {
+                    result.Add(new Str(part));
+                }
+            }
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -652,8 +1026,69 @@ public readonly partial struct Str
         return result;
     }
 
-    public void SplitLines(bool keepends = false)
+    /// <summary>
+    /// Return a list of the lines in the string, breaking at line boundaries.
+    /// Line breaks are not included in the resulting list unless keepends is given and true.
+    /// </summary>
+    public List<Str> SplitLines(bool keepends = false)
     {
+        var result = new List<Str>();
+        if (string.IsNullOrEmpty(_s))
+        {
+            return result;
+        }
+
+        var currentLine = new StringBuilder();
+        for (int i = 0; i < _s.Length; i++)
+        {
+            char c = _s[i];
+
+            // Check for line boundaries
+            if (c == '\n')
+            {
+                if (keepends)
+                {
+                    currentLine.Append(c);
+                }
+                result.Add(new Str(currentLine.ToString()));
+                currentLine.Clear();
+            }
+            else if (c == '\r')
+            {
+                // Handle \r\n and \r
+                if (i + 1 < _s.Length && _s[i + 1] == '\n')
+                {
+                    if (keepends)
+                    {
+                        currentLine.Append("\r\n");
+                    }
+                    result.Add(new Str(currentLine.ToString()));
+                    currentLine.Clear();
+                    i++; // Skip the \n
+                }
+                else
+                {
+                    if (keepends)
+                    {
+                        currentLine.Append(c);
+                    }
+                    result.Add(new Str(currentLine.ToString()));
+                    currentLine.Clear();
+                }
+            }
+            else
+            {
+                currentLine.Append(c);
+            }
+        }
+
+        // Add remaining content if any
+        if (currentLine.Length > 0)
+        {
+            result.Add(new Str(currentLine.ToString()));
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -695,8 +1130,34 @@ public readonly partial struct Str
         return new Str(_s.Trim(((string)chars).ToCharArray()));
     }
 
-    public void SwapCase()
+    /// <summary>
+    /// Return a copy of the string with uppercase characters converted to lowercase and vice versa.
+    /// </summary>
+    public Str SwapCase()
     {
+        if (string.IsNullOrEmpty(_s))
+        {
+            return this;
+        }
+
+        var result = new StringBuilder(_s.Length);
+        foreach (char c in _s)
+        {
+            if (char.IsUpper(c))
+            {
+                result.Append(char.ToLower(c));
+            }
+            else if (char.IsLower(c))
+            {
+                result.Append(char.ToUpper(c));
+            }
+            else
+            {
+                result.Append(c);
+            }
+        }
+
+        return new Str(result.ToString());
     }
 
     /// <summary>
@@ -737,8 +1198,43 @@ public readonly partial struct Str
         return new Str(result.ToString());
     }
 
-    public void Translate(uint table)
+    /// <summary>
+    /// Return a copy of the string in which each character has been mapped through the given translation table.
+    /// The table must be a dictionary mapping Unicode ordinals (as integers) to Unicode ordinals, strings, or None.
+    /// Unmapped characters are left untouched. Characters mapped to None are deleted.
+    /// </summary>
+    public Str Translate(Dict<uint, Str?> table)
     {
+        var result = new StringBuilder(_s.Length);
+
+        foreach (char c in _s)
+        {
+            var codePoint = (uint)c;
+
+            // Check if character is in translation table
+            var replacement = table.Get(codePoint, null);
+
+            if (replacement is null)
+            {
+                // If mapped to None explicitly, delete the character
+                if (table.__Contains__(codePoint))
+                {
+                    continue; // Skip this character
+                }
+                else
+                {
+                    // Not in table, keep original character
+                    result.Append(c);
+                }
+            }
+            else
+            {
+                // Replace with the mapped string
+                result.Append((string)replacement);
+            }
+        }
+
+        return new Str(result.ToString());
     }
 
     /// <summary>
@@ -749,7 +1245,24 @@ public readonly partial struct Str
         return new Str(_s.ToUpper());
     }
 
-    public void ZFill(uint width)
+    /// <summary>
+    /// Return a copy of the string left filled with zeros. A leading sign prefix (+/-) is handled by inserting the padding after the sign.
+    /// </summary>
+    public Str ZFill(uint width)
     {
+        if (_s.Length >= width)
+        {
+            return this;
+        }
+
+        var fillCount = (int)width - _s.Length;
+
+        // Handle leading sign
+        if (_s.Length > 0 && (_s[0] == '+' || _s[0] == '-'))
+        {
+            return new Str(_s[0] + new string('0', fillCount) + _s.Substring(1));
+        }
+
+        return new Str(new string('0', fillCount) + _s);
     }
 }
