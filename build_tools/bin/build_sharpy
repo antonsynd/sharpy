@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import argparse
 import logging
+import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -96,7 +98,24 @@ def create_parser() -> argparse.ArgumentParser:
     clean_parser.add_argument(
         "--clean-resources", action="store_true", help="Cleans up generated resources."
     )
-    _ = subparsers.add_parser("install", help="TODO: No-op")
+    install_parser = subparsers.add_parser(
+        "install", help="Installs the Sharpy compiler to ~/.local/bin"
+    )
+    install_parser.add_argument(
+        "--release",
+        action="store_true",
+        default=True,
+        help="Install release build (default)",
+    )
+    install_parser.add_argument(
+        "--debug", action="store_true", help="Install debug build instead of release"
+    )
+    install_parser.add_argument(
+        "--prefix",
+        type=str,
+        default=None,
+        help="Custom install prefix (default: ~/.local)",
+    )
     format_parser = subparsers.add_parser("format", help="Runs code formatters.")
     format_parser.add_argument(
         "--target",
@@ -232,7 +251,77 @@ def clean(args: argparse.Namespace, rest: Sequence[str]) -> None:
 
 
 def install(args: argparse.Namespace, rest: Sequence[str]) -> None:
-    get_logger().info("Nothing to install!")
+    # Determine build type
+    if hasattr(args, "debug") and args.debug:
+        build_type = "Debug"
+        get_logger().info("Installing debug build...")
+    else:
+        build_type = "Release"
+        get_logger().info("Installing release build...")
+
+    # Determine install prefix
+    if hasattr(args, "prefix") and args.prefix:
+        install_prefix = Path(args.prefix).expanduser()
+    else:
+        install_prefix = Path.home() / ".local"
+
+    install_bin_dir = install_prefix / "bin"
+
+    # Create install directory if it doesn't exist
+    install_bin_dir.mkdir(parents=True, exist_ok=True)
+
+    # Locate the built compiler
+    cli_bin_dir = CLI_DIR / "bin" / build_type / "net9.0"
+
+    if not cli_bin_dir.exists():
+        get_logger().error(
+            f"Compiler not found at {cli_bin_dir}. Please build it first with:"
+        )
+        get_logger().error(
+            f"  build_sharpy build --project cli {'--release' if build_type == 'Release' else ''}"
+        )
+        sys.exit(1)
+
+    # Copy the entire output directory to preserve all dependencies
+    target_dir = install_prefix / "lib" / "sharpyc"
+
+    if target_dir.exists():
+        get_logger().info(f"Removing existing installation at {target_dir}...")
+        shutil.rmtree(target_dir)
+
+    get_logger().info(f"Copying compiler to {target_dir}...")
+    shutil.copytree(cli_bin_dir, target_dir)
+
+    # Create a wrapper script for easier invocation
+    wrapper_script = install_bin_dir / "sharpyc"
+
+    # Remove old wrapper if it exists (could be a file or directory)
+    if wrapper_script.exists():
+        if wrapper_script.is_dir():
+            shutil.rmtree(wrapper_script)
+        else:
+            wrapper_script.unlink()
+
+    get_logger().info(f"Creating wrapper script at {wrapper_script}...")
+
+    with open(wrapper_script, "w") as f:
+        f.write(
+            f"""#!/bin/sh
+exec dotnet "{target_dir}/sharpyc.dll" "$@"
+"""
+        )
+
+    # Make the wrapper executable
+    os.chmod(wrapper_script, 0o755)
+
+    get_logger().info(f"✓ Sharpy compiler ({build_type}) installed successfully!")
+    get_logger().info(f"  Installation directory: {target_dir}")
+    get_logger().info(f"  Executable wrapper: {wrapper_script}")
+    get_logger().info("")
+    get_logger().info(f"To use the compiler, add {install_bin_dir} to your PATH:")
+    get_logger().info(f'  export PATH="{install_bin_dir}:$PATH"')
+    get_logger().info("")
+    get_logger().info("Then you can run: sharpyc --help")
 
 
 def format(args: argparse.Namespace, rest: Sequence[str]) -> None:
