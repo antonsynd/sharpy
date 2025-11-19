@@ -3,16 +3,16 @@ namespace Sharpy.Datetime;
 /// <summary>
 /// Represents a date (year, month, day).
 /// </summary>
-public class DateObject
+public class Date
 {
     private readonly System.DateTime _date;
 
-    public DateObject(int year, int month, int day)
+    public Date(int year, int month, int day)
     {
         _date = new System.DateTime(year, month, day);
     }
 
-    internal DateObject(System.DateTime dateTime)
+    internal Date(System.DateTime dateTime)
     {
         _date = dateTime.Date;
     }
@@ -29,27 +29,27 @@ public class DateObject
     /// <summary>
     /// Return the current local date.
     /// </summary>
-    public static DateObject Today()
+    public static Date Today()
     {
-        return new DateObject(System.DateTime.Today);
+        return new Date(System.DateTime.Today);
     }
 }
 
 /// <summary>
 /// Represents a time (hour, minute, second, microsecond).
 /// </summary>
-public class TimeObject
+public class Time
 {
     private readonly TimeSpan _time;
 
-    public TimeObject(int hour = 0, int minute = 0, int second = 0, int microsecond = 0)
+    public Time(int hour = 0, int minute = 0, int second = 0, int microsecond = 0)
     {
         // Convert microseconds to ticks (10 ticks = 1 microsecond)
         long ticks = new TimeSpan(0, hour, minute, second).Ticks + (microsecond * 10L);
         _time = new TimeSpan(ticks);
     }
 
-    internal TimeObject(TimeSpan timeSpan)
+    internal Time(TimeSpan timeSpan)
     {
         _time = timeSpan;
     }
@@ -68,17 +68,17 @@ public class TimeObject
 /// <summary>
 /// A combination of a date and a time.
 /// </summary>
-public class DateTimeObject
+public class DateTime
 {
     private readonly System.DateTime _dateTime;
 
-    public DateTimeObject(int year, int month, int day, int hour = 0, int minute = 0, int second = 0, int microsecond = 0)
+    public DateTime(int year, int month, int day, int hour = 0, int minute = 0, int second = 0, int microsecond = 0)
     {
         // Create base DateTime and add microseconds as ticks (10 ticks = 1 microsecond)
         _dateTime = new System.DateTime(year, month, day, hour, minute, second).AddTicks(microsecond * 10L);
     }
 
-    internal DateTimeObject(System.DateTime dateTime)
+    internal DateTime(System.DateTime dateTime)
     {
         _dateTime = dateTime;
     }
@@ -91,8 +91,8 @@ public class DateTimeObject
     public int Second => _dateTime.Second;
     public int Microsecond => (int)((_dateTime.Ticks % TimeSpan.TicksPerSecond) / 10);
 
-    public DateObject DateComponent => new DateObject(_dateTime);
-    public TimeObject TimeComponent => new TimeObject(_dateTime.TimeOfDay);
+    public Date DateComponent => new Date(_dateTime);
+    public Time TimeComponent => new Time(_dateTime.TimeOfDay);
 
     public override string ToString()
     {
@@ -102,36 +102,36 @@ public class DateTimeObject
     /// <summary>
     /// Return the current local datetime.
     /// </summary>
-    public static DateTimeObject Now()
+    public static DateTime Now()
     {
-        return new DateTimeObject(System.DateTime.Now);
+        return new DateTime(System.DateTime.Now);
     }
 
     /// <summary>
     /// Return the current UTC datetime.
     /// </summary>
-    public static DateTimeObject Utcnow()
+    public static DateTime Utcnow()
     {
-        return new DateTimeObject(System.DateTime.UtcNow);
+        return new DateTime(System.DateTime.UtcNow);
     }
 
     /// <summary>
     /// Combine a date and a time to create a datetime.
     /// </summary>
-    public static DateTimeObject Combine(DateObject date, TimeObject time)
+    public static DateTime Combine(Date date, Time time)
     {
-        return new DateTimeObject(date.Year, date.Month, date.Day, time.Hour, time.Minute, time.Second, time.Microsecond);
+        return new DateTime(date.Year, date.Month, date.Day, time.Hour, time.Minute, time.Second, time.Microsecond);
     }
 }
 
 /// <summary>
 /// Represents the difference between two dates or times.
 /// </summary>
-public class TimedeltaObject
+public class Timedelta
 {
     private readonly TimeSpan _timeSpan;
 
-    public TimedeltaObject(int days = 0, int seconds = 0, int microseconds = 0, int milliseconds = 0, int minutes = 0, int hours = 0, int weeks = 0)
+    public Timedelta(int days = 0, int seconds = 0, int microseconds = 0, int milliseconds = 0, int minutes = 0, int hours = 0, int weeks = 0)
     {
         // Build TimeSpan from ticks for proper microsecond precision
         long ticks = 0;
@@ -145,7 +145,7 @@ public class TimedeltaObject
         _timeSpan = new TimeSpan(ticks);
     }
 
-    internal TimedeltaObject(TimeSpan timeSpan)
+    internal Timedelta(TimeSpan timeSpan)
     {
         _timeSpan = timeSpan;
     }
@@ -167,8 +167,8 @@ public class TimedeltaObject
 public static class Exports
 {
     // Re-export the classes for convenience
-    public static Type DateType => typeof(DateObject);
-    public static Type TimeType => typeof(TimeObject);
-    public static Type DateTimeType => typeof(DateTimeObject);
-    public static Type TimedeltaType => typeof(TimedeltaObject);
+    public static Type DateType => typeof(Date);
+    public static Type TimeType => typeof(Time);
+    public static Type DateTimeType => typeof(DateTime);
+    public static Type TimedeltaType => typeof(Timedelta);
 }

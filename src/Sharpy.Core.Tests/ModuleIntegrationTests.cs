@@ -81,19 +81,19 @@ public class ModuleIntegrationTests
     [Fact]
     public void DatetimeModule_BasicFunctions_WorkCorrectly()
     {
-        // Test DateObject
-        var date = new Sharpy.Datetime.DateObject(2024, 1, 15);
+        // Test Date
+        var date = new Sharpy.Datetime.Date(2024, 1, 15);
         date.Year.Should().Be(2024);
         date.Month.Should().Be(1);
         date.Day.Should().Be(15);
 
-        // Test TimeObject
-        var time = new Sharpy.Datetime.TimeObject(14, 30, 0);
+        // Test Time
+        var time = new Sharpy.Datetime.Time(14, 30, 0);
         time.Hour.Should().Be(14);
         time.Minute.Should().Be(30);
 
-        // Test DateTimeObject
-        var dt = new Sharpy.Datetime.DateTimeObject(2024, 1, 15, 14, 30, 0);
+        // Test DateTime
+        var dt = new Sharpy.Datetime.DateTime(2024, 1, 15, 14, 30, 0);
         dt.Year.Should().Be(2024);
         dt.Month.Should().Be(1);
         dt.Day.Should().Be(15);
@@ -101,7 +101,7 @@ public class ModuleIntegrationTests
         dt.Minute.Should().Be(30);
 
         // Test Now (should return a valid datetime)
-        var now = Sharpy.Datetime.DateTimeObject.Now();
+        var now = Sharpy.Datetime.DateTime.Now();
         now.Should().NotBeNull();
         now.Year.Should().BeGreaterThan(2020);
     }
