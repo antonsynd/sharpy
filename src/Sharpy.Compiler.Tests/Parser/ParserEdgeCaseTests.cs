@@ -1094,6 +1094,169 @@ x = 42
         module.Body.Should().HaveCount(1);
     }
 
+    [Fact]
+    public void ParsesInlineCommentWithinIfBlock()
+    {
+        var source = @"
+def foo(x: int):
+    if x > 0:
+        y = 42  # inline comment
+        print(y)
+";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+        var funcDef = module.Body[0] as FunctionDef;
+        funcDef.Should().NotBeNull();
+        funcDef!.Body.Should().HaveCount(1);
+        var ifStmt = funcDef.Body[0] as IfStatement;
+        ifStmt.Should().NotBeNull();
+        ifStmt!.ThenBody.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void ParsesMultipleInlineCommentsInIfBlock()
+    {
+        var source = @"
+def foo(x: int):
+    if x > 0:  # check positive
+        y = 42  # assign value
+        z = y * 2  # double it
+        print(z)  # output
+";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+        var funcDef = module.Body[0] as FunctionDef;
+        funcDef.Should().NotBeNull();
+        funcDef!.Body.Should().HaveCount(1);
+        var ifStmt = funcDef.Body[0] as IfStatement;
+        ifStmt.Should().NotBeNull();
+        ifStmt!.ThenBody.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void ParsesCommentsInNestedIfBlocks()
+    {
+        var source = @"
+def foo(x: int, y: int):
+    if x > 0:  # outer check
+        if y > 0:  # inner check
+            z = x + y  # sum
+            print(z)  # output
+        else:  # negative y
+            print('negative')  # message
+";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+        var funcDef = module.Body[0] as FunctionDef;
+        funcDef.Should().NotBeNull();
+        funcDef!.Body.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ParsesCommentsInWhileBlock()
+    {
+        var source = @"
+def foo():
+    i = 0  # initialize
+    while i < 10:  # loop condition
+        i += 1  # increment
+        print(i)  # output
+";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+        var funcDef = module.Body[0] as FunctionDef;
+        funcDef.Should().NotBeNull();
+        funcDef!.Body.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void ParsesCommentsInForBlock()
+    {
+        var source = @"
+def foo():
+    for i in range(10):  # loop
+        x = i * 2  # double
+        print(x)  # output
+";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+        var funcDef = module.Body[0] as FunctionDef;
+        funcDef.Should().NotBeNull();
+        funcDef!.Body.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ParsesCommentsInTryExceptBlock()
+    {
+        var source = @"
+def foo():
+    try:  # attempt
+        x = 1 / 0  # divide by zero
+    except Exception:  # catch
+        print('error')  # handle
+";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+        var funcDef = module.Body[0] as FunctionDef;
+        funcDef.Should().NotBeNull();
+        funcDef!.Body.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ParsesCommentsInClassDefinition()
+    {
+        var source = @"
+class Foo:  # class definition
+    x: int = 42  # class variable
+
+    def __init__(self):  # constructor
+        self.y = 100  # instance variable
+";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+        var classDef = module.Body[0] as ClassDef;
+        classDef.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void ParsesCommentAfterColonInIfElse()
+    {
+        var source = @"
+def foo(x: int):
+    if x > 0:  # positive case
+        return True  # return true
+    else:  # negative or zero case
+        return False  # return false
+";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+        var funcDef = module.Body[0] as FunctionDef;
+        funcDef.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void ParsesCommentsWithComplexNestedStructures()
+    {
+        var source = @"
+def complex(x: int, y: int):  # main function
+    if x > 0:  # check x
+        while y > 0:  # loop on y
+            if x + y > 100:  # threshold check
+                break  # exit loop
+            y -= 1  # decrement
+        print(y)  # output result
+    else:  # x is not positive
+        for i in range(10):  # iterate
+            if i % 2 == 0:  # even check
+                print(i)  # print even
+";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+        var funcDef = module.Body[0] as FunctionDef;
+        funcDef.Should().NotBeNull();
+        funcDef!.Body.Should().HaveCount(1);
+    }
+
     #endregion
 
     #region Boundary Values

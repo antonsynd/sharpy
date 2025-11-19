@@ -210,4 +210,185 @@ print(""Third"")
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
         Assert.Equal("First\nSecond\nThird\n", result.StandardOutput);
     }
+
+    [Fact]
+    public void FunctionWithIfBlockAndAssignment_NoReturn_CompilesAndExecutes()
+    {
+        var source = @"
+def process(x: int):
+    if x > 0:
+        y = x * 2
+        print(y)
+
+process(5)
+process(-1)
+";
+
+        var result = CompileAndExecute(source);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("10\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void FunctionWithIfElseBlocksAndAssignments_NoReturn_CompilesAndExecutes()
+    {
+        var source = @"
+def categorize(x: int):
+    if x > 0:
+        print(""positive"")
+    else:
+        print(""non-positive"")
+
+categorize(5)
+categorize(-3)
+categorize(0)
+";
+
+        var result = CompileAndExecute(source);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("positive\nnon-positive\nnon-positive\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void FunctionWithNestedIfAndAssignment_NoReturn_CompilesAndExecutes()
+    {
+        var source = @"
+def nested_check(x: int, y: int):
+    if x > 0:
+        if y > 0:
+            sum = x + y
+            print(sum)
+        else:
+            print(""y not positive"")
+    else:
+        print(""x not positive"")
+
+nested_check(3, 4)
+nested_check(3, -1)
+nested_check(-1, 4)
+";
+
+        var result = CompileAndExecute(source);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("7\ny not positive\nx not positive\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void FunctionWithIfBlockWithInlineComment_CompilesAndExecutes()
+    {
+        var source = @"
+def compute(x: int):
+    if x > 0:  # check if positive
+        result = x * 2  # double the value
+        print(result)  # output result
+
+compute(7)
+";
+
+        var result = CompileAndExecute(source);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("14\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void FunctionWithMultipleIfBlocksAndComments_CompilesAndExecutes()
+    {
+        var source = @"
+def analyze(x: int):  # analyze function
+    if x > 0:  # positive case
+        print(""positive"")  # output
+    elif x < 0:  # negative case
+        print(""negative"")  # output
+    else:  # zero case
+        print(""zero"")  # output
+
+analyze(5)
+analyze(-3)
+analyze(0)
+";
+
+        var result = CompileAndExecute(source);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("positive\nnegative\nzero\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void FunctionWithWhileLoopAndComments_CompilesAndExecutes()
+    {
+        var source = @"
+def countdown(n: int):  # countdown function
+    while n > 0:  # loop condition
+        print(n)  # output value
+        n = n - 1  # decrement
+
+countdown(3)
+";
+
+        var result = CompileAndExecute(source);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("3\n2\n1\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void FunctionWithForLoopAndComments_CompilesAndExecutes()
+    {
+        var source = @"
+def iterate():  # iterate function
+    for i in range(3):  # loop through range
+        print(i)  # output value
+
+iterate()
+";
+
+        var result = CompileAndExecute(source);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("0\n1\n2\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void FunctionWithComplexNestedStructuresAndComments_CompilesAndExecutes()
+    {
+        var source = @"
+def complex(x: int):  # main function
+    if x > 0:  # check positive
+        for i in range(x):  # iterate
+            if i % 2 == 0:  # even check
+                print(i)  # output even numbers
+
+complex(5)
+";
+
+        var result = CompileAndExecute(source);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("0\n2\n4\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void FunctionWithIfBlockAndMultipleAssignments_NoReturn_CompilesAndExecutes()
+    {
+        var source = @"
+def process_data(value: int):
+    if value > 10:
+        x = value * 2
+        y = x + 5
+        z = y - 3
+        print(z)
+
+process_data(15)
+process_data(5)
+";
+
+        var result = CompileAndExecute(source);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("32\n", result.StandardOutput);
+    }
 }

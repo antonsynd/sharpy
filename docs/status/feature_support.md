@@ -265,3 +265,32 @@ types, see Built-in types in section 4.1.
 | List comprehensions | 0.1+ | Basic parsing support |
 | Generator expressions | 0.1+ | Basic parsing support |
 | Context managers | 0.1+ | `with` statement parsing, semantic analysis partial |
+
+## 6. Known Limitations
+
+### 6.1. Variable Scoping
+
+**Issue**: Sharpy currently implements Python-style variable hoisting within function scopes. Variables declared inside control flow blocks (if/while/for) are accessible outside those blocks.
+
+**Expected Behavior**: As a statically-typed language, Sharpy should follow C#-style block scoping where variables declared within a block are only accessible within that block and its nested blocks.
+
+**Example of Current (Incorrect) Behavior**:
+```python
+def foo(x: int):
+    if x > 0:
+        result: str = "positive"  # Declared in if-block
+    print(result)  # Currently accessible (should error)
+```
+
+**Workaround**: Declare variables in the outer scope before the control flow block:
+```python
+def foo(x: int):
+    result: str = ""  # Declare in outer scope
+    if x > 0:
+        result = "positive"  # Assign in if-block
+    print(result)  # Valid
+```
+
+**Status**: Documented in tests as skipped test cases. See `SemanticAnalyzerNegativeTests.cs` for examples.
+
+**Priority**: Medium - This is a language design issue that should be addressed to ensure Sharpy maintains its statically-typed nature and doesn't inherit Python's dynamic scoping behavior.

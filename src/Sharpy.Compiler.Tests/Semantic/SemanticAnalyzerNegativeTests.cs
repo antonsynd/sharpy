@@ -127,6 +127,115 @@ def bar():
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("private"));
     }
 
+    [Fact(Skip = "TODO: Implement C#-style block scoping - variables in if-blocks should not leak to else blocks")]
+    public void RejectsVariableDefinedInIfBlockUsedInElseBlock()
+    {
+        var source = @"
+def foo(x: int):
+    if x > 0:
+        category: str = ""positive""
+    else:
+        print(category)  # category is not in scope here
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        // TODO: Sharpy should follow C# scoping rules: variables defined in an if-block
+        // should be scoped to that block and not accessible in else or after.
+        // Currently Sharpy has Python-style hoisting behavior which is incorrect for a statically-typed language.
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Undefined") || e.Message.Contains("not defined"));
+    }
+
+    [Fact(Skip = "TODO: Implement C#-style block scoping - variables in if-blocks should not leak outside")]
+    public void RejectsVariableDefinedInIfBlockUsedAfterBlock()
+    {
+        var source = @"
+def foo(x: int):
+    if x > 0:
+        result: str = ""positive""
+    print(result)  # result is not in scope here
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        // TODO: Variables defined inside if-blocks should not leak to outer scope (C#-style scoping)
+        // Currently Sharpy has Python-style hoisting behavior.
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Undefined") || e.Message.Contains("not defined"));
+    }
+
+    [Fact(Skip = "TODO: Implement C#-style block scoping - variables in while-blocks should not leak outside")]
+    public void RejectsVariableDefinedInWhileBlockUsedAfterBlock()
+    {
+        var source = @"
+def foo():
+    while True:
+        temp: int = 42
+        break
+    print(temp)  # temp is not in scope here
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        // TODO: Variables defined inside while-blocks should not leak to outer scope (C#-style scoping)
+        // Currently Sharpy has Python-style hoisting behavior.
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Undefined") || e.Message.Contains("not defined"));
+    }
+
+    [Fact(Skip = "TODO: Implement C#-style block scoping - variables in for-blocks should not leak outside")]
+    public void RejectsVariableDefinedInForBlockUsedAfterBlock()
+    {
+        var source = @"
+def foo():
+    for i in range(10):
+        temp: int = i * 2
+    print(temp)  # temp is not in scope here
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        // TODO: Variables defined inside for-blocks should not leak to outer scope (C#-style scoping)
+        // Currently Sharpy has Python-style hoisting behavior.
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Undefined") || e.Message.Contains("not defined"));
+    }
+
+    [Fact]
+    public void AcceptsVariableDefinedBeforeIfBlockUsedInBothBranches()
+    {
+        var source = @"
+def foo(x: int):
+    category: str = ""unknown""
+    if x > 0:
+        category = ""positive""
+    else:
+        category = ""non-positive""
+    print(category)
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        // This is valid: variable is defined in outer scope before the if-block
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void DocumentsPythonStyleHoistingCurrentBehavior()
+    {
+        var source = @"
+def foo(x: int):
+    if x > 0:
+        result: str = ""positive""
+    # Currently, 'result' is accessible here due to Python-style hoisting
+    # This documents the CURRENT behavior, which should be changed in the future
+    print(result)
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        // This documents current behavior: Python-style hoisting allows this
+        // In the future, this should produce an error when C#-style scoping is implemented
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
     #endregion
 
     #region Type Mismatch Errors

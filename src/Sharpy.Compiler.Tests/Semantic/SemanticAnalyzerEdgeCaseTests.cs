@@ -197,6 +197,107 @@ class Foo:
     }
 
     [Fact]
+    public void VoidFunctionWithIfBlockAndAssignment_NoReturn_IsValid()
+    {
+        var source = @"
+def process(x: int):
+    if x > 0:
+        y = x * 2
+        print(y)
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void VoidFunctionWithIfElseAndAssignments_NoReturn_IsValid()
+    {
+        var source = @"
+def categorize(x: int):
+    if x > 0:
+        category = 'positive'
+        print(category)
+    else:
+        category = 'negative'
+        print(category)
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void VoidFunctionWithNestedIfAndAssignment_NoReturn_IsValid()
+    {
+        var source = @"
+def nested(x: int, y: int):
+    if x > 0:
+        if y > 0:
+            sum = x + y
+            print(sum)
+        else:
+            print('y not positive')
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void VoidFunctionWithIfBlockAndMultipleAssignments_NoReturn_IsValid()
+    {
+        var source = @"
+def compute(value: int):
+    if value > 10:
+        x = value * 2
+        y = x + 5
+        z = y - 3
+        print(z)
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void VoidFunctionWithInlineCommentsInIfBlock_IsValid()
+    {
+        var source = @"
+def compute(x: int):
+    if x > 0:  # check if positive
+        result = x * 2  # double the value
+        print(result)  # output result
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void VoidFunctionWithMultipleCommentsInNestedBlocks_IsValid()
+    {
+        var source = @"
+def complex(x: int, y: int):  # main function
+    if x > 0:  # check x
+        while y > 0:  # loop on y
+            if x + y > 100:  # threshold check
+                break  # exit loop
+            y -= 1  # decrement
+        print(y)  # output result
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
     public void NestedLoopsAllowBreakAndContinue()
     {
         var source = @"
