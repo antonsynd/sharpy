@@ -142,6 +142,8 @@ public class CombinationsIterator<T> : Iterator<T[]>
         if (r > _pool.Length)
         {
             _exhausted = true;
+            // Assign Array.Empty<int>() as a safe, never-accessed placeholder.
+            // _indices is never used when _exhausted is true, so we avoid nullability.
             _indices = Array.Empty<int>();
         }
         else

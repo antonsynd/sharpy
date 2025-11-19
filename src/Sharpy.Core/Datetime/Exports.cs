@@ -135,12 +135,15 @@ public class Timedelta
     {
         // Build TimeSpan from ticks for proper microsecond precision
         long ticks = 0;
-        ticks += (days + weeks * 7L) * TimeSpan.TicksPerDay;
-        ticks += hours * TimeSpan.TicksPerHour;
-        ticks += minutes * TimeSpan.TicksPerMinute;
-        ticks += seconds * TimeSpan.TicksPerSecond;
-        ticks += milliseconds * TimeSpan.TicksPerMillisecond;
-        ticks += microseconds * 10L; // 10 ticks = 1 microsecond
+        checked
+        {
+            ticks += (days + weeks * 7L) * TimeSpan.TicksPerDay;
+            ticks += hours * TimeSpan.TicksPerHour;
+            ticks += minutes * TimeSpan.TicksPerMinute;
+            ticks += seconds * TimeSpan.TicksPerSecond;
+            ticks += milliseconds * TimeSpan.TicksPerMillisecond;
+            ticks += microseconds * 10L; // 10 ticks = 1 microsecond
+        }
         
         _timeSpan = new TimeSpan(ticks);
     }
@@ -151,6 +154,11 @@ public class Timedelta
     }
 
     public int Days => _timeSpan.Days;
+    /// <summary>
+    /// Gets the seconds component (0-59) of the time interval, not the total number of seconds.
+    /// This matches the behavior of Python's <c>timedelta.seconds</c> property.
+    /// For the total number of seconds, use <see cref="TotalSeconds"/>.
+    /// </summary>
     public int Seconds => _timeSpan.Seconds;
     public int Microseconds => (int)((_timeSpan.Ticks % TimeSpan.TicksPerSecond) / 10);
     public double TotalSeconds => _timeSpan.TotalSeconds;

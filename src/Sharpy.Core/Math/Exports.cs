@@ -31,6 +31,7 @@ public static class Exports
     /// <summary>
     /// A floating-point "not a number" (NaN) value.
     /// </summary>
+    // Note: double.NaN cannot be a 'const' in C#, so this must be 'static readonly' for consistency with language rules.
     public static readonly double Nan = double.NaN;
 
     /// <summary>
