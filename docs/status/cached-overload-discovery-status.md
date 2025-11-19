@@ -51,7 +51,7 @@ This document tracks the implementation progress of the cached overload discover
 - Type constructor filtering to avoid name conflicts
 
 **Test Coverage:**
-- All existing tests pass (1721 tests total: 540 Core + 1181 Compiler)
+- All existing tests pass (1,905 tests total: 716 Core + 1,189 Compiler)
 - Range() function discovered with 3 overloads automatically
 - Print() and Len() functions discovered automatically
 
@@ -132,7 +132,7 @@ This document tracks the implementation progress of the cached overload discover
 - Cache file size: < 500KB ✅
 
 **Test Coverage Summary:**
-- **Total tests: 1721** (540 Core + 1181 Compiler)
+- **Total tests: 1,905** (716 Core + 1,189 Compiler)
 - **New tests added this session: 33**
   - Phase 3: 26 tests (11 ModuleRegistry + 7 Integration + 8 ImportResolver)
   - Phase 4: 7 performance benchmarks

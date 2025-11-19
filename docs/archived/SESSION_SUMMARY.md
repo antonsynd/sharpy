@@ -60,9 +60,9 @@ This session continued the implementation of the cached overload discovery mecha
 
 ### Test Results
 
-**All Tests Passing: 1699/1699 (100%)**
-- Core Tests: 540
-- Compiler Tests: 1159
+**All Tests Passing: 1,905/1,905 (100%)**
+- Core Tests: 716
+- Compiler Tests: 1,189 (43 skipped)
 - New Tests Added: 22
 
 **Test Breakdown:**
