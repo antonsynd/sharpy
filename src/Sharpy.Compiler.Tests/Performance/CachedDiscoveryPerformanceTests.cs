@@ -76,9 +76,12 @@ public class CachedDiscoveryPerformanceTests : IDisposable
         // Use test-specific cache directory
         var cache = new OverloadIndexCache(_testCacheDir);
 
-        // Warmup to ensure JIT compilation is complete
-        var warmup = new CachedModuleDiscovery(cache);
-        warmup.LoadAssembly(sharpyCoreAssembly);
+        // Multiple warmup runs to ensure JIT compilation and system stabilization
+        for (int i = 0; i < 3; i++)
+        {
+            var warmup = new CachedModuleDiscovery(cache);
+            warmup.LoadAssembly(sharpyCoreAssembly);
+        }
 
         // First load to build cache (clear cache first)
         cache.ClearAll();
@@ -108,10 +111,12 @@ public class CachedDiscoveryPerformanceTests : IDisposable
             _output.WriteLine("Speedup: Unable to measure (execution too fast)");
         }
 
-        // Second load should be faster or at least not significantly slower
-        // Being generous here since timing can be variable in CI environments
-        Assert.True(secondLoadWatch.ElapsedMilliseconds <= firstLoadWatch.ElapsedMilliseconds + 5,
-            "Cached load should be faster than or similar to first load");
+        // For very fast operations (< 10ms), allow larger tolerance due to timing granularity
+        // For slower operations, cached should be faster or similar
+        var tolerance = firstLoadWatch.ElapsedMilliseconds < 10 ? 10 : 5;
+
+        Assert.True(secondLoadWatch.ElapsedMilliseconds <= firstLoadWatch.ElapsedMilliseconds + tolerance,
+            $"Cached load ({secondLoadWatch.ElapsedMilliseconds}ms) should be faster than or similar to first load ({firstLoadWatch.ElapsedMilliseconds}ms, tolerance: {tolerance}ms)");
     }
 
     [Fact]
