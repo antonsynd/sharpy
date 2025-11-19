@@ -607,6 +607,175 @@ class Foo:
         setComp.Clauses[0].Should().BeOfType<ForClause>();
     }
 
+    [Fact]
+    public void ParsesListComprehensionWithMultipleFilters()
+    {
+        var source = "x = [i for i in range(100) if i % 2 == 0 if i % 3 == 0]";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var listComp = assignment.Value.Should().BeOfType<ListComprehension>().Subject;
+
+        listComp.Clauses.Should().HaveCount(3);
+        listComp.Clauses[0].Should().BeOfType<ForClause>();
+        listComp.Clauses[1].Should().BeOfType<IfClause>();
+        listComp.Clauses[2].Should().BeOfType<IfClause>();
+    }
+
+    [Fact]
+    public void ParsesListComprehensionWithComplexExpression()
+    {
+        var source = "x = [(i + j) * 2 for i in range(10)]";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var listComp = assignment.Value.Should().BeOfType<ListComprehension>().Subject;
+
+        listComp.Element.Should().BeOfType<BinaryOp>();
+        listComp.Clauses.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ParsesListComprehensionWithFunctionCall()
+    {
+        var source = "x = [str(i) for i in items]";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var listComp = assignment.Value.Should().BeOfType<ListComprehension>().Subject;
+
+        listComp.Element.Should().BeOfType<FunctionCall>();
+    }
+
+    [Fact]
+    public void ParsesSetComprehensionWithFilter()
+    {
+        var source = "x = {i for i in range(10) if i > 5}";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var setComp = assignment.Value.Should().BeOfType<SetComprehension>().Subject;
+
+        setComp.Clauses.Should().HaveCount(2);
+        setComp.Clauses[0].Should().BeOfType<ForClause>();
+        setComp.Clauses[1].Should().BeOfType<IfClause>();
+    }
+
+    [Fact]
+    public void ParsesDictComprehensionWithSingleVariable()
+    {
+        var source = "x = {i: i * 2 for i in range(10)}";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var dictComp = assignment.Value.Should().BeOfType<DictComprehension>().Subject;
+
+        dictComp.Clauses.Should().HaveCount(1);
+        dictComp.Clauses[0].Should().BeOfType<ForClause>();
+        dictComp.Key.Should().BeOfType<Identifier>();
+        dictComp.Value.Should().BeOfType<BinaryOp>();
+    }
+
+    [Fact]
+    public void ParsesDictComprehensionWithFilter()
+    {
+        var source = "x = {i: str(i) for i in range(10) if i % 2 == 0}";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var dictComp = assignment.Value.Should().BeOfType<DictComprehension>().Subject;
+
+        dictComp.Clauses.Should().HaveCount(2);
+        dictComp.Clauses[0].Should().BeOfType<ForClause>();
+        dictComp.Clauses[1].Should().BeOfType<IfClause>();
+    }
+
+    [Fact]
+    public void ParsesComprehensionWithMemberAccess()
+    {
+        var source = "x = [item.value for item in items]";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var listComp = assignment.Value.Should().BeOfType<ListComprehension>().Subject;
+
+        listComp.Element.Should().BeOfType<MemberAccess>();
+    }
+
+    [Fact]
+    public void ParsesComprehensionWithMethodCall()
+    {
+        var source = "x = [item.upper() for item in items]";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var listComp = assignment.Value.Should().BeOfType<ListComprehension>().Subject;
+
+        listComp.Element.Should().BeOfType<FunctionCall>();
+    }
+
+    [Fact]
+    public void ParsesComprehensionWithIndexAccess()
+    {
+        var source = "x = [item[0] for item in items]";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var listComp = assignment.Value.Should().BeOfType<ListComprehension>().Subject;
+
+        listComp.Element.Should().BeOfType<IndexAccess>();
+    }
+
+    [Fact]
+    public void ParsesComprehensionWithConditionalExpression()
+    {
+        var source = "x = [i if i > 0 else -i for i in items]";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var listComp = assignment.Value.Should().BeOfType<ListComprehension>().Subject;
+
+        listComp.Element.Should().BeOfType<ConditionalExpression>();
+    }
+
+    [Fact]
+    public void ParsesComprehensionAsArgumentToFunctionCall()
+    {
+        var source = "result = sum([i * 2 for i in range(10)])";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var call = assignment.Value.Should().BeOfType<FunctionCall>().Subject;
+        call.Arguments.Should().HaveCount(1);
+        call.Arguments[0].Should().BeOfType<ListComprehension>();
+    }
+
+    [Fact]
+    public void ParsesComprehensionInReturnStatement()
+    {
+        var source = @"
+def foo():
+    return [i * 2 for i in range(10)]";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Body.Should().HaveCount(1);
+        var returnStmt = funcDef.Body[0].Should().BeOfType<ReturnStatement>().Subject;
+        returnStmt.Value.Should().BeOfType<ListComprehension>();
+    }
+
     #endregion
 
     #region Lambda Expressions

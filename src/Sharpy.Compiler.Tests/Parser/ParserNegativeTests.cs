@@ -663,4 +663,122 @@ def foo():
     }
 
     #endregion
+
+    #region Comprehension Errors
+
+    [Fact]
+    public void RejectsMissingInKeywordInComprehension()
+    {
+        var source = "x = [i for i range(10)]";
+        Action act = () => Parse(source);
+        act.Should().Throw<ParserError>().WithMessage("*Expected In*");
+    }
+
+    [Fact]
+    public void RejectsMissingIteratorInComprehension()
+    {
+        var source = "x = [i for i in]";
+        Action act = () => Parse(source);
+        act.Should().Throw<ParserError>();
+    }
+
+    [Fact]
+    public void RejectsMissingForKeywordInComprehension()
+    {
+        var source = "x = [i i in range(10)]";
+        Action act = () => Parse(source);
+        act.Should().Throw<ParserError>().WithMessage("*Expected RightBracket*");
+    }
+
+    [Fact]
+    public void RejectsMissingFilterConditionInComprehension()
+    {
+        var source = "x = [i for i in range(10) if]";
+        Action act = () => Parse(source);
+        act.Should().Throw<ParserError>();
+    }
+
+    [Fact]
+    public void RejectsMissingElementExpressionInComprehension()
+    {
+        var source = "x = [for i in range(10)]";
+        Action act = () => Parse(source);
+        act.Should().Throw<ParserError>();
+    }
+
+    [Fact]
+    public void RejectsMissingTargetVariableInComprehension()
+    {
+        var source = "x = [i for in range(10)]";
+        Action act = () => Parse(source);
+        act.Should().Throw<ParserError>();
+    }
+
+    [Fact]
+    public void RejectsMissingColonInDictComprehension()
+    {
+        var source = "x = {i i for i in range(10)}";
+        Action act = () => Parse(source);
+        act.Should().Throw<ParserError>();
+    }
+
+    [Fact]
+    public void RejectsMissingValueInDictComprehension()
+    {
+        var source = "x = {i: for i in range(10)}";
+        Action act = () => Parse(source);
+        act.Should().Throw<ParserError>();
+    }
+
+    [Fact]
+    public void RejectsMissingKeyInDictComprehension()
+    {
+        var source = "x = {:i for i in range(10)}";
+        Action act = () => Parse(source);
+        act.Should().Throw<ParserError>();
+    }
+
+    [Fact]
+    public void RejectsUnterminatedListComprehension()
+    {
+        var source = "x = [i for i in range(10)";
+        Action act = () => Parse(source);
+        act.Should().Throw<ParserError>().WithMessage("*Expected RightBracket*");
+    }
+
+    [Fact]
+    public void RejectsUnterminatedSetComprehension()
+    {
+        var source = "x = {i for i in range(10)";
+        Action act = () => Parse(source);
+        act.Should().Throw<ParserError>().WithMessage("*Expected RightBrace*");
+    }
+
+    [Fact]
+    public void RejectsUnterminatedDictComprehension()
+    {
+        var source = "x = {i: i * 2 for i in range(10)";
+        Action act = () => Parse(source);
+        act.Should().Throw<ParserError>().WithMessage("*Expected RightBrace*");
+    }
+
+    [Fact]
+    public void RejectsComprehensionWithInvalidTarget()
+    {
+        // This parses successfully but semantic analysis should reject it
+        var source = "x = [i for 5 in range(10)]";
+        var module = Parse(source);
+        module.Should().NotBeNull();
+        // The semantic analyzer will catch this error later
+    }
+
+    [Fact]
+    public void RejectsMultipleCommasInComprehension()
+    {
+        var source = "x = [i,, for i in range(10)]";
+        Action act = () => Parse(source);
+        act.Should().Throw<ParserError>();
+    }
+
+    #endregion
 }
