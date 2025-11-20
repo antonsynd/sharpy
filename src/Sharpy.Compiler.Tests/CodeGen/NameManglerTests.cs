@@ -247,7 +247,8 @@ public class NameManglerTests
     #region Context-Aware Transform Tests
 
     [Theory]
-    [InlineData(NameContext.Type, "my_class", "MyClass")]
+    [InlineData(NameContext.Type, "MyClass", "MyClass")]  // Types preserve user's casing
+    [InlineData(NameContext.Type, "my_class", "my_class")]  // Even snake_case is preserved
     [InlineData(NameContext.Method, "get_value", "GetValue")]
     [InlineData(NameContext.Function, "calculate", "Calculate")]
     [InlineData(NameContext.Variable, "user_name", "userName")]
@@ -290,8 +291,23 @@ public class NameManglerTests
 
     [Theory]
     [InlineData("ALREADY_UPPER", "AlreadyUpper")]
-    [InlineData("MixedCase", "Mixedcase")]
-    public void ToPascalCase_NonSnakeCase_StillConverts(string input, string expected)
+    [InlineData("MixedCase", "MixedCase")]  // PascalCase should be preserved
+    [InlineData("PascalCase", "PascalCase")]  // PascalCase should be preserved
+    public void ToPascalCase_NonSnakeCase_PreservesOrConverts(string input, string expected)
+    {
+        // Act
+        var result = NameMangler.ToPascalCase(input);
+
+        // Assert
+        result.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("MyClass", "MyClass")]
+    [InlineData("UserAccount", "UserAccount")]
+    [InlineData("HttpClient", "HttpClient")]
+    [InlineData("XMLParser", "XMLParser")]
+    public void ToPascalCase_AlreadyPascalCase_PreservesExactCasing(string input, string expected)
     {
         // Act
         var result = NameMangler.ToPascalCase(input);

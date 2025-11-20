@@ -44,7 +44,23 @@ public static class NameMangler
     };
 
     /// <summary>
-    /// Convert snake_case to PascalCase for methods and types
+    /// Preserve type names as-is. Only handles keyword escaping and special prefixes.
+    /// </summary>
+    public static string ToTypeName(string name)
+    {
+        if (string.IsNullOrEmpty(name))
+            return name;
+
+        // Handle literal names (backtick-escaped) - strip backticks and return as-is
+        if (name.StartsWith("`") && name.EndsWith("`"))
+            return name[1..^1];
+
+        // Types preserve user's exact casing
+        return EscapeKeywordIfNeeded(name);
+    }
+
+    /// <summary>
+    /// Convert snake_case to PascalCase for methods and functions
     /// </summary>
     public static string ToPascalCase(string name)
     {
@@ -71,6 +87,16 @@ public static class NameMangler
         // Handle private names (single underscore prefix)
         var hasPrivatePrefix = name.StartsWith("_") && !name.StartsWith("__");
         var cleanName = hasPrivatePrefix ? name[1..] : name;
+
+        // If the name doesn't contain underscores and starts with an uppercase letter,
+        // it's already in PascalCase - preserve it as-is
+        if (!cleanName.Contains('_') && cleanName.Length > 0 && char.IsUpper(cleanName[0]))
+        {
+            // Restore private prefix if needed
+            if (hasPrivatePrefix)
+                return EscapeKeywordIfNeeded("_" + cleanName);
+            return EscapeKeywordIfNeeded(cleanName);
+        }
 
         var parts = cleanName.Split('_');
         var result = string.Join("", parts.Select(Capitalize));
@@ -142,7 +168,7 @@ public static class NameMangler
     {
         return context switch
         {
-            NameContext.Type => ToPascalCase(name),
+            NameContext.Type => ToTypeName(name),
             NameContext.Interface => ToInterfaceName(name),
             NameContext.Method => ToPascalCase(name),
             NameContext.Function => ToPascalCase(name),
@@ -155,7 +181,7 @@ public static class NameMangler
     }
 
     /// <summary>
-    /// Convert interface names to PascalCase, preserving I prefix pattern
+    /// Preserve interface names as-is. Only handles keyword escaping.
     /// </summary>
     public static string ToInterfaceName(string name)
     {
@@ -166,13 +192,8 @@ public static class NameMangler
         if (name.StartsWith("`") && name.EndsWith("`"))
             return name[1..^1];
 
-        // Special case: Interface names starting with I followed by uppercase letter
-        // (e.g., IDrawable, IRepository) should be preserved as-is
-        if (name.Length >= 2 && name[0] == 'I' && char.IsUpper(name[1]) && !name.Contains('_'))
-            return EscapeKeywordIfNeeded(name);
-
-        // Otherwise, apply normal PascalCase transformation
-        return ToPascalCase(name);
+        // Interfaces preserve user's exact casing
+        return EscapeKeywordIfNeeded(name);
     }
 
     /// <summary>

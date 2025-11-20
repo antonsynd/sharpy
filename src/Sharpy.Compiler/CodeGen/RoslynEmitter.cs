@@ -1054,7 +1054,7 @@ public class RoslynEmitter
     private FieldDeclarationSyntax GenerateField(VariableDeclaration varDecl)
     {
         // Use PascalCase for public fields (C# property-like convention)
-        var fieldName = NameMangler.Transform(varDecl.Name, NameContext.Type);
+        var fieldName = NameMangler.ToPascalCase(varDecl.Name);
 
         // Get field type from annotation or default to object
         TypeSyntax fieldType = varDecl.Type != null
