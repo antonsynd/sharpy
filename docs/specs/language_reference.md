@@ -2175,7 +2175,7 @@ class Example:
 
 ### Constructor (`__init__`) **[v0.5]**
 
-The constructor is always named `__init__` and has no return type (or `-> None`):
+The constructor is always named `__init__`. Its return type is implicitly `None`; annotating it with `-> None` is optional for clarity:
 
 ```python
 class Person:
@@ -3069,8 +3069,12 @@ def greet(name: str) -> str:
     """Greet a person by name."""
     return f"Hello, {name}!"
 
-# Function with no return value
-def print_greeting(name: str) -> None:
+# Function with no return value (return annotation omitted)
+def print_greeting(name: str):
+    print(f"Hello, {name}!")
+
+# The same function can be explicitly annotated with `-> None` for clarity
+def print_greeting_explicit(name: str) -> None:
     print(f"Hello, {name}!")
 
 # Function with multiple parameters
@@ -3089,10 +3093,10 @@ def min_max(values: list[int]) -> tuple[int, int]:
 minimum, maximum = min_max([1, 5, 3, 9, 2])
 ```
 
-**Function Signature Rules:**
+- **Function Signature Rules:**
 - All parameters must have type annotations
 - Return type annotation is required if the function returns a value
-- Return type annotation can be omitted if the function returns no value, or can use `-> None` for consistency
+- Return type annotation can be omitted if the function returns no value, or can use `-> None` for consistency. Constructors follow the same rule: their return type is implicitly None, and annotating them with `-> None` is optional and purely ergonomic.
 - Parameters are comma-separated
 - Default parameter values must be compile-time constants or literals
 - Parameters with defaults must come after parameters without defaults

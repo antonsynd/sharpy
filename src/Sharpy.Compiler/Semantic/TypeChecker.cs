@@ -158,6 +158,13 @@ public class TypeChecker
         // Special case: __init__ always returns None/void
         if (functionDef.Name == "__init__")
         {
+            // Validate that __init__ has no return type or -> None
+            if (functionDef.ReturnType != null && returnType != SemanticType.Void)
+            {
+                AddError($"Constructor '__init__' cannot have return type '{returnType.GetDisplayName()}'. " +
+                         "Constructors must have no return type annotation or '-> None'.",
+                    functionDef.LineStart, functionDef.ColumnStart);
+            }
             returnType = SemanticType.Void;
         }
         // Functions without explicit return type annotation default to void

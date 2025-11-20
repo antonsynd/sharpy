@@ -149,7 +149,7 @@ public class Counter<T> where T : notnull
     public System.Collections.Generic.List<(T, int)> MostCommon(int? n = null)
     {
         var ordered = _counts.OrderByDescending(kv => kv.Value);
-        
+
         // Only apply ThenBy if T implements IComparable to avoid runtime exceptions
         IEnumerable<System.Collections.Generic.KeyValuePair<T, int>> sorted;
         if (typeof(IComparable<T>).IsAssignableFrom(typeof(T)) || typeof(IComparable).IsAssignableFrom(typeof(T)))

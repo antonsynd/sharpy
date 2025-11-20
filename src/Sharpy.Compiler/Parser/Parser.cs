@@ -2270,6 +2270,12 @@ public class Parser
             name = "auto";
             Advance();
         }
+        // Handle 'None' as a type name (for -> None return annotations)
+        else if (Current.Type == TokenType.None)
+        {
+            name = "None";
+            Advance();
+        }
         else
         {
             name = ExpectIdentifier();

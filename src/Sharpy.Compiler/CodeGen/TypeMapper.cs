@@ -41,6 +41,7 @@ public class TypeMapper
         // Common .NET types
         { "string", "string" },  // Allow string alias
         { "void", "void" },
+        { "None", "void" },      // None type maps to void
     };
 
     public TypeMapper(CodeGenContext context)

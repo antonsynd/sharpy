@@ -144,7 +144,7 @@ public class Timedelta
             ticks += milliseconds * TimeSpan.TicksPerMillisecond;
             ticks += microseconds * 10L; // 10 ticks = 1 microsecond
         }
-        
+
         _timeSpan = new TimeSpan(ticks);
     }
 

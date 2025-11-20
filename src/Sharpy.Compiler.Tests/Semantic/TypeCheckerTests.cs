@@ -495,4 +495,131 @@ if animal is not None and isinstance(animal, Dog):
 
         typeChecker.Errors.Should().BeEmpty();
     }
+
+    [Fact]
+    public void ConstructorWithNoReturnTypeIsValid()
+    {
+        var source = @"
+class Person:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ConstructorWithNoneReturnTypeIsValid()
+    {
+        var source = @"
+class Person:
+    name: str
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ConstructorWithInvalidReturnTypeRaisesError()
+    {
+        var source = @"
+class Person:
+    name: str
+
+    def __init__(self, name: str) -> int:
+        self.name = name
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Errors[0].Message.Should().Contain("__init__");
+        typeChecker.Errors[0].Message.Should().Contain("cannot have return type");
+    }
+
+    [Fact]
+    public void ConstructorWithStrReturnTypeRaisesError()
+    {
+        var source = @"
+class Person:
+    name: str
+
+    def __init__(self, name: str) -> str:
+        self.name = name
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Errors[0].Message.Should().Contain("__init__");
+    }
+
+    [Fact]
+    public void FunctionWithNoneReturnTypeIsVoid()
+    {
+        var source = @"
+def print_message(msg: str) -> None:
+    print(msg)
+
+print_message('hello')
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void FunctionWithNoneReturnTypeCannotReturnValue()
+    {
+        var source = @"
+def get_value() -> None:
+    return 42
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Errors[0].Message.Should().Contain("Cannot return type");
+    }
+
+    [Fact]
+    public void FunctionWithNoReturnTypeIsEquivalentToNone()
+    {
+        var source = @"
+def do_something():
+    print('doing something')
+
+do_something()
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void FunctionWithNoneReturnTypeCanHaveEmptyReturn()
+    {
+        var source = @"
+def maybe_print(condition: bool, msg: str) -> None:
+    if condition:
+        print(msg)
+        return
+    print('default')
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
 }
