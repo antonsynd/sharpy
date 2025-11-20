@@ -2,6 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
 using Sharpy.Compiler.Logging;
+using Sharpy.Compiler.Diagnostics;
 
 namespace Sharpy.Compiler;
 
@@ -25,10 +26,14 @@ public class AssemblyCompiler
         ProjectConfig projectConfig)
     {
         _logger.LogInfo($"Compiling {csharpSources.Count} C# files to assembly");
+        var metrics = new CompilationMetrics(
+            projectName: projectConfig.RootNamespace,
+            configuration: projectConfig.Configuration);
 
         try
         {
             // Parse all C# source files into syntax trees
+            metrics.StartPhase("C# Parsing");
             var syntaxTrees = new List<SyntaxTree>();
             foreach (var (filePath, sourceCode) in csharpSources)
             {
@@ -37,9 +42,12 @@ public class AssemblyCompiler
                     encoding: System.Text.Encoding.UTF8);
                 syntaxTrees.Add(syntaxTree);
             }
+            metrics.EndPhase();
 
             // Gather metadata references
+            metrics.StartPhase("Reference Resolution");
             var references = GetMetadataReferences(projectConfig);
+            metrics.EndPhase();
 
             // Determine output kind
             var outputKind = projectConfig.OutputType.ToLowerInvariant() == "exe"
@@ -47,6 +55,7 @@ public class AssemblyCompiler
                 : OutputKind.DynamicallyLinkedLibrary;
 
             // Create compilation
+            metrics.StartPhase("Roslyn Compilation");
             var assemblyName = projectConfig.AssemblyName ?? projectConfig.RootNamespace;
             var compilation = CSharpCompilation.Create(
                 assemblyName,
@@ -57,6 +66,7 @@ public class AssemblyCompiler
                         ? OptimizationLevel.Release
                         : OptimizationLevel.Debug)
                     .WithPlatform(Platform.AnyCpu));
+            metrics.EndPhase();
 
             // Ensure output directory exists
             var outputPath = projectConfig.OutputAssemblyPath;
@@ -67,6 +77,7 @@ public class AssemblyCompiler
             }
 
             // Emit assembly to file
+            metrics.StartPhase("IL Emission");
             using var assemblyStream = new FileStream(outputPath, FileMode.Create);
 
             EmitResult emitResult;
@@ -82,6 +93,7 @@ public class AssemblyCompiler
                 // Release build without debug symbols
                 emitResult = compilation.Emit(assemblyStream);
             }
+            metrics.EndPhase();
 
             if (!emitResult.Success)
             {
@@ -99,7 +111,8 @@ public class AssemblyCompiler
                 {
                     Success = false,
                     Errors = errors,
-                    Warnings = warnings
+                    Warnings = warnings,
+                    Metrics = metrics
                 };
             }
 
@@ -120,7 +133,8 @@ public class AssemblyCompiler
             {
                 Success = true,
                 OutputAssemblyPath = outputPath,
-                Warnings = allWarnings
+                Warnings = allWarnings,
+                Metrics = metrics
             };
         }
         catch (Exception ex)
@@ -129,7 +143,8 @@ public class AssemblyCompiler
             return new AssemblyCompilationResult
             {
                 Success = false,
-                Errors = new List<string> { $"Assembly compilation failed: {ex.Message}" }
+                Errors = new List<string> { $"Assembly compilation failed: {ex.Message}" },
+                Metrics = metrics
             };
         }
     }
@@ -312,4 +327,5 @@ public class AssemblyCompilationResult
     public List<string> Errors { get; init; } = new();
     public List<string> Warnings { get; init; } = new();
     public string? OutputAssemblyPath { get; init; }
+    public CompilationMetrics? Metrics { get; init; }
 }

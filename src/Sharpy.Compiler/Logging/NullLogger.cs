@@ -40,5 +40,8 @@ public sealed class NullLogger : ICompilerLogger
     public void LogTrace(string message) { }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void LogMetrics(string metricsOutput) { }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool IsEnabled(CompilerLogLevel level) => false;
 }

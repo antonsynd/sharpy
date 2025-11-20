@@ -4,6 +4,7 @@ using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Diagnostics;
 using Microsoft.CodeAnalysis.CSharp;
 
 namespace Sharpy.Compiler;
@@ -63,6 +64,7 @@ public class Compiler
         _logger.LogInfo($"Starting project compilation: {projectConfig.RootNamespace}");
         var allErrors = new List<string>();
         var allWarnings = new List<string>();
+        var projectMetrics = new ProjectCompilationMetrics(projectConfig.RootNamespace, projectConfig.Configuration);
 
         try
         {
@@ -72,26 +74,49 @@ public class Compiler
 
             foreach (var sourceFile in projectConfig.SourceFiles)
             {
+                var fileMetrics = new CompilationMetrics(
+                    fileName: Path.GetRelativePath(projectConfig.ProjectDirectory, sourceFile),
+                    projectName: projectConfig.RootNamespace,
+                    configuration: projectConfig.Configuration);
+
                 try
                 {
                     var source = File.ReadAllText(sourceFile);
+
+                    fileMetrics.StartPhase("Lexical Analysis");
                     var lexer = new Lexer.Lexer(source, _logger);
                     var tokens = lexer.TokenizeAll();
+                    fileMetrics.EndPhase();
+
+                    fileMetrics.StartPhase("Syntax Analysis");
                     var parser = new Parser.Parser(tokens, _logger);
                     var module = parser.ParseModule();
+                    fileMetrics.EndPhase();
+
                     parsedModules[sourceFile] = module;
+
+                    // Log per-file metrics at Debug level
+                    if (_logger.IsEnabled(CompilerLogLevel.Debug))
+                    {
+                        _logger.LogDebug($"Parsed {Path.GetFileName(sourceFile)}: {fileMetrics.TotalDuration.TotalMilliseconds:F2} ms");
+                    }
+
+                    projectMetrics.AddFileMetrics(fileMetrics);
                 }
                 catch (LexerError ex)
                 {
                     allErrors.Add($"{sourceFile}({ex.Line},{ex.Column}): error: {ex.Message}");
+                    projectMetrics.AddFileMetrics(fileMetrics);
                 }
                 catch (ParserError ex)
                 {
                     allErrors.Add($"{sourceFile}({ex.Line},{ex.Column}): error: {ex.Message}");
+                    projectMetrics.AddFileMetrics(fileMetrics);
                 }
                 catch (Exception ex)
                 {
                     allErrors.Add($"{sourceFile}: error: {ex.Message}");
+                    projectMetrics.AddFileMetrics(fileMetrics);
                 }
             }
 
@@ -101,7 +126,8 @@ public class Compiler
                 return new ProjectCompilationResult
                 {
                     Success = false,
-                    Errors = allErrors
+                    Errors = allErrors,
+                    Metrics = projectMetrics
                 };
             }
 
@@ -180,9 +206,24 @@ public class Compiler
 
             foreach (var (sourceFile, module) in parsedModules)
             {
+                // Find the corresponding file metrics
+                var relativePath = Path.GetRelativePath(projectConfig.ProjectDirectory, sourceFile);
+                var fileMetrics = projectMetrics.FileMetrics
+                    .FirstOrDefault(m => m.Phases.Any()); // Get the last added metrics
+
+                if (fileMetrics == null)
+                {
+                    fileMetrics = new CompilationMetrics(
+                        fileName: relativePath,
+                        projectName: projectConfig.RootNamespace,
+                        configuration: projectConfig.Configuration);
+                }
+
+                fileMetrics.StartPhase("Name Resolution");
                 var nameResolver = new NameResolver(symbolTable, _logger);
                 nameResolver.ResolveDeclarations(module);
                 nameResolver.ResolveInheritance();
+                fileMetrics.EndPhase();
 
                 if (nameResolver.Errors.Any())
                 {
@@ -190,14 +231,25 @@ public class Compiler
                         $"{sourceFile}({e.Line},{e.Column}): error: {e.Message}"));
                 }
 
+                fileMetrics.StartPhase("Type Resolution");
                 var typeResolver = new TypeResolver(symbolTable, semanticInfo, _logger);
+                fileMetrics.EndPhase();
+
+                fileMetrics.StartPhase("Type Checking");
                 var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, _logger);
                 typeChecker.CheckModule(module);
+                fileMetrics.EndPhase();
 
                 if (typeChecker.Errors.Any())
                 {
                     allErrors.AddRange(typeChecker.Errors.Select(e =>
                         $"{sourceFile}({e.Line},{e.Column}): error: {e.Message}"));
+                }
+
+                // Log per-file semantic analysis metrics at Debug level
+                if (_logger.IsEnabled(CompilerLogLevel.Debug))
+                {
+                    _logger.LogDebug($"Analyzed {Path.GetFileName(sourceFile)}: {fileMetrics.TotalDuration.TotalMilliseconds:F2} ms");
                 }
             }
 
@@ -207,7 +259,8 @@ public class Compiler
                 return new ProjectCompilationResult
                 {
                     Success = false,
-                    Errors = allErrors
+                    Errors = allErrors,
+                    Metrics = projectMetrics
                 };
             }
 
@@ -217,6 +270,16 @@ public class Compiler
 
             foreach (var (sourceFile, module) in parsedModules)
             {
+                // Find the corresponding file metrics
+                var relativePath = Path.GetRelativePath(projectConfig.ProjectDirectory, sourceFile);
+                var fileMetrics = projectMetrics.FileMetrics
+                    .FirstOrDefault(m => m.Phases.Any());
+
+                if (fileMetrics != null)
+                {
+                    fileMetrics.StartPhase("Code Generation");
+                }
+
                 var codeGenContext = new CodeGenContext(symbolTable, builtinRegistry)
                 {
                     SourceFilePath = sourceFile,
@@ -228,8 +291,18 @@ public class Compiler
                 var compilationUnit = emitter.GenerateCompilationUnit(module);
                 var csharpCode = compilationUnit.ToFullString();
 
+                if (fileMetrics != null)
+                {
+                    fileMetrics.EndPhase();
+
+                    // Log per-file code gen metrics at Debug level
+                    if (_logger.IsEnabled(CompilerLogLevel.Debug))
+                    {
+                        _logger.LogDebug($"Generated {Path.GetFileName(sourceFile)}: {fileMetrics.TotalDuration.TotalMilliseconds:F2} ms");
+                    }
+                }
+
                 // Use relative path for C# file name
-                var relativePath = Path.GetRelativePath(projectConfig.ProjectDirectory, sourceFile);
                 var csharpFileName = Path.ChangeExtension(relativePath, ".cs");
                 generatedCSharp[csharpFileName] = csharpCode;
             }
@@ -239,6 +312,12 @@ public class Compiler
             var assemblyCompiler = new AssemblyCompiler(_logger);
             var assemblyResult = assemblyCompiler.CompileToAssembly(generatedCSharp, projectConfig);
 
+            // Add assembly metrics to project metrics
+            if (assemblyResult.Metrics != null)
+            {
+                projectMetrics.SetAssemblyMetrics(assemblyResult.Metrics);
+            }
+
             if (!assemblyResult.Success)
             {
                 allErrors.AddRange(assemblyResult.Errors);
@@ -246,7 +325,8 @@ public class Compiler
                 {
                     Success = false,
                     Errors = allErrors,
-                    Warnings = assemblyResult.Warnings
+                    Warnings = assemblyResult.Warnings,
+                    Metrics = projectMetrics
                 };
             }
 
@@ -257,7 +337,8 @@ public class Compiler
                 Success = true,
                 OutputAssemblyPath = assemblyResult.OutputAssemblyPath,
                 Warnings = allWarnings,
-                GeneratedCSharpFiles = generatedCSharp
+                GeneratedCSharpFiles = generatedCSharp,
+                Metrics = projectMetrics
             };
         }
         catch (Exception ex)
@@ -266,7 +347,8 @@ public class Compiler
             return new ProjectCompilationResult
             {
                 Success = false,
-                Errors = new List<string> { $"Project compilation failed: {ex.Message}" }
+                Errors = new List<string> { $"Project compilation failed: {ex.Message}" },
+                Metrics = projectMetrics
             };
         }
     }
@@ -274,18 +356,23 @@ public class Compiler
     public CompilationResult Compile(string sourceCode, string filePath)
     {
         _logger.LogInfo($"Starting compilation of {filePath}");
+        var metrics = new CompilationMetrics(fileName: filePath);
 
         try
         {
             // Phase 1: Lexical Analysis
             _logger.LogInfo("Phase 1: Lexical Analysis");
+            metrics.StartPhase("Lexical Analysis");
             var lexer = new Lexer.Lexer(sourceCode, _logger);
             var tokens = lexer.TokenizeAll();
+            metrics.EndPhase();
 
             // Phase 2: Syntax Analysis
             _logger.LogInfo("Phase 2: Syntax Analysis");
+            metrics.StartPhase("Syntax Analysis");
             var parser = new Parser.Parser(tokens, _logger);
             var module = parser.ParseModule();
+            metrics.EndPhase();
 
             // Phase 3: Semantic Analysis
             _logger.LogInfo("Phase 3: Semantic Analysis");
@@ -299,35 +386,45 @@ public class Compiler
                 return new CompilationResult
                 {
                     Success = false,
-                    Errors = _moduleRegistry.Errors.Select(e => e.Message).ToList()
+                    Errors = _moduleRegistry.Errors.Select(e => e.Message).ToList(),
+                    Metrics = metrics
                 };
             }
 
             // Pass 1: Name resolution (declarations)
+            metrics.StartPhase("Name Resolution");
             var nameResolver = new NameResolver(symbolTable, _logger);
             nameResolver.ResolveDeclarations(module);
             nameResolver.ResolveInheritance(); // Second pass: resolve inheritance after all types are declared
+            metrics.EndPhase();
 
             if (nameResolver.Errors.Any())
             {
                 return new CompilationResult
                 {
                     Success = false,
-                    Errors = nameResolver.Errors.Select(e => e.Message).ToList()
+                    Errors = nameResolver.Errors.Select(e => e.Message).ToList(),
+                    Metrics = metrics
                 };
             }
 
             // Pass 2: Type resolution and type checking
+            metrics.StartPhase("Type Resolution");
             var typeResolver = new TypeResolver(symbolTable, semanticInfo, _logger);
+            metrics.EndPhase();
+
+            metrics.StartPhase("Type Checking");
             var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, _logger);
             typeChecker.CheckModule(module);
+            metrics.EndPhase();
 
             if (typeChecker.Errors.Any())
             {
                 return new CompilationResult
                 {
                     Success = false,
-                    Errors = typeChecker.Errors.Select(e => e.Message).ToList()
+                    Errors = typeChecker.Errors.Select(e => e.Message).ToList(),
+                    Metrics = metrics
                 };
             }
 
@@ -335,6 +432,7 @@ public class Compiler
 
             // Phase 4: Code Generation - Generate C# code from AST using RoslynEmitter
             _logger.LogInfo("Phase 4: Code Generation");
+            metrics.StartPhase("Code Generation");
             var codeGenContext = new CodeGenContext(symbolTable, builtinRegistry)
             {
                 SourceFilePath = filePath
@@ -342,6 +440,7 @@ public class Compiler
             var emitter = new RoslynEmitter(codeGenContext);
             var compilationUnit = emitter.GenerateCompilationUnit(module);
             var csharpCode = compilationUnit.ToFullString();
+            metrics.EndPhase();
 
             return new CompilationResult
             {
@@ -350,7 +449,8 @@ public class Compiler
                 SymbolTable = symbolTable,
                 SemanticInfo = semanticInfo,
                 ModuleRegistry = _moduleRegistry,
-                GeneratedCSharpCode = csharpCode
+                GeneratedCSharpCode = csharpCode,
+                Metrics = metrics
             };
         }
         catch (Exception ex)
@@ -359,7 +459,8 @@ public class Compiler
             return new CompilationResult
             {
                 Success = false,
-                Errors = new List<string> { $"Compilation failed: {ex.Message}" }
+                Errors = new List<string> { $"Compilation failed: {ex.Message}" },
+                Metrics = metrics
             };
         }
     }
@@ -377,6 +478,7 @@ public class CompilationResult
     public SemanticInfo? SemanticInfo { get; init; }
     public ModuleRegistry? ModuleRegistry { get; init; }
     public string? GeneratedCSharpCode { get; init; }
+    public CompilationMetrics? Metrics { get; init; }
 }
 
 /// <summary>
@@ -389,6 +491,7 @@ public class ProjectCompilationResult
     public List<string> Warnings { get; init; } = new();
     public string? OutputAssemblyPath { get; init; }
     public Dictionary<string, string> GeneratedCSharpFiles { get; init; } = new();
+    public ProjectCompilationMetrics? Metrics { get; init; }
 }
 
 /// <summary>

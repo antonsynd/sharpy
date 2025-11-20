@@ -51,6 +51,11 @@ public interface ICompilerLogger
     void LogTrace(string message);
 
     /// <summary>
+    /// Log compilation metrics
+    /// </summary>
+    void LogMetrics(string metricsOutput);
+
+    /// <summary>
     /// Check if logging is enabled at a specific level
     /// </summary>
     bool IsEnabled(CompilerLogLevel level);

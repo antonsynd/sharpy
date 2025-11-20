@@ -6,6 +6,7 @@ using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.CodeGen;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Diagnostics;
 
 namespace Sharpy.Cli;
 
@@ -18,9 +19,13 @@ class Program
         // === Global Options ===
         var logLevelOption = new Option<CompilerLogLevel?>("--log-level") { Description = "Set compiler log level (None, Error, Warning, Info, Debug)" };
         var logFileOption = new Option<FileInfo?>("--log-file") { Description = "Write compiler logs to the specified file" };
+        var metricsFormatOption = new Option<string?>("--metrics-format") { Description = "Output compilation metrics (text or json)" };
+        var metricsOutputOption = new Option<FileInfo?>("--metrics-output") { Description = "Write metrics to the specified file" };
 
         rootCommand.Options.Add(logLevelOption);
         rootCommand.Options.Add(logFileOption);
+        rootCommand.Options.Add(metricsFormatOption);
+        rootCommand.Options.Add(metricsOutputOption);
 
         // === Build Command ===
         var buildCommand = new Command("build", "Compile a Sharpy source file to a binary or library");
@@ -54,9 +59,11 @@ class Program
             var modulePath = parseResult.GetValue(buildModPathOpt) ?? Array.Empty<string>();
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
+            var metricsFormat = parseResult.GetValue(metricsFormatOption);
+            var metricsOutput = parseResult.GetValue(metricsOutputOption);
 
             var logger = CreateLogger(logLevel, logFile);
-            HandleBuildCommand(input, type, output, reference, projectReference, modulePath, logger);
+            HandleBuildCommand(input, type, output, reference, projectReference, modulePath, logger, metricsFormat, metricsOutput);
         });
 
         // === Run Command ===
@@ -90,9 +97,11 @@ class Program
             var progArgs = parseResult.GetValue(runArgsOpt) ?? Array.Empty<string>();
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
+            var metricsFormat = parseResult.GetValue(metricsFormatOption);
+            var metricsOutput = parseResult.GetValue(metricsOutputOption);
 
             var logger = CreateLogger(logLevel, logFile);
-            HandleRunCommand(input, output, reference, projectReference, modulePath, progArgs, logger);
+            HandleRunCommand(input, output, reference, projectReference, modulePath, progArgs, logger, metricsFormat, metricsOutput);
         });
 
         // === Project Command ===
@@ -117,9 +126,11 @@ class Program
             var emitCsTo = parseResult.GetValue(projEmitCsOpt);
             var logLevel = parseResult.GetValue(logLevelOption) ?? CompilerLogLevel.None;
             var logFile = parseResult.GetValue(logFileOption);
+            var metricsFormat = parseResult.GetValue(metricsFormatOption);
+            var metricsOutput = parseResult.GetValue(metricsOutputOption);
 
             var logger = CreateLogger(logLevel, logFile);
-            HandleProjectCommand(project, configuration, clean, emitCsTo, logger, logLevel);
+            HandleProjectCommand(project, configuration, clean, emitCsTo, logger, logLevel, metricsFormat, metricsOutput);
         });
 
         // === Emit Command (with subcommands) ===
@@ -220,6 +231,74 @@ class Program
         }
     }
 
+    static void OutputMetrics(CompilationMetrics? metrics, string? metricsFormat, FileInfo? metricsOutput)
+    {
+        if (metrics == null || metricsFormat == null)
+            return;
+
+        var format = metricsFormat.ToLowerInvariant();
+        if (format != "text" && format != "json")
+        {
+            Console.Error.WriteLine($"Invalid metrics format: {metricsFormat}. Use 'text' or 'json'.");
+            return;
+        }
+
+        var output = format == "json" ? metrics.FormatAsJson() : metrics.FormatAsText();
+
+        if (metricsOutput != null)
+        {
+            try
+            {
+                File.WriteAllText(metricsOutput.FullName, output);
+                Console.WriteLine($"Metrics written to: {metricsOutput.FullName}");
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Failed to write metrics to file: {ex.Message}");
+                Console.WriteLine(output);
+            }
+        }
+        else
+        {
+            Console.WriteLine();
+            Console.WriteLine(output);
+        }
+    }
+
+    static void OutputProjectMetrics(ProjectCompilationMetrics? metrics, string? metricsFormat, FileInfo? metricsOutput)
+    {
+        if (metrics == null || metricsFormat == null)
+            return;
+
+        var format = metricsFormat.ToLowerInvariant();
+        if (format != "text" && format != "json")
+        {
+            Console.Error.WriteLine($"Invalid metrics format: {metricsFormat}. Use 'text' or 'json'.");
+            return;
+        }
+
+        var output = format == "json" ? metrics.FormatAsJson() : metrics.FormatAsText();
+
+        if (metricsOutput != null)
+        {
+            try
+            {
+                File.WriteAllText(metricsOutput.FullName, output);
+                Console.WriteLine($"Metrics written to: {metricsOutput.FullName}");
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Failed to write metrics to file: {ex.Message}");
+                Console.WriteLine(output);
+            }
+        }
+        else
+        {
+            Console.WriteLine();
+            Console.WriteLine(output);
+        }
+    }
+
     static void HandleBuildCommand(
         FileInfo inputFile,
         string outputType,
@@ -227,10 +306,12 @@ class Program
         string[] references,
         string[] projectReferences,
         string[] modulePaths,
-        ICompilerLogger logger)
+        ICompilerLogger logger,
+        string? metricsFormat,
+        FileInfo? metricsOutput)
     {
         ValidateInputFile(inputFile);
-        CompileToBinary(inputFile, outputType, output, references, projectReferences, modulePaths, logger);
+        CompileToBinary(inputFile, outputType, output, references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput);
     }
 
     static void HandleRunCommand(
@@ -240,7 +321,9 @@ class Program
         string[] projectReferences,
         string[] modulePaths,
         string[] args,
-        ICompilerLogger logger)
+        ICompilerLogger logger,
+        string? metricsFormat,
+        FileInfo? metricsOutput)
     {
         ValidateInputFile(inputFile);
 
@@ -261,7 +344,7 @@ class Program
         try
         {
             // Compile to executable
-            CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, projectReferences, modulePaths, logger);
+            CompileToBinary(inputFile, "exe", new FileInfo(outputPath), references, projectReferences, modulePaths, logger, metricsFormat, metricsOutput);
 
             // Copy Sharpy.Core.dll to the output directory so the executable can find it
             var sharpyCoreAssembly = typeof(Sharpy.Core.Exports).Assembly;
@@ -353,7 +436,9 @@ class Program
         bool clean,
         DirectoryInfo? emitCsTo,
         ICompilerLogger logger,
-        CompilerLogLevel logLevel)
+        CompilerLogLevel logLevel,
+        string? metricsFormat,
+        FileInfo? metricsOutput)
     {
         FileInfo? resolvedProjectFile = projectFile;
 
@@ -375,7 +460,7 @@ class Program
             Console.WriteLine($"Building project: {Path.GetFileName(discoveredPath)}");
         }
 
-        CompileProject(resolvedProjectFile, configuration, clean, emitCsTo, logger, logLevel);
+        CompileProject(resolvedProjectFile, configuration, clean, emitCsTo, logger, logLevel, metricsFormat, metricsOutput);
     }
 
     static void ValidateInputFile(FileInfo inputFile)
@@ -543,7 +628,7 @@ class Program
         }
     }
 
-    static void CompileProject(FileInfo projectFile, string configuration, bool clean, DirectoryInfo? emitCsTo, ICompilerLogger logger, CompilerLogLevel logLevel = CompilerLogLevel.None)
+    static void CompileProject(FileInfo projectFile, string configuration, bool clean, DirectoryInfo? emitCsTo, ICompilerLogger logger, CompilerLogLevel logLevel = CompilerLogLevel.None, string? metricsFormat = null, FileInfo? metricsOutput = null)
     {
         try
         {
@@ -607,6 +692,9 @@ class Program
             // Success
             Console.WriteLine("Build succeeded.");
             Console.WriteLine($"Output: {result.OutputAssemblyPath}");
+
+            // Output metrics if requested
+            OutputProjectMetrics(result.Metrics, metricsFormat, metricsOutput);
         }
         catch (FileNotFoundException ex)
         {
@@ -743,7 +831,9 @@ class Program
         string[] references,
         string[] projectReferences,
         string[] modulePaths,
-        ICompilerLogger logger)
+        ICompilerLogger logger,
+        string? metricsFormat,
+        FileInfo? metricsOutput)
     {
         try
         {
@@ -842,6 +932,9 @@ class Program
 
             // Success
             Console.WriteLine($"Successfully compiled to: {assemblyResult.OutputAssemblyPath}");
+
+            // Output metrics if requested (showing assembly compilation metrics)
+            OutputMetrics(assemblyResult.Metrics, metricsFormat, metricsOutput);
         }
         catch (LexerError ex)
         {

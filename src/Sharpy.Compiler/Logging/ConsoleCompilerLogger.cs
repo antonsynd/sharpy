@@ -90,5 +90,10 @@ public sealed class ConsoleCompilerLogger : ICompilerLogger
         }
     }
 
+    public void LogMetrics(string metricsOutput)
+    {
+        _output.WriteLine(metricsOutput);
+    }
+
     public bool IsEnabled(CompilerLogLevel level) => _minLevel >= level;
 }

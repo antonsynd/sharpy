@@ -380,6 +380,11 @@ public abstract class IntegrationTestBase
             // Don't log trace during tests
         }
 
+        public void LogMetrics(string metricsOutput)
+        {
+            // Don't log metrics during tests unless explicitly needed
+        }
+
         public bool IsEnabled(CompilerLogLevel level)
         {
             return level <= CompilerLogLevel.Info;
