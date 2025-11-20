@@ -66,12 +66,12 @@ public static partial class Exports
     public static (double, double) DivMod(double x, double y)
     {
         const double epsilon = 1e-10;
-        if (Math.Abs(y) < epsilon)
+        if (System.Math.Abs(y) < epsilon)
         {
             throw new DivideByZeroException("float division or modulo by zero");
         }
 
-        var quotient = Math.Floor(x / y);
+        var quotient = System.Math.Floor(x / y);
         var remainder = x - quotient * y;
         return (quotient, remainder);
     }
@@ -86,12 +86,12 @@ public static partial class Exports
     public static (float, float) DivMod(float x, float y)
     {
         const float epsilon = 1e-7f;
-        if (Math.Abs(y) < epsilon)
+        if (System.Math.Abs(y) < epsilon)
         {
             throw new DivideByZeroException("float division or modulo by zero");
         }
 
-        var quotient = (float)Math.Floor(x / y);
+        var quotient = (float)System.Math.Floor(x / y);
         var remainder = x - quotient * y;
         return (quotient, remainder);
     }

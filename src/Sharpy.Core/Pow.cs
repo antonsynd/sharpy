@@ -10,7 +10,7 @@ public static partial class Exports
     /// <returns>x raised to the power y</returns>
     public static double Pow(double x, double y)
     {
-        return Math.Pow(x, y);
+        return System.Math.Pow(x, y);
     }
 
     /// <summary>
@@ -21,7 +21,7 @@ public static partial class Exports
     /// <returns>x raised to the power y</returns>
     public static double Pow(int x, int y)
     {
-        return Math.Pow(x, y);
+        return System.Math.Pow(x, y);
     }
 
     /// <summary>
@@ -32,7 +32,7 @@ public static partial class Exports
     /// <returns>x raised to the power y</returns>
     public static double Pow(long x, long y)
     {
-        return Math.Pow(x, y);
+        return System.Math.Pow(x, y);
     }
 
     /// <summary>
@@ -43,6 +43,6 @@ public static partial class Exports
     /// <returns>x raised to the power y</returns>
     public static float Pow(float x, float y)
     {
-        return (float)Math.Pow(x, y);
+        return (float)System.Math.Pow(x, y);
     }
 }
