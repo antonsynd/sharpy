@@ -207,7 +207,7 @@ dotnet format src/Sharpy.Compiler/Sharpy.Compiler.csproj
 - **Parser** - Complete AST generation (~450 tests)
 - **Semantic Analyzer** - Type checking, name resolution, type narrowing
 - **Code Generator** - C# code generation (259 tests, 95% complete)
-- **Standard Library** - Collections and builtins (540 tests, 100% pass rate)
+- **Standard Library** - Collections and builtins (735 tests, 100% pass rate)
 - **Integration Tests** - End-to-end pipeline (56 tests)
 - **Module Discovery** - Cross-module imports with caching
 
