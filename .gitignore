@@ -20,6 +20,8 @@ src/Sharpy.*/bin/
 src/Sharpy.*/obj/
 samples/**/bin/
 samples/**/obj/
+test-project/bin/
+test-project/obj/
 build/
 
 # Byte-compiled / optimized / DLL files

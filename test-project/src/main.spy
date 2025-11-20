@@ -4,5 +4,3 @@ def greet(name: str):
 def main():
     greet("World")
     print("This is a test of the Sharpy project system")
-
-main()
