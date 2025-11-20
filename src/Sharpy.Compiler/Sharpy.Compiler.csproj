@@ -12,8 +12,8 @@
     <ProjectReference Include="../Sharpy.Core/Sharpy.Core.csproj" />
 
     <!-- Roslyn for code generation and compilation -->
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.14.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.0.0" />
 
     <!-- File system globbing for .spyproj file patterns -->
     <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.0" />
