@@ -65,12 +65,21 @@ public class Lexer
         { "is", TokenType.Is },
     };
 
-    public Lexer(string source, ICompilerLogger? logger = null)
+    public Lexer(string source, ICompilerLogger? logger = null, int startLine = 1, int startColumn = 1)
     {
         _source = source;
+        _line = startLine;
+        _column = startColumn;
         _indentStack.Push(0);  // Base indentation level
         _logger = logger ?? NullLogger.Instance;
         _logger.LogInfo($"Lexer initialized, source length: {source.Length}");
+
+        // If we're starting at a non-default position, we're lexing a fragment (like an f-string expression)
+        // In this case, don't measure indentation
+        if (startLine != 1 || startColumn != 1)
+        {
+            _atLineStart = false;
+        }
     }
 
     /// <summary>

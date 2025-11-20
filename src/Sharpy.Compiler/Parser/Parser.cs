@@ -2013,7 +2013,7 @@ public class Parser
                     var endLine = Current.Line;
                     var endColumn = Current.Column;
                     Advance();
-                    var parts = ParseFStringParts(value);
+                    var parts = ParseFStringParts(value, startLine, startColumn);
                     return new FStringLiteral { Parts = parts, LineStart = startLine, ColumnStart = startColumn, LineEnd = endLine, ColumnEnd = endColumn };
                 }
 
@@ -2383,11 +2383,13 @@ public class Parser
         return false;
     }
 
-    private List<FStringPart> ParseFStringParts(string fstringValue)
+    private List<FStringPart> ParseFStringParts(string fstringValue, int fstringLine, int fstringColumn)
     {
         var parts = new List<FStringPart>();
         var i = 0;
         var textBuffer = new StringBuilder();
+        var currentLine = fstringLine;
+        var currentColumn = fstringColumn + 2; // +2 for 'f' and opening quote
 
         while (i < fstringValue.Length)
         {
@@ -2402,7 +2404,9 @@ public class Parser
 
                 // Find the matching closing brace
                 i++; // Skip '{'
+                currentColumn++; // Track '{'
                 var exprStart = i;
+                var exprStartColumn = currentColumn;
                 var braceDepth = 1;
 
                 while (i < fstringValue.Length && braceDepth > 0)
@@ -2410,14 +2414,26 @@ public class Parser
                     if (fstringValue[i] == '{') braceDepth++;
                     else if (fstringValue[i] == '}') braceDepth--;
 
-                    if (braceDepth > 0) i++;
+                    if (braceDepth > 0)
+                    {
+                        if (fstringValue[i] == '\n')
+                        {
+                            currentLine++;
+                            currentColumn = 1;
+                        }
+                        else
+                        {
+                            currentColumn++;
+                        }
+                        i++;
+                    }
                 }
 
                 // Extract and parse the expression
                 var exprText = fstringValue.Substring(exprStart, i - exprStart);
 
-                // Parse the expression by creating a mini lexer/parser
-                var exprLexer = new Lexer.Lexer(exprText);
+                // Parse the expression by creating a mini lexer/parser with correct line/column
+                var exprLexer = new Lexer.Lexer(exprText, null, currentLine, exprStartColumn);
                 var exprTokens = new List<Token>();
                 while (true)
                 {
@@ -2433,10 +2449,20 @@ public class Parser
                 parts.Add(new FStringPart { Text = null, Expression = expr });
 
                 i++; // Skip '}'
+                currentColumn++; // Track '}'
             }
             else
             {
                 textBuffer.Append(fstringValue[i]);
+                if (fstringValue[i] == '\n')
+                {
+                    currentLine++;
+                    currentColumn = 1;
+                }
+                else
+                {
+                    currentColumn++;
+                }
                 i++;
             }
         }
