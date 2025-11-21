@@ -799,4 +799,184 @@ x = 5
     }
 
     #endregion
+
+    #region Escape Sequence Edge Cases
+
+    [Fact]
+    public void HandlesMixedEscapeSequences()
+    {
+        var source = "\"Line1\\nHex\\x20Unicode\\u0021Octal\\101\"";
+        var tokens = Tokenize(source);
+        tokens.Should().Contain(t => t.Type == TokenType.String);
+    }
+
+    [Fact]
+    public void HandlesMaxOctalValue()
+    {
+        var source = "\"\\377\"";  // Max octal value (255)
+        var tokens = Tokenize(source);
+        tokens.Should().Contain(t => t.Type == TokenType.String);
+    }
+
+    [Fact]
+    public void HandlesMinOctalValue()
+    {
+        var source = "\"\\0\"";  // Min octal value
+        var tokens = Tokenize(source);
+        tokens.Should().Contain(t => t.Type == TokenType.String);
+    }
+
+    [Fact]
+    public void HandlesSingleDigitOctal()
+    {
+        var source = "\"\\7\"";  // Single digit octal
+        var tokens = Tokenize(source);
+        tokens.Should().Contain(t => t.Type == TokenType.String);
+    }
+
+    [Fact]
+    public void HandlesTwoDigitOctal()
+    {
+        var source = "\"\\77\"";  // Two digit octal
+        var tokens = Tokenize(source);
+        tokens.Should().Contain(t => t.Type == TokenType.String);
+    }
+
+    [Fact]
+    public void HandlesUppercaseUnicodeEscape()
+    {
+        var source = "\"\\U00000041\"";  // 8-digit Unicode escape for 'A'
+        var tokens = Tokenize(source);
+        tokens.Should().Contain(t => t.Type == TokenType.String);
+    }
+
+    [Fact]
+    public void HandlesZeroUnicodeEscape()
+    {
+        var source = "\"\\u0000\"";  // Null character via Unicode
+        var tokens = Tokenize(source);
+        tokens.Should().Contain(t => t.Type == TokenType.String);
+    }
+
+    [Fact]
+    public void HandlesMaxBMPUnicodeEscape()
+    {
+        var source = "\"\\uFFFF\"";  // Max Basic Multilingual Plane value
+        var tokens = Tokenize(source);
+        tokens.Should().Contain(t => t.Type == TokenType.String);
+    }
+
+    [Fact]
+    public void HandlesLowercaseHexEscape()
+    {
+        var source = "\"\\x41\\x42\\x43\"";  // ABC with lowercase x
+        var tokens = Tokenize(source);
+        tokens.Should().Contain(t => t.Type == TokenType.String);
+    }
+
+    [Fact]
+    public void HandlesBackspaceEscape()
+    {
+        var source = "\"\\b\"";
+        var tokens = Tokenize(source);
+        tokens.Should().Contain(t => t.Type == TokenType.String);
+    }
+
+    [Fact]
+    public void HandlesFormFeedEscape()
+    {
+        var source = "\"\\f\"";
+        var tokens = Tokenize(source);
+        tokens.Should().Contain(t => t.Type == TokenType.String);
+    }
+
+    [Fact]
+    public void HandlesVerticalTabEscape()
+    {
+        var source = "\"\\v\"";
+        var tokens = Tokenize(source);
+        tokens.Should().Contain(t => t.Type == TokenType.String);
+    }
+
+    [Fact]
+    public void HandlesAlertEscape()
+    {
+        var source = "\"\\a\"";
+        var tokens = Tokenize(source);
+        tokens.Should().Contain(t => t.Type == TokenType.String);
+    }
+
+    [Fact]
+    public void HandlesEscapeSequencesInTripleQuotedString()
+    {
+        var source = "\"\"\"Line1\\nLine2\\tTabbed\"\"\"";
+        var tokens = Tokenize(source);
+        tokens.Should().Contain(t => t.Type == TokenType.String);
+    }
+
+    [Fact]
+    public void HandlesConsecutiveEscapes()
+    {
+        var source = "\"\\n\\n\\n\"";  // Multiple consecutive newlines
+        var tokens = Tokenize(source);
+        tokens.Should().Contain(t => t.Type == TokenType.String);
+    }
+
+    [Fact]
+    public void ThrowsOnInvalidHexEscape()
+    {
+        var source = "\"\\xGG\"";  // Invalid hex digits
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>();
+    }
+
+    [Fact]
+    public void ThrowsOnIncompletehexEscape()
+    {
+        var source = "\"\\x4\"";  // Only one hex digit
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>();
+    }
+
+    [Fact]
+    public void ThrowsOnIncompleteUnicodeEscape()
+    {
+        var source = "\"\\u004\"";  // Only 3 hex digits
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>();
+    }
+
+    [Fact]
+    public void ThrowsOnInvalidUnicodeEscape()
+    {
+        var source = "\"\\u00GG\"";  // Invalid hex digits in Unicode
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>();
+    }
+
+    [Fact]
+    public void ThrowsOnOctalValueTooLarge()
+    {
+        var source = "\"\\400\"";  // 256 in octal, exceeds max (255)
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>();
+    }
+
+    [Fact]
+    public void ThrowsOnInvalidEscapeCharacter()
+    {
+        var source = "\"\\q\"";  // Invalid escape sequence
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>();
+    }
+
+    [Fact]
+    public void ThrowsOnUnterminatedStringWithEscape()
+    {
+        var source = "\"hello\\n";  // Unterminated string
+        Action act = () => Tokenize(source);
+        act.Should().Throw<LexerError>();
+    }
+
+    #endregion
 }

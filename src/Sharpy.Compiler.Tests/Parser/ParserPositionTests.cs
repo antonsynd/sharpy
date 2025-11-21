@@ -976,4 +976,119 @@ def bar():
     }
 
     #endregion
+
+    #region IndexAccess and SliceAccess Position Edge Cases
+
+    [Fact]
+    public void Position_ChainedIndexAccess_TrackedCorrectly()
+    {
+        var module = Parse("result = matrix[0][1]");
+        var assign = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var outer = assign.Value.Should().BeOfType<IndexAccess>().Subject;
+
+        outer.LineStart.Should().Be(1);
+        outer.ColumnStart.Should().Be(10); // After "result = "
+    }
+
+    [Fact]
+    public void Position_IndexAccessAfterMember_TrackedCorrectly()
+    {
+        var module = Parse("result = obj.list[0]");
+        var assign = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var index = assign.Value.Should().BeOfType<IndexAccess>().Subject;
+
+        index.LineStart.Should().Be(1);
+        index.ColumnStart.Should().Be(10); // After "result = "
+    }
+
+    [Fact]
+    public void Position_SliceAccessAfterMember_TrackedCorrectly()
+    {
+        var module = Parse("result = obj.list[1:5]");
+        var assign = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var slice = assign.Value.Should().BeOfType<SliceAccess>().Subject;
+
+        slice.LineStart.Should().Be(1);
+        slice.ColumnStart.Should().Be(10); // After "result = "
+    }
+
+    [Fact]
+    public void Position_IndexAccessInExpression_TrackedCorrectly()
+    {
+        var module = Parse("result = arr[0] + arr[1]");
+        var assign = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var binOp = assign.Value.Should().BeOfType<BinaryOp>().Subject;
+
+        var leftIndex = binOp.Left.Should().BeOfType<IndexAccess>().Subject;
+        leftIndex.ColumnStart.Should().Be(10); // After "result = "
+
+        var rightIndex = binOp.Right.Should().BeOfType<IndexAccess>().Subject;
+        rightIndex.ColumnStart.Should().Be(19); // After "result = arr[0] + "
+    }
+
+    [Fact]
+    public void Position_SliceAccessWithAllComponents_TrackedCorrectly()
+    {
+        var module = Parse("result = arr[1:10:2]");
+        var assign = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var slice = assign.Value.Should().BeOfType<SliceAccess>().Subject;
+
+        slice.LineStart.Should().Be(1);
+        slice.ColumnStart.Should().Be(10); // After "result = "
+        slice.Object.Should().BeOfType<Identifier>().Which.ColumnStart.Should().Be(10);
+    }
+
+    [Fact]
+    public void Position_SliceAccessWithOnlyStart_TrackedCorrectly()
+    {
+        var module = Parse("result = arr[5:]");
+        var assign = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var slice = assign.Value.Should().BeOfType<SliceAccess>().Subject;
+
+        slice.ColumnStart.Should().Be(10); // After "result = "
+    }
+
+    [Fact]
+    public void Position_SliceAccessWithOnlyStop_TrackedCorrectly()
+    {
+        var module = Parse("result = arr[:10]");
+        var assign = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var slice = assign.Value.Should().BeOfType<SliceAccess>().Subject;
+
+        slice.ColumnStart.Should().Be(10); // After "result = "
+    }
+
+    [Fact]
+    public void Position_SliceAccessWithOnlyStep_TrackedCorrectly()
+    {
+        var module = Parse("result = arr[::2]");
+        var assign = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var slice = assign.Value.Should().BeOfType<SliceAccess>().Subject;
+
+        slice.ColumnStart.Should().Be(10); // After "result = "
+    }
+
+    [Fact]
+    public void Position_NestedIndexAndSlice_TrackedCorrectly()
+    {
+        var module = Parse("result = matrix[0:2][1]");
+        var assign = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var index = assign.Value.Should().BeOfType<IndexAccess>().Subject;
+
+        index.ColumnStart.Should().Be(10); // After "result = "
+        index.Object.Should().BeOfType<SliceAccess>().Which.ColumnStart.Should().Be(10);
+    }
+
+    [Fact]
+    public void Position_IndexAccessInFunctionCall_TrackedCorrectly()
+    {
+        var module = Parse("result = foo(arr[0])");
+        var assign = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var call = assign.Value.Should().BeOfType<FunctionCall>().Subject;
+        var index = call.Arguments[0].Should().BeOfType<IndexAccess>().Subject;
+
+        index.ColumnStart.Should().Be(14); // After "result = foo("
+    }
+
+    #endregion
 }

@@ -1294,4 +1294,143 @@ def complex(x: int, y: int):  # main function
     }
 
     #endregion
+
+    #region Trailing Comma Edge Cases
+
+    [Fact]
+    public void ParsesEmptyListWithoutTrailingComma()
+    {
+        var source = "x = []";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ParsesSingleElementListWithTrailingComma()
+    {
+        var source = "x = [1,]";
+        var module = Parse(source);
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var list = assignment.Value.Should().BeOfType<ListLiteral>().Subject;
+        list.Elements.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ParsesNestedListsWithTrailingCommas()
+    {
+        var source = "x = [[1, 2,], [3, 4,],]";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ParsesMultilineListWithTrailingComma()
+    {
+        var source = @"x = [
+    1,
+    2,
+    3,
+]";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ParsesFunctionCallWithSingleArgAndTrailingComma()
+    {
+        var source = "result = foo(42,)";
+        var module = Parse(source);
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var call = assignment.Value.Should().BeOfType<FunctionCall>().Subject;
+        call.Arguments.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ParsesFunctionCallWithKeywordArgsAndTrailingComma()
+    {
+        var source = "result = foo(a=1, b=2,)";
+        var module = Parse(source);
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var call = assignment.Value.Should().BeOfType<FunctionCall>().Subject;
+        call.KeywordArguments.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void ParsesFunctionCallWithMixedArgsAndTrailingComma()
+    {
+        var source = "result = foo(1, 2, a=3, b=4,)";
+        var module = Parse(source);
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var call = assignment.Value.Should().BeOfType<FunctionCall>().Subject;
+        call.Arguments.Should().HaveCount(2);
+        call.KeywordArguments.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void ParsesNestedFunctionCallsWithTrailingCommas()
+    {
+        var source = "result = foo(bar(1, 2,), baz(3,),)";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ParsesFunctionDefWithSingleParamAndTrailingComma()
+    {
+        var source = @"
+def foo(a: int,):
+    pass
+";
+        var module = Parse(source);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Parameters.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ParsesFunctionDefWithDefaultParamsAndTrailingComma()
+    {
+        var source = @"
+def foo(a: int, b: int = 10, c: str = 'test',):
+    pass
+";
+        var module = Parse(source);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Parameters.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void ParsesMultilineFunctionParamsWithTrailingComma()
+    {
+        var source = @"
+def foo(
+    a: int,
+    b: str,
+    c: float,
+):
+    pass
+";
+        var module = Parse(source);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Parameters.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void ParsesTupleWithTrailingComma()
+    {
+        var source = "x = (1, 2, 3,)";
+        var module = Parse(source);
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        assignment.Value.Should().BeOfType<TupleLiteral>();
+    }
+
+    [Fact]
+    public void ParsesSetWithTrailingComma()
+    {
+        var source = "x = {1, 2, 3,}";
+        var module = Parse(source);
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        assignment.Value.Should().BeOfType<SetLiteral>();
+    }
+
+    #endregion
 }
