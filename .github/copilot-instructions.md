@@ -209,3 +209,124 @@ dotnet format src/Sharpy.Compiler/Sharpy.Compiler.csproj
 - **No need to create demo programs** unless explicitly requested
 - **Focus on minimal, targeted changes** that solve specific problems
 - **Leverage existing patterns** from the codebase
+
+## Custom Agents
+
+This repository has specialized agents defined in `.github/agents.md` for different areas:
+
+- **compiler_expert** - For lexer, parser, semantic analysis, and code generation
+- **core_library_expert** - For standard library (Pythonic APIs for .NET)
+- **docs_writer** - For documentation and technical writing
+- **test_expert** - For comprehensive testing
+- **cli_expert** - For command-line interface
+
+When working on a specific component, consider delegating to the appropriate specialized agent. See `.github/agents.md` for detailed capabilities and boundaries.
+
+## Security Best Practices
+
+- **Never commit secrets** - No API keys, passwords, or credentials in code
+- **Validate all inputs** - Especially in compiler and CLI tools
+- **Use secure defaults** - Favor security over convenience
+- **Handle errors safely** - Don't expose sensitive information in error messages
+- **Follow principle of least privilege** - Request only necessary permissions
+
+## Issue and PR Guidelines
+
+### When Working on Issues
+
+- **Read the full issue description** - Understand requirements before coding
+- **Check for related issues** - Avoid duplicate work
+- **Ask for clarification** - If requirements are unclear, ask before implementing
+- **Reference issue numbers** - In commit messages and PR descriptions
+
+### Pull Request Best Practices
+
+- **Keep changes focused** - One logical change per PR
+- **Write descriptive titles** - Clearly state what the PR does
+- **Include context** - Explain why the change is needed
+- **Test thoroughly** - All tests must pass
+- **Format code** - Run `dotnet format` before submitting
+- **Update documentation** - For user-facing changes
+
+## Debugging Workflow
+
+### Compiler Issues
+```bash
+# Build with verbose output
+dotnet build -v detailed src/Sharpy.Compiler/
+
+# Run specific failing test
+dotnet test --filter "FullyQualifiedName~TestName" --logger "console;verbosity=detailed"
+
+# Use AST dumper to debug parser
+# Add debug output in Parser.cs to visualize AST
+```
+
+### Standard Library Issues
+```bash
+# Compare with Python behavior
+python3 -c "test code"
+
+# Run specific test with details
+dotnet test src/Sharpy.Core.Tests --filter "FullyQualifiedName~TestName"
+
+# Check .NET behavior
+dotnet script -c "using System; using System.Collections.Generic; /* test code */"
+```
+
+### Integration Issues
+```bash
+# Test full compilation
+dotnet run --project src/Sharpy.Cli -- build test.spy
+
+# Check generated C# code
+# Add --emit-csharp flag (if implemented) or inspect temp files
+```
+
+## Performance Considerations
+
+- **Module caching is enabled** - Avoid unnecessary recompilation
+- **Parallel builds are supported** - Build solution instead of individual projects when possible
+- **Test execution can be filtered** - Use `--filter` to run only relevant tests
+- **Incremental compilation** - Only rebuild changed projects
+
+## Environment Details
+
+- **Target Framework**: .NET 9.0 (tested on .NET 10.0)
+- **Build System**: MSBuild via `dotnet` CLI
+- **Test Framework**: xUnit
+- **Code Analysis**: Roslyn analyzers enabled
+- **Formatting**: Code is formatted using `dotnet format` (default conventions)
+
+## Quick Reference
+
+### Most Common Commands
+```bash
+# Full build and test
+dotnet build && dotnet test
+
+# Format code
+dotnet format
+
+# Run specific test suite
+dotnet test --filter "Namespace~Sharpy.Compiler.Tests.Lexer"
+
+# Build specific project
+dotnet build src/Sharpy.Core/Sharpy.Core.csproj
+
+# Run compiler CLI
+dotnet run --project src/Sharpy.Cli -- build file.spy
+```
+
+### File Patterns
+- `*.spy` - Sharpy source files
+- `*.spyproj` - Sharpy project files (XML format)
+- `HOW_TO_CONTRIBUTE.instructions.md` - Component-specific guides
+- `*Tests.cs` - Test files (xUnit)
+
+## Continuous Integration
+
+- **Workflows**: `.github/workflows/dotnet9.yml` and `.github/workflows/dotnet10.yml`
+- **Automated testing**: Tests run on push and PR
+- **Multi-framework**: Tests run on both .NET 9.0 and 10.0
+- **Build validation**: All projects must build successfully
