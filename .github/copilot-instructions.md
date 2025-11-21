@@ -296,7 +296,7 @@ dotnet run --project src/Sharpy.Cli -- build test.spy
 - **Build System**: MSBuild via `dotnet` CLI
 - **Test Framework**: xUnit
 - **Code Analysis**: Roslyn analyzers enabled
-- **Formatting**: `dotnet format` follows .editorconfig
+- **Formatting**: Code is formatted using `dotnet format` (default conventions)
 
 ## Quick Reference
 
