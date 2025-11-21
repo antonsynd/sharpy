@@ -141,10 +141,11 @@ Focus on providing intuition and understanding, not just restating what the code
         # Call GitHub Copilot CLI in programmatic mode with write permissions
         # --allow-tool 'write' allows Copilot to create/modify files without approval
         # Change to the base directory so relative paths work
+        # Using create_subprocess_exec (not shell) so the prompt argument is safely passed
+        # without any shell interpretation - no escaping needed
         process = await asyncio.create_subprocess_exec(
-            "gh",
-            "copilot",
-            "-p",
+            "/opt/homebrew/bin/copilot",
+            "--prompt",
             prompt,
             "--allow-tool",
             "write",
