@@ -292,23 +292,35 @@ def assignment_vs_declaration():
 
 ### Variable Shadowing in Sharpy
 
-C# (and therefore Sharpy) has specific rules about when variable shadowing is allowed:
+Sharpy allows variable shadowing with type annotations, which differs from C#'s behavior:
 
-**❌ NOT allowed: Shadowing in nested blocks within the same function**
+**✅ Allowed: Shadowing in nested blocks with type annotations**
 
 ```sharpy
-def no_nested_shadowing():
+def nested_shadowing():
+    x: int = 1
+    print(f"outer x: {x}")  # Prints 1
+    
+    if True:
+        x: int = 2  # OK: Creates new variable that shadows outer 'x'
+        print(f"inner x: {x}")  # Prints 2
+    
+    print(f"outer x: {x}")  # Prints 1 (outer x unchanged)
+```
+
+When you declare a variable with a type annotation (like `x: int = 2`), you create a new variable in the current scope that shadows any variable with the same name in an enclosing scope. The outer variable remains unchanged.
+
+**Important:** Bare assignments (without type annotations) modify the outer scope variable instead:
+
+```sharpy
+def bare_assignment():
     x: int = 1
     
     if True:
-        # ERROR: Cannot declare 'x' because it's already declared in an enclosing scope
-        # x: int = 2
-        
-        # Use bare assignment to modify the outer variable instead
-        x = 2
+        x = 2  # Bare assignment: modifies outer 'x'
+    
+    print(x)  # Prints 2 (outer x was modified)
 ```
-
-The error occurs because C# doesn't allow you to declare a variable with the same name as another local variable in an enclosing scope within the same function. This prevents confusion about which variable is being referenced.
 
 **✅ Allowed: Shadowing across different functions**
 
@@ -323,4 +335,6 @@ shadow_global()
 print(x)  # Prints 1 (global x unchanged)
 ```
 
-Shadowing across function boundaries is allowed because each function has its own scope that doesn't overlap with other functions or the global scope.
+Shadowing across function boundaries is always allowed.
+
+**Note about C# code generation:** While Sharpy's semantic analysis allows nested shadowing, the generated C# code may require variable name mangling to avoid C#'s restrictions. This is handled automatically by the compiler.

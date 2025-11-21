@@ -882,5 +882,23 @@ def foo(a: int = 1, b: int):  # non-default after default
         // This might be a parser or semantic error
     }
 
+    [Fact]
+    public void AllowsNestedShadowingWithTypeAnnotation()
+    {
+        var source = @"
+def test():
+    x: int = 1
+    if True:
+        x: int = 2  # Shadowing with type annotation - should be allowed in Sharpy
+        print(x)
+    print(x)
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        // Sharpy allows shadowing with type annotations in nested blocks (unlike C#)
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
     #endregion
 }
