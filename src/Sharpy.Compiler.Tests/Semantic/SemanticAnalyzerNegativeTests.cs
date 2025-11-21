@@ -127,7 +127,7 @@ def bar():
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("private"));
     }
 
-    [Fact(Skip = "TODO: Implement C#-style block scoping - variables in if-blocks should not leak to else blocks")]
+    [Fact]
     public void RejectsVariableDefinedInIfBlockUsedInElseBlock()
     {
         var source = @"
@@ -140,13 +140,12 @@ def foo(x: int):
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // TODO: Sharpy should follow C# scoping rules: variables defined in an if-block
+        // Sharpy follows C# scoping rules: variables defined in an if-block
         // should be scoped to that block and not accessible in else or after.
-        // Currently Sharpy has Python-style hoisting behavior which is incorrect for a statically-typed language.
         typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Undefined") || e.Message.Contains("not defined"));
     }
 
-    [Fact(Skip = "TODO: Implement C#-style block scoping - variables in if-blocks should not leak outside")]
+    [Fact]
     public void RejectsVariableDefinedInIfBlockUsedAfterBlock()
     {
         var source = @"
@@ -158,12 +157,11 @@ def foo(x: int):
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // TODO: Variables defined inside if-blocks should not leak to outer scope (C#-style scoping)
-        // Currently Sharpy has Python-style hoisting behavior.
+        // Variables defined inside if-blocks should not leak to outer scope (C#-style scoping)
         typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Undefined") || e.Message.Contains("not defined"));
     }
 
-    [Fact(Skip = "TODO: Implement C#-style block scoping - variables in while-blocks should not leak outside")]
+    [Fact]
     public void RejectsVariableDefinedInWhileBlockUsedAfterBlock()
     {
         var source = @"
@@ -176,12 +174,11 @@ def foo():
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // TODO: Variables defined inside while-blocks should not leak to outer scope (C#-style scoping)
-        // Currently Sharpy has Python-style hoisting behavior.
+        // Variables defined inside while-blocks should not leak to outer scope (C#-style scoping)
         typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Undefined") || e.Message.Contains("not defined"));
     }
 
-    [Fact(Skip = "TODO: Implement C#-style block scoping - variables in for-blocks should not leak outside")]
+    [Fact]
     public void RejectsVariableDefinedInForBlockUsedAfterBlock()
     {
         var source = @"
@@ -193,8 +190,7 @@ def foo():
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // TODO: Variables defined inside for-blocks should not leak to outer scope (C#-style scoping)
-        // Currently Sharpy has Python-style hoisting behavior.
+        // Variables defined inside for-blocks should not leak to outer scope (C#-style scoping)
         typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Undefined") || e.Message.Contains("not defined"));
     }
 
@@ -218,22 +214,20 @@ def foo(x: int):
     }
 
     [Fact]
-    public void DocumentsPythonStyleHoistingCurrentBehavior()
+    public void DocumentsCSharpStyleBlockScoping()
     {
         var source = @"
 def foo(x: int):
     if x > 0:
         result: str = ""positive""
-    # Currently, 'result' is accessible here due to Python-style hoisting
-    # This documents the CURRENT behavior, which should be changed in the future
+    # C#-style scoping: 'result' is not accessible here
     print(result)
 ";
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // This documents current behavior: Python-style hoisting allows this
-        // In the future, this should produce an error when C#-style scoping is implemented
-        typeChecker.Errors.Should().BeEmpty();
+        // C#-style scoping: variables defined in blocks don't leak to outer scope
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Undefined") || e.Message.Contains("not defined"));
     }
 
     #endregion
@@ -886,6 +880,60 @@ def foo(a: int = 1, b: int):  # non-default after default
         typeChecker.CheckModule(module);
 
         // This might be a parser or semantic error
+    }
+
+    [Fact]
+    public void AllowsNestedShadowingWithTypeAnnotation()
+    {
+        var source = @"
+def test():
+    x: int = 1
+    if True:
+        x: int = 2  # Shadowing with type annotation - should be allowed in Sharpy
+        print(x)
+    print(x)
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        // Sharpy allows shadowing with type annotations in nested blocks (unlike C#)
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RejectsVariableDefinedInElifBlockUsedAfterBlock()
+    {
+        var source = @"
+def foo(x: int):
+    if x > 10:
+        category: str = ""high""
+    elif x > 5:
+        category: str = ""medium""
+    print(category)  # category is not in scope here
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        // Variables defined inside elif-blocks should not leak to outer scope (C#-style scoping)
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Undefined") || e.Message.Contains("not defined"));
+    }
+
+    [Fact]
+    public void ChecksElifConditionType()
+    {
+        var source = @"
+def foo():
+    x: int = 1
+    if x > 10:
+        print(""high"")
+    elif ""not a bool"":  # elif condition must be boolean
+        print(""medium"")
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        // Elif condition type checking
+        typeChecker.Errors.Should().Contain(e => e.Message.Contains("boolean"));
     }
 
     #endregion

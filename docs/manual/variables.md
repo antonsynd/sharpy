@@ -233,71 +233,108 @@ conversion](/sharpy/manual/lifecycle/life/#constructors-and-implicit-conversion)
 
 ## Variable scopes
 
-Variables declared with `var` are bound by *lexical scoping*. This
-means that nested code blocks can read and modify variables defined in an
-outer scope. But an outer scope **cannot** read variables defined in an
-inner scope at all.
+Sharpy uses **C#-style block scoping** for variables. This means:
 
-For example, the `if` code block shown here creates an inner scope where outer
-variables are accessible to read/write, but any new variables do not live
-beyond the scope of the `if` block:
+1. Variables declared with type annotations (`x: int = 5`) are scoped to the block in which they are declared
+2. Bare assignments (`x = 5`) to undefined variables create new variables in the current scope
+3. Bare assignments to existing variables modify the variable in the nearest enclosing scope
+4. Variables defined in control flow blocks (if, while, for) are not accessible outside those blocks
 
-```sharpy
-def lexical_scopes():
-    num = 1
-    dig = 1
-    if num == 1:
-        print("num:", num)  # Reads the outer-scope "num"
-        num = 2         # Creates new inner-scope "num"
-        print("num:", num)  # Reads the inner-scope "num"
-        dig = 2             # Updates the outer-scope "dig"
-    print("num:", num)      # Reads the outer-scope "num"
-    print("dig:", dig)      # Reads the outer-scope "dig"
+### Block Scoping Example
 
-lexical_scopes()
-```
-
-```output
-num: 1
-num: 2
-num: 1
-dig: 2
-```
-
-Note that the `var` statement inside the `if` creates a **new** variable with
-the same name as the outer variable. This prevents the inner loop from accessing
-the outer `num` variable. (This is called "variable shadowing," where the inner
-scope variable hides or "shadows" a variable from an outer scope.)
-
-The lifetime of the inner `num` ends exactly where the `if` code block ends,
-because that's the scope in which the variable was defined.
-
-This is in contrast to implicitly-declared variables (those without the `var`
-keyword), which use **function-level scoping** (consistent with Python variable
-behavior). That means, when you change the value of an implicitly-declared
-variable inside the `if` block, it actually changes the value for the entire
-function.
-
-For example, here's the same code but *without* the `var` declarations:
+Control flow blocks create new scopes. Variables declared inside these blocks are not accessible outside:
 
 ```sharpy
-def function_scopes():
-    num = 1
-    if num == 1:
-        print(num)   # Reads the function-scope "num"
-        num = 2      # Updates the function-scope variable
-        print(num)   # Reads the function-scope "num"
-    print(num)       # Reads the function-scope "num"
-
-function_scopes()
+def block_scopes():
+    x: int = 1
+    
+    if x > 0:
+        # Declare a new variable inside the if block
+        category: str = "positive"
+        print(category)  # OK: category is in scope
+    
+    # ERROR: category is not accessible here
+    # print(category)
 ```
 
-```output
-1
-2
-2
+For loops have their own scope, and loop variables are confined to the loop:
+
+```sharpy
+def loop_scopes():
+    for i in range(3):
+        temp: int = i * 2
+        print(f"i={i}, temp={temp}")
+    
+    # ERROR: i and temp are not accessible here
+    # print(i)
+    # print(temp)
+    
+    # Loop variables can be reused in consecutive loops
+    for i in range(5, 8):
+        print(f"second loop: {i}")
 ```
 
-Now, the last `print()` function sees the updated `num` value from the inner
-scope, because implicitly-declared variables (Python-style variables) use function-level
-scope (instead of lexical scope).
+### Assignment vs. Declaration
+
+Bare assignments (without type annotations) behave differently from declarations:
+
+```sharpy
+def assignment_vs_declaration():
+    x: int = 1  # Declaration: creates new variable in current scope
+    
+    if True:
+        x = 2      # Bare assignment: modifies the outer 'x'
+        y: int = 3 # Declaration: creates new variable in if-block scope
+    
+    print(x)  # Prints 2 (modified by inner scope)
+    # print(y)  # ERROR: y is not accessible here
+```
+
+### Variable Shadowing in Sharpy
+
+Sharpy allows variable shadowing with type annotations, which differs from C#'s behavior:
+
+**✅ Allowed: Shadowing in nested blocks with type annotations**
+
+```sharpy
+def nested_shadowing():
+    x: int = 1
+    print(f"outer x: {x}")  # Prints 1
+    
+    if True:
+        x: int = 2  # OK: Creates new variable that shadows outer 'x'
+        print(f"inner x: {x}")  # Prints 2
+    
+    print(f"outer x: {x}")  # Prints 1 (outer x unchanged)
+```
+
+When you declare a variable with a type annotation (like `x: int = 2`), you create a new variable in the current scope that shadows any variable with the same name in an enclosing scope. The outer variable remains unchanged.
+
+**Important:** Bare assignments (without type annotations) modify the outer scope variable instead:
+
+```sharpy
+def bare_assignment():
+    x: int = 1
+    
+    if True:
+        x = 2  # Bare assignment: modifies outer 'x'
+    
+    print(x)  # Prints 2 (outer x was modified)
+```
+
+**✅ Allowed: Shadowing across different functions**
+
+```sharpy
+x: int = 1  # Global variable
+
+def shadow_global():
+    x: int = 2  # OK: Shadows global x within this function
+    print(x)    # Prints 2
+
+shadow_global()
+print(x)  # Prints 1 (global x unchanged)
+```
+
+Shadowing across function boundaries is always allowed.
+
+**Note about C# code generation:** While Sharpy's semantic analysis allows nested shadowing, the generated C# code may require variable name mangling to avoid C#'s restrictions. This is handled automatically by the compiler.

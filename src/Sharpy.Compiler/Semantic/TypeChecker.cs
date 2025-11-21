@@ -120,6 +120,10 @@ public class TypeChecker
                 CheckTry(tryStmt);
                 break;
 
+            // TODO: When 'with' statement is implemented, ensure it creates its own scope
+            // similar to try/except/finally blocks. The context manager's __enter__ and 
+            // __exit__ should be called, and the body should be in its own scope.
+
             case AssertStatement assertStmt:
                 CheckAssert(assertStmt);
                 break;
@@ -542,8 +546,35 @@ public class TypeChecker
         {
             _narrowedTypes[kvp.Key] = kvp.Value;
         }
+        
+        // Enter scope for if-then block
+        _symbolTable.EnterScope("if-then");
         foreach (var stmt in ifStmt.ThenBody)
             CheckStatement(stmt);
+        _symbolTable.ExitScope();
+
+        // Check elif clauses
+        foreach (var elif in ifStmt.ElifClauses)
+        {
+            var elifCondType = CheckExpression(elif.Test);
+            if (elifCondType != SemanticType.Bool && !(elifCondType is UnknownType))
+            {
+                AddError($"Elif condition must be boolean, got '{elifCondType.GetDisplayName()}'",
+                    elif.LineStart, elif.ColumnStart);
+            }
+
+            _narrowedTypes = new Dictionary<string, SemanticType>(savedNarrowedTypes);
+            var narrowedTypesInElif = ExtractNarrowedTypes(elif.Test, true);
+            foreach (var kvp in narrowedTypesInElif)
+            {
+                _narrowedTypes[kvp.Key] = kvp.Value;
+            }
+
+            _symbolTable.EnterScope("elif");
+            foreach (var stmt in elif.Body)
+                CheckStatement(stmt);
+            _symbolTable.ExitScope();
+        }
 
         // Apply narrowed types in else branch
         _narrowedTypes = new Dictionary<string, SemanticType>(savedNarrowedTypes);
@@ -551,8 +582,15 @@ public class TypeChecker
         {
             _narrowedTypes[kvp.Key] = kvp.Value;
         }
-        foreach (var stmt in ifStmt.ElseBody)
-            CheckStatement(stmt);
+        
+        // Enter scope for if-else block only if there are statements
+        if (ifStmt.ElseBody.Count > 0)
+        {
+            _symbolTable.EnterScope("if-else");
+            foreach (var stmt in ifStmt.ElseBody)
+                CheckStatement(stmt);
+            _symbolTable.ExitScope();
+        }
 
         // Restore original narrowed types
         _narrowedTypes = savedNarrowedTypes;
@@ -577,8 +615,11 @@ public class TypeChecker
             _narrowedTypes[kvp.Key] = kvp.Value;
         }
 
+        // Enter scope for while-body block
+        _symbolTable.EnterScope("while-body");
         foreach (var stmt in whileStmt.Body)
             CheckStatement(stmt);
+        _symbolTable.ExitScope();
 
         // Restore original narrowed types
         _narrowedTypes = savedNarrowedTypes;
@@ -590,6 +631,10 @@ public class TypeChecker
 
         // Extract element type from iterable
         var elementType = ExtractElementType(iterType);
+
+        // Enter scope for for-body block FIRST
+        // This ensures loop variables are scoped to the loop
+        _symbolTable.EnterScope("for-body");
 
         // Handle tuple unpacking: for x, y in items
         if (forStmt.Target is TupleLiteral targetTuple)
@@ -610,7 +655,7 @@ public class TypeChecker
                 }
                 else
                 {
-                    // Define loop variables with inferred types
+                    // Define loop variables with inferred types INSIDE the for-body scope
                     for (int i = 0; i < targetTuple.Elements.Count; i++)
                     {
                         var targetElem = targetTuple.Elements[i];
@@ -673,8 +718,12 @@ public class TypeChecker
             _semanticInfo.SetExpressionType(forStmt.Target, elementType);
         }
 
+        // Check loop body statements
         foreach (var stmt in forStmt.Body)
             CheckStatement(stmt);
+        
+        // Exit for-body scope
+        _symbolTable.ExitScope();
     }
 
     private void CheckRaise(RaiseStatement raiseStmt)
