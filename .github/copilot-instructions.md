@@ -292,7 +292,7 @@ dotnet run --project src/Sharpy.Cli -- build test.spy
 
 ## Environment Details
 
-- **Target Frameworks**: .NET 9.0 and .NET 10.0
+- **Target Framework**: .NET 9.0 (tested on .NET 10.0)
 - **Build System**: MSBuild via `dotnet` CLI
 - **Test Framework**: xUnit
 - **Code Analysis**: Roslyn analyzers enabled
