@@ -542,8 +542,12 @@ public class TypeChecker
         {
             _narrowedTypes[kvp.Key] = kvp.Value;
         }
+        
+        // Enter scope for if-then block
+        _symbolTable.EnterScope("if-then");
         foreach (var stmt in ifStmt.ThenBody)
             CheckStatement(stmt);
+        _symbolTable.ExitScope();
 
         // Apply narrowed types in else branch
         _narrowedTypes = new Dictionary<string, SemanticType>(savedNarrowedTypes);
@@ -551,8 +555,12 @@ public class TypeChecker
         {
             _narrowedTypes[kvp.Key] = kvp.Value;
         }
+        
+        // Enter scope for if-else block
+        _symbolTable.EnterScope("if-else");
         foreach (var stmt in ifStmt.ElseBody)
             CheckStatement(stmt);
+        _symbolTable.ExitScope();
 
         // Restore original narrowed types
         _narrowedTypes = savedNarrowedTypes;
@@ -577,8 +585,11 @@ public class TypeChecker
             _narrowedTypes[kvp.Key] = kvp.Value;
         }
 
+        // Enter scope for while-body block
+        _symbolTable.EnterScope("while-body");
         foreach (var stmt in whileStmt.Body)
             CheckStatement(stmt);
+        _symbolTable.ExitScope();
 
         // Restore original narrowed types
         _narrowedTypes = savedNarrowedTypes;
@@ -590,6 +601,10 @@ public class TypeChecker
 
         // Extract element type from iterable
         var elementType = ExtractElementType(iterType);
+
+        // Enter scope for for-body block FIRST
+        // This ensures loop variables are scoped to the loop
+        _symbolTable.EnterScope("for-body");
 
         // Handle tuple unpacking: for x, y in items
         if (forStmt.Target is TupleLiteral targetTuple)
@@ -610,7 +625,7 @@ public class TypeChecker
                 }
                 else
                 {
-                    // Define loop variables with inferred types
+                    // Define loop variables with inferred types INSIDE the for-body scope
                     for (int i = 0; i < targetTuple.Elements.Count; i++)
                     {
                         var targetElem = targetTuple.Elements[i];
@@ -673,8 +688,12 @@ public class TypeChecker
             _semanticInfo.SetExpressionType(forStmt.Target, elementType);
         }
 
+        // Check loop body statements
         foreach (var stmt in forStmt.Body)
             CheckStatement(stmt);
+        
+        // Exit for-body scope
+        _symbolTable.ExitScope();
     }
 
     private void CheckRaise(RaiseStatement raiseStmt)
