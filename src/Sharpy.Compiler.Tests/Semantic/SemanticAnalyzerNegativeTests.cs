@@ -900,5 +900,41 @@ def test():
         typeChecker.Errors.Should().BeEmpty();
     }
 
+    [Fact]
+    public void RejectsVariableDefinedInElifBlockUsedAfterBlock()
+    {
+        var source = @"
+def foo(x: int):
+    if x > 10:
+        category: str = ""high""
+    elif x > 5:
+        category: str = ""medium""
+    print(category)  # category is not in scope here
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        // Variables defined inside elif-blocks should not leak to outer scope (C#-style scoping)
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Undefined") || e.Message.Contains("not defined"));
+    }
+
+    [Fact]
+    public void ChecksElifConditionType()
+    {
+        var source = @"
+def foo():
+    x: int = 1
+    if x > 10:
+        print(""high"")
+    elif ""not a bool"":  # elif condition must be boolean
+        print(""medium"")
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        // Elif condition type checking
+        typeChecker.Errors.Should().Contain(e => e.Message.Contains("boolean"));
+    }
+
     #endregion
 }

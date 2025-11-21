@@ -120,6 +120,10 @@ public class TypeChecker
                 CheckTry(tryStmt);
                 break;
 
+            // TODO: When 'with' statement is implemented, ensure it creates its own scope
+            // similar to try/except/finally blocks. The context manager's __enter__ and 
+            // __exit__ should be called, and the body should be in its own scope.
+
             case AssertStatement assertStmt:
                 CheckAssert(assertStmt);
                 break;
@@ -548,6 +552,29 @@ public class TypeChecker
         foreach (var stmt in ifStmt.ThenBody)
             CheckStatement(stmt);
         _symbolTable.ExitScope();
+
+        // Check elif clauses
+        foreach (var elif in ifStmt.ElifClauses)
+        {
+            var elifCondType = CheckExpression(elif.Test);
+            if (elifCondType != SemanticType.Bool && !(elifCondType is UnknownType))
+            {
+                AddError($"Elif condition must be boolean, got '{elifCondType.GetDisplayName()}'",
+                    elif.LineStart, elif.ColumnStart);
+            }
+
+            _narrowedTypes = new Dictionary<string, SemanticType>(savedNarrowedTypes);
+            var narrowedTypesInElif = ExtractNarrowedTypes(elif.Test, true);
+            foreach (var kvp in narrowedTypesInElif)
+            {
+                _narrowedTypes[kvp.Key] = kvp.Value;
+            }
+
+            _symbolTable.EnterScope("elif");
+            foreach (var stmt in elif.Body)
+                CheckStatement(stmt);
+            _symbolTable.ExitScope();
+        }
 
         // Apply narrowed types in else branch
         _narrowedTypes = new Dictionary<string, SemanticType>(savedNarrowedTypes);
