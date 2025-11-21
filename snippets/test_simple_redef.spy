@@ -1,0 +1,4 @@
+def foo():
+    x: int = 1
+    x: int = 2
+    x: str = "hello"

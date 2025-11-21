@@ -79,19 +79,20 @@ def foo():
     }
 
     [Fact]
-    public void RejectsRedefinitionInSameScope()
+    public void AllowsRedefinitionWithTypeAnnotation()
     {
         var source = @"
 def foo():
     x: int = 1
-    x: int = 2  # redefinition
+    x: int = 2
+    x: auto = 3
+    x: str = 'hello'
 ";
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
 
-        // This is actually caught at name resolution, not type checking
-        // So we expect an exception during parsing/resolution
-        Action act = () => typeChecker.CheckModule(module);
-        act.Should().Throw<Exception>().WithMessage("*already defined*");
+        // Per language spec: redefinition with type annotation is allowed
+        typeChecker.Errors.Should().BeEmpty();
     }
 
     [Fact]
@@ -954,20 +955,22 @@ def foo():
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("constant") || e.Message.Contains("reassign"));
     }
 
-    [Fact(Skip = "TODO: Nested const scope handling needs investigation - const from outer scope causes 'already defined' error")]
+    [Fact]
     public void RejectsConstReassignmentAcrossScopes()
     {
         var source = @"
 const MAX_VALUE: int = 100
 
 def foo():
-    result: int = MAX_VALUE + 1  # Reading const from outer scope is OK
+    MAX_VALUE = 20  # Error: reassignment without type annotation
 ";
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Cross-scope reassignment test removed - parser treats `VAR = value` ambiguously
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Errors.Should().Contain(e =>
+            e.Message.Contains("constant") ||
+            e.Message.Contains("reassign") ||
+            e.Message.Contains("shadow"));
     }
 
     [Fact]
@@ -992,6 +995,122 @@ def foo():
 def foo():
     const MAX_VALUE: int = 100
     x: int = MAX_VALUE  # Reading is fine
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AllowsConstShadowingWithTypeAnnotation()
+    {
+        var source = @"
+const MAX_VALUE: int = 100
+
+def foo():
+    MAX_VALUE: int = 20
+    print(MAX_VALUE)
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RejectsConstShadowingWithoutTypeAnnotation()
+    {
+        var source = @"
+const PI: int = 314
+
+def calculate():
+    PI = 315
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().Contain(e =>
+            e.Message.Contains("constant") &&
+            (e.Message.Contains("reassign") || e.Message.Contains("shadow")));
+    }
+
+    [Fact]
+    public void AllowsReadingOuterScopeConst()
+    {
+        var source = @"
+const THRESHOLD: int = 100
+
+def check_value(val: int) -> bool:
+    return val > THRESHOLD
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AllowsNestedConstShadowingWithTypeAnnotation()
+    {
+        var source = @"
+const VALUE: int = 100
+
+def outer():
+    VALUE: int = 200
+    def inner():
+        VALUE: int = 300
+        print(VALUE)
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RejectsConstReassignmentInNestedScope()
+    {
+        var source = @"
+const LIMIT: int = 50
+
+def outer():
+    def inner():
+        LIMIT = 100
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().Contain(e =>
+            e.Message.Contains("constant") && e.Message.Contains("LIMIT"));
+    }
+
+    [Fact]
+    public void AllowsShadowingConstWithDifferentType()
+    {
+        var source = @"
+const CONFIG: int = 42
+
+def process():
+    CONFIG: str = 'local config'
+    print(CONFIG)
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void DocumentsConstShadowingBehavior()
+    {
+        var source = @"
+const X: int = 1
+
+def demo():
+    y: int = X + 1
+    X: int = 2
+    z: int = X + 1
 ";
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);

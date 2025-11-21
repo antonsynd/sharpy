@@ -1,0 +1,14 @@
+def demo():
+    x: int = 1
+    print(x)
+
+    x: int = 2
+    print(x)
+
+    x: auto = "hello"
+    print(x)
+
+    x: str = "world"
+    print(x)
+
+demo()

@@ -457,7 +457,9 @@ public class TypeChecker
             // Check if trying to reassign a constant
             else if (existingSymbol is VariableSymbol varSymbol && varSymbol.IsConstant)
             {
-                AddError($"Cannot reassign constant variable '{targetId.Name}'",
+                // Assignment without type annotation to a const is always an error
+                // If the user wants to shadow the const, they must use a type annotation
+                AddError($"Cannot reassign constant variable '{targetId.Name}'. Use a type annotation to shadow it instead.",
                     assignment.LineStart, assignment.ColumnStart);
                 return;
             }
@@ -522,17 +524,21 @@ public class TypeChecker
                 varDecl.LineStart, varDecl.ColumnStart);
         }
 
-        // Define or update symbol with resolved type
+        // Check if symbol already exists in current scope
         var existingSymbol = _symbolTable.Lookup(varDecl.Name, searchParents: false);
+
         if (existingSymbol is VariableSymbol varSymbol)
         {
-            // Update existing symbol with resolved type
-            var updatedSymbol = varSymbol with { Type = declaredType };
-            _symbolTable.Define(updatedSymbol);
+            // Symbol already exists in the current scope
+            // Per language spec: Variable declarations with type annotations (including 'auto')
+            // are allowed to shadow/redefine variables in the same scope
+            // This is intentional redefinition - const symbols are pre-defined by NameResolver,
+            // and non-const variables can be redefined with a type annotation
+            // Just skip the define step since the symbol is already there
         }
         else
         {
-            // Create new variable symbol
+            // Create new variable symbol (normal case for non-const variables)
             var newSymbol = new VariableSymbol
             {
                 Name = varDecl.Name,
