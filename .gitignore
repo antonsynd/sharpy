@@ -1,6 +1,8 @@
 # .NET compiled artifacts
 *.dll
 *.pdb
+*.deps.json
+*.runtimeconfig.json
 
 # Local VSCode configs
 .vscode/launch.json
