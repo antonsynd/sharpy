@@ -276,7 +276,7 @@ x = 1 + 2 + \
         module.Body.Should().HaveCount(1);
     }
 
-    [Fact(Skip = "Unimplemented: Trailing commas in lists not yet supported")]
+    [Fact]
     public void ParsesTrailingCommaInList()
     {
         var source = "x = [1, 2, 3,]";
@@ -292,7 +292,7 @@ x = 1 + 2 + \
         module.Body.Should().HaveCount(1);
     }
 
-    [Fact(Skip = "Unimplemented: Trailing commas in function arguments not yet supported")]
+    [Fact]
     public void ParsesTrailingCommaInFunctionArgs()
     {
         var source = "x = foo(1, 2, 3,)";
@@ -300,7 +300,7 @@ x = 1 + 2 + \
         module.Body.Should().HaveCount(1);
     }
 
-    [Fact(Skip = "Unimplemented: Trailing commas in function parameters not yet supported")]
+    [Fact]
     public void ParsesTrailingCommaInFunctionParams()
     {
         var source = @"

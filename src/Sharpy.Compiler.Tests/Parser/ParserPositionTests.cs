@@ -163,7 +163,7 @@ public class ParserPositionTests
         member.ColumnStart.Should().Be(1);
     }
 
-    [Fact(Skip = "TODO: IndexAccess.ColumnStart is currently set to the end position instead of the start - needs investigation")]
+    [Fact]
     public void Position_IndexAccess_TrackedCorrectly()
     {
         var module = Parse("result = arr[0]");
@@ -770,7 +770,7 @@ y = 2";
         assign.Value.LineStart.Should().Be(1);
     }
 
-    [Fact(Skip = "TODO: SliceAccess.ColumnStart is currently set to the end position instead of the start - needs investigation")]
+    [Fact]
     public void Position_SliceAccess_PositionsTracked()
     {
         var module = Parse("result = arr[1:10:2]");

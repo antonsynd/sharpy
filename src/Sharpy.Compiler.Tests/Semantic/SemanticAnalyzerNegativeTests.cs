@@ -351,7 +351,7 @@ def foo():
         typeChecker.Errors.Should().NotBeEmpty();
     }
 
-    [Fact(Skip = "Type checking: Calling non-callable types not yet enforced")]
+    [Fact]
     public void RejectsCallingNonFunction()
     {
         var source = @"
@@ -517,7 +517,7 @@ def baz():
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("no member"));
     }
 
-    [Fact(Skip = "Type checking: Missing self parameter validation not yet implemented")]
+    [Fact]
     public void RejectsMissingSelfParameter()
     {
         var source = @"
@@ -658,7 +658,7 @@ def foo():
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("assign") || e.Message.Contains("target"));
     }
 
-    [Fact(Skip = "Type checking: Constant reassignment validation not yet implemented")]
+    [Fact]
     public void RejectsConstantReassignment()
     {
         var source = @"
@@ -707,7 +707,7 @@ def foo():
         typeChecker.Errors.Should().BeEmpty();
     }
 
-    [Fact(Skip = "Type checking: Bare raise validation not yet implemented")]
+    [Fact]
     public void RejectsBareRaiseOutsideExcept()
     {
         var source = @"
@@ -869,7 +869,7 @@ def foo(x: int = 'invalid'):  # default value type mismatch
         typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Default"));
     }
 
-    [Fact(Skip = "Type checking: Non-default parameter after default validation not yet implemented")]
+    [Fact]
     public void RejectsNonDefaultAfterDefault()
     {
         var source = @"

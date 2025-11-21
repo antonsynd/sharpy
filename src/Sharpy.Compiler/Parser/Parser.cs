@@ -1297,7 +1297,12 @@ public class Parser
             });
 
             if (Current.Type == TokenType.Comma)
+            {
                 Advance();
+                // Allow trailing comma: def foo(a, b, c,):
+                if (Current.Type == TokenType.RightParen)
+                    break;
+            }
             else
                 break;
         } while (true);
@@ -1799,9 +1804,9 @@ public class Parser
                 Expect(TokenType.RightBracket);
 
                 if (index is IndexAccess ia)
-                    expr = ia with { Object = expr };
+                    expr = ia with { Object = expr, LineStart = expr.LineStart, ColumnStart = expr.ColumnStart };
                 else if (index is SliceAccess sa)
-                    expr = sa with { Object = expr };
+                    expr = sa with { Object = expr, LineStart = expr.LineStart, ColumnStart = expr.ColumnStart };
             }
             else if (Current.Type == TokenType.LeftParen)
             {
@@ -1841,7 +1846,12 @@ public class Parser
                         }
 
                         if (Current.Type == TokenType.Comma)
+                        {
                             Advance();
+                            // Allow trailing comma: foo(1, 2, 3,)
+                            if (Current.Type == TokenType.RightParen)
+                                break;
+                        }
                         else
                             break;
                     } while (true);
@@ -2109,6 +2119,7 @@ public class Parser
                     while (Current.Type == TokenType.Comma)
                     {
                         Advance();
+                        // Allow trailing comma: [1, 2, 3,]
                         if (Current.Type == TokenType.RightBracket)
                             break;
                         elements.Add(ParseExpression());

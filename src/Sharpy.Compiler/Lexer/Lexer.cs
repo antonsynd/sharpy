@@ -478,10 +478,7 @@ public class Lexer
                 if (_position >= _source.Length)
                     throw new LexerError("Unterminated string literal", _line, _column);
 
-                var escaped = _source[_position];
-                sb.Append(ProcessEscapeSequence(escaped));
-                _position++;
-                _column++;
+                sb.Append(ProcessEscapeSequence());
             }
             else if (c == '\n' || c == '\r')
             {
@@ -538,10 +535,7 @@ public class Lexer
                 if (_position >= _source.Length)
                     throw new LexerError("Unterminated string literal", _line, _column);
 
-                var escaped = _source[_position];
-                sb.Append(ProcessEscapeSequence(escaped));
-                _position++;
-                _column++;
+                sb.Append(ProcessEscapeSequence());
             }
             else
             {
@@ -622,10 +616,7 @@ public class Lexer
                 if (_position >= _source.Length)
                     throw new LexerError("Unterminated f-string literal", _line, _column);
 
-                var escaped = _source[_position];
-                sb.Append(ProcessEscapeSequence(escaped));
-                _position++;
-                _column++;
+                sb.Append(ProcessEscapeSequence());
             }
             else if (c == '\n' || c == '\r')
             {
@@ -788,23 +779,97 @@ public class Lexer
         throw new LexerError("Unterminated raw string", _line, _column);
     }
 
-    private char ProcessEscapeSequence(char escaped)
+    private char ProcessEscapeSequence()
     {
-        return escaped switch
+        var escaped = _source[_position];
+        _position++;
+        _column++;
+
+        switch (escaped)
         {
-            'n' => '\n',
-            'r' => '\r',
-            't' => '\t',
-            'b' => '\b',
-            'f' => '\f',
-            '0' => '\0',
-            '\\' => '\\',
-            '\'' => '\'',
-            '"' => '"',
-            'a' => '\a',
-            'v' => '\v',
-            _ => throw new LexerError($"Invalid escape sequence: \\{escaped}", _line, _column)
-        };
+            case 'n': return '\n';
+            case 'r': return '\r';
+            case 't': return '\t';
+            case 'b': return '\b';
+            case 'f': return '\f';
+            case '0': return '\0';
+            case '\\': return '\\';
+            case '\'': return '\'';
+            case '"': return '"';
+            case '/': return '/';
+            case 'a': return '\a';
+            case 'v': return '\v';
+
+            // Hex escape: \xhh (2 hex digits)
+            case 'x':
+                {
+                    if (_position + 1 >= _source.Length)
+                        throw new LexerError("Invalid hex escape sequence", _line, _column);
+
+                    var hex = _source.Substring(_position, 2);
+                    if (!int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var value))
+                        throw new LexerError($"Invalid hex escape sequence: \\x{hex}", _line, _column);
+
+                    _position += 2;
+                    _column += 2;
+                    return (char)value;
+                }
+
+            // Unicode escape: \uhhhh (4 hex digits) or \Uhhhhhhhh (8 hex digits)
+            case 'u':
+                {
+                    if (_position + 3 >= _source.Length)
+                        throw new LexerError("Invalid unicode escape sequence", _line, _column);
+
+                    var hex = _source.Substring(_position, 4);
+                    if (!int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var value))
+                        throw new LexerError($"Invalid unicode escape sequence: \\u{hex}", _line, _column);
+
+                    _position += 4;
+                    _column += 4;
+                    return (char)value;
+                }
+
+            case 'U':
+                {
+                    if (_position + 7 >= _source.Length)
+                        throw new LexerError("Invalid unicode escape sequence", _line, _column);
+
+                    var hex = _source.Substring(_position, 8);
+                    if (!int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var value))
+                        throw new LexerError($"Invalid unicode escape sequence: \\U{hex}", _line, _column);
+
+                    _position += 8;
+                    _column += 8;
+                    return (char)value;
+                }
+
+            // Octal escape: \ooo (1-3 octal digits)
+            case char c when c >= '0' && c <= '7':
+                {
+                    var octal = c.ToString();
+
+                    // Read up to 2 more octal digits (we already have the first one)
+                    for (int i = 0; i < 2 && _position < _source.Length; i++)
+                    {
+                        var nextChar = _source[_position];
+                        if (nextChar < '0' || nextChar > '7') break;
+
+                        octal += nextChar;
+                        _position++;
+                        _column++;
+                    }
+
+                    var value = Convert.ToInt32(octal, 8);
+                    if (value > 255)
+                        throw new LexerError($"Octal escape value {octal} exceeds maximum (377)", _line, _column);
+
+                    return (char)value;
+                }
+
+            default:
+                throw new LexerError($"Invalid escape sequence: \\{escaped}", _line, _column);
+        }
     }
 
     private Token ReadNumber()

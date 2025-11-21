@@ -25,6 +25,9 @@ public class TypeChecker
     // Track type narrowing in conditional contexts
     private Dictionary<string, SemanticType> _narrowedTypes = new();
 
+    // Track whether we're inside an except block (for bare raise validation)
+    private bool _inExceptBlock = false;
+
     // Configuration
     public bool ContinueAfterError { get; set; } = true;
     public int MaxErrors { get; set; } = 100;
@@ -181,6 +184,40 @@ public class TypeChecker
 
         // Enter function scope
         _symbolTable.EnterScope($"function:{functionDef.Name}");
+
+        // Validate self parameter for instance methods
+        if (_currentClass != null && functionDef.Parameters.Count > 0)
+        {
+            // Instance method should have 'self' as first parameter
+            if (functionDef.Parameters[0].Name != "self")
+            {
+                AddError($"Instance method '{functionDef.Name}' must have 'self' as the first parameter",
+                    functionDef.LineStart, functionDef.ColumnStart);
+            }
+        }
+        else if (_currentClass != null && functionDef.Parameters.Count == 0)
+        {
+            // Instance method with no parameters at all
+            AddError($"Instance method '{functionDef.Name}' is missing required 'self' parameter",
+                functionDef.LineStart, functionDef.ColumnStart);
+        }
+
+        // Validate parameter ordering: non-default parameters cannot follow default parameters
+        bool hasSeenDefault = false;
+        for (int i = 0; i < functionDef.Parameters.Count; i++)
+        {
+            var param = functionDef.Parameters[i];
+
+            if (param.DefaultValue != null)
+            {
+                hasSeenDefault = true;
+            }
+            else if (hasSeenDefault)
+            {
+                AddError($"Non-default parameter '{param.Name}' cannot follow default parameters",
+                    param.LineStart, param.ColumnStart);
+            }
+        }
 
         // Register parameters in scope and update the function symbol's parameter types
         for (int i = 0; i < functionDef.Parameters.Count; i++)
@@ -415,6 +452,13 @@ public class TypeChecker
 
                 // Cache the expression type for the identifier
                 _semanticInfo.SetExpressionType(targetId, inferredType);
+                return;
+            }
+            // Check if trying to reassign a constant
+            else if (existingSymbol is VariableSymbol varSymbol && varSymbol.IsConstant)
+            {
+                AddError($"Cannot reassign constant variable '{targetId.Name}'",
+                    assignment.LineStart, assignment.ColumnStart);
                 return;
             }
         }
@@ -728,6 +772,13 @@ public class TypeChecker
 
     private void CheckRaise(RaiseStatement raiseStmt)
     {
+        // Bare raise (no exception) is only valid inside an except block
+        if (raiseStmt.Exception == null && !_inExceptBlock)
+        {
+            AddError("Bare 'raise' statement can only be used inside an exception handler",
+                raiseStmt.LineStart, raiseStmt.ColumnStart);
+        }
+
         if (raiseStmt.Exception != null)
         {
             CheckExpression(raiseStmt.Exception);
@@ -746,8 +797,10 @@ public class TypeChecker
         foreach (var handler in tryStmt.Handlers)
         {
             _symbolTable.EnterScope("except");
+            _inExceptBlock = true;
             foreach (var stmt in handler.Body)
                 CheckStatement(stmt);
+            _inExceptBlock = false;
             _symbolTable.ExitScope();
         }
 
@@ -961,6 +1014,9 @@ public class TypeChecker
 
     private SemanticType CheckFunctionCall(FunctionCall call)
     {
+        // Check the called expression type first
+        var calleeType = CheckExpression(call.Function);
+
         // Check arguments and collect their types
         var argTypes = new List<SemanticType>();
         foreach (var arg in call.Arguments)
@@ -987,6 +1043,14 @@ public class TypeChecker
             }
 
             funcSymbol = symbol as FunctionSymbol;
+
+            // If we found a symbol but it's not a function or type, it's not callable
+            if (symbol != null && funcSymbol == null && symbol is not TypeSymbol)
+            {
+                AddError($"'{id.Name}' is not callable (type: {calleeType.GetDisplayName()})",
+                    call.LineStart, call.ColumnStart);
+                return SemanticType.Unknown;
+            }
 
             // Special handling for builtin functions with overloads
             // If there is exactly one overload, it will be handled by the regular function symbol validation below.

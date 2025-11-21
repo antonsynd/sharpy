@@ -52,7 +52,7 @@ public class LexerEdgeCaseTests
         tokens.Should().Contain(t => t.Type == TokenType.String);
     }
 
-    [Fact(Skip = "Unimplemented: Complex escape sequences not yet supported")]
+    [Fact]
     public void HandlesStringWithAllEscapeSequences()
     {
         var source = "\"\\n\\r\\t\\\\\\\"\\'\\/\"";
@@ -60,7 +60,7 @@ public class LexerEdgeCaseTests
         tokens.Should().Contain(t => t.Type == TokenType.String);
     }
 
-    [Fact(Skip = "Unimplemented: Unicode escape sequences not yet supported")]
+    [Fact]
     public void HandlesUnicodeEscapeInString()
     {
         var source = "\"\\u0041\\u0042\\u0043\"";  // ABC
@@ -68,7 +68,7 @@ public class LexerEdgeCaseTests
         tokens.Should().Contain(t => t.Type == TokenType.String);
     }
 
-    [Fact(Skip = "Unimplemented: Hex escape sequences not yet supported")]
+    [Fact]
     public void HandlesHexEscapeInString()
     {
         var source = "\"\\x41\\x42\\x43\"";  // ABC
@@ -76,7 +76,7 @@ public class LexerEdgeCaseTests
         tokens.Should().Contain(t => t.Type == TokenType.String);
     }
 
-    [Fact(Skip = "Unimplemented: Octal escape sequences not yet supported")]
+    [Fact]
     public void HandlesOctalEscapeInString()
     {
         var source = "\"\\101\\102\\103\"";  // ABC
