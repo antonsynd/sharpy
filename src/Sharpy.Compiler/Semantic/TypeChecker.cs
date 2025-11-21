@@ -556,11 +556,14 @@ public class TypeChecker
             _narrowedTypes[kvp.Key] = kvp.Value;
         }
         
-        // Enter scope for if-else block
-        _symbolTable.EnterScope("if-else");
-        foreach (var stmt in ifStmt.ElseBody)
-            CheckStatement(stmt);
-        _symbolTable.ExitScope();
+        // Enter scope for if-else block only if there are statements
+        if (ifStmt.ElseBody.Count > 0)
+        {
+            _symbolTable.EnterScope("if-else");
+            foreach (var stmt in ifStmt.ElseBody)
+                CheckStatement(stmt);
+            _symbolTable.ExitScope();
+        }
 
         // Restore original narrowed types
         _narrowedTypes = savedNarrowedTypes;

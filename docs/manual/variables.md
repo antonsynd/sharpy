@@ -290,31 +290,37 @@ def assignment_vs_declaration():
     # print(y)  # ERROR: y is not accessible here
 ```
 
-### Shadowing Limitations
+### Variable Shadowing in Sharpy
 
-Unlike some languages, C# (and therefore Sharpy) does **not** allow shadowing variables within nested blocks in the same function:
+C# (and therefore Sharpy) has specific rules about when variable shadowing is allowed:
+
+**❌ NOT allowed: Shadowing in nested blocks within the same function**
 
 ```sharpy
 def no_nested_shadowing():
     x: int = 1
     
     if True:
-        # ERROR in C#: Cannot declare 'x' in nested scope
+        # ERROR: Cannot declare 'x' because it's already declared in an enclosing scope
         # x: int = 2
         
-        # Use bare assignment to modify outer variable instead
+        # Use bare assignment to modify the outer variable instead
         x = 2
 ```
 
-However, shadowing **is** allowed across different functions:
+The error occurs because C# doesn't allow you to declare a variable with the same name as another local variable in an enclosing scope within the same function. This prevents confusion about which variable is being referenced.
+
+**✅ Allowed: Shadowing across different functions**
 
 ```sharpy
 x: int = 1  # Global variable
 
 def shadow_global():
-    x: int = 2  # OK: Shadows global x within function
+    x: int = 2  # OK: Shadows global x within this function
     print(x)    # Prints 2
 
 shadow_global()
 print(x)  # Prints 1 (global x unchanged)
 ```
+
+Shadowing across function boundaries is allowed because each function has its own scope that doesn't overlap with other functions or the global scope.
