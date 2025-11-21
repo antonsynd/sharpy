@@ -6,25 +6,23 @@
 
 **Location:** `src/Sharpy.Core/`
 
-**Test Coverage:** 735 tests, 100% pass rate ✅
-
 ## What's in This Directory
 
 ### Core Collections
 
 **List Implementation:**
-- `Partial.List/` - Pythonic list[T] wrapper around .NET List<T>
+- `Partial.List/` - Pythonic `list[T]` wrapper around .NET `List<T>`
 - `Partial.ListIterator/` - Iterator support
 - `Partial.ListReverseIterator/` - Reverse iteration
 - Methods: `append()`, `extend()`, `insert()`, `remove()`, `pop()`, `clear()`, `index()`, `count()`, `sort()`, `reverse()`, `copy()`
 
 **Dictionary Implementation:**
-- `Dict.cs` - Pythonic dict[K,V] wrapper around .NET Dictionary<K,V>
+- `Dict.cs` - Pythonic `dict[K,V]` wrapper around .NET `Dictionary<K,V>`
 - `DictKeyView.cs`, `DictValuesView.cs`, `DictItemsView.cs` - View objects
 - Methods: `keys()`, `values()`, `items()`, `get()`, `pop()`, `popitem()`, `clear()`, `update()`, `setdefault()`
 
 **Set Implementation:**
-- `Partial.Set/` - Pythonic set[T] wrapper around .NET HashSet<T>
+- `Partial.Set/` - Pythonic `set[T]` wrapper around .NET `HashSet<T>`
 - `Partial.SetIterator/` - Iterator support
 - Methods: `add()`, `remove()`, `discard()`, `pop()`, `clear()`, `union()`, `intersection()`, `difference()`, `symmetric_difference()`
 
@@ -151,7 +149,7 @@ dotnet build
 ## How to Test
 
 ```bash
-# Run all Sharpy.Core tests (735 tests)
+# Run all Sharpy.Core tests
 dotnet test src/Sharpy.Core.Tests
 
 # Run specific test files
@@ -165,12 +163,6 @@ dotnet test --filter "FullyQualifiedName~RangeTests"
 dotnet test --filter "FullyQualifiedName~EnumerateTests"
 dotnet test --filter "FullyQualifiedName~FilterTests"
 ```
-
-### Expected Test Results
-- **Total:** 735 tests
-- **Passing:** 735
-- **Failed:** 0
-- **Pass Rate:** 100% ✅
 
 ## Important Things to Note
 
@@ -221,7 +213,7 @@ dotnet test --filter "FullyQualifiedName~FilterTests"
        var list = new List<int> { 1, 2, 3 };
        Assert.Equal(1, list.pop());  // Bug: should be 3 (last element)
    }
-   
+
    // ✅ CORRECT: Fix the implementation
    [Fact]
    public void TestListPop()
@@ -240,7 +232,7 @@ dotnet test --filter "FullyQualifiedName~FilterTests"
 
 4. **Mark skipped tests appropriately:**
    ```csharp
-   [Fact(Skip = "TODO: Implement dict.fromkeys() - Python 3.x builtin")]
+   [Fact(Skip = "TODO: Implement dict.fromkeys() - Sharpy 1.x")]
    public void TestDictFromKeys()
    {
        // Feature not yet implemented
@@ -254,12 +246,12 @@ dotnet test --filter "FullyQualifiedName~FilterTests"
 public partial class List<T> : IEnumerable<T>
 {
     private readonly System.Collections.Generic.List<T> _inner;
-    
+
     public List(IEnumerable<T> items)
     {
         _inner = new System.Collections.Generic.List<T>(items);
     }
-    
+
     public void append(T item) => _inner.Add(item);
     public T pop() => pop(-1);  // Default to last element
     public int __len__() => _inner.Count;
@@ -298,7 +290,7 @@ public T this[int index]
 2. **Implement the function:**
    ```csharp
    namespace Sharpy.Core;
-   
+
    public static class NewFunction
    {
        public static TResult new_function<T, TResult>(T input)
@@ -377,7 +369,7 @@ public void insert_all(int index, IEnumerable<T> items)
     var actualIndex = index < 0 ? _inner.Count + index : index;
     if (actualIndex < 0) actualIndex = 0;
     if (actualIndex > _inner.Count) actualIndex = _inner.Count;
-    
+
     _inner.InsertRange(actualIndex, items);
 }
 ```

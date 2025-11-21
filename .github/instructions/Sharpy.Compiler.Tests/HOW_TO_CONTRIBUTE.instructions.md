@@ -6,8 +6,6 @@
 
 **Location:** `src/Sharpy.Compiler.Tests/`
 
-**Test Coverage:** 1,391 tests passing, 44 skipped ✅
-
 ## What's in This Directory
 
 ### Test Organization
@@ -60,18 +58,16 @@ dotnet build
 ```bash
 # From repository root
 dotnet test src/Sharpy.Compiler.Tests
-
-# Expected: 1,391 passed, 44 skipped, 0 failed
 ```
 
 ### Run Tests by Component
 
 ```bash
-# Lexer tests only (237 tests)
+# Lexer tests only
 dotnet test --filter "FullyQualifiedName~Lexer"
 dotnet test --filter "Namespace~Sharpy.Compiler.Tests.Lexer"
 
-# Parser tests only (~450 tests)
+# Parser tests only
 dotnet test --filter "FullyQualifiedName~Parser"
 dotnet test --filter "Namespace~Sharpy.Compiler.Tests.Parser"
 
@@ -79,11 +75,11 @@ dotnet test --filter "Namespace~Sharpy.Compiler.Tests.Parser"
 dotnet test --filter "FullyQualifiedName~Semantic"
 dotnet test --filter "Namespace~Sharpy.Compiler.Tests.Semantic"
 
-# Code generation tests (259 tests)
+# Code generation tests
 dotnet test --filter "FullyQualifiedName~CodeGen"
 dotnet test --filter "Namespace~Sharpy.Compiler.Tests.CodeGen"
 
-# Integration tests (56 tests)
+# Integration tests
 dotnet test --filter "FullyQualifiedName~Integration"
 dotnet test --filter "Namespace~Sharpy.Compiler.Tests.Integration"
 
@@ -151,7 +147,7 @@ dotnet test --filter "FullyQualifiedName~SpecificTestName" --logger "console;ver
        var result = Compile("x = 1 + 1");
        Assert.Equal("x = 1 + 2", result);  // BUG: Should be "1 + 1"
    }
-   
+
    // ✅ CORRECT: Fix the compiler bug
    [Fact]
    public void TestAddition()
@@ -178,12 +174,12 @@ dotnet test --filter "FullyQualifiedName~SpecificTestName" --logger "console;ver
        // Test implementation...
    }
    ```
-   
+
    **When to skip:**
    - Feature not yet implemented (planned for future)
    - Blocked by another issue
    - Known limitation documented in specs
-   
+
    **Include:**
    - Specific reason ("tuple unpacking not in AST")
    - What needs to happen ("implement in parser")
@@ -221,7 +217,7 @@ public void TestTokenizeIdentifier()
     var source = "hello_world";
     var lexer = new Lexer(source);
     var tokens = lexer.Tokenize();
-    
+
     Assert.Equal(2, tokens.Count);  // identifier + EOF
     Assert.Equal(TokenType.Identifier, tokens[0].Type);
     Assert.Equal("hello_world", tokens[0].Value);
@@ -239,7 +235,7 @@ public void TestParseIfStatement()
         """;
     var parser = new Parser(source);
     var module = parser.Parse();
-    
+
     Assert.Single(module.Body);
     var ifStmt = Assert.IsType<IfStmt>(module.Body[0]);
     Assert.IsType<Compare>(ifStmt.Test);
@@ -255,7 +251,7 @@ public void TestTypeChecker_ReportsTypeMismatch()
     var source = """
         x: int = "not an int"
         """;
-    
+
     var analyzer = new SemanticAnalyzer();
     var ex = Assert.Throws<SemanticException>(() => analyzer.Analyze(source));
     Assert.Contains("type mismatch", ex.Message.ToLower());
@@ -271,7 +267,7 @@ public void TestGenerateFString()
         name = "World"
         message = f"Hello, {name}!"
         """;
-    
+
     var generated = CompileToCS(source);
     Assert.Contains("$\"Hello, {name}!\"", generated);
 }
@@ -285,14 +281,14 @@ public void CompileBasicProgram()
     var source = """
         def greet(name: str) -> str:
             return f"Hello, {name}!"
-        
+
         result = greet("World")
         print(result)
         """;
-    
+
     var assembly = Compile(source);
     Assert.NotNull(assembly);
-    
+
     // Optionally: Execute and verify output
     var output = Execute(assembly);
     Assert.Equal("Hello, World!", output.Trim());
@@ -367,10 +363,10 @@ public void CompileBasicProgram()
    {
        var source = "...";
        Console.WriteLine($"Source: {source}");
-       
+
        var result = Process(source);
        Console.WriteLine($"Result: {result}");
-       
+
        Assert.Equal(expected, result);
    }
    ```
@@ -387,39 +383,11 @@ public void CompileBasicProgram()
 
 ### Handling Skipped Tests
 
-**Current skipped tests (44 total):**
-- Features not yet implemented (tuple unpacking, generic function params)
-- Planned for future versions (v1.0+)
-- Edge cases that need design decisions
-
 **When reviewing skipped tests:**
 1. Read the skip reason
 2. Check if the feature is now implemented
 3. If yes, remove the `Skip` attribute and verify the test passes
 4. If no, leave skipped with clear reason
-
-### Adding Performance Tests
-
-```csharp
-[Fact]
-public void TestModuleCaching_Performance()
-{
-    var stopwatch = Stopwatch.StartNew();
-    
-    // First compilation - cache miss
-    Compile(sourceWithImports);
-    var firstTime = stopwatch.Elapsed;
-    
-    stopwatch.Restart();
-    
-    // Second compilation - cache hit
-    Compile(sourceWithImports);
-    var secondTime = stopwatch.Elapsed;
-    
-    // Should be at least 2x faster with caching
-    Assert.True(secondTime < firstTime / 2);
-}
-```
 
 ## Test Data Organization
 
@@ -447,12 +415,6 @@ public void TestModuleCaching_Performance()
 - **Compiler Guide:** `.github/instructions/Sharpy.Compiler/HOW_TO_CONTRIBUTE.instructions.md`
 - **Language Reference:** `docs/specs/language_reference.md`
 - **Test Strategy:** (Look at existing tests for patterns)
-
-## Known Issues and Limitations
-
-- 44 tests currently skipped (documented with reasons)
-- Some edge cases need additional coverage
-- Performance tests could be more comprehensive
 
 ## Getting Help
 

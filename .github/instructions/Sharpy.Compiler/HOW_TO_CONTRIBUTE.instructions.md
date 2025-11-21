@@ -46,7 +46,6 @@ Sharpy.Compiler/
 
 #### Lexer (Tokenization)
 - **Responsibility:** Convert source text into tokens
-- **Status:** ✅ Complete (237 passing tests)
 - **Features:**
   - All operators, keywords, literals (int, float, string)
   - F-strings, raw strings, triple-quoted strings
@@ -56,7 +55,6 @@ Sharpy.Compiler/
 
 #### Parser (AST Generation)
 - **Responsibility:** Convert tokens into Abstract Syntax Tree
-- **Status:** ✅ Complete (~450 passing tests)
 - **Features:**
   - All expression types (literals, operators, calls, indexing, slicing, lambdas)
   - All statement types (assignments, control flow, exception handling)
@@ -66,7 +64,6 @@ Sharpy.Compiler/
 
 #### Semantic Analyzer
 - **Responsibility:** Type checking, name resolution, semantic validation
-- **Status:** ✅ Complete (comprehensive test coverage)
 - **Features:**
   - Type inference and checking
   - Name resolution with cross-scope lookup
@@ -77,10 +74,7 @@ Sharpy.Compiler/
 
 #### Code Generator
 - **Responsibility:** Generate C# code from validated AST
-- **Status:** ✅ 95% Complete (259 passing tests)
 - **Features:**
-  - All P0 (critical) features: 21/21 ✅
-  - All P1 (important) features: 9/9 ✅
   - Operator overload synthesis from dunder methods
   - Constructor generation from `__init__`
   - F-string interpolation
@@ -89,7 +83,6 @@ Sharpy.Compiler/
 
 #### Discovery (Module Resolution)
 - **Responsibility:** Find and cache imported modules
-- **Status:** ✅ Complete with 4-7x performance improvement
 - **Features:**
   - Cross-module imports
   - Module caching
@@ -105,9 +98,6 @@ dotnet build src/Sharpy.Compiler/Sharpy.Compiler.csproj
 # From Sharpy.Compiler directory
 cd src/Sharpy.Compiler
 dotnet build
-
-# Build in watch mode (auto-rebuild on changes)
-dotnet watch --project src/Sharpy.Compiler
 ```
 
 ## How to Test
@@ -127,12 +117,6 @@ dotnet test --filter "FullyQualifiedName~Integration"
 dotnet test --filter "Namespace~Sharpy.Compiler.Tests.Lexer"
 dotnet test --filter "Namespace~Sharpy.Compiler.Tests.Parser"
 ```
-
-### Test Results (Expected)
-- **Total:** 1,391 tests
-- **Passing:** 1,391
-- **Skipped:** 44 (marked with reason)
-- **Failed:** 0
 
 ## Important Things to Note
 
@@ -247,10 +231,10 @@ public void TestNewFeature()
     // Arrange
     var source = "test code";
     var lexer = new Lexer(source);
-    
+
     // Act
     var tokens = lexer.Tokenize();
-    
+
     // Assert
     Assert.Equal(expectedTokenCount, tokens.Count);
     Assert.Equal(TokenType.Identifier, tokens[0].Type);
@@ -282,14 +266,6 @@ Console.WriteLine(astString);
 - **Microsoft.CodeAnalysis.CSharp** (Roslyn) - C# code generation and compilation
 - **Sharpy.Core** - Standard library references
 - **.NET 9.0/10.0** - Runtime and BCL
-
-## Known Limitations
-
-- **Tuple unpacking** - Not in AST yet (parser enhancement needed)
-- **Generic function type parameters** - Not in AST yet
-- **Properties** - Deferred to v1.0
-- **Comprehensions** - Deferred to v1.0
-- **Pattern matching** - Deferred to v1.0
 
 ## Related Documentation
 

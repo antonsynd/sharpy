@@ -38,21 +38,36 @@ dotnet build
 dotnet run --project src/Sharpy.Cli -- <args>
 
 # Examples:
-dotnet run --project src/Sharpy.Cli -- snippets/hello.spy --emit-tokens
-dotnet run --project src/Sharpy.Cli -- --project samples/calculator_app/calculator.spyproj
+dotnet run --project src/Sharpy.Cli -- build snippets/hello.spy
+dotnet run --project src/Sharpy.Cli -- project samples/calculator_app/calculator.spyproj
 dotnet run --project src/Sharpy.Cli -- --help
+```
+
+Note that the compiler can also be installed via Chiri, which is a custom build system wrapper. The most important command is `chiri pkg -- release`, which builds, tests, and installs the Sharpy compiler to `~/.local/bin/sharpyc`.
+
+```bash
+# Assuming `chiri` is in PATH, usually at ~/.chiri/bin/chiri
+chiri pkg -- release
+
+# Install only (skip tests/build)
+chiri pkg -- install
+```
+
+### Run the Sharpy Compiler installed via Chiri
+
+```bash
+sharpyc <args>
+
+# Examples:
+sharpyc build snippets/hello.spy
+sharpyc --help
 ```
 
 ### Common Commands
 
-**Emit tokens for a file:**
-```bash
-dotnet run --project src/Sharpy.Cli -- snippets/hello.spy --emit-tokens
-```
-
 **Compile a project:**
 ```bash
-dotnet run --project src/Sharpy.Cli -- --project samples/calculator_app/calculator.spyproj
+dotnet run --project src/Sharpy.Cli -- project samples/calculator_app/calculator.spyproj
 ```
 
 **Compile in Release mode:**
@@ -62,31 +77,22 @@ dotnet run --project src/Sharpy.Cli -- --configuration Release
 
 ## How to Test
 
-Currently, there are no automated tests for Sharpy.Cli. Testing is done manually:
+There are no automated tests for Sharpy.Cli. Testing is done manually:
 
 1. **Test single-file compilation:**
    ```bash
-   dotnet run --project src/Sharpy.Cli -- test.spy --emit-tokens
+   dotnet run --project src/Sharpy.Cli -- build test.spy
    ```
 
 2. **Test project compilation:**
    ```bash
-   dotnet run --project src/Sharpy.Cli -- --project samples/calculator_app/calculator.spyproj
+   dotnet run --project src/Sharpy.Cli -- project samples/calculator_app/calculator.spyproj
    ```
 
 3. **Test error handling:**
    - Try compiling a non-existent file
    - Try compiling a file with syntax errors
    - Try using conflicting options
-
-### Adding Tests (Future)
-
-When adding tests:
-- Create a new test project `Sharpy.Cli.Tests`
-- Test command-line argument parsing
-- Test error handling and exit codes
-- Test integration with compiler components
-- **Do NOT artificially make tests pass** - fix the root cause or mark as skipped with a detailed explanation
 
 ## Important Things to Note
 
@@ -95,20 +101,6 @@ When adding tests:
 - Delegates compilation to `Sharpy.Compiler.Compiler` and `Sharpy.Compiler.AssemblyCompiler`
 - Handles both single-file and multi-file (project) compilation
 - Returns appropriate exit codes (0 = success, non-zero = error)
-
-### Current Features (Implemented)
-- ✅ `--emit-tokens` - Display lexer tokens
-- ✅ `--project <path>` - Compile a `.spyproj` file
-- ✅ `-c, --configuration <Debug|Release>` - Build configuration
-- ✅ Error handling with user-friendly messages
-- ✅ Auto-discovery of `.spyproj` files
-
-### Not Yet Implemented
-- ❌ `--emit-ast` - Display AST
-- ❌ `--output <path>` - Custom output path (single-file mode)
-- ❌ `--module-path <path>` - Module search paths (single-file mode)
-- ❌ `--clean` - Delete bin/ directories
-- ❌ `--emit-cs-to <path>` - Save intermediate C# code
 
 ### Error Handling
 - All errors written to stderr
@@ -179,12 +171,13 @@ def greet(name: str) -> None:
     message: str = f"Hello, {name}!"
     print(message)
 
-greet("World")
+def main() -> None:
+    greet("World")
 ```
 
 Run:
 ```bash
-dotnet run --project src/Sharpy.Cli -- test.spy --emit-tokens
+dotnet run --project src/Sharpy.Cli -- build test.spy
 ```
 
 ### Example Project File
@@ -205,7 +198,7 @@ Create `myapp.spyproj`:
 
 Run:
 ```bash
-dotnet run --project src/Sharpy.Cli -- --project myapp.spyproj
+dotnet run --project src/Sharpy.Cli -- project myapp.spyproj
 ```
 
 ## Related Documentation

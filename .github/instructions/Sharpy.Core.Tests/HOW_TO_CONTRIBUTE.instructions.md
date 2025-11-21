@@ -6,11 +6,13 @@
 
 **Location:** `src/Sharpy.Core.Tests/`
 
-**Test Coverage:** 735 tests, 100% pass rate ✅
-
 ## What's in This Directory
 
 ### Test Organization
+
+Tests for different facets of a class should be put into a Partial.*Tests
+directory with multiple files for different aspects. See the abbreviated
+test directory structure below.
 
 ```
 Sharpy.Core.Tests/
@@ -27,31 +29,7 @@ Sharpy.Core.Tests/
 ├── DictTests.cs               # Dictionary tests
 ├── DictViewsTests.cs          # keys(), values(), items()
 ├── StrTests.cs                # String wrapper tests
-├── StrMethodsTests.cs         # String method tests
-├── RangeTests.cs              # range() tests
-├── EnumerateTests.cs          # enumerate() tests
-├── ZipTests.cs                # zip() tests
-├── FilterTests.cs             # filter() tests
-├── MapTests.cs                # map() tests
-├── SortedTests.cs             # sorted() tests
-├── AllTests.cs                # all() tests
-├── AnyTests.cs                # any() tests
-├── MaxTests.cs                # max() tests
-├── MinTests.cs                # min() tests
-├── PowTests.cs                # pow() tests
-├── RoundTests.cs              # round() tests
-├── DivModTests.cs             # divmod() tests
-├── IntConversionTests.cs      # int() tests
-├── DoubleConversionTests.cs   # float() tests
-├── FormatTests.cs             # String formatting
-├── PrintTests.cs              # print() tests
-├── IsinstanceTests.cs         # isinstance() tests
-├── IssubclassTests.cs         # issubclass() tests
-├── TypeTests.cs               # type() tests
-├── ListConversionTests.cs     # list() conversion
-├── SetConversionTests.cs      # set() conversion
-├── TupleConversionTests.cs    # tuple() conversion
-└── ModuleIntegrationTests.cs  # Integration tests
+└── ...
 ```
 
 ## How to Build
@@ -71,8 +49,6 @@ dotnet build
 ```bash
 # From repository root
 dotnet test src/Sharpy.Core.Tests
-
-# Expected: 735 passed, 0 failed, 0 skipped
 ```
 
 ### Run Tests by Component
@@ -125,7 +101,7 @@ dotnet test --filter "DisplayName~Negative"
 
 ### Testing Philosophy
 
-**Match Python behavior exactly:**
+**Match Python behavior wherever possible and appropriate:**
 - Run equivalent code in Python REPL to verify expected behavior
 - Test edge cases that Python handles
 - Document any intentional differences from Python
@@ -163,7 +139,7 @@ public void TestListPop_RemovesLastElement()
        var d = new Dict<string, int> { ["a"] = 1 };
        Assert.Equal(1, d.get("b", 0));  // BUG: Should return 0 (default)
    }
-   
+
    // ✅ CORRECT: Fix the implementation in Sharpy.Core
    [Fact]
    public void TestDictGet_DefaultValue()
@@ -180,7 +156,7 @@ public void TestListPop_RemovesLastElement()
    >>> d.get("b", 0)
    0
    ```
-   
+
    Then write the C# test to match.
 
 3. **Fix the root cause in Sharpy.Core:**
@@ -192,7 +168,7 @@ public void TestListPop_RemovesLastElement()
 
 4. **Mark as skipped ONLY if feature not implemented:**
    ```csharp
-   [Fact(Skip = "TODO: Implement dict.fromkeys() class method - Python 3.x feature")]
+   [Fact(Skip = "TODO: Implement dict.fromkeys() class method - Sharpy 1.x feature")]
    public void TestDictFromKeys()
    {
        var result = Dict<string, int>.fromkeys(new[] { "a", "b" });
@@ -287,7 +263,7 @@ public void TestEnumerate()
 {
     var items = new List<string> { "a", "b", "c" };
     var enumerated = enumerate(items).ToList();
-    
+
     Assert.Equal(0, enumerated[0].Index);
     Assert.Equal("a", enumerated[0].Item);
     Assert.Equal(1, enumerated[1].Index);
@@ -358,13 +334,13 @@ public void TestDictKeyError()
    {
        Assert.True(all(new[] { true, true, true }));
    }
-   
+
    [Fact]
    public void TestAll_OneFalse_ReturnsFalse()
    {
        Assert.False(all(new[] { true, false, true }));
    }
-   
+
    [Fact]
    public void TestAll_Empty_ReturnsTrue()
    {
@@ -389,7 +365,7 @@ public void TestDictKeyError()
 3. **Compare with test:**
    ```csharp
    var lst = new List<int> { 1, 2, 3 };
-   Assert.Equal(3, lst.pop());  // Should match Python
+   Assert.Equal(3, lst.pop());  // Should match Python where possible and appropriate
    ```
 
 4. **Debug the implementation** in `src/Sharpy.Core/`
@@ -482,21 +458,6 @@ Assert.Equal(expected, actual, $"Failed for input: {input}");
 - **Core Library Guide:** `.github/instructions/Sharpy.Core/HOW_TO_CONTRIBUTE.instructions.md`
 - **Builtins Reference:** `docs/specs/builtins.md`
 - **Python Documentation:** https://docs.python.org/3/ (for reference behavior)
-
-## Current Test Statistics
-
-- **Total Tests:** 735
-- **Passing:** 735 (100%)
-- **Failed:** 0
-- **Skipped:** 0
-
-**Coverage by Component:**
-- List operations: ~200 tests
-- Dict operations: ~150 tests
-- Set operations: ~100 tests
-- Builtin functions: ~200 tests
-- Type conversions: ~50 tests
-- Miscellaneous: ~35 tests
 
 ## Getting Help
 

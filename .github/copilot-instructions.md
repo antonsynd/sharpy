@@ -4,9 +4,7 @@ This document provides guidance for engineers and agents working on the Sharpy c
 
 ## Project Overview
 
-**Sharpy** is a modern, statically-typed Pythonic language for .NET that combines Python's elegant syntax with .NET's type safety and performance. The project includes a full compiler toolchain, standard library, CLI, and comprehensive test suite.
-
-**Current Version:** v0.5 (90% complete, 1,287 passing tests)
+**Sharpy** is a modern, statically-typed Pythonic language for .NET that combines Python's elegant syntax with .NET's type safety and performance. The project includes a full compiler toolchain, standard library, and CLI.
 
 ## Repository Structure
 
@@ -16,8 +14,8 @@ sharpy/
 │   ├── Sharpy.Core/              # Standard library (Pythonic APIs for .NET)
 │   ├── Sharpy.Compiler/          # Compiler implementation (lexer, parser, semantic analyzer, code generator)
 │   ├── Sharpy.Cli/               # CLI tool (sharpyc)
-│   ├── Sharpy.Core.Tests/        # Standard library tests (735 tests)
-│   └── Sharpy.Compiler.Tests/    # Compiler tests (1,391 tests, 44 skipped)
+│   ├── Sharpy.Core.Tests/        # Standard library tests
+│   └── Sharpy.Compiler.Tests/    # Compiler tests
 ├── docs/                         # Documentation (manual, specs, architecture)
 ├── samples/                      # Example Sharpy programs and projects
 ├── snippets/                     # Small code snippets for testing
@@ -29,23 +27,23 @@ sharpy/
 ### Key Directories
 
 **Source Code:**
-- **`src/Sharpy.Core/`** - Standard library with Pythonic wrappers for .NET collections (`list[T]`, `dict[K,V]`, `set[T]`, `str`) and builtin functions (`len()`, `print()`, `range()`, etc.)
+- **`src/Sharpy.Core/`** - Standard Pythonic library (`list[T]`, `dict[K,V]`, `set[T]`, `str`, `len()`, `print()`, `range()`, etc.)
 - **`src/Sharpy.Compiler/`** - Compiler pipeline:
-  - `Lexer/` - Tokenization (237 passing tests)
-  - `Parser/` - AST generation (~450 passing tests)
+  - `Lexer/` - Tokenization
+  - `Parser/` - AST generation
   - `Semantic/` - Type checking, name resolution, type narrowing
-  - `CodeGen/` - C# code generation via Roslyn (259 passing tests)
+  - `CodeGen/` - C# code generation via Roslyn
   - `Discovery/` - Module discovery and caching
 - **`src/Sharpy.Cli/`** - Command-line interface for the compiler
 
 **Tests:**
-- **`src/Sharpy.Core.Tests/`** - Unit tests for standard library (735 tests, 100% pass rate)
+- **`src/Sharpy.Core.Tests/`** - Unit tests for standard library
 - **`src/Sharpy.Compiler.Tests/`** - Compiler tests organized by component:
   - `Lexer/` - Tokenization tests
   - `Parser/` - AST parsing tests
   - `Semantic/` - Type checking and analysis tests
   - `CodeGen/` - Code generation tests
-  - `Integration/` - End-to-end compilation tests (56 tests)
+  - `Integration/` - End-to-end compilation tests
 
 **Documentation:**
 - **`docs/manual/`** - User guides (variables, functions, types, control flow, errors)
@@ -53,7 +51,7 @@ sharpy/
 - **`docs/architecture/`** - Design documentation
 
 **Examples:**
-- **`samples/`** - Full example projects (calculator app, module samples)
+- **`samples/`** - Full example projects demonstrating Sharpy features
 - **`snippets/`** - Small code examples for testing features
 
 ## How to Build
@@ -80,22 +78,12 @@ dotnet build src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj
 dotnet build src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj
 ```
 
-### Build in Watch Mode
-```bash
-# Auto-rebuild on file changes
-dotnet watch --project src/Sharpy.Compiler
-```
-
 ## How to Run Tests
 
 ### Run All Tests
 ```bash
 # From repository root
 dotnet test
-
-# Expected results (as of v0.5):
-# - Sharpy.Core.Tests: 735 tests, 0 failed, 0 skipped
-# - Sharpy.Compiler.Tests: 1,391 tests, 0 failed, 44 skipped
 ```
 
 ### Run Specific Test Projects
@@ -118,33 +106,41 @@ dotnet test --filter "FullyQualifiedName~BasicProgram"
 dotnet test --filter "Namespace~Sharpy.Compiler.Tests.Lexer"
 ```
 
-### Run Tests Without Building
-```bash
-dotnet test --no-build
-```
-
 ## How to Use the Compiler
 
-### Run the CLI
+### Install the CLI tool using Chiri
+
+Chiri is a custom build system wrapper. The most important command is `chiri pkg -- release`, which builds, tests, and installs the Sharpy compiler to `~/.local/bin/sharpyc`.
+
 ```bash
-# From repository root
-dotnet run --project src/Sharpy.Cli -- <args>
+# Assuming `chiri` is in PATH, usually at ~/.chiri/bin/chiri
+chiri pkg -- release
+
+# Install only (skip tests/build)
+chiri pkg -- install
+```
+
+### Run the Sharpy Compiler
+
+```bash
+# Then from anywhere
+sharpyc <args>
 
 # Examples:
-dotnet run --project src/Sharpy.Cli -- snippets/hello.spy --emit-tokens
-dotnet run --project src/Sharpy.Cli -- --help
+sharpyc build snippets/hello.spy
+sharpyc --help
 ```
 
 ### Compile a Sharpy Project
 ```bash
 # Auto-discover .spyproj in current directory
-dotnet run --project src/Sharpy.Cli
+sharpyc project
 
 # Compile specific project
-dotnet run --project src/Sharpy.Cli -- --project samples/calculator_app/calculator.spyproj
+sharpyc project samples/calculator_app/calculator.spyproj
 
 # Compile in Release mode
-dotnet run --project src/Sharpy.Cli -- --configuration Release
+sharpyc project --configuration Release
 ```
 
 ## Formatting
@@ -199,24 +195,6 @@ dotnet format src/Sharpy.Compiler/Sharpy.Compiler.csproj
 4. **Format code**: `dotnet format`
 5. **Commit** with descriptive message
 6. **Push** and create PR
-
-## Current Project Status (v0.5)
-
-### ✅ Fully Working
-- **Lexer** - Complete tokenization (237 tests)
-- **Parser** - Complete AST generation (~450 tests)
-- **Semantic Analyzer** - Type checking, name resolution, type narrowing
-- **Code Generator** - C# code generation (259 tests, 95% complete)
-- **Standard Library** - Collections and builtins (735 tests, 100% pass rate)
-- **Integration Tests** - End-to-end pipeline (56 tests)
-- **Module Discovery** - Cross-module imports with caching
-
-### 🚧 Known Limitations
-- Tuple unpacking (not in AST yet)
-- Generic function type parameters (not in AST yet)
-- Properties (deferred to v1.0)
-- Comprehensions (deferred to v1.0)
-- Pattern matching (deferred to v1.0)
 
 ## Getting Help
 

@@ -91,14 +91,6 @@ dotnet run --project src/Sharpy.Cli -- --project samples/calculator_app/calculat
 dotnet run --project src/Sharpy.Cli -- --project samples/calculator_app/calculator.spyproj --configuration Release
 ```
 
-### Build All Samples
-```bash
-# Create a script to build all samples (if needed)
-for sample in samples/**/*.spyproj; do
-    dotnet run --project src/Sharpy.Cli -- --project "$sample"
-done
-```
-
 ## How to Run Samples
 
 ### Run Compiled Output
@@ -182,7 +174,7 @@ my_sample/
    ```bash
    # Single file
    touch samples/new_feature_example.spy
-   
+
    # Or multi-file project
    mkdir samples/new_app
    touch samples/new_app/new_app.spyproj
@@ -194,12 +186,12 @@ my_sample/
    ```python
    # samples/new_feature_example.spy
    # This sample demonstrates <feature>
-   
+
    def example() -> None:
        # Example code here
        pass
-   
-   if __name__ == "__main__":
+
+   def main() -> None:
        example()
    ```
 
@@ -341,12 +333,12 @@ def main() -> None:
     result1 = safe_divide(10.0, 2.0)
     if result1 is not None:
         print(f"10.0 / 2.0 = {result1}")
-    
+
     # Example 2: Division by zero
     result2 = safe_divide(10.0, 0.0)
     if result2 is None:
         print("Division by zero handled")
-    
+
     # Example 3: Multiple exception types
     try:
         # Some operation that might fail
@@ -357,9 +349,6 @@ def main() -> None:
         print(f"Other error: {e}")
     finally:
         print("Cleanup code runs here")
-
-if __name__ == "__main__":
-    main()
 ```
 
 **3. Test it:**
