@@ -22,7 +22,13 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import List, Set, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+
+class RateLimitExceeded(Exception):
+    """Exception raised when GitHub Copilot rate limit is exceeded."""
+
+    pass
 
 
 @dataclass
@@ -160,8 +166,50 @@ Focus on providing intuition and understanding, not just restating what the code
             )
 
             if process.returncode != 0:
+                stderr_text = stderr.decode("utf-8")
+
+                # Check for rate limiting errors (429 status)
+                if (
+                    "rate_limited" in stderr_text
+                    or "429" in stderr_text
+                    or "exceeded your Copilot token usage" in stderr_text
+                ):
+                    print(
+                        "\n" + "=" * 60,
+                        file=sys.stderr,
+                    )
+                    print(
+                        "RATE LIMIT EXCEEDED",
+                        file=sys.stderr,
+                    )
+                    print(
+                        "=" * 60,
+                        file=sys.stderr,
+                    )
+                    print(
+                        f"GitHub Copilot rate limit reached while processing {cs_file}",
+                        file=sys.stderr,
+                    )
+                    print(
+                        f"Error details: {stderr_text}",
+                        file=sys.stderr,
+                    )
+                    print(
+                        "\nStopping execution. You can restart the script later to resume.",
+                        file=sys.stderr,
+                    )
+                    print(
+                        "Already processed files will be skipped automatically.",
+                        file=sys.stderr,
+                    )
+                    print(
+                        "=" * 60 + "\n",
+                        file=sys.stderr,
+                    )
+                    raise RateLimitExceeded("GitHub Copilot rate limit exceeded")
+
                 print(
-                    f"Error analyzing {cs_file}: {stderr.decode('utf-8')}",
+                    f"Error analyzing {cs_file}: {stderr_text}",
                     file=sys.stderr,
                 )
                 return False
@@ -201,6 +249,7 @@ async def process_batch(
     Process a batch of files in parallel.
 
     Returns the number of successfully processed files.
+    Raises RateLimitExceeded if rate limit is hit.
     """
     tasks = [
         analyze_file_with_copilot(
@@ -209,8 +258,16 @@ async def process_batch(
         for cs_file, output_path in files_batch
     ]
 
-    results = await asyncio.gather(*tasks)
-    return sum(1 for r in results if r)
+    # Use return_exceptions=False so RateLimitExceeded propagates
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Check if any task raised RateLimitExceeded
+    for result in results:
+        if isinstance(result, RateLimitExceeded):
+            raise result
+
+    # Count successful results (True values, not exceptions)
+    return sum(1 for r in results if r is True)
 
 
 async def main_async(config: Config):
@@ -266,27 +323,39 @@ async def main_async(config: Config):
         len(files_to_process) + config.parallel_instances - 1
     ) // config.parallel_instances
 
-    for batch_num in range(0, len(files_to_process), config.parallel_instances):
-        batch = files_to_process[batch_num : batch_num + config.parallel_instances]
-        current_batch_num = batch_num // config.parallel_instances + 1
+    try:
+        for batch_num in range(0, len(files_to_process), config.parallel_instances):
+            batch = files_to_process[batch_num : batch_num + config.parallel_instances]
+            current_batch_num = batch_num // config.parallel_instances + 1
 
-        print(f"\n{'='*60}")
-        print(f"Batch {current_batch_num}/{total_batches} ({len(batch)} files)")
-        print(f"{'='*60}\n")
+            print(f"\n{'='*60}")
+            print(f"Batch {current_batch_num}/{total_batches} ({len(batch)} files)")
+            print(f"{'='*60}\n")
 
-        success_count = await process_batch(batch, config, base_dir)
-        total_processed += success_count
+            success_count = await process_batch(batch, config, base_dir)
+            total_processed += success_count
 
-        print(
-            f"\nBatch {current_batch_num} complete: {success_count}/{len(batch)} successful"
-        )
-
-        # Wait between batches to avoid rate limiting (except for the last batch)
-        if batch_num + config.parallel_instances < len(files_to_process):
             print(
-                f"Waiting {config.timeout_between_batches}s to avoid rate limiting..."
+                f"\nBatch {current_batch_num} complete: {success_count}/{len(batch)} successful"
             )
-            await asyncio.sleep(config.timeout_between_batches)
+
+            # Wait between batches to avoid rate limiting (except for the last batch)
+            if batch_num + config.parallel_instances < len(files_to_process):
+                print(
+                    f"Waiting {config.timeout_between_batches}s to avoid rate limiting..."
+                )
+                await asyncio.sleep(config.timeout_between_batches)
+    except RateLimitExceeded:
+        # Rate limit was hit, stop processing
+        print(
+            f"\nStopped after processing {total_processed} files due to rate limiting.",
+            file=sys.stderr,
+        )
+        print(
+            f"Run the script again later to continue. Already processed files will be skipped.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     print(f"\n{'='*60}")
     print(
