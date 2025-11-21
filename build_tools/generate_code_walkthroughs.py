@@ -341,8 +341,8 @@ Permissions:
     parser.add_argument(
         "--copilot-timeout",
         type=int,
-        default=120,
-        help="Timeout in seconds for each Copilot analysis (default: 120)",
+        default=300,
+        help="Timeout in seconds for each Copilot analysis (default: 300)",
     )
 
     parser.add_argument(
