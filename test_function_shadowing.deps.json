@@ -1,0 +1,39 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v9.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v9.0": {
+      "test_function_shadowing/1.0.0": {
+        "dependencies": {
+          "Sharpy.Core": "1.0.0.0"
+        },
+        "runtime": {
+          "test_function_shadowing.dll": {}
+        }
+      },
+      "Sharpy.Core/1.0.0.0": {
+        "runtime": {
+          "Sharpy.Core.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "test_function_shadowing/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Sharpy.Core/1.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
