@@ -546,7 +546,7 @@ public class TypeChecker
         {
             _narrowedTypes[kvp.Key] = kvp.Value;
         }
-        
+
         // Enter scope for if-then block
         _symbolTable.EnterScope("if-then");
         foreach (var stmt in ifStmt.ThenBody)
@@ -582,7 +582,7 @@ public class TypeChecker
         {
             _narrowedTypes[kvp.Key] = kvp.Value;
         }
-        
+
         // Enter scope for if-else block only if there are statements
         if (ifStmt.ElseBody.Count > 0)
         {
@@ -721,7 +721,7 @@ public class TypeChecker
         // Check loop body statements
         foreach (var stmt in forStmt.Body)
             CheckStatement(stmt);
-        
+
         // Exit for-body scope
         _symbolTable.ExitScope();
     }
