@@ -381,35 +381,31 @@ public class TypeChecker
 
                 if (targetElem is Identifier tupleTargetId)
                 {
-                    var existingSymbol = _symbolTable.Lookup(tupleTargetId.Name, searchParents: true);
+                    var existingSymbol = _symbolTable.Lookup(tupleTargetId.Name, searchParents: false);
 
-                    // If the identifier doesn't exist, create it with inferred type
-                    if (existingSymbol == null)
+                    // Check if trying to reassign a constant
+                    if (existingSymbol is VariableSymbol varSymbol && varSymbol.IsConstant)
                     {
-                        var newSymbol = new VariableSymbol
-                        {
-                            Name = tupleTargetId.Name,
-                            Kind = SymbolKind.Variable,
-                            Type = valueElemType,
-                            IsConstant = false,
-                            DeclarationLine = tupleTargetId.LineStart,
-                            DeclarationColumn = tupleTargetId.ColumnStart,
-                            AccessLevel = AccessLevel.Public
-                        };
-                        _symbolTable.Define(newSymbol);
-                        _semanticInfo.SetIdentifierSymbol(tupleTargetId, newSymbol);
-                        _semanticInfo.SetExpressionType(tupleTargetId, valueElemType);
+                        AddError($"Cannot reassign constant variable '{tupleTargetId.Name}' in tuple unpacking",
+                            tupleTargetId.LineStart, tupleTargetId.ColumnStart);
+                        continue;
                     }
-                    else
+
+                    // In Sharpy, tuple unpacking creates new variable versions
+                    // Create/redefine with inferred type from tuple element
+                    var newSymbol = new VariableSymbol
                     {
-                        // Check type compatibility for existing variable
-                        var targetElemType = CheckExpression(targetElem);
-                        if (!IsAssignable(valueElemType, targetElemType))
-                        {
-                            AddError($"Cannot assign type '{valueElemType.GetDisplayName()}' to '{targetElemType.GetDisplayName()}' in tuple unpacking",
-                                targetElem.LineStart, targetElem.ColumnStart);
-                        }
-                    }
+                        Name = tupleTargetId.Name,
+                        Kind = SymbolKind.Variable,
+                        Type = valueElemType,
+                        IsConstant = false,
+                        DeclarationLine = tupleTargetId.LineStart,
+                        DeclarationColumn = tupleTargetId.ColumnStart,
+                        AccessLevel = AccessLevel.Public
+                    };
+                    _symbolTable.Define(newSymbol);
+                    _semanticInfo.SetIdentifierSymbol(tupleTargetId, newSymbol);
+                    _semanticInfo.SetExpressionType(tupleTargetId, valueElemType);
                 }
                 else
                 {
@@ -426,43 +422,50 @@ public class TypeChecker
             return;
         }
 
-        // Check if this is a simple assignment to an undefined identifier (type inference case)
+        // Check if this is a simple assignment to an identifier (type inference and redefinition case)
         if (assignment.Operator == AssignmentOperator.Assign && assignment.Target is Identifier targetId)
         {
-            var existingSymbol = _symbolTable.Lookup(targetId.Name, searchParents: true);
+            // Check current scope first
+            var existingSymbol = _symbolTable.Lookup(targetId.Name, searchParents: false);
 
-            // If the identifier doesn't exist, this is an implicit variable declaration with type inference
-            if (existingSymbol == null)
+            // Check if trying to reassign a constant in current scope
+            if (existingSymbol is VariableSymbol varSymbol && varSymbol.IsConstant)
             {
-                var inferredType = CheckExpression(assignment.Value);
-
-                // Create a new variable symbol with the inferred type
-                var newSymbol = new VariableSymbol
-                {
-                    Name = targetId.Name,
-                    Kind = SymbolKind.Variable,
-                    Type = inferredType,
-                    IsConstant = false,
-                    DeclarationLine = assignment.LineStart,
-                    DeclarationColumn = assignment.ColumnStart,
-                    AccessLevel = AccessLevel.Public
-                };
-                _symbolTable.Define(newSymbol);
-                _semanticInfo.SetIdentifierSymbol(targetId, newSymbol);
-
-                // Cache the expression type for the identifier
-                _semanticInfo.SetExpressionType(targetId, inferredType);
-                return;
-            }
-            // Check if trying to reassign a constant
-            else if (existingSymbol is VariableSymbol varSymbol && varSymbol.IsConstant)
-            {
-                // Assignment without type annotation to a const is always an error
-                // If the user wants to shadow the const, they must use a type annotation
-                AddError($"Cannot reassign constant variable '{targetId.Name}'. Use a type annotation to shadow it instead.",
+                AddError($"Cannot reassign constant variable '{targetId.Name}'",
                     assignment.LineStart, assignment.ColumnStart);
                 return;
             }
+
+            // Also check parent scopes for consts (can't reassign outer scope const)
+            var parentSymbol = _symbolTable.Lookup(targetId.Name, searchParents: true);
+            if (parentSymbol is VariableSymbol parentVar && parentVar.IsConstant)
+            {
+                AddError($"Cannot reassign constant variable '{targetId.Name}'",
+                    assignment.LineStart, assignment.ColumnStart);
+                return;
+            }
+
+            // In Sharpy, simple assignments (x = value) create new variable versions
+            // This enables Python-like behavior where variables can be reassigned to different types
+            var inferredType = CheckExpression(assignment.Value);
+
+            // Create a new variable symbol with the inferred type (or redefine existing)
+            var newSymbol = new VariableSymbol
+            {
+                Name = targetId.Name,
+                Kind = SymbolKind.Variable,
+                Type = inferredType,
+                IsConstant = false,
+                DeclarationLine = assignment.LineStart,
+                DeclarationColumn = assignment.ColumnStart,
+                AccessLevel = AccessLevel.Public
+            };
+            _symbolTable.Define(newSymbol);
+            _semanticInfo.SetIdentifierSymbol(targetId, newSymbol);
+
+            // Cache the expression type for the identifier
+            _semanticInfo.SetExpressionType(targetId, inferredType);
+            return;
         }
 
         // Otherwise, check as a regular assignment
@@ -527,29 +530,59 @@ public class TypeChecker
         // Check if symbol already exists in current scope
         var existingSymbol = _symbolTable.Lookup(varDecl.Name, searchParents: false);
 
-        if (existingSymbol is VariableSymbol varSymbol)
+        // For constants:
+        // - Module-level consts are already created by NameResolver, so we skip creation
+        // - Function-level consts are NOT created by NameResolver, so we need to create them
+        if (varDecl.IsConst)
         {
-            // Symbol already exists in the current scope
-            // Per language spec: Variable declarations with type annotations (including 'auto')
-            // are allowed to shadow/redefine variables in the same scope
-            // This is intentional redefinition - const symbols are pre-defined by NameResolver,
-            // and non-const variables can be redefined with a type annotation
-            // Just skip the define step since the symbol is already there
-        }
-        else
-        {
-            // Create new variable symbol (normal case for non-const variables)
-            var newSymbol = new VariableSymbol
+            if (existingSymbol != null)
+            {
+                // Module-level const was already created by NameResolver
+                // Just do type checking and return
+                return;
+            }
+
+            // Function-level const - we need to create it
+            var constSymbol = new VariableSymbol
             {
                 Name = varDecl.Name,
                 Kind = SymbolKind.Variable,
                 Type = declaredType,
-                IsConstant = varDecl.IsConst,
+                IsConstant = true,
                 DeclarationLine = varDecl.LineStart,
                 DeclarationColumn = varDecl.ColumnStart
             };
-            _symbolTable.Define(newSymbol);
+            _symbolTable.Define(constSymbol);
+            return;
         }
+
+        if (existingSymbol is VariableSymbol existingVar)
+        {
+            // In Sharpy, variables can be redefined in the same scope (Python-like behavior)
+            // However, constants cannot be redefined
+            if (existingVar.IsConstant)
+            {
+                AddError($"Cannot redefine constant variable '{varDecl.Name}'",
+                    varDecl.LineStart, varDecl.ColumnStart);
+                return;
+            }
+
+            // For non-const variables, allow redefinition with new type
+            // This enables Python-like behavior where variables can be reassigned to different types
+            // The Scope.Define will replace the existing symbol
+        }
+
+        // Create new variable symbol (or redefine existing non-const variable)
+        var newSymbol = new VariableSymbol
+        {
+            Name = varDecl.Name,
+            Kind = SymbolKind.Variable,
+            Type = declaredType,
+            IsConstant = false,  // Non-const variable
+            DeclarationLine = varDecl.LineStart,
+            DeclarationColumn = varDecl.ColumnStart
+        };
+        _symbolTable.Define(newSymbol);
     }
 
     private void CheckReturn(ReturnStatement returnStmt)

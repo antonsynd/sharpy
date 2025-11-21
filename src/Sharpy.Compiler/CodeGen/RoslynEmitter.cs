@@ -16,6 +16,7 @@ public class RoslynEmitter
     private readonly CodeGenContext _context;
     private readonly TypeMapper _typeMapper;
     private readonly HashSet<string> _declaredVariables = new();
+    private readonly Dictionary<string, int> _variableVersions = new();
     private int _tempVarCounter = 0;
 
     // Common .NET namespace acronyms that should be all uppercase
@@ -29,6 +30,48 @@ public class RoslynEmitter
     {
         _context = context;
         _typeMapper = new TypeMapper(context);
+    }
+
+    /// <summary>
+    /// Get the mangled variable name with version suffix if this is a redefinition.
+    /// </summary>
+    /// <param name="name">The original Sharpy variable name</param>
+    /// <param name="isNewDeclaration">True if this is a new declaration/redefinition, false if this is a reference</param>
+    /// <returns>The C# variable name with version suffix (e.g., "x", "x_1", "x_2")</returns>
+    private string GetMangledVariableName(string name, bool isNewDeclaration)
+    {
+        var baseName = NameMangler.ToCamelCase(name);
+
+        if (isNewDeclaration)
+        {
+            // This is a new declaration or redefinition
+            if (_variableVersions.TryGetValue(baseName, out var currentVersion))
+            {
+                // Variable already exists - increment version for redefinition
+                var newVersion = currentVersion + 1;
+                _variableVersions[baseName] = newVersion;
+                return $"{baseName}_{newVersion}";
+            }
+            else
+            {
+                // First declaration of this variable
+                _variableVersions[baseName] = 0;
+                return baseName;
+            }
+        }
+        else
+        {
+            // This is a reference - use the current version
+            if (_variableVersions.TryGetValue(baseName, out var currentVersion))
+            {
+                return currentVersion == 0 ? baseName : $"{baseName}_{currentVersion}";
+            }
+            else
+            {
+                // Variable not yet declared (shouldn't happen in valid code)
+                return baseName;
+            }
+        }
     }
 
     public CompilationUnitSyntax GenerateCompilationUnit(Module module)
@@ -284,8 +327,9 @@ public class RoslynEmitter
             if (!hasMainFunction)
             {
                 // No main function - create a Main method for executable statements
-                // Clear declared variables for Main method scope
+                // Clear declared variables and version tracking for Main method scope
                 _declaredVariables.Clear();
+                _variableVersions.Clear();
 
                 var mainBody = Block(executableStatements
                     .Select(GenerateBodyStatement)
@@ -335,8 +379,9 @@ public class RoslynEmitter
 
     private MethodDeclarationSyntax GenerateFunctionDeclaration(FunctionDef func)
     {
-        // Clear declared variables for new function scope
+        // Clear declared variables and version tracking for new function scope
         _declaredVariables.Clear();
+        _variableVersions.Clear();
 
         // Transform name using NameMangler
         var mangledName = NameMangler.Transform(func.Name, NameContext.Method);
@@ -359,6 +404,9 @@ public class RoslynEmitter
         {
             var paramName = NameMangler.Transform(param.Name, NameContext.Parameter);
             _declaredVariables.Add(paramName);
+            // Also track in version map so assignments to parameters work correctly
+            var baseName = NameMangler.ToCamelCase(param.Name);
+            _variableVersions[baseName] = 0;
         }
 
         // Generate method body
@@ -1183,16 +1231,31 @@ public class RoslynEmitter
         // Handle simple identifier assignment
         if (assign.Target is Identifier name)
         {
-            var varName = NameMangler.ToCamelCase(name.Name);
-
             // Check if this is a simple assignment or augmented assignment
             if (assign.Operator == AssignmentOperator.Assign)
             {
                 // Simple assignment: x = value
-                // Check if this is the first time we're seeing this variable
-                if (!_declaredVariables.Contains(varName))
+                // In Sharpy, assignments can be redefinitions with type changes
+                // However, inside a function/loop, we should update existing vars
+                // Get the base name to check if already declared
+                var baseName = NameMangler.ToCamelCase(name.Name);
+
+                // Check if this variable was already declared in current scope
+                // _variableVersions tracks all variables by base name
+                if (_variableVersions.ContainsKey(baseName))
                 {
-                    // First assignment - treat as declaration
+                    // Variable exists - just update it with a regular assignment
+                    var currentName = GetMangledVariableName(name.Name, isNewDeclaration: false);
+                    return ExpressionStatement(
+                        AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            IdentifierName(currentName),
+                            value));
+                }
+                else
+                {
+                    // First declaration of this variable in this scope
+                    var varName = GetMangledVariableName(name.Name, isNewDeclaration: true);
                     _declaredVariables.Add(varName);
                     var declaration = VariableDeclaration(IdentifierName("var"))
                         .WithVariables(SingletonSeparatedList(
@@ -1201,19 +1264,12 @@ public class RoslynEmitter
 
                     return LocalDeclarationStatement(declaration);
                 }
-                else
-                {
-                    // Reassignment to existing variable
-                    return ExpressionStatement(
-                        AssignmentExpression(
-                            SyntaxKind.SimpleAssignmentExpression,
-                            IdentifierName(varName),
-                            value));
-                }
             }
             else
             {
                 // Augmented assignment: x += value
+                // This references the current version and modifies it
+                var varName = GetMangledVariableName(name.Name, isNewDeclaration: false);
                 var left = IdentifierName(varName);
                 var binaryOp = GetAugmentedAssignmentOperator(assign.Operator);
                 var augmentedValue = BinaryExpression(binaryOp, left, value);
@@ -1267,7 +1323,7 @@ public class RoslynEmitter
         if (assign.Target is TupleLiteral tuple)
         {
             // Generate C# tuple deconstruction
-            // C#: var (x, y) = (1, 2) or (x, y) = (1, 2) for existing variables
+            // C#: var (x, y) = (1, 2)
 
             // Check if all elements are identifiers
             bool allIdentifiers = tuple.Elements.All(e => e is Identifier);
@@ -1276,57 +1332,30 @@ public class RoslynEmitter
             {
                 var identifiers = tuple.Elements.Cast<Identifier>().ToList();
 
-                // Check if all are new variables (not yet declared)
-                bool allNew = identifiers.All(id => !_declaredVariables.Contains(NameMangler.ToCamelCase(id.Name)));
+                // In Sharpy, tuple unpacking is always a new declaration/redefinition
+                // Use: var (x, y) = expr
+                var variables = identifiers
+                    .Select(id =>
+                    {
+                        var varName = GetMangledVariableName(id.Name, isNewDeclaration: true);
+                        _declaredVariables.Add(varName);
+                        return SingleVariableDesignation(Identifier(varName));
+                    })
+                    .ToList();
 
-                if (allNew)
-                {
-                    // Use: var (x, y) = expr
-                    var variables = identifiers
-                        .Select(id =>
-                        {
-                            var varName = NameMangler.ToCamelCase(id.Name);
-                            _declaredVariables.Add(varName);
-                            return SingleVariableDesignation(Identifier(varName));
-                        })
-                        .ToList();
+                var tuplePattern = ParenthesizedVariableDesignation(
+                    SeparatedList<VariableDesignationSyntax>(variables));
 
-                    var tuplePattern = ParenthesizedVariableDesignation(
-                        SeparatedList<VariableDesignationSyntax>(variables));
+                // Create a declaration expression
+                var declExpr = DeclarationExpression(
+                    IdentifierName("var"),
+                    tuplePattern);
 
-                    // Create a declaration expression
-                    var declExpr = DeclarationExpression(
-                        IdentifierName("var"),
-                        tuplePattern);
-
-                    return ExpressionStatement(
-                        AssignmentExpression(
-                            SyntaxKind.SimpleAssignmentExpression,
-                            declExpr,
-                            value));
-                }
-                else
-                {
-                    // Use: (x, y) = expr for existing variables
-                    var tupleElements = identifiers
-                        .Select(id =>
-                        {
-                            var varName = NameMangler.ToCamelCase(id.Name);
-                            if (!_declaredVariables.Contains(varName))
-                            {
-                                _declaredVariables.Add(varName);
-                            }
-                            return Argument(IdentifierName(varName));
-                        });
-
-                    var tupleExpr = TupleExpression(SeparatedList(tupleElements));
-
-                    return ExpressionStatement(
-                        AssignmentExpression(
-                            SyntaxKind.SimpleAssignmentExpression,
-                            tupleExpr,
-                            value));
-                }
+                return ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        declExpr,
+                        value));
             }
 
             throw new NotImplementedException("Complex tuple unpacking (non-identifier targets) not yet supported");
@@ -1360,8 +1389,18 @@ public class RoslynEmitter
     {
         var varName = varDecl.IsConst
             ? NameMangler.ToConstantCase(varDecl.Name)
-            : NameMangler.ToCamelCase(varDecl.Name);
-        var typeSyntax = _typeMapper.MapType(varDecl.Type);
+            : GetMangledVariableName(varDecl.Name, isNewDeclaration: true);
+
+        // Handle 'auto' type annotation - use 'var' in C#
+        TypeSyntax typeSyntax;
+        if (varDecl.Type != null && varDecl.Type.Name == "auto")
+        {
+            typeSyntax = IdentifierName("var");
+        }
+        else
+        {
+            typeSyntax = _typeMapper.MapType(varDecl.Type);
+        }
 
         // Track this variable as declared
         _declaredVariables.Add(varName);
@@ -1602,7 +1641,7 @@ public class RoslynEmitter
             DictComprehension dictComp => GenerateDictComprehension(dictComp),
 
             // Primary expressions
-            Identifier name => IdentifierName(NameMangler.ToCamelCase(name.Name)),
+            Identifier name => IdentifierName(GetMangledVariableName(name.Name, isNewDeclaration: false)),
             MemberAccess memberAccess => GenerateMemberAccess(memberAccess),
             IndexAccess indexAccess => GenerateIndexAccess(indexAccess),
             SliceAccess sliceAccess => GenerateSliceAccess(sliceAccess),

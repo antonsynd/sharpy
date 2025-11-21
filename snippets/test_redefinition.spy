@@ -1,14 +1,17 @@
 def demo():
-    x: int = 1
+    x = 1
     print(x)
 
-    x: int = 2
+    x = 2
     print(x)
 
-    x: auto = "hello"
+    x = 3
     print(x)
 
-    x: str = "world"
+    x = "hello"
+    print(x)
+
+    x = "world"
     print(x)
 
 demo()
