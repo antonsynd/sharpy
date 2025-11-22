@@ -1433,4 +1433,185 @@ def foo(
     }
 
     #endregion
+
+    #region Comment and Whitespace Edge Cases
+
+    [Fact]
+    public void ParsesNestedStructureWithComments()
+    {
+        var source = @"
+if True:
+    # outer comment
+    if True:
+        # inner comment
+        x = 1
+        # another inner comment
+    # back to outer
+    y = 2
+";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+        var outerIf = module.Body[0].Should().BeOfType<IfStatement>().Subject;
+        outerIf.ThenBody.Should().HaveCount(2); // inner if and y = 2
+    }
+
+    [Fact]
+    public void ParsesCommentAfterColon()
+    {
+        var source = @"if True:  # comment after colon
+    x = 1";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ParsesFunctionWithCommentsInBody()
+    {
+        var source = @"
+def foo():
+    # Setup phase
+    x = 1
+    # Processing phase
+    y = 2
+    # Return phase
+    return x + y
+";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Body.Should().HaveCount(3); // Should skip comment-only lines
+    }
+
+    [Fact]
+    public void ParsesClassWithCommentsInBody()
+    {
+        var source = @"
+class MyClass:
+    # Class-level comment
+    x: int = 1
+    # Method comment
+    def method(self):
+        # Method body comment
+        pass
+";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ParsesMixedBlankLinesAndComments()
+    {
+        var source = @"x = 1
+
+# comment 1
+
+# comment 2
+    
+y = 2
+
+    
+# comment 3
+z = 3";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void ParsesComplexBracketsWithComments()
+    {
+        var source = @"result = [
+    # First group
+    [1, 2, 3],  # sublist 1
+    # Second group
+    [4, 5, 6],  # sublist 2
+    # Third group
+    [7, 8, 9]   # sublist 3
+]";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ParsesDictWithCommentsInsideBrackets()
+    {
+        var source = @"config = {
+    # Database settings
+    'db': 'postgres',
+    # API settings
+    'api_key': 'secret',
+    # Cache settings
+    'cache': True
+}";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ParsesFunctionCallWithCommentsInArgs()
+    {
+        var source = @"result = function(
+    # First argument
+    arg1,
+    # Second argument
+    arg2,
+    # Third argument
+    arg3
+)";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ParsesVeryLongLineContinuationInBrackets()
+    {
+        var source = @"values = [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+]";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ParsesEmptyLinesInsideBrackets()
+    {
+        var source = @"data = [
+    1,
+
+
+    2,
+
+    3
+]";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void ParsesCommentOnlyLineBeforeClosingBracket()
+    {
+        var source = @"values = [
+    1,
+    2,
+    3
+    # final comment before closing
+]";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+    }
+
+    #endregion
 }
