@@ -694,16 +694,10 @@ public class Lexer
                 _position++;
                 _column++;
                 
-                if (context.BraceDepth == 0)
-                {
-                    // End of expression
-                    return new Token(TokenType.FStringExprEnd, "}", startLine, startColumn);
-                }
-                else
-                {
-                    // Nested closing brace within expression
-                    return new Token(TokenType.RightBrace, "}", startLine, startColumn);
-                }
+                // End of expression if brace depth is zero, otherwise nested closing brace within expression
+                return context.BraceDepth == 0
+                    ? new Token(TokenType.FStringExprEnd, "}", startLine, startColumn)
+                    : new Token(TokenType.RightBrace, "}", startLine, startColumn);
             }
 
             if (current == '{')
