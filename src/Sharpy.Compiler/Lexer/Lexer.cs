@@ -19,6 +19,16 @@ public class Lexer
     private int _bracketDepth = 0;  // Track if we're inside (), [], or {}
     private readonly ICompilerLogger _logger;
 
+    // F-string state tracking
+    private readonly Stack<FStringContext> _fstringStack = new();
+    
+    private class FStringContext
+    {
+        public char QuoteChar { get; set; }
+        public bool IsTriple { get; set; }
+        public int BraceDepth { get; set; }
+    }
+
     // Keywords mapping
     private static readonly Dictionary<string, TokenType> Keywords = new()
     {
@@ -108,6 +118,12 @@ public class Lexer
         // Return pending tokens first (INDENT/DEDENT)
         if (_pendingTokens.Count > 0)
             return _pendingTokens.Dequeue();
+
+        // If we're inside an f-string, handle f-string content
+        if (_fstringStack.Count > 0)
+        {
+            return NextFStringToken();
+        }
 
         // Handle end of file
         if (_position >= _source.Length)
@@ -328,7 +344,7 @@ public class Lexer
         // F-strings
         if (current == 'f' && (_position + 1 < _source.Length) &&
             (_source[_position + 1] == '"' || _source[_position + 1] == '\''))
-            return LogAndReturn(ReadFString());
+            return LogAndReturn(ReadFStringStart());
 
         // Raw strings
         if (current == 'r' && (_position + 1 < _source.Length) &&
@@ -727,6 +743,266 @@ public class Lexer
         }
 
         throw new LexerError("Unterminated triple-quoted f-string", _line, _column);
+    }
+
+    /// <summary>
+    /// Read the start of an f-string and enter f-string mode
+    /// </summary>
+    private Token ReadFStringStart()
+    {
+        var startLine = _line;
+        var startColumn = _column;
+
+        // Skip 'f'
+        _position++;
+        _column++;
+
+        var quote = _source[_position];
+        _position++;
+        _column++;
+
+        // Check for triple-quoted f-string
+        var isTriple = _position + 1 < _source.Length &&
+                       _source[_position] == quote &&
+                       _source[_position + 1] == quote;
+
+        if (isTriple)
+        {
+            _position += 2;
+            _column += 2;
+        }
+
+        // Push f-string context onto stack
+        _fstringStack.Push(new FStringContext
+        {
+            QuoteChar = quote,
+            IsTriple = isTriple,
+            BraceDepth = 0
+        });
+
+        return new Token(TokenType.FStringStart, isTriple ? $"f{quote}{quote}{quote}" : $"f{quote}", startLine, startColumn);
+    }
+
+    /// <summary>
+    /// Get the next token while inside an f-string
+    /// </summary>
+    private Token NextFStringToken()
+    {
+        if (_position >= _source.Length)
+        {
+            throw new LexerError("Unterminated f-string", _line, _column);
+        }
+
+        var context = _fstringStack.Peek();
+        var startLine = _line;
+        var startColumn = _column;
+
+        // If we're inside an expression (brace depth > 0), tokenize normally
+        if (context.BraceDepth > 0)
+        {
+            var current = _source[_position];
+
+            // Handle closing brace
+            if (current == '}')
+            {
+                context.BraceDepth--;
+                _position++;
+                _column++;
+                
+                if (context.BraceDepth == 0)
+                {
+                    // End of expression
+                    return new Token(TokenType.FStringExprEnd, "}", startLine, startColumn);
+                }
+                else
+                {
+                    // Nested closing brace within expression
+                    return new Token(TokenType.RightBrace, "}", startLine, startColumn);
+                }
+            }
+
+            // Handle opening brace (nested within expression)
+            if (current == '{')
+            {
+                context.BraceDepth++;
+                _position++;
+                _column++;
+                return new Token(TokenType.LeftBrace, "{", startLine, startColumn);
+            }
+
+            // For everything else, tokenize normally (but skip indentation handling)
+            SkipWhitespace();
+            
+            if (_position >= _source.Length)
+                throw new LexerError("Unterminated f-string expression", _line, _column);
+
+            current = _source[_position];
+            startLine = _line;
+            startColumn = _column;
+
+            // String literals inside expressions
+            if (current == '"' || current == '\'')
+                return ReadString();
+
+            // Numbers
+            if (char.IsDigit(current))
+                return ReadNumber();
+
+            // Identifiers and keywords
+            if (char.IsLetter(current) || current == '_')
+                return ReadIdentifierOrKeyword();
+
+            // Operators and delimiters
+            return ReadOperatorOrDelimiter();
+        }
+
+        // We're reading literal text or looking for expression start or string end
+        var sb = new StringBuilder();
+        
+        while (_position < _source.Length)
+        {
+            var c = _source[_position];
+
+            // Check for end of f-string
+            if (c == context.QuoteChar)
+            {
+                // Check for triple-quote end
+                if (context.IsTriple)
+                {
+                    if (_position + 2 < _source.Length &&
+                        _source[_position + 1] == context.QuoteChar &&
+                        _source[_position + 2] == context.QuoteChar)
+                    {
+                        // Emit any accumulated text first
+                        if (sb.Length > 0)
+                        {
+                            // Return the text token. On next call, we'll handle the closing triple-quote
+                            return new Token(TokenType.FStringText, sb.ToString(), startLine, startColumn);
+                        }
+                        
+                        // End of f-string
+                        _position += 3;
+                        _column += 3;
+                        _fstringStack.Pop();
+                        return new Token(TokenType.FStringEnd, new string(context.QuoteChar, 3), startLine, startColumn);
+                    }
+                    // Not end of triple-quote, treat as regular character
+                    sb.Append(c);
+                    _position++;
+                    _column++;
+                }
+                else
+                {
+                    // Single-quoted f-string end
+                    // Emit any accumulated text first
+                    if (sb.Length > 0)
+                    {
+                        // Return the text token. On next call, we'll handle the closing quote
+                        // Don't pop the stack yet!
+                        return new Token(TokenType.FStringText, sb.ToString(), startLine, startColumn);
+                    }
+                    
+                    // End of f-string
+                    _position++;
+                    _column++;
+                    _fstringStack.Pop();
+                    return new Token(TokenType.FStringEnd, context.QuoteChar.ToString(), startLine, startColumn);
+                }
+            }
+            // Check for expression start
+            else if (c == '{')
+            {
+                // Check for escaped brace {{
+                if (_position + 1 < _source.Length && _source[_position + 1] == '{')
+                {
+                    sb.Append('{');
+                    _position += 2;
+                    _column += 2;
+                }
+                else
+                {
+                    // Start of interpolated expression
+                    // Emit accumulated text first if any
+                    if (sb.Length > 0)
+                    {
+                        // Return the text token. On next call, we'll handle the {
+                        return new Token(TokenType.FStringText, sb.ToString(), startLine, startColumn);
+                    }
+                    
+                    // Start expression - consume the { and increment brace depth
+                    _position++;
+                    _column++;
+                    context.BraceDepth = 1;
+                    return new Token(TokenType.FStringExprStart, "{", startLine, startColumn);
+                }
+            }
+            // Check for escaped closing brace }}
+            else if (c == '}')
+            {
+                if (_position + 1 < _source.Length && _source[_position + 1] == '}')
+                {
+                    sb.Append('}');
+                    _position += 2;
+                    _column += 2;
+                }
+                else
+                {
+                    // Unmatched closing brace in f-string
+                    throw new LexerError("Unmatched '}' in f-string", _line, _column);
+                }
+            }
+            // Handle escape sequences
+            else if (c == '\\')
+            {
+                _position++;
+                _column++;
+                if (_position >= _source.Length)
+                    throw new LexerError("Unterminated f-string", _line, _column);
+
+                sb.Append(ProcessEscapeSequence());
+            }
+            // Handle newlines in triple-quoted f-strings
+            else if (c == '\n')
+            {
+                if (!context.IsTriple)
+                {
+                    throw new LexerError("Unterminated f-string", _line, _column);
+                }
+                sb.Append(c);
+                _position++;
+                _line++;
+                _column = 1;
+            }
+            else if (c == '\r')
+            {
+                if (!context.IsTriple)
+                {
+                    throw new LexerError("Unterminated f-string", _line, _column);
+                }
+                if (_position + 1 < _source.Length && _source[_position + 1] == '\n')
+                {
+                    sb.Append('\n');
+                    _position += 2;
+                }
+                else
+                {
+                    sb.Append('\n');
+                    _position++;
+                }
+                _line++;
+                _column = 1;
+            }
+            // Regular character
+            else
+            {
+                sb.Append(c);
+                _position++;
+                _column++;
+            }
+        }
+
+        // Reached end of source while in f-string
+        throw new LexerError("Unterminated f-string", _line, _column);
     }
 
     private Token ReadRawString()
