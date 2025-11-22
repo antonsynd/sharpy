@@ -2019,12 +2019,19 @@ public class Parser
 
             case TokenType.FString:
                 {
+                    // Legacy single-token f-string (kept for backwards compatibility during transition)
                     var value = Current.Value;
                     var endLine = Current.Line;
                     var endColumn = Current.Column;
                     Advance();
                     var parts = ParseFStringParts(value, startLine, startColumn);
                     return new FStringLiteral { Parts = parts, LineStart = startLine, ColumnStart = startColumn, LineEnd = endLine, ColumnEnd = endColumn };
+                }
+
+            case TokenType.FStringStart:
+                {
+                    // New segmented f-string lexing
+                    return ParseSegmentedFString(startLine, startColumn);
                 }
 
             case TokenType.True:
@@ -2485,6 +2492,64 @@ public class Parser
         }
 
         return parts;
+    }
+
+    /// <summary>
+    /// Parse a segmented f-string (new lexer approach)
+    /// FStringStart, (FStringText | FStringExprStart Expression [: FormatSpec] FStringExprEnd)*, FStringEnd
+    /// </summary>
+    private FStringLiteral ParseSegmentedFString(int startLine, int startColumn)
+    {
+        var parts = new List<FStringPart>();
+        
+        // Consume FStringStart
+        Expect(TokenType.FStringStart);
+        
+        while (Current.Type != TokenType.FStringEnd && Current.Type != TokenType.Eof)
+        {
+            if (Current.Type == TokenType.FStringText)
+            {
+                // Text segment
+                parts.Add(new FStringPart { Text = Current.Value, Expression = null });
+                Advance();
+            }
+            else if (Current.Type == TokenType.FStringExprStart)
+            {
+                // Expression segment
+                Advance(); // Skip FStringExprStart
+                
+                // Parse the expression (tokens are already emitted by lexer)
+                var expr = ParseExpression();
+                
+                // Check for optional format spec (: followed by format spec tokens until })
+                if (Current.Type == TokenType.Colon)
+                {
+                    // For now, skip format spec parsing - just consume tokens until FStringExprEnd
+                    // TODO: Properly parse and store format spec in FStringPart
+                    while (Current.Type != TokenType.FStringExprEnd && Current.Type != TokenType.Eof)
+                    {
+                        Advance();
+                    }
+                }
+                
+                parts.Add(new FStringPart { Text = null, Expression = expr });
+                
+                // Expect FStringExprEnd
+                Expect(TokenType.FStringExprEnd);
+            }
+            else
+            {
+                throw new ParserError($"Unexpected token in f-string: {Current.Type}", Current.Line, Current.Column);
+            }
+        }
+        
+        var endLine = Current.Line;
+        var endColumn = Current.Column;
+        
+        // Consume FStringEnd
+        Expect(TokenType.FStringEnd);
+        
+        return new FStringLiteral { Parts = parts, LineStart = startLine, ColumnStart = startColumn, LineEnd = endLine, ColumnEnd = endColumn };
     }
 
     #endregion
