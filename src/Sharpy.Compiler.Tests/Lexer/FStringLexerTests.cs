@@ -23,7 +23,7 @@ public class FStringLexerTests
     public void FString_Empty_EmitsStartAndEnd()
     {
         var tokens = Tokenize("f\"\"");
-        
+
         tokens[0].Type.Should().Be(TokenType.FStringStart);
         tokens[0].Value.Should().Be("f\"");
         tokens[1].Type.Should().Be(TokenType.FStringEnd);
@@ -35,7 +35,7 @@ public class FStringLexerTests
     public void FString_TextOnly_EmitsStartTextEnd()
     {
         var tokens = Tokenize("f\"hello world\"");
-        
+
         tokens[0].Type.Should().Be(TokenType.FStringStart);
         tokens[1].Type.Should().Be(TokenType.FStringText);
         tokens[1].Value.Should().Be("hello world");
@@ -47,7 +47,7 @@ public class FStringLexerTests
     public void FString_SingleExpression_EmitsCorrectSequence()
     {
         var tokens = Tokenize("f\"{x}\"");
-        
+
         tokens[0].Type.Should().Be(TokenType.FStringStart);
         tokens[1].Type.Should().Be(TokenType.FStringExprStart);
         tokens[2].Type.Should().Be(TokenType.Identifier);
@@ -61,7 +61,7 @@ public class FStringLexerTests
     public void FString_TextBeforeExpression_EmitsCorrectSequence()
     {
         var tokens = Tokenize("f\"value: {x}\"");
-        
+
         tokens[0].Type.Should().Be(TokenType.FStringStart);
         tokens[1].Type.Should().Be(TokenType.FStringText);
         tokens[1].Value.Should().Be("value: ");
@@ -76,7 +76,7 @@ public class FStringLexerTests
     public void FString_TextAfterExpression_EmitsCorrectSequence()
     {
         var tokens = Tokenize("f\"{x} units\"");
-        
+
         tokens[0].Type.Should().Be(TokenType.FStringStart);
         tokens[1].Type.Should().Be(TokenType.FStringExprStart);
         tokens[2].Type.Should().Be(TokenType.Identifier);
@@ -91,7 +91,7 @@ public class FStringLexerTests
     public void FString_MultipleExpressions_EmitsCorrectSequence()
     {
         var tokens = Tokenize("f\"{x} + {y} = {z}\"");
-        
+
         var i = 0;
         tokens[i++].Type.Should().Be(TokenType.FStringStart);
         tokens[i++].Type.Should().Be(TokenType.FStringExprStart);
@@ -113,7 +113,7 @@ public class FStringLexerTests
     public void FString_ComplexExpression_TokenizesCorrectly()
     {
         var tokens = Tokenize("f\"result: {x + y * 2}\"");
-        
+
         tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
         tokens.Should().Contain(t => t.Type == TokenType.FStringText && t.Value == "result: ");
         tokens.Should().Contain(t => t.Type == TokenType.FStringExprStart);
@@ -130,7 +130,7 @@ public class FStringLexerTests
     public void FString_MethodCall_TokenizesCorrectly()
     {
         var tokens = Tokenize("f\"name: {obj.getName()}\"");
-        
+
         tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
         tokens.Should().Contain(t => t.Type == TokenType.FStringExprStart);
         tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "obj");
@@ -146,7 +146,7 @@ public class FStringLexerTests
     public void FString_IndexAccess_TokenizesCorrectly()
     {
         var tokens = Tokenize("f\"item: {items[0]}\"");
-        
+
         tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
         tokens.Should().Contain(t => t.Type == TokenType.FStringExprStart);
         tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "items");
@@ -162,7 +162,7 @@ public class FStringLexerTests
     {
         // {y} inside the expression is a set literal, not an f-string interpolation
         var tokens = Tokenize("f\"result: {calc({y})}\"");
-        
+
         tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
         tokens.Should().Contain(t => t.Type == TokenType.FStringExprStart);
         tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "calc");
@@ -179,7 +179,7 @@ public class FStringLexerTests
     public void FString_NestedParens_TokenizesCorrectly()
     {
         var tokens = Tokenize("f\"{func(a, (b, c))}\"");
-        
+
         tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
         tokens.Should().Contain(t => t.Type == TokenType.FStringExprStart);
         tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "func");
@@ -191,7 +191,7 @@ public class FStringLexerTests
     public void FString_EscapedBraces_TokenizesAsText()
     {
         var tokens = Tokenize("f\"{{escaped}}\"");
-        
+
         tokens[0].Type.Should().Be(TokenType.FStringStart);
         tokens[1].Type.Should().Be(TokenType.FStringText);
         tokens[1].Value.Should().Be("{escaped}"); // {{ and }} become { and }
@@ -202,7 +202,7 @@ public class FStringLexerTests
     public void FString_EscapeSequences_ProcessedCorrectly()
     {
         var tokens = Tokenize("f\"line1\\nline2\"");
-        
+
         tokens[1].Type.Should().Be(TokenType.FStringText);
         tokens[1].Value.Should().Contain("\n");
     }
@@ -211,7 +211,7 @@ public class FStringLexerTests
     public void FString_SingleQuoted_TokenizesCorrectly()
     {
         var tokens = Tokenize("f'hello {name}'");
-        
+
         tokens[0].Type.Should().Be(TokenType.FStringStart);
         tokens[0].Value.Should().Be("f'");
         tokens[1].Type.Should().Be(TokenType.FStringText);
@@ -226,7 +226,7 @@ public class FStringLexerTests
     public void FString_TripleQuoted_TokenizesCorrectly()
     {
         var tokens = Tokenize("f\"\"\"hello {name}\"\"\"");
-        
+
         tokens[0].Type.Should().Be(TokenType.FStringStart);
         tokens[0].Value.Should().Be("f\"\"\"");
         tokens[1].Type.Should().Be(TokenType.FStringText);
@@ -244,7 +244,7 @@ public class FStringLexerTests
 {x}
 line2""""""";
         var tokens = Tokenize(source);
-        
+
         tokens[0].Type.Should().Be(TokenType.FStringStart);
         tokens[1].Type.Should().Be(TokenType.FStringText);
         tokens[1].Value.Should().Contain("line1\n");
@@ -309,7 +309,7 @@ line2""""""";
     public void FString_ConsecutiveExpressions_NoTextBetween()
     {
         var tokens = Tokenize("f\"{x}{y}\"");
-        
+
         tokens[0].Type.Should().Be(TokenType.FStringStart);
         tokens[1].Type.Should().Be(TokenType.FStringExprStart);
         tokens[2].Type.Should().Be(TokenType.Identifier); // x
@@ -324,7 +324,7 @@ line2""""""";
     public void FString_ExpressionWithWhitespace_TokenizesCorrectly()
     {
         var tokens = Tokenize("f\"{ x + y }\"");
-        
+
         tokens.Should().Contain(t => t.Type == TokenType.FStringExprStart);
         tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "x");
         tokens.Should().Contain(t => t.Type == TokenType.Plus);
@@ -336,7 +336,7 @@ line2""""""";
     public void FString_StringLiteralInExpression_TokenizesCorrectly()
     {
         var tokens = Tokenize("f\"{func('test')}\"");
-        
+
         tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
         tokens.Should().Contain(t => t.Type == TokenType.FStringExprStart);
         tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "func");
@@ -350,7 +350,7 @@ line2""""""";
     {
         // This is technically invalid Python but let's see what our lexer does
         var tokens = Tokenize("f\"{}\"");
-        
+
         tokens[0].Type.Should().Be(TokenType.FStringStart);
         tokens[1].Type.Should().Be(TokenType.FStringExprStart);
         tokens[2].Type.Should().Be(TokenType.FStringExprEnd);
@@ -361,7 +361,7 @@ line2""""""";
     public void FString_OnlyEscapedBraces_TokenizesAsText()
     {
         var tokens = Tokenize("f\"{{}}\"");
-        
+
         tokens[0].Type.Should().Be(TokenType.FStringStart);
         tokens[1].Type.Should().Be(TokenType.FStringText);
         tokens[1].Value.Should().Be("{}");
@@ -372,7 +372,7 @@ line2""""""";
     public void FString_MixedTextAndExpressions_ComplexCase()
     {
         var tokens = Tokenize("f\"prefix {a} middle {b + c} suffix\"");
-        
+
         var i = 0;
         tokens[i++].Type.Should().Be(TokenType.FStringStart);
         tokens[i].Type.Should().Be(TokenType.FStringText);

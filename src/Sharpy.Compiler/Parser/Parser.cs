@@ -2397,10 +2397,10 @@ public class Parser
     private FStringLiteral ParseSegmentedFString(int startLine, int startColumn)
     {
         var parts = new List<FStringPart>();
-        
+
         // Consume FStringStart
         Expect(TokenType.FStringStart);
-        
+
         while (Current.Type != TokenType.FStringEnd && Current.Type != TokenType.Eof)
         {
             if (Current.Type == TokenType.FStringText)
@@ -2413,10 +2413,10 @@ public class Parser
             {
                 // Expression segment
                 Advance(); // Skip FStringExprStart
-                
+
                 // Parse the expression (tokens are already emitted by lexer)
                 var expr = ParseExpression();
-                
+
                 // Check for optional format spec (: followed by format spec tokens until })
                 if (Current.Type == TokenType.Colon)
                 {
@@ -2427,9 +2427,9 @@ public class Parser
                         Advance();
                     }
                 }
-                
+
                 parts.Add(new FStringPart { Text = null, Expression = expr });
-                
+
                 // Expect FStringExprEnd
                 Expect(TokenType.FStringExprEnd);
             }
@@ -2438,13 +2438,13 @@ public class Parser
                 throw new ParserError($"Unexpected token in f-string: {Current.Type}", Current.Line, Current.Column);
             }
         }
-        
+
         var endLine = Current.Line;
         var endColumn = Current.Column;
-        
+
         // Consume FStringEnd
         Expect(TokenType.FStringEnd);
-        
+
         return new FStringLiteral { Parts = parts, LineStart = startLine, ColumnStart = startColumn, LineEnd = endLine, ColumnEnd = endColumn };
     }
 

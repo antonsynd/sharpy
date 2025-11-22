@@ -21,7 +21,7 @@ public class Lexer
 
     // F-string state tracking
     private readonly Stack<FStringContext> _fstringStack = new();
-    
+
     private class FStringContext
     {
         public char QuoteChar { get; set; }
@@ -144,7 +144,7 @@ public class Lexer
             var savedPos = _position;
             var savedCol = _column;
             SkipWhitespace();
-            
+
             // Check if this is a blank line or comment line
             if (_position >= _source.Length || _source[_position] == '\n' || _source[_position] == '\r' || _source[_position] == '#')
             {
@@ -158,7 +158,7 @@ public class Lexer
                         _column++;
                     }
                 }
-                
+
                 // Skip the newline if present
                 if (_position < _source.Length && (_source[_position] == '\n' || _source[_position] == '\r'))
                 {
@@ -176,15 +176,15 @@ public class Lexer
                     _column = 1;
                     _atLineStart = true;
                 }
-                
+
                 // Recursively get next token (don't produce NEWLINE for blank/comment lines)
                 return NextToken();
             }
-            
+
             // Restore position to measure indentation properly
             _position = savedPos;
             _column = savedCol;
-            
+
             var indentLevel = MeasureIndentation();
             var currentIndent = _indentStack.Peek();
 
@@ -655,7 +655,7 @@ public class Lexer
                 context.BraceDepth--;
                 _position++;
                 _column++;
-                
+
                 if (context.BraceDepth == 0)
                 {
                     // End of expression
@@ -679,7 +679,7 @@ public class Lexer
 
             // For everything else, tokenize normally (but skip indentation handling)
             SkipWhitespace();
-            
+
             if (_position >= _source.Length)
                 throw new LexerError("Unterminated f-string expression", _line, _column);
 
@@ -693,7 +693,7 @@ public class Lexer
                 context.BraceDepth--;
                 _position++;
                 _column++;
-                
+
                 // End of expression if brace depth is zero, otherwise nested closing brace within expression
                 return context.BraceDepth == 0
                     ? new Token(TokenType.FStringExprEnd, "}", startLine, startColumn)
@@ -726,7 +726,7 @@ public class Lexer
 
         // We're reading literal text or looking for expression start or string end
         var sb = new StringBuilder();
-        
+
         while (_position < _source.Length)
         {
             var c = _source[_position];
@@ -747,7 +747,7 @@ public class Lexer
                             // Return the text token. On next call, we'll handle the closing triple-quote
                             return new Token(TokenType.FStringText, sb.ToString(), startLine, startColumn);
                         }
-                        
+
                         // End of f-string
                         _position += 3;
                         _column += 3;
@@ -769,7 +769,7 @@ public class Lexer
                         // Don't pop the stack yet!
                         return new Token(TokenType.FStringText, sb.ToString(), startLine, startColumn);
                     }
-                    
+
                     // End of f-string
                     _position++;
                     _column++;
@@ -796,7 +796,7 @@ public class Lexer
                         // Return the text token. On next call, we'll handle the {
                         return new Token(TokenType.FStringText, sb.ToString(), startLine, startColumn);
                     }
-                    
+
                     // Start expression - consume the { and increment brace depth
                     _position++;
                     _column++;

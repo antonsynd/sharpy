@@ -352,7 +352,7 @@ Line 3
         // Bug #2 fix: Unmatched closing bracket should not cause bracket depth to go negative
         var source = "x = ]";
         var tokens = Tokenize(source);
-        
+
         // Should tokenize without error (parser will catch the error)
         tokens.Should().Contain(t => t.Type == TokenType.RightBracket);
         tokens.Should().Contain(t => t.Type == TokenType.Eof);
@@ -364,7 +364,7 @@ Line 3
         // Bug #2 fix: Multiple unmatched closing brackets
         var source = "x = ) ] }";
         var tokens = Tokenize(source);
-        
+
         // Should tokenize without error
         tokens.Should().Contain(t => t.Type == TokenType.RightParen);
         tokens.Should().Contain(t => t.Type == TokenType.RightBracket);
@@ -379,7 +379,7 @@ Line 3
 y = [2]
 z = [3]";
         var tokens = Tokenize(source);
-        
+
         // Each line should have proper NEWLINE token
         tokens.Count(t => t.Type == TokenType.Newline).Should().Be(2);
         tokens.Count(t => t.Type == TokenType.LeftBracket).Should().Be(3);
@@ -517,12 +517,12 @@ x = 5
     # indented comment
     x = 1";
         var tokens = Tokenize(source);
-        
+
         // Should have: If, True, Colon, Newline, Indent, Identifier, Assign, Integer, Dedent, EOF
         // Should NOT have extra NEWLINE after the comment
         tokens.Should().Contain(t => t.Type == TokenType.Indent);
         tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "x");
-        
+
         // Count NEWLINE tokens - should be exactly 1 (after the colon)
         tokens.Count(t => t.Type == TokenType.Newline).Should().Be(1);
     }
@@ -550,12 +550,12 @@ x = 5
     
 y = 2";
         var tokens = Tokenize(source);
-        
+
         // Should have: Identifier, Assign, Integer, Newline, Identifier, Assign, Integer, EOF
         // The blank lines (including the one with spaces) should be skipped
         tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "x");
         tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "y");
-        
+
         // Should have exactly 1 NEWLINE (after x = 1)
         tokens.Count(t => t.Type == TokenType.Newline).Should().Be(1);
     }
