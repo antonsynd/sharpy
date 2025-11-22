@@ -207,7 +207,8 @@ string""""""";
         var source = "x = f\"value: {y}\"";
         var tokens = Tokenize(source);
 
-        var fstringToken = tokens.First(t => t.Type == TokenType.FString);
+        // Find FStringStart token instead of FString token
+        var fstringToken = tokens.First(t => t.Type == TokenType.FStringStart);
         fstringToken.Line.Should().Be(1);
         fstringToken.Column.Should().Be(5);
     }

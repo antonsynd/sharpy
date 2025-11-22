@@ -260,19 +260,31 @@ public class LexerTests
     }
 
     [Fact]
-    public void Tokenize_FString_ReturnsFStringToken()
+    public void Tokenize_FString_ReturnsFStringTokens()
     {
-        var token = SingleToken("f\"Hello {name}\"");
-        token.Type.Should().Be(TokenType.FString);
-        token.Value.Should().Be("Hello {name}");
+        var tokens = Tokenize("f\"Hello {name}\"");
+        // Should emit: FStringStart, FStringText, FStringExprStart, Identifier, FStringExprEnd, FStringEnd, Eof
+        tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringText && t.Value == "Hello ");
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprStart);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "name");
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprEnd);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringEnd);
     }
 
     [Fact]
     public void Tokenize_FStringWithNestedBraces_HandlesCorrectly()
     {
-        var token = SingleToken("f\"Result: {calc(x, {y})}\"");
-        token.Type.Should().Be(TokenType.FString);
-        token.Value.Should().Be("Result: {calc(x, {y})}");
+        var tokens = Tokenize("f\"Result: {calc(x, {y})}\"");
+        // Should have FStringStart, FStringText, expression tokens, FStringEnd
+        tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringText && t.Value == "Result: ");
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprStart);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "calc");
+        tokens.Should().Contain(t => t.Type == TokenType.LeftBrace); // nested brace
+        tokens.Should().Contain(t => t.Type == TokenType.RightBrace); // nested brace
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprEnd);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringEnd);
     }
 
     [Fact]
@@ -570,7 +582,9 @@ x = 1";
         tokens.Should().Contain(t => t.Type == TokenType.Arrow);
         tokens.Should().Contain(t => t.Type == TokenType.Indent);
         tokens.Should().Contain(t => t.Type == TokenType.Return);
-        tokens.Should().Contain(t => t.Type == TokenType.FString);
+        // Check for f-string tokens instead of single FString token
+        tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringEnd);
         tokens.Should().Contain(t => t.Type == TokenType.Dedent);
     }
 
@@ -844,30 +858,43 @@ y = 2";
     #region F-String Edge Cases
 
     [Fact]
-    public void Tokenize_EmptyFString_ProducesCorrectToken()
+    public void Tokenize_EmptyFString_ProducesCorrectTokens()
     {
         var source = "f\"\"";
-        var token = SingleToken(source);
-        token.Type.Should().Be(TokenType.FString);
+        var tokens = Tokenize(source);
+        // Should emit: FStringStart, FStringEnd (no text since it's empty), Eof
+        tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringEnd);
     }
 
     [Fact]
-    public void Tokenize_FStringWithExpression_ProducesCorrectToken()
+    public void Tokenize_FStringWithExpression_ProducesCorrectTokens()
     {
         var source = "f\"value: {x}\"";
-        var token = SingleToken(source);
-        token.Type.Should().Be(TokenType.FString);
-        token.Value.Should().Contain("{x}");
+        var tokens = Tokenize(source);
+        // Should emit: FStringStart, FStringText, FStringExprStart, Identifier, FStringExprEnd, FStringEnd, Eof
+        tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringText && t.Value.Contains("value: "));
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprStart);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "x");
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprEnd);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringEnd);
     }
 
     [Fact]
-    public void Tokenize_FStringWithMultipleExpressions_ProducesCorrectToken()
+    public void Tokenize_FStringWithMultipleExpressions_ProducesCorrectTokens()
     {
         var source = "f\"x={x}, y={y}\"";
-        var token = SingleToken(source);
-        token.Type.Should().Be(TokenType.FString);
-        token.Value.Should().Contain("{x}");
-        token.Value.Should().Contain("{y}");
+        var tokens = Tokenize(source);
+        // Should contain FStringStart, text segments, expression markers, and FStringEnd
+        tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringText && t.Value.Contains("x="));
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprStart);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "x");
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprEnd);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringText && t.Value.Contains(", y="));
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "y");
+        tokens.Should().Contain(t => t.Type == TokenType.FStringEnd);
     }
 
     [Fact]
@@ -1436,7 +1463,11 @@ y = 2";
         var source = "f\"value: {x + 1}\"";
         var tokens = Tokenize(source);
 
-        tokens.Should().Contain(t => t.Type == TokenType.FString);
+        // Should contain FStringStart, FStringText, FStringExprStart, expression tokens, FStringExprEnd, FStringEnd
+        tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprStart);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprEnd);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringEnd);
     }
 
     [Fact]
@@ -1445,7 +1476,14 @@ y = 2";
         var source = "f\"{x} and {y}\"";
         var tokens = Tokenize(source);
 
-        tokens.Should().Contain(t => t.Type == TokenType.FString);
+        // Should contain FStringStart, expression tokens, FStringEnd
+        tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprStart);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "x");
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprEnd);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringText && t.Value.Contains(" and "));
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "y");
+        tokens.Should().Contain(t => t.Type == TokenType.FStringEnd);
     }
 
     [Fact]

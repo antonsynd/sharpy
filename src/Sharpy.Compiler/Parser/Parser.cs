@@ -2017,14 +2017,10 @@ public class Parser
                     return new StringLiteral { Value = value, IsRaw = true, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
                 }
 
-            case TokenType.FString:
+            case TokenType.FStringStart:
                 {
-                    var value = Current.Value;
-                    var endLine = Current.Line;
-                    var endColumn = Current.Column;
-                    Advance();
-                    var parts = ParseFStringParts(value, startLine, startColumn);
-                    return new FStringLiteral { Parts = parts, LineStart = startLine, ColumnStart = startColumn, LineEnd = endLine, ColumnEnd = endColumn };
+                    // Segmented f-string lexing
+                    return ParseSegmentedFString(startLine, startColumn);
                 }
 
             case TokenType.True:
@@ -2394,97 +2390,62 @@ public class Parser
         return false;
     }
 
-    private List<FStringPart> ParseFStringParts(string fstringValue, int fstringLine, int fstringColumn)
+    /// <summary>
+    /// Parse a segmented f-string (new lexer approach)
+    /// FStringStart, (FStringText | FStringExprStart Expression [: FormatSpec] FStringExprEnd)*, FStringEnd
+    /// </summary>
+    private FStringLiteral ParseSegmentedFString(int startLine, int startColumn)
     {
         var parts = new List<FStringPart>();
-        var i = 0;
-        var textBuffer = new StringBuilder();
-        var currentLine = fstringLine;
-        var currentColumn = fstringColumn + 2; // +2 for 'f' and opening quote
-
-        while (i < fstringValue.Length)
+        
+        // Consume FStringStart
+        Expect(TokenType.FStringStart);
+        
+        while (Current.Type != TokenType.FStringEnd && Current.Type != TokenType.Eof)
         {
-            if (fstringValue[i] == '{')
+            if (Current.Type == TokenType.FStringText)
             {
-                // Save any accumulated text before the expression
-                if (textBuffer.Length > 0)
+                // Text segment
+                parts.Add(new FStringPart { Text = Current.Value, Expression = null });
+                Advance();
+            }
+            else if (Current.Type == TokenType.FStringExprStart)
+            {
+                // Expression segment
+                Advance(); // Skip FStringExprStart
+                
+                // Parse the expression (tokens are already emitted by lexer)
+                var expr = ParseExpression();
+                
+                // Check for optional format spec (: followed by format spec tokens until })
+                if (Current.Type == TokenType.Colon)
                 {
-                    parts.Add(new FStringPart { Text = textBuffer.ToString(), Expression = null });
-                    textBuffer.Clear();
-                }
-
-                // Find the matching closing brace
-                i++; // Skip '{'
-                currentColumn++; // Track '{'
-                var exprStart = i;
-                var exprStartColumn = currentColumn;
-                var braceDepth = 1;
-
-                while (i < fstringValue.Length && braceDepth > 0)
-                {
-                    if (fstringValue[i] == '{') braceDepth++;
-                    else if (fstringValue[i] == '}') braceDepth--;
-
-                    if (braceDepth > 0)
+                    // For now, skip format spec parsing - just consume tokens until FStringExprEnd
+                    // TODO: Properly parse and store format spec in FStringPart
+                    while (Current.Type != TokenType.FStringExprEnd && Current.Type != TokenType.Eof)
                     {
-                        if (fstringValue[i] == '\n')
-                        {
-                            currentLine++;
-                            currentColumn = 1;
-                        }
-                        else
-                        {
-                            currentColumn++;
-                        }
-                        i++;
+                        Advance();
                     }
                 }
-
-                // Extract and parse the expression
-                var exprText = fstringValue.Substring(exprStart, i - exprStart);
-
-                // Parse the expression by creating a mini lexer/parser with correct line/column
-                var exprLexer = new Lexer.Lexer(exprText, null, currentLine, exprStartColumn);
-                var exprTokens = new List<Token>();
-                while (true)
-                {
-                    var token = exprLexer.NextToken();
-                    exprTokens.Add(token);
-                    if (token.Type == TokenType.Eof)
-                        break;
-                }
-
-                var exprParser = new Parser(exprTokens);
-                var expr = exprParser.ParseExpression();
-
+                
                 parts.Add(new FStringPart { Text = null, Expression = expr });
-
-                i++; // Skip '}'
-                currentColumn++; // Track '}'
+                
+                // Expect FStringExprEnd
+                Expect(TokenType.FStringExprEnd);
             }
             else
             {
-                textBuffer.Append(fstringValue[i]);
-                if (fstringValue[i] == '\n')
-                {
-                    currentLine++;
-                    currentColumn = 1;
-                }
-                else
-                {
-                    currentColumn++;
-                }
-                i++;
+                throw new ParserError($"Unexpected token in f-string: {Current.Type}", Current.Line, Current.Column);
             }
         }
-
-        // Add any remaining text
-        if (textBuffer.Length > 0)
-        {
-            parts.Add(new FStringPart { Text = textBuffer.ToString(), Expression = null });
-        }
-
-        return parts;
+        
+        var endLine = Current.Line;
+        var endColumn = Current.Column;
+        
+        // Consume FStringEnd
+        Expect(TokenType.FStringEnd);
+        
+        return new FStringLiteral { Parts = parts, LineStart = startLine, ColumnStart = startColumn, LineEnd = endLine, ColumnEnd = endColumn };
     }
 
     #endregion
