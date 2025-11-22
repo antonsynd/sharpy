@@ -840,6 +840,33 @@ public class Lexer
             startLine = _line;
             startColumn = _column;
 
+            // Check for braces again after skipping whitespace
+            if (current == '}')
+            {
+                context.BraceDepth--;
+                _position++;
+                _column++;
+                
+                if (context.BraceDepth == 0)
+                {
+                    // End of expression
+                    return new Token(TokenType.FStringExprEnd, "}", startLine, startColumn);
+                }
+                else
+                {
+                    // Nested closing brace within expression
+                    return new Token(TokenType.RightBrace, "}", startLine, startColumn);
+                }
+            }
+
+            if (current == '{')
+            {
+                context.BraceDepth++;
+                _position++;
+                _column++;
+                return new Token(TokenType.LeftBrace, "{", startLine, startColumn);
+            }
+
             // String literals inside expressions
             if (current == '"' || current == '\'')
                 return ReadString();
