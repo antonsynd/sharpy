@@ -42,12 +42,12 @@ public class LexerTests
     }
 
     [Fact]
-    public void Tokenize_SingleNewline_ReturnsNewlineAndEof()
+    public void Tokenize_SingleNewline_ReturnsEofOnly()
     {
+        // A single newline is a blank line and should be skipped
         var tokens = Tokenize("\n");
-        tokens.Should().HaveCount(2);
-        tokens[0].Type.Should().Be(TokenType.Newline);
-        tokens[1].Type.Should().Be(TokenType.Eof);
+        tokens.Should().HaveCount(1);
+        tokens[0].Type.Should().Be(TokenType.Eof);
     }
 
     #endregion

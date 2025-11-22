@@ -16,8 +16,7 @@ public class Lexer
     private readonly Stack<int> _indentStack = new();
     private readonly Queue<Token> _pendingTokens = new();
     private bool _atLineStart = true;
-    private bool _parenDepth = false;  // Track if we're inside (), [], or {}
-    private int _bracketDepth = 0;
+    private int _bracketDepth = 0;  // Track if we're inside (), [], or {}
     private readonly ICompilerLogger _logger;
 
     // Keywords mapping
@@ -125,6 +124,51 @@ public class Lexer
         // Handle indentation at line start
         if (_atLineStart && _bracketDepth == 0)
         {
+            // Skip whitespace to see what comes next
+            var savedPos = _position;
+            var savedCol = _column;
+            SkipWhitespace();
+            
+            // Check if this is a blank line or comment line
+            if (_position >= _source.Length || _source[_position] == '\n' || _source[_position] == '\r' || _source[_position] == '#')
+            {
+                // This is a blank or comment line - skip it entirely
+                if (_position < _source.Length && _source[_position] == '#')
+                {
+                    // Skip the comment
+                    while (_position < _source.Length && _source[_position] != '\n' && _source[_position] != '\r')
+                    {
+                        _position++;
+                        _column++;
+                    }
+                }
+                
+                // Skip the newline if present
+                if (_position < _source.Length && (_source[_position] == '\n' || _source[_position] == '\r'))
+                {
+                    if (_source[_position] == '\r')
+                    {
+                        _position++;
+                        if (_position < _source.Length && _source[_position] == '\n')
+                            _position++;
+                    }
+                    else
+                    {
+                        _position++;
+                    }
+                    _line++;
+                    _column = 1;
+                    _atLineStart = true;
+                }
+                
+                // Recursively get next token (don't produce NEWLINE for blank/comment lines)
+                return NextToken();
+            }
+            
+            // Restore position to measure indentation properly
+            _position = savedPos;
+            _column = savedCol;
+            
             var indentLevel = MeasureIndentation();
             var currentIndent = _indentStack.Peek();
 
@@ -335,26 +379,10 @@ public class Lexer
                 hasTabs = true;
                 tempPos++;
             }
-            else if (c == '\n' || c == '\r' || c == '#')
-            {
-                // Empty line or comment line - skip indentation measurement
-                return _indentStack.Peek();
-            }
-            else if (tempPos >= _source.Length)
-            {
-                // Whitespace-only line at EOF - treat as empty line
-                return _indentStack.Peek();
-            }
             else
             {
                 break;
             }
-        }
-
-        // Whitespace-only line - treat as empty
-        if (tempPos >= _source.Length)
-        {
-            return _indentStack.Peek();
         }
 
         // Check for mixed tabs and spaces
@@ -1397,9 +1425,16 @@ public class Lexer
 
         // Track bracket depth for implicit line continuation
         if (c == '(' || c == '[' || c == '{')
+        {
             _bracketDepth++;
+        }
         else if (c == ')' || c == ']' || c == '}')
+        {
             _bracketDepth--;
+            // Prevent negative bracket depth from unmatched closing brackets
+            if (_bracketDepth < 0)
+                _bracketDepth = 0;
+        }
 
         return token;
     }
