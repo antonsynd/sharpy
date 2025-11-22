@@ -573,6 +573,53 @@ def foo():
     }
 
     [Fact]
+    public void ParsesIfStatementWithCommentLine()
+    {
+        // Bug #1 fix test: Indented comment should not cause parser error
+        var source = @"if True:
+    # This is a comment
+    x = 1";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+        module.Body[0].Should().BeOfType<IfStatement>();
+    }
+
+    [Fact]
+    public void ParsesCodeWithBlankLines()
+    {
+        // Bug #4 fix test: Blank lines should not affect parsing
+        var source = @"x = 1
+
+y = 2
+
+z = 3";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void ParsesCodeWithWhitespaceOnlyLines()
+    {
+        // Bug #4 fix test: Lines with only whitespace should be ignored
+        var source = "x = 1\n    \n    \t\ny = 2";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void ParsesListWithCommentsInside()
+    {
+        var source = @"values = [
+    # comment
+    1,
+    # another comment
+    2
+]";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+    }
+
+    [Fact]
     public void RejectsInvalidEscapeInIdentifier()
     {
         // Escape sequences in identifiers are only valid in literal names

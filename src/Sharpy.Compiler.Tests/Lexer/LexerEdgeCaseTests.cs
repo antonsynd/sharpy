@@ -347,6 +347,45 @@ Line 3
     }
 
     [Fact]
+    public void HandlesUnmatchedClosingBracket()
+    {
+        // Bug #2 fix: Unmatched closing bracket should not cause bracket depth to go negative
+        var source = "x = ]";
+        var tokens = Tokenize(source);
+        
+        // Should tokenize without error (parser will catch the error)
+        tokens.Should().Contain(t => t.Type == TokenType.RightBracket);
+        tokens.Should().Contain(t => t.Type == TokenType.Eof);
+    }
+
+    [Fact]
+    public void HandlesMultipleUnmatchedClosingBrackets()
+    {
+        // Bug #2 fix: Multiple unmatched closing brackets
+        var source = "x = ) ] }";
+        var tokens = Tokenize(source);
+        
+        // Should tokenize without error
+        tokens.Should().Contain(t => t.Type == TokenType.RightParen);
+        tokens.Should().Contain(t => t.Type == TokenType.RightBracket);
+        tokens.Should().Contain(t => t.Type == TokenType.RightBrace);
+    }
+
+    [Fact]
+    public void HandlesBracketResetBetweenExpressions()
+    {
+        // Ensure bracket depth resets properly between expressions
+        var source = @"x = [1]
+y = [2]
+z = [3]";
+        var tokens = Tokenize(source);
+        
+        // Each line should have proper NEWLINE token
+        tokens.Count(t => t.Type == TokenType.Newline).Should().Be(2);
+        tokens.Count(t => t.Type == TokenType.LeftBracket).Should().Be(3);
+    }
+
+    [Fact]
     public void HandlesCommas()
     {
         var source = "a, b, c, d";
@@ -468,6 +507,68 @@ x = 5
 ";
         var tokens = Tokenize(source);
         tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "x");
+    }
+
+    [Fact]
+    public void HandlesIndentedCommentLine()
+    {
+        // Bug #1 fix: Indented comment lines should not produce extra NEWLINE tokens
+        var source = @"if True:
+    # indented comment
+    x = 1";
+        var tokens = Tokenize(source);
+        
+        // Should have: If, True, Colon, Newline, Indent, Identifier, Assign, Integer, Dedent, EOF
+        // Should NOT have extra NEWLINE after the comment
+        tokens.Should().Contain(t => t.Type == TokenType.Indent);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "x");
+        
+        // Count NEWLINE tokens - should be exactly 1 (after the colon)
+        tokens.Count(t => t.Type == TokenType.Newline).Should().Be(1);
+    }
+
+    [Fact]
+    public void HandlesCommentInsideBrackets()
+    {
+        var source = @"values = [
+    # comment inside list
+    1,
+    # another comment
+    2
+]";
+        var tokens = Tokenize(source);
+        tokens.Should().Contain(t => t.Type == TokenType.Integer && t.Value == "1");
+        tokens.Should().Contain(t => t.Type == TokenType.Integer && t.Value == "2");
+    }
+
+    [Fact]
+    public void HandlesMultipleBlankLinesWithVariousWhitespace()
+    {
+        // Bug #4 fix: Whitespace-only lines should not produce NEWLINE tokens
+        var source = @"x = 1
+
+    
+y = 2";
+        var tokens = Tokenize(source);
+        
+        // Should have: Identifier, Assign, Integer, Newline, Identifier, Assign, Integer, EOF
+        // The blank lines (including the one with spaces) should be skipped
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "x");
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "y");
+        
+        // Should have exactly 1 NEWLINE (after x = 1)
+        tokens.Count(t => t.Type == TokenType.Newline).Should().Be(1);
+    }
+
+    [Fact]
+    public void HandlesCommentAfterOpeningBracket()
+    {
+        var source = @"x = [  # comment after bracket
+    1, 2, 3
+]";
+        var tokens = Tokenize(source);
+        tokens.Should().Contain(t => t.Type == TokenType.LeftBracket);
+        tokens.Should().Contain(t => t.Type == TokenType.Integer && t.Value == "1");
     }
 
     #endregion
