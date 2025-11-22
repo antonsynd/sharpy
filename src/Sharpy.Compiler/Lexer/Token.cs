@@ -10,7 +10,6 @@ public enum TokenType
     Float,
     String,
     RawString,      // r-string (raw string)
-    FString,        // f-string (legacy single-token, kept for backwards compatibility)
     FStringStart,   // f" or f' - start of f-string
     FStringText,    // literal text segment in f-string
     FStringExprStart, // { - start of interpolated expression in f-string

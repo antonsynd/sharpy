@@ -2017,20 +2017,9 @@ public class Parser
                     return new StringLiteral { Value = value, IsRaw = true, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
                 }
 
-            case TokenType.FString:
-                {
-                    // Legacy single-token f-string (kept for backwards compatibility during transition)
-                    var value = Current.Value;
-                    var endLine = Current.Line;
-                    var endColumn = Current.Column;
-                    Advance();
-                    var parts = ParseFStringParts(value, startLine, startColumn);
-                    return new FStringLiteral { Parts = parts, LineStart = startLine, ColumnStart = startColumn, LineEnd = endLine, ColumnEnd = endColumn };
-                }
-
             case TokenType.FStringStart:
                 {
-                    // New segmented f-string lexing
+                    // Segmented f-string lexing
                     return ParseSegmentedFString(startLine, startColumn);
                 }
 
@@ -2399,99 +2388,6 @@ public class Parser
             return true;
 
         return false;
-    }
-
-    private List<FStringPart> ParseFStringParts(string fstringValue, int fstringLine, int fstringColumn)
-    {
-        var parts = new List<FStringPart>();
-        var i = 0;
-        var textBuffer = new StringBuilder();
-        var currentLine = fstringLine;
-        var currentColumn = fstringColumn + 2; // +2 for 'f' and opening quote
-
-        while (i < fstringValue.Length)
-        {
-            if (fstringValue[i] == '{')
-            {
-                // Save any accumulated text before the expression
-                if (textBuffer.Length > 0)
-                {
-                    parts.Add(new FStringPart { Text = textBuffer.ToString(), Expression = null });
-                    textBuffer.Clear();
-                }
-
-                // Find the matching closing brace
-                i++; // Skip '{'
-                currentColumn++; // Track '{'
-                var exprStart = i;
-                var exprStartColumn = currentColumn;
-                var braceDepth = 1;
-
-                while (i < fstringValue.Length && braceDepth > 0)
-                {
-                    if (fstringValue[i] == '{') braceDepth++;
-                    else if (fstringValue[i] == '}') braceDepth--;
-
-                    if (braceDepth > 0)
-                    {
-                        if (fstringValue[i] == '\n')
-                        {
-                            currentLine++;
-                            currentColumn = 1;
-                        }
-                        else
-                        {
-                            currentColumn++;
-                        }
-                        i++;
-                    }
-                }
-
-                // Extract and parse the expression
-                var exprText = fstringValue.Substring(exprStart, i - exprStart);
-
-                // Parse the expression by creating a mini lexer/parser with correct line/column
-                var exprLexer = new Lexer.Lexer(exprText, null, currentLine, exprStartColumn);
-                var exprTokens = new List<Token>();
-                while (true)
-                {
-                    var token = exprLexer.NextToken();
-                    exprTokens.Add(token);
-                    if (token.Type == TokenType.Eof)
-                        break;
-                }
-
-                var exprParser = new Parser(exprTokens);
-                var expr = exprParser.ParseExpression();
-
-                parts.Add(new FStringPart { Text = null, Expression = expr });
-
-                i++; // Skip '}'
-                currentColumn++; // Track '}'
-            }
-            else
-            {
-                textBuffer.Append(fstringValue[i]);
-                if (fstringValue[i] == '\n')
-                {
-                    currentLine++;
-                    currentColumn = 1;
-                }
-                else
-                {
-                    currentColumn++;
-                }
-                i++;
-            }
-        }
-
-        // Add any remaining text
-        if (textBuffer.Length > 0)
-        {
-            parts.Add(new FStringPart { Text = textBuffer.ToString(), Expression = null });
-        }
-
-        return parts;
     }
 
     /// <summary>
