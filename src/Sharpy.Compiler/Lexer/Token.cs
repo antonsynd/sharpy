@@ -44,6 +44,7 @@ public enum TokenType
     Finally,
     Raise,
     Assert,
+    With,
 
     // Keywords - Import
     Import,

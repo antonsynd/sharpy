@@ -604,7 +604,7 @@ y = 2";
         tokens.Should().Contain(t => t.Type == TokenType.If);
     }
 
-    [Fact(Skip = "Implementation: Some keywords may not be fully recognized")]
+    [Fact]
     public void HandlesAllKeywords()
     {
         var keywords = new[]

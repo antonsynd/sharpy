@@ -75,6 +75,7 @@ public class LexerTests
     [InlineData("finally", TokenType.Finally)]
     [InlineData("raise", TokenType.Raise)]
     [InlineData("assert", TokenType.Assert)]
+    [InlineData("with", TokenType.With)]
     [InlineData("import", TokenType.Import)]
     [InlineData("from", TokenType.From)]
     [InlineData("as", TokenType.As)]
