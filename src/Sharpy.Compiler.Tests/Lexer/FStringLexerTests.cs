@@ -510,32 +510,36 @@ line2""""""";
         tokens[i].Type.Should().Be(TokenType.FStringFormatSpec);
         tokens[i++].Value.Should().Be(">10");
         tokens[i++].Type.Should().Be(TokenType.FStringExprEnd);
-        tokens[i++].Type.Should().Be(TokenType.FStringEnd);
+        tokens[i].Type.Should().Be(TokenType.FStringEnd);
     }
 
     [Fact]
     public void FString_ColonInNestedExpression_NotTreatedAsFormatSpec()
     {
-        // Colon at depth > 1 should not be treated as format spec
-        var tokens = Tokenize("f\"{d['key']}\"");
+        // Colon at depth > 1 (inside dict literal) should not be treated as format spec
+        var tokens = Tokenize("f\"{calc({'a': 1})}\"");
 
         tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
         tokens.Should().Contain(t => t.Type == TokenType.FStringExprStart);
-        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "d");
-        tokens.Should().Contain(t => t.Type == TokenType.LeftBracket);
-        tokens.Should().Contain(t => t.Type == TokenType.String && t.Value == "key");
-        tokens.Should().Contain(t => t.Type == TokenType.RightBracket);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "calc");
+        tokens.Should().Contain(t => t.Type == TokenType.LeftParen);
+        tokens.Should().Contain(t => t.Type == TokenType.LeftBrace);  // Dict literal start
+        tokens.Should().Contain(t => t.Type == TokenType.String && t.Value == "a");
+        tokens.Should().Contain(t => t.Type == TokenType.Colon);  // Colon inside dict literal at depth > 1
+        tokens.Should().Contain(t => t.Type == TokenType.Integer && t.Value == "1");
+        tokens.Should().Contain(t => t.Type == TokenType.RightBrace);  // Dict literal end
+        tokens.Should().Contain(t => t.Type == TokenType.RightParen);
         tokens.Should().Contain(t => t.Type == TokenType.FStringExprEnd);
         tokens.Should().Contain(t => t.Type == TokenType.FStringEnd);
-        // Should not have FStringFormatSpec token
+        // Should not have FStringFormatSpec token (colon was inside nested dict, not at depth 1)
         tokens.Should().NotContain(t => t.Type == TokenType.FStringFormatSpec);
     }
 
     [Fact]
-    public void FString_TernaryOperatorWithColon_NotTreatedAsFormatSpec()
+    public void FString_TernaryOperator_TokenizesCorrectly()
     {
-        // Ternary operator : should not be treated as format spec (it's at depth > 1 due to parens)
-        // However, this might need special handling in the future
+        // Test that f-strings work with ternary expressions (x if condition else y)
+        // This does not involve colon handling; ternary uses 'if' and 'else' keywords.
         var tokens = Tokenize("f\"{x if condition else y}\"");
 
         tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
