@@ -396,4 +396,224 @@ line2""""""";
     }
 
     #endregion
+
+    #region Format Specifier Tests
+
+    [Fact]
+    public void FString_SimpleFormatSpec_TokenizesCorrectly()
+    {
+        var tokens = Tokenize("f\"{x:.2f}\"");
+
+        tokens[0].Type.Should().Be(TokenType.FStringStart);
+        tokens[1].Type.Should().Be(TokenType.FStringExprStart);
+        tokens[2].Type.Should().Be(TokenType.Identifier);
+        tokens[2].Value.Should().Be("x");
+        tokens[3].Type.Should().Be(TokenType.FStringFormatSpec);
+        tokens[3].Value.Should().Be(".2f");
+        tokens[4].Type.Should().Be(TokenType.FStringExprEnd);
+        tokens[5].Type.Should().Be(TokenType.FStringEnd);
+    }
+
+    [Fact]
+    public void FString_FormatSpecAlignment_TokenizesCorrectly()
+    {
+        var tokens = Tokenize("f\"{x:>10}\"");
+
+        tokens[0].Type.Should().Be(TokenType.FStringStart);
+        tokens[1].Type.Should().Be(TokenType.FStringExprStart);
+        tokens[2].Type.Should().Be(TokenType.Identifier);
+        tokens[2].Value.Should().Be("x");
+        tokens[3].Type.Should().Be(TokenType.FStringFormatSpec);
+        tokens[3].Value.Should().Be(">10");
+        tokens[4].Type.Should().Be(TokenType.FStringExprEnd);
+        tokens[5].Type.Should().Be(TokenType.FStringEnd);
+    }
+
+    [Fact]
+    public void FString_FormatSpecComplex_TokenizesCorrectly()
+    {
+        var tokens = Tokenize("f\"{x:0>5.2f}\"");
+
+        tokens[0].Type.Should().Be(TokenType.FStringStart);
+        tokens[1].Type.Should().Be(TokenType.FStringExprStart);
+        tokens[2].Type.Should().Be(TokenType.Identifier);
+        tokens[2].Value.Should().Be("x");
+        tokens[3].Type.Should().Be(TokenType.FStringFormatSpec);
+        tokens[3].Value.Should().Be("0>5.2f");
+        tokens[4].Type.Should().Be(TokenType.FStringExprEnd);
+        tokens[5].Type.Should().Be(TokenType.FStringEnd);
+    }
+
+    [Fact]
+    public void FString_EmptyFormatSpec_TokenizesCorrectly()
+    {
+        var tokens = Tokenize("f\"{x:}\"");
+
+        tokens[0].Type.Should().Be(TokenType.FStringStart);
+        tokens[1].Type.Should().Be(TokenType.FStringExprStart);
+        tokens[2].Type.Should().Be(TokenType.Identifier);
+        tokens[2].Value.Should().Be("x");
+        tokens[3].Type.Should().Be(TokenType.FStringFormatSpec);
+        tokens[3].Value.Should().Be("");  // Empty format spec
+        tokens[4].Type.Should().Be(TokenType.FStringExprEnd);
+        tokens[5].Type.Should().Be(TokenType.FStringEnd);
+    }
+
+    [Fact]
+    public void FString_FormatSpecWithNestedExpression_TokenizesCorrectly()
+    {
+        // f"{x:{width}}" - format spec contains nested expression
+        var tokens = Tokenize("f\"{x:{width}}\"");
+
+        tokens[0].Type.Should().Be(TokenType.FStringStart);
+        tokens[1].Type.Should().Be(TokenType.FStringExprStart);
+        tokens[2].Type.Should().Be(TokenType.Identifier);
+        tokens[2].Value.Should().Be("x");
+        tokens[3].Type.Should().Be(TokenType.FStringFormatSpec);
+        tokens[3].Value.Should().Be("{width}");  // Nested braces included in format spec
+        tokens[4].Type.Should().Be(TokenType.FStringExprEnd);
+        tokens[5].Type.Should().Be(TokenType.FStringEnd);
+    }
+
+    [Fact]
+    public void FString_FormatSpecWithNestedExpressionAndType_TokenizesCorrectly()
+    {
+        // f"{x:{width}.{precision}f}" - format spec with multiple nested expressions
+        var tokens = Tokenize("f\"{x:{width}.{precision}f}\"");
+
+        tokens[0].Type.Should().Be(TokenType.FStringStart);
+        tokens[1].Type.Should().Be(TokenType.FStringExprStart);
+        tokens[2].Type.Should().Be(TokenType.Identifier);
+        tokens[2].Value.Should().Be("x");
+        tokens[3].Type.Should().Be(TokenType.FStringFormatSpec);
+        tokens[3].Value.Should().Be("{width}.{precision}f");
+        tokens[4].Type.Should().Be(TokenType.FStringExprEnd);
+        tokens[5].Type.Should().Be(TokenType.FStringEnd);
+    }
+
+    [Fact]
+    public void FString_MultipleExpressionsWithFormatSpecs_TokenizesCorrectly()
+    {
+        var tokens = Tokenize("f\"{x:.2f} and {y:>10}\"");
+
+        var i = 0;
+        tokens[i++].Type.Should().Be(TokenType.FStringStart);
+        tokens[i++].Type.Should().Be(TokenType.FStringExprStart);
+        tokens[i++].Type.Should().Be(TokenType.Identifier); // x
+        tokens[i].Type.Should().Be(TokenType.FStringFormatSpec);
+        tokens[i++].Value.Should().Be(".2f");
+        tokens[i++].Type.Should().Be(TokenType.FStringExprEnd);
+        tokens[i].Type.Should().Be(TokenType.FStringText);
+        tokens[i++].Value.Should().Be(" and ");
+        tokens[i++].Type.Should().Be(TokenType.FStringExprStart);
+        tokens[i++].Type.Should().Be(TokenType.Identifier); // y
+        tokens[i].Type.Should().Be(TokenType.FStringFormatSpec);
+        tokens[i++].Value.Should().Be(">10");
+        tokens[i++].Type.Should().Be(TokenType.FStringExprEnd);
+        tokens[i++].Type.Should().Be(TokenType.FStringEnd);
+    }
+
+    [Fact]
+    public void FString_ColonInNestedExpression_NotTreatedAsFormatSpec()
+    {
+        // Colon at depth > 1 should not be treated as format spec
+        var tokens = Tokenize("f\"{d['key']}\"");
+
+        tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprStart);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "d");
+        tokens.Should().Contain(t => t.Type == TokenType.LeftBracket);
+        tokens.Should().Contain(t => t.Type == TokenType.String && t.Value == "key");
+        tokens.Should().Contain(t => t.Type == TokenType.RightBracket);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprEnd);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringEnd);
+        // Should not have FStringFormatSpec token
+        tokens.Should().NotContain(t => t.Type == TokenType.FStringFormatSpec);
+    }
+
+    [Fact]
+    public void FString_TernaryOperatorWithColon_NotTreatedAsFormatSpec()
+    {
+        // Ternary operator : should not be treated as format spec (it's at depth > 1 due to parens)
+        // However, this might need special handling in the future
+        var tokens = Tokenize("f\"{x if condition else y}\"");
+
+        tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprStart);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "x");
+        tokens.Should().Contain(t => t.Type == TokenType.If);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "condition");
+        tokens.Should().Contain(t => t.Type == TokenType.Else);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "y");
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprEnd);
+    }
+
+    [Fact]
+    public void FString_FormatSpecWithSpaces_TokenizesCorrectly()
+    {
+        var tokens = Tokenize("f\"{x: >10}\"");
+
+        tokens[3].Type.Should().Be(TokenType.FStringFormatSpec);
+        tokens[3].Value.Should().Be(" >10");  // Space is part of format spec
+    }
+
+    [Fact]
+    public void FString_FormatSpecPercentage_TokenizesCorrectly()
+    {
+        var tokens = Tokenize("f\"{x:.2%}\"");
+
+        tokens[3].Type.Should().Be(TokenType.FStringFormatSpec);
+        tokens[3].Value.Should().Be(".2%");
+    }
+
+    [Fact]
+    public void FString_FormatSpecBinary_TokenizesCorrectly()
+    {
+        var tokens = Tokenize("f\"{x:08b}\"");
+
+        tokens[3].Type.Should().Be(TokenType.FStringFormatSpec);
+        tokens[3].Value.Should().Be("08b");
+    }
+
+    [Fact]
+    public void FString_FormatSpecHex_TokenizesCorrectly()
+    {
+        var tokens = Tokenize("f\"{x:#06x}\"");
+
+        tokens[3].Type.Should().Be(TokenType.FStringFormatSpec);
+        tokens[3].Value.Should().Be("#06x");
+    }
+
+    [Fact]
+    public void FString_ComplexExpressionWithFormatSpec_TokenizesCorrectly()
+    {
+        var tokens = Tokenize("f\"{x + y:.2f}\"");
+
+        tokens[0].Type.Should().Be(TokenType.FStringStart);
+        tokens[1].Type.Should().Be(TokenType.FStringExprStart);
+        tokens[2].Type.Should().Be(TokenType.Identifier); // x
+        tokens[3].Type.Should().Be(TokenType.Plus);
+        tokens[4].Type.Should().Be(TokenType.Identifier); // y
+        tokens[5].Type.Should().Be(TokenType.FStringFormatSpec);
+        tokens[5].Value.Should().Be(".2f");
+        tokens[6].Type.Should().Be(TokenType.FStringExprEnd);
+    }
+
+    [Fact]
+    public void FString_MethodCallWithFormatSpec_TokenizesCorrectly()
+    {
+        var tokens = Tokenize("f\"{obj.getValue():.2f}\"");
+
+        tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprStart);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "obj");
+        tokens.Should().Contain(t => t.Type == TokenType.Dot);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "getValue");
+        tokens.Should().Contain(t => t.Type == TokenType.LeftParen);
+        tokens.Should().Contain(t => t.Type == TokenType.RightParen);
+        var formatSpecToken = tokens.First(t => t.Type == TokenType.FStringFormatSpec);
+        formatSpecToken.Value.Should().Be(".2f");
+    }
+
+    #endregion
 }
