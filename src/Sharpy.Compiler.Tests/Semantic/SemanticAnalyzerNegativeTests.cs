@@ -427,7 +427,7 @@ def foo() -> int:
 
     #region Operator Errors
 
-    [Fact(Skip = "Type checking: Binary operator type validation not yet implemented")]
+    [Fact]
     public void RejectsInvalidAddition()
     {
         var source = @"
@@ -437,10 +437,11 @@ def foo():
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Operator type checking might not be fully implemented
+        // Should report error about incompatible types
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot add incompatible types"));
     }
 
-    [Fact(Skip = "Type checking: Comparison operator type validation not yet implemented")]
+    [Fact]
     public void RejectsInvalidComparison()
     {
         var source = @"
@@ -450,10 +451,11 @@ def foo():
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Operator type checking might not be fully implemented
+        // Should report error about incompatible types
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot compare incompatible types"));
     }
 
-    [Fact(Skip = "Type checking: Unary operator type validation not yet implemented")]
+    [Fact]
     public void RejectsInvalidUnaryOperation()
     {
         var source = @"
@@ -463,20 +465,165 @@ def foo():
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Operator type checking might not be fully implemented
+        // Should report error about unary operation on non-numeric type
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot apply unary"));
     }
 
-    [Fact(Skip = "Type checking: Logical operator type validation not yet implemented")]
-    public void RejectsInvalidLogicalOperation()
+    [Fact]
+    public void AllowsLogicalOperationOnNonBool()
     {
         var source = @"
 def foo():
-    x: bool = 5 and 10  # logical operations on non-bool might be allowed
+    x: bool = 5 and 10  # logical operations on non-bool are allowed (Python semantics)
 ";
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Some languages allow truthy/falsy values
+        // Logical operations work on any type in Python (truthy/falsy values)
+        // Sharpy follows Python semantics here
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    // Additional operator type validation tests for better coverage
+
+    [Fact]
+    public void AllowsValidNumericAddition()
+    {
+        var source = @"
+def foo():
+    x: int = 5 + 10
+    y: double = 3.14 + 2.71
+    z: int = 5 + 10 + 15
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AllowsValidStringConcatenation()
+    {
+        var source = @"
+def foo():
+    x: str = 'hello' + 'world'
+    y: str = 'a' + 'b' + 'c'
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RejectsSubtractionWithString()
+    {
+        var source = @"
+def foo():
+    x: str = 'hello' - 'world'  # cannot subtract strings
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot perform arithmetic operation"));
+    }
+
+    [Fact]
+    public void AllowsValidNumericComparison()
+    {
+        var source = @"
+def foo():
+    a: bool = 5 < 10
+    b: bool = 3.14 >= 2.71
+    c: bool = 100 == 100
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AllowsValidStringComparison()
+    {
+        var source = @"
+def foo():
+    a: bool = 'apple' < 'banana'
+    b: bool = 'hello' == 'hello'
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AllowsValidUnaryMinus()
+    {
+        var source = @"
+def foo():
+    x: int = -5
+    y: double = -3.14
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RejectsUnaryMinusOnBool()
+    {
+        var source = @"
+def foo():
+    x: bool = -True  # cannot negate a boolean
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot apply unary"));
+    }
+
+    [Fact]
+    public void AllowsBitwiseOperationsOnIntegers()
+    {
+        var source = @"
+def foo():
+    x: int = 5 & 3
+    y: int = 10 | 2
+    z: int = 7 ^ 4
+    w: int = ~5
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ValidBitwiseOperations_NoErrors()
+    {
+        var source = @"
+def foo():
+    x: int = 3 & 2  # valid bitwise operation
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RejectsBitwiseNotOnString()
+    {
+        var source = @"
+def foo():
+    x: str = ~'hello'  # cannot perform bitwise NOT on string
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Bitwise NOT requires integer type"));
     }
 
     #endregion

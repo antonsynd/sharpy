@@ -954,13 +954,14 @@ public class TypeChecker
 
             BinaryOperator.BitwiseAnd or BinaryOperator.BitwiseOr or
             BinaryOperator.BitwiseXor or BinaryOperator.LeftShift or
-            BinaryOperator.RightShift => SemanticType.Int,
+            BinaryOperator.RightShift => ValidateBitwiseOp(leftType, rightType),
 
-            BinaryOperator.And or BinaryOperator.Or => SemanticType.Bool,
+            BinaryOperator.And or BinaryOperator.Or => ValidateLogicalOp(leftType, rightType),
 
-            BinaryOperator.Equal or BinaryOperator.NotEqual or
+            BinaryOperator.Equal or BinaryOperator.NotEqual => SemanticType.Bool,  // Equality works on any type
+
             BinaryOperator.LessThan or BinaryOperator.LessThanOrEqual or
-            BinaryOperator.GreaterThan or BinaryOperator.GreaterThanOrEqual => SemanticType.Bool,
+            BinaryOperator.GreaterThan or BinaryOperator.GreaterThanOrEqual => ValidateComparisonOp(leftType, rightType),
 
             BinaryOperator.In or BinaryOperator.NotIn or
             BinaryOperator.Is or BinaryOperator.IsNot => SemanticType.Bool,
@@ -976,8 +977,8 @@ public class TypeChecker
         return unOp.Operator switch
         {
             UnaryOperator.Not => SemanticType.Bool,
-            UnaryOperator.Minus or UnaryOperator.Plus => operandType,
-            UnaryOperator.BitwiseNot => SemanticType.Int,
+            UnaryOperator.Minus or UnaryOperator.Plus => ValidateUnaryArithmeticOp(unOp.Operator, operandType),
+            UnaryOperator.BitwiseNot => ValidateUnaryBitwiseOp(operandType),
             _ => SemanticType.Unknown
         };
     }
@@ -1541,8 +1542,38 @@ public class TypeChecker
         return SemanticType.Bool;
     }
 
+    /// <summary>
+    /// Check if a type is numeric (int, long, float, double)
+    /// </summary>
+    private bool IsNumericType(SemanticType type)
+    {
+        return type == SemanticType.Int ||
+               type == SemanticType.Long ||
+               type == SemanticType.Float ||
+               type == SemanticType.Double ||
+               type == SemanticType.Unknown; // Unknown types are allowed to avoid cascading errors
+    }
+
+    /// <summary>
+    /// Check if a type is comparable (numeric or string)
+    /// </summary>
+    private bool IsComparableType(SemanticType type)
+    {
+        return IsNumericType(type) ||
+               type == SemanticType.Str ||
+               type == SemanticType.Bool ||
+               type == SemanticType.Unknown;
+    }
+
     private SemanticType InferArithmeticType(SemanticType left, SemanticType right)
     {
+        // Validate that both operands are numeric types
+        if (!IsNumericType(left) || !IsNumericType(right))
+        {
+            AddError($"Cannot perform arithmetic operation on non-numeric types: {left.GetDisplayName()} and {right.GetDisplayName()}", 0, 0);
+            return SemanticType.Unknown;
+        }
+
         // Simplified: promote to widest type
         if (left == SemanticType.Double || right == SemanticType.Double)
             return SemanticType.Double;
@@ -1559,8 +1590,97 @@ public class TypeChecker
         if (left == SemanticType.Str && right == SemanticType.Str)
             return SemanticType.Str;
 
-        // Otherwise, use arithmetic type inference
-        return InferArithmeticType(left, right);
+        // Check if both are numeric
+        if (IsNumericType(left) && IsNumericType(right))
+        {
+            return InferArithmeticType(left, right);
+        }
+
+        // Type mismatch: cannot add these types
+        if (left != SemanticType.Unknown && right != SemanticType.Unknown)
+        {
+            AddError($"Cannot add incompatible types: {left.GetDisplayName()} and {right.GetDisplayName()}", 0, 0);
+        }
+        return SemanticType.Unknown;
+    }
+
+    private SemanticType ValidateComparisonOp(SemanticType left, SemanticType right)
+    {
+        // Comparisons work on comparable types (numeric or string)
+        // Both operands should be the same type or compatible types
+        if (!IsComparableType(left) || !IsComparableType(right))
+        {
+            if (left != SemanticType.Unknown && right != SemanticType.Unknown)
+            {
+                AddError($"Cannot compare incompatible types: {left.GetDisplayName()} and {right.GetDisplayName()}", 0, 0);
+            }
+        }
+        else if ((IsNumericType(left) && !IsNumericType(right)) || 
+                 (!IsNumericType(left) && IsNumericType(right)))
+        {
+            // One is numeric, the other is not (and not Unknown)
+            if (left != SemanticType.Unknown && right != SemanticType.Unknown)
+            {
+                AddError($"Cannot compare incompatible types: {left.GetDisplayName()} and {right.GetDisplayName()}", 0, 0);
+            }
+        }
+        return SemanticType.Bool;
+    }
+
+    private SemanticType ValidateBitwiseOp(SemanticType left, SemanticType right)
+    {
+        // Bitwise operations require integer types
+        bool leftIsInt = left == SemanticType.Int || left == SemanticType.Long || left == SemanticType.Unknown;
+        bool rightIsInt = right == SemanticType.Int || right == SemanticType.Long || right == SemanticType.Unknown;
+        
+        if (!leftIsInt || !rightIsInt)
+        {
+            if (left != SemanticType.Unknown && right != SemanticType.Unknown)
+            {
+                AddError($"Bitwise operations require integer types, got: {left.GetDisplayName()} and {right.GetDisplayName()}", 0, 0);
+            }
+            return SemanticType.Unknown;
+        }
+        
+        return SemanticType.Int;
+    }
+
+    private SemanticType ValidateLogicalOp(SemanticType left, SemanticType right)
+    {
+        // In Python, logical operations work on any type (truthy/falsy)
+        // In Sharpy, we could be stricter and require bool types
+        // For now, we'll allow any type (like Python) but could make this stricter
+        return SemanticType.Bool;
+    }
+
+    private SemanticType ValidateUnaryArithmeticOp(UnaryOperator op, SemanticType operandType)
+    {
+        // Unary +/- require numeric types
+        if (!IsNumericType(operandType))
+        {
+            if (operandType != SemanticType.Unknown)
+            {
+                string opSymbol = op == UnaryOperator.Minus ? "-" : "+";
+                AddError($"Cannot apply unary {opSymbol} to non-numeric type: {operandType.GetDisplayName()}", 0, 0);
+            }
+            return SemanticType.Unknown;
+        }
+        return operandType;
+    }
+
+    private SemanticType ValidateUnaryBitwiseOp(SemanticType operandType)
+    {
+        // Bitwise NOT requires integer type
+        bool isInt = operandType == SemanticType.Int || operandType == SemanticType.Long || operandType == SemanticType.Unknown;
+        if (!isInt)
+        {
+            if (operandType != SemanticType.Unknown)
+            {
+                AddError($"Bitwise NOT requires integer type, got: {operandType.GetDisplayName()}", 0, 0);
+            }
+            return SemanticType.Unknown;
+        }
+        return SemanticType.Int;
     }
 
     /// <summary>
