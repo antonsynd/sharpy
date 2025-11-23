@@ -84,12 +84,13 @@ public class LexerEdgeCaseTests
         tokens.Should().Contain(t => t.Type == TokenType.String);
     }
 
-    [Fact(Skip = "Unimplemented: Raw string prefix not yet supported")]
+    [Fact]
     public void HandlesRawStringWithBackslashes()
     {
         var source = "r\"C:\\path\\to\\file\"";
         var tokens = Tokenize(source);
-        tokens.Should().Contain(t => t.Type == TokenType.String);
+        // Raw strings should produce a RawString token that preserves backslashes
+        tokens.Should().Contain(t => t.Type == TokenType.RawString && t.Value == "C:\\path\\to\\file");
     }
 
     [Fact]
@@ -115,28 +116,47 @@ Line 3
         tokens.Should().Contain(t => t.Type == TokenType.String);
     }
 
-    [Fact(Skip = "Unimplemented: F-string prefix not yet supported")]
+    [Fact]
     public void HandlesFStringWithNoInterpolation()
     {
         var source = "f\"plain text\"";
         var tokens = Tokenize(source);
-        tokens.Should().Contain(t => t.Type == TokenType.String);
+        // F-string with no interpolation should produce: FStringStart, FStringText, FStringEnd
+        tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringText && t.Value == "plain text");
+        tokens.Should().Contain(t => t.Type == TokenType.FStringEnd);
     }
 
-    [Fact(Skip = "Unimplemented: F-string interpolation not yet supported")]
+    [Fact]
     public void HandlesFStringWithSimpleInterpolation()
     {
         var source = "f\"value is {x}\"";
         var tokens = Tokenize(source);
-        tokens.Should().Contain(t => t.Type == TokenType.String);
+        // F-string with interpolation should produce: FStringStart, FStringText, FStringExprStart, Identifier, FStringExprEnd, FStringEnd
+        tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringText && t.Value == "value is ");
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprStart);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "x");
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprEnd);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringEnd);
     }
 
-    [Fact(Skip = "Unimplemented: F-string complex expressions not yet supported")]
+    [Fact]
     public void HandlesFStringWithComplexExpression()
     {
         var source = "f\"result: {x + y * 2}\"";
         var tokens = Tokenize(source);
-        tokens.Should().Contain(t => t.Type == TokenType.String);
+        // F-string with complex expression should produce: FStringStart, FStringText, FStringExprStart, expression tokens, FStringExprEnd, FStringEnd
+        tokens.Should().Contain(t => t.Type == TokenType.FStringStart);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringText && t.Value == "result: ");
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprStart);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "x");
+        tokens.Should().Contain(t => t.Type == TokenType.Plus);
+        tokens.Should().Contain(t => t.Type == TokenType.Identifier && t.Value == "y");
+        tokens.Should().Contain(t => t.Type == TokenType.Star);
+        tokens.Should().Contain(t => t.Type == TokenType.Integer && t.Value == "2");
+        tokens.Should().Contain(t => t.Type == TokenType.FStringExprEnd);
+        tokens.Should().Contain(t => t.Type == TokenType.FStringEnd);
     }
 
     [Fact]
@@ -547,7 +567,7 @@ x = 5
         // Bug #4 fix: Whitespace-only lines should not produce NEWLINE tokens
         var source = @"x = 1
 
-    
+
 y = 2";
         var tokens = Tokenize(source);
 
