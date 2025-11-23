@@ -945,23 +945,23 @@ public class TypeChecker
         return binOp.Operator switch
         {
             // Special handling for Add - supports both arithmetic and string concatenation
-            BinaryOperator.Add => InferAdditionType(leftType, rightType),
+            BinaryOperator.Add => InferAdditionType(leftType, rightType, binOp.LineStart, binOp.ColumnStart),
 
             BinaryOperator.Subtract or
             BinaryOperator.Multiply or BinaryOperator.Divide or
             BinaryOperator.FloorDivide or BinaryOperator.Modulo or
-            BinaryOperator.Power => InferArithmeticType(leftType, rightType),
+            BinaryOperator.Power => InferArithmeticType(leftType, rightType, binOp.LineStart, binOp.ColumnStart),
 
             BinaryOperator.BitwiseAnd or BinaryOperator.BitwiseOr or
             BinaryOperator.BitwiseXor or BinaryOperator.LeftShift or
-            BinaryOperator.RightShift => ValidateBitwiseOp(leftType, rightType),
+            BinaryOperator.RightShift => ValidateBitwiseOp(leftType, rightType, binOp.LineStart, binOp.ColumnStart),
 
             BinaryOperator.And or BinaryOperator.Or => ValidateLogicalOp(leftType, rightType),
 
             BinaryOperator.Equal or BinaryOperator.NotEqual => SemanticType.Bool,  // Equality works on any type
 
             BinaryOperator.LessThan or BinaryOperator.LessThanOrEqual or
-            BinaryOperator.GreaterThan or BinaryOperator.GreaterThanOrEqual => ValidateComparisonOp(leftType, rightType),
+            BinaryOperator.GreaterThan or BinaryOperator.GreaterThanOrEqual => ValidateComparisonOp(leftType, rightType, binOp.LineStart, binOp.ColumnStart),
 
             BinaryOperator.In or BinaryOperator.NotIn or
             BinaryOperator.Is or BinaryOperator.IsNot => SemanticType.Bool,
@@ -977,8 +977,8 @@ public class TypeChecker
         return unOp.Operator switch
         {
             UnaryOperator.Not => SemanticType.Bool,
-            UnaryOperator.Minus or UnaryOperator.Plus => ValidateUnaryArithmeticOp(unOp.Operator, operandType),
-            UnaryOperator.BitwiseNot => ValidateUnaryBitwiseOp(operandType),
+            UnaryOperator.Minus or UnaryOperator.Plus => ValidateUnaryArithmeticOp(unOp.Operator, operandType, unOp.LineStart, unOp.ColumnStart),
+            UnaryOperator.BitwiseNot => ValidateUnaryBitwiseOp(operandType, unOp.LineStart, unOp.ColumnStart),
             _ => SemanticType.Unknown
         };
     }
@@ -1565,12 +1565,12 @@ public class TypeChecker
                type == SemanticType.Unknown;
     }
 
-    private SemanticType InferArithmeticType(SemanticType left, SemanticType right)
+    private SemanticType InferArithmeticType(SemanticType left, SemanticType right, int line, int column)
     {
         // Validate that both operands are numeric types
         if (!IsNumericType(left) || !IsNumericType(right))
         {
-            AddError($"Cannot perform arithmetic operation on non-numeric types: {left.GetDisplayName()} and {right.GetDisplayName()}", 0, 0);
+            AddError($"Cannot perform arithmetic operation on non-numeric types: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
             return SemanticType.Unknown;
         }
 
@@ -1584,7 +1584,7 @@ public class TypeChecker
         return SemanticType.Int;
     }
 
-    private SemanticType InferAdditionType(SemanticType left, SemanticType right)
+    private SemanticType InferAdditionType(SemanticType left, SemanticType right, int line, int column)
     {
         // String concatenation
         if (left == SemanticType.Str && right == SemanticType.Str)
@@ -1593,18 +1593,18 @@ public class TypeChecker
         // Check if both are numeric
         if (IsNumericType(left) && IsNumericType(right))
         {
-            return InferArithmeticType(left, right);
+            return InferArithmeticType(left, right, line, column);
         }
 
         // Type mismatch: cannot add these types
         if (left != SemanticType.Unknown && right != SemanticType.Unknown)
         {
-            AddError($"Cannot add incompatible types: {left.GetDisplayName()} and {right.GetDisplayName()}", 0, 0);
+            AddError($"Cannot add incompatible types: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
         }
         return SemanticType.Unknown;
     }
 
-    private SemanticType ValidateComparisonOp(SemanticType left, SemanticType right)
+    private SemanticType ValidateComparisonOp(SemanticType left, SemanticType right, int line, int column)
     {
         // Comparisons work on comparable types (numeric or string)
         // Both operands should be the same type or compatible types
@@ -1612,7 +1612,7 @@ public class TypeChecker
         {
             if (left != SemanticType.Unknown && right != SemanticType.Unknown)
             {
-                AddError($"Cannot compare incompatible types: {left.GetDisplayName()} and {right.GetDisplayName()}", 0, 0);
+                AddError($"Cannot compare incompatible types: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
             }
         }
         else if ((IsNumericType(left) && !IsNumericType(right)) || 
@@ -1621,13 +1621,13 @@ public class TypeChecker
             // One is numeric, the other is not (and not Unknown)
             if (left != SemanticType.Unknown && right != SemanticType.Unknown)
             {
-                AddError($"Cannot compare incompatible types: {left.GetDisplayName()} and {right.GetDisplayName()}", 0, 0);
+                AddError($"Cannot compare incompatible types: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
             }
         }
         return SemanticType.Bool;
     }
 
-    private SemanticType ValidateBitwiseOp(SemanticType left, SemanticType right)
+    private SemanticType ValidateBitwiseOp(SemanticType left, SemanticType right, int line, int column)
     {
         // Bitwise operations require integer types
         bool leftIsInt = left == SemanticType.Int || left == SemanticType.Long || left == SemanticType.Unknown;
@@ -1637,7 +1637,7 @@ public class TypeChecker
         {
             if (left != SemanticType.Unknown && right != SemanticType.Unknown)
             {
-                AddError($"Bitwise operations require integer types, got: {left.GetDisplayName()} and {right.GetDisplayName()}", 0, 0);
+                AddError($"Bitwise operations require integer types, got: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
             }
             return SemanticType.Unknown;
         }
@@ -1653,7 +1653,7 @@ public class TypeChecker
         return SemanticType.Bool;
     }
 
-    private SemanticType ValidateUnaryArithmeticOp(UnaryOperator op, SemanticType operandType)
+    private SemanticType ValidateUnaryArithmeticOp(UnaryOperator op, SemanticType operandType, int line, int column)
     {
         // Unary +/- require numeric types
         if (!IsNumericType(operandType))
@@ -1661,14 +1661,14 @@ public class TypeChecker
             if (operandType != SemanticType.Unknown)
             {
                 string opSymbol = op == UnaryOperator.Minus ? "-" : "+";
-                AddError($"Cannot apply unary {opSymbol} to non-numeric type: {operandType.GetDisplayName()}", 0, 0);
+                AddError($"Cannot apply unary {opSymbol} to non-numeric type: {operandType.GetDisplayName()}", line, column);
             }
             return SemanticType.Unknown;
         }
         return operandType;
     }
 
-    private SemanticType ValidateUnaryBitwiseOp(SemanticType operandType)
+    private SemanticType ValidateUnaryBitwiseOp(SemanticType operandType, int line, int column)
     {
         // Bitwise NOT requires integer type
         bool isInt = operandType == SemanticType.Int || operandType == SemanticType.Long || operandType == SemanticType.Unknown;
@@ -1676,7 +1676,7 @@ public class TypeChecker
         {
             if (operandType != SemanticType.Unknown)
             {
-                AddError($"Bitwise NOT requires integer type, got: {operandType.GetDisplayName()}", 0, 0);
+                AddError($"Bitwise NOT requires integer type, got: {operandType.GetDisplayName()}", line, column);
             }
             return SemanticType.Unknown;
         }
