@@ -14,6 +14,7 @@ public enum TokenType
     FStringText,    // literal text segment in f-string
     FStringExprStart, // { - start of interpolated expression in f-string
     FStringExprEnd,   // } - end of interpolated expression in f-string
+    FStringFormatSpec, // format specification after : in f-string expression (e.g., ".2f", ">10")
     FStringEnd,     // " or ' - end of f-string
     True,
     False,

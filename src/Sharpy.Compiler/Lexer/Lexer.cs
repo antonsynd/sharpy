@@ -27,6 +27,7 @@ public class Lexer
         public char QuoteChar { get; set; }
         public bool IsTriple { get; set; }
         public int BraceDepth { get; set; }
+        public bool InFormatSpec { get; set; }  // Tracks if we're processing format specification after ':'
     }
 
     // Keywords mapping
@@ -658,7 +659,8 @@ public class Lexer
 
                 if (context.BraceDepth == 0)
                 {
-                    // End of expression
+                    // End of expression - reset format spec flag
+                    context.InFormatSpec = false;
                     return new Token(TokenType.FStringExprEnd, "}", startLine, startColumn);
                 }
                 else
@@ -695,9 +697,15 @@ public class Lexer
                 _column++;
 
                 // End of expression if brace depth is zero, otherwise nested closing brace within expression
-                return context.BraceDepth == 0
-                    ? new Token(TokenType.FStringExprEnd, "}", startLine, startColumn)
-                    : new Token(TokenType.RightBrace, "}", startLine, startColumn);
+                if (context.BraceDepth == 0)
+                {
+                    context.InFormatSpec = false;  // Reset format spec flag
+                    return new Token(TokenType.FStringExprEnd, "}", startLine, startColumn);
+                }
+                else
+                {
+                    return new Token(TokenType.RightBrace, "}", startLine, startColumn);
+                }
             }
 
             if (current == '{')
@@ -706,6 +714,72 @@ public class Lexer
                 _position++;
                 _column++;
                 return new Token(TokenType.LeftBrace, "{", startLine, startColumn);
+            }
+
+            // Check for format specification start (: at BraceDepth == 1)
+            if (current == ':' && context.BraceDepth == 1 && !context.InFormatSpec)
+            {
+                // Consume the colon
+                _position++;
+                _column++;
+                
+                // Mark that we're in format spec mode
+                context.InFormatSpec = true;
+                
+                // Now read the format spec until we hit the closing }
+                var formatSpecBuilder = new StringBuilder();
+                var formatSpecStartLine = _line;
+                var formatSpecStartColumn = _column;
+                var nestedBraceDepth = 0;  // Track nested braces in format spec
+                
+                while (_position < _source.Length)
+                {
+                    var fsc = _source[_position];
+                    
+                    // Check for nested opening brace in format spec
+                    if (fsc == '{')
+                    {
+                        nestedBraceDepth++;
+                        formatSpecBuilder.Append(fsc);
+                        _position++;
+                        _column++;
+                    }
+                    // Check for closing brace
+                    else if (fsc == '}')
+                    {
+                        if (nestedBraceDepth > 0)
+                        {
+                            // This is a nested closing brace, include it in format spec
+                            nestedBraceDepth--;
+                            formatSpecBuilder.Append(fsc);
+                            _position++;
+                            _column++;
+                        }
+                        else
+                        {
+                            // This is the end of the expression, emit the format spec token
+                            // Don't consume the }, it will be handled on next call
+                            context.InFormatSpec = false;
+                            return new Token(TokenType.FStringFormatSpec, formatSpecBuilder.ToString(), formatSpecStartLine, formatSpecStartColumn);
+                        }
+                    }
+                    // Regular character in format spec
+                    else
+                    {
+                        formatSpecBuilder.Append(fsc);
+                        _position++;
+                        _column++;
+                        
+                        // Handle newlines
+                        if (fsc == '\n')
+                        {
+                            _line++;
+                            _column = 1;
+                        }
+                    }
+                }
+                
+                throw new LexerError("Unterminated format specification in f-string", _line, _column);
             }
 
             // String literals inside expressions

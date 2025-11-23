@@ -46,6 +46,7 @@ public record FStringPart
 {
     public string? Text { get; init; }
     public Expression? Expression { get; init; }
+    public string? FormatSpec { get; init; }  // Format specification (e.g., ".2f", ">10")
 }
 
 /// <summary>

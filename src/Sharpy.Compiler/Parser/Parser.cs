@@ -2417,18 +2417,15 @@ public class Parser
                 // Parse the expression (tokens are already emitted by lexer)
                 var expr = ParseExpression();
 
-                // Check for optional format spec (: followed by format spec tokens until })
-                if (Current.Type == TokenType.Colon)
+                // Check for optional format spec token
+                string? formatSpec = null;
+                if (Current.Type == TokenType.FStringFormatSpec)
                 {
-                    // For now, skip format spec parsing - just consume tokens until FStringExprEnd
-                    // TODO: Properly parse and store format spec in FStringPart
-                    while (Current.Type != TokenType.FStringExprEnd && Current.Type != TokenType.Eof)
-                    {
-                        Advance();
-                    }
+                    formatSpec = Current.Value;
+                    Advance();
                 }
 
-                parts.Add(new FStringPart { Text = null, Expression = expr });
+                parts.Add(new FStringPart { Text = null, Expression = expr, FormatSpec = formatSpec });
 
                 // Expect FStringExprEnd
                 Expect(TokenType.FStringExprEnd);
