@@ -722,20 +722,20 @@ public class Lexer
                 // Consume the colon
                 _position++;
                 _column++;
-                
+
                 // Mark that we're in format spec mode
                 context.InFormatSpec = true;
-                
+
                 // Now read the format spec until we hit the closing }
                 var formatSpecBuilder = new StringBuilder();
                 var formatSpecStartLine = _line;
                 var formatSpecStartColumn = _column;
                 var nestedBraceDepth = 0;  // Track nested braces in format spec
-                
+
                 while (_position < _source.Length)
                 {
                     var fsc = _source[_position];
-                    
+
                     // Check for nested opening brace in format spec
                     if (fsc == '{')
                     {
@@ -769,7 +769,7 @@ public class Lexer
                         formatSpecBuilder.Append(fsc);
                         _position++;
                         _column++;
-                        
+
                         // Handle newlines
                         if (fsc == '\n')
                         {
@@ -778,7 +778,7 @@ public class Lexer
                         }
                     }
                 }
-                
+
                 throw new LexerError("Unterminated format specification in f-string", _line, _column);
             }
 
