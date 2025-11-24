@@ -84,8 +84,8 @@ public class OperatorSignatureValidator
                     funcDef.ColumnStart));
             }
         }
-        else if (BinaryArithmeticOps.Contains(methodName) || 
-                 BinaryBitwiseOps.Contains(methodName) || 
+        else if (BinaryArithmeticOps.Contains(methodName) ||
+                 BinaryBitwiseOps.Contains(methodName) ||
                  InPlaceOps.Contains(methodName) ||
                  ComparisonOps.Contains(methodName))
         {
@@ -133,8 +133,8 @@ public class OperatorSignatureValidator
         }
 
         // For other arithmetic and bitwise operators, return type must be non-void
-        else if (BinaryArithmeticOps.Contains(methodName) || 
-                 BinaryBitwiseOps.Contains(methodName) || 
+        else if (BinaryArithmeticOps.Contains(methodName) ||
+                 BinaryBitwiseOps.Contains(methodName) ||
                  InPlaceOps.Contains(methodName) ||
                  UnaryOps.Contains(methodName))
         {
@@ -173,7 +173,7 @@ public class OperatorSignatureValidator
         {
             return typeAnnotation.IsNullable ? $"{typeAnnotation.Name}?" : typeAnnotation.Name;
         }
-        
+
         var typeArgs = string.Join(", ", typeAnnotation.TypeArguments.Select(GetTypeAnnotationName));
         var baseName = $"{typeAnnotation.Name}[{typeArgs}]";
         return typeAnnotation.IsNullable ? $"{baseName}?" : baseName;

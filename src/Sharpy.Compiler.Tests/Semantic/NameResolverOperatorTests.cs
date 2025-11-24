@@ -35,11 +35,11 @@ class Vector:
 ";
         var module = ParseSource(source);
         var (symbolTable, resolver) = CreateNameResolver();
-        
+
         resolver.ResolveDeclarations(module);
 
         resolver.Errors.Should().BeEmpty();
-        
+
         var vectorType = symbolTable.Lookup("Vector") as TypeSymbol;
         vectorType.Should().NotBeNull();
         vectorType!.OperatorMethods.Should().ContainKey("__add__");
@@ -57,11 +57,11 @@ class Point:
 ";
         var module = ParseSource(source);
         var (symbolTable, resolver) = CreateNameResolver();
-        
+
         resolver.ResolveDeclarations(module);
 
         resolver.Errors.Should().BeEmpty();
-        
+
         var pointType = symbolTable.Lookup("Point") as TypeSymbol;
         pointType.Should().NotBeNull();
         pointType!.OperatorMethods.Should().ContainKey("__eq__");
@@ -89,11 +89,11 @@ class Number:
 ";
         var module = ParseSource(source);
         var (symbolTable, resolver) = CreateNameResolver();
-        
+
         resolver.ResolveDeclarations(module);
 
         resolver.Errors.Should().BeEmpty();
-        
+
         var numberType = symbolTable.Lookup("Number") as TypeSymbol;
         numberType.Should().NotBeNull();
         numberType!.OperatorMethods.Should().ContainKey("__add__");
@@ -113,11 +113,11 @@ class SignedValue:
 ";
         var module = ParseSource(source);
         var (symbolTable, resolver) = CreateNameResolver();
-        
+
         resolver.ResolveDeclarations(module);
 
         resolver.Errors.Should().BeEmpty();
-        
+
         var valueType = symbolTable.Lookup("SignedValue") as TypeSymbol;
         valueType.Should().NotBeNull();
         valueType!.OperatorMethods.Should().ContainKey("__neg__");
@@ -133,11 +133,11 @@ class Counter:
 ";
         var module = ParseSource(source);
         var (symbolTable, resolver) = CreateNameResolver();
-        
+
         resolver.ResolveDeclarations(module);
 
         resolver.Errors.Should().BeEmpty();
-        
+
         var counterType = symbolTable.Lookup("Counter") as TypeSymbol;
         counterType.Should().NotBeNull();
         counterType!.OperatorMethods.Should().ContainKey("__iadd__");
@@ -153,11 +153,11 @@ class Matrix:
 ";
         var module = ParseSource(source);
         var (symbolTable, resolver) = CreateNameResolver();
-        
+
         resolver.ResolveDeclarations(module);
 
         resolver.Errors.Should().BeEmpty();
-        
+
         var matrixType = symbolTable.Lookup("Matrix") as TypeSymbol;
         matrixType.Should().NotBeNull();
         matrixType!.OperatorMethods.Should().ContainKey("__pow__");
@@ -173,11 +173,11 @@ class Accumulator:
 ";
         var module = ParseSource(source);
         var (symbolTable, resolver) = CreateNameResolver();
-        
+
         resolver.ResolveDeclarations(module);
 
         resolver.Errors.Should().BeEmpty();
-        
+
         var accType = symbolTable.Lookup("Accumulator") as TypeSymbol;
         accType.Should().NotBeNull();
         accType!.OperatorMethods.Should().ContainKey("__ipow__");
@@ -199,15 +199,15 @@ class Example:
 ";
         var module = ParseSource(source);
         var (symbolTable, resolver) = CreateNameResolver();
-        
+
         resolver.ResolveDeclarations(module);
 
         resolver.Errors.Should().BeEmpty();
-        
+
         var exampleType = symbolTable.Lookup("Example") as TypeSymbol;
         exampleType.Should().NotBeNull();
         exampleType!.OperatorMethods.Should().BeEmpty();
-        
+
         // But the methods should still be in the regular Methods list
         exampleType.Methods.Should().Contain(m => m.Name == "__init__");
         exampleType.Methods.Should().Contain(m => m.Name == "__str__");
@@ -228,12 +228,12 @@ class BadVector:
 ";
         var module = ParseSource(source);
         var (symbolTable, resolver) = CreateNameResolver();
-        
+
         resolver.ResolveDeclarations(module);
 
         resolver.Errors.Should().NotBeEmpty();
         resolver.Errors[0].Message.Should().Contain("must have exactly 2 parameters");
-        
+
         var vectorType = symbolTable.Lookup("BadVector") as TypeSymbol;
         vectorType.Should().NotBeNull();
         vectorType!.OperatorMethods.Should().NotContainKey("__add__");
@@ -249,12 +249,12 @@ class BadCompare:
 ";
         var module = ParseSource(source);
         var (symbolTable, resolver) = CreateNameResolver();
-        
+
         resolver.ResolveDeclarations(module);
 
         resolver.Errors.Should().NotBeEmpty();
         resolver.Errors[0].Message.Should().Contain("must return 'bool'");
-        
+
         var compareType = symbolTable.Lookup("BadCompare") as TypeSymbol;
         compareType.Should().NotBeNull();
         compareType!.OperatorMethods.Should().NotContainKey("__eq__");
@@ -270,12 +270,12 @@ class BadNegate:
 ";
         var module = ParseSource(source);
         var (symbolTable, resolver) = CreateNameResolver();
-        
+
         resolver.ResolveDeclarations(module);
 
         resolver.Errors.Should().NotBeEmpty();
         resolver.Errors[0].Message.Should().Contain("must have exactly 1 parameter");
-        
+
         var negateType = symbolTable.Lookup("BadNegate") as TypeSymbol;
         negateType.Should().NotBeNull();
         negateType!.OperatorMethods.Should().NotContainKey("__neg__");
@@ -291,12 +291,12 @@ class BadAdd:
 ";
         var module = ParseSource(source);
         var (symbolTable, resolver) = CreateNameResolver();
-        
+
         resolver.ResolveDeclarations(module);
 
         resolver.Errors.Should().NotBeEmpty();
         resolver.Errors[0].Message.Should().Contain("must return a non-void type");
-        
+
         var addType = symbolTable.Lookup("BadAdd") as TypeSymbol;
         addType.Should().NotBeNull();
         addType!.OperatorMethods.Should().NotContainKey("__add__");
@@ -321,11 +321,11 @@ class FlexibleAdd:
 ";
         var module = ParseSource(source);
         var (symbolTable, resolver) = CreateNameResolver();
-        
+
         resolver.ResolveDeclarations(module);
 
         resolver.Errors.Should().BeEmpty();
-        
+
         var flexType = symbolTable.Lookup("FlexibleAdd") as TypeSymbol;
         flexType.Should().NotBeNull();
         flexType!.OperatorMethods.Should().ContainKey("__add__");

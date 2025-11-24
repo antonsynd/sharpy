@@ -331,7 +331,7 @@ public class NameResolver
         if (OperatorSignatureValidator.IsOperatorDunder(method.Name))
         {
             var validationErrors = OperatorSignatureValidator.ValidateDunderSignature(method, owningType);
-            
+
             if (validationErrors.Count > 0)
             {
                 // Add all validation errors to the errors list
@@ -345,7 +345,7 @@ public class NameResolver
                     owningType.OperatorMethods[method.Name] = new List<FunctionSymbol>();
                 }
                 owningType.OperatorMethods[method.Name].Add(funcSymbol);
-                
+
                 _logger.LogDebug($"Registered operator method: {owningType.Name}.{method.Name}");
             }
         }
