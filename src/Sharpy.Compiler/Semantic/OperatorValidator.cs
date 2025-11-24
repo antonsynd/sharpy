@@ -238,6 +238,17 @@ public class OperatorValidator
             }
         }
 
+        // Equality complement synthesis: if only __eq__ or only __ne__ is defined,
+        // synthesize the complement to match RoslynEmitter behavior
+        if (left is UserDefinedType udtComp && udtComp.Symbol != null)
+        {
+            var complementResult = TryResolveEqualityComplement(op, udtComp, right, line, column);
+            if (complementResult != null)
+            {
+                return complementResult;
+            }
+        }
+
         // Try Sharpy builtin types
         var builtinResult = TryResolveBuiltinOperator(op, left, right);
         if (builtinResult != null)
@@ -396,6 +407,61 @@ public class OperatorValidator
             line, column);
 
         return assignableMatches[0];
+    }
+
+    /// <summary>
+    /// Tries to resolve equality/inequality operators using complement synthesis.
+    /// If only __eq__ is defined, synthesize __ne__ (and vice versa) to match RoslynEmitter behavior.
+    /// </summary>
+    private SemanticType? TryResolveEqualityComplement(
+        BinaryOperator op,
+        UserDefinedType udt,
+        SemanticType right,
+        int line,
+        int column)
+    {
+        // Only applies to equality and inequality operators
+        if (op != BinaryOperator.Equal && op != BinaryOperator.NotEqual)
+        {
+            return null;
+        }
+
+        var hasEq = udt.Symbol!.OperatorMethods.ContainsKey("__eq__");
+        var hasNe = udt.Symbol!.OperatorMethods.ContainsKey("__ne__");
+
+        // If both are defined or neither is defined, no complement synthesis needed
+        if ((hasEq && hasNe) || (!hasEq && !hasNe))
+        {
+            return null;
+        }
+
+        // Try to synthesize the complement
+        if (op == BinaryOperator.Equal && hasNe)
+        {
+            // == requested but only __ne__ exists
+            // We can synthesize == by using __ne__ 
+            var neMethods = udt.Symbol.OperatorMethods["__ne__"];
+            var bestOverload = ResolveBestOverload(neMethods, right, line, column);
+            if (bestOverload != null)
+            {
+                // __ne__ should return bool, so == will also return bool
+                return SemanticType.Bool;
+            }
+        }
+        else if (op == BinaryOperator.NotEqual && hasEq)
+        {
+            // != requested but only __eq__ exists
+            // We can synthesize != by using __eq__
+            var eqMethods = udt.Symbol.OperatorMethods["__eq__"];
+            var bestOverload = ResolveBestOverload(eqMethods, right, line, column);
+            if (bestOverload != null)
+            {
+                // __eq__ should return bool, so != will also return bool
+                return SemanticType.Bool;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
