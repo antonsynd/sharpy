@@ -96,14 +96,9 @@ public class OperatorValidator
         SemanticType result;
 
         // Handle special case: 'not' always returns bool
-        if (op == UnaryOperator.Not)
-        {
-            result = SemanticType.Bool;
-        }
-        else
-        {
-            result = ResolveUnaryOperatorOverload(op, operand, line, column);
-        }
+        result = (op == UnaryOperator.Not)
+            ? SemanticType.Bool
+            : ResolveUnaryOperatorOverload(op, operand, line, column);
 
         // Cache the result
         _unaryOpCache[cacheKey] = result;
@@ -227,15 +222,13 @@ public class OperatorValidator
         var dunderName = BinaryOperatorToDunder(op);
         
         // Try user-defined type first
-        if (left is UserDefinedType udt && udt.Symbol != null && dunderName != null)
+        if (left is UserDefinedType udt && udt.Symbol != null && dunderName != null &&
+            udt.Symbol.OperatorMethods.TryGetValue(dunderName, out var methods))
         {
-            if (udt.Symbol.OperatorMethods.TryGetValue(dunderName, out var methods))
+            var bestOverload = ResolveBestOverload(methods, right);
+            if (bestOverload != null)
             {
-                var bestOverload = ResolveBestOverload(methods, right);
-                if (bestOverload != null)
-                {
-                    return bestOverload.ReturnType;
-                }
+                return bestOverload.ReturnType;
             }
         }
 
@@ -274,16 +267,14 @@ public class OperatorValidator
         var dunderName = UnaryOperatorToDunder(op);
         
         // Try user-defined type first
-        if (operand is UserDefinedType udt && udt.Symbol != null && dunderName != null)
+        if (operand is UserDefinedType udt && udt.Symbol != null && dunderName != null &&
+            udt.Symbol.OperatorMethods.TryGetValue(dunderName, out var methods))
         {
-            if (udt.Symbol.OperatorMethods.TryGetValue(dunderName, out var methods))
+            // For unary operators, we expect exactly one overload with just 'self'
+            var method = methods.FirstOrDefault();
+            if (method != null)
             {
-                // For unary operators, we expect exactly one overload with just 'self'
-                var method = methods.FirstOrDefault();
-                if (method != null)
-                {
-                    return method.ReturnType;
-                }
+                return method.ReturnType;
             }
         }
 
@@ -396,25 +387,26 @@ public class OperatorValidator
         }
 
         // String concatenation
-        if (left == SemanticType.Str && right == SemanticType.Str && op == BinaryOperator.Add)
+        // String or list concatenation
+        if (op == BinaryOperator.Add)
         {
-            return SemanticType.Str;
-        }
-
-        // List concatenation
-        if (left is GenericType { Name: "list" } leftList && 
-            right is GenericType { Name: "list" } rightList && 
-            op == BinaryOperator.Add)
-        {
-            // Result is a list with the common type of elements
-            if (leftList.TypeArguments.Count > 0 && rightList.TypeArguments.Count > 0)
+            if (left == SemanticType.Str && right == SemanticType.Str)
             {
-                var leftElem = leftList.TypeArguments[0];
-                var rightElem = rightList.TypeArguments[0];
-                
-                if (leftElem.Equals(rightElem))
+                return SemanticType.Str;
+            }
+            else if (left is GenericType { Name: "list" } leftList &&
+                     right is GenericType { Name: "list" } rightList)
+            {
+                // Result is a list with the common type of elements
+                if (leftList.TypeArguments.Count > 0 && rightList.TypeArguments.Count > 0)
                 {
-                    return leftList;
+                    var leftElem = leftList.TypeArguments[0];
+                    var rightElem = rightList.TypeArguments[0];
+
+                    if (leftElem.Equals(rightElem))
+                    {
+                        return leftList;
+                    }
                 }
             }
         }
