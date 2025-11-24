@@ -15,7 +15,7 @@ public class OperatorValidator
 {
     private readonly SymbolTable _symbolTable;
     private readonly ICompilerLogger _logger;
-    
+
     // Caches for performance (not thread-safe)
     private readonly Dictionary<(SemanticType, BinaryOperator, SemanticType), SemanticType?> _binaryOpCache = new();
     private readonly Dictionary<(UnaryOperator, SemanticType), SemanticType?> _unaryOpCache = new();
@@ -182,7 +182,7 @@ public class OperatorValidator
             BinaryOperator.Multiply => "op_Multiply",
             BinaryOperator.Divide => "op_Division",
             BinaryOperator.Modulo => "op_Modulus",
-            
+
             BinaryOperator.BitwiseAnd => "op_BitwiseAnd",
             BinaryOperator.BitwiseOr => "op_BitwiseOr",
             BinaryOperator.BitwiseXor => "op_ExclusiveOr",
@@ -226,7 +226,7 @@ public class OperatorValidator
         int column)
     {
         var dunderName = BinaryOperatorToDunder(op);
-        
+
         // Try user-defined type first
         if (left is UserDefinedType udt && udt.Symbol != null && dunderName != null &&
             udt.Symbol.OperatorMethods.TryGetValue(dunderName, out var methods))
@@ -257,7 +257,7 @@ public class OperatorValidator
             $"Type '{left.GetDisplayName()}' does not support operator '{GetOperatorSymbol(op)}' with right operand of type '{right.GetDisplayName()}'",
             line,
             column);
-        
+
         return SemanticType.Unknown;
     }
 
@@ -271,7 +271,7 @@ public class OperatorValidator
         int column)
     {
         var dunderName = UnaryOperatorToDunder(op);
-        
+
         // Try user-defined type first
         if (operand is UserDefinedType udt && udt.Symbol != null && dunderName != null &&
             udt.Symbol.OperatorMethods.TryGetValue(dunderName, out var methods))
@@ -303,7 +303,7 @@ public class OperatorValidator
             $"Type '{operand.GetDisplayName()}' does not support unary operator '{GetUnaryOperatorSymbol(op)}'",
             line,
             column);
-        
+
         return SemanticType.Unknown;
     }
 
@@ -320,10 +320,10 @@ public class OperatorValidator
             return candidates[0];
 
         // Find exact match first
-        var exactMatch = candidates.FirstOrDefault(c => 
-            c.Parameters.Count == 2 && 
+        var exactMatch = candidates.FirstOrDefault(c =>
+            c.Parameters.Count == 2 &&
             c.Parameters[1].Type.Equals(argumentType));
-        
+
         if (exactMatch != null)
             return exactMatch;
 
@@ -394,7 +394,7 @@ public class OperatorValidator
         _logger.LogWarning(
             $"Ambiguous operator overload: multiple candidates found for argument type '{argumentType.GetDisplayName()}'",
             line, column);
-        
+
         return assignableMatches[0];
     }
 
@@ -413,10 +413,10 @@ public class OperatorValidator
                 BinaryOperator.BitwiseXor or
                 BinaryOperator.LeftShift or
                 BinaryOperator.RightShift => InferNumericResultType(left, right),
-                
+
                 _ => (SemanticType?)null
             };
-            
+
             if (bitwiseResult != null)
                 return bitwiseResult;
         }
@@ -433,7 +433,7 @@ public class OperatorValidator
                 BinaryOperator.FloorDivide or
                 BinaryOperator.Modulo or
                 BinaryOperator.Power => InferNumericResultType(left, right),
-                
+
                 BinaryOperator.Equal or
                 BinaryOperator.NotEqual or
                 BinaryOperator.LessThan or
@@ -457,7 +457,7 @@ public class OperatorValidator
         }
 
         // List concatenation and comparison
-        if (left is GenericType { Name: "list" } leftList && 
+        if (left is GenericType { Name: "list" } leftList &&
             right is GenericType { Name: "list" } rightList)
         {
             if (op == BinaryOperator.Add)

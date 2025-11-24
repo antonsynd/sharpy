@@ -409,7 +409,7 @@ public class OperatorValidatorTests
     public void ValidateBinaryOp_UserDefinedAdd_ReturnsReturnType()
     {
         var symbolTable = CreateSymbolTable();
-        
+
         // Create a Vector type with __add__ method
         var vectorType = new TypeSymbol
         {
@@ -434,7 +434,7 @@ public class OperatorValidatorTests
         vectorType.Methods.Add(addMethod);
 
         var validator = CreateValidator(symbolTable);
-        
+
         var leftType = new UserDefinedType { Name = "Vector", Symbol = vectorType };
         var rightType = new UserDefinedType { Name = "Vector", Symbol = vectorType };
 
@@ -451,7 +451,7 @@ public class OperatorValidatorTests
     public void ValidateBinaryOp_UserDefinedComparison_ReturnsBoolean()
     {
         var symbolTable = CreateSymbolTable();
-        
+
         // Create a Point type with __lt__ method
         var pointType = new TypeSymbol
         {
@@ -476,7 +476,7 @@ public class OperatorValidatorTests
         pointType.Methods.Add(ltMethod);
 
         var validator = CreateValidator(symbolTable);
-        
+
         var leftType = new UserDefinedType { Name = "Point", Symbol = pointType };
         var rightType = new UserDefinedType { Name = "Point", Symbol = pointType };
 
@@ -493,7 +493,7 @@ public class OperatorValidatorTests
     public void ValidateUnaryOp_UserDefinedNegate_ReturnsReturnType()
     {
         var symbolTable = CreateSymbolTable();
-        
+
         // Create a Number type with __neg__ method
         var numberType = new TypeSymbol
         {
@@ -517,7 +517,7 @@ public class OperatorValidatorTests
         numberType.Methods.Add(negMethod);
 
         var validator = CreateValidator(symbolTable);
-        
+
         var operandType = new UserDefinedType { Name = "Number", Symbol = numberType };
 
         var result = validator.ValidateUnaryOp(
@@ -532,7 +532,7 @@ public class OperatorValidatorTests
     public void ValidateBinaryOp_UserDefinedPower_ReturnsReturnType()
     {
         var symbolTable = CreateSymbolTable();
-        
+
         // Create a Matrix type with __pow__ method
         var matrixType = new TypeSymbol
         {
@@ -557,7 +557,7 @@ public class OperatorValidatorTests
         matrixType.Methods.Add(powMethod);
 
         var validator = CreateValidator(symbolTable);
-        
+
         var leftType = new UserDefinedType { Name = "Matrix", Symbol = matrixType };
 
         var result = validator.ValidateBinaryOp(
@@ -577,7 +577,7 @@ public class OperatorValidatorTests
     public void ValidateBinaryOp_MultipleOverloads_ChoosesExactMatch()
     {
         var symbolTable = CreateSymbolTable();
-        
+
         // Create a Calculator type with multiple __add__ overloads
         var calcType = new TypeSymbol
         {
@@ -615,7 +615,7 @@ public class OperatorValidatorTests
         calcType.Methods.Add(addFloatMethod);
 
         var validator = CreateValidator(symbolTable);
-        
+
         var leftType = new UserDefinedType { Name = "Calculator", Symbol = calcType };
 
         // Should choose the int overload
@@ -645,7 +645,7 @@ public class OperatorValidatorTests
     public void ValidateBinaryOp_CachesResults()
     {
         var validator = CreateValidator();
-        
+
         // Call twice with the same arguments
         var result1 = validator.ValidateBinaryOp(
             BinaryOperator.Add,
@@ -667,7 +667,7 @@ public class OperatorValidatorTests
     public void ValidateUnaryOp_CachesResults()
     {
         var validator = CreateValidator();
-        
+
         // Call twice with the same arguments
         var result1 = validator.ValidateUnaryOp(
             UnaryOperator.Minus,
@@ -691,7 +691,7 @@ public class OperatorValidatorTests
     public void ValidateBinaryOp_UnsupportedOperator_ReturnsUnknown()
     {
         var validator = CreateValidator();
-        
+
         // String doesn't support subtraction
         var result = validator.ValidateBinaryOp(
             BinaryOperator.Subtract,
@@ -706,7 +706,7 @@ public class OperatorValidatorTests
     public void ValidateUnaryOp_UnsupportedOperator_ReturnsUnknown()
     {
         var validator = CreateValidator();
-        
+
         // String doesn't support unary minus
         var result = validator.ValidateUnaryOp(
             UnaryOperator.Minus,
@@ -720,7 +720,7 @@ public class OperatorValidatorTests
     public void ValidateBinaryOp_BitwiseOnFloat_ReturnsUnknown()
     {
         var validator = CreateValidator();
-        
+
         // Float doesn't support bitwise operations
         var result = validator.ValidateBinaryOp(
             BinaryOperator.BitwiseAnd,
@@ -739,7 +739,7 @@ public class OperatorValidatorTests
     public void ValidateBinaryOp_ListAddList_ReturnsList()
     {
         var validator = CreateValidator();
-        
+
         var intList = new GenericType
         {
             Name = "list",
