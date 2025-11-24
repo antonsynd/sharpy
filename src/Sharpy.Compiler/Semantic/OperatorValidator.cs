@@ -16,7 +16,7 @@ public class OperatorValidator
     // Caches for performance
     private readonly Dictionary<(SemanticType, BinaryOperator, SemanticType), SemanticType?> _binaryOpCache = new();
     private readonly Dictionary<(UnaryOperator, SemanticType), SemanticType?> _unaryOpCache = new();
-    private readonly Dictionary<Type, Dictionary<string, MethodInfo>> _clrOperatorCache = new();
+    private readonly Dictionary<Type, Dictionary<string, List<MethodInfo>>> _clrOperatorCache = new();
 
     public OperatorValidator(SymbolTable symbolTable, ICompilerLogger? logger = null)
     {
@@ -49,12 +49,6 @@ public class OperatorValidator
             case BinaryOperator.And:
             case BinaryOperator.Or:
                 // Logical operators always return bool in Sharpy
-                result = SemanticType.Bool;
-                break;
-
-            case BinaryOperator.Equal:
-            case BinaryOperator.NotEqual:
-                // Equality works on any type, always returns bool
                 result = SemanticType.Bool;
                 break;
 
@@ -225,7 +219,7 @@ public class OperatorValidator
         if (left is UserDefinedType udt && udt.Symbol != null && dunderName != null &&
             udt.Symbol.OperatorMethods.TryGetValue(dunderName, out var methods))
         {
-            var bestOverload = ResolveBestOverload(methods, right);
+            var bestOverload = ResolveBestOverload(methods, right, line, column);
             if (bestOverload != null)
             {
                 return bestOverload.ReturnType;
@@ -305,7 +299,7 @@ public class OperatorValidator
     /// Resolves the best overload from a list of candidate methods.
     /// Uses most-specific match semantics.
     /// </summary>
-    private FunctionSymbol? ResolveBestOverload(List<FunctionSymbol> candidates, SemanticType argumentType)
+    private FunctionSymbol? ResolveBestOverload(List<FunctionSymbol> candidates, SemanticType argumentType, int line, int column)
     {
         if (candidates.Count == 0)
             return null;
@@ -333,10 +327,9 @@ public class OperatorValidator
             return assignableMatches[0];
 
         // Multiple matches - this is ambiguous
-        // For now, return the first one, but we should report an error
         _logger.LogWarning(
             $"Ambiguous operator overload: multiple candidates found for argument type '{argumentType.GetDisplayName()}'",
-            0, 0);
+            line, column);
         
         return assignableMatches[0];
     }
@@ -377,6 +370,8 @@ public class OperatorValidator
                 BinaryOperator.Modulo or
                 BinaryOperator.Power => InferNumericResultType(left, right),
                 
+                BinaryOperator.Equal or
+                BinaryOperator.NotEqual or
                 BinaryOperator.LessThan or
                 BinaryOperator.LessThanOrEqual or
                 BinaryOperator.GreaterThan or
@@ -386,16 +381,22 @@ public class OperatorValidator
             };
         }
 
-        // String concatenation
-        // String or list concatenation
-        if (op == BinaryOperator.Add)
+        // String operations
+        if (left == SemanticType.Str && right == SemanticType.Str)
         {
-            if (left == SemanticType.Str && right == SemanticType.Str)
+            return op switch
             {
-                return SemanticType.Str;
-            }
-            else if (left is GenericType { Name: "list" } leftList &&
-                     right is GenericType { Name: "list" } rightList)
+                BinaryOperator.Add => SemanticType.Str,
+                BinaryOperator.Equal or BinaryOperator.NotEqual => SemanticType.Bool,
+                _ => null
+            };
+        }
+
+        // List concatenation and comparison
+        if (left is GenericType { Name: "list" } leftList && 
+            right is GenericType { Name: "list" } rightList)
+        {
+            if (op == BinaryOperator.Add)
             {
                 // Result is a list with the common type of elements
                 if (leftList.TypeArguments.Count > 0 && rightList.TypeArguments.Count > 0)
@@ -409,6 +410,16 @@ public class OperatorValidator
                     }
                 }
             }
+            else if (op == BinaryOperator.Equal || op == BinaryOperator.NotEqual)
+            {
+                return SemanticType.Bool;
+            }
+        }
+
+        // Default equality for all types
+        if (op == BinaryOperator.Equal || op == BinaryOperator.NotEqual)
+        {
+            return SemanticType.Bool;
         }
 
         return null;
@@ -451,25 +462,42 @@ public class OperatorValidator
         if (leftClrType == null)
             return null;
 
+        Type? rightClrType = GetClrType(right);
+        if (rightClrType == null)
+            return null;
+
         // Get or cache CLR operators for this type
         if (!_clrOperatorCache.TryGetValue(leftClrType, out var operators))
         {
-            operators = new Dictionary<string, MethodInfo>();
-            foreach (var method in leftClrType.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            operators = new Dictionary<string, List<MethodInfo>>();
+            foreach (var method in leftClrType.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .Where(m => m.Name.StartsWith("op_")))
             {
-                if (method.Name.StartsWith("op_"))
+                if (!operators.TryGetValue(method.Name, out var methodList))
                 {
-                    operators[method.Name] = method;
+                    methodList = new List<MethodInfo>();
+                    operators[method.Name] = methodList;
                 }
+                methodList.Add(method);
             }
             _clrOperatorCache[leftClrType] = operators;
         }
 
-        if (operators.TryGetValue(clrMethodName, out var operatorMethod))
+        if (operators.TryGetValue(clrMethodName, out var operatorMethods))
         {
-            // TODO: Validate parameter types match
-            // For now, just return the return type
-            return MapClrTypeToSemanticType(operatorMethod.ReturnType);
+            // Find the overload whose parameter types match left and right
+            foreach (var method in operatorMethods)
+            {
+                var parameters = method.GetParameters();
+                if (parameters.Length == 2 &&
+                    parameters[0].ParameterType == leftClrType &&
+                    parameters[1].ParameterType == rightClrType)
+                {
+                    return MapClrTypeToSemanticType(method.ReturnType);
+                }
+            }
+            // No matching overload found
+            return null;
         }
 
         return null;
@@ -491,20 +519,33 @@ public class OperatorValidator
         // Get or cache CLR operators for this type
         if (!_clrOperatorCache.TryGetValue(clrType, out var operators))
         {
-            operators = new Dictionary<string, MethodInfo>();
-            foreach (var method in clrType.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            operators = new Dictionary<string, List<MethodInfo>>();
+            foreach (var method in clrType.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .Where(m => m.Name.StartsWith("op_")))
             {
-                if (method.Name.StartsWith("op_"))
+                if (!operators.TryGetValue(method.Name, out var methodList))
                 {
-                    operators[method.Name] = method;
+                    methodList = new List<MethodInfo>();
+                    operators[method.Name] = methodList;
                 }
+                methodList.Add(method);
             }
             _clrOperatorCache[clrType] = operators;
         }
 
-        if (operators.TryGetValue(clrMethodName, out var operatorMethod))
+        if (operators.TryGetValue(clrMethodName, out var operatorMethods))
         {
-            return MapClrTypeToSemanticType(operatorMethod.ReturnType);
+            // Find the overload with matching parameter type
+            foreach (var method in operatorMethods)
+            {
+                var parameters = method.GetParameters();
+                if (parameters.Length == 1 && parameters[0].ParameterType == clrType)
+                {
+                    return MapClrTypeToSemanticType(method.ReturnType);
+                }
+            }
+            // No matching overload found
+            return null;
         }
 
         return null;
