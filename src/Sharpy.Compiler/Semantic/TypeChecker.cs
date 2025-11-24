@@ -1612,18 +1612,18 @@ public class TypeChecker
     {
         // Both operands should be comparable types and compatible with each other
         bool bothComparable = IsComparableType(left) && IsComparableType(right);
-        bool incompatibleTypes = (IsNumericType(left) && !IsNumericType(right)) || 
+        bool incompatibleTypes = (IsNumericType(left) && !IsNumericType(right)) ||
                                 (!IsNumericType(left) && IsNumericType(right));
-        
+
         // For non-numeric types, both must be the same type (e.g., both strings, both bools)
         bool nonNumericTypeMismatch = !IsNumericType(left) && !IsNumericType(right) && !left.Equals(right);
-        
-        if ((!bothComparable || incompatibleTypes || nonNumericTypeMismatch) && 
+
+        if ((!bothComparable || incompatibleTypes || nonNumericTypeMismatch) &&
             left != SemanticType.Unknown && right != SemanticType.Unknown)
         {
             AddError($"Cannot compare incompatible types: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
         }
-        
+
         return SemanticType.Bool;
     }
 
@@ -1636,13 +1636,13 @@ public class TypeChecker
         // Bitwise operations require integer types
         bool leftIsInt = left == SemanticType.Int || left == SemanticType.Long;
         bool rightIsInt = right == SemanticType.Int || right == SemanticType.Long;
-        
+
         if (!leftIsInt || !rightIsInt)
         {
             AddError($"Bitwise operations require integer types, got: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
             return SemanticType.Unknown;
         }
-        
+
         // Return long if either operand is long, otherwise int
         if (left == SemanticType.Long || right == SemanticType.Long)
             return SemanticType.Long;
