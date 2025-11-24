@@ -42,12 +42,12 @@
   - [ ] Ambiguous overloads (depends on richer operator overloading support in the symbol table).
 - [x] Implement equality-complement behavior:
   - [x] If only `__eq__` or only `__ne__` exists, synthesize the complement logically for validation (matching `RoslynEmitter`).
-- [ ] Implement augmented assignment support helpers:
-  - [ ] Implement a dedicated helper in `OperatorValidator` (e.g. `ValidateAugmentedAssignment`) that:
-    - [ ] Maps `AssignmentOperator` values to in-place dunder names (`__iadd__`, etc.) and corresponding base `BinaryOperator` values.
-    - [ ] Prefers in-place dunder resolution on the target type; falls back to the base binary operator via `ValidateBinaryOp` when no in-place dunder is available.
-    - [ ] Enforces that the resulting type is assignable to the target type and logs clear errors when it is not.
-    - [ ] Produces descriptive errors when no suitable in-place or base operator (including CLR/builtin operators) can be found for the augmented operator.
+- [x] Implement augmented assignment support helpers:
+  - [x] Implement a dedicated helper in `OperatorValidator` (e.g. `ValidateAugmentedAssignment`) that:
+    - [x] Maps `AssignmentOperator` values to in-place dunder names (`__iadd__`, etc.) and corresponding base `BinaryOperator` values.
+    - [x] Prefers in-place dunder resolution on the target type; falls back to the base binary operator via `ValidateBinaryOp` when no in-place dunder is available.
+    - [x] Enforces that the resulting type is assignable to the target type and logs clear errors when it is not.
+    - [x] Produces descriptive errors when no suitable in-place or base operator (including CLR/builtin operators) can be found for the augmented operator.
 
 ## Phase 4: TypeChecker Integration
 
