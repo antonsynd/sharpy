@@ -2,7 +2,7 @@
 
 ## Phase 1: Symbol & Name Resolution
 
-- [ ] Extend `TypeSymbol` in `src/Sharpy.Compiler/Semantic/Symbol.cs` with `OperatorMethods: Dictionary<string, List<FunctionSymbol>>`.
+- [x] Extend `TypeSymbol` in `src/Sharpy.Compiler/Semantic/Symbol.cs` with `OperatorMethods: Dictionary<string, List<FunctionSymbol>>`.
 - [ ] Implement `OperatorSignatureValidator` in `src/Sharpy.Compiler/Semantic/OperatorSignatureValidator.cs`:
   - [ ] Define dunder → logical operator role mapping (arith, bitwise, comparison, in-place, unary).
   - [ ] Implement `ValidateDunderSignature(FunctionDef funcDef, TypeSymbol owningType) -> List<SemanticError>`.
