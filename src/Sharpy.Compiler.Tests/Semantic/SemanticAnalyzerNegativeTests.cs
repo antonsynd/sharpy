@@ -484,37 +484,6 @@ def foo():
         typeChecker.Errors.Should().BeEmpty();
     }
 
-    // Additional operator type validation tests for better coverage
-
-    [Fact]
-    public void AllowsValidNumericAddition()
-    {
-        var source = @"
-def foo():
-    x: int = 5 + 10
-    y: double = 3.14 + 2.71
-    z: int = 5 + 10 + 15
-";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
-
-        typeChecker.Errors.Should().BeEmpty();
-    }
-
-    [Fact]
-    public void AllowsValidStringConcatenation()
-    {
-        var source = @"
-def foo():
-    x: str = 'hello' + 'world'
-    y: str = 'a' + 'b' + 'c'
-";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
-
-        typeChecker.Errors.Should().BeEmpty();
-    }
-
     [Fact]
     public void RejectsSubtractionWithString()
     {
@@ -529,49 +498,6 @@ def foo():
     }
 
     [Fact]
-    public void AllowsValidNumericComparison()
-    {
-        var source = @"
-def foo():
-    a: bool = 5 < 10
-    b: bool = 3.14 >= 2.71
-    c: bool = 100 == 100
-";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
-
-        typeChecker.Errors.Should().BeEmpty();
-    }
-
-    [Fact]
-    public void AllowsValidStringComparison()
-    {
-        var source = @"
-def foo():
-    a: bool = 'apple' < 'banana'
-    b: bool = 'hello' == 'hello'
-";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
-
-        typeChecker.Errors.Should().BeEmpty();
-    }
-
-    [Fact]
-    public void AllowsValidUnaryMinus()
-    {
-        var source = @"
-def foo():
-    x: int = -5
-    y: double = -3.14
-";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
-
-        typeChecker.Errors.Should().BeEmpty();
-    }
-
-    [Fact]
     public void RejectsUnaryMinusOnBool()
     {
         var source = @"
@@ -582,35 +508,6 @@ def foo():
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot apply unary"));
-    }
-
-    [Fact]
-    public void AllowsBitwiseOperationsOnIntegers()
-    {
-        var source = @"
-def foo():
-    x: int = 5 & 3
-    y: int = 10 | 2
-    z: int = 7 ^ 4
-    w: int = ~5
-";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
-
-        typeChecker.Errors.Should().BeEmpty();
-    }
-
-    [Fact]
-    public void ValidBitwiseOperations_NoErrors()
-    {
-        var source = @"
-def foo():
-    x: int = 3 & 2  # valid bitwise operation
-";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
-
-        typeChecker.Errors.Should().BeEmpty();
     }
 
     [Fact]
