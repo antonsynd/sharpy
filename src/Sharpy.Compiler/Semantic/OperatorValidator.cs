@@ -309,7 +309,8 @@ public class OperatorValidator
 
     /// <summary>
     /// Resolves the best overload from a list of candidate methods.
-    /// Uses most-specific match semantics.
+    /// First tries exact match, then assignable match.
+    /// Logs a warning if multiple assignable matches are found (ambiguity).
     /// </summary>
     private FunctionSymbol? ResolveBestOverload(List<FunctionSymbol> candidates, SemanticType argumentType, int line, int column)
     {
