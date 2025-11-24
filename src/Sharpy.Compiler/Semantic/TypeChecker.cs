@@ -1555,7 +1555,7 @@ public class TypeChecker
     }
 
     /// <summary>
-    /// Check if a type is comparable (numeric or string)
+    /// Check if a type is comparable (numeric, string, or bool)
     /// </summary>
     private bool IsComparableType(SemanticType type)
     {
@@ -1609,25 +1609,17 @@ public class TypeChecker
 
     private SemanticType ValidateComparisonOp(SemanticType left, SemanticType right, int line, int column)
     {
-        // Comparisons work on comparable types (numeric or string)
-        // Both operands should be the same type or compatible types
-        if (!IsComparableType(left) || !IsComparableType(right))
-        {
-            // Not comparable types
-        }
-        else if ((IsNumericType(left) && !IsNumericType(right)) || 
-                 (!IsNumericType(left) && IsNumericType(right)))
-        {
-            // One is numeric, the other is not (and not Unknown)
-        }
-        if (
-            ( (!IsComparableType(left) || !IsComparableType(right)) ||
-              ((IsNumericType(left) && !IsNumericType(right)) || (!IsNumericType(left) && IsNumericType(right))) )
-            && left != SemanticType.Unknown && right != SemanticType.Unknown
-        )
+        // Both operands should be comparable types and compatible with each other
+        bool bothComparable = IsComparableType(left) && IsComparableType(right);
+        bool incompatibleTypes = (IsNumericType(left) && !IsNumericType(right)) || 
+                                (!IsNumericType(left) && IsNumericType(right));
+        
+        if ((!bothComparable || incompatibleTypes) && 
+            left != SemanticType.Unknown && right != SemanticType.Unknown)
         {
             AddError($"Cannot compare incompatible types: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
         }
+        
         return SemanticType.Bool;
     }
 
