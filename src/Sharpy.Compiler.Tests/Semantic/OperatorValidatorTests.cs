@@ -3,6 +3,7 @@ using FluentAssertions;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
+using static Sharpy.Compiler.Tests.TestHelpers;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -1192,7 +1193,7 @@ public class OperatorValidatorTests
     {
         // Test that when neither __iadd__ nor __add__ is defined, it reports an error
         var symbolTable = CreateSymbolTable();
-        var logger = new TestLogger();
+        var logger = new CollectingTestLogger();
 
         var vectorType = new TypeSymbol
         {
@@ -1222,7 +1223,7 @@ public class OperatorValidatorTests
     {
         // Test that when the result type is not assignable to target, it reports an error
         var symbolTable = CreateSymbolTable();
-        var logger = new TestLogger();
+        var logger = new CollectingTestLogger();
 
         var vectorType = new TypeSymbol
         {
@@ -1433,36 +1434,6 @@ public class OperatorValidatorTests
             1, 1);
 
         result.Should().Be(SemanticType.Float);
-    }
-
-    #endregion
-
-    #region Test Logger
-
-    private class TestLogger : ICompilerLogger
-    {
-        public List<(string Message, int Line, int Column)> Errors { get; } = new();
-        public List<(string Message, int Line, int Column)> Warnings { get; } = new();
-
-        public void LogError(string message, int line, int column)
-        {
-            Errors.Add((message, line, column));
-        }
-
-        public void LogWarning(string message, int line, int column)
-        {
-            Warnings.Add((message, line, column));
-        }
-
-        public void LogTokenRead(string tokenType, int line, int column, string value) { }
-        public void LogIndentChange(int oldLevel, int newLevel) { }
-        public void LogParseEnter(string rule, int tokenPosition) { }
-        public void LogParseExit(string rule, bool success) { }
-        public void LogInfo(string message) { }
-        public void LogDebug(string message) { }
-        public void LogTrace(string message) { }
-        public void LogMetrics(string metricsOutput) { }
-        public bool IsEnabled(CompilerLogLevel level) => level <= CompilerLogLevel.Warning;
     }
 
     #endregion
