@@ -7,13 +7,16 @@ namespace Sharpy.Compiler.Semantic;
 /// <summary>
 /// Validates operator usage in Sharpy code, supporting both Sharpy dunder methods
 /// and CLR operator overloads for .NET interop.
+/// 
+/// NOTE: This class is NOT thread-safe. Instances should not be shared across threads.
+/// The internal caches are not protected by locks for performance reasons.
 /// </summary>
 public class OperatorValidator
 {
     private readonly SymbolTable _symbolTable;
     private readonly ICompilerLogger _logger;
     
-    // Caches for performance
+    // Caches for performance (not thread-safe)
     private readonly Dictionary<(SemanticType, BinaryOperator, SemanticType), SemanticType?> _binaryOpCache = new();
     private readonly Dictionary<(UnaryOperator, SemanticType), SemanticType?> _unaryOpCache = new();
     private readonly Dictionary<Type, Dictionary<string, List<MethodInfo>>> _clrOperatorCache = new();
@@ -50,6 +53,15 @@ public class OperatorValidator
             case BinaryOperator.Or:
                 // Logical operators always return bool in Sharpy
                 result = SemanticType.Bool;
+                break;
+
+            case BinaryOperator.NullCoalesce:
+                // TODO: Implement null coalescing operator support
+                // For now, return Unknown and log an error
+                _logger.LogError(
+                    $"Null coalescing operator ('??') is not yet implemented",
+                    line, column);
+                result = SemanticType.Unknown;
                 break;
 
             case BinaryOperator.In:
@@ -414,7 +426,7 @@ public class OperatorValidator
                 else if (leftList.TypeArguments.Count == 0 || rightList.TypeArguments.Count == 0)
                 {
                     // If either list is untyped, return a generic list type (list with no type arguments)
-                    return new GenericType("list");
+                    return new GenericType { Name = "list" };
                 }
             }
             else if (op == BinaryOperator.Equal || op == BinaryOperator.NotEqual)
@@ -457,6 +469,29 @@ public class OperatorValidator
     }
 
     /// <summary>
+    /// Gets or caches CLR operators for a given type.
+    /// </summary>
+    private Dictionary<string, List<MethodInfo>> GetOrCacheClrOperators(Type clrType)
+    {
+        if (!_clrOperatorCache.TryGetValue(clrType, out var operators))
+        {
+            operators = new Dictionary<string, List<MethodInfo>>();
+            foreach (var method in clrType.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .Where(m => m.Name.StartsWith("op_")))
+            {
+                if (!operators.TryGetValue(method.Name, out var methodList))
+                {
+                    methodList = new List<MethodInfo>();
+                    operators[method.Name] = methodList;
+                }
+                methodList.Add(method);
+            }
+            _clrOperatorCache[clrType] = operators;
+        }
+        return operators;
+    }
+
+    /// <summary>
     /// Try to resolve operator using CLR reflection.
     /// </summary>
     private SemanticType? TryResolveClrOperator(BinaryOperator op, SemanticType left, SemanticType right)
@@ -474,21 +509,7 @@ public class OperatorValidator
             return null;
 
         // Get or cache CLR operators for this type
-        if (!_clrOperatorCache.TryGetValue(leftClrType, out var operators))
-        {
-            operators = new Dictionary<string, List<MethodInfo>>();
-            foreach (var method in leftClrType.GetMethods(BindingFlags.Public | BindingFlags.Static)
-                .Where(m => m.Name.StartsWith("op_")))
-            {
-                if (!operators.TryGetValue(method.Name, out var methodList))
-                {
-                    methodList = new List<MethodInfo>();
-                    operators[method.Name] = methodList;
-                }
-                methodList.Add(method);
-            }
-            _clrOperatorCache[leftClrType] = operators;
-        }
+        var operators = GetOrCacheClrOperators(leftClrType);
 
         if (operators.TryGetValue(clrMethodName, out var operatorMethods))
         {
@@ -524,21 +545,7 @@ public class OperatorValidator
             return null;
 
         // Get or cache CLR operators for this type
-        if (!_clrOperatorCache.TryGetValue(clrType, out var operators))
-        {
-            operators = new Dictionary<string, List<MethodInfo>>();
-            foreach (var method in clrType.GetMethods(BindingFlags.Public | BindingFlags.Static)
-                .Where(m => m.Name.StartsWith("op_")))
-            {
-                if (!operators.TryGetValue(method.Name, out var methodList))
-                {
-                    methodList = new List<MethodInfo>();
-                    operators[method.Name] = methodList;
-                }
-                methodList.Add(method);
-            }
-            _clrOperatorCache[clrType] = operators;
-        }
+        var operators = GetOrCacheClrOperators(clrType);
 
         if (operators.TryGetValue(clrMethodName, out var operatorMethods))
         {
@@ -585,17 +592,10 @@ public class OperatorValidator
         if (clrType == typeof(string)) return SemanticType.Str;
         if (clrType == typeof(void)) return SemanticType.Void;
 
-        // For other types, try to look up the symbol in the symbol table
-        var symbol = _symbolTable.LookupByClrType(clrType);
-        if (symbol != null)
-        {
-            return new UserDefinedType { Name = clrType.Name, Symbol = symbol };
-        }
-        else
-        {
-            _logger.Warn($"UserDefinedType for CLR type '{clrType.FullName}' created without symbol. This may require further resolution.");
-            return new UserDefinedType { Name = clrType.Name };
-        }
+        // For other types, create a UserDefinedType
+        // TODO: Look up the symbol in the symbol table when SymbolTable.LookupByClrType() is implemented
+        // This would allow proper symbol resolution for CLR types
+        return new UserDefinedType { Name = clrType.Name };
     }
 
     /// <summary>
