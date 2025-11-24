@@ -726,5 +726,20 @@ def foo():
         typeChecker.Errors.Should().BeEmpty();
     }
 
+    [Fact]
+    public void AllowsLogicalOperationOnNonBool()
+    {
+        var source = @"
+def foo():
+    x: bool = 5 and 10  # logical operations on non-bool are allowed (Python semantics)
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        // Logical operations work on any type in Python (truthy/falsy values)
+        // Sharpy follows Python semantics here
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
     #endregion
 }

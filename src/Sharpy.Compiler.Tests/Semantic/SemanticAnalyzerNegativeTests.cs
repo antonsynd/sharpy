@@ -456,6 +456,20 @@ def foo():
     }
 
     [Fact]
+    public void RejectsComparisonBetweenBoolAndString()
+    {
+        var source = @"
+def foo():
+    x: bool = True < 'hello'  # cannot compare bool and string
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        // Should report error about incompatible types
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot compare incompatible types"));
+    }
+
+    [Fact]
     public void RejectsInvalidUnaryOperation()
     {
         var source = @"
@@ -467,21 +481,6 @@ def foo():
 
         // Should report error about unary operation on non-numeric type
         typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot apply unary"));
-    }
-
-    [Fact]
-    public void AllowsLogicalOperationOnNonBool()
-    {
-        var source = @"
-def foo():
-    x: bool = 5 and 10  # logical operations on non-bool are allowed (Python semantics)
-";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
-
-        // Logical operations work on any type in Python (truthy/falsy values)
-        // Sharpy follows Python semantics here
-        typeChecker.Errors.Should().BeEmpty();
     }
 
     [Fact]

@@ -1614,7 +1614,10 @@ public class TypeChecker
         bool incompatibleTypes = (IsNumericType(left) && !IsNumericType(right)) || 
                                 (!IsNumericType(left) && IsNumericType(right));
         
-        if ((!bothComparable || incompatibleTypes) && 
+        // For non-numeric types, both must be the same type (e.g., both strings, both bools)
+        bool nonNumericTypeMismatch = !IsNumericType(left) && !IsNumericType(right) && !left.Equals(right);
+        
+        if ((!bothComparable || incompatibleTypes || nonNumericTypeMismatch) && 
             left != SemanticType.Unknown && right != SemanticType.Unknown)
         {
             AddError($"Cannot compare incompatible types: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
