@@ -18,22 +18,22 @@
 
 ## Phase 2: OperatorValidator Core
 
-- [ ] Create `OperatorValidator` in `src/Sharpy.Compiler/Semantic/OperatorValidator.cs`:
-  - [ ] Add fields for `_symbolTable`, `_logger`, `_binaryOpCache`, `_unaryOpCache`, `_clrOperatorCache`.
-  - [ ] Implement public methods:
-    - [ ] `SemanticType ValidateBinaryOp(BinaryOperator op, SemanticType left, SemanticType right, int line, int column)`.
-    - [ ] `SemanticType ValidateUnaryOp(UnaryOperator op, SemanticType operand, int line, int column)`.
-- [ ] Implement mapping helpers:
-  - [ ] `BinaryOperatorToDunder(BinaryOperator op)` including `Power → __pow__` and all supported operators.
-  - [ ] `UnaryOperatorToDunder(UnaryOperator op)` for unary dunders.
-  - [ ] Mapping from Sharpy operators to CLR operator method names (`op_Addition`, `op_Equality`, etc.).
-- [ ] Implement overload resolution:
-  - [ ] `ResolveBestOverload(List<FunctionSymbol> candidates, SemanticType rightType)` with most-specific match semantics.
-  - [ ] Handle ambiguity and report clear errors when multiple overloads are applicable.
-- [ ] Implement resolution strategy:
-  - [ ] For `UserDefinedType`, use `TypeSymbol.OperatorMethods` and `ResolveBestOverload`.
-  - [ ] For Sharpy builtins (e.g., `list[T]`, `dict[K,V]`), implement allowed operator rules (e.g., containment, equality, but no arithmetic).
-  - [ ] For CLR-backed types (`TypeSymbol.ClrType` / primitive Sharpy types), use `_clrOperatorCache` and reflection to find applicable CLR operators; validate parameter/return compatibility with `SemanticType`s.
+- [x] Create `OperatorValidator` in `src/Sharpy.Compiler/Semantic/OperatorValidator.cs`:
+  - [x] Add fields for `_symbolTable`, `_logger`, `_binaryOpCache`, `_unaryOpCache`, `_clrOperatorCache`.
+  - [x] Implement public methods:
+    - [x] `SemanticType ValidateBinaryOp(BinaryOperator op, SemanticType left, SemanticType right, int line, int column)`.
+    - [x] `SemanticType ValidateUnaryOp(UnaryOperator op, SemanticType operand, int line, int column)`.
+- [x] Implement mapping helpers:
+  - [x] `BinaryOperatorToDunder(BinaryOperator op)` including `Power → __pow__` and all supported operators.
+  - [x] `UnaryOperatorToDunder(UnaryOperator op)` for unary dunders.
+  - [x] Mapping from Sharpy operators to CLR operator method names (`op_Addition`, `op_Equality`, etc.).
+- [x] Implement overload resolution:
+  - [x] `ResolveBestOverload(List<FunctionSymbol> candidates, SemanticType rightType)` with most-specific match semantics.
+  - [x] Handle ambiguity and report clear errors when multiple overloads are applicable.
+- [x] Implement resolution strategy:
+  - [x] For `UserDefinedType`, use `TypeSymbol.OperatorMethods` and `ResolveBestOverload`.
+  - [x] For Sharpy builtins (e.g., `list[T]`, `dict[K,V]`), implement allowed operator rules (e.g., containment, equality, but no arithmetic).
+  - [x] For CLR-backed types (`TypeSymbol.ClrType` / primitive Sharpy types), use `_clrOperatorCache` and reflection to find applicable CLR operators; validate parameter/return compatibility with `SemanticType`s.
 
 ## Phase 3: Errors & Special Cases
 
@@ -72,19 +72,19 @@
   - [x] Test valid/invalid parameter counts for unary, binary, and in-place dunders.
   - [x] Test valid/invalid return types for comparisons, arithmetic, and `__invert__`.
   - [x] Verify `__pow__` and in-place variants are correctly validated.
-- [ ] Add `OperatorValidatorTests` in `src/Sharpy.Compiler.Tests/Semantic/OperatorValidatorTests.cs`:
-  - [ ] Pure Sharpy types:
-    - [ ] User-defined type with `__add__`, `__iadd__`, and comparison dunders; test normal ops, augmented ops, and overload resolution.
-    - [ ] Ambiguous overload scenarios.
-  - [ ] CLR interop:
-    - [ ] Types mapped to CLR types with `op_Addition`, `op_Equality`, etc.; verify reflection-based resolution and caching.
-  - [ ] Comparison chains:
-    - [ ] Valid chains, invalid chains, and mixed operators (`<`, `>=`, `==`, etc.).
-  - [ ] Power operator:
-    - [ ] `**` via `__pow__` and via CLR numeric semantics.
-  - [ ] Augmented assignments:
-    - [ ] Only `__iadd__` defined.
-    - [ ] Only `__add__` defined.
-    - [ ] Both defined.
-    - [ ] Neither defined (expect error).
-- [ ] Run existing tests in `src/Sharpy.Compiler.Tests/Semantic/TypeCheckerTests.cs` and ensure they all still pass (especially arithmetic, power, bitwise, comparisons, membership/identity, and type narrowing cases).
+- [x] Add `OperatorValidatorTests` in `src/Sharpy.Compiler.Tests/Semantic/OperatorValidatorTests.cs`:
+  - [x] Pure Sharpy types:
+    - [x] User-defined type with `__add__`, `__iadd__`, and comparison dunders; test normal ops, augmented ops, and overload resolution.
+    - [x] Ambiguous overload scenarios.
+  - [x] CLR interop:
+    - [x] Types mapped to CLR types with `op_Addition`, `op_Equality`, etc.; verify reflection-based resolution and caching.
+  - [x] Comparison chains:
+    - [x] Valid chains, invalid chains, and mixed operators (`<`, `>=`, `==`, etc.).
+  - [x] Power operator:
+    - [x] `**` via `__pow__` and via CLR numeric semantics.
+  - [x] Augmented assignments:
+    - [x] Only `__iadd__` defined.
+    - [x] Only `__add__` defined.
+    - [x] Both defined.
+    - [x] Neither defined (expect error).
+- [x] Run existing tests in `src/Sharpy.Compiler.Tests/Semantic/TypeCheckerTests.cs` and ensure they all still pass (especially arithmetic, power, bitwise, comparisons, membership/identity, and type narrowing cases).
