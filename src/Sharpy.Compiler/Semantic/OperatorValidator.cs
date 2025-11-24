@@ -227,22 +227,22 @@ public class OperatorValidator
     {
         var dunderName = BinaryOperatorToDunder(op);
 
-        // Try user-defined type first
-        if (left is UserDefinedType udt && udt.Symbol != null && dunderName != null &&
-            udt.Symbol.OperatorMethods.TryGetValue(dunderName, out var methods))
+        // Try user-defined type first (direct operator or complement synthesis)
+        if (left is UserDefinedType udt && udt.Symbol != null)
         {
-            var bestOverload = ResolveBestOverload(methods, right, line, column);
-            if (bestOverload != null)
+            // Try direct operator lookup first
+            if (dunderName != null && udt.Symbol.OperatorMethods.TryGetValue(dunderName, out var methods))
             {
-                return bestOverload.ReturnType;
+                var bestOverload = ResolveBestOverload(methods, right, line, column);
+                if (bestOverload != null)
+                {
+                    return bestOverload.ReturnType;
+                }
             }
-        }
 
-        // Equality complement synthesis: if only __eq__ or only __ne__ is defined,
-        // synthesize the complement to match RoslynEmitter behavior
-        if (left is UserDefinedType udtComp && udtComp.Symbol != null)
-        {
-            var complementResult = TryResolveEqualityComplement(op, udtComp, right, line, column);
+            // If direct lookup failed, try equality complement synthesis
+            // (only for == and != when the complement operator exists)
+            var complementResult = TryResolveEqualityComplement(op, udt, right, line, column);
             if (complementResult != null)
             {
                 return complementResult;
