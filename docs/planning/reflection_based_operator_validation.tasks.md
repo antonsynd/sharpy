@@ -7,7 +7,7 @@
   - [x] Define dunder → logical operator role mapping (arith, bitwise, comparison, in-place, unary).
   - [x] Implement `ValidateDunderSignature(FunctionDef funcDef, TypeSymbol owningType) -> List<SemanticError>`.
   - [x] Enforce parameter count rules for unary, binary, and in-place operators.
-  - [x] Enforce return-type rules (bool for comparisons, numeric for arithmetic, integral for `__invert__`, non-void for others).
+  - [x] Enforce return-type rules (bool for comparisons; non-void for all other operators in Phase 1, with stricter numeric/integral constraints to be handled in later phases via `SemanticType`-aware validation).
   - [x] Add precise, user-friendly error messages.
 - [x] Update `NameResolver.ResolveMethodDeclaration` in `src/Sharpy.Compiler/Semantic/NameResolver.cs`:
   - [x] Detect operator dunders using a whitelist (arith, bitwise, in-place, comparison).

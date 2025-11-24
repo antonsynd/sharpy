@@ -37,9 +37,8 @@ The goal is to replace ad‑hoc, “Python-only” operator rules in the type ch
          - Consider static-operator patterns only if we decide to support static methods for operators; otherwise, enforce instance-based signatures consistent with how the emitter uses them.
        - **Return-type rules (aligned with .NET, but expressed in Sharpy types)**:
          - Comparisons (`__eq__`, `__ne__`, `__lt__`, `__gt__`, etc.) must return `bool` (Sharpy `SemanticType.Bool` → `System.Boolean`).
-         - Unary numeric-like operators (`__pos__`, `__neg__`) must return a type assignable from/to the operand type (so codegen can back them with appropriate CLR semantics).
-         - Bitwise invert (`__invert__`) must return an integral Sharpy type (`int`/`long` or equivalent).
-         - Other arithmetic operators must return a non-`void` type (to be usable in expressions).
+         - Phase 1: all other operator methods are required only to return a non-`None` (non-void) type so they can be used in expressions.
+         - Later phases: we may tighten this further using `SemanticType` information (e.g., requiring numeric-like results for arithmetic, integral results for `__invert__`, or results assignable to the operand type for unary numeric operators).
        - Produce targeted error messages, e.g.:
          - `"Operator method '__add__' on 'Vector' must have signature '(self, other: VectorLike) -> VectorLike', got '(self, x, y)'."`
    - This validator is intentionally **Sharpy/.NET aware**: signatures are checked in terms of Sharpy types but with .NET operator expectations in mind.
