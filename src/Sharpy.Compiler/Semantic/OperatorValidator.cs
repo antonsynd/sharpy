@@ -423,10 +423,20 @@ public class OperatorValidator
                     // Explicitly return null if element types do not match
                     return null;
                 }
-                else if (leftList.TypeArguments.Count == 0 || rightList.TypeArguments.Count == 0)
+                else if (leftList.TypeArguments.Count == 0 && rightList.TypeArguments.Count == 0)
                 {
-                    // If either list is untyped, return a generic list type (list with no type arguments)
+                    // Both untyped - return untyped list
                     return new GenericType { Name = "list" };
+                }
+                else if (leftList.TypeArguments.Count == 0)
+                {
+                    // Left is untyped, right is typed - return right's type
+                    return rightList;
+                }
+                else if (rightList.TypeArguments.Count == 0)
+                {
+                    // Right is untyped, left is typed - return left's type
+                    return leftList;
                 }
             }
             else if (op == BinaryOperator.Equal || op == BinaryOperator.NotEqual)
