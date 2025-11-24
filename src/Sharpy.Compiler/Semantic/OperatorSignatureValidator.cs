@@ -131,19 +131,7 @@ public class OperatorSignatureValidator
                     funcDef.ColumnStart));
             }
         }
-        // For __invert__ (bitwise NOT), should return an integral type
-        else if (methodName == "__invert__")
-        {
-            // We can't fully validate this at parse time without type resolution,
-            // but we can check it's not void
-            if (IsTypeAnnotationVoid(returnType))
-            {
-                errors.Add(new SemanticError(
-                    $"Bitwise operator method '{methodName}' on '{owningTypeName}' must return a non-void type",
-                    funcDef.LineStart,
-                    funcDef.ColumnStart));
-            }
-        }
+
         // For other arithmetic and bitwise operators, return type must be non-void
         else if (BinaryArithmeticOps.Contains(methodName) || 
                  BinaryBitwiseOps.Contains(methodName) || 
@@ -165,7 +153,7 @@ public class OperatorSignatureValidator
     /// </summary>
     private static bool IsTypeAnnotationBool(TypeAnnotation typeAnnotation)
     {
-        return typeAnnotation.Name == "bool" && typeAnnotation.TypeArguments.Count == 0;
+        return typeAnnotation.Name == "bool" && typeAnnotation.TypeArguments.Count == 0 && !typeAnnotation.IsNullable;
     }
 
     /// <summary>
