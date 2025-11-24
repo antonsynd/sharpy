@@ -670,6 +670,7 @@ public class OperatorValidator
             BinaryOperator.NotIn => "not in",
             BinaryOperator.Is => "is",
             BinaryOperator.IsNot => "is not",
+            BinaryOperator.NullCoalesce => "??",
             _ => op.ToString()
         };
     }
