@@ -1567,13 +1567,14 @@ public class TypeChecker
 
     private SemanticType InferArithmeticType(SemanticType left, SemanticType right, int line, int column)
     {
+        // If either operand is Unknown, return Unknown to avoid cascading errors
+        if (left == SemanticType.Unknown || right == SemanticType.Unknown)
+            return SemanticType.Unknown;
+
         // Validate that both operands are numeric types
         if (!IsNumericType(left) || !IsNumericType(right))
         {
-            if (left != SemanticType.Unknown && right != SemanticType.Unknown)
-            {
-                AddError($"Cannot perform arithmetic operation on non-numeric types: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
-            }
+            AddError($"Cannot perform arithmetic operation on non-numeric types: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
             return SemanticType.Unknown;
         }
 
@@ -1628,16 +1629,17 @@ public class TypeChecker
 
     private SemanticType ValidateBitwiseOp(SemanticType left, SemanticType right, int line, int column)
     {
+        // If either operand is Unknown, return Unknown to avoid cascading errors
+        if (left == SemanticType.Unknown || right == SemanticType.Unknown)
+            return SemanticType.Unknown;
+
         // Bitwise operations require integer types
-        bool leftIsInt = left == SemanticType.Int || left == SemanticType.Long || left == SemanticType.Unknown;
-        bool rightIsInt = right == SemanticType.Int || right == SemanticType.Long || right == SemanticType.Unknown;
+        bool leftIsInt = left == SemanticType.Int || left == SemanticType.Long;
+        bool rightIsInt = right == SemanticType.Int || right == SemanticType.Long;
         
         if (!leftIsInt || !rightIsInt)
         {
-            if (left != SemanticType.Unknown && right != SemanticType.Unknown)
-            {
-                AddError($"Bitwise operations require integer types, got: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
-            }
+            AddError($"Bitwise operations require integer types, got: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
             return SemanticType.Unknown;
         }
         
