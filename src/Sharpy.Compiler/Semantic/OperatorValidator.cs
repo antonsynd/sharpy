@@ -309,8 +309,7 @@ public class OperatorValidator
 
     /// <summary>
     /// Resolves the best overload from a list of candidate methods.
-    /// First tries exact match, then assignable match.
-    /// Logs a warning if multiple assignable matches are found (ambiguity).
+    /// Uses most-specific match semantics: finds exact match first, then the most derived/specific assignable match.
     /// </summary>
     private FunctionSymbol? ResolveBestOverload(List<FunctionSymbol> candidates, SemanticType argumentType, int line, int column)
     {
@@ -328,7 +327,7 @@ public class OperatorValidator
         if (exactMatch != null)
             return exactMatch;
 
-        // Find assignable match
+        // Find assignable matches
         var assignableMatches = candidates.Where(c =>
             c.Parameters.Count == 2 &&
             argumentType.IsAssignableTo(c.Parameters[1].Type)).ToList();
@@ -339,7 +338,59 @@ public class OperatorValidator
         if (assignableMatches.Count == 1)
             return assignableMatches[0];
 
-        // Multiple matches - this is ambiguous
+        // Multiple assignable matches - find the most specific one
+        // A parameter type is more specific if other types are assignable to it
+        FunctionSymbol? mostSpecific = null;
+        bool isAmbiguous = false;
+
+        foreach (var candidate in assignableMatches)
+        {
+            var candidateParamType = candidate.Parameters[1].Type;
+            bool isMostSpecific = true;
+            bool hasSomeMoreGeneral = false;
+
+            foreach (var other in assignableMatches)
+            {
+                if (candidate == other)
+                    continue;
+
+                var otherParamType = other.Parameters[1].Type;
+
+                // If candidateParamType is assignable to otherParamType, 
+                // then candidateParamType is more specific (more derived)
+                if (candidateParamType.IsAssignableTo(otherParamType))
+                {
+                    hasSomeMoreGeneral = true;
+                }
+                // If otherParamType is assignable to candidateParamType,
+                // then otherParamType is more specific
+                else if (otherParamType.IsAssignableTo(candidateParamType))
+                {
+                    isMostSpecific = false;
+                    break;
+                }
+            }
+
+            if (isMostSpecific && hasSomeMoreGeneral)
+            {
+                if (mostSpecific != null)
+                {
+                    // Found multiple "most specific" candidates - ambiguous
+                    isAmbiguous = true;
+                }
+                else
+                {
+                    mostSpecific = candidate;
+                }
+            }
+        }
+
+        if (mostSpecific != null && !isAmbiguous)
+        {
+            return mostSpecific;
+        }
+
+        // Either no clear most-specific match or ambiguous - log warning and return first
         _logger.LogWarning(
             $"Ambiguous operator overload: multiple candidates found for argument type '{argumentType.GetDisplayName()}'",
             line, column);
