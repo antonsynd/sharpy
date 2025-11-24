@@ -942,15 +942,15 @@ public class OperatorValidator
         // Try in-place operator first (e.g., __iadd__)
         SemanticType? resultType = null;
 
-        if (inPlaceDunder != null && targetType is UserDefinedType udt && udt.Symbol != null)
+        if (inPlaceDunder != null
+            && targetType is UserDefinedType udt
+            && udt.Symbol != null
+            && udt.Symbol.OperatorMethods.TryGetValue(inPlaceDunder, out var methods))
         {
-            if (udt.Symbol.OperatorMethods.TryGetValue(inPlaceDunder, out var methods))
+            var bestOverload = ResolveBestOverload(methods, valueType, line, column);
+            if (bestOverload != null)
             {
-                var bestOverload = ResolveBestOverload(methods, valueType, line, column);
-                if (bestOverload != null)
-                {
-                    resultType = bestOverload.ReturnType;
-                }
+                resultType = bestOverload.ReturnType;
             }
         }
 
