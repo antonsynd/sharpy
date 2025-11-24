@@ -58,6 +58,10 @@ public record TypeSymbol : Symbol
     public List<FunctionSymbol> Methods { get; init; } = new();
     public List<PropertySymbol> Properties { get; init; } = new();
 
+    // Operator methods (dunder methods for operators)
+    // Maps operator dunder names (e.g., "__add__", "__eq__") to lists of overloads
+    public Dictionary<string, List<FunctionSymbol>> OperatorMethods { get; init; } = new();
+
     // Inheritance
     public TypeSymbol? BaseType { get; set; }
     public List<TypeSymbol> Interfaces { get; init; } = new();

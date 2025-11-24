@@ -2,19 +2,19 @@
 
 ## Phase 1: Symbol & Name Resolution
 
-- [ ] Extend `TypeSymbol` in `src/Sharpy.Compiler/Semantic/Symbol.cs` with `OperatorMethods: Dictionary<string, List<FunctionSymbol>>`.
-- [ ] Implement `OperatorSignatureValidator` in `src/Sharpy.Compiler/Semantic/OperatorSignatureValidator.cs`:
-  - [ ] Define dunder → logical operator role mapping (arith, bitwise, comparison, in-place, unary).
-  - [ ] Implement `ValidateDunderSignature(FunctionDef funcDef, TypeSymbol owningType) -> List<SemanticError>`.
-  - [ ] Enforce parameter count rules for unary, binary, and in-place operators.
-  - [ ] Enforce return-type rules (bool for comparisons, numeric for arithmetic, integral for `__invert__`, non-void for others).
-  - [ ] Add precise, user-friendly error messages.
-- [ ] Update `NameResolver.ResolveMethodDeclaration` in `src/Sharpy.Compiler/Semantic/NameResolver.cs`:
-  - [ ] Detect operator dunders using a whitelist (arith, bitwise, in-place, comparison).
-  - [ ] Call `OperatorSignatureValidator.ValidateDunderSignature` for each candidate.
-  - [ ] On success, add method to `owningType.OperatorMethods[methodDef.Name]`.
-  - [ ] On failure, append `SemanticError`s to `_errors` with correct locations.
-  - [ ] Ensure non-operator dunders (`__init__`, `__str__`, `__repr__`, `__hash__`, etc.) are not added to `OperatorMethods`.
+- [x] Extend `TypeSymbol` in `src/Sharpy.Compiler/Semantic/Symbol.cs` with `OperatorMethods: Dictionary<string, List<FunctionSymbol>>`.
+- [x] Implement `OperatorSignatureValidator` in `src/Sharpy.Compiler/Semantic/OperatorSignatureValidator.cs`:
+  - [x] Define dunder → logical operator role mapping (arith, bitwise, comparison, in-place, unary).
+  - [x] Implement `ValidateDunderSignature(FunctionDef funcDef, TypeSymbol owningType) -> List<SemanticError>`.
+  - [x] Enforce parameter count rules for unary, binary, and in-place operators.
+  - [x] Enforce return-type rules (bool for comparisons, numeric for arithmetic, integral for `__invert__`, non-void for others).
+  - [x] Add precise, user-friendly error messages.
+- [x] Update `NameResolver.ResolveMethodDeclaration` in `src/Sharpy.Compiler/Semantic/NameResolver.cs`:
+  - [x] Detect operator dunders using a whitelist (arith, bitwise, in-place, comparison).
+  - [x] Call `OperatorSignatureValidator.ValidateDunderSignature` for each candidate.
+  - [x] On success, add method to `owningType.OperatorMethods[methodDef.Name]`.
+  - [x] On failure, append `SemanticError`s to `_errors` with correct locations.
+  - [x] Ensure non-operator dunders (`__init__`, `__str__`, `__repr__`, `__hash__`, etc.) are not added to `OperatorMethods`.
 
 ## Phase 2: OperatorValidator Core
 
@@ -68,10 +68,10 @@
 
 ## Phase 5: Tests
 
-- [ ] Add `OperatorSignatureValidatorTests` in `src/Sharpy.Compiler.Tests/Semantic/OperatorSignatureValidatorTests.cs`:
-  - [ ] Test valid/invalid parameter counts for unary, binary, and in-place dunders.
-  - [ ] Test valid/invalid return types for comparisons, arithmetic, and `__invert__`.
-  - [ ] Verify `__pow__` and in-place variants are correctly validated.
+- [x] Add `OperatorSignatureValidatorTests` in `src/Sharpy.Compiler.Tests/Semantic/OperatorSignatureValidatorTests.cs`:
+  - [x] Test valid/invalid parameter counts for unary, binary, and in-place dunders.
+  - [x] Test valid/invalid return types for comparisons, arithmetic, and `__invert__`.
+  - [x] Verify `__pow__` and in-place variants are correctly validated.
 - [ ] Add `OperatorValidatorTests` in `src/Sharpy.Compiler.Tests/Semantic/OperatorValidatorTests.cs`:
   - [ ] Pure Sharpy types:
     - [ ] User-defined type with `__add__`, `__iadd__`, and comparison dunders; test normal ops, augmented ops, and overload resolution.

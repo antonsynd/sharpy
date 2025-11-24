@@ -326,6 +326,29 @@ public class NameResolver
 
         owningType.Methods.Add(funcSymbol);
         _symbolTable.Define(funcSymbol);
+
+        // Validate and register operator dunder methods
+        if (OperatorSignatureValidator.IsOperatorDunder(method.Name))
+        {
+            var validationErrors = OperatorSignatureValidator.ValidateDunderSignature(method, owningType);
+            
+            if (validationErrors.Count > 0)
+            {
+                // Add all validation errors to the errors list
+                _errors.AddRange(validationErrors);
+            }
+            else
+            {
+                // Signature is valid, add to operator methods cache
+                if (!owningType.OperatorMethods.ContainsKey(method.Name))
+                {
+                    owningType.OperatorMethods[method.Name] = new List<FunctionSymbol>();
+                }
+                owningType.OperatorMethods[method.Name].Add(funcSymbol);
+                
+                _logger.LogDebug($"Registered operator method: {owningType.Name}.{method.Name}");
+            }
+        }
     }
 
     private void ResolveFieldDeclaration(VariableDeclaration field, TypeSymbol owningType)
