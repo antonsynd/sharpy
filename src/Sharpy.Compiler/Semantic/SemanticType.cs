@@ -122,7 +122,7 @@ public record GenericType : SemanticType
 
     // Override Equals and GetHashCode to compare TypeArguments by content
     // This improves cache effectiveness in OperatorValidator
-    public virtual bool Equals(GenericType? other)
+    public override bool Equals(GenericType? other)
     {
         if (other is null) return false;
         if (ReferenceEquals(this, other)) return true;
