@@ -1570,7 +1570,10 @@ public class TypeChecker
         // Validate that both operands are numeric types
         if (!IsNumericType(left) || !IsNumericType(right))
         {
-            AddError($"Cannot perform arithmetic operation on non-numeric types: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
+            if (left != SemanticType.Unknown && right != SemanticType.Unknown)
+            {
+                AddError($"Cannot perform arithmetic operation on non-numeric types: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
+            }
             return SemanticType.Unknown;
         }
 
@@ -1610,19 +1613,20 @@ public class TypeChecker
         // Both operands should be the same type or compatible types
         if (!IsComparableType(left) || !IsComparableType(right))
         {
-            if (left != SemanticType.Unknown && right != SemanticType.Unknown)
-            {
-                AddError($"Cannot compare incompatible types: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
-            }
+            // Not comparable types
         }
         else if ((IsNumericType(left) && !IsNumericType(right)) || 
                  (!IsNumericType(left) && IsNumericType(right)))
         {
             // One is numeric, the other is not (and not Unknown)
-            if (left != SemanticType.Unknown && right != SemanticType.Unknown)
-            {
-                AddError($"Cannot compare incompatible types: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
-            }
+        }
+        if (
+            ( (!IsComparableType(left) || !IsComparableType(right)) ||
+              ((IsNumericType(left) && !IsNumericType(right)) || (!IsNumericType(left) && IsNumericType(right))) )
+            && left != SemanticType.Unknown && right != SemanticType.Unknown
+        )
+        {
+            AddError($"Cannot compare incompatible types: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
         }
         return SemanticType.Bool;
     }
@@ -1642,6 +1646,9 @@ public class TypeChecker
             return SemanticType.Unknown;
         }
         
+        // Return long if either operand is long, otherwise int
+        if (left == SemanticType.Long || right == SemanticType.Long)
+            return SemanticType.Long;
         return SemanticType.Int;
     }
 
@@ -1680,7 +1687,7 @@ public class TypeChecker
             }
             return SemanticType.Unknown;
         }
-        return SemanticType.Int;
+        return operandType;
     }
 
     /// <summary>
