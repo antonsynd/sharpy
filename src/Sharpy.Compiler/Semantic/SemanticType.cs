@@ -119,6 +119,40 @@ public record GenericType : SemanticType
 
         return base.IsAssignableTo(other);
     }
+
+    // Override Equals and GetHashCode to compare TypeArguments by content
+    // This improves cache effectiveness in OperatorValidator
+    public virtual bool Equals(GenericType? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+
+        if (Name != other.Name || TypeArguments.Count != other.TypeArguments.Count)
+            return false;
+
+        if (!EqualityComparer<TypeSymbol?>.Default.Equals(GenericDefinition, other.GenericDefinition))
+            return false;
+
+        for (int i = 0; i < TypeArguments.Count; i++)
+        {
+            if (!TypeArguments[i].Equals(other.TypeArguments[i]))
+                return false;
+        }
+
+        return true;
+    }
+
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(Name);
+        hash.Add(GenericDefinition);
+        foreach (var arg in TypeArguments)
+        {
+            hash.Add(arg);
+        }
+        return hash.ToHashCode();
+    }
 }
 
 /// <summary>
