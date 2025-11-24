@@ -9,12 +9,12 @@
   - [x] Enforce parameter count rules for unary, binary, and in-place operators.
   - [x] Enforce return-type rules (bool for comparisons, numeric for arithmetic, integral for `__invert__`, non-void for others).
   - [x] Add precise, user-friendly error messages.
-- [ ] Update `NameResolver.ResolveMethodDeclaration` in `src/Sharpy.Compiler/Semantic/NameResolver.cs`:
-  - [ ] Detect operator dunders using a whitelist (arith, bitwise, in-place, comparison).
-  - [ ] Call `OperatorSignatureValidator.ValidateDunderSignature` for each candidate.
-  - [ ] On success, add method to `owningType.OperatorMethods[methodDef.Name]`.
-  - [ ] On failure, append `SemanticError`s to `_errors` with correct locations.
-  - [ ] Ensure non-operator dunders (`__init__`, `__str__`, `__repr__`, `__hash__`, etc.) are not added to `OperatorMethods`.
+- [x] Update `NameResolver.ResolveMethodDeclaration` in `src/Sharpy.Compiler/Semantic/NameResolver.cs`:
+  - [x] Detect operator dunders using a whitelist (arith, bitwise, in-place, comparison).
+  - [x] Call `OperatorSignatureValidator.ValidateDunderSignature` for each candidate.
+  - [x] On success, add method to `owningType.OperatorMethods[methodDef.Name]`.
+  - [x] On failure, append `SemanticError`s to `_errors` with correct locations.
+  - [x] Ensure non-operator dunders (`__init__`, `__str__`, `__repr__`, `__hash__`, etc.) are not added to `OperatorMethods`.
 
 ## Phase 2: OperatorValidator Core
 
