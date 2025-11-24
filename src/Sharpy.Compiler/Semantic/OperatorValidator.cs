@@ -408,6 +408,13 @@ public class OperatorValidator
                     {
                         return leftList;
                     }
+                    // Explicitly return null if element types do not match
+                    return null;
+                }
+                else if (leftList.TypeArguments.Count == 0 || rightList.TypeArguments.Count == 0)
+                {
+                    // If either list is untyped, return a generic list type (list with no type arguments)
+                    return new GenericType("list");
                 }
             }
             else if (op == BinaryOperator.Equal || op == BinaryOperator.NotEqual)
@@ -416,8 +423,8 @@ public class OperatorValidator
             }
         }
 
-        // Default equality for all types
-        if (op == BinaryOperator.Equal || op == BinaryOperator.NotEqual)
+        // Default equality for all types: only allow if types are identical
+        if ((op == BinaryOperator.Equal || op == BinaryOperator.NotEqual) && left.Equals(right))
         {
             return SemanticType.Bool;
         }
@@ -578,8 +585,17 @@ public class OperatorValidator
         if (clrType == typeof(string)) return SemanticType.Str;
         if (clrType == typeof(void)) return SemanticType.Void;
 
-        // For other types, create a UserDefinedType
-        return new UserDefinedType { Name = clrType.Name };
+        // For other types, try to look up the symbol in the symbol table
+        var symbol = _symbolTable.LookupByClrType(clrType);
+        if (symbol != null)
+        {
+            return new UserDefinedType { Name = clrType.Name, Symbol = symbol };
+        }
+        else
+        {
+            _logger.Warn($"UserDefinedType for CLR type '{clrType.FullName}' created without symbol. This may require further resolution.");
+            return new UserDefinedType { Name = clrType.Name };
+        }
     }
 
     /// <summary>
