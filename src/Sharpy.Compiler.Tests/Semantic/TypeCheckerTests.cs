@@ -622,4 +622,124 @@ def maybe_print(condition: bool, msg: str) -> None:
 
         typeChecker.Errors.Should().BeEmpty();
     }
+
+    #region Operator Type Validation Tests
+
+    [Fact]
+    public void AllowsValidNumericAddition()
+    {
+        var source = @"
+def foo():
+    x: int = 5 + 10
+    y: double = 3.14 + 2.71
+    z: int = 5 + 10 + 15
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AllowsValidStringConcatenation()
+    {
+        var source = @"
+def foo():
+    x: str = 'hello' + 'world'
+    y: str = 'a' + 'b' + 'c'
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AllowsValidNumericComparison()
+    {
+        var source = @"
+def foo():
+    a: bool = 5 < 10
+    b: bool = 3.14 >= 2.71
+    c: bool = 100 == 100
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AllowsValidStringComparison()
+    {
+        var source = @"
+def foo():
+    a: bool = 'apple' < 'banana'
+    b: bool = 'hello' == 'hello'
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AllowsValidUnaryMinus()
+    {
+        var source = @"
+def foo():
+    x: int = -5
+    y: double = -3.14
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AllowsBitwiseOperationsOnIntegers()
+    {
+        var source = @"
+def foo():
+    x: int = 5 & 3
+    y: int = 10 | 2
+    z: int = 7 ^ 4
+    w: int = ~5
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ValidBitwiseOperations_NoErrors()
+    {
+        var source = @"
+def foo():
+    x: int = 3 & 2  # valid bitwise operation
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AllowsLogicalOperationOnNonBool()
+    {
+        var source = @"
+def foo():
+    x: bool = 5 and 10  # logical operations on non-bool are allowed (Python semantics)
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        // Logical operations work on any type in Python (truthy/falsy values)
+        // Sharpy follows Python semantics here
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    #endregion
 }

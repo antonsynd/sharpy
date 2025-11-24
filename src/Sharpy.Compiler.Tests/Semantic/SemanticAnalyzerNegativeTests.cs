@@ -427,7 +427,7 @@ def foo() -> int:
 
     #region Operator Errors
 
-    [Fact(Skip = "Type checking: Binary operator type validation not yet implemented")]
+    [Fact]
     public void RejectsInvalidAddition()
     {
         var source = @"
@@ -437,10 +437,11 @@ def foo():
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Operator type checking might not be fully implemented
+        // Should report error about incompatible types
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot add incompatible types"));
     }
 
-    [Fact(Skip = "Type checking: Comparison operator type validation not yet implemented")]
+    [Fact]
     public void RejectsInvalidComparison()
     {
         var source = @"
@@ -450,10 +451,25 @@ def foo():
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Operator type checking might not be fully implemented
+        // Should report error about incompatible types
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot compare incompatible types"));
     }
 
-    [Fact(Skip = "Type checking: Unary operator type validation not yet implemented")]
+    [Fact]
+    public void RejectsComparisonBetweenBoolAndString()
+    {
+        var source = @"
+def foo():
+    x: bool = True < 'hello'  # cannot compare bool and string
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        // Should report error about incompatible types
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot compare incompatible types"));
+    }
+
+    [Fact]
     public void RejectsInvalidUnaryOperation()
     {
         var source = @"
@@ -463,20 +479,47 @@ def foo():
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Operator type checking might not be fully implemented
+        // Should report error about unary operation on non-numeric type
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot apply unary"));
     }
 
-    [Fact(Skip = "Type checking: Logical operator type validation not yet implemented")]
-    public void RejectsInvalidLogicalOperation()
+    [Fact]
+    public void RejectsSubtractionWithString()
     {
         var source = @"
 def foo():
-    x: bool = 5 and 10  # logical operations on non-bool might be allowed
+    x: str = 'hello' - 'world'  # cannot subtract strings
 ";
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Some languages allow truthy/falsy values
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot perform arithmetic operation"));
+    }
+
+    [Fact]
+    public void RejectsUnaryMinusOnBool()
+    {
+        var source = @"
+def foo():
+    x: bool = -True  # cannot negate a boolean
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot apply unary"));
+    }
+
+    [Fact]
+    public void RejectsBitwiseNotOnString()
+    {
+        var source = @"
+def foo():
+    x: str = ~'hello'  # cannot perform bitwise NOT on string
+";
+        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Bitwise NOT requires integer type"));
     }
 
     #endregion

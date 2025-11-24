@@ -54,6 +54,7 @@ public class Lexer
         { "finally", TokenType.Finally },
         { "raise", TokenType.Raise },
         { "assert", TokenType.Assert },
+        { "with", TokenType.With },
 
         // Import
         { "import", TokenType.Import },
