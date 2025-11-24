@@ -756,4 +756,291 @@ public class OperatorValidatorTests
     }
 
     #endregion
+
+    #region Equality Complement Synthesis Tests
+
+    [Fact]
+    public void ValidateBinaryOp_OnlyEqDefined_NotEqualWorks()
+    {
+        // Test that when only __eq__ is defined, != operator works via complement synthesis
+        var symbolTable = CreateSymbolTable();
+
+        var pointType = new TypeSymbol
+        {
+            Name = "Point",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+
+        var eqMethod = new FunctionSymbol
+        {
+            Name = "__eq__",
+            Kind = SymbolKind.Function,
+            Parameters = new()
+            {
+                new ParameterSymbol { Name = "self", Type = new UserDefinedType { Name = "Point", Symbol = pointType } },
+                new ParameterSymbol { Name = "other", Type = new UserDefinedType { Name = "Point", Symbol = pointType } }
+            },
+            ReturnType = SemanticType.Bool
+        };
+
+        pointType.OperatorMethods["__eq__"] = new() { eqMethod };
+        pointType.Methods.Add(eqMethod);
+
+        var validator = CreateValidator(symbolTable);
+
+        var leftType = new UserDefinedType { Name = "Point", Symbol = pointType };
+        var rightType = new UserDefinedType { Name = "Point", Symbol = pointType };
+
+        // Test != operator when only __eq__ is defined
+        var result = validator.ValidateBinaryOp(
+            BinaryOperator.NotEqual,
+            leftType,
+            rightType,
+            1, 1);
+
+        result.Should().Be(SemanticType.Bool);
+    }
+
+    [Fact]
+    public void ValidateBinaryOp_OnlyNeDefined_EqualWorks()
+    {
+        // Test that when only __ne__ is defined, == operator works via complement synthesis
+        var symbolTable = CreateSymbolTable();
+
+        var vectorType = new TypeSymbol
+        {
+            Name = "Vector",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+
+        var neMethod = new FunctionSymbol
+        {
+            Name = "__ne__",
+            Kind = SymbolKind.Function,
+            Parameters = new()
+            {
+                new ParameterSymbol { Name = "self", Type = new UserDefinedType { Name = "Vector", Symbol = vectorType } },
+                new ParameterSymbol { Name = "other", Type = new UserDefinedType { Name = "Vector", Symbol = vectorType } }
+            },
+            ReturnType = SemanticType.Bool
+        };
+
+        vectorType.OperatorMethods["__ne__"] = new() { neMethod };
+        vectorType.Methods.Add(neMethod);
+
+        var validator = CreateValidator(symbolTable);
+
+        var leftType = new UserDefinedType { Name = "Vector", Symbol = vectorType };
+        var rightType = new UserDefinedType { Name = "Vector", Symbol = vectorType };
+
+        // Test == operator when only __ne__ is defined
+        var result = validator.ValidateBinaryOp(
+            BinaryOperator.Equal,
+            leftType,
+            rightType,
+            1, 1);
+
+        result.Should().Be(SemanticType.Bool);
+    }
+
+    [Fact]
+    public void ValidateBinaryOp_BothEqAndNeDefined_UsesDirectImplementation()
+    {
+        // Test that when both __eq__ and __ne__ are defined, they are used directly (no synthesis)
+        var symbolTable = CreateSymbolTable();
+
+        var customType = new TypeSymbol
+        {
+            Name = "CustomType",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+
+        var eqMethod = new FunctionSymbol
+        {
+            Name = "__eq__",
+            Kind = SymbolKind.Function,
+            Parameters = new()
+            {
+                new ParameterSymbol { Name = "self", Type = new UserDefinedType { Name = "CustomType", Symbol = customType } },
+                new ParameterSymbol { Name = "other", Type = new UserDefinedType { Name = "CustomType", Symbol = customType } }
+            },
+            ReturnType = SemanticType.Bool
+        };
+
+        var neMethod = new FunctionSymbol
+        {
+            Name = "__ne__",
+            Kind = SymbolKind.Function,
+            Parameters = new()
+            {
+                new ParameterSymbol { Name = "self", Type = new UserDefinedType { Name = "CustomType", Symbol = customType } },
+                new ParameterSymbol { Name = "other", Type = new UserDefinedType { Name = "CustomType", Symbol = customType } }
+            },
+            ReturnType = SemanticType.Bool
+        };
+
+        customType.OperatorMethods["__eq__"] = new() { eqMethod };
+        customType.OperatorMethods["__ne__"] = new() { neMethod };
+        customType.Methods.Add(eqMethod);
+        customType.Methods.Add(neMethod);
+
+        var validator = CreateValidator(symbolTable);
+
+        var leftType = new UserDefinedType { Name = "CustomType", Symbol = customType };
+        var rightType = new UserDefinedType { Name = "CustomType", Symbol = customType };
+
+        // Test == operator
+        var eqResult = validator.ValidateBinaryOp(
+            BinaryOperator.Equal,
+            leftType,
+            rightType,
+            1, 1);
+
+        eqResult.Should().Be(SemanticType.Bool);
+
+        // Test != operator
+        var neResult = validator.ValidateBinaryOp(
+            BinaryOperator.NotEqual,
+            leftType,
+            rightType,
+            1, 1);
+
+        neResult.Should().Be(SemanticType.Bool);
+    }
+
+    [Fact]
+    public void ValidateBinaryOp_NeitherEqNorNeDefined_UsesDefaultEquality()
+    {
+        // Test that when neither __eq__ nor __ne__ is defined, default equality is used
+        var symbolTable = CreateSymbolTable();
+
+        var noEqualityType = new TypeSymbol
+        {
+            Name = "NoEquality",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+
+        var validator = CreateValidator(symbolTable);
+
+        var leftType = new UserDefinedType { Name = "NoEquality", Symbol = noEqualityType };
+        var rightType = new UserDefinedType { Name = "NoEquality", Symbol = noEqualityType };
+
+        // Test == operator - should use default equality and return bool
+        var eqResult = validator.ValidateBinaryOp(
+            BinaryOperator.Equal,
+            leftType,
+            rightType,
+            1, 1);
+
+        eqResult.Should().Be(SemanticType.Bool);
+
+        // Test != operator - should also use default equality and return bool
+        var neResult = validator.ValidateBinaryOp(
+            BinaryOperator.NotEqual,
+            leftType,
+            rightType,
+            1, 1);
+
+        neResult.Should().Be(SemanticType.Bool);
+    }
+
+    [Fact]
+    public void ValidateBinaryOp_ComplementSynthesis_OnlyForEqualityOperators()
+    {
+        // Test that complement synthesis only applies to == and !=, not other operators
+        var symbolTable = CreateSymbolTable();
+
+        var typeWithOnlyEq = new TypeSymbol
+        {
+            Name = "TypeWithOnlyEq",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+
+        var eqMethod = new FunctionSymbol
+        {
+            Name = "__eq__",
+            Kind = SymbolKind.Function,
+            Parameters = new()
+            {
+                new ParameterSymbol { Name = "self", Type = new UserDefinedType { Name = "TypeWithOnlyEq", Symbol = typeWithOnlyEq } },
+                new ParameterSymbol { Name = "other", Type = new UserDefinedType { Name = "TypeWithOnlyEq", Symbol = typeWithOnlyEq } }
+            },
+            ReturnType = SemanticType.Bool
+        };
+
+        typeWithOnlyEq.OperatorMethods["__eq__"] = new() { eqMethod };
+        typeWithOnlyEq.Methods.Add(eqMethod);
+
+        var validator = CreateValidator(symbolTable);
+
+        var leftType = new UserDefinedType { Name = "TypeWithOnlyEq", Symbol = typeWithOnlyEq };
+        var rightType = new UserDefinedType { Name = "TypeWithOnlyEq", Symbol = typeWithOnlyEq };
+
+        // Test that < operator doesn't benefit from complement synthesis
+        var ltResult = validator.ValidateBinaryOp(
+            BinaryOperator.LessThan,
+            leftType,
+            rightType,
+            1, 1);
+
+        ltResult.Should().Be(SemanticType.Unknown);
+    }
+
+    [Fact]
+    public void ValidateBinaryOp_OnlyEqDefined_WithDifferentArgumentType()
+    {
+        // Test complement synthesis with different argument types (inheritance/assignability)
+        var symbolTable = CreateSymbolTable();
+
+        var baseType = new TypeSymbol
+        {
+            Name = "Base",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+
+        var derivedType = new TypeSymbol
+        {
+            Name = "Derived",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class,
+            BaseType = baseType
+        };
+
+        var eqMethod = new FunctionSymbol
+        {
+            Name = "__eq__",
+            Kind = SymbolKind.Function,
+            Parameters = new()
+            {
+                new ParameterSymbol { Name = "self", Type = new UserDefinedType { Name = "Base", Symbol = baseType } },
+                new ParameterSymbol { Name = "other", Type = new UserDefinedType { Name = "Base", Symbol = baseType } }
+            },
+            ReturnType = SemanticType.Bool
+        };
+
+        baseType.OperatorMethods["__eq__"] = new() { eqMethod };
+        baseType.Methods.Add(eqMethod);
+
+        var validator = CreateValidator(symbolTable);
+
+        var leftType = new UserDefinedType { Name = "Base", Symbol = baseType };
+        var rightType = new UserDefinedType { Name = "Derived", Symbol = derivedType };
+
+        // Test != with derived type when only __eq__ is defined
+        var result = validator.ValidateBinaryOp(
+            BinaryOperator.NotEqual,
+            leftType,
+            rightType,
+            1, 1);
+
+        result.Should().Be(SemanticType.Bool);
+    }
+
+    #endregion
 }

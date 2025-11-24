@@ -40,8 +40,8 @@
 - [ ] Implement descriptive error messages in `OperatorValidator`:
   - [x] Missing operator on a type (basic message implemented in `ResolveOperatorOverload`; consider enhancing with suggestions for dunder or CLR overloads later).
   - [ ] Ambiguous overloads (depends on richer operator overloading support in the symbol table).
-- [ ] Implement equality-complement behavior:
-  - [ ] If only `__eq__` or only `__ne__` exists, synthesize the complement logically for validation (matching `RoslynEmitter`).
+- [x] Implement equality-complement behavior:
+  - [x] If only `__eq__` or only `__ne__` exists, synthesize the complement logically for validation (matching `RoslynEmitter`).
 - [ ] Implement augmented assignment support helpers:
   - [ ] Implement a dedicated helper in `OperatorValidator` (e.g. `ValidateAugmentedAssignment`) that:
     - [ ] Maps `AssignmentOperator` values to in-place dunder names (`__iadd__`, etc.) and corresponding base `BinaryOperator` values.

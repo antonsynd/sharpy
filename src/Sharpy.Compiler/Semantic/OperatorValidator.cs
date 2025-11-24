@@ -227,14 +227,25 @@ public class OperatorValidator
     {
         var dunderName = BinaryOperatorToDunder(op);
 
-        // Try user-defined type first
-        if (left is UserDefinedType udt && udt.Symbol != null && dunderName != null &&
-            udt.Symbol.OperatorMethods.TryGetValue(dunderName, out var methods))
+        // Try user-defined type first (direct operator or complement synthesis)
+        if (left is UserDefinedType udt && udt.Symbol != null)
         {
-            var bestOverload = ResolveBestOverload(methods, right, line, column);
-            if (bestOverload != null)
+            // Try direct operator lookup first
+            if (dunderName != null && udt.Symbol.OperatorMethods.TryGetValue(dunderName, out var methods))
             {
-                return bestOverload.ReturnType;
+                var bestOverload = ResolveBestOverload(methods, right, line, column);
+                if (bestOverload != null)
+                {
+                    return bestOverload.ReturnType;
+                }
+            }
+
+            // If direct lookup failed, try equality complement synthesis
+            // (only for == and != when the complement operator exists)
+            var complementResult = TryResolveEqualityComplement(op, udt, right, line, column);
+            if (complementResult != null)
+            {
+                return complementResult;
             }
         }
 
@@ -396,6 +407,61 @@ public class OperatorValidator
             line, column);
 
         return assignableMatches[0];
+    }
+
+    /// <summary>
+    /// Tries to resolve equality/inequality operators using complement synthesis.
+    /// If only __eq__ is defined, synthesize __ne__ (and vice versa) to match RoslynEmitter behavior.
+    /// </summary>
+    private SemanticType? TryResolveEqualityComplement(
+        BinaryOperator op,
+        UserDefinedType udt,
+        SemanticType right,
+        int line,
+        int column)
+    {
+        // Only applies to equality and inequality operators
+        if (op != BinaryOperator.Equal && op != BinaryOperator.NotEqual)
+        {
+            return null;
+        }
+
+        var hasEq = udt.Symbol!.OperatorMethods.ContainsKey("__eq__");
+        var hasNe = udt.Symbol!.OperatorMethods.ContainsKey("__ne__");
+
+        // If both are defined or neither is defined, no complement synthesis needed
+        if ((hasEq && hasNe) || (!hasEq && !hasNe))
+        {
+            return null;
+        }
+
+        // Try to synthesize the complement
+        if (op == BinaryOperator.Equal && hasNe)
+        {
+            // == requested but only __ne__ exists
+            // We can synthesize == by using __ne__ 
+            var neMethods = udt.Symbol.OperatorMethods["__ne__"];
+            var bestOverload = ResolveBestOverload(neMethods, right, line, column);
+            if (bestOverload != null)
+            {
+                // __ne__ should return bool, so == will also return bool
+                return SemanticType.Bool;
+            }
+        }
+        else if (op == BinaryOperator.NotEqual && hasEq)
+        {
+            // != requested but only __eq__ exists
+            // We can synthesize != by using __eq__
+            var eqMethods = udt.Symbol.OperatorMethods["__eq__"];
+            var bestOverload = ResolveBestOverload(eqMethods, right, line, column);
+            if (bestOverload != null)
+            {
+                // __eq__ should return bool, so != will also return bool
+                return SemanticType.Bool;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
