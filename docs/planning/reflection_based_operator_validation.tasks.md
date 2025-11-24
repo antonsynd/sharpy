@@ -38,13 +38,16 @@
 ## Phase 3: Errors & Special Cases
 
 - [ ] Implement descriptive error messages in `OperatorValidator`:
-  - [ ] Missing operator on a type (suggest dunder implementation or CLR overload).
-  - [ ] Ambiguous overloads.
+  - [x] Missing operator on a type (basic message implemented in `ResolveOperatorOverload`; consider enhancing with suggestions for dunder or CLR overloads later).
+  - [ ] Ambiguous overloads (depends on richer operator overloading support in the symbol table).
 - [ ] Implement equality-complement behavior:
   - [ ] If only `__eq__` or only `__ne__` exists, synthesize the complement logically for validation (matching `RoslynEmitter`).
 - [ ] Implement augmented assignment support helpers:
-  - [ ] Map `AssignmentOperator` to in-place dunder (`__iadd__`, etc.) and base `BinaryOperator`.
-  - [ ] Prefer in-place dunder; fall back to base operator; enforce result assignability to the target type.
+  - [ ] Implement a dedicated helper in `OperatorValidator` (e.g. `ValidateAugmentedAssignment`) that:
+    - [ ] Maps `AssignmentOperator` values to in-place dunder names (`__iadd__`, etc.) and corresponding base `BinaryOperator` values.
+    - [ ] Prefers in-place dunder resolution on the target type; falls back to the base binary operator via `ValidateBinaryOp` when no in-place dunder is available.
+    - [ ] Enforces that the resulting type is assignable to the target type and logs clear errors when it is not.
+    - [ ] Produces descriptive errors when no suitable in-place or base operator (including CLR/builtin operators) can be found for the augmented operator.
 
 ## Phase 4: TypeChecker Integration
 

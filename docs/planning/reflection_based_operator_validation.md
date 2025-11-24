@@ -72,6 +72,8 @@ The goal is to replace ad‑hoc, “Python-only” operator rules in the type ch
    - Public API:
      - `SemanticType ValidateBinaryOp(BinaryOperator op, SemanticType left, SemanticType right, int line, int column);`
      - `SemanticType ValidateUnaryOp(UnaryOperator op, SemanticType operand, int line, int column);`
+   - Current status:
+     - An initial `OperatorValidator` implementation and comprehensive tests are in place. It resolves Sharpy dunder operators, builtin numeric/collection semantics, and CLR operators via reflection. Remaining work focuses on equality complement synthesis, more advanced overload resolution once method overloading is supported in the symbol table, augmented assignment helpers, and full `TypeChecker` integration.
    - Semantics:
      - **Sharpy-first, .NET-aligned**:
        - For `UserDefinedType`:
@@ -115,12 +117,13 @@ The goal is to replace ad‑hoc, “Python-only” operator rules in the type ch
        - `"Ambiguous overload for operator '+': multiple '__add__' methods on 'Vector' are applicable for argument type 'Vector3'."`
      - Equality complement (Sharpy dunder ↔ C# operator parity):
        - If `__eq__` is present but `__ne__` is not, or vice versa, synthetically treat the complement as existing for validation purposes (mirroring `RoslynEmitter`’s complementary generation of `==`/`!=` operators).
-     - **Augmented assignments**:
-       - Provide helpers so that `ValidateBinaryOp` can be reused in assignment checking:
-         - For `x += y`:
-           - Prefer in-place dunder (`__iadd__`).
-           - Fall back to additive dunder (`__add__`), checking that its return type is assignable back to the target type (Sharpy → .NET assignability).
-           - If neither is present and no suitable CLR operator exists, report a clear error.
+        - **Augmented assignments**:
+          - Provide helpers dedicated to augmented assignment validation (e.g. `ValidateAugmentedAssignment`) that:
+            - Map `AssignmentOperator` values to in-place dunder names (e.g. `__iadd__`) and their corresponding base `BinaryOperator` values (e.g. `Add`).
+            - Prefer in-place dunder resolution on the target type when available.
+            - Otherwise, fall back to the corresponding binary operator via `ValidateBinaryOp`.
+            - Enforce that the resulting type is assignable to the target type; if not, log a clear error and return `SemanticType.Unknown`.
+            - When neither an in-place operator nor a base operator is available (including CLR/builtin operators), log a descriptive error mentioning the augmented operator (e.g. "+=") and the operand types.
 
 7. **Comparison operators and chains (Sharpy syntax, .NET-compatible semantics)**
 
@@ -151,13 +154,9 @@ The goal is to replace ad‑hoc, “Python-only” operator rules in the type ch
          - For `AssignmentOperator` values corresponding to `+=`, `-=`, `*=`, `/=`, `//=`, `%=`; bitwise and shift assignments, and power assignment:
            - Compute `targetType = CheckExpression(assignment.Target);`
            - Compute `valueType = CheckExpression(assignment.Value);`
-           - Map the `AssignmentOperator` to:
-             - The in-place dunder name (`__iadd__`, etc.).
-             - The corresponding base `BinaryOperator` (`Add`, `Subtract`, `Power`, …).
-           - Use a dedicated helper (e.g. `_operatorValidator.ValidateAugmentedAssignment(...)` or inline logic) that:
-             - Attempts in-place operator resolution (`__iadd__`, or CLR `op_Addition`-style in-place if we decide to support that).
-             - Falls back to the base binary operator resolution and validates that the resulting type is assignable to `targetType`.
-           - Report errors with both the operator and the target type in the message, in terms users see in Sharpy, but consistent with how the C# backend works.
+           - Delegate augmented operator validation to `_operatorValidator` (e.g. `_operatorValidator.ValidateAugmentedAssignment(...)`):
+             - That helper is responsible for preferring in-place dunders, falling back to base binary operators, and enforcing result-type assignability to `targetType`.
+           - Rely on `OperatorValidator` to log detailed diagnostics about missing operators or incompatible result types, keeping `TypeChecker` focused on structural assignment rules.
 
 9. **Testing: Sharpy + .NET interop scenarios**
 
