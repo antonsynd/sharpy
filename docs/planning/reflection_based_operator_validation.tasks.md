@@ -61,12 +61,12 @@
 - [x] Integrate comparison chains:
   - [x] Update `CheckComparisonChain(ComparisonChain chain)` to loop over `(lhs, op, rhs)` pairs, calling `_operatorValidator.ValidateBinaryOp` for each.
   - [x] Ensure each comparison returns `bool` (or `Unknown` when error already reported) and that the chain expression as a whole remains `SemanticType.Bool`.
-- [ ] Integrate augmented assignment semantics:
-  - [ ] Update `CheckAssignment(Assignment assignment)` to:
-    - [ ] Keep existing logic for simple `=` and tuple unpacking.
-    - [ ] For augmented operators (e.g., `+=`, `-=`, `*=`, `/=`, `//=`, `%=` and bitwise/shift/power variants):
-      - [ ] Compute `targetType` and `valueType` via `CheckExpression`.
-      - [ ] Use `OperatorValidator.ValidateAugmentedAssignment` to resolve in-place vs base operator, enforce result-type assignability to `targetType`, and surface detailed diagnostics when the operator is missing or incompatible.
+- [x] Integrate augmented assignment semantics:
+  - [x] Update `CheckAssignment(Assignment assignment)` to:
+    - [x] Keep existing logic for simple `=` and tuple unpacking.
+    - [x] For augmented operators (e.g., `+=`, `-=`, `*=`, `/=`, `//=`, `%=` and bitwise/shift/power variants):
+      - [x] Compute `targetType` and `valueType` via `CheckExpression`.
+      - [x] Use `OperatorValidator.ValidateAugmentedAssignment` to resolve in-place vs base operator, enforce result-type assignability to `targetType`, and surface detailed diagnostics when the operator is missing or incompatible.
 
 ## Phase 5: Tests
 
