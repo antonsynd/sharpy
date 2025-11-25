@@ -980,11 +980,60 @@ public class TypeChecker
 
     private SemanticType CheckComparisonChain(ComparisonChain chain)
     {
-        // All comparison chains return bool
-        foreach (var operand in chain.Operands)
+        // A comparison chain like "a < b < c" has:
+        // - Operands: [a, b, c]
+        // - Operators: [LessThan, LessThan]
+        // We need to validate each adjacent pair: (a < b) and (b < c)
+
+        // Check that we have at least 2 operands and 1 operator
+        if (chain.Operands.Count < 2 || chain.Operators.Count < 1)
         {
-            CheckExpression(operand);
+            // Malformed chain, just return bool and let parser handle errors
+            return SemanticType.Bool;
         }
+
+        // The number of operators should be one less than the number of operands
+        if (chain.Operators.Count != chain.Operands.Count - 1)
+        {
+            // Malformed chain, just return bool and let parser handle errors
+            return SemanticType.Bool;
+        }
+
+        // Check all operands and build their types
+        var operandTypes = new List<SemanticType>();
+        for (int i = 0; i < chain.Operands.Count; i++)
+        {
+            operandTypes.Add(CheckExpression(chain.Operands[i]));
+        }
+
+        // Validate each comparison pair using OperatorValidator
+        for (int i = 0; i < chain.Operators.Count; i++)
+        {
+            var leftType = operandTypes[i];
+            var rightType = operandTypes[i + 1];
+
+            // Skip validation if either operand is Unknown to avoid cascading errors
+            if (leftType is UnknownType || rightType is UnknownType)
+            {
+                continue;
+            }
+
+            // Map ComparisonOperator to BinaryOperator
+            var binaryOp = OperatorValidator.ComparisonOperatorToBinaryOperator(chain.Operators[i]);
+
+            // Validate the comparison using OperatorValidator
+            var resultType = _operatorValidator.ValidateBinaryOp(
+                binaryOp,
+                leftType,
+                rightType,
+                chain.Operands[i].LineStart,
+                chain.Operands[i].ColumnStart);
+
+            // Comparison operators should return bool; if not, the operator validator will report an error
+            // We don't need to report a separate error here since ValidateBinaryOp handles it
+        }
+
+        // All comparison chains return bool
         return SemanticType.Bool;
     }
 

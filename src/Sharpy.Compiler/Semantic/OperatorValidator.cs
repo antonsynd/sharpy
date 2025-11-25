@@ -857,6 +857,27 @@ public class OperatorValidator
     }
 
     /// <summary>
+    /// Maps a ComparisonOperator to its corresponding BinaryOperator.
+    /// </summary>
+    public static BinaryOperator ComparisonOperatorToBinaryOperator(ComparisonOperator op)
+    {
+        return op switch
+        {
+            ComparisonOperator.Equal => BinaryOperator.Equal,
+            ComparisonOperator.NotEqual => BinaryOperator.NotEqual,
+            ComparisonOperator.LessThan => BinaryOperator.LessThan,
+            ComparisonOperator.LessThanOrEqual => BinaryOperator.LessThanOrEqual,
+            ComparisonOperator.GreaterThan => BinaryOperator.GreaterThan,
+            ComparisonOperator.GreaterThanOrEqual => BinaryOperator.GreaterThanOrEqual,
+            ComparisonOperator.In => BinaryOperator.In,
+            ComparisonOperator.NotIn => BinaryOperator.NotIn,
+            ComparisonOperator.Is => BinaryOperator.Is,
+            ComparisonOperator.IsNot => BinaryOperator.IsNot,
+            _ => throw new ArgumentException($"Unknown comparison operator: {op}", nameof(op))
+        };
+    }
+
+    /// <summary>
     /// Maps an AssignmentOperator to its corresponding in-place dunder method name.
     /// Returns null for simple assignment (=).
     /// </summary>

@@ -742,4 +742,142 @@ def foo():
     }
 
     #endregion
+
+    #region Comparison Chain Validation Tests
+
+    [Fact]
+    public void AllowsValidNumericComparisonChain()
+    {
+        var source = @"
+def foo():
+    x: bool = 1 < 2 < 3
+    y: bool = 0 <= 5 <= 10
+    z: bool = 10 > 5 > 0
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AllowsValidMixedComparisonChain()
+    {
+        var source = @"
+def foo():
+    x: bool = 1 < 2 <= 3 < 4
+    y: bool = 10 >= 5 > 0
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AllowsValidEqualityComparisonChain()
+    {
+        var source = @"
+def foo():
+    a: int = 5
+    b: int = 5
+    c: int = 5
+    x: bool = a == b == c
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AllowsValidStringComparisonChain()
+    {
+        var source = @"
+def foo():
+    x: bool = 'a' < 'b' < 'c'
+    y: bool = 'apple' <= 'banana' <= 'cherry'
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RejectsInvalidComparisonChainWithMixedTypes()
+    {
+        var source = @"
+def foo():
+    x: bool = 1 < 'hello' < 3
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        // Should report an error for comparing int and str
+        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Errors[0].Message.Should().Contain("does not support operator '<'");
+    }
+
+    [Fact]
+    public void AllowsComparisonChainWithFloatAndInt()
+    {
+        var source = @"
+def foo():
+    x: bool = 1 < 2.5 < 4
+    y: bool = 0.5 <= 1 <= 1.5
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        // Numeric type mixing (int and float) is allowed
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ComparisonChainWithVariables()
+    {
+        var source = @"
+def foo():
+    a: int = 1
+    b: int = 2
+    c: int = 3
+    x: bool = a < b < c
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ComparisonChainInIfCondition()
+    {
+        var source = @"
+def foo(x: int):
+    if 0 < x < 100:
+        print('x is in range')
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ComparisonChainInWhileCondition()
+    {
+        var source = @"
+def foo():
+    x: int = 50
+    while 0 < x < 100:
+        x = x - 1
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    #endregion
 }
