@@ -980,11 +980,53 @@ public class TypeChecker
 
     private SemanticType CheckComparisonChain(ComparisonChain chain)
     {
-        // All comparison chains return bool
-        foreach (var operand in chain.Operands)
+        // A comparison chain like "a < b < c" has:
+        // - Operands: [a, b, c]
+        // - Operators: [LessThan, LessThan]
+        // We need to validate each adjacent pair: (a < b) and (b < c)
+
+        // Validate chain structure: operators count should equal operands count minus 1
+        // (e.g., 3 operands need 2 operators: a < b < c)
+        if (chain.Operands.Count < 2 || chain.Operators.Count != chain.Operands.Count - 1)
         {
-            CheckExpression(operand);
+            // Malformed chain, just return bool and let parser handle errors
+            return SemanticType.Bool;
         }
+
+        // Check all operands and build their types
+        var operandTypes = new List<SemanticType>();
+        for (int i = 0; i < chain.Operands.Count; i++)
+        {
+            operandTypes.Add(CheckExpression(chain.Operands[i]));
+        }
+
+        // Validate each comparison pair using OperatorValidator
+        for (int i = 0; i < chain.Operators.Count; i++)
+        {
+            var leftType = operandTypes[i];
+            var rightType = operandTypes[i + 1];
+
+            // Skip validation if either operand is Unknown to avoid cascading errors
+            if (leftType is UnknownType || rightType is UnknownType)
+            {
+                continue;
+            }
+
+            // Map ComparisonOperator to BinaryOperator
+            var binaryOp = OperatorValidator.ComparisonOperatorToBinaryOperator(chain.Operators[i]);
+
+            // Validate the comparison using OperatorValidator
+            // We discard the result type since comparison operators always return bool,
+            // and ValidateBinaryOp already reports errors for invalid operations.
+            _ = _operatorValidator.ValidateBinaryOp(
+                binaryOp,
+                leftType,
+                rightType,
+                chain.Operands[i].LineStart,
+                chain.Operands[i].ColumnStart);
+        }
+
+        // All comparison chains return bool
         return SemanticType.Bool;
     }
 
