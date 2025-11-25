@@ -4,6 +4,7 @@ using FluentAssertions;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
+using static Sharpy.Compiler.Tests.TestHelpers;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -12,8 +13,9 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// </summary>
 public class SemanticAnalyzerNegativeTests
 {
-    private (Module, SymbolTable, SemanticInfo, NameResolver, TypeChecker) CompileAndCheck(string source)
+    private (Module, SymbolTable, SemanticInfo, NameResolver, TypeChecker, CollectingTestLogger) CompileAndCheck(string source)
     {
+        var logger = new CollectingTestLogger();
         var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
         var tokens = lexer.TokenizeAll();
         var parser = new global::Sharpy.Compiler.Parser.Parser(tokens, NullLogger.Instance);
@@ -24,15 +26,15 @@ public class SemanticAnalyzerNegativeTests
         var semanticInfo = new SemanticInfo();
 
         // Name resolution first
-        var nameResolver = new NameResolver(symbolTable, NullLogger.Instance);
+        var nameResolver = new NameResolver(symbolTable, logger);
         nameResolver.ResolveDeclarations(module);
         nameResolver.ResolveInheritance(); // Second pass: resolve inheritance
 
         // Type checking
-        var typeResolver = new TypeResolver(symbolTable, semanticInfo, NullLogger.Instance);
-        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance);
+        var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
+        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger);
 
-        return (module, symbolTable, semanticInfo, nameResolver, typeChecker);
+        return (module, symbolTable, semanticInfo, nameResolver, typeChecker, logger);
     }
 
     #region Scope and Naming Errors
@@ -44,7 +46,7 @@ public class SemanticAnalyzerNegativeTests
 def foo():
     bar()  # bar is not defined
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Undefined"));
@@ -57,7 +59,7 @@ def foo():
 def foo():
     x: UndefinedClass = None
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Type resolution for undefined classes might not be fully enforced
@@ -72,7 +74,7 @@ def foo():
     x: int = y  # y used before definition
     y: int = 5
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Undefined"));
@@ -88,7 +90,7 @@ def foo():
     x: auto = 3
     x: str = 'hello'
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Per language spec: redefinition with type annotation is allowed
@@ -104,7 +106,7 @@ x: int = 1
 def foo():
     x: int = 2  # shadows global x
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Shadowing should be allowed
@@ -122,7 +124,7 @@ def bar():
     f: Foo = Foo()
     x: int = f.__private  # cannot access private member
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("private"));
@@ -138,7 +140,7 @@ def foo(x: int):
     else:
         print(category)  # category is not in scope here
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Sharpy follows C# scoping rules: variables defined in an if-block
@@ -155,7 +157,7 @@ def foo(x: int):
         result: str = ""positive""
     print(result)  # result is not in scope here
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Variables defined inside if-blocks should not leak to outer scope (C#-style scoping)
@@ -172,7 +174,7 @@ def foo():
         break
     print(temp)  # temp is not in scope here
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Variables defined inside while-blocks should not leak to outer scope (C#-style scoping)
@@ -188,7 +190,7 @@ def foo():
         temp: int = i * 2
     print(temp)  # temp is not in scope here
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Variables defined inside for-blocks should not leak to outer scope (C#-style scoping)
@@ -207,7 +209,7 @@ def foo(x: int):
         category = ""non-positive""
     print(category)
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // This is valid: variable is defined in outer scope before the if-block
@@ -224,7 +226,7 @@ def foo(x: int):
     # C#-style scoping: 'result' is not accessible here
     print(result)
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // C#-style scoping: variables defined in blocks don't leak to outer scope
@@ -242,7 +244,7 @@ def foo(x: int):
 def foo():
     x: str = 42  # type mismatch
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot assign"));
@@ -255,7 +257,7 @@ def foo():
 def foo():
     x: int = True  # bool to int might be allowed in some languages
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Check if bool to int is allowed
@@ -268,7 +270,7 @@ def foo():
 def foo():
     x: str = [1, 2, 3]  # type mismatch
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot assign"));
@@ -281,7 +283,7 @@ def foo():
 def foo():
     numbers: list[int] = ['a', 'b']  # generic type mismatch
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Generic type checking might not be fully implemented
@@ -294,7 +296,7 @@ def foo():
 def foo():
     mapping: dict[str, int] = {1: 'one', 2: 'two'}  # wrong key/value types
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Dictionary type checking might not be fully implemented
@@ -314,7 +316,7 @@ def add(a: int, b: int) -> int:
 def foo():
     x: int = add(1, 2, 3)  # too many arguments
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("argument") || e.Message.Contains("parameter"));
@@ -330,7 +332,7 @@ def add(a: int, b: int) -> int:
 def foo():
     x: int = add(1)  # too few arguments
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("argument") || e.Message.Contains("parameter"));
@@ -346,7 +348,7 @@ def add(a: int, b: int) -> int:
 def foo():
     x: int = add('one', 'two')  # wrong argument types
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().NotBeEmpty();
@@ -360,7 +362,7 @@ def foo():
     x: int = 42
     y: int = x()  # x is not a function
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("not callable") || e.Message.Contains("not a function"));
@@ -377,7 +379,7 @@ def foo():
 def foo():
     return 42  # void function should not return a value
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Some languages allow this, check implementation
@@ -390,7 +392,7 @@ def foo():
 def foo() -> int:
     return  # missing return value
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("return"));
@@ -403,7 +405,7 @@ def foo() -> int:
 def foo() -> int:
     return 'hello'  # wrong return type
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("return"));
@@ -417,7 +419,7 @@ def foo() -> int:
     x: int = 5
     # missing return
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("return"));
@@ -434,11 +436,12 @@ def foo() -> int:
 def foo():
     x: int = 'hello' + 5  # cannot add string and int
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, logger) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Should report error about incompatible types
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot add incompatible types"));
+        // Should report error about operator not being supported
+        // OperatorValidator logs: "Type 'str' does not support operator '+' with right operand of type 'int'"
+        logger.Errors.Should().ContainSingle(e => e.Message.Contains("does not support operator"));
     }
 
     [Fact]
@@ -448,11 +451,12 @@ def foo():
 def foo():
     x: bool = 'hello' < 5  # cannot compare string and int
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, logger) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Should report error about incompatible types
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot compare incompatible types"));
+        // Should report error about operator not being supported
+        // OperatorValidator logs: "Type 'str' does not support operator '<' with right operand of type 'int'"
+        logger.Errors.Should().ContainSingle(e => e.Message.Contains("does not support operator"));
     }
 
     [Fact]
@@ -462,11 +466,12 @@ def foo():
 def foo():
     x: bool = True < 'hello'  # cannot compare bool and string
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, logger) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Should report error about incompatible types
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot compare incompatible types"));
+        // Should report error about operator not being supported
+        // OperatorValidator logs: "Type 'bool' does not support operator '<' with right operand of type 'str'"
+        logger.Errors.Should().ContainSingle(e => e.Message.Contains("does not support operator"));
     }
 
     [Fact]
@@ -476,11 +481,12 @@ def foo():
 def foo():
     x: int = -'hello'  # cannot negate a string
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, logger) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Should report error about unary operation on non-numeric type
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot apply unary"));
+        // Should report error about unary operator not being supported
+        // OperatorValidator logs: "Type 'str' does not support unary operator '-'"
+        logger.Errors.Should().ContainSingle(e => e.Message.Contains("does not support unary operator"));
     }
 
     [Fact]
@@ -490,10 +496,12 @@ def foo():
 def foo():
     x: str = 'hello' - 'world'  # cannot subtract strings
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, logger) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot perform arithmetic operation"));
+        // Should report error about operator not being supported
+        // OperatorValidator logs: "Type 'str' does not support operator '-' with right operand of type 'str'"
+        logger.Errors.Should().ContainSingle(e => e.Message.Contains("does not support operator"));
     }
 
     [Fact]
@@ -503,10 +511,12 @@ def foo():
 def foo():
     x: bool = -True  # cannot negate a boolean
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, logger) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot apply unary"));
+        // Should report error about unary operator not being supported
+        // OperatorValidator logs: "Type 'bool' does not support unary operator '-'"
+        logger.Errors.Should().ContainSingle(e => e.Message.Contains("does not support unary operator"));
     }
 
     [Fact]
@@ -516,10 +526,12 @@ def foo():
 def foo():
     x: str = ~'hello'  # cannot perform bitwise NOT on string
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, logger) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Bitwise NOT requires integer type"));
+        // Should report error about unary operator not being supported
+        // OperatorValidator logs: "Type 'str' does not support unary operator '~'"
+        logger.Errors.Should().ContainSingle(e => e.Message.Contains("does not support unary operator"));
     }
 
     #endregion
@@ -537,7 +549,7 @@ def bar():
     f: Foo = Foo()
     x: int = f.nonexistent  # field does not exist
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("no member"));
@@ -555,7 +567,7 @@ def baz():
     f: Foo = Foo()
     f.nonexistent()  # method does not exist
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("no member"));
@@ -569,7 +581,7 @@ class Foo:
     def bar():  # missing self parameter
         pass
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // This might be a warning or error depending on implementation
@@ -585,7 +597,7 @@ class A(B):
 class B(A):
     pass
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Circular inheritance detection might not be implemented yet
@@ -602,7 +614,7 @@ x: int = 5
 class Foo(x):  # cannot inherit from non-class
     pass
 ";
-        var (module, _, _, nameResolver, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, nameResolver, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Check both name resolver and type checker errors since inheritance validation happens in name resolution
@@ -622,7 +634,7 @@ def foo():
     if True:
         break  # not in a loop
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("break"));
@@ -636,7 +648,7 @@ def foo():
     if True:
         continue  # not in a loop
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("continue"));
@@ -648,7 +660,7 @@ def foo():
         var source = @"
 return 42  # return at module level
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Return at module level generates an error
@@ -661,7 +673,7 @@ return 42  # return at module level
         var source = @"
 yield 42  # yield at module level
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // If yield is supported
@@ -678,7 +690,7 @@ yield 42  # yield at module level
 def foo():
     42 = x  # cannot assign to literal
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // The error is reported for undefined 'x', not the assignment to literal
@@ -696,7 +708,7 @@ def bar() -> int:
 def foo():
     bar() = 5  # cannot assign to function call
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("assign") || e.Message.Contains("target"));
@@ -711,7 +723,7 @@ MAX_SIZE: int = 100
 def foo():
     MAX_SIZE = 200  # reassigning constant (if enforced)
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Constant enforcement might not be implemented
@@ -730,7 +742,7 @@ def foo():
         x: int = 1
     # missing except or finally
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Try statement validation doesn't enforce except/finally requirement
@@ -744,7 +756,7 @@ def foo():
 def foo():
     raise 42  # can only raise exceptions
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Raise type validation is not enforced
@@ -758,7 +770,7 @@ def foo():
 def foo():
     raise  # bare raise only valid in except block
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // This might not be enforced
@@ -775,7 +787,7 @@ def foo():
 def foo():
     x: list[123] = []  # generic argument must be a type
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("type"));
@@ -788,7 +800,7 @@ def foo():
 def foo():
     x: list[int, str] = []  # list takes one type argument
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Generic argument count checking might not be implemented
@@ -801,7 +813,7 @@ def foo():
 def foo():
     x: int[str] = 5  # int is not generic
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Generic type argument validation is not enforced
@@ -819,7 +831,7 @@ def foo():
 def foo():
     x: int = None  # None cannot be assigned to int
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().NotBeEmpty();
@@ -850,7 +862,7 @@ def foo():
     x: list[int] = [1, 2, 3]
     y: int = x['invalid']  # slice/index must be int
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Slice type checking is not enforced
@@ -865,7 +877,7 @@ def foo():
     x: int = 42
     y: int = x[0]  # int is not subscriptable
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Subscript type checking is not enforced
@@ -881,7 +893,7 @@ def foo():
 ";
         // Comprehensions are now implemented, parse should succeed
         // Semantic error for non-iterable is expected but not tested here yet
-        var (module, _, _, _, _) = CompileAndCheck(source);
+        var (module, _, _, _, _, _) = CompileAndCheck(source);
         module.Should().NotBeNull();
     }
 
@@ -907,7 +919,7 @@ x: int = 5  # cannot decorate non-function
 def foo(x: int = 'invalid'):  # default value type mismatch
     pass
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Default"));
@@ -920,7 +932,7 @@ def foo(x: int = 'invalid'):  # default value type mismatch
 def foo(a: int = 1, b: int):  # non-default after default
     pass
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // This might be a parser or semantic error
@@ -937,7 +949,7 @@ def test():
         print(x)
     print(x)
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Sharpy allows shadowing with type annotations in nested blocks (unlike C#)
@@ -955,7 +967,7 @@ def foo(x: int):
         category: str = ""medium""
     print(category)  # category is not in scope here
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Variables defined inside elif-blocks should not leak to outer scope (C#-style scoping)
@@ -973,7 +985,7 @@ def foo():
     elif ""not a bool"":  # elif condition must be boolean
         print(""medium"")
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // Elif condition type checking
@@ -992,7 +1004,7 @@ def foo():
     const MAX_VALUE: int = 100
     MAX_VALUE = 200  # Should fail
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("constant") || e.Message.Contains("reassign"));
@@ -1007,7 +1019,7 @@ const MAX_VALUE: int = 100
 def foo():
     MAX_VALUE = 20  # Error: reassignment without type annotation
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e =>
@@ -1025,7 +1037,7 @@ def foo():
     MAX_VAL = 99  # First reassignment
     MAX_VAL = 98  # Second reassignment
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("constant") || e.Message.Contains("reassign"));
@@ -1039,7 +1051,7 @@ def foo():
     const MAX_VALUE: int = 100
     x: int = MAX_VALUE  # Reading is fine
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().BeEmpty();
@@ -1055,7 +1067,7 @@ def foo():
     MAX_VALUE: int = 20
     print(MAX_VALUE)
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().BeEmpty();
@@ -1070,7 +1082,7 @@ const PI: int = 314
 def calculate():
     PI = 315
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e =>
@@ -1087,7 +1099,7 @@ const THRESHOLD: int = 100
 def check_value(val: int) -> bool:
     return val > THRESHOLD
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().BeEmpty();
@@ -1105,7 +1117,7 @@ def outer():
         VALUE: int = 300
         print(VALUE)
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().BeEmpty();
@@ -1121,7 +1133,7 @@ def outer():
     def inner():
         LIMIT = 100
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e =>
@@ -1138,7 +1150,7 @@ def process():
     CONFIG: str = 'local config'
     print(CONFIG)
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().BeEmpty();
@@ -1155,7 +1167,7 @@ def demo():
     X: int = 2
     z: int = X + 1
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().BeEmpty();
@@ -1173,7 +1185,7 @@ class Foo:
     def bar(other):  # Should be 'self'
         pass
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("self"));
@@ -1187,7 +1199,7 @@ class Foo:
     def bar():  # Missing self parameter
         pass
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("self"));
@@ -1204,7 +1216,7 @@ class Foo:
     def method2(y):  # Wrong
         pass
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Count.Should().BeGreaterThanOrEqualTo(2);
@@ -1221,7 +1233,7 @@ class Foo:
     def baz(self, x: int):
         pass
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().BeEmpty();
@@ -1238,7 +1250,7 @@ class Foo:
 def foo(a: int = 1, b: int):  # b has no default
     pass
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("default") || e.Message.Contains("parameter"));
@@ -1251,7 +1263,7 @@ def foo(a: int = 1, b: int):  # b has no default
 def foo(a: int = 1, b: str = 'test', c: int, d: float):  # c and d have no defaults
     pass
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Count.Should().BeGreaterThanOrEqualTo(2);
@@ -1264,7 +1276,7 @@ def foo(a: int = 1, b: str = 'test', c: int, d: float):  # c and d have no defau
 def foo(a: int = 1, b: int, c: str = 'test'):  # b in middle has no default
     pass
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("default") || e.Message.Contains("parameter"));
@@ -1277,7 +1289,7 @@ def foo(a: int = 1, b: int, c: str = 'test'):  # b in middle has no default
 def foo(a: int = 1, b: str = 'test', c: int = 42):
     pass
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().BeEmpty();
@@ -1290,7 +1302,7 @@ def foo(a: int = 1, b: str = 'test', c: int = 42):
 def foo(a: int, b: str, c: float):
     pass
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().BeEmpty();
@@ -1303,7 +1315,7 @@ def foo(a: int, b: str, c: float):
 def foo(a: int, b: str, c: int = 42, d: bool = True):
     pass
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().BeEmpty();
@@ -1320,7 +1332,7 @@ def foo(a: int, b: str, c: int = 42, d: bool = True):
 def foo():
     raise  # Bare raise outside except
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("raise") || e.Message.Contains("except"));
@@ -1336,7 +1348,7 @@ def foo():
     except:
         pass
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("raise") || e.Message.Contains("except"));
@@ -1354,7 +1366,7 @@ def foo():
     finally:
         raise  # Bare raise in finally block
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("raise") || e.Message.Contains("except"));
@@ -1370,7 +1382,7 @@ def foo():
     except:
         raise  # Valid bare raise
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().BeEmpty();
@@ -1389,7 +1401,7 @@ def foo():
     except:
         raise  # Valid in outer except
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().BeEmpty();
@@ -1409,7 +1421,7 @@ def bar():
     except:
         y: str = 'test'  # Valid in except
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         // This test would need actual exception types to work properly
@@ -1428,7 +1440,7 @@ def foo():
     const X: int = 10
     X = 20  # This is the reassignment
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e => e.Message.Contains("constant") || e.Message.Contains("reassign"));
@@ -1442,7 +1454,7 @@ class Foo:
     def bar(wrong):
         pass
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e => e.Line != null && e.Column != null);
@@ -1455,7 +1467,7 @@ class Foo:
 def foo(a: int = 1, b: int):
     pass
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
+        var (module, _, _, _, typeChecker, _) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().Contain(e => e.Line != null && e.Column != null);
