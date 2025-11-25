@@ -226,7 +226,7 @@ public class OperatorValidator
         int column)
     {
         var result = TryResolveOperatorOverloadWithoutLogging(op, left, right, line, column);
-        
+
         if (result != null)
         {
             return result;
