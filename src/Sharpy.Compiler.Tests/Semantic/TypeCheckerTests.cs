@@ -880,4 +880,276 @@ def foo():
     }
 
     #endregion
+
+    #region Augmented Assignment Tests
+
+    [Fact]
+    public void AugmentedAssignment_IntPlusAssignInt_Succeeds()
+    {
+        var source = @"
+x: int = 5
+x += 3
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AugmentedAssignment_IntMinusAssignInt_Succeeds()
+    {
+        var source = @"
+x: int = 10
+x -= 3
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AugmentedAssignment_IntStarAssignInt_Succeeds()
+    {
+        var source = @"
+x: int = 5
+x *= 2
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AugmentedAssignment_IntSlashAssignInt_Succeeds()
+    {
+        var source = @"
+x: int = 10
+x /= 2
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AugmentedAssignment_IntFloorDivAssignInt_Succeeds()
+    {
+        var source = @"
+x: int = 10
+x //= 3
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AugmentedAssignment_IntModuloAssignInt_Succeeds()
+    {
+        var source = @"
+x: int = 10
+x %= 3
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AugmentedAssignment_IntPowerAssignInt_Succeeds()
+    {
+        var source = @"
+x: int = 2
+x **= 3
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AugmentedAssignment_IntBitwiseAndAssignInt_Succeeds()
+    {
+        var source = @"
+x: int = 15
+x &= 7
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AugmentedAssignment_IntBitwiseOrAssignInt_Succeeds()
+    {
+        var source = @"
+x: int = 8
+x |= 1
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AugmentedAssignment_IntBitwiseXorAssignInt_Succeeds()
+    {
+        var source = @"
+x: int = 5
+x ^= 3
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AugmentedAssignment_IntLeftShiftAssignInt_Succeeds()
+    {
+        var source = @"
+x: int = 4
+x <<= 2
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AugmentedAssignment_IntRightShiftAssignInt_Succeeds()
+    {
+        var source = @"
+x: int = 16
+x >>= 2
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AugmentedAssignment_StrPlusAssignStr_Succeeds()
+    {
+        var source = @"
+s: str = ""hello""
+s += "" world""
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AugmentedAssignment_DoublePlusAssignInt_Succeeds()
+    {
+        var source = @"
+x: double = 1.5
+x += 2
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AugmentedAssignment_UnsupportedOperatorOnString_ReportsError()
+    {
+        var source = @"
+s: str = ""hello""
+s -= "" world""
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Errors[0].Message.Should().Contain("does not support");
+    }
+
+    [Fact]
+    public void AugmentedAssignment_BitwiseOnDouble_ReportsError()
+    {
+        var source = @"
+x: double = 1.5
+x &= 2
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Errors[0].Message.Should().Contain("does not support");
+    }
+
+    [Fact]
+    public void AugmentedAssignment_InFunction_Succeeds()
+    {
+        var source = @"
+def increment(x: int) -> int:
+    x += 1
+    return x
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AugmentedAssignment_InLoop_Succeeds()
+    {
+        var source = @"
+total: int = 0
+items: list[int] = [1, 2, 3]
+for i in items:
+    total += i
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AugmentedAssignment_WithExpression_Succeeds()
+    {
+        var source = @"
+x: int = 5
+y: int = 3
+x += y * 2
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AugmentedAssignment_ToConstant_ReportsError()
+    {
+        var source = @"
+const X: int = 10
+X += 5
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Errors[0].Message.Should().Contain("Cannot");
+        typeChecker.Errors[0].Message.Should().Contain("constant");
+    }
+
+    #endregion
 }

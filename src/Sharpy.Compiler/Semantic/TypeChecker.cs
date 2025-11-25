@@ -471,10 +471,40 @@ public class TypeChecker
             return;
         }
 
-        // Otherwise, check as a regular assignment
+        // Check target and value types
         var targetType = CheckExpression(assignment.Target);
         var valueType = CheckExpression(assignment.Value);
 
+        // Handle augmented assignment operators (+=, -=, *=, /=, //=, %=, **=, &=, |=, ^=, <<=, >>=)
+        if (assignment.Operator != AssignmentOperator.Assign)
+        {
+            // Check if trying to use augmented assignment on a constant
+            if (assignment.Target is Identifier augTargetId)
+            {
+                var symbol = _symbolTable.Lookup(augTargetId.Name, searchParents: true);
+                if (symbol is VariableSymbol varSym && varSym.IsConstant)
+                {
+                    AddError($"Cannot use augmented assignment on constant variable '{augTargetId.Name}'",
+                        assignment.LineStart, assignment.ColumnStart);
+                    return;
+                }
+            }
+
+            // For augmented assignments, delegate to OperatorValidator which handles:
+            // - Preferring in-place dunder methods (e.g., __iadd__) when available
+            // - Falling back to binary operators (e.g., __add__) otherwise
+            // - Verifying result type is assignable to target type
+            // - Logging appropriate errors when operators are not supported
+            _operatorValidator.ValidateAugmentedAssignment(
+                assignment.Operator,
+                targetType,
+                valueType,
+                assignment.LineStart,
+                assignment.ColumnStart);
+            return;
+        }
+
+        // Otherwise, check as a regular simple assignment
         if (!IsAssignable(valueType, targetType))
         {
             // Special case: Allow None for nullable types but provide better error message
