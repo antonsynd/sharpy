@@ -125,7 +125,7 @@ The goal is to replace ad‑hoc, “Python-only” operator rules in the type ch
             - Enforce that the resulting type is assignable to the target type; if not, log a clear error and return `SemanticType.Unknown`.
             - When neither an in-place operator nor a base operator is available (including CLR/builtin operators), log a descriptive error mentioning the augmented operator (e.g. "+=") and the operand types.
 
-7. **Comparison operators and chains (Sharpy syntax, .NET-compatible semantics)**
+7. **Comparison operators and chains (Sharpy syntax, .NET-compatible semantics)** ✅ COMPLETE
 
    - In `TypeChecker`:
      - Update `CheckBinaryOp` for comparison operators to always use `_operatorValidator.ValidateBinaryOp`, not ad-hoc logic.
@@ -136,6 +136,9 @@ The goal is to replace ad‑hoc, “Python-only” operator rules in the type ch
          - Call `_operatorValidator.ValidateBinaryOp` for the appropriate comparison operator.
          - Verify that the result is `bool` (or `Unknown` only when a prior error already reported).
        - Always return `SemanticType.Bool` for the overall chain expression, matching both Python syntax and .NET-style boolean result.
+   - Implementation notes:
+     - Added `ComparisonOperatorToBinaryOperator` static method in `OperatorValidator` for the mapping.
+     - `CheckComparisonChain` validates chain structure and skips validation for `Unknown` operands to avoid cascading errors.
 
 8. **Integrate `OperatorValidator` into `TypeChecker` (including assignments)**
 
