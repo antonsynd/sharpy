@@ -438,7 +438,7 @@ def foo():
         typeChecker.CheckModule(module);
 
         // Should report error about incompatible types
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot add incompatible types"));
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("does not support operator '+'"));
     }
 
     [Fact]
@@ -452,7 +452,7 @@ def foo():
         typeChecker.CheckModule(module);
 
         // Should report error about incompatible types
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot compare incompatible types"));
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("does not support operator '<'"));
     }
 
     [Fact]
@@ -466,7 +466,7 @@ def foo():
         typeChecker.CheckModule(module);
 
         // Should report error about incompatible types
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot compare incompatible types"));
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("does not support operator '<'"));
     }
 
     [Fact]
@@ -480,7 +480,7 @@ def foo():
         typeChecker.CheckModule(module);
 
         // Should report error about unary operation on non-numeric type
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot apply unary"));
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("does not support unary operator '-'"));
     }
 
     [Fact]
@@ -493,7 +493,7 @@ def foo():
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot perform arithmetic operation"));
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("does not support operator '-'"));
     }
 
     [Fact]
@@ -506,7 +506,7 @@ def foo():
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot apply unary"));
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("does not support unary operator '-'"));
     }
 
     [Fact]
@@ -519,7 +519,7 @@ def foo():
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Bitwise NOT requires integer type"));
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("does not support unary operator '~'"));
     }
 
     #endregion
