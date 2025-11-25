@@ -1136,5 +1136,20 @@ x += y * 2
         typeChecker.Errors.Should().BeEmpty();
     }
 
+    [Fact]
+    public void AugmentedAssignment_ToConstant_ReportsError()
+    {
+        var source = @"
+const X: int = 10
+X += 5
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Errors[0].Message.Should().Contain("Cannot");
+        typeChecker.Errors[0].Message.Should().Contain("constant");
+    }
+
     #endregion
 }
