@@ -48,7 +48,8 @@ public class TypeChecker
     {
         get
         {
-            // Combine errors from type checker, control flow validator, and access validator
+            // Combine errors from type checker, control flow validator, and access validator.
+            // Note: OperatorValidator logs errors directly via the logger rather than collecting them.
             var allErrors = new List<SemanticError>(_errors);
             allErrors.AddRange(_controlFlowValidator.Errors);
             allErrors.AddRange(_accessValidator.Errors);
