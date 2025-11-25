@@ -54,10 +54,10 @@
 - [x] Inject `OperatorValidator` into `TypeChecker` in `src/Sharpy.Compiler/Semantic/TypeChecker.cs`:
   - [x] Add `_operatorValidator` field.
   - [x] Initialize `_operatorValidator` in the constructor using `_symbolTable` and `_logger`.
-- [ ] Replace direct operator logic:
-  - [ ] Rewrite `CheckBinaryOp(BinaryOp binOp)` to delegate to `_operatorValidator.ValidateBinaryOp` for all arithmetic, bitwise, comparison, and other non-trivial operators.
-  - [ ] Rewrite `CheckUnaryOp(UnaryOp unOp)` to delegate to `_operatorValidator.ValidateUnaryOp`.
-  - [ ] Remove old helper methods: `InferArithmeticType`, `InferAdditionType`, `ValidateBitwiseOp`, `ValidateComparisonOp`, `ValidateUnaryArithmeticOp`, `ValidateUnaryBitwiseOp`, and related unused helpers.
+- [x] Replace direct operator logic:
+  - [x] Rewrite `CheckBinaryOp(BinaryOp binOp)` to delegate to `_operatorValidator.ValidateBinaryOp` for all arithmetic, bitwise, comparison, and other non-trivial operators.
+  - [x] Rewrite `CheckUnaryOp(UnaryOp unOp)` to delegate to `_operatorValidator.ValidateUnaryOp`.
+  - [x] Remove old helper methods: `InferArithmeticType`, `InferAdditionType`, `ValidateBitwiseOp`, `ValidateComparisonOp`, `ValidateUnaryArithmeticOp`, `ValidateUnaryBitwiseOp`, and related unused helpers.
 - [ ] Integrate comparison chains:
   - [ ] Update `CheckComparisonChain(ComparisonChain chain)` to loop over `(lhs, op, rhs)` pairs, calling `_operatorValidator.ValidateBinaryOp` for each.
   - [ ] Ensure each comparison returns `bool` (or `Unknown` when error already reported) and that the chain expression as a whole remains `SemanticType.Bool`.

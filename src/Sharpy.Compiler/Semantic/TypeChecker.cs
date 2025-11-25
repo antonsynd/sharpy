@@ -48,11 +48,11 @@ public class TypeChecker
     {
         get
         {
-            // Combine errors from type checker, control flow validator, and access validator.
-            // Note: OperatorValidator logs errors directly via the logger rather than collecting them.
+            // Combine errors from type checker, control flow validator, access validator, and operator validator.
             var allErrors = new List<SemanticError>(_errors);
             allErrors.AddRange(_controlFlowValidator.Errors);
             allErrors.AddRange(_accessValidator.Errors);
+            allErrors.AddRange(_operatorValidator.Errors);
             return allErrors;
         }
     }
@@ -945,45 +945,37 @@ public class TypeChecker
         var leftType = CheckExpression(binOp.Left);
         var rightType = CheckExpression(binOp.Right);
 
-        return binOp.Operator switch
+        // If either operand is Unknown, return Unknown to avoid cascading errors
+        if (leftType is UnknownType || rightType is UnknownType)
         {
-            // Special handling for Add - supports both arithmetic and string concatenation
-            BinaryOperator.Add => InferAdditionType(leftType, rightType, binOp.LineStart, binOp.ColumnStart),
+            return SemanticType.Unknown;
+        }
 
-            BinaryOperator.Subtract or
-            BinaryOperator.Multiply or BinaryOperator.Divide or
-            BinaryOperator.FloorDivide or BinaryOperator.Modulo or
-            BinaryOperator.Power => InferArithmeticType(leftType, rightType, binOp.LineStart, binOp.ColumnStart),
-
-            BinaryOperator.BitwiseAnd or BinaryOperator.BitwiseOr or
-            BinaryOperator.BitwiseXor or BinaryOperator.LeftShift or
-            BinaryOperator.RightShift => ValidateBitwiseOp(leftType, rightType, binOp.LineStart, binOp.ColumnStart),
-
-            BinaryOperator.And or BinaryOperator.Or => ValidateLogicalOp(leftType, rightType),
-
-            BinaryOperator.Equal or BinaryOperator.NotEqual => SemanticType.Bool,  // Equality works on any type
-
-            BinaryOperator.LessThan or BinaryOperator.LessThanOrEqual or
-            BinaryOperator.GreaterThan or BinaryOperator.GreaterThanOrEqual => ValidateComparisonOp(leftType, rightType, binOp.LineStart, binOp.ColumnStart),
-
-            BinaryOperator.In or BinaryOperator.NotIn or
-            BinaryOperator.Is or BinaryOperator.IsNot => SemanticType.Bool,
-
-            _ => SemanticType.Unknown
-        };
+        // Delegate all operator validation to OperatorValidator
+        return _operatorValidator.ValidateBinaryOp(
+            binOp.Operator,
+            leftType,
+            rightType,
+            binOp.LineStart,
+            binOp.ColumnStart);
     }
 
     private SemanticType CheckUnaryOp(UnaryOp unOp)
     {
         var operandType = CheckExpression(unOp.Operand);
 
-        return unOp.Operator switch
+        // If operand is Unknown, return Unknown to avoid cascading errors
+        if (operandType is UnknownType)
         {
-            UnaryOperator.Not => SemanticType.Bool,
-            UnaryOperator.Minus or UnaryOperator.Plus => ValidateUnaryArithmeticOp(unOp.Operator, operandType, unOp.LineStart, unOp.ColumnStart),
-            UnaryOperator.BitwiseNot => ValidateUnaryBitwiseOp(operandType, unOp.LineStart, unOp.ColumnStart),
-            _ => SemanticType.Unknown
-        };
+            return SemanticType.Unknown;
+        }
+
+        // Delegate all unary operator validation to OperatorValidator
+        return _operatorValidator.ValidateUnaryOp(
+            unOp.Operator,
+            operandType,
+            unOp.LineStart,
+            unOp.ColumnStart);
     }
 
     private SemanticType CheckComparisonChain(ComparisonChain chain)
@@ -1555,139 +1547,6 @@ public class TypeChecker
                type == SemanticType.Float ||
                type == SemanticType.Double ||
                type == SemanticType.Unknown; // Unknown types are allowed to avoid cascading errors
-    }
-
-    /// <summary>
-    /// Check if a type is comparable (numeric, string, or bool)
-    /// </summary>
-    private bool IsComparableType(SemanticType type)
-    {
-        return IsNumericType(type) ||
-               type == SemanticType.Str ||
-               type == SemanticType.Bool ||
-               type == SemanticType.Unknown;
-    }
-
-    private SemanticType InferArithmeticType(SemanticType left, SemanticType right, int line, int column)
-    {
-        // If either operand is Unknown, return Unknown to avoid cascading errors
-        if (left == SemanticType.Unknown || right == SemanticType.Unknown)
-            return SemanticType.Unknown;
-
-        // Validate that both operands are numeric types
-        if (!IsNumericType(left) || !IsNumericType(right))
-        {
-            AddError($"Cannot perform arithmetic operation on non-numeric types: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
-            return SemanticType.Unknown;
-        }
-
-        // Simplified: promote to widest type
-        if (left == SemanticType.Double || right == SemanticType.Double)
-            return SemanticType.Double;
-        if (left == SemanticType.Float || right == SemanticType.Float)
-            return SemanticType.Float;
-        if (left == SemanticType.Long || right == SemanticType.Long)
-            return SemanticType.Long;
-        return SemanticType.Int;
-    }
-
-    private SemanticType InferAdditionType(SemanticType left, SemanticType right, int line, int column)
-    {
-        // String concatenation
-        if (left == SemanticType.Str && right == SemanticType.Str)
-            return SemanticType.Str;
-
-        // Check if both are numeric
-        if (IsNumericType(left) && IsNumericType(right))
-        {
-            return InferArithmeticType(left, right, line, column);
-        }
-
-        // Type mismatch: cannot add these types
-        if (left != SemanticType.Unknown && right != SemanticType.Unknown)
-        {
-            AddError($"Cannot add incompatible types: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
-        }
-        return SemanticType.Unknown;
-    }
-
-    private SemanticType ValidateComparisonOp(SemanticType left, SemanticType right, int line, int column)
-    {
-        // Both operands should be comparable types and compatible with each other
-        bool bothComparable = IsComparableType(left) && IsComparableType(right);
-        bool incompatibleTypes = (IsNumericType(left) && !IsNumericType(right)) ||
-                                (!IsNumericType(left) && IsNumericType(right));
-
-        // For non-numeric types, both must be the same type (e.g., both strings, both bools)
-        bool nonNumericTypeMismatch = !IsNumericType(left) && !IsNumericType(right) && !left.Equals(right);
-
-        if ((!bothComparable || incompatibleTypes || nonNumericTypeMismatch) &&
-            left != SemanticType.Unknown && right != SemanticType.Unknown)
-        {
-            AddError($"Cannot compare incompatible types: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
-        }
-
-        return SemanticType.Bool;
-    }
-
-    private SemanticType ValidateBitwiseOp(SemanticType left, SemanticType right, int line, int column)
-    {
-        // If either operand is Unknown, return Unknown to avoid cascading errors
-        if (left == SemanticType.Unknown || right == SemanticType.Unknown)
-            return SemanticType.Unknown;
-
-        // Bitwise operations require integer types
-        bool leftIsInt = left == SemanticType.Int || left == SemanticType.Long;
-        bool rightIsInt = right == SemanticType.Int || right == SemanticType.Long;
-
-        if (!leftIsInt || !rightIsInt)
-        {
-            AddError($"Bitwise operations require integer types, got: {left.GetDisplayName()} and {right.GetDisplayName()}", line, column);
-            return SemanticType.Unknown;
-        }
-
-        // Return long if either operand is long, otherwise int
-        if (left == SemanticType.Long || right == SemanticType.Long)
-            return SemanticType.Long;
-        return SemanticType.Int;
-    }
-
-    private SemanticType ValidateLogicalOp(SemanticType left, SemanticType right)
-    {
-        // In Python, logical operations work on any type (truthy/falsy)
-        // In Sharpy, we could be stricter and require bool types
-        // For now, we'll allow any type (like Python) but could make this stricter
-        return SemanticType.Bool;
-    }
-
-    private SemanticType ValidateUnaryArithmeticOp(UnaryOperator op, SemanticType operandType, int line, int column)
-    {
-        // Unary +/- require numeric types
-        if (!IsNumericType(operandType))
-        {
-            if (operandType != SemanticType.Unknown)
-            {
-                string opSymbol = op == UnaryOperator.Minus ? "-" : "+";
-                AddError($"Cannot apply unary {opSymbol} to non-numeric type: {operandType.GetDisplayName()}", line, column);
-            }
-            return SemanticType.Unknown;
-        }
-        return operandType;
-    }
-
-    private SemanticType ValidateUnaryBitwiseOp(SemanticType operandType, int line, int column)
-    {
-        // Bitwise NOT requires integer type
-        bool isInt = operandType == SemanticType.Int || operandType == SemanticType.Long || operandType == SemanticType.Unknown;
-        if (!isInt)
-        {
-            if (operandType != SemanticType.Unknown)
-            {
-                AddError($"Bitwise NOT requires integer type, got: {operandType.GetDisplayName()}", line, column);
-            }
-            return SemanticType.Unknown;
-        }
-        return operandType;
     }
 
     /// <summary>

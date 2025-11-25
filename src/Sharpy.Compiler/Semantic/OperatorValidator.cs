@@ -15,6 +15,7 @@ public class OperatorValidator
 {
     private readonly SymbolTable _symbolTable;
     private readonly ICompilerLogger _logger;
+    private readonly List<SemanticError> _errors = new();
 
     // Caches for performance (not thread-safe)
     private readonly Dictionary<(SemanticType, BinaryOperator, SemanticType), SemanticType?> _binaryOpCache = new();
@@ -25,6 +26,20 @@ public class OperatorValidator
     {
         _symbolTable = symbolTable;
         _logger = logger ?? NullLogger.Instance;
+    }
+
+    /// <summary>
+    /// Gets the errors collected during operator validation.
+    /// </summary>
+    public IReadOnlyList<SemanticError> Errors => _errors;
+
+    /// <summary>
+    /// Adds an error to the errors collection and logs it.
+    /// </summary>
+    private void AddError(string message, int line, int column)
+    {
+        _errors.Add(new SemanticError(message, line, column));
+        _logger.LogError(message, line, column);
     }
 
     /// <summary>
@@ -58,7 +73,7 @@ public class OperatorValidator
             case BinaryOperator.NullCoalesce:
                 // TODO: Implement null coalescing operator support
                 // For now, return Unknown and log an error
-                _logger.LogError(
+                AddError(
                     $"Null coalescing operator ('??') is not yet implemented",
                     line, column);
                 result = SemanticType.Unknown;
@@ -233,7 +248,7 @@ public class OperatorValidator
         }
 
         // No operator found
-        _logger.LogError(
+        AddError(
             $"Type '{left.GetDisplayName()}' does not support operator '{GetOperatorSymbol(op)}' with right operand of type '{right.GetDisplayName()}'",
             line,
             column);
@@ -331,7 +346,7 @@ public class OperatorValidator
         }
 
         // No operator found
-        _logger.LogError(
+        AddError(
             $"Type '{operand.GetDisplayName()}' does not support unary operator '{GetUnaryOperatorSymbol(op)}'",
             line,
             column);
@@ -538,7 +553,9 @@ public class OperatorValidator
             return op switch
             {
                 BinaryOperator.Add => SemanticType.Str,
-                BinaryOperator.Equal or BinaryOperator.NotEqual => SemanticType.Bool,
+                BinaryOperator.Equal or BinaryOperator.NotEqual or
+                BinaryOperator.LessThan or BinaryOperator.LessThanOrEqual or
+                BinaryOperator.GreaterThan or BinaryOperator.GreaterThanOrEqual => SemanticType.Bool,
                 _ => null
             };
         }
@@ -964,7 +981,7 @@ public class OperatorValidator
         // If no operator found, report error
         if (resultType == null)
         {
-            _logger.LogError(
+            AddError(
                 $"Type '{targetType.GetDisplayName()}' does not support augmented assignment operator '{GetAssignmentOperatorSymbol(op)}' with right operand of type '{valueType.GetDisplayName()}'",
                 line,
                 column);
@@ -974,7 +991,7 @@ public class OperatorValidator
         // Verify result type is assignable to target type
         if (!resultType.IsAssignableTo(targetType))
         {
-            _logger.LogError(
+            AddError(
                 $"Result type '{resultType.GetDisplayName()}' of augmented assignment '{GetAssignmentOperatorSymbol(op)}' is not assignable to target type '{targetType.GetDisplayName()}'",
                 line,
                 column);
