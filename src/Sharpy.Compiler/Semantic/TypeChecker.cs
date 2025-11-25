@@ -13,6 +13,7 @@ public class TypeChecker
     private readonly TypeResolver _typeResolver;
     private readonly ControlFlowValidator _controlFlowValidator;
     private readonly AccessValidator _accessValidator;
+    private readonly OperatorValidator _operatorValidator;
     private readonly ICompilerLogger _logger;
     private readonly List<SemanticError> _errors = new();
 
@@ -40,6 +41,7 @@ public class TypeChecker
         _logger = logger ?? NullLogger.Instance;
         _controlFlowValidator = new ControlFlowValidator(_logger);
         _accessValidator = new AccessValidator(_symbolTable, _semanticInfo, _logger);
+        _operatorValidator = new OperatorValidator(_symbolTable, _logger);
     }
 
     public IReadOnlyList<SemanticError> Errors

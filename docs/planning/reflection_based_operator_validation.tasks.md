@@ -51,9 +51,9 @@
 
 ## Phase 4: TypeChecker Integration
 
-- [ ] Inject `OperatorValidator` into `TypeChecker` in `src/Sharpy.Compiler/Semantic/TypeChecker.cs`:
-  - [ ] Add `_operatorValidator` field.
-  - [ ] Initialize `_operatorValidator` in the constructor using `_symbolTable` and `_logger`.
+- [x] Inject `OperatorValidator` into `TypeChecker` in `src/Sharpy.Compiler/Semantic/TypeChecker.cs`:
+  - [x] Add `_operatorValidator` field.
+  - [x] Initialize `_operatorValidator` in the constructor using `_symbolTable` and `_logger`.
 - [ ] Replace direct operator logic:
   - [ ] Rewrite `CheckBinaryOp(BinaryOp binOp)` to delegate to `_operatorValidator.ValidateBinaryOp` for all arithmetic, bitwise, comparison, and other non-trivial operators.
   - [ ] Rewrite `CheckUnaryOp(UnaryOp unOp)` to delegate to `_operatorValidator.ValidateUnaryOp`.
