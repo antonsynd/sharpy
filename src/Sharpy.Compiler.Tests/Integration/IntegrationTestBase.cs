@@ -10,6 +10,7 @@ using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Semantic;
 using Xunit.Abstractions;
+using static Sharpy.Compiler.Tests.TestHelpers;
 
 namespace Sharpy.Compiler.Tests.Integration;
 
@@ -51,7 +52,7 @@ public abstract class IntegrationTestBase
         try
         {
             // Phase 1: Lex Sharpy code
-            var logger = new TestLogger(Output);
+            var logger = new OutputTestLogger(Output);
             var lexer = new Sharpy.Compiler.Lexer.Lexer(sharpySource, logger);
             var tokens = lexer.TokenizeAll();
 
@@ -320,74 +321,6 @@ public abstract class IntegrationTestBase
             {
                 AppDomain.CurrentDomain.AssemblyResolve -= resolveHandler;
             }
-        }
-    }
-
-    /// <summary>
-    /// Simple logger that writes to test output.
-    /// </summary>
-    private class TestLogger : ICompilerLogger
-    {
-        private readonly ITestOutputHelper _output;
-
-        public TestLogger(ITestOutputHelper output)
-        {
-            _output = output;
-        }
-
-        public void LogTokenRead(string tokenType, int line, int column, string value)
-        {
-            // Don't log tokens during tests to avoid clutter
-        }
-
-        public void LogIndentChange(int oldLevel, int newLevel)
-        {
-            // Don't log indent changes during tests
-        }
-
-        public void LogParseEnter(string rule, int tokenPosition)
-        {
-            // Don't log parse enter during tests
-        }
-
-        public void LogParseExit(string rule, bool success)
-        {
-            // Don't log parse exit during tests
-        }
-
-        public void LogError(string message, int line, int column)
-        {
-            _output.WriteLine($"ERROR [{line},{column}]: {message}");
-        }
-
-        public void LogWarning(string message, int line, int column)
-        {
-            _output.WriteLine($"WARNING [{line},{column}]: {message}");
-        }
-
-        public void LogInfo(string message)
-        {
-            _output.WriteLine($"INFO: {message}");
-        }
-
-        public void LogDebug(string message)
-        {
-            _output.WriteLine($"DEBUG: {message}");
-        }
-
-        public void LogTrace(string message)
-        {
-            // Don't log trace during tests
-        }
-
-        public void LogMetrics(string metricsOutput)
-        {
-            // Don't log metrics during tests unless explicitly needed
-        }
-
-        public bool IsEnabled(CompilerLogLevel level)
-        {
-            return level <= CompilerLogLevel.Info;
         }
     }
 }

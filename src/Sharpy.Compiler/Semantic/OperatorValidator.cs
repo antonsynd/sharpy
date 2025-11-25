@@ -225,6 +225,33 @@ public class OperatorValidator
         int line,
         int column)
     {
+        var result = TryResolveOperatorOverloadWithoutLogging(op, left, right, line, column);
+        
+        if (result != null)
+        {
+            return result;
+        }
+
+        // No operator found
+        _logger.LogError(
+            $"Type '{left.GetDisplayName()}' does not support operator '{GetOperatorSymbol(op)}' with right operand of type '{right.GetDisplayName()}'",
+            line,
+            column);
+
+        return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Tries to resolve a binary operator overload without logging errors.
+    /// Returns null if no operator is found.
+    /// </summary>
+    private SemanticType? TryResolveOperatorOverloadWithoutLogging(
+        BinaryOperator op,
+        SemanticType left,
+        SemanticType right,
+        int line,
+        int column)
+    {
         var dunderName = BinaryOperatorToDunder(op);
 
         // Try user-defined type first (direct operator or complement synthesis)
@@ -263,13 +290,7 @@ public class OperatorValidator
             return clrResult;
         }
 
-        // No operator found
-        _logger.LogError(
-            $"Type '{left.GetDisplayName()}' does not support operator '{GetOperatorSymbol(op)}' with right operand of type '{right.GetDisplayName()}'",
-            line,
-            column);
-
-        return SemanticType.Unknown;
+        return null;
     }
 
     /// <summary>
@@ -816,5 +837,150 @@ public class OperatorValidator
             UnaryOperator.Not => "not",
             _ => op.ToString()
         };
+    }
+
+    /// <summary>
+    /// Maps an AssignmentOperator to its corresponding in-place dunder method name.
+    /// Returns null for simple assignment (=).
+    /// </summary>
+    private string? AssignmentOperatorToInPlaceDunder(AssignmentOperator op)
+    {
+        return op switch
+        {
+            AssignmentOperator.PlusAssign => "__iadd__",
+            AssignmentOperator.MinusAssign => "__isub__",
+            AssignmentOperator.StarAssign => "__imul__",
+            AssignmentOperator.SlashAssign => "__itruediv__",
+            AssignmentOperator.DoubleSlashAssign => "__ifloordiv__",
+            AssignmentOperator.PercentAssign => "__imod__",
+            AssignmentOperator.PowerAssign => "__ipow__",
+            AssignmentOperator.AndAssign => "__iand__",
+            AssignmentOperator.OrAssign => "__ior__",
+            AssignmentOperator.XorAssign => "__ixor__",
+            AssignmentOperator.LeftShiftAssign => "__ilshift__",
+            AssignmentOperator.RightShiftAssign => "__irshift__",
+            AssignmentOperator.Assign => null,
+            _ => null
+        };
+    }
+
+    /// <summary>
+    /// Maps an AssignmentOperator to its corresponding BinaryOperator.
+    /// Returns null for simple assignment (=).
+    /// </summary>
+    private BinaryOperator? AssignmentOperatorToBinaryOperator(AssignmentOperator op)
+    {
+        return op switch
+        {
+            AssignmentOperator.PlusAssign => BinaryOperator.Add,
+            AssignmentOperator.MinusAssign => BinaryOperator.Subtract,
+            AssignmentOperator.StarAssign => BinaryOperator.Multiply,
+            AssignmentOperator.SlashAssign => BinaryOperator.Divide,
+            AssignmentOperator.DoubleSlashAssign => BinaryOperator.FloorDivide,
+            AssignmentOperator.PercentAssign => BinaryOperator.Modulo,
+            AssignmentOperator.PowerAssign => BinaryOperator.Power,
+            AssignmentOperator.AndAssign => BinaryOperator.BitwiseAnd,
+            AssignmentOperator.OrAssign => BinaryOperator.BitwiseOr,
+            AssignmentOperator.XorAssign => BinaryOperator.BitwiseXor,
+            AssignmentOperator.LeftShiftAssign => BinaryOperator.LeftShift,
+            AssignmentOperator.RightShiftAssign => BinaryOperator.RightShift,
+            AssignmentOperator.Assign => null,
+            _ => null
+        };
+    }
+
+    /// <summary>
+    /// Gets a human-readable symbol for an assignment operator.
+    /// </summary>
+    private string GetAssignmentOperatorSymbol(AssignmentOperator op)
+    {
+        return op switch
+        {
+            AssignmentOperator.Assign => "=",
+            AssignmentOperator.PlusAssign => "+=",
+            AssignmentOperator.MinusAssign => "-=",
+            AssignmentOperator.StarAssign => "*=",
+            AssignmentOperator.SlashAssign => "/=",
+            AssignmentOperator.DoubleSlashAssign => "//=",
+            AssignmentOperator.PercentAssign => "%=",
+            AssignmentOperator.PowerAssign => "**=",
+            AssignmentOperator.AndAssign => "&=",
+            AssignmentOperator.OrAssign => "|=",
+            AssignmentOperator.XorAssign => "^=",
+            AssignmentOperator.LeftShiftAssign => "<<=",
+            AssignmentOperator.RightShiftAssign => ">>=",
+            _ => op.ToString()
+        };
+    }
+
+    /// <summary>
+    /// Validates an augmented assignment operation (+=, -=, *=, etc.).
+    /// Returns the result type of the operation, which must be assignable to the target type.
+    /// </summary>
+    /// <param name="op">The assignment operator (e.g., PlusAssign for +=)</param>
+    /// <param name="targetType">The type of the assignment target (left-hand side)</param>
+    /// <param name="valueType">The type of the value being assigned (right-hand side)</param>
+    /// <param name="line">Line number for error reporting</param>
+    /// <param name="column">Column number for error reporting</param>
+    /// <returns>The result type of the operation, or Unknown if invalid</returns>
+    public SemanticType ValidateAugmentedAssignment(
+        AssignmentOperator op,
+        SemanticType targetType,
+        SemanticType valueType,
+        int line,
+        int column)
+    {
+        // Simple assignment doesn't need special handling
+        if (op == AssignmentOperator.Assign)
+        {
+            return valueType;
+        }
+
+        var inPlaceDunder = AssignmentOperatorToInPlaceDunder(op);
+        var binaryOp = AssignmentOperatorToBinaryOperator(op);
+
+        // Try in-place operator first (e.g., __iadd__)
+        SemanticType? resultType = null;
+
+        if (inPlaceDunder != null
+            && targetType is UserDefinedType udt
+            && udt.Symbol != null
+            && udt.Symbol.OperatorMethods.TryGetValue(inPlaceDunder, out var methods))
+        {
+            var bestOverload = ResolveBestOverload(methods, valueType, line, column);
+            if (bestOverload != null)
+            {
+                resultType = bestOverload.ReturnType;
+            }
+        }
+
+        // Fall back to binary operator if in-place operator not found (e.g., __add__ for +=)
+        if (resultType == null && binaryOp != null)
+        {
+            // Use TryResolveOperatorOverloadWithoutLogging to avoid duplicate error messages
+            resultType = TryResolveOperatorOverloadWithoutLogging(binaryOp.Value, targetType, valueType, line, column);
+        }
+
+        // If no operator found, report error
+        if (resultType == null)
+        {
+            _logger.LogError(
+                $"Type '{targetType.GetDisplayName()}' does not support augmented assignment operator '{GetAssignmentOperatorSymbol(op)}' with right operand of type '{valueType.GetDisplayName()}'",
+                line,
+                column);
+            return SemanticType.Unknown;
+        }
+
+        // Verify result type is assignable to target type
+        if (!resultType.IsAssignableTo(targetType))
+        {
+            _logger.LogError(
+                $"Result type '{resultType.GetDisplayName()}' of augmented assignment '{GetAssignmentOperatorSymbol(op)}' is not assignable to target type '{targetType.GetDisplayName()}'",
+                line,
+                column);
+            return SemanticType.Unknown;
+        }
+
+        return resultType;
     }
 }

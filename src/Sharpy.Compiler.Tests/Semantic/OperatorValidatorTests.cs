@@ -3,6 +3,7 @@ using FluentAssertions;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Logging;
+using static Sharpy.Compiler.Tests.TestHelpers;
 
 namespace Sharpy.Compiler.Tests.Semantic;
 
@@ -1040,6 +1041,399 @@ public class OperatorValidatorTests
             1, 1);
 
         result.Should().Be(SemanticType.Bool);
+    }
+
+    #endregion
+
+    #region Augmented Assignment Tests
+
+    [Fact]
+    public void ValidateAugmentedAssignment_OnlyInPlaceDefined_UsesInPlace()
+    {
+        // Test that when only __iadd__ is defined, += uses it
+        var symbolTable = CreateSymbolTable();
+
+        var vectorType = new TypeSymbol
+        {
+            Name = "Vector",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+
+        var iaddMethod = new FunctionSymbol
+        {
+            Name = "__iadd__",
+            Kind = SymbolKind.Function,
+            Parameters = new()
+            {
+                new ParameterSymbol { Name = "self", Type = new UserDefinedType { Name = "Vector", Symbol = vectorType } },
+                new ParameterSymbol { Name = "other", Type = new UserDefinedType { Name = "Vector", Symbol = vectorType } }
+            },
+            ReturnType = new UserDefinedType { Name = "Vector", Symbol = vectorType }
+        };
+
+        vectorType.OperatorMethods["__iadd__"] = new() { iaddMethod };
+        vectorType.Methods.Add(iaddMethod);
+
+        var validator = CreateValidator(symbolTable);
+
+        var targetType = new UserDefinedType { Name = "Vector", Symbol = vectorType };
+        var valueType = new UserDefinedType { Name = "Vector", Symbol = vectorType };
+
+        var result = validator.ValidateAugmentedAssignment(
+            AssignmentOperator.PlusAssign,
+            targetType,
+            valueType,
+            1, 1);
+
+        result.Should().Be(targetType);
+    }
+
+    [Fact]
+    public void ValidateAugmentedAssignment_OnlyBinaryDefined_FallsBackToBinary()
+    {
+        // Test that when only __add__ is defined, += falls back to it
+        var symbolTable = CreateSymbolTable();
+
+        var vectorType = new TypeSymbol
+        {
+            Name = "Vector",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+
+        var addMethod = new FunctionSymbol
+        {
+            Name = "__add__",
+            Kind = SymbolKind.Function,
+            Parameters = new()
+            {
+                new ParameterSymbol { Name = "self", Type = new UserDefinedType { Name = "Vector", Symbol = vectorType } },
+                new ParameterSymbol { Name = "other", Type = new UserDefinedType { Name = "Vector", Symbol = vectorType } }
+            },
+            ReturnType = new UserDefinedType { Name = "Vector", Symbol = vectorType }
+        };
+
+        vectorType.OperatorMethods["__add__"] = new() { addMethod };
+        vectorType.Methods.Add(addMethod);
+
+        var validator = CreateValidator(symbolTable);
+
+        var targetType = new UserDefinedType { Name = "Vector", Symbol = vectorType };
+        var valueType = new UserDefinedType { Name = "Vector", Symbol = vectorType };
+
+        var result = validator.ValidateAugmentedAssignment(
+            AssignmentOperator.PlusAssign,
+            targetType,
+            valueType,
+            1, 1);
+
+        result.Should().Be(targetType);
+    }
+
+    [Fact]
+    public void ValidateAugmentedAssignment_BothDefined_PrefersInPlace()
+    {
+        // Test that when both __iadd__ and __add__ are defined, __iadd__ takes precedence
+        var symbolTable = CreateSymbolTable();
+
+        var vectorType = new TypeSymbol
+        {
+            Name = "Vector",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+
+        var iaddMethod = new FunctionSymbol
+        {
+            Name = "__iadd__",
+            Kind = SymbolKind.Function,
+            Parameters = new()
+            {
+                new ParameterSymbol { Name = "self", Type = new UserDefinedType { Name = "Vector", Symbol = vectorType } },
+                new ParameterSymbol { Name = "other", Type = new UserDefinedType { Name = "Vector", Symbol = vectorType } }
+            },
+            ReturnType = new UserDefinedType { Name = "Vector", Symbol = vectorType }
+        };
+
+        var addMethod = new FunctionSymbol
+        {
+            Name = "__add__",
+            Kind = SymbolKind.Function,
+            Parameters = new()
+            {
+                new ParameterSymbol { Name = "self", Type = new UserDefinedType { Name = "Vector", Symbol = vectorType } },
+                new ParameterSymbol { Name = "other", Type = new UserDefinedType { Name = "Vector", Symbol = vectorType } }
+            },
+            ReturnType = new UserDefinedType { Name = "Vector", Symbol = vectorType }
+        };
+
+        vectorType.OperatorMethods["__iadd__"] = new() { iaddMethod };
+        vectorType.OperatorMethods["__add__"] = new() { addMethod };
+        vectorType.Methods.Add(iaddMethod);
+        vectorType.Methods.Add(addMethod);
+
+        var validator = CreateValidator(symbolTable);
+
+        var targetType = new UserDefinedType { Name = "Vector", Symbol = vectorType };
+        var valueType = new UserDefinedType { Name = "Vector", Symbol = vectorType };
+
+        var result = validator.ValidateAugmentedAssignment(
+            AssignmentOperator.PlusAssign,
+            targetType,
+            valueType,
+            1, 1);
+
+        // Should succeed and return Vector type (from __iadd__)
+        result.Should().Be(targetType);
+    }
+
+    [Fact]
+    public void ValidateAugmentedAssignment_NeitherDefined_ReportsError()
+    {
+        // Test that when neither __iadd__ nor __add__ is defined, it reports an error
+        var symbolTable = CreateSymbolTable();
+        var logger = new CollectingTestLogger();
+
+        var vectorType = new TypeSymbol
+        {
+            Name = "Vector",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+
+        var validator = new OperatorValidator(symbolTable, logger);
+
+        var targetType = new UserDefinedType { Name = "Vector", Symbol = vectorType };
+        var valueType = new UserDefinedType { Name = "Vector", Symbol = vectorType };
+
+        var result = validator.ValidateAugmentedAssignment(
+            AssignmentOperator.PlusAssign,
+            targetType,
+            valueType,
+            1, 1);
+
+        result.Should().Be(SemanticType.Unknown);
+        logger.Errors.Should().ContainSingle();
+        logger.Errors[0].Message.Should().Contain("does not support augmented assignment operator '+='");
+    }
+
+    [Fact]
+    public void ValidateAugmentedAssignment_ResultNotAssignableToTarget_ReportsError()
+    {
+        // Test that when the result type is not assignable to target, it reports an error
+        var symbolTable = CreateSymbolTable();
+        var logger = new CollectingTestLogger();
+
+        var vectorType = new TypeSymbol
+        {
+            Name = "Vector",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+
+        var matrixType = new TypeSymbol
+        {
+            Name = "Matrix",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+
+        var addMethod = new FunctionSymbol
+        {
+            Name = "__add__",
+            Kind = SymbolKind.Function,
+            Parameters = new()
+            {
+                new ParameterSymbol { Name = "self", Type = new UserDefinedType { Name = "Vector", Symbol = vectorType } },
+                new ParameterSymbol { Name = "other", Type = new UserDefinedType { Name = "Vector", Symbol = vectorType } }
+            },
+            // Returns Matrix instead of Vector
+            ReturnType = new UserDefinedType { Name = "Matrix", Symbol = matrixType }
+        };
+
+        vectorType.OperatorMethods["__add__"] = new() { addMethod };
+        vectorType.Methods.Add(addMethod);
+
+        var validator = new OperatorValidator(symbolTable, logger);
+
+        var targetType = new UserDefinedType { Name = "Vector", Symbol = vectorType };
+        var valueType = new UserDefinedType { Name = "Vector", Symbol = vectorType };
+
+        var result = validator.ValidateAugmentedAssignment(
+            AssignmentOperator.PlusAssign,
+            targetType,
+            valueType,
+            1, 1);
+
+        result.Should().Be(SemanticType.Unknown);
+        logger.Errors.Should().ContainSingle();
+        logger.Errors[0].Message.Should().Contain("is not assignable to target type");
+    }
+
+    [Fact]
+    public void ValidateAugmentedAssignment_BuiltinInt_WorksCorrectly()
+    {
+        // Test augmented assignment with builtin int type
+        var validator = CreateValidator();
+
+        var result = validator.ValidateAugmentedAssignment(
+            AssignmentOperator.PlusAssign,
+            SemanticType.Int,
+            SemanticType.Int,
+            1, 1);
+
+        result.Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void ValidateAugmentedAssignment_BuiltinString_WorksCorrectly()
+    {
+        // Test augmented assignment with builtin string type (concatenation)
+        var validator = CreateValidator();
+
+        var result = validator.ValidateAugmentedAssignment(
+            AssignmentOperator.PlusAssign,
+            SemanticType.Str,
+            SemanticType.Str,
+            1, 1);
+
+        result.Should().Be(SemanticType.Str);
+    }
+
+    [Fact]
+    public void ValidateAugmentedAssignment_BuiltinList_WorksCorrectly()
+    {
+        // Test augmented assignment with builtin list type
+        var validator = CreateValidator();
+
+        var listType = new GenericType { Name = "list", TypeArguments = new() { SemanticType.Int } };
+
+        var result = validator.ValidateAugmentedAssignment(
+            AssignmentOperator.PlusAssign,
+            listType,
+            listType,
+            1, 1);
+
+        result.Should().Be(listType);
+    }
+
+    [Fact]
+    public void ValidateAugmentedAssignment_MinusAssign_WorksCorrectly()
+    {
+        // Test -= operator
+        var symbolTable = CreateSymbolTable();
+
+        var vectorType = new TypeSymbol
+        {
+            Name = "Vector",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+
+        var isubMethod = new FunctionSymbol
+        {
+            Name = "__isub__",
+            Kind = SymbolKind.Function,
+            Parameters = new()
+            {
+                new ParameterSymbol { Name = "self", Type = new UserDefinedType { Name = "Vector", Symbol = vectorType } },
+                new ParameterSymbol { Name = "other", Type = new UserDefinedType { Name = "Vector", Symbol = vectorType } }
+            },
+            ReturnType = new UserDefinedType { Name = "Vector", Symbol = vectorType }
+        };
+
+        vectorType.OperatorMethods["__isub__"] = new() { isubMethod };
+        vectorType.Methods.Add(isubMethod);
+
+        var validator = CreateValidator(symbolTable);
+
+        var targetType = new UserDefinedType { Name = "Vector", Symbol = vectorType };
+        var valueType = new UserDefinedType { Name = "Vector", Symbol = vectorType };
+
+        var result = validator.ValidateAugmentedAssignment(
+            AssignmentOperator.MinusAssign,
+            targetType,
+            valueType,
+            1, 1);
+
+        result.Should().Be(targetType);
+    }
+
+    [Fact]
+    public void ValidateAugmentedAssignment_PowerAssign_WorksCorrectly()
+    {
+        // Test **= operator with builtin numeric types
+        var validator = CreateValidator();
+
+        var result = validator.ValidateAugmentedAssignment(
+            AssignmentOperator.PowerAssign,
+            SemanticType.Int,
+            SemanticType.Int,
+            1, 1);
+
+        result.Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void ValidateAugmentedAssignment_BitwiseAndAssign_WorksCorrectly()
+    {
+        // Test &= operator with builtin integer types
+        var validator = CreateValidator();
+
+        var result = validator.ValidateAugmentedAssignment(
+            AssignmentOperator.AndAssign,
+            SemanticType.Int,
+            SemanticType.Int,
+            1, 1);
+
+        result.Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void ValidateAugmentedAssignment_FloorDivAssign_WorksCorrectly()
+    {
+        // Test //= operator with builtin numeric types
+        var validator = CreateValidator();
+
+        var result = validator.ValidateAugmentedAssignment(
+            AssignmentOperator.DoubleSlashAssign,
+            SemanticType.Int,
+            SemanticType.Int,
+            1, 1);
+
+        result.Should().Be(SemanticType.Int);
+    }
+
+    [Fact]
+    public void ValidateAugmentedAssignment_SimpleAssign_ReturnsValueType()
+    {
+        // Test that simple assignment (=) just returns the value type
+        var validator = CreateValidator();
+
+        var result = validator.ValidateAugmentedAssignment(
+            AssignmentOperator.Assign,
+            SemanticType.Int,
+            SemanticType.Float,
+            1, 1);
+
+        // Simple assignment should just return the value type
+        result.Should().Be(SemanticType.Float);
+    }
+
+    [Fact]
+    public void ValidateAugmentedAssignment_NumericPromotion_WorksCorrectly()
+    {
+        // Test that numeric promotion works correctly (int += float -> float)
+        var validator = CreateValidator();
+
+        var result = validator.ValidateAugmentedAssignment(
+            AssignmentOperator.PlusAssign,
+            SemanticType.Float,
+            SemanticType.Int,
+            1, 1);
+
+        result.Should().Be(SemanticType.Float);
     }
 
     #endregion
