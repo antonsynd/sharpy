@@ -985,15 +985,9 @@ public class TypeChecker
         // - Operators: [LessThan, LessThan]
         // We need to validate each adjacent pair: (a < b) and (b < c)
 
-        // Check that we have at least 2 operands and 1 operator
-        if (chain.Operands.Count < 2 || chain.Operators.Count < 1)
-        {
-            // Malformed chain, just return bool and let parser handle errors
-            return SemanticType.Bool;
-        }
-
-        // The number of operators should be one less than the number of operands
-        if (chain.Operators.Count != chain.Operands.Count - 1)
+        // Validate chain structure: operators count should equal operands count minus 1
+        // (e.g., 3 operands need 2 operators: a < b < c)
+        if (chain.Operands.Count < 2 || chain.Operators.Count != chain.Operands.Count - 1)
         {
             // Malformed chain, just return bool and let parser handle errors
             return SemanticType.Bool;
@@ -1022,15 +1016,14 @@ public class TypeChecker
             var binaryOp = OperatorValidator.ComparisonOperatorToBinaryOperator(chain.Operators[i]);
 
             // Validate the comparison using OperatorValidator
-            var resultType = _operatorValidator.ValidateBinaryOp(
+            // We discard the result type since comparison operators always return bool,
+            // and ValidateBinaryOp already reports errors for invalid operations.
+            _ = _operatorValidator.ValidateBinaryOp(
                 binaryOp,
                 leftType,
                 rightType,
                 chain.Operands[i].LineStart,
                 chain.Operands[i].ColumnStart);
-
-            // Comparison operators should return bool; if not, the operator validator will report an error
-            // We don't need to report a separate error here since ValidateBinaryOp handles it
         }
 
         // All comparison chains return bool
