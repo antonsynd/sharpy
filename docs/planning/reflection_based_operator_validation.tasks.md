@@ -39,7 +39,7 @@
 
 - [ ] Implement descriptive error messages in `OperatorValidator`:
   - [x] Missing operator on a type (basic message implemented in `ResolveOperatorOverload`; consider enhancing with suggestions for dunder or CLR overloads later).
-  - [ ] Ambiguous overloads (depends on richer operator overloading support in the symbol table).
+  - [ ] Ambiguous overloads (currently reported via a generic warning in `ResolveBestOverload`; a dedicated, user-facing diagnostic should be added once richer operator overloading support exists in the symbol table).
 - [x] Implement equality-complement behavior:
   - [x] If only `__eq__` or only `__ne__` exists, synthesize the complement logically for validation (matching `RoslynEmitter`).
 - [x] Implement augmented assignment support helpers:
@@ -66,8 +66,7 @@
     - [ ] Keep existing logic for simple `=` and tuple unpacking.
     - [ ] For augmented operators (e.g., `+=`, `-=`, `*=`, `/=`, `//=`, `%=` and bitwise/shift/power variants):
       - [ ] Compute `targetType` and `valueType` via `CheckExpression`.
-      - [ ] Use `OperatorValidator` (or a helper) to resolve in-place vs base operator and resulting type.
-      - [ ] Validate result type assignability to `targetType`; report clear errors when not assignable or operator is missing.
+      - [ ] Use `OperatorValidator.ValidateAugmentedAssignment` to resolve in-place vs base operator, enforce result-type assignability to `targetType`, and surface detailed diagnostics when the operator is missing or incompatible.
 
 ## Phase 5: Tests
 
