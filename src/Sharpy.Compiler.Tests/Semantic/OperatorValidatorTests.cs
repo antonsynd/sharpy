@@ -638,6 +638,127 @@ public class OperatorValidatorTests
         resultFloat.Should().BeEquivalentTo(new UserDefinedType { Name = "Calculator", Symbol = calcType });
     }
 
+    [Fact]
+    public void ValidateBinaryOp_AmbiguousOverloads_ReportsError()
+    {
+        var symbolTable = CreateSymbolTable();
+
+        // Create a base type that both parameter types will "derive" from
+        var baseType = new TypeSymbol
+        {
+            Name = "BaseValue",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+
+        // Create two unrelated types that don't have a clear specificity relationship
+        var typeA = new TypeSymbol
+        {
+            Name = "ValueA",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+
+        var typeB = new TypeSymbol
+        {
+            Name = "ValueB",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+
+        // Create a Calculator type with ambiguous __add__ overloads
+        var calcType = new TypeSymbol
+        {
+            Name = "Calculator",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+
+        // Create overloads that accept BaseValue - since both ValueA and ValueB would be
+        // "assignable" to BaseValue conceptually, and neither is more specific than the other
+        var addBaseMethod1 = new FunctionSymbol
+        {
+            Name = "__add__",
+            Kind = SymbolKind.Function,
+            Parameters = new()
+            {
+                new ParameterSymbol { Name = "self", Type = new UserDefinedType { Name = "Calculator", Symbol = calcType } },
+                new ParameterSymbol { Name = "value", Type = new UserDefinedType { Name = "ValueA", Symbol = typeA } }
+            },
+            ReturnType = new UserDefinedType { Name = "Calculator", Symbol = calcType }
+        };
+
+        var addBaseMethod2 = new FunctionSymbol
+        {
+            Name = "__add__",
+            Kind = SymbolKind.Function,
+            Parameters = new()
+            {
+                new ParameterSymbol { Name = "self", Type = new UserDefinedType { Name = "Calculator", Symbol = calcType } },
+                new ParameterSymbol { Name = "value", Type = new UserDefinedType { Name = "ValueB", Symbol = typeB } }
+            },
+            ReturnType = new UserDefinedType { Name = "Calculator", Symbol = calcType }
+        };
+
+        calcType.OperatorMethods["__add__"] = new() { addBaseMethod1, addBaseMethod2 };
+        calcType.Methods.Add(addBaseMethod1);
+        calcType.Methods.Add(addBaseMethod2);
+
+        var validator = CreateValidator(symbolTable);
+
+        var leftType = new UserDefinedType { Name = "Calculator", Symbol = calcType };
+
+        // Create an argument type that is assignable to both ValueA and ValueB (simulated)
+        // We'll use a type with custom IsAssignableTo that returns true for both
+        var ambiguousArgType = new TestAssignableType("AmbiguousArg", new[] { "ValueA", "ValueB" });
+
+        // When called with ambiguous type, should report an error
+        var result = validator.ValidateBinaryOp(
+            BinaryOperator.Add,
+            leftType,
+            ambiguousArgType,
+            5, 10);
+
+        // Result should still work (returns first match) but error should be recorded
+        result.Should().BeEquivalentTo(new UserDefinedType { Name = "Calculator", Symbol = calcType });
+
+        // Verify error was reported
+        validator.Errors.Should().ContainSingle();
+        validator.Errors[0].Message.Should().Contain("Ambiguous");
+        validator.Errors[0].Message.Should().Contain("+");
+        validator.Errors[0].Message.Should().Contain("Calculator");
+        validator.Errors[0].Message.Should().Contain("AmbiguousArg");
+        validator.Errors[0].Line.Should().Be(5);
+        validator.Errors[0].Column.Should().Be(10);
+    }
+
+    /// <summary>
+    /// A test semantic type that claims to be assignable to specific named types.
+    /// Used to simulate ambiguous overload scenarios.
+    /// </summary>
+    private record TestAssignableType : SemanticType
+    {
+        private readonly string _name;
+        private readonly HashSet<string> _assignableToTypes;
+
+        public TestAssignableType(string name, IEnumerable<string> assignableToTypes)
+        {
+            _name = name;
+            _assignableToTypes = new HashSet<string>(assignableToTypes);
+        }
+
+        public override string GetDisplayName() => _name;
+
+        public override bool IsAssignableTo(SemanticType target)
+        {
+            if (target is UserDefinedType udt)
+            {
+                return _assignableToTypes.Contains(udt.Name);
+            }
+            return base.IsAssignableTo(target);
+        }
+    }
+
     #endregion
 
     #region Caching Tests

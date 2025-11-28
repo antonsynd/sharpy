@@ -37,9 +37,9 @@
 
 ## Phase 3: Errors & Special Cases
 
-- [ ] Implement descriptive error messages in `OperatorValidator`:
+- [x] Implement descriptive error messages in `OperatorValidator`:
   - [x] Missing operator on a type (basic message implemented in `ResolveOperatorOverload`; consider enhancing with suggestions for dunder or CLR overloads later).
-  - [ ] Ambiguous overloads (currently reported via a generic warning in `ResolveBestOverload`; a dedicated, user-facing diagnostic should be added once richer operator overloading support exists in the symbol table).
+  - [x] Ambiguous overloads (reports error via `AddError` with operator symbol, type name, argument type, and candidate parameter types).
 - [x] Implement equality-complement behavior:
   - [x] If only `__eq__` or only `__ne__` exists, synthesize the complement logically for validation (matching `RoslynEmitter`).
 - [x] Implement augmented assignment support helpers:

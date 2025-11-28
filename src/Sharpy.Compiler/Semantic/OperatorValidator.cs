@@ -7,7 +7,7 @@ namespace Sharpy.Compiler.Semantic;
 /// <summary>
 /// Validates operator usage in Sharpy code, supporting both Sharpy dunder methods
 /// and CLR operator overloads for .NET interop.
-/// 
+///
 /// NOTE: This class is NOT thread-safe. Instances should not be shared across threads.
 /// The internal caches are not protected by locks for performance reasons.
 /// </summary>
@@ -275,7 +275,13 @@ public class OperatorValidator
             // Try direct operator lookup first
             if (dunderName != null && udt.Symbol.OperatorMethods.TryGetValue(dunderName, out var methods))
             {
-                var bestOverload = ResolveBestOverload(methods, right, line, column);
+                var bestOverload = ResolveBestOverload(
+                    methods,
+                    right,
+                    GetOperatorSymbol(op),
+                    udt.Name,
+                    line,
+                    column);
                 if (bestOverload != null)
                 {
                     return bestOverload.ReturnType;
@@ -358,7 +364,19 @@ public class OperatorValidator
     /// Resolves the best overload from a list of candidate methods.
     /// Uses most-specific match semantics: finds exact match first, then the most derived/specific assignable match.
     /// </summary>
-    private FunctionSymbol? ResolveBestOverload(List<FunctionSymbol> candidates, SemanticType argumentType, int line, int column)
+    /// <param name="candidates">List of candidate function symbols</param>
+    /// <param name="argumentType">The type of the right-hand operand</param>
+    /// <param name="operatorSymbol">The operator symbol for error messages (e.g., "+", "__add__")</param>
+    /// <param name="leftTypeName">The name of the left operand type for error messages</param>
+    /// <param name="line">Line number for error reporting</param>
+    /// <param name="column">Column number for error reporting</param>
+    private FunctionSymbol? ResolveBestOverload(
+        List<FunctionSymbol> candidates,
+        SemanticType argumentType,
+        string operatorSymbol,
+        string leftTypeName,
+        int line,
+        int column)
     {
         if (candidates.Count == 0)
             return null;
@@ -403,7 +421,7 @@ public class OperatorValidator
 
                 var otherParamType = other.Parameters[1].Type;
 
-                // If candidateParamType is assignable to otherParamType, 
+                // If candidateParamType is assignable to otherParamType,
                 // then candidateParamType is more specific (more derived)
                 if (candidateParamType.IsAssignableTo(otherParamType))
                 {
@@ -437,11 +455,19 @@ public class OperatorValidator
             return mostSpecific;
         }
 
-        // Either no clear most-specific match or ambiguous - log warning and return first
-        _logger.LogWarning(
-            $"Ambiguous operator overload: multiple candidates found for argument type '{argumentType.GetDisplayName()}'",
+        // Either no clear most-specific match or ambiguous - report error
+        // Build list of candidate parameter types for the error message
+        var candidateTypes = string.Join(", ", assignableMatches
+            .Where(c => c.Parameters.Count >= 2)
+            .Select(c => $"'{c.Parameters[1].Type.GetDisplayName()}'"));
+
+        AddError(
+            $"Ambiguous overload for operator '{operatorSymbol}' on type '{leftTypeName}': " +
+            $"multiple overloads are applicable for argument type '{argumentType.GetDisplayName()}' " +
+            $"(candidates accept: {candidateTypes})",
             line, column);
 
+        // Return first match to allow continued type checking
         return assignableMatches[0];
     }
 
@@ -475,9 +501,15 @@ public class OperatorValidator
         if (op == BinaryOperator.Equal && hasNe)
         {
             // == requested but only __ne__ exists
-            // We can synthesize == by using __ne__ 
+            // We can synthesize == by using __ne__
             var neMethods = udt.Symbol.OperatorMethods["__ne__"];
-            var bestOverload = ResolveBestOverload(neMethods, right, line, column);
+            var bestOverload = ResolveBestOverload(
+                neMethods,
+                right,
+                "==",
+                udt.Name,
+                line,
+                column);
             if (bestOverload != null)
             {
                 // __ne__ should return bool, so == will also return bool
@@ -489,7 +521,13 @@ public class OperatorValidator
             // != requested but only __eq__ exists
             // We can synthesize != by using __eq__
             var eqMethods = udt.Symbol.OperatorMethods["__eq__"];
-            var bestOverload = ResolveBestOverload(eqMethods, right, line, column);
+            var bestOverload = ResolveBestOverload(
+                eqMethods,
+                right,
+                "!=",
+                udt.Name,
+                line,
+                column);
             if (bestOverload != null)
             {
                 // __eq__ should return bool, so != will also return bool
@@ -985,7 +1023,13 @@ public class OperatorValidator
             && udt.Symbol != null
             && udt.Symbol.OperatorMethods.TryGetValue(inPlaceDunder, out var methods))
         {
-            var bestOverload = ResolveBestOverload(methods, valueType, line, column);
+            var bestOverload = ResolveBestOverload(
+                methods,
+                valueType,
+                GetAssignmentOperatorSymbol(op),
+                udt.Name,
+                line,
+                column);
             if (bestOverload != null)
             {
                 resultType = bestOverload.ReturnType;
