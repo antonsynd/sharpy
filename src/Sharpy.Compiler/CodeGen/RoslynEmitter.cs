@@ -181,8 +181,8 @@ public class RoslynEmitter
         usings.Add(UsingDirective(ParseName("System.Collections.Generic")));
         usings.Add(UsingDirective(ParseName("System.Linq")));
 
-        // Add Sharpy runtime usings
-        usings.Add(UsingDirective(ParseName("Sharpy.Core")));
+        // Add Sharpy runtime usings (use global:: to avoid conflicts when output namespace contains "Sharpy")
+        usings.Add(UsingDirective(ParseName("global::Sharpy.Core")));
 
         // Process import statements
         foreach (var stmt in module.Body)
@@ -1686,7 +1686,7 @@ public class RoslynEmitter
         if (call.Function is Identifier funcName)
         {
             var name = _context.IsBuiltinFunction(funcName.Name)
-                ? $"Sharpy.Core.Exports.{NameMangler.ToPascalCase(funcName.Name)}"
+                ? $"global::Sharpy.Core.Exports.{NameMangler.ToPascalCase(funcName.Name)}"
                 : NameMangler.ToPascalCase(funcName.Name);
 
             var args = call.Arguments.Select(GenerateExpression).ToArray();
@@ -1842,11 +1842,11 @@ public class RoslynEmitter
 
     private ExpressionSyntax GenerateListLiteral(ListLiteral list)
     {
-        // new Sharpy.Core.List<T> { elem1, elem2, elem3 }
+        // new global::Sharpy.Core.List<T> { elem1, elem2, elem3 }
         var elementType = _typeMapper.InferElementType(list.Elements);
         var elements = list.Elements.Select(GenerateExpression);
 
-        var listType = GenericName("Sharpy.Core.List")
+        var listType = GenericName("global::Sharpy.Core.List")
             .AddTypeArgumentListArguments(elementType);
 
         return ObjectCreationExpression(listType)
@@ -1858,7 +1858,7 @@ public class RoslynEmitter
 
     private ExpressionSyntax GenerateDictLiteral(DictLiteral dict)
     {
-        // new Sharpy.Core.Dict<K,V> { { key1, value1 }, { key2, value2 } }
+        // new global::Sharpy.Core.Dict<K,V> { { key1, value1 }, { key2, value2 } }
         var keyType = _typeMapper.InferElementType(dict.Entries.Select(e => e.Key));
         var valueType = _typeMapper.InferElementType(dict.Entries.Select(e => e.Value));
 
@@ -1870,7 +1870,7 @@ public class RoslynEmitter
                     GenerateExpression(entry.Value)
                 })));
 
-        var dictType = GenericName("Sharpy.Core.Dict")
+        var dictType = GenericName("global::Sharpy.Core.Dict")
             .AddTypeArgumentListArguments(keyType, valueType);
 
         return ObjectCreationExpression(dictType)
@@ -1882,11 +1882,11 @@ public class RoslynEmitter
 
     private ExpressionSyntax GenerateSetLiteral(SetLiteral set)
     {
-        // new Sharpy.Core.Set<T> { elem1, elem2, elem3 }
+        // new global::Sharpy.Core.Set<T> { elem1, elem2, elem3 }
         var elementType = _typeMapper.InferElementType(set.Elements);
         var elements = set.Elements.Select(GenerateExpression);
 
-        var setType = GenericName("Sharpy.Core.Set")
+        var setType = GenericName("global::Sharpy.Core.Set")
             .AddTypeArgumentListArguments(elementType);
 
         return ObjectCreationExpression(setType)

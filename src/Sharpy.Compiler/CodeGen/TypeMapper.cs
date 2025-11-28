@@ -31,11 +31,11 @@ public class TypeMapper
         { "char", "char" },
         { "object", "object" },
 
-        // Sharpy runtime types
+        // Sharpy runtime types (use global:: to avoid conflicts when output namespace contains "Sharpy")
         { "str", "string" },  // Use C# string instead of Sharpy.Core.Str for better interop
-        { "list", "Sharpy.Core.List" },
-        { "dict", "Sharpy.Core.Dict" },
-        { "set", "Sharpy.Core.Set" },
+        { "list", "global::Sharpy.Core.List" },
+        { "dict", "global::Sharpy.Core.Dict" },
+        { "set", "global::Sharpy.Core.Set" },
         { "tuple", "System.ValueTuple" },
 
         // Common .NET types
@@ -189,11 +189,11 @@ public class TypeMapper
     }
 
     /// <summary>
-    /// Creates a Sharpy.Core.Dict type with key and value types
+    /// Creates a global::Sharpy.Core.Dict type with key and value types
     /// </summary>
     public TypeSyntax CreateDictType(TypeSyntax keyType, TypeSyntax valueType)
     {
-        return GenericName("Sharpy.Core.Dict")
+        return GenericName("global::Sharpy.Core.Dict")
             .WithTypeArgumentList(
                 TypeArgumentList(SeparatedList(new[] { keyType, valueType })));
     }

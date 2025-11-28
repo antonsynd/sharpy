@@ -29,8 +29,8 @@ public class Print_Tests
         Console.SetOut(writer);
 
         // Act
-        Exports.Print("Hello", end: "");
-        Exports.Print("World", end: "");
+        Exports.PrintWithOptions(["Hello"], end: "");
+        Exports.PrintWithOptions(["World"], end: "");
 
         // Assert
         var output = writer.ToString();
@@ -45,7 +45,7 @@ public class Print_Tests
         Console.SetOut(writer);
 
         // Act
-        Exports.Print(new PrintArguments<object?>("a", "b", "c"), sep: "|");
+        Exports.PrintWithOptions(["a", "b", "c"], sep: "|");
 
         // Assert
         var output = writer.ToString();
@@ -60,7 +60,7 @@ public class Print_Tests
         Console.SetOut(writer);
 
         // Act
-        Exports.Print(new PrintArguments<object?>("Hello", "World"));
+        Exports.Print("Hello", "World");
 
         // Assert
         var output = writer.ToString();
@@ -90,7 +90,7 @@ public class Print_Tests
         Console.SetOut(writer);
 
         // Act
-        Exports.Print("test", end: "");
+        Exports.PrintWithOptions(["test"], end: "");
 
         // Assert
         var output = writer.ToString();
@@ -106,7 +106,7 @@ public class Print_Tests
         Console.SetOut(writer);
 
         // Act
-        Exports.Print(new PrintArguments<object?>("a", "b", "c"), sep: "-", end: "!\n");
+        Exports.PrintWithOptions(["a", "b", "c"], sep: "-", end: "!\n");
 
         // Assert
         var output = writer.ToString();

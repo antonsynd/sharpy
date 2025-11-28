@@ -129,7 +129,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("Sharpy.Core.List<int>");
+        result.ToString().Should().Be("global::Sharpy.Core.List<int>");
     }
 
     [Fact]
@@ -150,7 +150,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("Sharpy.Core.Dict<string,int>");
+        result.ToString().Should().Be("global::Sharpy.Core.Dict<string,int>");
     }
 
     [Fact]
@@ -170,7 +170,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("Sharpy.Core.Set<string>");
+        result.ToString().Should().Be("global::Sharpy.Core.Set<string>");
     }
 
     [Fact]
@@ -191,7 +191,7 @@ public class TypeMapperTests
         var result = _typeMapper.MapType(typeAnnotation);
 
         // Assert
-        result.ToString().Should().Be("Sharpy.Core.List<int>?");
+        result.ToString().Should().Be("global::Sharpy.Core.List<int>?");
     }
 
     #endregion
@@ -417,7 +417,7 @@ public class TypeMapperTests
         var result = _typeMapper.CreateCollectionType("list", elementType);
 
         // Assert
-        result.ToString().Should().Be("Sharpy.Core.List<int>");
+        result.ToString().Should().Be("global::Sharpy.Core.List<int>");
     }
 
     [Fact]
@@ -431,7 +431,7 @@ public class TypeMapperTests
         var result = _typeMapper.CreateDictType(keyType, valueType);
 
         // Assert
-        result.ToString().Should().Be("Sharpy.Core.Dict<string,int>");
+        result.ToString().Should().Be("global::Sharpy.Core.Dict<string,int>");
     }
 
     [Fact]

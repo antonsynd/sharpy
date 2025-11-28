@@ -4,12 +4,13 @@ using static Sharpy.Sys.Exports;
 
 public static partial class Exports
 {
-    public static void Print(Object? obj, string sep = " ", string end = "\n", uint file = Stdout, bool flush = false)
-    {
-        var result = obj?.__Str__() ?? "None";
+    // Note: The primary Print(params object?[] values) is defined in Builtins/Exports.cs
+    // PrintWithOptions provides full control over sep, end, file, and flush parameters.
+    // The PrintArguments<T> overloads are kept for backwards compatibility with code that
+    // explicitly uses PrintArguments.
 
-        _Print(result, end, file, flush);
-    }
+    // Note: Removed Print(Object? obj, ...) and Print(object? obj, ...) overloads as they
+    // conflict with Print(params object?[] values). Use PrintWithOptions for custom options.
 
     public static void Print(PrintArguments<Object?> args, string sep = " ", string end = "\n", uint file = Stdout, bool flush = false)
     {
@@ -31,13 +32,6 @@ public static partial class Exports
 
             ++i;
         }
-    }
-
-    public static void Print(object? obj, string sep = " ", string end = "\n", uint file = Stdout, bool flush = false)
-    {
-        var result = obj?.ToString() ?? "None";
-
-        _Print(result, end, file, flush);
     }
 
     public static void Print(PrintArguments<object?> args, string sep = " ", string end = "\n", uint file = Stdout, bool flush = false)
