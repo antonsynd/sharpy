@@ -233,6 +233,12 @@ public class TypeChecker
             {
                 paramType = new UserDefinedType { Symbol = _currentClass };
             }
+            else if (param.Type == null)
+            {
+                // Require type annotations on all parameters except 'self'
+                AddError($"Parameter '{param.Name}' requires a type annotation",
+                    param.LineStart, param.ColumnStart);
+            }
 
             var paramSymbol = new VariableSymbol
             {
@@ -1729,6 +1735,11 @@ public class TypeChecker
     /// </summary>
     private bool IsAssignable(SemanticType source, SemanticType target)
     {
+        // Allow assignment to UnknownType to avoid cascading errors
+        // (e.g., when a parameter has no type annotation)
+        if (target is UnknownType)
+            return true;
+
         // First check the standard assignability
         if (source.IsAssignableTo(target))
             return true;
