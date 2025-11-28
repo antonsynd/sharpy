@@ -180,21 +180,21 @@ This plan has been updated to:
    | Protocol/Pattern | Category | Dunder Methods / .NET Interface | Support Now? |
    |-----------------|----------|--------------------------------|--------------|
    | **Python Protocols** | | | |
-   | Iterator | Container | `__iter__`, `__next__` | |
-   | Container/Sequence | Container | `__len__`, `__getitem__`, `__setitem__`, `__delitem__`, `__contains__` | |
-   | Context Manager | Resource | `__enter__`, `__exit__` | |
-   | Callable | Function-like | `__call__` | |
-   | Descriptor | Meta-programming | `__get__`, `__set__`, `__delete__` | |
-   | String Representation | Display | `__str__`, `__repr__` | |
-   | Hashing/Equality | Collection | `__hash__`, `__eq__` | |
-   | Numeric Conversion | Type Conversion | `__int__`, `__float__`, `__complex__`, `__bool__` | |
-   | Rich Comparison | Comparison | `__lt__`, `__le__`, `__gt__`, `__ge__`, `__eq__`, `__ne__` | |
-   | Attribute Access | Meta-programming | `__getattr__`, `__setattr__`, `__delattr__`, `__getattribute__` | |
-   | Class Instantiation | Meta-programming | `__new__`, `__init__`, `__init_subclass__` | |
-   | Async Iterator | Async | `__aiter__`, `__anext__` | |
-   | Async Context Manager | Async | `__aenter__`, `__aexit__` | |
-   | Async Callable | Async | `__await__` | |
-   | Buffer Protocol | Low-level | `__buffer__`, `__release_buffer__` | |
+   | Iterator | Container | `__iter__`, `__next__` | Yes, these should be implemented in terms of Sharpy's native `IIterable` and `IIterator` interfaces, which inherit from .NET's `IEnumerable` and `IEnumerator` interfaces. |
+   | Container/Sequence | Container | `__len__`, `__getitem__`, `__setitem__`, `__delitem__`, `__contains__` | Yes, there should be Sharpy interfaces for these, which inherit from appropriate .NET ones if they exist. |
+   | Context Manager | Resource | `__enter__`, `__exit__` | Yes, but not a v0.5 feature. Requires some special code emission and does not strictly overlap with `IDisposable` in .NET. |
+   | Callable | Function-like | `__call__` | No, C#/.NET doesn't support (non-dynamic) callable objects. It could be done later if we emit CIL directly to dispatch this correctly. |
+   | Descriptor | Meta-programming | `__get__`, `__set__`, `__delete__` | Never |
+   | String Representation | Display | `__str__`, `__repr__` | Yes, natively through inheritance from the `Sharpy.Object` base class, and also via overriding of the .NET native `ToString()` instance method. |
+   | Hashing/Equality | Collection | `__hash__`, `__eq__` | Yes, natively through inheritance from the `Sharpy.Object` base class, and also via overriding of the .NET native `GetHashCode()` and `Equals()` instance methods (and related static operators). |
+   | Numeric Conversion | Type Conversion | `__int__`, `__float__`, `__complex__`, `__bool__` | `__bool__` for v0.5, implemented as static conversion operator. The others for later. |
+   | Rich Comparison | Comparison | `__lt__`, `__le__`, `__gt__`, `__ge__`, `__eq__`, `__ne__` | Yes, via Sharpy comparison interfaces, and for `__eq__` and `__ne__` through `Sharpy.Object` and static operator synthesis. |
+   | Attribute Access | Meta-programming | `__getattr__`, `__setattr__`, `__delattr__`, `__getattribute__` | Never. |
+   | Class Instantiation | Meta-programming | `__new__`, `__init__`, `__init_subclass__` | Only `__init__` methods which map to constructor methods. |
+   | Async Iterator | Async | `__aiter__`, `__anext__` | Not in v0.5. |
+   | Async Context Manager | Async | `__aenter__`, `__aexit__` | Not in v0.5. |
+   | Async Callable | Async | `__await__` | Not in v0.5. |
+   | Buffer Protocol | Low-level | `__buffer__`, `__release_buffer__` | Not in v0.5. |
    | **Python-Specific Operators** | | | |
    | Matrix Multiplication | Operator | `__matmul__`, `__rmatmul__`, `__imatmul__` | |
    | Floor Division | Operator | `__floordiv__`, `__rfloordiv__`, `__ifloordiv__` | |
