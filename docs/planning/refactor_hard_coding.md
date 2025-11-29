@@ -48,10 +48,10 @@ This is an architectural refactor, not a behavior change project: the end state 
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                             Sharpy.Core                                      │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  Protocol Interfaces (already defined, need compiler integration):          │
-│  ├── IIterable<T>, IIterator<T>  → __iter__, __next__                       │
+│  Protocol Interfaces/Classes (already defined, need compiler integration):  │
+│  ├── IIterable<T>, Iterator<T>   → __iter__, __next__                       │
 │  ├── ISized                       → __len__                                 │
-│  ├── IContains<T>                 → __contains__                            │
+│  ├── IContainer<T>                → __contains__                            │
 │  ├── ISequence<T>, IMutableSequence<T> → __getitem__, __setitem__          │
 │  ├── IStrConvertible, IRepresentable → __str__, __repr__                   │
 │  ├── IHashable, IEquatable<T>     → __hash__, __eq__                        │
@@ -70,7 +70,8 @@ This is an architectural refactor, not a behavior change project: the end state 
 │  ├── Validators/                                                            │
 │  │   ├── OperatorValidator ✅     (binary/unary/augmented operators)        │
 │  │   ├── ProtocolValidator 🆕     (container/iteration/conversion dunders) │
-│  │   └── SignatureValidator ✅    (shared signature validation)             │
+│  │   ├── OperatorSignatureValidator ✅ (operator dunder signatures)        │
+│  │   └── ProtocolSignatureValidator 🆕 (protocol dunder signatures)        │
 │  │                                                                          │
 │  ├── Registries/                                                            │
 │  │   ├── PrimitiveCatalog 🆕      (numeric types, conversions, promotions) │
@@ -442,19 +443,21 @@ This section provides a concrete, checkable task list for completing the refacto
 
 **Tasks**:
 - [ ] **2.1** Define `ProtocolRegistry` class with:
-  - [ ] `ProtocolInfo` record: `(string DunderName, string SharpyInterface, string DotNetInterface?, string ClrMethodName, ProtocolKind Kind)`
-  - [ ] `ProtocolKind` enum: `Container`, `Iterator`, `Conversion`, `Representation`, `Comparison`, `Arithmetic`, `Bitwise`
+  - [ ] `ProtocolInfo` record: `(string DunderName, string SharpyInterface, string? DotNetInterface, string InterfaceMethodName, string ClrMethodName, ProtocolKind Kind)`
+  - [ ] Note: `DunderName` is lowercase Sharpy source (`__len__`), `InterfaceMethodName` is PascalCase Sharpy.Core (`__Len__`)
+  - [ ] `ProtocolKind` enum: `Container`, `Iterator`, `Conversion`, `Representation`, `Comparison`, `Arithmetic`, `Bitwise`, `Lifecycle`
 - [ ] **2.2** Register v0.5 protocols:
-  - [ ] Container: `__len__` → `ISized.__Len__()` → `Count`
+  - [ ] Lifecycle: `__init__` → constructor, no interface, `ProtocolKind.Lifecycle`
+  - [ ] Container: `__len__` → `ISized.__Len__()` → `Count` (note: interface returns `uint`, Sharpy source uses `int`)
   - [ ] Container: `__getitem__` → `ISequence<T>.__GetItem__()` → indexer
   - [ ] Container: `__setitem__` → `IMutableSequence<T>.__SetItem__()` → indexer
-  - [ ] Container: `__contains__` → `IContains<T>.__Contains__()` → `Contains()`
+  - [ ] Container: `__contains__` → `IContainer<T>.__Contains__()` → `Contains()`
   - [ ] Iterator: `__iter__` → `IIterable<T>.__Iter__()` → `GetEnumerator()`
-  - [ ] Iterator: `__next__` → `Iterator<T>.__Next__()` → (via enumerator pattern)
+  - [ ] Iterator: `__next__` → `Iterator<T>.__Next__()` (abstract class, not interface) → (via enumerator pattern)
   - [ ] Representation: `__str__` → `IStrConvertible.__Str__()` → `ToString()`
   - [ ] Representation: `__repr__` → `IRepresentable.__Repr__()` → `ToString()` (debug)
   - [ ] Hashing: `__hash__` → `IHashable.__Hash__()` → `GetHashCode()`
-  - [ ] Conversion: `__bool__` → `IBoolConvertible.__Bool__()` → explicit `operator bool`
+  - [ ] Conversion: `__bool__` → `IBoolConvertible.__Bool__()` → explicit `operator bool` (special codegen)
 - [ ] **2.3** Add lookup methods:
   - [ ] `GetProtocolForDunder(string dunderName) -> ProtocolInfo?`
   - [ ] `GetDunderForInterface(string interfaceName) -> string?`
@@ -485,23 +488,23 @@ This section provides a concrete, checkable task list for completing the refacto
   - [ ] Static method: `ValidateDunderSignature(FunctionDef func, TypeSymbol owningType) -> List<SemanticError>`
   - [ ] Static method: `IsProtocolDunder(string methodName) -> bool`
 - [ ] **3.2** Implement validation rules per protocol:
-  - [ ] `__len__`: 1 param (`self`), returns `int`
+  - [ ] `__len__`: 1 param (`self`), returns `int` (codegen handles conversion to `uint` for `ISized`)
   - [ ] `__getitem__`: 2 params (`self`, index), returns element type
   - [ ] `__setitem__`: 3 params (`self`, index, value), returns `None`
   - [ ] `__contains__`: 2 params (`self`, item), returns `bool`
   - [ ] `__iter__`: 1 param (`self`), returns iterator type
-  - [ ] `__next__`: 1 param (`self`), returns element type (or raises `StopIteration`)
+  - [ ] `__next__`: 1 param (`self`), returns element type (StopIteration is runtime, not validated here)
   - [ ] `__str__`: 1 param (`self`), returns `str`
   - [ ] `__repr__`: 1 param (`self`), returns `str`
   - [ ] `__hash__`: 1 param (`self`), returns `int`
-  - [ ] `__bool__`: 1 param (`self`), returns `bool`
-  - [ ] `__init__`: any params, returns `None` (existing validation in `TypeChecker`)
+  - [ ] `__bool__`: 1 param (`self`), returns `bool` (codegen emits as static conversion operator)
+  - [ ] `__init__`: any params (first must be `self`), returns `None` (existing validation in `TypeChecker`)
 - [ ] **3.3** Add descriptive error messages:
   - [ ] Include expected vs actual parameter count
   - [ ] Include expected vs actual return type
   - [ ] Suggest the corresponding Sharpy.Core interface
 - [ ] **3.4** Extend `TypeSymbol`:
-  - [ ] Add `ProtocolMethods: Dictionary<string, FunctionSymbol>` (parallel to `OperatorMethods`)
+  - [ ] Add `ProtocolMethods: Dictionary<string, List<FunctionSymbol>>` (matches `OperatorMethods` structure for consistency and potential overloading)
 - [ ] **3.5** Integrate into `NameResolver`:
   - [ ] In `ResolveMethodDeclaration`, check if method is a protocol dunder
   - [ ] Call `ProtocolSignatureValidator.ValidateDunderSignature()`
@@ -563,12 +566,13 @@ This section provides a concrete, checkable task list for completing the refacto
 - [ ] **5.1** Replace hard-coded dunder detection:
   - [ ] Use `ProtocolRegistry.IsProtocolDunder()` instead of string literals
   - [ ] Use `OperatorSignatureValidator.IsOperatorDunder()` for operator dunders
-- [ ] **5.2** Replace hard-coded `IsMethodNonOperatorDunder()`:
+- [ ] **5.2** Replace hard-coded `ShouldGenerateDunderMethod()`:
   - [ ] Current: switch statement with `"__str__"`, `"__repr__"`, `"__hash__"`, etc.
   - [ ] New: `ProtocolRegistry.IsProtocolDunder(name) || name == "__init__"`
-- [ ] **5.3** Replace hard-coded `GetOperatorMethodName()`:
+- [ ] **5.3** Replace hard-coded `TryGenerateOperatorOverload()` mappings:
   - [ ] Use `ProtocolRegistry.GetProtocolForDunder()` to get CLR method name
   - [ ] Fall back to `OperatorValidator` mappings for operators
+  - [ ] **Fix**: Update `"__div__"` to `"__truediv__"` to match `OperatorSignatureValidator` (Python 3 convention)
 - [ ] **5.4** Consolidate `NameMangler.DunderMappings`:
   - [ ] Merge with `ProtocolRegistry` data
   - [ ] Or have `NameMangler` consult `ProtocolRegistry`
