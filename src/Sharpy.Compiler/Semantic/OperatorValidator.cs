@@ -823,7 +823,7 @@ public class OperatorValidator
     private static SemanticType InferNumericResultType(SemanticType left, SemanticType right)
     {
         var promoted = PrimitiveCatalog.GetPromotedType(left, right);
-        // Fall back to Unknown if types cannot be promoted (shouldn't happen for valid numeric types)
+        // Fall back to Unknown if types cannot be promoted (e.g., decimal+float, long+ulong)
         return promoted ?? SemanticType.Unknown;
     }
 
