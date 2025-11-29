@@ -124,6 +124,16 @@ public class PrimitiveCatalogTests
     }
 
     [Fact]
+    public void IsDecimal_CorrectlyClassifiesTypes()
+    {
+        var decimalType = new BuiltinType { Name = "decimal", ClrType = typeof(decimal) };
+        PrimitiveCatalog.IsDecimal(decimalType).Should().BeTrue();
+        PrimitiveCatalog.IsDecimal(SemanticType.Float).Should().BeFalse();
+        PrimitiveCatalog.IsDecimal(SemanticType.Double).Should().BeFalse();
+        PrimitiveCatalog.IsDecimal(SemanticType.Int).Should().BeFalse();
+    }
+
+    [Fact]
     public void IsNumeric_ReturnsFalseForNonBuiltinTypes()
     {
         var userType = new UserDefinedType { Name = "MyClass" };
@@ -141,6 +151,7 @@ public class PrimitiveCatalogTests
     [InlineData("byte", "int", "int")]
     [InlineData("int", "uint", "long")]   // Mixed signed/unsigned promotes to larger signed
     [InlineData("short", "ushort", "int")] // 16-bit mixed promotes to 32-bit signed
+    [InlineData("sbyte", "byte", "short")] // 8-bit mixed promotes to 16-bit signed
     public void GetPromotedType_ReturnsCorrectType(string left, string right, string expected)
     {
         var leftInfo = PrimitiveCatalog.GetByName(left)!;
@@ -168,6 +179,16 @@ public class PrimitiveCatalogTests
         var intInfo = PrimitiveCatalog.GetByName("int")!;
 
         PrimitiveCatalog.GetPromotedType(boolInfo, intInfo).Should().BeNull();
+    }
+
+    [Fact]
+    public void GetPromotedType_ReturnsNullForLongUlongMixedTypes()
+    {
+        // Per C# spec, long + ulong has no implicit common type and should be an error
+        var longInfo = PrimitiveCatalog.GetByName("long")!;
+        var ulongInfo = PrimitiveCatalog.GetByName("ulong")!;
+
+        PrimitiveCatalog.GetPromotedType(longInfo, ulongInfo).Should().BeNull();
     }
 
     [Fact]

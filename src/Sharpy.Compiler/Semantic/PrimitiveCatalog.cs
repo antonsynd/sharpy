@@ -1,3 +1,5 @@
+using System.Collections.Frozen;
+
 namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
@@ -36,51 +38,55 @@ public static class PrimitiveCatalog
         bool IsSigned
     );
 
-    private static readonly Dictionary<string, PrimitiveInfo> _bySharpyName = new();
-    private static readonly Dictionary<Type, PrimitiveInfo> _byClrType = new();
+    private static readonly FrozenDictionary<string, PrimitiveInfo> _bySharpyName;
+    private static readonly FrozenDictionary<Type, PrimitiveInfo> _byClrType;
 
     static PrimitiveCatalog()
     {
-        RegisterAll();
+        var byName = new Dictionary<string, PrimitiveInfo>();
+        var byClr = new Dictionary<Type, PrimitiveInfo>();
+        RegisterAll(byName, byClr);
+        _bySharpyName = byName.ToFrozenDictionary();
+        _byClrType = byClr.ToFrozenDictionary();
     }
 
-    private static void Register(PrimitiveInfo info)
+    private static void Register(Dictionary<string, PrimitiveInfo> byName, Dictionary<Type, PrimitiveInfo> byClr, PrimitiveInfo info)
     {
-        _bySharpyName[info.SharpyName] = info;
+        byName[info.SharpyName] = info;
         if (info.ClrType != null)
         {
-            _byClrType[info.ClrType] = info;
+            byClr[info.ClrType] = info;
         }
     }
 
-    private static void RegisterAll()
+    private static void RegisterAll(Dictionary<string, PrimitiveInfo> byName, Dictionary<Type, PrimitiveInfo> byClr)
     {
         // 1.2.1 Signed integer types
-        Register(new PrimitiveInfo("sbyte", "sbyte", typeof(sbyte), NumericKind.SignedInteger, 8, true));
-        Register(new PrimitiveInfo("short", "short", typeof(short), NumericKind.SignedInteger, 16, true));
-        Register(new PrimitiveInfo("int", "int", typeof(int), NumericKind.SignedInteger, 32, true));
-        Register(new PrimitiveInfo("long", "long", typeof(long), NumericKind.SignedInteger, 64, true));
+        Register(byName, byClr, new PrimitiveInfo("sbyte", "sbyte", typeof(sbyte), NumericKind.SignedInteger, 8, true));
+        Register(byName, byClr, new PrimitiveInfo("short", "short", typeof(short), NumericKind.SignedInteger, 16, true));
+        Register(byName, byClr, new PrimitiveInfo("int", "int", typeof(int), NumericKind.SignedInteger, 32, true));
+        Register(byName, byClr, new PrimitiveInfo("long", "long", typeof(long), NumericKind.SignedInteger, 64, true));
 
         // 1.2.2 Unsigned integer types
-        Register(new PrimitiveInfo("byte", "byte", typeof(byte), NumericKind.UnsignedInteger, 8, false));
-        Register(new PrimitiveInfo("ushort", "ushort", typeof(ushort), NumericKind.UnsignedInteger, 16, false));
-        Register(new PrimitiveInfo("uint", "uint", typeof(uint), NumericKind.UnsignedInteger, 32, false));
-        Register(new PrimitiveInfo("ulong", "ulong", typeof(ulong), NumericKind.UnsignedInteger, 64, false));
+        Register(byName, byClr, new PrimitiveInfo("byte", "byte", typeof(byte), NumericKind.UnsignedInteger, 8, false));
+        Register(byName, byClr, new PrimitiveInfo("ushort", "ushort", typeof(ushort), NumericKind.UnsignedInteger, 16, false));
+        Register(byName, byClr, new PrimitiveInfo("uint", "uint", typeof(uint), NumericKind.UnsignedInteger, 32, false));
+        Register(byName, byClr, new PrimitiveInfo("ulong", "ulong", typeof(ulong), NumericKind.UnsignedInteger, 64, false));
 
         // 1.2.3 Floating-point types
-        Register(new PrimitiveInfo("float", "float", typeof(float), NumericKind.FloatingPoint, 32, true));
-        Register(new PrimitiveInfo("double", "double", typeof(double), NumericKind.FloatingPoint, 64, true));
-        Register(new PrimitiveInfo("decimal", "decimal", typeof(decimal), NumericKind.Decimal, 128, true));
+        Register(byName, byClr, new PrimitiveInfo("float", "float", typeof(float), NumericKind.FloatingPoint, 32, true));
+        Register(byName, byClr, new PrimitiveInfo("double", "double", typeof(double), NumericKind.FloatingPoint, 64, true));
+        Register(byName, byClr, new PrimitiveInfo("decimal", "decimal", typeof(decimal), NumericKind.Decimal, 128, true));
 
         // 1.2.4 Non-numeric primitives
-        Register(new PrimitiveInfo("bool", "bool", typeof(bool), NumericKind.None, 8, false));
-        Register(new PrimitiveInfo("char", "char", typeof(char), NumericKind.None, 16, false));
-        Register(new PrimitiveInfo("str", "string", typeof(string), NumericKind.None, 0, false));
-        Register(new PrimitiveInfo("string", "string", typeof(string), NumericKind.None, 0, false)); // Alias
+        Register(byName, byClr, new PrimitiveInfo("bool", "bool", typeof(bool), NumericKind.None, 8, false));
+        Register(byName, byClr, new PrimitiveInfo("char", "char", typeof(char), NumericKind.None, 16, false));
+        Register(byName, byClr, new PrimitiveInfo("str", "string", typeof(string), NumericKind.None, 0, false));
+        Register(byName, byClr, new PrimitiveInfo("string", "string", typeof(string), NumericKind.None, 0, false)); // Alias
 
         // 1.2.5 Void/None (ClrType is null for void)
-        Register(new PrimitiveInfo("None", "void", null, NumericKind.None, 0, false));
-        Register(new PrimitiveInfo("void", "void", null, NumericKind.None, 0, false)); // Alias
+        Register(byName, byClr, new PrimitiveInfo("None", "void", null, NumericKind.None, 0, false));
+        Register(byName, byClr, new PrimitiveInfo("void", "void", null, NumericKind.None, 0, false)); // Alias
     }
 
     // ==================== 1.3 Query Methods ====================
@@ -134,6 +140,13 @@ public static class PrimitiveCatalog
     {
         var info = GetPrimitiveInfo(type);
         return info != null && info.Kind == NumericKind.FloatingPoint;
+    }
+
+    /// <summary>Returns true if the type is decimal.</summary>
+    public static bool IsDecimal(SemanticType type)
+    {
+        var info = GetPrimitiveInfo(type);
+        return info != null && info.Kind == NumericKind.Decimal;
     }
 
     /// <summary>Returns all registered primitives for iteration.</summary>
@@ -192,14 +205,14 @@ public static class PrimitiveCatalog
             (right.Kind == NumericKind.SignedInteger || right.Kind == NumericKind.UnsignedInteger) &&
             left.SizeInBits == right.SizeInBits)
         {
-            // Promote to next larger signed type, or to long if already 32-bit
+            // Promote to next larger signed type, or return null if no safe promotion exists
             // Use direct lookup instead of FirstOrDefault for efficiency
             return left.SizeInBits switch
             {
                 8 => GetByName("short"),   // sbyte + byte -> short
                 16 => GetByName("int"),    // short + ushort -> int
                 32 => GetByName("long"),   // int + uint -> long
-                64 => GetByName("long"),   // long + ulong -> long (best we can do)
+                64 => null,   // long + ulong: cannot safely promote; return null to force error
                 _ => null
             };
         }
@@ -273,7 +286,7 @@ public static class PrimitiveCatalog
         if (from.Kind == NumericKind.Decimal)
             return false;
 
-        // Integer to float/double: always allowed
+        // Integer to float/double: allowed by C# spec (precision may be lost for large values)
         if ((from.Kind == NumericKind.SignedInteger || from.Kind == NumericKind.UnsignedInteger) &&
             to.Kind == NumericKind.FloatingPoint)
             return true;
