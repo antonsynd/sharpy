@@ -1056,9 +1056,10 @@ Location: `src/Sharpy.Compiler/Semantic/TypeChecker.cs`
   - If calls exist, update to `PrimitiveCatalog.IsNumeric(type)`
   - **COMPLETED**: Replaced local `IsNumericType()` method implementation to delegate to `PrimitiveCatalog.IsNumeric()`. The method also handles `UnknownType` to avoid cascading errors, matching the original behavior.
 
-- [ ] **1.8.2** Search for hard-coded primitive comparisons:
+- [x] **1.8.2** Search for hard-coded primitive comparisons:
   - Use grep: `grep -n "SemanticType.Int\|SemanticType.Long\|SemanticType.Float\|SemanticType.Double" src/Sharpy.Compiler/Semantic/TypeChecker.cs`
   - Evaluate each occurrence: is it checking "is numeric"? If so, use `PrimitiveCatalog.IsNumeric()`
+  - **COMPLETED**: Found 2 occurrences at lines 916-917. These are literal type mappings (`IntegerLiteral => SemanticType.Int`, `FloatLiteral => SemanticType.Double`)—not "is numeric" checks. No refactoring needed. `IsNumericType()` (lines 1623-1624) already uses `PrimitiveCatalog.IsNumeric()`.
 
 **Acceptance Criteria**: `TypeCheckerTests` still pass. Run with `dotnet test --filter "FullyQualifiedName~TypeCheckerTests"`.
 
