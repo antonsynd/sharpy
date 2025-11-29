@@ -193,9 +193,15 @@ public static class PrimitiveCatalog
             left.SizeInBits == right.SizeInBits)
         {
             // Promote to next larger signed type, or to long if already 32-bit
-            var targetSize = left.SizeInBits >= 32 ? 64 : left.SizeInBits * 2;
-            return _byClrType.Values.FirstOrDefault(p =>
-                p.Kind == NumericKind.SignedInteger && p.SizeInBits == targetSize);
+            // Use direct lookup instead of FirstOrDefault for efficiency
+            return left.SizeInBits switch
+            {
+                8 => GetByName("short"),   // sbyte + byte -> short
+                16 => GetByName("int"),    // short + ushort -> int
+                32 => GetByName("long"),   // int + uint -> long
+                64 => GetByName("long"),   // long + ulong -> long (best we can do)
+                _ => null
+            };
         }
 
         // Return the type with higher priority
@@ -217,13 +223,24 @@ public static class PrimitiveCatalog
         if (promoted == null)
             return null;
 
-        // Return the matching SemanticType singleton
+        // Return the matching SemanticType singleton for common types,
+        // or create a BuiltinType for less common numeric types
         return promoted.ClrType switch
         {
+            // Common types - use SemanticType singletons
             Type t when t == typeof(int) => SemanticType.Int,
             Type t when t == typeof(long) => SemanticType.Long,
             Type t when t == typeof(float) => SemanticType.Float,
             Type t when t == typeof(double) => SemanticType.Double,
+            // Less common types - create BuiltinType instances
+            // (these are used less frequently in promotion, so creating instances is acceptable)
+            Type t when t == typeof(sbyte) => new BuiltinType { Name = "sbyte", ClrType = typeof(sbyte) },
+            Type t when t == typeof(byte) => new BuiltinType { Name = "byte", ClrType = typeof(byte) },
+            Type t when t == typeof(short) => new BuiltinType { Name = "short", ClrType = typeof(short) },
+            Type t when t == typeof(ushort) => new BuiltinType { Name = "ushort", ClrType = typeof(ushort) },
+            Type t when t == typeof(uint) => new BuiltinType { Name = "uint", ClrType = typeof(uint) },
+            Type t when t == typeof(ulong) => new BuiltinType { Name = "ulong", ClrType = typeof(ulong) },
+            Type t when t == typeof(decimal) => new BuiltinType { Name = "decimal", ClrType = typeof(decimal) },
             // For null ClrType (void), this shouldn't happen in numeric promotion
             null => SemanticType.Unknown,
             _ => new BuiltinType { Name = promoted.SharpyName, ClrType = promoted.ClrType }
