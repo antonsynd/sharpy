@@ -168,7 +168,7 @@ This is an architectural refactor, not a behavior change project: the end state 
      - Signature validation rules per protocol
      - Caching in `TypeSymbol` (may need additional dictionaries beyond `OperatorMethods`)
 
-4.5. **Align new work with operator validation architecture**
+5. **Align new work with operator validation architecture**
    - **STUDY**: Review `OperatorValidator` and `OperatorSignatureValidator` as reference implementations
    - **PRINCIPLES** to carry forward:
      - **Separation of concerns**: Signature validation (name resolution time) vs semantic validation (type checking time)
@@ -181,7 +181,7 @@ This is an architectural refactor, not a behavior change project: the end state 
      - "Registry" for static metadata (e.g., `PrimitiveCatalog`, `ProtocolRegistry`)
      - "Cache" for reflection-derived runtime data (e.g., `_clrOperatorCache`)
 
-5. **Unify and extend reflection‑based type/method discovery**
+6. **Unify and extend reflection‑based type/method discovery**
    - **COMPLETED**: `OperatorValidator` implements reflection-based CLR operator discovery:
      - `_clrOperatorCache` for CLR operator methods (`op_Addition`, etc.)
      - Caching by CLR `Type`
@@ -196,7 +196,7 @@ This is an architectural refactor, not a behavior change project: the end state 
      - Single responsibility: .NET type → member metadata with caching
      - Used by `OperatorValidator`, future `ProtocolValidator`, and codegen
 
-6. **Strengthen and reuse caching infrastructure**
+7. **Strengthen and reuse caching infrastructure**
    - **PATTERN ESTABLISHED**: `OperatorValidator._clrOperatorCache` demonstrates:
      - Dictionary-based caching keyed by CLR `Type`
      - Lazy population on first use
@@ -210,7 +210,7 @@ This is an architectural refactor, not a behavior change project: the end state 
      - Or remain separate (per-compilation in validators, simpler)
    - **DECISION NEEDED**: Determine cache granularity and lifetime strategy
 
-7. **Refactor type analysis and checking to use the new services**
+8. **Refactor type analysis and checking to use the new services**
    - **COMPLETED**: `TypeChecker` now delegates operator semantics to `OperatorValidator`:
      - `CheckBinaryOp` → `ValidateBinaryOp`
      - `CheckUnaryOp` → `ValidateUnaryOp`
@@ -239,7 +239,7 @@ This is an architectural refactor, not a behavior change project: the end state 
 9. **Gradually tighten and deprecate ad‑hoc paths**
    - Mark existing ad‑hoc helper functions as internal implementation details to be removed once coverage is complete.
    - As each area is ported to the centralized registries and metadata provider, delete redundant hard‑coded branches and add regression tests in `Sharpy.Compiler.Tests` (semantic, codegen, and integration) to lock the new behavior down.
-  - Introduce diagnostic logging (behind `ICompilerLogger`) when falling back to legacy paths, to help detect missed refactors; later, treat these as errors.
+   - Introduce diagnostic logging (behind `ICompilerLogger`) when falling back to legacy paths, to help detect missed refactors; later, treat these as errors.
 
 10. **Plan migration and validation strategy**
    - **COMPLETED SLICE**: Operator validation (arithmetic, bitwise, comparison, unary, augmented assignment)
@@ -282,10 +282,10 @@ This is an architectural refactor, not a behavior change project: the end state 
    | Context Manager | Resource | `__enter__`, `__exit__` | Yes, but not a v0.5 feature. Requires some special code emission and does not strictly overlap with `IDisposable` in .NET. |
    | Callable | Function-like | `__call__` | No, C#/.NET doesn't support (non-dynamic) callable objects. It could be done later if we emit CIL directly to dispatch this correctly. |
    | Descriptor | Meta-programming | `__get__`, `__set__`, `__delete__` | Never |
-   | String Representation | Display | `__str__`, `__repr__` | Yes, natively through inheritance from the `Sharpy.Core.Object` base class, and also via overriding of the .NET native `ToString()` instance method. |
+   | String Representation | Display | `__str__`, `__repr__` | Yes. `__str__` maps to .NET's `ToString()`. `__repr__` is a separate method (`__Repr__()`) for debug representation - there is no direct .NET equivalent, so Sharpy generates a distinct method. Both inherit from `Sharpy.Core.Object` base class. |
    | Hashing/Equality | Collection | `__hash__`, `__eq__` | Yes, natively through inheritance from the `Sharpy.Core.Object` base class, and also via overriding of the .NET native `GetHashCode()` and `Equals()` instance methods (and related static operators). |
    | Numeric Conversion | Type Conversion | `__int__`, `__float__`, `__complex__`, `__bool__` | `__bool__` for v0.5, implemented as static conversion operator. The others for later. |
-   | Rich Comparison | Comparison | `__lt__`, `__le__`, `__gt__`, `__ge__`, `__eq__`, `__ne__` | Yes, via Sharpy comparison interfaces, and for `__eq__` and `__ne__` through `Sharpy.Core.Object` and static operator synthesis. |
+   | Rich Comparison | Comparison | `__lt__`, `__le__`, `__gt__`, `__ge__`, `__eq__`, `__ne__` | Yes, via Sharpy comparison interfaces. These are handled by `OperatorSignatureValidator` (not `ProtocolSignatureValidator`) since they map to operators. `__eq__` and `__ne__` also integrate with `Sharpy.Core.Object` and static operator synthesis. |
    | Attribute Access | Meta-programming | `__getattr__`, `__setattr__`, `__delattr__`, `__getattribute__` | Never. |
    | Class Instantiation | Meta-programming | `__new__`, `__init__`, `__init_subclass__` | Only `__init__` methods which map to constructor methods. |
    | Async Iterator | Async | `__aiter__`, `__anext__` | Not in v0.5. |
@@ -554,11 +554,27 @@ Add registrations inside `RegisterAll()`:
 
 - [ ] **1.2.5** Register void/None:
   ```csharp
-  Register(new PrimitiveInfo("None", "void", typeof(void), NumericKind.None, 0, false));
-  Register(new PrimitiveInfo("void", "void", typeof(void), NumericKind.None, 0, false)); // Alias
+  // NOTE: typeof(void) cannot be used directly in dictionaries as it throws.
+  // Use a sentinel or handle void specially. One approach:
+  // - Don't register void in _byClrType (skip the ClrType registration)
+  // - Only register by name for lookup purposes
+  Register(new PrimitiveInfo("None", "void", null!, NumericKind.None, 0, false)); // ClrType is null for void
+  Register(new PrimitiveInfo("void", "void", null!, NumericKind.None, 0, false)); // Alias, ClrType is null
   ```
 
-**Acceptance Criteria**: 17 primitives registered (including aliases). `_bySharpyName.Count >= 17`.
+  And update the `Register` method to handle null ClrType:
+  ```csharp
+  private static void Register(PrimitiveInfo info)
+  {
+      _bySharpyName[info.SharpyName] = info;
+      if (info.ClrType != null)
+      {
+          _byClrType[info.ClrType] = info;
+      }
+  }
+  ```
+
+**Acceptance Criteria**: 17 primitives registered by name (including aliases). `_bySharpyName.Count >= 17`. `_byClrType` excludes void.
 
 ---
 
@@ -678,6 +694,19 @@ Reference: [C# Numeric Promotions](https://docs.microsoft.com/en-us/dotnet/cshar
       if ((left.Kind == NumericKind.Decimal) != (right.Kind == NumericKind.Decimal))
           return null;
 
+      // Special case: mixing signed and unsigned integers of same size
+      // e.g., int + uint -> long (to avoid overflow)
+      if (left.Kind != right.Kind &&
+          (left.Kind == NumericKind.SignedInteger || left.Kind == NumericKind.UnsignedInteger) &&
+          (right.Kind == NumericKind.SignedInteger || right.Kind == NumericKind.UnsignedInteger) &&
+          left.SizeInBits == right.SizeInBits)
+      {
+          // Promote to next larger signed type, or to long if already 32-bit
+          var targetSize = left.SizeInBits >= 32 ? 64 : left.SizeInBits * 2;
+          return _byClrType.Values.FirstOrDefault(p =>
+              p.Kind == NumericKind.SignedInteger && p.SizeInBits == targetSize);
+      }
+
       // Return the type with higher priority
       var leftPriority = GetPromotionPriority(left);
       var rightPriority = GetPromotionPriority(right);
@@ -704,6 +733,8 @@ Reference: [C# Numeric Promotions](https://docs.microsoft.com/en-us/dotnet/cshar
           Type t when t == typeof(long) => SemanticType.Long,
           Type t when t == typeof(float) => SemanticType.Float,
           Type t when t == typeof(double) => SemanticType.Double,
+          // For null ClrType (void), this shouldn't happen in numeric promotion
+          null => SemanticType.Unknown,
           _ => new BuiltinType { Name = promoted.SharpyName, ClrType = promoted.ClrType }
       };
   }
@@ -715,6 +746,7 @@ Reference: [C# Numeric Promotions](https://docs.microsoft.com/en-us/dotnet/cshar
 - `GetPromotedType(int, float) == float`
 - `GetPromotedType(float, double) == double`
 - `GetPromotedType(decimal, float) == null` (incompatible)
+- `GetPromotedType(int, uint) == long` (mixed signed/unsigned)
 
 ---
 
@@ -882,6 +914,8 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/PrimitiveCatalogTests.cs`:
   [InlineData("float", "double", "double")]
   [InlineData("long", "double", "double")]
   [InlineData("byte", "int", "int")]
+  [InlineData("int", "uint", "long")]   // Mixed signed/unsigned promotes to larger signed
+  [InlineData("short", "ushort", "int")] // 16-bit mixed promotes to 32-bit signed
   public void GetPromotedType_ReturnsCorrectType(string left, string right, string expected)
   {
       var leftInfo = PrimitiveCatalog.GetByName(left)!;
@@ -988,8 +1022,20 @@ Location: `src/Sharpy.Compiler/Semantic/OperatorValidator.cs`
   **After** (replace with):
   ```csharp
   private static SemanticType InferNumericResultType(SemanticType left, SemanticType right)
-      => PrimitiveCatalog.GetPromotedType(left, right) ?? SemanticType.Unknown;
+  {
+      var promoted = PrimitiveCatalog.GetPromotedType(left, right);
+      if (promoted == null)
+      {
+          // Log warning for debugging - this shouldn't happen for valid numeric types
+          return SemanticType.Unknown;
+      }
+      return promoted;
+  }
   ```
+
+  > **NOTE**: The original implementation didn't handle all primitive types (e.g., byte, short, uint).
+  > The `PrimitiveCatalog` version is more complete but may return different results for edge cases.
+  > Run `OperatorValidatorTests` to verify no regressions.
 
 - [ ] **1.7.4** Verify no other hard-coded primitive checks remain:
   - Search for `SemanticType.Int`, `SemanticType.Long`, `SemanticType.Float`, `SemanticType.Double` in the file
@@ -1046,14 +1092,19 @@ Location: `src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs`
           // Skip aliases (registered separately if needed)
           if (name != info.SharpyName) continue;
 
+          // Skip void - it's not a type that can be used in declarations
+          if (info.ClrType == null) continue;
+
           var kind = info.ClrType.IsValueType ? TypeKind.Struct : TypeKind.Class;
           RegisterType(info.SharpyName, info.ClrType, kind);
       }
 
       // Collections (generic) - not in PrimitiveCatalog
-      RegisterType("list", typeof(System.Collections.Generic.List<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
-      RegisterType("dict", typeof(System.Collections.Generic.Dictionary<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
-      RegisterType("set", typeof(System.Collections.Generic.HashSet<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
+      // NOTE: These use Sharpy.Core types, not System.Collections.Generic!
+      // The actual type might be Sharpy.Core.List<T>, not System.Collections.Generic.List<T>
+      RegisterType("list", typeof(Sharpy.Core.List<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
+      RegisterType("dict", typeof(Sharpy.Core.Dict<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
+      RegisterType("set", typeof(Sharpy.Core.Set<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
 
       // Special
       RegisterType("object", typeof(object), TypeKind.Class);
@@ -1062,6 +1113,9 @@ Location: `src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs`
       LoadBuiltinFunctions();
   }
   ```
+
+  > **NOTE**: The collection types should reference `Sharpy.Core.List<>`, `Sharpy.Core.Dict<,>`, etc.,
+  > not `System.Collections.Generic.*`. Verify the actual type names in `Sharpy.Core` before implementing.
 
 - [ ] **1.9.2** Add `GetAllPrimitives()` method to `PrimitiveCatalog`:
   ```csharp
@@ -1194,6 +1248,9 @@ Add registrations inside `RegisterAllProtocols()`:
 - [ ] **2.2.2** Register container protocols:
   ```csharp
   // Container - length
+  // NOTE: ExpectedReturnType is "int" for Sharpy source compatibility, but
+  // ISized.__Len__() returns uint. PrimitiveCatalog.CanImplicitlyConvert(uint, int)
+  // returns false, so codegen must handle the conversion explicitly.
   Register(new ProtocolInfo(
       DunderName: "__len__",
       Kind: ProtocolKind.Container,
@@ -1201,7 +1258,7 @@ Add registrations inside `RegisterAllProtocols()`:
       InterfaceMethodName: "__Len__",
       ClrMethodName: "get_Count", // Property getter
       ExpectedParamCount: 1, // Just 'self'
-      ExpectedReturnType: "int" // Sharpy uses int, codegen converts to uint
+      ExpectedReturnType: "int" // Sharpy uses int; codegen handles uint<->int conversion
   ));
 
   // Container - membership test
@@ -1277,12 +1334,15 @@ Add registrations inside `RegisterAllProtocols()`:
   ));
 
   // Representation - repr (debug string)
+  // NOTE: __repr__ maps to a distinct method, not ToString. In Sharpy.Core,
+  // __Repr__ should return a debug-style representation. For CLR interop,
+  // there is no direct equivalent (DebuggerDisplay is an attribute, not method).
   Register(new ProtocolInfo(
       DunderName: "__repr__",
       Kind: ProtocolKind.Representation,
       SharpyCoreInterface: "Sharpy.Core.IRepresentable",
       InterfaceMethodName: "__Repr__",
-      ClrMethodName: "ToString", // Also maps to ToString in .NET
+      ClrMethodName: null, // No direct CLR equivalent; codegen generates separate method
       ExpectedParamCount: 1, // Just 'self'
       ExpectedReturnType: "str"
   ));
@@ -1359,6 +1419,12 @@ Add these public methods to `ProtocolRegistry`:
   /// Returns true if the method name is any dunder (protocol or operator).
   /// Use this to detect all special methods.
   /// </summary>
+  /// <remarks>
+  /// Note: Some dunders like __eq__, __ne__, __lt__, etc. are in BOTH categories
+  /// conceptually (comparison protocol + operator), but are only registered in
+  /// OperatorSignatureValidator to avoid duplicate validation. This method will
+  /// still return true for them via the operator check.
+  /// </remarks>
   public static bool IsAnyDunder(string methodName)
   {
       return IsProtocolDunder(methodName) ||
@@ -1877,11 +1943,17 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolSignatureValidatorTes
   [InlineData("__iter__", true)]
   [InlineData("__init__", true)]
   [InlineData("__add__", false)]  // Operator, not protocol
+  [InlineData("__eq__", false)]   // Also operator (in OperatorSignatureValidator)
   [InlineData("regular_method", false)]
   public void IsProtocolDunder_ReturnsExpectedResult(string name, bool expected)
   {
       ProtocolSignatureValidator.IsProtocolDunder(name).Should().Be(expected);
   }
+  ```
+
+  > **NOTE**: `__eq__` is listed in the Protocol Matrix as "Rich Comparison" but is handled by
+  > `OperatorSignatureValidator`, not `ProtocolSignatureValidator`. This is intentional: comparison
+  > operators are operators first, protocols second. The test confirms this separation.
   ```
 
 - [ ] **3.5.3** Test valid signatures:
@@ -2095,8 +2167,21 @@ Create file at `src/Sharpy.Compiler/Semantic/ProtocolValidator.cs`:
           return HasClrProtocol(clrType, dunderName);
       }
 
+      // Check generic container types (list[T], dict[K,V], set[T])
+      if (type is GenericType generic)
+      {
+          return generic.Name switch
+          {
+              "list" => dunderName is "__len__" or "__iter__" or "__contains__" or "__getitem__" or "__setitem__",
+              "dict" => dunderName is "__len__" or "__iter__" or "__contains__" or "__getitem__" or "__setitem__",
+              "set" => dunderName is "__len__" or "__iter__" or "__contains__",
+              "tuple" => dunderName is "__len__" or "__iter__" or "__getitem__",
+              _ => false
+          };
+      }
+
       // Built-in types have hardcoded protocol support for now
-      // TODO: Move to explicit registration in PrimitiveCatalog
+      // TODO: Move to explicit registration in PrimitiveCatalog or BuiltinRegistry
       if (type == SemanticType.Str)
       {
           // Strings support __len__, __iter__, __contains__, __getitem__
@@ -2440,6 +2525,41 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolValidatorTests.cs`:
       validator.HasProtocol(SemanticType.Int, "__len__").Should().BeFalse();
       validator.HasProtocol(SemanticType.Int, "__iter__").Should().BeFalse();
   }
+
+  [Fact]
+  public void HasProtocol_GenericListSupportsContainerProtocols()
+  {
+      var validator = CreateValidator();
+      var listOfInt = new GenericType
+      {
+          Name = "list",
+          TypeArguments = new List<SemanticType> { SemanticType.Int }
+      };
+
+      validator.HasProtocol(listOfInt, "__len__").Should().BeTrue();
+      validator.HasProtocol(listOfInt, "__iter__").Should().BeTrue();
+      validator.HasProtocol(listOfInt, "__getitem__").Should().BeTrue();
+      validator.HasProtocol(listOfInt, "__setitem__").Should().BeTrue();
+      validator.HasProtocol(listOfInt, "__contains__").Should().BeTrue();
+  }
+
+  [Fact]
+  public void HasProtocol_GenericSetDoesNotSupportIndexing()
+  {
+      var validator = CreateValidator();
+      var setOfStr = new GenericType
+      {
+          Name = "set",
+          TypeArguments = new List<SemanticType> { SemanticType.Str }
+      };
+
+      validator.HasProtocol(setOfStr, "__getitem__").Should().BeFalse();
+      validator.HasProtocol(setOfStr, "__setitem__").Should().BeFalse();
+      // But set does support these:
+      validator.HasProtocol(setOfStr, "__len__").Should().BeTrue();
+      validator.HasProtocol(setOfStr, "__iter__").Should().BeTrue();
+      validator.HasProtocol(setOfStr, "__contains__").Should().BeTrue();
+  }
   ```
 
 - [ ] **4.3.3** Test `ValidateLen`:
@@ -2715,6 +2835,10 @@ Location: `src/Sharpy.Compiler/CodeGen/NameMangler.cs`
               _dunderMethodMap[protocol.DunderName] = clrName;
           }
       }
+
+      // NOTE: Protocols with null ClrMethodName (like __repr__) are intentionally excluded.
+      // They require special codegen handling - __repr__ generates a __Repr__() method,
+      // not a mapping to an existing .NET method.
   }
   ```
 
@@ -3019,12 +3143,12 @@ Both contain overlapping primitive type knowledge. This phase consolidates them 
   }
   ```
 
-**Acceptance Criteria**: Consistency tests pass. All type mappings are derived from `PrimitiveCatalog`.
-  - [ ] Sharpy name → CLR type
-  - [ ] CLR type → Sharpy name
-  - [ ] Sharpy name → C# syntax
-- [ ] **6.5** Use `PrimitiveCatalog` for primitive type mappings
-- [ ] **6.6** Write tests for consolidated type mapping
+**Acceptance Criteria**: Consistency tests pass, confirming that all type mappings are derived from `PrimitiveCatalog`:
+- Sharpy name → CLR type (via `PrimitiveCatalog.GetByName()`)
+- CLR type → Sharpy name (via `PrimitiveCatalog.GetByClrType()`)
+- Sharpy name → C# syntax (via `PrimitiveCatalog` in `CodeGen/TypeMapper`)
+
+> **NOTE**: Tasks 6.5 and 6.6 from an earlier draft were merged into 6.2-6.4 above.
 
 ---
 
@@ -3051,6 +3175,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs`:
 - [ ] **7.1.1** File structure:
   ```csharp
   using System.Reflection;
+  using System.Collections.Generic;
 
   namespace Sharpy.Compiler.Semantic;
 
@@ -3671,7 +3796,7 @@ private static readonly Dictionary<string, string> _dunderMethodMap = new()
 {
     { "__init__", "Constructor" },
     { "__str__", "ToString" },
-    { "__repr__", "ToString" },
+    { "__repr__", "ToString" },  // BUG: __repr__ should NOT map to ToString (same as __str__)
     { "__eq__", "Equals" },
     { "__hash__", "GetHashCode" },
     { "__getitem__", "GetItem" },
@@ -3683,7 +3808,7 @@ private static readonly Dictionary<string, string> _dunderMethodMap = new()
 };
 ```
 
-**Refactor to**: Build from `ProtocolRegistry.GetAllProtocols()` with `ClrMethodName`
+**Refactor to**: Build from `ProtocolRegistry.GetAllProtocols()` with `ClrMethodName`. Note that `__repr__` has `ClrMethodName: null` and requires special codegen handling to generate a distinct `__Repr__()` method.
 
 ---
 
