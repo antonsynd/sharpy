@@ -185,10 +185,10 @@ This plan has been updated to:
    | Context Manager | Resource | `__enter__`, `__exit__` | Yes, but not a v0.5 feature. Requires some special code emission and does not strictly overlap with `IDisposable` in .NET. |
    | Callable | Function-like | `__call__` | No, C#/.NET doesn't support (non-dynamic) callable objects. It could be done later if we emit CIL directly to dispatch this correctly. |
    | Descriptor | Meta-programming | `__get__`, `__set__`, `__delete__` | Never |
-   | String Representation | Display | `__str__`, `__repr__` | Yes, natively through inheritance from the `Sharpy.Object` base class, and also via overriding of the .NET native `ToString()` instance method. |
-   | Hashing/Equality | Collection | `__hash__`, `__eq__` | Yes, natively through inheritance from the `Sharpy.Object` base class, and also via overriding of the .NET native `GetHashCode()` and `Equals()` instance methods (and related static operators). |
+   | String Representation | Display | `__str__`, `__repr__` | Yes, natively through inheritance from the `Sharpy.Core.Object` base class, and also via overriding of the .NET native `ToString()` instance method. |
+   | Hashing/Equality | Collection | `__hash__`, `__eq__` | Yes, natively through inheritance from the `Sharpy.Core.Object` base class, and also via overriding of the .NET native `GetHashCode()` and `Equals()` instance methods (and related static operators). |
    | Numeric Conversion | Type Conversion | `__int__`, `__float__`, `__complex__`, `__bool__` | `__bool__` for v0.5, implemented as static conversion operator. The others for later. |
-   | Rich Comparison | Comparison | `__lt__`, `__le__`, `__gt__`, `__ge__`, `__eq__`, `__ne__` | Yes, via Sharpy comparison interfaces, and for `__eq__` and `__ne__` through `Sharpy.Object` and static operator synthesis. |
+   | Rich Comparison | Comparison | `__lt__`, `__le__`, `__gt__`, `__ge__`, `__eq__`, `__ne__` | Yes, via Sharpy comparison interfaces, and for `__eq__` and `__ne__` through `Sharpy.Core.Object` and static operator synthesis. |
    | Attribute Access | Meta-programming | `__getattr__`, `__setattr__`, `__delattr__`, `__getattribute__` | Never. |
    | Class Instantiation | Meta-programming | `__new__`, `__init__`, `__init_subclass__` | Only `__init__` methods which map to constructor methods. |
    | Async Iterator | Async | `__aiter__`, `__anext__` | Not in v0.5. |
@@ -196,87 +196,87 @@ This plan has been updated to:
    | Async Callable | Async | `__await__` | Not in v0.5. |
    | Buffer Protocol | Low-level | `__buffer__`, `__release_buffer__` | Not in v0.5. |
    | **Python-Specific Operators** | | | |
-   | Matrix Multiplication | Operator | `__matmul__`, `__rmatmul__`, `__imatmul__` | |
-   | Floor Division | Operator | `__floordiv__`, `__rfloordiv__`, `__ifloordiv__` | |
-   | String Formatting | Display | `__format__` | |
+   | Matrix Multiplication | Operator | `__matmul__`, `__rmatmul__`, `__imatmul__` | Not in v0.5. |
+   | Floor Division | Operator | `__floordiv__`, `__rfloordiv__`, `__ifloordiv__` | Not in v0.5. |
+   | String Formatting | Display | `__format__` | Not in v0.5. |
    | **Collection Protocols** | | | |
-   | Reversible | Container | `__reversed__` | |
-   | Sized | Container | `__len__` | |
-   | Collection | Container | `__len__`, `__iter__`, `__contains__` | |
-   | Mapping | Container | `__getitem__`, `__setitem__`, `__delitem__`, `__iter__`, `__len__` | |
-   | Mutable Mapping | Container | extends Mapping + `__delitem__`, `pop`, `popitem`, `clear`, `update`, `setdefault` | |
-   | Set | Container | `__contains__`, `__iter__`, `__len__`, `__le__`, `__lt__`, `__eq__`, `__ne__`, `__gt__`, `__ge__`, `__and__`, `__or__`, `__sub__`, `__xor__` | |
-   | Mutable Set | Container | extends Set + `add`, `discard`, `remove`, `pop`, `clear` | |
+   | Reversible | Container | `__reversed__` | Part of Sharpy's `IReversible` interface. |
+   | Sized | Container | `__len__` | Part of Sharpy's `ISized` interface and used in top-level `len()` function. |
+   | Collection | Container | `__len__`, `__iter__`, `__contains__` | Part of Sharpy's collection interfaces, like `ISized` and `IIterable`. |
+   | Mapping | Container | `__getitem__`, `__setitem__`, `__delitem__`, `__iter__`, `__len__` | Part of Sharpy's collection interfaces. |
+   | Mutable Mapping | Container | extends Mapping + `__delitem__`, `pop`, `popitem`, `clear`, `update`, `setdefault` | Yes. |
+   | Set | Container | `__contains__`, `__iter__`, `__len__`, `__le__`, `__lt__`, `__eq__`, `__ne__`, `__gt__`, `__ge__`, `__and__`, `__or__`, `__sub__`, `__xor__` | Yes |
+   | Mutable Set | Container | extends Set + `add`, `discard`, `remove`, `pop`, `clear` | Yes |
    | **Pickle Protocol** | | | |
-   | Pickling | Serialization | `__reduce__`, `__reduce_ex__`, `__getstate__`, `__setstate__` | |
+   | Pickling | Serialization | `__reduce__`, `__reduce_ex__`, `__getstate__`, `__setstate__` | Not in v0.5. |
    | **Copy Protocol** | | | |
-   | Shallow Copy | Cloning | `__copy__` | |
-   | Deep Copy | Cloning | `__deepcopy__` | |
+   | Shallow Copy | Cloning | `__copy__` | Not in v0.5. |
+   | Deep Copy | Cloning | `__deepcopy__` | Not in v0.5. |
    | **Class/Type Protocols** | | | |
-   | Metaclass | Meta-programming | `__prepare__`, `__mro_entries__` | |
-   | Type Checking | Meta-programming | `__instancecheck__`, `__subclasscheck__` | |
-   | Class Getitem | Generics | `__class_getitem__` | |
+   | Metaclass | Meta-programming | `__prepare__`, `__mro_entries__` | Never. |
+   | Type Checking | Meta-programming | `__instancecheck__`, `__subclasscheck__` | Never. |
+   | Class Getitem | Generics | `__class_getitem__` | Never. |
    | **Path-like Protocol** | | | |
-   | Path-like | File I/O | `__fspath__` | |
+   | Path-like | File I/O | `__fspath__` | Not in v0.5. |
    | **Dataclass Protocol** | | | |
-   | Dataclass | Data Structures | `__post_init__`, `__eq__`, `__hash__`, `__repr__` (auto-generated) | |
+   | Dataclass | Data Structures | `__post_init__`, `__eq__`, `__hash__`, `__repr__` (auto-generated) | `__post_init__` not in v0.5., but the others through `Sharpy.Core.Object` probably. |
    | **Match Protocol (Python 3.10+)** | | | |
-   | Structural Pattern Matching | Pattern Matching | `__match_args__` | |
+   | Structural Pattern Matching | Pattern Matching | `__match_args__` | Not in v0.5, but should probably involve C#'s `Deconstruct()`. |
    | **Import Protocol** | | | |
-   | Import Hook | Module System | `__import__` | |
+   | Import Hook | Module System | `__import__` | Never. |
    | **Property Protocol** | | | |
-   | Properties | Attribute Access | `@property`, `getter`, `setter`, `deleter` | |
+   | Properties | Attribute Access | `@property`, `getter`, `setter`, `deleter` | Not in v0.5. |
    | **Weak Reference Protocol** | | | |
-   | Weak References | Memory Management | `__weakref__` | |
+   | Weak References | Memory Management | `__weakref__` | Not in v0.5. |
    | **Slots Protocol** | | | |
-   | Slots | Memory Optimization | `__slots__` | |
+   | Slots | Memory Optimization | `__slots__` | Never. |
    | **Abstract Base Classes** | | | |
-   | ABC | Meta-programming | `@abstractmethod`, `ABCMeta` | |
+   | ABC | Meta-programming | `@abstractmethod`, `ABCMeta` | Not in v0.5. |
    | **.NET Patterns** | | | |
-   | Enumerable | Collection | `IEnumerable`, `IEnumerable<T>`, `GetEnumerator()` | |
-   | Enumerator | Iterator | `IEnumerator`, `IEnumerator<T>`, `MoveNext()`, `Current` | |
-   | Collection | Collection | `ICollection`, `ICollection<T>`, `Add`, `Remove`, `Count` | |
-   | List | Collection | `IList`, `IList<T>`, indexer, `Insert`, `RemoveAt` | |
-   | Dictionary | Collection | `IDictionary`, `IDictionary<K,V>`, `Keys`, `Values` | |
-   | Set | Collection | `ISet<T>`, `UnionWith`, `IntersectWith`, `ExceptWith` | |
-   | Read-only Collection | Collection | `IReadOnlyCollection<T>`, `IReadOnlyList<T>`, `IReadOnlyDictionary<K,V>` | |
-   | Disposable | Resource | `IDisposable`, `Dispose()`, `using` statement | |
-   | Async Disposable | Resource | `IAsyncDisposable`, `DisposeAsync()`, `await using` | |
-   | Comparable | Comparison | `IComparable`, `IComparable<T>`, `CompareTo()` | |
-   | Equatable | Equality | `IEquatable<T>`, `Equals()`, `GetHashCode()` | |
-   | Formattable | Display | `IFormattable`, `ToString(format, provider)` | |
-   | Cloneable | Cloning | `ICloneable`, `Clone()` | |
-   | Convertible | Type Conversion | `IConvertible`, `ToInt32()`, `ToDouble()`, etc. | |
-   | Observable | Events | `IObservable<T>`, `Subscribe()` | |
-   | Observer | Events | `IObserver<T>`, `OnNext()`, `OnError()`, `OnCompleted()` | |
-   | Async Enumerable | Async | `IAsyncEnumerable<T>`, `GetAsyncEnumerator()`, `await foreach` | |
-   | Async Enumerator | Async | `IAsyncEnumerator<T>`, `MoveNextAsync()`, `Current` | |
-   | Query Provider | LINQ | `IQueryable`, `IQueryable<T>`, `IQueryProvider` | |
-   | Grouping | LINQ | `IGrouping<K,V>` | |
-   | Lookup | LINQ | `ILookup<K,V>` | |
-   | Serializable | Serialization | `[Serializable]`, `ISerializable`, binary/XML/JSON serialization | |
-   | Notify Property Changed | Data Binding | `INotifyPropertyChanged`, `PropertyChanged` event | |
-   | Notify Collection Changed | Data Binding | `INotifyCollectionChanged`, `CollectionChanged` event | |
-   | Service Provider | Dependency Injection | `IServiceProvider`, `GetService()` | |
-   | Builder Pattern | Design Pattern | Fluent API, method chaining | |
-   | Factory Pattern | Design Pattern | Static factory methods, `Create()` methods | |
-   | Nullable Value Type | Type System | `Nullable<T>`, `T?`, `HasValue`, `Value` | |
-   | Tuple | Data Structures | `ValueTuple`, deconstruction, named tuples | |
-   | Span/Memory | Performance | `Span<T>`, `ReadOnlySpan<T>`, `Memory<T>`, `ReadOnlyMemory<T>` | |
-   | String Interpolation | Display | `$"..."`, `FormattableString`, `IFormattable` | |
-   | Extension Methods | Language Feature | Static methods with `this` first parameter | |
-   | LINQ Methods | Query | `Where`, `Select`, `SelectMany`, `GroupBy`, `OrderBy`, etc. | |
-   | Task/Async Pattern | Async | `Task`, `Task<T>`, `async`/`await`, `ValueTask<T>` | |
-   | Event Pattern | Events | `event`, `EventHandler`, `EventArgs`, `+=`/`-=` | |
-   | Indexers | Operators | `this[...]` indexer syntax | |
-   | Operator Overloading | Operators | `op_Addition`, `op_Equality`, etc. (already supported) | |
-   | Implicit/Explicit Conversion | Type Conversion | `op_Implicit`, `op_Explicit` | |
-   | Deconstruction | Pattern Matching | `Deconstruct()` method, `(a, b) = obj` | |
-   | Range/Index | Operators | `Range`, `Index`, `..` range operator, `^` index-from-end | |
-   | Init-only Properties | Language Feature | `init` accessor | |
-   | Records | Data Structures | `record` types with value equality | |
-   | Pattern Matching | Control Flow | `switch` expressions, property patterns, positional patterns | |
-   | Attributes | Metadata | Custom attributes, reflection-based discovery | |
+   | Enumerable | Collection | `IEnumerable`, `IEnumerable<T>`, `GetEnumerator()` | Yes, super-interface of Sharpy's `IIterable` |
+   | Enumerator | Iterator | `IEnumerator`, `IEnumerator<T>`, `MoveNext()`, `Current` | Yes, super-interface of Sharpy's `IIterator` |
+   | Collection | Collection | `ICollection`, `ICollection<T>`, `Add`, `Remove`, `Count` | Yes |
+   | List | Collection | `IList`, `IList<T>`, indexer, `Insert`, `RemoveAt` | Not in v0.5. |
+   | Dictionary | Collection | `IDictionary`, `IDictionary<K,V>`, `Keys`, `Values` | Not in v0.5. |
+   | Set | Collection | `ISet<T>`, `UnionWith`, `IntersectWith`, `ExceptWith` | Not in v0.5. |
+   | Read-only Collection | Collection | `IReadOnlyCollection<T>`, `IReadOnlyList<T>`, `IReadOnlyDictionary<K,V>` | Not in v0.5. |
+   | Disposable | Resource | `IDisposable`, `Dispose()`, `using` statement | Not in v0.5, and maybe tied to context managers in Sharpy. |
+   | Async Disposable | Resource | `IAsyncDisposable`, `DisposeAsync()`, `await using` | Not in v0.5. |
+   | Comparable | Comparison | `IComparable`, `IComparable<T>`, `CompareTo()` | Possibly, but not clear what the best options or existing Sharpy interfaces are (probably there is one). |
+   | Equatable | Equality | `IEquatable<T>`, `Equals()`, `GetHashCode()` | Yes, through `Sharpy.Core.Object` and custom inheritance from subclasses thereof. |
+   | Formattable | Display | `IFormattable`, `ToString(format, provider)` | Not in v0.5. |
+   | Cloneable | Cloning | `ICloneable`, `Clone()` | Not in v0.5. |
+   | Convertible | Type Conversion | `IConvertible`, `ToInt32()`, `ToDouble()`, etc. | Not in v0.5. |
+   | Observable | Events | `IObservable<T>`, `Subscribe()` | Not in v0.5. |
+   | Observer | Events | `IObserver<T>`, `OnNext()`, `OnError()`, `OnCompleted()` | Not in v0.5. |
+   | Async Enumerable | Async | `IAsyncEnumerable<T>`, `GetAsyncEnumerator()`, `await foreach` | Not in v0.5. |
+   | Async Enumerator | Async | `IAsyncEnumerator<T>`, `MoveNextAsync()`, `Current` | Not in v0.5. |
+   | Query Provider | LINQ | `IQueryable`, `IQueryable<T>`, `IQueryProvider` | Not in v0.5. |
+   | Grouping | LINQ | `IGrouping<K,V>` | Not in v0.5. |
+   | Lookup | LINQ | `ILookup<K,V>` | Not in v0.5. |
+   | Serializable | Serialization | `[Serializable]`, `ISerializable`, binary/XML/JSON serialization | Not in v0.5. |
+   | Notify Property Changed | Data Binding | `INotifyPropertyChanged`, `PropertyChanged` event | Not in v0.5. |
+   | Notify Collection Changed | Data Binding | `INotifyCollectionChanged`, `CollectionChanged` event | Not in v0.5. |
+   | Service Provider | Dependency Injection | `IServiceProvider`, `GetService()` | Not in v0.5. |
+   | Builder Pattern | Design Pattern | Fluent API, method chaining | Not in v0.5. |
+   | Factory Pattern | Design Pattern | Static factory methods, `Create()` methods | Not in v0.5. |
+   | Nullable Value Type | Type System | `Nullable<T>`, `T?`, `HasValue`, `Value` | Only via `T?` type annotation, no methods or exposed box container yet. |
+   | Tuple | Data Structures | `ValueTuple`, deconstruction, named tuples | Yes, essentialy maps to `Sharpy.Core.Tuple` (or rather, the other way around, Sharpy's tuple contains a `ValueTuple`, I think). |
+   | Span/Memory | Performance | `Span<T>`, `ReadOnlySpan<T>`, `Memory<T>`, `ReadOnlyMemory<T>` | Not in v0.5. |
+   | String Interpolation | Display | `$"..."`, `FormattableString`, `IFormattable` | Code-generation target of Sharpy f-strings where feasible. |
+   | Extension Methods | Language Feature | Static methods with `this` first parameter | Not in v0.5. |
+   | LINQ Methods | Query | `Where`, `Select`, `SelectMany`, `GroupBy`, `OrderBy`, etc. | Extensions on Sharpy's `IIterator` interface. |
+   | Task/Async Pattern | Async | `Task`, `Task<T>`, `async`/`await`, `ValueTask<T>` | Not in v0.5. |
+   | Event Pattern | Events | `event`, `EventHandler`, `EventArgs`, `+=`/`-=` | Not in v0.5. |
+   | Indexers | Operators | `this[...]` indexer syntax | Yes, maps to `__getitem__` and `__setitem__` dunders. |
+   | Operator Overloading | Operators | `op_Addition`, `op_Equality`, etc. (already supported) | Yes, already supported. |
+   | Implicit/Explicit Conversion | Type Conversion | `op_Implicit`, `op_Explicit` | Only for `bool` via dunder `__bool__()` synthesizing to explicit bool conversion operator. |
+   | Deconstruction | Pattern Matching | `Deconstruct()` method, `(a, b) = obj` | Not in v0.5. |
+   | Range/Index | Operators | `Range`, `Index`, `..` range operator, `^` index-from-end | Can be used to simplify code generation for negative indices in Sharpy, or other range-based item access. |
+   | Init-only Properties | Language Feature | `init` accessor | Not in v0.5. |
+   | Records | Data Structures | `record` types with value equality | Not in v0.5. |
+   | Pattern Matching | Control Flow | `switch` expressions, property patterns, positional patterns | Not in v0.5. |
+   | Attributes | Metadata | Custom attributes, reflection-based discovery | Not in v0.5. |
 
 4. **TOOLING**: The operator mapping tables in `OperatorValidator` could be exposed for:
    - LSP autocomplete (suggest appropriate dunder when user types an operator)
