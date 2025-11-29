@@ -11,10 +11,6 @@ public enum ProtocolKind
     Container,      // __len__, __contains__, __getitem__, __setitem__, __delitem__
     Iterator,       // __iter__, __next__
     Representation, // __str__, __repr__, __format__
-    // Note: Comparison operators (__eq__, __ne__, __lt__, __le__, __gt__, __ge__) are handled
-    // by OperatorSignatureValidator, not ProtocolRegistry. The Comparison enum value is reserved
-    // for future use if we need to distinguish comparison semantics separately from operators.
-    Comparison,     // Reserved for future use (comparison operators are in OperatorSignatureValidator)
     Hashing,        // __hash__
     Conversion      // __bool__, __int__, __float__, __complex__
 }
@@ -25,7 +21,7 @@ public enum ProtocolKind
 /// <param name="DunderName">Lowercase Sharpy source name (e.g., "__len__")</param>
 /// <param name="Kind">The protocol category</param>
 /// <param name="SharpyCoreInterface">The Sharpy.Core interface name (e.g., "ISized"), or null if no interface</param>
-/// <param name="InterfaceMethodName">PascalCase method in Sharpy.Core (e.g., "__Len__")</param>
+/// <param name="InterfaceMethodName">Sharpy.Core method name preserving dunder format with capitalized inner portion (e.g., "__Len__", "__GetItem__"), or null if no interface method</param>
 /// <param name="ClrMethodName">The .NET method/property name (e.g., "get_Count"), or null if no direct mapping</param>
 /// <param name="ExpectedParamCount">Expected parameter count including 'self'</param>
 /// <param name="ExpectedReturnType">Expected return type name (e.g., "int", "bool", "str"), or null for any</param>
@@ -33,7 +29,7 @@ public record ProtocolInfo(
     string DunderName,
     ProtocolKind Kind,
     string? SharpyCoreInterface,
-    string InterfaceMethodName,
+    string? InterfaceMethodName,
     string? ClrMethodName,
     int ExpectedParamCount,
     string? ExpectedReturnType
@@ -66,7 +62,7 @@ public static class ProtocolRegistry
             DunderName: "__init__",
             Kind: ProtocolKind.Lifecycle,
             SharpyCoreInterface: null,  // Special: maps to constructor
-            InterfaceMethodName: "Constructor",
+            InterfaceMethodName: null,  // No interface method; constructor is special-cased
             ClrMethodName: ".ctor",
             ExpectedParamCount: -1,  // Variable (1+ including self)
             ExpectedReturnType: "None"  // Constructors return void
@@ -245,4 +241,37 @@ public static class ProtocolRegistry
     /// Gets the count of registered protocols.
     /// </summary>
     public static int Count => _protocols.Count;
+
+    /// <summary>
+    /// Reverse lookup: Gets the dunder name for a given Sharpy.Core interface name.
+    /// Returns null if no protocol is associated with the interface.
+    /// </summary>
+    public static string? GetDunderForInterface(string interfaceName)
+    {
+        foreach (var protocol in _protocols.Values)
+        {
+            if (protocol.SharpyCoreInterface == interfaceName)
+                return protocol.DunderName;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Checks if the given method name is any registered dunder (protocol or operator).
+    /// This combines <see cref="IsProtocolDunder"/> and <see cref="OperatorSignatureValidator.IsOperatorDunder"/>.
+    /// </summary>
+    public static bool IsAnyDunder(string methodName)
+        => IsProtocolDunder(methodName) || OperatorSignatureValidator.IsOperatorDunder(methodName);
+
+    /// <summary>
+    /// Gets the expected parameter count and return type for a dunder name.
+    /// Returns null if the dunder is not registered.
+    /// </summary>
+    public static (int ParamCount, string? ReturnType)? GetExpectedSignature(string dunderName)
+    {
+        var info = GetProtocol(dunderName);
+        if (info == null)
+            return null;
+        return (info.ExpectedParamCount, info.ExpectedReturnType);
+    }
 }

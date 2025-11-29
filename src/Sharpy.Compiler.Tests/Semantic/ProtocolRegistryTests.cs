@@ -302,24 +302,100 @@ public class ProtocolRegistryTests
     [Fact]
     public void ProtocolRegistry_DoesNotOverlapWithOperatorSignatureValidator()
     {
-        // Ensure no dunders are registered in both registries
-        var protocolDunders = ProtocolRegistry.GetAllProtocols().Select(p => p.DunderName).ToHashSet();
-        
-        // Check against operator dunders (we can check the ones we know)
-        var operatorDunders = new[]
+        // Ensure no dunders are registered in both registries by querying OperatorSignatureValidator directly
+        foreach (var protocol in ProtocolRegistry.GetAllProtocols())
         {
-            "__add__", "__sub__", "__mul__", "__truediv__", "__floordiv__", "__mod__", "__pow__",
-            "__and__", "__or__", "__xor__", "__lshift__", "__rshift__",
-            "__iadd__", "__isub__", "__imul__", "__itruediv__", "__ifloordiv__", "__imod__", "__ipow__",
-            "__iand__", "__ior__", "__ixor__", "__ilshift__", "__irshift__",
-            "__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__",
-            "__pos__", "__neg__", "__invert__"
-        };
-
-        foreach (var opDunder in operatorDunders)
-        {
-            protocolDunders.Should().NotContain(opDunder, 
-                $"'{opDunder}' is an operator dunder and should not be in ProtocolRegistry");
+            OperatorSignatureValidator.IsOperatorDunder(protocol.DunderName)
+                .Should().BeFalse(
+                    $"'{protocol.DunderName}' should not be registered in both registries");
         }
+    }
+
+    // ==================== Test New Query Methods (2.3.2, 2.3.3, 2.3.4) ====================
+
+    [Theory]
+    [InlineData("ISized", "__len__")]
+    [InlineData("IContainer", "__contains__")]
+    [InlineData("ISequence", "__getitem__")]
+    [InlineData("IMutableSequence", "__setitem__")]  // Returns first match
+    [InlineData("IIterable", "__iter__")]
+    [InlineData("IStrConvertible", "__str__")]
+    [InlineData("IRepresentable", "__repr__")]
+    [InlineData("IHashable", "__hash__")]
+    [InlineData("IBoolConvertible", "__bool__")]
+    public void GetDunderForInterface_ReturnsCorrectDunder(string interfaceName, string expectedDunder)
+    {
+        ProtocolRegistry.GetDunderForInterface(interfaceName).Should().Be(expectedDunder);
+    }
+
+    [Fact]
+    public void GetDunderForInterface_ReturnsNullForUnknownInterface()
+    {
+        ProtocolRegistry.GetDunderForInterface("IUnknown").Should().BeNull();
+    }
+
+    [Fact]
+    public void IsAnyDunder_ReturnsTrueForProtocolDunders()
+    {
+        // Protocol dunders
+        ProtocolRegistry.IsAnyDunder("__len__").Should().BeTrue();
+        ProtocolRegistry.IsAnyDunder("__str__").Should().BeTrue();
+        ProtocolRegistry.IsAnyDunder("__iter__").Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsAnyDunder_ReturnsTrueForOperatorDunders()
+    {
+        // Operator dunders (from OperatorSignatureValidator)
+        ProtocolRegistry.IsAnyDunder("__add__").Should().BeTrue();
+        ProtocolRegistry.IsAnyDunder("__eq__").Should().BeTrue();
+        ProtocolRegistry.IsAnyDunder("__neg__").Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsAnyDunder_ReturnsFalseForRegularMethods()
+    {
+        ProtocolRegistry.IsAnyDunder("regular_method").Should().BeFalse();
+        ProtocolRegistry.IsAnyDunder("MyMethod").Should().BeFalse();
+        ProtocolRegistry.IsAnyDunder("__unknown__").Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("__len__", 1, "int")]
+    [InlineData("__contains__", 2, "bool")]
+    [InlineData("__str__", 1, "str")]
+    [InlineData("__hash__", 1, "int")]
+    [InlineData("__bool__", 1, "bool")]
+    public void GetExpectedSignature_ReturnsCorrectValues(string dunder, int paramCount, string returnType)
+    {
+        var result = ProtocolRegistry.GetExpectedSignature(dunder);
+        result.Should().NotBeNull();
+        result!.Value.ParamCount.Should().Be(paramCount);
+        result.Value.ReturnType.Should().Be(returnType);
+    }
+
+    [Theory]
+    [InlineData("__getitem__")]  // Returns element type (generic)
+    [InlineData("__iter__")]     // Returns Iterator<T> (generic)
+    public void GetExpectedSignature_ReturnsNullReturnTypeForGenericMethods(string dunder)
+    {
+        var result = ProtocolRegistry.GetExpectedSignature(dunder);
+        result.Should().NotBeNull();
+        result!.Value.ReturnType.Should().BeNull();
+    }
+
+    [Fact]
+    public void GetExpectedSignature_ReturnsNullForUnknownDunder()
+    {
+        ProtocolRegistry.GetExpectedSignature("__unknown__").Should().BeNull();
+    }
+
+    [Fact]
+    public void GetProtocol_Init_HasNullInterfaceMethodName()
+    {
+        // __init__ has no interface method since constructors are special-cased
+        var protocol = ProtocolRegistry.GetProtocol("__init__");
+        protocol.Should().NotBeNull();
+        protocol!.InterfaceMethodName.Should().BeNull();
     }
 }
