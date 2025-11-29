@@ -455,7 +455,7 @@ public static class PrimitiveCatalog
 }
 ```
 
-- [ ] **1.1.1** Define `NumericKind` enum inside the file:
+- [x] **1.1.1** Define `NumericKind` enum inside the file:
   ```csharp
   public enum NumericKind
   {
@@ -467,7 +467,7 @@ public static class PrimitiveCatalog
   }
   ```
 
-- [ ] **1.1.2** Define `PrimitiveInfo` record inside the file:
+- [x] **1.1.2** Define `PrimitiveInfo` record inside the file:
   ```csharp
   /// <summary>
   /// Describes a primitive type's characteristics.
@@ -488,13 +488,13 @@ public static class PrimitiveCatalog
   );
   ```
 
-- [ ] **1.1.3** Create static dictionaries for lookups:
+- [x] **1.1.3** Create static dictionaries for lookups:
   ```csharp
   private static readonly Dictionary<string, PrimitiveInfo> _bySharpyName = new();
   private static readonly Dictionary<Type, PrimitiveInfo> _byClrType = new();
   ```
 
-- [ ] **1.1.4** Add static constructor to populate dictionaries:
+- [x] **1.1.4** Add static constructor to populate dictionaries:
   ```csharp
   static PrimitiveCatalog()
   {
@@ -521,7 +521,7 @@ public static class PrimitiveCatalog
 
 Add registrations inside `RegisterAll()`:
 
-- [ ] **1.2.1** Register signed integer types:
+- [x] **1.2.1** Register signed integer types:
   ```csharp
   Register(new PrimitiveInfo("sbyte", "sbyte", typeof(sbyte), NumericKind.SignedInteger, 8, true));
   Register(new PrimitiveInfo("short", "short", typeof(short), NumericKind.SignedInteger, 16, true));
@@ -529,7 +529,7 @@ Add registrations inside `RegisterAll()`:
   Register(new PrimitiveInfo("long", "long", typeof(long), NumericKind.SignedInteger, 64, true));
   ```
 
-- [ ] **1.2.2** Register unsigned integer types:
+- [x] **1.2.2** Register unsigned integer types:
   ```csharp
   Register(new PrimitiveInfo("byte", "byte", typeof(byte), NumericKind.UnsignedInteger, 8, false));
   Register(new PrimitiveInfo("ushort", "ushort", typeof(ushort), NumericKind.UnsignedInteger, 16, false));
@@ -537,14 +537,14 @@ Add registrations inside `RegisterAll()`:
   Register(new PrimitiveInfo("ulong", "ulong", typeof(ulong), NumericKind.UnsignedInteger, 64, false));
   ```
 
-- [ ] **1.2.3** Register floating-point types:
+- [x] **1.2.3** Register floating-point types:
   ```csharp
   Register(new PrimitiveInfo("float", "float", typeof(float), NumericKind.FloatingPoint, 32, true));
   Register(new PrimitiveInfo("double", "double", typeof(double), NumericKind.FloatingPoint, 64, true));
   Register(new PrimitiveInfo("decimal", "decimal", typeof(decimal), NumericKind.Decimal, 128, true));
   ```
 
-- [ ] **1.2.4** Register non-numeric primitives:
+- [x] **1.2.4** Register non-numeric primitives:
   ```csharp
   Register(new PrimitiveInfo("bool", "bool", typeof(bool), NumericKind.None, 8, false));
   Register(new PrimitiveInfo("char", "char", typeof(char), NumericKind.None, 16, false));
@@ -552,7 +552,7 @@ Add registrations inside `RegisterAll()`:
   Register(new PrimitiveInfo("string", "string", typeof(string), NumericKind.None, 0, false)); // Alias
   ```
 
-- [ ] **1.2.5** Register void/None:
+- [x] **1.2.5** Register void/None:
   ```csharp
   // NOTE: typeof(void) cannot be used directly in dictionaries as it throws.
   // Use a sentinel or handle void specially. One approach:
@@ -582,7 +582,7 @@ Add registrations inside `RegisterAll()`:
 
 Add these public static methods to `PrimitiveCatalog`:
 
-- [ ] **1.3.1** Basic lookup methods:
+- [x] **1.3.1** Basic lookup methods:
   ```csharp
   /// <summary>Returns primitive info for a Sharpy type name, or null if not a primitive.</summary>
   public static PrimitiveInfo? GetByName(string sharpyName)
@@ -597,7 +597,7 @@ Add these public static methods to `PrimitiveCatalog`:
       => _bySharpyName.ContainsKey(sharpyName);
   ```
 
-- [ ] **1.3.2** Numeric classification methods:
+- [x] **1.3.2** Numeric classification methods:
   ```csharp
   /// <summary>Returns true if the type is any numeric type (integer, float, or decimal).</summary>
   public static bool IsNumeric(SemanticType type)
@@ -622,7 +622,7 @@ Add these public static methods to `PrimitiveCatalog`:
   }
   ```
 
-- [ ] **1.3.3** Helper to extract info from `SemanticType`:
+- [x] **1.3.3** Helper to extract info from `SemanticType`:
   ```csharp
   /// <summary>
   /// Gets PrimitiveInfo from a SemanticType by checking if it's a BuiltinType
@@ -650,7 +650,7 @@ Add these public static methods to `PrimitiveCatalog`:
 
 Reference: [C# Numeric Promotions](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/conversions#implicit-numeric-conversions)
 
-- [ ] **1.4.1** Add promotion order constant:
+- [x] **1.4.1** Add promotion order constant:
   ```csharp
   // Promotion priority: higher value = wider type
   // When mixing types, the result is the type with higher priority
@@ -677,7 +677,7 @@ Reference: [C# Numeric Promotions](https://docs.microsoft.com/en-us/dotnet/cshar
   }
   ```
 
-- [ ] **1.4.2** Implement `GetPromotedType()`:
+- [x] **1.4.2** Implement `GetPromotedType()`:
   ```csharp
   /// <summary>
   /// Returns the result type when performing arithmetic between two numeric types.
@@ -752,7 +752,7 @@ Reference: [C# Numeric Promotions](https://docs.microsoft.com/en-us/dotnet/cshar
 
 #### 1.5 Implement conversion checking
 
-- [ ] **1.5.1** Implement `CanImplicitlyConvert()`:
+- [x] **1.5.1** Implement `CanImplicitlyConvert()`:
   ```csharp
   /// <summary>
   /// Returns true if 'from' can be implicitly converted to 'to' without data loss.
@@ -801,7 +801,7 @@ Reference: [C# Numeric Promotions](https://docs.microsoft.com/en-us/dotnet/cshar
   }
   ```
 
-- [ ] **1.5.2** Implement `CanExplicitlyConvert()`:
+- [x] **1.5.2** Implement `CanExplicitlyConvert()`:
   ```csharp
   /// <summary>
   /// Returns true if 'from' can be explicitly cast to 'to' (may lose data).
@@ -836,7 +836,7 @@ Reference: [C# Numeric Promotions](https://docs.microsoft.com/en-us/dotnet/cshar
 
 Create file at `src/Sharpy.Compiler.Tests/Semantic/PrimitiveCatalogTests.cs`:
 
-- [ ] **1.6.1** Test file setup:
+- [x] **1.6.1** Test file setup:
   ```csharp
   using Xunit;
   using FluentAssertions;
@@ -850,7 +850,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/PrimitiveCatalogTests.cs`:
   }
   ```
 
-- [ ] **1.6.2** Test all primitives are registered:
+- [x] **1.6.2** Test all primitives are registered:
   ```csharp
   [Theory]
   [InlineData("int", typeof(int))]
@@ -876,7 +876,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/PrimitiveCatalogTests.cs`:
   }
   ```
 
-- [ ] **1.6.3** Test numeric classification:
+- [x] **1.6.3** Test numeric classification:
   ```csharp
   [Fact]
   public void IsNumeric_ReturnsTrueForNumericTypes()
@@ -905,7 +905,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/PrimitiveCatalogTests.cs`:
   }
   ```
 
-- [ ] **1.6.4** Test promotion rules:
+- [x] **1.6.4** Test promotion rules:
   ```csharp
   [Theory]
   [InlineData("int", "int", "int")]
@@ -937,7 +937,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/PrimitiveCatalogTests.cs`:
   }
   ```
 
-- [ ] **1.6.5** Test implicit conversion:
+- [x] **1.6.5** Test implicit conversion:
   ```csharp
   [Theory]
   [InlineData("int", "long", true)]
