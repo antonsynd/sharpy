@@ -1050,10 +1050,11 @@ Location: `src/Sharpy.Compiler/Semantic/OperatorValidator.cs`
 
 Location: `src/Sharpy.Compiler/Semantic/TypeChecker.cs`
 
-- [ ] **1.8.1** Search for and replace any `IsNumericType()` calls:
+- [x] **1.8.1** Search for and replace any `IsNumericType()` calls:
   - Use grep: `grep -n "IsNumericType" src/Sharpy.Compiler/Semantic/TypeChecker.cs`
   - If method exists locally, replace implementation with `PrimitiveCatalog.IsNumeric()`
   - If calls exist, update to `PrimitiveCatalog.IsNumeric(type)`
+  - **COMPLETED**: Replaced local `IsNumericType()` method implementation to delegate to `PrimitiveCatalog.IsNumeric()`. The method also handles `UnknownType` to avoid cascading errors, matching the original behavior.
 
 - [ ] **1.8.2** Search for hard-coded primitive comparisons:
   - Use grep: `grep -n "SemanticType.Int\|SemanticType.Long\|SemanticType.Float\|SemanticType.Double" src/Sharpy.Compiler/Semantic/TypeChecker.cs`
