@@ -20,23 +20,24 @@ public class BuiltinRegistry
 
     private void LoadBuiltins()
     {
-        // Numeric types
-        RegisterType("int", typeof(int), TypeKind.Struct);
-        RegisterType("long", typeof(long), TypeKind.Struct);
-        RegisterType("float", typeof(float), TypeKind.Struct);
-        RegisterType("double", typeof(double), TypeKind.Struct);
-        RegisterType("decimal", typeof(decimal), TypeKind.Struct);
+        // Register all primitives from PrimitiveCatalog
+        foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
+        {
+            // Skip aliases (registered separately if needed)
+            if (name != info.SharpyName) continue;
 
-        // Boolean
-        RegisterType("bool", typeof(bool), TypeKind.Struct);
+            // Skip void - it's handled specially as "None" below
+            if (info.ClrType == null) continue;
 
-        // String
-        RegisterType("str", typeof(string), TypeKind.Class);
+            var kind = info.ClrType.IsValueType ? TypeKind.Struct : TypeKind.Class;
+            RegisterType(info.SharpyName, info.ClrType, kind);
+        }
 
-        // Collections (generic)
-        RegisterType("list", typeof(System.Collections.Generic.List<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
-        RegisterType("dict", typeof(System.Collections.Generic.Dictionary<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
-        RegisterType("set", typeof(System.Collections.Generic.HashSet<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
+        // Collections (generic) - not in PrimitiveCatalog
+        // NOTE: These use Sharpy.Core types, not System.Collections.Generic!
+        RegisterType("list", typeof(Sharpy.Core.List<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
+        RegisterType("dict", typeof(Sharpy.Core.Dict<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
+        RegisterType("set", typeof(Sharpy.Core.Set<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
 
         // Special
         RegisterType("object", typeof(object), TypeKind.Class);
