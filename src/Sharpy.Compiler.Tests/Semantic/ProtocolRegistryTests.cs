@@ -219,7 +219,9 @@ public class ProtocolRegistryTests
     public void GetAllProtocols_ReturnsAllRegisteredProtocols()
     {
         var protocols = ProtocolRegistry.GetAllProtocols().ToList();
-        protocols.Should().HaveCountGreaterThanOrEqualTo(12);  // All v0.5 protocols
+        // v0.5 protocols: __init__, __len__, __contains__, __getitem__, __setitem__, __delitem__,
+        //                 __iter__, __next__, __str__, __repr__, __hash__, __bool__
+        protocols.Should().HaveCount(12, "exactly 12 protocols are registered for v0.5");
         
         // Verify we have at least one of each kind (except Comparison which is handled by operators)
         protocols.Should().Contain(p => p.Kind == ProtocolKind.Lifecycle);
@@ -292,7 +294,7 @@ public class ProtocolRegistryTests
     [Fact]
     public void Count_ReturnsNumberOfRegisteredProtocols()
     {
-        ProtocolRegistry.Count.Should().BeGreaterThanOrEqualTo(12);
+        ProtocolRegistry.Count.Should().Be(12, "exactly 12 protocols are registered for v0.5");
     }
 
     // ==================== Test Consistency with OperatorSignatureValidator ====================

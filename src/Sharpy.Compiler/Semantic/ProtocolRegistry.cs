@@ -11,7 +11,10 @@ public enum ProtocolKind
     Container,      // __len__, __contains__, __getitem__, __setitem__, __delitem__
     Iterator,       // __iter__, __next__
     Representation, // __str__, __repr__, __format__
-    Comparison,     // __eq__, __ne__, __lt__, __le__, __gt__, __ge__ (note: also in OperatorSignatureValidator)
+    // Note: Comparison operators (__eq__, __ne__, __lt__, __le__, __gt__, __ge__) are handled
+    // by OperatorSignatureValidator, not ProtocolRegistry. The Comparison enum value is reserved
+    // for future use if we need to distinguish comparison semantics separately from operators.
+    Comparison,     // Reserved for future use (comparison operators are in OperatorSignatureValidator)
     Hashing,        // __hash__
     Conversion      // __bool__, __int__, __float__, __complex__
 }
@@ -70,6 +73,9 @@ public static class ProtocolRegistry
         ));
 
         // 2.2.2 Container protocols
+        // NOTE: ISized.__Len__() returns uint in Sharpy.Core, but we register "int" here
+        // because that's the common Sharpy/Python return type for len(). The code generator
+        // handles the uint-to-int conversion when emitting calls to __Len__().
         Register(protocols, new ProtocolInfo(
             DunderName: "__len__",
             Kind: ProtocolKind.Container,
@@ -77,7 +83,7 @@ public static class ProtocolRegistry
             InterfaceMethodName: "__Len__",
             ClrMethodName: "get_Count",  // Maps to Count property in .NET
             ExpectedParamCount: 1,  // Just self
-            ExpectedReturnType: "int"  // Returns uint in Sharpy.Core but commonly int
+            ExpectedReturnType: "int"  // Sharpy uses int; codegen handles uint conversion
         ));
 
         Register(protocols, new ProtocolInfo(
