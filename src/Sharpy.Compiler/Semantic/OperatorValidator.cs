@@ -803,44 +803,28 @@ public class OperatorValidator
     }
 
     /// <summary>
-    /// Checks if a type is numeric (int, long, float, double).
+    /// Checks if a type is numeric (int, long, float, double, etc.).
+    /// Delegates to PrimitiveCatalog for exhaustive primitive type checking.
     /// </summary>
-    private bool IsNumericType(SemanticType type)
-    {
-        return type == SemanticType.Int ||
-               type == SemanticType.Long ||
-               type == SemanticType.Float ||
-               type == SemanticType.Double;
-    }
+    private static bool IsNumericType(SemanticType type)
+        => PrimitiveCatalog.IsNumeric(type);
 
     /// <summary>
-    /// Checks if a type is an integer type (int, long).
+    /// Checks if a type is an integer type (signed or unsigned).
+    /// Delegates to PrimitiveCatalog for exhaustive primitive type checking.
     /// </summary>
-    private bool IsIntegerType(SemanticType type)
-    {
-        return type == SemanticType.Int || type == SemanticType.Long;
-    }
+    private static bool IsIntegerType(SemanticType type)
+        => PrimitiveCatalog.IsInteger(type);
 
     /// <summary>
     /// Infers the result type of a numeric operation.
-    /// Uses standard numeric promotion rules.
+    /// Delegates to PrimitiveCatalog for standard numeric promotion rules.
     /// </summary>
-    private SemanticType InferNumericResultType(SemanticType left, SemanticType right)
+    private static SemanticType InferNumericResultType(SemanticType left, SemanticType right)
     {
-        // Double beats everything
-        if (left == SemanticType.Double || right == SemanticType.Double)
-            return SemanticType.Double;
-
-        // Float beats int and long
-        if (left == SemanticType.Float || right == SemanticType.Float)
-            return SemanticType.Float;
-
-        // Long beats int
-        if (left == SemanticType.Long || right == SemanticType.Long)
-            return SemanticType.Long;
-
-        // Both must be int
-        return SemanticType.Int;
+        var promoted = PrimitiveCatalog.GetPromotedType(left, right);
+        // Fall back to Unknown if types cannot be promoted (e.g., decimal+float, long+ulong)
+        return promoted ?? SemanticType.Unknown;
     }
 
     /// <summary>

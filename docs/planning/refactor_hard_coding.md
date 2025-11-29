@@ -964,7 +964,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/PrimitiveCatalogTests.cs`:
 
 Location: `src/Sharpy.Compiler/Semantic/OperatorValidator.cs`
 
-- [ ] **1.7.1** Replace `IsNumericType()` method (around line 808):
+- [x] **1.7.1** Replace `IsNumericType()` method (around line 808):
 
   **Before** (find and delete):
   ```csharp
@@ -983,7 +983,7 @@ Location: `src/Sharpy.Compiler/Semantic/OperatorValidator.cs`
       => PrimitiveCatalog.IsNumeric(type);
   ```
 
-- [ ] **1.7.2** Replace `IsIntegerType()` method (around line 814):
+- [x] **1.7.2** Replace `IsIntegerType()` method (around line 814):
 
   **Before** (find and delete):
   ```csharp
@@ -999,7 +999,7 @@ Location: `src/Sharpy.Compiler/Semantic/OperatorValidator.cs`
       => PrimitiveCatalog.IsInteger(type);
   ```
 
-- [ ] **1.7.3** Replace `InferNumericResultType()` method (around line 822):
+- [x] **1.7.3** Replace `InferNumericResultType()` method (around line 822):
 
   **Before** (find and delete):
   ```csharp
@@ -1037,9 +1037,10 @@ Location: `src/Sharpy.Compiler/Semantic/OperatorValidator.cs`
   > The `PrimitiveCatalog` version is more complete but may return different results for edge cases.
   > Run `OperatorValidatorTests` to verify no regressions.
 
-- [ ] **1.7.4** Verify no other hard-coded primitive checks remain:
+- [x] **1.7.4** Verify no other hard-coded primitive checks remain:
   - Search for `SemanticType.Int`, `SemanticType.Long`, `SemanticType.Float`, `SemanticType.Double` in the file
   - Any remaining should be in comparison contexts (`==`) for specific behavior, not type classification
+  - **VERIFIED**: Remaining usages are in `MapClrTypeToSemanticType()` which correctly returns SemanticType singletons for CLR interop
 
 **Acceptance Criteria**: `OperatorValidatorTests` still pass. Run with `dotnet test --filter "FullyQualifiedName~OperatorValidatorTests"`.
 
