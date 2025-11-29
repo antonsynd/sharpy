@@ -1069,7 +1069,7 @@ Location: `src/Sharpy.Compiler/Semantic/TypeChecker.cs`
 
 Location: `src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs`
 
-- [ ] **1.9.1** Update `LoadBuiltins()` to use `PrimitiveCatalog`:
+- [x] **1.9.1** Update `LoadBuiltins()` to use `PrimitiveCatalog`:
 
   **Before** (lines 24-40):
   ```csharp
@@ -1120,7 +1120,7 @@ Location: `src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs`
   > **NOTE**: The collection types should reference `Sharpy.Core.List<>`, `Sharpy.Core.Dict<,>`, etc.,
   > not `System.Collections.Generic.*`. Verify the actual type names in `Sharpy.Core` before implementing.
 
-- [ ] **1.9.2** Add `GetAllPrimitives()` method to `PrimitiveCatalog`:
+- [x] **1.9.2** Add `GetAllPrimitives()` method to `PrimitiveCatalog`:
   ```csharp
   /// <summary>Returns all registered primitives for iteration.</summary>
   public static IEnumerable<(string Name, PrimitiveInfo Info)> GetAllPrimitives()

@@ -12,6 +12,15 @@ public class BuiltinRegistry
     private readonly Dictionary<string, List<FunctionSymbol>> _functions = new();
     private readonly CachedModuleDiscovery _discovery;
 
+    /// <summary>
+    /// Primitive types to register from PrimitiveCatalog.
+    /// This maintains backward compatibility with the original hard-coded type list.
+    /// </summary>
+    private static readonly HashSet<string> RegisteredPrimitiveNames = new()
+    {
+        "int", "long", "float", "double", "decimal", "bool", "str"
+    };
+
     public BuiltinRegistry()
     {
         _discovery = new CachedModuleDiscovery();
@@ -20,23 +29,21 @@ public class BuiltinRegistry
 
     private void LoadBuiltins()
     {
-        // Numeric types
-        RegisterType("int", typeof(int), TypeKind.Struct);
-        RegisterType("long", typeof(long), TypeKind.Struct);
-        RegisterType("float", typeof(float), TypeKind.Struct);
-        RegisterType("double", typeof(double), TypeKind.Struct);
-        RegisterType("decimal", typeof(decimal), TypeKind.Struct);
+        // Register primitives from PrimitiveCatalog using the defined set of names
+        foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
+        {
+            if (!RegisteredPrimitiveNames.Contains(name)) continue;
+            if (info.ClrType == null) continue;
 
-        // Boolean
-        RegisterType("bool", typeof(bool), TypeKind.Struct);
+            var kind = info.ClrType.IsValueType ? TypeKind.Struct : TypeKind.Class;
+            RegisterType(info.SharpyName, info.ClrType, kind);
+        }
 
-        // String
-        RegisterType("str", typeof(string), TypeKind.Class);
-
-        // Collections (generic)
-        RegisterType("list", typeof(System.Collections.Generic.List<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
-        RegisterType("dict", typeof(System.Collections.Generic.Dictionary<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
-        RegisterType("set", typeof(System.Collections.Generic.HashSet<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
+        // Collections (generic) - not in PrimitiveCatalog
+        // NOTE: These use Sharpy.Core types, not System.Collections.Generic!
+        RegisterType("list", typeof(Sharpy.Core.List<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
+        RegisterType("dict", typeof(Sharpy.Core.Dict<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
+        RegisterType("set", typeof(Sharpy.Core.Set<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
 
         // Special
         RegisterType("object", typeof(object), TypeKind.Class);
