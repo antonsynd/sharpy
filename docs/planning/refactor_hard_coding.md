@@ -4,22 +4,118 @@ This plan focuses on systematically identifying all hard‑coded Sharpy/.NET/C# 
 
 This is an architectural refactor, not a behavior change project: the end state should preserve current user‑visible semantics (modulo clearly documented bug fixes), while making it significantly easier to add new Sharpy/Core features and .NET interop without touching many call sites.
 
+---
+
+## Table of Contents
+
+1. [Architecture Overview](#architecture-overview)
+2. [Status](#status)
+3. [High-Level Steps (Architectural)](#high-level-steps-architectural)
+4. [V0.5 Implementation Task List](#v05-implementation-task-list)
+5. [Post-V0.5 Roadmap](#post-v05-roadmap)
+6. [Design Decisions](#design-decisions)
+7. [Appendix: Existing Hard-Coded Locations](#appendix-existing-hard-coded-locations)
+
+---
+
+## Architecture Overview
+
+### Current State (Post-Operator Refactor)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           Sharpy.Compiler                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Semantic/                                                                   │
+│  ├── OperatorValidator ✅        (centralized operator resolution)          │
+│  ├── OperatorSignatureValidator ✅ (dunder signature validation)            │
+│  ├── BuiltinRegistry             (types + functions, needs consolidation)  │
+│  ├── TypeChecker                 (has hard-coded protocol checks)          │
+│  ├── TypeResolver                (has hard-coded container logic)          │
+│  └── NameResolver                (populates OperatorMethods, needs extend) │
+│                                                                              │
+│  CodeGen/                                                                    │
+│  ├── RoslynEmitter               (hard-coded dunder→.NET mappings)         │
+│  ├── TypeMapper                  (hard-coded type mappings)                │
+│  └── NameMangler                 (dunder name mappings)                    │
+│                                                                              │
+│  Discovery/                                                                  │
+│  ├── CachedModuleDiscovery       (reflection-based function discovery)     │
+│  ├── TypeMapper                  (duplicate! needs consolidation)          │
+│  └── OverloadIndex*              (overload resolution infrastructure)      │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    ↓
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                             Sharpy.Core                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Protocol Interfaces (already defined, need compiler integration):          │
+│  ├── IIterable<T>, IIterator<T>  → __iter__, __next__                       │
+│  ├── ISized                       → __len__                                 │
+│  ├── IContains<T>                 → __contains__                            │
+│  ├── ISequence<T>, IMutableSequence<T> → __getitem__, __setitem__          │
+│  ├── IStrConvertible, IRepresentable → __str__, __repr__                   │
+│  ├── IHashable, IEquatable<T>     → __hash__, __eq__                        │
+│  ├── IBoolConvertible             → __bool__                                │
+│  └── (40+ additional protocol interfaces)                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Target State
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           Sharpy.Compiler                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Semantic/                                                                   │
+│  ├── Validators/                                                            │
+│  │   ├── OperatorValidator ✅     (binary/unary/augmented operators)        │
+│  │   ├── ProtocolValidator 🆕     (container/iteration/conversion dunders) │
+│  │   └── SignatureValidator ✅    (shared signature validation)             │
+│  │                                                                          │
+│  ├── Registries/                                                            │
+│  │   ├── PrimitiveCatalog 🆕      (numeric types, conversions, promotions) │
+│  │   ├── ProtocolRegistry 🆕      (dunder→interface mappings)              │
+│  │   └── BuiltinRegistry ✅       (consolidated types + functions)         │
+│  │                                                                          │
+│  ├── Caching/                                                               │
+│  │   └── ClrMemberCache 🆕        (unified CLR reflection cache)           │
+│  │                                                                          │
+│  └── TypeChecker                  (delegates to validators, no hard-coding)│
+│                                                                              │
+│  CodeGen/                                                                    │
+│  └── (uses registries, no hard-coded mappings)                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## Status
 
-**Note:** A significant portion of this refactor has been completed through the reflection-based operator validation work (see [reflection_based_operator_validation.md](reflection_based_operator_validation.md) and [reflection_based_operator_validation.tasks.md](reflection_based_operator_validation.tasks.md)). Specifically:
+### Completed ✅
 
-- Operator validation has been centralized in `OperatorValidator`
-- Dunder method validation and caching infrastructure exists in `OperatorSignatureValidator` and `TypeSymbol.OperatorMethods`
-- CLR operator discovery via reflection is implemented with caching (`_clrOperatorCache`)
-- TypeChecker integration is complete for operators and augmented assignments
+- **Operator Validation** (see [reflection_based_operator_validation.md](reflection_based_operator_validation.md)):
+  - `OperatorValidator` - centralized binary/unary/augmented operator resolution
+  - `OperatorSignatureValidator` - dunder signature validation at name resolution time
+  - `TypeSymbol.OperatorMethods` - caching of validated operator methods
+  - `_clrOperatorCache` - CLR operator discovery via reflection
+  - `TypeChecker` integration for all operator expressions
 
-This plan has been updated to:
+### In Progress 🔄
 
-1. Remove/consolidate steps that are now complete
-2. Focus on remaining hard‑coded semantics (primitives, collections, protocols, non-operator methods)
-3. Align terminology and architecture with the existing operator infrastructure
+- **Primitive Catalog** - consolidating scattered primitive type checks
+- **Protocol Registry** - mapping non-operator dunders to Sharpy.Core interfaces
 
-### Steps
+### Not Started ⏳
+
+- **Protocol Signature Validator** - signature validation for non-operator dunders
+- **Protocol Validator** - TypeChecker integration for protocol conformance
+- **RoslynEmitter consolidation** - removing hard-coded dunder mappings in codegen
+- **Type Mapper consolidation** - merging duplicate type mapping logic
+- **CLR Member Cache extraction** - reusable reflection caching service
+
+---
+
+## High-Level Steps (Architectural)
 
 1. **Inventory and classify hard‑coded semantics**
   - **EXCLUDE** operator-related hard-coding (already refactored into `OperatorValidator` and `OperatorSignatureValidator`).
@@ -278,6 +374,289 @@ This plan has been updated to:
    | Pattern Matching | Control Flow | `switch` expressions, property patterns, positional patterns | Not in v0.5. |
    | Attributes | Metadata | Custom attributes, reflection-based discovery | Not in v0.5. |
 
+---
+
+## V0.5 Implementation Task List
+
+This section provides a concrete, checkable task list for completing the refactoring work within v0.5 scope.
+
+### Phase 1: Primitive Catalog (Priority: High)
+
+**Goal**: Replace scattered primitive type checks with an exhaustive, tested registry.
+
+**Files to create/modify**:
+- `src/Sharpy.Compiler/Semantic/PrimitiveCatalog.cs` (new)
+- `src/Sharpy.Compiler.Tests/Semantic/PrimitiveCatalogTests.cs` (new)
+- `src/Sharpy.Compiler/Semantic/OperatorValidator.cs` (refactor)
+- `src/Sharpy.Compiler/Semantic/TypeChecker.cs` (refactor)
+- `src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs` (refactor)
+
+**Tasks**:
+- [ ] **1.1** Define `PrimitiveCatalog` class with:
+  - [ ] `PrimitiveInfo` record: `(string SharpyName, Type ClrType, NumericKind Kind, int Size, bool IsSigned, bool IsNullable)`
+  - [ ] `NumericKind` enum: `Integer`, `FloatingPoint`, `Decimal`, `Boolean`, `Character`, `None`
+  - [ ] Static dictionary of all supported primitives
+- [ ] **1.2** Add exhaustive primitive entries:
+  - [ ] Integer types: `sbyte`, `byte`, `short`, `ushort`, `int`, `uint`, `long`, `ulong` (and Sharpy aliases)
+  - [ ] Floating types: `float`, `double`, `decimal`
+  - [ ] Boolean: `bool`
+  - [ ] Character: `char`
+  - [ ] String: `str` / `string`
+  - [ ] None/void: `None`
+- [ ] **1.3** Implement numeric promotion rules:
+  - [ ] `GetPromotedType(PrimitiveInfo left, PrimitiveInfo right) -> PrimitiveInfo`
+  - [ ] Encode standard .NET numeric widening rules
+  - [ ] Handle mixed integer/float promotions
+- [ ] **1.4** Implement conversion checking:
+  - [ ] `CanImplicitlyConvert(PrimitiveInfo from, PrimitiveInfo to) -> bool`
+  - [ ] `CanExplicitlyConvert(PrimitiveInfo from, PrimitiveInfo to) -> bool`
+- [ ] **1.5** Add query methods:
+  - [ ] `IsNumeric(SemanticType type) -> bool`
+  - [ ] `IsInteger(SemanticType type) -> bool`
+  - [ ] `IsFloatingPoint(SemanticType type) -> bool`
+  - [ ] `GetPrimitiveInfo(string name) -> PrimitiveInfo?`
+  - [ ] `GetPrimitiveInfo(Type clrType) -> PrimitiveInfo?`
+- [ ] **1.6** Write comprehensive tests:
+  - [ ] Test all primitive registrations are present
+  - [ ] Test promotion rules match .NET spec
+  - [ ] Test conversion rules match expected behavior
+  - [ ] Test edge cases (max int sizes, float precision)
+- [ ] **1.7** Refactor `OperatorValidator`:
+  - [ ] Replace `IsNumericType()` with `PrimitiveCatalog.IsNumeric()`
+  - [ ] Replace `IsIntegerType()` with `PrimitiveCatalog.IsInteger()`
+  - [ ] Replace `InferNumericResultType()` with `PrimitiveCatalog.GetPromotedType()`
+- [ ] **1.8** Refactor `TypeChecker`:
+  - [ ] Replace `IsNumericType()` with `PrimitiveCatalog.IsNumeric()`
+  - [ ] Remove redundant primitive checks
+- [ ] **1.9** Consolidate `BuiltinRegistry` type registration:
+  - [ ] Use `PrimitiveCatalog` as source of truth for primitive types
+  - [ ] Remove duplicate type definitions
+
+### Phase 2: Protocol Registry (Priority: High)
+
+**Goal**: Create a centralized registry mapping Python dunders to Sharpy.Core interfaces.
+
+**Files to create/modify**:
+- `src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs` (new)
+- `src/Sharpy.Compiler.Tests/Semantic/ProtocolRegistryTests.cs` (new)
+
+**Tasks**:
+- [ ] **2.1** Define `ProtocolRegistry` class with:
+  - [ ] `ProtocolInfo` record: `(string DunderName, string SharpyInterface, string DotNetInterface?, string ClrMethodName, ProtocolKind Kind)`
+  - [ ] `ProtocolKind` enum: `Container`, `Iterator`, `Conversion`, `Representation`, `Comparison`, `Arithmetic`, `Bitwise`
+- [ ] **2.2** Register v0.5 protocols:
+  - [ ] Container: `__len__` → `ISized.__Len__()` → `Count`
+  - [ ] Container: `__getitem__` → `ISequence<T>.__GetItem__()` → indexer
+  - [ ] Container: `__setitem__` → `IMutableSequence<T>.__SetItem__()` → indexer
+  - [ ] Container: `__contains__` → `IContains<T>.__Contains__()` → `Contains()`
+  - [ ] Iterator: `__iter__` → `IIterable<T>.__Iter__()` → `GetEnumerator()`
+  - [ ] Iterator: `__next__` → `Iterator<T>.__Next__()` → (via enumerator pattern)
+  - [ ] Representation: `__str__` → `IStrConvertible.__Str__()` → `ToString()`
+  - [ ] Representation: `__repr__` → `IRepresentable.__Repr__()` → `ToString()` (debug)
+  - [ ] Hashing: `__hash__` → `IHashable.__Hash__()` → `GetHashCode()`
+  - [ ] Conversion: `__bool__` → `IBoolConvertible.__Bool__()` → explicit `operator bool`
+- [ ] **2.3** Add lookup methods:
+  - [ ] `GetProtocolForDunder(string dunderName) -> ProtocolInfo?`
+  - [ ] `GetDunderForInterface(string interfaceName) -> string?`
+  - [ ] `IsProtocolDunder(string methodName) -> bool`
+  - [ ] `GetExpectedSignature(string dunderName) -> (int paramCount, string? returnType)`
+- [ ] **2.4** Integrate with existing interfaces:
+  - [ ] Map each entry to actual `Sharpy.Core` interface types
+  - [ ] Verify all interfaces exist in `Sharpy.Core` (add stubs if missing)
+- [ ] **2.5** Write comprehensive tests:
+  - [ ] Test all v0.5 protocols are registered
+  - [ ] Test dunder → interface lookups
+  - [ ] Test interface → dunder reverse lookups
+  - [ ] Test signature expectations
+
+### Phase 3: Protocol Signature Validator (Priority: High)
+
+**Goal**: Validate non-operator dunder signatures like `OperatorSignatureValidator` does for operators.
+
+**Files to create/modify**:
+- `src/Sharpy.Compiler/Semantic/ProtocolSignatureValidator.cs` (new)
+- `src/Sharpy.Compiler.Tests/Semantic/ProtocolSignatureValidatorTests.cs` (new)
+- `src/Sharpy.Compiler/Semantic/NameResolver.cs` (integrate)
+- `src/Sharpy.Compiler/Semantic/Symbol.cs` (extend `TypeSymbol`)
+
+**Tasks**:
+- [ ] **3.1** Create `ProtocolSignatureValidator` class:
+  - [ ] Use `ProtocolRegistry` for protocol metadata
+  - [ ] Static method: `ValidateDunderSignature(FunctionDef func, TypeSymbol owningType) -> List<SemanticError>`
+  - [ ] Static method: `IsProtocolDunder(string methodName) -> bool`
+- [ ] **3.2** Implement validation rules per protocol:
+  - [ ] `__len__`: 1 param (`self`), returns `int`
+  - [ ] `__getitem__`: 2 params (`self`, index), returns element type
+  - [ ] `__setitem__`: 3 params (`self`, index, value), returns `None`
+  - [ ] `__contains__`: 2 params (`self`, item), returns `bool`
+  - [ ] `__iter__`: 1 param (`self`), returns iterator type
+  - [ ] `__next__`: 1 param (`self`), returns element type (or raises `StopIteration`)
+  - [ ] `__str__`: 1 param (`self`), returns `str`
+  - [ ] `__repr__`: 1 param (`self`), returns `str`
+  - [ ] `__hash__`: 1 param (`self`), returns `int`
+  - [ ] `__bool__`: 1 param (`self`), returns `bool`
+  - [ ] `__init__`: any params, returns `None` (existing validation in `TypeChecker`)
+- [ ] **3.3** Add descriptive error messages:
+  - [ ] Include expected vs actual parameter count
+  - [ ] Include expected vs actual return type
+  - [ ] Suggest the corresponding Sharpy.Core interface
+- [ ] **3.4** Extend `TypeSymbol`:
+  - [ ] Add `ProtocolMethods: Dictionary<string, FunctionSymbol>` (parallel to `OperatorMethods`)
+- [ ] **3.5** Integrate into `NameResolver`:
+  - [ ] In `ResolveMethodDeclaration`, check if method is a protocol dunder
+  - [ ] Call `ProtocolSignatureValidator.ValidateDunderSignature()`
+  - [ ] On success, add to `TypeSymbol.ProtocolMethods`
+  - [ ] On failure, add errors to `_errors`
+- [ ] **3.6** Write comprehensive tests:
+  - [ ] Test valid signatures for each protocol dunder
+  - [ ] Test invalid parameter counts
+  - [ ] Test invalid return types
+  - [ ] Test error message quality
+
+### Phase 4: Protocol Validator (TypeChecker Integration) (Priority: Medium)
+
+**Goal**: Validate protocol usage at type-checking time (e.g., `len(x)` requires `x` to have `__len__`).
+
+**Files to create/modify**:
+- `src/Sharpy.Compiler/Semantic/ProtocolValidator.cs` (new)
+- `src/Sharpy.Compiler.Tests/Semantic/ProtocolValidatorTests.cs` (new)
+- `src/Sharpy.Compiler/Semantic/TypeChecker.cs` (integrate)
+
+**Tasks**:
+- [ ] **4.1** Create `ProtocolValidator` class:
+  - [ ] Constructor: `(SymbolTable symbolTable, ICompilerLogger logger)`
+  - [ ] Cache structure similar to `OperatorValidator._clrOperatorCache`
+- [ ] **4.2** Implement protocol conformance checking:
+  - [ ] `HasProtocol(SemanticType type, string dunderName) -> bool`
+  - [ ] `ValidateIndexAccess(SemanticType containerType, SemanticType indexType, int line, int col) -> SemanticType` (return type)
+  - [ ] `ValidateMembership(SemanticType containerType, SemanticType itemType, int line, int col) -> SemanticType` (bool)
+  - [ ] `ValidateIteration(SemanticType iterableType, int line, int col) -> SemanticType` (element type)
+  - [ ] `ValidateLen(SemanticType containerType, int line, int col) -> SemanticType` (int)
+  - [ ] `ValidateBoolConversion(SemanticType type, int line, int col) -> SemanticType` (bool)
+- [ ] **4.3** Implement CLR protocol discovery (reflection-based):
+  - [ ] Check if CLR type implements `IEnumerable<T>`, `ICollection<T>`, etc.
+  - [ ] Map .NET interfaces to Sharpy protocol capabilities
+  - [ ] Cache results per CLR type
+- [ ] **4.4** Integrate into `TypeChecker`:
+  - [ ] Replace hard-coded `__len__` check in `len()` builtin call handling
+  - [ ] Replace hard-coded `__contains__` check in `in` operator handling
+  - [ ] Replace hard-coded `__iter__` check in `for` loop handling
+  - [ ] Replace hard-coded `__getitem__`/`__setitem__` in indexing expressions
+- [ ] **4.5** Handle error cases:
+  - [ ] "Type 'X' does not support indexing (missing `__getitem__`)"
+  - [ ] "Type 'X' is not iterable (missing `__iter__`)"
+  - [ ] "Cannot use 'in' operator with type 'X' (missing `__contains__`)"
+- [ ] **4.6** Write comprehensive tests:
+  - [ ] Test Sharpy types with protocol methods
+  - [ ] Test CLR types that implement appropriate interfaces
+  - [ ] Test error messages for missing protocols
+
+### Phase 5: RoslynEmitter Consolidation (Priority: Medium)
+
+**Goal**: Replace hard-coded dunder mappings in codegen with registry lookups.
+
+**Files to modify**:
+- `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`
+- `src/Sharpy.Compiler/CodeGen/NameMangler.cs`
+
+**Tasks**:
+- [ ] **5.1** Replace hard-coded dunder detection:
+  - [ ] Use `ProtocolRegistry.IsProtocolDunder()` instead of string literals
+  - [ ] Use `OperatorSignatureValidator.IsOperatorDunder()` for operator dunders
+- [ ] **5.2** Replace hard-coded `IsMethodNonOperatorDunder()`:
+  - [ ] Current: switch statement with `"__str__"`, `"__repr__"`, `"__hash__"`, etc.
+  - [ ] New: `ProtocolRegistry.IsProtocolDunder(name) || name == "__init__"`
+- [ ] **5.3** Replace hard-coded `GetOperatorMethodName()`:
+  - [ ] Use `ProtocolRegistry.GetProtocolForDunder()` to get CLR method name
+  - [ ] Fall back to `OperatorValidator` mappings for operators
+- [ ] **5.4** Consolidate `NameMangler.DunderMappings`:
+  - [ ] Merge with `ProtocolRegistry` data
+  - [ ] Or have `NameMangler` consult `ProtocolRegistry`
+- [ ] **5.5** Write tests verifying codegen uses registry:
+  - [ ] Test that adding new protocol to registry enables codegen without code changes
+
+### Phase 6: Type Mapper Consolidation (Priority: Low)
+
+**Goal**: Eliminate duplicate type mapping logic between `CodeGen/TypeMapper` and `Discovery/TypeMapper`.
+
+**Files to modify**:
+- `src/Sharpy.Compiler/CodeGen/TypeMapper.cs`
+- `src/Sharpy.Compiler/Discovery/TypeMapper.cs`
+- `src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs`
+
+**Tasks**:
+- [ ] **6.1** Audit both `TypeMapper` classes:
+  - [ ] Document what each does
+  - [ ] Identify overlap and differences
+- [ ] **6.2** Decide consolidation strategy:
+  - [ ] Option A: Merge into single `TypeMapper` in shared location
+  - [ ] Option B: Keep separate but share underlying data via `PrimitiveCatalog`
+  - [ ] Option C: Have codegen's `TypeMapper` delegate to discovery's
+- [ ] **6.3** Implement chosen strategy
+- [ ] **6.4** Ensure all type lookups go through centralized source:
+  - [ ] Sharpy name → CLR type
+  - [ ] CLR type → Sharpy name
+  - [ ] Sharpy name → C# syntax
+- [ ] **6.5** Use `PrimitiveCatalog` for primitive type mappings
+- [ ] **6.6** Write tests for consolidated type mapping
+
+### Phase 7: CLR Member Cache Extraction (Priority: Low)
+
+**Goal**: Extract CLR reflection caching from `OperatorValidator` into a reusable service.
+
+**Files to create/modify**:
+- `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs` (new, extracted from `OperatorValidator`)
+- `src/Sharpy.Compiler/Semantic/OperatorValidator.cs` (refactor to use cache)
+- `src/Sharpy.Compiler/Semantic/ProtocolValidator.cs` (use cache)
+
+**Tasks**:
+- [ ] **7.1** Extract `ClrMemberCache` class:
+  - [ ] `GetOperatorMethods(Type clrType) -> Dictionary<string, MethodInfo>`
+  - [ ] `GetInterfaceImplementations(Type clrType) -> List<Type>`
+  - [ ] `HasIndexer(Type clrType) -> bool`
+  - [ ] `GetEnumeratorElementType(Type clrType) -> Type?`
+- [ ] **7.2** Implement caching:
+  - [ ] Per-type caching for all member kinds
+  - [ ] Lazy population on first access
+  - [ ] Thread-safe if needed for future parallel compilation
+- [ ] **7.3** Refactor `OperatorValidator`:
+  - [ ] Replace `_clrOperatorCache` with `ClrMemberCache.GetOperatorMethods()`
+- [ ] **7.4** Use in `ProtocolValidator`:
+  - [ ] For checking .NET interface implementations
+  - [ ] For indexer and enumerator discovery
+- [ ] **7.5** Write tests:
+  - [ ] Test caching behavior (same result on repeated calls)
+  - [ ] Test various CLR types (primitives, collections, custom)
+
+---
+
+## Post-V0.5 Roadmap
+
+Features and protocols marked "Not in v0.5" in the Protocol Matrix above, prioritized:
+
+### High Priority (v0.6)
+- [ ] Context Manager protocol (`__enter__`, `__exit__` → `IDisposable` integration)
+- [ ] Floor division operator (`//` → `__floordiv__`)
+- [ ] Property decorator (`@property` → C# properties)
+- [ ] `IList<T>`, `IDictionary<K,V>`, `ISet<T>` .NET interface support
+
+### Medium Priority (v0.7+)
+- [ ] Async/await (`async def`, `await`, `IAsyncEnumerable<T>`)
+- [ ] Numeric conversion protocols (`__int__`, `__float__`)
+- [ ] `__format__` for f-string customization
+- [ ] Deconstruction (`Deconstruct()` for tuple unpacking)
+- [ ] Abstract Base Classes (`@abstractmethod`)
+
+### Low Priority (v1.0+)
+- [ ] Extension methods
+- [ ] Events (`event` keyword, `+=`/`-=`)
+- [ ] Records
+- [ ] Pattern matching (`match` statement)
+
+---
+
+## Design Decisions
+
 4. **TOOLING**: The operator mapping tables in `OperatorValidator` could be exposed for:
    - LSP autocomplete (suggest appropriate dunder when user types an operator)
    - Documentation generation (operator reference tables)
@@ -288,3 +667,72 @@ This plan has been updated to:
 6. **BALANCE**: Decide the balance between exhaustively defined primitives vs "learned" framework types: fully enumerate primitives and core Sharpy types; rely on reflection + caching for everything else.
 
 7. **SEMANTIC MODEL**: Consider emitting a machine‑readable "semantic model snapshot" (e.g. JSON of registries and caches) for introspection tests and tooling validation, ensuring future changes don't silently re‑introduce hard‑coded special cases.
+
+---
+
+## Appendix: Existing Hard-Coded Locations
+
+This appendix documents specific locations of hard-coded semantics identified during analysis, for reference during implementation.
+
+### `OperatorValidator.cs` (Lines 808-843)
+```csharp
+// Hard-coded primitive checks - refactor to use PrimitiveCatalog
+private bool IsNumericType(SemanticType type)
+{
+    return type == SemanticType.Int ||
+           type == SemanticType.Long ||
+           type == SemanticType.Float ||
+           type == SemanticType.Double;
+}
+
+private bool IsIntegerType(SemanticType type)
+{
+    return type == SemanticType.Int || type == SemanticType.Long;
+}
+```
+
+### `RoslynEmitter.cs` (Lines 2310-2363)
+```csharp
+// Hard-coded dunder detection - refactor to use ProtocolRegistry
+"__str__" => true,     // ToString() override
+"__repr__" => true,    // ToString() override
+"__hash__" => true,    // GetHashCode() override
+"__len__" => true,     // Length property/method
+"__contains__" => true, // Contains() method
+"__getitem__" => true, // Indexer get
+"__setitem__" => true, // Indexer set
+"__iter__" => true,    // GetEnumerator()
+```
+
+### `TypeChecker.cs` (Lines 168-175)
+```csharp
+// Hard-coded __init__ handling - should use ProtocolRegistry
+if (functionDef.Name == "__init__")
+{
+    // Validate that __init__ has no return type or -> None
+    if (returnType != SemanticType.None && returnType != SemanticType.Unknown)
+    {
+        AddError($"Constructor '__init__' cannot have return type ...");
+    }
+}
+```
+
+### `BuiltinRegistry.cs` (Lines 24-40)
+```csharp
+// Hard-coded type registration - should use PrimitiveCatalog
+RegisterType("int", typeof(int), TypeKind.Struct);
+RegisterType("long", typeof(long), TypeKind.Struct);
+RegisterType("float", typeof(float), TypeKind.Struct);
+// ...
+```
+
+### `CodeGen/TypeMapper.cs` (Lines 18-44)
+```csharp
+// Hard-coded type mappings - should use shared PrimitiveCatalog
+private static readonly Dictionary<string, string> _builtinTypeMap = new()
+{
+    { "int", "int" },
+    { "long", "long" },
+    // ...
+};
+```
