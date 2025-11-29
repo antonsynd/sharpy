@@ -1,203 +1,54 @@
-# Contributing to Samples
+# Samples
 
-## Overview
+Example programs demonstrating Sharpy features. Location: `samples/`
 
-**samples/** contains example Sharpy programs and projects that demonstrate language features and serve as integration tests for the compiler.
+## Current Samples
 
-**Location:** `samples/`
+| Sample | Purpose |
+|--------|---------|
+| `calculator_app/` | Multi-file project with `.spyproj` |
+| `SampleModule/` | Module structure with `__init__.spy` |
+| `type_system_showcase.spy` | Type annotations, inference, generics |
+| `dotnet_interop_example.spy` | .NET assembly imports |
 
-## What's in This Directory
+## Building Samples
 
-### Directory Structure
-
-```
-samples/
-├── README.md                    # Samples overview
-├── calculator_app/              # Complete calculator application
-│   ├── calculator.spyproj      # Project file
-│   ├── src/                    # Source files
-│   │   ├── __init__.spy        # Package initialization
-│   │   ├── calculator.spy      # Main calculator logic
-│   │   └── operations.spy      # Operation implementations
-│   └── README.md               # Calculator app documentation
-├── SampleModule/                # Example module structure
-│   ├── __init__.spy            # Module exports
-│   └── utilities.spy           # Utility functions
-├── type_system_showcase.spy     # Type system examples
-└── dotnet_interop_example.spy   # .NET interop examples
-```
-
-### Current Samples
-
-**calculator_app/**
-- Full working application
-- Multi-file project with `.spyproj`
-- Demonstrates project structure
-- Shows module imports
-- Tests project compilation
-
-**SampleModule/**
-- Module organization example
-- `__init__.spy` usage
-- Package-level exports
-
-**type_system_showcase.spy**
-- Type annotations
-- Type inference
-- Generic types
-- Nullable types
-
-**dotnet_interop_example.spy**
-- Importing .NET assemblies
-- Using C# libraries
-- Calling .NET methods
-
-## Purpose of Samples
-
-### Documentation
-- Teach users how to use Sharpy
-- Demonstrate best practices
-- Show real-world usage patterns
-
-### Testing
-- Integration testing for compiler
-- End-to-end validation
-- Real-world code compilation
-- Project structure validation
-
-### Validation
-- Ensure language features work together
-- Test multi-file compilation
-- Verify .NET interop
-- Check module system
-
-## How to Build Samples
-
-### Build a Single Sample File
 ```bash
-# Compile a single-file sample
-dotnet run --project src/Sharpy.Cli -- samples/type_system_showcase.spy
+# Single file
+dotnet run --project src/Sharpy.Cli -- build samples/type_system_showcase.spy
 
-# Emit tokens (for debugging)
-dotnet run --project src/Sharpy.Cli -- samples/type_system_showcase.spy --emit-tokens
+# Project
+dotnet run --project src/Sharpy.Cli -- project samples/calculator_app/calculator.spyproj
 ```
 
-### Build a Sample Project
-```bash
-# Build calculator app
-dotnet run --project src/Sharpy.Cli -- --project samples/calculator_app/calculator.spyproj
+## Adding a Sample
 
-# Build in Release mode
-dotnet run --project src/Sharpy.Cli -- --project samples/calculator_app/calculator.spyproj --configuration Release
-```
+1. Create `.spy` file or project directory
+2. Include comments explaining what's demonstrated
+3. Test compilation: `dotnet run --project src/Sharpy.Cli -- build <file>`
+4. Update `samples/README.md`
 
-## How to Run Samples
+## Sample Quality Standards
 
-### Run Compiled Output
-```bash
-# After building calculator app
-dotnet samples/calculator_app/bin/Debug/net9.0/calculator.dll
-```
+- ✅ Compiles successfully
+- ✅ Self-documenting with comments
+- ✅ Works on .NET 9.0 and 10.0
+- ❌ No deprecated features or hardcoded paths
 
-### Test in Integration Tests
-Samples are often used in integration tests in `Sharpy.Compiler.Tests/Integration/`:
+## Project Template
 
-```csharp
-[Fact]
-public void CompileCalculatorApp()
-{
-    var projectPath = "samples/calculator_app/calculator.spyproj";
-    var assembly = CompileProject(projectPath);
-    Assert.NotNull(assembly);
-}
-```
-
-## Important Things to Note
-
-### Sample Quality Standards
-
-**Samples should:**
-- ✅ Compile successfully with latest compiler
-- ✅ Follow Sharpy best practices
-- ✅ Include comments explaining what they demonstrate
-- ✅ Be self-contained (or clearly document dependencies)
-- ✅ Have clear, descriptive names
-- ✅ Include README if it's a complex project
-- ✅ Work on both .NET 9.0 and .NET 10.0
-
-**Samples should NOT:**
-- ❌ Use deprecated features
-- ❌ Have syntax errors or warnings
-- ❌ Be overly complex (unless demonstrating complex features)
-- ❌ Depend on external files not in the repository
-- ❌ Include hardcoded paths or environment-specific settings
-
-### Sample Project Structure
-
-**For multi-file projects:**
-```
-my_sample/
-├── my_sample.spyproj    # Project file
-├── src/                 # Source files
-│   ├── __init__.spy     # Package exports
-│   ├── main.spy         # Entry point
-│   └── utils.spy        # Utilities
-└── README.md            # Documentation
-```
-
-**Project file template:**
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <Project>
     <PropertyGroup>
         <RootNamespace>MySample</RootNamespace>
         <OutputType>exe</OutputType>
-        <Configuration>Debug</Configuration>
     </PropertyGroup>
     <ItemGroup>
         <SpyFile Include="src/**/*.spy" />
     </ItemGroup>
 </Project>
 ```
-
-## Common Development Tasks
-
-### Adding a New Sample
-
-1. **Choose what to demonstrate:**
-   - New language feature?
-   - Real-world use case?
-   - Integration pattern?
-   - .NET interop?
-
-2. **Create the sample:**
-   ```bash
-   # Single file
-   touch samples/new_feature_example.spy
-
-   # Or multi-file project
-   mkdir samples/new_app
-   touch samples/new_app/new_app.spyproj
-   mkdir samples/new_app/src
-   touch samples/new_app/src/__init__.spy
-   ```
-
-3. **Write the code:**
-   ```python
-   # samples/new_feature_example.spy
-   # This sample demonstrates <feature>
-
-   def example() -> None:
-       # Example code here
-       pass
-
-   def main() -> None:
-       example()
-   ```
-
-4. **Add documentation:**
-   - Add comments in the code
-   - Create README.md for complex samples
    - Update samples/README.md to list the new sample
 
 5. **Test the sample:**

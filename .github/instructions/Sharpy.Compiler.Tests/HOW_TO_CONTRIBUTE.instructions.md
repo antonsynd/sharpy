@@ -1,424 +1,79 @@
-# Contributing to Sharpy.Compiler.Tests
+# Sharpy.Compiler.Tests
 
-## Overview
+Compiler test suite. Location: `src/Sharpy.Compiler.Tests/`
 
-**Sharpy.Compiler.Tests** contains comprehensive tests for all compiler components: Lexer, Parser, Semantic Analyzer, Code Generator, Discovery, and Integration tests.
-
-**Location:** `src/Sharpy.Compiler.Tests/`
-
-## What's in This Directory
-
-### Test Organization
+## Test Organization
 
 ```
 Sharpy.Compiler.Tests/
-├── Lexer/                      # Lexer/tokenization tests (237 tests)
-│   ├── LexerTests.cs          # Core lexer tests
-│   ├── StringTests.cs         # String literal tests
-│   ├── NumberTests.cs         # Numeric literal tests
-│   └── OperatorTests.cs       # Operator tokenization
-├── Parser/                     # Parser/AST tests (~450 tests)
-│   ├── ParserTests.cs         # Core parser tests
-│   ├── ExpressionTests.cs     # Expression parsing
-│   ├── StatementTests.cs      # Statement parsing
-│   └── DeclarationTests.cs    # Declaration parsing
-├── Semantic/                   # Semantic analyzer tests
-│   ├── TypeCheckerTests.cs    # Type checking
-│   ├── NameResolverTests.cs   # Name resolution
-│   └── TypeNarrowingTests.cs  # Type narrowing
-├── CodeGen/                    # Code generation tests (259 tests)
-│   ├── RoslynEmitterTests.cs  # C# code generation
-│   ├── TypeMapperTests.cs     # Type mapping
-│   └── NameManglerTests.cs    # Name mangling
-├── Discovery/                  # Module discovery tests
-│   └── ModuleDiscoveryTests.cs
-├── Integration/                # End-to-end tests (56 tests)
-│   ├── BasicProgramTests.cs   # Simple programs
-│   ├── ClassTests.cs          # Class compilation
-│   └── ModuleTests.cs         # Multi-module programs
-├── Performance/                # Performance benchmarks
-│   └── CachingTests.cs        # Module caching performance
-└── ProjectCompilationTests.cs # .spyproj compilation
+├── Lexer/          # Tokenization tests
+├── Parser/         # AST generation tests
+├── Semantic/       # Type checking, name resolution
+├── CodeGen/        # C# generation tests
+├── Integration/    # End-to-end: Sharpy → C# → execute
+└── Discovery/      # Module import tests
 ```
 
-## How to Build
+## Running Tests
 
 ```bash
-# From repository root
-dotnet build src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj
-
-# From Sharpy.Compiler.Tests directory
-cd src/Sharpy.Compiler.Tests
-dotnet build
-```
-
-## How to Run Tests
-
-### Run All Tests
-```bash
-# From repository root
-dotnet test src/Sharpy.Compiler.Tests
-```
-
-### Run Tests by Component
-
-```bash
-# Lexer tests only
 dotnet test --filter "FullyQualifiedName~Lexer"
-dotnet test --filter "Namespace~Sharpy.Compiler.Tests.Lexer"
-
-# Parser tests only
 dotnet test --filter "FullyQualifiedName~Parser"
-dotnet test --filter "Namespace~Sharpy.Compiler.Tests.Parser"
-
-# Semantic analyzer tests
 dotnet test --filter "FullyQualifiedName~Semantic"
-dotnet test --filter "Namespace~Sharpy.Compiler.Tests.Semantic"
-
-# Code generation tests
 dotnet test --filter "FullyQualifiedName~CodeGen"
-dotnet test --filter "Namespace~Sharpy.Compiler.Tests.CodeGen"
-
-# Integration tests
 dotnet test --filter "FullyQualifiedName~Integration"
-dotnet test --filter "Namespace~Sharpy.Compiler.Tests.Integration"
-
-# Discovery tests
-dotnet test --filter "FullyQualifiedName~Discovery"
-
-# Performance tests
-dotnet test --filter "FullyQualifiedName~Performance"
 ```
 
-### Run Specific Tests
+## Test Patterns
 
-```bash
-# Run a single test by name
-dotnet test --filter "FullyQualifiedName~TestIfStatement"
-dotnet test --filter "FullyQualifiedName~TestFStringInterpolation"
-
-# Run tests matching a pattern
-dotnet test --filter "DisplayName~String"
-dotnet test --filter "DisplayName~Class"
-```
-
-### Debugging Tests
-
-```bash
-# Run with verbose output
-dotnet test --logger "console;verbosity=detailed"
-
-# Run a single test for debugging
-dotnet test --filter "FullyQualifiedName~SpecificTestName" --logger "console;verbosity=detailed"
-```
-
-## Important Things to Note
-
-### Test Categories
-
-**Unit Tests:**
-- Test single components in isolation
-- Fast execution
-- Mock dependencies
-- Examples: `LexerTests`, `TypeMapperTests`
-
-**Integration Tests:**
-- Test entire compilation pipeline
-- End-to-end scenarios
-- Real dependencies
-- Examples: `BasicProgramTests`, `ClassTests`
-
-**Performance Tests:**
-- Measure optimization effectiveness
-- Compare with/without caching
-- Track regression
-- Examples: `CachingTests`
-
-### Testing Best Practices
-
-**CRITICAL: Rules for Writing Tests**
-
-1. **NEVER artificially make tests pass:**
-   ```csharp
-   // ❌ WRONG: Changing expected value to match bug
-   [Fact]
-   public void TestAddition()
-   {
-       var result = Compile("x = 1 + 1");
-       Assert.Equal("x = 1 + 2", result);  // BUG: Should be "1 + 1"
-   }
-
-   // ✅ CORRECT: Fix the compiler bug
-   [Fact]
-   public void TestAddition()
-   {
-       var result = Compile("x = 1 + 1");
-       Assert.Equal("x = 1 + 1", result);  // Fix code generator
-   }
-   ```
-
-2. **Fix the root cause:**
-   - Debug the failing test
-   - Identify the bug in the implementation
-   - Fix the bug in `Sharpy.Compiler`
-   - Verify the test passes
-   - Check for regressions in related tests
-
-3. **Mark tests as skipped ONLY when appropriate:**
-   ```csharp
-   [Fact(Skip = "TODO: Implement tuple unpacking in parser. Not in AST yet. See issue #42")]
-   public void TestTupleUnpacking()
-   {
-       var source = "a, b = 1, 2";
-       var result = Parse(source);
-       // Test implementation...
-   }
-   ```
-
-   **When to skip:**
-   - Feature not yet implemented (planned for future)
-   - Blocked by another issue
-   - Known limitation documented in specs
-
-   **Include:**
-   - Specific reason ("tuple unpacking not in AST")
-   - What needs to happen ("implement in parser")
-   - Issue reference if available ("See issue #42")
-
-4. **Write tests that match Sharpy's semantics:**
-   - Consult language reference in `docs/specs/`
-   - Match Python behavior where applicable
-   - Document intentional differences from Python
-
-### Test Naming Conventions
-
-```csharp
-// Good test names - describe what is being tested
-[Fact]
-public void TestLexer_Tokenizes_SingleLineString()
-public void TestParser_Parses_IfElseStatement()
-public void TestCodeGen_Generates_FStringInterpolation()
-public void TestSemantic_Reports_TypeMismatch()
-
-// Integration tests - describe the scenario
-[Fact]
-public void Compile_BasicProgram_WithFunctions()
-public void Compile_ClassWithMethods()
-public void Compile_ModuleWithImports()
-```
-
-### Common Testing Patterns
-
-**Lexer Tests:**
+**Lexer test:**
 ```csharp
 [Fact]
 public void TestTokenizeIdentifier()
 {
-    var source = "hello_world";
-    var lexer = new Lexer(source);
+    var lexer = new Lexer("hello_world");
     var tokens = lexer.Tokenize();
-
-    Assert.Equal(2, tokens.Count);  // identifier + EOF
     Assert.Equal(TokenType.Identifier, tokens[0].Type);
-    Assert.Equal("hello_world", tokens[0].Value);
 }
 ```
 
-**Parser Tests:**
+**Parser test:**
 ```csharp
 [Fact]
 public void TestParseIfStatement()
 {
-    var source = """
-        if x > 0:
-            print("positive")
-        """;
-    var parser = new Parser(source);
+    var parser = new Parser("if x > 0:\n    print(x)");
     var module = parser.Parse();
-
-    Assert.Single(module.Body);
-    var ifStmt = Assert.IsType<IfStmt>(module.Body[0]);
-    Assert.IsType<Compare>(ifStmt.Test);
-    Assert.Single(ifStmt.Body);
+    Assert.IsType<IfStmt>(module.Body[0]);
 }
 ```
 
-**Semantic Tests:**
+**Integration test:**
 ```csharp
 [Fact]
-public void TestTypeChecker_ReportsTypeMismatch()
+public void CompileAndExecute()
 {
-    var source = """
-        x: int = "not an int"
-        """;
-
-    var analyzer = new SemanticAnalyzer();
-    var ex = Assert.Throws<SemanticException>(() => analyzer.Analyze(source));
-    Assert.Contains("type mismatch", ex.Message.ToLower());
+    var source = "print(1 + 2)";
+    var result = CompileAndExecute(source);  // Uses IntegrationTestBase
+    Assert.Equal("3\n", result.StandardOutput);
 }
 ```
 
-**Code Generation Tests:**
+## CRITICAL Rules
+
+1. **Never change test expectations to match bugs** - Fix the implementation
+2. **Skip with reason if blocked:**
+   ```csharp
+   [Fact(Skip = "TODO: Implement tuple unpacking. See issue #42")]
+   ```
+3. **Test names describe behavior:** `TestParser_Parses_IfElseStatement`
+
+## Integration Test Base
+
+`IntegrationTestBase` compiles Sharpy → C# → IL → executes in-memory:
 ```csharp
-[Fact]
-public void TestGenerateFString()
+public class MyTests : IntegrationTestBase
 {
-    var source = """
-        name = "World"
-        message = f"Hello, {name}!"
-        """;
-
-    var generated = CompileToCS(source);
-    Assert.Contains("$\"Hello, {name}!\"", generated);
+    protected ExecutionResult CompileAndExecute(string source) { ... }
 }
 ```
-
-**Integration Tests:**
-```csharp
-[Fact]
-public void CompileBasicProgram()
-{
-    var source = """
-        def greet(name: str) -> str:
-            return f"Hello, {name}!"
-
-        result = greet("World")
-        print(result)
-        """;
-
-    var assembly = Compile(source);
-    Assert.NotNull(assembly);
-
-    // Optionally: Execute and verify output
-    var output = Execute(assembly);
-    Assert.Equal("Hello, World!", output.Trim());
-}
-```
-
-## Common Development Tasks
-
-### Adding Tests for a New Feature
-
-1. **Start with lexer tests** (if new syntax):
-   ```csharp
-   [Fact]
-   public void TestNewKeyword()
-   {
-       var tokens = Tokenize("newkeyword");
-       Assert.Equal(TokenType.NewKeyword, tokens[0].Type);
-   }
-   ```
-
-2. **Add parser tests** (if new AST nodes):
-   ```csharp
-   [Fact]
-   public void TestParseNewStatement()
-   {
-       var ast = Parse("newkeyword x");
-       Assert.IsType<NewStmt>(ast.Body[0]);
-   }
-   ```
-
-3. **Add semantic tests** (type checking):
-   ```csharp
-   [Fact]
-   public void TestNewStatement_TypeChecking()
-   {
-       var analyzed = Analyze("newkeyword x: int");
-       Assert.Equal(typeof(int), analyzed.GetSymbol("x").Type);
-   }
-   ```
-
-4. **Add code generation tests**:
-   ```csharp
-   [Fact]
-   public void TestGenerateNewStatement()
-   {
-       var cs = CompileToCS("newkeyword x");
-       Assert.Contains("expected C# code", cs);
-   }
-   ```
-
-5. **Add integration test**:
-   ```csharp
-   [Fact]
-   public void CompileProgramWithNewStatement()
-   {
-       var assembly = Compile("newkeyword x");
-       Assert.NotNull(assembly);
-   }
-   ```
-
-### Debugging a Failing Test
-
-1. **Isolate the test:**
-   ```bash
-   dotnet test --filter "FullyQualifiedName~FailingTestName"
-   ```
-
-2. **Add verbose logging:**
-   ```csharp
-   [Fact]
-   public void FailingTest()
-   {
-       var source = "...";
-       Console.WriteLine($"Source: {source}");
-
-       var result = Process(source);
-       Console.WriteLine($"Result: {result}");
-
-       Assert.Equal(expected, result);
-   }
-   ```
-
-3. **Use debugger:**
-   - Set breakpoints in test and implementation
-   - Step through execution
-   - Inspect variables
-
-4. **Check related tests:**
-   ```bash
-   dotnet test --filter "FullyQualifiedName~SimilarTest"
-   ```
-
-### Handling Skipped Tests
-
-**When reviewing skipped tests:**
-1. Read the skip reason
-2. Check if the feature is now implemented
-3. If yes, remove the `Skip` attribute and verify the test passes
-4. If no, leave skipped with clear reason
-
-## Test Data Organization
-
-### Test Files
-- Keep test Sharpy source in strings (use raw strings `@"..."` or triple-quoted `"""..."""`)
-- For large files, consider `TestData/` directory (create if needed)
-- Use consistent formatting in test source code
-
-### Assertions
-- Use specific assertions: `Assert.Equal()`, `Assert.IsType<T>()`, not `Assert.True()`
-- Provide helpful failure messages:
-  ```csharp
-  Assert.Equal(expected, actual, $"Type mismatch for symbol {symbolName}");
-  ```
-
-## Dependencies
-
-- **Sharpy.Compiler** - Component under test
-- **xUnit** - Testing framework
-- **Microsoft.NET.Test.Sdk** - Test SDK
-- **.NET 9.0/10.0** - Runtime
-
-## Related Documentation
-
-- **Compiler Guide:** `.github/instructions/Sharpy.Compiler/HOW_TO_CONTRIBUTE.instructions.md`
-- **Language Reference:** `docs/specs/language_reference.md`
-- **Test Strategy:** (Look at existing tests for patterns)
-
-## Getting Help
-
-- Look at existing tests for patterns
-- Check what similar features do
-- Consult language specs for expected behavior
-- Run related tests to see what already works

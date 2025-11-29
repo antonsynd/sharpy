@@ -1,206 +1,75 @@
-# Contributing to Sharpy.Core.Tests
+# Sharpy.Core.Tests
 
-## Overview
+Standard library tests. Location: `src/Sharpy.Core.Tests/`
 
-**Sharpy.Core.Tests** contains comprehensive tests for the Sharpy standard library, ensuring that all Pythonic APIs behave correctly and match Python semantics where applicable.
+## Test Organization
 
-**Location:** `src/Sharpy.Core.Tests/`
-
-## What's in This Directory
-
-### Test Organization
-
-Tests for different facets of a class should be put into a Partial.*Tests
-directory with multiple files for different aspects. See the abbreviated
-test directory structure below.
-
+Tests for each class facet go in `Partial.*Tests/` directories:
 ```
 Sharpy.Core.Tests/
-├── Partial.ListTests/         # List tests
-│   ├── ListTests.Core.cs      # Basic list operations
-│   ├── ListTests.Mutation.cs  # append, insert, remove, etc.
-│   ├── ListTests.Iteration.cs # Iteration and iteration protocols
-│   ├── ListTests.Slicing.cs   # Slicing operations
-│   └── ListTests.Equality.cs  # Equality and comparison
-├── Partial.SetTests/          # Set tests
-│   ├── SetTests.Core.cs       # Basic set operations
-│   ├── SetTests.Operations.cs # union, intersection, difference
-│   └── SetTests.Iteration.cs  # Set iteration
-├── DictTests.cs               # Dictionary tests
-├── DictViewsTests.cs          # keys(), values(), items()
-├── StrTests.cs                # String wrapper tests
+├── Partial.ListTests/     # List tests (Core, Mutation, Slicing, etc.)
+├── Partial.SetTests/      # Set tests
+├── DictTests.cs           # Dictionary tests
 └── ...
 ```
 
-## How to Build
+## Running Tests
 
 ```bash
-# From repository root
-dotnet build src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj
-
-# From Sharpy.Core.Tests directory
-cd src/Sharpy.Core.Tests
-dotnet build
-```
-
-## How to Run Tests
-
-### Run All Tests
-```bash
-# From repository root
-dotnet test src/Sharpy.Core.Tests
-```
-
-### Run Tests by Component
-
-```bash
-# List tests
 dotnet test --filter "FullyQualifiedName~ListTests"
-
-# Set tests
-dotnet test --filter "FullyQualifiedName~SetTests"
-
-# Dict tests
 dotnet test --filter "FullyQualifiedName~DictTests"
-dotnet test --filter "FullyQualifiedName~DictViewsTests"
-
-# String tests
-dotnet test --filter "FullyQualifiedName~StrTests"
-dotnet test --filter "FullyQualifiedName~StrMethodsTests"
-
-# Builtin function tests
 dotnet test --filter "FullyQualifiedName~RangeTests"
-dotnet test --filter "FullyQualifiedName~EnumerateTests"
-dotnet test --filter "FullyQualifiedName~FilterTests"
-dotnet test --filter "FullyQualifiedName~MapTests"
-dotnet test --filter "FullyQualifiedName~SortedTests"
-
-# Type conversion tests
-dotnet test --filter "FullyQualifiedName~IntConversionTests"
-dotnet test --filter "FullyQualifiedName~DoubleConversionTests"
-dotnet test --filter "FullyQualifiedName~ListConversionTests"
-
-# Type checking tests
-dotnet test --filter "FullyQualifiedName~IsinstanceTests"
-dotnet test --filter "FullyQualifiedName~TypeTests"
 ```
 
-### Run Specific Tests
+## Testing Workflow
 
+**Always verify against Python first:**
 ```bash
-# Run a single test
-dotnet test --filter "FullyQualifiedName~TestListAppend"
-dotnet test --filter "FullyQualifiedName~TestDictGet"
-
-# Run tests matching a pattern
-dotnet test --filter "DisplayName~Append"
-dotnet test --filter "DisplayName~Negative"
-```
-
-## Important Things to Note
-
-### Testing Philosophy
-
-**Match Python behavior wherever possible and appropriate:**
-- Run equivalent code in Python REPL to verify expected behavior
-- Test edge cases that Python handles
-- Document any intentional differences from Python
-
-**Example workflow:**
-```bash
-# 1. Test in Python
 $ python3
 >>> lst = [1, 2, 3]
 >>> lst.pop()
 3
->>> lst
-[1, 2]
+```
 
-# 2. Write equivalent Sharpy.Core test
+Then write the test:
+```csharp
 [Fact]
 public void TestListPop_RemovesLastElement()
 {
     var lst = new List<int> { 1, 2, 3 };
-    Assert.Equal(3, lst.pop());
+    Assert.Equal(3, lst.Pop());
     Assert.Equal(new[] { 1, 2 }, lst);
 }
 ```
 
-### Testing Best Practices
+## Test Edge Cases
 
-**CRITICAL: Rules for Writing Tests**
+Always test:
+- Empty collections: `[]`
+- Single element: `[1]`
+- Negative indices: `lst[-1]`
+- Out of range: `lst[100]` → `IndexError`
 
-1. **NEVER artificially make tests pass:**
-   ```csharp
-   // ❌ WRONG: Changing test to match incorrect behavior
-   [Fact]
-   public void TestDictGet_DefaultValue()
-   {
-       var d = new Dict<string, int> { ["a"] = 1 };
-       Assert.Equal(1, d.get("b", 0));  // BUG: Should return 0 (default)
-   }
-
-   // ✅ CORRECT: Fix the implementation in Sharpy.Core
-   [Fact]
-   public void TestDictGet_DefaultValue()
-   {
-       var d = new Dict<string, int> { ["a"] = 1 };
-       Assert.Equal(0, d.get("b", 0));  // Correct Python behavior
-   }
-   ```
-
-2. **Test against Python behavior:**
-   ```python
-   # Python REPL
-   >>> d = {"a": 1}
-   >>> d.get("b", 0)
-   0
-   ```
-
-   Then write the C# test to match.
-
-3. **Fix the root cause in Sharpy.Core:**
-   - Debug the test failure
-   - Find the bug in `src/Sharpy.Core/`
-   - Fix the implementation
-   - Verify the test passes
-   - Check for regressions
-
-4. **Mark as skipped ONLY if feature not implemented:**
-   ```csharp
-   [Fact(Skip = "TODO: Implement dict.fromkeys() class method - Sharpy 1.x feature")]
-   public void TestDictFromKeys()
-   {
-       var result = Dict<string, int>.fromkeys(new[] { "a", "b" });
-       Assert.Equal(2, result.Count);
-   }
-   ```
-
-### Testing Edge Cases
-
-**Always test:**
-- **Empty collections:** `[]`, `{}`, `set()`
-- **Single element:** `[1]`, `{"a": 1}`
-- **Multiple elements:** `[1, 2, 3]`
-- **Negative indices:** `lst[-1]`, `lst[-2]`
-- **Out of range:** `lst[100]` should throw `IndexError`
-- **Null/None:** Where applicable in .NET context
-- **Type mismatches:** (Caught at compile-time in Sharpy, but test conversions)
-
-**Example:**
 ```csharp
 [Fact]
 public void TestListPop_EmptyList_ThrowsIndexError()
 {
     var lst = new List<int>();
-    Assert.Throws<IndexError>(() => lst.pop());
+    Assert.Throws<IndexError>(() => lst.Pop());
 }
+```
 
-[Fact]
-public void TestListPop_NegativeIndex()
+## CRITICAL Rules
+
+1. **Match Python semantics** - Run `python3 -c "..."` to verify
+2. **Never change tests to match bugs** - Fix `src/Sharpy.Core/` instead
+3. **Skip with reason if feature missing:**
+   ```csharp
+   [Fact(Skip = "TODO: Implement dict.fromkeys()")]
+   ```
 {
     var lst = new List<int> { 1, 2, 3 };
-    Assert.Equal(2, lst.pop(-2));  // Second to last
+    Assert.Equal(2, lst.Pop(-2));  // Second to last
     Assert.Equal(new[] { 1, 3 }, lst);
 }
 ```
@@ -213,7 +82,7 @@ public void TestListPop_NegativeIndex()
 public void TestListAppend()
 {
     var lst = new List<int> { 1, 2 };
-    lst.append(3);
+    lst.Append(3);
     Assert.Equal(new[] { 1, 2, 3 }, lst);
 }
 
@@ -221,7 +90,7 @@ public void TestListAppend()
 public void TestListExtend()
 {
     var lst = new List<int> { 1, 2 };
-    lst.extend(new[] { 3, 4 });
+    lst.Extend(new[] { 3, 4 });
     Assert.Equal(new[] { 1, 2, 3, 4 }, lst);
 }
 ```
@@ -254,7 +123,7 @@ public void TestListSlice()
 [Fact]
 public void TestRange()
 {
-    var r = range(5);
+    var r = Range(5);
     Assert.Equal(new[] { 0, 1, 2, 3, 4 }, r);
 }
 
@@ -262,7 +131,7 @@ public void TestRange()
 public void TestEnumerate()
 {
     var items = new List<string> { "a", "b", "c" };
-    var enumerated = enumerate(items).ToList();
+    var enumerated = Enumerate(items).ToList();
 
     Assert.Equal(0, enumerated[0].Index);
     Assert.Equal("a", enumerated[0].Item);
@@ -277,7 +146,7 @@ public void TestEnumerate()
 public void TestListIndex_NotFound_ThrowsValueError()
 {
     var lst = new List<int> { 1, 2, 3 };
-    Assert.Throws<ValueError>(() => lst.index(99));
+    Assert.Throws<ValueError>(() => lst.Index(99));
 }
 
 [Fact]
@@ -306,7 +175,7 @@ public void TestDictKeyError()
    public void TestListClear()
    {
        var lst = new List<int> { 1, 2, 3 };
-       lst.clear();
+       lst.Clear();
        Assert.Empty(lst);
    }
    ```
@@ -332,19 +201,19 @@ public void TestDictKeyError()
    [Fact]
    public void TestAll_AllTrue_ReturnsTrue()
    {
-       Assert.True(all(new[] { true, true, true }));
+       Assert.True(All(new[] { true, true, true }));
    }
 
    [Fact]
    public void TestAll_OneFalse_ReturnsFalse()
    {
-       Assert.False(all(new[] { true, false, true }));
+       Assert.False(All(new[] { true, false, true }));
    }
 
    [Fact]
    public void TestAll_Empty_ReturnsTrue()
    {
-       Assert.True(all(Array.Empty<bool>()));
+       Assert.True(All(Array.Empty<bool>()));
    }
    ```
 
@@ -365,7 +234,7 @@ public void TestDictKeyError()
 3. **Compare with test:**
    ```csharp
    var lst = new List<int> { 1, 2, 3 };
-   Assert.Equal(3, lst.pop());  // Should match Python where possible and appropriate
+   Assert.Equal(3, lst.Pop());  // Should match Python where possible and appropriate
    ```
 
 4. **Debug the implementation** in `src/Sharpy.Core/`
@@ -379,7 +248,7 @@ public void TestDictKeyError()
 public void TestListReverse_Empty()
 {
     var lst = new List<int>();
-    lst.reverse();
+    lst.Reverse();
     Assert.Empty(lst);
 }
 
@@ -388,7 +257,7 @@ public void TestListReverse_Empty()
 public void TestListReverse_Single()
 {
     var lst = new List<int> { 42 };
-    lst.reverse();
+    lst.Reverse();
     Assert.Equal(new[] { 42 }, lst);
 }
 
@@ -397,7 +266,7 @@ public void TestListReverse_Single()
 public void TestListReverse_Multiple()
 {
     var lst = new List<int> { 1, 2, 3, 4, 5 };
-    lst.reverse();
+    lst.Reverse();
     Assert.Equal(new[] { 5, 4, 3, 2, 1 }, lst);
 }
 ```
@@ -422,7 +291,7 @@ var lst = new List<int> { 42, 7, 99, 13 };
 [InlineData(new int[] { }, 0)]
 public void TestMax(int[] values, int expected)
 {
-    Assert.Equal(expected, max(values));
+    Assert.Equal(expected, Max(values));
 }
 ```
 
