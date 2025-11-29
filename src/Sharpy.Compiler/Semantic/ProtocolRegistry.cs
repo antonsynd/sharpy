@@ -252,14 +252,10 @@ public static class ProtocolRegistry
     /// lookup, use <see cref="GetAllProtocols"/> and filter by interface.
     /// </remarks>
     public static string? GetDunderForInterface(string interfaceName)
-    {
-        foreach (var protocol in _protocols.Values)
-        {
-            if (protocol.SharpyCoreInterface == interfaceName)
-                return protocol.DunderName;
-        }
-        return null;
-    }
+        => _protocols.Values
+            .Where(p => p.SharpyCoreInterface == interfaceName)
+            .Select(p => p.DunderName)
+            .FirstOrDefault();
 
     /// <summary>
     /// Checks if the given method name is any registered dunder (protocol or operator).
