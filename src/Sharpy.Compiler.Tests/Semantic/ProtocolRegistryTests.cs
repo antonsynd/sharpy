@@ -317,7 +317,7 @@ public class ProtocolRegistryTests
     [InlineData("ISized", "__len__")]
     [InlineData("IContainer", "__contains__")]
     [InlineData("ISequence", "__getitem__")]
-    [InlineData("IMutableSequence", "__setitem__")]  // Returns first match
+    [InlineData("IMutableSequence", "__setitem__")]  // Note: __delitem__ also maps here; returns first match
     [InlineData("IIterable", "__iter__")]
     [InlineData("IStrConvertible", "__str__")]
     [InlineData("IRepresentable", "__repr__")]

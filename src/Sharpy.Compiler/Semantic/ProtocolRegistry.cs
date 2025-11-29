@@ -243,9 +243,14 @@ public static class ProtocolRegistry
     public static int Count => _protocols.Count;
 
     /// <summary>
-    /// Reverse lookup: Gets the dunder name for a given Sharpy.Core interface name.
+    /// Reverse lookup: Gets a dunder name for a given Sharpy.Core interface name.
     /// Returns null if no protocol is associated with the interface.
     /// </summary>
+    /// <remarks>
+    /// If multiple protocols map to the same interface (e.g., __setitem__ and __delitem__ 
+    /// both map to IMutableSequence), this returns the first match found. For exhaustive 
+    /// lookup, use <see cref="GetAllProtocols"/> and filter by interface.
+    /// </remarks>
     public static string? GetDunderForInterface(string interfaceName)
     {
         foreach (var protocol in _protocols.Values)
