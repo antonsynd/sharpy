@@ -12,6 +12,15 @@ public class BuiltinRegistry
     private readonly Dictionary<string, List<FunctionSymbol>> _functions = new();
     private readonly CachedModuleDiscovery _discovery;
 
+    /// <summary>
+    /// Primitive types to register from PrimitiveCatalog.
+    /// This maintains backward compatibility with the original hard-coded type list.
+    /// </summary>
+    private static readonly HashSet<string> RegisteredPrimitiveNames = new()
+    {
+        "int", "long", "float", "double", "decimal", "bool", "str"
+    };
+
     public BuiltinRegistry()
     {
         _discovery = new CachedModuleDiscovery();
@@ -20,13 +29,10 @@ public class BuiltinRegistry
 
     private void LoadBuiltins()
     {
-        // Register all primitives from PrimitiveCatalog
+        // Register primitives from PrimitiveCatalog using the defined set of names
         foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
         {
-            // Skip aliases (registered separately if needed)
-            if (name != info.SharpyName) continue;
-
-            // Skip void - it's handled specially as "None" below
+            if (!RegisteredPrimitiveNames.Contains(name)) continue;
             if (info.ClrType == null) continue;
 
             var kind = info.ClrType.IsValueType ? TypeKind.Struct : TypeKind.Class;
