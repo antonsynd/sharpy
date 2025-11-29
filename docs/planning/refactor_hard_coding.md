@@ -100,11 +100,15 @@ This is an architectural refactor, not a behavior change project: the end state 
   - `TypeSymbol.OperatorMethods` - caching of validated operator methods
   - `_clrOperatorCache` - CLR operator discovery via reflection
   - `TypeChecker` integration for all operator expressions
+- **Primitive Catalog** - exhaustive registry of primitive types with promotion/conversion rules
+- **Protocol Registry** - centralized mapping of non-operator dunders to Sharpy.Core interfaces
+  - `ProtocolRegistry.cs` - central registry with all v0.5 protocol dunders
+  - `ProtocolInfo` record - describes each protocol's interface, method, and CLR mappings
+  - Comprehensive tests in `ProtocolRegistryTests.cs`
 
 ### In Progress 🔄
 
-- **Primitive Catalog** - consolidating scattered primitive type checks
-- **Protocol Registry** - mapping non-operator dunders to Sharpy.Core interfaces
+- (None currently - Phase 2 completed)
 
 ### Not Started ⏳
 
@@ -1156,7 +1160,7 @@ Location: `src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs`
 
 Create file at `src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs`:
 
-- [ ] **2.1.1** Define `ProtocolKind` enum:
+- [x] **2.1.1** Define `ProtocolKind` enum:
   ```csharp
   namespace Sharpy.Compiler.Semantic;
 
@@ -1177,7 +1181,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs`:
   }
   ```
 
-- [ ] **2.1.2** Define `ProtocolInfo` record:
+- [x] **2.1.2** Define `ProtocolInfo` record:
   ```csharp
   /// <summary>
   /// Describes a protocol dunder method and its mappings.
@@ -1200,7 +1204,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs`:
   );
   ```
 
-- [ ] **2.1.3** Create `ProtocolRegistry` static class skeleton:
+- [x] **2.1.3** Create `ProtocolRegistry` static class skeleton:
   ```csharp
   /// <summary>
   /// Central registry of protocol dunder methods and their mappings to Sharpy.Core interfaces.
@@ -1234,7 +1238,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs`:
 
 Add registrations inside `RegisterAllProtocols()`:
 
-- [ ] **2.2.1** Register lifecycle protocols:
+- [x] **2.2.1** Register lifecycle protocols:
   ```csharp
   // Lifecycle - constructor (special handling, no interface)
   Register(new ProtocolInfo(
@@ -1248,7 +1252,7 @@ Add registrations inside `RegisterAllProtocols()`:
   ));
   ```
 
-- [ ] **2.2.2** Register container protocols:
+- [x] **2.2.2** Register container protocols:
   ```csharp
   // Container - length
   // NOTE: ExpectedReturnType is "int" for Sharpy source compatibility, but
@@ -1298,7 +1302,7 @@ Add registrations inside `RegisterAllProtocols()`:
   ));
   ```
 
-- [ ] **2.2.3** Register iterator protocols:
+- [x] **2.2.3** Register iterator protocols:
   ```csharp
   // Iterator - get iterator
   Register(new ProtocolInfo(
@@ -1323,7 +1327,7 @@ Add registrations inside `RegisterAllProtocols()`:
   ));
   ```
 
-- [ ] **2.2.4** Register representation protocols:
+- [x] **2.2.4** Register representation protocols:
   ```csharp
   // Representation - string conversion
   Register(new ProtocolInfo(
@@ -1351,7 +1355,7 @@ Add registrations inside `RegisterAllProtocols()`:
   ));
   ```
 
-- [ ] **2.2.5** Register hashing protocol:
+- [x] **2.2.5** Register hashing protocol:
   ```csharp
   // Hashing
   Register(new ProtocolInfo(
@@ -1365,7 +1369,7 @@ Add registrations inside `RegisterAllProtocols()`:
   ));
   ```
 
-- [ ] **2.2.6** Register conversion protocols:
+- [x] **2.2.6** Register conversion protocols:
   ```csharp
   // Conversion - boolean
   Register(new ProtocolInfo(
@@ -1387,7 +1391,7 @@ Add registrations inside `RegisterAllProtocols()`:
 
 Add these public methods to `ProtocolRegistry`:
 
-- [ ] **2.3.1** Basic lookups:
+- [x] **2.3.1** Basic lookups:
   ```csharp
   /// <summary>Returns true if the method name is a registered protocol dunder.</summary>
   public static bool IsProtocolDunder(string methodName)
@@ -1402,7 +1406,7 @@ Add these public methods to `ProtocolRegistry`:
       => _protocols.Values;
   ```
 
-- [ ] **2.3.2** Reverse lookup (interface → dunder):
+- [x] **2.3.2** Reverse lookup (interface → dunder):
   ```csharp
   /// <summary>Returns the dunder name for a Sharpy.Core interface, or null.</summary>
   public static string? GetDunderForInterface(string interfaceName)
@@ -1416,7 +1420,7 @@ Add these public methods to `ProtocolRegistry`:
   }
   ```
 
-- [ ] **2.3.3** Combined check with OperatorSignatureValidator:
+- [x] **2.3.3** Combined check with OperatorSignatureValidator:
   ```csharp
   /// <summary>
   /// Returns true if the method name is any dunder (protocol or operator).
@@ -1435,7 +1439,7 @@ Add these public methods to `ProtocolRegistry`:
   }
   ```
 
-- [ ] **2.3.4** Signature expectation lookup:
+- [x] **2.3.4** Signature expectation lookup:
   ```csharp
   /// <summary>
   /// Returns the expected signature for a protocol dunder.
@@ -1459,7 +1463,7 @@ Add these public methods to `ProtocolRegistry`:
 
 Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolRegistryTests.cs`:
 
-- [ ] **2.4.1** Test file setup:
+- [x] **2.4.1** Test file setup:
   ```csharp
   using Xunit;
   using FluentAssertions;
@@ -1472,7 +1476,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolRegistryTests.cs`:
   }
   ```
 
-- [ ] **2.4.2** Test all protocols are registered:
+- [x] **2.4.2** Test all protocols are registered:
   ```csharp
   [Theory]
   [InlineData("__init__", ProtocolKind.Lifecycle)]
@@ -1494,7 +1498,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolRegistryTests.cs`:
   }
   ```
 
-- [ ] **2.4.3** Test `IsProtocolDunder`:
+- [x] **2.4.3** Test `IsProtocolDunder`:
   ```csharp
   [Fact]
   public void IsProtocolDunder_ReturnsTrueForRegisteredProtocols()
@@ -1521,7 +1525,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolRegistryTests.cs`:
   }
   ```
 
-- [ ] **2.4.4** Test signature expectations:
+- [x] **2.4.4** Test signature expectations:
   ```csharp
   [Theory]
   [InlineData("__len__", 1, "int")]
@@ -1538,7 +1542,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolRegistryTests.cs`:
   }
   ```
 
-- [ ] **2.4.5** Test `IsAnyDunder` combines both registries:
+- [x] **2.4.5** Test `IsAnyDunder` combines both registries:
   ```csharp
   [Fact]
   public void IsAnyDunder_CombinesProtocolAndOperatorDunders()
