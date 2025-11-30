@@ -349,6 +349,28 @@ public class NameResolver
                 _logger.LogDebug($"Registered operator method: {owningType.Name}.{method.Name}");
             }
         }
+        // Validate and register protocol dunder methods
+        else if (ProtocolSignatureValidator.IsProtocolDunder(method.Name))
+        {
+            var validationErrors = ProtocolSignatureValidator.ValidateDunderSignature(method, owningType);
+
+            if (validationErrors.Count > 0)
+            {
+                // Add all validation errors to the errors list
+                _errors.AddRange(validationErrors);
+            }
+            else
+            {
+                // Signature is valid, add to protocol methods cache
+                if (!owningType.ProtocolMethods.ContainsKey(method.Name))
+                {
+                    owningType.ProtocolMethods[method.Name] = new List<FunctionSymbol>();
+                }
+                owningType.ProtocolMethods[method.Name].Add(funcSymbol);
+
+                _logger.LogDebug($"Registered protocol method: {owningType.Name}.{method.Name}");
+            }
+        }
     }
 
     private void ResolveFieldDeclaration(VariableDeclaration field, TypeSymbol owningType)

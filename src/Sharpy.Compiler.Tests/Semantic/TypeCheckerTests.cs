@@ -32,6 +32,29 @@ public class TypeCheckerTests
         return (module, symbolTable, semanticInfo, typeChecker);
     }
 
+    private (Module, SymbolTable, SemanticInfo, TypeChecker, NameResolver) CompileAndCheckWithNameResolver(string source)
+    {
+        var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
+        var tokens = lexer.TokenizeAll();
+        var parser = new global::Sharpy.Compiler.Parser.Parser(tokens, NullLogger.Instance);
+        var module = parser.ParseModule();
+
+        var builtinRegistry = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtinRegistry);
+        var semanticInfo = new SemanticInfo();
+
+        // Name resolution first
+        var nameResolver = new NameResolver(symbolTable, NullLogger.Instance);
+        nameResolver.ResolveDeclarations(module);
+        nameResolver.ResolveInheritance(); // Second pass: resolve inheritance
+
+        // Type checking
+        var typeResolver = new TypeResolver(symbolTable, semanticInfo, NullLogger.Instance);
+        var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, NullLogger.Instance);
+
+        return (module, symbolTable, semanticInfo, typeChecker, nameResolver);
+    }
+
     [Fact]
     public void ChecksSimpleVariableDeclaration()
     {
@@ -538,12 +561,14 @@ class Person:
     def __init__(self, name: str) -> int:
         self.name = name
 ";
-        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        // Protocol signature validation now happens in NameResolver, not TypeChecker
+        var (module, _, _, typeChecker, nameResolver) = CompileAndCheckWithNameResolver(source);
         typeChecker.CheckModule(module);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors[0].Message.Should().Contain("__init__");
-        typeChecker.Errors[0].Message.Should().Contain("cannot have return type");
+        // The error is raised by NameResolver during protocol signature validation
+        nameResolver.Errors.Should().NotBeEmpty();
+        nameResolver.Errors[0].Message.Should().Contain("__init__");
+        nameResolver.Errors[0].Message.Should().Contain("must return");
     }
 
     [Fact]
@@ -556,11 +581,13 @@ class Person:
     def __init__(self, name: str) -> str:
         self.name = name
 ";
-        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        // Protocol signature validation now happens in NameResolver, not TypeChecker
+        var (module, _, _, typeChecker, nameResolver) = CompileAndCheckWithNameResolver(source);
         typeChecker.CheckModule(module);
 
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors[0].Message.Should().Contain("__init__");
+        // The error is raised by NameResolver during protocol signature validation
+        nameResolver.Errors.Should().NotBeEmpty();
+        nameResolver.Errors[0].Message.Should().Contain("__init__");
     }
 
     [Fact]

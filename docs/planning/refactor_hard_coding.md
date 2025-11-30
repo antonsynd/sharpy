@@ -108,15 +108,23 @@ This is an architectural refactor, not a behavior change project: the end state 
 
 ### In Progress 🔄
 
-- (None currently - Phase 2 completed)
+- (None currently - Phase 3 completed)
 
 ### Not Started ⏳
 
-- **Protocol Signature Validator** - signature validation for non-operator dunders
 - **Protocol Validator** - TypeChecker integration for protocol conformance
 - **RoslynEmitter consolidation** - removing hard-coded dunder mappings in codegen
 - **Type Mapper consolidation** - merging duplicate type mapping logic
 - **CLR Member Cache extraction** - reusable reflection caching service
+
+### Completed ✅ (Additional)
+
+- **Protocol Signature Validator** - signature validation for non-operator dunders
+  - `ProtocolSignatureValidator.cs` - validates protocol dunder signatures at name resolution time
+  - `TypeSymbol.ProtocolMethods` - caching of validated protocol methods (like `OperatorMethods`)
+  - `NameResolver.cs` integration - validates and registers protocol dunders during name resolution
+  - `TypeChecker.cs` simplified - removed hard-coded `__init__` return type validation
+  - Comprehensive tests in `ProtocolSignatureValidatorTests.cs` (55 tests)
 
 ---
 
@@ -1590,7 +1598,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolRegistryTests.cs`:
 
 Create file at `src/Sharpy.Compiler/Semantic/ProtocolSignatureValidator.cs`:
 
-- [ ] **3.1.1** File skeleton:
+- [x] **3.1.1** File skeleton:
   ```csharp
   using Sharpy.Compiler.Parser.Ast;
 
@@ -1634,7 +1642,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ProtocolSignatureValidator.cs`:
   }
   ```
 
-- [ ] **3.1.2** Implement `ValidateParameterCount()`:
+- [x] **3.1.2** Implement `ValidateParameterCount()`:
   ```csharp
   private static void ValidateParameterCount(
       FunctionDef funcDef,
@@ -1668,7 +1676,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ProtocolSignatureValidator.cs`:
   }
   ```
 
-- [ ] **3.1.3** Implement `ValidateReturnType()`:
+- [x] **3.1.3** Implement `ValidateReturnType()`:
   ```csharp
   private static void ValidateReturnType(
       FunctionDef funcDef,
@@ -1719,7 +1727,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ProtocolSignatureValidator.cs`:
   }
   ```
 
-- [ ] **3.1.4** Implement `ValidateSelfParameter()`:
+- [x] **3.1.4** Implement `ValidateSelfParameter()`:
   ```csharp
   private static void ValidateSelfParameter(
       FunctionDef funcDef,
@@ -1756,7 +1764,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ProtocolSignatureValidator.cs`:
 
 Modify `src/Sharpy.Compiler/Semantic/Symbol.cs`:
 
-- [ ] **3.2.1** Add `ProtocolMethods` dictionary to `TypeSymbol`:
+- [x] **3.2.1** Add `ProtocolMethods` dictionary to `TypeSymbol`:
 
   **Find** (around line 48-70):
   ```csharp
@@ -1788,7 +1796,7 @@ Modify `src/Sharpy.Compiler/Semantic/Symbol.cs`:
 
 Modify `src/Sharpy.Compiler/Semantic/NameResolver.cs`:
 
-- [ ] **3.3.1** Add protocol validation after operator validation:
+- [x] **3.3.1** Add protocol validation after operator validation:
 
   **Find** (around lines 330-349):
   ```csharp
@@ -1850,7 +1858,7 @@ Modify `src/Sharpy.Compiler/Semantic/NameResolver.cs`:
 
 Modify `src/Sharpy.Compiler/Semantic/TypeChecker.cs`:
 
-- [ ] **3.4.1** Remove or simplify `__init__` special case:
+- [x] **3.4.1** Remove or simplify `__init__` special case:
 
   **Find** (around lines 168-180):
   ```csharp
@@ -1885,7 +1893,7 @@ Modify `src/Sharpy.Compiler/Semantic/TypeChecker.cs`:
 
 Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolSignatureValidatorTests.cs`:
 
-- [ ] **3.5.1** Test file setup (follow pattern from `OperatorSignatureValidatorTests.cs`):
+- [x] **3.5.1** Test file setup (follow pattern from `OperatorSignatureValidatorTests.cs`):
   ```csharp
   using Xunit;
   using FluentAssertions;
@@ -1942,7 +1950,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolSignatureValidatorTes
   }
   ```
 
-- [ ] **3.5.2** Test `IsProtocolDunder`:
+- [x] **3.5.2** Test `IsProtocolDunder`:
   ```csharp
   [Theory]
   [InlineData("__len__", true)]
@@ -1963,7 +1971,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolSignatureValidatorTes
   > operators are operators first, protocols second. The test confirms this separation.
   ```
 
-- [ ] **3.5.3** Test valid signatures:
+- [x] **3.5.3** Test valid signatures:
   ```csharp
   [Fact]
   public void ValidateDunderSignature_AcceptsValidLen()
@@ -1999,7 +2007,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolSignatureValidatorTes
   }
   ```
 
-- [ ] **3.5.4** Test invalid parameter counts:
+- [x] **3.5.4** Test invalid parameter counts:
   ```csharp
   [Fact]
   public void ValidateDunderSignature_RejectsLenWithTwoParams()
@@ -2026,7 +2034,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolSignatureValidatorTes
   }
   ```
 
-- [ ] **3.5.5** Test invalid return types:
+- [x] **3.5.5** Test invalid return types:
   ```csharp
   [Fact]
   public void ValidateDunderSignature_RejectsLenReturningString()
@@ -2053,7 +2061,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolSignatureValidatorTes
   }
   ```
 
-- [ ] **3.5.6** Test `__init__` special case:
+- [x] **3.5.6** Test `__init__` special case:
   ```csharp
   [Fact]
   public void ValidateDunderSignature_AllowsInitWithAnyParamCount()
