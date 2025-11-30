@@ -92,8 +92,7 @@ public static class ProtocolSignatureValidator
         var expectedNormalized = protocol.ExpectedReturnType == "None" ? "void" : protocol.ExpectedReturnType;
         var actualNormalized = actualReturnType == "None" ? "void" : actualReturnType;
 
-        if (!string.Equals(actualNormalized, expectedNormalized, StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(actualReturnType, protocol.ExpectedReturnType, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(actualNormalized, expectedNormalized, StringComparison.OrdinalIgnoreCase))
         {
             errors.Add(new SemanticError(
                 $"Protocol method '{protocol.DunderName}' on '{owningType.Name}' must return " +
@@ -106,7 +105,9 @@ public static class ProtocolSignatureValidator
         }
     }
 
-    /// <summary>Helper to get string name from TypeAnnotation.</summary>
+    /// <summary>
+    /// Extracts the string representation of a TypeAnnotation, handling generic types with type arguments.
+    /// </summary>
     private static string GetTypeAnnotationName(TypeAnnotation? typeAnnotation)
     {
         if (typeAnnotation == null)
@@ -126,12 +127,11 @@ public static class ProtocolSignatureValidator
         TypeSymbol owningType,
         List<SemanticError> errors)
     {
-        // All protocol dunders must have 'self' as first parameter (except static, but protocols aren't static)
+        // Check if there are any parameters to validate
         if (funcDef.Parameters.Count == 0)
         {
-            // Don't add an error here if parameter count was already validated - 
-            // this would be a duplicate error. The parameter count error is more specific.
-            // Only add error if expected count is -1 (variable) but we have 0 params
+            // For protocols with fixed param count, the parameter count error is already raised.
+            // Only add a 'self' error for variable-param protocols (like __init__) with 0 params.
             if (protocol.ExpectedParamCount == -1)
             {
                 errors.Add(new SemanticError(
@@ -142,6 +142,7 @@ public static class ProtocolSignatureValidator
             return;
         }
 
+        // Validate that the first parameter is named 'self'
         if (funcDef.Parameters[0].Name != "self")
         {
             errors.Add(new SemanticError(
