@@ -4,9 +4,11 @@
 
 Features are marked with their target version:
 
-- **[v0.5]** - P0: Core features required for C# interop and Unity development
-- **[v1.0]** - P1: Enhanced features and Pythonic additions
-- **[v1.5+]** - P2: Advanced features and language extensions
+- **[v0.5]** - P0: Core features required for C# interop and Unity development (C# 9.0 target)
+- **[v1.0]** - P1: Enhanced features and Pythonic additions (C# 11 target)
+- **[v1.5+]** - P2: Advanced features and language extensions (C# 13+ target)
+
+See [C# Transpilation Target](#c-transpilation-target) for detailed mapping of Sharpy features to C# language versions.
 
 ### Implementation Requirements for v0.5
 
@@ -208,6 +210,71 @@ These principles are ordered in descending order of importance and should guide 
 ### Philosophy
 
 Sharpy believes that static typing is key to writing safe, predictable, and performant programs, at both the development stage and at runtime.
+
+### C# Transpilation Target
+
+Sharpy transpiles to **C# 9.0** as its baseline target, ensuring broad compatibility with .NET 5.0+ runtimes while providing access to modern C# language features. This section documents how Sharpy features map to C# versions and which features require higher C# versions.
+
+#### C# 9.0 Features Used by Sharpy v0.5
+
+The following C# 9.0 features are leveraged by the Sharpy compiler for v0.5:
+
+| C# 9.0 Feature | Sharpy Usage |
+|----------------|--------------|
+| Top-level statements | Module-level code without explicit `main()` |
+| Init-only properties | Immutable field declarations with `readonly` |
+| Records | Future support for `@record` decorator (v1.0) |
+| Pattern matching enhancements | `isinstance()` type checking and type narrowing |
+| Covariant returns | Method overrides with more specific return types |
+| Target-typed `new` expressions | Type inference for constructor calls |
+| Null-coalescing assignment | `??=` operator support |
+
+#### Features Requiring C# 10+ (Deferred to v1.0+)
+
+The following Sharpy features planned for v1.0 or later require C# 10 or higher:
+
+| Future Feature | Required C# Version | C# Feature Used |
+|----------------|---------------------|-----------------|
+| Global imports | C# 10 | Global using directives |
+| File-scoped namespaces | C# 10 | File-scoped namespace declarations |
+| Record structs | C# 10 | `record struct` keyword |
+| Raw string literals | C# 11 | `"""..."""` syntax |
+| Required members | C# 11 | `required` modifier |
+| List patterns in match | C# 11 | List pattern matching |
+| Primary constructors | C# 12 | `class Name(params)` syntax |
+| Collection expressions | C# 12 | `[1, 2, 3]` syntax |
+
+#### Features Requiring C# 13+ (Deferred to v1.5+)
+
+Advanced features planned for v1.5 or later may require C# 13 or higher:
+
+| Future Feature | Required C# Version | C# Feature Used |
+|----------------|---------------------|-----------------|
+| `params` with Span<T> | C# 13 | Extended `params` collections |
+| Partial properties | C# 13 | `partial` modifier on properties |
+| Lock type integration | C# 13 | `System.Threading.Lock` |
+
+#### Features Requiring C# 14 (Future Consideration)
+
+Some advanced extensibility features under consideration for future Sharpy versions would require C# 14:
+
+| Future Feature | Required C# Version | C# Feature Used |
+|----------------|---------------------|-----------------|
+| Extension members | C# 14 | Extension properties and methods |
+| Null-conditional assignment | C# 14 | `?.` on left-hand side |
+| Field keyword for properties | C# 14 | `field` contextual keyword |
+| User-defined compound assignment | C# 14 | Custom `+=`, `-=` operators |
+
+#### Compatibility Notes
+
+- **v0.5**: All features compile to C# 9.0 compatible code, ensuring compatibility with .NET 5.0, 6.0, 7.0, 8.0, 9.0, and 10.0 runtimes.
+- **v1.0**: Will require C# 11 as the minimum target for full feature support.
+- **v1.5+**: May require C# 13 or higher for advanced features.
+
+The Sharpy compiler will automatically generate appropriate C# code based on the target framework specified in the project configuration.
+
+---
+
 ## Keywords and Operators **[v0.5]**
 
 ### Hard Keywords
