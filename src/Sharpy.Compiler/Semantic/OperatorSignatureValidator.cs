@@ -126,7 +126,7 @@ public class OperatorSignatureValidator
             if (!IsTypeAnnotationBool(returnType))
             {
                 errors.Add(new SemanticError(
-                    $"Comparison operator method '{methodName}' on '{owningTypeName}' must return 'bool', got '{GetTypeAnnotationName(returnType)}'",
+                    $"Comparison operator method '{methodName}' on '{owningTypeName}' must return 'bool', got '{TypeAnnotationHelper.GetName(returnType)}'",
                     funcDef.LineStart,
                     funcDef.ColumnStart));
             }
@@ -162,20 +162,5 @@ public class OperatorSignatureValidator
     private static bool IsTypeAnnotationVoid(TypeAnnotation typeAnnotation)
     {
         return typeAnnotation.Name == "None" && typeAnnotation.TypeArguments.Count == 0;
-    }
-
-    /// <summary>
-    /// Helper to get a readable name from a type annotation
-    /// </summary>
-    private static string GetTypeAnnotationName(TypeAnnotation typeAnnotation)
-    {
-        if (typeAnnotation.TypeArguments.Count == 0)
-        {
-            return typeAnnotation.IsNullable ? $"{typeAnnotation.Name}?" : typeAnnotation.Name;
-        }
-
-        var typeArgs = string.Join(", ", typeAnnotation.TypeArguments.Select(GetTypeAnnotationName));
-        var baseName = $"{typeAnnotation.Name}[{typeArgs}]";
-        return typeAnnotation.IsNullable ? $"{baseName}?" : baseName;
     }
 }

@@ -155,6 +155,19 @@ public class ProtocolSignatureValidatorTests
     }
 
     [Fact]
+    public void ValidateDunderSignature_RejectsInitWithZeroParams()
+    {
+        // __init__ with 0 parameters should produce a 'must have self' error
+        var funcDef = CreateProtocolMethod("__init__", 0);
+        var typeSymbol = CreateTypeSymbol();
+
+        var errors = ProtocolSignatureValidator.ValidateDunderSignature(funcDef, typeSymbol);
+
+        errors.Should().ContainSingle();
+        errors[0].Message.Should().Contain("self");
+    }
+
+    [Fact]
     public void ValidateDunderSignature_RejectsWrongParamCountForLen()
     {
         // __len__ must have exactly 1 parameter (self)

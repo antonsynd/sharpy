@@ -53,11 +53,15 @@ public static class ProtocolSignatureValidator
 
         if (actualCount != expectedCount)
         {
-            var paramDescription = expectedCount switch
+            // Provide context-specific parameter descriptions based on the protocol
+            var paramDescription = (expectedCount, protocol.DunderName) switch
             {
-                1 => "(self)",
-                2 => "(self, other)",
-                3 => "(self, key, value)",
+                (1, _) => "(self)",
+                (2, "__contains__") => "(self, item)",
+                (2, "__getitem__" or "__delitem__") => "(self, index)",
+                (2, _) => "(self, other)",
+                (3, "__setitem__") => "(self, index, value)",
+                (3, _) => "(self, key, value)",
                 _ => $"({expectedCount} parameters)"
             };
 
@@ -86,7 +90,7 @@ public static class ProtocolSignatureValidator
         if (funcDef.ReturnType == null)
             return;
 
-        var actualReturnType = GetTypeAnnotationName(funcDef.ReturnType);
+        var actualReturnType = TypeAnnotationHelper.GetName(funcDef.ReturnType);
 
         // Normalize: "None" and "void" are equivalent
         var expectedNormalized = protocol.ExpectedReturnType == "None" ? "void" : protocol.ExpectedReturnType;
@@ -103,22 +107,6 @@ public static class ProtocolSignatureValidator
                 funcDef.LineStart,
                 funcDef.ColumnStart));
         }
-    }
-
-    /// <summary>
-    /// Extracts the string representation of a TypeAnnotation, handling generic types with type arguments.
-    /// </summary>
-    private static string GetTypeAnnotationName(TypeAnnotation? typeAnnotation)
-    {
-        if (typeAnnotation == null)
-            return "void";
-        // Handle generic types like list[int]
-        if (typeAnnotation.TypeArguments.Count > 0)
-        {
-            var args = string.Join(", ", typeAnnotation.TypeArguments.Select(GetTypeAnnotationName));
-            return $"{typeAnnotation.Name}[{args}]";
-        }
-        return typeAnnotation.Name;
     }
 
     private static void ValidateSelfParameter(
