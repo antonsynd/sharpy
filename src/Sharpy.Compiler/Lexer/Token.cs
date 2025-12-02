@@ -20,7 +20,7 @@ public enum TokenType
     False,
     None,
 
-    // Identifiers and Keywords (v0.5)
+    // Identifiers and Keywords (v0.1)
     Identifier,
 
     // Keywords - Control Flow

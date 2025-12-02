@@ -324,23 +324,23 @@ public readonly partial struct Str
     /// Perform a string formatting operation. The string on which this method is called can contain literal text
     /// or replacement fields delimited by braces {}. Each replacement field contains either the numeric index of a
     /// positional argument, or the name of a keyword argument.
-    /// TODO: Full implementation requires Python format string parser - planned for v1.0
+    /// TODO: Full implementation requires Python format string parser - planned for v0.6
     /// </summary>
     public Str Format(params object[] args)
     {
         // TODO: Implement full Python format string parsing
-        throw new NotImplementedException("str.format() requires full format string parser - planned for v1.0");
+        throw new NotImplementedException("str.format() requires full format string parser - planned for v0.6");
     }
 
     /// <summary>
     /// Similar to Format(**mapping), except that mapping is used directly and not copied to a dict.
     /// This is useful if for example mapping is a dict subclass.
-    /// TODO: Full implementation requires Python format string parser - planned for v1.0
+    /// TODO: Full implementation requires Python format string parser - planned for v0.6
     /// </summary>
     public Str FormatMap<K, V>(IMapping<K, V> mapping) where K : notnull
     {
         // TODO: Implement full Python format string parsing with mapping
-        throw new NotImplementedException("str.format_map() requires full format string parser - planned for v1.0");
+        throw new NotImplementedException("str.format_map() requires full format string parser - planned for v0.6");
     }
 
     /// <summary>

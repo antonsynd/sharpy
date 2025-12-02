@@ -92,7 +92,7 @@ class Person:
     readonly first_name: str
     readonly last_name: str
     age: int  # Mutable
-    
+
     def __init__(self, first_name: str, last_name: str, age: int):
         self.first_name = first_name
         self.last_name = last_name
@@ -138,7 +138,7 @@ C# 9 enhanced pattern matching with relational patterns and logical patterns.
 
 **Proposed Sharpy Syntax**:
 ```python
-# Already planned for v1.0 match statements
+# Already planned for v0.7 match statements
 match temperature:
     case < 0:
         print("Freezing")
@@ -347,7 +347,7 @@ match point:
 
 **Benefits**:
 - Clean destructuring syntax
-- Integrates with v1.0 match statements
+- Integrates with v0.7 match statements
 
 ---
 
@@ -420,7 +420,7 @@ person2 = Person(name="Bob")  # ERROR: missing required 'age'
 class Person:
     @required
     name: str
-    
+
     @required
     age: int
 ```
@@ -501,7 +501,7 @@ Pattern match on list/array structure.
 
 **Proposed Sharpy Syntax**:
 ```python
-# List pattern matching (v1.0 with match statements)
+# List pattern matching (v0.7 with match statements)
 match numbers:
     case []:
         print("Empty list")
@@ -534,7 +534,7 @@ Declare constructor parameters directly in class/struct header.
 # Primary constructor syntax - very Pythonic!
 class Person(name: str, age: int):
     # Parameters automatically become fields
-    
+
     def greet(self):
         print(f"Hello, I'm {self.name} and I'm {self.age} years old")
 
@@ -644,7 +644,7 @@ numbers2 = [4, 5, 6]
 combined = [*numbers1, *numbers2]  # [1, 2, 3, 4, 5, 6]
 
 # Collection expressions
-evens = [x for x in range(10) if x % 2 == 0]  # List comprehension (v1.0)
+evens = [x for x in range(10) if x % 2 == 0]  # List comprehension (v0.9)
 ```
 
 **Generated C# Code**:
@@ -655,7 +655,7 @@ int[] combined = [.. numbers1, .. numbers2];
 **Benefits**:
 - Already partially supported
 - Python-like spread operator
-- Aligns with comprehensions (v1.0)
+- Aligns with comprehensions (v0.9)
 
 ---
 
@@ -693,7 +693,7 @@ var multiply = (int x, int y = 2) => x * y;
 
 **Proposed Sharpy Syntax**:
 ```python
-# Type aliases (already planned for v1.0)
+# Type aliases (already planned for v0.8)
 type UserId = int
 type Coordinate = tuple[double, double]
 type StringList = list[str]
@@ -702,7 +702,7 @@ type StringList = list[str]
 ```
 
 **Benefits**:
-- Already planned for v1.0
+- Already planned for v0.8
 - Enhanced with C# 12's broader aliasing
 
 ---
@@ -788,7 +788,7 @@ from system.threading import Lock
 class Counter:
     _lock = Lock()
     _count = 0
-    
+
     def increment(self):
         with self._lock:
             self._count += 1
@@ -802,7 +802,7 @@ public class Counter
 {
     private Lock _lock = new();
     private int _count;
-    
+
     public void Increment()
     {
         lock (_lock)
@@ -905,7 +905,7 @@ class Person:
     @property
     def name(self) -> str:
         return field
-    
+
     @name.setter
     def name(self, value: str):
         if value is None:
@@ -949,10 +949,10 @@ extension list[str]:
     @property
     def is_empty(self) -> bool:
         return len(self) == 0
-    
+
     def count_starting_with(self, prefix: str) -> int:
         return sum(1 for s in self if s.startswith(prefix))
-    
+
     @staticmethod
     def from_csv(csv: str) -> list[str]:
         return csv.split(',')
@@ -978,10 +978,10 @@ class ListStringExtensions:
 public static class ListStringExtensions
 {
     public static bool IsEmpty(this List<string> source) => !source.Any();
-    
+
     public static int CountStartingWith(this List<string> source, string prefix)
         => source.Count(x => x.StartsWith(prefix));
-    
+
     public static List<string> FromCsv(string csv)
         => csv.Split(',').ToList();
 }
@@ -1157,7 +1157,7 @@ Custom operators like `+=`, `*=` for user types.
    ```python
    class Person(name: str, age: int):
        pass
-   
+
    # With inheritance - type annotations disambiguate
    class Employee(Person, employee_id: str):
        pass  # Person = base class, employee_id = constructor param
@@ -1393,18 +1393,18 @@ Sharpy currently uses a **hybrid approach**:
 
 **Current Implementation (Keep):**
 ```csharp
-public sealed partial class List<T> : 
+public sealed partial class List<T> :
     Object,
     IMutableSequence<List<T>, T>,
     IAddable<List<T>>,
     IMultipliable<List<T>, int>
 {
     private System.Collections.Generic.List<T> _list;
-    
+
     // Pythonic operators
     public static List<T> operator +(List<T> left, List<T> right) { ... }
     public static List<T> operator *(List<T> left, int right) { ... }
-    
+
     // Pythonic methods
     public void append(T item) => _list.Add(item);
     public T pop(int index = -1) { ... }
@@ -1418,7 +1418,7 @@ extension List[T]:
     @property
     def is_empty(self) -> bool:
         return len(self) == 0
-    
+
     @staticmethod
     def filled(value: T, count: int) -> List[T]:
         return List[T](value for _ in range(count))
@@ -1441,11 +1441,11 @@ extension List[T]:
 public readonly partial struct Str
 {
     private readonly string _s;
-    
+
     // Implicit conversions
     public static implicit operator Str(string value) => new Str(value);
     public static implicit operator string(Str value) => value._s;
-    
+
     // Pythonic methods
     public Str upper() => _s.ToUpper();
     public List<Str> split(Str? sep = null) { ... }
@@ -1459,7 +1459,7 @@ extension Str:
     def removeprefix(self, prefix: str) -> str:
         # C# 14 extension property
         pass
-    
+
     def removesuffix(self, suffix: str) -> str:
         pass
 ```
@@ -1483,7 +1483,7 @@ extension int:
     def bit_length(self) -> int:
         # Returns number of bits needed to represent the integer
         pass
-    
+
     def to_bytes(self, length: int, byteorder: str) -> bytes:
         pass
 
@@ -1509,14 +1509,14 @@ extension double:
 public readonly struct Complex
 {
     private readonly System.Numerics.Complex _value;
-    
+
     // Pythonic property aliases
     public double real => _value.Real;
     public double imag => _value.Imaginary;
-    
+
     // Instance method (not static)
     public Complex conjugate() => System.Numerics.Complex.Conjugate(_value);
-    
+
     // Implicit conversions
     public static implicit operator Complex(System.Numerics.Complex c) => new Complex(c);
     public static implicit operator System.Numerics.Complex(Complex c) => c._value;
@@ -1584,11 +1584,11 @@ extension List[T]:
     @property
     def is_empty(self) -> bool:
         return self.count == 0
-    
+
     @property
     def first(self) -> T?:
         return self[0] if len(self) > 0 else None
-    
+
     @property
     def last(self) -> T?:
         return self[-1] if len(self) > 0 else None
@@ -1602,7 +1602,7 @@ extension List[T]:
     @staticmethod
     def filled(value: T, count: int) -> List[T]:
         return List[T](value for _ in range(count))
-    
+
     @staticmethod
     def from_csv(csv: str) -> List[str]:
         return List[str](csv.split(','))
@@ -1617,11 +1617,11 @@ extension Str:
     @property
     def is_numeric(self) -> bool:
         return self.isnumeric()
-    
+
     @property
     def is_alpha(self) -> bool:
         return self.isalpha()
-    
+
     # String transformation methods
     def capitalize_words(self) -> str:
         return ' '.join(word.capitalize() for word in self.split())

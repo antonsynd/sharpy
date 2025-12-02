@@ -4,7 +4,7 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Integration;
 
 /// <summary>
-/// Integration tests for basic Sharpy programs demonstrating core v0.5 features.
+/// Integration tests for basic Sharpy programs demonstrating core v0.1 features.
 /// </summary>
 public class BasicProgramTests : IntegrationTestBase
 {

@@ -1832,7 +1832,7 @@ public class RoslynEmitter
 
     private ExpressionSyntax GenerateEllipsisLiteral()
     {
-        // Ellipsis in v0.5 is used as a placeholder, similar to pass
+        // Ellipsis in v0.1 is used as a placeholder, similar to pass
         // We'll generate a comment or throw NotImplementedException
         // For now, generate: throw new NotImplementedException()
         return ThrowExpression(
@@ -2176,7 +2176,7 @@ public class RoslynEmitter
     private ExpressionSyntax GenerateComparisonChain(ComparisonChain chain)
     {
         // a < b < c → a < b && b < c (with b evaluated once)
-        // For simplicity in v0.5, we'll allow re-evaluation
+        // For simplicity in v0.6, we'll allow re-evaluation
         // TODO: Store intermediate values in temp variables
 
         if (chain.Operands.Count < 2 || chain.Operators.Count != chain.Operands.Count - 1)

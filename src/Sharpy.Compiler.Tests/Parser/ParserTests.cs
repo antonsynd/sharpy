@@ -1520,7 +1520,7 @@ class Pair[T, U]:
     [Fact]
     public void ParseEmptySet_SpecialSyntax()
     {
-        // According to v0.5 spec, {/} is empty set, {} is empty dict
+        // According to v0.2 spec, {/} is empty set, {} is empty dict
         var module = Parse("{/}");
         var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
         exprStmt.Expression.Should().BeOfType<SetLiteral>().Which.Elements.Should().BeEmpty();
@@ -1635,7 +1635,7 @@ for x, y in pairs:
 
     #endregion
 
-    #region v0.5 Comprehensive Edge Cases
+    #region v0.1 Comprehensive Edge Cases
 
     [Fact]
     public void ParseEmptyClassWithPass()

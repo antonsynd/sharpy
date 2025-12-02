@@ -219,10 +219,11 @@ public class ProtocolRegistryTests
     public void GetAllProtocols_ReturnsAllRegisteredProtocols()
     {
         var protocols = ProtocolRegistry.GetAllProtocols().ToList();
-        // v0.5 protocols: __init__, __len__, __contains__, __getitem__, __setitem__, __delitem__,
-        //                 __iter__, __next__, __str__, __repr__, __hash__, __bool__
-        protocols.Should().HaveCount(12, "exactly 12 protocols are registered for v0.5");
-        
+        // Protocols (dunders) for operator overloading - v0.5
+        // __init__, __len__, __contains__, __getitem__, __setitem__, __delitem__,
+        // __iter__, __next__, __str__, __repr__, __hash__, __bool__
+        protocols.Should().HaveCount(12, "exactly 12 protocols are registered for operator overloading");
+
         // Verify we have at least one of each kind (except Comparison which is handled by operators)
         protocols.Should().Contain(p => p.Kind == ProtocolKind.Lifecycle);
         protocols.Should().Contain(p => p.Kind == ProtocolKind.Container);
@@ -294,7 +295,7 @@ public class ProtocolRegistryTests
     [Fact]
     public void Count_ReturnsNumberOfRegisteredProtocols()
     {
-        ProtocolRegistry.Count.Should().Be(12, "exactly 12 protocols are registered for v0.5");
+        ProtocolRegistry.Count.Should().Be(12, "exactly 12 protocols are registered for operator overloading");
     }
 
     // ==================== Test Consistency with OperatorSignatureValidator ====================

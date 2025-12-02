@@ -937,7 +937,7 @@ public class StrMethods_Tests
         // Act & Assert
         str.Invoking(s => s.Format("world"))
             .Should().Throw<NotImplementedException>()
-            .WithMessage("*v1.0*");
+            .WithMessage("*v0.6*");
     }
 
     [Fact]
@@ -951,7 +951,7 @@ public class StrMethods_Tests
         // Act & Assert
         str.Invoking(s => s.FormatMap(mapping))
             .Should().Throw<NotImplementedException>()
-            .WithMessage("*v1.0*");
+            .WithMessage("*v0.6*");
     }
 
     #endregion

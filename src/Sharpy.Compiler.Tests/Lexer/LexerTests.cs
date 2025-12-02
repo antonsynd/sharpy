@@ -123,7 +123,7 @@ public class LexerTests
         act.Should().Throw<LexerError>();
     }
 
-    // Note: According to the v0.5 spec, hyphens are not allowed in identifiers.
+    // Note: According to the v0.1 spec, hyphens are not allowed in identifiers.
     // The current lexer behavior is correct: it tokenizes "my-var" as "my", "-", "var".
     // This is not a bug, but proper tokenization.
 
@@ -201,14 +201,14 @@ public class LexerTests
     }
 
     // Note: The following features (hex/binary/octal literals and scientific notation)
-    // are planned for v1.0+ according to the spec, but have been implemented ahead of schedule.
+    // are part of v0.6 Extended Numeric Literals according to the spec, but have been implemented ahead of schedule.
     // Tests for these features are in the sections below and are not skipped.
-    // The float without leading digit restriction (.5) is properly enforced per v0.5 spec.
+    // The float without leading digit restriction (.5) is properly enforced per v0.1 spec.
 
     [Fact]
     public void Tokenize_FloatWithoutDigitBeforeDecimal_ThrowsLexerError()
     {
-        // v0.5 spec requires at least one digit before the decimal point
+        // v0.1 spec requires at least one digit before the decimal point
         var source = ".5";
         Action act = () => Tokenize(source);
         act.Should().Throw<LexerError>();
@@ -931,7 +931,7 @@ y = 2";
     [Fact]
     public void Tokenize_ScientificNotationEdgeCases_ProducesCorrectTokens()
     {
-        // Scientific notation is planned for v1.0+ but implemented ahead of schedule
+        // Scientific notation is part of v0.6 Extended Numeric Literals but implemented ahead of schedule
         var cases = new[] { "1e100", "1e-100", "1.5e50", "1.5e-50" };
 
         foreach (var source in cases)
@@ -945,7 +945,7 @@ y = 2";
     [Fact]
     public void Tokenize_HexWithAllDigits_ProducesCorrectToken()
     {
-        // Hexadecimal literals are planned for v1.0+ but implemented ahead of schedule
+        // Hexadecimal literals are part of v0.6 Extended Numeric Literals but implemented ahead of schedule
         var source = "0x0123456789ABCDEF";
         var token = SingleToken(source);
         token.Type.Should().Be(TokenType.Integer);
@@ -955,7 +955,7 @@ y = 2";
     [Fact]
     public void Tokenize_BinaryWithLongSequence_ProducesCorrectToken()
     {
-        // Binary literals are planned for v1.0+ but implemented ahead of schedule
+        // Binary literals are part of v0.6 Extended Numeric Literals but implemented ahead of schedule
         var source = "0b" + new string('1', 64);
         var token = SingleToken(source);
         token.Type.Should().Be(TokenType.Integer);
@@ -965,7 +965,7 @@ y = 2";
     [Fact]
     public void Tokenize_OctalWithAllDigits_ProducesCorrectToken()
     {
-        // Octal literals are planned for v1.0+ but implemented ahead of schedule
+        // Octal literals are part of v0.6 Extended Numeric Literals but implemented ahead of schedule
         var source = "0o01234567";
         var token = SingleToken(source);
         token.Type.Should().Be(TokenType.Integer);
@@ -976,7 +976,7 @@ y = 2";
     public void Tokenize_NumbersWithUnderscores_ProducesCorrectTokens()
     {
         // Test decimal and non-decimal numbers with underscores
-        // Note: hex/binary/octal are v1.0+ features but implemented ahead of schedule
+        // Note: hex/binary/octal are v0.6 features but implemented ahead of schedule
         var cases = new[] { "1_000_000", "0x_DEAD_BEEF", "0b_1111_0000", "3.14_159_265" };
 
         foreach (var source in cases)
@@ -1320,7 +1320,7 @@ y = 2";
 
     #endregion
 
-    #region Ellipsis Literal Tests (v0.5 Placeholder)
+    #region Ellipsis Literal Tests (v0.1 Placeholder)
 
     [Fact]
     public void Tokenize_EllipsisAsPlaceholder_ProducesEllipsisToken()
@@ -1351,7 +1351,7 @@ y = 2";
 
     #endregion
 
-    #region v0.5 Comprehensive Edge Cases
+    #region v0.1 Comprehensive Edge Cases
 
     [Fact]
     public void Tokenize_MultilineStringWithEscapedQuotes_TokenizesCorrectly()
@@ -1573,7 +1573,7 @@ y = 2";
     [Fact]
     public void Tokenize_HexBinaryOctalLiterals_TokenizesCorrectly()
     {
-        // Hex/Binary/Octal literals are planned for v1.0+ but implemented ahead of schedule
+        // Hex/Binary/Octal literals are part of v0.6 Extended Numeric Literals but implemented ahead of schedule
         var source = "0xFF 0b1010 0o77";
         var tokens = Tokenize(source);
 

@@ -246,8 +246,8 @@ public record EnumMember
 public record Decorator
 {
     public string Name { get; init; } = "";
-    // Note: v0.5 only supports simple identifier decorators
-    // No arguments or dotted names in v0.5
+    // Note: v0.3 only supports simple identifier decorators
+    // No arguments or dotted names in v0.3
 
     // Source location
     public int LineStart { get; init; }

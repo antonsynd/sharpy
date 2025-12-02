@@ -2129,7 +2129,7 @@ public class Parser
                 {
                     Advance();
 
-                    // Empty set {/} - special v0.5 syntax
+                    // Empty set {/} - special v0.2 syntax
                     if (Current.Type == TokenType.Slash)
                     {
                         Advance();

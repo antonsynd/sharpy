@@ -13,7 +13,7 @@ public class TypeMapper
 {
     private readonly CodeGenContext _context;
 
-    // Built-in type mappings for v0.5
+    // Built-in type mappings for v0.1
     private static readonly Dictionary<string, string> _builtinTypeMap = new()
     {
         // Primitive types - direct mapping
@@ -211,7 +211,7 @@ public class TypeMapper
     /// </summary>
     public TypeSyntax InferElementType(IEnumerable<Expression> expressions)
     {
-        // For v0.5, we'll use a simple heuristic:
+        // For v0.1, we'll use a simple heuristic:
         // - If all expressions are the same literal type, use that
         // - Otherwise, use object
 
