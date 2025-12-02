@@ -16,16 +16,18 @@ public class OperatorValidator
     private readonly SymbolTable _symbolTable;
     private readonly ICompilerLogger _logger;
     private readonly List<SemanticError> _errors = new();
+    private readonly ProtocolValidator? _protocolValidator;
 
     // Caches for performance (not thread-safe)
     private readonly Dictionary<(SemanticType, BinaryOperator, SemanticType), SemanticType?> _binaryOpCache = new();
     private readonly Dictionary<(UnaryOperator, SemanticType), SemanticType?> _unaryOpCache = new();
     private readonly Dictionary<Type, Dictionary<string, List<MethodInfo>>> _clrOperatorCache = new();
 
-    public OperatorValidator(SymbolTable symbolTable, ICompilerLogger? logger = null)
+    public OperatorValidator(SymbolTable symbolTable, ICompilerLogger? logger = null, ProtocolValidator? protocolValidator = null)
     {
         _symbolTable = symbolTable;
         _logger = logger ?? NullLogger.Instance;
+        _protocolValidator = protocolValidator;
     }
 
     /// <summary>
@@ -81,9 +83,22 @@ public class OperatorValidator
 
             case BinaryOperator.In:
             case BinaryOperator.NotIn:
+                // Membership operators check for __contains__ protocol on the right operand (container)
+                // e.g., "x in container" checks if container supports __contains__
+                if (_protocolValidator != null)
+                {
+                    result = _protocolValidator.ValidateMembership(right, left, line, column);
+                }
+                else
+                {
+                    // Fallback: always return bool (for backwards compatibility or when no protocol validator)
+                    result = SemanticType.Bool;
+                }
+                break;
+
             case BinaryOperator.Is:
             case BinaryOperator.IsNot:
-                // Membership and identity operators always return bool
+                // Identity operators always return bool
                 result = SemanticType.Bool;
                 break;
 

@@ -122,12 +122,34 @@ public class ProtocolValidator
         // Check implemented interfaces
         var interfaces = clrType.GetInterfaces();
 
+        // Check for Sharpy.Core.Collections.Interfaces.IIterable<T> -> __iter__
+        // This includes Iterator<T> and all Sharpy collections
+        if (interfaces.Any(i =>
+            i.IsGenericType && i.GetGenericTypeDefinition().FullName == "Sharpy.Core.Collections.Interfaces.IIterable`1"))
+        {
+            protocols.Add("__iter__");
+        }
+
         // IEnumerable<T> or IEnumerable -> __iter__
         if (interfaces.Any(i =>
             i == typeof(System.Collections.IEnumerable) ||
             (i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>))))
         {
             protocols.Add("__iter__");
+        }
+
+        // Check if type or any base class is Iterator<T> from Sharpy.Core
+        // Iterators support __iter__ (returns self)
+        var currentType = clrType;
+        while (currentType != null)
+        {
+            if (currentType.IsGenericType &&
+                currentType.GetGenericTypeDefinition().FullName == "Sharpy.Core.Iterator`1")
+            {
+                protocols.Add("__iter__");
+                break;
+            }
+            currentType = currentType.BaseType;
         }
 
         // ICollection<T> or ICollection -> __len__, __contains__
@@ -218,7 +240,50 @@ public class ProtocolValidator
             return SemanticType.Str;
         }
 
+        // For BuiltinTypes with CLR type that is an Iterator<T>, extract element type
+        if (iterableType is BuiltinType builtin && builtin.ClrType != null)
+        {
+            var elementType = GetIteratorElementType(builtin.ClrType);
+            if (elementType != null)
+            {
+                return MapClrTypeToSemanticType(elementType);
+            }
+        }
+
         return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Gets the element type if the given type extends Sharpy.Core.Iterator&lt;T&gt;.
+    /// Returns null if not an Iterator subtype.
+    /// </summary>
+    private Type? GetIteratorElementType(Type clrType)
+    {
+        var currentType = clrType.BaseType;
+        while (currentType != null)
+        {
+            if (currentType.IsGenericType &&
+                currentType.GetGenericTypeDefinition().FullName == "Sharpy.Core.Iterator`1")
+            {
+                return currentType.GetGenericArguments()[0];
+            }
+            currentType = currentType.BaseType;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Maps a CLR type to a SemanticType. Basic implementation for element type extraction.
+    /// </summary>
+    private SemanticType MapClrTypeToSemanticType(Type clrType)
+    {
+        if (clrType == typeof(int)) return SemanticType.Int;
+        if (clrType == typeof(long)) return SemanticType.Long;
+        if (clrType == typeof(float)) return SemanticType.Float;
+        if (clrType == typeof(double)) return SemanticType.Double;
+        if (clrType == typeof(bool)) return SemanticType.Bool;
+        if (clrType == typeof(string)) return SemanticType.Str;
+        return SemanticType.Object;
     }
 
     /// <summary>

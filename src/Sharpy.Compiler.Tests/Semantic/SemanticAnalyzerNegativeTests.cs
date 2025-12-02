@@ -858,7 +858,7 @@ def foo():
     }
 
     [Fact]
-    public void DocumentsSubscriptOnNonSubscriptableBehavior()
+    public void RejectsSubscriptOnNonSubscriptableType()
     {
         var source = @"
 def foo():
@@ -868,8 +868,8 @@ def foo():
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Subscript type checking is not enforced
-        typeChecker.Errors.Should().BeEmpty();
+        // Subscript on int should produce an error
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("does not support indexing"));
     }
 
     [Fact]

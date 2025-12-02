@@ -61,6 +61,18 @@ public class TypeMapper
             };
         }
 
+        // Handle Sharpy.Core types that extend Iterator<T> (like RangeIterator)
+        // These are iterable types that yield elements of a specific type
+        var iteratorElementType = GetIteratorElementType(clrType);
+        if (iteratorElementType != null)
+        {
+            return new BuiltinType
+            {
+                Name = clrType.Name,
+                ClrType = clrType
+            };
+        }
+
         // Handle generic types
         if (clrType.IsGenericType)
         {
@@ -75,6 +87,25 @@ public class TypeMapper
 
         // Fallback to object for unknown types
         return SemanticType.Object;
+    }
+
+    /// <summary>
+    /// Gets the element type if the given type extends Sharpy.Core.Iterator&lt;T&gt;.
+    /// Returns null if not an Iterator subtype.
+    /// </summary>
+    private Type? GetIteratorElementType(Type clrType)
+    {
+        var currentType = clrType.BaseType;
+        while (currentType != null)
+        {
+            if (currentType.IsGenericType &&
+                currentType.GetGenericTypeDefinition().FullName == "Sharpy.Core.Iterator`1")
+            {
+                return currentType.GetGenericArguments()[0];
+            }
+            currentType = currentType.BaseType;
+        }
+        return null;
     }
 
     private SemanticType MapGenericType(Type clrType)

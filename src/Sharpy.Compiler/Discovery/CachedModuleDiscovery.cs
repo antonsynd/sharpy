@@ -156,6 +156,33 @@ public class CachedModuleDiscovery
             };
         }
 
+        // Handle non-generic CLR types (like RangeIterator)
+        // Try to resolve the CLR type from the stored ClrTypeName
+        if (!string.IsNullOrEmpty(signature.ClrTypeName))
+        {
+            // Try direct Type.GetType first
+            var clrType = Type.GetType(signature.ClrTypeName);
+
+            // If that fails, search loaded assemblies
+            if (clrType == null)
+            {
+                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    clrType = assembly.GetType(signature.ClrTypeName);
+                    if (clrType != null) break;
+                }
+            }
+
+            if (clrType != null)
+            {
+                return new BuiltinType
+                {
+                    Name = signature.Name,
+                    ClrType = clrType
+                };
+            }
+        }
+
         // Fallback
         return SemanticType.Object;
     }
