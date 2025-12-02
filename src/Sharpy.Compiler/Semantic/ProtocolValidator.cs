@@ -124,6 +124,7 @@ public class ProtocolValidator
 
         // Check for Sharpy.Core.Collections.Interfaces.IIterable<T> -> __iter__
         // This includes Iterator<T> and all Sharpy collections
+        // NOTE: Uses hardcoded type name - ensure this matches Sharpy.Core.Collections.Interfaces.IIterable<T>
         if (interfaces.Any(i =>
             i.IsGenericType && i.GetGenericTypeDefinition().FullName == "Sharpy.Core.Collections.Interfaces.IIterable`1"))
         {
@@ -140,6 +141,7 @@ public class ProtocolValidator
 
         // Check if type or any base class is Iterator<T> from Sharpy.Core
         // Iterators support __iter__ (returns self)
+        // NOTE: Uses hardcoded type name - ensure this matches Sharpy.Core.Iterator<T>
         var currentType = clrType;
         while (currentType != null)
         {
@@ -254,12 +256,16 @@ public class ProtocolValidator
     }
 
     /// <summary>
-    /// Gets the element type if the given type extends Sharpy.Core.Iterator&lt;T&gt;.
-    /// Returns null if not an Iterator subtype.
+    /// Gets the element type if the given type is Iterator&lt;T&gt; or extends Iterator&lt;T&gt;.
+    /// Returns null otherwise.
     /// </summary>
+    /// <remarks>
+    /// TODO: This method is duplicated in Discovery/TypeMapper.cs. 
+    /// Consider consolidating in Phase 7 (ClrMemberCache extraction).
+    /// </remarks>
     private Type? GetIteratorElementType(Type clrType)
     {
-        var currentType = clrType.BaseType;
+        var currentType = clrType;
         while (currentType != null)
         {
             if (currentType.IsGenericType &&
@@ -275,6 +281,10 @@ public class ProtocolValidator
     /// <summary>
     /// Maps a CLR type to a SemanticType. Basic implementation for element type extraction.
     /// </summary>
+    /// <remarks>
+    /// TODO: This duplicates Discovery/TypeMapper logic. Consolidate in Phase 6.
+    /// Missing coverage for: char, byte, short, uint, ulong, decimal, etc.
+    /// </remarks>
     private SemanticType MapClrTypeToSemanticType(Type clrType)
     {
         if (clrType == typeof(int)) return SemanticType.Int;
