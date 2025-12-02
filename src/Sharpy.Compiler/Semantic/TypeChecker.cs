@@ -1148,6 +1148,7 @@ public class TypeChecker
         if (call.Function is Identifier id)
         {
             // Special handling for builtin len() - validate that argument supports __len__ protocol
+            // TODO: Consider using a constant from BuiltinRegistry or BuiltinNames class instead of hardcoded string
             if (id.Name == "len" && argTypes.Count == 1)
             {
                 return _protocolValidator.ValidateLen(

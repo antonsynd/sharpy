@@ -164,6 +164,7 @@ public class CachedModuleDiscovery
             var clrType = Type.GetType(signature.ClrTypeName);
 
             // If that fails, search loaded assemblies
+            // Note: This could be optimized by caching assembly lookups if performance becomes an issue
             if (clrType == null)
             {
                 foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())

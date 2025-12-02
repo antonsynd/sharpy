@@ -93,9 +93,13 @@ public class TypeMapper
     /// Gets the element type if the given type extends Sharpy.Core.Iterator&lt;T&gt;.
     /// Returns null if not an Iterator subtype.
     /// </summary>
+    /// <remarks>
+    /// TODO: This method is duplicated in Semantic/ProtocolValidator.cs.
+    /// Consider consolidating in Phase 7 (ClrMemberCache extraction).
+    /// </remarks>
     private Type? GetIteratorElementType(Type clrType)
     {
-        var currentType = clrType.BaseType;
+        var currentType = clrType;
         while (currentType != null)
         {
             if (currentType.IsGenericType &&
