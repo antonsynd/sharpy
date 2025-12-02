@@ -167,11 +167,9 @@ public class CachedModuleDiscovery
             // Note: This could be optimized by caching assembly lookups if performance becomes an issue
             if (clrType == null)
             {
-                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-                {
-                    clrType = assembly.GetType(signature.ClrTypeName);
-                    if (clrType != null) break;
-                }
+                clrType ??= AppDomain.CurrentDomain.GetAssemblies()
+                    .Select(a => a.GetType(signature.ClrTypeName))
+                    .FirstOrDefault(t => t != null);
             }
 
             if (clrType != null)
