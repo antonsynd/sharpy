@@ -2570,7 +2570,7 @@ def main():
 
 *Implementation: 🔄 Lowered*
 - *Top-level statements wrapped in generated `Main()` method*
-- *Module code wrapped in `public static class __Module__`*
+- *Module code wrapped in `public static class Exports`*
 
 ---
 

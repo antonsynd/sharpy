@@ -4,7 +4,7 @@ using System.Linq;
 using Sharpy.Core;
 
 namespace Users.Anton.Documents.Github.Sharpy.Snippets.Hello;
-public static class __Module__
+public static class Exports
 {
     public static void Greet(object name)
     {

@@ -354,7 +354,7 @@ public class RoslynEmitter
             }
         }
 
-        return ClassDeclaration("__Module__")
+        return ClassDeclaration("Exports")
             .WithModifiers(TokenList(
                 Token(SyntaxKind.PublicKeyword),
                 Token(SyntaxKind.StaticKeyword)))

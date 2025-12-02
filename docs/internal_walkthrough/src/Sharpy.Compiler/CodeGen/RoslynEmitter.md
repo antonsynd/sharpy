@@ -79,7 +79,7 @@ A whitelist of common .NET namespace acronyms (IO, UI, XML, API, etc.) that shou
 **Flow:**
 1. Extracts `using` directives from import statements
 2. Separates imports from executable code
-3. Generates a module class wrapper (`__Module__`)
+3. Generates a module class wrapper (`Exports`)
 4. Creates namespace declaration
 5. Assembles everything into a compilation unit
 
@@ -90,14 +90,14 @@ public CompilationUnitSyntax GenerateCompilationUnit(Module module)
     var nonImportStatements = module.Body.Where(s => s is not ImportStatement...);
     var moduleClass = GenerateModuleClass(nonImportStatements);
     var namespaceName = GenerateNamespaceName();
-    
+
     return CompilationUnit()
         .WithUsings(List(usingDirectives))
         .WithMembers(...);
 }
 ```
 
-**Key Design Decision:** All Sharpy code is wrapped in a static class called `__Module__` to provide a namespace for module-level functions and executable statements.
+**Key Design Decision:** All Sharpy code is wrapped in a static class called `Exports` to provide a namespace for module-level functions and executable statements.
 
 ---
 
@@ -173,7 +173,7 @@ var x_1 = "hello"; // Redefinition gets version suffix
 private string GetMangledVariableName(string name, bool isNewDeclaration)
 {
     var baseName = NameMangler.ToCamelCase(name);
-    
+
     if (isNewDeclaration)
     {
         if (_variableVersions.TryGetValue(baseName, out var currentVersion))
@@ -263,7 +263,7 @@ public static int CalculateSum(List<int> values)
 class Person:
     name: str
     age: int
-    
+
     def __init__(self, name: str, age: int):
         self.name = name
         self.age = age
@@ -275,7 +275,7 @@ public class Person
 {
     public string Name;
     public int Age;
-    
+
     public Person(string name, int age)
     {
         this.Name = name;
@@ -328,7 +328,7 @@ public class Vector
     {
         return new Vector(this.x + other.x, this.y + other.y);
     }
-    
+
     // The operator overload that calls it
     public static Vector operator +(Vector left, Vector right)
     {
@@ -634,7 +634,7 @@ private MethodDeclarationSyntax GenerateFunctionDeclaration(FunctionDef func)
     // Clear state for new function scope
     _declaredVariables.Clear();
     _variableVersions.Clear();
-    
+
     // Generate function body...
 }
 ```

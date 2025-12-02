@@ -513,7 +513,7 @@ The Sharpy standard library (located in `src/Sharpy.Core`) has made significant 
 
 **Question:** How are Sharpy modules represented at runtime?
 
-**Current State:** Specification mentions `__Module__` static class for module-level functions
+**Current State:** Specification mentions `Exports` static class for module-level functions
 
 **Needed:**
 - Module loading mechanism
@@ -845,7 +845,7 @@ The Sharpy standard library has **excellent progress** with comprehensive protoc
 
 The architecture is sound, the implementation quality is high, and **most critical features are now implemented and tested**.
 
-**Key Strengths:** 
+**Key Strengths:**
 - Protocol-based design enables excellent .NET interop
 - Comprehensive test coverage (716 tests passing)
 - Strong implementation of core collections and builtins

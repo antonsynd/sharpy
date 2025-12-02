@@ -9,7 +9,7 @@ namespace SharpyGenerated;
 /// <summary>
 /// Module-level functions and constants
 /// </summary>
-public static class __Module__
+public static class Exports
 {
         public static void Main()
     {
@@ -18,4 +18,3 @@ public static class __Module__
         Sharpy.Exports.Print("Compiled to C# successfully!");
     }
 }
-

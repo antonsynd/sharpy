@@ -9,7 +9,7 @@ namespace SharpyGenerated;
 /// <summary>
 /// Module-level functions and constants
 /// </summary>
-public static class __Module__
+public static class Exports
 {
     /// <summary>
     /// Main entry point

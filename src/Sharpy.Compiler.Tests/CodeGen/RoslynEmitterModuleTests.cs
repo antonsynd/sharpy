@@ -38,7 +38,7 @@ public class RoslynEmitterModuleTests
 
         // Assert
         Assert.Contains("namespace SharpyGenerated", code);
-        Assert.Contains("public static class __Module__", code);
+        Assert.Contains("public static class Exports", code);
     }
 
     [Fact]
@@ -261,7 +261,7 @@ public class RoslynEmitterModuleTests
         // Function should be in module class
         Assert.Contains("MyFunction", code);
         // Import statement should not appear as a member
-        var moduleClassStart = code.IndexOf("class __Module__");
+        var moduleClassStart = code.IndexOf("class Exports");
         var importsInClass = code.Substring(moduleClassStart).Contains("ImportStatement");
         Assert.False(importsInClass);
     }
