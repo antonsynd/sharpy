@@ -62,6 +62,10 @@ public record TypeSymbol : Symbol
     // Maps operator dunder names (e.g., "__add__", "__eq__") to lists of overloads
     public Dictionary<string, List<FunctionSymbol>> OperatorMethods { get; init; } = new();
 
+    // Protocol methods (non-operator dunders like __len__, __str__, __iter__)
+    // Maps protocol dunder names to lists of overloads (usually just one, but allows flexibility)
+    public Dictionary<string, List<FunctionSymbol>> ProtocolMethods { get; init; } = new();
+
     // Inheritance
     public TypeSymbol? BaseType { get; set; }
     public List<TypeSymbol> Interfaces { get; init; } = new();

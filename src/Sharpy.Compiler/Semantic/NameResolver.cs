@@ -340,13 +340,37 @@ public class NameResolver
             else
             {
                 // Signature is valid, add to operator methods cache
-                if (!owningType.OperatorMethods.ContainsKey(method.Name))
+                if (!owningType.OperatorMethods.TryGetValue(method.Name, out var overloads))
                 {
-                    owningType.OperatorMethods[method.Name] = new List<FunctionSymbol>();
+                    overloads = new List<FunctionSymbol>();
+                    owningType.OperatorMethods[method.Name] = overloads;
                 }
-                owningType.OperatorMethods[method.Name].Add(funcSymbol);
+                overloads.Add(funcSymbol);
 
                 _logger.LogDebug($"Registered operator method: {owningType.Name}.{method.Name}");
+            }
+        }
+        // Validate and register protocol dunder methods
+        else if (ProtocolSignatureValidator.IsProtocolDunder(method.Name))
+        {
+            var validationErrors = ProtocolSignatureValidator.ValidateDunderSignature(method, owningType);
+
+            if (validationErrors.Count > 0)
+            {
+                // Add all validation errors to the errors list
+                _errors.AddRange(validationErrors);
+            }
+            else
+            {
+                // Signature is valid, add to protocol methods cache
+                if (!owningType.ProtocolMethods.TryGetValue(method.Name, out var overloads))
+                {
+                    overloads = new List<FunctionSymbol>();
+                    owningType.ProtocolMethods[method.Name] = overloads;
+                }
+                overloads.Add(funcSymbol);
+
+                _logger.LogDebug($"Registered protocol method: {owningType.Name}.{method.Name}");
             }
         }
     }
