@@ -159,13 +159,7 @@ public class ProtocolValidator
             protocols.Add("__len__");
         }
 
-        // Arrays implement IList, but also explicitly check IsArray for __setitem__ support
-        // (Arrays are mutable via indexing even though they don't implement generic IList<T>)
-        if (clrType.IsArray)
-        {
-            protocols.Add("__getitem__");
-            protocols.Add("__setitem__");
-        }
+        // Note: Arrays are handled via IList check above (arrays implement System.Collections.IList)
 
         // Any object has __str__ (ToString) and __hash__ (GetHashCode)
         protocols.Add("__str__");

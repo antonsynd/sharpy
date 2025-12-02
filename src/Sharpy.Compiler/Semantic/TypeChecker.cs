@@ -14,6 +14,8 @@ public class TypeChecker
     private readonly ControlFlowValidator _controlFlowValidator;
     private readonly AccessValidator _accessValidator;
     private readonly OperatorValidator _operatorValidator;
+    // TODO: Integrate with CheckFor(), CheckSubscript(), etc. (tasks 4.2.3-4.2.6)
+    // Currently instantiated but not used for validation delegation.
     private readonly ProtocolValidator _protocolValidator;
     private readonly ICompilerLogger _logger;
     private readonly List<SemanticError> _errors = new();
