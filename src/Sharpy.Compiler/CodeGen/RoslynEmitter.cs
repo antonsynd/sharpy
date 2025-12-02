@@ -997,6 +997,8 @@ public class RoslynEmitter
         // Add override keyword for methods that override Object methods
         // Uses the protocol variable already fetched above, plus special handling for operator dunders
         var shouldAddOverride = protocol?.ClrMethodName is "ToString" or "GetHashCode"
+            // __repr__ maps to ToString but has ClrMethodName: null, so check explicitly
+            || func.Name == "__repr__"
             // __eq__ is an operator dunder (not in ProtocolRegistry) but maps to Equals() override
             || func.Name == "__eq__";
 
