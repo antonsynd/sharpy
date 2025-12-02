@@ -1390,9 +1390,12 @@ public class TypeChecker
         {
             if (clause is ForClause forClause)
             {
-                // Check iterator type
+                // Check iterator type and validate __iter__ protocol
                 var iterType = CheckExpression(forClause.Iterator);
-                var elemType = ExtractElementType(iterType);
+                var elemType = _protocolValidator.ValidateIteration(
+                    iterType,
+                    forClause.Iterator.LineStart,
+                    forClause.Iterator.ColumnStart);
 
                 // Define loop variable (single identifier only for now)
                 if (forClause.Target is Identifier id)
@@ -1452,9 +1455,12 @@ public class TypeChecker
         {
             if (clause is ForClause forClause)
             {
-                // Check iterator type
+                // Check iterator type and validate __iter__ protocol
                 var iterType = CheckExpression(forClause.Iterator);
-                var elemType = ExtractElementType(iterType);
+                var elemType = _protocolValidator.ValidateIteration(
+                    iterType,
+                    forClause.Iterator.LineStart,
+                    forClause.Iterator.ColumnStart);
 
                 // Define loop variable (single identifier only for now)
                 if (forClause.Target is Identifier id)
@@ -1513,9 +1519,12 @@ public class TypeChecker
         {
             if (clause is ForClause forClause)
             {
-                // Check iterator type
+                // Check iterator type and validate __iter__ protocol
                 var iterType = CheckExpression(forClause.Iterator);
-                var elemType = ExtractElementType(iterType);
+                var elemType = _protocolValidator.ValidateIteration(
+                    iterType,
+                    forClause.Iterator.LineStart,
+                    forClause.Iterator.ColumnStart);
 
                 // Define loop variable (single identifier only for now)
                 if (forClause.Target is Identifier id)
