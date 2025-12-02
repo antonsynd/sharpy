@@ -219,6 +219,32 @@ result = function(
 - Cannot continue in middle of identifier or keyword
 - Cannot continue inside single-line strings
 
+### Newline Significance
+
+Newlines are significant in Sharpy and terminate statements:
+
+**Rules:**
+1. Newlines are significant and terminate statements
+2. Except inside brackets `()`, `[]`, `{}`
+3. Except after backslash `\` continuation
+4. Newlines inside string literals are literal newlines
+
+```python
+# Newline terminates statement
+x = 42
+y = 10
+
+# Implicit continuation in brackets
+result = (
+    value1 +
+    value2
+)
+
+# Newline inside string literal is literal newline
+multi = """Line 1
+Line 2"""
+```
+
 *Implementation: ✅ Native - Continuation is handled at lex time; resulting logical lines transpile normally.*
 
 ---
@@ -452,6 +478,24 @@ value: str? = None
 
 - `None` maps to `null` in the compiled output
 - Can be assigned to any nullable type
+
+### None Type Semantics
+
+| Context | Sharpy Syntax | Meaning | Compiled Form |
+|---------|---------------|---------|---------------|
+| Return type | `-> None` | No return value | `void` |
+| Variable type | `x: None` | Not allowed | - |
+| Nullable variable | `x: str?` | Can be null | Nullable reference |
+| None assignment | `x = None` | Assign null | Requires `T?` type |
+
+```python
+def do_work() -> None:           # OK - return type
+    pass
+
+x: str? = None                    # OK - nullable variable
+y = None                          # ERROR - cannot infer type from None alone
+z: None = None                    # ERROR - None is not a valid variable type
+```
 
 *Implementation: ✅ Native - Direct mapping to `null`.*
 
@@ -880,6 +924,30 @@ result = apply(10, lambda x: x ** 2)
 
 *Implementation: ✅ Native - Maps to `(x, y) => expr`.*
 
+### Expression Evaluation Order
+
+Expressions are evaluated left-to-right:
+
+```python
+# Left-to-right evaluation
+result = f1() + f2() * f3()
+# Order: f1(), f2(), f3(), then operators by precedence
+
+# Short-circuit evaluation
+result = cheap() and expensive()
+# If cheap() is False, expensive() is never called
+
+# Argument evaluation
+func(first(), second(), third())
+# Order: first(), second(), third(), then func() called
+```
+
+**Rules:**
+1. Expressions evaluated left-to-right
+2. Operator precedence determines grouping, not evaluation order
+3. Short-circuit operators (`and`, `or`, `??`, `?.`) stop early when possible
+4. Function arguments evaluated left-to-right before call
+
 ---
 
 ## Statements **[v0.1]**
@@ -1138,6 +1206,34 @@ def min_max(values: list[int]) -> tuple[int, int]:
 - Return type can be omitted for `-> None` functions
 - Parameters with defaults must come after required parameters
 
+### Default Parameter Evaluation
+
+Default parameter values are evaluated **once** at function definition time, not per call. This means mutable default parameters share the same instance across calls:
+
+```python
+# DANGER: Mutable default parameter
+def append_to(item: int, target: list[int] = []) -> list[int]:
+    target.append(item)
+    return target
+
+list1 = append_to(1)  # [1]
+list2 = append_to(2)  # [1, 2] - SAME list as list1!
+```
+
+**Best Practice:** Never use mutable objects (lists, dicts, sets) as default parameter values. Use `None` and create the instance inside the function:
+
+```python
+# CORRECT: Use None as default
+def append_to(item: int, target: list[int]? = None) -> list[int]:
+    if target is None:
+        target = []
+    target.append(item)
+    return target
+
+list1 = append_to(1)  # [1]
+list2 = append_to(2)  # [2] - separate list
+```
+
 *Implementation: ✅ Native - Direct mapping to C# methods.*
 
 ### Function Overloading **[v0.3]**
@@ -1168,20 +1264,20 @@ def process(value: int, multiplier: int) -> str:
 ```python
 class Person:
     """A person with a name and age."""
-    
+
     # Field declarations (required)
     name: str
     age: int
-    
+
     # Constructor
     def __init__(self, name: str, age: int):
         self.name = name
         self.age = age
-    
+
     # Instance method
     def greet(self) -> str:
         return f"Hello, I'm {self.name}"
-    
+
     def celebrate_birthday(self) -> None:
         self.age += 1
 ```
@@ -1200,15 +1296,15 @@ class Person:
 class Point:
     x: double
     y: double
-    
+
     def __init__(self):
         self.x = 0.0
         self.y = 0.0
-    
+
     def __init__(self, x: double, y: double):
         self.x = x
         self.y = y
-    
+
     def __init__(self, other: Point):
         self.x = other.x
         self.y = other.y
@@ -1256,6 +1352,48 @@ from math import *
 - Common acronyms uppercased: `io`, `ui`, `xml`, `http`, `api`, `sql`
 - Example: `system.collections.generic` → `System.Collections.Generic`
 
+### Package Structure
+
+Packages are directories containing an optional `__init__.spy` file:
+
+```
+project/
+    utils/
+        __init__.spy      # Optional, can be empty
+        helpers.spy
+        math/
+            __init__.spy
+            vectors.spy
+```
+
+The `__init__.spy` file can re-export symbols for convenient imports:
+
+```python
+# utils/__init__.spy
+from utils.helpers import format_string, parse_input
+from utils.math.vectors import Vector2, Vector3
+```
+
+### Circular Import Handling
+
+Circular imports are resolved through forward declarations:
+
+```python
+# module_a.spy
+from module_b import ClassB  # Forward reference for type annotation
+
+class ClassA:
+    other: ClassB  # OK - used only as type annotation
+
+    def use_b(self, b: ClassB) -> None:
+        b.method()
+```
+
+**Rules:**
+- Circular references are allowed for type annotations
+- Circular references for base classes are **not** allowed
+- Import order matters: import for type hints processed before code execution
+
 ---
 
 ## Structs **[v0.3]**
@@ -1265,17 +1403,17 @@ Structs are value types that do not support inheritance but can implement interf
 ```python
 struct Vector2:
     """A 2D vector value type."""
-    
+
     x: double
     y: double
-    
+
     def __init__(self, x: double, y: double):
         self.x = x
         self.y = y
-    
+
     def magnitude(self) -> double:
         return (self.x ** 2 + self.y ** 2) ** 0.5
-    
+
     def __add__(self, other: Vector2) -> Vector2:
         return Vector2(self.x + other.x, self.y + other.y)
 ```
@@ -1303,10 +1441,10 @@ Interfaces define contracts that types must satisfy.
 ```python
 interface IDrawable:
     """Interface for drawable objects."""
-    
+
     def draw(self) -> None:
         ...
-    
+
     def get_bounds(self) -> tuple[double, double, double, double]:
         ...
 
@@ -1315,15 +1453,15 @@ class Circle(IDrawable):
     radius: double
     x: double
     y: double
-    
+
     def __init__(self, x: double, y: double, radius: double):
         self.x = x
         self.y = y
         self.radius = radius
-    
+
     def draw(self) -> None:
         print(f"Drawing circle at ({self.x}, {self.y})")
-    
+
     def get_bounds(self) -> tuple[double, double, double, double]:
         return (self.x - self.radius, self.y - self.radius,
                 self.radius * 2, self.radius * 2)
@@ -1345,6 +1483,34 @@ interface IContainer[T]:
     def count(self) -> int: ...
 ```
 
+### Interface Inheritance **[v0.3]**
+
+Interfaces can extend other interfaces:
+
+```python
+interface ISerializable:
+    """Base interface for serialization."""
+    def serialize(self) -> str: ...
+
+interface IJSONSerializable(ISerializable):
+    """Extends ISerializable with JSON-specific methods."""
+    def to_json(self) -> str: ...
+    def from_json(self, json: str) -> None: ...
+
+class User(IJSONSerializable):
+    """Must implement all methods from both interfaces."""
+    username: str
+
+    def serialize(self) -> str:
+        return self.username
+
+    def to_json(self) -> str:
+        return f'{{"username": "{self.username}"}}'
+
+    def from_json(self, json: str) -> None:
+        pass  # Parse and update
+```
+
 ---
 
 ## Inheritance **[v0.3]**
@@ -1354,11 +1520,11 @@ interface IContainer[T]:
 ```python
 class Employee(Person):
     employee_id: str
-    
+
     def __init__(self, name: str, age: int, employee_id: str):
         super().__init__(name, age)
         self.employee_id = employee_id
-    
+
     def greet(self) -> str:
         return f"Hello, I'm {self.name}, employee #{self.employee_id}"
 ```
@@ -1372,7 +1538,7 @@ class JSONEmployee(Employee, ISerializable, IComparable):
     def serialize(self) -> str:
         # Implementation
         pass
-    
+
     def compare_to(self, other: object) -> int:
         # Implementation
         pass
@@ -1405,11 +1571,11 @@ class Example:
     @private
     def internal_method(self) -> None:
         pass
-    
+
     # Naming convention also works
     def _protected_method(self) -> None:
         pass
-    
+
     def __private_method(self) -> None:
         pass
 ```
@@ -1432,14 +1598,31 @@ class Calculator:
     @static
     def add(x: int, y: int) -> int:
         return x + y
-    
+
+    # Virtual method (can be overridden by subclasses)
+    @virtual
+    def compute(self, x: int) -> int:
+        return x * 2
+
     @override
     def __str__(self) -> str:
         return "Calculator"
 
+class ScientificCalculator(Calculator):
+    """Subclass that overrides virtual method."""
+
+    @override
+    def compute(self, x: int) -> int:
+        return x ** 2
+
 @final
 class SealedClass:
     pass
+
+# Usage
+result = Calculator.add(5, 3)       # Static method call
+calc = ScientificCalculator()
+calc.compute(4)                      # Returns 16 (overridden method)
 ```
 
 *Implementation: ✅ Native - Direct mapping to C# keywords.*
@@ -1454,13 +1637,13 @@ class SealedClass:
 class Box[T]:
     """A container for a single value."""
     _value: T
-    
+
     def __init__(self, value: T):
         self._value = value
-    
+
     def get(self) -> T:
         return self._value
-    
+
     def set(self, value: T) -> None:
         self._value = value
 
@@ -1557,20 +1740,20 @@ Classes can define dunder methods to customize operator behavior:
 class Vector:
     x: double
     y: double
-    
+
     def __init__(self, x: double, y: double):
         self.x = x
         self.y = y
-    
+
     def __add__(self, other: Vector) -> Vector:
         return Vector(self.x + other.x, self.y + other.y)
-    
+
     def __sub__(self, other: Vector) -> Vector:
         return Vector(self.x - other.x, self.y - other.y)
-    
+
     def __mul__(self, scalar: double) -> Vector:
         return Vector(self.x * scalar, self.y * scalar)
-    
+
     def __neg__(self) -> Vector:
         return Vector(-self.x, -self.y)
 ```
@@ -1595,12 +1778,12 @@ class Vector:
 class Point:
     x: int
     y: int
-    
+
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Point):
             return False
         return self.x == other.x and self.y == other.y
-    
+
     def __lt__(self, other: Point) -> bool:
         return (self.x ** 2 + self.y ** 2) < (other.x ** 2 + other.y ** 2)
 ```
@@ -1626,6 +1809,40 @@ class Point:
 | `__iter__` | Iteration | `GetEnumerator()` |
 | `__getitem__` | Index access | Indexer `this[...]` |
 | `__setitem__` | Index assignment | Indexer `this[...]` |
+| `__delitem__` | Index deletion | (method call) |
+
+### Hashable Objects
+
+For objects to be used as dictionary keys or in sets, they must implement `__hash__` and `__eq__`:
+
+```python
+class Coordinate:
+    x: int
+    y: int
+
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Coordinate):
+            return False
+        return self.x == other.x and self.y == other.y
+
+    def __hash__(self) -> int:
+        return hash((self.x, self.y))
+
+# Now usable as dict key or in sets
+locations: dict[Coordinate, str] = {}
+coord = Coordinate(10, 20)
+locations[coord] = "Home"  # Works because __hash__ and __eq__ defined
+```
+
+**Rules for Hashable Objects:**
+- If `__eq__` is defined, `__hash__` must also be defined, and vice versa
+- If `a == b`, then `hash(a) == hash(b)` must be true
+- Hash value should not change during object lifetime
+- Mutable objects should not implement `__hash__`
 
 *Implementation: ✅ Native or 🔄 Lowered depending on the method.*
 
@@ -1736,7 +1953,7 @@ type Result[T, E] = Result[T, E]
 # Class-level aliases
 class Geometry:
     type Point3D = tuple[double, double, double]
-    
+
     def distance(self, p1: Point3D, p2: Point3D) -> double:
         dx, dy, dz = p1[0] - p2[0], p1[1] - p2[1], p1[2] - p2[2]
         return (dx**2 + dy**2 + dz**2) ** 0.5
@@ -1807,21 +2024,21 @@ match result:
 enum Result[T, E]:
     case Ok(value: T)
     case Err(error: E)
-    
+
     def is_ok(self) -> bool:
         match self:
             case Result.Ok():
                 return True
             case Result.Err():
                 return False
-    
+
     def unwrap(self) -> T:
         match self:
             case Result.Ok(value):
                 return value
             case Result.Err(error):
                 raise Exception(f"Called unwrap on Err: {error}")
-    
+
     def unwrap_or(self, default: T) -> T:
         match self:
             case Result.Ok(value):
@@ -1835,19 +2052,19 @@ enum Result[T, E]:
 ```csharp
 public abstract class Result<T, E> {
     private Result() { }
-    
+
     public sealed class Ok : Result<T, E> {
         public T Value { get; }
         public Ok(T value) => Value = value;
         public void Deconstruct(out T value) => value = Value;
     }
-    
+
     public sealed class Err : Result<T, E> {
         public E Error { get; }
         public Err(E error) => Error = error;
         public void Deconstruct(out E error) => error = Error;
     }
-    
+
     public static Result<T, E> ok(T value) => new Ok(value);
     public static Result<T, E> err(E error) => new Err(error);
 }
@@ -1898,6 +2115,33 @@ unique_lengths = {len(word) for word in ["apple", "banana", "cherry"]}
 
 *Implementation: 🔄 Lowered - `.Select(...).ToHashSet()`*
 
+### Comprehension Variable Scope
+
+Variables declared in comprehensions are scoped to that comprehension and do not leak into the outer scope:
+
+```python
+# List comprehension
+squares = [i ** 2 for i in range(10)]
+print(i)  # ERROR: 'i' does not exist in this scope
+
+# Dict comprehension
+ages = {name: age for name, age in pairs}
+print(name)  # ERROR: 'name' does not exist in this scope
+
+# For loop (same behavior)
+for x in items:
+    process(x)
+print(x)  # ERROR: 'x' does not exist in this scope
+```
+
+Variables declared inside comprehensions shadow any from the outer scope:
+
+```python
+x = 100
+squares = [x ** 2 for x in range(5)]  # This 'x' shadows outer 'x'
+print(x)  # ERROR: 'x' does not exist (shadowing doesn't leak)
+```
+
 ---
 
 ## Walrus Operator **[v0.9]**
@@ -1944,10 +2188,10 @@ Properties provide computed access to object state.
 class Person:
     # Auto-property with default
     property name: str = "Unknown"
-    
+
     # Read-only auto-property
     get property id: int = 0
-    
+
     # Write-only auto-property (rare)
     set property _internal: int
 ```
@@ -1959,14 +2203,14 @@ class Person:
 ```python
 class Temperature:
     __celsius: double = 0.0
-    
+
     # Explicit getter and setter
     property celsius(self) -> double:
         return self.__celsius
-    
+
     property celsius(self, value: double):
         self.__celsius = value
-    
+
     # Computed read-only property
     property fahrenheit(self) -> double:
         return self.__celsius * 9/5 + 32
@@ -2008,7 +2252,7 @@ def process_file(path: str) -> str:
     file = open(path, "r")
     defer:
         file.close()
-    
+
     # file.close() called when function exits
     return process(file.read())
 ```
@@ -2020,11 +2264,11 @@ def nested_resources():
     print("Opening A")
     defer:
         print("Closing A")
-    
+
     print("Opening B")
     defer:
         print("Closing B")
-    
+
     print("Processing")
 
 # Output:
@@ -2044,7 +2288,7 @@ def risky_operation():
     resource = acquire()
     defer:
         resource.release()  # Always executed
-    
+
     dangerous_work(resource)  # May throw
 ```
 
@@ -2073,7 +2317,7 @@ Events provide a publish-subscribe pattern:
 class Button:
     # Event declaration
     event clicked: (object, EventArgs) -> None
-    
+
     def click(self):
         if self.clicked is not None:
             self.clicked(self, EventArgs())
@@ -2095,7 +2339,7 @@ button.clicked -= on_clicked  # Unsubscribe
 class ValueChangedArgs(EventArgs):
     old_value: int
     new_value: int
-    
+
     def __init__(self, old_value: int, new_value: int):
         self.old_value = old_value
         self.new_value = new_value
@@ -2103,10 +2347,10 @@ class ValueChangedArgs(EventArgs):
 class Counter:
     event value_changed: (object, ValueChangedArgs) -> None
     _value: int = 0
-    
+
     property value(self) -> int:
         return self._value
-    
+
     property value(self, new_value: int):
         old = self._value
         self._value = new_value
