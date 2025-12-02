@@ -227,6 +227,22 @@ public class ProtocolValidatorTests
         validator.Errors[0].Message.Should().Contain("not iterable");
     }
 
+    [Fact]
+    public void ValidateIteration_InfersFirstElementTypeFromTuple()
+    {
+        var validator = CreateValidator();
+        var tupleType = new TupleType
+        {
+            ElementTypes = new List<SemanticType> { SemanticType.Int, SemanticType.Str, SemanticType.Bool }
+        };
+
+        var result = validator.ValidateIteration(tupleType, 1, 1);
+
+        // For heterogeneous tuples, returns first element type (simplified)
+        result.Should().Be(SemanticType.Int);
+        validator.Errors.Should().BeEmpty();
+    }
+
     #endregion
 
     #region ValidateMembership
@@ -346,6 +362,22 @@ public class ProtocolValidatorTests
         validator.Errors[0].Message.Should().Contain("does not support indexing");
     }
 
+    [Fact]
+    public void ValidateIndexAccess_InfersFirstElementTypeFromTuple()
+    {
+        var validator = CreateValidator();
+        var tupleType = new TupleType
+        {
+            ElementTypes = new List<SemanticType> { SemanticType.Str, SemanticType.Int, SemanticType.Bool }
+        };
+
+        var result = validator.ValidateIndexAccess(tupleType, SemanticType.Int, 1, 1);
+
+        // For heterogeneous tuples, returns first element type (simplified)
+        result.Should().Be(SemanticType.Str);
+        validator.Errors.Should().BeEmpty();
+    }
+
     #endregion
 
     #region ValidateBoolConversion
@@ -414,6 +446,8 @@ public class ProtocolValidatorTests
         validator.HasProtocol(arrayType, "__iter__").Should().BeTrue();
         validator.HasProtocol(arrayType, "__len__").Should().BeTrue();
         validator.HasProtocol(arrayType, "__getitem__").Should().BeTrue();
+        // Arrays are mutable via indexing, so they support __setitem__
+        validator.HasProtocol(arrayType, "__setitem__").Should().BeTrue();
     }
 
     #endregion

@@ -119,7 +119,8 @@ This is an architectural refactor, not a behavior change project: the end state 
   - CLR protocol discovery - reflection-based discovery of .NET collection/iterable interfaces
   - Validation methods: `ValidateLen()`, `ValidateIteration()`, `ValidateMembership()`, `ValidateIndexAccess()`, `ValidateBoolConversion()`
   - `TypeChecker.cs` integration - instantiates `ProtocolValidator` and includes its errors
-  - Comprehensive tests in `ProtocolValidatorTests.cs` (28 tests)
+  - Comprehensive tests in `ProtocolValidatorTests.cs` (30+ tests)
+  - **Note**: ProtocolValidator class is complete, but TypeChecker does not yet delegate to it (tasks 4.2.3-4.2.6)
 
 - **Operator Validation** (see [reflection_based_operator_validation.md](reflection_based_operator_validation.md)):
   - `OperatorValidator` - centralized binary/unary/augmented operator resolution
@@ -416,7 +417,7 @@ This section provides a concrete, checkable task list for completing the refacto
 | 1. Primitive Catalog | High | ✅ Complete | `PrimitiveCatalog.cs`, tests | `OperatorValidator.cs`, `TypeChecker.cs`, `BuiltinRegistry.cs` | 2-3 days |
 | 2. Protocol Registry | High | ✅ Complete | `ProtocolRegistry.cs`, tests | None (foundational) | 1-2 days |
 | 3. Protocol Signature Validator | High | ✅ Complete | `ProtocolSignatureValidator.cs`, tests | `Symbol.cs`, `NameResolver.cs`, `TypeChecker.cs` | 2-3 days |
-| 4. Protocol Validator | Medium | ✅ Complete | `ProtocolValidator.cs`, tests | `TypeChecker.cs` | 2-3 days |
+| 4. Protocol Validator | Medium | 🔄 Partial | `ProtocolValidator.cs`, tests | `TypeChecker.cs` | 2-3 days |
 | 5. RoslynEmitter Consolidation | Medium | ⏳ Not Started | None | `RoslynEmitter.cs`, `NameMangler.cs` | 1-2 days |
 | 6. Type Mapper Consolidation | Low | ⏳ Not Started | None | `CodeGen/TypeMapper.cs`, `Discovery/TypeMapper.cs` | 1 day |
 | 7. CLR Member Cache | Low | ⏳ Not Started | `ClrMemberCache.cs`, tests | `OperatorValidator.cs`, `ProtocolValidator.cs` | 1-2 days |
@@ -2528,28 +2529,36 @@ Create file at `src/Sharpy.Compiler/Semantic/ProtocolValidator.cs`:
           allErrors.AddRange(_protocolValidator.Errors);
   ```
 
-- [x] **4.2.3** Replace hard-coded `for` loop iteration check:
+- [ ] **4.2.3** Replace hard-coded `for` loop iteration check:
+
+  **Status**: ⏳ Not yet integrated - ProtocolValidator is ready but TypeChecker still uses hard-coded checks.
 
   **Search for** `for` loop handling in `CheckFor()` method and update to use:
   ```csharp
   var elementType = _protocolValidator.ValidateIteration(iterableType, forStmt.LineStart, forStmt.ColumnStart);
   ```
 
-- [x] **4.2.4** Replace hard-coded `in` operator check:
+- [ ] **4.2.4** Replace hard-coded `in` operator check:
+
+  **Status**: ⏳ Not yet integrated - ProtocolValidator is ready but TypeChecker still uses hard-coded checks.
 
   **Search for** `in` operator handling (BinaryOperator.In) and update to use:
   ```csharp
   var resultType = _protocolValidator.ValidateMembership(rightType, leftType, line, column);
   ```
 
-- [x] **4.2.5** Replace hard-coded indexing check:
+- [ ] **4.2.5** Replace hard-coded indexing check:
+
+  **Status**: ⏳ Not yet integrated - ProtocolValidator is ready but TypeChecker still uses hard-coded checks.
 
   **Search for** subscript/indexing handling and update to use:
   ```csharp
   var elementType = _protocolValidator.ValidateIndexAccess(containerType, indexType, line, column);
   ```
 
-- [x] **4.2.6** Replace hard-coded `len()` check:
+- [ ] **4.2.6** Replace hard-coded `len()` check:
+
+  **Status**: ⏳ Not yet integrated - ProtocolValidator is ready but TypeChecker still uses hard-coded checks.
 
   **Search for** `len` builtin call handling and update to use:
   ```csharp

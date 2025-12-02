@@ -46,6 +46,13 @@ public class ProtocolValidator
             return dunderName is "__len__" or "__iter__" or "__contains__" or "__getitem__";
         }
 
+        // Check TupleType (heterogeneous tuples like (int, str, bool))
+        if (type is TupleType)
+        {
+            // Tuples support __len__, __iter__, __getitem__ (but not __setitem__ - immutable)
+            return dunderName is "__len__" or "__iter__" or "__getitem__";
+        }
+
         // Check generic container types (list[T], dict[K,V], set[T])
         if (type is GenericType generic)
         {
@@ -152,6 +159,14 @@ public class ProtocolValidator
             protocols.Add("__len__");
         }
 
+        // Arrays implement IList, but also explicitly check IsArray for __setitem__ support
+        // (Arrays are mutable via indexing even though they don't implement generic IList<T>)
+        if (clrType.IsArray)
+        {
+            protocols.Add("__getitem__");
+            protocols.Add("__setitem__");
+        }
+
         // Any object has __str__ (ToString) and __hash__ (GetHashCode)
         protocols.Add("__str__");
         protocols.Add("__hash__");
@@ -197,6 +212,12 @@ public class ProtocolValidator
             return generic.TypeArguments[0];
         }
 
+        // For tuples, return the first element type (simplified for heterogeneous tuples)
+        if (iterableType is TupleType tuple && tuple.ElementTypes.Count > 0)
+        {
+            return tuple.ElementTypes[0];
+        }
+
         // For strings, element type is str (single characters)
         if (iterableType == SemanticType.Str)
         {
@@ -223,6 +244,10 @@ public class ProtocolValidator
                 line, column);
             return SemanticType.Unknown;
         }
+
+        // TODO: Consider validating that itemType is assignable to the container's element type
+        // For now, we just check protocol support and return bool
+
         return SemanticType.Bool;
     }
 
@@ -245,6 +270,10 @@ public class ProtocolValidator
             return SemanticType.Unknown;
         }
 
+        // TODO: Validate index type matches container expectations:
+        // - list/tuple: index should be int (or slice)
+        // - dict: index should be compatible with key type
+
         // Infer element type from generic argument
         if (containerType is GenericType generic)
         {
@@ -253,11 +282,18 @@ public class ProtocolValidator
             {
                 return generic.TypeArguments[1];
             }
-            // For list/set, return element type (first argument)
+            // For list/tuple, return element type (first argument)
             if (generic.TypeArguments.Count > 0)
             {
                 return generic.TypeArguments[0];
             }
+        }
+
+        // For tuples, indexing returns the element type (simplified: returns first element type)
+        // Ideally would track the exact index for precise typing with heterogeneous tuples
+        if (containerType is TupleType tuple && tuple.ElementTypes.Count > 0)
+        {
+            return tuple.ElementTypes[0];
         }
 
         // For strings, indexing returns str
