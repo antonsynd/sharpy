@@ -995,21 +995,10 @@ public class RoslynEmitter
         var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
 
         // Add override keyword for methods that override Object methods
-        // Uses ProtocolRegistry when available, falls back to known Object method overrides
-        var shouldAddOverride = false;
-        var protocolForOverride = ProtocolRegistry.GetProtocol(func.Name);
-        if (protocolForOverride != null &&
-            protocolForOverride.ClrMethodName is "ToString" or "GetHashCode")
-        {
-            shouldAddOverride = true;
-        }
-        // __eq__ and __repr__ need special handling:
-        // - __eq__ is an operator dunder (not in ProtocolRegistry) but also maps to Equals() override
-        // - __repr__ maps to ToString but has ClrMethodName: null in ProtocolRegistry (generates __Repr__())
-        else if (func.Name is "__eq__" or "__repr__")
-        {
-            shouldAddOverride = true;
-        }
+        // Uses the protocol variable already fetched above, plus special handling for operator dunders
+        var shouldAddOverride = protocol?.ClrMethodName is "ToString" or "GetHashCode"
+            // __eq__ is an operator dunder (not in ProtocolRegistry) but maps to Equals() override
+            || func.Name == "__eq__";
 
         if (shouldAddOverride && !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword)))
         {
@@ -2314,7 +2303,8 @@ public class RoslynEmitter
     /// </summary>
     private static bool ShouldGenerateDunderMethod(string dunderName)
     {
-        // __init__ is always generated (as constructor)
+        // __init__ is explicitly checked here for clarity, even though it IS in ProtocolRegistry.
+        // This makes the special constructor handling obvious to readers.
         if (dunderName == "__init__")
             return true;
 

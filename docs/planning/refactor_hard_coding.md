@@ -3766,18 +3766,15 @@ if (protocol != null && protocol.ExpectedReturnType != null)
     };
 }
 
-// REFACTORED: Override detection now uses ProtocolRegistry
-var protocolForOverride = ProtocolRegistry.GetProtocol(func.Name);
-if (protocolForOverride != null &&
-    protocolForOverride.ClrMethodName is "ToString" or "Equals" or "GetHashCode" &&
-    !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword)))
-{
-    modifiers = modifiers.Add(Token(SyntaxKind.OverrideKeyword));
-}
+// REFACTORED: Override detection reuses cached 'protocol' variable
+// Note: 'Equals' is NOT in this pattern because __eq__ is an operator dunder handled separately
+var shouldAddOverride = protocol?.ClrMethodName is "ToString" or "GetHashCode"
+    || func.Name == "__eq__";  // __eq__ is operator dunder but maps to Equals() override
 
 // REFACTORED: ShouldGenerateDunderMethod now uses ProtocolRegistry.IsProtocolDunder()
 private static bool ShouldGenerateDunderMethod(string dunderName)
 {
+    // __init__ check is explicit for clarity (it IS in ProtocolRegistry)
     if (dunderName == "__init__")
         return true;
     return ProtocolRegistry.IsProtocolDunder(dunderName);

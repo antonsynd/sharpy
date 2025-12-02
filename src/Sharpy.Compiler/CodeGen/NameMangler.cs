@@ -48,13 +48,15 @@ public static class NameMangler
 #if DEBUG
     static NameMangler()
     {
-        // Verify all protocol dunders have mappings
+        // Verify all protocol dunders with CLR mappings are in _dunderMethodMap
         foreach (var protocol in ProtocolRegistry.GetAllProtocols())
         {
             if (protocol.ClrMethodName != null && !_dunderMethodMap.ContainsKey(protocol.DunderName))
             {
-                System.Diagnostics.Debug.WriteLine(
-                    $"Warning: Protocol '{protocol.DunderName}' missing from _dunderMethodMap");
+                // Fail fast during development - RegistryConsistencyTests also covers this
+                System.Diagnostics.Debug.Assert(false,
+                    $"Protocol '{protocol.DunderName}' with CLR mapping '{protocol.ClrMethodName}' " +
+                    $"is missing from _dunderMethodMap. Add: {{ \"{protocol.DunderName}\", \"...\" }}");
             }
         }
     }
