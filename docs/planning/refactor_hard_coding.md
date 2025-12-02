@@ -147,10 +147,7 @@ This is an architectural refactor, not a behavior change project: the end state 
 
 ### Remaining Refactoring from Earlier Phases
 
-- **SemanticType.IsAssignableTo()** - still uses hard-coded numeric conversion rules instead of `PrimitiveCatalog.CanImplicitlyConvert()` (see Appendix A.8)
-  - Location: `src/Sharpy.Compiler/Semantic/SemanticType.cs` lines 74-85
-  - Currently duplicates the conversion logic already in `PrimitiveCatalog`
-  - Should be refactored to use `PrimitiveCatalog.CanImplicitlyConvert(thisInfo, otherInfo)`
+- (None currently - all phases through 5b are complete)
 
 ---
 
@@ -428,7 +425,7 @@ This section provides a concrete, checkable task list for completing the refacto
 | 3. Protocol Signature Validator | High | ✅ Complete | `ProtocolSignatureValidator.cs`, tests | `Symbol.cs`, `NameResolver.cs`, `TypeChecker.cs` | 2-3 days |
 | 4. Protocol Validator | Medium | ✅ Complete | `ProtocolValidator.cs`, tests | `TypeChecker.cs` | 2-3 days |
 | 5. RoslynEmitter Consolidation | Medium | ✅ Complete | `RegistryConsistencyTests.cs` | `RoslynEmitter.cs`, `NameMangler.cs` | 1-2 days |
-| 5b. SemanticType.IsAssignableTo() | Medium | ⏳ Not Started | None | `SemanticType.cs` | 0.5 days |
+| 5b. SemanticType.IsAssignableTo() | Medium | ✅ Complete | None | `SemanticType.cs` | 0.5 days |
 | 6. Type Mapper Consolidation | Low | ⏳ Not Started | None | `CodeGen/TypeMapper.cs`, `Discovery/TypeMapper.cs` | 1 day |
 | 7. CLR Member Cache | Low | ⏳ Not Started | `ClrMemberCache.cs`, tests | `OperatorValidator.cs`, `ProtocolValidator.cs` | 1-2 days |
 
@@ -3027,11 +3024,11 @@ Location: `src/Sharpy.Compiler/CodeGen/NameMangler.cs`
 
 #### 5b.1 Refactor `BuiltinType.IsAssignableTo()`
 
-Location: `src/Sharpy.Compiler/Semantic/SemanticType.cs` (around lines 74-85)
+Location: `src/Sharpy.Compiler/Semantic/SemanticType.cs` (around lines 74-88)
 
-- [ ] **5b.1.1** Replace hard-coded conversion rules:
+- [x] **5b.1.1** Replace hard-coded conversion rules:
 
-  **Current**:
+  **Before**:
   ```csharp
   public override bool IsAssignableTo(SemanticType other)
   {
@@ -3048,7 +3045,7 @@ Location: `src/Sharpy.Compiler/Semantic/SemanticType.cs` (around lines 74-85)
   }
   ```
 
-  **Replace with**:
+  **After** (current implementation):
   ```csharp
   public override bool IsAssignableTo(SemanticType other)
   {
@@ -3067,7 +3064,17 @@ Location: `src/Sharpy.Compiler/Semantic/SemanticType.cs` (around lines 74-85)
   }
   ```
 
-**Acceptance Criteria**: All existing tests pass. Numeric conversions behave identically.
+**Status**: ✅ Complete. All tests pass (2,767 tests: 735 Core + 2,032 Compiler).
+
+**Verification**:
+- `dotnet test` - All existing tests pass
+- Numeric conversions behave identically to before:
+  - `int → long`: allowed
+  - `int → float`: allowed
+  - `int → double`: allowed
+  - `float → double`: allowed
+  - `long → double`: allowed
+- Additional implicit widening conversions from `PrimitiveCatalog` also work (e.g., `byte → int`, `short → long`)
 
 ---
 
@@ -3976,29 +3983,29 @@ static NameMangler()
 
 ### A.8 `SemanticType.cs` - Implicit Conversion Rules
 
-**Location**: `src/Sharpy.Compiler/Semantic/SemanticType.cs` (around lines 74-85)
+**Location**: `src/Sharpy.Compiler/Semantic/SemanticType.cs` (around lines 74-88)
 
-**Status**: 🔴 To be refactored in Phase 5b
+**Status**: 🟢 Completed in Phase 5b
 
 ```csharp
 // In BuiltinType.IsAssignableTo()
-// STILL HARD-CODED - should use PrimitiveCatalog.CanImplicitlyConvert()
+// REFACTORED: Now uses PrimitiveCatalog.CanImplicitlyConvert()
 public override bool IsAssignableTo(SemanticType other)
 {
     if (base.IsAssignableTo(other)) return true;
 
-    // Handle numeric conversions - hard-coded
-    if (this == Int && other == Long) return true;
-    if (this == Int && other == Float) return true;
-    if (this == Int && other == Double) return true;
-    if (this == Float && other == Double) return true;
-    if (this == Long && other == Double) return true;
+    // Use PrimitiveCatalog for implicit conversion rules
+    var thisInfo = PrimitiveCatalog.GetPrimitiveInfo(this);
+    var otherInfo = PrimitiveCatalog.GetPrimitiveInfo(other);
+
+    if (thisInfo != null && otherInfo != null)
+    {
+        return PrimitiveCatalog.CanImplicitlyConvert(thisInfo, otherInfo);
+    }
 
     return false;
 }
 ```
-
-**Refactor to**: Use `PrimitiveCatalog.CanImplicitlyConvert(from, to)` for all numeric conversion checks. See Phase 5b task list for implementation details.
 
 ---
 
