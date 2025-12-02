@@ -14,6 +14,9 @@ public class TypeChecker
     private readonly ControlFlowValidator _controlFlowValidator;
     private readonly AccessValidator _accessValidator;
     private readonly OperatorValidator _operatorValidator;
+    // TODO: Integrate with CheckFor(), CheckSubscript(), etc. (tasks 4.2.3-4.2.6)
+    // Currently instantiated but not used for validation delegation.
+    private readonly ProtocolValidator _protocolValidator;
     private readonly ICompilerLogger _logger;
     private readonly List<SemanticError> _errors = new();
 
@@ -42,17 +45,19 @@ public class TypeChecker
         _controlFlowValidator = new ControlFlowValidator(_logger);
         _accessValidator = new AccessValidator(_symbolTable, _semanticInfo, _logger);
         _operatorValidator = new OperatorValidator(_symbolTable, _logger);
+        _protocolValidator = new ProtocolValidator(_symbolTable, _logger);
     }
 
     public IReadOnlyList<SemanticError> Errors
     {
         get
         {
-            // Combine errors from type checker, control flow validator, access validator, and operator validator.
+            // Combine errors from type checker, control flow validator, access validator, operator validator, and protocol validator.
             var allErrors = new List<SemanticError>(_errors);
             allErrors.AddRange(_controlFlowValidator.Errors);
             allErrors.AddRange(_accessValidator.Errors);
             allErrors.AddRange(_operatorValidator.Errors);
+            allErrors.AddRange(_protocolValidator.Errors);
             return allErrors;
         }
     }
