@@ -977,31 +977,41 @@ public class RoslynEmitter
             ? _typeMapper.MapType(func.ReturnType)
             : PredefinedType(Token(SyntaxKind.VoidKeyword));
 
-        // Special handling for known override methods
-        if (func.Name == "__str__" || func.Name == "__repr__")
+        // Use ProtocolRegistry to determine return types for protocol dunders
+        var protocol = ProtocolRegistry.GetProtocol(func.Name);
+        if (protocol != null && protocol.ExpectedReturnType != null)
         {
-            // ToString() should return string
-            returnType = PredefinedType(Token(SyntaxKind.StringKeyword));
-        }
-        else if (func.Name == "__eq__")
-        {
-            // Equals() should return bool and take object parameter
-            returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
-        }
-        else if (func.Name == "__hash__")
-        {
-            // GetHashCode() should return int
-            returnType = PredefinedType(Token(SyntaxKind.IntKeyword));
+            returnType = protocol.ExpectedReturnType switch
+            {
+                "str" or "string" => PredefinedType(Token(SyntaxKind.StringKeyword)),
+                "int" => PredefinedType(Token(SyntaxKind.IntKeyword)),
+                "bool" => PredefinedType(Token(SyntaxKind.BoolKeyword)),
+                "None" or "void" => PredefinedType(Token(SyntaxKind.VoidKeyword)),
+                _ => func.ReturnType != null ? _typeMapper.MapType(func.ReturnType) : returnType
+            };
         }
 
         // Process decorators to determine modifiers
         var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
 
         // Add override keyword for methods that override Object methods
-        // Add override keyword for methods that override Object methods, if not already present
-        if ((func.Name == "__str__" || func.Name == "__repr__" ||
-            func.Name == "__eq__" || func.Name == "__hash__") &&
-            !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword)))
+        // Uses ProtocolRegistry when available, falls back to known Object method overrides
+        var shouldAddOverride = false;
+        var protocolForOverride = ProtocolRegistry.GetProtocol(func.Name);
+        if (protocolForOverride != null &&
+            protocolForOverride.ClrMethodName is "ToString" or "GetHashCode")
+        {
+            shouldAddOverride = true;
+        }
+        // __eq__ and __repr__ need special handling:
+        // - __eq__ is an operator dunder (not in ProtocolRegistry) but also maps to Equals() override
+        // - __repr__ maps to ToString but has ClrMethodName: null in ProtocolRegistry (generates __Repr__())
+        else if (func.Name is "__eq__" or "__repr__")
+        {
+            shouldAddOverride = true;
+        }
+
+        if (shouldAddOverride && !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword)))
         {
             modifiers = modifiers.Add(Token(SyntaxKind.OverrideKeyword));
         }
@@ -2302,25 +2312,14 @@ public class RoslynEmitter
     /// Determines if a dunder method should generate a C# method (for overrides or special methods)
     /// Most dunder methods should NOT generate methods to avoid conflicts with user-defined methods
     /// </summary>
-    private bool ShouldGenerateDunderMethod(string dunderName)
+    private static bool ShouldGenerateDunderMethod(string dunderName)
     {
-        // Only generate methods for dunder methods that map to C# overrides or special constructs
-        return dunderName switch
-        {
-            "__str__" => true,     // ToString() override
-            "__repr__" => true,    // ToString() override
-            "__eq__" => true,      // Equals() override
-            "__hash__" => true,    // GetHashCode() override
-            "__bool__" => true,    // ToBoolean() method (no operator equivalent)
-            "__len__" => true,     // Length property/method (no operator equivalent)
-            "__contains__" => true, // Contains() method (no operator equivalent)
-            "__getitem__" => true, // Indexer get (no operator equivalent)
-            "__setitem__" => true, // Indexer set (no operator equivalent)
-            "__iter__" => true,    // GetEnumerator() (no operator equivalent)
-            // Arithmetic and comparison operators should NOT generate methods
-            // They only generate operators that inline the dunder method body
-            _ => false
-        };
+        // __init__ is always generated (as constructor)
+        if (dunderName == "__init__")
+            return true;
+
+        // Protocol dunders that map to .NET methods should be generated
+        return ProtocolRegistry.IsProtocolDunder(dunderName);
     }
 
     /// <summary>
@@ -2334,7 +2333,7 @@ public class RoslynEmitter
             "__add__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.PlusToken),
             "__sub__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.MinusToken),
             "__mul__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.AsteriskToken),
-            "__div__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.SlashToken),
+            "__truediv__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.SlashToken),
             "__mod__" => GenerateBinaryOperator(funcDef, className, SyntaxKind.PercentToken),
 
             // Bitwise operators (binary)

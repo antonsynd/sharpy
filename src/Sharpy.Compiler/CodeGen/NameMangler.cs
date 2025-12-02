@@ -1,3 +1,5 @@
+using Sharpy.Compiler.Semantic;
+
 namespace Sharpy.Compiler.CodeGen;
 
 /// <summary>
@@ -42,6 +44,21 @@ public static class NameMangler
         // e.g., __add__ becomes __Add__, __sub__ becomes __Sub__, etc.
         // This avoids conflicts with user-defined Add(), Sub(), etc. methods
     };
+
+#if DEBUG
+    static NameMangler()
+    {
+        // Verify all protocol dunders have mappings
+        foreach (var protocol in ProtocolRegistry.GetAllProtocols())
+        {
+            if (protocol.ClrMethodName != null && !_dunderMethodMap.ContainsKey(protocol.DunderName))
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"Warning: Protocol '{protocol.DunderName}' missing from _dunderMethodMap");
+            }
+        }
+    }
+#endif
 
     /// <summary>
     /// Preserve type names as-is. Only handles keyword escaping and special prefixes.

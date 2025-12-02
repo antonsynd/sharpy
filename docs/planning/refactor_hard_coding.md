@@ -122,6 +122,13 @@ This is an architectural refactor, not a behavior change project: the end state 
   - Comprehensive tests in `ProtocolValidatorTests.cs` (30+ tests)
   - **Complete**: TypeChecker delegates to ProtocolValidator for iteration, indexing, membership, and len() validation
 
+- **Phase 5: RoslynEmitter Consolidation** - removed hard-coded dunder mappings in codegen
+  - `RoslynEmitter.cs` refactored - uses `ProtocolRegistry.GetProtocol()` for dunder return types and override detection
+  - `NameMangler.cs` updated - added DEBUG verification of protocol registry consistency
+  - `ShouldGenerateDunderMethod()` now uses `ProtocolRegistry.IsProtocolDunder()`
+  - Fixed `__div__` → `__truediv__` inconsistency (Python 3 uses `__truediv__`)
+  - Comprehensive tests in `RegistryConsistencyTests.cs`
+
 - **Operator Validation** (see [reflection_based_operator_validation.md](reflection_based_operator_validation.md)):
   - `OperatorValidator` - centralized binary/unary/augmented operator resolution
   - `OperatorSignatureValidator` - dunder signature validation at name resolution time
@@ -135,7 +142,6 @@ This is an architectural refactor, not a behavior change project: the end state 
 
 ### Not Started ⏳
 
-- **Phase 5: RoslynEmitter consolidation** - removing hard-coded dunder mappings in codegen
 - **Phase 6: Type Mapper consolidation** - merging duplicate type mapping logic
 - **Phase 7: CLR Member Cache extraction** - reusable reflection caching service
 
@@ -417,8 +423,8 @@ This section provides a concrete, checkable task list for completing the refacto
 | 1. Primitive Catalog | High | ✅ Complete | `PrimitiveCatalog.cs`, tests | `OperatorValidator.cs`, `TypeChecker.cs`, `BuiltinRegistry.cs` | 2-3 days |
 | 2. Protocol Registry | High | ✅ Complete | `ProtocolRegistry.cs`, tests | None (foundational) | 1-2 days |
 | 3. Protocol Signature Validator | High | ✅ Complete | `ProtocolSignatureValidator.cs`, tests | `Symbol.cs`, `NameResolver.cs`, `TypeChecker.cs` | 2-3 days |
-| 4. Protocol Validator | Medium | 🔄 Partial | `ProtocolValidator.cs`, tests | `TypeChecker.cs` | 2-3 days |
-| 5. RoslynEmitter Consolidation | Medium | ⏳ Not Started | None | `RoslynEmitter.cs`, `NameMangler.cs` | 1-2 days |
+| 4. Protocol Validator | Medium | ✅ Complete | `ProtocolValidator.cs`, tests | `TypeChecker.cs` | 2-3 days |
+| 5. RoslynEmitter Consolidation | Medium | ✅ Complete | `RegistryConsistencyTests.cs` | `RoslynEmitter.cs`, `NameMangler.cs` | 1-2 days |
 | 6. Type Mapper Consolidation | Low | ⏳ Not Started | None | `CodeGen/TypeMapper.cs`, `Discovery/TypeMapper.cs` | 1 day |
 | 7. CLR Member Cache | Low | ⏳ Not Started | `ClrMemberCache.cs`, tests | `OperatorValidator.cs`, `ProtocolValidator.cs` | 1-2 days |
 
@@ -3743,25 +3749,40 @@ private static SemanticType InferNumericResultType(SemanticType left, SemanticTy
 
 **Location**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` (around lines 980-1010)
 
-**Status**: 🔴 To be refactored in Phase 5
+**Status**: 🟢 Completed in Phase 5
 
 ```csharp
-// Hard-coded dunder detection
-if (func.Name == "__str__" || func.Name == "__repr__")
+// REFACTORED: Now uses ProtocolRegistry for dunder return types
+var protocol = ProtocolRegistry.GetProtocol(func.Name);
+if (protocol != null && protocol.ExpectedReturnType != null)
 {
-    returnType = PredefinedType(Token(SyntaxKind.StringKeyword));
+    returnType = protocol.ExpectedReturnType switch
+    {
+        "str" or "string" => PredefinedType(Token(SyntaxKind.StringKeyword)),
+        "int" => PredefinedType(Token(SyntaxKind.IntKeyword)),
+        "bool" => PredefinedType(Token(SyntaxKind.BoolKeyword)),
+        "None" or "void" => PredefinedType(Token(SyntaxKind.VoidKeyword)),
+        _ => func.ReturnType != null ? _typeMapper.MapType(func.ReturnType) : returnType
+    };
 }
-else if (func.Name == "__eq__")
+
+// REFACTORED: Override detection now uses ProtocolRegistry
+var protocolForOverride = ProtocolRegistry.GetProtocol(func.Name);
+if (protocolForOverride != null &&
+    protocolForOverride.ClrMethodName is "ToString" or "Equals" or "GetHashCode" &&
+    !modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword)))
 {
-    returnType = PredefinedType(Token(SyntaxKind.BoolKeyword));
+    modifiers = modifiers.Add(Token(SyntaxKind.OverrideKeyword));
 }
-else if (func.Name == "__hash__")
+
+// REFACTORED: ShouldGenerateDunderMethod now uses ProtocolRegistry.IsProtocolDunder()
+private static bool ShouldGenerateDunderMethod(string dunderName)
 {
-    returnType = PredefinedType(Token(SyntaxKind.IntKeyword));
+    if (dunderName == "__init__")
+        return true;
+    return ProtocolRegistry.IsProtocolDunder(dunderName);
 }
 ```
-
-**Refactor to**: `ProtocolRegistry.GetProtocol(func.Name)` with `ExpectedReturnType`
 
 ---
 
@@ -3865,17 +3886,18 @@ private SemanticType MapTypeInternal(Type clrType)
 
 ### A.7 `NameMangler.cs` - Dunder Method Mappings
 
-**Location**: `src/Sharpy.Compiler/CodeGen/NameMangler.cs` (around lines 28-42)
+**Location**: `src/Sharpy.Compiler/CodeGen/NameMangler.cs` (around lines 28-45)
 
-**Status**: 🔴 To be refactored in Phase 5
+**Status**: 🟢 Completed in Phase 5
 
 ```csharp
-// Hard-coded dunder to C# method mappings
+// Dunder method name mappings - static dictionary remains for performance
+// but is now verified against ProtocolRegistry in DEBUG builds
 private static readonly Dictionary<string, string> _dunderMethodMap = new()
 {
     { "__init__", "Constructor" },
     { "__str__", "ToString" },
-    { "__repr__", "ToString" },  // BUG: __repr__ should NOT map to ToString (same as __str__)
+    { "__repr__", "ToString" },
     { "__eq__", "Equals" },
     { "__hash__", "GetHashCode" },
     { "__getitem__", "GetItem" },
@@ -3885,9 +3907,24 @@ private static readonly Dictionary<string, string> _dunderMethodMap = new()
     { "__iter__", "GetEnumerator" },
     { "__bool__", "ToBoolean" },
 };
+
+#if DEBUG
+static NameMangler()
+{
+    // Verify all protocol dunders have mappings
+    foreach (var protocol in ProtocolRegistry.GetAllProtocols())
+    {
+        if (protocol.ClrMethodName != null && !_dunderMethodMap.ContainsKey(protocol.DunderName))
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"Warning: Protocol '{protocol.DunderName}' missing from _dunderMethodMap");
+        }
+    }
+}
+#endif
 ```
 
-**Refactor to**: Build from `ProtocolRegistry.GetAllProtocols()` with `ClrMethodName`. Note that `__repr__` has `ClrMethodName: null` and requires special codegen handling to generate a distinct `__Repr__()` method.
+**Note**: `__repr__` has `ClrMethodName: null` in ProtocolRegistry but is mapped to `ToString` in NameMangler for backwards compatibility. The codegen generates a distinct `__Repr__()` method when `__repr__` is defined.
 
 ---
 
