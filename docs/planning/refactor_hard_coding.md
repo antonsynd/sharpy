@@ -3922,7 +3922,7 @@ static NameMangler()
 #endif
 ```
 
-**Note**: `__repr__` has `ClrMethodName: null` in ProtocolRegistry but is mapped to `ToString` in NameMangler for backwards compatibility. The codegen generates a distinct `__Repr__()` method when `__repr__` is defined.
+**Note**: `__repr__` has `ClrMethodName: null` in ProtocolRegistry but is mapped to `ToString` in NameMangler for backwards compatibility. When `__repr__` is defined, it generates a `ToString()` override method.
 
 ---
 
