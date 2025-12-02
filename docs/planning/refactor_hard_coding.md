@@ -94,37 +94,46 @@ This is an architectural refactor, not a behavior change project: the end state 
 
 ### Completed ✅
 
+- **Phase 1: Primitive Catalog** - exhaustive registry of primitive types with promotion/conversion rules
+  - `PrimitiveCatalog.cs` - central registry with all numeric/primitive types, promotion rules, and conversion checking
+  - `OperatorValidator.cs` refactored - now uses `PrimitiveCatalog.IsNumeric()`, `PrimitiveCatalog.IsInteger()`, `PrimitiveCatalog.GetPromotedType()`
+  - `TypeChecker.cs` refactored - `IsNumericType()` now delegates to `PrimitiveCatalog.IsNumeric()`
+  - `BuiltinRegistry.cs` refactored - uses `PrimitiveCatalog.GetAllPrimitives()` for type registration
+  - Comprehensive tests in `PrimitiveCatalogTests.cs`
+
+- **Phase 2: Protocol Registry** - centralized mapping of non-operator dunders to Sharpy.Core interfaces
+  - `ProtocolRegistry.cs` - central registry with all v0.5 protocol dunders (11 protocols)
+  - `ProtocolInfo` record - describes each protocol's interface, method, and CLR mappings
+  - Comprehensive tests in `ProtocolRegistryTests.cs`
+
+- **Phase 3: Protocol Signature Validator** - signature validation for non-operator dunders
+  - `ProtocolSignatureValidator.cs` - validates protocol dunder signatures at name resolution time
+  - `TypeSymbol.ProtocolMethods` - caching of validated protocol methods (like `OperatorMethods`)
+  - `NameResolver.cs` integration - validates and registers protocol dunders during name resolution
+  - `TypeChecker.cs` simplified - removed hard-coded `__init__` return type validation (now just sets returnType to void)
+  - Comprehensive tests in `ProtocolSignatureValidatorTests.cs` (50+ tests)
+
 - **Operator Validation** (see [reflection_based_operator_validation.md](reflection_based_operator_validation.md)):
   - `OperatorValidator` - centralized binary/unary/augmented operator resolution
   - `OperatorSignatureValidator` - dunder signature validation at name resolution time
   - `TypeSymbol.OperatorMethods` - caching of validated operator methods
   - `_clrOperatorCache` - CLR operator discovery via reflection
   - `TypeChecker` integration for all operator expressions
-- **Primitive Catalog** - exhaustive registry of primitive types with promotion/conversion rules
-- **Protocol Registry** - centralized mapping of non-operator dunders to Sharpy.Core interfaces
-  - `ProtocolRegistry.cs` - central registry with all v0.5 protocol dunders
-  - `ProtocolInfo` record - describes each protocol's interface, method, and CLR mappings
-  - Comprehensive tests in `ProtocolRegistryTests.cs`
 
 ### In Progress 🔄
 
-- (None currently - Phase 3 completed)
+- (None currently)
 
 ### Not Started ⏳
 
-- **Protocol Validator** - TypeChecker integration for protocol conformance
-- **RoslynEmitter consolidation** - removing hard-coded dunder mappings in codegen
-- **Type Mapper consolidation** - merging duplicate type mapping logic
-- **CLR Member Cache extraction** - reusable reflection caching service
+- **Phase 4: Protocol Validator** - TypeChecker integration for protocol conformance
+- **Phase 5: RoslynEmitter consolidation** - removing hard-coded dunder mappings in codegen
+- **Phase 6: Type Mapper consolidation** - merging duplicate type mapping logic
+- **Phase 7: CLR Member Cache extraction** - reusable reflection caching service
 
-### Completed ✅ (Additional)
+### Remaining Refactoring from Phase 1
 
-- **Protocol Signature Validator** - signature validation for non-operator dunders
-  - `ProtocolSignatureValidator.cs` - validates protocol dunder signatures at name resolution time
-  - `TypeSymbol.ProtocolMethods` - caching of validated protocol methods (like `OperatorMethods`)
-  - `NameResolver.cs` integration - validates and registers protocol dunders during name resolution
-  - `TypeChecker.cs` simplified - removed hard-coded `__init__` return type validation
-  - Comprehensive tests in `ProtocolSignatureValidatorTests.cs` (55 tests)
+- **SemanticType.IsAssignableTo()** - still uses hard-coded numeric conversion rules instead of `PrimitiveCatalog.CanImplicitlyConvert()` (see Appendix A.8)
 
 ---
 
@@ -395,15 +404,15 @@ This section provides a concrete, checkable task list for completing the refacto
 
 ### Quick Reference
 
-| Phase | Priority | New Files | Modified Files | Estimated Effort |
-|-------|----------|-----------|----------------|------------------|
-| 1. Primitive Catalog | High | `PrimitiveCatalog.cs`, tests | `OperatorValidator.cs`, `TypeChecker.cs`, `BuiltinRegistry.cs` | 2-3 days |
-| 2. Protocol Registry | High | `ProtocolRegistry.cs`, tests | None (foundational) | 1-2 days |
-| 3. Protocol Signature Validator | High | `ProtocolSignatureValidator.cs`, tests | `Symbol.cs`, `NameResolver.cs`, `TypeChecker.cs` | 2-3 days |
-| 4. Protocol Validator | Medium | `ProtocolValidator.cs`, tests | `TypeChecker.cs` | 2-3 days |
-| 5. RoslynEmitter Consolidation | Medium | None | `RoslynEmitter.cs`, `NameMangler.cs` | 1-2 days |
-| 6. Type Mapper Consolidation | Low | None | `CodeGen/TypeMapper.cs`, `Discovery/TypeMapper.cs` | 1 day |
-| 7. CLR Member Cache | Low | `ClrMemberCache.cs`, tests | `OperatorValidator.cs`, `ProtocolValidator.cs` | 1-2 days |
+| Phase | Priority | Status | New Files | Modified Files | Estimated Effort |
+|-------|----------|--------|-----------|----------------|------------------|
+| 1. Primitive Catalog | High | ✅ Complete | `PrimitiveCatalog.cs`, tests | `OperatorValidator.cs`, `TypeChecker.cs`, `BuiltinRegistry.cs` | 2-3 days |
+| 2. Protocol Registry | High | ✅ Complete | `ProtocolRegistry.cs`, tests | None (foundational) | 1-2 days |
+| 3. Protocol Signature Validator | High | ✅ Complete | `ProtocolSignatureValidator.cs`, tests | `Symbol.cs`, `NameResolver.cs`, `TypeChecker.cs` | 2-3 days |
+| 4. Protocol Validator | Medium | ⏳ Not Started | `ProtocolValidator.cs`, tests | `TypeChecker.cs` | 2-3 days |
+| 5. RoslynEmitter Consolidation | Medium | ⏳ Not Started | None | `RoslynEmitter.cs`, `NameMangler.cs` | 1-2 days |
+| 6. Type Mapper Consolidation | Low | ⏳ Not Started | None | `CodeGen/TypeMapper.cs`, `Discovery/TypeMapper.cs` | 1 day |
+| 7. CLR Member Cache | Low | ⏳ Not Started | `ClrMemberCache.cs`, tests | `OperatorValidator.cs`, `ProtocolValidator.cs` | 1-2 days |
 
 ### Prerequisites
 
@@ -1143,6 +1152,54 @@ Location: `src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs`
 
 ---
 
+#### 1.10 Refactor `SemanticType.IsAssignableTo()` (Backlog - Not Yet Completed)
+
+**Status**: ⏳ Not yet completed - discovered during Phase 1 review
+
+Location: `src/Sharpy.Compiler/Semantic/SemanticType.cs`
+
+- [ ] **1.10.1** Replace hard-coded conversion rules in `BuiltinType.IsAssignableTo()`:
+
+  **Current** (around lines 74-85):
+  ```csharp
+  public override bool IsAssignableTo(SemanticType other)
+  {
+      if (base.IsAssignableTo(other)) return true;
+
+      // Handle numeric conversions - hard-coded
+      if (this == Int && other == Long) return true;
+      if (this == Int && other == Float) return true;
+      if (this == Int && other == Double) return true;
+      if (this == Float && other == Double) return true;
+      if (this == Long && other == Double) return true;
+
+      return false;
+  }
+  ```
+
+  **Replace with**:
+  ```csharp
+  public override bool IsAssignableTo(SemanticType other)
+  {
+      if (base.IsAssignableTo(other)) return true;
+
+      // Use PrimitiveCatalog for implicit conversion rules
+      var thisInfo = PrimitiveCatalog.GetPrimitiveInfo(this);
+      var otherInfo = PrimitiveCatalog.GetPrimitiveInfo(other);
+
+      if (thisInfo != null && otherInfo != null)
+      {
+          return PrimitiveCatalog.CanImplicitlyConvert(thisInfo, otherInfo);
+      }
+
+      return false;
+  }
+  ```
+
+**Acceptance Criteria**: All existing tests pass. Numeric conversions behave identically.
+
+---
+
 ### Phase 2: Protocol Registry (Priority: High)
 
 **Goal**: Create a centralized registry mapping Python dunders to Sharpy.Core interfaces.
@@ -1197,15 +1254,15 @@ Create file at `src/Sharpy.Compiler/Semantic/ProtocolRegistry.cs`:
   /// <param name="DunderName">Lowercase Sharpy source name (e.g., "__len__")</param>
   /// <param name="Kind">The protocol category</param>
   /// <param name="SharpyCoreInterface">The Sharpy.Core interface name (e.g., "ISized"), or null if no interface</param>
-  /// <param name="InterfaceMethodName">PascalCase method in Sharpy.Core (e.g., "__Len__")</param>
-  /// <param name="ClrMethodName">The .NET method/property name (e.g., "get_Count")</param>
+  /// <param name="InterfaceMethodName">Sharpy.Core method name preserving dunder format with capitalized inner portion (e.g., "__Len__", "__GetItem__"), or null if no interface method</param>
+  /// <param name="ClrMethodName">The .NET method/property name (e.g., "get_Count"), or null if no direct mapping</param>
   /// <param name="ExpectedParamCount">Expected parameter count including 'self'</param>
   /// <param name="ExpectedReturnType">Expected return type name (e.g., "int", "bool", "str"), or null for any</param>
   public record ProtocolInfo(
       string DunderName,
       ProtocolKind Kind,
       string? SharpyCoreInterface,
-      string InterfaceMethodName,
+      string? InterfaceMethodName,
       string? ClrMethodName,
       int ExpectedParamCount,
       string? ExpectedReturnType
@@ -1252,11 +1309,11 @@ Add registrations inside `RegisterAllProtocols()`:
   Register(new ProtocolInfo(
       DunderName: "__init__",
       Kind: ProtocolKind.Lifecycle,
-      SharpyCoreInterface: null, // Constructors don't map to an interface
-      InterfaceMethodName: ".ctor", // Internal representation
+      SharpyCoreInterface: null,  // Special: maps to constructor
+      InterfaceMethodName: null,  // No interface method; constructor is special-cased
       ClrMethodName: ".ctor",
-      ExpectedParamCount: -1, // -1 means any count (but first must be 'self')
-      ExpectedReturnType: "None"
+      ExpectedParamCount: -1,  // -1 means any count (but first must be 'self')
+      ExpectedReturnType: "None"  // Constructors return void
   ));
   ```
 
@@ -1269,7 +1326,7 @@ Add registrations inside `RegisterAllProtocols()`:
   Register(new ProtocolInfo(
       DunderName: "__len__",
       Kind: ProtocolKind.Container,
-      SharpyCoreInterface: "Sharpy.Collections.Interfaces.ISized",
+      SharpyCoreInterface: "ISized",
       InterfaceMethodName: "__Len__",
       ClrMethodName: "get_Count", // Property getter
       ExpectedParamCount: 1, // Just 'self'
@@ -1280,7 +1337,7 @@ Add registrations inside `RegisterAllProtocols()`:
   Register(new ProtocolInfo(
       DunderName: "__contains__",
       Kind: ProtocolKind.Container,
-      SharpyCoreInterface: "Sharpy.Collections.Interfaces.IContainer`1",
+      SharpyCoreInterface: "IContainer",
       InterfaceMethodName: "__Contains__",
       ClrMethodName: "Contains",
       ExpectedParamCount: 2, // self, item
@@ -1291,7 +1348,7 @@ Add registrations inside `RegisterAllProtocols()`:
   Register(new ProtocolInfo(
       DunderName: "__getitem__",
       Kind: ProtocolKind.Container,
-      SharpyCoreInterface: "Sharpy.Collections.Interfaces.ISequence`1",
+      SharpyCoreInterface: "ISequence",
       InterfaceMethodName: "__GetItem__",
       ClrMethodName: "get_Item", // Indexer getter
       ExpectedParamCount: 2, // self, index
@@ -1302,7 +1359,7 @@ Add registrations inside `RegisterAllProtocols()`:
   Register(new ProtocolInfo(
       DunderName: "__setitem__",
       Kind: ProtocolKind.Container,
-      SharpyCoreInterface: "Sharpy.Collections.Interfaces.IMutableSequence`1",
+      SharpyCoreInterface: "IMutableSequence",
       InterfaceMethodName: "__SetItem__",
       ClrMethodName: "set_Item", // Indexer setter
       ExpectedParamCount: 3, // self, index, value
@@ -1316,7 +1373,7 @@ Add registrations inside `RegisterAllProtocols()`:
   Register(new ProtocolInfo(
       DunderName: "__iter__",
       Kind: ProtocolKind.Iterator,
-      SharpyCoreInterface: "Sharpy.Collections.Interfaces.IIterable`1",
+      SharpyCoreInterface: "IIterable",
       InterfaceMethodName: "__Iter__",
       ClrMethodName: "GetEnumerator",
       ExpectedParamCount: 1, // Just 'self'
@@ -1341,7 +1398,7 @@ Add registrations inside `RegisterAllProtocols()`:
   Register(new ProtocolInfo(
       DunderName: "__str__",
       Kind: ProtocolKind.Representation,
-      SharpyCoreInterface: "Sharpy.Core.IStrConvertible",
+      SharpyCoreInterface: "IStrConvertible",
       InterfaceMethodName: "__Str__",
       ClrMethodName: "ToString",
       ExpectedParamCount: 1, // Just 'self'
@@ -1355,7 +1412,7 @@ Add registrations inside `RegisterAllProtocols()`:
   Register(new ProtocolInfo(
       DunderName: "__repr__",
       Kind: ProtocolKind.Representation,
-      SharpyCoreInterface: "Sharpy.Core.IRepresentable",
+      SharpyCoreInterface: "IRepresentable",
       InterfaceMethodName: "__Repr__",
       ClrMethodName: null, // No direct CLR equivalent; codegen generates separate method
       ExpectedParamCount: 1, // Just 'self'
@@ -1369,7 +1426,7 @@ Add registrations inside `RegisterAllProtocols()`:
   Register(new ProtocolInfo(
       DunderName: "__hash__",
       Kind: ProtocolKind.Hashing,
-      SharpyCoreInterface: "Sharpy.Core.IHashable",
+      SharpyCoreInterface: "IHashable",
       InterfaceMethodName: "__Hash__",
       ClrMethodName: "GetHashCode",
       ExpectedParamCount: 1, // Just 'self'
@@ -1383,7 +1440,7 @@ Add registrations inside `RegisterAllProtocols()`:
   Register(new ProtocolInfo(
       DunderName: "__bool__",
       Kind: ProtocolKind.Conversion,
-      SharpyCoreInterface: "Sharpy.Core.IBoolConvertible",
+      SharpyCoreInterface: "IBoolConvertible",
       InterfaceMethodName: "__Bool__",
       ClrMethodName: "op_Explicit", // Generates explicit bool conversion operator
       ExpectedParamCount: 1, // Just 'self'
@@ -3645,35 +3702,24 @@ This appendix documents specific locations of hard-coded semantics identified du
 
 ### A.1 `OperatorValidator.cs` - Primitive Type Checks
 
-**Location**: `src/Sharpy.Compiler/Semantic/OperatorValidator.cs` (around lines 800-850)
+**Location**: `src/Sharpy.Compiler/Semantic/OperatorValidator.cs` (around lines 805-830)
 
-**Status**: 🔴 To be refactored in Phase 1
+**Status**: 🟢 Completed in Phase 1
 
 ```csharp
-// Hard-coded primitive checks - refactor to use PrimitiveCatalog
-private bool IsNumericType(SemanticType type)
-{
-    return type == SemanticType.Int ||
-           type == SemanticType.Long ||
-           type == SemanticType.Float ||
-           type == SemanticType.Double;
-}
+// REFACTORED: Now delegates to PrimitiveCatalog
+private static bool IsNumericType(SemanticType type)
+    => PrimitiveCatalog.IsNumeric(type);
 
-private bool IsIntegerType(SemanticType type)
-{
-    return type == SemanticType.Int || type == SemanticType.Long;
-}
+private static bool IsIntegerType(SemanticType type)
+    => PrimitiveCatalog.IsInteger(type);
 
-private SemanticType InferNumericResultType(SemanticType left, SemanticType right)
+private static SemanticType InferNumericResultType(SemanticType left, SemanticType right)
 {
-    // Hard-coded promotion rules
-    if (left == SemanticType.Double || right == SemanticType.Double)
-        return SemanticType.Double;
-    // ...
+    var promoted = PrimitiveCatalog.GetPromotedType(left, right);
+    return promoted ?? SemanticType.Unknown;
 }
 ```
-
-**Refactor to**: `PrimitiveCatalog.IsNumeric()`, `PrimitiveCatalog.IsInteger()`, `PrimitiveCatalog.GetPromotedType()`
 
 ---
 
@@ -3705,48 +3751,50 @@ else if (func.Name == "__hash__")
 
 ### A.3 `TypeChecker.cs` - `__init__` Validation
 
-**Location**: `src/Sharpy.Compiler/Semantic/TypeChecker.cs` (around lines 168-180)
+**Location**: `src/Sharpy.Compiler/Semantic/TypeChecker.cs` (around lines 168-175)
 
-**Status**: 🔴 To be refactored in Phase 3
+**Status**: 🟢 Completed in Phase 3
 
 ```csharp
-// Hard-coded __init__ handling
+// REFACTORED: Signature validation moved to ProtocolSignatureValidator
+// TypeChecker now only sets the return type to void
+// Special case: __init__ always returns None/void
+// (signature validation is in ProtocolSignatureValidator)
 if (functionDef.Name == "__init__")
 {
-    if (functionDef.ReturnType != null && returnType != SemanticType.Void)
-    {
-        AddError($"Constructor '__init__' cannot have return type ...");
-    }
     returnType = SemanticType.Void;
 }
 ```
-
-**Refactor to**: Move validation to `ProtocolSignatureValidator`, keep only `returnType = SemanticType.Void`
 
 ---
 
 ### A.4 `BuiltinRegistry.cs` - Type Registration
 
-**Location**: `src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs` (around lines 24-40)
+**Location**: `src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs` (around lines 30-50)
 
-**Status**: 🔴 To be refactored in Phase 1
+**Status**: 🟢 Completed in Phase 1
 
 ```csharp
-// Hard-coded type registration
+// REFACTORED: Now iterates over PrimitiveCatalog
 private void LoadBuiltins()
 {
-    RegisterType("int", typeof(int), TypeKind.Struct);
-    RegisterType("long", typeof(long), TypeKind.Struct);
-    RegisterType("float", typeof(float), TypeKind.Struct);
-    RegisterType("double", typeof(double), TypeKind.Struct);
-    RegisterType("decimal", typeof(decimal), TypeKind.Struct);
-    RegisterType("bool", typeof(bool), TypeKind.Struct);
-    RegisterType("str", typeof(string), TypeKind.Class);
+    // Register primitives from PrimitiveCatalog using the defined set of names
+    foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
+    {
+        if (!RegisteredPrimitiveNames.Contains(name)) continue;
+        if (info.ClrType == null) continue;
+
+        var kind = info.ClrType.IsValueType ? TypeKind.Struct : TypeKind.Class;
+        RegisterType(info.SharpyName, info.ClrType, kind);
+    }
+
+    // Collections (generic) - not in PrimitiveCatalog
+    RegisterType("list", typeof(Sharpy.Core.List<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
+    RegisterType("dict", typeof(Sharpy.Core.Dict<,>), TypeKind.Class, isGeneric: true, typeParamCount: 2);
+    RegisterType("set", typeof(Sharpy.Core.Set<>), TypeKind.Class, isGeneric: true, typeParamCount: 1);
     // ...
 }
 ```
-
-**Refactor to**: Iterate over `PrimitiveCatalog.GetAllPrimitives()`
 
 ---
 
@@ -3829,12 +3877,13 @@ private static readonly Dictionary<string, string> _dunderMethodMap = new()
 
 ### A.8 `SemanticType.cs` - Implicit Conversion Rules
 
-**Location**: `src/Sharpy.Compiler/Semantic/SemanticType.cs` (around lines 70-80)
+**Location**: `src/Sharpy.Compiler/Semantic/SemanticType.cs` (around lines 74-85)
 
-**Status**: 🟡 Consider refactoring in Phase 1
+**Status**: 🔴 To be refactored (missed during Phase 1 - should be added to Phase 1 backlog)
 
 ```csharp
 // In BuiltinType.IsAssignableTo()
+// STILL HARD-CODED - should use PrimitiveCatalog.CanImplicitlyConvert()
 public override bool IsAssignableTo(SemanticType other)
 {
     if (base.IsAssignableTo(other)) return true;
@@ -3850,7 +3899,9 @@ public override bool IsAssignableTo(SemanticType other)
 }
 ```
 
-**Refactor to**: `PrimitiveCatalog.CanImplicitlyConvert(from, to)`
+**Refactor to**: Use `PrimitiveCatalog.CanImplicitlyConvert(from, to)` for all numeric conversion checks.
+
+**NOTE**: This was marked as "Consider refactoring" but should be elevated to Phase 1 backlog since it duplicates numeric conversion logic that already exists in `PrimitiveCatalog`.
 
 ---
 
