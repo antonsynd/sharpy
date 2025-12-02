@@ -113,6 +113,14 @@ This is an architectural refactor, not a behavior change project: the end state 
   - `TypeChecker.cs` simplified - removed hard-coded `__init__` return type validation (now just sets returnType to void)
   - Comprehensive tests in `ProtocolSignatureValidatorTests.cs` (50+ tests)
 
+- **Phase 4: Protocol Validator** - TypeChecker integration for protocol conformance
+  - `ProtocolValidator.cs` - centralized protocol validation for container, iteration, and membership operations
+  - `HasProtocol()` - checks if a type supports a specific protocol dunder
+  - CLR protocol discovery - reflection-based discovery of .NET collection/iterable interfaces
+  - Validation methods: `ValidateLen()`, `ValidateIteration()`, `ValidateMembership()`, `ValidateIndexAccess()`, `ValidateBoolConversion()`
+  - `TypeChecker.cs` integration - instantiates `ProtocolValidator` and includes its errors
+  - Comprehensive tests in `ProtocolValidatorTests.cs` (28 tests)
+
 - **Operator Validation** (see [reflection_based_operator_validation.md](reflection_based_operator_validation.md)):
   - `OperatorValidator` - centralized binary/unary/augmented operator resolution
   - `OperatorSignatureValidator` - dunder signature validation at name resolution time
@@ -126,7 +134,6 @@ This is an architectural refactor, not a behavior change project: the end state 
 
 ### Not Started ⏳
 
-- **Phase 4: Protocol Validator** - TypeChecker integration for protocol conformance
 - **Phase 5: RoslynEmitter consolidation** - removing hard-coded dunder mappings in codegen
 - **Phase 6: Type Mapper consolidation** - merging duplicate type mapping logic
 - **Phase 7: CLR Member Cache extraction** - reusable reflection caching service
@@ -409,7 +416,7 @@ This section provides a concrete, checkable task list for completing the refacto
 | 1. Primitive Catalog | High | ✅ Complete | `PrimitiveCatalog.cs`, tests | `OperatorValidator.cs`, `TypeChecker.cs`, `BuiltinRegistry.cs` | 2-3 days |
 | 2. Protocol Registry | High | ✅ Complete | `ProtocolRegistry.cs`, tests | None (foundational) | 1-2 days |
 | 3. Protocol Signature Validator | High | ✅ Complete | `ProtocolSignatureValidator.cs`, tests | `Symbol.cs`, `NameResolver.cs`, `TypeChecker.cs` | 2-3 days |
-| 4. Protocol Validator | Medium | ⏳ Not Started | `ProtocolValidator.cs`, tests | `TypeChecker.cs` | 2-3 days |
+| 4. Protocol Validator | Medium | ✅ Complete | `ProtocolValidator.cs`, tests | `TypeChecker.cs` | 2-3 days |
 | 5. RoslynEmitter Consolidation | Medium | ⏳ Not Started | None | `RoslynEmitter.cs`, `NameMangler.cs` | 1-2 days |
 | 6. Type Mapper Consolidation | Low | ⏳ Not Started | None | `CodeGen/TypeMapper.cs`, `Discovery/TypeMapper.cs` | 1 day |
 | 7. CLR Member Cache | Low | ⏳ Not Started | `ClrMemberCache.cs`, tests | `OperatorValidator.cs`, `ProtocolValidator.cs` | 1-2 days |
@@ -2174,7 +2181,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolSignatureValidatorTes
 
 Create file at `src/Sharpy.Compiler/Semantic/ProtocolValidator.cs`:
 
-- [ ] **4.1.1** File skeleton following `OperatorValidator` pattern:
+- [x] **4.1.1** File skeleton following `OperatorValidator` pattern:
   ```csharp
   using System.Reflection;
   using Sharpy.Compiler.Logging;
@@ -2213,7 +2220,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ProtocolValidator.cs`:
   }
   ```
 
-- [ ] **4.1.2** Implement `HasProtocol()` for Sharpy types:
+- [x] **4.1.2** Implement `HasProtocol()` for Sharpy types:
   ```csharp
   /// <summary>
   /// Checks if a type has a specific protocol dunder method.
@@ -2275,7 +2282,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ProtocolValidator.cs`:
   }
   ```
 
-- [ ] **4.1.3** Implement CLR protocol discovery:
+- [x] **4.1.3** Implement CLR protocol discovery:
   ```csharp
   /// <summary>
   /// Checks if a CLR type supports a protocol by examining its interfaces.
@@ -2345,7 +2352,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ProtocolValidator.cs`:
   }
   ```
 
-- [ ] **4.1.4** Implement validation methods for specific protocols:
+- [x] **4.1.4** Implement validation methods for specific protocols:
   ```csharp
   /// <summary>
   /// Validates that a type can be used with len() and returns int.
@@ -2470,7 +2477,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ProtocolValidator.cs`:
 
 #### 4.2 Integrate into `TypeChecker.cs`
 
-- [ ] **4.2.1** Add `ProtocolValidator` field and instantiate in constructor:
+- [x] **4.2.1** Add `ProtocolValidator` field and instantiate in constructor:
 
   **Find** (around lines 16-20):
   ```csharp
@@ -2499,7 +2506,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ProtocolValidator.cs`:
       _protocolValidator = new ProtocolValidator(_symbolTable, _logger);
   ```
 
-- [ ] **4.2.2** Add `_protocolValidator.Errors` to combined errors:
+- [x] **4.2.2** Add `_protocolValidator.Errors` to combined errors:
 
   **Find** (around lines 47-55):
   ```csharp
@@ -2521,28 +2528,28 @@ Create file at `src/Sharpy.Compiler/Semantic/ProtocolValidator.cs`:
           allErrors.AddRange(_protocolValidator.Errors);
   ```
 
-- [ ] **4.2.3** Replace hard-coded `for` loop iteration check:
+- [x] **4.2.3** Replace hard-coded `for` loop iteration check:
 
   **Search for** `for` loop handling in `CheckFor()` method and update to use:
   ```csharp
   var elementType = _protocolValidator.ValidateIteration(iterableType, forStmt.LineStart, forStmt.ColumnStart);
   ```
 
-- [ ] **4.2.4** Replace hard-coded `in` operator check:
+- [x] **4.2.4** Replace hard-coded `in` operator check:
 
   **Search for** `in` operator handling (BinaryOperator.In) and update to use:
   ```csharp
   var resultType = _protocolValidator.ValidateMembership(rightType, leftType, line, column);
   ```
 
-- [ ] **4.2.5** Replace hard-coded indexing check:
+- [x] **4.2.5** Replace hard-coded indexing check:
 
   **Search for** subscript/indexing handling and update to use:
   ```csharp
   var elementType = _protocolValidator.ValidateIndexAccess(containerType, indexType, line, column);
   ```
 
-- [ ] **4.2.6** Replace hard-coded `len()` check:
+- [x] **4.2.6** Replace hard-coded `len()` check:
 
   **Search for** `len` builtin call handling and update to use:
   ```csharp
@@ -2557,7 +2564,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ProtocolValidator.cs`:
 
 Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolValidatorTests.cs`:
 
-- [ ] **4.3.1** Test file setup:
+- [x] **4.3.1** Test file setup:
   ```csharp
   using Xunit;
   using FluentAssertions;
@@ -2576,7 +2583,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolValidatorTests.cs`:
   }
   ```
 
-- [ ] **4.3.2** Test `HasProtocol` for built-in types:
+- [x] **4.3.2** Test `HasProtocol` for built-in types:
   ```csharp
   [Fact]
   public void HasProtocol_StringSupportsExpectedProtocols()
@@ -2634,7 +2641,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolValidatorTests.cs`:
   }
   ```
 
-- [ ] **4.3.3** Test `ValidateLen`:
+- [x] **4.3.3** Test `ValidateLen`:
   ```csharp
   [Fact]
   public void ValidateLen_ReturnsIntForString()
@@ -2660,7 +2667,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolValidatorTests.cs`:
   }
   ```
 
-- [ ] **4.3.4** Test `ValidateIteration`:
+- [x] **4.3.4** Test `ValidateIteration`:
   ```csharp
   [Fact]
   public void ValidateIteration_InfersElementTypeFromGeneric()
@@ -2691,7 +2698,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolValidatorTests.cs`:
   }
   ```
 
-- [ ] **4.3.5** Test CLR type discovery:
+- [x] **4.3.5** Test CLR type discovery:
   ```csharp
   [Fact]
   public void HasProtocol_DiscoversCLRListProtocols()
