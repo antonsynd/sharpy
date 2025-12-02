@@ -126,7 +126,7 @@ This is an architectural refactor, not a behavior change project: the end state 
   - `RoslynEmitter.cs` refactored - uses `ProtocolRegistry.GetProtocol()` for dunder return types and override detection
   - `NameMangler.cs` updated - added DEBUG verification of protocol registry consistency
   - `ShouldGenerateDunderMethod()` now uses `ProtocolRegistry.IsProtocolDunder()`
-  - Fixed `__div__` → `__truediv__` inconsistency (Python 3 uses `__truediv__`)
+  - Division operator uses `__truediv__` throughout semantic layer (Python 3 semantics)
   - Comprehensive tests in `RegistryConsistencyTests.cs`
 
 - **Operator Validation** (see [reflection_based_operator_validation.md](reflection_based_operator_validation.md)):
@@ -145,9 +145,12 @@ This is an architectural refactor, not a behavior change project: the end state 
 - **Phase 6: Type Mapper consolidation** - merging duplicate type mapping logic
 - **Phase 7: CLR Member Cache extraction** - reusable reflection caching service
 
-### Remaining Refactoring from Phase 1
+### Remaining Refactoring from Earlier Phases
 
 - **SemanticType.IsAssignableTo()** - still uses hard-coded numeric conversion rules instead of `PrimitiveCatalog.CanImplicitlyConvert()` (see Appendix A.8)
+  - Location: `src/Sharpy.Compiler/Semantic/SemanticType.cs` lines 74-85
+  - Currently duplicates the conversion logic already in `PrimitiveCatalog`
+  - Should be refactored to use `PrimitiveCatalog.CanImplicitlyConvert(thisInfo, otherInfo)`
 
 ---
 
@@ -425,6 +428,7 @@ This section provides a concrete, checkable task list for completing the refacto
 | 3. Protocol Signature Validator | High | ✅ Complete | `ProtocolSignatureValidator.cs`, tests | `Symbol.cs`, `NameResolver.cs`, `TypeChecker.cs` | 2-3 days |
 | 4. Protocol Validator | Medium | ✅ Complete | `ProtocolValidator.cs`, tests | `TypeChecker.cs` | 2-3 days |
 | 5. RoslynEmitter Consolidation | Medium | ✅ Complete | `RegistryConsistencyTests.cs` | `RoslynEmitter.cs`, `NameMangler.cs` | 1-2 days |
+| 5b. SemanticType.IsAssignableTo() | Medium | ⏳ Not Started | None | `SemanticType.cs` | 0.5 days |
 | 6. Type Mapper Consolidation | Low | ⏳ Not Started | None | `CodeGen/TypeMapper.cs`, `Discovery/TypeMapper.cs` | 1 day |
 | 7. CLR Member Cache | Low | ⏳ Not Started | `ClrMemberCache.cs`, tests | `OperatorValidator.cs`, `ProtocolValidator.cs` | 1-2 days |
 
@@ -2768,7 +2772,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolValidatorTests.cs`:
 
 #### 5.1 Update `RoslynEmitter.cs` dunder detection
 
-- [ ] **5.1.1** Find and replace hard-coded dunder checks:
+- [x] **5.1.1** Replaced hard-coded dunder checks:
 
   **Search for** (around lines 2310-2363 or search for pattern):
   ```csharp
@@ -2791,12 +2795,9 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolValidatorTests.cs`:
   }
   ```
 
-- [ ] **5.1.2** Add using directive at top of file:
-  ```csharp
-  using Sharpy.Compiler.Semantic;  // For ProtocolRegistry, OperatorSignatureValidator
-  ```
+- [x] **5.1.2** Using directive already present (Sharpy.Compiler.Semantic namespace).
 
-- [ ] **5.1.3** Update `ShouldGenerateDunderMethod()` (if such method exists):
+- [x] **5.1.3** Updated `ShouldGenerateDunderMethod()` (line ~2308-2314):
 
   **Current pattern** (hard-coded switch):
   ```csharp
@@ -2814,20 +2815,18 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolValidatorTests.cs`:
   }
   ```
 
-  **Replace with**:
+  **Current implementation** (lines 2308-2314):
   ```csharp
-  private bool ShouldGenerateDunderMethod(string name)
+  private static bool ShouldGenerateDunderMethod(string dunderName)
   {
-      // __init__ is always generated (as constructor)
-      if (name == "__init__")
+      // __init__ is explicitly checked here for clarity, even though it IS in ProtocolRegistry.
+      if (dunderName == "__init__")
           return true;
-
-      // Protocol dunders that map to .NET methods
-      return ProtocolRegistry.IsProtocolDunder(name);
+      return ProtocolRegistry.IsProtocolDunder(dunderName);
   }
   ```
 
-- [ ] **5.1.4** Update `GenerateClassMethod()` to use `ProtocolRegistry.GetProtocol()`:
+- [x] **5.1.4** Updated `GenerateClassMethod()` to use `ProtocolRegistry.GetProtocol()` (lines 980-1004):
 
   **Find** (around lines 981-1002):
   ```csharp
@@ -2841,8 +2840,9 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolValidatorTests.cs`:
   }
   ```
 
-  **Replace with**:
+  **Current implementation** (lines 980-1004):
   ```csharp
+  // Use ProtocolRegistry to determine return types for protocol dunders
   var protocol = ProtocolRegistry.GetProtocol(func.Name);
   if (protocol != null && protocol.ExpectedReturnType != null)
   {
@@ -2855,9 +2855,14 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolValidatorTests.cs`:
           _ => func.ReturnType != null ? _typeMapper.MapType(func.ReturnType) : returnType
       };
   }
+
+  // Override detection also uses protocol
+  var shouldAddOverride = protocol?.ClrMethodName is "ToString" or "GetHashCode"
+      || func.Name == "__repr__"  // __repr__ has ClrMethodName: null but maps to ToString
+      || func.Name == "__eq__";   // __eq__ is operator dunder but maps to Equals()
   ```
 
-**Acceptance Criteria**: Code generation still works. Run integration tests: `dotnet test --filter "FullyQualifiedName~Integration"`.
+**Status**: ✅ Complete. Integration tests pass.
 
 ---
 
@@ -2865,7 +2870,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ProtocolValidatorTests.cs`:
 
 Location: `src/Sharpy.Compiler/CodeGen/NameMangler.cs`
 
-- [ ] **5.2.1** Refactor `_dunderMethodMap` to query `ProtocolRegistry`:
+- [x] **5.2.1** Added DEBUG verification of `_dunderMethodMap` against `ProtocolRegistry`:
 
   **Current** (around lines 28-42):
   ```csharp
@@ -2904,94 +2909,80 @@ Location: `src/Sharpy.Compiler/CodeGen/NameMangler.cs`
   #endif
   ```
 
-  **Option B: Build from registry** (more dynamic):
+  **Chosen approach: Option A with DEBUG verification** (lines 48-62):
   ```csharp
-  private static readonly Dictionary<string, string> _dunderMethodMap;
-
-  static NameMangler()
-  {
-      _dunderMethodMap = new Dictionary<string, string>
+  #if DEBUG
+      static NameMangler()
       {
-          // Special cases not in registry
-          { "__init__", "Constructor" },
-          { "__eq__", "Equals" },  // Also an operator, special handling
-      };
-
-      // Add all protocol dunders from registry
-      foreach (var protocol in ProtocolRegistry.GetAllProtocols())
-      {
-          if (protocol.ClrMethodName != null && !_dunderMethodMap.ContainsKey(protocol.DunderName))
+          // Verify all protocol dunders with CLR mappings are in _dunderMethodMap
+          foreach (var protocol in ProtocolRegistry.GetAllProtocols())
           {
-              // Extract method name from CLR name (e.g., "get_Count" -> "Count", "ToString" -> "ToString")
-              var clrName = protocol.ClrMethodName.StartsWith("get_")
-                  ? protocol.ClrMethodName[4..]
-                  : protocol.ClrMethodName;
-              _dunderMethodMap[protocol.DunderName] = clrName;
+              if (protocol.ClrMethodName != null && !_dunderMethodMap.ContainsKey(protocol.DunderName))
+              {
+                  // Fail fast during development - RegistryConsistencyTests also covers this
+                  System.Diagnostics.Debug.Assert(false,
+                      $"Protocol '{protocol.DunderName}' with CLR mapping '{protocol.ClrMethodName}' " +
+                      $"is missing from _dunderMethodMap. Add: {{ \"{protocol.DunderName}\", \"...\" }}");
+              }
           }
       }
-
-      // NOTE: Protocols with null ClrMethodName (like __repr__) are intentionally excluded.
-      // They require special codegen handling - __repr__ generates a __Repr__() method,
-      // not a mapping to an existing .NET method.
-  }
+  #endif
   ```
 
-- [ ] **5.2.2** Add using directive:
-  ```csharp
-  using Sharpy.Compiler.Semantic;  // For ProtocolRegistry
-  ```
+- [x] **5.2.2** Using directive already present (Sharpy.Compiler.Semantic namespace).
 
-**Acceptance Criteria**: `NameManglerTests` still pass. Run: `dotnet test --filter "FullyQualifiedName~NameManglerTests"`.
+**Status**: ✅ Complete. `NameManglerTests` pass.
 
 ---
 
-#### 5.3 Fix `__div__` vs `__truediv__` inconsistency
+#### 5.3 Verify `__truediv__` usage (COMPLETED)
 
-- [ ] **5.3.1** Search for `__div__` in codebase:
-  ```bash
-  grep -r "__div__" src/Sharpy.Compiler/
-  ```
+- [x] **5.3.1** Verified semantic layer uses `__truediv__`:
+  - `OperatorValidator.cs` maps `BinaryOperator.Divide` to `__truediv__`
+  - `OperatorSignatureValidator.cs` includes `__truediv__` in operator dunders
+  - `RoslynEmitter.cs` handles `__truediv__` for operator generation
 
-- [ ] **5.3.2** Replace any occurrences with `__truediv__`:
-  - Python 3 uses `__truediv__` for `/` operator (returns float)
-  - Python 2's `__div__` is deprecated
-  - `OperatorSignatureValidator` already uses `__truediv__`
+- [x] **5.3.2** Note on `__div__` in tests:
+  - `NameManglerTests.cs` tests `__div__` → `__Div__` transformation
+  - This is intentional: NameMangler transforms any dunder-style name, even non-standard ones
+  - The semantic layer correctly uses `__truediv__`, which is what matters
 
-**Acceptance Criteria**: No references to `__div__` in compiler code (only `__truediv__`).
+**Status**: ✅ Complete - semantic layer consistently uses `__truediv__` for Python 3 semantics.
 
 ---
 
 #### 5.4 Write verification tests
 
-- [ ] **5.4.1** Add test to verify registry covers all codegen dunders:
+- [x] **5.4.1** Added tests to verify registry covers all codegen dunders:
 
-  Add to existing test file or create `src/Sharpy.Compiler.Tests/CodeGen/RegistryConsistencyTests.cs`:
+  File: `src/Sharpy.Compiler.Tests/CodeGen/RegistryConsistencyTests.cs` (already exists)
+
   ```csharp
-  using Xunit;
-  using FluentAssertions;
-  using Sharpy.Compiler.Semantic;
-  using Sharpy.Compiler.CodeGen;
-
-  namespace Sharpy.Compiler.Tests.CodeGen;
-
   public class RegistryConsistencyTests
   {
-      [Fact]
-      public void NameMangler_AllProtocolDundersHaveMappings()
+      [Theory]
+      [InlineData("__str__", "ToString")]
+      [InlineData("__hash__", "GetHashCode")]
+      [InlineData("__iter__", "GetEnumerator")]
+      [InlineData("__contains__", "Contains")]
+      [InlineData("__bool__", "ToBoolean")]
+      public void NameMangler_TransformsProtocolDunderToExpectedName(string dunder, string expectedName)
       {
-          foreach (var protocol in ProtocolRegistry.GetAllProtocols())
-          {
-              if (protocol.ClrMethodName != null && protocol.DunderName != "__init__")
-              {
-                  // NameMangler should recognize this dunder
-                  var mangled = NameMangler.Transform(protocol.DunderName, NameContext.Method);
+          var mangled = NameMangler.Transform(dunder, NameContext.Method);
+          mangled.Should().Be(expectedName);
+      }
 
-                  // Should not just preserve the dunder name unchanged (except operators)
-                  if (!OperatorSignatureValidator.IsOperatorDunder(protocol.DunderName))
-                  {
-                      mangled.Should().NotBe(protocol.DunderName,
-                          $"Protocol '{protocol.DunderName}' should be mapped to a C# name");
-                  }
+      [Fact]
+      public void NameMangler_AllProtocolDundersWithClrMappingHaveTransformations()
+      {
+          foreach (var protocol in ProtocolRegistry.GetAllProtocols()
+              .Where(protocol => protocol.ClrMethodName != null && protocol.DunderName != "__init__"))
+          {
+              var mangled = NameMangler.Transform(protocol.DunderName, NameContext.Method);
+              if (!OperatorSignatureValidator.IsOperatorDunder(protocol.DunderName))
+              {
+                  mangled.Should().NotStartWith("__",
+                      $"Protocol '{protocol.DunderName}' should be transformed to a C# name");
               }
           }
       }
@@ -2999,27 +2990,84 @@ Location: `src/Sharpy.Compiler/CodeGen/NameMangler.cs`
       [Fact]
       public void AllDundersAreRecognizedByRegistry()
       {
-          // List of all dunders that appear in codegen
           var codegenDunders = new[]
           {
               "__init__", "__str__", "__repr__", "__hash__",
-              "__len__", "__contains__", "__getitem__", "__setitem__",
-              "__iter__", "__bool__"
+              "__len__", "__contains__", "__getitem__", "__setitem__", "__delitem__",
+              "__iter__", "__bool__", "__eq__"
           };
 
           foreach (var dunder in codegenDunders)
           {
               var isProtocol = ProtocolRegistry.IsProtocolDunder(dunder);
               var isOperator = OperatorSignatureValidator.IsOperatorDunder(dunder);
-
-              (isProtocol || isOperator || dunder == "__init__").Should().BeTrue(
+              (isProtocol || isOperator).Should().BeTrue(
                   $"Dunder '{dunder}' should be recognized by ProtocolRegistry or OperatorSignatureValidator");
           }
       }
   }
   ```
 
-**Acceptance Criteria**: Consistency tests pass, confirming registries cover all codegen needs.
+**Status**: ✅ Complete. Tests pass: `dotnet test --filter "FullyQualifiedName~RegistryConsistency"`
+
+---
+
+### Phase 5b: SemanticType.IsAssignableTo() Refactoring (Priority: Medium)
+
+**Goal**: Replace hard-coded numeric conversion rules in `SemanticType.IsAssignableTo()` with `PrimitiveCatalog.CanImplicitlyConvert()`.
+
+**Why This Matters**: The `BuiltinType.IsAssignableTo()` method duplicates numeric conversion logic that already exists in `PrimitiveCatalog`. This creates maintenance burden and risks inconsistency when conversion rules change.
+
+**Files to modify**:
+| File | Action | Description |
+|------|--------|-------------|
+| `src/Sharpy.Compiler/Semantic/SemanticType.cs` | Modify | Use `PrimitiveCatalog` |
+
+**Tasks**:
+
+#### 5b.1 Refactor `BuiltinType.IsAssignableTo()`
+
+Location: `src/Sharpy.Compiler/Semantic/SemanticType.cs` (around lines 74-85)
+
+- [ ] **5b.1.1** Replace hard-coded conversion rules:
+
+  **Current**:
+  ```csharp
+  public override bool IsAssignableTo(SemanticType other)
+  {
+      if (base.IsAssignableTo(other)) return true;
+
+      // Handle numeric conversions - hard-coded
+      if (this == Int && other == Long) return true;
+      if (this == Int && other == Float) return true;
+      if (this == Int && other == Double) return true;
+      if (this == Float && other == Double) return true;
+      if (this == Long && other == Double) return true;
+
+      return false;
+  }
+  ```
+
+  **Replace with**:
+  ```csharp
+  public override bool IsAssignableTo(SemanticType other)
+  {
+      if (base.IsAssignableTo(other)) return true;
+
+      // Use PrimitiveCatalog for implicit conversion rules
+      var thisInfo = PrimitiveCatalog.GetPrimitiveInfo(this);
+      var otherInfo = PrimitiveCatalog.GetPrimitiveInfo(other);
+
+      if (thisInfo != null && otherInfo != null)
+      {
+          return PrimitiveCatalog.CanImplicitlyConvert(thisInfo, otherInfo);
+      }
+
+      return false;
+  }
+  ```
+
+**Acceptance Criteria**: All existing tests pass. Numeric conversions behave identically.
 
 ---
 
@@ -3930,7 +3978,7 @@ static NameMangler()
 
 **Location**: `src/Sharpy.Compiler/Semantic/SemanticType.cs` (around lines 74-85)
 
-**Status**: 🔴 To be refactored (missed during Phase 1 - should be added to Phase 1 backlog)
+**Status**: 🔴 To be refactored in Phase 5b
 
 ```csharp
 // In BuiltinType.IsAssignableTo()
@@ -3950,9 +3998,7 @@ public override bool IsAssignableTo(SemanticType other)
 }
 ```
 
-**Refactor to**: Use `PrimitiveCatalog.CanImplicitlyConvert(from, to)` for all numeric conversion checks.
-
-**NOTE**: This was marked as "Consider refactoring" but should be elevated to Phase 1 backlog since it duplicates numeric conversion logic that already exists in `PrimitiveCatalog`.
+**Refactor to**: Use `PrimitiveCatalog.CanImplicitlyConvert(from, to)` for all numeric conversion checks. See Phase 5b task list for implementation details.
 
 ---
 
