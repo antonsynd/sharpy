@@ -24,14 +24,25 @@ public class TypeMapper
 
     private SemanticType MapTypeInternal(Type clrType)
     {
-        // Handle primitive types
-        if (clrType == typeof(int)) return SemanticType.Int;
-        if (clrType == typeof(long)) return SemanticType.Long;
-        if (clrType == typeof(float)) return SemanticType.Float;
-        if (clrType == typeof(double)) return SemanticType.Double;
-        if (clrType == typeof(bool)) return SemanticType.Bool;
-        if (clrType == typeof(string)) return SemanticType.Str;
-        if (clrType == typeof(void)) return SemanticType.Void;
+        // Check PrimitiveCatalog first for primitive types
+        var primitiveInfo = PrimitiveCatalog.GetByClrType(clrType);
+        if (primitiveInfo != null)
+        {
+            // Return the appropriate SemanticType singleton or create BuiltinType
+            return primitiveInfo.SharpyName switch
+            {
+                "int" => SemanticType.Int,
+                "long" => SemanticType.Long,
+                "float" => SemanticType.Float,
+                "double" => SemanticType.Double,
+                "bool" => SemanticType.Bool,
+                "str" or "string" => SemanticType.Str,
+                "void" or "None" => SemanticType.Void,
+                _ => new BuiltinType { Name = primitiveInfo.SharpyName, ClrType = clrType }
+            };
+        }
+
+        // Handle object specifically (not in PrimitiveCatalog)
         if (clrType == typeof(object)) return SemanticType.Object;
 
         // Handle arrays

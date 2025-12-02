@@ -13,36 +13,30 @@ public class TypeMapper
 {
     private readonly CodeGenContext _context;
 
-    // Built-in type mappings for v0.1
-    private static readonly Dictionary<string, string> _builtinTypeMap = new()
+    // Built-in type mappings, populated from PrimitiveCatalog at startup
+    private static readonly Dictionary<string, string> _builtinTypeMap;
+
+    static TypeMapper()
     {
-        // Primitive types - direct mapping
-        { "int", "int" },
-        { "long", "long" },
-        { "float", "float" },
-        { "double", "double" },
-        { "bool", "bool" },
-        { "byte", "byte" },
-        { "sbyte", "sbyte" },
-        { "short", "short" },
-        { "ushort", "ushort" },
-        { "uint", "uint" },
-        { "ulong", "ulong" },
-        { "char", "char" },
-        { "object", "object" },
+        _builtinTypeMap = new Dictionary<string, string>();
 
-        // Sharpy runtime types (use global:: to avoid conflicts when output namespace contains "Sharpy")
-        { "str", "string" },  // Use C# string instead of Sharpy.Core.Str for better interop
-        { "list", "global::Sharpy.Core.List" },
-        { "dict", "global::Sharpy.Core.Dict" },
-        { "set", "global::Sharpy.Core.Set" },
-        { "tuple", "System.ValueTuple" },
+        // Add all primitives from PrimitiveCatalog
+        foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
+        {
+            if (!_builtinTypeMap.ContainsKey(name))
+            {
+                _builtinTypeMap[name] = info.CSharpName;
+            }
+        }
 
-        // Common .NET types
-        { "string", "string" },  // Allow string alias
-        { "void", "void" },
-        { "None", "void" },      // None type maps to void
-    };
+        // Add non-primitive type mappings (collections, etc.)
+        // These are Sharpy runtime types (use global:: to avoid conflicts when output namespace contains "Sharpy")
+        _builtinTypeMap["list"] = "global::Sharpy.Core.List";
+        _builtinTypeMap["dict"] = "global::Sharpy.Core.Dict";
+        _builtinTypeMap["set"] = "global::Sharpy.Core.Set";
+        _builtinTypeMap["tuple"] = "System.ValueTuple";
+        _builtinTypeMap["object"] = "object";
+    }
 
     public TypeMapper(CodeGenContext context)
     {
