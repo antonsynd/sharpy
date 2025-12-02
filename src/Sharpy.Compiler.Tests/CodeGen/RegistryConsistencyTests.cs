@@ -23,22 +23,20 @@ public class RegistryConsistencyTests
     [Fact]
     public void NameMangler_AllProtocolDundersWithClrMappingHaveTransformations()
     {
-        foreach (var protocol in ProtocolRegistry.GetAllProtocols())
+        foreach (var protocol in ProtocolRegistry.GetAllProtocols()
+            .Where(protocol => protocol.ClrMethodName != null && protocol.DunderName != "__init__"))
         {
-            if (protocol.ClrMethodName != null && protocol.DunderName != "__init__")
-            {
-                // NameMangler should recognize this dunder
-                var mangled = NameMangler.Transform(protocol.DunderName, NameContext.Method);
+            // NameMangler should recognize this dunder
+            var mangled = NameMangler.Transform(protocol.DunderName, NameContext.Method);
 
-                // Should not just preserve the dunder name unchanged (except operators)
-                if (!OperatorSignatureValidator.IsOperatorDunder(protocol.DunderName))
-                {
-                    // Verify it's actually transformed (not just returned as-is with capitalization)
-                    mangled.Should().NotBeNull(
-                        $"Protocol '{protocol.DunderName}' should be handled by NameMangler");
-                    mangled.Should().NotStartWith("__",
-                        $"Protocol '{protocol.DunderName}' should be transformed to a C# name, not preserved as dunder");
-                }
+            // Should not just preserve the dunder name unchanged (except operators)
+            if (!OperatorSignatureValidator.IsOperatorDunder(protocol.DunderName))
+            {
+                // Verify it's actually transformed (not just returned as-is with capitalization)
+                mangled.Should().NotBeNull(
+                    $"Protocol '{protocol.DunderName}' should be handled by NameMangler");
+                mangled.Should().NotStartWith("__",
+                    $"Protocol '{protocol.DunderName}' should be transformed to a C# name, not preserved as dunder");
             }
         }
     }
