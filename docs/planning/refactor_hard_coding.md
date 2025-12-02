@@ -3913,8 +3913,9 @@ static NameMangler()
     {
         if (protocol.ClrMethodName != null && !_dunderMethodMap.ContainsKey(protocol.DunderName))
         {
-            System.Diagnostics.Debug.WriteLine(
-                $"Warning: Protocol '{protocol.DunderName}' missing from _dunderMethodMap");
+            System.Diagnostics.Debug.Assert(false,
+                $"Protocol '{protocol.DunderName}' with CLR mapping '{protocol.ClrMethodName}' " +
+                $"is missing from _dunderMethodMap. Add: {{ \"{protocol.DunderName}\", \"...\" }}");
         }
     }
 }
