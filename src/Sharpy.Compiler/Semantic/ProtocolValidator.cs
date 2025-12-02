@@ -256,8 +256,8 @@ public class ProtocolValidator
     }
 
     /// <summary>
-    /// Gets the element type if the given type extends Sharpy.Core.Iterator&lt;T&gt;.
-    /// Returns null if not an Iterator subtype.
+    /// Gets the element type if the given type is Iterator&lt;T&gt; or extends Iterator&lt;T&gt;.
+    /// Returns null otherwise.
     /// </summary>
     /// <remarks>
     /// TODO: This method is duplicated in Discovery/TypeMapper.cs. 

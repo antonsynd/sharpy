@@ -84,7 +84,8 @@ public class OperatorValidator
             case BinaryOperator.In:
             case BinaryOperator.NotIn:
                 // Membership operators check for __contains__ protocol on the right operand (container)
-                // Fallback: always return bool (for backwards compatibility or when no protocol validator)
+                // e.g., "x in container" checks if container supports __contains__
+                // Falls back to bool when no protocol validator is available (for backwards compatibility)
                 result = _protocolValidator != null
                     ? _protocolValidator.ValidateMembership(right, left, line, column)
                     : SemanticType.Bool;
