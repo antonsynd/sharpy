@@ -75,12 +75,14 @@ public record BuiltinType : SemanticType
     {
         if (base.IsAssignableTo(other)) return true;
 
-        // Handle numeric conversions
-        if (this == Int && other == Long) return true;
-        if (this == Int && other == Float) return true;
-        if (this == Int && other == Double) return true;
-        if (this == Float && other == Double) return true;
-        if (this == Long && other == Double) return true;
+        // Use PrimitiveCatalog for implicit conversion rules
+        var thisInfo = PrimitiveCatalog.GetPrimitiveInfo(this);
+        var otherInfo = PrimitiveCatalog.GetPrimitiveInfo(other);
+
+        if (thisInfo != null && otherInfo != null)
+        {
+            return PrimitiveCatalog.CanImplicitlyConvert(thisInfo, otherInfo);
+        }
 
         return false;
     }
