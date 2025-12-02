@@ -59,8 +59,8 @@ public class TypeMappingConsistencyTests
 
         foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
         {
-            // Skip void (null ClrType)
-            if (info.ClrType == null) continue;
+            // Skip void (typeof(void) cannot be used with typeof() in reflection)
+            if (info.ClrType == typeof(void)) continue;
 
             // Discovery mapper: CLR -> SemanticType
             var semanticType = discoveryMapper.MapClrTypeToSemanticType(info.ClrType);
