@@ -14,8 +14,7 @@ public class TypeChecker
     private readonly ControlFlowValidator _controlFlowValidator;
     private readonly AccessValidator _accessValidator;
     private readonly OperatorValidator _operatorValidator;
-    // TODO: Integrate with CheckFor(), CheckSubscript(), etc. (tasks 4.2.3-4.2.6)
-    // Currently instantiated but not used for validation delegation.
+    // Used for protocol validation (iterability, membership, indexing, len)
     private readonly ProtocolValidator _protocolValidator;
     private readonly ICompilerLogger _logger;
     private readonly List<SemanticError> _errors = new();
@@ -44,8 +43,9 @@ public class TypeChecker
         _logger = logger ?? NullLogger.Instance;
         _controlFlowValidator = new ControlFlowValidator(_logger);
         _accessValidator = new AccessValidator(_symbolTable, _semanticInfo, _logger);
-        _operatorValidator = new OperatorValidator(_symbolTable, _logger);
         _protocolValidator = new ProtocolValidator(_symbolTable, _logger);
+        // Pass ProtocolValidator to OperatorValidator for 'in' operator membership checking
+        _operatorValidator = new OperatorValidator(_symbolTable, _logger, _protocolValidator);
     }
 
     public IReadOnlyList<SemanticError> Errors
@@ -750,8 +750,12 @@ public class TypeChecker
     {
         var iterType = CheckExpression(forStmt.Iterator);
 
-        // Extract element type from iterable
-        var elementType = ExtractElementType(iterType);
+        // Validate that the iterator type is iterable and extract element type
+        // This uses ProtocolValidator which checks for __iter__ protocol support
+        var elementType = _protocolValidator.ValidateIteration(
+            iterType,
+            forStmt.Iterator.LineStart,
+            forStmt.Iterator.ColumnStart);
 
         // Enter scope for for-body block FIRST
         // This ensures loop variables are scoped to the loop
@@ -1113,15 +1117,13 @@ public class TypeChecker
         var objectType = CheckExpression(indexAccess.Object);
         var indexType = CheckExpression(indexAccess.Index);
 
-        if (objectType is GenericType generic)
-        {
-            if (generic.Name == "list" && generic.TypeArguments.Count > 0)
-                return generic.TypeArguments[0];
-            if (generic.Name == "dict" && generic.TypeArguments.Count > 1)
-                return generic.TypeArguments[1];
-        }
-
-        return SemanticType.Unknown;
+        // Validate that the object type supports indexing and get the element type
+        // This uses ProtocolValidator which checks for __getitem__ protocol support
+        return _protocolValidator.ValidateIndexAccess(
+            objectType,
+            indexType,
+            indexAccess.LineStart,
+            indexAccess.ColumnStart);
     }
 
     private SemanticType CheckFunctionCall(FunctionCall call)
@@ -1145,6 +1147,16 @@ public class TypeChecker
         FunctionSymbol? funcSymbol = null;
         if (call.Function is Identifier id)
         {
+            // Special handling for builtin len() - validate that argument supports __len__ protocol
+            // TODO: Consider using a constant from BuiltinRegistry or BuiltinNames class instead of hardcoded string
+            if (id.Name == "len" && argTypes.Count == 1)
+            {
+                return _protocolValidator.ValidateLen(
+                    argTypes[0],
+                    call.LineStart,
+                    call.ColumnStart);
+            }
+
             var symbol = _symbolTable.Lookup(id.Name);
 
             // Special handling for constructor calls (calling a type)
@@ -1378,9 +1390,12 @@ public class TypeChecker
         {
             if (clause is ForClause forClause)
             {
-                // Check iterator type
+                // Check iterator type and validate __iter__ protocol
                 var iterType = CheckExpression(forClause.Iterator);
-                var elemType = ExtractElementType(iterType);
+                var elemType = _protocolValidator.ValidateIteration(
+                    iterType,
+                    forClause.Iterator.LineStart,
+                    forClause.Iterator.ColumnStart);
 
                 // Define loop variable (single identifier only for now)
                 if (forClause.Target is Identifier id)
@@ -1440,9 +1455,12 @@ public class TypeChecker
         {
             if (clause is ForClause forClause)
             {
-                // Check iterator type
+                // Check iterator type and validate __iter__ protocol
                 var iterType = CheckExpression(forClause.Iterator);
-                var elemType = ExtractElementType(iterType);
+                var elemType = _protocolValidator.ValidateIteration(
+                    iterType,
+                    forClause.Iterator.LineStart,
+                    forClause.Iterator.ColumnStart);
 
                 // Define loop variable (single identifier only for now)
                 if (forClause.Target is Identifier id)
@@ -1501,9 +1519,12 @@ public class TypeChecker
         {
             if (clause is ForClause forClause)
             {
-                // Check iterator type
+                // Check iterator type and validate __iter__ protocol
                 var iterType = CheckExpression(forClause.Iterator);
-                var elemType = ExtractElementType(iterType);
+                var elemType = _protocolValidator.ValidateIteration(
+                    iterType,
+                    forClause.Iterator.LineStart,
+                    forClause.Iterator.ColumnStart);
 
                 // Define loop variable (single identifier only for now)
                 if (forClause.Target is Identifier id)

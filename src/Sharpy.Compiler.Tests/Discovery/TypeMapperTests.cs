@@ -140,4 +140,17 @@ public class TypeMapperTests
         // Assert
         Assert.Same(result1, result2);
     }
+
+    [Fact]
+    public void MapRangeIterator_ToBuiltinType()
+    {
+        // Arrange & Act
+        var result = _mapper.MapClrTypeToSemanticType(typeof(Sharpy.Core.RangeIterator));
+
+        // Assert
+        Assert.IsType<BuiltinType>(result);
+        var builtinType = (BuiltinType)result;
+        Assert.Equal("RangeIterator", builtinType.Name);
+        Assert.Equal(typeof(Sharpy.Core.RangeIterator), builtinType.ClrType);
+    }
 }

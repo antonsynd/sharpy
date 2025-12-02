@@ -118,9 +118,9 @@ This is an architectural refactor, not a behavior change project: the end state 
   - `HasProtocol()` - checks if a type supports a specific protocol dunder
   - CLR protocol discovery - reflection-based discovery of .NET collection/iterable interfaces
   - Validation methods: `ValidateLen()`, `ValidateIteration()`, `ValidateMembership()`, `ValidateIndexAccess()`, `ValidateBoolConversion()`
-  - `TypeChecker.cs` integration - instantiates `ProtocolValidator` and includes its errors
+  - `TypeChecker.cs` integration - instantiates `ProtocolValidator` and delegates all protocol checks
   - Comprehensive tests in `ProtocolValidatorTests.cs` (30+ tests)
-  - **Note**: ProtocolValidator class is complete, but TypeChecker does not yet delegate to it (tasks 4.2.3-4.2.6)
+  - **Complete**: TypeChecker delegates to ProtocolValidator for iteration, indexing, membership, and len() validation
 
 - **Operator Validation** (see [reflection_based_operator_validation.md](reflection_based_operator_validation.md)):
   - `OperatorValidator` - centralized binary/unary/augmented operator resolution
@@ -2529,38 +2529,38 @@ Create file at `src/Sharpy.Compiler/Semantic/ProtocolValidator.cs`:
           allErrors.AddRange(_protocolValidator.Errors);
   ```
 
-- [ ] **4.2.3** Replace hard-coded `for` loop iteration check:
+- [x] **4.2.3** Replace hard-coded `for` loop iteration check:
 
-  **Status**: ⏳ Not yet integrated - ProtocolValidator is ready but TypeChecker still uses hard-coded checks.
+  **Status**: ✅ Complete - TypeChecker.CheckFor() now uses _protocolValidator.ValidateIteration().
 
-  **Search for** `for` loop handling in `CheckFor()` method and update to use:
+  **Implementation**: Modified `CheckFor()` to delegate iteration validation:
   ```csharp
   var elementType = _protocolValidator.ValidateIteration(iterableType, forStmt.LineStart, forStmt.ColumnStart);
   ```
 
-- [ ] **4.2.4** Replace hard-coded `in` operator check:
+- [x] **4.2.4** Replace hard-coded `in` operator check:
 
-  **Status**: ⏳ Not yet integrated - ProtocolValidator is ready but TypeChecker still uses hard-coded checks.
+  **Status**: ✅ Complete - OperatorValidator now accepts ProtocolValidator and uses it for In/NotIn operators.
 
-  **Search for** `in` operator handling (BinaryOperator.In) and update to use:
+  **Implementation**: Modified `OperatorValidator` constructor to accept optional ProtocolValidator, and In/NotIn case calls:
   ```csharp
-  var resultType = _protocolValidator.ValidateMembership(rightType, leftType, line, column);
+  _protocolValidator?.ValidateMembership(rightType, leftType, line, column);
   ```
 
-- [ ] **4.2.5** Replace hard-coded indexing check:
+- [x] **4.2.5** Replace hard-coded indexing check:
 
-  **Status**: ⏳ Not yet integrated - ProtocolValidator is ready but TypeChecker still uses hard-coded checks.
+  **Status**: ✅ Complete - TypeChecker.CheckIndexAccess() now uses _protocolValidator.ValidateIndexAccess().
 
-  **Search for** subscript/indexing handling and update to use:
+  **Implementation**: Modified `CheckIndexAccess()` to delegate index access validation:
   ```csharp
   var elementType = _protocolValidator.ValidateIndexAccess(containerType, indexType, line, column);
   ```
 
-- [ ] **4.2.6** Replace hard-coded `len()` check:
+- [x] **4.2.6** Replace hard-coded `len()` check:
 
-  **Status**: ⏳ Not yet integrated - ProtocolValidator is ready but TypeChecker still uses hard-coded checks.
+  **Status**: ✅ Complete - TypeChecker.CheckFunctionCall() now special-cases `len` builtin to use ProtocolValidator.
 
-  **Search for** `len` builtin call handling and update to use:
+  **Implementation**: Added special case in `CheckFunctionCall()` for builtin `len`:
   ```csharp
   var resultType = _protocolValidator.ValidateLen(argType, call.LineStart, call.ColumnStart);
   ```
