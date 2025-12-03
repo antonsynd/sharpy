@@ -2,8 +2,9 @@
 
 This document tracks which features from the [Sharpy Language Reference v1](../specs/sharpy_language_reference_v1.md) are implemented in the compiler. Use this as a reference to identify remaining work and generate tasks for implementation.
 
-**Last Updated**: December 3, 2025
+**Last Updated**: December 3, 2025 (Audit #2)
 **Verified Against**: `mainline` branch
+**Audit Scope**: Keywords, AST nodes, CodeGen NotImplementedException locations
 
 ---
 
@@ -490,113 +491,322 @@ This document tracks which features from the [Sharpy Language Reference v1](../s
 
 ---
 
-## TODO: Additional Documentation Needed
+## Verified Implementation Details (December 3, 2025 Audit)
+
+### TokenType Keywords — VERIFIED
+
+The following keywords are present in `src/Sharpy.Compiler/Lexer/Token.cs`:
+
+| Keyword | TokenType | Status |
+|---------|-----------|--------|
+| `def`, `class`, `struct`, `interface`, `enum` | ✅ Present | ✅ |
+| `if`, `else`, `elif`, `while`, `for`, `in` | ✅ Present | ✅ |
+| `return`, `break`, `continue`, `pass` | ✅ Present | ✅ |
+| `try`, `except`, `finally`, `raise`, `assert` | ✅ Present | ✅ |
+| `import`, `from`, `as` | ✅ Present | ✅ |
+| `and`, `or`, `not`, `is` | ✅ Present | ✅ |
+| `const`, `lambda`, `auto` | ✅ Present | ✅ |
+| `True`, `False`, `None` | ✅ Present | ✅ |
+| `with` | ✅ Present | ⚠️ Token only, not implemented |
+| `match`, `case` | ❌ NOT Present | ❌ v0.7 - Needs implementation |
+| `type` | ❌ NOT Present | ❌ v0.8 - Needs implementation |
+| `defer`, `event` | ❌ NOT Present | ❌ v1.0 - Needs implementation |
+| `async`, `await` | ❌ NOT Present | ❌ v1.0 - Needs implementation |
+| `property` | ❌ NOT Present | ❌ v0.9 - Needs implementation |
+
+### AST Nodes — VERIFIED
+
+**ForStatement** (`Parser/Ast/Statement.cs` line 136):
+```csharp
+public record ForStatement : Statement
+{
+    public Expression Target { get; init; } = null!;
+    public Expression Iterator { get; init; } = null!;
+    public List<Statement> Body { get; init; } = new();
+    // NOTE: NO ElseBody property - loop else clause NOT supported
+}
+```
+
+**WhileStatement** (`Parser/Ast/Statement.cs` line 127):
+```csharp
+public record WhileStatement : Statement
+{
+    public Expression Test { get; init; } = null!;
+    public List<Statement> Body { get; init; } = new();
+    // NOTE: NO ElseBody property - loop else clause NOT supported
+}
+```
+
+**TryStatement** (`Parser/Ast/Statement.cs` line 146):
+```csharp
+public record TryStatement : Statement
+{
+    public List<Statement> Body { get; init; } = new();
+    public List<ExceptHandler> Handlers { get; init; } = new();
+    public List<Statement> FinallyBody { get; init; } = new();
+    // NOTE: NO ElseBody property - try-else clause NOT supported
+}
+```
+
+**FunctionDef** (`Parser/Ast/Statement.cs` line 173):
+```csharp
+public record FunctionDef : Statement
+{
+    public string Name { get; init; } = "";
+    public List<Parameter> Parameters { get; init; } = new();
+    public TypeAnnotation? ReturnType { get; init; }
+    public List<Statement> Body { get; init; } = new();
+    public List<Decorator> Decorators { get; init; } = new();
+    public string? DocString { get; init; }
+    // NOTE: NO TypeParameters property - generic functions NOT supported
+}
+```
+
+**ClassDef** (`Parser/Ast/Statement.cs` line 186) — HAS TypeParameters:
+```csharp
+public record ClassDef : Statement
+{
+    public string Name { get; init; } = "";
+    public List<string> TypeParameters { get; init; } = new(); // ✅ Generics supported
+    public List<TypeAnnotation> BaseClasses { get; init; } = new();
+    // ...
+}
+```
+
+### Codegen NotImplementedException Locations — VERIFIED
+
+| Location | Feature | Code Path |
+|----------|---------|-----------|
+| `RoslynEmitter.cs:1927` | Tuple unpacking in list comprehensions | `GenerateListComprehension` |
+| `RoslynEmitter.cs:1956` | Nested comprehensions (multiple for) | `GenerateListComprehension` |
+| `RoslynEmitter.cs:1997` | Tuple unpacking in dict comprehensions | `GenerateDictComprehension` |
+| `RoslynEmitter.cs:2024` | Nested dict comprehensions | `GenerateDictComprehension` |
+| `RoslynEmitter.cs:2066` | Tuple unpacking in set comprehensions | `GenerateSetComprehension` |
+| `RoslynEmitter.cs:2093` | Nested set comprehensions | `GenerateSetComprehension` |
+
+### Star Unpacking (`*rest`) — NOT IMPLEMENTED
+
+Searched for `StarredExpr`, `StarExpression`, `Starred` in `src/Sharpy.Compiler/` — **No matches found**.
+
+Star unpacking like `first, *rest = items` is NOT supported in lexer, parser, or codegen.
+
+### Walrus Operator (`:=`) — NOT IMPLEMENTED
+
+Searched for `Walrus`, `ColonEquals`, `:=` in `src/Sharpy.Compiler/` — **No matches found** (only documentation references).
+
+Assignment expressions are NOT supported in lexer, parser, or codegen.
+
+### Enum String Values — PARTIAL
+
+`RoslynEmitter.cs:GenerateEnumDeclaration` (line 681) generates standard C# enums. String enum values would use `GenerateExpression` which supports `StringLiteral`, but C# enums don't support string values directly. **Needs static class pattern for string enums** per language spec.
+
+---
+
+## TODO: Implementation Tasks
+
+### PRIORITY 1: Missing Core Features (v0.1-v0.6)
+
+#### 1.1 Try-Else Clause (v0.1)
+- [ ] Add `ElseBody` property to `TryStatement` AST node
+- [ ] Update `Parser.ParseTryStatement()` to parse `else:` block after handlers
+- [ ] Update `RoslynEmitter.GenerateTry()` to emit boolean flag pattern
+- [ ] Add integration tests for try-else behavior
+
+#### 1.2 Loop Else Clause (v0.6)
+- [ ] Add `ElseBody` property to `ForStatement` AST node
+- [ ] Add `ElseBody` property to `WhileStatement` AST node
+- [ ] Update `Parser.ParseForStatement()` to parse `else:` block
+- [ ] Update `Parser.ParseWhileStatement()` to parse `else:` block
+- [ ] Update `RoslynEmitter.GenerateFor()` to emit boolean flag pattern
+- [ ] Update `RoslynEmitter.GenerateWhile()` to emit boolean flag pattern
+- [ ] Add integration tests for loop-else behavior
+
+#### 1.3 Generic Functions (v0.4)
+- [ ] Add `TypeParameters` property to `FunctionDef` AST node
+- [ ] Update `Parser.ParseFunctionDef()` to parse `def foo[T](x: T)` syntax
+- [ ] Update `RoslynEmitter.GenerateMethod()` to emit type parameters
+- [ ] Add semantic analysis for generic function type constraints
+- [ ] Add integration tests for generic functions
+
+#### 1.4 Type Constraints (v0.4)
+- [ ] Design AST representation for type constraints (`T: IInterface`, `T: class`, etc.)
+- [ ] Update parser to handle constraint syntax on generic types
+- [ ] Update `RoslynEmitter` to emit `where T : IInterface` clauses
+- [ ] Add semantic validation for constraint satisfaction
+
+#### 1.5 Star Unpacking (v0.2)
+- [ ] Add `StarredExpression` AST node for `*rest` syntax
+- [ ] Add `TokenType.Star` handling for unpacking context in Lexer
+- [ ] Update `Parser` to parse `first, *rest = items` patterns
+- [ ] Update `RoslynEmitter` to generate appropriate C# (LINQ Take/Skip pattern)
+- [ ] Add integration tests
+
+### PRIORITY 2: v0.9 Features
+
+#### 2.1 Nested Comprehensions
+- [ ] Update `RoslynEmitter.GenerateListComprehension()` to handle multiple `ForClause`
+- [ ] Generate SelectMany LINQ pattern for nested iterations
+- [ ] Add integration tests
+
+#### 2.2 Tuple Unpacking in Comprehensions
+- [ ] Update comprehension codegen to support tuple targets in for clause
+- [ ] Add integration tests
+
+#### 2.3 Walrus Operator (`:=`)
+- [ ] Add `TokenType.ColonEquals` for `:=` token
+- [ ] Add `AssignmentExpression` AST node
+- [ ] Update `Parser.ParseExpression()` to handle `:=`
+- [ ] Update `RoslynEmitter` to generate C# inline assignment
+- [ ] Add semantic analysis for walrus operator scope rules
+- [ ] Add integration tests
+
+#### 2.4 Properties (v0.9)
+- [ ] Add `TokenType.Property` keyword
+- [ ] Add `PropertyDef` AST node with `get`/`set` accessors
+- [ ] Update Parser to handle `property x: int` syntax
+- [ ] Update `RoslynEmitter` to generate C# property syntax
+- [ ] Add integration tests
+
+### PRIORITY 3: v0.7-v1.0 Features (Future Work)
+
+#### 3.1 Pattern Matching (v0.7)
+- [ ] Add `TokenType.Match`, `TokenType.Case` keywords
+- [ ] Add `MatchStatement`, `CaseClause` AST nodes
+- [ ] Add pattern AST nodes: `LiteralPattern`, `TypePattern`, `WildcardPattern`, `GuardPattern`
+- [ ] Update Parser for match/case syntax
+- [ ] Update `RoslynEmitter` to generate C# switch expressions
+- [ ] Add integration tests
+
+#### 3.2 Type Aliases (v0.8)
+- [ ] Add `TokenType.Type` keyword
+- [ ] Add `TypeAliasStatement` AST node
+- [ ] Update Parser for `type Name = ExistingType` syntax
+- [ ] Update semantic analysis to resolve type aliases
+- [ ] Update `RoslynEmitter` to generate `using Name = Type;`
+- [ ] Add integration tests
+
+#### 3.3 Context Managers (v1.0)
+- [ ] Update Parser to handle `with expr as name:` syntax (token exists)
+- [ ] Add `WithStatement` AST node
+- [ ] Update `RoslynEmitter` to generate C# `using` statement
+- [ ] Add integration tests
+
+#### 3.4 Async/Await (v1.0)
+- [ ] Add `TokenType.Async`, `TokenType.Await` keywords
+- [ ] Add `async` decorator support
+- [ ] Add `AwaitExpression` AST node
+- [ ] Update `RoslynEmitter` to generate `async`/`await` C#
+- [ ] Add semantic analysis for async context
+- [ ] Add integration tests
+
+### PRIORITY 4: Standard Library Gaps
+
+- [ ] **Implement `hash(x)`**: Add global `Hash()` function in `Sharpy.Core/Builtins/` that wraps `GetHashCode()`
+- [ ] **Implement `id(x)`**: Add global `Id()` function using `RuntimeHelpers.GetHashCode()` for object identity
+- [ ] **Enum `.name` property**: Add extension method or codegen support for `Color.RED.name`
+- [ ] **Enum `.value` property**: Add extension method or codegen support for `Color.RED.value`
+- [ ] **String enum static class**: Update codegen to emit static class pattern for string-valued enums
+
+### PRIORITY 5: Decorator Alignment
+
+- [ ] Decide: Keep `@sealed` or rename to `@final` per language spec
+- [ ] Update documentation to match implementation OR update implementation to match spec
+- [ ] Add `@final` as alias for `@sealed` if keeping both
+
+---
+
+## NEEDS AUDIT / NEXT ITERATION
 
 The following sections still require verification and documentation in a future iteration:
 
-### 1. Missing Standard Library Functions
-- [ ] **Implement `hash(x)`**: Add global `Hash()` function in `Sharpy.Core` that calls `GetHashCode()`
-- [ ] **Implement `id(x)`**: Add global `Id()` function using `RuntimeHelpers.GetHashCode()` for identity
+### 1. Semantic Analysis (`Sharpy.Compiler/Semantic/`) — NEEDS DEEPER REVIEW
+- [ ] Document type inference implementation details
+- [ ] Document operator overload resolution (`CachedOverloadDiscoveryService`)
+- [ ] Verify protocol validation coverage for all dunder methods
+- [ ] Map semantic errors to user-friendly messages
 
-### 2. Semantic Analysis (`Sharpy.Compiler/Semantic/`) — NEEDS VERIFICATION
-- [ ] Document type inference implementation (appears functional based on `TypeChecker.cs` with `_narrowedTypes`)
-- [ ] Document operator overload resolution (`CachedOverloadDiscoveryService` in `Discovery/`)
-- [ ] Document protocol validation (`ProtocolValidator.cs`, `ProtocolSignatureValidator.cs`)
-- [ ] Verify dunder method semantic validation coverage (`OperatorValidator.cs`, `OperatorSignatureValidator.cs`)
+### 2. Test Coverage Audit — IN PROGRESS
+- [ ] Run `dotnet test --filter "FullyQualifiedName~Integration"` and document coverage
+- [ ] Identify features without integration tests
+- [ ] Create test matrix: feature → test file mapping
 
-### 3. Test Coverage Gaps — NEEDS AUDIT
-- [ ] Audit integration test coverage for all v0.1-v0.6 features
-- [ ] Identify missing edge case tests (especially for comprehensions, slicing)
-- [ ] Document any features that pass parsing but fail in codegen or runtime
-- [ ] Create tests for newly verified standard library functions
+### 3. Error Message Quality — NEEDS REVIEW
+- [ ] Document all `NotImplementedException` messages
+- [ ] Audit error message clarity for common mistakes
+- [ ] Add helpful suggestions to error messages
 
-### 4. Error Messages — NEEDS REVIEW
-- [ ] Document which error messages exist for incomplete features
-- [ ] Identify user-facing error message improvements needed
-- [ ] Verify `NotImplementedException` messages are user-friendly
-
-### 5. .NET Interop Verification — NEEDS TESTING
-- [ ] Test and document calling .NET methods from Sharpy
-- [ ] Test and document using .NET types as base classes/interfaces
-- [ ] Verify LINQ extension methods work correctly with Sharpy collections
-
-### 6. Language Reference Coverage — NEXT ITERATION
-The following sections from the language reference still need detailed verification:
-
-#### v0.7 — Pattern Matching (NOT STARTED)
-- [ ] Add `match` and `case` keywords to Lexer (`TokenType`)
-- [ ] Add `MatchStatement`, `CaseClause`, pattern AST nodes to Parser
-- [ ] Implement pattern matching codegen to C# switch expressions
-
-#### v0.8 — Type Aliases & ADTs (NOT STARTED)
-- [ ] Add `type` keyword to Lexer (currently not present)
-- [ ] Add `TypeAlias` AST node to Parser
-- [ ] Implement tagged unions/ADTs (discriminated union pattern)
-- [ ] Implement variable shadowing with `auto` (token exists, needs parser/codegen)
-
-#### v1.0 — Resources & Async (NOT STARTED)
-- [ ] Implement `with` statement parsing (`With` token exists)
-- [ ] Add `defer`, `event`, `async`, `await` keywords to Lexer
-- [ ] Implement context manager codegen → C# `using`
-- [ ] Implement defer codegen → `try`/`finally` pattern
-- [ ] Implement async/await codegen → C# `async`/`await`
-
-### 7. Codegen NotImplementedException Audit — NEEDS FIX
-The following throw `NotImplementedException` in `RoslynEmitter.cs`:
-- [ ] **Line 1362**: Complex tuple unpacking (non-identifier targets) in assignments
-- [ ] **Line 1571**: Complex for loop tuple unpacking
-- [ ] **Line 1699**: Complex function expressions
-- [ ] **Line 1927, 1997, 2066**: Tuple unpacking in comprehensions
-- [ ] **Line 1956, 2024, 2093**: Nested comprehensions (multiple for clauses)
+### 4. .NET Interop — NEEDS TESTING
+- [ ] Verify calling .NET methods from Sharpy
+- [ ] Verify using .NET types as base classes
+- [ ] Test LINQ extension methods with Sharpy collections
 
 ---
 
 ## Summary for Task Generation
 
-
 ### ✅ Complete (No Action Required)
-- v0.1: Core Language (except `try ... else:` clause)
-- v0.2: Nullability & Collections (except star unpacking `*rest`)
-- v0.3: Structs, Interfaces, OOP (decorators `@virtual`/`@override`/`@abstract`/`@sealed` work)
-- v0.5: Enums & Operators (core features)
-- Standard Library: Core builtins (`print`, `len`, `range`, `enumerate`, `zip`, `map`, `filter`, etc.)
+- **v0.1**: Core Language — all features except `try ... else:` clause
+- **v0.2**: Nullability & Collections — all features except star unpacking (`*rest`)
+- **v0.3**: Structs, Interfaces, OOP — decorators `@virtual`/`@override`/`@abstract`/`@sealed` work
+- **v0.5**: Enums (integer) & Operator Overloading — core features work
+- **v0.6**: F-strings, extended numeric literals, comparison chaining
+- **Standard Library**: Core builtins (`print`, `len`, `range`, `enumerate`, `zip`, `map`, `filter`, `sorted`, `reversed`, `min`, `max`, `sum`, `all`, `any`, `abs`, `pow`, `round`, `divmod`, `isinstance`, `type`, `input`)
 
-### ⚠️ Needs Completion (Prioritize)
-- **v0.1**: `try ... else:` clause (execute code only if no exception)
-- **v0.3**: Align `@final` decorator (spec) with `@sealed` (implementation), user-defined function overloading
-- **v0.4**: Generic functions with type parameters, type constraints
-- **v0.6**: Loop else clause (`for ... else:`, `while ... else:`)
-- **v0.9**: Nested comprehensions, tuple unpacking in comprehensions, walrus operator (`:=`), properties
-- **Standard Library**: `hash(x)`, `id(x)` global functions
+### ⚠️ Needs Completion (Prioritize for v1.0 Release)
 
-### ❌ Not Started (Future Work)
-- **v0.7**: Pattern matching (`match`/`case`) — Lexer, Parser, CodeGen all needed
-- **v0.8**: Type aliases (`type` keyword), tagged unions/ADTs, variable shadowing
-- **v1.0**: Context managers (`with`), `defer`, events, async/await
+| Version | Feature | Lexer | Parser | Semantic | CodeGen | Tests |
+|---------|---------|-------|--------|----------|---------|-------|
+| v0.1 | `try ... else:` clause | ✅ | ❌ | ❌ | ❌ | ❌ |
+| v0.2 | Star unpacking `*rest` | ❌ | ❌ | ❌ | ❌ | ❌ |
+| v0.4 | Generic functions `def foo[T]` | ✅ | ❌ | ❌ | ❌ | ❌ |
+| v0.4 | Type constraints `T: IFoo` | ❌ | ❌ | ❌ | ❌ | ❌ |
+| v0.5 | Enum `.name`, `.value` props | - | - | ❌ | ❌ | ❌ |
+| v0.5 | String enum → static class | - | ✅ | ⚠️ | ❌ | ❌ |
+| v0.6 | Loop else `for...else:` | ✅ | ❌ | ❌ | ❌ | ❌ |
+| v0.9 | Nested comprehensions | ✅ | ✅ | ✅ | ❌ | ❌ |
+| v0.9 | Tuple unpacking in compr. | ✅ | ✅ | ⚠️ | ❌ | ❌ |
+| v0.9 | Walrus operator `:=` | ❌ | ❌ | ❌ | ❌ | ❌ |
+| v0.9 | Properties | ❌ | ❌ | ❌ | ❌ | ❌ |
+| - | `hash(x)` builtin | - | - | - | - | ❌ |
+| - | `id(x)` builtin | - | - | - | - | ❌ |
+
+### ❌ Not Started (Future Work — Post v1.0)
+
+| Version | Feature | Notes |
+|---------|---------|-------|
+| v0.7 | Pattern matching | `match`/`case` keywords not in lexer |
+| v0.8 | Type aliases | `type` keyword not in lexer |
+| v0.8 | Tagged unions/ADTs | Requires type alias foundation |
+| v0.8 | Variable shadowing `auto` | Token exists, parser/codegen missing |
+| v1.0 | Context managers `with` | Token exists, parser/codegen missing |
+| v1.0 | `defer` statement | Token not in lexer |
+| v1.0 | `event` declaration | Token not in lexer |
+| v1.0 | `async`/`await` | Tokens not in lexer |
 
 ---
 
 ## Next Documentation Iteration
 
-The following areas were NOT fully verified in this iteration and should be the focus of the next documentation pass:
+### COMPLETED THIS ITERATION (December 3, 2025)
+1. ✅ Verified TokenType keywords present/missing in Lexer
+2. ✅ Verified AST node properties for loop-else, try-else, generic functions
+3. ✅ Verified `NotImplementedException` locations in RoslynEmitter
+4. ✅ Confirmed star unpacking (`*rest`) not implemented anywhere
+5. ✅ Confirmed walrus operator (`:=`) not implemented anywhere
+6. ✅ Created prioritized implementation task list
 
-### High Priority (Blocking Task Generation)
-1. **Test Coverage Audit**: Run `dotnet test --filter "FullyQualifiedName~Integration"` and map test coverage to features
-2. **Semantic Analysis Documentation**: Trace through `NameResolver` → `TypeResolver` → `TypeChecker` flow and document
-3. **Generic Functions**: Verify if `def foo[T](x: T) -> T` is really not supported or just undocumented
+### HIGH PRIORITY — NEXT ITERATION
+1. **Test Coverage Mapping**: Run all integration tests and map which features have test coverage
+2. **Semantic Analysis Deep Dive**: Document `NameResolver` → `TypeResolver` → `TypeChecker` flow
+3. **Error Message Audit**: Compile intentionally broken code and document error quality
 
-### Medium Priority (Improves Task Quality)
-1. **.NET Interop Testing**: Create test files to verify calling .NET APIs from Sharpy works as expected
-2. **Error Message Quality**: Run compiler on intentionally broken code and document error messages
-3. **Enum String Values**: Verify if string enum values generate to static class correctly
+### MEDIUM PRIORITY — FUTURE ITERATION
+1. **Integration Test Gaps**: Create tests for features verified as working but lacking tests
+2. **.NET Interop Testing**: Create sample files demonstrating .NET interop
+3. **Performance Baseline**: Document any known slow paths in compiler
 
-### Low Priority (Nice to Have)
-1. **Performance**: Document any known performance issues in collections or codegen
-2. **Edge Cases**: Document any known quirks or edge cases in the implementation
-3. **Cross-Reference**: Link each feature to its corresponding test file(s)
-
-### Files to Review Next Iteration
-- `src/Sharpy.Compiler.Tests/Integration/` - Integration test coverage
-- `src/Sharpy.Compiler/Semantic/TypeChecker.cs` - Type checking and inference
-- `src/Sharpy.Compiler/Discovery/` - Overload resolution
-- `src/Sharpy.Core.Tests/` - Standard library test coverage
+### FILES TO REVIEW NEXT ITERATION
+- `src/Sharpy.Compiler.Tests/Integration/*.cs` — Map tests to features
+- `src/Sharpy.Compiler/Semantic/TypeChecker.cs` — Type inference details
+- `src/Sharpy.Compiler/Semantic/NameResolver.cs` — Symbol resolution
+- `src/Sharpy.Core.Tests/` — Standard library test coverage
