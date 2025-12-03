@@ -38,11 +38,11 @@ public class PrimitiveCatalogTests
     [Theory]
     [InlineData("None")]
     [InlineData("void")]
-    public void GetByName_ReturnsNullClrTypeForVoid(string name)
+    public void GetByName_ReturnsVoidClrTypeForVoid(string name)
     {
         var info = PrimitiveCatalog.GetByName(name);
         info.Should().NotBeNull();
-        info!.ClrType.Should().BeNull();
+        info!.ClrType.Should().Be(typeof(void));
         info.CSharpName.Should().Be("void");
     }
 

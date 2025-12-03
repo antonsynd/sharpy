@@ -33,7 +33,8 @@ public class BuiltinRegistry
         foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
         {
             if (!RegisteredPrimitiveNames.Contains(name)) continue;
-            if (info.ClrType == null) continue;
+            // Skip void - it's registered separately below
+            if (info.ClrType == typeof(void)) continue;
 
             var kind = info.ClrType.IsValueType ? TypeKind.Struct : TypeKind.Class;
             RegisterType(info.SharpyName, info.ClrType, kind);

@@ -25,14 +25,14 @@ public static class PrimitiveCatalog
     /// </summary>
     /// <param name="SharpyName">The name used in Sharpy source code (e.g., "int", "str")</param>
     /// <param name="CSharpName">The C# keyword to emit (e.g., "int", "string")</param>
-    /// <param name="ClrType">The .NET runtime type (e.g., typeof(int)), null for void</param>
+    /// <param name="ClrType">The .NET runtime type (e.g., typeof(int), typeof(void))</param>
     /// <param name="Kind">The numeric classification</param>
     /// <param name="SizeInBits">Size in bits (8, 16, 32, 64, 128 for decimal)</param>
     /// <param name="IsSigned">True for signed numeric types</param>
     public record PrimitiveInfo(
         string SharpyName,
         string CSharpName,
-        Type? ClrType,
+        Type ClrType,
         NumericKind Kind,
         int SizeInBits,
         bool IsSigned
@@ -53,10 +53,7 @@ public static class PrimitiveCatalog
     private static void Register(Dictionary<string, PrimitiveInfo> byName, Dictionary<Type, PrimitiveInfo> byClr, PrimitiveInfo info)
     {
         byName[info.SharpyName] = info;
-        if (info.ClrType != null)
-        {
-            byClr[info.ClrType] = info;
-        }
+        byClr[info.ClrType] = info;
     }
 
     private static void RegisterAll(Dictionary<string, PrimitiveInfo> byName, Dictionary<Type, PrimitiveInfo> byClr)
@@ -83,10 +80,11 @@ public static class PrimitiveCatalog
         Register(byName, byClr, new PrimitiveInfo("char", "char", typeof(char), NumericKind.None, 16, false));
         Register(byName, byClr, new PrimitiveInfo("str", "string", typeof(string), NumericKind.None, 0, false));
         Register(byName, byClr, new PrimitiveInfo("string", "string", typeof(string), NumericKind.None, 0, false)); // Alias
+        Register(byName, byClr, new PrimitiveInfo("object", "object", typeof(object), NumericKind.None, 0, false));
 
-        // 1.2.5 Void/None (ClrType is null for void)
-        Register(byName, byClr, new PrimitiveInfo("None", "void", null, NumericKind.None, 0, false));
-        Register(byName, byClr, new PrimitiveInfo("void", "void", null, NumericKind.None, 0, false)); // Alias
+        // 1.2.5 Void/None - typeof(void) is a valid Type representing System.Void
+        Register(byName, byClr, new PrimitiveInfo("None", "void", typeof(void), NumericKind.None, 0, false));
+        Register(byName, byClr, new PrimitiveInfo("void", "void", typeof(void), NumericKind.None, 0, false)); // Alias
     }
 
     // ==================== 1.3 Query Methods ====================
@@ -159,8 +157,8 @@ public static class PrimitiveCatalog
     // When mixing types, the result is the type with higher priority
     private static int GetPromotionPriority(PrimitiveInfo info)
     {
-        // Handle null ClrType (void)
-        if (info.ClrType == null)
+        // Handle void type (no promotion possible)
+        if (info.ClrType == typeof(void))
             return 0;
 
         return info.ClrType switch
@@ -267,8 +265,8 @@ public static class PrimitiveCatalog
     /// </summary>
     public static bool CanImplicitlyConvert(PrimitiveInfo from, PrimitiveInfo to)
     {
-        // Handle null ClrType (void)
-        if (from.ClrType == null || to.ClrType == null)
+        // Handle void type (no conversion possible)
+        if (from.ClrType == typeof(void) || to.ClrType == typeof(void))
             return false;
 
         if (from.ClrType == to.ClrType)
@@ -317,8 +315,8 @@ public static class PrimitiveCatalog
     /// </summary>
     public static bool CanExplicitlyConvert(PrimitiveInfo from, PrimitiveInfo to)
     {
-        // Handle null ClrType (void)
-        if (from.ClrType == null || to.ClrType == null)
+        // Handle void type (no conversion possible)
+        if (from.ClrType == typeof(void) || to.ClrType == typeof(void))
             return false;
 
         // Anything numeric can be explicitly cast to any other numeric

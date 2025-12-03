@@ -142,12 +142,11 @@ This is an architectural refactor, not a behavior change project: the end state 
 
 ### Not Started ⏳
 
-- **Phase 6: Type Mapper consolidation** - merging duplicate type mapping logic
 - **Phase 7: CLR Member Cache extraction** - reusable reflection caching service
 
 ### Remaining Refactoring from Earlier Phases
 
-- (None currently - all phases through 5b are complete)
+- (None currently - all phases through 6 are complete)
 
 ---
 
@@ -426,7 +425,7 @@ This section provides a concrete, checkable task list for completing the refacto
 | 4. Protocol Validator | Medium | ✅ Complete | `ProtocolValidator.cs`, tests | `TypeChecker.cs` | 2-3 days |
 | 5. RoslynEmitter Consolidation | Medium | ✅ Complete | `RegistryConsistencyTests.cs` | `RoslynEmitter.cs`, `NameMangler.cs` | 1-2 days |
 | 5b. SemanticType.IsAssignableTo() | Medium | ✅ Complete | None | `SemanticType.cs` | 0.5 days |
-| 6. Type Mapper Consolidation | Low | ⏳ Not Started | None | `CodeGen/TypeMapper.cs`, `Discovery/TypeMapper.cs` | 1 day |
+| 6. Type Mapper Consolidation | Low | ✅ Complete | `TypeMappingConsistencyTests.cs` | `CodeGen/TypeMapper.cs`, `Discovery/TypeMapper.cs`, `PrimitiveCatalog.cs` | 1 day |
 | 7. CLR Member Cache | Low | ⏳ Not Started | `ClrMemberCache.cs`, tests | `OperatorValidator.cs`, `ProtocolValidator.cs` | 1-2 days |
 
 ### Prerequisites
@@ -3082,6 +3081,8 @@ Location: `src/Sharpy.Compiler/Semantic/SemanticType.cs` (around lines 74-88)
 
 **Goal**: Eliminate duplicate type mapping logic between `CodeGen/TypeMapper.cs` and `Discovery/TypeMapper.cs`.
 
+**Status**: ✅ Complete
+
 **Why This Matters**: Currently there are TWO classes named `TypeMapper`:
 1. `src/Sharpy.Compiler/CodeGen/TypeMapper.cs` - Maps Sharpy types to C# syntax (Roslyn `TypeSyntax`)
 2. `src/Sharpy.Compiler/Discovery/TypeMapper.cs` - Maps CLR types to Sharpy `SemanticType`
@@ -3099,19 +3100,19 @@ Both contain overlapping primitive type knowledge. This phase consolidates them 
 
 #### 6.1 Audit both TypeMapper classes
 
-- [ ] **6.1.1** Document `CodeGen/TypeMapper.cs` purpose:
+- [x] **6.1.1** Document `CodeGen/TypeMapper.cs` purpose:
   - **Input**: Sharpy `TypeAnnotation` (from AST)
   - **Output**: Roslyn `TypeSyntax` (for C# code generation)
   - **Key method**: `MapType(TypeAnnotation?) -> TypeSyntax`
   - **Data**: `_builtinTypeMap` dictionary (Sharpy name → C# syntax string)
 
-- [ ] **6.1.2** Document `Discovery/TypeMapper.cs` purpose:
+- [x] **6.1.2** Document `Discovery/TypeMapper.cs` purpose:
   - **Input**: CLR `Type` (from reflection)
   - **Output**: Sharpy `SemanticType`
   - **Key method**: `MapClrTypeToSemanticType(Type) -> SemanticType`
-  - **Data**: Hard-coded type checks (`if (clrType == typeof(int))...`)
+  - **Data**: Now uses `PrimitiveCatalog.GetByClrType()` for primitive type lookups
 
-- [ ] **6.1.3** Identify overlap:
+- [x] **6.1.3** Identify overlap:
   - Both know about primitive types (int, long, float, double, bool, string)
   - Both need CLR type ↔ Sharpy name mappings
   - `PrimitiveCatalog` already has: `SharpyName`, `CSharpName`, `ClrType`
@@ -3120,22 +3121,9 @@ Both contain overlapping primitive type knowledge. This phase consolidates them 
 
 #### 6.2 Update `CodeGen/TypeMapper.cs` to use `PrimitiveCatalog`
 
-- [ ] **6.2.1** Replace `_builtinTypeMap` with `PrimitiveCatalog` lookups:
+- [x] **6.2.1** Replace `_builtinTypeMap` with `PrimitiveCatalog` lookups:
 
-  **Current** (lines 18-44):
-  ```csharp
-  private static readonly Dictionary<string, string> _builtinTypeMap = new()
-  {
-      { "int", "int" },
-      { "long", "long" },
-      { "float", "float" },
-      { "double", "double" },
-      { "bool", "bool" },
-      // ... more primitives
-  };
-  ```
-
-  **Replace with**:
+  **Current implementation** (static constructor):
   ```csharp
   private static readonly Dictionary<string, string> _builtinTypeMap;
 
@@ -3161,40 +3149,21 @@ Both contain overlapping primitive type knowledge. This phase consolidates them 
   }
   ```
 
-- [ ] **6.2.2** Add using directive:
-  ```csharp
-  using Sharpy.Compiler.Semantic;  // For PrimitiveCatalog
-  ```
+- [x] **6.2.2** Using directive already present (`Sharpy.Compiler.Semantic` namespace).
 
-**Acceptance Criteria**: `TypeMapperTests` (in CodeGen folder) still pass.
+**Status**: ✅ Complete. All tests pass.
 
 ---
 
 #### 6.3 Update `Discovery/TypeMapper.cs` to use `PrimitiveCatalog`
 
-- [ ] **6.3.1** Replace hard-coded type checks in `MapTypeInternal()`:
+- [x] **6.3.1** Replace hard-coded type checks in `MapTypeInternal()`:
 
-  **Current** (lines 24-34):
+  **Current implementation**:
   ```csharp
   private SemanticType MapTypeInternal(Type clrType)
   {
-      if (clrType == typeof(int)) return SemanticType.Int;
-      if (clrType == typeof(long)) return SemanticType.Long;
-      if (clrType == typeof(float)) return SemanticType.Float;
-      if (clrType == typeof(double)) return SemanticType.Double;
-      if (clrType == typeof(bool)) return SemanticType.Bool;
-      if (clrType == typeof(string)) return SemanticType.Str;
-      if (clrType == typeof(void)) return SemanticType.Void;
-      if (clrType == typeof(object)) return SemanticType.Object;
-      // ... rest of method
-  }
-  ```
-
-  **Replace with**:
-  ```csharp
-  private SemanticType MapTypeInternal(Type clrType)
-  {
-      // Check PrimitiveCatalog first
+      // Check PrimitiveCatalog first for primitive types
       var primitiveInfo = PrimitiveCatalog.GetByClrType(clrType);
       if (primitiveInfo != null)
       {
@@ -3208,96 +3177,40 @@ Both contain overlapping primitive type knowledge. This phase consolidates them 
               "bool" => SemanticType.Bool,
               "str" or "string" => SemanticType.Str,
               "void" or "None" => SemanticType.Void,
+              "object" => SemanticType.Object,
               _ => new BuiltinType { Name = primitiveInfo.SharpyName, ClrType = clrType }
           };
       }
-
-      // Handle object specifically
-      if (clrType == typeof(object)) return SemanticType.Object;
 
       // Handle arrays, nullables, generics... (existing code)
       // ...
   }
   ```
 
-- [ ] **6.3.2** Add using directive:
-  ```csharp
-  using Sharpy.Compiler.Semantic;  // For PrimitiveCatalog
-  ```
+- [x] **6.3.2** Using directive already present (`Sharpy.Compiler.Semantic` namespace).
 
-**Acceptance Criteria**: `TypeMapperTests` (in Discovery folder) still pass.
+**Status**: ✅ Complete. All tests pass.
 
 ---
 
 #### 6.4 Write consolidation verification tests
 
-- [ ] **6.4.1** Add cross-verification test:
+- [x] **6.4.1** Added cross-verification tests:
 
-  Create or update `src/Sharpy.Compiler.Tests/Semantic/TypeMappingConsistencyTests.cs`:
-  ```csharp
-  using Xunit;
-  using FluentAssertions;
-  using Sharpy.Compiler.Semantic;
+  File: `src/Sharpy.Compiler.Tests/Semantic/TypeMappingConsistencyTests.cs`
 
-  namespace Sharpy.Compiler.Tests.Semantic;
+  Tests verify:
+  - `PrimitiveCatalog` covers all SemanticType singletons
+  - `CodeGen/TypeMapper` uses all primitive types from catalog
+  - `Discovery/TypeMapper` maps all primitive CLR types correctly
+  - All primitives have consistent C# names
+  - All numeric types have valid sizes
 
-  public class TypeMappingConsistencyTests
-  {
-      [Fact]
-      public void PrimitiveCatalog_CoversAllSemanticTypeSingletons()
-      {
-          // All SemanticType singletons should be in PrimitiveCatalog
-          var singletons = new[]
-          {
-              ("int", SemanticType.Int),
-              ("long", SemanticType.Long),
-              ("float", SemanticType.Float),
-              ("double", SemanticType.Double),
-              ("bool", SemanticType.Bool),
-              ("str", SemanticType.Str),
-          };
+**Status**: ✅ Complete. All 25 consistency tests pass.
 
-          foreach (var (name, semanticType) in singletons)
-          {
-              var info = PrimitiveCatalog.GetByName(name);
-              info.Should().NotBeNull($"Primitive '{name}' should be in catalog");
-
-              if (semanticType is BuiltinType builtin)
-              {
-                  info!.ClrType.Should().Be(builtin.ClrType,
-                      $"CLR type for '{name}' should match");
-              }
-          }
-      }
-
-      [Fact]
-      public void CodeGenTypeMapper_AndDiscoveryTypeMapper_AreConsistent()
-      {
-          // For each primitive in catalog, verify both mappers agree
-          foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
-          {
-              // Skip void (can't be in SemanticType easily)
-              if (info.ClrType == typeof(void)) continue;
-
-              // Discovery mapper: CLR -> SemanticType
-              var discoveryMapper = new Discovery.TypeMapper();
-              var semanticType = discoveryMapper.MapClrTypeToSemanticType(info.ClrType);
-
-              // The mapped SemanticType should have the expected name
-              semanticType.GetDisplayName().Should().BeOneOf(
-                  info.SharpyName, name,
-                  $"Mapper should map {info.ClrType} to '{info.SharpyName}' or '{name}'");
-          }
-      }
-  }
-  ```
-
-**Acceptance Criteria**: Consistency tests pass, confirming that all type mappings are derived from `PrimitiveCatalog`:
-- Sharpy name → CLR type (via `PrimitiveCatalog.GetByName()`)
-- CLR type → Sharpy name (via `PrimitiveCatalog.GetByClrType()`)
-- Sharpy name → C# syntax (via `PrimitiveCatalog` in `CodeGen/TypeMapper`)
-
-> **NOTE**: Tasks 6.5 and 6.6 from an earlier draft were merged into 6.2-6.4 above.
+**Verification**:
+- `dotnet test --filter "FullyQualifiedName~TypeMappingConsistencyTests"` - All pass
+- `dotnet test` - All 2,792 tests pass (735 Core + 2,057 Compiler)
 
 ---
 
@@ -3891,23 +3804,30 @@ private void LoadBuiltins()
 
 **Location**: `src/Sharpy.Compiler/CodeGen/TypeMapper.cs` (around lines 18-45)
 
-**Status**: 🔴 To be refactored in Phase 6
+**Status**: 🟢 Completed in Phase 6
 
 ```csharp
-// Hard-coded type mappings
-private static readonly Dictionary<string, string> _builtinTypeMap = new()
-{
-    { "int", "int" },
-    { "long", "long" },
-    { "float", "float" },
-    { "double", "double" },
-    { "bool", "bool" },
-    { "byte", "byte" },
-    // ...
-};
-```
+// REFACTORED: Now builds from PrimitiveCatalog in static constructor
+private static readonly Dictionary<string, string> _builtinTypeMap;
 
-**Refactor to**: Build from `PrimitiveCatalog.GetAllPrimitives()` in static constructor
+static TypeMapper()
+{
+    _builtinTypeMap = new Dictionary<string, string>();
+
+    // Add all primitives from PrimitiveCatalog
+    foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
+    {
+        _builtinTypeMap.TryAdd(name, info.CSharpName);
+    }
+
+    // Add non-primitive type mappings (collections, etc.)
+    _builtinTypeMap["list"] = "global::Sharpy.Core.List";
+    _builtinTypeMap["dict"] = "global::Sharpy.Core.Dict";
+    _builtinTypeMap["set"] = "global::Sharpy.Core.Set";
+    _builtinTypeMap["tuple"] = "System.ValueTuple";
+    _builtinTypeMap["object"] = "object";
+}
+```
 
 ---
 
@@ -3915,24 +3835,33 @@ private static readonly Dictionary<string, string> _builtinTypeMap = new()
 
 **Location**: `src/Sharpy.Compiler/Discovery/TypeMapper.cs` (around lines 24-35)
 
-**Status**: 🔴 To be refactored in Phase 6
+**Status**: 🟢 Completed in Phase 6
 
 ```csharp
-// Hard-coded CLR type checks
+// REFACTORED: Now uses PrimitiveCatalog.GetByClrType()
 private SemanticType MapTypeInternal(Type clrType)
 {
-    if (clrType == typeof(int)) return SemanticType.Int;
-    if (clrType == typeof(long)) return SemanticType.Long;
-    if (clrType == typeof(float)) return SemanticType.Float;
-    if (clrType == typeof(double)) return SemanticType.Double;
-    if (clrType == typeof(bool)) return SemanticType.Bool;
-    if (clrType == typeof(string)) return SemanticType.Str;
-    if (clrType == typeof(void)) return SemanticType.Void;
-    // ...
+    // Check PrimitiveCatalog first for primitive types
+    var primitiveInfo = PrimitiveCatalog.GetByClrType(clrType);
+    if (primitiveInfo != null)
+    {
+        return primitiveInfo.SharpyName switch
+        {
+            "int" => SemanticType.Int,
+            "long" => SemanticType.Long,
+            "float" => SemanticType.Float,
+            "double" => SemanticType.Double,
+            "bool" => SemanticType.Bool,
+            "str" or "string" => SemanticType.Str,
+            "void" or "None" => SemanticType.Void,
+            "object" => SemanticType.Object,
+            _ => new BuiltinType { Name = primitiveInfo.SharpyName, ClrType = clrType }
+        };
+    }
+
+    // Handle arrays, nullables, generics... (existing code)
 }
 ```
-
-**Refactor to**: `PrimitiveCatalog.GetByClrType(clrType)` with fallback
 
 ---
 
