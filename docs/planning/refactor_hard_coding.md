@@ -3266,7 +3266,7 @@ The current implementation has evolved differently than originally planned:
 
 Create file at `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs`:
 
-- [ ] **7.1.1** File structure:
+- [x] **7.1.1** File structure:
   ```csharp
   using System.Reflection;
   using System.Collections.Generic;
@@ -3295,7 +3295,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs`:
   }
   ```
 
-- [ ] **7.1.2** Implement operator method discovery (extract from `OperatorValidator`):
+- [x] **7.1.2** Implement operator method discovery (extract from `OperatorValidator`):
   ```csharp
   /// <summary>
   /// Gets operator methods for a CLR type, discovering and caching them if needed.
@@ -3334,7 +3334,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs`:
   }
   ```
 
-- [ ] **7.1.3** Implement interface discovery:
+- [x] **7.1.3** Implement interface discovery:
   ```csharp
   /// <summary>
   /// Gets all interfaces implemented by a CLR type (including inherited).
@@ -3368,7 +3368,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs`:
   }
   ```
 
-- [ ] **7.1.4** Implement indexer discovery:
+- [x] **7.1.4** Implement indexer discovery:
   ```csharp
   /// <summary>
   /// Checks if a CLR type has an indexer and returns the element type if so.
@@ -3394,7 +3394,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs`:
   }
   ```
 
-- [ ] **7.1.5** Implement enumerator element type discovery:
+- [x] **7.1.5** Implement enumerator element type discovery:
   ```csharp
   /// <summary>
   /// Gets the element type for an IEnumerable<T> implementation, or null if not enumerable.
@@ -3430,13 +3430,13 @@ Create file at `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs`:
   }
   ```
 
-**Acceptance Criteria**: File compiles. All discovery methods work correctly.
+**Acceptance Criteria**: ✅ **COMPLETE** - File compiles. All discovery methods work correctly.
 
 ---
 
 #### 7.2 Refactor `OperatorValidator.cs` to use `ClrMemberCache`
 
-- [ ] **7.2.1** Add `ClrMemberCache` field:
+- [x] **7.2.1** Add `ClrMemberCache` field:
 
   **Find** (around lines 22-24):
   ```csharp
@@ -3452,7 +3452,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs`:
   private readonly ClrMemberCache _clrMemberCache;
   ```
 
-- [ ] **7.2.2** Update constructor:
+- [x] **7.2.2** Update constructor:
 
   **Find**:
   ```csharp
@@ -3473,7 +3473,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs`:
   }
   ```
 
-- [ ] **7.2.3** Replace `GetOrCacheClrOperators()` calls:
+- [x] **7.2.3** Replace `GetOrCacheClrOperators()` calls:
 
   **Find** method (search for `GetOrCacheClrOperators`):
   ```csharp
@@ -3490,13 +3490,13 @@ Create file at `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs`:
 
   **Delete** the `GetOrCacheClrOperators()` method entirely.
 
-**Acceptance Criteria**: `OperatorValidatorTests` still pass.
+**Acceptance Criteria**: ✅ **COMPLETE** - OperatorValidatorTests still pass (60 tests).
 
 ---
 
 #### 7.3 Update `ProtocolValidator.cs` to use `ClrMemberCache`
 
-- [ ] **7.3.1** Add `ClrMemberCache` field and update constructor:
+- [x] **7.3.1** Add `ClrMemberCache` field and update constructor:
   ```csharp
   private readonly ClrMemberCache _clrMemberCache;
 
@@ -3508,7 +3508,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs`:
   }
   ```
 
-- [ ] **7.3.2** Update `DiscoverClrProtocols()` to use cache:
+- [x] **7.3.2** Update `DiscoverClrProtocols()` to use cache:
   ```csharp
   private HashSet<string> DiscoverClrProtocols(Type clrType)
   {
@@ -3542,7 +3542,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs`:
   }
   ```
 
-**Acceptance Criteria**: `ProtocolValidatorTests` still pass.
+**Acceptance Criteria**: ✅ **COMPLETE** - ProtocolValidatorTests still pass (all tests passing).
 
 ---
 
@@ -3550,7 +3550,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs`:
 
 Create file at `src/Sharpy.Compiler.Tests/Semantic/ClrMemberCacheTests.cs`:
 
-- [ ] **7.4.1** Test operator discovery:
+- [x] **7.4.1** Test operator discovery:
   ```csharp
   using Xunit;
   using FluentAssertions;
@@ -3585,7 +3585,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ClrMemberCacheTests.cs`:
   }
   ```
 
-- [ ] **7.4.2** Test interface discovery:
+- [x] **7.4.2** Test interface discovery:
   ```csharp
   [Fact]
   public void GetImplementedInterfaces_FindsListInterfaces()
@@ -3609,7 +3609,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ClrMemberCacheTests.cs`:
   }
   ```
 
-- [ ] **7.4.3** Test indexer discovery:
+- [x] **7.4.3** Test indexer discovery:
   ```csharp
   [Fact]
   public void GetIndexerInfo_FindsListIndexer()
@@ -3633,7 +3633,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ClrMemberCacheTests.cs`:
   }
   ```
 
-- [ ] **7.4.4** Test enumerator element type discovery:
+- [x] **7.4.4** Test enumerator element type discovery:
   ```csharp
   [Fact]
   public void GetEnumerableElementType_InfersFromIEnumerable()
@@ -3656,13 +3656,13 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ClrMemberCacheTests.cs`:
   }
   ```
 
-**Acceptance Criteria**: All tests pass. Run with `dotnet test --filter "FullyQualifiedName~ClrMemberCacheTests"`.
+**Acceptance Criteria**: ✅ **COMPLETE** - All tests pass (22 tests). Run with `dotnet test --filter "FullyQualifiedName~ClrMemberCacheTests"`.
 
 ---
 
 #### 7.5 Share cache between validators (optional optimization)
 
-- [ ] **7.5.1** Consider creating shared cache in `TypeChecker`:
+- [x] **7.5.1** Consider creating shared cache in `TypeChecker`:
   ```csharp
   // In TypeChecker constructor
   var sharedClrCache = new ClrMemberCache();
@@ -3672,7 +3672,7 @@ Create file at `src/Sharpy.Compiler.Tests/Semantic/ClrMemberCacheTests.cs`:
 
   This ensures both validators share the same cached reflection data.
 
-**Acceptance Criteria**: Integration tests pass with shared cache.
+**Acceptance Criteria**: ✅ **COMPLETE** - Integration tests pass with shared cache (2080 tests passing).
 
 ---
 
