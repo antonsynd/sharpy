@@ -119,6 +119,7 @@ This is an architectural refactor, not a behavior change project: the end state 
   - CLR protocol discovery - reflection-based discovery of .NET collection/iterable interfaces
   - Validation methods: `ValidateLen()`, `ValidateIteration()`, `ValidateMembership()`, `ValidateIndexAccess()`, `ValidateBoolConversion()`
   - `TypeChecker.cs` integration - instantiates `ProtocolValidator` and delegates all protocol checks
+  - `OperatorValidator` receives `ProtocolValidator` via constructor for `in`/`not in` operator membership checking
   - Comprehensive tests in `ProtocolValidatorTests.cs` (30+ tests)
   - **Complete**: TypeChecker delegates to ProtocolValidator for iteration, indexing, membership, and len() validation
 
@@ -142,7 +143,7 @@ This is an architectural refactor, not a behavior change project: the end state 
 
 ### Not Started ⏳
 
-- **Phase 7: CLR Member Cache extraction** - reusable reflection caching service
+- **Phase 7: CLR Member Cache extraction** (Optional) - reusable reflection caching service (see reassessment in Phase 7 section)
 
 ### Remaining Refactoring from Earlier Phases
 
@@ -167,11 +168,14 @@ This is an architectural refactor, not a behavior change project: the end state 
      - Dunder → operator mapping (`BinaryOperatorToDunder`, `UnaryOperatorToDunder`)
      - CLR operator mapping (via `_clrOperatorCache`)
      - Overload resolution (`ResolveBestOverload`)
-   - **REMAINING**: Define a single "builtin description" service (e.g. `BuiltinTypeModel`/`IntrinsicRegistry`) for:
-     - Sharpy primitives and containers (currently scattered in `BuiltinRegistry`, `TypeMapper`)
-     - Non-operator dunder protocols (`__init__`, `__str__`, `__repr__`, `__hash__`, `__iter__`, `__len__`, etc.)
-     - Container/collection semantics (indexing, iteration, membership)
-   - **ALIGN**: Ensure new services follow the pattern established by `OperatorValidator`:
+   - **COMPLETED**: Non-operator protocol handling is now centralized in:
+     - `ProtocolRegistry.cs` - maps non-operator dunders to Sharpy.Core interfaces
+     - `ProtocolSignatureValidator.cs` - validates protocol dunder signatures at name resolution
+     - `ProtocolValidator.cs` - validates protocol usage at type checking time
+     - `TypeSymbol.ProtocolMethods` - caches validated protocol methods
+   - **REMAINING** (optional, post-v0.5): Define a unified "builtin description" service for:
+     - Sharpy primitives and containers (consolidate `BuiltinRegistry`, `TypeMapper`, `PrimitiveCatalog`)
+   - **ALIGN**: New services follow the pattern established by `OperatorValidator`:
      - Reflection-based discovery with caching
      - Separation between signature validation and semantic resolution
      - Integration points with `TypeChecker` via delegation
@@ -191,16 +195,18 @@ This is an architectural refactor, not a behavior change project: the end state 
      - In-place operator support (`__iadd__`, etc.) with fallback to base operators
      - Equality complement synthesis (`__eq__` ↔ `__ne__`)
      - Power operator (`**` → `__pow__`)
-   - **REMAINING**: Extend to non-operator dunders and protocols:
+   - **COMPLETED**: Non-operator dunders now handled by `ProtocolRegistry` + `ProtocolSignatureValidator` + `ProtocolValidator`:
      - Container protocols: `__getitem__`, `__setitem__`, `__delitem__`, `__contains__`, `__len__`
      - Iteration protocols: `__iter__`, `__next__`
      - String/representation: `__str__`, `__repr__`
-     - Hashing/equality for collections: `__hash__` (coordinate with `__eq__`)
-     - Callable: `__call__`
-   - **PATTERN**: Follow `OperatorSignatureValidator` approach:
-     - Whitelist of recognized protocol dunders
-     - Signature validation rules per protocol
-     - Caching in `TypeSymbol` (may need additional dictionaries beyond `OperatorMethods`)
+     - Hashing: `__hash__`
+     - Conversion: `__bool__`
+     - Lifecycle: `__init__`
+   - **REMAINING** (post-v0.5): Callable `__call__` protocol (requires CIL emission for callable objects)
+   - **PATTERN**: Follows `OperatorSignatureValidator` approach:
+     - Whitelist of recognized protocol dunders in `ProtocolRegistry`
+     - Signature validation rules in `ProtocolSignatureValidator`
+     - Caching in `TypeSymbol.ProtocolMethods`
 
 5. **Align new work with operator validation architecture**
    - **STUDY**: Review `OperatorValidator` and `OperatorSignatureValidator` as reference implementations
@@ -250,12 +256,15 @@ This is an architectural refactor, not a behavior change project: the end state 
      - `CheckUnaryOp` → `ValidateUnaryOp`
      - `CheckAssignment` (augmented) → `ValidateAugmentedAssignment`
      - Comparison chains validated via `OperatorValidator`
-   - **REMAINING**: Apply same delegation pattern to:
-     - Container operations (indexing, slicing, membership)
-     - Iteration and comprehension semantics
-     - Callable invocation (when target is user-defined `__call__`)
-     - String/representation conversion
-     - Hash computation and equality for collections
+   - **COMPLETED**: `TypeChecker` now delegates protocol semantics to `ProtocolValidator`:
+     - Container indexing → `ValidateIndexAccess()`
+     - Iteration (for loops, comprehensions) → `ValidateIteration()`
+     - Membership (`in`/`not in` operators) → `ValidateMembership()` (via OperatorValidator)
+     - `len()` builtin → `ValidateLen()`
+   - **REMAINING** (post-v0.5): Additional delegation for:
+     - Callable invocation (when target has `__call__`)
+     - Slicing operations (when slicing syntax is added)
+     - String/representation conversion validation
    - **PATTERN**: For each area:
      - Create a focused validator (e.g., `ProtocolValidator`, `ContainerValidator`)
      - Move hard‑coded logic from `TypeChecker` into the validator
@@ -276,16 +285,24 @@ This is an architectural refactor, not a behavior change project: the end state 
    - Introduce diagnostic logging (behind `ICompilerLogger`) when falling back to legacy paths, to help detect missed refactors; later, treat these as errors.
 
 10. **Plan migration and validation strategy**
-   - **COMPLETED SLICE**: Operator validation (arithmetic, bitwise, comparison, unary, augmented assignment)
-     - Full test coverage in `OperatorValidatorTests`, `OperatorSignatureValidatorTests`
-     - Integration confirmed in `TypeCheckerTests`
-     - CLR interop validated for numeric operators
-   - **NEXT SLICES** (in priority order):
-     1. **Primitive catalog**: Exhaustive registry of numeric/primitive types with conversion rules
-     2. **Container protocols**: Indexing, membership, length, iteration dunders
-     3. **String/representation protocols**: `__str__`, `__repr__`, format integration
-     4. **Callable protocol**: `__call__` validation and invocation
-     5. **Hash/equality protocols**: Coordinate `__hash__` with `__eq__` for collection safety
+   - **COMPLETED SLICES**:
+     1. ✅ **Operator validation** (arithmetic, bitwise, comparison, unary, augmented assignment)
+        - Full test coverage in `OperatorValidatorTests`, `OperatorSignatureValidatorTests`
+        - Integration confirmed in `TypeCheckerTests`
+        - CLR interop validated for numeric operators
+     2. ✅ **Primitive catalog**: Exhaustive registry of numeric/primitive types with conversion rules
+        - `PrimitiveCatalog.cs` with promotion/conversion logic
+        - Used by `OperatorValidator`, `TypeChecker`, `BuiltinRegistry`, `TypeMapper`
+     3. ✅ **Protocol registry**: Non-operator dunders mapped to Sharpy.Core interfaces
+        - `ProtocolRegistry.cs`, `ProtocolSignatureValidator.cs`, `ProtocolValidator.cs`
+     4. ✅ **Container protocols**: Indexing, membership, length, iteration dunders
+        - `ProtocolValidator.ValidateIndexAccess()`, `ValidateMembership()`, `ValidateLen()`, `ValidateIteration()`
+     5. ✅ **String/representation protocols**: `__str__`, `__repr__` in `ProtocolRegistry`
+     6. ✅ **Hash protocol**: `__hash__` in `ProtocolRegistry`
+   - **REMAINING SLICES** (post-v0.5):
+     1. **Callable protocol**: `__call__` validation and invocation (requires CIL emission)
+     2. **Context manager**: `__enter__`, `__exit__` → `IDisposable` integration
+     3. **Numeric conversion protocols**: `__int__`, `__float__`
    - **PER-SLICE CHECKLIST**:
      - Define validator/registry interface
      - Implement with reflection + caching where needed
@@ -301,10 +318,10 @@ This is an architectural refactor, not a behavior change project: the end state 
 
 2. **VALIDATED**: Separating signature validation (at name resolution) from semantic validation (at type checking) prevents invalid symbols from entering the symbol table and produces better error messages; maintain this separation for all protocols.
 
-3. **PARTIALLY COMPLETE**: Scope of protocol support:
-   - The Python protocols that Sharpy should support (iterator, context manager, descriptor, etc.)?
-   - The .NET patterns that should be first-class (IDisposable, IEnumerable<T>, async/await)?
-   - These decisions are documented in the table below to guide registry/validator implementation priorities.
+3. **COMPLETED**: Scope of protocol support for v0.5:
+   - All v0.5 Python protocols are now implemented (`ProtocolRegistry`, `ProtocolSignatureValidator`, `ProtocolValidator`)
+   - The .NET pattern mappings are documented in the table below
+   - Post-v0.5 decisions (context manager, async, etc.) are deferred
 
    **Protocol/Pattern Support Decision Matrix:**
 
@@ -426,7 +443,7 @@ This section provides a concrete, checkable task list for completing the refacto
 | 5. RoslynEmitter Consolidation | Medium | ✅ Complete | `RegistryConsistencyTests.cs` | `RoslynEmitter.cs`, `NameMangler.cs` | 1-2 days |
 | 5b. SemanticType.IsAssignableTo() | Medium | ✅ Complete | None | `SemanticType.cs` | 0.5 days |
 | 6. Type Mapper Consolidation | Low | ✅ Complete | `TypeMappingConsistencyTests.cs` | `CodeGen/TypeMapper.cs`, `Discovery/TypeMapper.cs`, `PrimitiveCatalog.cs` | 1 day |
-| 7. CLR Member Cache | Low | ⏳ Not Started | `ClrMemberCache.cs`, tests | `OperatorValidator.cs`, `ProtocolValidator.cs` | 1-2 days |
+| 7. CLR Member Cache | Low | ⏳ Optional | `ClrMemberCache.cs`, tests | `OperatorValidator.cs`, `ProtocolValidator.cs` | 1-2 days |
 
 ### Prerequisites
 
@@ -1166,15 +1183,15 @@ Location: `src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs`
 
 ---
 
-#### 1.10 Refactor `SemanticType.IsAssignableTo()` (Backlog - Not Yet Completed)
+#### 1.10 Refactor `SemanticType.IsAssignableTo()` (Completed in Phase 5b)
 
-**Status**: ⏳ Not yet completed - discovered during Phase 1 review
+**Status**: ✅ Complete - implemented as part of Phase 5b
 
 Location: `src/Sharpy.Compiler/Semantic/SemanticType.cs`
 
-- [ ] **1.10.1** Replace hard-coded conversion rules in `BuiltinType.IsAssignableTo()`:
+- [x] **1.10.1** Replace hard-coded conversion rules in `BuiltinType.IsAssignableTo()`:
 
-  **Current** (around lines 74-85):
+  **Before** (original hard-coded implementation):
   ```csharp
   public override bool IsAssignableTo(SemanticType other)
   {
@@ -1191,7 +1208,7 @@ Location: `src/Sharpy.Compiler/Semantic/SemanticType.cs`
   }
   ```
 
-  **Replace with**:
+  **After** (current implementation using PrimitiveCatalog):
   ```csharp
   public override bool IsAssignableTo(SemanticType other)
   {
@@ -2493,7 +2510,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ProtocolValidator.cs`:
   private readonly ICompilerLogger _logger;
   ```
 
-  **Add after `_operatorValidator`**:
+  **Add before `_operatorValidator`** (ProtocolValidator is created first so it can be passed to OperatorValidator):
   ```csharp
   private readonly ProtocolValidator _protocolValidator;
   ```
@@ -2508,9 +2525,11 @@ Create file at `src/Sharpy.Compiler/Semantic/ProtocolValidator.cs`:
   }
   ```
 
-  **Add after `_operatorValidator` initialization**:
+  **Replace with** (create ProtocolValidator first, pass to OperatorValidator):
   ```csharp
       _protocolValidator = new ProtocolValidator(_symbolTable, _logger);
+      // Pass ProtocolValidator to OperatorValidator for 'in' operator membership checking
+      _operatorValidator = new OperatorValidator(_symbolTable, _logger, _protocolValidator);
   ```
 
 - [x] **4.2.2** Add `_protocolValidator.Errors` to combined errors:
@@ -3063,7 +3082,7 @@ Location: `src/Sharpy.Compiler/Semantic/SemanticType.cs` (around lines 74-88)
   }
   ```
 
-**Status**: ✅ Complete. All tests pass (2,767 tests: 735 Core + 2,032 Compiler).
+**Status**: ✅ Complete. All tests pass.
 
 **Verification**:
 - `dotnet test` - All existing tests pass
@@ -3206,21 +3225,34 @@ Both contain overlapping primitive type knowledge. This phase consolidates them 
   - All primitives have consistent C# names
   - All numeric types have valid sizes
 
-**Status**: ✅ Complete. All 25 consistency tests pass.
+**Status**: ✅ Complete. All consistency tests pass.
 
 **Verification**:
 - `dotnet test --filter "FullyQualifiedName~TypeMappingConsistencyTests"` - All pass
-- `dotnet test` - All 2,792 tests pass (735 Core + 2,057 Compiler)
+- `dotnet test` - All tests pass
 
 ---
 
-### Phase 7: CLR Member Cache Extraction (Priority: Low)
+### Phase 7: CLR Member Cache Extraction (Priority: Low, Optional)
 
 **Goal**: Extract CLR reflection caching from `OperatorValidator` into a reusable service that both `OperatorValidator` and `ProtocolValidator` can use.
 
-**Why This Matters**: `OperatorValidator` has a `_clrOperatorCache` that caches CLR operator methods by type. `ProtocolValidator` needs similar caching for interface implementations. Extracting this to a shared service avoids code duplication and ensures consistent caching strategy.
+**Current Status Review**:
+The current implementation has evolved differently than originally planned:
+- `OperatorValidator` now accepts `ProtocolValidator` as a constructor parameter (for `in` operator membership checking)
+- Each validator maintains its own focused cache:
+  - `OperatorValidator._clrOperatorCache`: `Dictionary<Type, Dictionary<string, List<MethodInfo>>>` for CLR operator methods
+  - `ProtocolValidator._clrProtocolCache`: `Dictionary<Type, HashSet<string>>` for protocol dunder names
+- These caches serve different purposes and don't duplicate data
 
-**Files to create/modify**:
+**Reassessment**: This phase is now **optional**. The caches are already efficient and serve distinct purposes. Consider implementing only if:
+1. Performance profiling shows redundant reflection calls across validators
+2. A new validator needs similar CLR type metadata
+3. Cross-compilation caching becomes necessary for large codebases
+
+**Why This Might Still Matter**: If future features require more extensive CLR type introspection (e.g., automatic property discovery, event subscription), a unified cache would reduce reflection overhead and ensure consistency.
+
+**Files to create/modify** (if proceeding):
 | File | Action | Description |
 |------|--------|-------------|
 | `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs` | Create | Shared caching service |
