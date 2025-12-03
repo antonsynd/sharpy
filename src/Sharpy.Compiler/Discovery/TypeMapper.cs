@@ -38,12 +38,12 @@ public class TypeMapper
                 "bool" => SemanticType.Bool,
                 "str" or "string" => SemanticType.Str,
                 "void" or "None" => SemanticType.Void,
+                "object" => SemanticType.Object,
                 _ => new BuiltinType { Name = primitiveInfo.SharpyName, ClrType = clrType }
             };
         }
 
-        // Handle object specifically (not in PrimitiveCatalog)
-        if (clrType == typeof(object)) return SemanticType.Object;
+
 
         // Handle arrays
         if (clrType.IsArray)

@@ -23,10 +23,7 @@ public class TypeMapper
         // Add all primitives from PrimitiveCatalog
         foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
         {
-            if (!_builtinTypeMap.ContainsKey(name))
-            {
-                _builtinTypeMap[name] = info.CSharpName;
-            }
+            _builtinTypeMap.TryAdd(name, info.CSharpName);
         }
 
         // Add non-primitive type mappings (collections, etc.)
@@ -35,7 +32,6 @@ public class TypeMapper
         _builtinTypeMap["dict"] = "global::Sharpy.Core.Dict";
         _builtinTypeMap["set"] = "global::Sharpy.Core.Set";
         _builtinTypeMap["tuple"] = "System.ValueTuple";
-        _builtinTypeMap["object"] = "object";
     }
 
     public TypeMapper(CodeGenContext context)

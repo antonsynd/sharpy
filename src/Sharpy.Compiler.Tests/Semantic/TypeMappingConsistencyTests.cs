@@ -1,6 +1,9 @@
 using Xunit;
 using FluentAssertions;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Parser.Ast;
+using Microsoft.CodeAnalysis.CSharp;
 using DiscoveryTypeMapper = Sharpy.Compiler.Discovery.TypeMapper;
 
 namespace Sharpy.Compiler.Tests.Semantic;
@@ -59,7 +62,7 @@ public class TypeMappingConsistencyTests
 
         foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
         {
-            // Skip void (typeof(void) cannot be used with typeof() in reflection)
+            // Skip void: not a mappable value type in Sharpy (void is not user-expressible)
             if (info.ClrType == typeof(void)) continue;
 
             // Discovery mapper: CLR -> SemanticType
@@ -155,5 +158,45 @@ public class TypeMappingConsistencyTests
 
         info.Should().NotBeNull($"'{sharpyName}' should be in PrimitiveCatalog");
         info!.CSharpName.Should().Be(expectedCSharpName);
+    }
+
+    [Fact]
+    public void CodeGenTypeMapper_ProducesCorrectTypeSyntaxForAllPrimitives()
+    {
+        // Create minimal CodeGenContext for testing
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins);
+        var mapper = new Sharpy.Compiler.CodeGen.TypeMapper(context);
+
+        // Test each primitive (excluding void and object which are special-cased)
+        var primitiveTests = new Dictionary<string, string>
+        {
+            { "int", "int" },
+            { "long", "long" },
+            { "float", "float" },
+            { "double", "double" },
+            { "bool", "bool" },
+            { "str", "string" },
+            { "byte", "byte" },
+            { "sbyte", "sbyte" },
+            { "short", "short" },
+            { "ushort", "ushort" },
+            { "uint", "uint" },
+            { "ulong", "ulong" },
+            { "char", "char" },
+            { "decimal", "decimal" },
+            { "object", "object" }
+        };
+
+        foreach (var (sharpyName, expectedCSharpType) in primitiveTests)
+        {
+            var typeAnnotation = new TypeAnnotation { Name = sharpyName };
+            var typeSyntax = mapper.MapType(typeAnnotation);
+            var syntaxText = typeSyntax.ToString();
+
+            syntaxText.Should().Be(expectedCSharpType,
+                $"TypeMapper should map '{sharpyName}' to '{expectedCSharpType}'");
+        }
     }
 }

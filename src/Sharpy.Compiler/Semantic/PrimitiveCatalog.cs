@@ -80,6 +80,7 @@ public static class PrimitiveCatalog
         Register(byName, byClr, new PrimitiveInfo("char", "char", typeof(char), NumericKind.None, 16, false));
         Register(byName, byClr, new PrimitiveInfo("str", "string", typeof(string), NumericKind.None, 0, false));
         Register(byName, byClr, new PrimitiveInfo("string", "string", typeof(string), NumericKind.None, 0, false)); // Alias
+        Register(byName, byClr, new PrimitiveInfo("object", "object", typeof(object), NumericKind.None, 0, false));
 
         // 1.2.5 Void/None - typeof(void) is a valid Type representing System.Void
         Register(byName, byClr, new PrimitiveInfo("None", "void", typeof(void), NumericKind.None, 0, false));
