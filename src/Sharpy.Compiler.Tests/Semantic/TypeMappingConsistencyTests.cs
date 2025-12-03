@@ -169,7 +169,7 @@ public class TypeMappingConsistencyTests
         var context = new CodeGenContext(symbolTable, builtins);
         var mapper = new Sharpy.Compiler.CodeGen.TypeMapper(context);
 
-        // Test each primitive (excluding void and object which are special-cased)
+        // Test each primitive (excluding void, which cannot be used as a value type)
         var primitiveTests = new Dictionary<string, string>
         {
             { "int", "int" },
