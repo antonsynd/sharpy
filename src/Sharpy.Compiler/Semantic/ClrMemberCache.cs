@@ -7,9 +7,9 @@ namespace Sharpy.Compiler.Semantic;
 
 /// <summary>
 /// Caches CLR type metadata discovered via reflection.
-/// Thread-safe for read operations after initial population.
+/// NOT thread-safe. Cache is populated lazily per-type; not safe for concurrent access.
 ///
-/// NOTE: Cache is populated lazily per-type. Not designed for cross-compilation reuse.
+/// NOTE: Not designed for cross-compilation reuse.
 /// </summary>
 public class ClrMemberCache
 {
@@ -47,15 +47,16 @@ public class ClrMemberCache
 
         // Find all static operator methods
         var methods = clrType.GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .Where(m => m.IsSpecialName && m.Name.StartsWith("op_"));
+            .Where(m => m.Name.StartsWith("op_"));
 
         foreach (var method in methods)
         {
-            if (!result.ContainsKey(method.Name))
+            if (!result.TryGetValue(method.Name, out var methodList))
             {
-                result[method.Name] = new List<MethodInfo>();
+                methodList = new List<MethodInfo>();
+                result[method.Name] = methodList;
             }
-            result[method.Name].Add(method);
+            methodList.Add(method);
         }
 
         return result;
