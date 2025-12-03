@@ -2,9 +2,9 @@
 
 This document tracks which features from the [Sharpy Language Reference v1](../specs/sharpy_language_reference_v1.md) are implemented in the compiler. Use this as a reference to identify remaining work and generate tasks for implementation.
 
-**Last Updated**: December 3, 2025 (Audit #2)
+**Last Updated**: December 3, 2025 (Audit #3)
 **Verified Against**: `mainline` branch
-**Audit Scope**: Keywords, AST nodes, CodeGen NotImplementedException locations
+**Audit Scope**: Keywords, AST nodes, CodeGen NotImplementedException locations, Semantic analysis, Standard library
 
 ---
 
@@ -259,8 +259,10 @@ This document tracks which features from the [Sharpy Language Reference v1](../s
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| User-defined function overloading | ❌ NOT IMPLEMENTED | Parser allows, but no semantic support |
-| Constructor overloading | ✅ | Via multiple `__init__` |
+| User-defined function overloading | ❌ NOT IMPLEMENTED | `NameResolver.cs:262` explicitly rejects duplicate function names |
+| Builtin function overloading | ✅ | Via `BuiltinRegistry.GetFunctionOverloads()` |
+| Operator method overloading | ✅ | Via `TypeSymbol.OperatorMethods` dictionary |
+| Constructor overloading | ✅ | Via multiple `__init__` methods |
 
 ---
 
@@ -641,6 +643,13 @@ Assignment expressions are NOT supported in lexer, parser, or codegen.
 - [ ] Update `RoslynEmitter` to generate appropriate C# (LINQ Take/Skip pattern)
 - [ ] Add integration tests
 
+#### 1.6 User-Defined Function Overloading (v0.3)
+- [ ] Update `NameResolver.ResolveFunctionDeclaration()` to allow multiple definitions with same name
+- [ ] Create overload resolution mechanism similar to `BuiltinRegistry.GetFunctionOverloads()`
+- [ ] Update `TypeChecker` to resolve user function overloads based on argument types
+- [ ] Update `RoslynEmitter` to emit multiple C# methods (already supports via normal method generation)
+- [ ] Add integration tests for function overloading
+
 ### PRIORITY 2: v0.9 Features
 
 #### 2.1 Nested Comprehensions
@@ -758,6 +767,7 @@ The following sections still require verification and documentation in a future 
 |---------|---------|-------|--------|----------|---------|-------|
 | v0.1 | `try ... else:` clause | ✅ | ❌ | ❌ | ❌ | ❌ |
 | v0.2 | Star unpacking `*rest` | ❌ | ❌ | ❌ | ❌ | ❌ |
+| v0.3 | User function overloading | ✅ | ✅ | ❌ | ✅ | ❌ |
 | v0.4 | Generic functions `def foo[T]` | ✅ | ❌ | ❌ | ❌ | ❌ |
 | v0.4 | Type constraints `T: IFoo` | ❌ | ❌ | ❌ | ❌ | ❌ |
 | v0.5 | Enum `.name`, `.value` props | - | - | ❌ | ❌ | ❌ |
@@ -787,26 +797,139 @@ The following sections still require verification and documentation in a future 
 
 ## Next Documentation Iteration
 
-### COMPLETED THIS ITERATION (December 3, 2025)
+### COMPLETED THIS ITERATION (December 3, 2025 — Audit #3)
 1. ✅ Verified TokenType keywords present/missing in Lexer
 2. ✅ Verified AST node properties for loop-else, try-else, generic functions
 3. ✅ Verified `NotImplementedException` locations in RoslynEmitter
 4. ✅ Confirmed star unpacking (`*rest`) not implemented anywhere
 5. ✅ Confirmed walrus operator (`:=`) not implemented anywhere
 6. ✅ Created prioritized implementation task list
+7. ✅ Verified type narrowing (`is None`, `isinstance`) implemented in TypeChecker
+8. ✅ Confirmed `hash(x)` and `id(x)` builtins NOT implemented as standalone functions
+9. ✅ Verified overload resolution infrastructure exists (`OverloadIndexCache`, `OverloadIndexBuilder`)
+10. ✅ Verified comprehension test coverage (parser tests exist, some skipped for nested/tuple)
 
 ### HIGH PRIORITY — NEXT ITERATION
-1. **Test Coverage Mapping**: Run all integration tests and map which features have test coverage
-2. **Semantic Analysis Deep Dive**: Document `NameResolver` → `TypeResolver` → `TypeChecker` flow
-3. **Error Message Audit**: Compile intentionally broken code and document error quality
+
+#### 1. Test Coverage Mapping (Estimated: 2-3 hours)
+- [ ] Run `dotnet test` and generate coverage report
+- [ ] Map integration tests to language features
+- [ ] Identify features with no test coverage
+- [ ] Document test files and their coverage:
+  - `Integration/ControlFlowTests.cs` — if/elif/else, while, for loops
+  - `Integration/FunctionTests.cs` — function definitions, default params
+  - `Integration/BasicProgramTests.cs` — basic compilation scenarios
+  - `Parser/ParserEdgeCaseTests.cs` — comprehensions (some skipped)
+  - `CodeGen/RoslynEmitter*.cs` — code generation tests
+  - `Semantic/TypeChecker*.cs` — type checking tests
+
+#### 2. Semantic Analysis Deep Dive (Estimated: 3-4 hours)
+- [ ] Document `NameResolver` pass: what it resolves, what it stores
+- [ ] Document `TypeResolver` pass: type annotation resolution
+- [ ] Document `TypeChecker` pass: type inference, narrowing, validation
+- [ ] Document `SemanticInfo` data structure and its usage
+- [ ] Verify operator overload resolution flow via `OperatorValidator`
+- [ ] Verify protocol validation coverage for all dunder methods via `ProtocolValidator`
+
+#### 3. Error Message Quality Audit (Estimated: 1-2 hours)
+- [ ] Document all `NotImplementedException` messages with user-facing text
+- [ ] Test common error scenarios and document error message quality
+- [ ] Identify errors that need better suggestions
 
 ### MEDIUM PRIORITY — FUTURE ITERATION
-1. **Integration Test Gaps**: Create tests for features verified as working but lacking tests
-2. **.NET Interop Testing**: Create sample files demonstrating .NET interop
-3. **Performance Baseline**: Document any known slow paths in compiler
+
+#### 4. Language Reference Section Verification
+The following sections from `sharpy_language_reference_v1.md` have NOT been fully audited against implementation:
+- [ ] **Expressions** (lines 800-900): Verify all expression types parse and codegen correctly
+- [ ] **Operator Precedence** (lines 700-800): Verify precedence matches C# output
+- [ ] **Default Parameter Evaluation** (lines 1200-1250): Verify mutable default behavior
+- [ ] **.NET Interop** (lines 2500-2620): Test actual .NET type usage scenarios
+- [ ] **Module Resolution** (lines 1100-1150): Verify snake_case → PascalCase transformation
+
+#### 5. Standard Library Completeness
+- [ ] Audit `Sharpy.Core` against Python builtins list in language reference
+- [ ] Document which Python builtins are missing or have different behavior
+- [ ] Create compatibility matrix: Python function → Sharpy.Core implementation
+
+#### 6. Integration Test Gaps
+- [ ] Create tests for:
+  - Struct definitions and usage
+  - Interface implementation
+  - Generic class instantiation
+  - Comparison chaining
+  - F-string format specifiers
+  - Slicing with step
+  - Empty set literal `{/}`
+
+### LOW PRIORITY — BACKLOG
+
+#### 7. Performance and Edge Cases
+- [ ] Document any known slow paths in compiler
+- [ ] Test large file compilation performance
+- [ ] Test deeply nested code structures
+
+#### 8. Documentation Generation
+- [ ] Generate API documentation from XML comments
+- [ ] Create "implemented features" summary page
 
 ### FILES TO REVIEW NEXT ITERATION
+
+**Test Files:**
 - `src/Sharpy.Compiler.Tests/Integration/*.cs` — Map tests to features
-- `src/Sharpy.Compiler/Semantic/TypeChecker.cs` — Type inference details
-- `src/Sharpy.Compiler/Semantic/NameResolver.cs` — Symbol resolution
+- `src/Sharpy.Compiler.Tests/Parser/ParserEdgeCaseTests.cs` — Comprehension tests (lines 533-660)
 - `src/Sharpy.Core.Tests/` — Standard library test coverage
+
+**Semantic Analysis:**
+- `src/Sharpy.Compiler/Semantic/TypeChecker.cs` — Type inference details (`_narrowedTypes` at line 29)
+- `src/Sharpy.Compiler/Semantic/NameResolver.cs` — Symbol resolution (operator methods at line 343)
+- `src/Sharpy.Compiler/Semantic/TypeResolver.cs` — Type annotation resolution
+- `src/Sharpy.Compiler/Semantic/OperatorValidator.cs` — Operator overload validation
+- `src/Sharpy.Compiler/Semantic/ProtocolValidator.cs` — Dunder method validation
+
+**Code Generation:**
+- `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` — All `NotImplementedException` locations (20 found)
+
+---
+
+## Appendix: Verified Code Locations
+
+### NotImplementedException Locations in RoslynEmitter.cs
+
+| Line | Feature | Method |
+|------|---------|--------|
+| 1362 | Complex tuple unpacking | `GenerateAssignment` |
+| 1365 | Unknown assignment target | `GenerateAssignment` |
+| 1385 | Unknown augmented assignment op | `GenerateAugmentedAssignment` |
+| 1571 | Complex for loop tuple unpacking | `GenerateFor` |
+| 1574 | Unknown for loop target | `GenerateFor` |
+| 1666 | Unknown expression type | `GenerateExpression` |
+| 1699 | Complex function expressions | `GenerateFunctionCall` |
+| 1812 | Unknown binary operator | `GenerateBinaryOp` |
+| 1828 | Unknown unary operator | `GenerateUnaryOp` |
+| 1927 | Tuple unpacking in list comprehensions | `GenerateListComprehension` |
+| 1956 | Nested list comprehensions | `GenerateListComprehension` |
+| 1997 | Tuple unpacking in dict comprehensions | `GenerateDictComprehension` |
+| 2024 | Nested dict comprehensions | `GenerateDictComprehension` |
+| 2066 | Tuple unpacking in set comprehensions | `GenerateSetComprehension` |
+| 2093 | Nested set comprehensions | `GenerateSetComprehension` |
+| 2204 | Unknown comparison operator in chains | `GenerateComparisonChain` |
+
+### Parser Skipped Tests
+
+| Test File | Test Name | Reason |
+|-----------|-----------|--------|
+| `ParserEdgeCaseTests.cs:564` | `ParsesNestedListComprehension` | Multiple for clauses not supported |
+| `ParserEdgeCaseTests.cs:572` | `ParsesDictComprehension` | Tuple unpacking not supported |
+
+### Missing TokenTypes for Future Versions
+
+| Keyword | Required For | Current Status |
+|---------|--------------|----------------|
+| `match` | v0.7 Pattern Matching | ❌ Not in TokenType |
+| `case` | v0.7 Pattern Matching | ❌ Not in TokenType |
+| `type` | v0.8 Type Aliases | ❌ Not in TokenType |
+| `defer` | v1.0 Defer Statement | ❌ Not in TokenType |
+| `event` | v1.0 Events | ❌ Not in TokenType |
+| `async` | v1.0 Async | ❌ Not in TokenType |
+| `await` | v1.0 Async | ❌ Not in TokenType |
+| `property` | v0.9 Properties | ❌ Not in TokenType |
