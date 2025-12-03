@@ -3266,7 +3266,7 @@ The current implementation has evolved differently than originally planned:
 
 Create file at `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs`:
 
-- [ ] **7.1.1** File structure:
+- [x] **7.1.1** File structure:
   ```csharp
   using System.Reflection;
   using System.Collections.Generic;
@@ -3295,7 +3295,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs`:
   }
   ```
 
-- [ ] **7.1.2** Implement operator method discovery (extract from `OperatorValidator`):
+- [x] **7.1.2** Implement operator method discovery (extract from `OperatorValidator`):
   ```csharp
   /// <summary>
   /// Gets operator methods for a CLR type, discovering and caching them if needed.
@@ -3334,7 +3334,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs`:
   }
   ```
 
-- [ ] **7.1.3** Implement interface discovery:
+- [x] **7.1.3** Implement interface discovery:
   ```csharp
   /// <summary>
   /// Gets all interfaces implemented by a CLR type (including inherited).
@@ -3368,7 +3368,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs`:
   }
   ```
 
-- [ ] **7.1.4** Implement indexer discovery:
+- [x] **7.1.4** Implement indexer discovery:
   ```csharp
   /// <summary>
   /// Checks if a CLR type has an indexer and returns the element type if so.
@@ -3394,7 +3394,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs`:
   }
   ```
 
-- [ ] **7.1.5** Implement enumerator element type discovery:
+- [x] **7.1.5** Implement enumerator element type discovery:
   ```csharp
   /// <summary>
   /// Gets the element type for an IEnumerable<T> implementation, or null if not enumerable.
@@ -3430,7 +3430,7 @@ Create file at `src/Sharpy.Compiler/Semantic/ClrMemberCache.cs`:
   }
   ```
 
-**Acceptance Criteria**: File compiles. All discovery methods work correctly.
+**Acceptance Criteria**: ✅ **COMPLETE** - File compiles. All discovery methods work correctly.
 
 ---
 
