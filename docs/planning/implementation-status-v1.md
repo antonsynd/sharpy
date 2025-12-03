@@ -2,9 +2,9 @@
 
 This document tracks which features from the [Sharpy Language Reference v1](../specs/sharpy_language_reference_v1.md) are implemented in the compiler. Use this as a reference to identify remaining work and generate tasks for implementation.
 
-**Last Updated**: December 3, 2025 (Audit #3)
+**Last Updated**: December 3, 2025 (Audit #4)
 **Verified Against**: `mainline` branch
-**Audit Scope**: Keywords, AST nodes, CodeGen NotImplementedException locations, Semantic analysis, Standard library
+**Audit Scope**: Keywords, AST nodes, CodeGen NotImplementedException locations, Semantic analysis, Standard library, Test coverage mapping
 
 ---
 
@@ -724,25 +724,137 @@ Assignment expressions are NOT supported in lexer, parser, or codegen.
 
 ---
 
+## AUDIT #4 FINDINGS (December 3, 2025)
+
+### Test Coverage Mapping — PARTIALLY COMPLETED
+
+**Integration Test Files:**
+| Test File | Features Covered | Status |
+|-----------|------------------|--------|
+| `BasicProgramTests.cs` | Hello world, functions, fibonacci, arithmetic | ✅ Well covered |
+| `ControlFlowTests.cs` | if/elif/else, while, for, break, continue, nested loops | ✅ Well covered |
+| `FunctionTests.cs` | Functions, default params, recursive calls | ✅ Well covered |
+| `VariableAssignmentNegativeTests.cs` | Variable assignment error cases | ✅ Exists |
+| `CompilerIntegrationTests.cs` | Module loading, builtins, references | ✅ Exists |
+| `ThirdPartyModuleTests.cs` | External module import | ✅ Exists |
+| `ModuleDiscoveryWorkflowTests.cs` | Module discovery | ✅ Exists |
+
+**Parser Test Files:**
+| Test File | Features Covered | Status |
+|-----------|------------------|--------|
+| `ParserEdgeCaseTests.cs` | Comprehensions, try/except, decorators, imports | ✅ Comprehensive |
+| `ParserTests.cs` | Basic parsing scenarios | ✅ Exists |
+| `ParserNegativeTests.cs` | Error cases | ✅ Exists |
+| `ParserPositionTests.cs` | Source location tracking | ✅ Exists |
+
+**CodeGen Test Files:**
+| Test File | Features Covered | Status |
+|-----------|------------------|--------|
+| `RoslynEmitterStatementTests.cs` | Statement codegen (raise, assert, etc.) | ✅ Exists |
+| `RoslynEmitterExpressionTests.cs` | Expression codegen | ✅ Exists |
+| `RoslynEmitterOperatorTests.cs` | Operator codegen | ✅ Exists |
+| `RoslynEmitterDefinitionTests.cs` | Class/struct/function codegen | ✅ Exists |
+| `TypeMapperTests.cs` | Type mapping | ✅ Exists |
+| `NameManglerTests.cs` | Name transformation | ✅ Exists |
+
+**Semantic Test Files:**
+| Test File | Features Covered | Status |
+|-----------|------------------|--------|
+| `TypeCheckerTests.cs` | Type checking | ✅ Exists |
+| `NameResolverTests.cs` | Name resolution | ✅ Exists |
+| `TypeResolverTests.cs` | Type annotation resolution | ✅ Exists |
+| `OperatorValidatorTests.cs` | Operator validation | ✅ Exists |
+| `ProtocolValidatorTests.cs` | Protocol validation | ✅ Exists |
+| `SemanticAnalyzerEdgeCaseTests.cs` | Edge cases | ✅ Exists |
+
+### Confirmed Test Coverage Gaps
+
+| Feature | Has Parser Test | Has Integration Test | Notes |
+|---------|-----------------|---------------------|-------|
+| Struct definition | ✅ `NameResolverTests.cs:111` | ❌ | Need integration test |
+| Interface definition | ✅ | ❌ | Need integration test |
+| Generic class instantiation | ✅ | ❌ | Need integration test |
+| try/except/finally | ✅ `ParserEdgeCaseTests.cs:857` | ❌ | Need integration test |
+| try-else | ❌ Skipped test | ❌ | NOT IMPLEMENTED |
+| raise statement | ✅ `RoslynEmitterStatementTests.cs:94` | ❌ | Need integration test |
+| Comparison chaining | ✅ | ❌ | Need integration test |
+| Slicing with step | ✅ | ⚠️ | Need integration test |
+| Empty set `{/}` | ✅ | ❌ | Need integration test |
+| F-string format specifiers | ✅ `ParserEdgeCaseTests.cs:217` | ❌ | Need integration test |
+
+### Skipped Parser Tests — CONFIRMED
+
+| Test | Reason | Implementation Priority |
+|------|--------|------------------------|
+| `ParsesNestedListComprehension` (line 564) | Multiple for clauses not supported | v0.9 |
+| `ParsesDictComprehension` (line 572) | Tuple unpacking not supported | v0.9 |
+| `ParsesCallableType` (line 284) | Callable type syntax not supported | Future |
+| `ParsesFunctionWithVarArgs` (line 303) | `*args` not supported | Future |
+| `ParsesFunctionWithKwargs` (line 312) | `**kwargs` not supported | Future |
+| `ParsesDecoratorWithArguments` (line 349) | Decorator arguments not supported | Future |
+| `ParsesTryExceptElse` (line 917) | try-else not supported | v0.1 gap |
+
+### Semantic Analysis Structure — DOCUMENTED
+
+**Pass Order:**
+1. `NameResolver.ResolveDeclarations()` - Registers all top-level symbols (classes, structs, interfaces, enums, functions, constants)
+2. `NameResolver.ResolveInheritance()` - Resolves base classes and interface implementations
+3. `TypeResolver.ResolveTypeAnnotation()` - Converts AST type annotations to `SemanticType` objects
+4. `TypeChecker.CheckModule()` - Type checks all expressions and statements
+
+**Key Data Structures:**
+- `SymbolTable` - Scoped symbol storage with `Lookup()` and `Define()`
+- `SemanticInfo` - Caches resolved types, expression types, symbol references
+- `_narrowedTypes` dictionary in `TypeChecker` - Tracks type narrowing in conditionals (line 29)
+
+**Validation Components:**
+- `ControlFlowValidator` - Validates break/continue in loops, return in functions
+- `AccessValidator` - Validates access modifiers on member access
+- `OperatorValidator` - Validates binary/unary operators, membership (`in`), identity (`is`)
+- `ProtocolValidator` - Validates dunder methods (`__iter__`, `__len__`, `__contains__`, etc.)
+
+### User Function Overloading — CONFIRMED NOT IMPLEMENTED
+
+`NameResolver.cs` lines 262-266:
+```csharp
+if (_symbolTable.Lookup(functionDef.Name, searchParents: false) != null)
+{
+    AddError($"Function '{functionDef.Name}' is already defined",
+        functionDef.LineStart, functionDef.ColumnStart);
+    return;
+}
+```
+
+This explicitly rejects duplicate function names. To implement user function overloading:
+1. Change `NameResolver` to allow multiple function definitions with same name
+2. Create overload resolution mechanism (similar to `BuiltinRegistry.GetFunctionOverloads()`)
+3. Update `TypeChecker` to resolve overloads based on argument types
+
+---
+
 ## NEEDS AUDIT / NEXT ITERATION
 
 The following sections still require verification and documentation in a future iteration:
 
-### 1. Semantic Analysis (`Sharpy.Compiler/Semantic/`) — NEEDS DEEPER REVIEW
-- [ ] Document type inference implementation details
-- [ ] Document operator overload resolution (`CachedOverloadDiscoveryService`)
-- [ ] Verify protocol validation coverage for all dunder methods
-- [ ] Map semantic errors to user-friendly messages
+### 1. Semantic Analysis Deep Dive — PARTIALLY COMPLETED
+- [x] Document 3-pass analysis structure (NameResolver → TypeResolver → TypeChecker)
+- [x] Document key data structures (SymbolTable, SemanticInfo, _narrowedTypes)
+- [x] Verify user function overloading is NOT implemented
+- [ ] Document type inference implementation details (how unknown types resolve)
+- [ ] Document operator overload resolution flow (`CachedOverloadDiscoveryService` → `OverloadIndexBuilder`)
+- [ ] Trace protocol validation for all dunder methods through `ProtocolValidator`
 
-### 2. Test Coverage Audit — IN PROGRESS
-- [ ] Run `dotnet test --filter "FullyQualifiedName~Integration"` and document coverage
-- [ ] Identify features without integration tests
-- [ ] Create test matrix: feature → test file mapping
+### 2. Test Coverage Audit — PARTIALLY COMPLETED
+- [x] Map integration tests to language features
+- [x] Identify skipped parser tests
+- [ ] Create comprehensive test matrix: every v0.1-v0.6 feature → test file mapping
+- [ ] Identify features with ZERO test coverage
+- [ ] Run coverage report and document percentages
 
 ### 3. Error Message Quality — NEEDS REVIEW
-- [ ] Document all `NotImplementedException` messages
-- [ ] Audit error message clarity for common mistakes
-- [ ] Add helpful suggestions to error messages
+- [ ] Document all `NotImplementedException` messages with user-facing text
+- [ ] Test common error scenarios and document error message quality
+- [ ] Identify errors that need better suggestions
 
 ### 4. .NET Interop — NEEDS TESTING
 - [ ] Verify calling .NET methods from Sharpy
@@ -797,7 +909,19 @@ The following sections still require verification and documentation in a future 
 
 ## Next Documentation Iteration
 
-### COMPLETED THIS ITERATION (December 3, 2025 — Audit #3)
+### COMPLETED IN AUDIT #4 (December 3, 2025)
+1. ✅ Mapped all Integration test files to features covered
+2. ✅ Mapped all Parser test files to features covered
+3. ✅ Mapped all CodeGen test files to features covered
+4. ✅ Mapped all Semantic test files to features covered
+5. ✅ Identified 7 skipped parser tests and their reasons
+6. ✅ Documented semantic analysis pass structure (NameResolver → TypeResolver → TypeChecker)
+7. ✅ Documented key data structures (SymbolTable, SemanticInfo, _narrowedTypes)
+8. ✅ Confirmed user function overloading is NOT implemented (NameResolver.cs:262-266)
+9. ✅ Identified 10 features with test coverage gaps needing integration tests
+10. ✅ Created list of new test files to create (StructTests, InterfaceTests, ExceptionTests, GenericTests)
+
+### COMPLETED IN AUDIT #3 (December 3, 2025)
 1. ✅ Verified TokenType keywords present/missing in Lexer
 2. ✅ Verified AST node properties for loop-else, try-else, generic functions
 3. ✅ Verified `NotImplementedException` locations in RoslynEmitter
@@ -811,27 +935,29 @@ The following sections still require verification and documentation in a future 
 
 ### HIGH PRIORITY — NEXT ITERATION
 
-#### 1. Test Coverage Mapping (Estimated: 2-3 hours)
-- [ ] Run `dotnet test` and generate coverage report
-- [ ] Map integration tests to language features
-- [ ] Identify features with no test coverage
-- [ ] Document test files and their coverage:
-  - `Integration/ControlFlowTests.cs` — if/elif/else, while, for loops
-  - `Integration/FunctionTests.cs` — function definitions, default params
-  - `Integration/BasicProgramTests.cs` — basic compilation scenarios
-  - `Parser/ParserEdgeCaseTests.cs` — comprehensions (some skipped)
-  - `CodeGen/RoslynEmitter*.cs` — code generation tests
-  - `Semantic/TypeChecker*.cs` — type checking tests
+#### 1. Complete Semantic Analysis Deep Dive (Estimated: 2-3 hours)
+- [ ] Document type inference implementation (trace `InferType` method in TypeChecker)
+- [ ] Document operator overload resolution flow:
+  - `CachedOverloadDiscoveryService.cs` → `OverloadIndexBuilder.cs` → resolution
+- [ ] Trace protocol validation for all dunder methods through `ProtocolValidator`
+- [ ] Document how `SemanticInfo` caches and retrieves resolved information
 
-#### 2. Semantic Analysis Deep Dive (Estimated: 3-4 hours)
-- [ ] Document `NameResolver` pass: what it resolves, what it stores
-- [ ] Document `TypeResolver` pass: type annotation resolution
-- [ ] Document `TypeChecker` pass: type inference, narrowing, validation
-- [ ] Document `SemanticInfo` data structure and its usage
-- [ ] Verify operator overload resolution flow via `OperatorValidator`
-- [ ] Verify protocol validation coverage for all dunder methods via `ProtocolValidator`
+#### 2. Run Coverage Report (Estimated: 1 hour)
+- [ ] Run: `dotnet test --collect:"XPlat Code Coverage"`
+- [ ] Generate report: `reportgenerator -reports:coverage.cobertura.xml -targetdir:coveragereport`
+- [ ] Document overall coverage percentage
+- [ ] Identify files with < 50% coverage
 
-#### 3. Error Message Quality Audit (Estimated: 1-2 hours)
+#### 3. Create Missing Integration Tests (Estimated: 3-4 hours)
+Priority order:
+1. [ ] `ExceptionTests.cs` — try/except/finally, raise statement
+2. [ ] `StructTests.cs` — struct definition, fields, methods, constructor
+3. [ ] `InterfaceTests.cs` — interface definition, implementation
+4. [ ] `GenericTests.cs` — generic class instantiation
+5. [ ] `SlicingTests.cs` — slicing with step, negative indices
+6. [ ] `CollectionLiteralTests.cs` — empty set `{/}`, comparison chaining
+
+#### 4. Error Message Quality Audit (Estimated: 1 hour)
 - [ ] Document all `NotImplementedException` messages with user-facing text
 - [ ] Test common error scenarios and document error message quality
 - [ ] Identify errors that need better suggestions
@@ -851,15 +977,16 @@ The following sections from `sharpy_language_reference_v1.md` have NOT been full
 - [ ] Document which Python builtins are missing or have different behavior
 - [ ] Create compatibility matrix: Python function → Sharpy.Core implementation
 
-#### 6. Integration Test Gaps
-- [ ] Create tests for:
-  - Struct definitions and usage
-  - Interface implementation
-  - Generic class instantiation
-  - Comparison chaining
-  - F-string format specifiers
-  - Slicing with step
-  - Empty set literal `{/}`
+#### 6. Integration Test Gaps — Create Tests For:
+- [ ] Struct definitions and usage (codegen exists, no integration test)
+- [ ] Interface implementation (codegen exists, no integration test)
+- [ ] Generic class instantiation
+- [ ] try/except/finally (parser test exists, no integration test)
+- [ ] raise statement (codegen test exists, no integration test)
+- [ ] Comparison chaining
+- [ ] F-string format specifiers
+- [ ] Slicing with step
+- [ ] Empty set literal `{/}`
 
 ### LOW PRIORITY — BACKLOG
 
@@ -872,22 +999,23 @@ The following sections from `sharpy_language_reference_v1.md` have NOT been full
 - [ ] Generate API documentation from XML comments
 - [ ] Create "implemented features" summary page
 
-### FILES TO REVIEW NEXT ITERATION
+### FILES TO REVIEW IN NEXT ITERATION
 
-**Test Files:**
-- `src/Sharpy.Compiler.Tests/Integration/*.cs` — Map tests to features
-- `src/Sharpy.Compiler.Tests/Parser/ParserEdgeCaseTests.cs` — Comprehension tests (lines 533-660)
-- `src/Sharpy.Core.Tests/` — Standard library test coverage
+**For Semantic Analysis Deep Dive:**
+- `src/Sharpy.Compiler/Semantic/TypeChecker.cs` — Type inference details (`InferType` method)
+- `src/Sharpy.Compiler/Semantic/CachedOverloadDiscoveryService.cs` — Overload resolution
+- `src/Sharpy.Compiler/Semantic/OverloadIndexBuilder.cs` — Overload index structure
+- `src/Sharpy.Compiler/Semantic/ProtocolValidator.cs` — Dunder method validation flow
 
-**Semantic Analysis:**
-- `src/Sharpy.Compiler/Semantic/TypeChecker.cs` — Type inference details (`_narrowedTypes` at line 29)
-- `src/Sharpy.Compiler/Semantic/NameResolver.cs` — Symbol resolution (operator methods at line 343)
-- `src/Sharpy.Compiler/Semantic/TypeResolver.cs` — Type annotation resolution
-- `src/Sharpy.Compiler/Semantic/OperatorValidator.cs` — Operator overload validation
-- `src/Sharpy.Compiler/Semantic/ProtocolValidator.cs` — Dunder method validation
+**For Test Coverage Audit:**
+- Run: `dotnet test --collect:"XPlat Code Coverage"`
+- Analyze: `reportgenerator -reports:coverage.cobertura.xml -targetdir:coveragereport`
 
-**Code Generation:**
-- `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` — All `NotImplementedException` locations (20 found)
+**For Integration Tests to Create:**
+- `src/Sharpy.Compiler.Tests/Integration/StructTests.cs` — NEW
+- `src/Sharpy.Compiler.Tests/Integration/InterfaceTests.cs` — NEW
+- `src/Sharpy.Compiler.Tests/Integration/ExceptionTests.cs` — NEW
+- `src/Sharpy.Compiler.Tests/Integration/GenericTests.cs` — NEW
 
 ---
 
