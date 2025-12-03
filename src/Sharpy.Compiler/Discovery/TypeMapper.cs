@@ -43,8 +43,6 @@ public class TypeMapper
             };
         }
 
-
-
         // Handle arrays
         if (clrType.IsArray)
         {
