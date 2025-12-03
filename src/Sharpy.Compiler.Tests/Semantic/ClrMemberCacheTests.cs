@@ -53,7 +53,7 @@ public class ClrMemberCacheTests
         // decimal has many different operator methods
         var operators = cache.GetOperatorMethods(typeof(decimal));
 
-        operators.Keys.Count.Should().BeGreaterThan(5, "decimal has many operator types");
+        operators.Keys.Count().Should().BeGreaterThan(5, "decimal has many operator types");
         operators.Should().ContainKey("op_Addition");
         operators.Should().ContainKey("op_UnaryNegation");
     }
@@ -86,8 +86,6 @@ public class ClrMemberCacheTests
     public void GetImplementedInterfaces_ReturnsEmptyForNonInterfaceType()
     {
         var cache = new ClrMemberCache();
-
-        var interfaces = cache.GetImplementedInterfaces(typeof(int));
 
         // Primitives like int still implement some interfaces (IComparable, IFormattable, etc.)
         // but they do implement interfaces, so let's test with object which truly has none

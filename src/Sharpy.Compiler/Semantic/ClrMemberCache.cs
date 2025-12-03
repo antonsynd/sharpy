@@ -14,7 +14,7 @@ namespace Sharpy.Compiler.Semantic;
 public class ClrMemberCache
 {
     // Operator methods cache: Type -> (operator name like "op_Addition" -> MethodInfo list)
-    private readonly Dictionary<Type, Dictionary<string, List<MethodInfo>>> _operatorCache = new();
+    private readonly Dictionary<Type, Dictionary<string, IReadOnlyList<MethodInfo>>> _operatorCache = new();
 
     // Interface cache: Type -> set of interface types
     private readonly Dictionary<Type, HashSet<Type>> _interfaceCache = new();
@@ -28,8 +28,8 @@ public class ClrMemberCache
     /// <summary>
     /// Gets operator methods for a CLR type, discovering and caching them if needed.
     /// </summary>
-    /// <returns>Read-only dictionary mapping operator names (e.g., "op_Addition") to method overloads.</returns>
-    public IReadOnlyDictionary<string, List<MethodInfo>> GetOperatorMethods(Type clrType)
+    /// <returns>Read-only dictionary mapping operator names (e.g., "op_Addition") to read-only lists of method overloads.</returns>
+    public IReadOnlyDictionary<string, IReadOnlyList<MethodInfo>> GetOperatorMethods(Type clrType)
     {
         if (_operatorCache.TryGetValue(clrType, out var cached))
         {
@@ -41,22 +41,30 @@ public class ClrMemberCache
         return operators;
     }
 
-    private Dictionary<string, List<MethodInfo>> DiscoverOperatorMethods(Type clrType)
+    private Dictionary<string, IReadOnlyList<MethodInfo>> DiscoverOperatorMethods(Type clrType)
     {
-        var result = new Dictionary<string, List<MethodInfo>>();
+        var result = new Dictionary<string, IReadOnlyList<MethodInfo>>();
 
         // Find all static operator methods
         var methods = clrType.GetMethods(BindingFlags.Public | BindingFlags.Static)
             .Where(m => m.Name.StartsWith("op_"));
 
+        // Group by method name
+        var grouped = new Dictionary<string, List<MethodInfo>>();
         foreach (var method in methods)
         {
-            if (!result.TryGetValue(method.Name, out var methodList))
+            if (!grouped.TryGetValue(method.Name, out var methodList))
             {
                 methodList = new List<MethodInfo>();
-                result[method.Name] = methodList;
+                grouped[method.Name] = methodList;
             }
             methodList.Add(method);
+        }
+
+        // Convert to read-only lists
+        foreach (var kvp in grouped)
+        {
+            result[kvp.Key] = kvp.Value.AsReadOnly();
         }
 
         return result;
