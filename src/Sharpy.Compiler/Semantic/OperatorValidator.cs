@@ -17,17 +17,18 @@ public class OperatorValidator
     private readonly ICompilerLogger _logger;
     private readonly List<SemanticError> _errors = new();
     private readonly ProtocolValidator? _protocolValidator;
+    private readonly ClrMemberCache _clrMemberCache;
 
     // Caches for performance (not thread-safe)
     private readonly Dictionary<(SemanticType, BinaryOperator, SemanticType), SemanticType?> _binaryOpCache = new();
     private readonly Dictionary<(UnaryOperator, SemanticType), SemanticType?> _unaryOpCache = new();
-    private readonly Dictionary<Type, Dictionary<string, List<MethodInfo>>> _clrOperatorCache = new();
 
-    public OperatorValidator(SymbolTable symbolTable, ICompilerLogger? logger = null, ProtocolValidator? protocolValidator = null)
+    public OperatorValidator(SymbolTable symbolTable, ICompilerLogger? logger = null, ProtocolValidator? protocolValidator = null, ClrMemberCache? clrCache = null)
     {
         _symbolTable = symbolTable;
         _logger = logger ?? NullLogger.Instance;
         _protocolValidator = protocolValidator;
+        _clrMemberCache = clrCache ?? new ClrMemberCache();
     }
 
     /// <summary>
@@ -683,29 +684,6 @@ public class OperatorValidator
     }
 
     /// <summary>
-    /// Gets or caches CLR operators for a given type.
-    /// </summary>
-    private Dictionary<string, List<MethodInfo>> GetOrCacheClrOperators(Type clrType)
-    {
-        if (!_clrOperatorCache.TryGetValue(clrType, out var operators))
-        {
-            operators = new Dictionary<string, List<MethodInfo>>();
-            foreach (var method in clrType.GetMethods(BindingFlags.Public | BindingFlags.Static)
-                .Where(m => m.Name.StartsWith("op_")))
-            {
-                if (!operators.TryGetValue(method.Name, out var methodList))
-                {
-                    methodList = new List<MethodInfo>();
-                    operators[method.Name] = methodList;
-                }
-                methodList.Add(method);
-            }
-            _clrOperatorCache[clrType] = operators;
-        }
-        return operators;
-    }
-
-    /// <summary>
     /// Try to resolve operator using CLR reflection.
     /// </summary>
     private SemanticType? TryResolveClrOperator(BinaryOperator op, SemanticType left, SemanticType right)
@@ -723,7 +701,7 @@ public class OperatorValidator
             return null;
 
         // Get or cache CLR operators for this type
-        var operators = GetOrCacheClrOperators(leftClrType);
+        var operators = _clrMemberCache.GetOperatorMethods(leftClrType);
 
         if (operators.TryGetValue(clrMethodName, out var operatorMethods))
         {
@@ -759,7 +737,7 @@ public class OperatorValidator
             return null;
 
         // Get or cache CLR operators for this type
-        var operators = GetOrCacheClrOperators(clrType);
+        var operators = _clrMemberCache.GetOperatorMethods(clrType);
 
         if (operators.TryGetValue(clrMethodName, out var operatorMethods))
         {

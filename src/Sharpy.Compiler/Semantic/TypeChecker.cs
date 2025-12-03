@@ -43,9 +43,13 @@ public class TypeChecker
         _logger = logger ?? NullLogger.Instance;
         _controlFlowValidator = new ControlFlowValidator(_logger);
         _accessValidator = new AccessValidator(_symbolTable, _semanticInfo, _logger);
-        _protocolValidator = new ProtocolValidator(_symbolTable, _logger);
+        
+        // Create shared CLR member cache for efficient reflection caching across validators
+        var sharedClrCache = new ClrMemberCache();
+        
+        _protocolValidator = new ProtocolValidator(_symbolTable, _logger, sharedClrCache);
         // Pass ProtocolValidator to OperatorValidator for 'in' operator membership checking
-        _operatorValidator = new OperatorValidator(_symbolTable, _logger, _protocolValidator);
+        _operatorValidator = new OperatorValidator(_symbolTable, _logger, _protocolValidator, sharedClrCache);
     }
 
     public IReadOnlyList<SemanticError> Errors

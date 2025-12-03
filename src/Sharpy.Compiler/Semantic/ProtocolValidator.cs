@@ -14,14 +14,16 @@ public class ProtocolValidator
     private readonly SymbolTable _symbolTable;
     private readonly ICompilerLogger _logger;
     private readonly List<SemanticError> _errors = new();
+    private readonly ClrMemberCache _clrMemberCache;
 
     // Cache for CLR protocol discovery (type -> protocols it supports)
     private readonly Dictionary<Type, HashSet<string>> _clrProtocolCache = new();
 
-    public ProtocolValidator(SymbolTable symbolTable, ICompilerLogger? logger = null)
+    public ProtocolValidator(SymbolTable symbolTable, ICompilerLogger? logger = null, ClrMemberCache? clrCache = null)
     {
         _symbolTable = symbolTable;
         _logger = logger ?? NullLogger.Instance;
+        _clrMemberCache = clrCache ?? new ClrMemberCache();
     }
 
     /// <summary>Gets the errors collected during protocol validation.</summary>
@@ -119,12 +121,10 @@ public class ProtocolValidator
     {
         var protocols = new HashSet<string>();
 
-        // Check implemented interfaces
-        var interfaces = clrType.GetInterfaces();
-
         // Check for Sharpy.Core.Collections.Interfaces.IIterable<T> -> __iter__
         // This includes Iterator<T> and all Sharpy collections
         // NOTE: Uses hardcoded type name - ensure this matches Sharpy.Core.Collections.Interfaces.IIterable<T>
+        var interfaces = _clrMemberCache.GetImplementedInterfaces(clrType);
         if (interfaces.Any(i =>
             i.IsGenericType && i.GetGenericTypeDefinition().FullName == "Sharpy.Core.Collections.Interfaces.IIterable`1"))
         {
@@ -132,9 +132,8 @@ public class ProtocolValidator
         }
 
         // IEnumerable<T> or IEnumerable -> __iter__
-        if (interfaces.Any(i =>
-            i == typeof(System.Collections.IEnumerable) ||
-            (i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>))))
+        if (_clrMemberCache.ImplementsInterface(clrType, typeof(System.Collections.IEnumerable)) ||
+            _clrMemberCache.ImplementsInterface(clrType, typeof(IEnumerable<>)))
         {
             protocols.Add("__iter__");
         }
@@ -155,27 +154,24 @@ public class ProtocolValidator
         }
 
         // ICollection<T> or ICollection -> __len__, __contains__
-        if (interfaces.Any(i =>
-            i == typeof(System.Collections.ICollection) ||
-            (i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ICollection<>))))
+        if (_clrMemberCache.ImplementsInterface(clrType, typeof(System.Collections.ICollection)) ||
+            _clrMemberCache.ImplementsInterface(clrType, typeof(ICollection<>)))
         {
             protocols.Add("__len__");
             protocols.Add("__contains__");
         }
 
         // IList<T> or IList -> __getitem__, __setitem__
-        if (interfaces.Any(i =>
-            i == typeof(System.Collections.IList) ||
-            (i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IList<>))))
+        if (_clrMemberCache.ImplementsInterface(clrType, typeof(System.Collections.IList)) ||
+            _clrMemberCache.ImplementsInterface(clrType, typeof(IList<>)))
         {
             protocols.Add("__getitem__");
             protocols.Add("__setitem__");
         }
 
         // IDictionary<K,V> -> __getitem__, __setitem__, __contains__, __len__
-        if (interfaces.Any(i =>
-            i == typeof(System.Collections.IDictionary) ||
-            (i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IDictionary<,>))))
+        if (_clrMemberCache.ImplementsInterface(clrType, typeof(System.Collections.IDictionary)) ||
+            _clrMemberCache.ImplementsInterface(clrType, typeof(IDictionary<,>)))
         {
             protocols.Add("__getitem__");
             protocols.Add("__setitem__");
