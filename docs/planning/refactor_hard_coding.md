@@ -3177,12 +3177,10 @@ Both contain overlapping primitive type knowledge. This phase consolidates them 
               "bool" => SemanticType.Bool,
               "str" or "string" => SemanticType.Str,
               "void" or "None" => SemanticType.Void,
+              "object" => SemanticType.Object,
               _ => new BuiltinType { Name = primitiveInfo.SharpyName, ClrType = clrType }
           };
       }
-
-      // Handle object specifically (not in PrimitiveCatalog)
-      if (clrType == typeof(object)) return SemanticType.Object;
 
       // Handle arrays, nullables, generics... (existing code)
       // ...
@@ -3851,13 +3849,15 @@ private SemanticType MapTypeInternal(Type clrType)
         {
             "int" => SemanticType.Int,
             "long" => SemanticType.Long,
-            // ... other primitives
+            "float" => SemanticType.Float,
+            "double" => SemanticType.Double,
+            "bool" => SemanticType.Bool,
+            "str" or "string" => SemanticType.Str,
+            "void" or "None" => SemanticType.Void,
+            "object" => SemanticType.Object,
             _ => new BuiltinType { Name = primitiveInfo.SharpyName, ClrType = clrType }
         };
     }
-
-    // Handle object specifically (not in PrimitiveCatalog)
-    if (clrType == typeof(object)) return SemanticType.Object;
 
     // Handle arrays, nullables, generics... (existing code)
 }
