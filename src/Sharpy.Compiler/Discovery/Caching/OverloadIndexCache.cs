@@ -6,10 +6,14 @@ namespace Sharpy.Compiler.Discovery.Caching;
 /// <summary>
 /// Manages persistent caching of overload indexes.
 /// Cache location: ~/.sharpy/cache/overload-index/ (or custom directory if specified)
+/// Thread-safe for concurrent access from multiple processes.
 /// </summary>
 public class OverloadIndexCache
 {
     private readonly string _cacheDirectory;
+    private const int MaxRetries = 3;
+    private const int RetryDelayMs = 100;
+
     // Using camelCase for JSON serialization to reduce file size and follow common conventions.
     // DefaultIgnoreCondition.WhenWritingNull reduces cache file size by omitting null properties.
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -53,6 +57,7 @@ public class OverloadIndexCache
 
     /// <summary>
     /// Try to load a cached index for the given assembly identity.
+    /// Retries on file access conflicts from parallel processes.
     /// </summary>
     public OverloadIndex? TryLoad(AssemblyIdentity identity)
     {
@@ -62,59 +67,106 @@ public class OverloadIndexCache
         if (!File.Exists(cachePath))
             return null;
 
-        try
+        for (var attempt = 0; attempt < MaxRetries; attempt++)
         {
-            using var fileStream = File.OpenRead(cachePath);
-            using var gzipStream = new GZipStream(fileStream, CompressionMode.Decompress);
-            var index = JsonSerializer.Deserialize<OverloadIndex>(gzipStream, JsonOptions);
-
-            // Verify the identity matches
-            if (index?.Identity.Equals(identity) == true)
-            {
-                return index;
-            }
-
-            // Cache is stale, delete it
-            File.Delete(cachePath);
-            return null;
-        }
-        catch (Exception ex)
-        {
-            // Cache file is corrupted or incompatible, delete it
-            System.Diagnostics.Debug.WriteLine($"Failed to load cache from '{cachePath}': {ex.GetType().Name} - {ex.Message}");
             try
             {
-                File.Delete(cachePath);
+                using var fileStream = new FileStream(cachePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                using var gzipStream = new GZipStream(fileStream, CompressionMode.Decompress);
+                var index = JsonSerializer.Deserialize<OverloadIndex>(gzipStream, JsonOptions);
+
+                // Verify the identity matches
+                if (index?.Identity.Equals(identity) == true)
+                {
+                    return index;
+                }
+
+                // Cache is stale, delete it
+                TryDeleteFile(cachePath);
+                return null;
             }
-            catch (Exception deleteEx)
+            catch (IOException) when (attempt < MaxRetries - 1)
             {
-                System.Diagnostics.Debug.WriteLine($"Failed to delete corrupted cache file '{cachePath}': {deleteEx}");
+                // File is locked by another process, wait and retry
+                Thread.Sleep(RetryDelayMs * (attempt + 1));
             }
-            return null;
+            catch (Exception ex)
+            {
+                // Cache file is corrupted, incompatible, or inaccessible
+                System.Diagnostics.Debug.WriteLine($"Failed to load cache from '{cachePath}': {ex.GetType().Name} - {ex.Message}");
+                TryDeleteFile(cachePath);
+                return null;
+            }
         }
+
+        return null;
     }
 
     /// <summary>
     /// Save an index to the cache.
+    /// Uses atomic write (write to temp file, then rename) to prevent corruption.
+    /// Retries on file access conflicts from parallel processes.
     /// </summary>
     public void Save(OverloadIndex index)
     {
         var cacheKey = index.Identity.ToCacheKey();
         var cachePath = Path.Combine(_cacheDirectory, cacheKey);
+        var tempPath = cachePath + $".{Guid.NewGuid():N}.tmp";
 
         // Clean up old cache files for this assembly (different versions/hashes older than 7 days)
         CleanupOldCaches(index.Identity.Name, cacheKey);
 
+        for (var attempt = 0; attempt < MaxRetries; attempt++)
+        {
+            try
+            {
+                // Write to a temporary file first
+                using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                using (var gzipStream = new GZipStream(fileStream, CompressionLevel.Optimal))
+                {
+                    JsonSerializer.Serialize(gzipStream, index, JsonOptions);
+                }
+
+                // Atomically move the temp file to the final location
+                // File.Move with overwrite handles the case where another process wrote the file
+                File.Move(tempPath, cachePath, overwrite: true);
+                return; // Success
+            }
+            catch (IOException) when (attempt < MaxRetries - 1)
+            {
+                // File is locked by another process, wait and retry
+                Thread.Sleep(RetryDelayMs * (attempt + 1));
+            }
+            catch (Exception ex)
+            {
+                // Clean up temp file on error
+                TryDeleteFile(tempPath);
+
+                // Log but don't fail - caching is optional
+                System.Diagnostics.Debug.WriteLine($"Warning: Failed to save cache (attempt {attempt + 1}/{MaxRetries}): {ex.Message}");
+
+                if (attempt >= MaxRetries - 1)
+                {
+                    // Only warn user on final failure, and make the message less alarming
+                    // since cache failures are non-critical
+                    System.Diagnostics.Debug.WriteLine($"Cache save failed after {MaxRetries} attempts: {ex.Message}");
+                }
+            }
+        }
+    }
+
+    private static void TryDeleteFile(string path)
+    {
         try
         {
-            using var fileStream = File.Create(cachePath);
-            using var gzipStream = new GZipStream(fileStream, CompressionLevel.Optimal);
-            JsonSerializer.Serialize(gzipStream, index, JsonOptions);
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
         }
-        catch (Exception ex)
+        catch
         {
-            // Log but don't fail - caching is optional
-            Console.Error.WriteLine($"Warning: Failed to save cache: {ex.Message}");
+            // Ignore cleanup errors
         }
     }
 
