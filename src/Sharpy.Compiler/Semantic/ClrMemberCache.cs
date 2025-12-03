@@ -28,8 +28,8 @@ public class ClrMemberCache
     /// <summary>
     /// Gets operator methods for a CLR type, discovering and caching them if needed.
     /// </summary>
-    /// <returns>Dictionary mapping operator names (e.g., "op_Addition") to method overloads.</returns>
-    public Dictionary<string, List<MethodInfo>> GetOperatorMethods(Type clrType)
+    /// <returns>Read-only dictionary mapping operator names (e.g., "op_Addition") to method overloads.</returns>
+    public IReadOnlyDictionary<string, List<MethodInfo>> GetOperatorMethods(Type clrType)
     {
         if (_operatorCache.TryGetValue(clrType, out var cached))
         {
@@ -65,7 +65,7 @@ public class ClrMemberCache
     /// <summary>
     /// Gets all interfaces implemented by a CLR type (including inherited).
     /// </summary>
-    public HashSet<Type> GetImplementedInterfaces(Type clrType)
+    public IReadOnlySet<Type> GetImplementedInterfaces(Type clrType)
     {
         if (_interfaceCache.TryGetValue(clrType, out var cached))
         {
