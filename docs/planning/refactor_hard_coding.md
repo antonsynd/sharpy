@@ -3819,10 +3819,7 @@ static TypeMapper()
     // Add all primitives from PrimitiveCatalog
     foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
     {
-        if (!_builtinTypeMap.ContainsKey(name))
-        {
-            _builtinTypeMap[name] = info.CSharpName;
-        }
+        _builtinTypeMap.TryAdd(name, info.CSharpName);
     }
 
     // Add non-primitive type mappings (collections, etc.)
