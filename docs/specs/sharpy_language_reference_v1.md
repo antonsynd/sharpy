@@ -258,7 +258,7 @@ The following are reserved keywords in Sharpy v0.1-v1.0:
 | Keyword | Version | Notes |
 |---------|---------|-------|
 | `and` | v0.1 | Boolean AND |
-| `as` | v0.1 | Aliasing for imports, type casting |
+| `as` | v0.1 | Aliasing for imports |
 | `assert` | v0.1 | Assertion statement |
 | `auto` | v0.8 | Inferred type for shadowing |
 | `break` | v0.1 | Break statement for loops |
@@ -337,6 +337,19 @@ billion = 1_000_000_000
   - `L` or `l` for `long` (System.Int64): `42L`
   - `u` or `U` for `uint` (System.UInt32): `42u`
   - `ul` or `UL` for `ulong` (System.UInt64): `42ul`
+
+**Note:** Like C#, there are no literal suffixes for `short`, `ushort`, `byte`, or `sbyte`. Use type annotations or explicit casts:
+
+```python
+# Type annotation
+s: short = 42
+b: byte = 255
+sb: sbyte = -128
+
+# Explicit casting [v0.4]
+s = cast[short](42)
+b = cast[byte](255)
+```
 
 *Implementation: ✅ Native - Direct mapping to C# integer literals.*
 
@@ -986,6 +999,38 @@ const MAX_SIZE = 1000  # Type inferred
 - Constants must be initialized at declaration with compile-time values
 
 *Implementation: ✅ Native - Direct mapping to C# declarations.*
+
+## Variable Scoping Rules [v0.1]
+
+**Block-Scoped Constructs** (variable doesn't leak):
+- For loop variables
+- Comprehension variables
+- Exception binding (`except E as e`)
+
+**Containing-Scope Constructs** (variable persists):
+- Regular declarations (`x = value`, `var x = value`, `x: type = value`)
+- Walrus operator (`x := value`)
+
+### Example:
+
+```python
+x = "outer"
+
+for x in range(5):      # New 'x' shadows outer, block-scoped
+    print(x)            # Prints 0, 1, 2, 3, 4
+
+print(x)                # ERROR: loop 'x' doesn't exist
+                        # Outer 'x' is shadowed but not modified
+```
+
+### To modify outer variable:
+
+```python
+x = 0
+for i in range(5):      # 'i' is block-scoped
+    x += i              # Modifies outer 'x'
+print(x)                # 10
+```
 
 ### Assignment Statement
 
