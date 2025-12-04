@@ -575,6 +575,35 @@ pi = 3.14159        # Inferred as double
 
 *Implementation: ✅ Native - Direct mapping to C# type declarations.*
 
+### Type Hierarchy and Object Model **[v0.1]**
+
+#### Universal Base Type
+
+The `object` type (mapping to `System.Object`) is the universal base type for all Sharpy types. All primitives (`int`, `str`, `bool`, etc.) and all Sharpy-defined types are assignable to `object`:
+
+```python
+# object accepts any value
+x: object = 42
+x = "hello"
+x = [1, 2, 3]
+x = MyClass()
+
+# Useful for heterogeneous collections
+items: list[object] = [1, "hello", True, SomeClass()]
+
+# Function accepting any type
+def process(value: object) -> str:
+    return str(value)
+```
+
+**Type Hierarchy:**
+- `object` is the implicit base type of all classes
+- Primitives (`int`, `str`, `bool`, etc.) are assignable to `object` via boxing
+- Structs are assignable to `object` via boxing
+- `None` is assignable to `object?` but not to `object`
+
+*Implementation: ✅ Native - `System.Object` is the universal base in .NET.*
+
 ---
 
 ## Nullable Types **[v0.2]**
@@ -1777,7 +1806,200 @@ name = favorite.name    # "RED"
 
 ## Operator Overloading **[v0.5]**
 
-Classes can define dunder methods to customize operator behavior:
+Classes can define dunder methods (double-underscore methods like `__add__`, `__eq__`) to customize how operators and built-in functions behave with their instances. **Dunder methods are a definition mechanism only**—they specify *how* a type behaves, but users invoke that behavior through operators and built-in functions, not by calling dunders directly.
+
+### Dunder Invocation Rules **[v0.1]**
+
+#### Dunders Are Definition-Only
+
+Dunder methods exist to **define** how a type behaves with operators and built-in functions. **Explicit dunder invocation by user code is a compile error:**
+
+```python
+x = 5
+x.__eq__(3)         # ERROR: Cannot invoke dunder methods directly
+x.__repr__()        # ERROR: Cannot invoke dunder methods directly
+
+my_list = [1, 2, 3]
+my_list.__len__()   # ERROR: Cannot invoke dunder methods directly
+
+obj = MyClass()
+obj.__str__()       # ERROR: Cannot invoke dunder methods directly
+```
+
+#### Correct Usage
+
+Use operators for operator dunders:
+
+```python
+x == y              # ✅ Correct — compiler uses __eq__ internally
+x + y               # ✅ Correct — compiler uses __add__ internally
+-x                  # ✅ Correct — compiler uses __neg__ internally
+x < y               # ✅ Correct — compiler uses __lt__ internally
+x[0]                # ✅ Correct — compiler uses __getitem__ internally
+```
+
+Use built-in functions for protocol dunders:
+
+```python
+repr(x)             # ✅ Correct — uses __repr__ internally
+len(x)              # ✅ Correct — uses __len__ internally
+hash(x)             # ✅ Correct — uses __hash__ internally
+str(x)              # ✅ Correct — uses __str__ internally
+```
+
+#### Rationale
+
+- **Uniform syntax**: `repr(x)` and `x == y` work on any type, whether primitive or Sharpy-defined
+- **.NET interop**: Primitives from .NET (`int`, `str`, `bool`) don't have dunder methods—the compiler handles dispatch
+- **Zero overhead**: No wrapper types or boxing required for polymorphic dispatch
+- **Consistency**: Same syntax works whether the type defines a dunder or uses native behavior
+
+*Implementation: The compiler emits different code based on static type:*
+- *For primitives: direct C# operator or method call*
+- *For Sharpy types with dunder: call to the generated method*
+- *For built-in functions: type-appropriate dispatch (e.g., `len()` calls `.Count` or `__len__`)*
+
+### Dunder Inheritance and Internal Calls **[v0.1]**
+
+While user code cannot call dunders directly, there are specific contexts where dunder calls are permitted.
+
+#### Dunder Inheritance
+
+Dunder methods are inherited like any other method:
+
+```python
+class Animal:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def __repr__(self) -> str:
+        return f"Animal({self.name})"
+
+class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+    # Inherits __repr__ from Animal
+
+dog = Dog("Buddy")
+print(repr(dog))  # Output: Animal(Buddy)
+```
+
+#### Overriding Dunders
+
+Dunder methods can be overridden using `@override`:
+
+```python
+class Dog(Animal):
+    def __init__(self, name: str):
+        super().__init__(name)
+
+    @override
+    def __repr__(self) -> str:
+        return f"Dog({self.name})"
+
+dog = Dog("Buddy")
+print(repr(dog))  # Output: Dog(Buddy)
+```
+
+#### Base Class Dunder Calls
+
+Within a dunder method, you may call the base class implementation via `super()`:
+
+```python
+class Child(Parent):
+    @override
+    def __repr__(self) -> str:
+        return super().__repr__() + " (child)"  # ✅ OK
+
+    @override
+    def __eq__(self, other: object) -> bool:
+        if not super().__eq__(other):           # ✅ OK
+            return False
+        # Additional checks...
+        return True
+```
+
+#### Cross-Dunder Calls for Synthesis
+
+Within a dunder method, you may call other dunders on `self` for synthesizing related operations:
+
+```python
+class Ordered:
+    value: int
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Ordered):
+            return False
+        return self.value == other.value
+
+    def __lt__(self, other: Ordered) -> bool:
+        return self.value < other.value
+
+    def __le__(self, other: Ordered) -> bool:
+        return self.__lt__(other) or self.__eq__(other)  # ✅ OK
+
+    def __ge__(self, other: Ordered) -> bool:
+        return not self.__lt__(other)                    # ✅ OK
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)                    # ✅ OK
+
+    def __gt__(self, other: Ordered) -> bool:
+        return not self.__le__(other)                    # ✅ OK
+```
+
+#### Restrictions
+
+Dunder calls on `self` or `super()` are **only** permitted:
+- Within a dunder method body
+- As immediate call expressions (cannot be captured or passed)
+
+```python
+class Example:
+    def __repr__(self) -> str:
+        func = self.__eq__              # ❌ ERROR: Cannot capture dunder
+        return str(self.__hash__())     # ✅ OK: Immediate call, cross-dunder
+
+    def regular_method(self):
+        self.__repr__()                 # ❌ ERROR: Not inside a dunder
+        print(repr(self))               # ✅ OK: Use built-in function
+
+    def __eq__(self, other: object) -> bool:
+        return other.__eq__(self)       # ❌ ERROR: Not self or super()
+```
+
+#### Child Objects Use Built-in Functions
+
+For calling dunder-like behavior on other objects (including fields), use operators or built-in functions:
+
+```python
+class Node:
+    left: Node?
+    right: Node?
+    value: int
+
+    def __repr__(self) -> str:
+        left_repr = repr(self.left) if self.left is not None else "None"
+        right_repr = repr(self.right) if self.right is not None else "None"
+        return f"Node({self.value}, {left_repr}, {right_repr})"
+        # NOT: self.left.__repr__()  # ❌ Would be error anyway
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Node):
+            return False
+        return self.value == other.value  # ✅ Use == operator
+        # NOT: self.value.__eq__(other.value)  # ❌ Error
+```
+
+#### Summary Table
+
+| Call Site | `self.__dunder__()` | `super().__dunder__()` | `other.__dunder__()` |
+|-----------|--------------------|-----------------------|---------------------|
+| Inside dunder method | ✅ Immediate only | ✅ Immediate only | ❌ Use operator/built-in |
+| Outside dunder method | ❌ Error | ❌ Error | ❌ Use operator/built-in |
 
 ### Arithmetic Operators
 
@@ -1844,17 +2066,19 @@ class Point:
 
 ### Special Methods
 
-| Method | Purpose | C# Mapping |
-|--------|---------|------------|
-| `__str__` | String representation | `ToString()` override |
-| `__repr__` | Debug representation | Custom method |
-| `__hash__` | Hash value | `GetHashCode()` override |
-| `__len__` | Length | `Count` property |
-| `__contains__` | Membership test | `Contains()` method |
-| `__iter__` | Iteration | `GetEnumerator()` |
-| `__getitem__` | Index access | Indexer `this[...]` |
-| `__setitem__` | Index assignment | Indexer `this[...]` |
-| `__delitem__` | Index deletion | (method call) |
+| Method | Purpose | C# Mapping | Invoked Via |
+|--------|---------|------------|-------------|
+| `__str__` | String representation | `ToString()` override | `str(x)` |
+| `__repr__` | Debug representation | Custom method | `repr(x)` |
+| `__hash__` | Hash value | `GetHashCode()` override | `hash(x)` |
+| `__len__` | Length | `Count` property | `len(x)` |
+| `__contains__` | Membership test | `Contains()` method | `x in collection` |
+| `__iter__` | Iteration | `GetEnumerator()` | `for x in obj` |
+| `__getitem__` | Index access | Indexer `this[...]` | `obj[key]` |
+| `__setitem__` | Index assignment | Indexer `this[...]` | `obj[key] = value` |
+| `__delitem__` | Index deletion | (method call) | `del obj[key]` |
+
+**Note:** Users invoke these behaviors through the "Invoked Via" syntax, not by calling the dunder methods directly. See [Dunder Invocation Rules](#dunder-invocation-rules-v01) for details.
 
 ### Hashable Objects
 
@@ -2468,14 +2692,26 @@ async def use_resource():
 
 ## Built-in Functions **[v0.1+]**
 
+Built-in functions provide polymorphic access to type behavior. They work uniformly on all types—primitives, .NET types, and Sharpy-defined types—by internally dispatching to the appropriate implementation:
+
+- **For Sharpy types**: If the type defines the corresponding dunder method, the built-in function calls it
+- **For primitives and .NET types**: The built-in function uses the native .NET operation
+- **Fallback behavior**: Some functions provide sensible defaults when no custom implementation exists
+
+This design allows code like `len(x)`, `str(x)`, and `repr(x)` to work consistently regardless of whether `x` is a list, a string, or a custom class.
+
 ### Type Conversion [v0.1]
 
 | Function | Purpose | C# Mapping |
 |----------|---------|------------|
 | `int(x)` | Convert to integer | `(int)x` or `Convert.ToInt32(x)` |
 | `double(x)` | Convert to double | `(double)x` |
-| `str(x)` | Convert to string | `x.ToString()` |
+| `str(x)` | Convert to string | Calls `__str__` if defined, else `.ToString()` |
 | `bool(x)` | Convert to boolean | Truthiness check |
+
+**`str(x)`** returns a human-readable string representation:
+- For Sharpy types with `__str__`: calls `__str__`
+- For all types: falls back to `.ToString()`
 
 ### Type Checking [v0.1]
 
@@ -2488,7 +2724,7 @@ async def use_resource():
 
 | Function | Purpose | C# Mapping |
 |----------|---------|------------|
-| `len(x)` | Get length | `.Count` or `.Length` |
+| `len(x)` | Get length | Calls `__len__` if defined, else `.Count` or `.Length` |
 | `min(iter)` | Minimum value | `.Min()` or `Math.Min()` |
 | `max(iter)` | Maximum value | `.Max()` or `Math.Max()` |
 | `sum(iter)` | Sum values | `.Sum()` |
@@ -2501,6 +2737,11 @@ async def use_resource():
 | `map(func, iter)` | Transform | `.Select()` |
 | `all(iter)` | All truthy | `.All()` |
 | `any(iter)` | Any truthy | `.Any()` |
+
+**`len(x)`** returns the number of items in a container:
+- For Sharpy types with `__len__`: calls `__len__`
+- For collections: uses `.Count` property
+- For strings/arrays: uses `.Length` property
 
 ### I/O Functions [v0.1]
 
@@ -2522,10 +2763,21 @@ async def use_resource():
 
 | Function | Purpose | C# Mapping |
 |----------|---------|------------|
-| `hash(x)` | Hash code | `.GetHashCode()` |
+| `repr(x)` | Debug representation | Calls `__repr__` if defined, else `__str__`, else `.ToString()` |
+| `hash(x)` | Hash code | Calls `__hash__` if defined, else `.GetHashCode()` |
 | `id(x)` | Object identity | `RuntimeHelpers.GetHashCode()` |
 
-*Implementation: 🔄 Lowered - Generated as method calls or LINQ expressions.*
+**`repr(x)`** returns a string representation suitable for debugging:
+- For Sharpy types with `__repr__`: calls `__repr__`
+- Fallback: tries `__str__`, then `.ToString()`
+- Typically includes type name and distinguishing attributes
+
+**`hash(x)`** returns the hash code for use in dictionaries and sets:
+- For Sharpy types with `__hash__`: calls `__hash__`
+- For all types: falls back to `.GetHashCode()`
+- If `__eq__` is defined, `__hash__` must also be defined (and vice versa)
+
+*Implementation: 🔄 Lowered - Generated as method calls or type-appropriate dispatch.*
 
 ---
 
@@ -2643,7 +2895,7 @@ The following features require .NET 7+ runtime or C# 11+ and cannot be supported
 
 | Version | Key Additions |
 |---------|---------------|
-| **v0.1** | Core syntax, primitives, functions, classes, exceptions, imports |
+| **v0.1** | Core syntax, primitives, functions, classes, exceptions, imports, type hierarchy (`object` base), dunder invocation rules |
 | **v0.2** | Nullable types (`T?`), `?.`, `??`, collections, slicing |
 | **v0.3** | Structs, interfaces, inheritance, decorators, access modifiers |
 | **v0.4** | Generics, type constraints, lambdas |
