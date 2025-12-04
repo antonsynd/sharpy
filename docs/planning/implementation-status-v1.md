@@ -2,9 +2,9 @@
 
 This document tracks which features from the [Sharpy Language Reference v1](../specs/sharpy_language_reference_v1.md) are implemented in the compiler. Use this as a reference to identify remaining work and generate tasks for implementation.
 
-**Last Updated**: December 3, 2025 (Audit #6)
+**Last Updated**: December 3, 2025 (Audit #7)
 **Verified Against**: `mainline` branch
-**Audit Scope**: Keywords, AST nodes, CodeGen NotImplementedException locations, Semantic analysis, Standard library, Test coverage mapping, TokenType verification, Language Reference cross-check, Standard library builtins verification
+**Audit Scope**: Keywords, AST nodes, CodeGen NotImplementedException locations, Semantic analysis, Standard library, Test coverage mapping, TokenType verification, Language Reference cross-check, Standard library builtins verification, Operator precedence, Naming conventions, Type casting syntax
 
 ---
 
@@ -298,6 +298,46 @@ This document tracks which features from the [Sharpy Language Reference v1](../s
 | Feature | Parser | CodeGen | Tests | Status |
 |---------|--------|---------|-------|--------|
 | Generic class `Box[T]` | ✅ `ClassDef.TypeParameters` | ✅ → `Box<T>` | ✅ | ✅ |
+| Generic struct `Pair[T1, T2]` | ✅ | ✅ | ✅ | ✅ |
+| Generic interface `IContainer[T]` | ✅ | ✅ | ✅ | ✅ |
+| Generic instantiation `Box[int]()` | ✅ `GenericType` | ✅ | ✅ | ✅ |
+
+### Generic Functions
+
+| Feature | Parser | CodeGen | Tests | Status |
+|---------|--------|---------|-------|--------|
+| Generic function `def identity[T](x: T) -> T` | ❌ | ❌ | ❌ | ❌ NOT IMPLEMENTED |
+
+### Type Constraints
+
+| Constraint | Parser | CodeGen | Status |
+|------------|--------|---------|--------|
+| `T: Interface` | ❌ | ❌ | ❌ NOT IMPLEMENTED |
+| `T: class` | ❌ | ❌ | ❌ NOT IMPLEMENTED |
+| `T: struct` | ❌ | ❌ | ❌ NOT IMPLEMENTED |
+| `T: new()` | ❌ | ❌ | ❌ NOT IMPLEMENTED |
+
+### Type Casting
+
+| Feature | Spec Syntax | Implementation | Status |
+|---------|-------------|----------------|--------|
+| Type cast | `cast[T](value)` | `value as T` (TypeCast AST) | ⚠️ SYNTAX MISMATCH |
+
+**Note**: Language Reference specifies `cast[T](value)` syntax (line 350), but implementation uses `value as T` syntax. This is a spec vs implementation discrepancy.
+
+- **Parser**: `ParsePostfix()` handles `as` keyword for type cast
+- **AST**: `TypeCast` record in `Expression.cs`
+- **CodeGen**: `GenerateTypeCast()` emits `(Type)value`
+- **Semantic**: `CheckTypeCast()` validates cast compatibility
+
+**TODO**: Decide whether to implement `cast[T](x)` syntax or update spec to document `x as T`.
+
+### Lambda Expressions
+
+| Feature | Lexer | Parser | CodeGen | Tests | Status |
+|---------|-------|--------|---------|-------|--------|
+| Lambda `lambda x: x + 1` | ✅ `TokenType.Lambda` | ✅ `LambdaExpression` | ✅ → `x => x + 1` | ✅ | ✅ |
+| Lambda with multiple params | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Generic struct `Pair[T1, T2]` | ✅ | ✅ | ✅ | ✅ |
 | Generic interface `IContainer[T]` | ✅ | ✅ | ✅ | ✅ |
 | Generic instantiation `Box[int]()` | ✅ `GenericType` | ✅ | ✅ | ✅ |
@@ -1452,27 +1492,105 @@ async def fetch_data(url: str) -> str:
 
 ---
 
+## AUDIT #7 FINDINGS (December 3, 2025)
+
+### Operator Precedence — VERIFIED COMPLETE
+
+The Parser implements precedence climbing correctly. Verified against Language Reference (lines 700-800):
+
+| Precedence | Language Ref | Parser Method | Status |
+|------------|-------------|---------------|--------|
+| 1 (highest) | `()`, `[]`, `.`, `?.` | `ParsePostfix()` | ✅ |
+| 2 | `**` (right-assoc) | `ParsePower()` — right-assoc via `ParseUnary()` call | ✅ |
+| 3 | `+x`, `-x`, `~x` | `ParseUnary()` | ✅ |
+| 4 | `*`, `/`, `//`, `%` | `ParseMultiplicative()` | ✅ |
+| 5 | `+`, `-` | `ParseAdditive()` | ✅ |
+| 6 | `<<`, `>>` | `ParseShift()` | ✅ |
+| 7 | `&` | `ParseBitwiseAnd()` | ✅ |
+| 8 | `^` | `ParseBitwiseXor()` | ✅ |
+| 9 | `\|` | `ParseBitwiseOr()` | ✅ |
+| 10 | `in`, `not in`, `is`, `is not`, comparisons | `ParseComparison()` + chain support | ✅ |
+| 11 | `not` | `ParseLogicalNot()` | ✅ |
+| 12 | `and` | `ParseLogicalAnd()` | ✅ |
+| 13 | `or` | `ParseLogicalOr()` | ✅ |
+| 14 | `??` | `ParseNullCoalesce()` | ✅ |
+| 15 | `x if c else y` | `ParseConditionalExpression()` | ✅ |
+| 16 | `lambda` | `ParseLambda()` (called from `ParsePrimary()`) | ✅ |
+
+**Note**: `**` operator is correctly right-associative (line 1761: `ParseUnary()` for right operand).
+
+### Naming Conventions — VERIFIED COMPLETE
+
+`NameMangler.cs` implements all transformations from Language Reference:
+
+| Type | Sharpy | C# Transformation | Implementation | Status |
+|------|--------|-------------------|----------------|--------|
+| Method/Function | `snake_case` | `PascalCase` | `ToPascalCase()` | ✅ |
+| Variable | `snake_case` | `camelCase` | `ToCamelCase()` | ✅ |
+| Parameter | `snake_case` | `camelCase` | `ToCamelCase()` | ✅ |
+| Field | `snake_case` | `camelCase` | `ToCamelCase()` | ✅ |
+| Namespace/Module | `snake_case` | `PascalCase` | `SimpleToPascalCase()` | ✅ |
+| Class/Struct | `PascalCase` | (unchanged) | Direct pass-through | ✅ |
+| Interface | `IPascalCase` | (unchanged) | Direct pass-through | ✅ |
+| Constant | `CAPS_SNAKE_CASE` | (unchanged) | Direct pass-through | ✅ |
+| Enum value | `CAPS_SNAKE_CASE` | `PascalCase` | `ToPascalCase()` | ✅ |
+
+### Default Parameter Evaluation — NEEDS VERIFICATION
+
+Language Reference (lines 1200-1250) specifies default parameters are evaluated **once** at definition time (Python semantics). This requires verification:
+
+**Status**: ⚠️ UNKNOWN — C# evaluates defaults at call site, not definition time. Need to verify:
+1. Does Sharpy warn about mutable defaults?
+2. Does Sharpy preserve Python semantics via codegen tricks?
+3. Or does Sharpy use C# semantics (which differs)?
+
+**TODO**: Create test case and document actual behavior.
+
+### Program Entry Point — VERIFIED
+
+From `RoslynEmitter.cs` and language reference:
+- Top-level statements: Wrapped in `public static void Main()` in `Exports` class
+- Named `main()`: Transformed to `public static void Main()`
+- `if __name__ == "__main__":` idiom: NOT supported (as documented)
+
+**Status**: ✅ COMPLETE
+
+### v2.0+ Deferred Features — DOCUMENTED
+
+Per Language Reference (lines 2880-2917), the following are explicitly deferred:
+
+| Feature | Required C# | Status |
+|---------|-------------|--------|
+| `@file` access modifier | C# 11 | ❌ Deferred |
+| List patterns `case [a, b]:` | C# 11 | ❌ Deferred |
+| Static abstract interface members | C# 11 + .NET 7 | ❌ Deferred |
+| Generic math constraints | C# 11 + .NET 7 | ❌ Deferred |
+| `required` members | C# 11 + .NET 7 | ❌ Deferred |
+| Record structs | C# 10 | ❌ Deferred |
+| `field` keyword in properties | C# 13 | ❌ Deferred |
+| Extension properties/operators | C# 14 | ❌ Deferred |
+| User-defined `+=` operators | C# 14 | ❌ Deferred |
+| `yield` (generators) | v2.0 | ❌ Deferred |
+| `del` statement | v2.0 | ❌ Deferred |
+
+---
+
 ## TODO: Next Iteration Actions
 
 ### HIGHEST PRIORITY — For Next Audit Session
 
-1. **Verify Operator Precedence Implementation**
-   - Cross-check Language Reference precedence table (lines 700-750) against Parser.cs
-   - Verify `GenerateExpression` respects precedence
-   - Test edge cases: `a or b and c`, `a ** b ** c` (right-associative)
+1. **Verify Default Parameter Evaluation Semantics**
+   - Create test: Does `def foo(lst=[])` share the same list across calls?
+   - If C# semantics: Document the difference from Python
+   - If Python semantics: Document the codegen trick used
 
-2. **Verify Default Parameter Behavior**
-   - Language Reference warns about mutable defaults (lines 1200-1250)
-   - Test: Does Sharpy evaluate defaults at definition time or call time?
-   - Document actual behavior vs Python behavior
-
-3. **Audit .NET Interop Features**
+2. **Audit .NET Interop Features**
    - Test importing .NET types: `from system.collections.generic import List`
    - Test calling .NET methods
    - Test .NET property access (Language Reference lines 2540-2560)
    - Test extension methods (LINQ)
 
-4. **Complete Feature Coverage Matrix**
+3. **Complete Feature Coverage Matrix**
    - For each v0.1-v0.6 feature, list:
      - Lexer support (TokenType)
      - Parser support (AST node)
@@ -1480,18 +1598,17 @@ async def fetch_data(url: str) -> str:
      - CodeGen support (RoslynEmitter method)
      - Integration test file
 
-5. **Document Remaining Language Reference Sections**
+4. **Document Remaining Language Reference Sections**
    The following sections have NOT been audited:
-   - **Comprehensions** (lines 2100-2150): Verify nested comprehension behavior
-   - **Naming Conventions** (lines 2560-2590): Verify `snake_case` → `PascalCase`
-   - **Program Entry Point** (lines 2590-2610): Verify `main()` and top-level
-   - **v2.0+ Deferred Features** (lines 2612-2620): Document explicitly
+   - **Comprehensions** (lines 2300-2400): Verify variable scoping in comprehensions
+   - **Type Casting Syntax** (lines ~340): Resolve `cast[T](x)` vs `x as T` discrepancy
+
+5. **Resolve Type Casting Syntax Discrepancy**
+   - Language Reference specifies: `cast[T](value)` syntax
+   - Implementation uses: `value as T` syntax
+   - Decision needed: Implement spec syntax OR update spec to match implementation
 
 ### FILES TO REVIEW IN NEXT AUDIT
-
-**For Operator Precedence Verification:**
-- `src/Sharpy.Compiler/Parser/Parser.cs` — `ParseExpression()` precedence climbing
-- `src/Sharpy.Compiler/Parser/Precedence.cs` — If exists
 
 **For Default Parameter Verification:**
 - `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` — `GenerateMethod()` default handling
@@ -1501,15 +1618,29 @@ async def fetch_data(url: str) -> str:
 - Create test file: `samples/dotnet_interop_test.spy`
 - Test: Import System.Collections.Generic.List, call methods, access properties
 
+**For Type Casting:**
+- `src/Sharpy.Compiler/Parser/Parser.cs:1876` — `ParsePostfix()` handles `as` keyword
+- `src/Sharpy.Compiler/Parser/Ast/Expression.cs:350` — `TypeCast` record
+- `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:2254` — `GenerateTypeCast()`
+
 ---
 
 ## CONTINUATION GUIDE FOR NEXT ITERATION
 
 This section is for the next person continuing the documentation process.
 
-### What Has Been Verified (Do NOT Re-Verify)
+### What Has Been Verified in AUDIT #7 (Do NOT Re-Verify)
 
-The following have been **confirmed in code** and should NOT need re-verification:
+The following were **verified in Audit #7** (December 3, 2025):
+
+1. **Operator Precedence**: Fully verified against Parser.cs — all 16 precedence levels match Language Reference
+2. **Naming Conventions**: Verified `NameMangler.cs` implements all transformations correctly
+3. **Program Entry Point**: Verified top-level statements and `main()` function handling
+4. **v2.0+ Deferred Features**: Documented from Language Reference
+
+### What Has Been Verified (Previous Audits — Do NOT Re-Verify)
+
+The following have been **confirmed in code**:
 
 1. **TokenTypes Present**: `def`, `class`, `struct`, `interface`, `enum`, `if`, `elif`, `else`, `while`, `for`, `in`, `return`, `break`, `continue`, `pass`, `try`, `except`, `finally`, `raise`, `assert`, `import`, `from`, `as`, `and`, `or`, `not`, `is`, `const`, `lambda`, `auto`, `True`, `False`, `None`, `with`
 
@@ -1522,11 +1653,17 @@ The following have been **confirmed in code** and should NOT need re-verificatio
    - No `ColonEquals` token (walrus operator NOT supported)
    - No `StarredExpression` node (star unpacking NOT supported)
    - No `PropertyDef` node (properties NOT supported)
+   - `TypeCast` — EXISTS but uses `x as T` syntax, not `cast[T](x)`
 
 4. **Standard Library Verified**:
    - `repr(x)` — ✅ IMPLEMENTED in `Repr.cs`
    - `hash(x)` — ❌ NOT IMPLEMENTED (interface exists)
    - `id(x)` — ❌ NOT IMPLEMENTED (interface exists)
+
+5. **Parser Verified**:
+   - Operator precedence climbing — ✅ 16 levels correctly implemented
+   - Comparison chaining — ✅ `ParseComparison()` with `ComparisonChain` AST
+   - Type casting — ✅ `value as T` syntax via `ParsePostfix()`
 
 ### What Still Needs To Be Done
 
@@ -1546,20 +1683,21 @@ The following have been **confirmed in code** and should NOT need re-verificatio
 
 3. **Implement remaining v0.1-v0.6 features** (see "PRIORITY 1" TODO section)
 
+4. **Resolve type casting syntax discrepancy** (spec vs implementation)
+
 #### DOCUMENTATION STILL NEEDED
 
 The following Language Reference sections have NOT been audited:
 
-| Section | Lines | What to Verify |
-|---------|-------|----------------|
-| Expressions | 800-900 | All expression types parse and codegen correctly |
-| Operator Precedence | 700-800 | Precedence matches C# output |
-| Default Parameter Evaluation | 1200-1250 | Mutable default behavior |
-| .NET Interop | 2500-2620 | Actual .NET type usage |
-| Module Resolution | 1100-1150 | snake_case → PascalCase transformation |
-| Comprehensions | 2100-2150 | Nested comprehension behavior |
-| Naming Conventions | 2560-2590 | Full transformation rules |
-| Program Entry Point | 2590-2610 | main() and top-level statements |
+| Section | Lines | What to Verify | Status |
+|---------|-------|----------------|--------|
+| ~~Operator Precedence~~ | ~~700-800~~ | ~~Precedence matches~~ | ✅ Done in #7 |
+| ~~Naming Conventions~~ | ~~2560-2590~~ | ~~Transformation rules~~ | ✅ Done in #7 |
+| ~~Program Entry Point~~ | ~~2590-2610~~ | ~~main() and top-level~~ | ✅ Done in #7 |
+| Default Parameter Evaluation | 1200-1250 | Mutable default behavior | ⚠️ Needs test |
+| .NET Interop | 2500-2620 | Actual .NET type usage | ❌ Not audited |
+| Comprehensions | 2300-2400 | Variable scoping | ❌ Not audited |
+| Type Casting | 340-360 | Syntax discrepancy | ⚠️ Documented |
 
 #### HOW TO CONTINUE THIS DOCUMENT
 
@@ -1567,12 +1705,12 @@ The following Language Reference sections have NOT been audited:
 2. **Read the corresponding Language Reference lines**
 3. **Search the codebase for implementation**:
    ```bash
-   # Example: Verify operator precedence
-   grep -r "Precedence\|precedence" src/Sharpy.Compiler/Parser/
+   # Example: Verify comprehension scoping
+   grep -rn "comprehension\|Comprehension" src/Sharpy.Compiler/
    ```
 4. **Document findings in a new AUDIT section**
 5. **Update TODO lists and Summary tables**
-6. **Increment the audit number in the header**
+6. **Increment the audit number in the header** (next is AUDIT #8)
 
 ### Quick Reference: Key Files
 
@@ -1586,6 +1724,7 @@ The following Language Reference sections have NOT been audited:
 | Name resolver | `src/Sharpy.Compiler/Semantic/NameResolver.cs` | Symbol resolution |
 | Code generator | `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` | C# generation |
 | Type mapper | `src/Sharpy.Compiler/CodeGen/TypeMapper.cs` | Type translation |
+| Name mangler | `src/Sharpy.Compiler/CodeGen/NameMangler.cs` | Name transformation |
 | Standard library | `src/Sharpy.Core/` | Runtime builtins |
 | Integration tests | `src/Sharpy.Compiler.Tests/Integration/` | End-to-end tests |
 
@@ -1609,4 +1748,17 @@ dotnet test --filter "FullyQualifiedName~BasicProgram"
 
 # Run all tests
 dotnet test
+
+# Check operator precedence parsing chain
+grep -n "Parse.*Expression\|ParseLogical\|ParseComparison\|ParseBitwise\|ParseAdditive\|ParseMultiplicative\|ParseUnary\|ParsePower\|ParsePostfix" src/Sharpy.Compiler/Parser/Parser.cs
 ```
+
+### Audit History
+
+| Audit | Date | Key Findings |
+|-------|------|--------------|
+| #1-3 | Dec 2025 | Initial keyword/AST verification |
+| #4 | Dec 3, 2025 | Test coverage mapping, semantic analysis structure |
+| #5 | Dec 3, 2025 | TokenType cross-check, AST properties |
+| #6 | Dec 3, 2025 | Standard library builtins, integration tests |
+| #7 | Dec 3, 2025 | Operator precedence, naming conventions, type casting discrepancy |
