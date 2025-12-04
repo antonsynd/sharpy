@@ -12,7 +12,7 @@ This document tracks which features from the [Sharpy Language Reference v1](../s
 
 | Version | Focus Area | Implementation Status |
 |---------|------------|----------------------|
-| **v0.1** | Core Language | ✅ Complete (except try-else) |
+| **v0.1** | Core Language | ⚠️ ~95% Complete (missing try-else, dunder invocation rules) |
 | **v0.2** | Nullability & Collections | ✅ Complete (except star unpacking) |
 | **v0.3** | Structs, Interfaces, OOP | ⚠️ ~95% Complete |
 | **v0.4** | Generics | ⚠️ ~85% Complete |
@@ -25,7 +25,7 @@ This document tracks which features from the [Sharpy Language Reference v1](../s
 
 ---
 
-## v0.1 — Core Language ✅ COMPLETE
+## v0.1 — Core Language ⚠️ ~95% COMPLETE
 
 ### Lexical Structure
 
@@ -82,6 +82,31 @@ This document tracks which features from the [Sharpy Language Reference v1](../s
 | `str` | ✅ | ✅ → `string` | ✅ |
 | `char` | ✅ | ✅ | ✅ |
 | `object` | ✅ | ✅ | ✅ |
+
+### Type Hierarchy and Object Model
+
+| Feature | Semantic | CodeGen | Tests | Status |
+|---------|----------|---------|-------|--------|
+| `object` as universal base type | ✅ | ✅ → `System.Object` | ✅ | ✅ |
+| Primitives assignable to `object` (boxing) | ✅ | ✅ | ✅ | ✅ |
+| Structs assignable to `object` (boxing) | ✅ | ✅ | ✅ | ✅ |
+| `None` assignable to `object?` only | ✅ | ✅ | ⚠️ | ✅ |
+
+### Dunder Invocation Rules
+
+| Feature | Semantic | CodeGen | Tests | Status |
+|---------|----------|---------|-------|--------|
+| Explicit dunder calls are compile error | ❌ | ❌ | ❌ | ❌ NOT IMPLEMENTED |
+| Dunder inheritance | ✅ | ✅ | ⚠️ | ✅ |
+| `@override` on dunder methods | ✅ | ✅ | ⚠️ | ✅ |
+| `super().__dunder__()` calls in dunder body | ✅ | ✅ | ⚠️ | ✅ |
+| Cross-dunder `self.__dunder__()` calls | ❌ | ❌ | ❌ | ❌ NOT IMPLEMENTED |
+| Block dunder capture (`func = self.__eq__`) | ❌ | ❌ | ❌ | ❌ NOT IMPLEMENTED |
+
+**Note**: The language spec defines strict rules for dunder invocation:
+- User code cannot call dunders directly (e.g., `x.__eq__(y)` is an error)
+- Dunders should only be invoked via operators (`==`) or built-in functions (`repr(x)`)
+- Exception: Within a dunder body, `self.__dunder__()` and `super().__dunder__()` are allowed for synthesis
 
 ### Operators
 
@@ -329,6 +354,7 @@ This document tracks which features from the [Sharpy Language Reference v1](../s
 | `__ne__` → `!=` | ✅ | ✅ | ✅ |
 | `__lt__`, `__le__`, `__gt__`, `__ge__` | ✅ | ✅ | ✅ |
 | `__str__` → `ToString()` | ✅ | ✅ | ✅ |
+| `__repr__` → debug repr | ✅ | ✅ | ✅ |
 | `__hash__` → `GetHashCode()` | ✅ | ✅ | ✅ |
 | `__len__` → `Count` | ✅ | ✅ | ✅ |
 | `__contains__` → `Contains()` | ✅ | ✅ | ✅ |
@@ -450,7 +476,9 @@ This document tracks which features from the [Sharpy Language Reference v1](../s
 | Function | File | Implementation | Status |
 |----------|------|----------------|--------|
 | `print(x)` | `Builtins/Exports.cs` | ✅ `Print()` with `sep`, `end`, `file`, `flush` options | ✅ |
-| `len(x)` | `Builtins/Exports.cs` | ✅ `Len()` for strings, arrays, collections | ✅ |
+| `len(x)` | `Builtins/Exports.cs` | ✅ `Len()` — calls `__len__` if defined, else `.Count`/`.Length` | ✅ |
+| `str(x)` | `Builtins/Exports.cs` | ✅ `Str()` — calls `__str__` if defined, else `.ToString()` | ✅ |
+| `repr(x)` | - | ❌ Needs `Repr()` — should call `__repr__`, fallback to `__str__`/`.ToString()` | ❌ NOT IMPLEMENTED |
 | `range(n)` | `Range.cs` | ✅ `RangeIterator` with `start`, `stop`, `step` | ✅ |
 | `enumerate(iter)` | `Enumerate.cs` | ✅ `EnumerateIterator<T>` with `start` parameter | ✅ |
 | `zip(a, b)` | `Zip.cs` | ✅ `ZipIterator<T1, T2>` and 3-arity version | ✅ |
@@ -470,8 +498,8 @@ This document tracks which features from the [Sharpy Language Reference v1](../s
 | `isinstance(x, T)` | `Isinstance.cs` | ✅ Generic and runtime type checking | ✅ |
 | `type(x)` | `Type.cs` | ✅ Returns runtime type | ✅ |
 | `input(prompt)` | `Input.cs` | ✅ With optional prompt | ✅ |
-| `hash(x)` | - | ❌ No standalone `Hash()` function | ❌ NOT IMPLEMENTED |
-| `id(x)` | - | ❌ No standalone `Id()` function (interface `IIdentifiable` exists) | ❌ NOT IMPLEMENTED |
+| `hash(x)` | - | ❌ Needs `Hash()` — should call `__hash__` if defined, else `.GetHashCode()` | ❌ NOT IMPLEMENTED |
+| `id(x)` | - | ❌ Needs `Id()` — uses `RuntimeHelpers.GetHashCode()` for object identity | ❌ NOT IMPLEMENTED |
 
 ### Pythonic Collections
 
@@ -650,6 +678,21 @@ Assignment expressions are NOT supported in lexer, parser, or codegen.
 - [ ] Update `RoslynEmitter` to emit multiple C# methods (already supports via normal method generation)
 - [ ] Add integration tests for function overloading
 
+#### 1.7 Dunder Invocation Rules (v0.1)
+- [ ] Add semantic analysis to detect and reject explicit dunder calls (e.g., `x.__eq__(y)`)
+- [ ] Allow `self.__dunder__()` calls within dunder method bodies only
+- [ ] Allow `super().__dunder__()` calls within dunder method bodies only
+- [ ] Reject dunder method capture (e.g., `func = self.__eq__`)
+- [ ] Add error messages guiding users to use operators/built-in functions instead
+- [ ] Add integration tests for dunder invocation validation
+
+#### 1.8 Built-in Functions with Dunder Dispatch (v0.1)
+- [ ] **Implement `repr(x)`**: Add `Repr()` function that calls `__repr__` if defined, else `__str__`, else `.ToString()`
+- [ ] **Update `hash(x)`**: Add `Hash()` function that calls `__hash__` if defined, else `.GetHashCode()`
+- [ ] **Verify `str(x)`**: Ensure `Str()` calls `__str__` if defined for Sharpy types
+- [ ] **Verify `len(x)`**: Ensure `Len()` calls `__len__` if defined for Sharpy types
+- [ ] Add integration tests for dunder dispatch in built-in functions
+
 ### PRIORITY 2: v0.9 Features
 
 #### 2.1 Nested Comprehensions
@@ -710,7 +753,8 @@ Assignment expressions are NOT supported in lexer, parser, or codegen.
 
 ### PRIORITY 4: Standard Library Gaps
 
-- [ ] **Implement `hash(x)`**: Add global `Hash()` function in `Sharpy.Core/Builtins/` that wraps `GetHashCode()`
+- [ ] **Implement `repr(x)`**: Add global `Repr()` function that calls `__repr__` if defined, else `__str__`, else `.ToString()`
+- [ ] **Implement `hash(x)`**: Add global `Hash()` function that calls `__hash__` if defined, else `.GetHashCode()`
 - [ ] **Implement `id(x)`**: Add global `Id()` function using `RuntimeHelpers.GetHashCode()` for object identity
 - [ ] **Enum `.name` property**: Add extension method or codegen support for `Color.RED.name`
 - [ ] **Enum `.value` property**: Add extension method or codegen support for `Color.RED.value`
