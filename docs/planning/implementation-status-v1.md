@@ -2,9 +2,9 @@
 
 This document tracks which features from the [Sharpy Language Reference v1](../specs/sharpy_language_reference_v1.md) are implemented in the compiler. Use this as a reference to identify remaining work and generate tasks for implementation.
 
-**Last Updated**: December 3, 2025 (Audit #4)
+**Last Updated**: December 3, 2025 (Audit #5)
 **Verified Against**: `mainline` branch
-**Audit Scope**: Keywords, AST nodes, CodeGen NotImplementedException locations, Semantic analysis, Standard library, Test coverage mapping
+**Audit Scope**: Keywords, AST nodes, CodeGen NotImplementedException locations, Semantic analysis, Standard library, Test coverage mapping, TokenType verification, Language Reference cross-check
 
 ---
 
@@ -921,6 +921,18 @@ The following sections still require verification and documentation in a future 
 9. ✅ Identified 10 features with test coverage gaps needing integration tests
 10. ✅ Created list of new test files to create (StructTests, InterfaceTests, ExceptionTests, GenericTests)
 
+### COMPLETED IN AUDIT #5 (December 3, 2025)
+1. ✅ Cross-checked TokenType enum in `Token.cs` against language reference keywords
+2. ✅ Verified FunctionDef does NOT have TypeParameters (generic functions NOT supported)
+3. ✅ Verified ClassDef, StructDef, InterfaceDef DO have TypeParameters (generics supported)
+4. ✅ Confirmed ForStatement, WhileStatement have NO ElseBody property
+5. ✅ Confirmed TryStatement has NO ElseBody property
+6. ✅ Verified no ColonEquals/`:=` token exists (walrus NOT in lexer)
+7. ✅ Verified no StarredExpr AST node exists (star unpacking NOT supported)
+8. ✅ Confirmed `hash(x)` and `id(x)` NOT implemented as standalone functions in Sharpy.Core
+9. ✅ Verified PropertyDef AST node does NOT exist (properties NOT supported)
+10. ✅ Documented full TokenType list with 115 token types
+
 ### COMPLETED IN AUDIT #3 (December 3, 2025)
 1. ✅ Verified TokenType keywords present/missing in Lexer
 2. ✅ Verified AST node properties for loop-else, try-else, generic functions
@@ -1061,3 +1073,335 @@ The following sections from `sharpy_language_reference_v1.md` have NOT been full
 | `async` | v1.0 Async | ❌ Not in TokenType |
 | `await` | v1.0 Async | ❌ Not in TokenType |
 | `property` | v0.9 Properties | ❌ Not in TokenType |
+
+---
+
+## AUDIT #5 FINDINGS: Language Reference Cross-Check
+
+### v0.1 Lexical Structure — VERIFIED COMPLETE
+
+| Feature | Spec Section | Implementation | Status |
+|---------|--------------|----------------|--------|
+| UTF-8 source files | Lexical Structure | ✅ .NET handles | ✅ |
+| 4-space indentation | Line Structure | ✅ Lexer INDENT/DEDENT | ✅ |
+| Tabs not allowed | Line Structure | ✅ Enforced | ✅ |
+| Single-line comments `#` | Comments | ✅ TokenType.Comment | ✅ |
+| Identifier syntax | Identifiers | ✅ TokenType.Identifier | ✅ |
+| Backtick escaping | Literal Names | ✅ TokenType.Backtick | ✅ |
+| Line continuation `\` | Physical vs Logical Lines | ✅ TokenType.Backslash | ✅ |
+| Implicit continuation (brackets) | Physical vs Logical Lines | ✅ Lexer handles | ✅ |
+| Newline significance | Newline Significance | ✅ TokenType.Newline | ✅ |
+
+### v0.1 Keywords — VERIFIED STATUS
+
+| Keyword | Spec | TokenType | Implementation |
+|---------|------|-----------|----------------|
+| `and`, `or`, `not`, `is` | Hard Keywords | ✅ Present | ✅ Complete |
+| `as` | Hard Keywords | ✅ TokenType.As | ✅ Complete |
+| `assert` | Hard Keywords | ✅ TokenType.Assert | ✅ Complete |
+| `break`, `continue` | Hard Keywords | ✅ Present | ✅ Complete |
+| `class` | Hard Keywords | ✅ TokenType.Class | ✅ Complete |
+| `const` | Hard Keywords | ✅ TokenType.Const | ✅ Complete |
+| `def` | Hard Keywords | ✅ TokenType.Def | ✅ Complete |
+| `elif`, `else`, `if` | Hard Keywords | ✅ Present | ✅ Complete |
+| `except`, `finally`, `try` | Hard Keywords | ✅ Present | ✅ Complete |
+| `for`, `while`, `in` | Hard Keywords | ✅ Present | ✅ Complete |
+| `from`, `import` | Hard Keywords | ✅ Present | ✅ Complete |
+| `lambda` | Hard Keywords | ✅ TokenType.Lambda | ✅ Complete (v0.4) |
+| `pass` | Hard Keywords | ✅ TokenType.Pass | ✅ Complete |
+| `raise` | Hard Keywords | ✅ TokenType.Raise | ✅ Complete |
+| `return` | Hard Keywords | ✅ TokenType.Return | ✅ Complete |
+| `True`, `False`, `None` | Hard Keywords | ✅ Present | ✅ Complete |
+| `auto` | Hard Keywords (v0.8) | ✅ TokenType.Auto | ⚠️ Token only |
+| `case` | Hard Keywords (v0.7) | ❌ Missing | ❌ Not Started |
+| `defer` | Hard Keywords (v1.0) | ❌ Missing | ❌ Not Started |
+| `enum` | Hard Keywords (v0.5) | ✅ TokenType.Enum | ✅ Complete |
+| `event` | Hard Keywords (v1.0) | ❌ Missing | ❌ Not Started |
+| `interface` | Hard Keywords (v0.3) | ✅ TokenType.Interface | ✅ Complete |
+| `match` | Hard Keywords (v0.7) | ❌ Missing | ❌ Not Started |
+| `property` | Hard Keywords (v0.9) | ❌ Missing | ❌ Not Started |
+| `struct` | Hard Keywords (v0.3) | ✅ TokenType.Struct | ✅ Complete |
+| `type` | Hard Keywords (v0.8) | ❌ Missing | ❌ Not Started |
+| `with` | Hard Keywords (v1.0) | ✅ TokenType.With | ⚠️ Token only |
+
+### v0.1 Literals — VERIFIED COMPLETE
+
+| Literal | Spec | Implementation | Status |
+|---------|------|----------------|--------|
+| Integer `42`, `1_000` | Integer Literals | ✅ TokenType.Integer | ✅ |
+| Integer suffixes `L`, `u`, `UL` | Integer Literals | ✅ Parsed | ✅ |
+| Float `3.14`, `0.5` | Float Literals | ✅ TokenType.Float | ✅ |
+| Float suffixes `f`, `d`, `m` | Float Literals | ✅ Parsed | ✅ |
+| String single/double quotes | String Literals | ✅ TokenType.String | ✅ |
+| Multi-line string `"""` | String Literals | ✅ Parsed | ✅ |
+| Raw string `r"..."` | Raw Strings | ✅ TokenType.RawString | ✅ |
+| Boolean `True`, `False` | Boolean Literals | ✅ TokenType.True/False | ✅ |
+| None literal | None Literal | ✅ TokenType.None | ✅ |
+| Ellipsis `...` | Special Literals | ✅ TokenType.Ellipsis | ✅ |
+| Empty set `{/}` | Special Literals | ✅ Parsed | ✅ |
+
+### v0.6 Extended Literals — VERIFIED COMPLETE
+
+| Literal | Spec | Implementation | Status |
+|---------|------|----------------|--------|
+| Binary `0b1010` | Extended Numeric | ✅ Lexer parses | ✅ |
+| Hexadecimal `0xFF` | Extended Numeric | ✅ Lexer parses | ✅ |
+| Octal `0o755` | Extended Numeric | ✅ Lexer parses → decimal | ✅ |
+| Scientific `6.022e23` | Extended Numeric | ✅ Lexer parses | ✅ |
+| Underscores `1_000_000` | Extended Numeric | ✅ Lexer strips | ✅ |
+
+### v0.6 F-Strings — VERIFIED COMPLETE
+
+| Feature | Spec | Implementation | Status |
+|---------|------|----------------|--------|
+| Basic f-string `f"...{x}..."` | F-Strings | ✅ FString tokens | ✅ |
+| Expressions in f-string | F-Strings | ✅ FStringExprStart/End | ✅ |
+| Format specifiers `{x:.2f}` | F-Strings | ✅ FStringFormatSpec | ✅ |
+| Multi-line f-string | F-Strings | ✅ Supported | ✅ |
+
+### v0.1 Built-in Types — VERIFIED COMPLETE
+
+| Type | Spec | TypeMapper | Status |
+|------|------|------------|--------|
+| `int` → `System.Int32` | Built-in Types | ✅ | ✅ |
+| `long` → `System.Int64` | Built-in Types | ✅ | ✅ |
+| `short` → `System.Int16` | Built-in Types | ✅ | ✅ |
+| `byte` → `System.Byte` | Built-in Types | ✅ | ✅ |
+| `uint` → `System.UInt32` | Built-in Types | ✅ | ✅ |
+| `ulong` → `System.UInt64` | Built-in Types | ✅ | ✅ |
+| `ushort` → `System.UInt16` | Built-in Types | ✅ | ✅ |
+| `sbyte` → `System.SByte` | Built-in Types | ✅ | ✅ |
+| `float` → `System.Single` | Built-in Types | ✅ | ✅ |
+| `double` → `System.Double` | Built-in Types | ✅ | ✅ |
+| `decimal` → `System.Decimal` | Built-in Types | ✅ | ✅ |
+| `bool` → `System.Boolean` | Built-in Types | ✅ | ✅ |
+| `str` → `System.String` | Built-in Types | ✅ | ✅ |
+| `char` → `System.Char` | Built-in Types | ✅ | ✅ |
+| `object` → `System.Object` | Built-in Types | ✅ | ✅ |
+
+### v0.1 Operators — VERIFIED COMPLETE
+
+| Operator | Spec | TokenType | CodeGen | Status |
+|----------|------|-----------|---------|--------|
+| `+`, `-`, `*`, `/` | Arithmetic | ✅ | ✅ | ✅ |
+| `//` (floor div) | Arithmetic | ✅ DoubleSlash | ✅ → `(int)(x/y)` | ✅ |
+| `%` (modulo) | Arithmetic | ✅ Percent | ✅ | ✅ |
+| `**` (power) | Arithmetic | ✅ DoubleStar | ✅ → `Math.Pow()` | ✅ |
+| `==`, `!=`, `<`, `>`, `<=`, `>=` | Comparison | ✅ | ✅ | ✅ |
+| `and`, `or`, `not` | Logical | ✅ Keywords | ✅ → `&&`, `\|\|`, `!` | ✅ |
+| `&`, `\|`, `^`, `~`, `<<`, `>>` | Bitwise | ✅ | ✅ | ✅ |
+| `=`, `+=`, `-=`, etc. | Assignment | ✅ | ✅ | ✅ |
+| `is`, `is not` | Identity | ✅ | ✅ | ✅ |
+| `in`, `not in` | Membership | ✅ | ✅ → `.Contains()` | ✅ |
+
+### v0.2 Nullable Types — VERIFIED COMPLETE
+
+| Feature | Spec | Implementation | Status |
+|---------|------|----------------|--------|
+| `T?` annotation | Nullable Types | ✅ NullableType AST | ✅ |
+| `?.` null-conditional | Null-Conditional | ✅ TokenType.NullConditional | ✅ |
+| `??` null-coalescing | Null-Coalescing | ✅ TokenType.NullCoalesce | ✅ |
+| `is None` narrowing | Type Narrowing | ✅ TypeChecker._narrowedTypes | ✅ |
+| `isinstance()` narrowing | Type Narrowing | ✅ TypeChecker handles | ✅ |
+
+### v0.4 Generic Functions — NOT IMPLEMENTED
+
+Per Language Reference (lines 1650-1660):
+```python
+def identity[T](value: T) -> T:
+    return value
+```
+
+**Implementation Status:**
+- ❌ `FunctionDef` AST has NO `TypeParameters` property
+- ❌ Parser cannot parse `def foo[T](...)`
+- ❌ CodeGen has no support for generic methods
+
+**Required Changes:**
+1. Add `TypeParameters` property to `FunctionDef` record
+2. Update `Parser.ParseFunctionDef()` to parse `[T, U, ...]` after function name
+3. Update `RoslynEmitter.GenerateMethod()` to emit type parameters
+4. Update semantic analysis to handle generic function type resolution
+
+### v0.4 Type Constraints — NOT IMPLEMENTED
+
+Per Language Reference (lines 1680-1700):
+```python
+def find_max[T: IComparable[T]](items: list[T]) -> T:
+    ...
+```
+
+**Implementation Status:**
+- ❌ No constraint syntax in parser
+- ❌ No `TypeConstraint` AST node
+- ❌ No constraint validation in semantic analysis
+
+### v0.7 Pattern Matching — NOT IMPLEMENTED
+
+Per Language Reference (lines 1880-1950):
+- Missing `TokenType.Match` and `TokenType.Case`
+- No `MatchStatement` or `CaseClause` AST nodes
+- No pattern AST nodes
+
+### v0.8 Type Aliases — NOT IMPLEMENTED
+
+Per Language Reference (lines 1960-2000):
+```python
+type UserId = int
+type Callback[T] = (T) -> None
+```
+
+**Implementation Status:**
+- ❌ Missing `TokenType.Type`
+- ❌ No `TypeAliasStatement` AST node
+
+### v0.8 Tagged Unions — NOT IMPLEMENTED
+
+Per Language Reference (lines 2000-2100):
+```python
+enum Result[T, E]:
+    case Ok(value: T)
+    case Err(error: E)
+```
+
+**Implementation Status:**
+- ❌ Requires type alias foundation
+- ❌ No case-with-data enum support
+
+### v0.9 Walrus Operator — NOT IMPLEMENTED
+
+Per Language Reference (lines 2150-2180):
+```python
+if (match := pattern.search(text)) is not None:
+    ...
+```
+
+**Implementation Status:**
+- ❌ No `ColonEquals` TokenType
+- ❌ No `AssignmentExpression` AST node (Sharpy-specific)
+- ❌ Parser doesn't recognize `:=`
+
+### v0.9 Properties — NOT IMPLEMENTED
+
+Per Language Reference (lines 2190-2250):
+```python
+class Temperature:
+    property celsius(self) -> double:
+        return self.__celsius
+```
+
+**Implementation Status:**
+- ❌ No `TokenType.Property`
+- ❌ No `PropertyDef` AST node
+- ❌ Parser doesn't recognize `property` keyword
+
+### v1.0 Context Managers — PARTIAL
+
+Per Language Reference (lines 2260-2280):
+```python
+with open("file.txt", "r") as f:
+    content = f.read()
+```
+
+**Implementation Status:**
+- ✅ `TokenType.With` exists
+- ❌ No `WithStatement` AST node
+- ❌ Parser doesn't parse `with` statement
+
+### v1.0 Defer Statement — NOT IMPLEMENTED
+
+Per Language Reference (lines 2290-2350):
+```python
+def process_file(path: str) -> str:
+    file = open(path, "r")
+    defer:
+        file.close()
+```
+
+**Implementation Status:**
+- ❌ No `TokenType.Defer`
+- ❌ No `DeferStatement` AST node
+
+### v1.0 Events — NOT IMPLEMENTED
+
+Per Language Reference (lines 2360-2430):
+```python
+class Button:
+    event clicked: (object, EventArgs) -> None
+```
+
+**Implementation Status:**
+- ❌ No `TokenType.Event`
+- ❌ No `EventDeclaration` AST node
+
+### v1.0 Async/Await — NOT IMPLEMENTED
+
+Per Language Reference (lines 2440-2500):
+```python
+async def fetch_data(url: str) -> str:
+    await asyncio.sleep(1.0)
+```
+
+**Implementation Status:**
+- ❌ No `TokenType.Async`, `TokenType.Await`
+- ❌ No async-related AST nodes
+
+### Standard Library Gaps — VERIFIED
+
+| Function | Spec | Sharpy.Core | Status |
+|----------|------|-------------|--------|
+| `hash(x)` | Object Functions | ❌ No standalone | ❌ NOT IMPLEMENTED |
+| `id(x)` | Object Functions | ❌ No standalone | ❌ NOT IMPLEMENTED |
+| `open()` | I/O Functions | ❌ Not found | ❌ NOT IMPLEMENTED |
+| `input(prompt)` | I/O Functions | ✅ Input.cs | ✅ |
+
+---
+
+## TODO: Next Iteration Actions
+
+### HIGHEST PRIORITY — For Next Audit Session
+
+1. **Verify Operator Precedence Implementation**
+   - Cross-check Language Reference precedence table (lines 700-750) against Parser.cs
+   - Verify `GenerateExpression` respects precedence
+   - Test edge cases: `a or b and c`, `a ** b ** c` (right-associative)
+
+2. **Verify Default Parameter Behavior**
+   - Language Reference warns about mutable defaults (lines 1200-1250)
+   - Test: Does Sharpy evaluate defaults at definition time or call time?
+   - Document actual behavior vs Python behavior
+
+3. **Audit .NET Interop Features**
+   - Test importing .NET types: `from system.collections.generic import List`
+   - Test calling .NET methods
+   - Test .NET property access (Language Reference lines 2540-2560)
+   - Test extension methods (LINQ)
+
+4. **Complete Feature Coverage Matrix**
+   - For each v0.1-v0.6 feature, list:
+     - Lexer support (TokenType)
+     - Parser support (AST node)
+     - Semantic support (TypeChecker method)
+     - CodeGen support (RoslynEmitter method)
+     - Integration test file
+
+5. **Document Remaining Language Reference Sections**
+   The following sections have NOT been audited:
+   - **Comprehensions** (lines 2100-2150): Verify nested comprehension behavior
+   - **Naming Conventions** (lines 2560-2590): Verify `snake_case` → `PascalCase`
+   - **Program Entry Point** (lines 2590-2610): Verify `main()` and top-level
+   - **v2.0+ Deferred Features** (lines 2612-2620): Document explicitly
+
+### FILES TO REVIEW IN NEXT AUDIT
+
+**For Operator Precedence Verification:**
+- `src/Sharpy.Compiler/Parser/Parser.cs` — `ParseExpression()` precedence climbing
+- `src/Sharpy.Compiler/Parser/Precedence.cs` — If exists
+
+**For Default Parameter Verification:**
+- `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` — `GenerateMethod()` default handling
+- `src/Sharpy.Compiler/Semantic/TypeChecker.cs` — Default parameter type checking
+
+**For .NET Interop Testing:**
+- Create test file: `samples/dotnet_interop_test.spy`
+- Test: Import System.Collections.Generic.List, call methods, access properties
