@@ -2,9 +2,9 @@
 
 This document tracks which features from the [Sharpy Language Reference v1](../specs/sharpy_language_reference_v1.md) are implemented in the compiler. Use this as a reference to identify remaining work and generate tasks for implementation.
 
-**Last Updated**: December 3, 2025 (Audit #5)
+**Last Updated**: December 3, 2025 (Audit #6)
 **Verified Against**: `mainline` branch
-**Audit Scope**: Keywords, AST nodes, CodeGen NotImplementedException locations, Semantic analysis, Standard library, Test coverage mapping, TokenType verification, Language Reference cross-check
+**Audit Scope**: Keywords, AST nodes, CodeGen NotImplementedException locations, Semantic analysis, Standard library, Test coverage mapping, TokenType verification, Language Reference cross-check, Standard library builtins verification
 
 ---
 
@@ -478,7 +478,7 @@ This document tracks which features from the [Sharpy Language Reference v1](../s
 | `print(x)` | `Builtins/Exports.cs` | ✅ `Print()` with `sep`, `end`, `file`, `flush` options | ✅ |
 | `len(x)` | `Builtins/Exports.cs` | ✅ `Len()` — calls `__len__` if defined, else `.Count`/`.Length` | ✅ |
 | `str(x)` | `Builtins/Exports.cs` | ✅ `Str()` — calls `__str__` if defined, else `.ToString()` | ✅ |
-| `repr(x)` | - | ❌ Needs `Repr()` — should call `__repr__`, fallback to `__str__`/`.ToString()` | ❌ NOT IMPLEMENTED |
+| `repr(x)` | `Repr.cs` | ✅ `Repr()` — calls `__Repr__` if defined, else `.ToString()` | ✅ |
 | `range(n)` | `Range.cs` | ✅ `RangeIterator` with `start`, `stop`, `step` | ✅ |
 | `enumerate(iter)` | `Enumerate.cs` | ✅ `EnumerateIterator<T>` with `start` parameter | ✅ |
 | `zip(a, b)` | `Zip.cs` | ✅ `ZipIterator<T1, T2>` and 3-arity version | ✅ |
@@ -498,8 +498,8 @@ This document tracks which features from the [Sharpy Language Reference v1](../s
 | `isinstance(x, T)` | `Isinstance.cs` | ✅ Generic and runtime type checking | ✅ |
 | `type(x)` | `Type.cs` | ✅ Returns runtime type | ✅ |
 | `input(prompt)` | `Input.cs` | ✅ With optional prompt | ✅ |
-| `hash(x)` | - | ❌ Needs `Hash()` — should call `__hash__` if defined, else `.GetHashCode()` | ❌ NOT IMPLEMENTED |
-| `id(x)` | - | ❌ Needs `Id()` — uses `RuntimeHelpers.GetHashCode()` for object identity | ❌ NOT IMPLEMENTED |
+| `hash(x)` | - | ❌ Needs `Hash()` — interfaces exist (`IHashable.__Hash__`) but no standalone function | ❌ NOT IMPLEMENTED |
+| `id(x)` | - | ❌ Needs `Id()` — interface exists (`IIdentifiable.__Id__`) but no standalone function | ❌ NOT IMPLEMENTED |
 
 ### Pythonic Collections
 
@@ -687,10 +687,11 @@ Assignment expressions are NOT supported in lexer, parser, or codegen.
 - [ ] Add integration tests for dunder invocation validation
 
 #### 1.8 Built-in Functions with Dunder Dispatch (v0.1)
-- [ ] **Implement `repr(x)`**: Add `Repr()` function that calls `__repr__` if defined, else `__str__`, else `.ToString()`
-- [ ] **Update `hash(x)`**: Add `Hash()` function that calls `__hash__` if defined, else `.GetHashCode()`
-- [ ] **Verify `str(x)`**: Ensure `Str()` calls `__str__` if defined for Sharpy types
-- [ ] **Verify `len(x)`**: Ensure `Len()` calls `__len__` if defined for Sharpy types
+- [ ] **Implement `hash(x)`**: Add `Hash()` function to `Sharpy.Core/Builtins/Exports.cs` that calls `IHashable.__Hash__` if implemented, else `.GetHashCode()`
+- [ ] **Implement `id(x)`**: Add `Id()` function to `Sharpy.Core/Builtins/Exports.cs` that calls `IIdentifiable.__Id__` if implemented, else `RuntimeHelpers.GetHashCode()`
+- [x] **`repr(x)` IMPLEMENTED**: `Repr()` exists in `Repr.cs` — calls `__Repr__` if defined, else `.ToString()`
+- [x] **`str(x)` IMPLEMENTED**: Verify `Str()` calls `__str__` if defined for Sharpy types
+- [x] **`len(x)` IMPLEMENTED**: `Len()` exists in `Builtins/Exports.cs`
 - [ ] Add integration tests for dunder dispatch in built-in functions
 
 ### PRIORITY 2: v0.9 Features
@@ -753,9 +754,9 @@ Assignment expressions are NOT supported in lexer, parser, or codegen.
 
 ### PRIORITY 4: Standard Library Gaps
 
-- [ ] **Implement `repr(x)`**: Add global `Repr()` function that calls `__repr__` if defined, else `__str__`, else `.ToString()`
-- [ ] **Implement `hash(x)`**: Add global `Hash()` function that calls `__hash__` if defined, else `.GetHashCode()`
-- [ ] **Implement `id(x)`**: Add global `Id()` function using `RuntimeHelpers.GetHashCode()` for object identity
+- [ ] **Implement `hash(x)`**: Add global `Hash()` function to `Sharpy.Core/Builtins/Exports.cs` that calls `IHashable.__Hash__` if implemented, else `.GetHashCode()`
+- [ ] **Implement `id(x)`**: Add global `Id()` function to `Sharpy.Core/Builtins/Exports.cs` that calls `IIdentifiable.__Id__` if implemented, else `RuntimeHelpers.GetHashCode()` for object identity
+- [x] **`repr(x)` IMPLEMENTED**: Already exists in `Repr.cs`
 - [ ] **Enum `.name` property**: Add extension method or codegen support for `Color.RED.name`
 - [ ] **Enum `.value` property**: Add extension method or codegen support for `Color.RED.value`
 - [ ] **String enum static class**: Update codegen to emit static class pattern for string-valued enums
@@ -910,18 +911,19 @@ The following sections still require verification and documentation in a future 
 ## Summary for Task Generation
 
 ### ✅ Complete (No Action Required)
-- **v0.1**: Core Language — all features except `try ... else:` clause
+- **v0.1**: Core Language — all features except `try ... else:` clause and dunder invocation validation
 - **v0.2**: Nullability & Collections — all features except star unpacking (`*rest`)
 - **v0.3**: Structs, Interfaces, OOP — decorators `@virtual`/`@override`/`@abstract`/`@sealed` work
 - **v0.5**: Enums (integer) & Operator Overloading — core features work
 - **v0.6**: F-strings, extended numeric literals, comparison chaining
-- **Standard Library**: Core builtins (`print`, `len`, `range`, `enumerate`, `zip`, `map`, `filter`, `sorted`, `reversed`, `min`, `max`, `sum`, `all`, `any`, `abs`, `pow`, `round`, `divmod`, `isinstance`, `type`, `input`)
+- **Standard Library**: Core builtins (`print`, `len`, `range`, `enumerate`, `zip`, `map`, `filter`, `sorted`, `reversed`, `min`, `max`, `sum`, `all`, `any`, `abs`, `pow`, `round`, `divmod`, `isinstance`, `type`, `input`, **`repr`**)
 
 ### ⚠️ Needs Completion (Prioritize for v1.0 Release)
 
 | Version | Feature | Lexer | Parser | Semantic | CodeGen | Tests |
 |---------|---------|-------|--------|----------|---------|-------|
 | v0.1 | `try ... else:` clause | ✅ | ❌ | ❌ | ❌ | ❌ |
+| v0.1 | Dunder invocation validation | - | - | ❌ | - | ❌ |
 | v0.2 | Star unpacking `*rest` | ❌ | ❌ | ❌ | ❌ | ❌ |
 | v0.3 | User function overloading | ✅ | ✅ | ❌ | ✅ | ❌ |
 | v0.4 | Generic functions `def foo[T]` | ✅ | ❌ | ❌ | ❌ | ❌ |
@@ -952,6 +954,17 @@ The following sections still require verification and documentation in a future 
 ---
 
 ## Next Documentation Iteration
+
+### COMPLETED IN AUDIT #6 (December 3, 2025)
+1. ✅ Verified `repr(x)` IS implemented in `Repr.cs` — corrected status from NOT IMPLEMENTED to IMPLEMENTED
+2. ✅ Verified `hash(x)` is NOT implemented as standalone function (only `IHashable.__Hash__` interface exists)
+3. ✅ Verified `id(x)` is NOT implemented as standalone function (only `IIdentifiable.__Id__` interface exists)
+4. ✅ Re-verified AST nodes: `TryStatement`, `ForStatement`, `WhileStatement` all lack `ElseBody` property
+5. ✅ Verified integration test directory structure — identified 8 missing test files to create
+6. ✅ Updated TODO lists with corrected implementation status for `repr(x)`
+7. ✅ Updated Standard Library section with corrected `repr(x)` status
+8. ✅ Verified dunder invocation validation is NOT implemented in semantic analysis
+9. ✅ Documented integration test file inventory
 
 ### COMPLETED IN AUDIT #4 (December 3, 2025)
 1. ✅ Mapped all Integration test files to features covered
@@ -1394,10 +1407,48 @@ async def fetch_data(url: str) -> str:
 
 | Function | Spec | Sharpy.Core | Status |
 |----------|------|-------------|--------|
-| `hash(x)` | Object Functions | ❌ No standalone | ❌ NOT IMPLEMENTED |
-| `id(x)` | Object Functions | ❌ No standalone | ❌ NOT IMPLEMENTED |
+| `repr(x)` | Object Functions | ✅ `Repr.cs` | ✅ IMPLEMENTED |
+| `hash(x)` | Object Functions | ❌ No standalone function | ❌ NOT IMPLEMENTED |
+| `id(x)` | Object Functions | ❌ No standalone function | ❌ NOT IMPLEMENTED |
 | `open()` | I/O Functions | ❌ Not found | ❌ NOT IMPLEMENTED |
 | `input(prompt)` | I/O Functions | ✅ Input.cs | ✅ |
+
+---
+
+## AUDIT #6 FINDINGS (December 3, 2025)
+
+### Standard Library Builtins — VERIFIED IN CODE
+
+| Function | Location | Implementation Details | Status |
+|----------|----------|------------------------|--------|
+| `repr(x)` | `Repr.cs` | Two overloads: 1) For `Sharpy.Object` - calls `__Repr__()` 2) For `object` - falls back to `.ToString()` | ✅ IMPLEMENTED |
+| `hash(x)` | NOT FOUND | Interface `IHashable.__Hash__()` exists but no standalone `Hash()` function | ❌ NOT IMPLEMENTED |
+| `id(x)` | NOT FOUND | Interface `IIdentifiable.__Id__()` exists but no standalone `Id()` function | ❌ NOT IMPLEMENTED |
+
+### Integration Test Files — VERIFIED
+
+| Test File | Location | Features Covered |
+|-----------|----------|------------------|
+| `BasicProgramTests.cs` | `Integration/` | Hello world, functions, fibonacci, arithmetic |
+| `ControlFlowTests.cs` | `Integration/` | if/elif/else, while, for, break, continue |
+| `FunctionTests.cs` | `Integration/` | Functions, default params, recursive calls |
+| `CompilerIntegrationTests.cs` | `Integration/` | Module loading, builtins, references |
+| `ThirdPartyModuleTests.cs` | `Integration/` | External module import |
+| `ModuleDiscoveryWorkflowTests.cs` | `Integration/` | Module discovery |
+| `VariableAssignmentNegativeTests.cs` | `Integration/` | Variable assignment error cases |
+
+### Missing Integration Test Files (Need to Create)
+
+| Test File | Features to Cover | Priority |
+|-----------|-------------------|----------|
+| `StructTests.cs` | Struct definition, fields, methods, constructor | HIGH |
+| `InterfaceTests.cs` | Interface definition, implementation | HIGH |
+| `ExceptionTests.cs` | try/except/finally, raise statement | HIGH |
+| `GenericTests.cs` | Generic class instantiation | HIGH |
+| `SlicingTests.cs` | Slicing with step, negative indices | MEDIUM |
+| `CollectionLiteralTests.cs` | Empty set `{/}`, comparison chaining | MEDIUM |
+| `EnumTests.cs` | Integer enums, enum usage | MEDIUM |
+| `DecoratorTests.cs` | @static, @override, @virtual, @abstract | MEDIUM |
 
 ---
 
@@ -1449,3 +1500,113 @@ async def fetch_data(url: str) -> str:
 **For .NET Interop Testing:**
 - Create test file: `samples/dotnet_interop_test.spy`
 - Test: Import System.Collections.Generic.List, call methods, access properties
+
+---
+
+## CONTINUATION GUIDE FOR NEXT ITERATION
+
+This section is for the next person continuing the documentation process.
+
+### What Has Been Verified (Do NOT Re-Verify)
+
+The following have been **confirmed in code** and should NOT need re-verification:
+
+1. **TokenTypes Present**: `def`, `class`, `struct`, `interface`, `enum`, `if`, `elif`, `else`, `while`, `for`, `in`, `return`, `break`, `continue`, `pass`, `try`, `except`, `finally`, `raise`, `assert`, `import`, `from`, `as`, `and`, `or`, `not`, `is`, `const`, `lambda`, `auto`, `True`, `False`, `None`, `with`
+
+2. **TokenTypes NOT Present**: `match`, `case`, `type`, `defer`, `event`, `async`, `await`, `property`
+
+3. **AST Nodes Verified**:
+   - `FunctionDef` — NO `TypeParameters` (generic functions NOT supported)
+   - `ClassDef`, `StructDef`, `InterfaceDef` — HAVE `TypeParameters`
+   - `TryStatement`, `ForStatement`, `WhileStatement` — NO `ElseBody`
+   - No `ColonEquals` token (walrus operator NOT supported)
+   - No `StarredExpression` node (star unpacking NOT supported)
+   - No `PropertyDef` node (properties NOT supported)
+
+4. **Standard Library Verified**:
+   - `repr(x)` — ✅ IMPLEMENTED in `Repr.cs`
+   - `hash(x)` — ❌ NOT IMPLEMENTED (interface exists)
+   - `id(x)` — ❌ NOT IMPLEMENTED (interface exists)
+
+### What Still Needs To Be Done
+
+#### IMMEDIATE (Before v1.0 Release)
+
+1. **Implement missing standard library functions:**
+   ```csharp
+   // In Sharpy.Core/Builtins/Exports.cs or new file
+   public static int Hash(IHashable obj) => obj.__Hash__();
+   public static int Hash(object obj) => obj.GetHashCode();
+
+   public static int Id(IIdentifiable obj) => obj.__Id__();
+   public static int Id(object obj) => RuntimeHelpers.GetHashCode(obj);
+   ```
+
+2. **Create missing integration tests** (see "Missing Integration Test Files" table above)
+
+3. **Implement remaining v0.1-v0.6 features** (see "PRIORITY 1" TODO section)
+
+#### DOCUMENTATION STILL NEEDED
+
+The following Language Reference sections have NOT been audited:
+
+| Section | Lines | What to Verify |
+|---------|-------|----------------|
+| Expressions | 800-900 | All expression types parse and codegen correctly |
+| Operator Precedence | 700-800 | Precedence matches C# output |
+| Default Parameter Evaluation | 1200-1250 | Mutable default behavior |
+| .NET Interop | 2500-2620 | Actual .NET type usage |
+| Module Resolution | 1100-1150 | snake_case → PascalCase transformation |
+| Comprehensions | 2100-2150 | Nested comprehension behavior |
+| Naming Conventions | 2560-2590 | Full transformation rules |
+| Program Entry Point | 2590-2610 | main() and top-level statements |
+
+#### HOW TO CONTINUE THIS DOCUMENT
+
+1. **Pick a section from "DOCUMENTATION STILL NEEDED" above**
+2. **Read the corresponding Language Reference lines**
+3. **Search the codebase for implementation**:
+   ```bash
+   # Example: Verify operator precedence
+   grep -r "Precedence\|precedence" src/Sharpy.Compiler/Parser/
+   ```
+4. **Document findings in a new AUDIT section**
+5. **Update TODO lists and Summary tables**
+6. **Increment the audit number in the header**
+
+### Quick Reference: Key Files
+
+| Component | File Path | Purpose |
+|-----------|-----------|---------|
+| Lexer tokens | `src/Sharpy.Compiler/Lexer/Token.cs` | All TokenTypes |
+| AST nodes | `src/Sharpy.Compiler/Parser/Ast/Statement.cs` | Statement AST |
+| AST expressions | `src/Sharpy.Compiler/Parser/Ast/Expression.cs` | Expression AST |
+| Parser | `src/Sharpy.Compiler/Parser/Parser.cs` | Main parser |
+| Type checker | `src/Sharpy.Compiler/Semantic/TypeChecker.cs` | Type validation |
+| Name resolver | `src/Sharpy.Compiler/Semantic/NameResolver.cs` | Symbol resolution |
+| Code generator | `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` | C# generation |
+| Type mapper | `src/Sharpy.Compiler/CodeGen/TypeMapper.cs` | Type translation |
+| Standard library | `src/Sharpy.Core/` | Runtime builtins |
+| Integration tests | `src/Sharpy.Compiler.Tests/Integration/` | End-to-end tests |
+
+### Commands for Verification
+
+```bash
+# Find NotImplementedException locations
+grep -rn "NotImplementedException" src/Sharpy.Compiler/
+
+# Check for specific token type
+grep -rn "TokenType.Match" src/Sharpy.Compiler/
+
+# Find AST node properties
+grep -A5 "record FunctionDef" src/Sharpy.Compiler/Parser/Ast/Statement.cs
+
+# Search for specific feature implementation
+grep -rn "ElseBody\|else.*body" src/Sharpy.Compiler/
+
+# Run specific test file
+dotnet test --filter "FullyQualifiedName~BasicProgram"
+
+# Run all tests
+dotnet test
+```
