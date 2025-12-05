@@ -2,9 +2,9 @@
 
 This document tracks which features from the [Sharpy Language Reference v1](../specs/sharpy_language_reference_v1.md) are implemented in the compiler. Use this as a reference to identify remaining work and generate tasks for implementation.
 
-**Last Updated**: December 3, 2025 (Audit #7)
+**Last Updated**: December 4, 2025 (Audit #8)
 **Verified Against**: `mainline` branch
-**Audit Scope**: Keywords, AST nodes, CodeGen NotImplementedException locations, Semantic analysis, Standard library, Test coverage mapping, TokenType verification, Language Reference cross-check, Standard library builtins verification, Operator precedence, Naming conventions, Type casting syntax
+**Audit Scope**: Keywords, AST nodes, CodeGen NotImplementedException locations, Semantic analysis, Standard library, Test coverage mapping, TokenType verification, Language Reference cross-check, Standard library builtins verification, Operator precedence, Naming conventions, Type casting syntax, Comprehension scoping, Dunder invocation rules audit
 
 ---
 
@@ -995,6 +995,16 @@ The following sections still require verification and documentation in a future 
 
 ## Next Documentation Iteration
 
+### COMPLETED IN AUDIT #8 (December 4, 2025)
+1. ✅ Verified comprehension variable scoping — uses `EnterScope()` properly in TypeChecker
+2. ✅ Confirmed dunder invocation validation is NOT implemented — explicit dunder calls are permitted
+3. ✅ Documented type casting syntax discrepancy (`cast[T](x)` spec vs `value as T` implementation)
+4. ✅ Re-verified ForStatement, WhileStatement, TryStatement lack ElseBody property
+5. ✅ Re-verified FunctionDef lacks TypeParameters property (generic functions NOT supported)
+6. ✅ Re-verified `hash(x)`, `id(x)`, `open()` are NOT implemented as standalone functions
+7. ✅ Created complete TokenType inventory (present vs missing for v0.7-v1.0 features)
+8. ✅ Updated TODO/NEXT ITERATION sections with audit findings
+
 ### COMPLETED IN AUDIT #6 (December 3, 2025)
 1. ✅ Verified `repr(x)` IS implemented in `Repr.cs` — corrected status from NOT IMPLEMENTED to IMPLEMENTED
 2. ✅ Verified `hash(x)` is NOT implemented as standalone function (only `IHashable.__Hash__` interface exists)
@@ -1076,10 +1086,11 @@ Priority order:
 #### 4. Language Reference Section Verification
 The following sections from `sharpy_language_reference_v1.md` have NOT been fully audited against implementation:
 - [ ] **Expressions** (lines 800-900): Verify all expression types parse and codegen correctly
-- [ ] **Operator Precedence** (lines 700-800): Verify precedence matches C# output
+- ~~[ ] **Operator Precedence** (lines 700-800): Verify precedence matches C# output~~ ✅ Done in Audit #7
 - [ ] **Default Parameter Evaluation** (lines 1200-1250): Verify mutable default behavior
 - [ ] **.NET Interop** (lines 2500-2620): Test actual .NET type usage scenarios
-- [ ] **Module Resolution** (lines 1100-1150): Verify snake_case → PascalCase transformation
+- ~~[ ] **Module Resolution** (lines 1100-1150): Verify snake_case → PascalCase transformation~~ ✅ Done in Audit #7
+- ~~[ ] **Comprehensions** (lines 2300-2400): Verify variable scoping~~ ✅ Done in Audit #8
 
 #### 5. Standard Library Completeness
 - [ ] Audit `Sharpy.Core` against Python builtins list in language reference
@@ -1575,6 +1586,101 @@ Per Language Reference (lines 2880-2917), the following are explicitly deferred:
 
 ---
 
+## AUDIT #8 FINDINGS (December 4, 2025)
+
+### Comprehension Variable Scoping — VERIFIED COMPLETE
+
+Per Language Reference (lines 2300-2400), comprehension variables should be block-scoped and not leak to outer scope.
+
+**Verified in `TypeChecker.cs`:**
+- `CheckListComprehension()` (line 1389): `_symbolTable.EnterScope("list-comprehension")`
+- `CheckSetComprehension()` (line 1455): `_symbolTable.EnterScope("set-comprehension")`
+- `CheckDictComprehension()`: Uses similar scope management
+
+**Status**: ✅ COMPLETE — comprehension variables are properly block-scoped.
+
+### Dunder Invocation Rules — VERIFIED NOT IMPLEMENTED
+
+Per Language Reference (lines 1830-1950), dunders should only be invocable via operators/built-in functions, with exceptions for `self.__dunder__()` within dunder bodies.
+
+**Searched semantic analysis:**
+- No explicit validation in `TypeChecker.cs` or `NameResolver.cs` that rejects `x.__eq__(y)` calls
+- No special handling for dunder method calls
+
+**Required for implementation:**
+1. Detect `MemberAccess` where member name matches dunder pattern (`__xyz__`)
+2. Check if call site is within a dunder method body (allowed for `self` and `super()`)
+3. Emit error for explicit dunder invocation outside allowed contexts
+
+**Status**: ❌ NOT IMPLEMENTED — explicit dunder calls are currently permitted.
+
+### Type Casting Syntax — VERIFIED DISCREPANCY
+
+| Aspect | Language Reference | Implementation | Status |
+|--------|-------------------|----------------|--------|
+| Syntax | `cast[T](value)` | `value as T` | ⚠️ MISMATCH |
+| Parser | - | `ParsePostfix()` handles `as` | ✅ Working |
+| AST | - | `TypeCast` record | ✅ Exists |
+| CodeGen | - | `GenerateTypeCast()` → `(Type)value` | ✅ Working |
+
+**Recommendation**: Either:
+1. Update Language Reference to document `value as T` syntax (easier)
+2. Add `cast[T](value)` syntax alongside existing (more work)
+
+### ForStatement/WhileStatement ElseBody — VERIFIED NOT IMPLEMENTED
+
+Per Language Reference (lines 1170-1190), `for...else:` and `while...else:` should be supported.
+
+**Verified in `Statement.cs`:**
+- `ForStatement` (line 136): Has `Target`, `Iterator`, `Body` — **NO ElseBody**
+- `WhileStatement` (line 127): Has `Test`, `Body` — **NO ElseBody**
+- `IfStatement` (line 105): **HAS ElseBody** (contrast)
+
+**Status**: ❌ NOT IMPLEMENTED — requires AST, Parser, and CodeGen changes.
+
+### TryStatement Else Clause — VERIFIED NOT IMPLEMENTED
+
+Per Language Reference (lines 1220-1240), `try...except...else...finally` should be supported.
+
+**Verified in `Statement.cs`:**
+- `TryStatement` (line 146): Has `Body`, `Handlers`, `FinallyBody` — **NO ElseBody**
+
+**Status**: ❌ NOT IMPLEMENTED — requires AST, Parser, and CodeGen changes.
+
+### Generic Functions — VERIFIED NOT IMPLEMENTED
+
+Per Language Reference (lines 1650-1660), `def identity[T](value: T) -> T:` should be supported.
+
+**Verified:**
+- `FunctionDef` record (line 173): Has `Name`, `Parameters`, `ReturnType`, `Body`, `Decorators`, `DocString` — **NO TypeParameters**
+- `ClassDef` record (line 188): **HAS TypeParameters** (contrast)
+
+**Status**: ❌ NOT IMPLEMENTED — requires AST, Parser, Semantic, and CodeGen changes.
+
+### Standard Library Functions — VERIFIED
+
+| Function | Interface | Standalone Function | Status |
+|----------|-----------|---------------------|--------|
+| `hash(x)` | `IHashable.__Hash__()` exists | ❌ No `Hash()` function in Exports | ❌ NOT IMPLEMENTED |
+| `id(x)` | `IIdentifiable.__Id__()` exists | ❌ No `Id()` function in Exports | ❌ NOT IMPLEMENTED |
+| `open()` | N/A | ❌ Not found in Sharpy.Core | ❌ NOT IMPLEMENTED |
+
+### TokenType Inventory — VERIFIED
+
+**Present (v0.1-v0.6 features):**
+`Integer`, `Float`, `String`, `RawString`, `FStringStart/Text/ExprStart/ExprEnd/FormatSpec/End`, `True`, `False`, `None`, `Identifier`, `Def`, `Class`, `Struct`, `Interface`, `Enum`, `If`, `Else`, `Elif`, `While`, `For`, `In`, `Return`, `Break`, `Continue`, `Pass`, `Try`, `Except`, `Finally`, `Raise`, `Assert`, `With`, `Import`, `From`, `As`, `Auto`, `Const`, `Lambda`, `And`, `Or`, `Not`, `Is`, all operators, `NullConditional` (`?.`), `NullCoalesce` (`??`), `Ellipsis` (`...`), `Backtick`
+
+**Missing (v0.7-v1.0 features):**
+- ❌ `Match`, `Case` — Pattern matching (v0.7)
+- ❌ `Type` — Type aliases (v0.8)
+- ❌ `Property` — Properties (v0.9)
+- ❌ `Defer` — Defer statement (v1.0)
+- ❌ `Event` — Events (v1.0)
+- ❌ `Async`, `Await` — Async programming (v1.0)
+- ❌ `ColonEquals` (`:=`) — Walrus operator (v0.9)
+
+---
+
 ## TODO: Next Iteration Actions
 
 ### HIGHEST PRIORITY — For Next Audit Session
@@ -1598,10 +1704,10 @@ Per Language Reference (lines 2880-2917), the following are explicitly deferred:
      - CodeGen support (RoslynEmitter method)
      - Integration test file
 
-4. **Document Remaining Language Reference Sections**
-   The following sections have NOT been audited:
-   - **Comprehensions** (lines 2300-2400): Verify variable scoping in comprehensions
-   - **Type Casting Syntax** (lines ~340): Resolve `cast[T](x)` vs `x as T` discrepancy
+4. **~~Document Remaining Language Reference Sections~~**
+   ~~The following sections have NOT been audited:~~
+   - ~~**Comprehensions** (lines 2300-2400): Verify variable scoping in comprehensions~~ **✅ DONE in Audit #8**
+   - **Type Casting Syntax** (lines ~340): ~~Resolve `cast[T](x)` vs `x as T` discrepancy~~ **Documented in Audit #8, decision needed**
 
 5. **Resolve Type Casting Syntax Discrepancy**
    - Language Reference specifies: `cast[T](value)` syntax
@@ -1628,6 +1734,18 @@ Per Language Reference (lines 2880-2917), the following are explicitly deferred:
 ## CONTINUATION GUIDE FOR NEXT ITERATION
 
 This section is for the next person continuing the documentation process.
+
+### What Has Been Verified in AUDIT #8 (Do NOT Re-Verify)
+
+The following were **verified in Audit #8** (December 4, 2025):
+
+1. **Comprehension Scoping**: Verified that comprehensions create proper scopes via `EnterScope()` calls
+2. **Dunder Invocation Rules**: Confirmed NOT IMPLEMENTED — no validation prevents explicit dunder calls
+3. **Type Casting Syntax**: Documented discrepancy between spec (`cast[T](x)`) and implementation (`x as T`)
+4. **Loop/Try Else Clauses**: Confirmed AST nodes lack ElseBody property
+5. **Generic Functions**: Confirmed FunctionDef lacks TypeParameters property
+6. **Standard Library Gaps**: Verified `hash()`, `id()`, `open()` are NOT implemented as standalone functions
+7. **TokenType Inventory**: Complete list of present and missing keywords for v0.7-v1.0
 
 ### What Has Been Verified in AUDIT #7 (Do NOT Re-Verify)
 
@@ -1710,7 +1828,7 @@ The following Language Reference sections have NOT been audited:
    ```
 4. **Document findings in a new AUDIT section**
 5. **Update TODO lists and Summary tables**
-6. **Increment the audit number in the header** (next is AUDIT #8)
+6. **Increment the audit number in the header** (next is AUDIT #9)
 
 ### Quick Reference: Key Files
 
@@ -1762,3 +1880,4 @@ grep -n "Parse.*Expression\|ParseLogical\|ParseComparison\|ParseBitwise\|ParseAd
 | #5 | Dec 3, 2025 | TokenType cross-check, AST properties |
 | #6 | Dec 3, 2025 | Standard library builtins, integration tests |
 | #7 | Dec 3, 2025 | Operator precedence, naming conventions, type casting discrepancy |
+| #8 | Dec 4, 2025 | Comprehension scoping, dunder rules, type casting syntax, complete token inventory |
