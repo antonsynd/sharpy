@@ -530,7 +530,7 @@ def todo_function():
 ```
 
 *Implementation:*
-- *Ellipsis: 🔄 Lowered - `throw new NotImplementedException()` or empty body*
+- *Ellipsis: 🔄 Lowered - Nothing for abstract methods or interface methods without a default implementation, otherwise `throw new NotImplementedException()`*
 - *Empty set: 🔄 Lowered - `new HashSet<T>()`*
 
 ---
@@ -648,6 +648,16 @@ count = get_count() ?? 0
 result = first ?? second ?? default_value
 ```
 
+This contrasts with the `or` operator which tests for truthiness (via `__true__()` and `__false__()` dunders if defined, or `__bool__()` otherwise), rather than `None`.
+
+```python
+name = "" ?? "Anonymous"    # name = ""
+name = "" or "Anonymous"    # name = "Anonymous"
+
+name = None ?? "Anonymous"  # name = "Anonymous"
+name = None or "Anonymous"  # name = "Anonymous"
+```
+
 *Implementation: ✅ Native - Maps to C# `??` operator.*
 
 ### Type Narrowing **[v0.2]**
@@ -685,10 +695,12 @@ if isinstance(obj, str):
 
 | Sharpy Type | .NET Type | Notes |
 |-------------|-----------|-------|
-| `list[T]` | `System.Collections.Generic.List<T>` | Mutable list |
-| `dict[K, V]` | `System.Collections.Generic.Dictionary<K, V>` | Hash map |
-| `set[T]` | `System.Collections.Generic.HashSet<T>` | Unique elements |
-| `tuple[T1, T2, ...]` | `System.ValueTuple<T1, T2, ...>` | Fixed-size tuple |
+| `list[T]` | `Sharpy.Core.List<T>` | Mutable list |
+| `dict[K, V]` | `Sharpy.Core.Dict<K, V>` | Hash map |
+| `set[T]` | `Sharpy.Core.Set<T>` | Unique elements |
+| `tuple[T1, T2, ...]` | `Sharpy.Core.Tuple<T1, T2, ...>` | Fixed-size tuple |
+
+Collection types use a Sharpy-specific implementation by default. These are bidi-convertible with the native .NET `System.Collections.Generic` equivalents, `List<T>`, `Dictionary<K, V>`, and `HashSet<T>` and use them underneath as storage.
 
 ### Collection Literals
 
@@ -718,10 +730,10 @@ empty = ()
 ```
 
 *Implementation: 🔄 Lowered*
-- *List: `new List<T> { 1, 2, 3 }`*
-- *Dict: `new Dictionary<K, V> { ["key"] = value }`*
-- *Set: `new HashSet<T> { 1, 2, 3 }`*
-- *Tuple: ✅ Native ValueTuple syntax*
+- *List: `new Sharpy.Core.List<T> { 1, 2, 3 }`*
+- *Dict: `new Sharpy.Core.Dict<K, V> { ["key"] = value }`*
+- *Set: `new Sharpy.Core.Set<T> { 1, 2, 3 }`*
+- *Tuple: `new Sharpy.Core.Tuple { 1, true, "hello" }`*
 
 ### Tuple Unpacking
 
