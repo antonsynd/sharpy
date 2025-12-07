@@ -733,7 +733,7 @@ empty = ()
 - *List: `new Sharpy.Core.List<T> { 1, 2, 3 }`*
 - *Dict: `new Sharpy.Core.Dict<K, V> { ["key"] = value }`*
 - *Set: `new Sharpy.Core.Set<T> { 1, 2, 3 }`*
-- *Tuple: `new Sharpy.Core.Tuple { 1, true, "hello" }`*
+- *Tuple: ✅ Native ValueTuple syntax*
 
 ### Tuple Unpacking
 
