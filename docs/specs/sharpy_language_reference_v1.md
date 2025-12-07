@@ -745,6 +745,10 @@ a, b, c = triple
 # Partial unpacking with wildcard
 first, *rest = (1, 2, 3, 4, 5)      # first = 1, rest = [2, 3, 4, 5]
 *start, last = (1, 2, 3)            # start = [1, 2], last = 3
+
+# Partial unpacking is checked at compile time against the length
+# of the tuple
+first, *middle, last = (1, 2, 3, 4, 5)      # first = 1, middle = [2, 3, 4], last = 5
 ```
 
 *Implementation: ✅ Native - C# supports tuple deconstruction.*
