@@ -698,7 +698,7 @@ if isinstance(obj, str):
 | `list[T]` | `Sharpy.Core.List<T>` | Mutable list |
 | `dict[K, V]` | `Sharpy.Core.Dict<K, V>` | Hash map |
 | `set[T]` | `Sharpy.Core.Set<T>` | Unique elements |
-| `tuple[T1, T2, ...]` | `Sharpy.Core.Tuple<T1, T2, ...>` | Fixed-size tuple |
+| `tuple[T1, T2, ...]` | `System.ValueTuple<T1, T2, ...>` | Fixed-size tuple |
 
 Collection types use a Sharpy-specific implementation by default. These are bidi-convertible with the native .NET `System.Collections.Generic` equivalents, `List<T>`, `Dictionary<K, V>`, and `HashSet<T>` and use them underneath as storage.
 
@@ -746,12 +746,32 @@ a, b, c = triple
 first, *rest = (1, 2, 3, 4, 5)      # first = 1, rest = [2, 3, 4, 5]
 *start, last = (1, 2, 3)            # start = [1, 2], last = 3
 
-# Partial unpacking is checked at compile time against the length
+# Partial unpacking is checked at compile time against the arity
 # of the tuple
-first, *middle, last = (1, 2, 3, 4, 5)      # first = 1, middle = [2, 3, 4], last = 5
+first, *middle, penultimate, last = (1, 2, 3, 4, 5)      # first = 1, middle = [2, 3], penultimate = 4, last = 5
 ```
 
-*Implementation: ✅ Native - C# supports tuple deconstruction.*
+*Implementation:*
+- For exact arity unpacking: ✅ Native - C# supports tuple deconstruction for exact arity unpacking.
+```python
+x, y = point
+```
+
+Generates:
+```C#
+var (x, y) = point;
+```
+- For other arities: 🔄 Lowered - Generated as explicit unpacking via compiler-generated item access for other cases.
+```python
+first, *middle, last = values  # Example: compile-time arity of 5
+```
+
+Generates:
+```C#
+var x = values.Item1;
+var middle = (values.Item2, values.Item3, values.Item4);
+var last = values.Item5;
+```
 
 ### Slicing **[v0.2]**
 
@@ -785,10 +805,12 @@ reversed_list = numbers[::-1]  # Reverse
 | `+` | Addition | `+` |
 | `-` | Subtraction | `-` |
 | `*` | Multiplication | `*` |
-| `/` | Division (always returns float) | `/` (with cast) |
+| `/` | Division* | `/` (with cast if necessary) |
 | `//` | Floor division | `(int)(x / y)` |
 | `%` | Modulo | `%` |
 | `**` | Exponentiation | `Math.Pow(x, y)` |
+
+*The return type follows Python where the highest precision floating point type is used. Unlike C#, `decimal` is allowed in these cases.
 
 *Implementation:*
 - *Standard: ✅ Native*
