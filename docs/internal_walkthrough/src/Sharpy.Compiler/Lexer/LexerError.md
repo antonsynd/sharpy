@@ -123,7 +123,7 @@ Source Code → [Lexer → LexerError] → [Parser → ParserError] → [Semanti
 - Exceptions provide natural control flow for unrecoverable errors
 - Stack unwinding automatically cleans up partial state
 
-**Alternative considered:** Returning `Result<Token[], LexerError[]>` would allow collecting multiple errors, but:
+**Alternative considered:** Returning a collection type to gather multiple errors, but:
 - Lexer errors often make subsequent tokens meaningless
 - Complicates the lexer's internal state management
 - User experience: showing one error at a time is clearer for syntax issues

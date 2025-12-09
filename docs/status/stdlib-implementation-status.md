@@ -335,21 +335,17 @@ The Sharpy standard library (located in `src/Sharpy.Core`) has made significant 
 
 | Type | Location | Status | Notes |
 |------|----------|--------|-------|
-| `Optional<T>` | `Partial.Optional/` | ✅ | Sharpy's `T?` type |
-| `Result<T, E>` | `Partial.Result/` | ✅ | Error handling type |
 | `Iterator<T>` | `Partial.Iterator/` | ✅ | Iterator wrapper |
 | `Slice` | `Slice.cs` | ✅ | Slice object |
 | `Index` | `Index.cs` | ✅ | Index helper |
 | `Object` | `Partial.Object/` | ✅ | Base object type |
 
-### ⚠️ Partial Implementation
+### ❌ Removed (Deferred to v2.0)
 
-| Type | Issue | Status |
-|------|-------|--------|
-| `None` | Global singleton function | ⚠️ Needs verification |
-| `Some<T>` | Optional helper | ⚠️ Needs verification |
-| `Error<T, E>` | Result helper | ⚠️ Needs verification |
-| `Ok<T, E>` | Result helper | ⚠️ Needs verification |
+| Type | Notes |
+|------|-------|
+| `Optional<T>` | Removed - use nullable types (`T?`) instead |
+| `Result<T, E>` | Removed - doesn't mesh well with .NET patterns |
 
 ---
 
