@@ -23,7 +23,6 @@ All Sharpy types derive from the .NET type hierarchy with `System.Object` at the
 System.Object
 ├── System.ValueType (for structs)
 │   ├── int, float, double, bool, byte, etc.
-│   ├── Sharpy.Optional<T>
 │   └── [User-defined structs]
 └── Reference Types (for classes)
     ├── System.String, System.Array, etc.
@@ -61,7 +60,6 @@ System.Object
 | `tuple[...]` | `tuple[...]` | `(...)` | `System.ValueTuple<...>` | Fixed-size tuple |
 | `array[T]` | `list[T]` | `T[]` | `System.Array<T>` | Fixed-size array |
 | `complex` | `complex` | `Sharpy.Complex` | (wraps `System.Numerics.Complex`) | Complex number |
-| `T?` | `Optional[T]` | `Sharpy.Optional<T>` | Custom struct | True optional type |
 | `None` | `None` | `void` | `System.Void` | No return value (functions only) |
 | `None` | `None` | `null` | - | Null reference (values) |
 | `object` | `object` | `Sharpy.Object` | (extends `System.Object`) | Base for all classes |
@@ -147,7 +145,7 @@ See [Tuples](#tuples) section for implementation details.
 
 ## Nullable and Optional Types
 
-Sharpy distinguishes between nullable reference types (C# style) and true optional types (Rust/Swift style).
+Sharpy uses C#'s nullable reference types for handling optional values.
 
 ### Nullable References (`T?` for reference types)
 
@@ -165,56 +163,7 @@ if maybe_name is not None:
     print(maybe_name.upper())  # Safe: compiler knows it's not null
 ```
 
-### Optional Type (`Sharpy.Optional<T>`)
-
-`Sharpy.Optional<T>` is a true optional type that can distinguish between "no value" and "null value" for reference types:
-
-```python
-from sharpy import Optional
-
-# No value vs null value
-opt1: Optional[str] = Optional()       # No value
-opt2: Optional[str] = Optional(None)   # Has value: null
-
-opt1.has_value()  # False
-opt2.has_value()  # True
-```
-
-**Key differences**:
-
-| Feature | `str?` (Nullable) | `Optional[str]` |
-|---------|------------------|-----------------|
-| Can represent null | ✅ Yes | ✅ Yes |
-| Can distinguish "no value" from "null" | ❌ No | ✅ Yes |
-| Works with value types | Via `Nullable<T>` | ✅ Yes |
-| Memory overhead | None for refs | 1 bool + value |
-| Use case | C# interop | Rust/Swift-style optionals |
-
-**Optional[T] implementation**:
-
-```csharp
-public partial struct Optional<T>
-{
-    private T? _value;
-    private bool _hasValue;
-
-    public readonly T Value()
-    {
-        if (!_hasValue)
-            throw new InvalidOperationException("Optional has no value");
-        return _value!;
-    }
-
-    public readonly bool HasValue() => _hasValue;
-
-    public readonly T ValueOr(T defaultValue) => _hasValue ? _value! : defaultValue;
-
-    public readonly Optional<U> MapValue<U>(Func<T, U> func)
-    {
-        return _hasValue ? new Optional<U>(func(_value!)) : new Optional<U>();
-    }
-}
-```
+For error handling and optional values, use nullable types (`T?`) or consider throwing exceptions for exceptional conditions, following .NET patterns.
 
 ## Modules
 

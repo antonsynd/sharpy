@@ -2255,7 +2255,7 @@ type Matrix = list[list[double]]
 
 # Generic aliases
 type Callback[T] = (T) -> None
-type Result[T, E] = Result[T, E]
+type Point[T] = tuple[T, T]
 
 # Class-level aliases
 class Geometry:
@@ -2266,8 +2266,8 @@ class Geometry:
         return (dx**2 + dy**2 + dz**2) ** 0.5
 
 # Function-level aliases
-def process_data[T, E](items: dict[str, list[Result[T, E]]]) -> dict[str, list[Result[T, E]]]:
-    type DataMap = dict[str, list[Result[T, E]]]
+def process_data[T](items: dict[str, list[T]]) -> dict[str, list[T]]:
+    type DataMap = dict[str, list[T]]
     result: DataMap = {}
     # ...
     return result
@@ -2279,101 +2279,98 @@ def process_data[T, E](items: dict[str, list[Result[T, E]]]) -> dict[str, list[R
 
 ## Tagged Unions (Algebraic Data Types) **[v0.8]**
 
-Tagged unions allow cases to carry associated data:
+Tagged unions (also called algebraic data types or enums) allow defining types with multiple named variants, each carrying associated data:
 
 ```python
-# Generic Result type (like Rust's Result)
-enum Result[T, E]:
-    case Ok(value: T)
-    case Err(error: E)
-
-# Option type
-enum Option[T]:
-    case Some(value: T)
-    case None()
-
 # Tree structure
 enum BinaryTree[T]:
     case Leaf(value: T)
     case Node(left: BinaryTree[T], right: BinaryTree[T])
+
+# Shape type with different variants
+enum Shape:
+    case Circle(radius: double)
+    case Rectangle(width: double, height: double)
+    case Triangle(base: double, height: double)
 ```
 
 ### Creating Values
 
 ```python
-success = Result.Ok(42)
-failure = Result.Err("Something went wrong")
+# Create tree nodes
+leaf = BinaryTree.Leaf(42)
+tree = BinaryTree.Node(
+    BinaryTree.Leaf(1),
+    BinaryTree.Leaf(2)
+)
 
-# Factory methods (lowercase convention)
-success = Result.ok(42)
-failure = Result.err("Something went wrong")
+# Create shapes
+circle = Shape.Circle(5.0)
+rect = Shape.Rectangle(10.0, 20.0)
 ```
 
 ### Pattern Matching
 
 ```python
-def divide(a: double, b: double) -> Result[double, str]:
-    if b == 0:
-        return Result.err("Division by zero")
-    return Result.ok(a / b)
+def calculate_area(shape: Shape) -> double:
+    match shape:
+        case Shape.Circle(r):
+            return 3.14159 * r * r
+        case Shape.Rectangle(w, h):
+            return w * h
+        case Shape.Triangle(b, h):
+            return 0.5 * b * h
 
-result = divide(10, 2)
-match result:
-    case Result.Ok(value):
-        print(f"Success: {value}")
-    case Result.Err(error):
-        print(f"Error: {error}")
+area = calculate_area(Shape.Circle(5.0))
+print(f"Area: {area}")
 ```
 
 ### Methods on Tagged Unions
 
 ```python
-enum Result[T, E]:
-    case Ok(value: T)
-    case Err(error: E)
+enum BinaryTree[T]:
+    case Leaf(value: T)
+    case Node(left: BinaryTree[T], right: BinaryTree[T])
 
-    def is_ok(self) -> bool:
+    def height(self) -> int:
         match self:
-            case Result.Ok():
-                return True
-            case Result.Err():
-                return False
+            case BinaryTree.Leaf(_):
+                return 1
+            case BinaryTree.Node(left, right):
+                return 1 + max(left.height(), right.height())
 
-    def unwrap(self) -> T:
+    def contains(self, target: T) -> bool:
         match self:
-            case Result.Ok(value):
-                return value
-            case Result.Err(error):
-                raise Exception(f"Called unwrap on Err: {error}")
-
-    def unwrap_or(self, default: T) -> T:
-        match self:
-            case Result.Ok(value):
-                return value
-            case Result.Err():
-                return default
+            case BinaryTree.Leaf(value):
+                return value == target
+            case BinaryTree.Node(left, right):
+                return left.contains(target) or right.contains(target)
 ```
 
 *Implementation: 🔄 Lowered - Abstract base class + sealed nested case classes:*
 
 ```csharp
-public abstract class Result<T, E> {
-    private Result() { }
+public abstract class BinaryTree<T> {
+    private BinaryTree() { }
 
-    public sealed class Ok : Result<T, E> {
+    public sealed class Leaf : BinaryTree<T> {
         public T Value { get; }
-        public Ok(T value) => Value = value;
+        public Leaf(T value) => Value = value;
         public void Deconstruct(out T value) => value = Value;
     }
 
-    public sealed class Err : Result<T, E> {
-        public E Error { get; }
-        public Err(E error) => Error = error;
-        public void Deconstruct(out E error) => error = Error;
+    public sealed class Node : BinaryTree<T> {
+        public BinaryTree<T> Left { get; }
+        public BinaryTree<T> Right { get; }
+        public Node(BinaryTree<T> left, BinaryTree<T> right) {
+            Left = left;
+            Right = right;
+        }
+        public void Deconstruct(out BinaryTree<T> left, out BinaryTree<T> right) {
+            left = Left;
+            right = Right;
+        }
     }
-
-    public static Result<T, E> ok(T value) => new Ok(value);
-    public static Result<T, E> err(E error) => new Err(error);
 }
 ```
 
