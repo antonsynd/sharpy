@@ -55,15 +55,4 @@ public static partial class Exports
 
         return T.Abs(x);
     }
-
-    // TODO: Optional<T> doesn't implement __Abs__
-    // public static T Abs<T>(Optional<T> x) where T : IAbsoluteValue<T>
-    // {
-    //     if (!x.HasValue())
-    //     {
-    //         throw new ArgumentNullException(nameof(x));
-    //     }
-    //
-    //     return x.__Abs__();
-    // }
 }

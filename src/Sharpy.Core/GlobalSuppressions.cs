@@ -58,7 +58,6 @@ using System.Diagnostics.CodeAnalysis;
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.Object.__Ne__(Sharpy.Object)~System.Boolean")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.Object.__Repr__~System.String")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.Object.__Str__~System.String")]
-[assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.Optional`1.__Eq__(Sharpy.Optional{`0})~System.Boolean")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.Core.Slice.__Len__~System.UInt32")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.Str.__GetItem__~Sharpy.Core.Str")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>", Scope = "member", Target = "~M:Sharpy.Str.__GetItem__(Sharpy.Core.Slice)~Sharpy.Core.Str")]

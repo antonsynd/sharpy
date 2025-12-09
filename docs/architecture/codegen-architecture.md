@@ -54,7 +54,6 @@ Transform the type-checked AST into C# code:
 The Sharpy runtime library (`Sharpy.dll`) provides:
 - Collection wrappers (`Sharpy.List<T>`, `Sharpy.Dict<K,V>`, etc.)
 - String wrapper (`Sharpy.Str`)
-- Optional type (`Sharpy.Optional<T>`)
 - Base classes (`Sharpy.Object`, `Sharpy.Exception`)
 - Helper utilities (slicing, iteration, etc.)
 
@@ -845,7 +844,6 @@ public class CodeEmitter
 | `set[T]` | `Sharpy.Set<T>` | Wrapper around HashSet<T> |
 | `tuple[T1,T2,...]` | `Sharpy.Tuple<T1,T2,...>` | Wrapper around ValueTuple |
 | `T?` | `T?` | Nullable reference type |
-| `Optional[T]` | `Sharpy.Optional<T>` | True optional type |
 
 ### Collection Literal Generation
 
