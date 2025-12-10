@@ -284,6 +284,7 @@ The following are reserved keywords in Sharpy v0.1-v1.0:
 | `is` | v0.1 | Identity comparison |
 | `lambda` | v0.4 | Lambda expression |
 | `match` | v0.7 | Pattern matching |
+| `maybe` | v0.8 | Optional from nullable expressions |
 | `None` | v0.1 | None/null literal |
 | `not` | v0.1 | Boolean NOT |
 | `or` | v0.1 | Boolean OR |
@@ -2287,10 +2288,10 @@ enum Result[T, E]:
     case Ok(value: T)
     case Err(error: E)
 
-# Option type
-enum Option[T]:
+# Optional type (like Rust's Option)
+enum Optional[T]:
     case Some(value: T)
-    case None()
+    case Nothing()
 
 # Tree structure
 enum BinaryTree[T]:
@@ -2303,10 +2304,6 @@ enum BinaryTree[T]:
 ```python
 success = Result.Ok(42)
 failure = Result.Err("Something went wrong")
-
-# Factory methods (lowercase convention)
-success = Result.ok(42)
-failure = Result.err("Something went wrong")
 ```
 
 ### Pattern Matching
@@ -2371,11 +2368,53 @@ public abstract class Result<T, E> {
         public Err(E error) => Error = error;
         public void Deconstruct(out E error) => error = Error;
     }
-
-    public static Result<T, E> ok(T value) => new Ok(value);
-    public static Result<T, E> err(E error) => new Err(error);
 }
 ```
+
+---
+
+## Try expressions **[v0.8]**
+
+The `Result[T, E]` type can be implicitly created via
+`try` expressions. A `try` expression wraps the value of
+the expression in `Result[T, E]` where `E`, if not
+specified, is always the base `Exception` type, and `T` is
+the type of the expression. If the expression raises an
+exception, then the result holds its `Err` variant.
+
+```python
+x = try int("some string")  # x is of type Result[int, Exception]
+```
+
+A `try` expression can be specified for a specific type
+where if the expression throws that type, then it is caught
+inside `Err` variant. Other types become uncaught exceptions
+that must be handled by other means, e.g. `try/except/finally`.
+
+```python
+x = try[ValueError] int("some string")  # x is of type Result[int, ValueError]
+```
+
+It is not an error if the expression would never raise an
+exception. In such cases, the result type is always `Result[T, Exception]` where `T` is the expression's type.
+
+---
+
+## Maybe expressions **[v0.8]**
+
+Optionals can be implicitly created via `maybe` expressions.
+A `maybe` expression wraps the value of the expression in
+`Optional[T]` where `T` is the type of the expression.
+If the expression is `None`, then the result
+holds its `Nothing` variant.
+
+```python
+d: dict[str, int] = {"y": 5}
+x = maybe d.get("x")  # x is of type Optional[int]
+```
+
+It is a type-checking error if the expression does not return
+a nullable type.
 
 ---
 
