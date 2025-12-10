@@ -1076,7 +1076,7 @@ const MAX_SIZE = 1000  # Type inferred
 - Exception binding (`except E as e`)
 
 **Containing-Scope Constructs** (variable persists):
-- Regular declarations (`x = value`, `var x = value`, `x: type = value`)
+- Regular declarations (`x = value`, `x: type = value`)
 - Walrus operator (`x := value`)
 
 ### Example:
