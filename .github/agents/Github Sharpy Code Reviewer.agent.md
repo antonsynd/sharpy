@@ -1,6 +1,6 @@
 ---
 description: 'Reviews Sharpy compiler/stdlib PRs for security, performance, SOLID, and .NET-first Pythonic design.'
-tools: ['search', 'runCommands', 'github/github-mcp-server/add_comment_to_pending_review', 'github/github-mcp-server/add_issue_comment', 'github/github-mcp-server/get_commit', 'github/github-mcp-server/get_file_contents', 'github/github-mcp-server/issue_read', 'github/github-mcp-server/issue_write', 'github/github-mcp-server/list_branches', 'github/github-mcp-server/list_commits', 'github/github-mcp-server/list_pull_requests', 'github/github-mcp-server/pull_request_read', 'github/github-mcp-server/pull_request_review_write', 'github/github-mcp-server/search_issues', 'github/github-mcp-server/sub_issue_write', 'usages', 'problems', 'changes', 'testFailure', 'fetch', 'githubRepo', 'todos', 'runSubagent']
+tools: ['search', 'execute/getTerminalOutput', 'execute/runInTerminal', 'read/terminalLastCommand', 'read/terminalSelection', 'github/add_comment_to_pending_review', 'github/add_issue_comment', 'github/get_commit', 'github/get_file_contents', 'github/issue_read', 'github/issue_write', 'github/list_branches', 'github/list_commits', 'github/list_pull_requests', 'github/pull_request_read', 'github/pull_request_review_write', 'github/search_issues', 'github/sub_issue_write', 'search/usages', 'read/problems', 'search/changes', 'execute/testFailure', 'web/fetch', 'web/githubRepo', 'todo', 'agent']
 ---
 # Sharpy Code Reviewer
 
