@@ -486,32 +486,66 @@ is_complete = False
 
 ### None Literal
 
+`None` represents the absence of a value and corresponds to `null` in the compiled C# output.
+
 ```python
 value: str? = None
 ```
 
-- `None` maps to `null` in the compiled output
-- Can be assigned to any nullable type
+**Key Distinction from Python:**
 
-### None Type Semantics
+Unlike Python where `None` is a singleton instance of `NoneType`, Sharpy's `None` is not a value with a type, it is a literal that is assignment-compatible with any nullable type `T?`. This aligns with C#'s `null` semantics rather than Python's object model.
 
-| Context | Sharpy Syntax | Meaning | Compiled Form |
-|---------|---------------|---------|---------------|
-| Return type | `-> None` | No return value | `void` |
-| Variable type | `x: None` | Not allowed | - |
-| Nullable variable | `x: str?` | Can be null | Nullable reference |
-| None assignment | `x = None` | Assign null | Requires `T?` type |
+**Rules:**
+
+| Context | Example | Valid | Notes |
+|---------|---------|-------|-------|
+| Assign to nullable | `x: str? = None` | ✅ | Primary use case |
+| Assign to non-nullable | `x: str = None` | ❌ | Compile error |
+| Type annotation | `x: None` | ❌ | `None` is not a type |
+| Standalone inference | `x = None` | ❌ | Cannot infer type from `None` alone |
+| Assign to `object?` | `x: object? = None` | ✅ | Nullable object accepts `None` |
+| Assign to `object` | `x: object = None` | ❌ | Non-nullable object rejects `None` |
+| Return type | `-> None` | ✅ | Means "no return value" (maps to `void`) |
+| Comparison | `x is None` | ✅ | None check |
+| Comparison | `x is not None` | ✅ | Non-none check |
+
+**Examples:**
 
 ```python
-def do_work() -> None:           # OK - return type
-    pass
+def find_user(id: int) -> User?:
+    """Returns None if user not found."""
+    if id not in database:
+        return None
+    return database[id]
 
-x: str? = None                    # OK - nullable variable
-y = None                          # ERROR - cannot infer type from None alone
-z: None = None                    # ERROR - None is not a valid variable type
+def process() -> None:
+    """Returns nothing (void function)."""
+    print("Processing...")
+
+# Valid usage
+result: str? = None
+user: User? = find_user(42)
+
+# Invalid usage
+x = None                    # ERROR: Cannot infer type from None
+y: str = None               # ERROR: Cannot assign None to non-nullable type
+z: None = None              # ERROR: None is not a valid type annotation
+
+# None checks enable type narrowing
+name: str? = get_name()
+if name is not None:
+    print(name.upper())     # OK: 'name' narrowed to 'str'
 ```
 
-*Implementation: ✅ Native - Direct mapping to `null`.*
+**Runtime Behavior:**
+
+- `None` compiles to `null`
+- `x is None` compiles to `x == null`
+- `x is not None` compiles to `x != null`
+- `type(None)` is a compile-time error (unlike Python's `type(None)` returning `NoneType`)
+
+*Implementation: ✅ Native - Direct mapping to C# `null`.*
 
 ### Special Literals
 
