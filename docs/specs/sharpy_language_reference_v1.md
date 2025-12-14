@@ -2595,46 +2595,544 @@ if (match.Success) {
 ```
 
 ---
-
 ## Properties **[v0.9]**
 
-Properties provide computed access to object state.
+Properties provide controlled access to object state with support for computed values, validation, and fine-grained access control. Sharpy properties map cleanly to C# properties while maintaining Pythonic readability.
 
-### Auto Properties
+### Property Forms
+
+Sharpy supports three property forms based on complexity:
+
+| Form | Use Case | Syntax Pattern |
+|------|----------|----------------|
+| Auto-property | Simple storage | `property [get\|set\|init]? name: T` |
+| Computed property | Derived read-only values | `property name(self) -> T:` |
+| Explicit accessors | Custom logic, mixed access | `def (get\|set\|init) name(...)` |
+
+### Auto-Properties
+
+Auto-properties generate a backing field and accessors automatically:
 
 ```python
 class Person:
-    # Auto-property with default
+    # Read-write (default, has both get and set)
     property name: str = "Unknown"
+    property age: int
 
-    # Read-only auto-property
-    get property id: int = 0
+    # Read-only (get accessor only)
+    property get id: int = 0
+    property get uuid: str
 
-    # Write-only auto-property (rare)
-    set property _internal: int
+    # Init-only (get accessor + init accessor)
+    property init created_at: datetime
+    property init email: str = "unknown@example.com"
+
+    # Write-only (set accessor only, rare)
+    property set password_hash: str
+
+    def __init__(self, name: str, age: int, id: int, uuid: str, email: str, password: str):
+        self.name = name
+        self.age = age
+        self.id = id
+        self.uuid = uuid
+        self.created_at = datetime.now()
+        self.email = email
+        self.password_hash = hash_password(password)
+
+# After construction:
+p = Person("Alice", 30, 1, "abc-123", "alice@example.com", "secret")
+p.name = "Bob"           # OK: read-write
+p.id = 2                 # ERROR: read-only property
+p.email = "new@test.com" # ERROR: init-only, cannot set after construction
+print(p.password_hash)   # ERROR: write-only property
 ```
 
-*Implementation: 🔄 Lowered - Generate backing field + accessors.*
+**Auto-Property Modifiers:**
 
-### Explicit Properties
+| Syntax | Accessors | Readable | Settable in `__init__` | Settable after |
+|--------|-----------|----------|------------------------|----------------|
+| `property name: T` | get + set | ✅ | ✅ | ✅ |
+| `property get name: T` | get | ✅ | ✅ | ❌ |
+| `property init name: T` | get + init | ✅ | ✅ | ❌ |
+| `property set name: T` | set | ❌ | ✅ | ✅ |
+
+*Implementation: ✅ Native*
+```csharp
+public string Name { get; set; } = "Unknown";
+public int Id { get; } = 0;
+public DateTime CreatedAt { get; init; }
+public string PasswordHash { set; }
+```
+
+### Computed Properties
+
+For properties that derive their value from other state, use the method-style syntax with explicit `self`:
+
+```python
+class Rectangle:
+    width: double
+    height: double
+
+    def __init__(self, width: double, height: double):
+        self.width = width
+        self.height = height
+
+    # Computed read-only properties
+    property area(self) -> double:
+        return self.width * self.height
+
+    property perimeter(self) -> double:
+        return 2 * (self.width + self.height)
+
+    property is_square(self) -> bool:
+        return self.width == self.height
+
+    # Multi-statement bodies work naturally
+    property diagonal(self) -> double:
+        w_sq = self.width ** 2
+        h_sq = self.height ** 2
+        return (w_sq + h_sq) ** 0.5
+
+    # Can reference other properties
+    property description(self) -> str:
+        shape = "square" if self.is_square else "rectangle"
+        return f"A {shape} with area {self.area}"
+```
+
+**Computed Property Rules:**
+- Always read-only (getter only, no setter)
+- `self` parameter is explicit (consistent with methods)
+- Return type specified with `->` (consistent with functions)
+- Body is evaluated each time the property is accessed
+- No backing field is generated
+- Cannot be combined with explicit `def set` accessor; use explicit accessors for both if setter is needed
+
+*Implementation: ✅ Native*
+```csharp
+public double Area => Width * Height;
+public double Perimeter => 2 * (Width + Height);
+public bool IsSquare => Width == Height;
+
+public double Diagonal {
+    get {
+        var wSq = Width * Width;
+        var hSq = Height * Height;
+        return Math.Sqrt(wSq + hSq);
+    }
+}
+```
+
+### Explicit Accessors
+
+For properties requiring validation, transformation, or different access levels on get/set, define accessors explicitly using `def get`, `def set`, or `def init`:
 
 ```python
 class Temperature:
-    __celsius: double = 0.0
+    _celsius: double = 0.0
 
-    # Explicit getter and setter
-    property celsius(self) -> double:
-        return self.__celsius
+    # Explicit getter
+    def get celsius(self) -> double:
+        return self._celsius
 
-    property celsius(self, value: double):
-        self.__celsius = value
+    # Explicit setter with validation
+    def set celsius(self, value: double) -> None:
+        if value < -273.15:
+            raise ValueError("Temperature below absolute zero")
+        self._celsius = value
 
-    # Computed read-only property
-    property fahrenheit(self) -> double:
-        return self.__celsius * 9/5 + 32
+    # Explicit getter only creates a read-only property
+    def get kelvin(self) -> double:
+        return self._celsius + 273.15
+
+    # Both getter and setter for fahrenheit
+    def get fahrenheit(self) -> double:
+        return self._celsius * 9/5 + 32
+
+    def set fahrenheit(self, value: double) -> None:
+        self._celsius = (value - 32) * 5/9
 ```
 
-*Implementation: ✅ Native - Maps to C# property accessors.*
+**Explicit Accessor Rules:**
+- `def get name(self) -> T:` defines a getter
+- `def set name(self, value: T) -> None:` defines a setter
+- `def init name(self, value: T) -> None:` defines an init-only setter
+- The existence of accessors implicitly declares the property (no separate declaration needed)
+- Types must match: getter return type must equal setter/init value parameter type
+- Accessor combinations determine property capabilities (see table below)
+
+**Accessor Combinations:**
+
+| Defined Accessors | Result | Readable | Settable in `__init__` | Settable after |
+|-------------------|--------|----------|------------------------|----------------|
+| `get` | Read-only | ✅ | ❌ | ❌ |
+| `set` | Write-only | ❌ | ✅ | ✅ |
+| `init` | Init-only write | ❌ | ✅ | ❌ |
+| `get` + `set` | Read-write | ✅ | ✅ | ✅ |
+| `get` + `init` | Read + init-only write | ✅ | ✅ | ❌ |
+
+*Implementation: ✅ Native*
+```csharp
+public double Celsius {
+    get => _celsius;
+    set {
+        if (value < -273.15)
+            throw new ArgumentException("Temperature below absolute zero");
+        _celsius = value;
+    }
+}
+
+public double Kelvin => _celsius + 273.15;
+
+public double Fahrenheit {
+    get => _celsius * 9.0 / 5.0 + 32;
+    set => _celsius = (value - 32) * 5.0 / 9.0;
+}
+```
+
+### Init-Only with Getter
+
+Combining `def get` and `def init` creates a property that can be read anytime but only set during initialization:
+
+```python
+class ImmutablePoint:
+    _x: double
+    _y: double
+
+    def get x(self) -> double:
+        return self._x
+
+    def init x(self, value: double) -> None:
+        self._x = value
+
+    def get y(self) -> double:
+        return self._y
+
+    def init y(self, value: double) -> None:
+        self._y = value
+
+    def __init__(self, x: double, y: double):
+        self.x = x  # OK: init accessor
+        self.y = y  # OK: init accessor
+
+# Usage
+p = ImmutablePoint(3.0, 4.0)
+print(p.x)    # OK: 3.0
+p.x = 5.0     # ERROR: no set accessor, init-only
+```
+
+*Implementation: ✅ Native (C# 9.0)*
+```csharp
+public double X {
+    get => _x;
+    init => _x = value;
+}
+```
+
+### Access Modifiers on Accessors
+
+Decorators apply naturally to explicit accessors, appearing on the line above:
+
+```python
+class Counter:
+    _value: int = 0
+
+    # Public getter
+    def get value(self) -> int:
+        return self._value
+
+    # Private setter (only accessible within the class)
+    @private
+    def set value(self, value: int) -> None:
+        self._value = value
+
+    # Public methods can use the private setter
+    def increment(self) -> None:
+        self.value += 1
+
+    def reset(self) -> None:
+        self.value = 0
+
+# Usage
+c = Counter()
+print(c.value)    # OK: public getter
+c.increment()     # OK: internal modification via public method
+c.value = 10      # ERROR: setter is private
+```
+
+**Common Access Patterns:**
+
+| Pattern | Getter | Setter | Use Case |
+|---------|--------|--------|----------|
+| Read-write | (default) | (default) | Mutable public state |
+| Read-only | (default) | (none) | Computed or immutable |
+| Observable | (default) | `@private` | External read, internal write |
+| Protected write | (default) | `@protected` | Subclass modification |
+| Internal write | (default) | `@internal` | Assembly-internal modification |
+
+*Implementation: ✅ Native*
+```csharp
+public int Value {
+    get => _value;
+    private set => _value = value;
+}
+```
+
+### Static Properties
+
+Use `@static` decorator for class-level properties. Static properties take no `self` parameter:
+
+```python
+class AppConfig:
+    _debug_mode: bool = False
+    _instance_count: int = 0
+
+    # Static auto-properties
+    @static
+    property get version: str = "1.0.0"
+
+    @static
+    property build_number: int = 0
+
+    # Static computed property (no parameter)
+    @static
+    property is_debug_enabled() -> bool:
+        return AppConfig._debug_mode
+
+    # Static explicit accessors (no self parameter)
+    @static
+    def get debug_mode() -> bool:
+        return AppConfig._debug_mode
+
+    @static
+    def set debug_mode(value: bool) -> None:
+        AppConfig._debug_mode = value
+
+    @static
+    def get instance_count() -> int:
+        return AppConfig._instance_count
+
+    @static
+    @private
+    def set instance_count(value: int) -> None:
+        AppConfig._instance_count = value
+
+# Usage
+print(AppConfig.version)           # "1.0.0"
+AppConfig.debug_mode = True
+print(AppConfig.is_debug_enabled)  # True
+```
+
+**Static Property Rules:**
+- Static computed properties use empty parentheses: `property name() -> T:`
+- Static explicit accessors omit the `self` parameter
+- Access the class by name within the body
+
+*Implementation: ✅ Native*
+```csharp
+public static string Version { get; } = "1.0.0";
+public static int BuildNumber { get; set; } = 0;
+public static bool IsDebugEnabled => _debugMode;
+public static bool DebugMode {
+    get => _debugMode;
+    set => _debugMode = value;
+}
+```
+
+### Virtual, Abstract, and Override Properties
+
+Properties participate in inheritance using the standard decorators:
+
+```python
+class Shape:
+    # Abstract computed property (must be overridden)
+    @abstract
+    property area(self) -> double:
+        ...
+
+    # Virtual computed property (can be overridden)
+    @virtual
+    property name(self) -> str:
+        return "Shape"
+
+    # Virtual with explicit accessor
+    @virtual
+    def get description(self) -> str:
+        return f"{self.name} with area {self.area}"
+
+class Circle(Shape):
+    property get radius: double
+
+    def __init__(self, radius: double):
+        self.radius = radius
+
+    # Override abstract property
+    @override
+    property area(self) -> double:
+        return 3.14159 * self.radius ** 2
+
+    # Override virtual property
+    @override
+    property name(self) -> str:
+        return "Circle"
+
+@final
+class UnitCircle(Circle):
+    def __init__(self):
+        super().__init__(1.0)
+
+    # Sealed override - cannot be overridden in further subclasses
+    @final
+    @override
+    property name(self) -> str:
+        return "Unit Circle"
+```
+
+**Inheritance Rules:**
+- `@abstract` properties must use `...` as the body and must be overridden
+- `@virtual` properties can optionally be overridden by subclasses
+- `@override` is required when overriding a base class property
+- `@final` prevents further overriding in subclasses
+- Access modifiers cannot be changed when overriding (e.g., cannot make a public property private)
+
+*Implementation: ✅ Native*
+```csharp
+public abstract double Area { get; }
+public virtual string Name => "Shape";
+
+public override double Area => 3.14159 * Radius * Radius;
+public override string Name => "Circle";
+
+public sealed override string Name => "Unit Circle";
+```
+
+### Interface Properties
+
+Interfaces can declare property requirements:
+
+```python
+interface IIdentifiable:
+    # Read-only property requirement
+    property get id: int
+
+interface INamed:
+    # Read-write property requirement
+    property name: str
+
+interface ITimestamped:
+    # Computed property requirement (read-only with signature)
+    property created_at(self) -> datetime: ...
+    property updated_at(self) -> datetime: ...
+
+class Entity(IIdentifiable, INamed, ITimestamped):
+    property get id: int
+    property name: str = "Unnamed"
+    _created: datetime
+    _updated: datetime
+
+    def __init__(self, id: int):
+        self.id = id
+        self._created = datetime.now()
+        self._updated = self._created
+
+    property created_at(self) -> datetime:
+        return self._created
+
+    property updated_at(self) -> datetime:
+        return self._updated
+```
+
+**Explicit Interface Implementation:**
+
+When a class needs to provide different behavior when accessed through an interface versus directly:
+
+```python
+interface ISecret:
+    property get value: str
+
+class SecretHolder(ISecret):
+    _secret: str
+
+    def __init__(self, secret: str):
+        self._secret = secret
+
+    # Regular property (always accessible)
+    property hint(self) -> str:
+        return self._secret[0] + "***"
+
+    # Explicit interface implementation
+    # Only accessible when referenced through the interface type
+    def get ISecret.value(self) -> str:
+        return self._secret
+
+# Usage
+holder = SecretHolder("password123")
+print(holder.hint)        # "p***"
+print(holder.value)       # ERROR: 'value' not accessible on SecretHolder
+
+secret: ISecret = holder
+print(secret.value)       # "password123" - accessible via interface
+```
+
+*Implementation: ✅ Native*
+```csharp
+public string Hint => _secret[0] + "***";
+string ISecret.Value => _secret;
+```
+
+### Property Syntax Summary
+
+**Auto-properties:**
+
+| Syntax | Accessors | C# Equivalent |
+|--------|-----------|---------------|
+| `property name: T` | get + set | `T Name { get; set; }` |
+| `property name: T = val` | get + set | `T Name { get; set; } = val` |
+| `property get name: T` | get | `T Name { get; }` |
+| `property init name: T` | get + init | `T Name { get; init; }` |
+| `property set name: T` | set | `T Name { set; }` |
+
+**Computed properties:**
+
+| Syntax | C# Equivalent |
+|--------|---------------|
+| `property name(self) -> T:` | `T Name { get { ... } }` or `T Name => ...` |
+| `@static property name() -> T:` | `static T Name => ...` |
+
+**Explicit accessors:**
+
+| Syntax | C# Equivalent |
+|--------|---------------|
+| `def get name(self) -> T:` | `get { ... }` |
+| `def set name(self, value: T) -> None:` | `set { ... }` |
+| `def init name(self, value: T) -> None:` | `init { ... }` |
+| `def get Interface.name(self) -> T:` | `T IFace.Name { get { ... } }` |
+
+**Accessor combinations:**
+
+| Defined | Property Type | C# Equivalent |
+|---------|---------------|---------------|
+| `get` only | Read-only | `{ get; }` with body |
+| `set` only | Write-only | `{ set; }` with body |
+| `init` only | Init-write-only | `{ init; }` with body |
+| `get` + `set` | Read-write | `{ get; set; }` with bodies |
+| `get` + `init` | Read + init-write | `{ get; init; }` with bodies |
+
+**Decorator placement:**
+
+```python
+@static
+@virtual
+property name(self) -> str:
+    return "value"
+
+@override
+def get name(self) -> str:
+    return self._name
+
+@private
+def set name(self, value: str) -> None:
+    self._name = value
+```
 
 ---
 
