@@ -594,6 +594,127 @@ def todo_function():
 
 *Implementation: ✅ Native - Direct mapping to .NET types.*
 
+## String Type and UTF-16 Semantics **[v0.1]**
+
+Sharpy's `str` type maps directly to .NET's `System.String`, which uses UTF-16 encoding internally. This has important implications for string operations.
+
+### UTF-16 Code Units
+
+All string operations in Sharpy work with UTF-16 code units, not Unicode code points or grapheme clusters. This matches C# behavior exactly.
+
+**`len()` returns UTF-16 code units:**
+
+```python
+# ASCII characters: 1 code unit each
+len("hello")        # 5
+
+# Most common characters: 1 code unit each
+len("café")         # 4 (é is a single code unit U+00E9)
+
+# Emoji and rare characters: 2 code units (surrogate pairs)
+len("😀")           # 2 (U+1F600 requires surrogate pair)
+len("𝄞")            # 2 (musical G clef, U+1D11E)
+
+# Combined
+len("Hi 😀!")       # 6 (H=1, i=1, space=1, 😀=2, !=1)
+```
+
+**Indexing returns UTF-16 code units:**
+
+```python
+s = "hello"
+s[0]               # 'h'
+s[4]               # 'o'
+
+# With emoji
+s = "Hi 😀!"
+s[0]               # 'H'
+s[3]               # '\uD83D' (high surrogate of 😀)
+s[4]               # '\uDE00' (low surrogate of 😀)
+s[5]               # '!'
+```
+
+**Slicing operates on UTF-16 code units:**
+
+```python
+s = "café"
+s[0:4]             # "café"
+s[0:3]             # "caf"
+
+# Slicing through a surrogate pair can produce invalid strings
+s = "A😀B"
+s[0:2]             # "A\uD83D" - contains unpaired surrogate (may cause issues)
+s[0:3]             # "A😀" - correct
+```
+
+### Comparison with Python
+
+| Operation | Python 3 | Sharpy / C# |
+|-----------|----------|-------------|
+| `len("😀")` | 1 (code point) | 2 (UTF-16 code units) |
+| `"😀"[0]` | '😀' (full character) | '\uD83D' (high surrogate) |
+| Internal encoding | Flexible (Latin-1/UCS-2/UCS-4) | Always UTF-16 |
+| Iteration unit | Code points | UTF-16 code units |
+
+### Iterating Over Strings
+
+Iterating over a string yields individual `char` values (UTF-16 code units):
+
+```python
+for c in "Hi😀":
+    print(c)
+# Output:
+# H
+# i
+# � (high surrogate)
+# � (low surrogate)
+```
+
+### Working with Unicode Correctly
+
+For applications that need to work with user-perceived characters (grapheme clusters) or Unicode code points, use the appropriate .NET APIs:
+
+```python
+from system.globalization import StringInfo
+
+# Get grapheme clusters (user-perceived characters)
+text = "café"  # 'e' + combining acute accent (if composed that way)
+info = StringInfo(text)
+length_in_graphemes = info.length_in_text_elements
+
+# Enumerate code points
+from system.text import Rune
+
+for rune in text.enumerate_runes():
+    print(rune)
+```
+
+**Note:** A dedicated grapheme cluster module for Sharpy is planned for a future version.
+
+### String Literals and Escapes
+
+String literals in source code are UTF-8 encoded (per Sharpy's source file encoding), but are converted to UTF-16 `System.String` values at compile time:
+
+```python
+# All produce valid UTF-16 strings
+ascii_str = "hello"
+unicode_str = "héllo wörld"
+emoji_str = "Hello 😀 World"
+escape_str = "\u0048\u0065\u006C\u006C\u006F"  # "Hello"
+```
+
+### Implications for Sharpy Developers
+
+1. **String length may differ from character count:** `len()` returns UTF-16 code units, which may be more than the number of visible characters for strings containing emoji or rare Unicode characters.
+
+2. **Indexing can split surrogate pairs:** Be cautious when indexing or slicing strings that may contain characters outside the Basic Multilingual Plane (BMP).
+
+3. **Use .NET APIs for Unicode-aware operations:** When correctness with all Unicode text is required, use `StringInfo`, `Rune`, or other .NET globalization APIs.
+
+4. **Most common text works as expected:** ASCII text and most European/Asian scripts (within the BMP) have a 1:1 correspondence between characters and code units.
+
+*Implementation: ✅ Native - Direct use of `System.String` with no additional abstraction.*
+
 ### Type Annotations
 
 ```python
@@ -1169,30 +1290,129 @@ obj.method()
 list.append(item)
 ```
 
-### Variable Declaration
+### Variable Declaration and Assignment
+
+Variables in Sharpy must be declared and assigned in a single statement. There are three syntactic forms:
+
+| Form | Syntax | Type Determination |
+|------|--------|-------------------|
+| Explicit type | `x: int = 5` | Type annotation specifies type |
+| Inferred type | `x = 5` | Type inferred from initializer |
+| Explicit inference | `x: auto = 5` | Type inferred from initializer (explicit) |
+
+**Form 1: Explicit Type Annotation**
+
+The type is explicitly specified:
 
 ```python
-# With type annotation
-x: int = 42
+count: int = 0
 name: str = "Alice"
-
-# Without initializer (must assign before use)
-count: int
-count = 10
-
-# Type inference (when initializer present)
-y = 42  # Inferred as int
-
-# Constant declaration
-const PI: double = 3.14159
-const MAX_SIZE = 1000  # Type inferred to int
+items: list[int] = [1, 2, 3]
+user: User? = None
 ```
 
-**Rules:**
-- Variables declared without initializer must be assigned before use
-- Constants must be initialized at declaration with compile-time values
+**Form 2: Type Inference (Implicit)**
 
-*Implementation: ✅ Native - Direct mapping to C# declarations.*
+The type is inferred from the initializer expression:
+
+```python
+count = 0              # Inferred as int
+name = "Alice"         # Inferred as str
+items = [1, 2, 3]      # Inferred as list[int]
+pi = 3.14159           # Inferred as double
+```
+
+**Form 3: Type Inference (Explicit with `auto`)**
+
+The `auto` keyword explicitly requests type inference. This is functionally equivalent to Form 2 but makes the inference explicit:
+
+```python
+count: auto = 0        # Inferred as int
+name: auto = "Alice"   # Inferred as str
+items: auto = [1, 2, 3]  # Inferred as list[int]
+```
+
+**When to Use `auto`:**
+
+The `auto` keyword is primarily useful for variable shadowing (v0.8), where you want to redeclare a variable with a different type:
+
+```python
+x: int = 5
+x = 10                 # Assignment to existing int variable
+x: str = "hello"       # Shadowing: new variable of type str
+x: auto = [1, 2, 3]    # Shadowing: new variable, type inferred as list[int]
+```
+
+### No Declaration Without Assignment
+
+Unlike some languages, Sharpy does not allow variable declarations without initialization:
+
+```python
+# ❌ Invalid - no declaration without assignment
+x: int                 # ERROR: variable declaration requires initializer
+name: str              # ERROR: variable declaration requires initializer
+
+# ✅ Valid - always provide initializer
+x: int = 0
+name: str = ""
+items: list[int] = []
+user: User? = None
+```
+
+**Exception: Class Instance Fields**
+
+Class and struct fields can be declared without initialization if they are assigned in `__init__`:
+
+```python
+class Person:
+    # Field declarations (no initializer required)
+    name: str
+    age: int
+
+    # Optional: fields with default values
+    active: bool = True
+
+    def __init__(self, name: str, age: int):
+        # All fields without defaults must be assigned in __init__
+        self.name = name
+        self.age = age
+```
+
+### No `let` or `var` Keywords
+
+Sharpy does not use `let`, `var`, or similar keywords for variable declaration. The three forms above are the only ways to declare variables:
+
+```python
+# ❌ Invalid - these keywords don't exist in Sharpy
+let x = 5              # ERROR: unexpected 'let'
+var y = 10             # ERROR: unexpected 'var'
+val z = 15             # ERROR: unexpected 'val'
+
+# ✅ Valid
+x = 5                  # Type inferred
+y: int = 10            # Type explicit
+z: auto = 15           # Type inferred (explicit)
+```
+
+### Constants
+
+Constants are declared with `const` and must have a compile-time constant initializer:
+
+```python
+const PI: double = 3.14159
+const MAX_SIZE: int = 1000
+const APP_NAME = "MyApp"       # Type inferred as str
+const DEBUG: bool = True
+```
+
+Constants cannot be reassigned:
+
+```python
+const X: int = 5
+X = 10                 # ERROR: cannot assign to constant
+```
+
+*Implementation: ✅ Native - Direct mapping to C# variable declarations and `const`.*
 
 ## Variable Scoping Rules [v0.1]
 
@@ -3448,6 +3668,64 @@ public string Hint => _secret[0] + "***";
 string ISecret.Value => _secret;
 ```
 
+### Property and Method Name Conflicts
+
+A property and a method cannot share the same name within a class. This restriction exists because:
+
+1. A property getter with no parameters would be ambiguous with a method that takes no parameters
+2. Even setter-only properties create complexity in overload resolution
+3. The access syntax would be ambiguous: does `obj.name` call a getter or reference a method?
+
+```python
+class Example:
+    _value: int = 0
+
+    # ✅ OK - property
+    property value(self) -> int:
+        return self._value
+
+    # ❌ ERROR - method cannot have same name as property
+    def value(self) -> int:
+        return self._value
+
+class AnotherExample:
+    # ✅ OK - property
+    property set data(self, value: str) -> None:
+        self._data = value
+
+    # ❌ ERROR - even setter-only properties conflict with methods
+    def data(self, value: str) -> None:
+        self._data = value
+```
+
+**Compiler Error:**
+
+```
+error: 'value' is already defined as a property in this class
+  --> example.spy:10:5
+   |
+10 |     def value(self) -> int:
+   |         ^^^^^ method name conflicts with property on line 6
+```
+
+**Resolution:** Use distinct names for properties and methods:
+
+```python
+class Example:
+    _value: int = 0
+
+    # Property for simple access
+    property value(self) -> int:
+        return self._value
+
+    # Method with different name for computed/action-oriented access
+    def get_formatted_value(self) -> str:
+        return f"Value: {self._value}"
+
+    def compute_value(self, factor: int) -> int:
+        return self._value * factor
+```
+
 ### Property Syntax Summary
 
 **Auto-properties:**
@@ -3740,8 +4018,68 @@ This design allows code like `len(x)`, `str(x)`, and `repr(x)` to work consisten
 
 | Function | Purpose | C# Mapping |
 |----------|---------|------------|
-| `isinstance(x, T)` | Check type | `x is T` |
-| `type(x)` | Get type | `x.GetType()` |
+| `isinstance(x, T)` | Check if `x` is an instance of type `T` | `x is T` |
+| `type(x)` | Get runtime type of `x` | `x.GetType()` |
+
+**`isinstance(x, T)`**
+
+Checks whether `x` is an instance of type `T` at runtime. Returns `True` if `x` is an instance of `T` or any subclass of `T`.
+
+```python
+value: object = get_value()
+
+if isinstance(value, str):
+    # value is narrowed to str in this block
+    print(value.upper())
+
+if isinstance(value, MyClass):
+    # value is narrowed to MyClass
+    value.my_method()
+```
+
+**Single Type Only:**
+
+Unlike Python's `isinstance()` which accepts a tuple of types, Sharpy's `isinstance()` only accepts a single type argument. Sharpy does not have union types.
+
+```python
+# ✅ Valid - single type
+if isinstance(x, int):
+    pass
+
+if isinstance(x, IDrawable):
+    pass
+
+# ❌ Invalid - multiple types not supported
+if isinstance(x, (int, str)):      # ERROR: isinstance() takes exactly one type argument
+    pass
+
+if isinstance(x, int | str):       # ERROR: union types not supported
+    pass
+```
+
+**To check multiple types**, use explicit `or`:
+
+```python
+if isinstance(x, int) or isinstance(x, str):
+    # x could be int or str here
+    # Note: no automatic type narrowing in this case
+    pass
+```
+
+**Type Narrowing:**
+
+When `isinstance()` is used in a conditional, the variable's type is narrowed within that branch:
+
+```python
+def process(value: object) -> str:
+    if isinstance(value, str):
+        return value.upper()      # OK: value is str
+    if isinstance(value, int):
+        return str(value * 2)     # OK: value is int
+    return "unknown"
+```
+
+*Implementation: ✅ Native - Maps to C# `is` pattern matching with type narrowing.*
 
 ### Collection Functions [v0.1]
 
