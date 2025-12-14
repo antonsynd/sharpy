@@ -1785,6 +1785,74 @@ def process(value: int, multiplier: int) -> str:
 
 *Implementation: ✅ Native - C# supports method overloading.*
 
+### Empty and Placeholder Function Bodies
+
+A function body can be empty or serve as a placeholder using several forms:
+
+**Valid Empty/Placeholder Bodies:**
+
+```python
+# Ellipsis (preferred for abstract/interface methods)
+def abstract_method(self) -> int:
+    ...
+
+# Pass statement
+def not_yet_implemented(self) -> None:
+    pass
+
+# Docstring only
+def documented_placeholder(self) -> str:
+    """This method will return a greeting."""
+
+# Comment only
+def minimal_placeholder(self) -> None:
+    # TODO: implement this
+
+# Docstring and pass
+def explicit_placeholder(self) -> int:
+    """Returns the computed value."""
+    pass
+```
+
+**Semantics of Each Form:**
+
+| Body Content | Valid | Compiled Behavior |
+|--------------|-------|-------------------|
+| `...` (ellipsis) | ✅ | `throw new NotImplementedException()` |
+| `pass` | ✅ | Empty body (no-op for `-> None`, undefined return otherwise) |
+| Docstring only | ✅ | Empty body (docstring extracted for documentation) |
+| Comment only | ✅ | Empty body |
+| Docstring + `pass` | ✅ | Empty body |
+| Docstring + `...` | ✅ | `throw new NotImplementedException()` |
+
+**Usage Guidelines:**
+
+- **Abstract methods and interface methods**: Use `...` (ellipsis)
+- **Intentionally empty methods**: Use `pass`
+- **Placeholder during development**: Use `...` or `pass` with a descriptive docstring
+- **Documentation-only**: Docstring alone is valid but consider adding `pass` or `...` for clarity
+
+```python
+interface IProcessor:
+    def process(self, data: bytes) -> bytes:
+        """Process the input data and return the result."""
+        ...  # Abstract - must be implemented
+
+class BaseHandler:
+    @virtual
+    def on_event(self, event: Event) -> None:
+        """Called when an event occurs. Override to handle events."""
+        pass  # Default: do nothing
+
+    @virtual
+    def validate(self, input: str) -> bool:
+        """Validate the input. Override to customize validation."""
+        # Base implementation accepts everything
+        return True
+```
+
+*Implementation: ✅ Native - Empty bodies compile to empty C# method bodies; ellipsis compiles to `throw new NotImplementedException()`.*
+
 ---
 
 ## Classes **[v0.1]**
@@ -2041,6 +2109,237 @@ class User(IJSONSerializable):
     def from_json(self, json: str) -> None:
         pass  # Parse and update
 ```
+
+### Default Method Implementations
+
+Interfaces can provide default implementations for methods. Implementing types inherit the default unless they provide their own implementation:
+
+```python
+interface ILogger:
+    def log(self, message: str) -> None:
+        """Log a message. Must be implemented."""
+        ...
+
+    def log_info(self, message: str) -> None:
+        """Log an info message. Has default implementation."""
+        self.log(f"[INFO] {message}")
+
+    def log_error(self, message: str) -> None:
+        """Log an error message. Has default implementation."""
+        self.log(f"[ERROR] {message}")
+
+class ConsoleLogger(ILogger):
+    # Must implement abstract method
+    def log(self, message: str) -> None:
+        print(message)
+
+    # Inherits log_info and log_error defaults
+    # Can optionally override them
+
+class FileLogger(ILogger):
+    path: str
+
+    def __init__(self, path: str):
+        self.path = path
+
+    def log(self, message: str) -> None:
+        # Write to file
+        pass
+
+    # Override default to add timestamp
+    def log_error(self, message: str) -> None:
+        self.log(f"[ERROR {datetime.now()}] {message}")
+```
+
+**Calling Other Interface Methods:**
+
+Default implementations can call other methods defined in the same interface (including methods inherited by the interface through parent interfaces, without using `super()`):
+
+```python
+interface IValidator:
+    def validate(self, value: str) -> bool:
+        """Core validation logic. Must be implemented."""
+        ...
+
+    def is_valid(self, value: str) -> bool:
+        """Check validity, returning boolean."""
+        return self.validate(value)
+
+    def validate_or_raise(self, value: str) -> None:
+        """Validate and raise if invalid."""
+        if not self.validate(value):
+            raise ValueError(f"Invalid value: {value}")
+
+    def validate_all(self, values: list[str]) -> bool:
+        """Validate multiple values."""
+        for value in values:
+            if not self.validate(value):
+                return False
+        return True
+```
+
+### Conflict Resolution: Base Class vs Interface
+
+When a class inherits the same method signature from both a base class and an interface, Sharpy follows C# resolution rules:
+
+**Rule: Base class takes precedence over interface default implementations.**
+
+```python
+interface IGreeter:
+    def greet(self) -> str:
+        return "Hello from interface"
+
+class BaseGreeter:
+    def greet(self) -> str:
+        return "Hello from base class"
+
+class MyGreeter(BaseGreeter, IGreeter):
+    # No override needed - inherits from BaseGreeter
+    pass
+
+g = MyGreeter()
+print(g.greet())  # "Hello from base class"
+```
+
+**Accessing Interface Implementation via Casting:**
+
+To explicitly call the interface's default implementation, cast to the interface type:
+
+```python
+g = MyGreeter()
+
+# Base class method
+print(g.greet())                    # "Hello from base class"
+
+# Attempt to call interface default (via cast)
+greeter: IGreeter = g
+print(greeter.greet())              # "Hello from base class" - still base class!
+
+# To truly access interface default, must use explicit interface implementation
+```
+
+**Explicit Interface Implementation:**
+
+When you need different behavior when accessed through the interface versus directly:
+
+```python
+class MyGreeter(BaseGreeter, IGreeter):
+    # Regular method (used when called on MyGreeter)
+    def greet(self) -> str:
+        return "Hello from MyGreeter"
+
+    # Explicit interface implementation (used when called through IGreeter)
+    def IGreeter.greet(self) -> str:
+        return "Hello from IGreeter implementation"
+
+g = MyGreeter()
+print(g.greet())                    # "Hello from MyGreeter"
+
+igreeter: IGreeter = g
+print(igreeter.greet())             # "Hello from IGreeter implementation"
+```
+
+**Multiple Interface Conflicts:**
+
+When multiple interfaces provide defaults for the same method, the implementing class must provide its own implementation:
+
+```python
+interface IA:
+    def method(self) -> str:
+        return "A"
+
+interface IB:
+    def method(self) -> str:
+        return "B"
+
+class C(IA, IB):
+    # ❌ ERROR if omitted: ambiguous default implementations
+    # ✅ Must provide explicit implementation
+    def method(self) -> str:
+        return "C"
+```
+
+*Implementation: ✅ Native - Direct mapping to C# default interface methods (C# 8.0+) and explicit interface implementation.*
+
+### Dunder Methods in Interfaces
+
+**Standard Library Only:**
+
+Only interfaces defined in the Sharpy standard library can declare dunder methods. User-defined interfaces cannot declare dunders.
+
+```python
+# ✅ Standard library interface (Sharpy.Core)
+interface IContextManager:
+    def __enter__(self) -> object:
+        ...
+
+    def __exit__(self, exc_type: Type?, exc_val: Exception?, exc_tb: object?) -> bool:
+        ...
+
+# ✅ Standard library interface
+interface IHashable:
+    def __hash__(self) -> int:
+        ...
+
+    def __eq__(self, other: object) -> bool:
+        ...
+
+# ❌ ERROR: User-defined interface cannot declare dunders
+interface IMyProtocol:
+    def __custom__(self) -> int:    # ERROR: dunder methods not allowed
+        ...
+
+    def __len__(self) -> int:       # ERROR: dunder methods not allowed
+        ...
+```
+
+**Rationale:**
+
+1. **Controlled semantics**: Dunder methods have special meaning and compiler integration. Restricting them to the standard library ensures consistent behavior.
+
+2. **Operator dispatch**: The compiler needs to know exactly which dunders exist and what they do. User-defined dunders would break this model.
+
+3. **.NET interop**: Standard library interfaces map to well-known .NET interfaces (e.g., `IEnumerable`).
+
+**Implementing Standard Library Dunder Interfaces:**
+
+User code can implement standard library interfaces that contain dunders:
+
+```python
+from sharpy.core import IContextManager
+
+class ManagedResource(IContextManager):
+    _handle: int
+
+    def __init__(self):
+        self._handle = acquire_resource()
+
+    def __enter__(self) -> ManagedResource:
+        return self
+
+    def __exit__(self, exc_type: Type?, exc_val: Exception?, exc_tb: object?) -> bool:
+        release_resource(self._handle)
+        return False  # Don't suppress exceptions
+
+# Usage
+with ManagedResource() as resource:
+    use(resource)
+```
+
+**Standard Library Dunder Interfaces:**
+
+| Interface | Dunders | Purpose |
+|-----------|---------|---------|
+| `IContextManager` | `__enter__`, `__exit__` | Context manager protocol |
+| `IIterable[T]` | `__iter__` | Iteration protocol |
+| `IIterator[T]` | `__next__` | Iterator protocol |
+| `ISized` | `__len__` | Length protocol |
+| `IContainer[T]` | `__contains__` | Membership protocol |
+| `IHashable` | `__hash__`, `__eq__` | Hashable protocol |
+| `IIndexable[K, V]` | `__getitem__`, `__setitem__` | Indexing protocol |
+| `IComparable[T]` | `__lt__`, `__le__`, `__gt__`, `__ge__` | Ordering protocol |
+
+*Implementation: Compiler validates that dunder declarations only appear in whitelisted standard library interfaces.*
 
 ---
 
@@ -2470,6 +2769,107 @@ str(x)              # ✅ Correct — uses __str__ internally
 - *For primitives: direct C# operator or method call*
 - *For Sharpy types with dunder: call to the generated method*
 - *For built-in functions: type-appropriate dispatch (e.g., `len()` calls `.Count` or `__len__`)*
+
+### Dunder Method Signatures
+
+Dunder methods have compiler-enforced return types. The compiler validates that dunder method signatures match the expected protocol:
+
+**Arithmetic Operators:**
+
+| Dunder | Required Return Type | Notes |
+|--------|----------------------|-------|
+| `__add__(self, other: T)` | Same type as `self` or compatible | Binary `+` |
+| `__sub__(self, other: T)` | Same type as `self` or compatible | Binary `-` |
+| `__mul__(self, other: T)` | Same type as `self` or compatible | Binary `*` |
+| `__truediv__(self, other: T)` | Same type as `self` or compatible | Binary `/` |
+| `__floordiv__(self, other: T)` | `long` or float type | Binary `//` |
+| `__mod__(self, other: T)` | Same type as `self` or compatible | Binary `%` |
+| `__pow__(self, other: T)` | Same type as `self` or compatible | Binary `**` |
+| `__neg__(self)` | Same type as `self` | Unary `-` |
+| `__pos__(self)` | Same type as `self` | Unary `+` |
+
+**Comparison Operators:**
+
+| Dunder | Required Return Type |
+|--------|----------------------|
+| `__eq__(self, other: object)` | `bool` |
+| `__eq__(self, other: T)` | `bool` |
+| `__ne__(self, other: object)` | `bool` |
+| `__ne__(self, other: T)` | `bool` |
+| `__lt__(self, other: T)` | `bool` |
+| `__le__(self, other: T)` | `bool` |
+| `__gt__(self, other: T)` | `bool` |
+| `__ge__(self, other: T)` | `bool` |
+
+**Special Methods:**
+
+| Dunder | Required Return Type | Notes |
+|--------|----------------------|-------|
+| `__str__(self)` | `str` | Human-readable string |
+| `__repr__(self)` | `str` | Debug representation |
+| `__hash__(self)` | `int` | Hash code |
+| `__len__(self)` | `int` | Length/count |
+| `__bool__(self)` | `bool` | Truthiness |
+| `__contains__(self, item: T)` | `bool` | Membership test |
+| `__iter__(self)` | `Iterator[T]` | Iteration |
+| `__getitem__(self, key: K)` | `V` | Index access |
+| `__setitem__(self, key: K, value: V)` | `None` | Index assignment |
+
+**Compiler Enforcement:**
+
+```python
+class MyNumber:
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+    # ✅ Correct return type
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, MyNumber):
+            return False
+        return self.value == other.value
+
+    # ❌ ERROR: __eq__ must return bool
+    def __eq__(self, other: object) -> int:
+        return self.value
+
+    # ✅ Correct return type
+    def __str__(self) -> str:
+        return f"MyNumber({self.value})"
+
+    # ❌ ERROR: __str__ must return str
+    def __str__(self) -> int:
+        return self.value
+
+    # ✅ Correct return type
+    def __hash__(self) -> int:
+        return hash(self.value)
+
+    # ❌ ERROR: __hash__ must return int
+    def __hash__(self) -> str:
+        return str(self.value)
+```
+
+**Parameter Types:**
+
+While return types are strictly enforced, parameter types for `other` in binary operations can vary based on what operations the type supports:
+
+```python
+class Vector:
+    x: double
+    y: double
+
+    # Vector + Vector
+    def __add__(self, other: Vector) -> Vector:
+        return Vector(self.x + other.x, self.y + other.y)
+
+    # Vector * scalar (different parameter type)
+    def __mul__(self, other: double) -> Vector:
+        return Vector(self.x * other, self.y * other)
+```
+
+This also applies to comparison operators like `__lt__()`. For `__eq__()` and `__ne__()` specifically, at least one overload must accept `object` (`System.Object`) as its argument. Additional overloads can be made for other types. This is actually satisfied by default for Sharpy reference types in Sharpy because they all derive from `Sharpy.Core.Object` which implements these dunder methods.
 
 ### Dunder Inheritance and Internal Calls **[v0.1]**
 
