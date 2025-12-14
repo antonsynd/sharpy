@@ -734,7 +734,7 @@ empty = ()
 - *List: `new Sharpy.Core.List<T> { 1, 2, 3 }`*
 - *Dict: `new Sharpy.Core.Dict<K, V> { ["key"] = value }`*
 - *Set: `new Sharpy.Core.Set<T> { 1, 2, 3 }`*
-- *Tuple: ✅ Native ValueTuple syntax*
+- *Tuple: ✅ Native C# ValueTuple syntax*
 
 ### Tuple Unpacking
 
@@ -744,13 +744,20 @@ x, y = point
 a, b, c = triple
 
 # Partial unpacking with wildcard
-first, *rest = (1, 2, 3, 4, 5)      # first = 1, rest = [2, 3, 4, 5]
-*start, last = (1, 2, 3)            # start = [1, 2], last = 3
+first, *rest = (1, 2, 3, 4, 5)      # first = 1, rest: tuple[int, int, int, int] = [2, 3, 4, 5]
+*start, last = (1, 2, 3)            # start: tuple[int, int] = [1, 2], last: int = 3
 
 # Partial unpacking is checked at compile time against the arity
 # of the tuple
-first, *middle, penultimate, last = (1, 2, 3, 4, 5)      # first = 1, middle = [2, 3], penultimate = 4, last = 5
+first, *middle, penultimate, last = (1, 2, 3, 4, 5)      # first: int = 1, middle: tuple[int, int] = [2, 3], penultimate: int = 4, last: int = 5
 ```
+
+Note that partial unpacking as demonstrated above creates tuples, not lists. This
+is contrary to Python where lists are created, due to the fact that Python unpacking
+can handle different list element types, whereas Sharpy requires lists to hold
+the same type. Holding the base type (`System.Object`) is theoretically possible, but
+it is not useful. This can be addressed in a future version of Sharpy (at least 2.0+)
+to declare the type of the partial unpacking.
 
 *Implementation:*
 - For exact arity unpacking: ✅ Native - C# supports tuple deconstruction for exact arity unpacking.
@@ -807,16 +814,49 @@ reversed_list = numbers[::-1]  # Reverse
 | `-` | Subtraction | `-` |
 | `*` | Multiplication | `*` |
 | `/` | Division* | `/` (with cast if necessary) |
-| `//` | Floor division | `(int)(x / y)` |
+| `//` | Floor division** | `/` (with cast if necessary) |
 | `%` | Modulo | `%` |
 | `**` | Exponentiation | `Math.Pow(x, y)` |
 
-*The return type follows Python where the highest precision floating point type is used. Unlike C#, `decimal` is allowed in these cases.
+*The return type follows Python where the highest precision floating point type capable of holding the operands is used. Unlike C#, `decimal` is allowed in these cases.
+
+| Highest precision operand | Result Type |
+|---------------------------|-------------|
+| `decimal` | `decimal` |
+| `ulong` | `decimal` |
+| `long` | `decimal` |
+| `double` | `double` |
+| `uint` | `double` |
+| `int` | `double` |
+| `ushort` | `double` |
+| `short` | `double` |
+| `float` | `float` |
+| `sbyte` | `float` |
+| `byte` | `float` |
+
+**The return type depends on the operands:
+
+Floor division returns the largest integer less than or equal to the
+mathematical quotient (rounds toward negative infinity).
+
+| Operands | Result Type |
+|----------|-------------|
+| Any integer types | `long` |
+| Any float type | Same float type |
+
+**Examples:**
+```python
+7 // 3      # 2 (long)
+-7 // 3     # -3 (long), not -2
+7.5 // 2.0  # 3.0 (double)
+```
 
 *Implementation:*
 - *Standard: ✅ Native*
 - *`**`: 🔄 Lowered to `Math.Pow()`*
-- *`//`: 🔄 Lowered to integer cast after division*
+- *`/`: 🔄 Lowered to `(T)a / (T)b` for where T is the highest precision floating point type capable of representing each of the operands. See table above.*
+- *`//`: 🔄 Lowered to `(long)Math.Floor((double)a / b)` for integers,
+`Math.Floor(a / b)` for floats.*
 
 ### Comparison Operators
 
@@ -898,7 +938,9 @@ if item in collection:
 | `+=`, `-=`, `*=`, `/=`, `//=`, `%=`, `**=` | Augmented arithmetic |
 | `&=`, `\|=`, `^=`, `<<=`, `>>=` | Augmented bitwise |
 
-*Implementation: ✅ Native - Direct mapping (except `**=` which is lowered).*
+*Implementation:*
+- ✅ Native - Direct mapping (except `**=` which is lowered).
+- 🔄 Lowered to dunder method calls for Sharpy standard library and user types that implement the inplace dunder methods, e.g. `__iadd__()`. This will change in the future if Sharpy moves to C# 14 where in-place operators can be overridden and the direct mapping will be used instead.*
 
 ### Operator Precedence
 
@@ -1059,7 +1101,7 @@ y = 42  # Inferred as int
 
 # Constant declaration
 const PI: double = 3.14159
-const MAX_SIZE = 1000  # Type inferred
+const MAX_SIZE = 1000  # Type inferred to int
 ```
 
 **Rules:**
@@ -1087,8 +1129,8 @@ x = "outer"
 for x in range(5):      # New 'x' shadows outer, block-scoped
     print(x)            # Prints 0, 1, 2, 3, 4
 
-print(x)                # ERROR: loop 'x' doesn't exist
-                        # Outer 'x' is shadowed but not modified
+print(x)                # Prints "outer", 'x' was shadowed only
+                        # in the for-loop, and not modified.
 ```
 
 ### To modify outer variable:
@@ -1098,6 +1140,7 @@ x = 0
 for i in range(5):      # 'i' is block-scoped
     x += i              # Modifies outer 'x'
 print(x)                # 10
+print(i)                # ERROR: 'i' is block-scoped
 ```
 
 ### Assignment Statement
@@ -1128,9 +1171,16 @@ x: int = 5
 x: auto = "hello"       # Shadowing with inferred type
 ```
 
-*Implementation: 🔄 Lowered - Generates versioned variable names (`x`, `x_1`, `x_2`).*
+*Implementation:*
+- 🔄 Lowered - Generates variable names (`x`, `x_1_...`, `x_2_...`). The versioned
+variable names are appended with UUIDs to prevent the user from predicting the
+internal names and referencing them inadvertently.
 
 ### Pass Statement
+
+Used as a placeholder (empty body) for a function or type definition, or
+used to satisfy the parsing requirement for a block with no statements to have
+one statement.
 
 ```python
 def todo():
@@ -1202,6 +1252,8 @@ while count < 10:
     count += 1
 ```
 
+`else`-clauses described in a section below.
+
 *Implementation: ✅ Native - Direct mapping.*
 
 ### For Loop
@@ -1225,7 +1277,14 @@ for index, name in enumerate(names):
 - *`range()`: 🔄 Lowered - `for (int i = 0; i < n; i++)`*
 - *`enumerate()`: 🔄 Lowered - `.Select((x, i) => (i, x))`*
 
+`else`-clauses described in a section below.
+
 ### Loop Else Clause **[v0.6]**
+
+For both `for` and `while` loops, an `else` clause can be
+added to execute if the loop completes without a break.
+
+An example with a `for`-loop is shown below.
 
 ```python
 for item in items:
@@ -1310,7 +1369,8 @@ def power(base: double, exponent: double = 2.0) -> double:
 
 # Multiple return values via tuple
 def min_max(values: list[int]) -> tuple[int, int]:
-    return (min(values), max(values))
+    return (min(values), max(values))  # Note that the parentheses are optional
+                                       # as the tuple is implied by the comma
 ```
 
 **Rules:**
@@ -1399,7 +1459,7 @@ class Person:
 - All instance fields must be declared at class level with type annotations
 - The `self` parameter is required for instance methods
 - The `self` parameter is not type-annotated
-- `__init__` return type is implicitly `None`
+- `__init__` return type is implicitly `None` but can be declared with `None` if desired for consistency.
 
 *Implementation: ✅ Native - Direct mapping to C# class.*
 
@@ -1581,9 +1641,10 @@ class Circle(IDrawable):
 ```
 
 **Interface Rules:**
-- Methods use `...` (ellipsis) for body
-- All methods are implicitly abstract
-- Implementing types must provide all methods
+- All methods are implicitly abstract unless they have a body that is not `...` (ellipsis), excluding docstrings, whitespace, and comments.
+- Methods with an actual body (even just a `pass` statement) become the default implementation for that method.
+- Implementing types must provide all methods that don't have a default implementation
+and can override the implementation of those that do have a default implementation.
 
 *Implementation: ✅ Native - Direct mapping to C# `interface`.*
 
@@ -1733,7 +1794,7 @@ class SealedClass:
     pass
 
 # Usage
-result = Calculator.add(5, 3)       # Static method call
+result = Calculator.add(5, 3)        # Static method call
 calc = ScientificCalculator()
 calc.compute(4)                      # Returns 16 (overridden method)
 ```
@@ -1799,7 +1860,6 @@ def find_max[T: IComparable[T]](items: list[T]) -> T:
 | `T: Interface` | `where T : Interface` |
 | `T: class` | `where T : class` |
 | `T: struct` | `where T : struct` |
-| `T: new()` | `where T : new()` |
 
 *Implementation: ✅ Native - Direct mapping to C# generic constraints.*
 
@@ -1833,7 +1893,7 @@ name = favorite.name    # "RED"
 
 **Rules:**
 - All cases must have explicit constant values
-- Values must be integers or strings
+- All values must be of the same type, either an integer type or the `str` type.
 - Enums must have at least one variant
 
 *Implementation:*
@@ -2443,6 +2503,10 @@ pairs = [(x, y) for x in range(3) for y in range(3)]
 - `[expr for x in iter]` → `.Select(x => expr).ToList()`
 - `[expr for x in iter if cond]` → `.Where(x => cond).Select(x => expr).ToList()`
 
+Note that the variables declared inside comprehensions are scoped to the
+comprehensions, temporarily shadow matching outer scope variables, and do not
+leak to the outer scope afterwards.
+
 ### Dict Comprehensions
 
 ```python
@@ -2452,6 +2516,10 @@ square_dict = {x: x**2 for x in range(5)}
 
 *Implementation: 🔄 Lowered - `.ToDictionary(x => key, x => value)`*
 
+Note that the variables declared inside comprehensions are scoped to the
+comprehensions, temporarily shadow matching outer scope variables, and do not
+leak to the outer scope afterwards.
+
 ### Set Comprehensions
 
 ```python
@@ -2460,6 +2528,10 @@ unique_lengths = {len(word) for word in ["apple", "banana", "cherry"]}
 ```
 
 *Implementation: 🔄 Lowered - `.Select(...).ToHashSet()`*
+
+Note that the variables declared inside comprehensions are scoped to the
+comprehensions, temporarily shadow matching outer scope variables, and do not
+leak to the outer scope afterwards.
 
 ### Comprehension Variable Scope
 
@@ -2480,12 +2552,12 @@ for x in items:
 print(x)  # ERROR: 'x' does not exist in this scope
 ```
 
-Variables declared inside comprehensions shadow any from the outer scope:
+Variables declared inside comprehensions temporarily shadow any from the outer scope:
 
 ```python
 x = 100
-squares = [x ** 2 for x in range(5)]  # This 'x' shadows outer 'x'
-print(x)  # ERROR: 'x' does not exist (shadowing doesn't leak)
+squares = [x ** 2 for x in range(5)]  # This 'x' shadows outer 'x' for the comprehension oly
+print(x)  # prints 100
 ```
 
 ---
@@ -2979,7 +3051,7 @@ The following features require .NET 7+ runtime or C# 11+ and cannot be supported
 | **v0.5** | Enums, operator overloading via dunders |
 | **v0.6** | F-strings, extended literals, comparison chaining, loop else |
 | **v0.7** | Pattern matching (`match`/`case`), guards, all pattern types |
-| **v0.8** | Type aliases, tagged unions (ADTs), variable shadowing |
+| **v0.8** | Type aliases, tagged unions (ADTs), `maybe`/`try` expressions, variable shadowing |
 | **v0.9** | Comprehensions, walrus operator, properties |
 | **v1.0** | Context managers, defer, events, async/await |
 | **v2.0+** | Features requiring C# 11+ / .NET 7+ |

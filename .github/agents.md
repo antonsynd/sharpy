@@ -11,6 +11,7 @@ Specialized agents for Sharpy development. Each agent has domain expertise and c
 | `test_expert` | xUnit tests, coverage | `dotnet test` |
 | `cli_expert` | CLI (`sharpyc`) | `dotnet run --project src/Sharpy.Cli -- build` |
 | `docs_writer` | Documentation (read-only) | N/A |
+| `verification_expert` | Read-only verification of compiler, standard library, CLI, documentation | `dotnet test` |
 
 ## Agent Boundaries
 
@@ -22,6 +23,7 @@ Specialized agents for Sharpy development. Each agent has domain expertise and c
 **Domain separation:**
 - `compiler_expert` → `src/Sharpy.Compiler/` only
 - `core_library_expert` → `src/Sharpy.Core/` only
+- `cli_expert` → `src/Sharpy.Cli/` only
 - Cross-domain changes require coordination
 
 ## Compiler Expert
@@ -71,3 +73,9 @@ dotnet run --project src/Sharpy.Cli -- build file.spy
 ## Docs Writer
 
 Read-only access. Verify examples compile before documenting.
+
+## Verification Expert
+
+Read-only access. Verifies the given documentation/specification of a feature
+or function, by reading the code, and/or running tests to verify the behavior
+or implementation.
