@@ -1895,14 +1895,14 @@ class Example:
 
 ### Method Modifiers
 
-| Decorator | C# Equivalent |
-|-----------|---------------|
-| `@static` | `static` |
-| `@override` | `override` |
-| `@virtual` | `virtual` |
-| `@abstract` | `abstract` |
-| `@final` (method) | `sealed override` |
-| `@final` (class) | `sealed class` |
+| Decorator | C# Equivalent | Notes |
+|-----------|---------------|-------|
+| `@static` | `static` | Class-level method, no `self` parameter |
+| `@override` | `override` | Override virtual/abstract base method |
+| `@virtual` | `virtual` | Method can be overridden by subclasses |
+| `@abstract` | `abstract` | Must be overridden, no implementation |
+| `@final` (method) | `sealed override` | Prevents further overriding |
+| `@final` (class) | `sealed class` | Prevents inheritance |
 
 ```python
 class Calculator:
@@ -1910,7 +1910,6 @@ class Calculator:
     def add(x: int, y: int) -> int:
         return x + y
 
-    # Virtual method (can be overridden by subclasses)
     @virtual
     def compute(self, x: int) -> int:
         return x * 2
@@ -1920,14 +1919,18 @@ class Calculator:
         return "Calculator"
 
 class ScientificCalculator(Calculator):
-    """Subclass that overrides virtual method."""
-
     @override
     def compute(self, x: int) -> int:
         return x ** 2
 
+    @final
+    @override
+    def __str__(self) -> str:
+        return "ScientificCalculator"
+
 @final
-class SealedClass:
+class CannotBeExtended:
+    """This class cannot be subclassed."""
     pass
 
 # Usage
@@ -1935,6 +1938,8 @@ result = Calculator.add(5, 3)        # Static method call
 calc = ScientificCalculator()
 calc.compute(4)                      # Returns 16 (overridden method)
 ```
+
+**Note:** Sharpy uses `@final` rather than C#'s `sealed` keyword to align with Python's `typing.final` decorator and Java's `final` keyword. The compiled output uses C#'s `sealed` keyword.
 
 *Implementation: ✅ Native - Direct mapping to C# keywords.*
 
