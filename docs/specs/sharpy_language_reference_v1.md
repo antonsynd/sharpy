@@ -772,45 +772,95 @@ empty = ()
 
 ### Tuple Unpacking
 
+Tuples can be unpacked into individual variables. Since tuples have compile-time known arity, the compiler verifies that the number of targets matches the tuple size.
+
 ```python
 # Basic unpacking
+point: tuple[int, int] = (10, 20)
 x, y = point
-a, b, c = triple
 
-# Partial unpacking with wildcard
-first, *rest = (1, 2, 3, 4, 5)      # first = 1, rest: tuple[int, int, int, int] = [2, 3, 4, 5]
-*start, last = (1, 2, 3)            # start: tuple[int, int] = [1, 2], last: int = 3
+# From function return
+def get_bounds() -> tuple[int, int, int, int]:
+    return (0, 0, 100, 100)
 
-# Partial unpacking is checked at compile time against the arity
-# of the tuple
-first, *middle, penultimate, last = (1, 2, 3, 4, 5)      # first: int = 1, middle: tuple[int, int] = [2, 3], penultimate: int = 4, last: int = 5
+left, top, width, height = get_bounds()
+
+# Nested unpacking
+nested: tuple[int, tuple[int, int]] = (1, (2, 3))
+a, (b, c) = nested  # a=1, b=2, c=3
 ```
 
-Note that partial unpacking as demonstrated above creates tuples, not lists. This
-is contrary to Python where lists are created, due to the fact that Python unpacking
-can handle different list element types, whereas Sharpy requires lists to hold
-the same type. Holding the base type (`System.Object`) is theoretically possible, but
-it is not useful. This can be addressed in a future version of Sharpy (at least 2.0+)
-to declare the type of the partial unpacking.
+**Star Unpacking:**
+
+The `*` operator captures multiple elements into a new tuple:
+
+```python
+numbers: tuple[int, int, int, int, int] = (1, 2, 3, 4, 5)
+
+# Capture remainder at end
+first, *rest = numbers
+# first: int = 1
+# rest: tuple[int, int, int, int] = (2, 3, 4, 5)
+
+# Capture remainder at start
+*start, last = numbers
+# start: tuple[int, int, int, int] = (1, 2, 3, 4)
+# last: int = 5
+
+# Capture middle elements
+first, *middle, last = numbers
+# first: int = 1
+# middle: tuple[int, int, int] = (2, 3, 4)
+# last: int = 5
+
+# Multiple fixed positions
+first, second, *middle, penultimate, last = (1, 2, 3, 4, 5, 6, 7)
+# first: int = 1
+# second: int = 2
+# middle: tuple[int, int, int] = (3, 4, 5)
+# penultimate: int = 6
+# last: int = 7
+```
+
+**Tuple-Only Restriction:**
+
+Star unpacking only works with tuples, not lists or other iterables. This is because tuples have compile-time known arity, allowing the compiler to determine the exact type of the starred variable.
+
+```python
+# ✅ Works with tuples (compile-time known arity)
+t: tuple[int, int, int, int] = (1, 2, 3, 4)
+first, *rest = t  # rest: tuple[int, int, int]
+
+# ❌ Does not work with lists (runtime-determined length)
+items: list[int] = [1, 2, 3, 4]
+first, *rest = items  # ERROR: star unpacking requires tuple type
+```
+
+**Why Tuples Produce Tuples:**
+
+Unlike Python where star unpacking always produces a list, Sharpy produces tuples. This is because:
+
+1. Sharpy lists are homogeneous (`list[T]`), but unpacking heterogeneous tuples could produce mixed types
+2. Tuple arity is known at compile time, enabling precise type inference
+3. Tuples are value types with better performance characteristics for small collections
+
+```python
+mixed: tuple[str, int, bool, double] = ("hello", 42, True, 3.14)
+first, *rest = mixed
+# first: str = "hello"
+# rest: tuple[int, bool, double] = (42, True, 3.14)
+# Note: rest is a tuple, not a list, preserving the distinct element types
+```
 
 *Implementation:*
-- For exact arity unpacking: ✅ Native - C# supports tuple deconstruction for exact arity unpacking.
-```python
-x, y = point
-```
+- *Exact arity unpacking: ✅ Native - C# tuple deconstruction `var (x, y) = point;`*
+- *Star unpacking: 🔄 Lowered - Compiler-generated item access:*
 
-Generates:
-```C#
-var (x, y) = point;
-```
-- For other arities: 🔄 Lowered - Generated as explicit unpacking via compiler-generated item access for other cases.
 ```python
-first, *middle, last = values  # Example: compile-time arity of 5
+first, *middle, last = values  # 5-element tuple
 ```
-
-Generates:
-```C#
-var x = values.Item1;
+```csharp
+var first = values.Item1;
 var middle = (values.Item2, values.Item3, values.Item4);
 var last = values.Item5;
 ```
