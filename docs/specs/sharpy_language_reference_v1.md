@@ -32,13 +32,13 @@ Features are marked with their target version. Each version builds upon the prev
 |---------|------------|--------------|
 | **v0.1.0** | Core Language | Basic types, functions, classes, control flow, exceptions, imports |
 | **v0.1.1** | Nullability & Collections | Nullable types, `?.`, `??`, list/dict/set/tuple, slicing |
-| **v0.1.2** | Structs, Interfaces, OOP | Structs, interfaces, inheritance, decorators, function overloading |
+| **v0.1.2** | Structs, Interfaces, OOP | Structs, interfaces, inheritance, decorators, function overloading, properties |
 | **v0.1.3** | Generics & Lambdas | Generic classes/structs/interfaces/methods, constraints, lambdas |
 | **v0.1.4** | Enums & Operators | Simple enums, operator overloading via dunders |
 | **v0.1.5** | Extended Syntax | F-strings, extended literals, comparison chaining, loop else |
 | **v0.1.6** | Pattern Matching | Match statements, patterns, guards |
 | **v0.1.7** | Type Aliases & ADTs | Type aliases, tagged unions, variable shadowing, `maybe`/`try` expressions |
-| **v0.1.8** | Comprehensions & Properties | List/dict/set comprehensions, walrus operator, properties |
+| **v0.1.8** | Comprehensions | List/dict/set comprehensions, walrus operator |
 | **v0.1.9** | Events & Defer | Events, defer statement |
 | **v0.2.0+** | Resources & Async | Context managers (`with`), async/await, generators (`yield`) |
 | **v1.0** | Stable release | Battle-tested and stable API and implementations |
@@ -291,7 +291,7 @@ The following are reserved keywords in Sharpy:
 | `not` | v0.1.0 | Boolean NOT |
 | `or` | v0.1.0 | Boolean OR |
 | `pass` | v0.1.0 | No-op placeholder |
-| `property` | v0.1.8 | Property declaration |
+| `property` | v0.1.2 | Property declaration |
 | `raise` | v0.1.0 | Raise exception |
 | `return` | v0.1.0 | Return statement |
 | `struct` | v0.1.2 | Struct declaration |
@@ -312,6 +312,7 @@ The following are reserved keywords in Sharpy:
 |---------|---------|-------|
 | `_` | Pattern matching | Wildcard pattern |
 | `get` | Properties | Property getter |
+| `init` | Properties | Property set-on-initialization only |
 | `set` | Properties | Property setter |
 
 ---
@@ -3787,7 +3788,7 @@ if (match.Success) {
 ```
 
 ---
-## Properties **[v0.1.8]**
+## Properties **[v0.1.2]**
 
 Properties provide controlled access to object state with support for computed values, validation, and fine-grained access control. Sharpy properties map cleanly to C# properties while maintaining Pythonic readability.
 
@@ -4859,13 +4860,13 @@ The following features require .NET 7+ runtime or C# 11+ and cannot be supported
 |---------|---------------|
 | **v0.1.0** | Core syntax, primitives, functions, classes, exceptions, imports, type hierarchy (`object` base), dunder invocation rules |
 | **v0.1.1** | Nullable types (`T?`), `?.`, `??`, collections, slicing |
-| **v0.1.2** | Structs, interfaces, inheritance, decorators, access modifiers, function overloading |
+| **v0.1.2** | Structs, interfaces, inheritance, decorators, access modifiers, function overloading, properties |
 | **v0.1.3** | Generics, type constraints, lambdas |
 | **v0.1.4** | Enums, operator overloading via dunders |
 | **v0.1.5** | F-strings, extended literals, comparison chaining, loop else |
 | **v0.1.6** | Pattern matching (`match`/`case`), guards, all pattern types |
 | **v0.1.7** | Type aliases, tagged unions (ADTs), `maybe`/`try` expressions, variable shadowing |
-| **v0.1.8** | Comprehensions, walrus operator, properties |
+| **v0.1.8** | Comprehensions, walrus operator |
 | **v0.1.9** | Events, defer statement |
 | **v0.2.0+** | Context managers (`with`), async/await, generators (`yield`), `del` statement |
 | **v1.0** | Stable release |
