@@ -30,16 +30,17 @@ Features are marked with their target version. Each version builds upon the prev
 
 | Version | Focus Area | Key Features |
 |---------|------------|--------------|
-| **v0.1.0** | Core Language | Basic types, functions, classes, control flow, exceptions |
-| **v0.1.1** | Nullability & Collections | Nullable types, `?.`, `??`, list/dict/set/tuple |
-| **v0.1.2** | Structs, Interfaces, OOP | Structs, interfaces, inheritance, decorators |
-| **v0.1.3** | Generics | Generic classes/structs/interfaces/methods, constraints |
+| **v0.1.0** | Core Language | Basic types, functions, classes, control flow, exceptions, imports |
+| **v0.1.1** | Nullability & Collections | Nullable types, `?.`, `??`, list/dict/set/tuple, slicing |
+| **v0.1.2** | Structs, Interfaces, OOP | Structs, interfaces, inheritance, decorators, function overloading |
+| **v0.1.3** | Generics & Lambdas | Generic classes/structs/interfaces/methods, constraints, lambdas |
 | **v0.1.4** | Enums & Operators | Simple enums, operator overloading via dunders |
-| **v0.1.5** | Extended Syntax | F-strings, extended literals, comparison chaining |
+| **v0.1.5** | Extended Syntax | F-strings, extended literals, comparison chaining, loop else |
 | **v0.1.6** | Pattern Matching | Match statements, patterns, guards |
-| **v0.1.7** | Type Aliases & ADTs | Type aliases, tagged unions |
-| **v0.1.8** | Comprehensions & Properties | List/dict/set comprehensions, walrus, properties |
-| **v0.2** | Resources & Async | Context managers, defer, events, async/await |
+| **v0.1.7** | Type Aliases & ADTs | Type aliases, tagged unions, variable shadowing, `maybe`/`try` expressions |
+| **v0.1.8** | Comprehensions & Properties | List/dict/set comprehensions, walrus operator, properties |
+| **v0.1.9** | Events & Defer | Events, defer statement |
+| **v0.2.0+** | Resources & Async | Context managers (`with`), async/await, generators (`yield`) |
 | **v1.0** | Stable release | Battle-tested and stable API and implementations |
 | **v2.0+** | Future | Features requiring C# 11+ or .NET 7+ |
 
@@ -268,11 +269,11 @@ The following are reserved keywords in Sharpy:
 | `const` | v0.1.0 | Constant declaration |
 | `continue` | v0.1.0 | Continue statement for loops |
 | `def` | v0.1.0 | Function/method definition |
-| `defer` | v0.1.10 | Deferred execution block |
+| `defer` | v0.1.9 | Deferred execution block |
 | `elif` | v0.1.0 | Else-if block |
 | `else` | v0.1.0 | Else block |
 | `enum` | v0.1.4 | Enumeration declaration |
-| `event` | v0.1.10 | Event declaration |
+| `event` | v0.1.9 | Event declaration |
 | `except` | v0.1.0 | Exception handler |
 | `False` | v0.1.0 | Boolean false literal |
 | `finally` | v0.1.0 | Finally block |
@@ -300,10 +301,10 @@ The following are reserved keywords in Sharpy:
 | `type` | v0.1.7 | Type alias declaration |
 | `while` | v0.1.0 | While loop |
 | `with` | v0.2.0 | Context manager |
-| `yield` | v0.2.1 | Generators |
-| `async` | v0.2.2 | Async programming |
-| `await` | v0.2.2 | Async programming |
-| `del` | v0.2.3 | Delete statement |
+| `yield` | v0.2.0 | Generators |
+| `async` | v0.2.0 | Async programming |
+| `await` | v0.2.0 | Async programming |
+| `del` | v0.2.0 | Delete statement |
 
 ### Soft Keywords (Context-Dependent)
 
@@ -346,7 +347,7 @@ s: short = 42
 b: byte = 255
 sb: sbyte = -128
 
-# Explicit casting [v0.1.3]
+# Explicit casting (with `to` operator)
 s = 42 to short
 b = 255 to byte
 ```
@@ -4385,7 +4386,7 @@ def set name(self, value: str) -> None:
 
 ---
 
-## Context Managers **[v0.1.10]**
+## Context Managers **[v0.2.0]**
 
 The `with` statement manages resources:
 
@@ -4415,7 +4416,7 @@ with open("in.txt") as input, open("out.txt", "w") as output:
 
 ---
 
-## Defer Statement **[v0.1.10]**
+## Defer Statement **[v0.1.9]**
 
 The `defer` statement schedules code to execute when the current scope exits:
 
@@ -4481,7 +4482,7 @@ string ProcessFile(string path) {
 
 ---
 
-## Events **[v0.1.10]**
+## Events **[v0.1.9]**
 
 Events provide a publish-subscribe pattern:
 
@@ -4539,7 +4540,7 @@ class Counter:
 
 ---
 
-## Async Programming **[v0.2.0]**
+## Async Programming **[v0.2.0+]**
 
 ### Async Functions
 
@@ -4849,8 +4850,6 @@ The following features require .NET 7+ runtime or C# 11+ and cannot be supported
 | `field` keyword in properties | C# 13 | Any | Compiler feature |
 | Extension properties/operators | C# 14 | Any | Compiler feature |
 | User-defined `+=` operators | C# 14 | Any | Compiler feature |
-| `yield` (generators) | v2.0 | Any | Deferred |
-| `del` statement | v2.0 | Any | Deferred |
 
 ---
 
@@ -4860,14 +4859,15 @@ The following features require .NET 7+ runtime or C# 11+ and cannot be supported
 |---------|---------------|
 | **v0.1.0** | Core syntax, primitives, functions, classes, exceptions, imports, type hierarchy (`object` base), dunder invocation rules |
 | **v0.1.1** | Nullable types (`T?`), `?.`, `??`, collections, slicing |
-| **v0.1.2** | Structs, interfaces, inheritance, decorators, access modifiers |
+| **v0.1.2** | Structs, interfaces, inheritance, decorators, access modifiers, function overloading |
 | **v0.1.3** | Generics, type constraints, lambdas |
 | **v0.1.4** | Enums, operator overloading via dunders |
 | **v0.1.5** | F-strings, extended literals, comparison chaining, loop else |
 | **v0.1.6** | Pattern matching (`match`/`case`), guards, all pattern types |
 | **v0.1.7** | Type aliases, tagged unions (ADTs), `maybe`/`try` expressions, variable shadowing |
 | **v0.1.8** | Comprehensions, walrus operator, properties |
-| **v0.2.0** | Context managers, defer, events, async/await |
+| **v0.1.9** | Events, defer statement |
+| **v0.2.0+** | Context managers (`with`), async/await, generators (`yield`), `del` statement |
 | **v1.0** | Stable release |
 | **v2.0+** | Features requiring C# 11+ / .NET 7+ |
 
