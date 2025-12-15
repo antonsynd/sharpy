@@ -30,23 +30,24 @@ Features are marked with their target version. Each version builds upon the prev
 
 | Version | Focus Area | Key Features |
 |---------|------------|--------------|
-| **v0.1** | Core Language | Basic types, functions, classes, control flow, exceptions |
-| **v0.2** | Nullability & Collections | Nullable types, `?.`, `??`, list/dict/set/tuple |
-| **v0.3** | Structs, Interfaces, OOP | Structs, interfaces, inheritance, decorators |
-| **v0.4** | Generics | Generic classes/structs/interfaces/methods, constraints |
-| **v0.5** | Enums & Operators | Simple enums, operator overloading via dunders |
-| **v0.6** | Extended Syntax | F-strings, extended literals, comparison chaining |
-| **v0.7** | Pattern Matching | Match statements, patterns, guards |
-| **v0.8** | Type Aliases & ADTs | Type aliases, tagged unions |
-| **v0.9** | Comprehensions & Properties | List/dict/set comprehensions, walrus, properties |
-| **v1.0** | Resources & Async | Context managers, defer, events, async/await |
+| **v0.1.0** | Core Language | Basic types, functions, classes, control flow, exceptions |
+| **v0.1.1** | Nullability & Collections | Nullable types, `?.`, `??`, list/dict/set/tuple |
+| **v0.1.2** | Structs, Interfaces, OOP | Structs, interfaces, inheritance, decorators |
+| **v0.1.3** | Generics | Generic classes/structs/interfaces/methods, constraints |
+| **v0.1.4** | Enums & Operators | Simple enums, operator overloading via dunders |
+| **v0.1.5** | Extended Syntax | F-strings, extended literals, comparison chaining |
+| **v0.1.6** | Pattern Matching | Match statements, patterns, guards |
+| **v0.1.7** | Type Aliases & ADTs | Type aliases, tagged unions |
+| **v0.1.8** | Comprehensions & Properties | List/dict/set comprehensions, walrus, properties |
+| **v0.2** | Resources & Async | Context managers, defer, events, async/await |
+| **v1.0** | Stable release | Battle-tested and stable API and implementations |
 | **v2.0+** | Future | Features requiring C# 11+ or .NET 7+ |
 
 ### Target Compatibility
 
 | Sharpy Version | Target Runtime | C# Version | Notes |
 |----------------|----------------|------------|-------|
-| **v0.1 - v1.0** | .NET 5+ / Unity | C# 9.0 | Maximum compatibility |
+| **v0.1.0 - v1.0** | .NET 5+ / Unity | C# 9.0 | Maximum compatibility |
 | **v2.0+** | .NET 7+ | C# 11+ | Full modern features |
 
 ### Transpilation Legend
@@ -57,11 +58,11 @@ Throughout this document, implementation notes use these indicators:
 |--------|---------|
 | ✅ **Native** | Maps directly to C# 9.0 |
 | 🔄 **Lowered** | Requires compiler transformation |
-| ❌ **v2.0** | Requires C# 11+ / .NET 7+; deferred |
+| ❌ **v2.0+** | Requires C# 11+ / .NET 7+; deferred |
 
 ---
 
-## Lexical Structure **[v0.1]**
+## Lexical Structure **[v0.1.0]**
 
 ### Source Files
 
@@ -249,63 +250,60 @@ Line 2"""
 
 ---
 
-## Keywords **[v0.1]**
+## Keywords **[v0.1.0]**
 
 ### Hard Keywords
 
-The following are reserved keywords in Sharpy v0.1-v1.0:
+The following are reserved keywords in Sharpy:
 
 | Keyword | Version | Notes |
 |---------|---------|-------|
-| `and` | v0.1 | Boolean AND |
-| `as` | v0.1 | Aliasing for imports |
-| `assert` | v0.1 | Assertion statement |
-| `auto` | v0.8 | Inferred type for shadowing |
-| `break` | v0.1 | Break statement for loops |
-| `case` | v0.7 | Pattern matching case |
-| `class` | v0.1 | Class declaration |
-| `const` | v0.1 | Constant declaration |
-| `continue` | v0.1 | Continue statement for loops |
-| `def` | v0.1 | Function/method definition |
-| `defer` | v1.0 | Deferred execution block |
-| `elif` | v0.1 | Else-if block |
-| `else` | v0.1 | Else block |
-| `enum` | v0.5 | Enumeration declaration |
-| `event` | v1.0 | Event declaration |
-| `except` | v0.1 | Exception handler |
-| `False` | v0.1 | Boolean false literal |
-| `finally` | v0.1 | Finally block |
-| `for` | v0.1 | For loop |
-| `from` | v0.1 | Selective imports |
-| `if` | v0.1 | Conditional |
-| `import` | v0.1 | Import statement |
-| `in` | v0.1 | Membership test |
-| `interface` | v0.3 | Interface declaration |
-| `is` | v0.1 | Identity comparison |
-| `lambda` | v0.4 | Lambda expression |
-| `match` | v0.7 | Pattern matching |
-| `maybe` | v0.8 | Optional from nullable expressions |
-| `None` | v0.1 | None/null literal |
-| `not` | v0.1 | Boolean NOT |
-| `or` | v0.1 | Boolean OR |
-| `pass` | v0.1 | No-op placeholder |
-| `property` | v0.9 | Property declaration |
-| `raise` | v0.1 | Raise exception |
-| `return` | v0.1 | Return statement |
-| `struct` | v0.3 | Struct declaration |
-| `True` | v0.1 | Boolean true literal |
-| `to` | v0.1 | Type coercion operator |
-| `try` | v0.1 | Try block |
-| `type` | v0.8 | Type alias declaration |
-| `while` | v0.1 | While loop |
-| `with` | v1.0 | Context manager |
-
-### Reserved for v2.0+
-
-These keywords are reserved but not implemented until v2.0:
-- `async`, `await` - Async programming (v1.0)
-- `yield` - Generators (v2.0)
-- `del` - Delete statement (v2.0)
+| `and` | v0.1.0 | Boolean AND |
+| `as` | v0.1.0 | Aliasing for imports |
+| `assert` | v0.1.0 | Assertion statement |
+| `auto` | v0.1.7 | Inferred type for shadowing |
+| `break` | v0.1.0 | Break statement for loops |
+| `case` | v0.1.6 | Pattern matching case |
+| `class` | v0.1.0 | Class declaration |
+| `const` | v0.1.0 | Constant declaration |
+| `continue` | v0.1.0 | Continue statement for loops |
+| `def` | v0.1.0 | Function/method definition |
+| `defer` | v0.1.10 | Deferred execution block |
+| `elif` | v0.1.0 | Else-if block |
+| `else` | v0.1.0 | Else block |
+| `enum` | v0.1.4 | Enumeration declaration |
+| `event` | v0.1.10 | Event declaration |
+| `except` | v0.1.0 | Exception handler |
+| `False` | v0.1.0 | Boolean false literal |
+| `finally` | v0.1.0 | Finally block |
+| `for` | v0.1.0 | For loop |
+| `from` | v0.1.0 | Selective imports |
+| `if` | v0.1.0 | Conditional |
+| `import` | v0.1.0 | Import statement |
+| `in` | v0.1.0 | Membership test |
+| `interface` | v0.1.2 | Interface declaration |
+| `is` | v0.1.0 | Identity comparison |
+| `lambda` | v0.1.3 | Lambda expression |
+| `match` | v0.1.6 | Pattern matching |
+| `maybe` | v0.1.7 | Optional from nullable expressions |
+| `None` | v0.1.0 | None/null literal |
+| `not` | v0.1.0 | Boolean NOT |
+| `or` | v0.1.0 | Boolean OR |
+| `pass` | v0.1.0 | No-op placeholder |
+| `property` | v0.1.8 | Property declaration |
+| `raise` | v0.1.0 | Raise exception |
+| `return` | v0.1.0 | Return statement |
+| `struct` | v0.1.2 | Struct declaration |
+| `True` | v0.1.0 | Boolean true literal |
+| `to` | v0.1.0 | Type coercion operator |
+| `try` | v0.1.0 | Try block |
+| `type` | v0.1.7 | Type alias declaration |
+| `while` | v0.1.0 | While loop |
+| `with` | v0.2.0 | Context manager |
+| `yield` | v0.2.1 | Generators |
+| `async` | v0.2.2 | Async programming |
+| `await` | v0.2.2 | Async programming |
+| `del` | v0.2.3 | Delete statement |
 
 ### Soft Keywords (Context-Dependent)
 
@@ -317,7 +315,7 @@ These keywords are reserved but not implemented until v2.0:
 
 ---
 
-## Literals **[v0.1]**
+## Literals **[v0.1.0]**
 
 ### Integer Literals
 
@@ -348,7 +346,7 @@ s: short = 42
 b: byte = 255
 sb: sbyte = -128
 
-# Explicit casting [v0.4]
+# Explicit casting [v0.1.3]
 s = 42 to short
 b = 255 to byte
 ```
@@ -381,7 +379,7 @@ precise = 3.141_592_653
 
 *Implementation: ✅ Native - Direct mapping to C# float literals.*
 
-### Extended Numeric Literals **[v0.6]**
+### Extended Numeric Literals **[v0.1.5]**
 
 ```python
 # Binary literals
@@ -452,7 +450,7 @@ regex = r"\d+\.\d+"
 
 *Implementation: ✅ Native - Maps to C# verbatim strings `@"..."`.*
 
-### F-Strings (Formatted String Literals) **[v0.6]**
+### F-Strings (Formatted String Literals) **[v0.1.5]**
 
 ```python
 name = "Alice"
@@ -571,7 +569,7 @@ def todo_function():
 
 ---
 
-## Types **[v0.1]**
+## Types **[v0.1.0]**
 
 ### Built-in Primitive Types
 
@@ -595,7 +593,7 @@ def todo_function():
 
 *Implementation: ✅ Native - Direct mapping to .NET types.*
 
-## String Type and UTF-16 Semantics **[v0.1]**
+## String Type and UTF-16 Semantics **[v0.1.0]**
 
 Sharpy's `str` type maps directly to .NET's `System.String`, which uses UTF-16 encoding internally. This has important implications for string operations.
 
@@ -732,7 +730,7 @@ pi = 3.14159        # Inferred as double
 
 *Implementation: ✅ Native - Direct mapping to C# type declarations.*
 
-### Type Hierarchy and Object Model **[v0.1]**
+### Type Hierarchy and Object Model **[v0.1.0]**
 
 #### Universal Base Type
 
@@ -763,7 +761,7 @@ def process(value: object) -> str:
 
 ---
 
-## Nullable Types **[v0.2]**
+## Nullable Types **[v0.1.1]**
 
 Nullable types allow variables to hold either a value or `None` (null):
 
@@ -783,7 +781,7 @@ other: int = None     # ERROR: Cannot assign None to non-nullable type
 
 *Implementation: ✅ Native - Maps to C# nullable reference types with `#nullable enable`.*
 
-### Null-Conditional Access **[v0.2]**
+### Null-Conditional Access **[v0.1.1]**
 
 ```python
 # Short-circuits if None
@@ -794,7 +792,7 @@ nested = obj?.field?.nested  # Chains null checks
 
 *Implementation: ✅ Native - Maps to C# `?.` operator (C# 6.0+).*
 
-### Null-Coalescing Operator **[v0.2]**
+### Null-Coalescing Operator **[v0.1.1]**
 
 ```python
 # Provide default for None values
@@ -817,7 +815,7 @@ name = None or "Anonymous"  # name = "Anonymous"
 
 *Implementation: ✅ Native - Maps to C# `??` operator.*
 
-### Type Narrowing **[v0.2]**
+### Type Narrowing **[v0.1.1]**
 
 Sharpy performs type narrowing in conditional branches:
 
@@ -848,7 +846,7 @@ if isinstance(obj, str):
 
 ---
 
-## Collection Types **[v0.2]**
+## Collection Types **[v0.1.1]**
 
 | Sharpy Type | .NET Type | Notes |
 |-------------|-----------|-------|
@@ -987,7 +985,7 @@ var middle = (values.Item2, values.Item3, values.Item4);
 var last = values.Item5;
 ```
 
-### Slicing **[v0.2]**
+### Slicing **[v0.1.1]**
 
 ```python
 numbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -1010,7 +1008,7 @@ reversed_list = numbers[::-1]  # Reverse
 
 ---
 
-## Operators **[v0.1]**
+## Operators **[v0.1.0]**
 
 ### Arithmetic Operators
 
@@ -1077,7 +1075,7 @@ mathematical quotient (rounds toward negative infinity).
 
 *Implementation: ✅ Native - Direct mapping.*
 
-### Comparison Chaining **[v0.6]**
+### Comparison Chaining **[v0.1.5]**
 
 ```python
 # Chained comparisons
@@ -1174,7 +1172,7 @@ Operators listed from highest to lowest precedence:
 
 ---
 
-## Expressions **[v0.1]**
+## Expressions **[v0.1.0]**
 
 ### Primary Expressions
 
@@ -1202,7 +1200,7 @@ my_variable
 obj.field
 obj.method()
 
-# Null-conditional [v0.2]
+# Null-conditional [v0.1.1]
 obj?.field
 obj?.method()
 ```
@@ -1223,7 +1221,7 @@ print("Hello")
 calculate_total(100, 0.08)
 obj.method(arg1, arg2)
 
-# Generic instantiation [v0.4]
+# Generic instantiation [v0.1.3]
 container = ListContainer[str]()
 ```
 
@@ -1438,7 +1436,7 @@ status = "even" if n % 2 == 0 else "odd"
 
 *Implementation: ✅ Native - Maps to `condition ? trueVal : falseVal`.*
 
-### Lambda Expressions **[v0.4]**
+### Lambda Expressions **[v0.1.3]**
 
 ```python
 # Single expression lambda
@@ -1482,7 +1480,7 @@ func(first(), second(), third())
 
 ---
 
-## Statements **[v0.1]**
+## Statements **[v0.1.0]**
 
 ### Expression Statement
 
@@ -1538,7 +1536,7 @@ items: auto = [1, 2, 3]  # Inferred as list[int]
 
 **When to Use `auto`:**
 
-The `auto` keyword is primarily useful for variable shadowing (v0.8), where you want to redeclare a variable with a different type:
+The `auto` keyword is primarily useful for variable shadowing (v0.1.7), where you want to redeclare a variable with a different type:
 
 ```python
 x: int = 5
@@ -1618,7 +1616,7 @@ X = 10                 # ERROR: cannot assign to constant
 
 *Implementation: ✅ Native - Direct mapping to C# variable declarations and `const`.*
 
-## Variable Scoping Rules [v0.1]
+## Variable Scoping Rules [v0.1.0]
 
 **Block-Scoped Constructs** (variable doesn't leak):
 - For loop variables
@@ -1665,7 +1663,7 @@ x += 5
 count *= 2
 ```
 
-### Variable Shadowing **[v0.8]**
+### Variable Shadowing **[v0.1.7]**
 
 Variables can be redeclared in the same scope with a different type using explicit type annotation:
 
@@ -1736,7 +1734,7 @@ assert x > 0, "Value must be positive"
 
 ---
 
-## Control Flow **[v0.1]**
+## Control Flow **[v0.1.0]**
 
 ### If Statement
 
@@ -1787,7 +1785,7 @@ for index, name in enumerate(names):
 
 `else`-clauses described in a section below.
 
-### Loop Else Clause **[v0.6]**
+### Loop Else Clause **[v0.1.5]**
 
 For both `for` and `while` loops, an `else` clause can be
 added to execute if the loop completes without a break.
@@ -1814,7 +1812,7 @@ if (_loopCompleted) { Console.WriteLine("Not found"); }
 
 ---
 
-## Exception Handling **[v0.1]**
+## Exception Handling **[v0.1.0]**
 
 ### Try/Except/Finally
 
@@ -1859,7 +1857,7 @@ raise RuntimeError("Failed") from original_error
 
 ---
 
-## Functions **[v0.1]**
+## Functions **[v0.1.0]**
 
 ### Function Definition
 
@@ -1970,7 +1968,7 @@ list2 = append_to(2)  # [2] - separate list, not [1, 2]
 
 *Implementation: ✅ Native - Direct mapping to C# optional parameters.*
 
-### Function Overloading **[v0.3]**
+### Function Overloading **[v0.1.2]**
 
 ```python
 def process(value: int) -> str:
@@ -2059,7 +2057,7 @@ class BaseHandler:
 
 ---
 
-## Classes **[v0.1]**
+## Classes **[v0.1.0]**
 
 ### Basic Class Definition
 
@@ -2092,7 +2090,7 @@ class Person:
 
 *Implementation: ✅ Native - Direct mapping to C# class.*
 
-### Constructor Overloading **[v0.3]**
+### Constructor Overloading **[v0.1.2]**
 
 ```python
 class Point:
@@ -2116,7 +2114,7 @@ class Point:
 
 ---
 
-## Imports **[v0.1]**
+## Imports **[v0.1.0]**
 
 ### Import Statement
 
@@ -2198,7 +2196,7 @@ class ClassA:
 
 ---
 
-## Structs **[v0.3]**
+## Structs **[v0.1.2]**
 
 Structs are value types that do not support inheritance but can implement interfaces.
 
@@ -2236,7 +2234,7 @@ struct Vector2:
 
 ---
 
-## Interfaces **[v0.3]**
+## Interfaces **[v0.1.2]**
 
 Interfaces define contracts that types must satisfy.
 
@@ -2277,7 +2275,7 @@ and can override the implementation of those that do have a default implementati
 
 *Implementation: ✅ Native - Direct mapping to C# `interface`.*
 
-### Generic Interfaces **[v0.4]**
+### Generic Interfaces **[v0.1.3]**
 
 ```python
 interface IContainer[T]:
@@ -2286,7 +2284,7 @@ interface IContainer[T]:
     def count(self) -> int: ...
 ```
 
-### Interface Inheritance **[v0.3]**
+### Interface Inheritance **[v0.1.2]**
 
 Interfaces can extend other interfaces:
 
@@ -2547,7 +2545,7 @@ with ManagedResource() as resource:
 
 ---
 
-## Inheritance **[v0.3]**
+## Inheritance **[v0.1.2]**
 
 ### Single Class Inheritance
 
@@ -2738,7 +2736,7 @@ error: `super()` is only valid in:
 
 ---
 
-## Decorators **[v0.3]**
+## Decorators **[v0.1.2]**
 
 Decorators modify the behavior of functions, methods, and classes.
 
@@ -2819,7 +2817,7 @@ calc.compute(4)                      # Returns 16 (overridden method)
 
 ---
 
-## Generics **[v0.4]**
+## Generics **[v0.1.3]**
 
 ### Generic Classes
 
@@ -2856,7 +2854,7 @@ def first[T](items: list[T]) -> T:
 
 *Implementation: ✅ Native - `T Identity<T>(T value)`*
 
-### Type Constraints **[v0.4]**
+### Type Constraints **[v0.1.3]**
 
 ```python
 interface IComparable[T]:
@@ -2881,7 +2879,7 @@ def find_max[T: IComparable[T]](items: list[T]) -> T:
 
 ---
 
-## Enumerations **[v0.5]**
+## Enumerations **[v0.1.4]**
 
 ### Simple Enums
 
@@ -2919,11 +2917,11 @@ name = favorite.name    # "RED"
 
 ---
 
-## Operator Overloading **[v0.5]**
+## Operator Overloading **[v0.1.4]**
 
 Classes can define dunder methods (double-underscore methods like `__add__`, `__eq__`) to customize how operators and built-in functions behave with their instances. **Dunder methods are a definition mechanism only**—they specify *how* a type behaves, but users invoke that behavior through operators and built-in functions, not by calling dunders directly.
 
-### Dunder Invocation Rules **[v0.1]**
+### Dunder Invocation Rules **[v0.1.0]**
 
 #### Dunders Are Definition-Only
 
@@ -3075,7 +3073,7 @@ class Vector:
 
 This also applies to comparison operators like `__lt__()`. For `__eq__()` and `__ne__()` specifically, at least one overload must accept `object` (`System.Object`) as its argument. Additional overloads can be made for other types. This is actually satisfied by default for Sharpy reference types in Sharpy because they all derive from `Sharpy.Core.Object` which implements these dunder methods.
 
-### Dunder Inheritance and Internal Calls **[v0.1]**
+### Dunder Inheritance and Internal Calls **[v0.1.0]**
 
 While user code cannot call dunders directly, there are specific contexts where dunder calls are permitted.
 
@@ -3333,7 +3331,7 @@ locations[coord] = "Home"  # Works because __hash__ and __eq__ defined
 
 ---
 
-## Pattern Matching **[v0.7]**
+## Pattern Matching **[v0.1.6]**
 
 ### Match Statement
 
@@ -3421,7 +3419,7 @@ match color:
 
 ---
 
-## Type Aliases **[v0.8]**
+## Type Aliases **[v0.1.7]**
 
 Type aliases create readable names for complex types:
 
@@ -3455,7 +3453,7 @@ def process_data[T, E](items: dict[str, list[Result[T, E]]]) -> dict[str, list[R
 
 ---
 
-## Tagged Unions (Algebraic Data Types) **[v0.8]**
+## Tagged Unions (Algebraic Data Types) **[v0.1.7]**
 
 Tagged unions allow cases to carry associated data:
 
@@ -3550,7 +3548,7 @@ public abstract class Result<T, E> {
 
 ---
 
-## Try expressions **[v0.8]**
+## Try expressions **[v0.1.7]**
 
 The `Result[T, E]` type can be implicitly created via
 `try` expressions. A `try` expression wraps the value of
@@ -3577,7 +3575,7 @@ exception. In such cases, the result type is always `Result[T, Exception]` where
 
 ---
 
-## Maybe expressions **[v0.8]**
+## Maybe expressions **[v0.1.7]**
 
 Optionals can be implicitly created via `maybe` expressions.
 A `maybe` expression wraps the value of the expression in
@@ -3595,7 +3593,7 @@ a nullable type.
 
 ---
 
-## Comprehensions **[v0.9]**
+## Comprehensions **[v0.1.8]**
 
 Comprehensions provide concise syntax for creating collections by transforming and filtering iterables.
 
@@ -3755,7 +3753,7 @@ filtered = [x for x in range(20) if x % 2 == 0 if x % 3 == 0]
 
 ---
 
-## Walrus Operator **[v0.9]**
+## Walrus Operator **[v0.1.8]**
 
 The walrus operator `:=` allows assignment within expressions:
 
@@ -3788,7 +3786,7 @@ if (match.Success) {
 ```
 
 ---
-## Properties **[v0.9]**
+## Properties **[v0.1.8]**
 
 Properties provide controlled access to object state with support for computed values, validation, and fine-grained access control. Sharpy properties map cleanly to C# properties while maintaining Pythonic readability.
 
@@ -4387,7 +4385,7 @@ def set name(self, value: str) -> None:
 
 ---
 
-## Context Managers **[v1.0]**
+## Context Managers **[v0.1.10]**
 
 The `with` statement manages resources:
 
@@ -4417,7 +4415,7 @@ with open("in.txt") as input, open("out.txt", "w") as output:
 
 ---
 
-## Defer Statement **[v1.0]**
+## Defer Statement **[v0.1.10]**
 
 The `defer` statement schedules code to execute when the current scope exits:
 
@@ -4483,7 +4481,7 @@ string ProcessFile(string path) {
 
 ---
 
-## Events **[v1.0]**
+## Events **[v0.1.10]**
 
 Events provide a publish-subscribe pattern:
 
@@ -4541,7 +4539,7 @@ class Counter:
 
 ---
 
-## Async Programming **[v1.0]**
+## Async Programming **[v0.2.0]**
 
 ### Async Functions
 
@@ -4595,7 +4593,7 @@ async def use_resource():
 
 ---
 
-## Built-in Functions **[v0.1+]**
+## Built-in Functions **[v0.1.0+]**
 
 Built-in functions provide polymorphic access to type behavior. They work uniformly on all types—primitives, .NET types, and Sharpy-defined types—by internally dispatching to the appropriate implementation:
 
@@ -4605,7 +4603,7 @@ Built-in functions provide polymorphic access to type behavior. They work unifor
 
 This design allows code like `len(x)`, `str(x)`, and `repr(x)` to work consistently regardless of whether `x` is a list, a string, or a custom class.
 
-### Type Conversion [v0.1]
+### Type Conversion [v0.1.0]
 
 | Function | Purpose | C# Mapping |
 |----------|---------|------------|
@@ -4618,7 +4616,7 @@ This design allows code like `len(x)`, `str(x)`, and `repr(x)` to work consisten
 - For Sharpy types with `__str__`: calls `__str__`
 - For all types: falls back to `.ToString()`
 
-### Type Checking [v0.1]
+### Type Checking [v0.1.0]
 
 | Function | Purpose | C# Mapping |
 |----------|---------|------------|
@@ -4685,7 +4683,7 @@ def process(value: object) -> str:
 
 *Implementation: ✅ Native - Maps to C# `is` pattern matching with type narrowing.*
 
-### Collection Functions [v0.1]
+### Collection Functions [v0.1.0]
 
 | Function | Purpose | C# Mapping |
 |----------|---------|------------|
@@ -4708,14 +4706,14 @@ def process(value: object) -> str:
 - For collections: uses `.Count` property
 - For strings/arrays: uses `.Length` property
 
-### I/O Functions [v0.1]
+### I/O Functions [v0.1.0]
 
 | Function | Purpose | C# Mapping |
 |----------|---------|------------|
 | `print(x)` | Print to console | `Console.WriteLine()` |
 | `input(prompt)` | Read from console | `Console.ReadLine()` |
 
-### Mathematical Functions [v0.1]
+### Mathematical Functions [v0.1.0]
 
 | Function | Purpose | C# Mapping |
 |----------|---------|------------|
@@ -4724,7 +4722,7 @@ def process(value: object) -> str:
 | `round(x, n)` | Round | `Math.Round()` |
 | `divmod(a, b)` | Quotient + remainder | `(a / b, a % b)` |
 
-### Object Functions [v0.1]
+### Object Functions [v0.1.0]
 
 | Function | Purpose | C# Mapping |
 |----------|---------|------------|
@@ -4746,7 +4744,7 @@ def process(value: object) -> str:
 
 ---
 
-## .NET Interop **[v0.1]**
+## .NET Interop **[v0.1.0]**
 
 ### Importing .NET Types
 
@@ -4798,7 +4796,7 @@ with FileStream("output.dat", FileMode.create) as stream:
 
 ---
 
-## Naming Conventions Summary **[v0.1]**
+## Naming Conventions Summary **[v0.1.0]**
 
 | Identifier Type | Sharpy Convention | Compiled C# Form |
 |-----------------|-------------------|------------------|
@@ -4815,7 +4813,7 @@ with FileStream("output.dat", FileMode.create) as stream:
 
 ---
 
-## Program Entry Point **[v0.1]**
+## Program Entry Point **[v0.1.0]**
 
 The entry point is either a file with top-level statements or a `main()` function:
 
@@ -4860,16 +4858,17 @@ The following features require .NET 7+ runtime or C# 11+ and cannot be supported
 
 | Version | Key Additions |
 |---------|---------------|
-| **v0.1** | Core syntax, primitives, functions, classes, exceptions, imports, type hierarchy (`object` base), dunder invocation rules |
-| **v0.2** | Nullable types (`T?`), `?.`, `??`, collections, slicing |
-| **v0.3** | Structs, interfaces, inheritance, decorators, access modifiers |
-| **v0.4** | Generics, type constraints, lambdas |
-| **v0.5** | Enums, operator overloading via dunders |
-| **v0.6** | F-strings, extended literals, comparison chaining, loop else |
-| **v0.7** | Pattern matching (`match`/`case`), guards, all pattern types |
-| **v0.8** | Type aliases, tagged unions (ADTs), `maybe`/`try` expressions, variable shadowing |
-| **v0.9** | Comprehensions, walrus operator, properties |
-| **v1.0** | Context managers, defer, events, async/await |
+| **v0.1.0** | Core syntax, primitives, functions, classes, exceptions, imports, type hierarchy (`object` base), dunder invocation rules |
+| **v0.1.1** | Nullable types (`T?`), `?.`, `??`, collections, slicing |
+| **v0.1.2** | Structs, interfaces, inheritance, decorators, access modifiers |
+| **v0.1.3** | Generics, type constraints, lambdas |
+| **v0.1.4** | Enums, operator overloading via dunders |
+| **v0.1.5** | F-strings, extended literals, comparison chaining, loop else |
+| **v0.1.6** | Pattern matching (`match`/`case`), guards, all pattern types |
+| **v0.1.7** | Type aliases, tagged unions (ADTs), `maybe`/`try` expressions, variable shadowing |
+| **v0.1.8** | Comprehensions, walrus operator, properties |
+| **v0.2.0** | Context managers, defer, events, async/await |
+| **v1.0** | Stable release |
 | **v2.0+** | Features requiring C# 11+ / .NET 7+ |
 
 ---
