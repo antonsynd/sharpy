@@ -305,6 +305,65 @@ The following are reserved keywords in Sharpy:
 | `await` | v0.2.0 | Async programming |
 | `del` | v0.2.0 | Delete statement |
 
+### The `del` Statement **[v0.2.0]**
+
+The `del` statement removes items from collections:
+
+```python
+# Delete from dictionary
+d = {"a": 1, "b": 2}
+del d["a"]              # Removes key "a"
+print(d)                # {"b": 2}
+
+# Delete from list by index
+items = [1, 2, 3, 4]
+del items[0]            # Removes first element
+print(items)            # [2, 3, 4]
+
+# Delete slice
+del items[1:3]          # Removes elements at indices 1 and 2
+```
+
+**What `del` Does NOT Do:**
+
+Unlike Python, Sharpy's `del` cannot delete local variables:
+
+```python
+x = 42
+del x                   # ERROR: cannot delete local variable
+```
+
+Sharpy's `del` also cannot delete attributes on objects because
+objects are not dynamic in Sharpy:
+
+```python
+class SomeObject:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+x = SomeObject(name="Bob")
+del x.name              # ERROR: cannot delete attributes
+```
+
+**Dunder Method:**
+
+`del obj[key]` calls the `__delitem__` dunder method:
+
+```python
+class CustomContainer:
+    def __delitem__(self, key: str) -> None:
+        print(f"Deleting {key}")
+
+c = CustomContainer()
+del c["test"]           # Prints: "Deleting test"
+```
+
+The dunder method can be overloaded to take one key of any type, including
+but not limited to an integer index (negative indexing is possible), a slice,
+etc.
+
 ### Soft Keywords (Context-Dependent)
 
 | Keyword | Context | Notes |
@@ -552,7 +611,15 @@ if name is not None:
 | Sharpy | Notes |
 |--------|-------|
 | `...` | Ellipsis - placeholder for unimplemented code |
-| `{/}` | Empty set literal |
+| `{/}` | Empty set literal (distinguishes from empty dict `{}`) |
+
+**Why `{/}` for empty sets?**
+
+In Python and Sharpy, `{}` creates an empty dictionary, not an empty set. To create an empty set, you must use `set()` or, in Sharpy, the special `{/}` literal. This syntax was chosen because:
+- `/` visually suggests "nothing" or "empty"
+- It's unambiguous and cannot be confused with dict syntax
+- It's concise: `{/}` vs `set[int]()`
+- It is from [PEP 802](https://peps.python.org/pep-0802/)
 
 ```python
 # Ellipsis usage
@@ -858,13 +925,86 @@ if isinstance(obj, str):
 
 Collection types use a Sharpy-specific implementation by default. These are bidi-convertible with the native .NET `System.Collections.Generic` equivalents, `List<T>`, `Dictionary<K, V>`, and `HashSet<T>` and use them underneath as storage.
 
+### Collection Methods
+
+Sharpy collections provide a Python-compatible API:
+
+**`list[T]` Methods:**
+
+| Method | Description | Python Equivalent |
+|--------|-------------|-------------------|
+| `append(item)` | Add item to end | `list.append()` |
+| `extend(items)` | Add multiple items | `list.extend()` |
+| `insert(index, item)` | Insert at index | `list.insert()` |
+| `remove(item)` | Remove first occurrence | `list.remove()` |
+| `pop()` | Remove and return last | `list.pop()` |
+| `pop(index)` | Remove and return at index | `list.pop(i)` |
+| `clear()` | Remove all items | `list.clear()` |
+| `index(item)` | Find index of item | `list.index()` |
+| `count(item)` | Count occurrences | `list.count()` |
+| `sort()` | Sort in place | `list.sort()` |
+| `reverse()` | Reverse in place | `list.reverse()` |
+| `copy()` | Shallow copy | `list.copy()` |
+
+**`dict[K, V]` Methods:**
+
+| Method | Description | Python Equivalent |
+|--------|-------------|-------------------|
+| `get(key)` | Get value or None | `dict.get()` |
+| `get(key, default)` | Get value or default | `dict.get(k, d)` |
+| `keys()` | Get all keys | `dict.keys()` |
+| `values()` | Get all values | `dict.values()` |
+| `items()` | Get key-value pairs | `dict.items()` |
+| `pop(key)` | Remove and return value | `dict.pop()` |
+| `update(other)` | Merge another dict | `dict.update()` |
+| `clear()` | Remove all items | `dict.clear()` |
+| `setdefault(key, default)` | Get or set default | `dict.setdefault()` |
+
+**`set[T]` Methods:**
+
+| Method | Description | Python Equivalent |
+|--------|-------------|-------------------|
+| `add(item)` | Add item | `set.add()` |
+| `remove(item)` | Remove item (error if missing) | `set.remove()` |
+| `discard(item)` | Remove item (no error) | `set.discard()` |
+| `pop()` | Remove and return arbitrary item | `set.pop()` |
+| `clear()` | Remove all items | `set.clear()` |
+| `union(other)` | Set union | `set.union()` |
+| `intersection(other)` | Set intersection | `set.intersection()` |
+| `difference(other)` | Set difference | `set.difference()` |
+| `issubset(other)` | Subset test | `set.issubset()` |
+| `issuperset(other)` | Superset test | `set.issuperset()` |
+
+**Interop with .NET Collections:**
+
+Sharpy collections can be converted to/from .NET collections:
+
+```python
+from system.collections.generic import List as DotNetList
+
+# Sharpy list to .NET List
+sharpy_list: list[int] = [1, 2, 3]
+dotnet_list: DotNetList[int] = sharpy_list.take()  # Explicit conversion with ownership transfer of inner list
+                                                   # (inner list is passed by reference, and then a new inner list is
+                                                   # set internally in the Sharpy list)
+dotnet_list: DotNetList[int] = sharpy_list.inner() # Explicit shared reference of inner list
+dotnet_list: DotNetList[int] = sharpy_list         # Implicit copy of inner list via conversion operator
+
+# .NET List to Sharpy list
+imported_list: list[int] = list(dotnet_list)  # Constructor accepts IEnumerable
+```
+
+The above is not an exhaustive enumeration of all conversion methods.
+
+*Implementation: 🔄 Lowered - `Sharpy.Core` collections wrap .NET collections with Pythonic API.*
+
 ### Collection Literals
 
 ```python
 # Empty list (type annotation required)
 empty: list[int] = []
 
-# List with elements
+# List with elements of the same deduced type
 numbers = [1, 2, 3, 4, 5]
 names = ["Alice", "Bob", "Charlie"]
 
@@ -883,6 +1023,22 @@ empty_set: set[int] = {/}  # Special syntax for empty set
 point = (10, 20)
 single = (42,)  # Single element requires trailing comma
 empty = ()
+```
+
+**Tuple Type Annotations:**
+
+```python
+# Standard tuple types
+point: tuple[int, int] = (10, 20)
+triple: tuple[str, int, bool] = ("hello", 42, True)
+
+# Single-element tuple
+single: tuple[int] = (42,)            # Note: trailing comma in value, not in type
+
+# Empty tuple (unit type)
+empty: tuple[()] = ()                 # Special syntax for empty tuple type
+# Equivalent:
+empty: tuple = ()                     # Shorthand for tuple[()]
 ```
 
 *Implementation: 🔄 Lowered*
@@ -1023,21 +1179,14 @@ reversed_list = numbers[::-1]  # Reverse
 | `%` | Modulo | `%` |
 | `**` | Exponentiation | `Math.Pow(x, y)` |
 
-*The return type follows Python where the highest precision floating point type capable of holding the operands is used. Unlike C#, `decimal` is allowed in these cases.
+*The `/` operator always produces a floating-point result, following Python's semantics where division never truncates. The result type is determined by the operands:
 
-| Highest precision operand | Result Type |
-|---------------------------|-------------|
-| `decimal` | `decimal` |
-| `ulong` | `decimal` |
-| `long` | `decimal` |
-| `double` | `double` |
-| `uint` | `double` |
-| `int` | `double` |
-| `ushort` | `double` |
-| `short` | `double` |
-| `float` | `float` |
-| `sbyte` | `float` |
-| `byte` | `float` |
+| Operand Types | Result Type | Notes |
+|---------------|-------------|-------|
+| Both `decimal` | `decimal` | High-precision division |
+| Any `double` | `double` | |
+| Any `float` (no `double`) | `float` | |
+| Integer types only | `double` | Always promotes to double |
 
 **The return type depends on the operands:
 
@@ -1048,20 +1197,58 @@ mathematical quotient (rounds toward negative infinity).
 |----------|-------------|
 | Any integer types | `long` |
 | Any float type | Same float type |
+| Mixed integer and float | Float type of the float operand |
 
 **Examples:**
 ```python
 7 // 3      # 2 (long)
 -7 // 3     # -3 (long), not -2
 7.5 // 2.0  # 3.0 (double)
+7 // 2.0    # 3.0 (double) - mixed: result is double
+7.0 // 2    # 3.0 (double) - mixed: result is double
+7.0f // 2   # 3.0f (float) - mixed: result is float
 ```
 
 *Implementation:*
 - *Standard: ✅ Native*
 - *`**`: 🔄 Lowered to `Math.Pow()`*
-- *`/`: 🔄 Lowered to `(T)a / (T)b` for where T is the highest precision floating point type capable of representing each of the operands. See table above.*
+- *`/`: 🔄 Lowered to floating-point division. See table above.*
 - *`//`: 🔄 Lowered to `(long)Math.Floor((double)a / b)` for integers,
 `Math.Floor(a / b)` for floats.*
+
+### Numeric Type Promotion
+
+When binary arithmetic operators (`+`, `-`, `*`) operate on different numeric types, operands are implicitly promoted following .NET rules with some Python-inspired adjustments:
+
+| Left Type | Right Type | Result Type | Notes |
+|-----------|------------|-------------|-------|
+| `int` | `int` | `int` | |
+| `int` | `long` | `long` | Smaller promoted to larger |
+| `int` | `double` | `double` | Integer promoted to float |
+| `int` | `decimal` | `decimal` | Integer promoted to decimal |
+| `float` | `double` | `double` | Lower precision promoted |
+| `double` | `decimal` | ❌ Error | Cannot mix double and decimal |
+| `byte` | `int` | `int` | Small integers promote to int |
+| `short` | `int` | `int` | Small integers promote to int |
+
+**Key Rules:**
+
+1. **Integer operations**: Result is the larger integer type (but at least `int`)
+2. **Float operations**: Result is the higher-precision float type
+3. **Mixed integer/float**: Integer is promoted to the float type
+4. **Decimal is special**: Can mix with integers, but not with `float`/`double`
+
+```python
+# Numeric promotion examples
+1 + 2           # int + int = int
+1 + 2L          # int + long = long
+1 + 2.0         # int + double = double
+1.0f + 2.0      # float + double = double
+1 + 2m          # int + decimal = decimal
+1.0 + 2m        # ERROR: double + decimal is not allowed
+```
+
+*Implementation: ✅ Native - Follows C# numeric promotion rules.*
 
 ### Comparison Operators
 
@@ -1083,6 +1270,29 @@ mathematical quotient (rounds toward negative infinity).
 a < b < c           # Equivalent to: a < b and b < c
 x == y == z         # Equivalent to: x == y and y == z
 1 <= value <= 100   # Range check
+```
+
+**Mixed Operators:**
+
+Chained comparisons can mix different comparison operators:
+
+```python
+# Mixed operators are allowed
+a < b <= c          # a < b and b <= c
+a == b < c          # a == b and b < c
+a != b != c         # a != b and b != c (but doesn't mean all different!)
+
+# Complex chains
+a < b <= c < d      # a < b and b <= c and c < d
+```
+
+**Evaluation:**
+
+Each intermediate expression is evaluated only once:
+
+```python
+# f() is called only once, not twice
+a < f() < c         # Equivalent to: _temp = f(); a < _temp and _temp < c
 ```
 
 *Implementation: 🔄 Lowered - Expanded to `a < b && b < c` with single evaluation of middle expression.*
@@ -1110,6 +1320,49 @@ x == y == z         # Equivalent to: x == y and y == z
 
 *Implementation: ✅ Native - Direct mapping.*
 
+### String Operators
+
+Strings support concatenation and repetition operators:
+
+| Operator | Description | Example | Result |
+|----------|-------------|---------|--------|
+| `+` | Concatenation | `"Hello" + " " + "World"` | `"Hello World"` |
+| `*` | Repetition | `"ab" * 3` | `"ababab"` |
+| `in` | Substring test | `"ell" in "Hello"` | `True` |
+
+```python
+# String concatenation
+greeting = "Hello" + ", " + "World!"
+print(greeting)  # "Hello, World!"
+
+# String with other types requires explicit conversion
+value = 42
+message = "Value: " + str(value)  # Must convert int to str
+
+# String repetition
+separator = "-" * 40
+print(separator)  # "----------------------------------------"
+
+# Substring membership
+if "error" in log_message:
+    handle_error()
+```
+
+**Type Safety:**
+
+Unlike Python, Sharpy does not allow implicit string concatenation with non-string types:
+
+```python
+# ✅ Valid
+"Count: " + str(42)
+f"Count: {42}"           # F-strings handle conversion
+
+# ❌ Invalid - type error
+"Count: " + 42           # ERROR: cannot concatenate str and int
+```
+
+*Implementation: ✅ Native - Maps to C# `+` operator and `string.Concat()`.*
+
 ### Membership Operators
 
 | Operator | Description |
@@ -1122,7 +1375,32 @@ if item in collection:
     print("Found")
 ```
 
-*Implementation: 🔄 Lowered - Maps to `collection.Contains(item)`.*
+**Dispatch Priority:**
+
+The `in` operator dispatches as follows:
+1. For Sharpy types: calls `__contains__` if defined
+2. For .NET types: calls `.Contains()` method
+3. For strings: calls `.Contains()` for substring test
+
+```python
+# Works on Sharpy collections
+items = [1, 2, 3]
+if 2 in items:           # Calls __contains__
+    print("Found")
+
+# Works on .NET collections
+from system.collections.generic import HashSet
+s = HashSet[int]()
+s.add(42)
+if 42 in s:              # Calls .Contains()
+    print("Found")
+
+# Works on strings (substring test)
+if "ell" in "Hello":     # Calls str.Contains()
+    print("Found substring")
+```
+
+*Implementation: 🔄 Lowered - Maps to `__contains__` for Sharpy types, `.Contains()` for .NET types.*
 
 ### Identity Operators
 
@@ -1453,6 +1731,32 @@ result = apply(10, lambda x: x ** 2)
 - Parameter types inferred from context
 - Expression result is automatically returned
 
+**Closure Semantics:**
+
+Lambdas can capture variables from enclosing scopes. Following C# semantics, variables are captured **by reference**, not by value:
+
+```python
+# Captured variables are by reference
+counter = 0
+increment = lambda: counter + 1
+counter = 10
+print(increment())  # 11, not 1
+
+# Classic loop capture gotcha (same as C#)
+funcs: list[() -> int] = []
+for i in range(3):
+    funcs.append(lambda: i)  # All capture the same 'i'
+
+# After loop, i is 2 (last value)
+print([f() for f in funcs])  # [2, 2, 2], not [0, 1, 2]
+
+# To capture current value, use default parameter
+funcs_fixed: list[() -> int] = []
+for i in range(3):
+    funcs_fixed.append(lambda captured=i: captured)  # Each captures different value
+print([f() for f in funcs_fixed])  # [0, 1, 2]
+```
+
 *Implementation: ✅ Native - Maps to `(x, y) => expr`.*
 
 ### Expression Evaluation Order
@@ -1602,10 +1906,35 @@ z: auto = 15           # Type inferred (explicit)
 Constants are declared with `const` and must have a compile-time constant initializer:
 
 ```python
+# Module-level constants
 const PI: double = 3.14159
 const MAX_SIZE: int = 1000
 const APP_NAME = "MyApp"       # Type inferred as str
 const DEBUG: bool = True
+```
+
+**Class-Level Constants:**
+
+Constants can also be declared within classes:
+
+```python
+class Math:
+    const PI: double = 3.14159265358979
+    const E: double = 2.71828182845904
+    const TAU: double = 6.28318530717958
+
+    @static
+    def circle_area(radius: double) -> double:
+        return Math.PI * radius ** 2
+
+class HttpStatus:
+    const OK: int = 200
+    const NOT_FOUND: int = 404
+    const INTERNAL_ERROR: int = 500
+
+# Access via class name
+print(Math.PI)           # 3.14159265358979
+print(HttpStatus.OK)     # 200
 ```
 
 Constants cannot be reassigned:
@@ -1618,6 +1947,18 @@ X = 10                 # ERROR: cannot assign to constant
 *Implementation: ✅ Native - Direct mapping to C# variable declarations and `const`.*
 
 ## Variable Scoping Rules [v0.1.0]
+
+**No `global` or `nonlocal` Keywords:**
+
+Sharpy does not support Python's `global` or `nonlocal` keywords. This aligns with C# scoping semantics:
+
+```python
+# ❌ Invalid - these keywords don't exist in Sharpy
+global x       # ERROR: unexpected 'global'
+nonlocal y     # ERROR: unexpected 'nonlocal'
+```
+
+To modify outer scope variables, use explicit assignment to a mutable container or return values from functions.
 
 **Block-Scoped Constructs** (variable doesn't leak):
 - For loop variables
@@ -1815,6 +2156,38 @@ if (_loopCompleted) { Console.WriteLine("Not found"); }
 
 ## Exception Handling **[v0.1.0]**
 
+### Exception Type Hierarchy
+
+Sharpy uses .NET's exception hierarchy directly:
+
+| Sharpy Name | .NET Type | Notes |
+|-------------|-----------|-------|
+| `Exception` | `System.Exception` | Base class for all exceptions |
+| `ValueError` | `System.ArgumentException` | Invalid argument value |
+| `TypeError` | `System.InvalidCastException` | Type mismatch |
+| `IndexError` | `System.IndexOutOfRangeException` | Index out of bounds |
+| `KeyError` | `System.Collections.Generic.KeyNotFoundException` | Dict key not found |
+| `RuntimeError` | `System.InvalidOperationException` | General runtime error |
+| `IOError` | `System.IO.IOException` | I/O operation failed |
+| `FileNotFoundError` | `System.IO.FileNotFoundException` | File not found |
+| `ZeroDivisionError` | `System.DivideByZeroException` | Division by zero |
+| `NotImplementedError` | `System.NotImplementedException` | Not yet implemented |
+| `StopIteration` | `System.InvalidOperationException` | Iterator exhausted |
+
+**Pythonic Aliases:**
+
+Sharpy provides Pythonic aliases for common .NET exceptions. These are imported automatically:
+
+```python
+# These are equivalent:
+raise ValueError("invalid")              # Pythonic alias
+raise System.ArgumentException("invalid") # Direct .NET type
+```
+
+**No `BaseException`:**
+
+Unlike Python which distinguishes `BaseException` from `Exception`, Sharpy follows .NET where `System.Exception` is the base for all exceptions. There is no separate hierarchy for system-level exceptions that shouldn't normally be caught.
+
 ### Try/Except/Finally
 
 ```python
@@ -1849,6 +2222,25 @@ except Exception as e:
 
 # Raise with cause
 raise RuntimeError("Failed") from original_error
+
+# Suppress exception chaining with 'from None'
+raise NewError("Clean error") from None  # Hides the original exception
+```
+
+**`raise ... from None`:**
+
+Using `from None` suppresses the automatic exception chaining, hiding the original exception from tracebacks. This is useful when:
+- The original exception is an implementation detail
+- You want a cleaner error message for users
+- Re-raising with a different exception type for API boundaries
+
+```python
+try:
+    # Low-level operation
+    result = parse_internal_format(data)
+except InternalParseError as e:
+    # Hide internal error, present clean API error
+    raise ValueError("Invalid data format") from None
 ```
 
 *Implementation:*
@@ -1969,7 +2361,97 @@ list2 = append_to(2)  # [2] - separate list, not [1, 2]
 
 *Implementation: ✅ Native - Direct mapping to C# optional parameters.*
 
-### Function Overloading **[v0.1.2]**
+### Named (Keyword) Arguments **[v0.1.0]**
+
+Sharpy supports calling functions with named arguments, allowing callers to specify parameter values by name rather than position:
+
+```python
+def create_user(name: str, age: int, active: bool = True) -> User:
+    pass
+
+# Positional arguments
+user1 = create_user("Alice", 30, False)
+
+# Named arguments
+user2 = create_user(name="Bob", age=25)
+user3 = create_user(age=25, name="Bob")  # Order doesn't matter for named args
+
+# Mixed: positional first, then named
+user4 = create_user("Charlie", age=35, active=False)
+
+# ❌ Invalid: named before positional
+user5 = create_user(name="Dave", 40)  # ERROR: positional argument follows keyword argument
+```
+
+**Named Argument Rules:**
+- Named arguments must follow all positional arguments
+- Once a named argument is used, all subsequent arguments must be named
+- A parameter cannot be specified both positionally and by name
+
+*Implementation: ✅ Native - Direct mapping to C# named arguments.*
+
+### Variadic Arguments (`*args` and `**kwargs`) **[v0.1.0]**
+
+**Sharpy does not support Python's `*args` or `**kwargs` syntax.**
+
+This design decision aligns with Sharpy's .NET-first principles:
+
+1. **Type safety**: `*args` would need a type like `tuple[T, ...]` (variable-length homogeneous tuple), which .NET's type system doesn't naturally express
+2. **Interop**: C#'s `params` arrays provide similar functionality but with different semantics
+3. **Clarity**: Explicit overloads or collection parameters provide clearer API contracts
+
+**Alternatives:**
+
+```python
+# Instead of: def func(*args: int) -> int
+
+# Option 1: Use a list parameter
+def sum_all(numbers: list[int]) -> int:
+    result = 0
+    for n in numbers:
+        result += n
+    return result
+
+sum_all([1, 2, 3, 4, 5])
+
+# Option 2: Use function overloading [v0.1.2]
+def add(a: int) -> int:
+    return a
+
+def add(a: int, b: int) -> int:
+    return a + b
+
+def add(a: int, b: int, c: int) -> int:
+    return a + b + c
+
+# Option 3: For .NET interop with params arrays, use list with @params decorator
+# (Future consideration - see TODO below)
+```
+
+<!-- TODO: Consider adding @params decorator for C# params array interop -->
+
+**For `**kwargs` alternatives:**
+
+```python
+# Instead of: def configure(**kwargs) -> None
+
+# Option 1: Use a typed dict or class
+class Config:
+    host: str = "localhost"
+    port: int = 8080
+    debug: bool = False
+
+def configure(config: Config) -> None:
+    pass
+
+# Option 2: Use named parameters with defaults
+def configure(host: str = "localhost", port: int = 8080, debug: bool = False) -> None:
+    pass
+```
+
+**Positional-Only and Keyword-Only Parameters:**
+
+Sharpy does not support Python's positional-only (`/`) or keyword-only (`*`) parameter markers. All parameters can be passed either positionally or by name.
 
 ```python
 def process(value: int) -> str:
@@ -2087,7 +2569,19 @@ class Person:
 - All instance fields must be declared at class level with type annotations
 - The `self` parameter is required for instance methods
 - The `self` parameter is not type-annotated
-- `__init__` return type is implicitly `None` but can be declared with `None` if desired for consistency.
+- `__init__` return type is implicitly `None` and can be omitted or explicitly declared
+
+```python
+class Person:
+    name: str
+
+    # Both forms are valid and equivalent:
+    def __init__(self, name: str):           # Implicit None return
+        self.name = name
+
+    def __init__(self, name: str) -> None:   # Explicit None return
+        self.name = name
+```
 
 *Implementation: ✅ Native - Direct mapping to C# class.*
 
@@ -2177,7 +2671,7 @@ from utils.math.vectors import Vector2, Vector3
 
 ### Circular Import Handling
 
-Circular imports are resolved through forward declarations:
+Circular imports are resolved through forward references in type annotations:
 
 ```python
 # module_a.spy
@@ -2190,10 +2684,36 @@ class ClassA:
         b.method()
 ```
 
+**How Forward References Work:**
+
+Sharpy resolves imports in two phases:
+1. **Type declaration phase**: Type names are registered (forward references allowed)
+2. **Type resolution phase**: Full type information is resolved
+
+When an import is used only in type annotations (not at runtime during `import` because runtime imports do not exist in Sharpy), circular references work automatically. No special syntax is needed.
+
+```python
+# file: parent.spy
+from child import Child  # Works because Child only used in type annotations
+
+class Parent:
+    children: list[Child]  # Type annotation - resolved later
+
+    def add_child(self, c: Child) -> None:  # Type annotation
+        self.children.append(c)
+
+# file: child.spy
+from parent import Parent  # Works because Parent only used in type annotations
+
+class Child:
+    parent: Parent?  # Type annotation - resolved later
+```
+
 **Rules:**
 - Circular references are allowed for type annotations
 - Circular references for base classes are **not** allowed
 - Import order matters: import for type hints processed before code execution
+- If you get circular import errors, restructure to avoid runtime circular dependencies
 
 ---
 
@@ -2223,8 +2743,40 @@ struct Vector2:
 - All fields must be declared at struct level
 - Must have a constructor that initializes all fields
 - Cannot inherit from other structs or classes
-- Can implement interfaces
+- Can implement interfaces (including interfaces with default methods)
 - Value semantics: copied when assigned or passed
+
+**Structs and Interface Default Methods:**
+
+Structs can implement interfaces that have default method implementations. However, be aware of boxing implications:
+
+```python
+interface IDescribable:
+    def describe(self) -> str:
+        return "An object"  # Default implementation
+
+struct Point(IDescribable):
+    x: int
+    y: int
+
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+
+    # Can override default, or use it as-is
+    def describe(self) -> str:
+        return f"Point({self.x}, {self.y})"
+
+# Direct call - no boxing
+p = Point(10, 20)
+print(p.describe())  # "Point(10, 20)" - efficient
+
+# Interface call - requires boxing (allocates)
+d: IDescribable = p  # Boxing occurs here
+print(d.describe())  # "Point(10, 20)" - works but allocates
+```
+
+**Performance Note:** When a struct is assigned to an interface variable or passed as an interface parameter, the struct is boxed (copied to the heap). For performance-critical code, prefer calling struct methods directly rather than through interface references.
 
 **When to Use Structs:**
 - Small data structures (typically < 16 bytes)
@@ -2442,6 +2994,44 @@ igreeter: IGreeter = g
 print(igreeter.greet())             # "Hello from IGreeter implementation"
 ```
 
+### When to Use Interfaces vs Abstract Classes
+
+With default implementations available in interfaces, the choice between interfaces and abstract classes may seem unclear. Here are the key distinctions:
+
+| Feature | Interface | Abstract Class |
+|---------|-----------|----------------|
+| Fields (state) | ❌ Cannot have fields | ✅ Can have fields |
+| Multiple inheritance | ✅ A class can implement multiple interfaces | ❌ A class can only extend one class |
+| Constructors | ❌ No constructors | ✅ Can have constructors |
+| Access modifiers on members | ❌ All members implicitly public | ✅ Can have protected/private members |
+| Default implementations | ✅ Supported (C# 8.0+) | ✅ Supported |
+
+**Guidelines:**
+
+- **Use interfaces** when defining a contract ("what can this do?") without requiring shared state
+- **Use abstract classes** when you need shared state (fields) or protected members across a family of related types
+- **Use interfaces** when a type needs to satisfy multiple contracts
+- **Use abstract classes** for "is-a" relationships with shared implementation
+
+```python
+# Interface: defines capability without state
+interface ISerializable:
+    def serialize(self) -> str: ...
+
+# Abstract class: shared state and partial implementation
+class Entity:
+    id: int                    # Shared field
+    created_at: datetime       # Shared field
+
+    def __init__(self, id: int):
+        self.id = id
+        self.created_at = datetime.now()
+
+    @abstract
+    def validate(self) -> bool:
+        ...                    # Subclasses must implement
+```
+
 **Multiple Interface Conflicts:**
 
 When multiple interfaces provide defaults for the same method, the implementing class must provide its own implementation:
@@ -2550,6 +3140,8 @@ with ManagedResource() as resource:
 
 ### Single Class Inheritance
 
+Sharpy supports single class inheritance only. A class can extend at most one base class but may implement multiple interfaces.
+
 ```python
 class Employee(Person):
     employee_id: str
@@ -2560,6 +3152,24 @@ class Employee(Person):
 
     def greet(self) -> str:
         return f"Hello, I'm {self.name}, employee #{self.employee_id}"
+```
+
+**Multiple Class Inheritance is Not Supported:**
+
+```python
+class A:
+    pass
+
+class B:
+    pass
+
+# ❌ ERROR: Multiple class inheritance not allowed
+class C(A, B):  # ERROR: A class can only extend one base class
+    pass
+
+# ✅ OK: Single class + multiple interfaces
+class C(A, ISerializable, IComparable):
+    pass
 ```
 
 *Implementation: ✅ Native - `: BaseClass`; `super().__init__()` → `: base()` or `base.Method()`*
@@ -2750,6 +3360,29 @@ Decorators modify the behavior of functions, methods, and classes.
 | `@private` or `__name` | `private` | Declaring class only |
 | `@internal` | `internal` | Same assembly |
 
+**Assembly Boundaries for `@internal`:**
+
+In Sharpy, an assembly corresponds to a compiled project. Assembly boundaries are defined by:
+
+- A `.spyproj` project file defines a single assembly
+- All `.spy` files in the same project compile to the same assembly
+- Each referenced project becomes a separate assembly
+
+`@internal` members are accessible from any file within the same project but not from other projects that reference it.
+
+```python
+# In mylib/internal_utils.spy (part of mylib.spyproj)
+@internal
+def helper_function() -> None:
+    pass
+
+# In mylib/public_api.spy (same project) - OK
+from mylib.internal_utils import helper_function  # ✅ Same assembly
+
+# In app/main.spy (different project referencing mylib) - ERROR
+from mylib.internal_utils import helper_function  # ❌ Different assembly
+```
+
 ```python
 class Example:
     @private
@@ -2911,6 +3544,34 @@ name = favorite.name    # "RED"
 - All values must be of the same type, either an integer type or the `str` type.
 - Enums must have at least one variant
 
+**Enum Iteration and Methods:**
+
+```python
+enum Color:
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+# Iterate over all enum values
+for color in Color:
+    print(f"{color.name} = {color.value}")
+# Output:
+# RED = 1
+# GREEN = 2
+# BLUE = 3
+
+# Get all values as a list
+all_colors: list[Color] = list(Color)
+
+# Get all names
+names: list[str] = [c.name for c in Color]  # ["RED", "GREEN", "BLUE"]
+
+# Get all values
+values: list[int] = [c.value for c in Color]  # [1, 2, 3]
+```
+
+**Note:** Simple enums (non-tagged unions) cannot have custom methods. For enums with methods, use tagged unions (v0.2.0+).
+
 *Implementation:*
 - *Integer enums: ✅ Native - C# `enum`*
 - *String enums: 🔄 Lowered - Static class with string constants*
@@ -2968,6 +3629,16 @@ str(x)              # ✅ Correct — uses __str__ internally
 - **Zero overhead**: No wrapper types or boxing required for polymorphic dispatch
 - **Consistency**: Same syntax works whether the type defines a dunder or uses native behavior
 
+> **Summary: Dunder Call Permissions**
+>
+> | Context | Allowed? |
+> |---------|----------|
+> | User code calling `x.__dunder__()` | ❌ Compile error |
+> | Inside dunder method, calling `self.__other_dunder__()` | ✅ Allowed |
+> | Inside dunder method, calling `super().__dunder__()` | ✅ Allowed |
+> | Inside dunder method, calling `other_obj.__dunder__()` | ❌ Use operator/built-in |
+> | Inside regular method, calling `self.__dunder__()` | ❌ Use built-in function |
+
 *Implementation: The compiler emits different code based on static type:*
 - *For primitives: direct C# operator or method call*
 - *For Sharpy types with dunder: call to the generated method*
@@ -3012,7 +3683,9 @@ Dunder methods have compiler-enforced return types. The compiler validates that 
 | `__repr__(self)` | `str` | Debug representation |
 | `__hash__(self)` | `int` | Hash code |
 | `__len__(self)` | `int` | Length/count |
-| `__bool__(self)` | `bool` | Truthiness |
+| `__bool__(self)` | `bool` | Truthiness (for `if`, `while`, `and`, `or`, `not`) |
+| `__true__()` | N/A | C# `operator true` (advanced, rarely needed) |
+| `__false__()` | N/A | C# `operator false` (advanced, rarely needed) |
 | `__contains__(self, item: T)` | `bool` | Membership test |
 | `__iter__(self)` | `Iterator[T]` | Iteration |
 | `__getitem__(self, key: K)` | `V` | Index access |
@@ -3118,6 +3791,8 @@ class Dog(Animal):
 dog = Dog("Buddy")
 print(repr(dog))  # Output: Dog(Buddy)
 ```
+
+**Note:** The `@override` decorator is **required** when overriding inherited dunder methods, just like any other virtual method. All inheritable dunder methods from base classes are implicitly `@virtual`.
 
 #### Base Class Dunder Calls
 
@@ -3397,13 +4072,24 @@ match shape:
 
 ### Exhaustiveness Checking
 
+The compiler checks that `match` statements cover all possible cases for certain types:
+
+**Checked Types:**
+
+| Type | Requirement |
+|------|-------------|
+| Enums | All enum values must be covered |
+| `bool` | Must cover `True` and `False` |
+| Tagged unions | All variants must be covered |
+| Other types | Wildcard `_` or explicit default required |
+
 ```python
 enum Color:
     RED = 1
     GREEN = 2
     BLUE = 3
 
-# WARNING: Non-exhaustive match (missing BLUE)
+# ERROR: Non-exhaustive match (missing BLUE)
 match color:
     case Color.RED:
         print("Red")
@@ -3416,6 +4102,21 @@ match color:
         print("Red")
     case _:
         print("Other color")
+
+# OK: Fully exhaustive
+match color:
+    case Color.RED:
+        print("Red")
+    case Color.GREEN:
+        print("Green")
+    case Color.BLUE:
+        print("Blue")
+
+# Boolean exhaustiveness
+match flag:
+    case True:
+        print("Yes")
+    # ERROR: missing False case
 ```
 
 ---
@@ -3477,18 +4178,27 @@ enum BinaryTree[T]:
 
 ### Creating Values
 
+Tagged union variants are created using the enum type name followed by the variant name:
+
 ```python
-success = Result.Ok(42)
-failure = Result.Err("Something went wrong")
+enum Result[T, E]:
+    case Ok(value: T)
+    case Err(error: E)
+
+# Create values using Type.Variant() syntax
+success: Result[int, str] = Result.Ok(42)
+failure: Result[int, str] = Result.Err("Something went wrong")
 ```
+
+**Note:** Variant names follow the same casing as defined in the enum declaration (typically `PascalCase`). The syntax `Result.Ok(42)` is a constructor call that creates an instance of the `Ok` variant. This of course is just a convention and is not enforced by the compiler.
 
 ### Pattern Matching
 
 ```python
 def divide(a: double, b: double) -> Result[double, str]:
     if b == 0:
-        return Result.err("Division by zero")
-    return Result.ok(a / b)
+        return Result.Err("Division by zero")
+    return Result.Ok(a / b)
 
 result = divide(10, 2)
 match result:
@@ -3574,6 +4284,30 @@ x = try[ValueError] int("some string")  # x is of type Result[int, ValueError]
 It is not an error if the expression would never raise an
 exception. In such cases, the result type is always `Result[T, Exception]` where `T` is the expression's type.
 
+**Precedence Rules:**
+
+The `try` expression has low precedence, binding only to the immediately following primary expression and its arguments:
+
+```python
+# try binds to the function call only
+x = try int("abc") + 5       # Parsed as: (try int("abc")) + 5
+                             # If int() succeeds: Result.Ok + 5 = ERROR (can't add)
+                             # Typically you'd unwrap first
+
+# Use parentheses for clarity or different grouping
+x = try (int("abc") + 5)     # Parsed as: try (int("abc") + 5)
+                             # Exception in either int() or + is caught
+
+# With conditional
+y = try foo() if cond else bar()   # Parsed as: (try foo()) if cond else bar()
+                                   # try only applies to foo(), not bar()
+
+# Parentheses make intent clear
+y = try (foo() if cond else bar())  # try applies to entire conditional
+```
+
+*Implementation: 🔄 Lowered - `try`/`catch` pattern wrapping the expression.*
+
 ---
 
 ## Maybe expressions **[v0.2.0]**
@@ -3590,7 +4324,36 @@ x = maybe d.get("x")  # x is of type Optional[int]
 ```
 
 It is a type-checking error if the expression does not return
-a nullable type.
+a nullable type (`T?`).
+
+```python
+# ✅ Valid - dict.get() returns T?
+d: dict[str, int] = {}
+x = maybe d.get("key")       # OK: get() returns int?
+
+# ✅ Valid - explicitly nullable
+value: int? = get_optional_value()
+y = maybe value              # OK: value is int?
+
+# ❌ Invalid - expression is not nullable
+s: str = "hello"
+z = maybe s.upper()          # ERROR: upper() returns str, not str?
+
+n: int = 42
+w = maybe n                  # ERROR: n is int, not int?
+```
+
+**Precedence Rules:**
+
+Like `try`, the `maybe` expression has low precedence:
+
+```python
+x = maybe d.get("key") ?? 0    # Parsed as: (maybe d.get("key")) ?? 0
+                               # ERROR: Optional[int] ?? int doesn't work directly
+
+# Use the Optional's methods instead
+x = (maybe d.get("key")).unwrap_or(0)
+```
 
 ---
 
@@ -3771,6 +4534,30 @@ while (line := file.read_line()) is not None:
     process(line)
 ```
 
+**Walrus Operator in Comprehensions:**
+
+Variables assigned with `:=` inside a comprehension follow special scoping rules:
+
+```python
+# Variable assigned in comprehension filter DOES leak to outer scope
+results = [y for x in data if (y := transform(x)) is not None]
+print(y)  # OK: y is defined (holds the last assigned value)
+
+# This is because := creates in "containing scope", not comprehension scope
+# The comprehension iteration variable (x) does NOT leak
+print(x)  # ERROR: x is not defined
+
+# Be cautious: y's final value is the last successful transform
+# This may not be the value you expect
+```
+
+**Contrast with Comprehension Variables:**
+
+| Variable Type | Scope | Leaks? |
+|--------------|-------|--------|
+| Iteration variable (`for x in`) | Comprehension | ❌ No |
+| Walrus assignment (`y :=`) | Containing | ✅ Yes |
+
 *Implementation: 🔄 Lowered - Hoisted variable declaration:*
 
 ```python
@@ -3800,6 +4587,27 @@ Sharpy supports three property forms based on complexity:
 | Auto-property | Simple storage | `property [get\|set\|init]? name: T` |
 | Computed property | Derived read-only values | `property name(self) -> T:` |
 | Explicit accessors | Custom logic, mixed access | `def (get\|set\|init) name(...)` |
+
+**Syntax Disambiguation:**
+
+The parser distinguishes properties from methods by keyword:
+
+- `property` keyword: Always a property declaration
+- `def` keyword: A method, unless followed by `get`, `set`, or `init` (then it's a property accessor)
+
+```python
+# Property - uses 'property' keyword
+property area(self) -> double:
+    return self.width * self.height
+
+# Method - uses 'def' keyword (without get/set/init)
+def calculate_area(self) -> double:
+    return self.width * self.height
+
+# Property accessor - uses 'def' with 'get'/'set'/'init'
+def get area(self) -> double:
+    return self._area
+```
 
 ### Auto-Properties
 
@@ -3847,6 +4655,27 @@ print(p.password_hash)   # ERROR: write-only property
 | `property get name: T` | get | ✅ | ✅ | ❌ |
 | `property init name: T` | get + init | ✅ | ✅ | ❌ |
 | `property set name: T` | set | ❌ | ✅ | ✅ |
+
+**Auto-Property Initialization Rules:**
+
+Auto-properties follow the same initialization rules as class fields:
+
+- Auto-properties with default values (`property name: T = value`) are initialized to that value
+- Auto-properties without defaults (`property name: T`) must be assigned in `__init__`
+- Value types (`int`, `double`, `bool`, structs) are zero-initialized if not explicitly assigned
+- Reference types without defaults must be explicitly assigned in `__init__` (enforced by the compiler)
+
+```python
+class Example:
+    property name: str           # Must be assigned in __init__
+    property count: int          # Zero-initialized to 0 (value type)
+    property label: str = ""     # Default value provided
+    property get id: int = 0     # Read-only with default
+
+    def __init__(self, name: str):
+        self.name = name         # Required: no default for reference type
+        # self.count not assigned - will be 0 (value type default)
+```
 
 *Implementation: ✅ Native*
 ```csharp
@@ -4570,7 +5399,7 @@ async def fetch_all(urls: list[str]) -> list[str]:
 ### Async Iteration
 
 ```python
-async def count_up(n: int):
+async def count_up(n: int) -> AsyncIterator[int]:
     for i in range(n):
         await asyncio.sleep(0.1)
         yield i
@@ -4578,6 +5407,31 @@ async def count_up(n: int):
 async def process():
     async for num in count_up(5):
         print(f"Number: {num}")
+```
+
+**Generator Return Types:**
+
+Functions using `yield` have special return type annotations:
+
+| Pattern | Return Type | Notes |
+|---------|-------------|-------|
+| `yield` in function | `Iterator[T]` | Synchronous generator |
+| `yield` in `async def` | `AsyncIterator[T]` | Asynchronous generator |
+| `yield from` | Same as yielded iterator | Delegation |
+
+```python
+# Synchronous generator
+def fibonacci(n: int) -> Iterator[int]:
+    a, b = 0, 1
+    for _ in range(n):
+        yield a
+        a, b = b, a + b
+
+# Async generator
+async def stream_data(url: str) -> AsyncIterator[bytes]:
+    async with http_client.stream(url) as response:
+        async for chunk in response:
+            yield chunk
 ```
 
 *Implementation: ✅ Native - `IAsyncEnumerable<T>` (C# 8+)*
@@ -4624,6 +5478,29 @@ This design allows code like `len(x)`, `str(x)`, and `repr(x)` to work consisten
 | `isinstance(x, T)` | Check if `x` is an instance of type `T` | `x is T` |
 | `type(x)` | Get runtime type of `x` | `x.GetType()` |
 
+**`type(x)` Return Type:**
+
+The `type()` function returns `System.Type`, the .NET reflection type:
+
+```python
+from system import Type
+
+x = 42
+t: Type = type(x)        # Returns System.Int32 type
+print(t.name)            # "Int32"
+print(t.full_name)       # "System.Int32"
+
+# Type comparison
+if type(x) == type(0):
+    print("x is an integer")
+
+# Prefer isinstance() for type checks
+if isinstance(x, int):   # More idiomatic
+    print("x is an integer")
+```
+
+**Note:** Unlike Python where `type(None)` returns `NoneType`, Sharpy's `type(None)` is a compile-time error because `None` is not a value with a type.
+
 **`isinstance(x, T)`**
 
 Checks whether `x` is an instance of type `T` at runtime. Returns `True` if `x` is an instance of `T` or any subclass of `T`.
@@ -4638,6 +5515,11 @@ if isinstance(value, str):
 if isinstance(value, MyClass):
     # value is narrowed to MyClass
     value.my_method()
+
+# Works with interfaces too
+if isinstance(value, IDrawable):
+    # value is narrowed to IDrawable
+    value.draw()
 ```
 
 **Single Type Only:**
@@ -4740,6 +5622,29 @@ def process(value: object) -> str:
 - For Sharpy types with `__hash__`: calls `__hash__`
 - For all types: falls back to `.GetHashCode()`
 - If `__eq__` is defined, `__hash__` must also be defined (and vice versa)
+
+**Hashing Tuples:**
+
+Tuples are automatically hashable if all their elements are hashable:
+
+```python
+# Tuples of hashable types can be hashed
+point = (10, 20)
+h = hash(point)          # OK: both int elements are hashable
+
+# Use tuples to create composite hash keys
+coord_to_name: dict[tuple[int, int], str] = {}
+coord_to_name[(0, 0)] = "origin"
+coord_to_name[(10, 20)] = "point A"
+
+# Nested tuples work if all elements hashable
+nested = ((1, 2), (3, 4))
+h = hash(nested)         # OK
+
+# Tuples containing unhashable types cannot be hashed
+bad = ([1, 2], [3, 4])   # Tuple containing lists
+h = hash(bad)            # ERROR: list is not hashable
+```
 
 *Implementation: 🔄 Lowered - Generated as method calls or type-appropriate dispatch.*
 
