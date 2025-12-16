@@ -37,10 +37,9 @@ Features are marked with their target version. Each version builds upon the prev
 | **v0.1.4** | Enums & Operators | Simple enums, operator overloading via dunders |
 | **v0.1.5** | Extended Syntax | F-strings, extended literals, comparison chaining, loop else |
 | **v0.1.6** | Pattern Matching | Match statements, patterns, guards |
-| **v0.1.7** | Type Aliases & ADTs | Type aliases, tagged unions, variable shadowing, `maybe`/`try` expressions |
+| **v0.1.7** | Type Aliases & Shadowing | Type aliases, variable shadowing |
 | **v0.1.8** | Comprehensions | List/dict/set comprehensions, walrus operator |
-| **v0.1.9** | Events & Defer | Events, defer statement |
-| **v0.2.0+** | Resources & Async | Context managers (`with`), async/await, generators (`yield`) |
+| **v0.2.0+** | Resources & Async | Context managers (`with`), defer, async/await, generators (`yield`), tagged unions (ADTs), `maybe`/`try` expressions, events |
 | **v1.0** | Stable release | Battle-tested and stable API and implementations |
 | **v2.0+** | Future | Features requiring C# 11+ or .NET 7+ |
 
@@ -269,11 +268,11 @@ The following are reserved keywords in Sharpy:
 | `const` | v0.1.0 | Constant declaration |
 | `continue` | v0.1.0 | Continue statement for loops |
 | `def` | v0.1.0 | Function/method definition |
-| `defer` | v0.1.9 | Deferred execution block |
+| `defer` | v0.2.0 | Deferred execution block |
 | `elif` | v0.1.0 | Else-if block |
 | `else` | v0.1.0 | Else block |
 | `enum` | v0.1.4 | Enumeration declaration |
-| `event` | v0.1.9 | Event declaration |
+| `event` | v0.2.0 | Event declaration |
 | `except` | v0.1.0 | Exception handler |
 | `False` | v0.1.0 | Boolean false literal |
 | `finally` | v0.1.0 | Finally block |
@@ -286,7 +285,7 @@ The following are reserved keywords in Sharpy:
 | `is` | v0.1.0 | Identity comparison |
 | `lambda` | v0.1.3 | Lambda expression |
 | `match` | v0.1.6 | Pattern matching |
-| `maybe` | v0.1.7 | Optional from nullable expressions |
+| `maybe` | v0.2.0 | Optional from nullable expressions |
 | `None` | v0.1.0 | None/null literal |
 | `not` | v0.1.0 | Boolean NOT |
 | `or` | v0.1.0 | Boolean OR |
@@ -3455,7 +3454,7 @@ def process_data[T, E](items: dict[str, list[Result[T, E]]]) -> dict[str, list[R
 
 ---
 
-## Tagged Unions (Algebraic Data Types) **[v0.1.7]**
+## Tagged Unions (Algebraic Data Types) **[v0.2.0]**
 
 Tagged unions allow cases to carry associated data:
 
@@ -3550,7 +3549,7 @@ public abstract class Result<T, E> {
 
 ---
 
-## Try expressions **[v0.1.7]**
+## Try expressions **[v0.2.0]**
 
 The `Result[T, E]` type can be implicitly created via
 `try` expressions. A `try` expression wraps the value of
@@ -3577,7 +3576,7 @@ exception. In such cases, the result type is always `Result[T, Exception]` where
 
 ---
 
-## Maybe expressions **[v0.1.7]**
+## Maybe expressions **[v0.2.0]**
 
 Optionals can be implicitly created via `maybe` expressions.
 A `maybe` expression wraps the value of the expression in
@@ -4417,7 +4416,7 @@ with open("in.txt") as input, open("out.txt", "w") as output:
 
 ---
 
-## Defer Statement **[v0.1.9]**
+## Defer Statement **[v0.2.0]**
 
 The `defer` statement schedules code to execute when the current scope exits:
 
@@ -4483,7 +4482,7 @@ string ProcessFile(string path) {
 
 ---
 
-## Events **[v0.1.9]**
+## Events **[v0.2.0]**
 
 Events provide a publish-subscribe pattern:
 
@@ -4865,10 +4864,9 @@ The following features require .NET 7+ runtime or C# 11+ and cannot be supported
 | **v0.1.4** | Enums, operator overloading via dunders |
 | **v0.1.5** | F-strings, extended literals, comparison chaining, loop else |
 | **v0.1.6** | Pattern matching (`match`/`case`), guards, all pattern types |
-| **v0.1.7** | Type aliases, tagged unions (ADTs), `maybe`/`try` expressions, variable shadowing |
+| **v0.1.7** | Type aliases, variable shadowing |
 | **v0.1.8** | Comprehensions, walrus operator |
-| **v0.1.9** | Events, defer statement |
-| **v0.2.0+** | Context managers (`with`), async/await, generators (`yield`), `del` statement |
+| **v0.2.0+** | Context managers (`with`), defer, async/await, generators (`yield`), tagged unions (ADTs), `maybe`/`try` expressions, events, `del` statement |
 | **v1.0** | Stable release |
 | **v2.0+** | Features requiring C# 11+ / .NET 7+ |
 
