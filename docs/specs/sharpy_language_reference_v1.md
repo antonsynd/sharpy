@@ -4631,6 +4631,9 @@ print(p.password_hash)   # ERROR: write-only property (no getter)
 
 **Auto-Property Modifiers:**
 
+The auto-property modifiers (or lack thereof) are mutually exclusive; for a given property
+named X, only one of the following are possible within a given class/struct/interface.
+
 | Syntax | Accessors | Readable | Settable in `__init__` | Settable after |
 |--------|-----------|----------|------------------------|----------------|
 | `property name: T` | get + set | ✅ | ✅ | ✅ |
@@ -4739,10 +4742,12 @@ class Temperature:
         self._celsius = value
 
     # Cannot combine with auto getter
-    property get celsius: double  # ERROR: no auto backing field with function-style!
+    property get celsius: double # ERROR: no auto backing field with function-style!
 ```
 
-**Important:** Function-style accessors do **not** generate a backing field. You must provide your own storage. They also cannot be combined with auto-properties.
+It is possible to have both a function-style getter and setter. However, function-style getter/setters cannot coexist with an auto-property for the same property name since there is no way to retrieve the backing field.
+
+**Important:** Function-style accessors do **not** generate a backing field. You must provide your own storage.
 
 **Type Consistency:** The type must be the same across all accessors (get/set/init) for a property.
 
