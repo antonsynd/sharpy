@@ -4580,34 +4580,16 @@ Properties provide controlled access to object state with support for computed v
 
 ### Property Forms
 
-Sharpy supports three property forms based on complexity:
+Sharpy supports two property forms:
 
 | Form | Use Case | Syntax Pattern |
 |------|----------|----------------|
-| Auto-property | Simple storage | `property [get\|set\|init]? name: T` |
-| Computed property | Derived read-only values | `property name(self) -> T:` |
-| Explicit accessors | Custom logic, mixed access | `def (get\|set\|init) name(...)` |
+| Auto-property | Simple storage with compiler-generated backing field | `property [get\|set\|init]? name: T [= value]` |
+| Function-style property | Custom logic, user-provided backing field | `property (get\|set) name(self, ...) -> T:` |
 
-**Syntax Disambiguation:**
-
-The parser distinguishes properties from methods by keyword:
-
-- `property` keyword: Always a property declaration
-- `def` keyword: A method, unless followed by `get`, `set`, or `init` (then it's a property accessor)
-
-```python
-# Property - uses 'property' keyword
-property area(self) -> double:
-    return self.width * self.height
-
-# Method - uses 'def' keyword (without get/set/init)
-def calculate_area(self) -> double:
-    return self.width * self.height
-
-# Property accessor - uses 'def' with 'get'/'set'/'init'
-def get area(self) -> double:
-    return self._area
-```
+**Key Distinction:**
+- **Auto-properties** generate a backing field automatically (opaque to the user)
+- **Function-style properties** require the user to provide their own backing field (or compute the value)
 
 ### Auto-Properties
 
@@ -4617,34 +4599,34 @@ Auto-properties generate a backing field and accessors automatically:
 class Person:
     # Read-write (default, has both get and set)
     property name: str = "Unknown"
-    property age: int
+    property age: int              # Zero-initialized (value type)
 
-    # Read-only (get accessor only)
+    # Read-only getter (must have default value OR be set in constructor)
     property get id: int = 0
-    property get uuid: str
+    property get uuid: str         # Must be set in __init__
 
-    # Init-only (get accessor + init accessor)
-    property init created_at: datetime
+    # Init-only (readable, but can only be set at declaration or in constructor)
+    property init created_at: datetime   # Must be set in __init__
     property init email: str = "unknown@example.com"
 
-    # Write-only (set accessor only, rare)
+    # Write-only (rare, typically combined with public getter)
     property set password_hash: str
 
     def __init__(self, name: str, age: int, id: int, uuid: str, email: str, password: str):
         self.name = name
         self.age = age
-        self.id = id
-        self.uuid = uuid
-        self.created_at = datetime.now()
-        self.email = email
+        self.id = id             # OK: can set read-only in constructor
+        self.uuid = uuid         # Required: no default value
+        self.created_at = datetime.now()  # Required: init property, no default
+        self.email = email       # OK: overrides default
         self.password_hash = hash_password(password)
 
 # After construction:
 p = Person("Alice", 30, 1, "abc-123", "alice@example.com", "secret")
 p.name = "Bob"           # OK: read-write
-p.id = 2                 # ERROR: read-only property
+p.id = 2                 # ERROR: read-only property (no setter)
 p.email = "new@test.com" # ERROR: init-only, cannot set after construction
-print(p.password_hash)   # ERROR: write-only property
+print(p.password_hash)   # ERROR: write-only property (no getter)
 ```
 
 **Auto-Property Modifiers:**
@@ -4652,42 +4634,51 @@ print(p.password_hash)   # ERROR: write-only property
 | Syntax | Accessors | Readable | Settable in `__init__` | Settable after |
 |--------|-----------|----------|------------------------|----------------|
 | `property name: T` | get + set | ✅ | ✅ | ✅ |
-| `property get name: T` | get | ✅ | ✅ | ❌ |
+| `property get name: T` | get only | ✅ | ✅ | ❌ |
+| `property set name: T` | set only | ❌ | ✅ | ✅ |
 | `property init name: T` | get + init | ✅ | ✅ | ❌ |
-| `property set name: T` | set | ❌ | ✅ | ✅ |
+
+**Difference between `property get` and `property init`:**
+- `property get name: T` — getter-only; can have a default value or be set in constructor, then immutable
+- `property init name: T` — getter + init-only setter; **must** be set at declaration or in every constructor (no zero-initialization); immutable after construction
 
 **Auto-Property Initialization Rules:**
 
-Auto-properties follow the same initialization rules as class fields:
-
-- Auto-properties with default values (`property name: T = value`) are initialized to that value
-- Auto-properties without defaults (`property name: T`) must be assigned in `__init__`
-- Value types (`int`, `double`, `bool`, structs) are zero-initialized if not explicitly assigned
-- Reference types without defaults must be explicitly assigned in `__init__` (enforced by the compiler)
+| Modifier | Default Value | Zero-Init (value types) | Must set in `__init__` |
+|----------|---------------|-------------------------|------------------------|
+| `property` | Optional | ✅ Yes | If no default (ref types) |
+| `property get` | Optional | ✅ Yes | If no default (ref types) |
+| `property set` | Optional | ✅ Yes | No |
+| `property init` | Optional | ❌ No | If no default |
 
 ```python
 class Example:
-    property name: str           # Must be assigned in __init__
+    property name: str           # Must be assigned in __init__ (reference type)
     property count: int          # Zero-initialized to 0 (value type)
     property label: str = ""     # Default value provided
     property get id: int = 0     # Read-only with default
+    property init token: str     # MUST be set in __init__ (no zero-init allowed)
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, token: str):
         self.name = name         # Required: no default for reference type
+        self.token = token       # Required: init property without default
         # self.count not assigned - will be 0 (value type default)
 ```
 
 *Implementation: ✅ Native*
 ```csharp
-public string Name { get; set; } = "Unknown";
+public string Name { get; set; }
+public int Count { get; set; }
+public string Label { get; set; } = "";
 public int Id { get; } = 0;
-public DateTime CreatedAt { get; init; }
-public string PasswordHash { set; }
+public string Token { get; init; }
 ```
 
-### Computed Properties
+### Function-Style Properties
 
-For properties that derive their value from other state, use the method-style syntax with explicit `self`:
+For properties requiring custom logic (validation, transformation, computation), use function-style syntax. The user must provide their own backing field or compute the value. You cannot combine get/set/init auto-properties with custom logic get/set/init, since the backing field for the auto-property cannot be accessed from the custom logic.
+
+#### Function-Style Getter
 
 ```python
 class Rectangle:
@@ -4698,35 +4689,27 @@ class Rectangle:
         self.width = width
         self.height = height
 
-    # Computed read-only properties
-    property area(self) -> double:
+    # Computed property (no backing field needed)
+    property get area(self) -> double:
         return self.width * self.height
 
-    property perimeter(self) -> double:
+    property get perimeter(self) -> double:
         return 2 * (self.width + self.height)
 
-    property is_square(self) -> bool:
+    property get is_square(self) -> bool:
         return self.width == self.height
 
     # Multi-statement bodies work naturally
-    property diagonal(self) -> double:
+    property get diagonal(self) -> double:
         w_sq = self.width ** 2
         h_sq = self.height ** 2
         return (w_sq + h_sq) ** 0.5
 
     # Can reference other properties
-    property description(self) -> str:
+    property get description(self) -> str:
         shape = "square" if self.is_square else "rectangle"
         return f"A {shape} with area {self.area}"
 ```
-
-**Computed Property Rules:**
-- Always read-only (getter only, no setter)
-- `self` parameter is explicit (consistent with methods)
-- Return type specified with `->` (consistent with functions)
-- Body is evaluated each time the property is accessed
-- No backing field is generated
-- Cannot be combined with explicit `def set` accessor; use explicit accessors for both if setter is needed
 
 *Implementation: ✅ Native*
 ```csharp
@@ -4743,134 +4726,50 @@ public double Diagonal {
 }
 ```
 
-### Explicit Accessors
-
-For properties requiring validation, transformation, or different access levels on get/set, define accessors explicitly using `def get`, `def set`, or `def init`:
+#### Function-Style Setter
 
 ```python
 class Temperature:
     _celsius: double = 0.0
 
-    # Explicit getter
-    def get celsius(self) -> double:
-        return self._celsius
-
-    # Explicit setter with validation
-    def set celsius(self, value: double) -> None:
+    # Function-style setter with validation
+    property set celsius(self, value: double):
         if value < -273.15:
             raise ValueError("Temperature below absolute zero")
         self._celsius = value
 
-    # Explicit getter only creates a read-only property
-    def get kelvin(self) -> double:
-        return self._celsius + 273.15
-
-    # Both getter and setter for fahrenheit
-    def get fahrenheit(self) -> double:
-        return self._celsius * 9/5 + 32
-
-    def set fahrenheit(self, value: double) -> None:
-        self._celsius = (value - 32) * 5/9
+    # Cannot combine with auto getter
+    property get celsius: double  # ERROR: no auto backing field with function-style!
 ```
 
-**Explicit Accessor Rules:**
-- `def get name(self) -> T:` defines a getter
-- `def set name(self, value: T) -> None:` defines a setter
-- `def init name(self, value: T) -> None:` defines an init-only setter
-- The existence of accessors implicitly declares the property (no separate declaration needed)
-- Types must match: getter return type must equal setter/init value parameter type
-- Accessor combinations determine property capabilities (see table below)
+**Important:** Function-style accessors do **not** generate a backing field. You must provide your own storage. They also cannot be combined with auto-properties.
 
-**Accessor Combinations:**
+**Type Consistency:** The type must be the same across all accessors (get/set/init) for a property.
 
-| Defined Accessors | Result | Readable | Settable in `__init__` | Settable after |
-|-------------------|--------|----------|------------------------|----------------|
-| `get` | Read-only | ✅ | ❌ | ❌ |
-| `set` | Write-only | ❌ | ✅ | ✅ |
-| `init` | Init-only write | ❌ | ✅ | ❌ |
-| `get` + `set` | Read-write | ✅ | ✅ | ✅ |
-| `get` + `init` | Read + init-only write | ✅ | ✅ | ❌ |
+**No Function-Style `init`:** There is no `property init name(self, value: T):` form because init-only semantics require compiler support for constructor-only assignment, which doesn't compose well with user-defined logic.
 
-*Implementation: ✅ Native*
-```csharp
-public double Celsius {
-    get => _celsius;
-    set {
-        if (value < -273.15)
-            throw new ArgumentException("Temperature below absolute zero");
-        _celsius = value;
-    }
-}
+### Mixed Access Modifiers
 
-public double Kelvin => _celsius + 273.15;
-
-public double Fahrenheit {
-    get => _celsius * 9.0 / 5.0 + 32;
-    set => _celsius = (value - 32) * 5.0 / 9.0;
-}
-```
-
-### Init-Only with Getter
-
-Combining `def get` and `def init` creates a property that can be read anytime but only set during initialization:
-
-```python
-class ImmutablePoint:
-    _x: double
-    _y: double
-
-    def get x(self) -> double:
-        return self._x
-
-    def init x(self, value: double) -> None:
-        self._x = value
-
-    def get y(self) -> double:
-        return self._y
-
-    def init y(self, value: double) -> None:
-        self._y = value
-
-    def __init__(self, x: double, y: double):
-        self.x = x  # OK: init accessor
-        self.y = y  # OK: init accessor
-
-# Usage
-p = ImmutablePoint(3.0, 4.0)
-print(p.x)    # OK: 3.0
-p.x = 5.0     # ERROR: no set accessor, init-only
-```
-
-*Implementation: ✅ Native (C# 9.0)*
-```csharp
-public double X {
-    get => _x;
-    init => _x = value;
-}
-```
-
-### Access Modifiers on Accessors
-
-Decorators apply naturally to explicit accessors, appearing on the line above:
+Getters and setters can have different visibility:
 
 ```python
 class Counter:
     _value: int = 0
 
     # Public getter
-    def get value(self) -> int:
+    property get value(self) -> int:
         return self._value
 
     # Private setter (only accessible within the class)
     @private
-    def set value(self, value: int) -> None:
-        self._value = value
+    property set value(self, v: int):
+        self._value = v
 
     # Public methods can use the private setter
-    def increment(self) -> None:
+    def increment(self):
         self.value += 1
 
-    def reset(self) -> None:
+    def reset(self):
         self.value = 0
 
 # Usage
@@ -4878,6 +4777,18 @@ c = Counter()
 print(c.value)    # OK: public getter
 c.increment()     # OK: internal modification via public method
 c.value = 10      # ERROR: setter is private
+```
+
+**With Auto-Properties:**
+
+```python
+class User:
+    property get name: str           # Public getter
+    @private
+    property set name: str           # Private setter
+
+    def __init__(self, name: str):
+        self.name = name             # OK: inside class
 ```
 
 **Common Access Patterns:**
@@ -4909,33 +4820,24 @@ class AppConfig:
 
     # Static auto-properties
     @static
-    property get version: str = "1.0.0"
+    property version: str = "1.0.0"
 
     @static
-    property build_number: int = 0
+    property get build_number: int = 42
 
-    # Static computed property (no parameter)
+    # Static function-style getter (no self parameter)
     @static
-    property is_debug_enabled() -> bool:
+    property get is_debug_enabled() -> bool:
         return AppConfig._debug_mode
 
-    # Static explicit accessors (no self parameter)
+    # Static function-style setter (no self parameter)
     @static
-    def get debug_mode() -> bool:
-        return AppConfig._debug_mode
-
-    @static
-    def set debug_mode(value: bool) -> None:
+    property set debug_mode(value: bool):
         AppConfig._debug_mode = value
 
     @static
-    def get instance_count() -> int:
-        return AppConfig._instance_count
-
-    @static
-    @private
-    def set instance_count(value: int) -> None:
-        AppConfig._instance_count = value
+    property get debug_mode() -> bool:
+        return AppConfig._debug_mode
 
 # Usage
 print(AppConfig.version)           # "1.0.0"
@@ -4944,14 +4846,14 @@ print(AppConfig.is_debug_enabled)  # True
 ```
 
 **Static Property Rules:**
-- Static computed properties use empty parentheses: `property name() -> T:`
-- Static explicit accessors omit the `self` parameter
+- Auto: Use `@static` decorator with `property [get|set|init] name: T`
+- Function-style: Use `@static` decorator with `property get name() -> T:` or `property set name(value: T):` (no `self`)
 - Access the class by name within the body
 
 *Implementation: ✅ Native*
 ```csharp
-public static string Version { get; } = "1.0.0";
-public static int BuildNumber { get; set; } = 0;
+public static string Version { get; set; } = "1.0.0";
+public static int BuildNumber { get; } = 42;
 public static bool IsDebugEnabled => _debugMode;
 public static bool DebugMode {
     get => _debugMode;
@@ -4965,20 +4867,15 @@ Properties participate in inheritance using the standard decorators:
 
 ```python
 class Shape:
-    # Abstract computed property (must be overridden)
+    # Abstract property (must be overridden)
     @abstract
-    property area(self) -> double:
+    property get area(self) -> double:
         ...
 
-    # Virtual computed property (can be overridden)
+    # Virtual property (can be overridden)
     @virtual
-    property name(self) -> str:
+    property get name(self) -> str:
         return "Shape"
-
-    # Virtual with explicit accessor
-    @virtual
-    def get description(self) -> str:
-        return f"{self.name} with area {self.area}"
 
 class Circle(Shape):
     property get radius: double
@@ -4988,12 +4885,12 @@ class Circle(Shape):
 
     # Override abstract property
     @override
-    property area(self) -> double:
+    property get area(self) -> double:
         return 3.14159 * self.radius ** 2
 
     # Override virtual property
     @override
-    property name(self) -> str:
+    property get name(self) -> str:
         return "Circle"
 
 @final
@@ -5004,7 +4901,7 @@ class UnitCircle(Circle):
     # Sealed override - cannot be overridden in further subclasses
     @final
     @override
-    property name(self) -> str:
+    property get name(self) -> str:
         return "Unit Circle"
 ```
 
@@ -5013,7 +4910,8 @@ class UnitCircle(Circle):
 - `@virtual` properties can optionally be overridden by subclasses
 - `@override` is required when overriding a base class property
 - `@final` prevents further overriding in subclasses
-- Access modifiers cannot be changed when overriding (e.g., cannot make a public property private)
+- A subclass can override any accessor it has visibility to
+- The overriding accessor's visibility cannot be more restrictive than the base
 
 *Implementation: ✅ Native*
 ```csharp
@@ -5028,21 +4926,21 @@ public sealed override string Name => "Unit Circle";
 
 ### Interface Properties
 
-Interfaces can declare property requirements:
+Interfaces declare property requirements using the same syntax:
 
 ```python
 interface IIdentifiable:
-    # Read-only property requirement
+    # Read-only property requirement (getter only)
     property get id: int
 
 interface INamed:
-    # Read-write property requirement
+    # Read-write property requirement (getter + setter)
     property name: str
 
 interface ITimestamped:
-    # Computed property requirement (read-only with signature)
-    property created_at(self) -> datetime: ...
-    property updated_at(self) -> datetime: ...
+    # Function-style requirement (read-only computed)
+    property get created_at(self) -> datetime: ...
+    property get updated_at(self) -> datetime: ...
 
 class Entity(IIdentifiable, INamed, ITimestamped):
     property get id: int
@@ -5055,12 +4953,21 @@ class Entity(IIdentifiable, INamed, ITimestamped):
         self._created = datetime.now()
         self._updated = self._created
 
-    property created_at(self) -> datetime:
+    property get created_at(self) -> datetime:
         return self._created
 
-    property updated_at(self) -> datetime:
+    property get updated_at(self) -> datetime:
         return self._updated
 ```
+
+**Interface Property Requirements:**
+
+| Interface Declares | Implementer Must Provide |
+|--------------------|--------------------------|
+| `property get x: T` | At least a getter |
+| `property set x: T` | At least a setter |
+| `property x: T` | Both getter and setter |
+| `property get x(self) -> T: ...` | A getter (auto or function-style) |
 
 **Explicit Interface Implementation:**
 
@@ -5077,12 +4984,12 @@ class SecretHolder(ISecret):
         self._secret = secret
 
     # Regular property (always accessible)
-    property hint(self) -> str:
+    property get hint(self) -> str:
         return self._secret[0] + "***"
 
     # Explicit interface implementation
     # Only accessible when referenced through the interface type
-    def get ISecret.value(self) -> str:
+    property get ISecret.value(self) -> str:
         return self._secret
 
 # Usage
@@ -5102,32 +5009,19 @@ string ISecret.Value => _secret;
 
 ### Property and Method Name Conflicts
 
-A property and a method cannot share the same name within a class. This restriction exists because:
-
-1. A property getter with no parameters would be ambiguous with a method that takes no parameters
-2. Even setter-only properties create complexity in overload resolution
-3. The access syntax would be ambiguous: does `obj.name` call a getter or reference a method?
+A property and a method cannot share the same name within a class:
 
 ```python
 class Example:
     _value: int = 0
 
     # ✅ OK - property
-    property value(self) -> int:
+    property get value(self) -> int:
         return self._value
 
     # ❌ ERROR - method cannot have same name as property
     def value(self) -> int:
         return self._value
-
-class AnotherExample:
-    # ✅ OK - property
-    property set data(self, value: str) -> None:
-        self._data = value
-
-    # ❌ ERROR - even setter-only properties conflict with methods
-    def data(self, value: str) -> None:
-        self._data = value
 ```
 
 **Compiler Error:**
@@ -5140,76 +5034,54 @@ error: 'value' is already defined as a property in this class
    |         ^^^^^ method name conflicts with property on line 6
 ```
 
-**Resolution:** Use distinct names for properties and methods:
-
-```python
-class Example:
-    _value: int = 0
-
-    # Property for simple access
-    property value(self) -> int:
-        return self._value
-
-    # Method with different name for computed/action-oriented access
-    def get_formatted_value(self) -> str:
-        return f"Value: {self._value}"
-
-    def compute_value(self, factor: int) -> int:
-        return self._value * factor
-```
-
 ### Property Syntax Summary
 
-**Auto-properties:**
+**Auto-properties (compiler-generated backing field):**
 
 | Syntax | Accessors | C# Equivalent |
 |--------|-----------|---------------|
 | `property name: T` | get + set | `T Name { get; set; }` |
 | `property name: T = val` | get + set | `T Name { get; set; } = val` |
 | `property get name: T` | get | `T Name { get; }` |
-| `property init name: T` | get + init | `T Name { get; init; }` |
+| `property get name: T = val` | get | `T Name { get; } = val` |
 | `property set name: T` | set | `T Name { set; }` |
+| `property init name: T` | get + init | `T Name { get; init; }` |
+| `property init name: T = val` | get + init | `T Name { get; init; } = val` |
 
-**Computed properties:**
-
-| Syntax | C# Equivalent |
-|--------|---------------|
-| `property name(self) -> T:` | `T Name { get { ... } }` or `T Name => ...` |
-| `@static property name() -> T:` | `static T Name => ...` |
-
-**Explicit accessors:**
+**Function-style properties (user-provided backing field or computed):**
 
 | Syntax | C# Equivalent |
 |--------|---------------|
-| `def get name(self) -> T:` | `get { ... }` |
-| `def set name(self, value: T) -> None:` | `set { ... }` |
-| `def init name(self, value: T) -> None:` | `init { ... }` |
-| `def get Interface.name(self) -> T:` | `T IFace.Name { get { ... } }` |
+| `property get name(self) -> T:` | `T Name { get { ... } }` |
+| `property set name(self, value: T):` | `T Name { set { ... } }` |
+| `@static property get name() -> T:` | `static T Name { get { ... } }` |
+| `@static property set name(value: T):` | `static T Name { set { ... } }` |
+| `property get IFace.name(self) -> T:` | `T IFace.Name { get { ... } }` |
 
-**Accessor combinations:**
+**Valid accessor combinations:**
 
-| Defined | Property Type | C# Equivalent |
-|---------|---------------|---------------|
-| `get` only | Read-only | `{ get; }` with body |
-| `set` only | Write-only | `{ set; }` with body |
-| `init` only | Init-write-only | `{ init; }` with body |
-| `get` + `set` | Read-write | `{ get; set; }` with bodies |
-| `get` + `init` | Read + init-write | `{ get; init; }` with bodies |
+| Accessors | Result | Readable | Writable in `__init__` | Writable after |
+|-----------|--------|----------|------------------------|----------------|
+| get | Read-only | ✅ | ✅ (auto) / ❌ (func) | ❌ |
+| set | Write-only | ❌ | ✅ | ✅ |
+| get + set | Read-write | ✅ | ✅ | ✅ |
+| init | Init-only (auto only) | ✅ | ✅ | ❌ |
+| get + init | Read + init (auto only) | ✅ | ✅ | ❌ |
 
 **Decorator placement:**
 
 ```python
 @static
 @virtual
-property name(self) -> str:
+property get name(self) -> str:
     return "value"
 
 @override
-def get name(self) -> str:
+property get name(self) -> str:
     return self._name
 
 @private
-def set name(self, value: str) -> None:
+property set name(self, value: str):
     self._name = value
 ```
 
@@ -5350,10 +5222,10 @@ class Counter:
     event value_changed: (object, ValueChangedArgs) -> None
     _value: int = 0
 
-    property value(self) -> int:
+    property get value(self) -> int:
         return self._value
 
-    property value(self, new_value: int):
+    property set value(self, new_value: int):
         old = self._value
         self._value = new_value
         if self.value_changed is not None:
