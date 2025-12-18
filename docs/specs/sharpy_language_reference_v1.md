@@ -39,7 +39,7 @@ Features are marked with their target version. Each version builds upon the prev
 | **v0.1.6** | Pattern Matching | Match statements, patterns, guards |
 | **v0.1.7** | Type Aliases & Shadowing | Type aliases, variable shadowing |
 | **v0.1.8** | Comprehensions | List/dict/set comprehensions, walrus operator |
-| **v0.2.0+** | Resources & Async | Context managers (`with`), defer, async/await, generators (`yield`), tagged unions (ADTs), `maybe`/`try` expressions, events |
+| **v0.2.0+** | Resources & Async | Context managers (`with`), async/await, generators (`yield`), tagged unions (ADTs), `maybe`/`try` expressions, events |
 | **v1.0** | Stable release | Battle-tested and stable API and implementations |
 | **v2.0+** | Future | Features requiring C# 11+ or .NET 7+ |
 
@@ -268,7 +268,6 @@ The following are reserved keywords in Sharpy:
 | `const` | v0.1.0 | Constant declaration |
 | `continue` | v0.1.0 | Continue statement for loops |
 | `def` | v0.1.0 | Function/method definition |
-| `defer` | v0.2.0 | Deferred execution block |
 | `elif` | v0.1.0 | Else-if block |
 | `else` | v0.1.0 | Else block |
 | `enum` | v0.1.4 | Enumeration declaration |
@@ -448,7 +447,7 @@ flags = 0b1111_0000
 
 # Hexadecimal literals
 hex_value = 0xFF       # 255 in decimal
-color = 0xRRGGBB
+color = 0x001122
 
 # Octal literals
 permissions = 0o755    # 493 in decimal
@@ -904,6 +903,13 @@ if isinstance(obj, str):
     print(obj.upper())
 ```
 
+Type narrowing does not occur with `or` as type union semantics do not exist in Sharpy:
+
+```python
+if isinstance(x, int) or isinstance(x, str):
+    # x is not narrowed
+```
+
 **Narrowing Rules:**
 - `is not None` narrows nullable type (`T?`) to non-nullable (`T`)
 - `is None` narrows to never-type in the `if` branch
@@ -923,7 +929,7 @@ if isinstance(obj, str):
 | `set[T]` | `Sharpy.Core.Set<T>` | Unique elements |
 | `tuple[T1, T2, ...]` | `System.ValueTuple<T1, T2, ...>` | Fixed-size tuple |
 
-Collection types use a Sharpy-specific implementation by default. These are bidi-convertible with the native .NET `System.Collections.Generic` equivalents, `List<T>`, `Dictionary<K, V>`, and `HashSet<T>` and use them underneath as storage.
+Collection types use a Sharpy-specific implementation by default. These are bidirectional with the native .NET `System.Collections.Generic` equivalents, `List<T>`, `Dictionary<K, V>`, and `HashSet<T>` and use them underneath as storage.
 
 ### Collection Methods
 
@@ -1034,12 +1040,10 @@ triple: tuple[str, int, bool] = ("hello", 42, True)
 
 # Single-element tuple
 single: tuple[int] = (42,)            # Note: trailing comma in value, not in type
-
-# Empty tuple (unit type)
-empty: tuple[()] = ()                 # Special syntax for empty tuple type
-# Equivalent:
-empty: tuple = ()                     # Shorthand for tuple[()]
 ```
+
+Unlike Python, Sharpy tuples must have at least one element, as C#'s ValueTuple
+does not lend itself to having 0-elements without being awkward.
 
 *Implementation: 🔄 Lowered*
 - *List: `new Sharpy.Core.List<T> { 1, 2, 3 }`*
@@ -1441,13 +1445,13 @@ Operators listed from highest to lowest precedence:
 | 8 | `&` | Bitwise AND |
 | 9 | `^` | Bitwise XOR |
 | 10 | `\|` | Bitwise OR |
-| 12 | `in`, `not in`, `is`, `is not`, `<`, `<=`, `>`, `>=`, `!=`, `==` | Comparisons |
-| 13 | `not` | Logical NOT |
-| 14 | `and` | Logical AND |
-| 15 | `or` | Logical OR |
-| 16 | `??` | Null coalescing |
-| 17 | `x if c else y` | Conditional expression |
-| 18 | `lambda` | Lambda expression |
+| 11 | `in`, `not in`, `is`, `is not`, `<`, `<=`, `>`, `>=`, `!=`, `==` | Comparisons |
+| 12 | `not` | Logical NOT |
+| 13 | `and` | Logical AND |
+| 14 | `or` | Logical OR |
+| 15 | `??` | Null coalescing |
+| 16 | `x if c else y` | Conditional expression |
+| 17 | `lambda` | Lambda expression |
 
 ---
 
@@ -2826,6 +2830,17 @@ class Circle(IDrawable):
 - Implementing types must provide all methods that don't have a default implementation
 and can override the implementation of those that do have a default implementation.
 
+```python
+interface ISomeInterface:
+    # This method is abstract (the use of the ellipsis literal signals this)
+    def method(self):
+        ...
+
+    # This method has a default implementation with an empty body
+    def method2(self):
+        pass
+```
+
 *Implementation: ✅ Native - Direct mapping to C# `interface`.*
 
 ### Generic Interfaces **[v0.1.3]**
@@ -3542,7 +3557,7 @@ name = favorite.name    # "RED"
 **Rules:**
 - All cases must have explicit constant values
 - All values must be of the same type, either an integer type or the `str` type.
-- Enums must have at least one variant
+- Enums must have at least one case
 
 **Enum Iteration and Methods:**
 
@@ -4080,7 +4095,7 @@ The compiler checks that `match` statements cover all possible cases for certain
 |------|-------------|
 | Enums | All enum values must be covered |
 | `bool` | Must cover `True` and `False` |
-| Tagged unions | All variants must be covered |
+| Tagged unions | All cases must be covered |
 | Other types | Wildcard `_` or explicit default required |
 
 ```python
@@ -4133,7 +4148,7 @@ type Matrix = list[list[double]]
 
 # Generic aliases
 type Callback[T] = (T) -> None
-type Result[T, E] = Result[T, E]
+type Res[T, E] = Result[T, E]
 
 # Class-level aliases
 class Geometry:
@@ -4178,19 +4193,19 @@ enum BinaryTree[T]:
 
 ### Creating Values
 
-Tagged union variants are created using the enum type name followed by the variant name:
+Tagged union cases are created using the enum type name followed by the case name:
 
 ```python
 enum Result[T, E]:
     case Ok(value: T)
     case Err(error: E)
 
-# Create values using Type.Variant() syntax
+# Create values using Type.Case() syntax
 success: Result[int, str] = Result.Ok(42)
 failure: Result[int, str] = Result.Err("Something went wrong")
 ```
 
-**Note:** Variant names follow the same casing as defined in the enum declaration (typically `PascalCase`). The syntax `Result.Ok(42)` is a constructor call that creates an instance of the `Ok` variant. This of course is just a convention and is not enforced by the compiler.
+**Note:** Case names follow the same casing as defined in the enum declaration (typically `PascalCase`). The syntax `Result.Ok(42)` is a constructor call that creates an instance of the `Ok` case. This of course is just a convention and is not enforced by the compiler.
 
 ### Pattern Matching
 
@@ -4266,7 +4281,7 @@ The `Result[T, E]` type can be implicitly created via
 the expression in `Result[T, E]` where `E`, if not
 specified, is always the base `Exception` type, and `T` is
 the type of the expression. If the expression raises an
-exception, then the result holds its `Err` variant.
+exception, then the result holds its `Err` case.
 
 ```python
 x = try int("some string")  # x is of type Result[int, Exception]
@@ -4274,7 +4289,7 @@ x = try int("some string")  # x is of type Result[int, Exception]
 
 A `try` expression can be specified for a specific type
 where if the expression throws that type, then it is caught
-inside `Err` variant. Other types become uncaught exceptions
+inside `Err` case. Other types become uncaught exceptions
 that must be handled by other means, e.g. `try/except/finally`.
 
 ```python
@@ -4316,7 +4331,7 @@ Optionals can be implicitly created via `maybe` expressions.
 A `maybe` expression wraps the value of the expression in
 `Optional[T]` where `T` is the type of the expression.
 If the expression is `None`, then the result
-holds its `Nothing` variant.
+holds its `Nothing` case.
 
 ```python
 d: dict[str, int] = {"y": 5}
@@ -4973,6 +4988,7 @@ class Entity(IIdentifiable, INamed, ITimestamped):
 | `property set x: T` | At least a setter |
 | `property x: T` | Both getter and setter |
 | `property get x(self) -> T: ...` | A getter (auto or function-style) |
+| `property set x(self, value: T): ...` | A setter (auto or function-style) |
 
 **Explicit Interface Implementation:**
 
@@ -5119,72 +5135,6 @@ with open("in.txt") as input, open("out.txt", "w") as output:
 *Implementation:*
 - For `IContextManager`, ✅ Lowered - `try { var asBinding = contextManager; } catch(Exception e) { ... } finally { contextManager.__Exit__(...); }`
 - For `IDisposable`, ✅ Native - `using (var r = resource) { ... }`
-
----
-
-## Defer Statement **[v0.2.0]**
-
-The `defer` statement schedules code to execute when the current scope exits:
-
-```python
-def process_file(path: str) -> str:
-    file = open(path, "r")
-    defer:
-        file.close()
-
-    # file.close() called when function exits
-    return process(file.read())
-```
-
-### Multiple Defers (LIFO Order)
-
-```python
-def nested_resources():
-    print("Opening A")
-    defer:
-        print("Closing A")
-
-    print("Opening B")
-    defer:
-        print("Closing B")
-
-    print("Processing")
-
-# Output:
-# Opening A
-# Opening B
-# Processing
-# Closing B  (last defer first)
-# Closing A
-```
-
-### Defer with Exceptions
-
-Defer blocks execute even when exceptions are raised:
-
-```python
-def risky_operation():
-    resource = acquire()
-    defer:
-        resource.release()  # Always executed
-
-    dangerous_work(resource)  # May throw
-```
-
-*Implementation: 🔄 Lowered - `try`/`finally` pattern:*
-
-```csharp
-string ProcessFile(string path) {
-    var file = File.OpenRead(path);
-    try {
-        return Process(file.ReadToEnd());
-    } finally {
-        file.Close();
-    }
-}
-```
-
-*Multiple defers become nested try/finally blocks.*
 
 ---
 
@@ -5648,7 +5598,7 @@ The following features require .NET 7+ runtime or C# 11+ and cannot be supported
 | **v0.1.6** | Pattern matching (`match`/`case`), guards, all pattern types |
 | **v0.1.7** | Type aliases, variable shadowing |
 | **v0.1.8** | Comprehensions, walrus operator |
-| **v0.2.0+** | Context managers (`with`), defer, async/await, generators (`yield`), tagged unions (ADTs), `maybe`/`try` expressions, events, `del` statement |
+| **v0.2.0+** | Context managers (`with`), async/await, generators (`yield`), tagged unions (ADTs), `maybe`/`try` expressions, events, `del` statement |
 | **v1.0** | Stable release |
 | **v2.0+** | Features requiring C# 11+ / .NET 7+ |
 
