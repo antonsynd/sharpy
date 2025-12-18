@@ -828,6 +828,185 @@ def process(value: object) -> str:
 
 ---
 
+## Function Types **[v0.1.3]**
+
+Function types represent the signature of callable values, including lambdas, method references, and delegate instances. They are used in type annotations for parameters, return types, fields, and type aliases.
+
+### Syntax
+
+The function type syntax uses an arrow notation:
+
+```
+(ParamType1, ParamType2, ...) -> ReturnType
+```
+
+**Examples:**
+
+```python
+# No parameters, returns int
+counter: () -> int
+
+# Single parameter
+processor: (str) -> int
+
+# Multiple parameters
+calculator: (int, int) -> int
+
+# Returns None (void function)
+callback: (str) -> None
+
+# Nullable function type
+handler: ((Event) -> None)?
+
+# Function returning a function
+factory: (str) -> ((int) -> bool)
+
+# Generic function types (in type aliases)
+type Callback[T] = (T) -> None
+type Predicate[T] = (T) -> bool
+type Transform[T, U] = (T) -> U
+```
+
+### Parameter Names
+
+Parameter names are **optional** in function type annotations. When provided, they serve as documentation only and are not part of the type signature:
+
+```python
+# Without parameter names (preferred for brevity)
+handler: (int, str) -> bool
+
+# With parameter names (for documentation)
+handler: (count: int, message: str) -> bool
+
+# Both forms are equivalent types
+# The names do not affect type compatibility
+```
+
+**Note:** Parameter names in function types do not create named parameter requirements at call sites. They are purely for readability and documentation.
+
+```python
+type EventHandler = (sender: object, args: EventArgs) -> None
+
+# All of these work - names are not enforced
+def my_handler(s: object, a: EventArgs) -> None:
+    pass
+
+def another_handler(obj: object, event_args: EventArgs) -> None:
+    pass
+
+h: EventHandler = my_handler      # OK
+h = another_handler               # OK
+```
+
+### No Optional Parameters in Function Types
+
+Function types cannot specify optional parameters (parameters with default values). All parameters in a function type are required:
+
+```python
+# ❌ Invalid - cannot specify defaults in function types
+type BadCallback = (x: int, y: int = 0) -> int
+
+# ✅ Valid - all parameters required
+type GoodCallback = (int, int) -> int
+
+# To accept functions with optional params, use the required-only signature
+def process(callback: (int) -> int) -> int:
+    return callback(42)
+
+# Functions with more parameters than required cannot be assigned
+def add(x: int, y: int = 0) -> int:
+    return x + y
+
+process(add)  # ERROR: (int, int) -> int is not assignable to (int) -> int
+
+# But you can wrap them in a lambda
+process(lambda x: add(x))  # OK
+```
+
+**Rationale:** Function types describe a calling convention—what the caller must provide. Since the caller cannot know about default values, function types represent the minimal required signature. This aligns with C# delegate semantics where all parameters are required.
+
+### Function Type Compatibility
+
+A function type `A` is assignable to function type `B` if:
+1. They have the same number of parameters
+2. Parameter types are contravariant (B's parameter types assignable to A's)
+3. Return types are covariant (A's return type assignable to B's)
+
+```python
+# Covariance in return types
+type AnimalFactory = () -> Animal
+type DogFactory = () -> Dog
+
+dog_factory: DogFactory = lambda: Dog()
+animal_factory: AnimalFactory = dog_factory  # OK: Dog is subtype of Animal
+
+# Contravariance in parameter types
+type AnimalHandler = (Animal) -> None
+type DogHandler = (Dog) -> None
+
+animal_handler: AnimalHandler = lambda a: print(a)
+# dog_handler: DogHandler = animal_handler  # OK: Animal handler can accept Dog
+```
+
+### Using Function Types
+
+**As parameter types:**
+
+```python
+def apply(value: int, transform: (int) -> int) -> int:
+    return transform(value)
+
+result = apply(5, lambda x: x * 2)  # 10
+```
+
+**As return types:**
+
+```python
+def make_multiplier(factor: int) -> (int) -> int:
+    return lambda x: x * factor
+
+double = make_multiplier(2)
+print(double(5))  # 10
+```
+
+**As field types:**
+
+```python
+class Button:
+    on_click: ((Button) -> None)?
+
+    def __init__(self):
+        self.on_click = None
+
+    def click(self) -> None:
+        if self.on_click is not None:
+            self.on_click(self)
+```
+
+**In collections:**
+
+```python
+handlers: list[(Event) -> None] = []
+transforms: dict[str, (int) -> int] = {}
+```
+
+### C# Mapping
+
+Function types map to C# delegate types:
+
+| Sharpy | C# |
+|--------|-----|
+| `() -> None` | `Action` |
+| `(T) -> None` | `Action<T>` |
+| `(T1, T2) -> None` | `Action<T1, T2>` |
+| `() -> R` | `Func<R>` |
+| `(T) -> R` | `Func<T, R>` |
+| `(T1, T2) -> R` | `Func<T1, T2, R>` |
+
+*Implementation: ✅ Native - Maps to `System.Action<>` and `System.Func<>` delegates.*
+
+---
+
 ## Nullable Types **[v0.1.1]**
 
 Nullable types allow variables to hold either a value or `None` (null):
@@ -2394,52 +2573,229 @@ user5 = create_user(name="Dave", 40)  # ERROR: positional argument follows keywo
 
 *Implementation: ✅ Native - Direct mapping to C# named arguments.*
 
-### Variadic Arguments (`*args` and `**kwargs`) **[v0.1.0]**
+### Variadic Arguments (`*args`) **[v0.1.0]**
 
-**Sharpy does not support Python's `*args` or `**kwargs` syntax.**
+Sharpy supports a limited form of variadic arguments using the `*args` syntax. Unlike Python's fully dynamic `*args`, Sharpy's variadic arguments are **homogeneously typed**—all arguments must be of the same type `T`.
 
-This design decision aligns with Sharpy's .NET-first principles:
-
-1. **Type safety**: `*args` would need a type like `tuple[T, ...]` (variable-length homogeneous tuple), which .NET's type system doesn't naturally express
-2. **Interop**: C#'s `params` arrays provide similar functionality but with different semantics
-3. **Clarity**: Explicit overloads or collection parameters provide clearer API contracts
-
-**Alternatives:**
+#### Syntax
 
 ```python
-# Instead of: def func(*args: int) -> int
+def function_name(*args: T) -> ReturnType:
+    # args is a tuple[T, ...] inside the function
+    pass
+```
 
-# Option 1: Use a list parameter
-def sum_all(numbers: list[int]) -> int:
+**Examples:**
+
+```python
+# Sum any number of integers
+def sum_all(*numbers: int) -> int:
     result = 0
     for n in numbers:
         result += n
     return result
 
-sum_all([1, 2, 3, 4, 5])
+# Call with any number of arguments
+total = sum_all(1, 2, 3)           # 6
+total = sum_all(1, 2, 3, 4, 5)     # 15
+total = sum_all()                   # 0 (empty tuple)
 
-# Option 2: Use function overloading [v0.1.2]
-def add(a: int) -> int:
-    return a
+# Print multiple messages
+def log_all(*messages: str) -> None:
+    for msg in messages:
+        print(msg)
 
-def add(a: int, b: int) -> int:
-    return a + b
-
-def add(a: int, b: int, c: int) -> int:
-    return a + b + c
-
-# Option 3: For .NET interop with params arrays, use list with @params decorator
-# (Future consideration - see TODO below)
+log_all("Starting", "Processing", "Done")
 ```
 
-<!-- TODO: Consider adding @params decorator for C# params array interop -->
+#### Rules and Restrictions
 
-**For `**kwargs` alternatives:**
+**Homogeneous typing:**
+
+All variadic arguments must be of the same declared type `T`:
+
+```python
+def process(*items: int) -> int:
+    return sum(items)
+
+process(1, 2, 3)              # OK: all ints
+process(1, "two", 3)          # ERROR: "two" is str, not int
+```
+
+**Position requirement:**
+
+The `*args` parameter must be the last parameter in the function signature:
+
+```python
+# ✅ Valid - *args at the end
+def greet(prefix: str, *names: str) -> None:
+    for name in names:
+        print(f"{prefix} {name}")
+
+greet("Hello", "Alice", "Bob", "Charlie")
+
+# ❌ Invalid - *args not at the end
+def broken(*items: int, suffix: str) -> None:  # ERROR
+    pass
+```
+
+**Only one `*args` per function:**
+
+```python
+# ❌ Invalid - multiple *args
+def broken(*a: int, *b: str) -> None:  # ERROR
+    pass
+```
+
+**No `**kwargs`:**
+
+Sharpy does not support `**kwargs` (variadic keyword arguments). Use named parameters with defaults or a configuration class instead:
+
+```python
+# ❌ Not supported
+def configure(**options: str) -> None:  # ERROR: **kwargs not supported
+    pass
+
+# ✅ Use named parameters instead
+def configure(host: str = "localhost", port: int = 8080) -> None:
+    pass
+
+# ✅ Or use a configuration class
+class Config:
+    host: str = "localhost"
+    port: int = 8080
+
+def configure(config: Config) -> None:
+    pass
+```
+
+#### Type of `*args` Inside the Function
+
+Inside the function body, the `*args` parameter has type `list[T]`:
+
+```python
+def analyze(*values: double) -> tuple[double, double]:
+    # values: list[double]
+    if len(values) == 0:
+        return (0.0, 0.0)
+    return (min(values), max(values))
+```
+
+#### Unpacking Iterables with `*`
+
+When calling a function with `*args`, you can unpack an iterable using the `*` operator:
+
+```python
+def sum_all(*numbers: int) -> int:
+    result = 0
+    for n in numbers:
+        result += n
+    return result
+
+# Direct arguments
+sum_all(1, 2, 3)              # 6
+
+# Unpack a list
+nums = [1, 2, 3, 4, 5]
+sum_all(*nums)                # 15
+
+# Unpack a homogenously-typed tuple
+t = (10, 20, 30)
+sum_all(*t)                   # OK: 60
+
+# Mixed: direct args and unpacking
+sum_all(1, 2, *[3, 4], 5)     # 15
+```
+
+**Type checking for unpacking:**
+
+The unpacked iterable must contain elements of the correct type:
+
+```python
+def process(*items: int) -> int:
+    return sum(items)
+
+int_list: list[int] = [1, 2, 3]
+str_list: list[str] = ["a", "b", "c"]
+int_tuple = (10, 20, 30)
+mixed_tuple = (10, "str", 30)
+
+process(*int_list)            # OK
+process(*str_list)            # ERROR: list[str] cannot unpack to *args: int
+process(*int_tuple)           # OK
+process(*mixed_tuple)         # ERROR: tuple[int, str, int] cannot unpack to *args: int
+```
+
+#### C# Interop: `params` Arrays
+
+Sharpy's `*args` maps directly to C#'s `params` arrays, enabling seamless interop:
+
+**Sharpy:**
+```python
+def format_message(template: str, *args: object) -> str:
+    return template.format(*args)
+```
+
+**Generated C#:**
+```csharp
+public static string FormatMessage(string template, params object[] args) {
+    return string.Format(template, args);
+}
+```
+
+**Calling C# `params` methods from Sharpy:**
+
+When calling .NET methods that use `params`, you can pass arguments naturally:
+
+```python
+from system import String
+
+# String.Format has params signature: Format(string format, params object[] args)
+result = String.format("Hello {0}, you have {1} messages", "Alice", 42)
+
+# Or unpack from a collection
+args = ["Bob", 10]
+result = String.format("Hello {0}, you have {1} messages", *args)
+```
+
+**Calling Sharpy `*args` functions from C#:**
+
+C# code can call Sharpy variadic functions using either individual arguments or an array:
+
+```csharp
+// Individual arguments (compiler creates array)
+var total = SumAll(1, 2, 3, 4, 5);
+
+// Explicit array
+var numbers = new int[] { 1, 2, 3, 4, 5 };
+var total = SumAll(numbers);
+```
+
+#### Function Type Compatibility
+
+Function types cannot express variadic parameters. When you need a function type for a variadic function, use the non-variadic equivalent:
+
+```python
+def sum_all(*numbers: int) -> int:
+    return sum(numbers)
+
+# Cannot directly use sum_all as (int, int, int) -> int
+# Instead, wrap it:
+fixed_sum: (int, int, int) -> int = lambda a, b, c: sum_all(a, b, c)
+```
+
+*Implementation: ✅ Native - Maps to C# `params T[]` arrays.*
+
+### No `**kwargs` Support
+
+Sharpy does not support `**kwargs` (variadic keyword arguments). This aligns with .NET's type system which has no direct equivalent.
+
+**Alternatives:**
 
 ```python
 # Instead of: def configure(**kwargs) -> None
 
-# Option 1: Use a typed dict or class
+# Option 1: Use a typed class
 class Config:
     host: str = "localhost"
     port: int = 8080
@@ -2451,9 +2807,15 @@ def configure(config: Config) -> None:
 # Option 2: Use named parameters with defaults
 def configure(host: str = "localhost", port: int = 8080, debug: bool = False) -> None:
     pass
+
+# Option 3: Use a dictionary parameter (loses type safety on values)
+def configure(options: dict[str, object]) -> None:
+    host = options.get("host") ?? "localhost"
+    port = options.get("port") to int? ?? 8080
+    # ...
 ```
 
-**Positional-Only and Keyword-Only Parameters:**
+### Positional-Only and Keyword-Only Parameters
 
 Sharpy does not support Python's positional-only (`/`) or keyword-only (`*`) parameter markers. All parameters can be passed either positionally or by name.
 
