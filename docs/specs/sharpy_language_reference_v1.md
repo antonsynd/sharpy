@@ -1207,7 +1207,6 @@ empty_set: set[int] = {/}  # Special syntax for empty set
 # Tuple literals
 point = (10, 20)
 single = (42,)  # Single element requires trailing comma
-empty = ()
 ```
 
 **Tuple Type Annotations:**
