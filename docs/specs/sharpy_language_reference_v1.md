@@ -323,6 +323,37 @@ print(items)            # [2, 3, 4]
 del items[1:3]          # Removes elements at indices 1 and 2
 ```
 
+**Del with Slices:**
+
+When `del` is used with a slice, it calls `__delitem__` with a `slice` object:
+
+```python
+class slice:
+    """Represents a slice range for __delitem__."""
+    start: int?
+    stop: int?
+    step: int?
+
+# When you write:
+del items[1:3]
+
+# The compiler generates:
+items.__delitem__(slice(1, 3, None))
+```
+
+Types that want to support slice deletion should implement an overload of `__delitem__` accepting a `slice` parameter:
+
+```python
+class MyList[T]:
+    def __delitem__(self, index: int) -> None:
+        # Delete single element
+        pass
+
+    def __delitem__(self, s: slice) -> None:
+        # Delete range of elements
+        pass
+```
+
 **What `del` Does NOT Do:**
 
 Unlike Python, Sharpy's `del` cannot delete local variables:
@@ -531,6 +562,20 @@ Status: Active
 """
 ```
 
+**Implicit String Conversion:**
+
+Non-string expressions in f-strings are automatically converted to strings via `str()` (which calls `__str__` or `.ToString()`):
+
+```python
+x = 42
+point = Point(10, 20)
+
+f"Value: {x}"           # Implicitly calls str(42)
+f"Location: {point}"    # Implicitly calls str(point) -> point.__str__() or point.ToString()
+```
+
+This matches both Python's f-string behavior and C#'s string interpolation.
+
 *Implementation: ✅ Native - Maps to C# interpolated strings `$"..."`.*
 
 ### Boolean Literals
@@ -657,6 +702,36 @@ def todo_function():
 | `str` | `System.String` | - | Immutable Unicode string |
 | `char` | `System.Char` | 16-bit | Single Unicode character |
 | `object` | `System.Object` | - | Base type for all types |
+
+**Array Type:**
+
+Sharpy exposes raw .NET arrays as `array[T]`, distinct from `list[T]`:
+
+| Sharpy Type | .NET Type | Notes |
+|-------------|-----------|-------|
+| `array[T]` | `T[]` | Fixed-size, .NET native array |
+| `list[T]` | `Sharpy.Core.List<T>` | Dynamic, Pythonic wrapper |
+
+```python
+# Array creation
+arr: array[int] = array[int](10)    # Fixed size of 10, zero-initialized
+arr[0] = 42                          # Index access same as list
+
+# Converting between array and list
+from system import Array
+
+lst: list[int] = [1, 2, 3]
+arr: array[int] = Array[int](lst)   # Create array from list
+
+lst2: list[int] = list(arr)         # Create list from array
+
+# Arrays are useful for:
+# - Interop with .NET APIs expecting T[]
+# - Performance-critical fixed-size collections
+# - *args implementation (params T[] internally)
+```
+
+**Note:** Most Sharpy code should use `list[T]` for its Pythonic API. Use `array[T]` primarily for .NET interop or when a fixed-size array is explicitly needed.
 
 *Implementation: ✅ Native - Direct mapping to .NET types.*
 
@@ -819,12 +894,15 @@ def process(value: object) -> str:
 ```
 
 **Type Hierarchy:**
-- `object` is the implicit base type of all classes
+- `object` in type annotations maps to `System.Object`
+- Sharpy-defined classes implicitly inherit from `Sharpy.Core.Object` (which itself inherits from `System.Object`)
+- `Sharpy.Core.Object` provides default implementations for `__eq__`, `__ne__`, `__hash__`, `__str__`, and `__repr__` that delegate to the .NET equivalents (`Equals()`, `GetHashCode()`, `ToString()`)
+- The base class insertion happens during transpilation—user code simply writes `class MyClass:` and the compiler inserts the inheritance
 - Primitives (`int`, `str`, `bool`, etc.) are assignable to `object` via boxing
 - Structs are assignable to `object` via boxing
 - `None` is assignable to `object?` but not to `object`
 
-*Implementation: ✅ Native - `System.Object` is the universal base in .NET.*
+*Implementation: 🔄 Lowered - Sharpy-defined classes inherit from `Sharpy.Core.Object`; `object` type annotations map to `System.Object`.*
 
 ---
 
@@ -1179,6 +1257,29 @@ dotnet_list: DotNetList[int] = sharpy_list         # Implicit copy of inner list
 imported_list: list[int] = list(dotnet_list)  # Constructor accepts IEnumerable
 ```
 
+**`.inner()` and `.take()` Methods:**
+
+These methods provide explicit control over the underlying .NET collection:
+
+| Method | Behavior | Use Case |
+|--------|----------|----------|
+| `.inner()` | Returns a reference to the underlying .NET collection. Changes to either affect both. | When you need to pass the backing collection to .NET APIs that will read or modify it |
+| `.take()` | Returns the underlying collection and replaces it internally with a new empty one. The original Sharpy collection becomes empty. | When you need ownership transfer—caller owns the returned .NET collection, Sharpy collection starts fresh |
+
+```python
+# .inner() - shared reference
+sharpy_list = [1, 2, 3]
+inner_ref = sharpy_list.inner()  # inner_ref and sharpy_list share the same backing list
+inner_ref.Add(4)                  # Both now contain [1, 2, 3, 4]
+print(len(sharpy_list))           # 4
+
+# .take() - ownership transfer
+sharpy_list = [1, 2, 3]
+taken = sharpy_list.take()        # taken gets [1, 2, 3], sharpy_list is now empty
+print(len(sharpy_list))           # 0
+print(taken.Count)                # 3
+```
+
 The above is not an exhaustive enumeration of all conversion methods.
 
 *Implementation: 🔄 Lowered - `Sharpy.Core` collections wrap .NET collections with Pythonic API.*
@@ -1207,6 +1308,31 @@ empty_set: set[int] = {/}  # Special syntax for empty set
 # Tuple literals
 point = (10, 20)
 single = (42,)  # Single element requires trailing comma
+```
+
+**Collection Literal Type Inference:**
+
+When a collection literal contains elements of different types, Sharpy follows C# numeric promotion rules to infer the common type:
+
+| Literal | Inferred Type | Notes |
+|---------|---------------|-------|
+| `[1, 2, 3]` | `list[int]` | All same type |
+| `[1, 2.0, 3]` | `list[double]` | `int` promotes to `double` |
+| `[1.0f, 2.0, 3]` | `list[double]` | `float` promotes to `double` |
+| `[1, 2L, 3]` | `list[long]` | `int` promotes to `long` |
+| `["a", "b"]` | `list[str]` | All same type |
+| `[1, "hello"]` | ❌ Error | No common type |
+
+```python
+# Numeric promotion - finds common type
+numbers = [1, 2.0, 3]        # Inferred as list[double]
+mixed_ints = [1, 2L, 3]      # Inferred as list[long]
+
+# Incompatible types require explicit annotation
+items: list[object] = [1, "hello", True]  # Must annotate as list[object]
+
+# Or use the constructor with explicit type
+mixed = list[object]([1, "hello", True])
 ```
 
 **Tuple Type Annotations:**
@@ -1343,6 +1469,28 @@ evens = numbers[::2]       # [0, 2, 4, 6, 8]
 reversed_list = numbers[::-1]  # Reverse
 ```
 
+**Negative Indexing:**
+
+Negative indices count from the end of the sequence, matching Python semantics. The compiler transforms negative indices for types that support `len()`:
+
+```python
+items = [10, 20, 30, 40, 50]
+
+# Negative indexing
+items[-1]    # 50 (last element)
+items[-2]    # 40 (second-to-last)
+items[-5]    # 10 (first element, same as items[0])
+
+# The compiler transforms: x[-n] → x[len(x) - n]
+# For items[-1]: items[len(items) - 1] = items[4] = 50
+```
+
+**Implementation Rules:**
+
+- For types implementing both `__getitem__` and `__len__` (or `.Count`/`.Length`), the compiler inserts the transformation
+- For user types with `__getitem__` but without `__len__`, negative indices are passed through directly (and will likely cause a runtime error)
+- Sharpy collections (`list`, `str`, etc.) all support negative indexing
+
 *Implementation: 🔄 Lowered - Generated as helper method calls or LINQ expressions.*
 
 ---
@@ -1366,8 +1514,9 @@ reversed_list = numbers[::-1]  # Reverse
 | Operand Types | Result Type | Notes |
 |---------------|-------------|-------|
 | Both `decimal` | `decimal` | High-precision division |
+| `decimal` + any integer | `decimal` | Integer promoted to decimal |
 | Any `double` | `double` | |
-| Any `float` (no `double`) | `float` | |
+| Any `float` (no `double`/`decimal`) | `float` | |
 | Integer types only | `double` | Always promotes to double |
 
 **The return type depends on the operands:
@@ -1510,6 +1659,7 @@ Strings support concatenation and repetition operators:
 |----------|-------------|---------|--------|
 | `+` | Concatenation | `"Hello" + " " + "World"` | `"Hello World"` |
 | `*` | Repetition | `"ab" * 3` | `"ababab"` |
+| `*` | Repetition (reversed) | `3 * "ab"` | `"ababab"` |
 | `in` | Substring test | `"ell" in "Hello"` | `True` |
 
 ```python
@@ -1521,9 +1671,12 @@ print(greeting)  # "Hello, World!"
 value = 42
 message = "Value: " + str(value)  # Must convert int to str
 
-# String repetition
+# String repetition (both directions work, matching Python)
 separator = "-" * 40
 print(separator)  # "----------------------------------------"
+
+also_separator = 40 * "-"  # Also valid
+print(also_separator)  # "----------------------------------------"
 
 # Substring membership
 if "error" in log_message:
@@ -1913,6 +2066,29 @@ result = apply(10, lambda x: x ** 2)
 - Parameter types inferred from context
 - Expression result is automatically returned
 
+**Lambda Expression Scope:**
+
+Lambdas can contain any expression, including:
+- Conditional expressions: `lambda x: x if x > 0 else -x`
+- Walrus operator: `lambda x: (y := x * 2, y + 1)[-1]`
+- Function calls, arithmetic, member access, etc.
+
+What lambdas cannot contain (these are statements, not expressions):
+- Assignments without walrus (`x = 5`)
+- Control flow blocks (`if`/`for`/`while` blocks)
+- Multiple statements
+
+```python
+# Valid lambda expressions
+absolute = lambda x: x if x >= 0 else -x
+complex_calc = lambda a, b: (temp := a * b) + temp ** 2
+method_call = lambda obj: obj.process().result
+
+# Invalid - these require statements, not expressions
+# lambda x: x = 5          # ERROR: assignment is a statement
+# lambda x: if x > 0: x    # ERROR: if block is a statement
+```
+
 **Closure Semantics:**
 
 Lambdas can capture variables from enclosing scopes. Following C# semantics, variables are captured **by reference**, not by value:
@@ -2097,7 +2273,7 @@ const DEBUG: bool = True
 
 **Class-Level Constants:**
 
-Constants can also be declared within classes:
+Constants can also be declared within classes. Class-level constants are implicitly `@static` (matching C# semantics where class constants are always static):
 
 ```python
 class Math:
@@ -2114,10 +2290,16 @@ class HttpStatus:
     const NOT_FOUND: int = 404
     const INTERNAL_ERROR: int = 500
 
-# Access via class name
+# Access via class name (constants are implicitly static)
 print(Math.PI)           # 3.14159265358979
 print(HttpStatus.OK)     # 200
+
+# Cannot access via instance (they're static, not per-instance)
+m = Math()
+print(m.PI)              # Works but discouraged; prefer Math.PI
 ```
+
+**Note:** There is no such thing as a per-instance constant. Use a read-only property (`property get`) with a backing field or `@final` field (if added in a future version) for per-instance immutability.
 
 Constants cannot be reassigned:
 
@@ -2325,6 +2507,30 @@ else:
     print("Not found")
 ```
 
+**Loop `else` with `return` or Exceptions:**
+
+The `else` clause only runs if the loop completes normally (no `break`). It does NOT run if the loop exits via `return` or an exception:
+
+```python
+def find_item(items: list[int], target: int) -> int:
+    for item in items:
+        if item == target:
+            return item      # return exits function, else does NOT run
+    else:
+        print("Not found")   # Only runs if no return or break
+    return -1
+
+def risky_search(items: list[int]) -> int:
+    for item in items:
+        if item < 0:
+            raise ValueError("Negative value")  # else does NOT run
+    else:
+        print("All items valid")  # Only runs if loop completes normally
+    return len(items)
+```
+
+This is the natural behavior from the lowered boolean-flag pattern—the flag is only checked if control flow reaches that point.
+
 *Implementation: 🔄 Lowered - Boolean flag pattern:*
 ```csharp
 bool _loopCompleted = true;
@@ -2407,6 +2613,56 @@ raise RuntimeError("Failed") from original_error
 
 # Suppress exception chaining with 'from None'
 raise NewError("Clean error") from None  # Hides the original exception
+```
+
+**Exception Chaining Semantics:**
+
+The `raise X from Y` syntax sets the chained exception, mapping to C#'s inner exception:
+
+| Sharpy | C# |
+|--------|----|
+| `raise NewError("msg") from original` | `throw new NewError("msg", original)` |
+| `raise NewError("msg") from None` | `throw new NewError("msg", null)` |
+| `raise NewError("msg")` (in except block) | Automatic chaining via `Exception.InnerException` |
+
+**Accessing the Chained Exception:**
+
+- In C# code: `.InnerException` property
+- In Sharpy code: `.__cause__` attribute (maps to `.InnerException`)
+
+```python
+try:
+    do_risky_operation()
+except LowLevelError as e:
+    raise HighLevelError("Operation failed") from e
+
+# Later, when catching:
+try:
+    call_high_level()
+except HighLevelError as e:
+    print(f"Error: {e}")
+    if e.__cause__ is not None:
+        print(f"Caused by: {e.__cause__}")
+```
+
+**`from original_error` Context:**
+
+The `from` clause can reference any in-scope exception variable, not just in `except` blocks:
+
+```python
+# In except block (common case)
+except IOError as e:
+    raise ConfigError("Failed to load config") from e
+
+# Referencing stored exception
+saved_error: Exception? = None
+try:
+    do_something()
+except Exception as e:
+    saved_error = e
+
+if saved_error is not None:
+    raise ProcessingError("Deferred error") from saved_error
 ```
 
 **`raise ... from None`:**
@@ -2670,7 +2926,7 @@ def configure(config: Config) -> None:
 
 #### Type of `*args` Inside the Function
 
-Inside the function body, the `*args` parameter has type `list[T]`:
+Inside the function body, the `*args` parameter has type `list[T]}`. This is a Sharpy abstraction over C#'s `params T[]` array:
 
 ```python
 def analyze(*values: double) -> tuple[double, double]:
@@ -2678,6 +2934,19 @@ def analyze(*values: double) -> tuple[double, double]:
     if len(values) == 0:
         return (0.0, 0.0)
     return (min(values), max(values))
+```
+
+**Note:** While C#'s `params` uses raw arrays (`T[]`), Sharpy wraps this in `list[T]` for consistency with the rest of the language. The overhead of this wrapper is minimal since the underlying storage is the same array passed by the caller.
+
+**C# Interop:** When calling Sharpy variadic functions from C#, the `params` behavior is preserved:
+
+```csharp
+// Individual arguments (compiler creates array, Sharpy wraps in list)
+var result = Analyze(1.0, 2.0, 3.0);
+
+// Explicit array (Sharpy wraps in list)
+var values = new double[] { 1.0, 2.0, 3.0 };
+var result = Analyze(values);
 ```
 
 #### Unpacking Iterables with `*`
@@ -2933,7 +3202,19 @@ class Person:
 **Rules:**
 - All instance fields must be declared at class level with type annotations
 - The `self` parameter is required for instance methods
-- The `self` parameter is not type-annotated
+- The `self` parameter is not type-annotated and cannot be annotated
+- There is no `Self` type in Sharpy v1.0 (C# 9.0 has no equivalent; C# 11+ adds `TSelf` generic constraint patterns which may be supported in v2.0+)
+- For fluent APIs returning the same type, you must name the concrete type explicitly:
+
+```python
+class Builder:
+    name: str = ""
+
+    def with_name(self, name: str) -> Builder:  # Must name the type explicitly
+        self.name = name
+        return self
+```
+
 - `__init__` return type is implicitly `None` and can be omitted or explicitly declared
 
 ```python
@@ -2946,6 +3227,19 @@ class Person:
 
     def __init__(self, name: str) -> None:   # Explicit None return
         self.name = name
+```
+
+**Note:** The rule "return type can be omitted for `-> None` functions" applies universally to all functions and methods, not just `__init__`. This is consistent with C# where `void` methods simply have no return type in the signature:
+
+```python
+class Counter:
+    value: int = 0
+
+    def increment(self):        # Implicit -> None
+        self.value += 1
+
+    def reset(self) -> None:    # Explicit -> None (both valid)
+        self.value = 0
 ```
 
 *Implementation: ✅ Native - Direct mapping to C# class.*
@@ -2970,7 +3264,52 @@ class Point:
         self.y = other.y
 ```
 
-*Implementation: ✅ Native - Multiple C# constructors.*
+**Constructor Chaining:**
+
+One constructor can delegate to another using `self.__init__(...)` as the first statement. This maps to C#'s `: this(...)` syntax:
+
+```python
+class Point:
+    x: double
+    y: double
+
+    def __init__(self):
+        self.__init__(0.0, 0.0)  # Chains to the two-parameter constructor
+
+    def __init__(self, x: double, y: double):
+        self.x = x
+        self.y = y
+
+    def __init__(self, xy: double):
+        self.__init__(xy, xy)    # Chains to the two-parameter constructor
+```
+
+**Rules for Constructor Chaining:**
+
+- `self.__init__(...)` must be the **first statement** in the constructor body
+- Only one `self.__init__()` call is allowed per constructor
+- The compiler detects this pattern and transforms it to C#'s `: this(...)` syntax
+- After the chained constructor returns, execution continues with the rest of the body (if any)
+
+```python
+class Rectangle:
+    x: double
+    y: double
+    width: double
+    height: double
+
+    def __init__(self, width: double, height: double):
+        self.__init__(0.0, 0.0, width, height)  # Chain first
+        print("Created rectangle")               # Then other statements
+
+    def __init__(self, x: double, y: double, width: double, height: double):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+```
+
+*Implementation: 🔄 Lowered - `self.__init__(...)` as first statement transforms to `: this(...)` in C#.*
 
 ---
 
@@ -3106,10 +3445,37 @@ struct Vector2:
 
 **Struct Rules:**
 - All fields must be declared at struct level
-- Must have a constructor that initializes all fields
+- If no constructor is defined, fields are zero-initialized (matching C# 9.0 struct semantics)
+- Users can define additional constructors that initialize all or some fields
+- When a constructor is defined, it must initialize all fields (C# requirement)
 - Cannot inherit from other structs or classes
 - Can implement interfaces (including interfaces with default methods)
 - Value semantics: copied when assigned or passed
+
+**Default Initialization:**
+
+C# structs always have an implicit parameterless constructor that zero-initializes all fields. Sharpy structs inherit this behavior:
+
+```python
+struct Point:
+    x: int
+    y: int
+
+# Using implicit parameterless constructor (zero-initialized)
+p1 = Point()           # x = 0, y = 0
+
+# Using explicit constructor
+struct Vector:
+    x: double
+    y: double
+
+    def __init__(self, x: double, y: double):
+        self.x = x
+        self.y = y
+
+v1 = Vector(1.0, 2.0)  # x = 1.0, y = 2.0
+v2 = Vector()          # x = 0.0, y = 0.0 (implicit parameterless still exists)
+```
 
 **Structs and Interface Default Methods:**
 
@@ -3201,6 +3567,30 @@ interface ISomeInterface:
     def method2(self):
         pass
 ```
+
+**Non-Void Methods and Empty Bodies:**
+
+For non-void methods in interfaces (or anywhere), using `pass` alone is a compile error because the method must return a value:
+
+```python
+interface IFoo:
+    # ✅ OK - abstract method (no implementation required)
+    def get_value(self) -> int:
+        ...
+
+    # ❌ ERROR - non-void method body must return a value
+    def get_other(self) -> int:
+        pass  # Compile error: missing return statement
+
+    # ✅ OK - provides a default return value
+    def get_default(self) -> int:
+        return 0
+```
+
+The distinction is:
+- `...` (ellipsis) → abstract, no implementation
+- `pass` → empty body, valid only for `-> None` methods as a default implementation
+- For non-void methods, either use `...` (abstract) or provide a return statement
 
 *Implementation: ✅ Native - Direct mapping to C# `interface`.*
 
@@ -3727,6 +4117,31 @@ error: `super()` is only valid in:
 
 Decorators modify the behavior of functions, methods, and classes.
 
+**Decorator Ordering:**
+
+When multiple decorators are applied, they are processed bottom-up (closest to the definition first), matching Python semantics:
+
+```python
+@A
+@B
+def foo():
+    ...
+# Equivalent to: foo = A(B(foo))
+```
+
+For Sharpy's built-in decorators (`@static`, `@virtual`, `@override`, `@abstract`, `@final`, etc.), the order typically doesn't matter since they're metadata flags rather than transforming decorators. However, it's conventional to place them in a consistent order:
+
+```python
+# Recommended ordering (when applicable)
+@static          # Binding (static vs instance)
+@virtual         # Inheritance behavior
+@override
+@final
+@protected       # Access modifiers last
+@private
+@internal
+```
+
 ### Access Modifiers
 
 | Decorator | C# Equivalent | Visibility |
@@ -3785,6 +4200,7 @@ class Example:
 | `@abstract` | `abstract` | Must be overridden, no implementation |
 | `@final` (method) | `sealed override` | Prevents further overriding |
 | `@final` (class) | `sealed class` | Prevents inheritance |
+| `@abstract` (class) | `abstract class` | Cannot be instantiated, may contain abstract members |
 
 ```python
 class Calculator:
@@ -3822,6 +4238,51 @@ calc.compute(4)                      # Returns 16 (overridden method)
 ```
 
 **Note:** Sharpy uses `@final` rather than C#'s `sealed` keyword to align with Python's `typing.final` decorator and Java's `final` keyword. The compiled output uses C#'s `sealed` keyword.
+
+**Abstract Classes:**
+
+Classes can be marked `@abstract` to indicate they cannot be instantiated directly and may contain abstract members. A class with any abstract members must be marked `@abstract`:
+
+```python
+@abstract
+class Shape:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    @abstract
+    def area(self) -> double:
+        ...  # Must be implemented by subclasses
+
+    @abstract
+    def perimeter(self) -> double:
+        ...  # Must be implemented by subclasses
+
+    # Non-abstract methods are allowed
+    def describe(self) -> str:
+        return f"{self.name} with area {self.area()}"
+
+class Circle(Shape):
+    radius: double
+
+    def __init__(self, radius: double):
+        super().__init__("Circle")
+        self.radius = radius
+
+    @override
+    def area(self) -> double:
+        return 3.14159 * self.radius ** 2
+
+    @override
+    def perimeter(self) -> double:
+        return 2 * 3.14159 * self.radius
+
+# Usage
+# shape = Shape("test")    # ERROR: Cannot instantiate abstract class
+circle = Circle(5.0)       # OK
+print(circle.describe())   # "Circle with area 78.53975"
+```
 
 *Implementation: ✅ Native - Direct mapping to C# keywords.*
 
@@ -4170,6 +4631,36 @@ print(repr(dog))  # Output: Dog(Buddy)
 
 **Note:** The `@override` decorator is **required** when overriding inherited dunder methods, just like any other virtual method. All inheritable dunder methods from base classes are implicitly `@virtual`.
 
+**Overriding Dunders from `Sharpy.Core.Object`:**
+
+Since all Sharpy classes inherit from `Sharpy.Core.Object`, which provides default implementations for `__str__`, `__repr__`, `__eq__`, `__ne__`, and `__hash__`, overriding these dunders requires `@override`:
+
+```python
+class MyClass:
+    value: int
+
+    def __init__(self, value: int):
+        self.value = value
+
+    # Must use @override since __str__ is inherited from Sharpy.Core.Object
+    @override
+    def __str__(self) -> str:
+        return f"MyClass({self.value})"
+
+    # Same for __eq__, __hash__, etc.
+    @override
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, MyClass):
+            return False
+        return self.value == other.value
+
+    @override
+    def __hash__(self) -> int:
+        return hash(self.value)
+```
+
+This matches C# where overriding `ToString()`, `Equals()`, and `GetHashCode()` from `System.Object` requires the `override` keyword.
+
 #### Base Class Dunder Calls
 
 Within a dunder method, you may call the base class implementation via `super()`:
@@ -4344,6 +4835,26 @@ class Point:
 | `__setitem__` | Index assignment | Indexer `this[...]` | `obj[key] = value` |
 | `__delitem__` | Index deletion | (method call) | `del obj[key]` |
 
+**`__contains__` Return Type:**
+
+The `__contains__` dunder method must return `bool`. The `in` operator's result type is always `bool`, regardless of the implementation:
+
+```python
+class MyContainer:
+    items: list[int]
+
+    # Must return bool
+    def __contains__(self, item: int) -> bool:
+        return item in self.items
+
+    # ❌ ERROR: __contains__ must return bool
+    # def __contains__(self, item: int) -> int:
+    #     return self.items.index(item)
+
+c = MyContainer()
+result: bool = 5 in c  # Always bool
+```
+
 **Note:** Users invoke these behaviors through the "Invoked Via" syntax, not by calling the dunder methods directly. See [Dunder Invocation Rules](#dunder-invocation-rules-v01) for details.
 
 ### Hashable Objects
@@ -4406,6 +4917,59 @@ def describe(value: object) -> str:
 
 *Implementation: ✅ Native - Maps to C# `switch` expression/statement (C# 8+).*
 
+### Match Statement vs Match Expression
+
+Sharpy supports both statement and expression forms of `match`, corresponding to C#'s switch statement and switch expression:
+
+**Statement Form:**
+
+Used when you need to execute statements for each case:
+
+```python
+match value:
+    case 1:
+        do_something()
+        log("did something")
+    case 2:
+        do_other()
+    case _:
+        handle_default()
+```
+
+**Expression Form:**
+
+Used when you want to produce a value:
+
+```python
+result = match value:
+    case 1: "one"
+    case 2: "two"
+    case _: "other"
+
+# Can be used anywhere an expression is expected
+print(match x:
+    case True: "yes"
+    case False: "no"
+)
+
+# In a return statement
+def categorize(n: int) -> str:
+    return match n:
+        case 0: "zero"
+        case _ if n > 0: "positive"
+        case _: "negative"
+```
+
+**Expression Form Rules:**
+- Each case must be a single expression (not statements)
+- All cases must produce values of compatible types
+- Must be exhaustive (all possible values handled)
+- Cases use `:` followed by an expression, not a block
+
+*Implementation: 🔄 Lowered*
+- *Statement form: C# `switch` statement*
+- *Expression form: C# `switch` expression*
+
 ### Supported Patterns
 
 | Pattern | Syntax | C# 9.0 Mapping |
@@ -4445,6 +5009,38 @@ match shape:
     case Point(x=x, y=0):
         print(f"On X-axis at {x}")
 ```
+
+### Positional Patterns
+
+For types with a `Deconstruct` method (like records or types with explicit deconstruction), positional patterns extract values in order:
+
+```python
+# Assuming Point has Deconstruct(out double x, out double y)
+match point:
+    case Point(0, 0):              # Positional - matches x=0, y=0
+        print("Origin")
+    case Point(x, 0):              # Positional with binding
+        print(f"On X-axis at {x}")
+    case Point(0, y):              # Positional with binding
+        print(f"On Y-axis at {y}")
+    case Point(x, y):              # Positional with both bound
+        print(f"Point at ({x}, {y})")
+
+# Type pattern with binding (no Deconstruct needed)
+match value:
+    case int() as n:               # Type check and bind
+        print(f"Integer: {n}")
+    case str() as s if len(s) > 0: # Type, bind, and guard
+        print(f"Non-empty string: {s}")
+```
+
+**Pattern Forms:**
+
+| Pattern | Syntax | Use Case |
+|---------|--------|----------|
+| Property | `Point(x=0, y=y)` | Extract by property name |
+| Positional | `Point(0, y)` | Extract by position (requires `Deconstruct`) |
+| Type with binding | `int() as n` | Check type and bind entire value |
 
 ### Exhaustiveness Checking
 
@@ -4550,6 +5146,43 @@ enum Optional[T]:
 enum BinaryTree[T]:
     case Leaf(value: T)
     case Node(left: BinaryTree[T], right: BinaryTree[T])
+```
+
+**Unit Cases (No Data):**
+
+Cases that carry no associated data can be defined with or without parentheses:
+
+```python
+enum Option[T]:
+    case Some(value: T)
+    case Nothing           # No parentheses needed for unit case
+    # case Nothing()       # Also valid, but parentheses are optional
+
+enum Result[T, E]:
+    case Ok(value: T)
+    case Err(error: E)
+
+enum LoadState:
+    case NotStarted        # Unit case
+    case Loading           # Unit case
+    case Loaded(data: str) # Data case
+    case Failed(error: str) # Data case
+```
+
+**Pattern Matching Unit Cases:**
+
+When pattern matching, unit cases also don't require parentheses:
+
+```python
+match opt:
+    case Option.Some(v): print(v)
+    case Option.Nothing: print("none")  # No parens in pattern
+
+match state:
+    case LoadState.NotStarted: start_loading()
+    case LoadState.Loading: show_spinner()
+    case LoadState.Loaded(data): display(data)
+    case LoadState.Failed(err): show_error(err)
 ```
 
 ### Creating Values
@@ -4761,6 +5394,26 @@ matrix = [[i * j for j in range(3)] for i in range(3)]
 - `[expr for x in iter]` → `.Select(x => expr).ToList()`
 - `[expr for x in iter if cond]` → `.Where(x => cond).Select(x => expr).ToList()`
 
+**Filter and Transform Order:**
+
+The filter (`if` clause) is applied **before** the transformation, matching Python semantics exactly:
+
+```python
+[x * 2 for x in items if x > 0]
+# Equivalent to:
+# result = []
+# for x in items:
+#     if x > 0:           # Filter first
+#         result.append(x * 2)  # Then transform
+```
+
+This maps to LINQ's `.Where(...).Select(...)` ordering:
+
+```csharp
+// C# equivalent
+items.Where(x => x > 0).Select(x => x * 2).ToList();
+```
+
 ### Multiple For Clauses
 
 Comprehensions can have multiple `for` clauses, which are evaluated left-to-right like nested loops:
@@ -4909,6 +5562,22 @@ results = [y for x in data if (y := transform(x)) is not None]
 while (line := file.read_line()) is not None:
     process(line)
 ```
+
+**Type Inference Only:**
+
+The walrus operator always infers the type from the right-hand side expression. Type annotations are not supported with `:=` (matching Python 3.8+ behavior):
+
+```python
+# ✅ Valid - type inferred from get_value()
+if (x := get_value()) > 0:
+    pass
+
+# ❌ Invalid - cannot annotate with walrus
+if (x: int := get_value()) > 0:  # ERROR: type annotation not supported with :=
+    pass
+```
+
+Since Sharpy has full static type information, the type of `get_value()` is known at compile time, making explicit annotation unnecessary.
 
 **Walrus Operator in Comprehensions:**
 
@@ -5294,6 +5963,29 @@ class UnitCircle(Circle):
 - A subclass can override any accessor it has visibility to
 - The overriding accessor's visibility cannot be more restrictive than the base
 
+**Covariant Return Types:**
+
+C# 9.0 supports covariant return types for method overrides. Since properties are essentially methods, property return types can be covariant on override:
+
+```python
+class Animal:
+    @virtual
+    property get friend(self) -> Animal:
+        return self._friend
+
+class Dog(Animal):
+    @override
+    property get friend(self) -> Dog:  # Valid - Dog is subtype of Animal
+        return self._dog_friend
+
+class Cat(Animal):
+    @override
+    property get friend(self) -> Cat:  # Valid - Cat is subtype of Animal
+        return self._cat_friend
+```
+
+This allows subclasses to return more specific types without requiring unsafe casts at call sites.
+
 *Implementation: ✅ Native*
 ```csharp
 public abstract double Area { get; }
@@ -5350,6 +6042,21 @@ class Entity(IIdentifiable, INamed, ITimestamped):
 | `property x: T` | Both getter and setter |
 | `property get x(self) -> T: ...` | A getter (auto or function-style) |
 | `property set x(self, value: T): ...` | A setter (auto or function-style) |
+
+**Auto-Properties in Interfaces:**
+
+For interface auto-properties, no body means abstract (must be implemented). A default value makes it optional:
+
+```python
+interface IIdentifiable:
+    property get id: int       # Abstract - implementer must provide getter
+
+interface IConfigurable:
+    property name: str = ""    # Default value - implementer can override or use default
+    property enabled: bool = True
+```
+
+This matches C# interface property semantics where properties without a body are abstract requirements.
 
 **Explicit Interface Implementation:**
 
@@ -5523,6 +6230,32 @@ button.click()                 # Triggers event
 button.clicked -= on_clicked  # Unsubscribe
 ```
 
+**Thread-Safe Event Invocation:**
+
+For thread-safe event invocation that avoids race conditions, use the null-conditional call pattern:
+
+```python
+class Button:
+    event clicked: (object, EventArgs) -> None
+
+    def click(self):
+        # Thread-safe pattern using ?.
+        self.clicked?.invoke(self, EventArgs())
+```
+
+This maps to C#'s `clicked?.Invoke(...)` pattern, which atomically checks for null and invokes, preventing race conditions where a subscriber unsubscribes between the null check and invocation.
+
+```python
+# These are equivalent:
+
+# Explicit null check (not thread-safe)
+if self.clicked is not None:
+    self.clicked(self, EventArgs())  # Race condition possible here
+
+# Null-conditional invoke (thread-safe)
+self.clicked?.invoke(self, EventArgs())  # Atomic check-and-invoke
+```
+
 ### Custom EventArgs
 
 ```python
@@ -5596,6 +6329,29 @@ async def process():
     async for num in count_up(5):
         print(f"Number: {num}")
 ```
+
+**No Async Comprehensions:**
+
+Sharpy does not support async comprehensions (`async for` inside comprehensions). C# 9.0's LINQ doesn't natively support `IAsyncEnumerable` in query syntax, making this feature complex to implement.
+
+```python
+# ❌ Not supported - async comprehension
+results = [x async for x in async_iterator()]
+results = [x async for x in async_iterator() if await predicate(x)]
+
+# ✅ Use explicit async loop instead
+results: list[T] = []
+async for x in async_iterator():
+    results.append(x)
+
+# ✅ Or with condition
+results: list[T] = []
+async for x in async_iterator():
+    if await predicate(x):
+        results.append(x)
+```
+
+Async comprehensions may be added in a future version (v2.0+) when better runtime support is available.
 
 **Generator Return Types:**
 
@@ -5689,6 +6445,24 @@ if isinstance(x, int):   # More idiomatic
 
 **Note:** Unlike Python where `type(None)` returns `NoneType`, Sharpy's `type(None)` is a compile-time error because `None` is not a value with a type.
 
+**`type()` on Primitive Literals:**
+
+Unlike `type(None)`, calling `type()` on primitive literals is valid and returns the corresponding `System.Type`:
+
+```python
+# All of these are valid
+t1 = type(42)        # System.Int32
+t2 = type(3.14)      # System.Double
+t3 = type("hello")   # System.String
+t4 = type(True)      # System.Boolean
+t5 = type([1, 2, 3]) # Sharpy.Core.List`1[System.Int32]
+
+# Only type(None) is an error
+t6 = type(None)      # ERROR: type(None) is not valid
+```
+
+This is because primitive literals are values with concrete runtime types, whereas `None` represents the absence of a value.
+
 **`isinstance(x, T)`**
 
 Checks whether `x` is an instance of type `T` at runtime. Returns `True` if `x` is an instance of `T` or any subclass of `T`.
@@ -5739,6 +6513,25 @@ if isinstance(x, int) or isinstance(x, str):
     pass
 ```
 
+**Generic Type Limitation:**
+
+Due to .NET type erasure for generics at runtime, `isinstance()` cannot check generic type arguments:
+
+```python
+# ✅ Valid - checks if x is any List<T>
+if isinstance(x, list):
+    pass  # x could be list[int], list[str], etc.
+
+# ❌ Compile error - cannot check generic type arguments at runtime
+if isinstance(x, list[int]):       # ERROR: Cannot check generic type arguments at runtime
+    pass
+
+if isinstance(x, dict[str, int]):  # ERROR: Cannot check generic type arguments at runtime
+    pass
+```
+
+This limitation matches C#'s `is` operator behavior. At runtime, `List<int>` and `List<str>` are both just `List<T>`—the generic type argument is erased.
+
 **Type Narrowing:**
 
 When `isinstance()` is used in a conditional, the variable's type is narrowed within that branch:
@@ -5765,8 +6558,68 @@ def process(value: object) -> str:
 | `sorted(iter)` | Sort collection | `.OrderBy()` |
 | `reversed(iter)` | Reverse | `.Reverse()` |
 | `enumerate(iter)` | Index + value | `.Select((x, i) => (i, x))` |
+
+**`enumerate()` Signature:**
+
+The `enumerate()` function matches Python's signature:
+
+```python
+enumerate(iterable, start=0)
+```
+
+| Form | Description |
+|------|-------------|
+| `enumerate(items)` | Indices start at 0 |
+| `enumerate(items, start=1)` | Indices start at 1 |
+| `enumerate(items, start=n)` | Indices start at n |
+
+```python
+names = ["Alice", "Bob", "Charlie"]
+
+# Default: start at 0
+for i, name in enumerate(names):
+    print(f"{i}: {name}")  # 0: Alice, 1: Bob, 2: Charlie
+
+# Start at 1 (useful for 1-based numbering)
+for i, name in enumerate(names, start=1):
+    print(f"{i}. {name}")  # 1. Alice, 2. Bob, 3. Charlie
+```
+
+*Implementation: 🔄 Lowered - `.Select((x, i) => (i + start, x))`.*
+
 | `zip(a, b)` | Combine iterables | `.Zip()` |
 | `range(n)` | Number sequence | `Enumerable.Range()` |
+
+**`range()` Signature:**
+
+The `range()` function matches Python's signature exactly:
+
+| Form | Description | Example |
+|------|-------------|---------|
+| `range(stop)` | 0 to stop-1 | `range(5)` → 0, 1, 2, 3, 4 |
+| `range(start, stop)` | start to stop-1 | `range(2, 5)` → 2, 3, 4 |
+| `range(start, stop, step)` | start to stop-1, by step | `range(0, 10, 2)` → 0, 2, 4, 6, 8 |
+
+```python
+# Single argument: 0 to n-1
+for i in range(5):
+    print(i)  # 0, 1, 2, 3, 4
+
+# Two arguments: start to stop-1
+for i in range(2, 7):
+    print(i)  # 2, 3, 4, 5, 6
+
+# Three arguments: start to stop-1, stepping by step
+for i in range(0, 10, 2):
+    print(i)  # 0, 2, 4, 6, 8
+
+# Negative step for countdown
+for i in range(10, 0, -1):
+    print(i)  # 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
+```
+
+*Implementation: 🔄 Lowered - Simple forms use `for (int i = start; i < stop; i += step)`, complex forms use `Enumerable.Range()` or generator.*
+
 | `filter(pred, iter)` | Filter | `.Where()` |
 | `map(func, iter)` | Transform | `.Select()` |
 | `all(iter)` | All truthy | `.All()` |
@@ -5792,6 +6645,24 @@ def process(value: object) -> str:
 | `pow(x, y)` | Power | `Math.Pow()` |
 | `round(x, n)` | Round | `Math.Round()` |
 | `divmod(a, b)` | Quotient + remainder | `(a / b, a % b)` |
+
+**`divmod()` Return Types:**
+
+The `divmod()` function returns a tuple containing the quotient and remainder. The return type depends on the operand types, following the same numeric promotion rules as `/` and `//`:
+
+| Operand Types | Return Type | Notes |
+|---------------|-------------|-------|
+| Both `int` | `tuple[int, int]` | Integer division and modulo |
+| Any `long` | `tuple[long, long]` | Promoted to long |
+| Any `float`/`double` | `tuple[double, double]` | Float division |
+| Any `decimal` | `tuple[decimal, decimal]` | Decimal division |
+
+```python
+divmod(17, 5)       # (3, 2) - tuple[int, int]
+divmod(17L, 5)      # (3L, 2L) - tuple[long, long]
+divmod(17.0, 5.0)   # (3.0, 2.0) - tuple[double, double]
+divmod(17.0m, 5.0m) # (3.0m, 2.0m) - tuple[decimal, decimal]
+```
 
 ### Object Functions [v0.1.0]
 
