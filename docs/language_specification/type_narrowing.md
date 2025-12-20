@@ -1,4 +1,4 @@
-# Type Narrowing **[v0.1.1]**
+# Type Narrowing
 
 Sharpy performs type narrowing in conditional branches:
 

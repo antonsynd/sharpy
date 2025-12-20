@@ -1,4 +1,4 @@
-# Features Deferred to v2.0+ **[v2.0+]**
+# Deferred Features
 
 The following features require .NET 7+ runtime or C# 11+ and cannot be supported when targeting Unity or .NET 5/6:
 

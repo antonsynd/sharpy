@@ -1,4 +1,4 @@
-# Type Annotations **[v0.1.0]**
+# Type Annotations
 
 ```python
 # Simple types

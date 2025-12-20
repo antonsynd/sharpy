@@ -1,4 +1,4 @@
-# Logical Operators **[v0.1.0]**
+# Logical Operators
 
 | Operator | Description | C# Mapping |
 |----------|-------------|------------|

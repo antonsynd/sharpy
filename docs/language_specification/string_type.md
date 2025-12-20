@@ -1,4 +1,4 @@
-# String Type and UTF-16 Semantics **[v0.1.0]**
+# String Type and UTF-16 Semantics
 
 Sharpy's `str` type maps directly to .NET's `System.String`, which uses UTF-16 encoding internally. This has important implications for string operations.
 

@@ -1,4 +1,4 @@
-## Comprehensions **[v0.1.8]**
+## Comprehensions
 
 Comprehensions provide concise syntax for creating collections by transforming and filtering iterables.
 
@@ -177,4 +177,3 @@ filtered = [x for x in range(20) if x % 2 == 0 if x % 3 == 0]
 ```
 
 ---
-

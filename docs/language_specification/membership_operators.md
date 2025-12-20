@@ -1,4 +1,4 @@
-# Membership Operators **[v0.1.0]**
+# Membership Operators
 
 | Operator | Description |
 |----------|-------------|

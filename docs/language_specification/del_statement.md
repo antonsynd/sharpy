@@ -1,4 +1,4 @@
-# The `del` Statement **[v0.2.0]**
+# The `del` Statement
 
 The `del` statement removes items from collections:
 

@@ -1,4 +1,4 @@
-# Constructors **[v0.1.2]**
+# Constructors
 
 ## Constructor Overloading
 

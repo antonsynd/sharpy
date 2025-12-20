@@ -1,4 +1,4 @@
-# Collection Types **[v0.1.1]**
+# Collection Types
 
 | Sharpy Type | .NET Type | Notes |
 |-------------|-----------|-------|

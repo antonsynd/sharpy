@@ -1,4 +1,4 @@
-# Module Resolution **[v0.1.0]**
+# Module Resolution
 
 ## Name Conversion
 

@@ -1,4 +1,4 @@
-## Walrus Operator **[v0.1.8]**
+## Walrus Operator
 
 The walrus operator `:=` allows assignment within expressions:
 

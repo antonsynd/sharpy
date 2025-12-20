@@ -1,4 +1,4 @@
-# Lambda Expressions **[v0.1.3]**
+# Lambda Expressions
 
 ```python
 # Single expression lambda

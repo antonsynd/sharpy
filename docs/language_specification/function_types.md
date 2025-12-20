@@ -1,4 +1,4 @@
-# Function Types **[v0.1.3]**
+# Function Types
 
 Function types represent the signature of callable values, including lambdas, method references, and delegate instances. They are used in type annotations for parameters, return types, fields, and type aliases.
 

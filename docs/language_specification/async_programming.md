@@ -1,4 +1,4 @@
-## Async Programming **[v0.2.0+]**
+## Async Programming
 
 ### Async Functions
 
@@ -59,7 +59,7 @@ async for x in async_iterator():
         results.append(x)
 ```
 
-Async comprehensions may be added in a future version (v2.0+) when better runtime support is available.
+Async comprehensions may be added in a future version when better runtime support is available.
 
 **Generator Return Types:**
 
@@ -99,4 +99,3 @@ async def use_resource():
 *Implementation: 🔄 Lowered - `await using (var r = resource) { ... }`*
 
 ---
-

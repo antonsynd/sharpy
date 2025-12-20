@@ -1,4 +1,4 @@
-# Integer Literals **[v0.1.0]**
+# Integer Literals
 
 ```python
 # Decimal integers

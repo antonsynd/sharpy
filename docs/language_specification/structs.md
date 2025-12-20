@@ -1,4 +1,4 @@
-# Structs **[v0.1.2]**
+# Structs
 
 Structs are value types that do not support inheritance but can implement interfaces.
 

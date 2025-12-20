@@ -1,4 +1,4 @@
-# Assert Statement **[v0.1.0]**
+# Assert Statement
 
 ```python
 assert condition

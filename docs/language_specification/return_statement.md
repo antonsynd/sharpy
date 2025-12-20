@@ -1,4 +1,4 @@
-# Return Statement **[v0.1.0]**
+# Return Statement
 
 ```python
 def add(x: int, y: int) -> int:

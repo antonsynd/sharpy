@@ -1,4 +1,4 @@
-# Break and Continue **[v0.1.0]**
+# Break and Continue
 
 ```python
 for item in items:

@@ -1,4 +1,4 @@
-# Function Definition **[v0.1.0]**
+# Function Definition
 
 ```python
 def greet(name: str) -> str:

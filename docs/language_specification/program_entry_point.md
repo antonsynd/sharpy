@@ -1,4 +1,4 @@
-# Program Entry Point **[v0.1.0]**
+# Program Entry Point
 
 The entry point is either a file with top-level statements or a `main()` function:
 

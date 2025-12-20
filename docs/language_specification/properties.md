@@ -1,4 +1,4 @@
-## Properties **[v0.1.2]**
+## Properties
 
 Properties provide controlled access to object state with support for computed values, validation, and fine-grained access control. Sharpy properties map cleanly to C# properties while maintaining Pythonic readability.
 
@@ -554,4 +554,3 @@ property set name(self, value: str):
 ```
 
 ---
-

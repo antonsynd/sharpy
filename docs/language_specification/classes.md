@@ -1,4 +1,4 @@
-# Classes **[v0.1.0]**
+# Classes
 
 ## Basic Class Definition
 
@@ -27,7 +27,7 @@ class Person:
 - All instance fields must be declared at class level with type annotations
 - The `self` parameter is required for instance methods
 - The `self` parameter is not type-annotated and cannot be annotated
-- There is no `Self` type in Sharpy v1.0 (C# 9.0 has no equivalent; C# 11+ adds `TSelf` generic constraint patterns which may be supported in v2.0+)
+- There is no `Self` type in Sharpy currently (C# 9.0 has no equivalent; C# 11+ adds `TSelf` generic constraint patterns which may be supported in a future version)
 - For fluent APIs returning the same type, you must name the concrete type explicitly:
 
 ```python

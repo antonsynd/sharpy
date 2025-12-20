@@ -1,4 +1,4 @@
-# String Operators **[v0.1.0]**
+# String Operators
 
 Strings support concatenation and repetition operators:
 

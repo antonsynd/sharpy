@@ -1,4 +1,4 @@
-# While Loop **[v0.1.0]**
+# While Loop
 
 ```python
 count = 0

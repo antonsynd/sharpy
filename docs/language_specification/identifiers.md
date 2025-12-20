@@ -1,4 +1,4 @@
-# Identifiers **[v0.1.0]**
+# Identifiers
 
 Identifiers are names for variables, functions, classes, etc.
 

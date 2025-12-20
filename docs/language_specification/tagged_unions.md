@@ -1,4 +1,4 @@
-## Tagged Unions (Algebraic Data Types) **[v0.2.0]**
+## Tagged Unions (Algebraic Data Types)
 
 Tagged unions allow cases to carry associated data:
 
@@ -138,4 +138,3 @@ public abstract class Result<T, E> {
 ```
 
 ---
-

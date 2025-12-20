@@ -1,4 +1,4 @@
-## Decorators **[v0.1.2]**
+## Decorators
 
 Decorators modify the behavior of functions, methods, and classes.
 
@@ -172,4 +172,3 @@ print(circle.describe())   # "Circle with area 78.53975"
 *Implementation: ✅ Native - Direct mapping to C# keywords.*
 
 ---
-

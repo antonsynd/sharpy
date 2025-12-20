@@ -1,4 +1,4 @@
-# Arithmetic Operators **[v0.1.0]**
+# Arithmetic Operators
 
 | Operator | Description | C# Mapping |
 |----------|-------------|------------|

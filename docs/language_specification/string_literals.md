@@ -1,4 +1,4 @@
-# String Literals **[v0.1.0]**
+# String Literals
 
 ```python
 # Single-quoted strings

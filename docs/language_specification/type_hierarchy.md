@@ -1,4 +1,4 @@
-# Type Hierarchy and Object Model **[v0.1.0]**
+# Type Hierarchy and Object Model
 
 ## Universal Base Type
 

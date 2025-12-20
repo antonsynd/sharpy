@@ -1,4 +1,4 @@
-# Operator Precedence **[v0.1.0]**
+# Operator Precedence
 
 Operators listed from highest to lowest precedence:
 

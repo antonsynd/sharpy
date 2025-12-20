@@ -1,4 +1,4 @@
-# Module System **[v0.1.0]**
+# Module System
 
 ## Package Structure
 

@@ -1,4 +1,4 @@
-## Try expressions **[v0.2.0]**
+## Try expressions
 
 The `Result[T, E]` type can be implicitly created via
 `try` expressions. A `try` expression wraps the value of
@@ -48,4 +48,3 @@ y = try (foo() if cond else bar())  # try applies to entire conditional
 *Implementation: 🔄 Lowered - `try`/`catch` pattern wrapping the expression.*
 
 ---
-

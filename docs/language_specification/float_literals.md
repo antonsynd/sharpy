@@ -1,4 +1,4 @@
-# Float Literals **[v0.1.0]**
+# Float Literals
 
 ```python
 # Decimal floats (64-bit)

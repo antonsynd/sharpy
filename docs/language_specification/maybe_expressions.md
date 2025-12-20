@@ -1,4 +1,4 @@
-## Maybe expressions **[v0.2.0]**
+## Maybe expressions
 
 Optionals can be implicitly created via `maybe` expressions.
 A `maybe` expression wraps the value of the expression in
@@ -44,4 +44,3 @@ x = (maybe d.get("key")).unwrap_or(0)
 ```
 
 ---
-

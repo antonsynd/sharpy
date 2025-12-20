@@ -1,4 +1,4 @@
-# Pass Statement **[v0.1.0]**
+# Pass Statement
 
 Used as a placeholder (empty body) for a function or type definition, or
 used to satisfy the parsing requirement for a block with no statements to have

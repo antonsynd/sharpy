@@ -1,4 +1,4 @@
-# Assignment Operators **[v0.1.0]**
+# Assignment Operators
 
 | Operator | Description |
 |----------|-------------|

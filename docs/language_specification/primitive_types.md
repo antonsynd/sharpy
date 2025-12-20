@@ -1,4 +1,4 @@
-# Built-in Primitive Types **[v0.1.0]**
+# Built-in Primitive Types
 
 | Sharpy Type | .NET Type | Size | Notes |
 |-------------|-----------|------|-------|

@@ -1,4 +1,4 @@
-# F-Strings (Formatted String Literals) **[v0.1.5]**
+# F-Strings (Formatted String Literals)
 
 ```python
 name = "Alice"

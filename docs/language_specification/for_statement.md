@@ -1,4 +1,4 @@
-# For Loop **[v0.1.0]**
+# For Loop
 
 ```python
 # Iterate over collection

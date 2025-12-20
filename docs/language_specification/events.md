@@ -1,4 +1,4 @@
-## Events **[v0.2.0]**
+## Events
 
 Events provide a publish-subscribe pattern:
 
@@ -81,4 +81,3 @@ class Counter:
 *Implementation: ✅ Native - `event EventHandler Name;`*
 
 ---
-

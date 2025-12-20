@@ -1,4 +1,4 @@
-## Generics **[v0.1.3]**
+## Generics
 
 ### Generic Classes
 
@@ -35,7 +35,7 @@ def first[T](items: list[T]) -> T:
 
 *Implementation: ✅ Native - `T Identity<T>(T value)`*
 
-### Type Constraints **[v0.1.3]**
+### Type Constraints
 
 ```python
 interface IComparable[T]:
@@ -59,4 +59,3 @@ def find_max[T: IComparable[T]](items: list[T]) -> T:
 *Implementation: ✅ Native - Direct mapping to C# generic constraints.*
 
 ---
-

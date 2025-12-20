@@ -1,8 +1,8 @@
-## Operator Overloading **[v0.1.4]**
+## Operator Overloading
 
 Classes can define dunder methods (double-underscore methods like `__add__`, `__eq__`) to customize how operators and built-in functions behave with their instances. **Dunder methods are a definition mechanism only**—they specify *how* a type behaves, but users invoke that behavior through operators and built-in functions, not by calling dunders directly.
 
-### Dunder Invocation Rules **[v0.1.0]**
+### Dunder Invocation Rules
 
 #### Dunders Are Definition-Only
 
@@ -166,7 +166,7 @@ class Vector:
 
 This also applies to comparison operators like `__lt__()`. For `__eq__()` and `__ne__()` specifically, at least one overload must accept `object` (`System.Object`) as its argument. Additional overloads can be made for other types. This is actually satisfied by default for Sharpy reference types in Sharpy because they all derive from `Sharpy.Core.Object` which implements these dunder methods.
 
-### Dunder Inheritance and Internal Calls **[v0.1.0]**
+### Dunder Inheritance and Internal Calls
 
 While user code cannot call dunders directly, there are specific contexts where dunder calls are permitted.
 
@@ -475,4 +475,3 @@ locations[coord] = "Home"  # Works because __hash__ and __eq__ defined
 *Implementation: ✅ Native or 🔄 Lowered depending on the method.*
 
 ---
-

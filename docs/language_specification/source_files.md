@@ -1,4 +1,4 @@
-# Source Files **[v0.1.0]**
+# Source Files
 
 ## File Extension and Encoding
 

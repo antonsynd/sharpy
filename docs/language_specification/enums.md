@@ -1,4 +1,4 @@
-## Enumerations **[v0.1.4]**
+## Enumerations
 
 ### Simple Enums
 
@@ -55,7 +55,7 @@ names: list[str] = [c.name for c in Color]  # ["RED", "GREEN", "BLUE"]
 values: list[int] = [c.value for c in Color]  # [1, 2, 3]
 ```
 
-**Note:** Simple enums (non-tagged unions) cannot have custom methods. For enums with methods, use tagged unions (v0.2.0+).
+**Note:** Simple enums (non-tagged unions) cannot have custom methods. For enums with methods, use tagged unions.
 
 *Implementation:*
 - *Integer enums: ✅ Native - C# `enum`*
@@ -63,4 +63,3 @@ values: list[int] = [c.value for c in Color]  # [1, 2, 3]
 - *`.name` property: 🔄 Lowered - `Enum.GetName()` or lookup*
 
 ---
-

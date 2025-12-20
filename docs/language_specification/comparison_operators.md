@@ -1,4 +1,4 @@
-# Comparison Operators **[v0.1.0]**
+# Comparison Operators
 
 | Operator | Description |
 |----------|-------------|

@@ -1,4 +1,4 @@
-## .NET Interop **[v0.1.0]**
+## .NET Interop
 
 ### Importing .NET Types
 
@@ -49,4 +49,3 @@ with FileStream("output.dat", FileMode.create) as stream:
 ```
 
 ---
-

@@ -1,4 +1,4 @@
-## Built-in Functions **[v0.1.0+]**
+## Built-in Functions
 
 Built-in functions provide polymorphic access to type behavior. They work uniformly on all types—primitives, .NET types, and Sharpy-defined types—by internally dispatching to the appropriate implementation:
 
@@ -8,7 +8,7 @@ Built-in functions provide polymorphic access to type behavior. They work unifor
 
 This design allows code like `len(x)`, `str(x)`, and `repr(x)` to work consistently regardless of whether `x` is a list, a string, or a custom class.
 
-### Type Conversion [v0.1.0]
+### Type Conversion
 
 | Function | Purpose | C# Mapping |
 |----------|---------|------------|
@@ -21,7 +21,7 @@ This design allows code like `len(x)`, `str(x)`, and `repr(x)` to work consisten
 - For Sharpy types with `__str__`: calls `__str__`
 - For all types: falls back to `.ToString()`
 
-### Type Checking [v0.1.0]
+### Type Checking
 
 | Function | Purpose | C# Mapping |
 |----------|---------|------------|
@@ -153,7 +153,7 @@ def process(value: object) -> str:
 
 *Implementation: ✅ Native - Maps to C# `is` pattern matching with type narrowing.*
 
-### Collection Functions [v0.1.0]
+### Collection Functions
 
 | Function | Purpose | C# Mapping |
 |----------|---------|------------|
@@ -236,14 +236,14 @@ for i in range(10, 0, -1):
 - For collections: uses `.Count` property
 - For strings/arrays: uses `.Length` property
 
-### I/O Functions [v0.1.0]
+### I/O Functions
 
 | Function | Purpose | C# Mapping |
 |----------|---------|------------|
 | `print(x)` | Print to console | `Console.WriteLine()` |
 | `input(prompt)` | Read from console | `Console.ReadLine()` |
 
-### Mathematical Functions [v0.1.0]
+### Mathematical Functions
 
 | Function | Purpose | C# Mapping |
 |----------|---------|------------|
@@ -270,7 +270,7 @@ divmod(17.0, 5.0)   # (3.0, 2.0) - tuple[double, double]
 divmod(17.0m, 5.0m) # (3.0m, 2.0m) - tuple[decimal, decimal]
 ```
 
-### Object Functions [v0.1.0]
+### Object Functions
 
 | Function | Purpose | C# Mapping |
 |----------|---------|------------|
@@ -314,4 +314,3 @@ h = hash(bad)            # ERROR: list is not hashable
 *Implementation: 🔄 Lowered - Generated as method calls or type-appropriate dispatch.*
 
 ---
-

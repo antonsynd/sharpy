@@ -1,4 +1,4 @@
-# If Statement **[v0.1.0]**
+# If Statement
 
 ```python
 if x > 0:

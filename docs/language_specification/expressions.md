@@ -1,4 +1,4 @@
-# Expressions **[v0.1.0]**
+# Expressions
 
 ## Primary Expressions
 
@@ -26,7 +26,7 @@ my_variable
 obj.field
 obj.method()
 
-# Null-conditional [v0.1.1]
+# Null-conditional
 obj?.field
 obj?.method()
 ```
@@ -47,7 +47,7 @@ print("Hello")
 calculate_total(100, 0.08)
 obj.method(arg1, arg2)
 
-# Generic instantiation [v0.1.3]
+# Generic instantiation
 container = ListContainer[str]()
 ```
 

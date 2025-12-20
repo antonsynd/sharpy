@@ -1,4 +1,4 @@
-## Interfaces **[v0.1.2]**
+## Interfaces
 
 Interfaces define contracts that types must satisfy.
 
@@ -74,7 +74,7 @@ The distinction is:
 
 *Implementation: ✅ Native - Direct mapping to C# `interface`.*
 
-### Generic Interfaces **[v0.1.3]**
+### Generic Interfaces
 
 ```python
 interface IContainer[T]:
@@ -83,7 +83,7 @@ interface IContainer[T]:
     def count(self) -> int: ...
 ```
 
-### Interface Inheritance **[v0.1.2]**
+### Interface Inheritance
 
 Interfaces can extend other interfaces:
 

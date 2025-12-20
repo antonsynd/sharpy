@@ -1,4 +1,4 @@
-# Type Casting (The `to` Operator) **[v0.1.0]**
+# Type Casting (The `to` Operator)
 
 The `to` operator performs type casting, converting a value from one type to another at runtime.
 

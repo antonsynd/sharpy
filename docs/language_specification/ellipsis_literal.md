@@ -1,4 +1,4 @@
-# Ellipsis Literal **[v0.1.0]**
+# Ellipsis Literal
 
 The ellipsis literal `...` is a placeholder for unimplemented code:
 

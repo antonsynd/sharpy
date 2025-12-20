@@ -1,4 +1,4 @@
-## Context Managers **[v0.2.0]**
+## Context Managers
 
 The `with` statement manages resources:
 
@@ -27,4 +27,3 @@ with open("in.txt") as input, open("out.txt", "w") as output:
 - For `IDisposable`, ✅ Native - `using (var r = resource) { ... }`
 
 ---
-

@@ -1,4 +1,4 @@
-# Bitwise Operators **[v0.1.0]**
+# Bitwise Operators
 
 | Operator | Description |
 |----------|-------------|

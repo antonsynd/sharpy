@@ -1,4 +1,4 @@
-# Function Parameters **[v0.1.0]**
+# Function Parameters
 
 ## Default Parameters
 
@@ -83,7 +83,7 @@ list2 = append_to(2)  # [2] - separate list, not [1, 2]
 
 *Implementation: ✅ Native - Direct mapping to C# optional parameters.*
 
-## Named (Keyword) Arguments **[v0.1.0]**
+## Named (Keyword) Arguments
 
 Sharpy supports calling functions with named arguments, allowing callers to specify parameter values by name rather than position:
 
@@ -113,7 +113,7 @@ user5 = create_user(name="Dave", 40)  # ERROR: positional argument follows keywo
 
 *Implementation: ✅ Native - Direct mapping to C# named arguments.*
 
-## Variadic Arguments (`*args`) **[v0.1.0]**
+## Variadic Arguments (`*args`)
 
 Sharpy supports a limited form of variadic arguments using the `*args` syntax. Unlike Python's fully dynamic `*args`, Sharpy's variadic arguments are **homogeneously typed**—all arguments must be of the same type `T`.
 

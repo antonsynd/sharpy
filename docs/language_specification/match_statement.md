@@ -1,4 +1,4 @@
-## Pattern Matching **[v0.1.6]**
+## Pattern Matching
 
 ### Match Statement
 
@@ -196,4 +196,3 @@ match flag:
 ```
 
 ---
-

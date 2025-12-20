@@ -1,4 +1,4 @@
-## Inheritance **[v0.1.2]**
+## Inheritance
 
 ### Single Class Inheritance
 
@@ -208,4 +208,3 @@ error: `super()` is only valid in:
 *Implementation: 🔄 Lowered - `super()` maps to `base.Method()`*
 
 ---
-

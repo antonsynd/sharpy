@@ -1,4 +1,4 @@
-# Variable Scoping Rules **[v0.1.0]**
+# Variable Scoping Rules
 
 ## No `global` or `nonlocal` Keywords
 
@@ -59,7 +59,7 @@ x += 5
 count *= 2
 ```
 
-## Variable Shadowing **[v0.1.7]**
+## Variable Shadowing
 
 Variables can be redeclared in the same scope with a different type using explicit type annotation:
 
@@ -122,7 +122,7 @@ items: auto = [1, 2, 3]  # Inferred as list[int]
 
 **When to Use `auto`:**
 
-The `auto` keyword is primarily useful for variable shadowing (v0.1.7), where you want to redeclare a variable with a different type:
+The `auto` keyword is primarily useful for variable shadowing, where you want to redeclare a variable with a different type:
 
 ```python
 x: int = 5

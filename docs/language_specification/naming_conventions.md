@@ -1,4 +1,4 @@
-# Naming Conventions Summary **[v0.1.0]**
+# Naming Conventions Summary
 
 | Identifier Type | Sharpy Convention | Compiled C# Form |
 |-----------------|-------------------|------------------|

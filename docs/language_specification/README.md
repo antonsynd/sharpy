@@ -2,7 +2,7 @@
 
 See [introduction.md](introduction.md) for goals, principles, and philosophy.
 
-## Lexical Structure **[v0.1.0]**
+## Lexical Structure
 
 See [source_files.md](source_files.md) for file format, line structure, and continuation rules.
 
@@ -16,7 +16,7 @@ See [comments.md](comments.md) for comment syntax.
 
 ---
 
-## Literals **[v0.1.0]**
+## Literals
 
 See [integer_literals.md](integer_literals.md) for integer literals and suffixes.
 
@@ -38,7 +38,7 @@ See [empty_set_literal.md](empty_set_literal.md) for the `{/}` empty set literal
 
 ---
 
-## Types **[v0.1.0]**
+## Types
 
 See [primitive_types.md](primitive_types.md) for built-in primitive types and arrays.
 
@@ -52,13 +52,13 @@ See [nullable_types.md](nullable_types.md) for nullable type semantics.
 
 ---
 
-## Function Types **[v0.1.3]**
+## Function Types
 
 See [function_types.md](function_types.md) for function type syntax, compatibility, and usage.
 
 ---
 
-## Operators **[v0.1.1]**
+## Operators
 
 See [null_coalescing_operator.md](null_coalescing_operator.md) for the `??` operator.
 
@@ -68,17 +68,17 @@ See [type_narrowing.md](type_narrowing.md) for type narrowing rules with `is not
 
 ---
 
-## Collection Types **[v0.1.1]**
+## Collection Types
 
 See [collection_types.md](collection_types.md) for collection types, methods, and .NET interop.
 
-### Collection Literals **[v0.1.1]**
+### Collection Literals
 
-See [del_statement.md](del_statement.md) for the `del` statement **[v0.2.0]**.
+See [del_statement.md](del_statement.md) for the `del` statement.
 
 ---
 
-## Operators **[v0.1.0]**
+## Operators
 
 See [arithmetic_operators.md](arithmetic_operators.md) for arithmetic operators and numeric type promotion.
 
@@ -102,7 +102,7 @@ See [operator_precedence.md](operator_precedence.md) for operator precedence tab
 
 ---
 
-## Expressions **[v0.1.0]**
+## Expressions
 
 See [expressions.md](expressions.md) for primary expressions, member access, index access, function calls, conditional expressions, and expression evaluation order.
 
@@ -112,11 +112,11 @@ See [lambdas.md](lambdas.md) for lambda expressions.
 
 ---
 
-## Statements **[v0.1.0]**
+## Statements
 
 See [statements.md](statements.md) for expression statements, variable declaration and assignment, constants.
 
-## Variable Scoping Rules [v0.1.0]
+## Variable Scoping Rules
 
 See [variable_scoping.md](variable_scoping.md) for:
 - No `global` or `nonlocal` keywords
@@ -143,7 +143,7 @@ See [assert_statement.md](assert_statement.md) for the assert statement.
 
 ---
 
-## Control Flow **[v0.1.0]**
+## Control Flow
 
 See [if_statement.md](if_statement.md) for if/elif/else statements.
 
@@ -155,13 +155,13 @@ See [loop_else.md](loop_else.md) for else clauses on loops.
 
 ---
 
-## Exception Handling **[v0.1.0]**
+## Exception Handling
 
 See [exception_handling.md](exception_handling.md) for exception types, try/except/finally, and raise statements.
 
 ---
 
-## Functions **[v0.1.0]**
+## Functions
 
 See [function_definition.md](function_definition.md) for function definition syntax, rules, and placeholder bodies.
 
@@ -176,15 +176,15 @@ See [function_parameters.md](function_parameters.md) for:
 
 ---
 
-## Classes **[v0.1.0]**
+## Classes
 
 See [classes.md](classes.md) for basic class definition, field declarations, instance methods, and rules.
 
-See [constructors.md](constructors.md) for constructor overloading and constructor chaining **[v0.1.2]**.
+See [constructors.md](constructors.md) for constructor overloading and constructor chaining.
 
 ---
 
-## Imports **[v0.1.0]**
+## Imports
 
 See [import_statements.md](import_statements.md) for import and from-import syntax variations.
 
@@ -194,148 +194,119 @@ See [module_system.md](module_system.md) for package structure, `__init__.spy` f
 
 ---
 
-## Structs **[v0.1.2]**
+## Structs
 
 See [structs.md](structs.md) for struct definition, usage, value semantics, and comparison with classes.
 
 ---
 
-## Interfaces **[v0.1.2]**
+## Interfaces
 
 See [interfaces.md](interfaces.md) for interface definition, implementation, generic interfaces, interface inheritance, default methods, conflict resolution, and dunder methods in interfaces.
 
 ---
 
-## Inheritance **[v0.1.2]**
+## Inheritance
 
 See [inheritance.md](inheritance.md) for single class inheritance, multiple interface implementation, super() usage, and abstract classes.
 
 ---
 
-## Decorators **[v0.1.2]**
+## Decorators
 
 See [decorators.md](decorators.md) for @static, @virtual, @override, @abstract, @final, and access modifiers (@public, @private, @protected, @internal).
 
 ---
-## Generics **[v0.1.3]**
+## Generics
 
 See [generics.md](generics.md) for generic classes, generic methods, and type constraints.
 
 ---
-## Enumerations **[v0.1.4]**
+## Enumerations
 
 See [enums.md](enums.md) for enum definition, usage, and flags.
 
 ---
-## Operator Overloading **[v0.1.4]**
+## Operator Overloading
 
 See [operator_overloading.md](operator_overloading.md) for dunder methods, arithmetic operators, comparison operators, and container operations.
 
 ---
-## Pattern Matching **[v0.1.6]**
+## Pattern Matching
 
 See [match_statement.md](match_statement.md) for match statement syntax and pattern matching.
 
 ---
-## Type Aliases **[v0.1.7]**
+## Type Aliases
 
 See [type_aliases.md](type_aliases.md) for type alias syntax.
 
 ---
-## Tagged Unions (Algebraic Data Types) **[v0.2.0]**
+## Tagged Unions (Algebraic Data Types)
 
 See [tagged_unions.md](tagged_unions.md) for union type definitions and pattern matching.
 
 ---
-## Try expressions **[v0.2.0]**
+## Try expressions
 
 See [try_expressions.md](try_expressions.md) for try expressions and error handling.
 
 ---
-## Maybe expressions **[v0.2.0]**
+## Maybe expressions
 
 See [maybe_expressions.md](maybe_expressions.md) for maybe expressions and optional chaining.
 
 ---
-## Comprehensions **[v0.1.8]**
+## Comprehensions
 
 See [comprehensions.md](comprehensions.md) for list, dict, and set comprehensions.
 
 ---
-## Walrus Operator **[v0.1.8]**
+## Walrus Operator
 
 See [walrus_operator.md](walrus_operator.md) for assignment expressions using :=.
 
 ---
-## Properties **[v0.1.2]**
+## Properties
 
 See [properties.md](properties.md) for auto-properties and function-style properties.
 
 ---
-## Context Managers **[v0.2.0]**
+## Context Managers
 
 See [context_managers.md](context_managers.md) for with statement and context manager protocol.
 
 ---
-## Events **[v0.2.0]**
+## Events
 
 See [events.md](events.md) for event declaration and handling.
 
 ---
-## Async Programming **[v0.2.0+]**
+## Async Programming
 
 See [async_programming.md](async_programming.md) for async/await and AsyncIterator.
 
 ---
-## Built-in Functions **[v0.1.0+]**
+## Built-in Functions
 
 See [builtin_functions.md](builtin_functions.md) for type conversion, type checking, collection operations, I/O, math, and object builtins.
 
 ---
-## .NET Interop **[v0.1.0]**
+## .NET Interop
 
 See [dotnet_interop.md](dotnet_interop.md) for importing .NET types, extension methods, and IDisposable.
 
 ---
-## Naming Conventions Summary **[v0.1.0]**
-
-| Identifier Type | Sharpy Convention | Compiled C# Form |
-|-----------------|-------------------|------------------|
-| Module | `snake_case` | `PascalCase` namespace |
-| Class | `PascalCase` | (unchanged) |
-| Struct | `PascalCase` | (unchanged) |
-| Interface | `IPascalCase` | (unchanged) |
-| Method/Function | `snake_case` | `PascalCase` |
-| Parameter | `snake_case` | `camelCase` |
-| Local variable | `snake_case` | (unchanged) |
-| Constant | `CAPS_SNAKE_CASE` | (unchanged) |
-| Enum type | `PascalCase` | (unchanged) |
-| Enum value | `CAPS_SNAKE_CASE` | `PascalCase` |
+## Naming Conventions Summary
+See [naming_conventions.md](naming_conventions.md) for symbol naming conventions.
 
 ---
+## Program Entry Point
 
-## Program Entry Point **[v0.1.0]**
-
-The entry point is either a file with top-level statements or a `main()` function:
-
-```python
-# Option 1: Top-level statements
-print("Hello, World!")
-
-# Option 2: main() function
-def main():
-    print("Hello, World!")
-```
-
-**Note:** The Python idiom `if __name__ == "__main__":` does not exist in Sharpy.
-
-*Implementation: 🔄 Lowered*
-- *Top-level statements wrapped in generated `Main()` method*
-- *Module code wrapped in `public static class Exports`*
+See [program_entry_point.md](program_entry_point.md) for the program entry point.
 
 ---
-
-## Features Deferred to v2.0+
+## Deferred Features
 
 The following features require .NET 7+ runtime or C# 11+ and cannot be supported when targeting Unity or .NET 5/6:
 
@@ -350,25 +321,6 @@ The following features require .NET 7+ runtime or C# 11+ and cannot be supported
 | `field` keyword in properties | C# 13 | Any | Compiler feature |
 | Extension properties/operators | C# 14 | Any | Compiler feature |
 | User-defined `+=` operators | C# 14 | Any | Compiler feature |
-
----
-
-## Version Summary
-
-| Version | Key Additions |
-|---------|---------------|
-| **v0.1.0** | Core syntax, primitives, functions, classes, exceptions, imports, type hierarchy (`object` base), dunder invocation rules |
-| **v0.1.1** | Nullable types (`T?`), `?.`, `??`, collections, slicing |
-| **v0.1.2** | Structs, interfaces, inheritance, decorators, access modifiers, function overloading, properties |
-| **v0.1.3** | Generics, type constraints, lambdas |
-| **v0.1.4** | Enums, operator overloading via dunders |
-| **v0.1.5** | F-strings, extended literals, comparison chaining, loop else |
-| **v0.1.6** | Pattern matching (`match`/`case`), guards, all pattern types |
-| **v0.1.7** | Type aliases, variable shadowing |
-| **v0.1.8** | Comprehensions, walrus operator |
-| **v0.2.0+** | Context managers (`with`), async/await, generators (`yield`), tagged unions (ADTs), `maybe`/`try` expressions, events, `del` statement |
-| **v1.0** | Stable release |
-| **v2.0+** | Features requiring C# 11+ / .NET 7+ |
 
 ---
 

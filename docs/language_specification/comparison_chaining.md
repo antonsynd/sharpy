@@ -1,4 +1,4 @@
-# Comparison Chaining **[v0.1.5]**
+# Comparison Chaining
 
 ```python
 # Chained comparisons

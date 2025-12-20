@@ -1,4 +1,4 @@
-# Loop Else Clause **[v0.1.5]**
+# Loop Else Clause
 
 For both `for` and `while` loops, an `else` clause can be
 added to execute if the loop completes without a break.

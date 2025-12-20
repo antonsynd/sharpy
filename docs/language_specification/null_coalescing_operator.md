@@ -1,4 +1,4 @@
-# Null-Coalescing Operator **[v0.1.1]**
+# Null-Coalescing Operator
 
 ```python
 # Provide default for None values

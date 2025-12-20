@@ -1,4 +1,4 @@
-# Exception Handling **[v0.1.0]**
+# Exception Handling
 
 ## Exception Type Hierarchy
 

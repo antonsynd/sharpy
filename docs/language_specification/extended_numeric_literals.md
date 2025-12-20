@@ -1,4 +1,4 @@
-# Extended Numeric Literals **[v0.1.5]**
+# Extended Numeric Literals
 
 ```python
 # Binary literals

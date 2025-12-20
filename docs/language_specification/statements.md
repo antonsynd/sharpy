@@ -1,4 +1,4 @@
-# Statements **[v0.1.0]**
+# Statements
 
 ## Expression Statement
 
@@ -54,7 +54,7 @@ items: auto = [1, 2, 3]  # Inferred as list[int]
 
 **When to Use `auto`:**
 
-The `auto` keyword is primarily useful for variable shadowing (v0.1.7), where you want to redeclare a variable with a different type:
+The `auto` keyword is primarily useful for variable shadowing, where you want to redeclare a variable with a different type:
 
 ```python
 x: int = 5

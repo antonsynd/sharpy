@@ -1,4 +1,4 @@
-# Identity Operators **[v0.1.0]**
+# Identity Operators
 
 | Operator | Description | C# Mapping |
 |----------|-------------|------------|
