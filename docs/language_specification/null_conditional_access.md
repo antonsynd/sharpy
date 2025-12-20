@@ -12,5 +12,6 @@ value = obj?.field           # Returns None if obj is None
 nested = obj?.field?.nested  # Chains null checks
 ```
 
-**Implementation**
+## Implementation
+
 ✅ Native - Maps to C# `?.` operator (C# 6.0+).

@@ -27,7 +27,6 @@ maybe_numbers: list[int?] = [42, None, 67]  # OK
 numbers: list[int] = [42, None, 67]         # ERROR: Cannot assign None to non-nullable
 ```
 
-Nullable types can be composed:
+## Implementation
 
-**Implementation**
 ✅ Native - Maps to C# nullable reference types with `#nullable enable`.
