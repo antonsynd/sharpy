@@ -50,6 +50,8 @@ See [type_hierarchy.md](type_hierarchy.md) for the type hierarchy and object mod
 
 See [nullable_types.md](nullable_types.md) for nullable type semantics.
 
+See [named_tuples.md](named_tuples.md) for named tuple syntax and usage.
+
 ---
 
 ## Function Types
@@ -62,6 +64,8 @@ See [function_types.md](function_types.md) for function type syntax, compatibili
 
 See [null_coalescing_operator.md](null_coalescing_operator.md) for the `??` operator.
 
+See [null_coalescing_assignment.md](null_coalescing_assignment.md) for the `??=` operator.
+
 See [null_conditional_access.md](null_conditional_access.md) for the `?.` operator.
 
 See [type_narrowing.md](type_narrowing.md) for type narrowing rules with `is not None` and `isinstance()`.
@@ -71,6 +75,10 @@ See [type_narrowing.md](type_narrowing.md) for type narrowing rules with `is not
 ## Collection Types
 
 See [collection_types.md](collection_types.md) for collection types, methods, and .NET interop.
+
+See [smart_ranges.md](smart_ranges.md) for range operations, membership testing, and pattern matching.
+
+See [spread_operator.md](spread_operator.md) for spreading collections and objects.
 
 ### Collection Literals
 
@@ -98,6 +106,8 @@ See [identity_operators.md](identity_operators.md) for `is` and `is not`.
 
 See [assignment_operators.md](assignment_operators.md) for assignment operators.
 
+See [pipe_operator.md](pipe_operator.md) for the `|>` pipe operator.
+
 See [operator_precedence.md](operator_precedence.md) for operator precedence table.
 
 ---
@@ -109,6 +119,10 @@ See [expressions.md](expressions.md) for primary expressions, member access, ind
 See [type_casting.md](type_casting.md) for the `to` operator and type casting.
 
 See [lambdas.md](lambdas.md) for lambda expressions.
+
+See [partial_application.md](partial_application.md) for partial application with `_` placeholder.
+
+See [expression_blocks.md](expression_blocks.md) for `do:` expression blocks.
 
 ---
 
@@ -173,6 +187,8 @@ See [function_parameters.md](function_parameters.md) for:
 - C# interop with params arrays
 - No **kwargs support
 - Positional-only and keyword-only parameters
+
+See [contracts.md](contracts.md) for design-by-contract with preconditions, postconditions, and invariants.
 
 ---
 
