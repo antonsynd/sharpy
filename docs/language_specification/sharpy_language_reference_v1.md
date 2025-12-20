@@ -50,18 +50,6 @@ Features are marked with their target version. Each version builds upon the prev
 | **v0.1.0 - v1.0** | .NET 5+ / Unity | C# 9.0 | Maximum compatibility |
 | **v2.0+** | .NET 7+ | C# 11+ | Full modern features |
 
-### Transpilation Legend
-
-Throughout this document, implementation notes use these indicators:
-
-| Status | Meaning |
-|--------|---------|
-| ✅ **Native** | Maps directly to C# 9.0 |
-| 🔄 **Lowered** | Requires compiler transformation |
-| ❌ **v2.0+** | Requires C# 11+ / .NET 7+; deferred |
-
----
-
 ## Lexical Structure **[v0.1.0]**
 
 ### Source Files
@@ -84,38 +72,6 @@ if condition:
 else:
     statement3  # 4 spaces indentation
 ```
-
-**Indentation Rules:**
-- **Exactly 4 spaces per indentation level** (enforced)
-- Tabs are **not allowed** for indentation
-- Mixed spaces and tabs cause a lexical error
-- Indentation must be consistent within a file
-
-*Implementation: 🔄 Lowered - The lexer tracks indentation levels via an indentation stack, emitting INDENT/DEDENT tokens. These are converted to C# braces `{ }` during code generation.*
-
-### Comments
-
-```python
-# This is a single-line comment
-
-x = 42  # Comment at end of line
-
-# Comments can span multiple lines
-# by using # at the start of each line
-
-"""
-This is a docstring, not a comment.
-Docstrings are string literals used for documentation.
-"""
-```
-
-**Comment Rules:**
-- Single-line comments start with `#` and continue to end of line
-- `#` inside string literals is not a comment
-- No multi-line comment syntax (like `/* */` in C)
-- Docstrings (triple-quoted strings) can serve as multi-line documentation
-
-*Implementation: ✅ Native - Converted to `//` comments in C#. Docstrings become `///` XML documentation or are discarded.*
 
 ### Identifiers
 
@@ -250,60 +206,6 @@ Line 2"""
 
 ---
 
-## Keywords **[v0.1.0]**
-
-### Hard Keywords
-
-The following are reserved keywords in Sharpy:
-
-| Keyword | Version | Notes |
-|---------|---------|-------|
-| `and` | v0.1.0 | Boolean AND |
-| `as` | v0.1.0 | Aliasing for imports |
-| `assert` | v0.1.0 | Assertion statement |
-| `auto` | v0.1.7 | Inferred type for shadowing |
-| `break` | v0.1.0 | Break statement for loops |
-| `case` | v0.1.6 | Pattern matching case |
-| `class` | v0.1.0 | Class declaration |
-| `const` | v0.1.0 | Constant declaration |
-| `continue` | v0.1.0 | Continue statement for loops |
-| `def` | v0.1.0 | Function/method definition |
-| `elif` | v0.1.0 | Else-if block |
-| `else` | v0.1.0 | Else block |
-| `enum` | v0.1.4 | Enumeration declaration |
-| `event` | v0.2.0 | Event declaration |
-| `except` | v0.1.0 | Exception handler |
-| `False` | v0.1.0 | Boolean false literal |
-| `finally` | v0.1.0 | Finally block |
-| `for` | v0.1.0 | For loop |
-| `from` | v0.1.0 | Selective imports |
-| `if` | v0.1.0 | Conditional |
-| `import` | v0.1.0 | Import statement |
-| `in` | v0.1.0 | Membership test |
-| `interface` | v0.1.2 | Interface declaration |
-| `is` | v0.1.0 | Identity comparison |
-| `lambda` | v0.1.3 | Lambda expression |
-| `match` | v0.1.6 | Pattern matching |
-| `maybe` | v0.2.0 | Optional from nullable expressions |
-| `None` | v0.1.0 | None/null literal |
-| `not` | v0.1.0 | Boolean NOT |
-| `or` | v0.1.0 | Boolean OR |
-| `pass` | v0.1.0 | No-op placeholder |
-| `property` | v0.1.2 | Property declaration |
-| `raise` | v0.1.0 | Raise exception |
-| `return` | v0.1.0 | Return statement |
-| `struct` | v0.1.2 | Struct declaration |
-| `True` | v0.1.0 | Boolean true literal |
-| `to` | v0.1.0 | Type coercion operator |
-| `try` | v0.1.0 | Try block |
-| `type` | v0.1.7 | Type alias declaration |
-| `while` | v0.1.0 | While loop |
-| `with` | v0.2.0 | Context manager |
-| `yield` | v0.2.0 | Generators |
-| `async` | v0.2.0 | Async programming |
-| `await` | v0.2.0 | Async programming |
-| `del` | v0.2.0 | Delete statement |
-
 ### The `del` Statement **[v0.2.0]**
 
 The `del` statement removes items from collections:
@@ -393,15 +295,6 @@ del c["test"]           # Prints: "Deleting test"
 The dunder method can be overloaded to take one key of any type, including
 but not limited to an integer index (negative indexing is possible), a slice,
 etc.
-
-### Soft Keywords (Context-Dependent)
-
-| Keyword | Context | Notes |
-|---------|---------|-------|
-| `_` | Pattern matching | Wildcard pattern |
-| `get` | Properties | Property getter |
-| `init` | Properties | Property set-on-initialization only |
-| `set` | Properties | Property setter |
 
 ---
 
@@ -577,23 +470,6 @@ f"Location: {point}"    # Implicitly calls str(point) -> point.__str__() or poin
 This matches both Python's f-string behavior and C#'s string interpolation.
 
 *Implementation: ✅ Native - Maps to C# interpolated strings `$"..."`.*
-
-### Boolean Literals
-
-```python
-is_ready = True
-is_complete = False
-```
-
-*Implementation: ✅ Native - `True` → `true`, `False` → `false`.*
-
-### None Literal
-
-`None` represents the absence of a value and corresponds to `null` in the compiled C# output.
-
-```python
-value: str? = None
-```
 
 **Key Distinction from Python:**
 
@@ -1084,37 +960,6 @@ Function types map to C# delegate types:
 *Implementation: ✅ Native - Maps to `System.Action<>` and `System.Func<>` delegates.*
 
 ---
-
-## Nullable Types **[v0.1.1]**
-
-Nullable types allow variables to hold either a value or `None` (null):
-
-```python
-# Nullable type annotations (type followed by ?)
-result: int? = get_value()
-optional_name: str? = None
-
-# Non-nullable by default
-exists: bool = False  # Cannot be None
-count: int = 42       # Cannot be None
-
-# Assigning None requires nullable type
-value: int? = None    # OK
-other: int = None     # ERROR: Cannot assign None to non-nullable type
-```
-
-*Implementation: ✅ Native - Maps to C# nullable reference types with `#nullable enable`.*
-
-### Null-Conditional Access **[v0.1.1]**
-
-```python
-# Short-circuits if None
-result = obj?.method()       # Returns None if obj is None
-value = obj?.field           # Returns None if obj is None
-nested = obj?.field?.nested  # Chains null checks
-```
-
-*Implementation: ✅ Native - Maps to C# `?.` operator (C# 6.0+).*
 
 ### Null-Coalescing Operator **[v0.1.1]**
 
