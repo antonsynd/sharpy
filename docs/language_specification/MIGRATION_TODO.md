@@ -4,9 +4,9 @@ This document tracks the remaining sections to be migrated from `sharpy_language
 
 ## Progress Statistics
 - **Original size:** 6688 lines
-- **Current size:** 5428 lines
-- **Reduced by:** 1260 lines (18.8%)
-- **Documents created:** 24 new files
+- **Current size:** 4897 lines
+- **Reduced by:** 1791 lines (26.8%)
+- **Documents created:** 43 new files (plus 9 pre-existing)
 
 ## Completed Migrations ✅
 
@@ -43,11 +43,34 @@ This document tracks the remaining sections to be migrated from `sharpy_language
 - ✅ nullable_types.md - Nullable semantics (pre-existing)
 
 ### Operators & Collections
+- ✅ arithmetic_operators.md - Arithmetic ops and numeric type promotion
+- ✅ comparison_operators.md - Equality and relational comparisons
+- ✅ comparison_chaining.md - Chained comparison syntax
+- ✅ logical_operators.md - and, or, not
+- ✅ bitwise_operators.md - Bitwise operations
+- ✅ string_operators.md - String concatenation and repetition
+- ✅ membership_operators.md - in, not in
+- ✅ identity_operators.md - is, is not
+- ✅ assignment_operators.md - Assignment operators
+- ✅ operator_precedence.md - Precedence table
 - ✅ null_coalescing_operator.md - ?? operator
 - ✅ null_conditional_access.md - ?. operator (pre-existing)
 - ✅ type_narrowing.md - Type narrowing rules
 - ✅ collection_types.md - Collection types and methods
 - ✅ del_statement.md - Del statement
+
+### Control Flow & Statements
+- ✅ if_statement.md - If/elif/else
+- ✅ while_statement.md - While loops
+- ✅ for_statement.md - For loops
+- ✅ loop_else.md - Else clause on loops
+- ✅ break_continue.md - Break and continue
+- ✅ pass_statement.md - Pass statement
+- ✅ return_statement.md - Return statement
+- ✅ assert_statement.md - Assert statement
+
+### Exception Handling
+- ✅ exception_handling.md - Exception types, try/except/finally, raise
 
 ### Misc
 - ✅ program_entry_point.md - Entry points
@@ -56,68 +79,48 @@ This document tracks the remaining sections to be migrated from `sharpy_language
 
 ## Remaining Sections to Migrate 📋
 
-### Operators (Estimated ~400 lines)
+### Functions (Estimated ~486 lines)
+Priority: HIGH - Currently in main document (lines 745-1231)
+
+- [ ] **function_definition.md** - Basic function syntax, return types, rules
+- [ ] **function_parameters.md** - Parameters with comprehensive coverage:
+  - Default parameters (compile-time constant requirement)
+  - Named (keyword) arguments
+  - Variadic arguments (*args) - homogeneously typed
+  - Rules and restrictions
+  - Type of *args inside function
+  - Unpacking iterables with *
+  - C# interop with params arrays
+  - Function type compatibility
+  - No **kwargs support
+  - Positional-only and keyword-only parameters
+  - Empty and placeholder function bodies
+
+### Lambdas (Estimated ~60 lines)
 Priority: HIGH
 
-- [ ] **arithmetic_operators.md** - +, -, *, /, //, %, **
-  - Operator table
-  - Division semantics (always float)
-  - Floor division rules
-  - Numeric type promotion table
-  - Implementation notes
-
-- [ ] **comparison_operators.md** - ==, !=, <, >, <=, >=, is, is not
-  - Comparison operators
-  - Object identity vs equality
-  - Implementation notes
-
-- [ ] **logical_operators.md** - and, or, not
-  - Boolean logic
-  - Short-circuit evaluation
-  - Truthiness rules
-
-- [ ] **bitwise_operators.md** - &, |, ^, ~, <<, >>
-  - Bitwise operations
-  - Shift operations
-
-- [ ] **membership_operators.md** - in, not in
-  - Membership testing
-  - __contains__ dunder
-
-- [ ] **assignment_operators.md** - =, +=, -=, etc.
-  - Simple and augmented assignment
-  - Multiple assignment
-  - Unpacking assignment
-
-- [ ] **conditional_expression.md** - Ternary operator
-  - x if condition else y
-
-### Control Flow (Estimated ~600 lines)
-Priority: HIGH
-
-- [ ] **if_statement.md** - If/elif/else
-- [ ] **while_statement.md** - While loops
-- [ ] **for_statement.md** - For loops, iteration protocol
-- [ ] **loop_else.md** - Else clauses on loops
-- [ ] **break_continue.md** - Loop control
-- [ ] **pass_statement.md** - No-op statement
-- [ ] **match_statement.md** - Pattern matching
-  - Match/case syntax
-  - Pattern types (literal, capture, wildcard, sequence, mapping, class, or, as)
-  - Guards
-  - Exhaustiveness checking
-
-### Functions (Estimated ~500 lines)
-Priority: HIGH
-
-- [ ] **function_definition.md** - Basic function syntax
-- [ ] **function_parameters.md** - Parameters and arguments
-  - Positional, keyword, default
-  - *args and **kwargs
-  - Type annotations
-- [ ] **return_statement.md** - Return behavior
-- [ ] **function_overloading.md** - @overload decorator
 - [ ] **lambdas.md** - Lambda expressions
+
+### Function Overloading (Estimated ~70 lines)
+Priority: MEDIUM
+
+- [ ] **function_overloading.md** - @overload decorator
+
+### Expressions (Estimated ~300 lines)
+Priority: MEDIUM
+
+- [ ] **expressions.md** - Primary expressions, member access, index access, function calls
+- [ ] **type_casting.md** - The `to` operator (two forms, examples)
+
+### Variable Scoping (Estimated ~200 lines)
+Priority: MEDIUM
+
+- [ ] **variable_scoping.md** - Variable scoping rules, shadowing
+
+### Match Statement (Estimated ~400 lines - lines 3217+)
+Priority: MEDIUM
+
+- [ ] **match_statement.md** - Pattern matching (comprehensive)
 
 ### Classes & OOP (Estimated ~800 lines)
 Priority: MEDIUM
