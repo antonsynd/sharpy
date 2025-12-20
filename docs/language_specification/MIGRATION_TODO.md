@@ -4,9 +4,9 @@ This document tracks the remaining sections to be migrated from `sharpy_language
 
 ## Progress Statistics
 - **Original size:** 6688 lines
-- **Current size:** 4426 lines
-- **Reduced by:** 2262 lines (33.8%)
-- **Documents created:** 45 new files (plus 9 pre-existing)
+- **Current size:** 4010 lines
+- **Reduced by:** 2678 lines (40.0%)
+- **Documents created:** 49 new files (plus 9 pre-existing)
 
 ## Completed Migrations ✅
 
@@ -76,6 +76,12 @@ This document tracks the remaining sections to be migrated from `sharpy_language
 - ✅ function_definition.md - Function syntax, rules, placeholder bodies
 - ✅ function_parameters.md - Defaults, named args, *args, **kwargs, etc.
 
+### Expressions & Scoping
+- ✅ expressions.md - Primary expressions, member access, index, calls, evaluation order
+- ✅ type_casting.md - The `to` operator (comprehensive)
+- ✅ lambdas.md - Lambda expressions with closure semantics
+- ✅ variable_scoping.md - Scoping rules, shadowing, declaration
+
 ### Misc
 - ✅ program_entry_point.md - Entry points
 - ✅ naming_conventions.md - Naming table
@@ -83,28 +89,17 @@ This document tracks the remaining sections to be migrated from `sharpy_language
 
 ## Remaining Sections to Migrate 📋
 
-### Expressions & Type Casting (Estimated ~300 lines)
-Priority: HIGH
+### Statements Section (Estimated ~100 lines)
+Priority: MEDIUM
 
-- [ ] **expressions.md** - Primary expressions, member access, index access, function calls
-- [ ] **type_casting.md** - The `to` operator (two forms, examples)
-
-### Variable Scoping (Estimated ~200 lines)
-Priority: HIGH
-
-- [ ] **variable_scoping.md** - Variable scoping rules, shadowing
-
-### Lambdas (Estimated ~60 lines)
-Priority: HIGH
-
-- [ ] **lambdas.md** - Lambda expressions
+- [ ] **statements.md** - Expression statements, variable declaration patterns
 
 ### Function Overloading (Estimated ~70 lines)
 Priority: MEDIUM
 
 - [ ] **function_overloading.md** - @overload decorator
 
-### Match Statement (Estimated ~400 lines - lines 3217+)
+### Match Statement (Estimated ~400 lines)
 Priority: MEDIUM
 
 - [ ] **match_statement.md** - Pattern matching (comprehensive)
