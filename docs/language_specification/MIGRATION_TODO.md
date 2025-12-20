@@ -83,22 +83,16 @@ This document tracks the remaining sections to be migrated from `sharpy_language
 
 ## Remaining Sections to Migrate 📋
 
-### Functions (Estimated ~486 lines)
-Priority: HIGH - Currently in main document (lines 745-1231)
+### Expressions & Type Casting (Estimated ~300 lines)
+Priority: HIGH
 
-- [ ] **function_definition.md** - Basic function syntax, return types, rules
-- [ ] **function_parameters.md** - Parameters with comprehensive coverage:
-  - Default parameters (compile-time constant requirement)
-  - Named (keyword) arguments
-  - Variadic arguments (*args) - homogeneously typed
-  - Rules and restrictions
-  - Type of *args inside function
-  - Unpacking iterables with *
-  - C# interop with params arrays
-  - Function type compatibility
-  - No **kwargs support
-  - Positional-only and keyword-only parameters
-  - Empty and placeholder function bodies
+- [ ] **expressions.md** - Primary expressions, member access, index access, function calls
+- [ ] **type_casting.md** - The `to` operator (two forms, examples)
+
+### Variable Scoping (Estimated ~200 lines)
+Priority: HIGH
+
+- [ ] **variable_scoping.md** - Variable scoping rules, shadowing
 
 ### Lambdas (Estimated ~60 lines)
 Priority: HIGH
@@ -109,17 +103,6 @@ Priority: HIGH
 Priority: MEDIUM
 
 - [ ] **function_overloading.md** - @overload decorator
-
-### Expressions (Estimated ~300 lines)
-Priority: MEDIUM
-
-- [ ] **expressions.md** - Primary expressions, member access, index access, function calls
-- [ ] **type_casting.md** - The `to` operator (two forms, examples)
-
-### Variable Scoping (Estimated ~200 lines)
-Priority: MEDIUM
-
-- [ ] **variable_scoping.md** - Variable scoping rules, shadowing
 
 ### Match Statement (Estimated ~400 lines - lines 3217+)
 Priority: MEDIUM
