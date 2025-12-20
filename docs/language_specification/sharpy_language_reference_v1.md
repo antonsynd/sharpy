@@ -708,301 +708,37 @@ internal names and referencing them inadvertently.
 
 ### Pass Statement
 
-Used as a placeholder (empty body) for a function or type definition, or
-used to satisfy the parsing requirement for a block with no statements to have
-one statement.
-
-```python
-def todo():
-    pass  # Placeholder
-
-class Placeholder:
-    pass
-```
-
-*Implementation: ✅ Native - Empty statement or empty body.*
+See [pass_statement.md](pass_statement.md) for the pass statement.
 
 ### Break and Continue
 
-```python
-for item in items:
-    if item == target:
-        break       # Exit loop
-    if should_skip(item):
-        continue    # Skip to next iteration
-```
-
-*Implementation: ✅ Native - Direct mapping.*
+See [break_continue.md](break_continue.md) for break and continue statements.
 
 ### Return Statement
 
-```python
-def add(x: int, y: int) -> int:
-    return x + y
-
-def print_message() -> None:
-    print("Hello")
-    return  # Optional
-```
-
-*Implementation: ✅ Native - Direct mapping.*
+See [return_statement.md](return_statement.md) for the return statement.
 
 ### Assert Statement
 
-```python
-assert condition
-assert x > 0, "Value must be positive"
-```
-
-*Implementation: 🔄 Lowered - `System.Diagnostics.Debug.Assert(condition, message)`.*
+See [assert_statement.md](assert_statement.md) for the assert statement.
 
 ---
 
 ## Control Flow **[v0.1.0]**
 
-### If Statement
+See [if_statement.md](if_statement.md) for if/elif/else statements.
 
-```python
-if x > 0:
-    print("positive")
-elif x < 0:
-    print("negative")
-else:
-    print("zero")
-```
+See [while_statement.md](while_statement.md) for while loops.
 
-*Implementation: ✅ Native - Direct mapping to `if`/`else if`/`else`.*
+See [for_statement.md](for_statement.md) for for loops.
 
-### While Loop
-
-```python
-count = 0
-while count < 10:
-    print(count)
-    count += 1
-```
-
-`else`-clauses described in a section below.
-
-*Implementation: ✅ Native - Direct mapping.*
-
-### For Loop
-
-```python
-# Iterate over collection
-for name in names:
-    print(name)
-
-# Iterate with range
-for i in range(10):
-    print(i)
-
-# Enumerate for index and value
-for index, name in enumerate(names):
-    print(f"{index}: {name}")
-```
-
-*Implementation:*
-- *Collection: ✅ Native - `foreach (var item in collection)`*
-- *`range()`: 🔄 Lowered - `for (int i = 0; i < n; i++)`*
-- *`enumerate()`: 🔄 Lowered - `.Select((x, i) => (i, x))`*
-
-`else`-clauses described in a section below.
-
-### Loop Else Clause **[v0.1.5]**
-
-For both `for` and `while` loops, an `else` clause can be
-added to execute if the loop completes without a break.
-
-An example with a `for`-loop is shown below.
-
-```python
-for item in items:
-    if item == target:
-        break
-else:
-    # Executed only if loop completes without break
-    print("Not found")
-```
-
-**Loop `else` with `return` or Exceptions:**
-
-The `else` clause only runs if the loop completes normally (no `break`). It does NOT run if the loop exits via `return` or an exception:
-
-```python
-def find_item(items: list[int], target: int) -> int:
-    for item in items:
-        if item == target:
-            return item      # return exits function, else does NOT run
-    else:
-        print("Not found")   # Only runs if no return or break
-    return -1
-
-def risky_search(items: list[int]) -> int:
-    for item in items:
-        if item < 0:
-            raise ValueError("Negative value")  # else does NOT run
-    else:
-        print("All items valid")  # Only runs if loop completes normally
-    return len(items)
-```
-
-This is the natural behavior from the lowered boolean-flag pattern—the flag is only checked if control flow reaches that point.
-
-*Implementation: 🔄 Lowered - Boolean flag pattern:*
-```csharp
-bool _loopCompleted = true;
-foreach (var item in items) {
-    if (item == target) { _loopCompleted = false; break; }
-}
-if (_loopCompleted) { Console.WriteLine("Not found"); }
-```
+See [loop_else.md](loop_else.md) for else clauses on loops.
 
 ---
 
 ## Exception Handling **[v0.1.0]**
 
-### Exception Type Hierarchy
-
-Sharpy uses .NET's exception hierarchy directly:
-
-| Sharpy Name | .NET Type | Notes |
-|-------------|-----------|-------|
-| `Exception` | `System.Exception` | Base class for all exceptions |
-| `ValueError` | `System.ArgumentException` | Invalid argument value |
-| `TypeError` | `System.InvalidCastException` | Type mismatch |
-| `IndexError` | `System.IndexOutOfRangeException` | Index out of bounds |
-| `KeyError` | `System.Collections.Generic.KeyNotFoundException` | Dict key not found |
-| `RuntimeError` | `System.InvalidOperationException` | General runtime error |
-| `IOError` | `System.IO.IOException` | I/O operation failed |
-| `FileNotFoundError` | `System.IO.FileNotFoundException` | File not found |
-| `ZeroDivisionError` | `System.DivideByZeroException` | Division by zero |
-| `NotImplementedError` | `System.NotImplementedException` | Not yet implemented |
-| `StopIteration` | `System.InvalidOperationException` | Iterator exhausted |
-
-**Pythonic Aliases:**
-
-Sharpy provides Pythonic aliases for common .NET exceptions. These are imported automatically:
-
-```python
-# These are equivalent:
-raise ValueError("invalid")              # Pythonic alias
-raise System.ArgumentException("invalid") # Direct .NET type
-```
-
-**No `BaseException`:**
-
-Unlike Python which distinguishes `BaseException` from `Exception`, Sharpy follows .NET where `System.Exception` is the base for all exceptions. There is no separate hierarchy for system-level exceptions that shouldn't normally be caught.
-
-### Try/Except/Finally
-
-```python
-try:
-    result = risky_operation()
-except ValueError as e:
-    print(f"Invalid value: {e}")
-except Exception as e:
-    print(f"Error: {e}")
-else:
-    # Executed if no exception
-    print(f"Success: {result}")
-finally:
-    # Always executed
-    cleanup()
-```
-
-*Implementation:*
-- *try/except/finally: ✅ Native - `try`/`catch`/`finally`*
-- *else clause: 🔄 Lowered - Boolean flag pattern*
-
-### Raise Statement
-
-```python
-# Raise exception
-raise ValueError("Invalid input")
-
-# Re-raise current exception
-except Exception as e:
-    log_error(e)
-    raise
-
-# Raise with cause
-raise RuntimeError("Failed") from original_error
-
-# Suppress exception chaining with 'from None'
-raise NewError("Clean error") from None  # Hides the original exception
-```
-
-**Exception Chaining Semantics:**
-
-The `raise X from Y` syntax sets the chained exception, mapping to C#'s inner exception:
-
-| Sharpy | C# |
-|--------|----|
-| `raise NewError("msg") from original` | `throw new NewError("msg", original)` |
-| `raise NewError("msg") from None` | `throw new NewError("msg", null)` |
-| `raise NewError("msg")` (in except block) | Automatic chaining via `Exception.InnerException` |
-
-**Accessing the Chained Exception:**
-
-- In C# code: `.InnerException` property
-- In Sharpy code: `.__cause__` attribute (maps to `.InnerException`)
-
-```python
-try:
-    do_risky_operation()
-except LowLevelError as e:
-    raise HighLevelError("Operation failed") from e
-
-# Later, when catching:
-try:
-    call_high_level()
-except HighLevelError as e:
-    print(f"Error: {e}")
-    if e.__cause__ is not None:
-        print(f"Caused by: {e.__cause__}")
-```
-
-**`from original_error` Context:**
-
-The `from` clause can reference any in-scope exception variable, not just in `except` blocks:
-
-```python
-# In except block (common case)
-except IOError as e:
-    raise ConfigError("Failed to load config") from e
-
-# Referencing stored exception
-saved_error: Exception? = None
-try:
-    do_something()
-except Exception as e:
-    saved_error = e
-
-if saved_error is not None:
-    raise ProcessingError("Deferred error") from saved_error
-```
-
-**`raise ... from None`:**
-
-Using `from None` suppresses the automatic exception chaining, hiding the original exception from tracebacks. This is useful when:
-- The original exception is an implementation detail
-- You want a cleaner error message for users
-- Re-raising with a different exception type for API boundaries
-
-```python
-try:
-    # Low-level operation
-    result = parse_internal_format(data)
-except InternalParseError as e:
-    # Hide internal error, present clean API error
-    raise ValueError("Invalid data format") from None
-```
-
-*Implementation:*
-- *raise: ✅ Native - `throw new Exception()`*
-- *bare raise: ✅ Native - `throw;`*
-- *raise from: 🔄 Lowered - Inner exception constructor*
+See [exception_handling.md](exception_handling.md) for exception types, try/except/finally, and raise statements.
 
 ---
 
