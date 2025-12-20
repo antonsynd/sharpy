@@ -2,8 +2,6 @@
 
 See [introduction.md](introduction.md) for goals, principles, and philosophy.
 
-See [version_guide.md](version_guide.md) for version features and target compatibility.
-
 ## Lexical Structure **[v0.1.0]**
 
 See [source_files.md](source_files.md) for file format, line structure, and continuation rules.
