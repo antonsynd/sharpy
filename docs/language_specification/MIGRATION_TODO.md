@@ -4,9 +4,9 @@ This document tracks the remaining sections to be migrated from `sharpy_language
 
 ## Progress Statistics
 - **Original size:** 6688 lines
-- **Current size:** 4897 lines
-- **Reduced by:** 1791 lines (26.8%)
-- **Documents created:** 43 new files (plus 9 pre-existing)
+- **Current size:** 4426 lines
+- **Reduced by:** 2262 lines (33.8%)
+- **Documents created:** 45 new files (plus 9 pre-existing)
 
 ## Completed Migrations ✅
 
@@ -71,6 +71,10 @@ This document tracks the remaining sections to be migrated from `sharpy_language
 
 ### Exception Handling
 - ✅ exception_handling.md - Exception types, try/except/finally, raise
+
+### Functions
+- ✅ function_definition.md - Function syntax, rules, placeholder bodies
+- ✅ function_parameters.md - Defaults, named args, *args, **kwargs, etc.
 
 ### Misc
 - ✅ program_entry_point.md - Entry points
