@@ -6,10 +6,11 @@ pi = 3.14159
 half = 0.5
 negative = -2.718
 
-# Must have digit before or after decimal point
+# Digit before or after decimal point is optional
 valid1 = 0.5
 valid2 = 5.0
-invalid = .5  # ERROR: Must have digit before decimal
+valid3 = .5  # Like Python, but unlike C#, this is valid
+valid3 = 5.  # Also valid
 
 # Underscores for readability (optional)
 precise = 3.141_592_653
@@ -23,4 +24,5 @@ precise = 3.141_592_653
   - `d` or `D` for `double` (System.Double): `3.14d` (redundant but allowed)
   - `m` or `M` for `decimal` (System.Decimal): `3.14m`
 
-*Implementation: ✅ Native - Direct mapping to C# float literals.*
+*Implementation*
+- *✅ Native - Direct mapping to C# float literals.*

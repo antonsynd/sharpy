@@ -56,7 +56,7 @@ class Rectangle:
 
     def __init__(self, width: double, height: double):
         self.__init__(0.0, 0.0, width, height)  # Chain first
-        print("Created rectangle")               # Then other statements
+        print("Created rectangle")              # Then other statements
 
     def __init__(self, x: double, y: double, width: double, height: double):
         self.x = x
@@ -65,4 +65,6 @@ class Rectangle:
         self.height = height
 ```
 
-*Implementation: 🔄 Lowered - `self.__init__(...)` as first statement transforms to `: this(...)` in C#.*
+*Implementation*
+- *✅ Native - `__init__()` maps directly to C# constructor methods.*
+- *🔄 Lowered - `self.__init__(...)` as first statement transforms to `: this(...)` in C#.*

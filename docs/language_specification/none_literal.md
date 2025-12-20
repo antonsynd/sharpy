@@ -6,5 +6,5 @@
 value: str? = None
 ```
 
-**C# Implementation**
-✅ Native - `None` → `null`.
+*Implementation*
+- *✅ Native - `None` → `null`.*

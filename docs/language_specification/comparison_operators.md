@@ -9,4 +9,5 @@
 | `<=` | Less than or equal |
 | `>=` | Greater than or equal |
 
-*Implementation: ✅ Native - Direct mapping.*
+*Implementation*
+- *✅ Native - Direct mapping.*

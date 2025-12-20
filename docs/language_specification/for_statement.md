@@ -14,9 +14,9 @@ for index, name in enumerate(names):
     print(f"{index}: {name}")
 ```
 
+`else`-clauses are described in [loop_else.md](loop_else.md).
+
 *Implementation:*
 - *Collection: ✅ Native - `foreach (var item in collection)`*
 - *`range()`: 🔄 Lowered - `for (int i = 0; i < n; i++)`*
 - *`enumerate()`: 🔄 Lowered - `.Select((x, i) => (i, x))`*
-
-`else`-clauses are described in loop_else.md.

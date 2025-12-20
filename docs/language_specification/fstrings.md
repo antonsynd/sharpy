@@ -34,4 +34,5 @@ f"Location: {point}"    # Implicitly calls str(point) -> point.__str__() or poin
 
 This matches both Python's f-string behavior and C#'s string interpolation.
 
-*Implementation: ✅ Native - Maps to C# interpolated strings `$"..."`.*
+*Implementation*
+- *✅ Native - Maps to C# interpolated strings `$"..."`.*

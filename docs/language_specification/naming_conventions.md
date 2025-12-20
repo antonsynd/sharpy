@@ -1,4 +1,4 @@
-# Naming Conventions Summary
+# Naming Conventions for Symbols
 
 | Identifier Type | Sharpy Convention | Compiled C# Form |
 |-----------------|-------------------|------------------|
@@ -12,3 +12,5 @@
 | Constant | `CAPS_SNAKE_CASE` | (unchanged) |
 | Enum type | `PascalCase` | (unchanged) |
 | Enum value | `CAPS_SNAKE_CASE` | `PascalCase` |
+| Tagged union type | `PascalCase` | (unchanged) |
+| Tagged union case | `PascalCase` | (unchanged) |

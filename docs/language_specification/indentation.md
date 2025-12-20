@@ -9,5 +9,5 @@ blocks.
 - Mixed spaces and tabs cause a lexical error
 - Indentation must be consistent within a file
 
-**C# Implementation**
-🔄 Lowered - The lexer tracks indentation levels via an indentation stack, emitting INDENT/DEDENT tokens. These are converted to C# braces `{ }` during code generation.
+*Implementation*
+- *🔄 Lowered - The lexer tracks indentation levels via an indentation stack, emitting INDENT/DEDENT tokens. These are converted to C# braces `{ }` during code generation.*

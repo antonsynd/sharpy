@@ -9,4 +9,5 @@
 | `<<` | Left shift |
 | `>>` | Right shift |
 
-*Implementation: ✅ Native - Direct mapping.*
+*Implementation*
+- *✅ Native - Direct mapping.*

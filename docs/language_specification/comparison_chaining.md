@@ -30,4 +30,5 @@ Each intermediate expression is evaluated only once:
 a < f() < c         # Equivalent to: _temp = f(); a < _temp and _temp < c
 ```
 
-*Implementation: 🔄 Lowered - Expanded to `a < b && b < c` with single evaluation of middle expression.*
+*Implementation*
+- *🔄 Lowered - Expanded to `a < b && b < c` with single evaluation of middle expression.*

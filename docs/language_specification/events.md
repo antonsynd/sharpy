@@ -18,7 +18,7 @@ def on_clicked(sender: object, args: EventArgs):
     print("Button clicked!")
 
 button.clicked += on_clicked  # Subscribe
-button.click()                 # Triggers event
+button.click()                # Triggers event
 button.clicked -= on_clicked  # Unsubscribe
 ```
 
@@ -78,6 +78,5 @@ class Counter:
 - `+=` subscribes, `-=` unsubscribes
 - Multiple subscribers are called in subscription order
 
-*Implementation: ✅ Native - `event EventHandler Name;`*
-
----
+*Implementation*
+- *✅ Native - `event EventHandler Name;`*

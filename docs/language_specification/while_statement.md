@@ -7,6 +7,7 @@ while count < 10:
     count += 1
 ```
 
-`else`-clauses are described in loop_else.md.
+`else`-clauses are described in [loop_else.md](loop_else.md).
 
-*Implementation: ✅ Native - Direct mapping.*
+*Implementation*
+- *✅ Native - Direct mapping.*

@@ -12,7 +12,7 @@
 
 ## Division Operator `/`
 
-*The `/` operator always produces a floating-point result, following Python's semantics where division never truncates. The result type is determined by the operands:
+The `/` operator always produces a floating-point result, following Python's semantics where division never truncates. The result type is determined by the operands:
 
 | Operand Types | Result Type | Notes |
 |---------------|-------------|-------|
@@ -24,7 +24,7 @@
 
 ## Floor Division Operator `//`
 
-**The return type depends on the operands:
+The return type depends on the operands:
 
 Floor division returns the largest integer less than or equal to the
 mathematical quotient (rounds toward negative infinity).
@@ -47,7 +47,6 @@ mathematical quotient (rounds toward negative infinity).
 
 ## Implementation
 
-*Implementation:*
 - *Standard: ✅ Native*
 - *`**`: 🔄 Lowered to `Math.Pow()`*
 - *`/`: 🔄 Lowered to floating-point division. See table above.*
@@ -56,7 +55,7 @@ mathematical quotient (rounds toward negative infinity).
 
 ## Numeric Type Promotion
 
-When binary arithmetic operators (`+`, `-`, `*`) operate on different numeric types, operands are implicitly promoted following .NET rules with some Python-inspired adjustments:
+When binary arithmetic operators (`+`, `-`, `*`) operate on different numeric types, operands are implicitly promoted following .NET's numeric promotion rules. These rules are designed to be intuitive and follow the spirit of Python's simple "promote integers to floats when mixed" philosophy, adapted to .NET's richer type system:
 
 | Left Type | Right Type | Result Type | Notes |
 |-----------|------------|-------------|-------|
@@ -76,6 +75,8 @@ When binary arithmetic operators (`+`, `-`, `*`) operate on different numeric ty
 3. **Mixed integer/float**: Integer is promoted to the float type
 4. **Decimal is special**: Can mix with integers, but not with `float`/`double`
 
+*Note: Python itself has only `int`, `float` (equivalent to Sharpy's `double`), and `complex` as built-in numeric types. Sharpy's rules handle .NET's richer type system (`byte`, `short`, `long`, `float` vs `double`, `decimal`) while maintaining Python-like simplicity.*
+
 ```python
 # Numeric promotion examples
 1 + 2           # int + int = int
@@ -86,4 +87,5 @@ When binary arithmetic operators (`+`, `-`, `*`) operate on different numeric ty
 1.0 + 2m        # ERROR: double + decimal is not allowed
 ```
 
-*Implementation: ✅ Native - Follows C# numeric promotion rules.*
+*Implementation*
+- *✅ Native - Follows C# numeric promotion rules.*

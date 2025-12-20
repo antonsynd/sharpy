@@ -23,5 +23,5 @@ Docstrings are string literals used for documentation.
 - Docstrings (triple-quoted strings) can serve as multi-line documentation,
 but are not comments
 
-**C# Implementation**:
-✅ Native - Converted to `//` comments in C#.
+*Implementation*
+- *✅ Native - Converted to `//` comments in C#.*

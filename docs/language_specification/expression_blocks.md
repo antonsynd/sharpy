@@ -101,12 +101,12 @@ Use `break` to exit early from a `do:` block with a value:
 result = do:
     if error_condition:
         break "error"  # Return "error" immediately
-    
+
     # Continue processing
     data = process()
     if validation_fails(data):
         break "invalid"
-    
+
     data  # Normal return
 ```
 
@@ -120,12 +120,12 @@ result = do:
         a = 5
         b = 3
         a + b  # x = 8
-    
+
     y = do:
         c = 2
         d = 4
         c * d  # y = 8
-    
+
     x + y  # result = 16
 ```
 
@@ -144,14 +144,14 @@ user = do:
 ```python
 settings = do:
     base = default_settings()
-    
+
     if is_production:
         base.log_level = LogLevel.ERROR
         base.cache_enabled = True
     else:
         base.log_level = LogLevel.DEBUG
         base.cache_enabled = False
-    
+
     base  # Return configured settings
 ```
 
@@ -162,12 +162,12 @@ value = do:
     if result is None:
         log_error("Parse failed")
         break default_value
-    
+
     transformed = transform(result)
     if not validate(transformed):
         log_error("Validation failed")
         break default_value
-    
+
     transformed
 ```
 
@@ -337,13 +337,24 @@ result = do:
 # ❌ Cannot end with statement
 result = do:
     x = 5
-    print(x)  # ERROR: last item must be expression
+    pass  # ERROR: last item must be an expression
 
 # ✅ Add expression at end
 result = do:
     x = 5
-    print(x)
+    pass
     x  # OK: returns x
+
+# ❌ Cannot end with non-returning expression
+result = do:
+    x = 5
+    print(x)  # ERROR: last item must be an expression that returns a value
+              # print() has no return value
+
+# ✅ Use function that returns a value at end
+result = do:
+    x = 5
+    type(x)  # OK: returns type object
 ```
 
 ## When to Use
@@ -358,10 +369,9 @@ result = do:
 - Logic should be extracted to a named function
 - Performance is critical (adds closure overhead)
 
-*Implementation: 🔄 Lowered - Transformed to immediately-invoked lambda expression (IILE):*
-- Statements become lambda body
-- Last expression becomes return value
-- `break value` becomes `return value`
-- Entire construct is called immediately: `(() => { ... })()`
-
----
+*Implementation*
+- *🔄 Lowered - Transformed to immediately-invoked lambda expression (IILE):*
+  - Statements become lambda body
+  - Last expression becomes return value
+  - `break value` becomes `return value`
+  - Entire construct is called immediately: `(() => { ... })()`

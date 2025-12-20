@@ -19,7 +19,7 @@ class Person:
     def greet(self) -> str:
         return f"Hello, I'm {self.name}"
 
-    def celebrate_birthday(self) -> None:
+    def celebrate_birthday(self):
         self.age += 1
 ```
 
@@ -66,4 +66,5 @@ class Counter:
         self.value = 0
 ```
 
-*Implementation: ✅ Native - Direct mapping to C# class.*
+*Implementation*
+- *✅ Native - Direct mapping to C# class.*

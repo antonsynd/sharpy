@@ -7,5 +7,5 @@ is_ready = True
 is_complete = False
 ```
 
-**C# Implementation**
-✅ Native - `True` → `true`, `False` → `false`.
+*Implementation*
+- *✅ Native - `True` → `true`, `False` → `false`.*

@@ -24,8 +24,8 @@ Sharpy provides Pythonic aliases for common .NET exceptions. These are imported 
 
 ```python
 # These are equivalent:
-raise ValueError("invalid")              # Pythonic alias
-raise System.ArgumentException("invalid") # Direct .NET type
+raise ValueError("invalid")                # Pythonic alias
+raise System.ArgumentException("invalid")  # Direct .NET type
 ```
 
 ## No `BaseException`

@@ -8,4 +8,5 @@ for item in items:
         continue    # Skip to next iteration
 ```
 
-*Implementation: ✅ Native - Direct mapping.*
+*Implementation*
+- *✅ Native - Direct mapping.*

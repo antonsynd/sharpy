@@ -55,11 +55,9 @@ names: list[str] = [c.name for c in Color]  # ["RED", "GREEN", "BLUE"]
 values: list[int] = [c.value for c in Color]  # [1, 2, 3]
 ```
 
-**Note:** Simple enums (non-tagged unions) cannot have custom methods. For enums with methods, use tagged unions.
+**Note:** Simple enums (non-tagged unions) cannot have custom methods. For enums with methods, use tagged unions, see [tagged_unions.md](tagged_unions.md).
 
-*Implementation:*
+*Implementation*
 - *Integer enums: ✅ Native - C# `enum`*
 - *String enums: 🔄 Lowered - Static class with string constants*
 - *`.name` property: 🔄 Lowered - `Enum.GetName()` or lookup*
-
----

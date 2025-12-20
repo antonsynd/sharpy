@@ -19,10 +19,10 @@ del items[1:3]          # Removes elements at indices 1 and 2
 
 ## Del with Slices
 
-When `del` is used with a slice, it calls `__delitem__` with a `slice` object:
+When `del` is used with a slice, it calls `__delitem__` with a `slice` object (implemented as `Sharpy.Core.Slice`):
 
 ```python
-class slice:
+struct slice:
     """Represents a slice range for __delitem__."""
     start: int?
     stop: int?
@@ -39,11 +39,11 @@ Types that want to support slice deletion should implement an overload of `__del
 
 ```python
 class MyList[T]:
-    def __delitem__(self, index: int) -> None:
+    def __delitem__(self, index: int):
         # Delete single element
         pass
 
-    def __delitem__(self, s: slice) -> None:
+    def __delitem__(self, s: slice):
         # Delete range of elements
         pass
 ```
@@ -54,7 +54,7 @@ Unlike Python, Sharpy's `del` cannot delete local variables:
 
 ```python
 x = 42
-del x                   # ERROR: cannot delete local variable
+del x   # ERROR: cannot delete local variable
 ```
 
 Sharpy's `del` also cannot delete attributes on objects because
@@ -68,7 +68,7 @@ class SomeObject:
         self.name = name
 
 x = SomeObject(name="Bob")
-del x.name              # ERROR: cannot delete attributes
+del x.name                  # ERROR: cannot delete attributes
 ```
 
 ## Dunder Method
@@ -77,13 +77,13 @@ del x.name              # ERROR: cannot delete attributes
 
 ```python
 class CustomContainer:
-    def __delitem__(self, key: str) -> None:
+    def __delitem__(self, key: str):
         print(f"Deleting {key}")
 
 c = CustomContainer()
-del c["test"]           # Prints: "Deleting test"
+del c["test"]          # Prints: "Deleting test"
 ```
 
 The dunder method can be overloaded to take one key of any type, including
 but not limited to an integer index (negative indexing is possible), a slice,
-etc.
+etc. It does not and cannot return a value, thus is implicitly annotated with `-> None` (i.e. it has C#'s `void` return type).
