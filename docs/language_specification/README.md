@@ -179,14 +179,11 @@ See [exception_handling.md](exception_handling.md) for exception types, try/exce
 
 See [function_definition.md](function_definition.md) for function definition syntax, rules, and placeholder bodies.
 
-See [function_parameters.md](function_parameters.md) for:
-- Default parameters (compile-time constant requirement)
-- Named (keyword) arguments
-- Variadic arguments (*args) - homogeneously typed
-- Unpacking iterables with *
-- C# interop with params arrays
-- No **kwargs support
-- Positional-only and keyword-only parameters
+See [function_parameters.md](function_parameters.md) for parameter types overview, named arguments, and function overloading.
+
+See [function_default_parameters.md](function_default_parameters.md) for default parameter values and compile-time constant requirements.
+
+See [function_variadic_arguments.md](function_variadic_arguments.md) for variadic arguments (*args), unpacking, and C# interop.
 
 See [contracts.md](contracts.md) for design-by-contract with preconditions, postconditions, and invariants.
 
@@ -262,6 +259,10 @@ See [type_aliases.md](type_aliases.md) for type alias syntax.
 
 See [tagged_unions.md](tagged_unions.md) for union type definitions and pattern matching.
 
+See [tagged_unions_result.md](tagged_unions_result.md) for the Result type for error handling with typed errors.
+
+See [tagged_unions_optional.md](tagged_unions_optional.md) for the Optional type for representing optional values.
+
 ---
 ## Try expressions
 
@@ -285,7 +286,11 @@ See [walrus_operator.md](walrus_operator.md) for assignment expressions using :=
 ---
 ## Properties
 
-See [properties.md](properties.md) for auto-properties and function-style properties.
+See [properties.md](properties.md) for auto-properties overview and property forms.
+
+See [properties_function_style.md](properties_function_style.md) for function-style properties with custom logic, validation, and static properties.
+
+See [properties_inheritance.md](properties_inheritance.md) for virtual, abstract, override properties, and interface implementation.
 
 ---
 ## Context Managers

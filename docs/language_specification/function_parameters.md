@@ -1,5 +1,15 @@
 # Function Parameters
 
+This document provides an overview of function parameter types in Sharpy. For detailed information on specific topics, see the linked pages below.
+
+## Overview
+
+Sharpy supports several parameter types:
+- **Required parameters** - Must be provided by the caller
+- **Default parameters** - Optional with compile-time constant defaults (see [Function Default Parameters](function_default_parameters.md))
+- **Named arguments** - Pass arguments by name for clarity
+- **Variadic arguments** - Accept variable number of arguments with `*args` (see [Function Variadic Arguments](function_variadic_arguments.md))
+
 ## Default Parameters
 
 Functions can specify default values for parameters. Parameters with defaults must come after required parameters.
@@ -7,82 +17,14 @@ Functions can specify default values for parameters. Parameters with defaults mu
 ```python
 def greet(name: str, greeting: str = "Hello") -> str:
     return f"{greeting}, {name}!"
-
-def connect(host: str, port: int = 8080, timeout: double = 30.0) -> Connection:
-    # ...
 ```
 
-### Compile-Time Constant Requirement
+**Key Points:**
+- Default values must be compile-time constants
+- Eliminates Python's "mutable default argument" pitfall
+- Supports numeric, string, boolean literals, `None`, enums, and constants
 
-Default parameter values must be compile-time constants, matching C# semantics. This eliminates the "mutable default argument" pitfall from Python; the pattern simply isn't expressible in Sharpy.
-
-### Allowed default values
-
-| Type | Examples | Notes |
-|------|----------|-------|
-| Numeric literals | `42`, `3.14`, `0xFF`, `1_000_000` | Any numeric literal |
-| String literals | `"hello"`, `'world'`, `r"path\to\file"` | Including raw strings |
-| Boolean literals | `True`, `False` | |
-| `None` | `None` | Only for nullable parameter types |
-| Enum values | `Color.RED`, `HttpMethod.GET` | |
-| Constant references | `MAX_SIZE`, `DEFAULT_NAME` | Must reference a `const` declaration |
-
-### Examples
-
-```python
-# ✅ Valid default parameters
-def process(
-    name: str = "default",
-    count: int = 0,
-    factor: double = 1.0,
-    enabled: bool = True,
-    mode: Mode = Mode.NORMAL,
-    callback: Callable? = None
-) -> None:
-    pass
-
-# ✅ Using None for optional parameters (recommended pattern)
-def search(query: str, limit: int? = None, offset: int? = None) -> list[Result]:
-    actual_limit = limit ?? 100
-    actual_offset = offset ?? 0
-    # ...
-
-# ✅ Referencing constants
-const DEFAULT_TIMEOUT: double = 30.0
-const DEFAULT_RETRIES: int = 3
-
-def fetch(url: str, timeout: double = DEFAULT_TIMEOUT, retries: int = DEFAULT_RETRIES) -> Response:
-    # ...
-
-# ❌ Invalid: mutable default values
-def broken(items: list[int] = []) -> int:              # ERROR: [] is not a compile-time constant
-    return sum(items)
-
-def also_broken(config: dict[str, str] = {}) -> None:  # ERROR: {} is not a compile-time constant
-    pass
-
-def still_broken(point: Point = Point(0, 0)) -> None:  # ERROR: constructor call is not constant
-    pass
-```
-
-### Pattern for Optional Mutable Arguments
-
-Use `None` as the default and create the mutable object inside the function:
-
-```python
-def append_to(item: int, target: list[int]? = None) -> list[int]:
-    if target is None:
-        target = []
-    target.append(item)
-    return target
-
-# Each call gets a fresh list
-list1 = append_to(1)  # [1]
-list2 = append_to(2)  # [2] - separate list, not [1, 2]
-```
-
-*Implementation*
-- *✅ Native - Direct mapping to C# optional parameters.*
+For complete details on default parameters, including the compile-time constant requirement and patterns for optional mutable arguments, see [Function Default Parameters](function_default_parameters.md).
 
 ## Named (Keyword) Arguments
 
@@ -117,93 +59,7 @@ user5 = create_user(name="Dave", 40)  # ERROR: positional argument follows keywo
 
 ## Variadic Arguments (`*args`)
 
-Sharpy supports a limited form of variadic arguments using the `*args` syntax. Unlike Python's fully dynamic `*args`, Sharpy's variadic arguments are **homogeneously typed**: all arguments must be of the same type `T`.
-
-### Syntax
-
-```python
-def function_name(*args: T) -> ReturnType:
-    # args is an array[T] inside the function
-    pass
-```
-
-### Examples
-
-```python
-# Sum any number of integers
-def sum_all(*numbers: int) -> int:
-    result = 0
-    for n in numbers:
-        result += n
-    return result
-
-# Call with any number of arguments
-total = sum_all(1, 2, 3)           # 6
-total = sum_all(1, 2, 3, 4, 5)     # 15
-total = sum_all()                   # 0 (empty tuple)
-
-# Print multiple messages
-def log_all(*messages: str) -> None:
-    for msg in messages:
-        print(msg)
-
-log_all("Starting", "Processing", "Done")
-```
-
-### Rules and Restrictions
-
-**Homogeneous typing:**
-
-All variadic arguments must be of the same declared type `T`:
-
-```python
-def process(*items: int) -> int:
-    return sum(items)
-
-process(1, 2, 3)              # OK: all ints
-process(1, "two", 3)          # ERROR: "two" is str, not int
-```
-
-**Position requirement:**
-
-The `*args` parameter must be the last parameter in the function signature:
-
-```python
-# ✅ Valid - *args at the end
-def greet(prefix: str, *names: str) -> None:
-    for name in names:
-        print(f"{prefix} {name}")
-
-greet("Hello", "Alice", "Bob", "Charlie")
-
-# ❌ Invalid - *args not at the end
-def broken(*items: int, suffix: str) -> None:  # ERROR
-    pass
-```
-
-**Only one `*args` per function:**
-
-```python
-# ❌ Invalid - multiple *args
-def broken(*a: int, *b: str) -> None:  # ERROR
-    pass
-```
-
-### Type of `*args` Inside the Function
-
-Inside the function body, the `*args` parameter has type `array[T]`, mapping to C#'s `params T[]`:
-
-```python
-def analyze(*values: double) -> tuple[double, double]:
-    # values: array[double]
-    if len(values) == 0:
-        return (0.0, 0.0)
-    return (min(values), max(values))
-```
-
-### Unpacking Iterables with `*`
-
-When calling a function with `*args`, you can unpack an iterable using the `*` operator:
+Sharpy supports variadic arguments using the `*args` syntax for accepting a variable number of arguments. Unlike Python's fully dynamic `*args`, Sharpy's variadic arguments are **homogeneously typed**: all arguments must be of the same type `T`.
 
 ```python
 def sum_all(*numbers: int) -> int:
@@ -212,96 +68,16 @@ def sum_all(*numbers: int) -> int:
         result += n
     return result
 
-# Direct arguments
-sum_all(1, 2, 3)              # 6
-
-# Unpack a list
-nums = [1, 2, 3, 4, 5]
-sum_all(*nums)                # 15
-
-# Unpack a homogenously-typed tuple
-t = (10, 20, 30)
-sum_all(*t)                   # OK: 60
-
-# Mixed: direct args and unpacking
-sum_all(1, 2, *[3, 4], 5)     # 15
+total = sum_all(1, 2, 3)  # 6
 ```
 
-**Type checking for unpacking:**
+**Key Points:**
+- All variadic arguments must be the same type
+- `*args` must be the last parameter
+- Maps directly to C# `params` arrays
+- Supports unpacking with `*` operator
 
-The unpacked iterable must contain elements of the correct type:
-
-```python
-def process(*items: int) -> int:
-    return sum(items)
-
-int_list: list[int] = [1, 2, 3]
-str_list: list[str] = ["a", "b", "c"]
-int_tuple = (10, 20, 30)
-mixed_tuple = (10, "str", 30)
-
-process(*int_list)            # OK
-process(*str_list)            # ERROR: list[str] cannot unpack to *args: int
-process(*int_tuple)           # OK
-process(*mixed_tuple)         # ERROR: tuple[int, str, int] cannot unpack to *args: int
-```
-
-### C# Interop
-
-Sharpy's `*args` maps directly to C#'s `params` arrays:
-
-**Sharpy:**
-```python
-def format_message(template: str, *args: object) -> str:
-    return template.format(*args)
-```
-
-**Generated C#:**
-```csharp
-public static string FormatMessage(string template, params object[] args) {
-    return string.Format(template, args);
-}
-```
-
-**Calling C# `params` methods from Sharpy:**
-
-```python
-from system import String
-
-# String.Format has params signature: Format(string format, params object[] args)
-result = String.format("Hello {0}, you have {1} messages", "Alice", 42)
-
-# Or unpack from a collection
-args = ["Bob", 10]
-result = String.format("Hello {0}, you have {1} messages", *args)
-```
-
-**Calling Sharpy `*args` functions from C#:**
-
-```csharp
-// Individual arguments (compiler creates array)
-var total = SumAll(1, 2, 3, 4, 5);
-
-// Explicit array
-var numbers = new int[] { 1, 2, 3, 4, 5 };
-var total = SumAll(numbers);
-```
-
-### Function Type Compatibility
-
-Function types cannot express variadic parameters. When you need a function type for a variadic function, use the non-variadic equivalent:
-
-```python
-def sum_all(*numbers: int) -> int:
-    return sum(numbers)
-
-# Cannot directly use sum_all as (int, int, int) -> int
-# Instead, wrap it:
-fixed_sum: (int, int, int) -> int = lambda a, b, c: sum_all(a, b, c)
-```
-
-*Implementation*
-- *✅ Native - Maps to C# `params T[]` arrays.*
+For complete details on variadic arguments, including unpacking rules, C# interop, and examples, see [Function Variadic Arguments](function_variadic_arguments.md).
 
 ## No `**kwargs` Support
 
@@ -353,3 +129,10 @@ def process(value: int, multiplier: int) -> str:
 
 *Implementation*
 - *✅ Native - C# supports method overloading.*
+
+## See Also
+
+- [Function Default Parameters](function_default_parameters.md) - Detailed guide to default parameter values and compile-time constant requirements
+- [Function Variadic Arguments](function_variadic_arguments.md) - Comprehensive coverage of `*args` and unpacking
+- [Function Definition](function_definition.md) - Basic function syntax and rules
+- [Function Types](function_types.md) - Function type syntax and compatibility
