@@ -33,12 +33,24 @@ w = maybe n                  # ERROR: n is int, not int?
 
 **Precedence Rules:**
 
-Like `try`, the `maybe` expression has low precedence:
+Like `try`, the `maybe` expression has very low precedence (lower than `to`, arithmetic, comparisons, and logical operators), meaning it captures the entire following expression:
 
 ```python
-x = maybe d.get("key") ?? 0    # Parsed as: (maybe d.get("key")) ?? 0
-                               # ERROR: Optional[int] ?? int doesn't work directly
+# maybe captures the full expression
+x = maybe get_value() + default    # Parsed as: maybe (get_value() + default)
+                                   # Optional wrapping the entire sum
 
-# Use the Optional's methods instead
+# maybe is lower precedence than `to`, so it wraps safe casts
+y = maybe obj to Widget?           # Parsed as: maybe (obj to Widget?)
+                                   # Optional[Widget]
+
+# maybe does NOT capture conditional expressions
+z = maybe foo() if cond else bar()  # Parsed as: (maybe foo()) if cond else bar()
+```
+
+Use parentheses when you need to limit what `maybe` captures:
+
+```python
+# Only wrap the dict lookup, then use Optional methods
 x = (maybe d.get("key")).unwrap_or(0)
 ```

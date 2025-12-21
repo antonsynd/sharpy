@@ -34,24 +34,34 @@ exception. In such cases, the result type is always `Result[T, Exception]` where
 
 **Precedence Rules:**
 
-The `try` expression has low precedence, binding only to the immediately following primary expression and its arguments:
+The `try` expression has very low precedence (lower than `to`, arithmetic, comparisons, and logical operators), meaning it captures the entire following expression:
 
 ```python
-# try binds to the function call only
-x = try int("abc") + 5       # Parsed as: (try int("abc")) + 5
-                             # If int() succeeds: Result.Ok + 5 = ERROR (can't add)
-                             # Typically you'd unwrap first
+# try captures the full expression including arithmetic
+x = try some_func(4) + 5     # Parsed as: try (some_func(4) + 5)
+                             # Result[int, Exception] wrapping the sum
 
-# Use parentheses for clarity or different grouping
-x = try (int("abc") + 5)     # Parsed as: try (int("abc") + 5)
-                             # Exception in either int() or + is caught
+# try captures through comparisons and logical operators
+y = try parse_int(s) > 0 and validate(s)  # Parsed as: try (parse_int(s) > 0 and validate(s))
+                                          # Result[bool, Exception]
 
-# With conditional
+# try is lower precedence than `to`, so it wraps casts
+z = try animal to Dog        # Parsed as: try (animal to Dog)
+                             # Result[Dog, InvalidCastException]
+
+# try does NOT capture conditional expressions (which have lower precedence)
 y = try foo() if cond else bar()   # Parsed as: (try foo()) if cond else bar()
                                    # try only applies to foo(), not bar()
 
 # Parentheses make intent clear
 y = try (foo() if cond else bar())  # try applies to entire conditional
+```
+
+Use parentheses when you need to limit what `try` captures:
+
+```python
+# Only wrap the function call
+x = (try int("abc")).unwrap_or(0) + 5  # Unwrap first, then add
 ```
 
 *Implementation*

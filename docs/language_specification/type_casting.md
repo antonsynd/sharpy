@@ -148,16 +148,21 @@ processor = obj to IProcessor?
 
 ## Operator Precedence
 
-The `to` operator binds looser than member access and function calls, but tighter than comparison and logical operators:
+The `to` operator binds looser than member access, function calls, and arithmetic operators, but tighter than comparison and logical operators:
 
 | Precedence | Operators |
 |------------|-----------|
 | (higher) | `()`, `[]`, `.`, `?.` |
-| | `to` |
 | | `**` |
 | | `+x`, `-x`, `~x` |
-| | ... |
-| (lower) | `in`, `is`, `<`, `>`, `==`, etc. |
+| | `*`, `/`, `//`, `%` |
+| | `+`, `-` |
+| | `<<`, `>>`, `&`, `^`, `\|` |
+| | `to` |
+| | `in`, `is`, `<`, `>`, `==`, etc. |
+| | `not`, `and`, `or`, `??` |
+| | `try`, `maybe` |
+| (lower) | `x if c else y`, `lambda` |
 
 This means:
 
@@ -166,6 +171,9 @@ This means:
 name = (animal to Dog).name
 result = (obj to IProcessor).process(data)
 
+# Arithmetic binds tighter than `to`
+x = value + 1 to long          # Parsed as: (value + 1) to long
+
 # No parentheses needed for comparisons
 if animal to Dog? is not None:
     pass
@@ -173,6 +181,10 @@ if animal to Dog? is not None:
 # Chained with None check
 if (dog := animal to Dog?) is not None and dog.age > 5:
     pass
+
+# `try` and `maybe` capture the entire cast expression
+result = try animal to Dog     # Parsed as: try (animal to Dog)
+opt = maybe obj to Widget?     # Parsed as: maybe (obj to Widget?)
 ```
 
 ## Invalid Casts
