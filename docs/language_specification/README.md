@@ -34,8 +34,6 @@ See [none_literal.md](none_literal.md) for `None` literal and its semantics.
 
 See [ellipsis_literal.md](ellipsis_literal.md) for the `...` placeholder.
 
-See [empty_set_literal.md](empty_set_literal.md) for the `{/}` empty set literal.
-
 ---
 
 ## Types
