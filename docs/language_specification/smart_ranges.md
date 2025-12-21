@@ -115,11 +115,11 @@ Ranges work naturally in pattern matching:
 match score:
     case 90..=100:
         grade = "A"
-    case 80..<90:    # Alternative syntax: ..<
+    case 80..90:
         grade = "B"
-    case 70..<80:
+    case 70..80:
         grade = "C"
-    case 60..<70:
+    case 60..70:
         grade = "D"
     case _:
         grade = "F"
@@ -303,7 +303,7 @@ if (r.Contains(value)) {
 # Sharpy
 match score:
     case 90..=100: "A"
-    case 80..<90: "B"
+    case 80..90: "B"
 ```
 ```csharp
 // C# 9.0
@@ -340,3 +340,5 @@ var grade = score switch {
 - *Pattern matching: ✅ Native - Maps to C# relational patterns*
 - *Range objects: 🔄 Lowered - Custom `SmartRange<T>` type in Sharpy.Core*
 - *Range operations: 🔄 Lowered - Methods on `SmartRange<T>`*
+
+---
