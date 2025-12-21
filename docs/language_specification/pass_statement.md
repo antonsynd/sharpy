@@ -12,4 +12,5 @@ class Placeholder:
     pass
 ```
 
-*Implementation: ✅ Native - Empty statement or empty body.*
+*Implementation*
+- *✅ Native - Empty statement or empty body.*

@@ -33,4 +33,5 @@ if isinstance(x, int) or isinstance(x, str):
 - `isinstance(x, Type)` narrows `x` to `Type` in the `if` branch
 - Narrowing only affects the scope of the conditional block
 
-*Implementation: ✅ Native - C# supports flow analysis for nullable types.*
+*Implementation*
+- *✅ Native - C# supports flow analysis for nullable types.*

@@ -1,6 +1,6 @@
-## Inheritance
+# Inheritance
 
-### Single Class Inheritance
+## Single Class Inheritance
 
 Sharpy supports single class inheritance only. A class can extend at most one base class but may implement multiple interfaces.
 
@@ -34,9 +34,10 @@ class C(A, ISerializable, IComparable):
     pass
 ```
 
-*Implementation: ✅ Native - `: BaseClass`; `super().__init__()` → `: base()` or `base.Method()`*
+*Implementation*
+- *✅ Native - `: BaseClass`; `super().__init__()` → `: base()` or `base.Method()`*
 
-### Multiple Interface Implementation
+## Multiple Interface Implementation
 
 ```python
 class JSONEmployee(Employee, ISerializable, IComparable):
@@ -54,9 +55,10 @@ class JSONEmployee(Employee, ISerializable, IComparable):
 - Multiple interface implementation allowed
 - Base class (if present) must come first
 
-*Implementation: ✅ Native - `: BaseClass, IInterface1, IInterface2`*
+*Implementation*
+- *✅ Native - `: BaseClass, IInterface1, IInterface2`*
 
-### The `super()` Function
+## The `super()` Function
 
 `super()` provides access to methods from a parent class. It is only valid in specific contexts.
 
@@ -205,6 +207,7 @@ error: `super()` is only valid in:
 7. Cannot use `super()` in non-overriding regular methods
 8. Cannot use `super()` in free functions or static methods
 
-*Implementation: 🔄 Lowered - `super()` maps to `base.Method()`*
+*Implementation*
+- *🔄 Lowered - `super()` maps to `base.Method()`*
 
 ---

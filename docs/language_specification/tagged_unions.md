@@ -1,4 +1,4 @@
-## Tagged Unions (Algebraic Data Types)
+# Tagged Unions (Algebraic Data Types)
 
 Tagged unions allow cases to carry associated data:
 
@@ -18,6 +18,10 @@ enum BinaryTree[T]:
     case Leaf(value: T)
     case Node(left: BinaryTree[T], right: BinaryTree[T])
 ```
+
+Sharpy provides `Result[T, E]` and `Optional[T]` in the standard library
+with special ways to interact with them. See [try_expressions.md](try_expressions.md), [maybe_expressions.md](maybe_expressions.md),
+[null_coalescing_operator.md](null_coalescing_operator.md), [null_coalescing_assignment.md](null_coalescing_assignment.md), and [null_conditional_access.md](null_conditional_access.md).
 
 **Unit Cases (No Data):**
 
@@ -56,7 +60,7 @@ match state:
     case LoadState.Failed(err): show_error(err)
 ```
 
-### Creating Values
+## Creating Values
 
 Tagged union cases are created using the enum type name followed by the case name:
 
@@ -72,7 +76,7 @@ failure: Result[int, str] = Result.Err("Something went wrong")
 
 **Note:** Case names follow the same casing as defined in the enum declaration (typically `PascalCase`). The syntax `Result.Ok(42)` is a constructor call that creates an instance of the `Ok` case. This of course is just a convention and is not enforced by the compiler.
 
-### Pattern Matching
+## Pattern Matching
 
 ```python
 def divide(a: double, b: double) -> Result[double, str]:
@@ -88,7 +92,7 @@ match result:
         print(f"Error: {error}")
 ```
 
-### Methods on Tagged Unions
+## Methods on Tagged Unions
 
 ```python
 enum Result[T, E]:
@@ -117,7 +121,8 @@ enum Result[T, E]:
                 return default
 ```
 
-*Implementation: 🔄 Lowered - Abstract base class + sealed nested case classes:*
+*Implementation*
+- *🔄 Lowered - Abstract base class + sealed nested case classes:*
 
 ```csharp
 public abstract class Result<T, E> {
@@ -136,5 +141,3 @@ public abstract class Result<T, E> {
     }
 }
 ```
-
----

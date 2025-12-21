@@ -1,6 +1,6 @@
-## .NET Interop
+# .NET Interop
 
-### Importing .NET Types
+## Importing .NET Types
 
 ```python
 from system.collections.generic import List, Dictionary
@@ -13,7 +13,7 @@ items.add(42)
 content = File.read_all_text("data.txt")
 ```
 
-### .NET Properties
+## .NET Properties
 
 .NET properties accessed like Sharpy properties:
 
@@ -25,7 +25,7 @@ size = file.length
 name = file.name
 ```
 
-### Extension Methods
+## Extension Methods
 
 .NET extension methods work naturally:
 
@@ -37,7 +37,7 @@ evens = numbers.where(lambda x: x % 2 == 0)
 doubled = numbers.select(lambda x: x * 2)
 ```
 
-### IDisposable Pattern
+## IDisposable Pattern
 
 .NET's `IDisposable` integrates with `with`:
 

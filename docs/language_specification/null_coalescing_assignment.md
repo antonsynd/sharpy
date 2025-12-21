@@ -39,7 +39,7 @@ def get_service() -> MyService:
 # Lazy property
 class DataManager:
     _cache: dict[str, Data]? = None
-    
+
     def get_cache(self) -> dict[str, Data]:
         self._cache ??= {}  # Initialize on first access
         return self._cache
@@ -123,7 +123,7 @@ y = x ?? 5   # y is 5, but x is still None
 class Config:
     host: str? = None
     port: int? = None
-    
+
     def ensure_defaults(self) -> None:
         self.host ??= "localhost"
         self.port ??= 8080
@@ -133,7 +133,7 @@ class Config:
 ```python
 class Repository:
     _data_cache: dict[int, Data] = {}
-    
+
     def get(self, id: int) -> Data:
         self._data_cache[id] ??= fetch_from_db(id)
         return self._data_cache[id]
@@ -143,7 +143,7 @@ class Repository:
 ```python
 class HeavyResource:
     _connection: Connection? = None
-    
+
     def get_connection(self) -> Connection:
         self._connection ??= establish_connection()
         return self._connection
@@ -231,9 +231,23 @@ x: int? = None
 x ??= y ?? 5  # Equivalent to: x ??= (y ?? 5)
 ```
 
+## Optional (Tagged Union)
+
+The `Optional[T]` tagged union works with null-conditional assignment, with its `Nothing` case being treated similarly to `None`:
+
+```python
+maybe_str: Optional[str] = Optional.Some("HELLO")
+maybe_str ??= Optional.Some("hello")  # maybe_str = Optional[str].Some("HELLO")
+
+maybe_str = Optional.Nothing
+maybe_str ??= Optional.Some("hello")  # maybe_str = Optional[str].Some("hello")
+```
+
+In this situation, the return type is `Optional[T]` where `T` is the expected type of the entire expression if it had evaluated.
+
 ## Limitations
 
-- Cannot use with non-nullable types
+- Cannot use with non-nullable types or non-Optional types
 - Left side must be assignable (variable, field, property, or indexer)
 - Not atomic for concurrent access
 
@@ -250,6 +264,6 @@ value = get_value()
 value ??= 10
 ```
 
-*Implementation: ✅ Native - Maps directly to C# `??=` operator.*
-
----
+*Implementation*
+- *✅ Native - For nullable types, maps directly to C# `??=` operator.*
+- *🔄 Lowered - For `Optional[T]`, compiler generates `if`/`else` assignment.*

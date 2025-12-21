@@ -9,4 +9,5 @@ def print_message() -> None:
     return  # Optional
 ```
 
-*Implementation: ✅ Native - Direct mapping.*
+*Implementation*
+- *✅ Native - Direct mapping.*

@@ -9,4 +9,5 @@ else:
     print("zero")
 ```
 
-*Implementation: ✅ Native - Direct mapping to `if`/`else if`/`else`.*
+*Implementation*
+- *✅ Native - Direct mapping to `if`/`else if`/`else`.*

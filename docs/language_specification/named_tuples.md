@@ -252,6 +252,5 @@ struct Point:
     y: double = 0.0
 ```
 
-*Implementation: ✅ Native - Maps to C# `ValueTuple` with named elements (`(Type1 Name1, Type2 Name2)`).*
-
----
+*Implementation*
+- ✅ Native - Maps to C# `ValueTuple` with named elements (`(Type1 Name1, Type2 Name2)`).*

@@ -6,4 +6,5 @@
 | `or` | Logical OR (short-circuit) | `\|\|` |
 | `not` | Logical NOT | `!` |
 
-*Implementation: ✅ Native - Direct mapping.*
+*Implementation*
+- *✅ Native - Direct mapping.*

@@ -117,4 +117,5 @@ escape_str = "\u0048\u0065\u006C\u006C\u006F"  # "Hello"
 
 4. **Most common text works as expected:** ASCII text and most European/Asian scripts (within the BMP) have a 1:1 correspondence between characters and code units.
 
-*Implementation: ✅ Native - Direct use of `System.String` with no additional abstraction.*
+*Implementation*
+- *✅ Native - Direct use of `System.String` with no additional abstraction.*

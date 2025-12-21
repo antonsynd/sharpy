@@ -20,7 +20,7 @@ Default parameter values must be compile-time constants, matching C# semantics. 
 
 | Type | Examples | Notes |
 |------|----------|-------|
-| Numeric literals | `42`, `3.14`, `0xFF`, `1_000_000` | Any numeric literal with optional suffix |
+| Numeric literals | `42`, `3.14`, `0xFF`, `1_000_000` | Any numeric literal |
 | String literals | `"hello"`, `'world'`, `r"path\to\file"` | Including raw strings |
 | Boolean literals | `True`, `False` | |
 | `None` | `None` | Only for nullable parameter types |
@@ -81,7 +81,8 @@ list1 = append_to(1)  # [1]
 list2 = append_to(2)  # [2] - separate list, not [1, 2]
 ```
 
-*Implementation: ✅ Native - Direct mapping to C# optional parameters.*
+*Implementation*
+- *✅ Native - Direct mapping to C# optional parameters.*
 
 ## Named (Keyword) Arguments
 
@@ -111,17 +112,18 @@ user5 = create_user(name="Dave", 40)  # ERROR: positional argument follows keywo
 - Once a named argument is used, all subsequent arguments must be named
 - A parameter cannot be specified both positionally and by name
 
-*Implementation: ✅ Native - Direct mapping to C# named arguments.*
+*Implementation*
+- *✅ Native - Direct mapping to C# named arguments.*
 
 ## Variadic Arguments (`*args`)
 
-Sharpy supports a limited form of variadic arguments using the `*args` syntax. Unlike Python's fully dynamic `*args`, Sharpy's variadic arguments are **homogeneously typed**—all arguments must be of the same type `T`.
+Sharpy supports a limited form of variadic arguments using the `*args` syntax. Unlike Python's fully dynamic `*args`, Sharpy's variadic arguments are **homogeneously typed**: all arguments must be of the same type `T`.
 
 ### Syntax
 
 ```python
 def function_name(*args: T) -> ReturnType:
-    # args is a tuple[T, ...] inside the function
+    # args is an array[T] inside the function
     pass
 ```
 
@@ -187,51 +189,16 @@ def broken(*a: int, *b: str) -> None:  # ERROR
     pass
 ```
 
-**No `**kwargs`:**
-
-Sharpy does not support `**kwargs` (variadic keyword arguments). Use named parameters with defaults or a configuration class instead:
-
-```python
-# ❌ Not supported
-def configure(**options: str) -> None:  # ERROR: **kwargs not supported
-    pass
-
-# ✅ Use named parameters instead
-def configure(host: str = "localhost", port: int = 8080) -> None:
-    pass
-
-# ✅ Or use a configuration class
-class Config:
-    host: str = "localhost"
-    port: int = 8080
-
-def configure(config: Config) -> None:
-    pass
-```
-
 ### Type of `*args` Inside the Function
 
-Inside the function body, the `*args` parameter has type `list[T]}`. This is a Sharpy abstraction over C#'s `params T[]` array:
+Inside the function body, the `*args` parameter has type `array[T]`, mapping to C#'s `params T[]`:
 
 ```python
 def analyze(*values: double) -> tuple[double, double]:
-    # values: list[double]
+    # values: array[double]
     if len(values) == 0:
         return (0.0, 0.0)
     return (min(values), max(values))
-```
-
-**Note:** While C#'s `params` uses raw arrays (`T[]`), Sharpy wraps this in `list[T]` for consistency with the rest of the language. The overhead of this wrapper is minimal since the underlying storage is the same array passed by the caller.
-
-**C# Interop:** When calling Sharpy variadic functions from C#, the `params` behavior is preserved:
-
-```csharp
-// Individual arguments (compiler creates array, Sharpy wraps in list)
-var result = Analyze(1.0, 2.0, 3.0);
-
-// Explicit array (Sharpy wraps in list)
-var values = new double[] { 1.0, 2.0, 3.0 };
-var result = Analyze(values);
 ```
 
 ### Unpacking Iterables with `*`
@@ -279,9 +246,9 @@ process(*int_tuple)           # OK
 process(*mixed_tuple)         # ERROR: tuple[int, str, int] cannot unpack to *args: int
 ```
 
-### C# Interop: `params` Arrays
+### C# Interop
 
-Sharpy's `*args` maps directly to C#'s `params` arrays, enabling seamless interop:
+Sharpy's `*args` maps directly to C#'s `params` arrays:
 
 **Sharpy:**
 ```python
@@ -298,8 +265,6 @@ public static string FormatMessage(string template, params object[] args) {
 
 **Calling C# `params` methods from Sharpy:**
 
-When calling .NET methods that use `params`, you can pass arguments naturally:
-
 ```python
 from system import String
 
@@ -312,8 +277,6 @@ result = String.format("Hello {0}, you have {1} messages", *args)
 ```
 
 **Calling Sharpy `*args` functions from C#:**
-
-C# code can call Sharpy variadic functions using either individual arguments or an array:
 
 ```csharp
 // Individual arguments (compiler creates array)
@@ -337,18 +300,23 @@ def sum_all(*numbers: int) -> int:
 fixed_sum: (int, int, int) -> int = lambda a, b, c: sum_all(a, b, c)
 ```
 
-*Implementation: ✅ Native - Maps to C# `params T[]` arrays.*
+*Implementation*
+- *✅ Native - Maps to C# `params T[]` arrays.*
 
 ## No `**kwargs` Support
 
-Sharpy does not support `**kwargs` (variadic keyword arguments). This aligns with .NET's type system which has no direct equivalent.
+Sharpy does not support `**kwargs` (variadic keyword arguments), as .NET has no direct equivalent.
 
 **Alternatives:**
 
 ```python
 # Instead of: def configure(**kwargs) -> None
 
-# Option 1: Use a typed class
+# Option 1: Named parameters with defaults
+def configure(host: str = "localhost", port: int = 8080, debug: bool = False) -> None:
+    pass
+
+# Option 2: Typed configuration class
 class Config:
     host: str = "localhost"
     port: int = 8080
@@ -357,11 +325,7 @@ class Config:
 def configure(config: Config) -> None:
     pass
 
-# Option 2: Use named parameters with defaults
-def configure(host: str = "localhost", port: int = 8080, debug: bool = False) -> None:
-    pass
-
-# Option 3: Use a dictionary parameter (loses type safety on values)
+# Option 3: Dictionary parameter (loses type safety on values)
 def configure(options: dict[str, object]) -> None:
     host = options.get("host") ?? "localhost"
     port = options.get("port") to int? ?? 8080
@@ -387,4 +351,5 @@ def process(value: int, multiplier: int) -> str:
 - Overloads resolved by parameter count and types
 - Parameter names do not affect resolution
 
-*Implementation: ✅ Native - C# supports method overloading.*
+*Implementation*
+- *✅ Native - C# supports method overloading.*

@@ -64,4 +64,5 @@ for i in range(3):
 print([f() for f in funcs_fixed])  # [0, 1, 2]
 ```
 
-*Implementation: ✅ Native - Maps to `(x, y) => expr`.*
+*Implementation*
+- *✅ Native - Maps to `(x, y) => expr`.*

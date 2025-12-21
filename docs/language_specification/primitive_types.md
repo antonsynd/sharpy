@@ -48,4 +48,5 @@ lst2: list[int] = list(arr)         # Create list from array
 
 **Note:** Most Sharpy code should use `list[T]` for its Pythonic API. Use `array[T]` primarily for .NET interop or when a fixed-size array is explicitly needed.
 
-*Implementation: ✅ Native - Direct mapping to .NET types.*
+*Implementation*
+- *✅ Native - Direct mapping to .NET types.*

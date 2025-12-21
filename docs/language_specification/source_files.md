@@ -82,4 +82,5 @@ multi = """Line 1
 Line 2"""
 ```
 
-*Implementation: ✅ Native - Continuation is handled at lex time; resulting logical lines transpile normally.*
+*Implementation*
+- *✅ Native - Continuation is handled at lex time; resulting logical lines transpile normally.*

@@ -1,6 +1,6 @@
-## Enumerations
+# Enumerations
 
-### Simple Enums
+## Simple Enums
 
 ```python
 enum Color:

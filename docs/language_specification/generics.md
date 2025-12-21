@@ -1,6 +1,6 @@
-## Generics
+# Generics
 
-### Generic Classes
+## Generic Classes
 
 ```python
 class Box[T]:
@@ -13,7 +13,7 @@ class Box[T]:
     def get(self) -> T:
         return self._value
 
-    def set(self, value: T) -> None:
+    def set(self, value: T):
         self._value = value
 
 # Usage
@@ -21,9 +21,10 @@ int_box = Box[int](42)
 str_box = Box[str]("hello")
 ```
 
-*Implementation: ✅ Native - `class Box<T>`*
+*Implementation*
+- *✅ Native - `class Box<T>`*
 
-### Generic Functions
+## Generic Functions
 
 ```python
 def identity[T](value: T) -> T:
@@ -33,9 +34,10 @@ def first[T](items: list[T]) -> T:
     return items[0]
 ```
 
-*Implementation: ✅ Native - `T Identity<T>(T value)`*
+*Implementation*
+- *✅ Native - `T Identity<T>(T value)`*
 
-### Type Constraints
+## Type Constraints
 
 ```python
 interface IComparable[T]:
@@ -56,6 +58,5 @@ def find_max[T: IComparable[T]](items: list[T]) -> T:
 | `T: class` | `where T : class` |
 | `T: struct` | `where T : struct` |
 
-*Implementation: ✅ Native - Direct mapping to C# generic constraints.*
-
----
+*Implementation*
+- *✅ Native - Direct mapping to C# generic constraints.*

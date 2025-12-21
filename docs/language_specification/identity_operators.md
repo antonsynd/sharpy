@@ -7,4 +7,5 @@
 | `is None` | None check | `== null` |
 | `is not None` | Non-None check | `!= null` |
 
-*Implementation: ✅ Native for None checks; 🔄 Lowered for general identity.*
+*Implementation*
+- *✅ Native for None checks; 🔄 Lowered for general identity.*

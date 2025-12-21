@@ -33,7 +33,8 @@ multi-line string
 | `\uHHHH` | Unicode 16-bit |
 | `\UHHHHHHHH` | Unicode 32-bit |
 
-*Implementation: ✅ Native - Single quotes become double quotes; escape sequences map directly.*
+*Implementation*
+- *✅ Native - Single quotes become double quotes; escape sequences map directly.*
 
 ## Raw Strings
 
@@ -43,4 +44,5 @@ path = r"C:\Users\Alice\Documents"
 regex = r"\d+\.\d+"
 ```
 
-*Implementation: ✅ Native - Maps to C# verbatim strings `@"..."`.*
+*Implementation*
+- *✅ Native - Maps to C# verbatim strings `@"..."`.*

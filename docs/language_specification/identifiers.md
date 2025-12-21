@@ -38,17 +38,7 @@ class      # Keyword
 
 ## Naming Conventions
 
-| Type | Convention | Example | C# Transformation |
-|------|------------|---------|-------------------|
-| Local variable | `snake_case` | `user_name` | `userName` (camelCase) |
-| Function/method | `snake_case` | `calculate_total` | `CalculateTotal` (PascalCase) |
-| Class | `PascalCase` | `UserAccount` | (unchanged) |
-| Struct | `PascalCase` | `Vector2` | (unchanged) |
-| Interface | `IPascalCase` | `IDrawable` | (unchanged) |
-| Constant | `CAPS_SNAKE_CASE` | `MAX_SIZE` | (unchanged) |
-| Module | `snake_case` | `user_service` | `UserService` (PascalCase namespace) |
-| Enum type | `PascalCase` | `Color` | (unchanged) |
-| Enum value | `CAPS_SNAKE_CASE` | `RED` | `Red` (PascalCase) |
+See [naming_conventions.md](naming_conventions.md) for naming conventions of various symbols.
 
 ## Literal Names (Backtick Escaping)
 
@@ -67,4 +57,5 @@ def `ExactMethodName`():
     pass
 ```
 
-*Implementation: ✅ Native - Backtick names map to `@name` in C# when needed, or exact casing is preserved.*
+*Implementation*
+- *✅ Native - Backtick names map to `@name` in C# when needed, or exact casing is preserved.*

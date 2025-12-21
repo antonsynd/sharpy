@@ -1,6 +1,6 @@
-## Pattern Matching
+# Pattern Matching
 
-### Match Statement
+## Match Statement
 
 ```python
 def describe(value: object) -> str:
@@ -19,9 +19,10 @@ def describe(value: object) -> str:
             return "unknown"
 ```
 
-*Implementation: ✅ Native - Maps to C# `switch` expression/statement (C# 8+).*
+*Implementation*
+- *✅ Native - Maps to C# `switch` expression/statement (C# 8+).*
 
-### Match Statement vs Match Expression
+## Match Statement vs Match Expression
 
 Sharpy supports both statement and expression forms of `match`, corresponding to C#'s switch statement and switch expression:
 
@@ -70,11 +71,12 @@ def categorize(n: int) -> str:
 - Must be exhaustive (all possible values handled)
 - Cases use `:` followed by an expression, not a block
 
-*Implementation: 🔄 Lowered*
-- *Statement form: C# `switch` statement*
-- *Expression form: C# `switch` expression*
+*Implementation*
+- *🔄 Lowered*
+  - *Statement form: C# `switch` statement*
+  - *Expression form: C# `switch` expression*
 
-### Supported Patterns
+## Supported Patterns
 
 | Pattern | Syntax | C# 9.0 Mapping |
 |---------|--------|----------------|
@@ -83,14 +85,15 @@ def categorize(n: int) -> str:
 | Type with binding | `case int() as n:` | `case int n:` |
 | Wildcard | `case _:` | `default:` or `_` |
 | Guard | `case int() as n if n > 0:` | `case int n when n > 0:` |
-| OR | `case "a" \| "b":` | `case "a" or "b":` |
+| Or | `case "a" \| "b":` | `case "a" or "b":` |
 | Tuple | `case (0, 0):` | Direct support |
 | Property | `case Point(x=0):` | `case Point { X: 0 }:` |
 | Relational | `case > 0:` | Direct support (C# 9) |
 
-*Implementation: ✅ Native - All patterns map to C# 9.0 pattern matching.*
+*Implementation*
+- *✅ Native - All patterns map to C# 9.0 pattern matching.*
 
-### Tuple Patterns
+## Tuple Patterns
 
 ```python
 match point:
@@ -104,7 +107,7 @@ match point:
         print(f"Point at ({x}, {y})")
 ```
 
-### Property Patterns
+## Property Patterns
 
 ```python
 match shape:
@@ -114,7 +117,7 @@ match shape:
         print(f"On X-axis at {x}")
 ```
 
-### Positional Patterns
+## Positional Patterns
 
 For types with a `Deconstruct` method (like records or types with explicit deconstruction), positional patterns extract values in order:
 
@@ -146,7 +149,7 @@ match value:
 | Positional | `Point(0, y)` | Extract by position (requires `Deconstruct`) |
 | Type with binding | `int() as n` | Check type and bind entire value |
 
-### Exhaustiveness Checking
+## Exhaustiveness Checking
 
 The compiler checks that `match` statements cover all possible cases for certain types:
 
@@ -194,5 +197,3 @@ match flag:
         print("Yes")
     # ERROR: missing False case
 ```
-
----

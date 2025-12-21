@@ -68,6 +68,19 @@ h: EventHandler = my_handler      # OK
 h = another_handler               # OK
 ```
 
+## Function Types with None Return Type
+
+Function types that indicate a function with no return value, i.e. `-> None`
+must have the return type annotation `-> None` indicated. While it is true
+that function definitions may omit this return type annotation if it is
+`-> None`, function types of this sort on the other hand require it
+for parsing/syntactic reasons.
+
+```python
+type SomeFuncType = (int, str) -> None  # OK
+type AnotherFuncType = (int, str)       # ERROR
+```
+
 ## No Optional Parameters in Function Types
 
 Function types cannot specify optional parameters (parameters with default values). All parameters in a function type are required:
@@ -173,4 +186,5 @@ Function types map to C# delegate types:
 | `(T) -> R` | `Func<T, R>` |
 | `(T1, T2) -> R` | `Func<T1, T2, R>` |
 
-*Implementation: ✅ Native - Maps to `System.Action<>` and `System.Func<>` delegates.*
+*Implementation*
+- *✅ Native - Maps to `System.Action<>` and `System.Func<>` delegates.*

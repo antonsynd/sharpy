@@ -19,4 +19,17 @@ name = None ?? "Anonymous"  # name = "Anonymous"
 name = None or "Anonymous"  # name = "Anonymous"
 ```
 
-*Implementation: ✅ Native - Maps to C# `??` operator.*
+*Implementation*
+- *✅ Native - Maps to C# `??` operator.*
+
+## Optional (Tagged Union)
+
+The `Optional[T]` tagged union works with null coalescing, with its `Nothing` case being treated similarly to `None`:
+
+```python
+maybe_int: Optional[int] = Optional.Some(5)
+val = maybe_int ?? 0  # val = 5
+
+maybe_int = Optional.Nothing
+val = maybe_int ?? 0  # val = 0
+```

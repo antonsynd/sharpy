@@ -12,4 +12,5 @@ y = 42              # Inferred as int
 pi = 3.14159        # Inferred as double
 ```
 
-*Implementation: ✅ Native - Direct mapping to C# type declarations.*
+*Implementation*
+- *✅ Native - Direct mapping to C# type declarations.*

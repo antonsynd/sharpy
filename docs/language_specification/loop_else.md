@@ -38,7 +38,8 @@ def risky_search(items: list[int]) -> int:
 
 This is the natural behavior from the lowered boolean-flag pattern—the flag is only checked if control flow reaches that point.
 
-*Implementation: 🔄 Lowered - Boolean flag pattern:*
+*Implementation*
+- *🔄 Lowered - Boolean flag pattern:*
 ```csharp
 bool _loopCompleted = true;
 foreach (var item in items) {

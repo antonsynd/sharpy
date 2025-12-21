@@ -13,7 +13,7 @@ if item in collection:
 ## Dispatch Priority
 
 The `in` operator dispatches as follows:
-1. For Sharpy types: calls `__contains__` if defined
+1. For Sharpy types: calls `__contains__()` if defined
 2. For .NET types: calls `.Contains()` method
 3. For strings: calls `.Contains()` for substring test
 
@@ -35,4 +35,5 @@ if "ell" in "Hello":     # Calls str.Contains()
     print("Found substring")
 ```
 
-*Implementation: 🔄 Lowered - Maps to `__contains__` for Sharpy types, `.Contains()` for .NET types.*
+*Implementation*
+- *🔄 Lowered - Maps to `__contains__` for Sharpy types, `.Contains()` for .NET types.*

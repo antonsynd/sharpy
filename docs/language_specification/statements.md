@@ -163,4 +163,5 @@ const X: int = 5
 X = 10                 # ERROR: cannot assign to constant
 ```
 
-*Implementation: ✅ Native - Direct mapping to C# variable declarations and `const`.*
+*Implementation*
+- *✅ Native - Direct mapping to C# variable declarations and `const`.*

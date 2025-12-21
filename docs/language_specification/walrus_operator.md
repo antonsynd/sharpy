@@ -1,4 +1,4 @@
-## Walrus Operator
+# Walrus Operator
 
 The walrus operator `:=` allows assignment within expressions:
 
@@ -55,7 +55,8 @@ print(x)  # ERROR: x is not defined
 | Iteration variable (`for x in`) | Comprehension | ❌ No |
 | Walrus assignment (`y :=`) | Containing | ✅ Yes |
 
-*Implementation: 🔄 Lowered - Hoisted variable declaration:*
+*Implementation*
+- *🔄 Lowered - Hoisted variable declaration:*
 
 ```python
 # Sharpy
@@ -69,5 +70,3 @@ if (match.Success) {
     Console.WriteLine(match.Value);
 }
 ```
-
----

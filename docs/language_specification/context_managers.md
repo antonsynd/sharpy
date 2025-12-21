@@ -1,4 +1,4 @@
-## Context Managers
+# Context Managers
 
 The `with` statement manages resources:
 

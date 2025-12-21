@@ -1,4 +1,4 @@
-## Type Aliases
+# Type Aliases
 
 Type aliases create readable names for complex types:
 
@@ -28,6 +28,5 @@ def process_data[T, E](items: dict[str, list[Result[T, E]]]) -> dict[str, list[R
     return result
 ```
 
-*Implementation: 🔄 Lowered - Inline expansion at use sites; `using` directive where possible.*
-
----
+*Implementation*
+- *🔄 Lowered - Inline expansion at use sites; `using` directive where possible.*

@@ -12,7 +12,8 @@ import math as m
 result = m.sqrt(16.0)
 ```
 
-*Implementation: ✅ Native - `using Namespace;` or `using Alias = Namespace;`*
+*Implementation*
+- *✅ Native - `using Namespace;` or `using Alias = Namespace;`*
 
 ## From-Import Statement
 
@@ -28,4 +29,5 @@ from math import sqrt as square_root
 from math import *
 ```
 
-*Implementation: ✅ Native - `using static` or direct reference.*
+*Implementation*
+- *✅ Native - `using static` or direct reference.*

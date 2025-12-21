@@ -29,4 +29,5 @@ def process(value: object) -> str:
 - Structs are assignable to `object` via boxing
 - `None` is assignable to `object?` but not to `object`
 
-*Implementation: 🔄 Lowered - Sharpy-defined classes inherit from `Sharpy.Core.Object`; `object` type annotations map to `System.Object`.*
+*Implementation*
+- *🔄 Lowered - Sharpy-defined classes inherit from `Sharpy.Core.Object`; `object` type annotations map to `System.Object`.*

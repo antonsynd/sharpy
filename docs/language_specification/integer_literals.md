@@ -33,4 +33,5 @@ s = 42 to short
 b = 255 to byte
 ```
 
-*Implementation: ✅ Native - Direct mapping to C# integer literals.*
+*Implementation*
+- ✅ Native - Direct mapping to C# integer literals.*

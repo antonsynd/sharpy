@@ -43,4 +43,5 @@ f"Count: {42}"           # F-strings handle conversion
 "Count: " + 42           # ERROR: cannot concatenate str and int
 ```
 
-*Implementation: ✅ Native - Maps to C# `+` operator and `string.Concat()`.*
+*Implementation*
+- *✅ Native - Maps to C# `+` operator and `string.Concat()`.*

@@ -5,7 +5,7 @@ def greet(name: str) -> str:
     """Greet a person by name."""
     return f"Hello, {name}!"
 
-def print_message(message: str) -> None:
+def print_message(message: str):
     print(message)
 
 # With default parameters
@@ -22,8 +22,12 @@ def min_max(values: list[int]) -> tuple[int, int]:
 
 - All parameters must have type annotations
 - Return type annotation required if function returns a value
-- Return type can be omitted for `-> None` functions
+- Return type can be omitted for `-> None` functions (functions without a return type annotation implicitly return nothing, i.e. C# `void`)
 - Parameters with defaults must come after required parameters
+
+## Parameters
+
+See [function_parameters.md](function_parameters.md).
 
 ## Empty and Placeholder Function Bodies
 
@@ -33,23 +37,26 @@ A function body can be empty or serve as a placeholder using several forms:
 
 ```python
 # Ellipsis (preferred for abstract/interface methods)
+# If present on non-abstract methods, it is lowered as
+# `throw new NotImplementedException();`
+@abstract
 def abstract_method(self) -> int:
     ...
 
-# Pass statement
-def not_yet_implemented(self) -> None:
+# Pass statement (no-op)
+def not_yet_implemented(self):
     pass
 
 # Docstring only
-def documented_placeholder(self) -> str:
+def documented_placeholder(self):
     """This method will return a greeting."""
 
 # Comment only
-def minimal_placeholder(self) -> None:
+def minimal_placeholder(self):
     # TODO: implement this
 
 # Docstring and pass
-def explicit_placeholder(self) -> int:
+def explicit_placeholder(self):
     """Returns the computed value."""
     pass
 ```
@@ -59,7 +66,7 @@ def explicit_placeholder(self) -> int:
 | Body Content | Valid | Compiled Behavior |
 |--------------|-------|-------------------|
 | `...` (ellipsis) | ✅ | `throw new NotImplementedException()` |
-| `pass` | ✅ | Empty body (no-op for `-> None`, undefined return otherwise) |
+| `pass` | ✅ | Empty body |
 | Docstring only | ✅ | Empty body (docstring extracted for documentation) |
 | Comment only | ✅ | Empty body |
 | Docstring + `pass` | ✅ | Empty body |
@@ -80,7 +87,7 @@ interface IProcessor:
 
 class BaseHandler:
     @virtual
-    def on_event(self, event: Event) -> None:
+    def on_event(self, event: Event):
         """Called when an event occurs. Override to handle events."""
         pass  # Default: do nothing
 
@@ -91,4 +98,5 @@ class BaseHandler:
         return True
 ```
 
-*Implementation: ✅ Native - Empty bodies compile to empty C# method bodies; ellipsis compiles to `throw new NotImplementedException()`.*
+*Implementation*
+- *✅ Native - Empty bodies compile to empty C# method bodies; ellipsis compiles to `throw new NotImplementedException()`.*

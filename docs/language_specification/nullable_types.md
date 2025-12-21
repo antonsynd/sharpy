@@ -1,12 +1,12 @@
 # Nullable Types
 
-All Sharpy standard library types are not nullable by default, meaning they
-cannot be assigned `None`. This is unlike C# and Python, where C# allows
-reference types to be assigned the C# equivalent (`null`), and Python allows
-all types to be assigned `None`.
+All Sharpy standard library types and Sharpy user-defined types are
+not nullable by default, meaning they cannot be assigned `None`. This is
+unlike C# and Python, where C# allows reference types to be assigned the
+C# equivalent (`null`), and Python allows all types to be assigned `None`.
 
-Sharpy standard library types can hold `None` by being marked nullable with
-the `?` suffix on the type annotation.
+Sharpy standard library types and Sharpy user-defined type can hold
+`None` by being marked nullable with the `?` suffix on the type annotation.
 
 ```python
 # Nullable type annotations (type followed by ?)
@@ -27,6 +27,5 @@ maybe_numbers: list[int?] = [42, None, 67]  # OK
 numbers: list[int] = [42, None, 67]         # ERROR: Cannot assign None to non-nullable
 ```
 
-## Implementation
-
-✅ Native - Maps to C# nullable reference types with `#nullable enable`.
+*Implementation*
+- *✅ Native - Maps to C# nullable reference types with `#nullable enable`.*

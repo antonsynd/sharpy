@@ -1,8 +1,8 @@
-## Comprehensions
+# Comprehensions
 
 Comprehensions provide concise syntax for creating collections by transforming and filtering iterables.
 
-### List Comprehensions
+## List Comprehensions
 
 ```python
 # Basic transformation
@@ -46,7 +46,7 @@ This maps to LINQ's `.Where(...).Select(...)` ordering:
 items.Where(x => x > 0).Select(x => x * 2).ToList();
 ```
 
-### Multiple For Clauses
+## Multiple For Clauses
 
 Comprehensions can have multiple `for` clauses, which are evaluated left-to-right like nested loops:
 
@@ -77,7 +77,7 @@ Enumerable.Range(0, 3)
     .ToList();
 ```
 
-### Dict Comprehensions
+## Dict Comprehensions
 
 ```python
 # Basic dict comprehension
@@ -96,7 +96,7 @@ long_names = {name: len(name) for name in names if len(name) > 3}
 
 *Implementation: 🔄 Lowered - `.ToDictionary(x => key, x => value)`*
 
-### Set Comprehensions
+## Set Comprehensions
 
 ```python
 # Basic set comprehension
@@ -110,7 +110,7 @@ short_lengths = {len(word) for word in ["apple", "banana", "cherry"] if len(word
 
 *Implementation: 🔄 Lowered - `.Select(...).ToHashSet()`*
 
-### Comprehension Variable Scoping
+## Comprehension Variable Scoping
 
 Variables declared in comprehensions are scoped to that comprehension and do not leak into the enclosing scope:
 

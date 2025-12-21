@@ -1,4 +1,4 @@
-## Events
+# Events
 
 Events provide a publish-subscribe pattern:
 
@@ -48,7 +48,7 @@ if self.clicked is not None:
 self.clicked?.invoke(self, EventArgs())  # Atomic check-and-invoke
 ```
 
-### Custom EventArgs
+## Custom EventArgs
 
 ```python
 class ValueChangedArgs(EventArgs):

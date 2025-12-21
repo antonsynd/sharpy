@@ -170,5 +170,3 @@ result = 5 |> + 3  # ERROR
 # ✅ Use lambda instead
 result = 5 |> (lambda x: x + 3)()  # OK
 ```
-
----

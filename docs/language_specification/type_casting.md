@@ -41,6 +41,20 @@ rounded = precise to int         # Truncates toward zero (3), throws if out of r
 rounded = precise to int?        # None if out of range
 ```
 
+## Using Result[T, E] or Optional[T]
+
+Casting can be chained with `try` and `maybe` expressions to wrap
+the cast behavior in safe tagged unions:
+
+```python
+my_dog: object = Dog()
+some_result = try my_dog as Cat  # some_result = Result[Cat, InvalidCastException].Err
+some_result = try my_dog as Cat?  # some_result = Result[Cat?, Exception].Ok(None). Compiler will warn user to use a `maybe` expression instead
+
+some_optional = maybe my_dog as Cat  # Throws. Compiler will warn user to use a `try` expression instead
+some_optional = maybe my_dog as Cat?  # some_optional = Optional[str].Nothing
+```
+
 ## Safe Casting Pattern
 
 The nullable form integrates naturally with type narrowing:

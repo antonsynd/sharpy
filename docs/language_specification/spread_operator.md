@@ -343,5 +343,3 @@ Spread syntax is preferred for readability and composability.
 - *Dict spreading: Dictionary copy + merge operations*
 - *Function spreading: Array access + named parameters*
 - *Tuple spreading: Tuple concatenation helpers*
-
----

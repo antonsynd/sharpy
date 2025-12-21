@@ -91,4 +91,5 @@ print(d.describe())  # "Point(10, 20)" - works but allocates
 - Immutable value types (Vector2, Point, Color)
 - Types that benefit from value semantics
 
-*Implementation: ✅ Native - Direct mapping to C# `struct`.*
+*Implementation*
+- *✅ Native - Direct mapping to C# `struct`.*

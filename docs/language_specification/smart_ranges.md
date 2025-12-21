@@ -259,7 +259,7 @@ def categorize_age(age: int) -> str:
 class BoundedBuffer[T]:
     capacity: range[int] = 0..=1000
     size: int
-    
+
     def add(self, item: T) -> None:
         if self.size not in self.capacity:
             raise OverflowError("Buffer full")
@@ -340,5 +340,3 @@ var grade = score switch {
 - *Pattern matching: ✅ Native - Maps to C# relational patterns*
 - *Range objects: 🔄 Lowered - Custom `SmartRange<T>` type in Sharpy.Core*
 - *Range operations: 🔄 Lowered - Methods on `SmartRange<T>`*
-
----

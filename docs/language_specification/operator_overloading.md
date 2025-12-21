@@ -1,10 +1,10 @@
-## Operator Overloading
+# Operator Overloading
 
 Classes can define dunder methods (double-underscore methods like `__add__`, `__eq__`) to customize how operators and built-in functions behave with their instances. **Dunder methods are a definition mechanism only**—they specify *how* a type behaves, but users invoke that behavior through operators and built-in functions, not by calling dunders directly.
 
-### Dunder Invocation Rules
+## Dunder Invocation Rules
 
-#### Dunders Are Definition-Only
+## Dunders Are Definition-Only
 
 Dunder methods exist to **define** how a type behaves with operators and built-in functions. **Explicit dunder invocation by user code is a compile error:**
 
@@ -20,7 +20,7 @@ obj = MyClass()
 obj.__str__()       # ERROR: Cannot invoke dunder methods directly
 ```
 
-#### Correct Usage
+### Correct Usage
 
 Use operators for operator dunders:
 
@@ -41,7 +41,7 @@ hash(x)             # ✅ Correct — uses __hash__ internally
 str(x)              # ✅ Correct — uses __str__ internally
 ```
 
-#### Rationale
+### Rationale
 
 - **Uniform syntax**: `repr(x)` and `x == y` work on any type, whether primitive or Sharpy-defined
 - **.NET interop**: Primitives from .NET (`int`, `str`, `bool`) don't have dunder methods—the compiler handles dispatch
@@ -63,7 +63,7 @@ str(x)              # ✅ Correct — uses __str__ internally
 - *For Sharpy types with dunder: call to the generated method*
 - *For built-in functions: type-appropriate dispatch (e.g., `len()` calls `.Count` or `__len__`)*
 
-### Dunder Method Signatures
+## Dunder Method Signatures
 
 Dunder methods have compiler-enforced return types. The compiler validates that dunder method signatures match the expected protocol:
 
@@ -166,11 +166,11 @@ class Vector:
 
 This also applies to comparison operators like `__lt__()`. For `__eq__()` and `__ne__()` specifically, at least one overload must accept `object` (`System.Object`) as its argument. Additional overloads can be made for other types. This is actually satisfied by default for Sharpy reference types in Sharpy because they all derive from `Sharpy.Core.Object` which implements these dunder methods.
 
-### Dunder Inheritance and Internal Calls
+## Dunder Inheritance and Internal Calls
 
 While user code cannot call dunders directly, there are specific contexts where dunder calls are permitted.
 
-#### Dunder Inheritance
+### Dunder Inheritance
 
 Dunder methods are inherited like any other method:
 
@@ -194,7 +194,7 @@ dog = Dog("Buddy")
 print(repr(dog))  # Output: Animal(Buddy)
 ```
 
-#### Overriding Dunders
+### Overriding Dunders
 
 Dunder methods can be overridden using `@override`:
 
@@ -261,7 +261,7 @@ class Child(Parent):
         return True
 ```
 
-#### Cross-Dunder Calls for Synthesis
+### Cross-Dunder Calls for Synthesis
 
 Within a dunder method, you may call other dunders on `self` for synthesizing related operations:
 
@@ -290,7 +290,7 @@ class Ordered:
         return not self.__le__(other)                    # ✅ OK
 ```
 
-#### Restrictions
+### Restrictions
 
 Dunder calls on `self` or `super()` are **only** permitted:
 - Within a dunder method body
@@ -310,7 +310,7 @@ class Example:
         return other.__eq__(self)       # ❌ ERROR: Not self or super()
 ```
 
-#### Child Objects Use Built-in Functions
+### Child Objects Use Built-in Functions
 
 For calling dunder-like behavior on other objects (including fields), use operators or built-in functions:
 
@@ -333,14 +333,14 @@ class Node:
         # NOT: self.value.__eq__(other.value)  # ❌ Error
 ```
 
-#### Summary Table
+### Summary Table
 
 | Call Site | `self.__dunder__()` | `super().__dunder__()` | `other.__dunder__()` |
 |-----------|--------------------|-----------------------|---------------------|
 | Inside dunder method | ✅ Immediate only | ✅ Immediate only | ❌ Use operator/built-in |
 | Outside dunder method | ❌ Error | ❌ Error | ❌ Use operator/built-in |
 
-### Arithmetic Operators
+## Arithmetic Operators
 
 ```python
 class Vector:
@@ -378,7 +378,7 @@ class Vector:
 
 *Implementation: ✅ Native - Generates both dunder method and C# operator overload.*
 
-### Comparison Operators
+## Comparison Operators
 
 ```python
 class Point:
@@ -403,7 +403,7 @@ class Point:
 | `>` | `__gt__` | `operator >` |
 | `>=` | `__ge__` | `operator >=` |
 
-### Special Methods
+## Special Methods
 
 | Method | Purpose | C# Mapping | Invoked Via |
 |--------|---------|------------|-------------|
@@ -439,7 +439,7 @@ result: bool = 5 in c  # Always bool
 
 **Note:** Users invoke these behaviors through the "Invoked Via" syntax, not by calling the dunder methods directly. See [Dunder Invocation Rules](#dunder-invocation-rules-v01) for details.
 
-### Hashable Objects
+## Hashable Objects
 
 For objects to be used as dictionary keys or in sets, they must implement `__hash__` and `__eq__`:
 
@@ -472,6 +472,5 @@ locations[coord] = "Home"  # Works because __hash__ and __eq__ defined
 - Hash value should not change during object lifetime
 - Mutable objects should not implement `__hash__`
 
-*Implementation: ✅ Native or 🔄 Lowered depending on the method.*
-
----
+*Implementation*
+- *✅ Native or 🔄 Lowered depending on the method.*

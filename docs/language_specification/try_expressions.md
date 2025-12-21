@@ -1,14 +1,23 @@
-## Try expressions
+# Try expressions
 
 The `Result[T, E]` type can be implicitly created via
 `try` expressions. A `try` expression wraps the value of
 the expression in `Result[T, E]` where `E`, if not
-specified, is always the base `Exception` type, and `T` is
+specified, is almost always the base `Exception` type, and `T` is
 the type of the expression. If the expression raises an
 exception, then the result holds its `Err` case.
 
+
 ```python
 x = try int("some string")  # x is of type Result[int, Exception]
+```
+
+The only place where `E` is not automatically made to be the
+base `Exception` type is in type casting of the form `to` where
+it is `InvalidCastException`:
+
+```python
+x = try my_dog to Cat  # x is of type Result[Cat, InvalidCastException]
 ```
 
 A `try` expression can be specified for a specific type
@@ -45,6 +54,5 @@ y = try foo() if cond else bar()   # Parsed as: (try foo()) if cond else bar()
 y = try (foo() if cond else bar())  # try applies to entire conditional
 ```
 
-*Implementation: 🔄 Lowered - `try`/`catch` pattern wrapping the expression.*
-
----
+*Implementation*
+- *🔄 Lowered - `try`/`catch` pattern wrapping the expression.*

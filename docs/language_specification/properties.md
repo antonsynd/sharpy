@@ -1,8 +1,8 @@
-## Properties
+# Properties
 
 Properties provide controlled access to object state with support for computed values, validation, and fine-grained access control. Sharpy properties map cleanly to C# properties while maintaining Pythonic readability.
 
-### Property Forms
+## Property Forms
 
 Sharpy supports two property forms:
 
@@ -15,7 +15,7 @@ Sharpy supports two property forms:
 - **Auto-properties** generate a backing field automatically (opaque to the user)
 - **Function-style properties** require the user to provide their own backing field (or compute the value)
 
-### Auto-Properties
+## Auto-Properties
 
 Auto-properties generate a backing field and accessors automatically:
 
@@ -101,11 +101,11 @@ public int Id { get; } = 0;
 public string Token { get; init; }
 ```
 
-### Function-Style Properties
+## Function-Style Properties
 
 For properties requiring custom logic (validation, transformation, computation), use function-style syntax. The user must provide their own backing field or compute the value. You cannot combine get/set/init auto-properties with custom logic get/set/init, since the backing field for the auto-property cannot be accessed from the custom logic.
 
-#### Function-Style Getter
+### Function-Style Getter
 
 ```python
 class Rectangle:
@@ -153,7 +153,7 @@ public double Diagonal {
 }
 ```
 
-#### Function-Style Setter
+### Function-Style Setter
 
 ```python
 class Temperature:
@@ -177,7 +177,7 @@ It is possible to have both a function-style getter and setter. However, functio
 
 **No Function-Style `init`:** There is no `property init name(self, value: T):` form because init-only semantics require compiler support for constructor-only assignment, which doesn't compose well with user-defined logic.
 
-### Mixed Access Modifiers
+## Mixed Access Modifiers
 
 Getters and setters can have different visibility:
 
@@ -238,7 +238,7 @@ public int Value {
 }
 ```
 
-### Static Properties
+## Static Properties
 
 Use `@static` decorator for class-level properties. Static properties take no `self` parameter:
 
@@ -290,7 +290,7 @@ public static bool DebugMode {
 }
 ```
 
-### Virtual, Abstract, and Override Properties
+## Virtual, Abstract, and Override Properties
 
 Properties participate in inheritance using the standard decorators:
 
@@ -376,7 +376,7 @@ public override string Name => "Circle";
 public sealed override string Name => "Unit Circle";
 ```
 
-### Interface Properties
+## Interface Properties
 
 Interfaces declare property requirements using the same syntax:
 
@@ -475,7 +475,7 @@ public string Hint => _secret[0] + "***";
 string ISecret.Value => _secret;
 ```
 
-### Property and Method Name Conflicts
+## Property and Method Name Conflicts
 
 A property and a method cannot share the same name within a class:
 
@@ -502,7 +502,7 @@ error: 'value' is already defined as a property in this class
    |         ^^^^^ method name conflicts with property on line 6
 ```
 
-### Property Syntax Summary
+## Property Syntax Summary
 
 **Auto-properties (compiler-generated backing field):**
 
@@ -552,5 +552,3 @@ property get name(self) -> str:
 property set name(self, value: str):
     self._name = value
 ```
-
----

@@ -1,6 +1,6 @@
-## Async Programming
+# Async Programming
 
-### Async Functions
+## Async Functions
 
 ```python
 async def fetch_data(url: str) -> str:
@@ -14,7 +14,7 @@ async def main():
 
 *Implementation: ✅ Native - `async` method returning `Task<T>`.*
 
-### Concurrent Execution
+## Concurrent Execution
 
 ```python
 async def fetch_all(urls: list[str]) -> list[str]:
@@ -25,7 +25,7 @@ async def fetch_all(urls: list[str]) -> list[str]:
 
 *Implementation: ✅ Native - `Task.WhenAll()`*
 
-### Async Iteration
+## Async Iteration
 
 ```python
 async def count_up(n: int) -> AsyncIterator[int]:
@@ -88,7 +88,7 @@ async def stream_data(url: str) -> AsyncIterator[bytes]:
 
 *Implementation: ✅ Native - `IAsyncEnumerable<T>` (C# 8+)*
 
-### Async Context Managers
+## Async Context Managers
 
 ```python
 async def use_resource():

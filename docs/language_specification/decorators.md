@@ -1,4 +1,4 @@
-## Decorators
+# Decorators
 
 Decorators modify the behavior of functions, methods, and classes.
 
@@ -27,7 +27,7 @@ For Sharpy's built-in decorators (`@static`, `@virtual`, `@override`, `@abstract
 @internal
 ```
 
-### Access Modifiers
+## Access Modifiers
 
 | Decorator | C# Equivalent | Visibility |
 |-----------|---------------|------------|
@@ -75,7 +75,7 @@ class Example:
 
 *Implementation: ✅ Native - Direct mapping to C# access modifiers.*
 
-### Method Modifiers
+## Method Modifiers
 
 | Decorator | C# Equivalent | Notes |
 |-----------|---------------|-------|

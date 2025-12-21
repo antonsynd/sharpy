@@ -1,4 +1,4 @@
-## Interfaces
+# Interfaces
 
 Interfaces define contracts that types must satisfy.
 
@@ -6,7 +6,7 @@ Interfaces define contracts that types must satisfy.
 interface IDrawable:
     """Interface for drawable objects."""
 
-    def draw(self) -> None:
+    def draw(self):
         ...
 
     def get_bounds(self) -> tuple[double, double, double, double]:
@@ -23,7 +23,7 @@ class Circle(IDrawable):
         self.y = y
         self.radius = radius
 
-    def draw(self) -> None:
+    def draw(self):
         print(f"Drawing circle at ({self.x}, {self.y})")
 
     def get_bounds(self) -> tuple[double, double, double, double]:
@@ -72,9 +72,10 @@ The distinction is:
 - `pass` → empty body, valid only for `-> None` methods as a default implementation
 - For non-void methods, either use `...` (abstract) or provide a return statement
 
-*Implementation: ✅ Native - Direct mapping to C# `interface`.*
+*Implementation*
+- *✅ Native - Direct mapping to C# `interface`.*
 
-### Generic Interfaces
+## Generic Interfaces
 
 ```python
 interface IContainer[T]:
@@ -83,7 +84,7 @@ interface IContainer[T]:
     def count(self) -> int: ...
 ```
 
-### Interface Inheritance
+## Interface Inheritance
 
 Interfaces can extend other interfaces:
 
@@ -95,7 +96,7 @@ interface ISerializable:
 interface IJSONSerializable(ISerializable):
     """Extends ISerializable with JSON-specific methods."""
     def to_json(self) -> str: ...
-    def from_json(self, json: str) -> None: ...
+    def from_json(self, json: str): ...
 
 class User(IJSONSerializable):
     """Must implement all methods from both interfaces."""
@@ -107,31 +108,31 @@ class User(IJSONSerializable):
     def to_json(self) -> str:
         return f'{{"username": "{self.username}"}}'
 
-    def from_json(self, json: str) -> None:
+    def from_json(self, json: str):
         pass  # Parse and update
 ```
 
-### Default Method Implementations
+## Default Method Implementations
 
 Interfaces can provide default implementations for methods. Implementing types inherit the default unless they provide their own implementation:
 
 ```python
 interface ILogger:
-    def log(self, message: str) -> None:
+    def log(self, message: str):
         """Log a message. Must be implemented."""
         ...
 
-    def log_info(self, message: str) -> None:
+    def log_info(self, message: str):
         """Log an info message. Has default implementation."""
         self.log(f"[INFO] {message}")
 
-    def log_error(self, message: str) -> None:
+    def log_error(self, message: str):
         """Log an error message. Has default implementation."""
         self.log(f"[ERROR] {message}")
 
 class ConsoleLogger(ILogger):
     # Must implement abstract method
-    def log(self, message: str) -> None:
+    def log(self, message: str):
         print(message)
 
     # Inherits log_info and log_error defaults
@@ -143,12 +144,12 @@ class FileLogger(ILogger):
     def __init__(self, path: str):
         self.path = path
 
-    def log(self, message: str) -> None:
+    def log(self, message: str):
         # Write to file
         pass
 
     # Override default to add timestamp
-    def log_error(self, message: str) -> None:
+    def log_error(self, message: str):
         self.log(f"[ERROR {datetime.now()}] {message}")
 ```
 
@@ -179,7 +180,7 @@ interface IValidator:
         return True
 ```
 
-### Conflict Resolution: Base Class vs Interface
+## Conflict Resolution: Base Class vs Interface
 
 When a class inherits the same method signature from both a base class and an interface, Sharpy follows C# resolution rules:
 
@@ -202,45 +203,7 @@ g = MyGreeter()
 print(g.greet())  # "Hello from base class"
 ```
 
-**Accessing Interface Implementation via Casting:**
-
-To explicitly call the interface's default implementation, cast to the interface type:
-
-```python
-g = MyGreeter()
-
-# Base class method
-print(g.greet())                    # "Hello from base class"
-
-# Attempt to call interface default (via cast)
-greeter: IGreeter = g
-print(greeter.greet())              # "Hello from base class" - still base class!
-
-# To truly access interface default, must use explicit interface implementation
-```
-
-**Explicit Interface Implementation:**
-
-When you need different behavior when accessed through the interface versus directly:
-
-```python
-class MyGreeter(BaseGreeter, IGreeter):
-    # Regular method (used when called on MyGreeter)
-    def greet(self) -> str:
-        return "Hello from MyGreeter"
-
-    # Explicit interface implementation (used when called through IGreeter)
-    def IGreeter.greet(self) -> str:
-        return "Hello from IGreeter implementation"
-
-g = MyGreeter()
-print(g.greet())                    # "Hello from MyGreeter"
-
-igreeter: IGreeter = g
-print(igreeter.greet())             # "Hello from IGreeter implementation"
-```
-
-### When to Use Interfaces vs Abstract Classes
+## When to Use Interfaces vs Abstract Classes
 
 With default implementations available in interfaces, the choice between interfaces and abstract classes may seem unclear. Here are the key distinctions:
 
@@ -298,9 +261,10 @@ class C(IA, IB):
         return "C"
 ```
 
-*Implementation: ✅ Native - Direct mapping to C# default interface methods (C# 8.0+) and explicit interface implementation.*
+*Implementation*
+- *✅ Native - Direct mapping to C# default interface methods (C# 8.0+) and explicit interface implementation.*
 
-### Dunder Methods in Interfaces
+## Dunder Methods in Interfaces
 
 **Standard Library Only:**
 
@@ -365,19 +329,5 @@ with ManagedResource() as resource:
     use(resource)
 ```
 
-**Standard Library Dunder Interfaces:**
-
-| Interface | Dunders | Purpose |
-|-----------|---------|---------|
-| `IContextManager` | `__enter__`, `__exit__` | Context manager protocol |
-| `IIterable[T]` | `__iter__` | Iteration protocol |
-| `IIterator[T]` | `__next__` | Iterator protocol |
-| `ISized` | `__len__` | Length protocol |
-| `IContainer[T]` | `__contains__` | Membership protocol |
-| `IHashable` | `__hash__`, `__eq__` | Hashable protocol |
-| `IIndexable[K, V]` | `__getitem__`, `__setitem__` | Indexing protocol |
-| `IComparable[T]` | `__lt__`, `__le__`, `__gt__`, `__ge__` | Ordering protocol |
-
-*Implementation: Compiler validates that dunder declarations only appear in whitelisted standard library interfaces.*
-
----
+*Implementation*
+- *Compiler validates that dunder declarations only appear in whitelisted standard library interfaces.*
