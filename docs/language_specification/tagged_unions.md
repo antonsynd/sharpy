@@ -1,5 +1,9 @@
 # Tagged Unions (Algebraic Data Types)
 
+Tagged unions (also called algebraic data types or sum types) allow defining types that can be one of several variants, where each variant can carry associated data.
+
+## Overview
+
 Tagged unions allow cases to carry associated data:
 
 ```python
@@ -19,9 +23,19 @@ enum BinaryTree[T]:
     case Node(left: BinaryTree[T], right: BinaryTree[T])
 ```
 
-Sharpy provides `Result[T, E]` and `Optional[T]` in the standard library
-with special ways to interact with them. See [try_expressions.md](try_expressions.md), [maybe_expressions.md](maybe_expressions.md),
-[null_coalescing_operator.md](null_coalescing_operator.md), [null_coalescing_assignment.md](null_coalescing_assignment.md), and [null_conditional_access.md](null_conditional_access.md).
+## Standard Library Types
+
+Sharpy provides `Result[T, E]` and `Optional[T]` in the standard library with special integration into the language:
+
+- **[Result Type](tagged_unions_result.md)** - For operations that can fail with typed errors
+- **[Optional Type](tagged_unions_optional.md)** - For representing optional values
+
+These types have special syntax and operators. See:
+- [Try Expressions](try_expressions.md) - Special syntax for Result types
+- [Maybe Expressions](maybe_expressions.md) - Special syntax for Optional types
+- [Null Coalescing Operator](null_coalescing_operator.md) - The `??` operator
+- [Null Coalescing Assignment](null_coalescing_assignment.md) - The `??=` operator
+- [Null Conditional Access](null_conditional_access.md) - The `?.` operator
 
 **Unit Cases (No Data):**
 
@@ -141,3 +155,11 @@ public abstract class Result<T, E> {
     }
 }
 ```
+
+## See Also
+
+- [Result Type](tagged_unions_result.md) - Detailed guide to the Result type for error handling
+- [Optional Type](tagged_unions_optional.md) - Detailed guide to the Optional type for optional values
+- [Enums](enums.md) - Simple enumerations without associated data
+- [Pattern Matching](match_statement.md) - Using match with tagged unions
+- [Generics](generics.md) - Generic type parameters
