@@ -105,53 +105,112 @@ In-place operators (e.g. `__iadd__`) do not exist in Sharpy yet as C# 9 does
 not support defining them. When Sharpy is updated to support C# 14, then
 in-place operators will be available to define in Sharpy.
 
-Assuming `T` is the class defining the dunder method, and `U` (if present)
+In the tables below, assuming `T` is the class defining the dunder method, and `U` (if present)
 could be any type, including `T` itself, and `V` (if present) could be any type,
 including `T` or `U` (if present), then:
 
 **Binary arithmetic operators**
 
+Note that Sharpy does not support `__pow__` or `__floordiv__` as these are not
+overridable operators in C#, and as a result, `__truediv__` is renamed to
+`__div__` to reflect the lack of a contrasting `__floordiv__`.
+
 | Dunder | C# Output |
 |--------|-----------|
 | `__add__(self, other: U) -> V` | `public static V operator +(T lhs, U rhs)` |
-| `__floordiv__(self, other: U) -> V` | |
+| `__div__(self, other: U) -> V` | `public static V operator /(T lhs, U rhs)` |
 | `__mod__(self, other: U) -> V` | `public static V operator %(T lhs, U rhs)` |
 | `__mul__(self, other: U) -> V` | `public static V operator -(T lhs, U rhs)` |
-| `__pow__(self, other: U) -> V` | |
 | `__sub__(self, other: U) -> V` | `public static V operator -(T lhs, U rhs)` |
-| `__truediv__(self, other: U) -> V` | `public static V operator /(T lhs, U rhs)` |
 
 **Reflected binary arithmetic operators**
 
 | Dunder | C# Output |
 |--------|-----------|
 | `__radd__(self, other: U) -> V` | `public static V operator +(U lhs, T rhs)` |
-| `__rfloordiv__(self, other: U) -> V` | |
+| `__rdiv__(self, other: U) -> V` | `public static V operator /(U lhs, T rhs)` |
 | `__rmod__(self, other: U) -> V` | `public static V operator %(U lhs, T rhs)` |
 | `__rmul__(self, other: U) -> V` | `public static V operator *(U lhs, T rhs)` |
-| `__rpow__(self, other: U) -> V` | |
 | `__rsub__(self, other: U) -> V` | `public static V operator -(U lhs, T rhs)` |
-| `__rtruediv__(self, other: U) -> V` | `public static V operator /(U lhs, T rhs)` |
 
 **Unary sign operators**
-| `__neg__(self) -> T` | `public static T operator -(T self)` |
-| `__pos__(self) -> T` | `public static T operator +(T self)` |
+
+| Dunder | C# Output |
+|--------|-----------|
+| `__neg__(self) -> U` | `public static U operator -(T self)` |
+| `__pos__(self) -> U` | `public static U operator +(T self)` |
 
 *Rules*
 - *Arithmetic operators are always public and static.*
-- *Arithmetic operators are applied based on the static declared type of the operands, with lookup considering implicit conversions (including casting up the class inheritance chain).*
+- *Arithmetic operators are applied based on C# static resolution rules.*
+  - *The chosen operator is based on the static declared type of the operands.*
+  - *Lookup considers the availability of implicit conversions and/or casting up the class inheritance chain.*
+
+## Bitwise Operators
+
+Bitwise dunder methods translate directly to C# static operators. They do
+not exist as callable methods outside of cross-operator synthesis, similarly
+to the arithmetic ones.
+
+In the tables below, assuming `T` is the class defining the dunder method, and `U` (if present)
+could be any type, including `T` itself, and `V` (if present) could be any type,
+including `T` or `U` (if present), then:
+
+**Binary bitwise operators**
+
+| Dunder | C# Output |
+|--------|-----------|
+| `__and__(self, other: U) -> V` | `public static V operator &(T lhs, U rhs)` |
+| `__lshift__(self, other: U) -> V` | `public static V operator <<(T lhs, U rhs)` |
+| `__or__(self, other: U) -> V` | `public static V operator \|(T lhs, U rhs)` |
+| `__rshift__(self, other: U) -> V` | `public static V operator >>(T lhs, U rhs)` |
+| `__xor__(self, other: U) -> V` | `public static V operator ^(T lhs, U rhs)` |
+
+**Reflected binary bitwise operators**
+
+| Dunder | C# Output |
+|--------|-----------|
+| `__rand__(self, other: U) -> V` | `public static V operator &(U lhs, T rhs)` |
+| `__rlshift__(self, other: U) -> V` | `public static V operator <<(U lhs, T rhs)` |
+| `__ror__(self, other: U) -> V` | `public static V operator \|(U lhs, T rhs)` |
+| `__rrshift__(self, other: U) -> V` | `public static V operator >>(U lhs, T rhs)` |
+| `__rxor__(self, other: U) -> V` | `public static V operator ^(U lhs, T rhs)` |
+
+**Unary bitwise operators**
+
+| Dunder | C# Output |
+|--------|-----------|
+| `__invert__(self) -> U` | `public static U operator ~(T self)` |
+
+## Comparison Operators
 
 **Comparison Operators:**
 
 | Dunder | C# Output |
 |--------|----------------------|
-| `__eq__(self, other: U) -> bool` | |
-| `__ne__(self, other: U) -> bool` | |
-| `__ne__(self, other: U)` | |
-| `__lt__(self, other: U)` | |
-| `__le__(self, other: U)` | |
-| `__gt__(self, other: U)` | |
-| `__ge__(self, other: U)` | |
+| `__eq__(self, other: U) -> bool` | `public static bool operator ==(T lhs, U rhs)` and `public override bool Equals(U rhs)` |
+| `__ne__(self, other: U) -> bool` | `public static bool operator !=(T lhs, U rhs)` |
+| `__lt__(self, other: U) -> bool` | `public static bool operator <(T lhs, U rhs)` |
+| `__le__(self, other: U) -> bool` | `public static bool operator <=(T lhs, U rhs)` |
+| `__gt__(self, other: U) -> bool` | `public static bool operator >(T lhs, U rhs)` |
+| `__ge__(self, other: U) -> bool` | `public static bool operator >=(T lhs, U rhs)` |
+
+## Conversion Methods
+
+__str__ `public static explicit operator string(T self)`
+__int__
+__float__
+__double__
+__decimal__
+__uint__
+__short__
+__ushort__
+__long__
+__ulong__
+__byte__
+__sbyte__
+__complex__
+__bytes__
 
 **Special Methods:**
 
@@ -168,32 +227,24 @@ including `T` or `U` (if present), then:
 | `__iter__(self)` | `Iterator[T]` | Iteration |
 | `__getitem__(self, key: K)` | `V` | Index access |
 | `__setitem__(self, key: K, value: V)` | `None` | Index assignment |
+
 __delitem__
-__invert__
 __next__
 __not__
 __index__
 __enter__
 __exit__
-__float__
-__bytes__
-__complex__
 __format__
 __reversed__
-__call__
+__call__ # translate to Invoke()?
 __matmul__
-__and__
-__or__
-__xor__
-__rshift__
-__lshift__
 __divmod__
 __rdivmod__
-__abs__
-__round__
+__abs__ # Math.abs doesn't affect
+__round__ # Math.round doesn't affect
 __trunc__
-__floor__
-__ceil__
+__floor__ # Math.floor doesn't affect
+__ceil__ # Math.ceil doesn't affect
 
 __aenter__
 __aexit__
@@ -201,7 +252,7 @@ __aiter__
 __anext__
 __await__
 
-__del__
+__del__ # Finalize() probably
 __copy__
 __deepcopy__
 __replace__
