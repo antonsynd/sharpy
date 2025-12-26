@@ -15,58 +15,51 @@ The last line of the block must be an expression (not a statement), and its valu
 
 ## Allowed and Disallowed Constructs
 
-The following table specifies what can and cannot appear inside a `do:` block:
-
 | Construct | Allowed | Notes |
 |-----------|---------|-------|
 | Variable declarations | ✅ | `x = 5`, `x: int = 5` |
-| `if`/`elif`/`else` | ✅ | All branches must produce compatible types |
-| `for` loops | ✅ | Loop body can contain statements |
-| `while` loops | ✅ | Loop body can contain statements |
-| `match` (statement form) | ✅ | With statement bodies |
-| `match` (expression form) | ✅ | As the final expression |
-| `try`/`except`/`finally` | ✅ | For exception handling |
-| `with` | ✅ | Context managers |
-| `break` with value | ✅ | Early exit: `break "result"` |
-| `break` without value | ✅ | Only in nested loops |
-| `continue` | ✅ | Only in nested loops |
+| `if`/`elif`/`else` | ✅ | All branches must end with an expression of compatible type |
+| `for` loops | ❌ | Loops don't produce values; use comprehensions or explicit accumulation outside `do:` |
+| `while` loops | ❌ | Loops don't produce values |
+| `match` (expression form) | ✅ | All cases must produce compatible types |
+| `try`/`except` | ✅ | All branches must end with an expression of compatible type |
 | Nested `do:` blocks | ✅ | `do:` inside `do:` |
 | Function calls | ✅ | Including side-effecting calls |
-| `return` | ❌ | Use `break value` for early exit |
+| `return` | ❌ | Not allowed; every branch must end with an expression |
+| `break` | ❌ | Not allowed; every branch must end with an expression |
+| `continue` | ❌ | Not allowed |
+| `yield` | ❌ | Generators cannot be defined inline |
 | `def` (function definition) | ❌ | Define functions outside `do:` block |
 | `class` definition | ❌ | Define classes outside `do:` block |
-| `yield` | ❌ | Generators cannot be defined inline |
 | `import` | ❌ | Imports must be at module level |
 
-**Early exit with `break`:**
+## Core Rule: Every Terminal Branch Must Be an Expression
 
-Inside a `do:` block (not inside a loop), `break` with a value exits the block and returns that value:
-
-```python
-result = do:
-    if error_condition:
-        break "error"   # Exit do: block, return "error"
-
-    process_data()
-    "success"           # Normal return if no early exit
-```
-
-**`yield` restriction:**
-
-`yield` is not allowed because `do:` blocks are lowered to immediately-invoked lambdas, not generator functions:
+The fundamental rule for `do:` blocks is simple: **every possible code path must end with an expression that produces a value**. There is no early exit mechanism.
 
 ```python
-# ❌ ERROR: yield not allowed in do: block
+# ✅ Valid - both branches end with expressions
 result = do:
-    yield 1  # ERROR
-    yield 2
-    "done"
+    x = compute()
+    if x > 0:
+        x * 2
+    else:
+        0
 
-# ✅ Use a generator function instead
-def gen():
-    yield 1
-    yield 2
-result = list(gen())
+# ❌ Invalid - missing else branch
+result = do:
+    x = compute()
+    if x > 0:
+        x * 2
+    # ERROR: missing else branch - what value if x <= 0?
+
+# ❌ Invalid - branch ends with statement
+result = do:
+    x = compute()
+    if x > 0:
+        x * 2
+    else:
+        print("negative")  # ERROR: print() doesn't return a value
 ```
 
 ## Basic Usage
@@ -109,7 +102,7 @@ result = do:
 
 ## Type Inference
 
-The type of a `do:` block is inferred from the final expression:
+The type of a `do:` block is inferred from the final expression. All branches must produce compatible types:
 
 ```python
 # Type is int
@@ -129,6 +122,13 @@ value: int = do:
         42
     else:
         100  # Both branches must be int
+
+# ❌ Invalid - inconsistent types
+value = do:
+    if flag:
+        42      # int
+    else:
+        "text"  # str - ERROR: type mismatch
 ```
 
 ## Scope
@@ -149,25 +149,6 @@ result = do:
     outer + inner  # Can access outer
 ```
 
-## Early Returns
-
-Use `break` to exit early from a `do:` block with a value:
-
-```python
-result = do:
-    if error_condition:
-        break "error"  # Return "error" immediately
-
-    # Continue processing
-    data = process()
-    if validation_fails(data):
-        break "invalid"
-
-    data  # Normal return
-```
-
-Note: `break` with a value only works in `do:` blocks, not in loops.
-
 ## Nested Blocks
 
 ```python
@@ -185,6 +166,21 @@ result = do:
     x + y  # result = 16
 ```
 
+## With Try/Except
+
+All branches of exception handling must produce a value:
+
+```python
+result = do:
+    try:
+        data = risky_operation()
+        process(data)
+    except ValueError:
+        default_value
+    except IOError:
+        fallback_value
+```
+
 ## Common Patterns
 
 **Complex Initialization:**
@@ -200,61 +196,36 @@ user = do:
 ```python
 settings = do:
     base = default_settings()
-
     if is_production:
-        base.log_level = LogLevel.ERROR
-        base.cache_enabled = True
+        Settings(
+            log_level=LogLevel.ERROR,
+            cache_enabled=True,
+            base_config=base
+        )
     else:
-        base.log_level = LogLevel.DEBUG
-        base.cache_enabled = False
-
-    base  # Return configured settings
+        Settings(
+            log_level=LogLevel.DEBUG,
+            cache_enabled=False,
+            base_config=base
+        )
 ```
 
-**Error Handling:**
+**With Match:**
 ```python
-value = do:
-    result = try_parse(input)
-    if result is None:
-        log_error("Parse failed")
-        break default_value
-
-    transformed = transform(result)
-    if not validate(transformed):
-        log_error("Validation failed")
-        break default_value
-
-    transformed
-```
-
-**Resource Management:**
-```python
-result = do:
-    connection = open_connection()
-    try:
-        data = connection.fetch()
-        processed = process(data)
-        processed
-    finally:
-        connection.close()
-```
-
-## With Function Calls
-
-`do:` blocks can be passed as arguments (wrapped in lambda):
-
-```python
-# As argument to function expecting () -> T
-result = compute(lambda: do:
-    x = expensive_computation()
-    y = another_computation()
-    x + y
-)
+description = do:
+    category = classify(item)
+    match category:
+        case Category.BOOK:
+            f"Book: {item.title}"
+        case Category.MOVIE:
+            f"Movie: {item.title} ({item.year})"
+        case _:
+            f"Item: {item.name}"
 ```
 
 ## Expressions vs Statements
 
-The last item in a `do:` block must be an expression:
+The last item in every branch of a `do:` block must be an expression:
 
 ```python
 # ✅ Valid - last item is expression
@@ -265,35 +236,13 @@ x = do:
 # ❌ Invalid - last item is statement
 x = do:
     y = 5
-    print(y)  # Statement, not expression
+    print(y)  # Statement, not expression - ERROR
 
-# ✅ Fixed - use expression
+# ✅ Fixed - add expression after statement
 x = do:
     y = 5
     print(y)
     y  # Return y
-```
-
-## Type Compatibility
-
-All code paths must produce compatible types:
-
-```python
-# ✅ Valid - all paths return int
-value: int = do:
-    if x > 0:
-        10
-    elif x < 0:
-        -10
-    else:
-        0
-
-# ❌ Invalid - inconsistent types
-value = do:
-    if flag:
-        42      # int
-    else:
-        "text"  # str - ERROR: type mismatch
 ```
 
 ## Comparison with Other Constructs
@@ -306,113 +255,6 @@ value = do:
 | Function | Reusable logic | ✅ | ✅ |
 | Lambda | Anonymous function | ✅ | ❌ (single expression) |
 
-## With Try/Except
-
-`do:` blocks support exception handling:
-
-```python
-result = do:
-    try:
-        data = risky_operation()
-        process(data)
-    except ValueError as e:
-        log_error(e)
-        default_value
-```
-
-## C# Mapping
-
-Expression blocks are lowered to immediately-invoked lambda expressions (IILEs):
-
-```python
-# Sharpy
-result = do:
-    x = 5
-    y = 10
-    x + y
-```
-```csharp
-// C# 9.0
-var result = (() => {
-    var x = 5;
-    var y = 10;
-    return x + y;
-})();
-```
-
-**With Early Exit:**
-```python
-# Sharpy
-result = do:
-    if error:
-        break "error"
-    "success"
-```
-```csharp
-// C# 9.0
-var result = (() => {
-    if (error) {
-        return "error";
-    }
-    return "success";
-})();
-```
-
-## Performance Considerations
-
-- Creates a closure, small runtime overhead
-- Optimizer may inline in simple cases
-- Use for readability, not performance-critical paths
-
-```python
-# Good: complex initialization
-config = do:
-    # Many lines of setup
-    final_value
-
-# Overkill: simple expression
-x = do:
-    5 + 3  # Just use: x = 5 + 3
-```
-
-## Limitations
-
-- Cannot use `return` inside `do:` block (use `break` for early exit)
-- Cannot declare functions inside `do:` block
-- Last item must be an expression that produces a value
-
-```python
-# ❌ Cannot use return
-result = do:
-    return 42  # ERROR: return not allowed in do: block
-
-# ✅ Use break instead
-result = do:
-    break 42
-
-# ❌ Cannot end with statement
-result = do:
-    x = 5
-    pass  # ERROR: last item must be an expression
-
-# ✅ Add expression at end
-result = do:
-    x = 5
-    pass
-    x  # OK: returns x
-
-# ❌ Cannot end with non-returning expression
-result = do:
-    x = 5
-    print(x)  # ERROR: last item must be an expression that returns a value
-              # print() has no return value
-
-# ✅ Use function that returns a value at end
-result = do:
-    x = 5
-    type(x)  # OK: returns type object
-```
-
 ## When to Use
 
 **Use `do:` when:**
@@ -423,11 +265,7 @@ result = do:
 **Avoid `do:` when:**
 - Simple expressions suffice: `x = a + b`
 - Logic should be extracted to a named function
-- Performance is critical (adds closure overhead)
+- You need loops (use comprehensions or regular code instead)
 
 *Implementation*
-- *🔄 Lowered - Transformed to immediately-invoked lambda expression (IILE):*
-  - Statements become lambda body
-  - Last expression becomes return value
-  - `break value` becomes `return value`
-  - Entire construct is called immediately: `(() => { ... })()`
+- *🔄 Lowered - Transformed to immediately-invoked lambda expression (IILE)*

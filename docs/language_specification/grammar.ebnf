@@ -1008,6 +1008,125 @@ Recovery does NOT cross:
 
 Nested recovery (error during recovery) triggers immediate bailout to next
 synchronization point without attempting further repair.
+
+## Concrete Examples
+
+### Example 1: Missing colon in if statement
+
+```
+Source:
+    if x > 5
+        print("big")
+
+Error: Expected ':' after condition
+Recovery: Insert ':' after 'x > 5', continue parsing block
+Output:
+    error[E0101]: expected ':' after 'if' condition
+     --> example.spy:1:10
+      |
+    1 |     if x > 5
+      |             ^ expected ':' here
+      |
+      = help: add ':' after the condition: `if x > 5:`
+```
+
+### Example 2: Invalid expression in assignment
+
+```
+Source:
+    x = 5 +
+    y = 10
+
+Error: Expected expression after '+'
+Recovery: Insert placeholder expression, skip to NEWLINE, continue with 'y = 10'
+Output:
+    error[E0201]: expected expression after '+'
+     --> example.spy:1:11
+      |
+    1 |     x = 5 +
+      |            ^ expected expression
+      |
+    note: skipping to next statement
+```
+
+### Example 3: Malformed function definition
+
+```
+Source:
+    def foo(x, , z):
+        return x + z
+
+Error: Unexpected ',' in parameter list
+Recovery: Skip extra comma, continue parsing parameters
+Output:
+    error[E0301]: unexpected ',' in parameter list
+     --> example.spy:1:12
+      |
+    1 |     def foo(x, , z):
+      |               ^ unexpected ','
+      |
+      = help: remove the extra comma
+```
+
+### Example 4: Unclosed parenthesis
+
+```
+Source:
+    result = calculate(a, b
+    print(result)
+
+Error: Expected ')' to close function call
+Recovery: Insert ')' at end of line, emit NEWLINE, continue
+Output:
+    error[E0401]: unclosed '(' in function call
+     --> example.spy:1:23
+      |
+    1 |     result = calculate(a, b
+      |                       ^ unclosed parenthesis
+      |
+      = note: expected ')' before end of line
+```
+
+### Example 5: Invalid indentation
+
+```
+Source:
+    def foo():
+        x = 1
+      y = 2
+        z = 3
+
+Error: Indentation does not match any outer level
+Recovery: Treat as same indentation level, continue parsing
+Output:
+    error[E0501]: inconsistent indentation
+     --> example.spy:3:1
+      |
+    3 |       y = 2
+      | ^^^^^^ expected 8 spaces, found 6
+      |
+      = help: use exactly 4 spaces per indentation level
+```
+
+### Example 6: Multiple errors in one file
+
+```
+Source:
+    def foo(
+        x = 1 +
+        if True
+            pass
+
+Errors reported:
+    error[E0301]: unclosed '(' in function definition
+     --> example.spy:1:8
+
+    error[E0201]: expected expression after '+'
+     --> example.spy:2:11
+
+    error[E0101]: expected ':' after 'if' condition
+     --> example.spy:3:12
+```
 *)
 
 # =============================================================================

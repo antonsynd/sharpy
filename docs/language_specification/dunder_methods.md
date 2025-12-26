@@ -227,7 +227,6 @@ Conversion dunder methods map to C# explicit or implicit conversion operators:
 | Dunder | Required Return Type | C# Mapping | Notes |
 |--------|----------------------|------------|-------|
 | `__str__(self)` | `str` | `ToString()` override | Human-readable string |
-| `__repr__(self)` | `str` | Custom method or `ToString()` | Debug representation |
 | `__hash__(self)` | `int` | `GetHashCode()` override | Hash code |
 | `__len__(self)` | `int` | `Count` property | Length/count |
 | `__bool__(self)` | `bool` | `operator true`/`operator false` | Truthiness |
@@ -237,7 +236,6 @@ Conversion dunder methods map to C# explicit or implicit conversion operators:
 | `__getitem__(self, key: K)` | `V` | `this[K key] { get; }` indexer | Index access |
 | `__setitem__(self, key: K, value: V)` | `None` | `this[K key] { set; }` indexer | Index assignment |
 | `__delitem__(self, key: K)` | `None` | `Remove(K key)` method | Index deletion |
-| `__call__(self, ...)` | varies | `Invoke(...)` method | Callable objects |
 | `__index__(self)` | `int` | Used for integer conversion in slice contexts | |
 | `__format__(self, spec: str)` | `str` | `IFormattable.ToString(format, provider)` | Custom formatting |
 | `__reversed__(self)` | `Iterator[T]` | `Reverse()` method or custom | Reverse iteration |
@@ -263,17 +261,19 @@ Conversion dunder methods map to C# explicit or implicit conversion operators:
 
 | Dunder | C# Mapping | Notes |
 |--------|------------|-------|
-| `__abs__(self)` | Custom `Abs()` method | `Math.Abs()` doesn't dispatch to this |
-| `__round__(self, ndigits: int?)` | Custom `Round()` method | `Math.Round()` doesn't dispatch |
-| `__floor__(self)` | Custom `Floor()` method | `Math.Floor()` doesn't dispatch |
-| `__ceil__(self)` | Custom `Ceil()` method | `Math.Ceiling()` doesn't dispatch |
-| `__trunc__(self)` | Custom `Trunc()` method | Truncation toward zero |
 | `__divmod__(self, other)` | Returns `(quotient, remainder)` tuple | |
 
 ## Unsupported/Discouraged Dunders
 
 | Dunder | Status | Rationale |
 |--------|--------|-----------|
+| `__abs__(self)` | Not supported | `Math.Abs()` doesn't dispatch to this |
+| `__round__(self, ndigits: int?)` | Not supported | `Math.Round()` doesn't dispatch |
+| `__floor__(self)` | Not supported | `Math.Floor()` doesn't dispatch |
+| `__trunc__(self)` | Not supported | `Math.Truncate()` doesn't dispatch |
+| `__ceil__(self)` | Not supported | `Math.Ceiling()` doesn't dispatch |
+| `__call__` | Not supported | C# has no callable object protocol; use explicit `Invoke()` method |
+| `__repr__` | Not supported | No direct C# equivalent; use `__str__` for string representation |
 | `__del__` | Discouraged | Maps to `~Finalizer()` but non-deterministic in .NET. Use `IDisposable` instead. |
 | `__copy__` | Not supported | Use `ICloneable.Clone()` or explicit copy methods |
 | `__deepcopy__` | Not supported | Use serialization or explicit deep copy methods |
@@ -284,31 +284,4 @@ Conversion dunder methods map to C# explicit or implicit conversion operators:
 
 ## Dunder Method Invocation Rules
 
-Dunder methods in Sharpy are **not directly callable** by user code (unlike Python), except in specific contexts:
-
-**Allowed direct calls:**
-```python
-class Foo:
-    def __init__(self, x: int):
-        self.x = x
-
-    def __init__(self):
-        self.__init__(0)  # ✅ OK: calling overload from __init__
-
-    def __eq__(self, other: Foo) -> bool:
-        if not super().__eq__(other):  # ✅ OK: super() in dunder
-            return False
-        return self.x == other.x
-```
-
-**Disallowed direct calls:**
-```python
-obj = Foo()
-obj.__init__(5)     # ❌ ERROR: cannot call __init__ directly
-obj.__str__()       # ❌ ERROR: use str(obj) instead
-obj.__len__()       # ❌ ERROR: use len(obj) instead
-```
-
-*Implementation*
-- *🔄 Lowered - Dunder methods are transformed to their C# equivalents during code generation*
-- *Direct dunder calls are blocked during semantic analysis (except in allowed contexts)*
+See [dunder_invocation_rules.md](dunder_invocation_rules.md).

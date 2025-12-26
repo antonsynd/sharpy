@@ -9,7 +9,6 @@ Dunder methods (double-underscore methods like `__add__`, `__eq__`) define *how*
 ```python
 x = 5
 x.__eq__(3)         # ERROR: Cannot invoke dunder methods directly
-x.__repr__()        # ERROR: Cannot invoke dunder methods directly
 
 my_list = [1, 2, 3]
 my_list.__len__()   # ERROR: Cannot invoke dunder methods directly
@@ -33,7 +32,6 @@ x[0]                # ✅ Correct — compiler uses __getitem__ internally
 Use built-in functions for protocol dunders:
 
 ```python
-repr(x)             # ✅ Correct — uses __repr__ internally
 len(x)              # ✅ Correct — uses __len__ internally
 hash(x)             # ✅ Correct — uses __hash__ internally
 str(x)              # ✅ Correct — uses __str__ internally
@@ -41,7 +39,7 @@ str(x)              # ✅ Correct — uses __str__ internally
 
 ## Rationale
 
-- **Uniform syntax**: `repr(x)` and `x == y` work on any type, whether primitive or Sharpy-defined
+- **Uniform syntax**: `str(x)` and `x == y` work on any type, whether primitive or Sharpy-defined
 - **.NET interop**: Primitives from .NET (`int`, `str`, `bool`) don't have dunder methods—the compiler handles dispatch
 - **Zero overhead**: No wrapper types or boxing required for polymorphic dispatch
 - **Consistency**: Same syntax works whether the type defines a dunder or uses native behavior
@@ -76,17 +74,17 @@ class Animal:
     def __init__(self, name: str):
         self.name = name
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         return f"Animal({self.name})"
 
 class Dog(Animal):
     def __init__(self, name: str):
         super().__init__(name)
 
-    # Inherits __repr__ from Animal
+    # Inherits __str__ from Animal
 
 dog = Dog("Buddy")
-print(repr(dog))  # Output: Animal(Buddy)
+print(str(dog))  # Output: Animal(Buddy)
 ```
 
 ### Overriding Dunders
@@ -99,18 +97,14 @@ class Dog(Animal):
         super().__init__(name)
 
     @override
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         return f"Dog({self.name})"
 
 dog = Dog("Buddy")
-print(repr(dog))  # Output: Dog(Buddy)
+print(str(dog))  # Output: Dog(Buddy)
 ```
 
 **Note:** The `@override` decorator is **required** when overriding inherited dunder methods, just like any other virtual method. All inheritable dunder methods from base classes are implicitly `@virtual`.
-
-**Overriding Dunders from `Sharpy.Core.Object`:**
-
-Since all Sharpy classes inherit from `Sharpy.Core.Object`, which provides default implementations for `__str__`, `__repr__`, `__eq__`, `__ne__`, and `__hash__`, overriding these dunders requires `@override`:
 
 ```python
 class MyClass:
@@ -119,7 +113,7 @@ class MyClass:
     def __init__(self, value: int):
         self.value = value
 
-    # Must use @override since __str__ is inherited from Sharpy.Core.Object
+    # Must use @override since __str__ is inherited from System.Object (`ToString()`)
     @override
     def __str__(self) -> str:
         return f"MyClass({self.value})"
@@ -145,8 +139,8 @@ Within a dunder method, you may call the base class implementation via `super()`
 ```python
 class Child(Parent):
     @override
-    def __repr__(self) -> str:
-        return super().__repr__() + " (child)"  # ✅ OK
+    def __str__(self) -> str:
+        return super().__str__() + " (child)"  # ✅ OK
 
     @override
     def __eq__(self, other: object) -> bool:
@@ -193,13 +187,13 @@ Dunder calls on `self` or `super()` are **only** permitted:
 
 ```python
 class Example:
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         func = self.__eq__              # ❌ ERROR: Cannot capture dunder
         return str(self.__hash__())     # ✅ OK: Immediate call, cross-dunder
 
     def regular_method(self):
-        self.__repr__()                 # ❌ ERROR: Not inside a dunder
-        print(repr(self))               # ✅ OK: Use built-in function
+        self.__str__()                  # ❌ ERROR: Not inside a dunder
+        print(str(self))                # ✅ OK: Use built-in function
 
     def __eq__(self, other: object) -> bool:
         return other.__eq__(self)       # ❌ ERROR: Not self or super()
@@ -215,11 +209,11 @@ class Node:
     right: Node?
     value: int
 
-    def __repr__(self) -> str:
-        left_repr = repr(self.left) if self.left is not None else "None"
-        right_repr = repr(self.right) if self.right is not None else "None"
-        return f"Node({self.value}, {left_repr}, {right_repr})"
-        # NOT: self.left.__repr__()  # ❌ Would be error anyway
+    def __str__(self) -> str:
+        left_str = str(self.left) if self.left is not None else "None"
+        right_str = str(self.right) if self.right is not None else "None"
+        return f"Node({self.value}, {left_str}, {right_str})"
+        # NOT: self.left.__str__()  # ❌ Would be error anyway
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Node):

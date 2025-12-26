@@ -170,9 +170,29 @@ Some Python string methods have slightly different behavior due to .NET semantic
 |-----------|--------|-------------|
 | `"ab" * 3` | `"ababab"` | `"ababab"` (✅ same) |
 | `s.split()` | Splits on any whitespace | Splits on whitespace (✅ same) |
-| `s.split("")` | Error | Returns array of chars |
+| `s.split("")` | `ValueError` | Returns array with original string (see below) |
 | `s.count(sub)` | Count non-overlapping | Count non-overlapping (✅ same) |
 | `s[::2]` | Every other char | Slice syntax supported |
+
+**`s.split("")` behavior:**
+
+In Python, `"hello".split("")` raises `ValueError: empty separator`. In Sharpy/.NET, this returns a single-element array containing the original string:
+
+```python
+# Python
+"hello".split("")    # ValueError: empty separator
+
+# Sharpy
+"hello".split("")    # ["hello"] - no splitting occurs
+```
+
+To split a string into individual characters in Sharpy, use:
+
+```python
+chars = list("hello")           # ['h', 'e', 'l', 'l', 'o']
+# or
+chars = [c for c in "hello"]    # ['h', 'e', 'l', 'l', 'o']
+```
 
 ## Implications for Sharpy Developers
 
