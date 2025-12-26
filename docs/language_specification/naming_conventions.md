@@ -14,3 +14,5 @@
 | Enum value | `CAPS_SNAKE_CASE` | `PascalCase` |
 | Tagged union type | `PascalCase` | (unchanged) |
 | Tagged union case | `PascalCase` | (unchanged) |
+
+For the complete name transformation algorithm, including edge cases, collision handling, and dunder method mappings, see [name_mangling.md](name_mangling.md).

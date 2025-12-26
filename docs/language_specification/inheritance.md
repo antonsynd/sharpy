@@ -62,13 +62,42 @@ class JSONEmployee(Employee, ISerializable, IComparable):
 
 `super()` provides access to methods from a parent class. It is only valid in specific contexts.
 
-**Valid Contexts for `super()`:**
+### Grammar
+
+The `super()` construct has a restricted grammar:
+
+```ebnf
+super_call ::= 'super' '(' ')' '.' identifier '(' [ arguments ] ')'
+```
+
+This means:
+- `super()` must be followed by `.` (member access)
+- The member must be a method (identifier)
+- The method must be called (parentheses required)
+
+**Valid forms:**
+```python
+super().__init__(args)         # Constructor call
+super().method_name(args)      # Method call
+super().__eq__(other)          # Dunder method call
+```
+
+**Invalid forms (syntax/semantic errors):**
+```python
+super()                        # ERROR: standalone super() not allowed
+super().field                  # ERROR: cannot access fields via super()
+super().__init__               # ERROR: must call the method
+x = super()                    # ERROR: cannot assign super()
+super().method                 # ERROR: must call the method
+```
+
+### Valid Contexts for `super()`
 
 | Context | Example | Purpose |
 |---------|---------|---------|
 | Inside `__init__` | `super().__init__(args)` | Call parent constructor |
 | Inside dunder methods | `super().__eq__(other)` | Call parent dunder implementation |
-| Inside overriding methods | `super().method()` | Call parent method being overridden |
+| Inside `@override` methods | `super().method()` | Call parent method being overridden |
 
 **Constructor Chaining:**
 

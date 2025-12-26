@@ -56,10 +56,22 @@ The following are reserved keywords in Sharpy:
 
 | Keyword | Context | Notes |
 |---------|---------|-------|
-| `_` | Pattern matching | Wildcard pattern |
+| `_` | Pattern matching | Wildcard pattern (in `case` clauses) |
+| `_` | Function call arguments | Partial application placeholder |
 | `get` | Properties | Property getter |
 | `init` | Properties | Property set-on-initialization only |
 | `set` | Properties | Property setter |
+
+**Underscore (`_`) disambiguation:**
+
+The `_` identifier is context-sensitive:
+
+- In `case` pattern positions: wildcard pattern (matches anything, binds nothing)
+- In function call argument positions: partial application placeholder
+- In assignment targets: regular identifier (conventionally used to discard values)
+- In type annotations: regular identifier (not recommended)
+
+See [partial_application.md](partial_application.md) for detailed disambiguation rules.
 
 ## Future Keywords
 

@@ -927,7 +927,91 @@ Note: Sharpy uses [] for generics, not <>, so this ambiguity doesn't exist!
 *)
 
 # =============================================================================
-# 8. RESERVED FOR FUTURE
+# 8. ERROR RECOVERY STRATEGY
+# =============================================================================
+
+(*
+Error recovery allows the parser to continue after encountering syntax errors,
+enabling multiple errors to be reported in a single compilation pass.
+
+## Synchronization Points
+
+The parser synchronizes (resumes normal parsing) at these boundaries:
+
+### Statement-Level Recovery (Primary)
+When a statement parse fails:
+1. Skip tokens until reaching: NEWLINE, DEDENT, or end-of-file
+2. If NEWLINE: consume it, resume at next statement
+3. If DEDENT: leave for block recovery, resume at outer scope
+4. If EOF: stop parsing
+
+Statement boundary tokens:
+  - NEWLINE (end of simple statement)
+  - 'def', 'class', 'if', 'for', 'while', 'try', 'with', 'match' (compound statement start)
+  - '@' at line start (decorator)
+  - 'import', 'from' (import statement start)
+
+### Block-Level Recovery
+When a block (suite) parse fails:
+1. Track indentation level at block start
+2. On error, skip until DEDENT returns to or below starting level
+3. Resume parsing at the outer scope
+
+### Declaration-Level Recovery
+When a class/function body fails:
+1. Find matching DEDENT that closes the declaration
+2. Resume at next top-level declaration
+3. Preserve partial information for IDE support
+
+## Recovery Actions by Context
+
+| Context | Error | Recovery Action |
+|---------|-------|-----------------|
+| Statement | Unexpected token | Skip to NEWLINE, report error |
+| Expression | Missing operand | Insert placeholder, continue |
+| Block | Missing INDENT | Assume empty body, continue |
+| Function def | Invalid parameter | Skip to ')', report error |
+| Class def | Invalid base | Skip to ':', report error |
+| Import | Invalid module | Skip to NEWLINE, report error |
+| Match case | Invalid pattern | Skip to ':', report error |
+
+## Panic Mode Implementation
+
+```
+procedure recover_to_statement():
+    while current_token not in {EOF, NEWLINE, DEDENT, 'def', 'class', 'if', ...}:
+        advance()
+    if current_token == NEWLINE:
+        advance()  # consume newline, ready for next statement
+
+procedure recover_to_block_end(start_indent: int):
+    while current_indent > start_indent and current_token != EOF:
+        skip_to_newline()
+        advance()
+```
+
+## Token Insertion/Deletion
+
+For common errors, the parser may:
+- Insert missing colon: `if x` → `if x:`
+- Insert missing 'pass': empty block → `pass`
+- Delete duplicate tokens: `def def foo` → `def foo`
+
+These repairs are noted in diagnostics with "did you mean?" suggestions.
+
+## Limitations
+
+Recovery does NOT cross:
+- File boundaries (each file parsed independently)
+- Major syntactic boundaries (e.g., class body into module level)
+- String literals (unterminated strings abort recovery)
+
+Nested recovery (error during recovery) triggers immediate bailout to next
+synchronization point without attempting further repair.
+*)
+
+# =============================================================================
+# 9. RESERVED FOR FUTURE
 # =============================================================================
 
 (*

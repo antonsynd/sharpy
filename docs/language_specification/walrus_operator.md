@@ -55,6 +55,56 @@ print(x)  # ERROR: x is not defined
 | Iteration variable (`for x in`) | Comprehension | ❌ No |
 | Walrus assignment (`y :=`) | Containing | ✅ Yes |
 
+## Walrus in Comprehension Filter: Uninitialized Variable Handling
+
+When using walrus operator in a comprehension filter, if the comprehension produces no results, the walrus-assigned variable may never be assigned:
+
+```python
+# Potential issue: empty comprehension
+results = [y for x in items if (y := f(x)) > 0]
+# If items is empty, or no f(x) > 0, then y was never assigned!
+
+print(y)  # ❌ ERROR at compile time if y might be uninitialized
+```
+
+**Sharpy's static typing rule:** If a walrus-assigned variable is used after a comprehension, the compiler analyzes whether the variable is guaranteed to be assigned:
+
+| Scenario | Compiler Behavior |
+|----------|-------------------|
+| Variable used after, items guaranteed non-empty | ⚠️ Warning: "y may be uninitialized" |
+| Variable used after, items may be empty | ❌ Error: "y may be uninitialized" |
+| Variable not used after comprehension | ✅ OK (no issue) |
+| Variable pre-declared with default | ✅ OK (has fallback value) |
+
+**Safe patterns:**
+
+```python
+# Pattern 1: Pre-declare with default value
+y: int? = None
+results = [y for x in items if (y := f(x)) > 0]
+# y is either last assigned value or None
+
+# Pattern 2: Don't use the leaked variable
+results = [y for x in items if (y := f(x)) > 0]
+# Just use results, don't reference y afterward
+
+# Pattern 3: Ensure non-empty (if you can guarantee it)
+assert len(items) > 0
+results = [y for x in items if (y := f(x)) > 0]
+# Still a warning, but logic ensures y is assigned
+
+# Pattern 4: Use explicit loop if you need the variable
+last_y: int? = None
+results: list[int] = []
+for x in items:
+    y = f(x)
+    if y > 0:
+        last_y = y
+        results.append(y)
+```
+
+**Rationale:** Sharpy's static typing requires definite assignment. Unlike Python where accessing an unassigned variable raises `NameError` at runtime, Sharpy catches this at compile time.
+
 *Implementation*
 - *🔄 Lowered - Hoisted variable declaration:*
 

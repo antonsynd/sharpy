@@ -71,6 +71,73 @@ def categorize(n: int) -> str:
 - Must be exhaustive (all possible values handled)
 - Cases use `:` followed by an expression, not a block
 
+## Disambiguation: Expression vs Statement Context
+
+The parser determines whether `match` is an expression or statement based on syntactic context:
+
+**Expression contexts** (match produces a value):
+```python
+# Assignment RHS
+x = match value:
+    case 1: "one"
+    case _: "other"
+
+# Return statement
+return match value:
+    case True: "yes"
+    case False: "no"
+
+# Function argument
+f(match value:
+    case 1: "a"
+    case _: "b"
+)
+
+# Inside larger expression
+result = prefix + match value:
+    case 1: "one"
+    case _: "other"
+
+# List/dict literal element
+items = [match x:
+    case 1: "one"
+    case _: "other"
+]
+
+# Conditional expression
+y = (match x: case 1: "a" case _: "b") if flag else default
+```
+
+**Statement contexts** (match is standalone):
+```python
+# At statement level (not part of larger expression)
+match value:
+    case 1:
+        do_something()
+        log_result()
+    case _:
+        handle_default()
+
+# After if/elif/else at statement level
+if condition:
+    match value:
+        case 1:
+            action1()
+        case _:
+            action2()
+```
+
+**Syntactic distinction:**
+
+| Feature | Expression Form | Statement Form |
+|---------|-----------------|----------------|
+| Case body | Single expression after `:` | Indented block |
+| Used in | Assignment, return, arguments | Standalone statement |
+| Newline after `case X:` | Expression on same line | Block on next line |
+| Produces value | Yes | No |
+
+**Parser hint:** If `case pattern:` is followed by `NEWLINE INDENT`, it's statement form. If followed by an expression on the same line, it's expression form.
+
 *Implementation*
 - *🔄 Lowered*
   - *Statement form: C# `switch` statement*

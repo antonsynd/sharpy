@@ -11,6 +11,56 @@ partially_applied = function(arg1, _, arg3)
 
 The `_` represents an argument that will be provided when the partially applied function is called.
 
+## Disambiguation: `_` Placeholder vs Pattern Wildcard
+
+The underscore `_` serves two different purposes in Sharpy:
+
+1. **Partial application placeholder** - in function call argument positions
+2. **Pattern matching wildcard** - in `case` pattern positions
+
+**Disambiguation rule:** The parser determines `_` meaning based on syntactic context:
+
+| Context | `_` Meaning | Example |
+|---------|-------------|---------|
+| Function call argument | Partial application placeholder | `f(_, x)` creates `(a) => f(a, x)` |
+| Inside parenthesized operator expression | Operator section placeholder | `(_ * 2)` creates `(x) => x * 2` |
+| `case` pattern position | Wildcard pattern | `case _:` matches anything |
+| Type pattern argument | Wildcard pattern | `case Point(_, y):` matches any x |
+| Assignment target | Regular identifier | `_ = compute()` (discards result) |
+
+**Key disambiguation scenarios:**
+
+```python
+# Partial application - _ in call arguments
+f(_)                    # Partial: creates lambda taking 1 arg
+f(_, x)                 # Partial: creates lambda taking 1 arg
+obj.method(_, y)        # Partial: creates lambda taking 1 arg
+
+# Pattern matching - _ in case patterns
+match value:
+    case _:             # Wildcard: matches anything
+        pass
+    case Point(_, y):   # Wildcard: ignores first component
+        pass
+    case (_, _, z):     # Wildcards: ignores first two tuple elements
+        pass
+
+# Nested function calls in patterns - NOT partial application
+match value:
+    case Foo(f(_)):     # The f(_) is a positional pattern, _ is wildcard
+        pass            # NOT: partial application of f
+
+# Explicit partial in pattern context requires assignment
+match value:
+    case x if (partial := g(_, x)):  # Walrus creates partial, then tests
+        use(partial)
+```
+
+**Rule summary:**
+- Inside `case` clause patterns: `_` is **always** a wildcard
+- In function call arguments outside patterns: `_` is **always** partial application placeholder
+- When ambiguous, the pattern context wins
+
 ## Basic Usage
 
 ```python
@@ -182,7 +232,7 @@ validate_percentage(150) # False
 **Functional Pipelines:**
 ```python
 # Combine partial application with pipe operator
-result = data 
+result = data
     |> parse(_)
     |> filter((_ > 0), _)
     |> map((_ * 2), _)

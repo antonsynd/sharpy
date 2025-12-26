@@ -15,6 +15,64 @@ result = apply(10, lambda x: x ** 2)
 - Parameter types inferred from context
 - Expression result is automatically returned
 
+## Type Inference Requirements
+
+Lambda parameters have no type annotations; their types must be inferable from context. Sharpy requires sufficient context to determine all lambda parameter types.
+
+**Valid contexts (types inferable):**
+
+```python
+# 1. Assignment with explicit function type
+f: (int, int) -> int = lambda x, y: x + y  # ✅ x: int, y: int
+
+# 2. Function argument where parameter type is known
+def apply(value: int, transform: (int) -> int) -> int:
+    return transform(value)
+
+apply(5, lambda x: x * 2)  # ✅ x: int from transform's type
+
+# 3. Collection methods with known element types
+items: list[int] = [1, 2, 3]
+items.map(lambda x: x * 2)      # ✅ x: int from list[int]
+items.filter(lambda x: x > 0)   # ✅ x: int from list[int]
+
+# 4. Generic function with type inference from other args
+def transform[T, U](items: list[T], f: (T) -> U) -> list[U]:
+    return [f(item) for item in items]
+
+transform([1, 2, 3], lambda x: str(x))  # ✅ T=int inferred from list, x: int
+```
+
+**Invalid contexts (insufficient type information):**
+
+```python
+# ❌ No type context - ERROR
+g = lambda x, y: x + y
+# ERROR: Cannot infer types for lambda parameters 'x' and 'y'
+
+# ❌ Generic with no type hints - ERROR
+def process[T](f: (T) -> T): ...
+process(lambda x: x * 2)
+# ERROR: Cannot infer type parameter T from lambda alone
+
+# ❌ Heterogeneous operations - ERROR
+h = lambda x: x.upper()  # What is x? str? bytes? custom type?
+# ERROR: Cannot infer type for lambda parameter 'x'
+```
+
+**Fix by providing context:**
+
+```python
+# Add explicit type annotation
+g: (int, int) -> int = lambda x, y: x + y  # ✅
+
+# Or use where inference can succeed
+numbers: list[int] = [1, 2, 3]
+doubled = numbers.map(lambda x: x * 2)     # ✅ x inferred as int
+```
+
+**Rationale:** Sharpy is statically typed; all types must be known at compile time. Unlike Python where lambdas are dynamically typed, Sharpy lambdas must have determinable types for the generated C# code.
+
 ## Lambda Expression Scope
 
 Lambdas can contain any expression, including:

@@ -2,26 +2,85 @@
 
 Operators listed from highest to lowest precedence:
 
-| Precedence | Operators | Description |
-|------------|-----------|-------------|
-| 1 | `()`, `[]`, `.`, `?.` | Grouping, indexing, member access |
-| 2 | `**` | Exponentiation (right-associative) |
-| 3 | `+x`, `-x`, `~x` | Unary operators |
-| 4 | `*`, `/`, `//`, `%` | Multiplicative |
-| 5 | `+`, `-` | Additive |
-| 6 | `<<`, `>>` | Bitwise shifts |
-| 7 | `&` | Bitwise AND |
-| 8 | `^` | Bitwise XOR |
-| 9 | `\|` | Bitwise OR |
-| 10 | `to` | Type coercion |
-| 11 | `in`, `not in`, `is`, `is not`, `<`, `<=`, `>`, `>=`, `!=`, `==` | Comparisons |
-| 12 | `not` | Logical NOT |
-| 13 | `and` | Logical AND |
-| 14 | `or` | Logical OR |
-| 15 | `??` | Null coalescing |
-| 16 | `try`, `maybe` | Result/Optional wrapping expressions |
-| 17 | `x if c else y` | Conditional expression |
-| 18 | `lambda` | Lambda expression |
+| Precedence | Operators | Description | Associativity |
+|------------|-----------|-------------|---------------|
+| 1 | `()`, `[]`, `.`, `?.` | Grouping, indexing, member access | Left-to-right |
+| 2 | `**` | Exponentiation | **Right-to-left** |
+| 3 | `+x`, `-x`, `~x` | Unary operators | Right-to-left (unary) |
+| 4 | `*`, `/`, `//`, `%` | Multiplicative | Left-to-right |
+| 5 | `+`, `-` | Additive | Left-to-right |
+| 6 | `<<`, `>>` | Bitwise shifts | Left-to-right |
+| 7 | `&` | Bitwise AND | Left-to-right |
+| 8 | `^` | Bitwise XOR | Left-to-right |
+| 9 | `\|` | Bitwise OR | Left-to-right |
+| 10 | `\|>` | Pipe operator | Left-to-right |
+| 11 | `..`, `..=` | Range operators | Non-associative |
+| 12 | `to` | Type coercion | Left-to-right |
+| 13 | `in`, `not in`, `is`, `is not`, `<`, `<=`, `>`, `>=`, `!=`, `==` | Comparisons | **Chained** (see below) |
+| 14 | `not` | Logical NOT | Right-to-left (unary) |
+| 15 | `and` | Logical AND | Left-to-right |
+| 16 | `or` | Logical OR | Left-to-right |
+| 17 | `??` | Null coalescing | Left-to-right |
+| 18 | `try`, `maybe` | Result/Optional wrapping expressions | Right-to-left (prefix) |
+| 19 | `x if c else y` | Conditional expression | Right-to-left |
+| 20 | `lambda` | Lambda expression | Right-to-left |
+| 21 | `:=` | Walrus (assignment expression) | Right-to-left |
+
+## Associativity Details
+
+**Right-associative operators:**
+```python
+# Exponentiation chains right-to-left
+2 ** 3 ** 2    # = 2 ** (3 ** 2) = 2 ** 9 = 512
+
+# Conditional chains right-to-left
+a if x else b if y else c    # = a if x else (b if y else c)
+```
+
+**Comparison chaining:**
+
+Comparison operators are neither left nor right associative. Instead, they form **chains** that are evaluated as conjunctions:
+
+```python
+# Chained comparisons
+a < b < c      # Equivalent to: (a < b) and (b < c)
+a == b == c    # Equivalent to: (a == b) and (b == c)
+a < b <= c     # Equivalent to: (a < b) and (b <= c)
+
+# Each operand is evaluated at most once
+# If 'b' is a function call, it's called only once:
+a < expensive() < c    # temp = expensive(); (a < temp) and (temp < c)
+```
+
+**Note:** `is` and `in` operators participate in chaining:
+```python
+a is b is c           # (a is b) and (b is c)
+a in b in c           # (a in b) and (b in c)
+a < b in c            # (a < b) and (b in c)
+```
+
+**Non-associative operators:**
+
+Range operators cannot be chained:
+```python
+1..5..10    # ERROR: Range operators are non-associative
+(1..5)..10  # ERROR: Cannot create range of ranges this way
+```
+
+## Pipe Operator Precedence
+
+The pipe operator `|>` has lower precedence than arithmetic but higher than range and type coercion operators, enabling natural data flow:
+
+```python
+# Pipe captures the left-hand expression fully
+data |> filter(predicate) |> map(transform)  # Chains left-to-right
+
+# Arithmetic happens before piping
+x + 1 |> double    # Equivalent to: (x + 1) |> double
+
+# Use parentheses for complex right-hand expressions
+items |> (lambda x: x.value)  # Parentheses needed for lambda
+```
 
 ## Try and Maybe Expressions
 

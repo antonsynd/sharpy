@@ -13,6 +13,62 @@ result = do:
 
 The last line of the block must be an expression (not a statement), and its value becomes the value of the entire `do:` block.
 
+## Allowed and Disallowed Constructs
+
+The following table specifies what can and cannot appear inside a `do:` block:
+
+| Construct | Allowed | Notes |
+|-----------|---------|-------|
+| Variable declarations | ✅ | `x = 5`, `x: int = 5` |
+| `if`/`elif`/`else` | ✅ | All branches must produce compatible types |
+| `for` loops | ✅ | Loop body can contain statements |
+| `while` loops | ✅ | Loop body can contain statements |
+| `match` (statement form) | ✅ | With statement bodies |
+| `match` (expression form) | ✅ | As the final expression |
+| `try`/`except`/`finally` | ✅ | For exception handling |
+| `with` | ✅ | Context managers |
+| `break` with value | ✅ | Early exit: `break "result"` |
+| `break` without value | ✅ | Only in nested loops |
+| `continue` | ✅ | Only in nested loops |
+| Nested `do:` blocks | ✅ | `do:` inside `do:` |
+| Function calls | ✅ | Including side-effecting calls |
+| `return` | ❌ | Use `break value` for early exit |
+| `def` (function definition) | ❌ | Define functions outside `do:` block |
+| `class` definition | ❌ | Define classes outside `do:` block |
+| `yield` | ❌ | Generators cannot be defined inline |
+| `import` | ❌ | Imports must be at module level |
+
+**Early exit with `break`:**
+
+Inside a `do:` block (not inside a loop), `break` with a value exits the block and returns that value:
+
+```python
+result = do:
+    if error_condition:
+        break "error"   # Exit do: block, return "error"
+
+    process_data()
+    "success"           # Normal return if no early exit
+```
+
+**`yield` restriction:**
+
+`yield` is not allowed because `do:` blocks are lowered to immediately-invoked lambdas, not generator functions:
+
+```python
+# ❌ ERROR: yield not allowed in do: block
+result = do:
+    yield 1  # ERROR
+    yield 2
+    "done"
+
+# ✅ Use a generator function instead
+def gen():
+    yield 1
+    yield 2
+result = list(gen())
+```
+
 ## Basic Usage
 
 ```python

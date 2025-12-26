@@ -19,6 +19,36 @@ r6: range[int] = ..10       # Negative infinity to 9
 r7: range[int] = ..=10      # Negative infinity to 10
 ```
 
+## Range Operator Precedence
+
+The `..` and `..=` operators bind **looser** than member access (`.`) but **tighter** than comparison operators. This enables intuitive parsing of common patterns:
+
+| Expression | Parsed As | Explanation |
+|------------|-----------|-------------|
+| `x..y.z` | `x..(y.z)` | Member access binds tighter |
+| `a.b..c.d` | `(a.b)..(c.d)` | Both sides get member access |
+| `0..n-1` | `0..(n-1)` | Arithmetic binds tighter |
+| `x..y < z` | `(x..y) < z` | Range binds tighter than comparison |
+| `a + b..c + d` | `(a + b)..(c + d)` | Arithmetic on both sides |
+
+**Recommended:** Use parentheses for clarity in complex expressions:
+
+```python
+# Clear
+r = (obj.start)..(obj.end)
+r = 0..(len(items) - 1)
+
+# Avoid (works, but less clear)
+r = obj.start..obj.end      # Same as above, but parentheses help readers
+```
+
+**Note:** Range operators are **non-associative**. Chaining is not allowed:
+
+```python
+1..5..10      # ERROR: Range operators cannot be chained
+(1..5)..10    # ERROR: Cannot create range of ranges
+```
+
 ## Range Types
 
 ```python

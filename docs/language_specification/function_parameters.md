@@ -130,6 +130,84 @@ def process(value: int, multiplier: int) -> str:
 *Implementation*
 - *✅ Native - C# supports method overloading.*
 
+## Overload Resolution Rules
+
+Sharpy follows **C# overload resolution rules exactly**. When multiple overloads could match a call, the compiler selects the "best" overload using C#'s algorithm.
+
+### Resolution Algorithm Summary
+
+1. **Identify candidate overloads**: All overloads where argument count matches parameter count (accounting for defaults and `*args`)
+
+2. **Filter applicable overloads**: Remove overloads where any argument cannot be converted to the corresponding parameter type
+
+3. **Find best overload**: Among applicable overloads, select the one that is "better" than all others
+
+### "Better" Overload Rules
+
+An overload A is better than overload B if:
+
+1. **More specific types**: Arguments match A's parameter types more specifically
+   ```python
+   def f(x: int): ...       # More specific
+   def f(x: object): ...    # Less specific
+
+   f(42)  # Calls f(int) - int is more specific than object
+   ```
+
+2. **Fewer conversions needed**: A requires fewer implicit conversions
+   ```python
+   def f(x: int): ...
+   def f(x: double): ...
+
+   f(42)    # Calls f(int) - no conversion needed
+   f(3.14)  # Calls f(double) - exact match
+   ```
+
+3. **Non-variadic preferred**: Non-`*args` overloads are preferred over `*args` overloads
+   ```python
+   def f(x: int): ...
+   def f(*args: int): ...
+
+   f(42)  # Calls f(int) - non-variadic preferred
+   ```
+
+### Ambiguous Overloads
+
+If no single overload is "better" than all others, the call is ambiguous:
+
+```python
+def f(x: int, y: double): ...
+def f(x: double, y: int): ...
+
+f(1, 2)  # ERROR: Ambiguous - both equally good after implicit conversions
+```
+
+**Resolution:** Use explicit type conversions to disambiguate:
+```python
+f(1, 2.0)       # Calls f(int, double)
+f(1.0, 2)       # Calls f(double, int)
+f(1 to double, 2)  # Explicitly calls f(double, int)
+```
+
+### Default Parameters and Overloads
+
+Default parameters expand the applicable overloads:
+
+```python
+def greet(name: str): ...
+def greet(name: str, greeting: str = "Hello"): ...
+
+greet("Alice")  # ERROR: Ambiguous - both overloads applicable
+```
+
+**Recommendation:** Avoid overloads that differ only in having additional defaulted parameters.
+
+### Reference
+
+For complete details, see the [C# Language Specification: Overload Resolution](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/expressions#overload-resolution).
+
+Sharpy deviates from C# in one area: **named argument handling**. In Sharpy, parameter names are purely documentary in the signature and do not participate in overload resolution.
+
 ## See Also
 
 - [Function Default Parameters](function_default_parameters.md) - Detailed guide to default parameter values and compile-time constant requirements

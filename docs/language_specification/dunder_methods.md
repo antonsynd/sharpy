@@ -197,62 +197,118 @@ including `T` or `U` (if present), then:
 
 ## Conversion Methods
 
-__str__ `public static explicit operator string(T self)`
-__int__
-__float__
-__double__
-__decimal__
-__uint__
-__short__
-__ushort__
-__long__
-__ulong__
-__byte__
-__sbyte__
-__complex__
-__bytes__
+Conversion dunder methods map to C# explicit or implicit conversion operators:
 
-**Special Methods:**
+| Dunder | C# Output | Notes |
+|--------|-----------|-------|
+| `__str__(self) -> str` | `public override string ToString()` | Also provides explicit `operator string` |
+| `__int__(self) -> int` | `public static explicit operator int(T self)` | |
+| `__float__(self) -> double` | `public static explicit operator double(T self)` | |
+| `__bool__(self) -> bool` | `public static bool operator true(T self)` + `operator false` | |
 
-| Dunder | Required Return Type | Notes |
-|--------|----------------------|-------|
-| `__str__(self)` | `str` | Human-readable string |
-| `__repr__(self)` | `str` | Debug representation |
-| `__hash__(self)` | `int` | Hash code |
-| `__len__(self)` | `int` | Length/count |
-| `__bool__(self)` | `bool` | Truthiness (for `if`, `while`, `and`, `or`, `not`) |
-| `__true__()` | N/A | C# `operator true` (advanced, rarely needed) |
-| `__false__()` | N/A | C# `operator false` (advanced, rarely needed) |
-| `__contains__(self, item: T)` | `bool` | Membership test |
-| `__iter__(self)` | `Iterator[T]` | Iteration |
-| `__getitem__(self, key: K)` | `V` | Index access |
-| `__setitem__(self, key: K, value: V)` | `None` | Index assignment |
+**Numeric conversion dunders (all explicit operators):**
 
-__delitem__
-__next__
-__not__
-__index__
-__enter__
-__exit__
-__format__
-__reversed__
-__call__ # translate to Invoke()?
-__matmul__
-__divmod__
-__rdivmod__
-__abs__ # Math.abs doesn't affect
-__round__ # Math.round doesn't affect
-__trunc__
-__floor__ # Math.floor doesn't affect
-__ceil__ # Math.ceil doesn't affect
+| Dunder | C# Output |
+|--------|-----------|
+| `__int__` | `explicit operator int` |
+| `__float__` | `explicit operator double` |
+| `__double__` | `explicit operator double` |
+| `__decimal__` | `explicit operator decimal` |
+| `__long__` | `explicit operator long` |
+| `__short__` | `explicit operator short` |
+| `__byte__` | `explicit operator byte` |
+| `__sbyte__` | `explicit operator sbyte` |
+| `__uint__` | `explicit operator uint` |
+| `__ulong__` | `explicit operator ulong` |
+| `__ushort__` | `explicit operator ushort` |
 
-__aenter__
-__aexit__
-__aiter__
-__anext__
-__await__
+## Special Methods
 
-__del__ # Finalize() probably
-__copy__
-__deepcopy__
-__replace__
+| Dunder | Required Return Type | C# Mapping | Notes |
+|--------|----------------------|------------|-------|
+| `__str__(self)` | `str` | `ToString()` override | Human-readable string |
+| `__repr__(self)` | `str` | Custom method or `ToString()` | Debug representation |
+| `__hash__(self)` | `int` | `GetHashCode()` override | Hash code |
+| `__len__(self)` | `int` | `Count` property | Length/count |
+| `__bool__(self)` | `bool` | `operator true`/`operator false` | Truthiness |
+| `__contains__(self, item: T)` | `bool` | `Contains(T item)` method | Membership test (`in` operator) |
+| `__iter__(self)` | `Iterator[T]` | `IEnumerable<T>.GetEnumerator()` | Iteration |
+| `__next__(self)` | `T` | `IEnumerator<T>.MoveNext()` + `Current` | Iterator protocol |
+| `__getitem__(self, key: K)` | `V` | `this[K key] { get; }` indexer | Index access |
+| `__setitem__(self, key: K, value: V)` | `None` | `this[K key] { set; }` indexer | Index assignment |
+| `__delitem__(self, key: K)` | `None` | `Remove(K key)` method | Index deletion |
+| `__call__(self, ...)` | varies | `Invoke(...)` method | Callable objects |
+| `__index__(self)` | `int` | Used for integer conversion in slice contexts | |
+| `__format__(self, spec: str)` | `str` | `IFormattable.ToString(format, provider)` | Custom formatting |
+| `__reversed__(self)` | `Iterator[T]` | `Reverse()` method or custom | Reverse iteration |
+
+## Context Manager Methods
+
+| Dunder | C# Mapping | Notes |
+|--------|------------|-------|
+| `__enter__(self)` | `IDisposable` pattern / resource acquisition | Returns resource |
+| `__exit__(self, exc_type, exc_val, exc_tb)` | `Dispose()` or exception handling | Cleanup |
+
+## Async Context Manager Methods
+
+| Dunder | C# Mapping | Notes |
+|--------|------------|-------|
+| `__aenter__(self)` | `IAsyncDisposable` pattern | Async resource acquisition |
+| `__aexit__(self, exc_type, exc_val, exc_tb)` | `DisposeAsync()` | Async cleanup |
+| `__aiter__(self)` | `IAsyncEnumerable<T>` | Async iteration |
+| `__anext__(self)` | `IAsyncEnumerator<T>` | Async iterator protocol |
+| `__await__(self)` | Custom awaiter | Awaitable objects |
+
+## Math Methods
+
+| Dunder | C# Mapping | Notes |
+|--------|------------|-------|
+| `__abs__(self)` | Custom `Abs()` method | `Math.Abs()` doesn't dispatch to this |
+| `__round__(self, ndigits: int?)` | Custom `Round()` method | `Math.Round()` doesn't dispatch |
+| `__floor__(self)` | Custom `Floor()` method | `Math.Floor()` doesn't dispatch |
+| `__ceil__(self)` | Custom `Ceil()` method | `Math.Ceiling()` doesn't dispatch |
+| `__trunc__(self)` | Custom `Trunc()` method | Truncation toward zero |
+| `__divmod__(self, other)` | Returns `(quotient, remainder)` tuple | |
+
+## Unsupported/Discouraged Dunders
+
+| Dunder | Status | Rationale |
+|--------|--------|-----------|
+| `__del__` | Discouraged | Maps to `~Finalizer()` but non-deterministic in .NET. Use `IDisposable` instead. |
+| `__copy__` | Not supported | Use `ICloneable.Clone()` or explicit copy methods |
+| `__deepcopy__` | Not supported | Use serialization or explicit deep copy methods |
+| `__pow__` | Not supported | `**` is not an overloadable operator in C# |
+| `__floordiv__` | Not supported | Use `__div__` for `/` operator; `//` handled specially |
+| `__matmul__` | Not supported | `@` operator not available in C# |
+| `__complex__` | Not supported | Use explicit conversion methods |
+
+## Dunder Method Invocation Rules
+
+Dunder methods in Sharpy are **not directly callable** by user code (unlike Python), except in specific contexts:
+
+**Allowed direct calls:**
+```python
+class Foo:
+    def __init__(self, x: int):
+        self.x = x
+
+    def __init__(self):
+        self.__init__(0)  # ✅ OK: calling overload from __init__
+
+    def __eq__(self, other: Foo) -> bool:
+        if not super().__eq__(other):  # ✅ OK: super() in dunder
+            return False
+        return self.x == other.x
+```
+
+**Disallowed direct calls:**
+```python
+obj = Foo()
+obj.__init__(5)     # ❌ ERROR: cannot call __init__ directly
+obj.__str__()       # ❌ ERROR: use str(obj) instead
+obj.__len__()       # ❌ ERROR: use len(obj) instead
+```
+
+*Implementation*
+- *🔄 Lowered - Dunder methods are transformed to their C# equivalents during code generation*
+- *Direct dunder calls are blocked during semantic analysis (except in allowed contexts)*

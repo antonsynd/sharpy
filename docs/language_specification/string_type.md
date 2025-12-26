@@ -107,6 +107,73 @@ emoji_str = "Hello 😀 World"
 escape_str = "\u0048\u0065\u006C\u006C\u006F"  # "Hello"
 ```
 
+## String Method Availability
+
+Sharpy provides **both** Pythonic method names and .NET method names for string operations. The Pythonic names are aliases that compile to the corresponding .NET methods.
+
+### Pythonic String Methods (Aliases)
+
+| Sharpy Method | .NET Method | Notes |
+|---------------|-------------|-------|
+| `s.upper()` | `s.ToUpper()` | Uppercase |
+| `s.lower()` | `s.ToLower()` | Lowercase |
+| `s.strip()` | `s.Trim()` | Remove leading/trailing whitespace |
+| `s.lstrip()` | `s.TrimStart()` | Remove leading whitespace |
+| `s.rstrip()` | `s.TrimEnd()` | Remove trailing whitespace |
+| `s.startswith(prefix)` | `s.StartsWith(prefix)` | Check prefix |
+| `s.endswith(suffix)` | `s.EndsWith(suffix)` | Check suffix |
+| `s.find(sub)` | `s.IndexOf(sub)` | Find substring (returns -1 if not found) |
+| `s.rfind(sub)` | `s.LastIndexOf(sub)` | Find last occurrence |
+| `s.replace(old, new)` | `s.Replace(old, new)` | Replace all occurrences |
+| `s.split()` | `s.Split()` | Split on whitespace |
+| `s.split(sep)` | `s.Split(sep)` | Split on separator |
+| `s.join(items)` | `string.Join(s, items)` | Join with separator |
+| `s.count(sub)` | Custom extension | Count occurrences |
+| `s.isdigit()` | Custom extension | Check if all digits |
+| `s.isalpha()` | Custom extension | Check if all alphabetic |
+| `s.isalnum()` | Custom extension | Check if alphanumeric |
+| `s.isspace()` | Custom extension | Check if all whitespace |
+
+### .NET Methods (Direct Access)
+
+All `System.String` methods are directly available:
+
+```python
+s = "Hello, World!"
+
+# .NET methods work directly
+s.ToUpper()                    # "HELLO, WORLD!"
+s.Contains("World")            # True
+s.Substring(0, 5)              # "Hello"
+s.PadLeft(20)                  # "       Hello, World!"
+s.Insert(7, "Beautiful ")      # "Hello, Beautiful World!"
+
+# Static methods via str class
+str.IsNullOrEmpty(s)           # False
+str.Join(", ", ["a", "b"])     # "a, b"
+```
+
+### Method Resolution
+
+When both a Pythonic alias and a .NET method could apply, the Pythonic alias takes precedence:
+
+```python
+s.upper()    # Calls ToUpper() - Pythonic preferred
+s.ToUpper()  # Also works - explicit .NET name
+```
+
+### Differences from Python
+
+Some Python string methods have slightly different behavior due to .NET semantics:
+
+| Operation | Python | Sharpy/.NET |
+|-----------|--------|-------------|
+| `"ab" * 3` | `"ababab"` | `"ababab"` (✅ same) |
+| `s.split()` | Splits on any whitespace | Splits on whitespace (✅ same) |
+| `s.split("")` | Error | Returns array of chars |
+| `s.count(sub)` | Count non-overlapping | Count non-overlapping (✅ same) |
+| `s[::2]` | Every other char | Slice syntax supported |
+
 ## Implications for Sharpy Developers
 
 1. **String length may differ from character count:** `len()` returns UTF-16 code units, which may be more than the number of visible characters for strings containing emoji or rare Unicode characters.
