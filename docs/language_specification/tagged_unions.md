@@ -90,21 +90,75 @@ failure: Result[int, str] = Result.Err("Something went wrong")
 
 **Note:** Case names follow the same casing as defined in the enum declaration (typically `PascalCase`). The syntax `Result.Ok(42)` is a constructor call that creates an instance of the `Ok` case. This of course is just a convention and is not enforced by the compiler.
 
+**Type Inference in Return Statements:**
+
+When returning from a function with a tagged union return type, the type name can be omitted and the case name used directly:
+
+```python
+def divide(a: double, b: double) -> Result[double, str]:
+    if b == 0:
+        return Err("Division by zero")  # Short for Result.Err(...)
+    return Ok(a / b)                     # Short for Result.Ok(...)
+```
+
+The compiler infers the full type from the function's return type annotation, allowing for more concise code.
+
+**Type Inference in Variable and Argument Assignments:**
+
+The type name can also be omitted when assigning to variables, arguments, or default parameters with an explicit tagged union type annotation:
+
+```python
+# Variable assignments with type annotations
+result: Result[int, str] = Ok(42)           # Short for Result.Ok(42)
+error: Result[int, str] = Err("failed")     # Short for Result.Err("failed")
+
+# Function parameters with default values
+def process(status: Result[int, str] = Ok(0)) -> None:
+    match status:
+        case Ok(value): print(f"Value: {value}")
+        case Err(msg): print(f"Error: {msg}")
+
+# Argument passing
+def handle_result(res: Result[int, str]) -> None:
+    pass
+
+handle_result(Ok(123))      # Short for Result.Ok(123)
+handle_result(Err("bad"))   # Short for Result.Err("bad")
+```
+
+The compiler infers the full type from the variable's type annotation or the parameter's type signature.
+
 ## Pattern Matching
 
 ```python
 def divide(a: double, b: double) -> Result[double, str]:
     if b == 0:
-        return Result.Err("Division by zero")
-    return Result.Ok(a / b)
+        return Err("Division by zero")  # Type name omitted in return
+    return Ok(a / b)                     # Type name omitted in return
 
 result = divide(10, 2)
 match result:
-    case Result.Ok(value):
+    case Ok(value):              # Type name omitted in match patterns
         print(f"Success: {value}")
-    case Result.Err(error):
+    case Err(error):             # Type name omitted in match patterns
         print(f"Error: {error}")
 ```
+
+**Type Inference in Match Statements:**
+
+When matching on a tagged union value, the type name can be omitted from case patterns. The compiler infers the type from the match subject:
+
+```python
+# Both forms are equivalent:
+match result:
+    case Result.Ok(value): ...   # Explicit form
+    case Ok(value): ...          # Short form (type inferred)
+
+    case Result.Err(error): ...  # Explicit form
+    case Err(error): ...         # Short form (type inferred)
+```
+
+This makes pattern matching more concise, especially when the matched type is clear from context.
 
 ## Methods on Tagged Unions
 
@@ -115,23 +169,23 @@ enum Result[T, E]:
 
     def is_ok(self) -> bool:
         match self:
-            case Result.Ok():
+            case Ok():      # Type name omitted
                 return True
-            case Result.Err():
+            case Err():     # Type name omitted
                 return False
 
     def unwrap(self) -> T:
         match self:
-            case Result.Ok(value):
+            case Ok(value):   # Type name omitted
                 return value
-            case Result.Err(error):
+            case Err(error):  # Type name omitted
                 raise Exception(f"Called unwrap on Err: {error}")
 
     def unwrap_or(self, default: T) -> T:
         match self:
-            case Result.Ok(value):
+            case Ok(value):   # Type name omitted
                 return value
-            case Result.Err():
+            case Err():       # Type name omitted
                 return default
 ```
 

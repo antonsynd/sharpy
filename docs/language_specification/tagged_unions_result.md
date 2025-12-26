@@ -107,7 +107,7 @@ See [Try Expressions](try_expressions.md) for more details on this special synta
 | Success/Some case | `Result.Ok(value)` | `value` |
 | Failure/None case | `Result.Err(error)` | `None` |
 | Error information | ✅ Typed error `E` | ❌ No error info |
-| Pattern matching | `case Result.Ok(v):` | `case Some(v):` or `if x is not None:` |
+| Pattern matching | `case Result.Ok(v):` | `if x is not None:` |
 | Use case | Operations that can fail with details | Optional values without error details |
 
 ## Examples
@@ -117,21 +117,21 @@ See [Try Expressions](try_expressions.md) for more details on this special synta
 ```python
 def read_config(path: str) -> Result[Config, str]:
     if not file_exists(path):
-        return Result.Err(f"File not found: {path}")
-    
+        return Err(f"File not found: {path}")
+
     try:
         content = read_file(path)
         config = parse_config(content)
-        return Result.Ok(config)
+        return Ok(config)
     except Exception as e:
-        return Result.Err(f"Failed to read config: {e}")
+        return Err(f"Failed to read config: {e}")
 
 # Using the result
 result = read_config("config.yaml")
 match result:
-    case Result.Ok(config):
+    case Ok(config):
         app.configure(config)
-    case Result.Err(error):
+    case Err(error):
         print(f"Configuration error: {error}")
 ```
 
@@ -141,19 +141,19 @@ match result:
 def process_user_input(input: str) -> Result[int, str]:
     # Validate input
     if not input:
-        return Result.Err("Input cannot be empty")
-    
+        return Err("Input cannot be empty")
+
     # Parse to number
     try:
         value = int(input)
     except:
-        return Result.Err("Input must be a number")
-    
+        return Err("Input must be a number")
+
     # Validate range
     if value < 0 or value > 100:
-        return Result.Err("Value must be between 0 and 100")
-    
-    return Result.Ok(value)
+        return Err("Value must be between 0 and 100")
+
+    return Ok(value)
 ```
 
 *Implementation*

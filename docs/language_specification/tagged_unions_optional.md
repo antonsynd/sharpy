@@ -30,14 +30,14 @@ Use pattern matching to handle both Some and Nothing cases:
 def find_user(id: int) -> Optional[User]:
     user = database.find(id)
     if user is not None:
-        return Optional.Some(user)
-    return Optional.Nothing
+        return Some(user)
+    return Nothing
 
 result = find_user(123)
 match result:
-    case Optional.Some(user):
+    case Some(user):
         print(f"Found user: {user.name}")
-    case Optional.Nothing:
+    case Nothing:
         print("User not found")
 ```
 
@@ -53,9 +53,9 @@ enum Optional[T]:
     def is_some(self) -> bool:
         """Returns True if the optional contains a value"""
         match self:
-            case Optional.Some():
+            case Some():
                 return True
-            case Optional.Nothing:
+            case Nothing:
                 return False
 
     def is_nothing(self) -> bool:
@@ -65,9 +65,9 @@ enum Optional[T]:
     def unwrap(self) -> T:
         """Returns the value or raises an exception"""
         match self:
-            case Optional.Some(value):
+            case Some(value):
                 return value
-            case Optional.Nothing:
+            case Nothing:
                 raise Exception("Called unwrap on Nothing")
 
     def unwrap_or(self, default: T) -> T:
@@ -81,33 +81,19 @@ enum Optional[T]:
     def unwrap_or_else(self, f: () -> T) -> T:
         """Returns the value or calls f"""
         match self:
-            case Optional.Some(value):
+            case Some(value):
                 return value
-            case Optional.Nothing:
+            case Nothing:
                 return f()
 
     def map(self, f: (T) -> U) -> Optional[U]:
         """Transforms the contained value if present"""
         match self:
-            case Optional.Some(value):
-                return Optional.Some(f(value))
-            case Optional.Nothing:
-                return Optional.Nothing
+            case Some(value):
+                return Some(f(value))
+            case Nothing:
+                return Nothing
 ```
-
-## Maybe Expressions
-
-Optional types have special integration with maybe expressions for ergonomic optional chaining:
-
-```python
-def get_user_email(user_id: int) -> Optional[str]:
-    # If any operation returns Nothing, the chain short-circuits
-    user = maybe? find_user(user_id)
-    email = maybe? user.get_email()
-    return Optional.Some(email)
-```
-
-See [Maybe Expressions](maybe_expressions.md) for more details on this special syntax.
 
 ## Comparison with Nullable Types
 
@@ -141,15 +127,15 @@ See [Maybe Expressions](maybe_expressions.md) for more details on this special s
 ```python
 def get_config_value(config: dict[str, str], key: str) -> Optional[str]:
     if key in config:
-        return Optional.Some(config[key])
-    return Optional.Nothing
+        return Some(config[key])
+    return Nothing
 
 # Using the result
 value = get_config_value(config, "timeout")
 match value:
-    case Optional.Some(v):
+    case Some(v):
         timeout = int(v)
-    case Optional.Nothing:
+    case Nothing:
         timeout = 30  # default
 ```
 
@@ -159,30 +145,24 @@ match value:
 def get_user_city(user_id: int) -> Optional[str]:
     user = find_user(user_id)
     if user.is_nothing():
-        return Optional.Nothing
-    
+        return Nothing
+
     address = user.unwrap().get_address()
     if address.is_nothing():
-        return Optional.Nothing
-    
-    return Optional.Some(address.unwrap().city)
+        return Nothing
 
-# Or with maybe expressions:
-def get_user_city(user_id: int) -> Optional[str]:
-    user = maybe? find_user(user_id)
-    address = maybe? user.get_address()
-    return Optional.Some(address.city)
+    return Some(address.unwrap().city)
 ```
 
 ### Transforming Optional Values
 
 ```python
 # Using map to transform the value if present
-opt_number: Optional[int] = Optional.Some(42)
+opt_number: Optional[int] = Some(42)
 opt_string = opt_number.map(lambda x: f"The answer is {x}")
 # Result: Optional.Some("The answer is 42")
 
-opt_nothing: Optional[int] = Optional.Nothing
+opt_nothing: Optional[int] = Nothing
 opt_result = opt_nothing.map(lambda x: x * 2)
 # Result: Optional.Nothing
 ```
@@ -193,15 +173,15 @@ opt_result = opt_nothing.map(lambda x: x * 2)
 # Nullable to Optional
 def nullable_to_optional(value: T?) -> Optional[T]:
     if value is not None:
-        return Optional.Some(value)
-    return Optional.Nothing
+        return Some(value)
+    return Nothing
 
 # Optional to Nullable
 def optional_to_nullable(opt: Optional[T]) -> T?:
     match opt:
-        case Optional.Some(value):
+        case Some(value):
             return value
-        case Optional.Nothing:
+        case Nothing:
             return None
 ```
 
