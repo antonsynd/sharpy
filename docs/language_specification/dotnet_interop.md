@@ -48,4 +48,4 @@ with FileStream("output.dat", FileMode.create) as stream:
     stream.write(data, 0, len(data))
 ```
 
----
+Where a type implements both `IDisposable` from .NET and Sharpy's own `IContextManager`, the `IContextManager` is used to dictate the behavior within the `with`-block, e.g. calling the methods `Enter()` and `Exit()` (corresponding to the dunder methods `__enter__` and `__exit__`), rather than `Dispose()`.
