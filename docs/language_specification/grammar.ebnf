@@ -166,6 +166,7 @@ OP_NULLCOND     ::= '?.'
 OP_PIPE_RIGHT   ::= '|>'
 OP_DOTDOT       ::= '..'
 OP_DOTDOTEQ     ::= '..='
+OP_WALRUS       ::= ':='
 
 (* Delimiters *)
 LPAREN          ::= '('
@@ -586,7 +587,11 @@ expression      ::= conditional_expr
 
 (* Conditional Expression - lowest precedence *)
 conditional_expr
-                ::= try_maybe_expr [ 'if' try_maybe_expr 'else' expression ]
+                ::= named_expr [ 'if' named_expr 'else' expression ]
+
+(* Named Expression - walrus operator *)
+named_expr      ::= try_maybe_expr
+                  | identifier ':=' try_maybe_expr
 
 (* Try/Maybe Expressions *)
 try_maybe_expr  ::= 'try' [ '[' type_expr ']' ] null_coalesce_expr
@@ -930,7 +935,6 @@ The following are noted in the spec as future/deferred:
 
 - 'defer' keyword (deferred execution)
 - 'do' keyword (already used for do-blocks, may expand)
-- ':=' walrus operator (explicitly NOT supported per spec)
 - Static abstract interface members (C# 11+)
 - List patterns in match (C# 11+)
 - Extension properties/operators (C# 14+)

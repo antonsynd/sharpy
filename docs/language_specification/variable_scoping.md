@@ -21,8 +21,7 @@ To modify outer scope variables, use explicit assignment to a mutable container 
 
 **Containing-Scope Constructs** (variable persists):
 - Regular declarations (`x = value`, `x: type = value`)
-
-Note that if Sharpy supported the walrus operator `:=`, it would fall under the containing-scope constructs category. Right now, Sharpy does not and there are no plans to include it.
+- Walrus operator (`x := value`) - see [Walrus Operator](walrus_operator.md)
 
 ### Example
 

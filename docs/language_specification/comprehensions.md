@@ -124,6 +124,8 @@ ages = {name: age for name, age in pairs}
 print(name)  # ERROR: 'name' does not exist in this scope
 ```
 
+**Note:** Variables assigned using the walrus operator (`:=`) inside a comprehension *do* leak to the containing scope. See [walrus_operator.md](walrus_operator.md) for details.
+
 **Shadowing Outer Variables:**
 
 Comprehension variables may shadow variables from the enclosing scope. The outer variable is not modified:
