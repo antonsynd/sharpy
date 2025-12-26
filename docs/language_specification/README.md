@@ -213,7 +213,9 @@ See [structs.md](structs.md) for struct definition, usage, value semantics, and 
 
 ## Interfaces
 
-See [interfaces.md](interfaces.md) for interface definition, implementation, generic interfaces, interface inheritance, default methods, conflict resolution, and dunder methods in interfaces.
+See [interfaces.md](interfaces.md) for interface definition, implementation, generic interfaces, interface inheritance, and dunder methods in interfaces.
+
+See [interface_default_methods.md](interface_default_methods.md) for default method implementations, conflict resolution between base classes and interfaces, and guidelines for choosing interfaces vs abstract classes.
 
 ---
 
@@ -241,6 +243,8 @@ See [enums.md](enums.md) for enum definition, usage, and flags.
 ## Operator Overloading
 
 See [operator_overloading.md](operator_overloading.md) for dunder methods, arithmetic operators, comparison operators, and container operations.
+
+See [dunder_invocation_rules.md](dunder_invocation_rules.md) for rules on when and how dunder methods can be called, inheritance, and cross-dunder synthesis.
 
 ---
 ## Pattern Matching
