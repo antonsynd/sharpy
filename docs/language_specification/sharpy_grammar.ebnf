@@ -1,0 +1,938 @@
+# Sharpy Formal Grammar (EBNF)
+# ================================
+# Based on the language specification in docs/language_specification/
+#
+# Notation:
+#   ::=         Definition
+#   |           Alternative
+#   [ x ]       Optional (zero or one)
+#   { x }       Repetition (zero or more)
+#   ( x )       Grouping
+#   'literal'   Terminal literal
+#   UPPERCASE   Token class (from lexer)
+#   (* ... *)   Comment
+#
+# Conventions:
+#   - NEWLINE represents a logical line ending
+#   - INDENT/DEDENT are synthetic tokens from indentation processing
+#   - Semicolons are not used; newlines are significant
+
+# =============================================================================
+# 1. LEXICAL GRAMMAR (Token Definitions)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 1.1 Identifiers
+# -----------------------------------------------------------------------------
+
+IDENTIFIER      ::= (LETTER | '_') { LETTER | DIGIT | '_' }
+LETTER          ::= 'a'..'z' | 'A'..'Z'
+DIGIT           ::= '0'..'9'
+
+(* Backtick-escaped identifiers preserve exact casing/allow keywords *)
+ESCAPED_IDENT   ::= '`' { any_char_except_backtick } '`'
+
+identifier      ::= IDENTIFIER | ESCAPED_IDENT
+
+# -----------------------------------------------------------------------------
+# 1.2 Keywords
+# -----------------------------------------------------------------------------
+
+(* Hard keywords - always reserved *)
+KEYWORD         ::= 'and' | 'as' | 'assert' | 'async' | 'auto' | 'await'
+                  | 'break' | 'case' | 'class' | 'const' | 'continue'
+                  | 'def' | 'del' | 'do' | 'elif' | 'else' | 'enum'
+                  | 'event' | 'except' | 'False' | 'finally' | 'for'
+                  | 'from' | 'if' | 'import' | 'in' | 'interface' | 'is'
+                  | 'lambda' | 'match' | 'maybe' | 'None' | 'not' | 'or'
+                  | 'pass' | 'property' | 'raise' | 'return' | 'struct'
+                  | 'to' | 'True' | 'try' | 'type' | 'while' | 'with'
+                  | 'yield'
+
+(* Soft keywords - reserved only in specific contexts *)
+SOFT_KEYWORD    ::= '_' | 'get' | 'set' | 'init'
+
+(* Future reserved *)
+FUTURE_KEYWORD  ::= 'defer'
+
+# -----------------------------------------------------------------------------
+# 1.3 Literals
+# -----------------------------------------------------------------------------
+
+(* Integer literals *)
+INT_LITERAL     ::= DEC_INTEGER | BIN_INTEGER | OCT_INTEGER | HEX_INTEGER
+DEC_INTEGER     ::= NONZERO_DIGIT { DIGIT | '_' } | '0'
+BIN_INTEGER     ::= '0' ('b' | 'B') { BIN_DIGIT | '_' }
+OCT_INTEGER     ::= '0' ('o' | 'O') { OCT_DIGIT | '_' }
+HEX_INTEGER     ::= '0' ('x' | 'X') { HEX_DIGIT | '_' }
+
+NONZERO_DIGIT   ::= '1'..'9'
+BIN_DIGIT       ::= '0' | '1'
+OCT_DIGIT       ::= '0'..'7'
+HEX_DIGIT       ::= DIGIT | 'a'..'f' | 'A'..'F'
+
+(* Integer suffixes *)
+INT_SUFFIX      ::= 'L' | 'l' | 'U' | 'u' | 'UL' | 'ul' | 'Ul' | 'uL'
+                  | 'LU' | 'lu' | 'Lu' | 'lU'
+
+(* Float literals *)
+FLOAT_LITERAL   ::= POINT_FLOAT | EXPONENT_FLOAT
+POINT_FLOAT     ::= [ INT_PART ] FRACTION | INT_PART '.'
+EXPONENT_FLOAT  ::= ( INT_PART | POINT_FLOAT ) EXPONENT
+INT_PART        ::= DIGIT { DIGIT | '_' }
+FRACTION        ::= '.' DIGIT { DIGIT | '_' }
+EXPONENT        ::= ('e' | 'E') ['+' | '-'] DIGIT { DIGIT | '_' }
+
+(* Float suffixes *)
+FLOAT_SUFFIX    ::= 'f' | 'F' | 'd' | 'D' | 'm' | 'M'
+
+(* String literals *)
+STRING_LITERAL  ::= [ STRING_PREFIX ] ( SHORT_STRING | LONG_STRING )
+STRING_PREFIX   ::= 'r' | 'R' | 'f' | 'F' | 'rf' | 'rF' | 'Rf' | 'RF'
+                  | 'fr' | 'fR' | 'Fr' | 'FR'
+
+SHORT_STRING    ::= '"' { SHORT_STRING_CHAR | ESCAPE_SEQ } '"'
+                  | "'" { SHORT_STRING_CHAR | ESCAPE_SEQ } "'"
+LONG_STRING     ::= '"""' { LONG_STRING_CHAR | ESCAPE_SEQ } '"""'
+                  | "'''" { LONG_STRING_CHAR | ESCAPE_SEQ } "'''"
+
+SHORT_STRING_CHAR ::= (* any char except newline, backslash, or quote *)
+LONG_STRING_CHAR  ::= (* any char except backslash or triple-quote *)
+
+ESCAPE_SEQ      ::= '\\' ( 'n' | 'r' | 't' | 'b' | 'f' | '0' | '\\' | "'" | '"'
+                         | 'x' HEX_DIGIT HEX_DIGIT
+                         | 'u' HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT
+                         | 'U' HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT
+                               HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT )
+
+(* Boolean literals *)
+BOOL_LITERAL    ::= 'True' | 'False'
+
+(* None literal *)
+NONE_LITERAL    ::= 'None'
+
+(* Ellipsis literal *)
+ELLIPSIS        ::= '...'
+
+# -----------------------------------------------------------------------------
+# 1.4 Operators and Delimiters
+# -----------------------------------------------------------------------------
+
+(* Arithmetic *)
+OP_PLUS         ::= '+'
+OP_MINUS        ::= '-'
+OP_STAR         ::= '*'
+OP_SLASH        ::= '/'
+OP_DOUBLESLASH  ::= '//'
+OP_PERCENT      ::= '%'
+OP_DOUBLESTAR   ::= '**'
+
+(* Comparison *)
+OP_EQ           ::= '=='
+OP_NE           ::= '!='
+OP_LT           ::= '<'
+OP_LE           ::= '<='
+OP_GT           ::= '>'
+OP_GE           ::= '>='
+
+(* Bitwise *)
+OP_AMP          ::= '&'
+OP_PIPE         ::= '|'
+OP_CARET        ::= '^'
+OP_TILDE        ::= '~'
+OP_LSHIFT       ::= '<<'
+OP_RSHIFT       ::= '>>'
+
+(* Assignment *)
+OP_ASSIGN       ::= '='
+OP_PLUSEQ       ::= '+='
+OP_MINUSEQ      ::= '-='
+OP_STAREQ       ::= '*='
+OP_SLASHEQ      ::= '/='
+OP_DOUBLESLASHEQ ::= '//='
+OP_PERCENTEQ    ::= '%='
+OP_DOUBLESTAREQ ::= '**='
+OP_AMPEQ        ::= '&='
+OP_PIPEEQ       ::= '|='
+OP_CARETEQ      ::= '^='
+OP_LSHIFTEQ     ::= '<<='
+OP_RSHIFTEQ     ::= '>>='
+OP_NULLCOALEQ   ::= '??='
+
+(* Special *)
+OP_ARROW        ::= '->'
+OP_NULLCOAL     ::= '??'
+OP_NULLCOND     ::= '?.'
+OP_PIPE_RIGHT   ::= '|>'
+OP_DOTDOT       ::= '..'
+OP_DOTDOTEQ     ::= '..='
+
+(* Delimiters *)
+LPAREN          ::= '('
+RPAREN          ::= ')'
+LBRACKET        ::= '['
+RBRACKET        ::= ']'
+LBRACE          ::= '{'
+RBRACE          ::= '}'
+COMMA           ::= ','
+COLON           ::= ':'
+DOT             ::= '.'
+AT              ::= '@'
+QUESTION        ::= '?'
+UNDERSCORE      ::= '_'
+
+# -----------------------------------------------------------------------------
+# 1.5 Indentation Tokens (Synthetic)
+# -----------------------------------------------------------------------------
+
+NEWLINE         ::= (* logical line ending *)
+INDENT          ::= (* increase in indentation level *)
+DEDENT          ::= (* decrease in indentation level *)
+
+# -----------------------------------------------------------------------------
+# 1.6 Comments
+# -----------------------------------------------------------------------------
+
+COMMENT         ::= '#' { any_char_except_newline }
+
+# =============================================================================
+# 2. SYNTACTIC GRAMMAR
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 2.1 Module Structure
+# -----------------------------------------------------------------------------
+
+module          ::= { NEWLINE } { statement } EOF
+
+# -----------------------------------------------------------------------------
+# 2.2 Statements
+# -----------------------------------------------------------------------------
+
+statement       ::= simple_stmt NEWLINE
+                  | compound_stmt
+
+simple_stmt     ::= expression_stmt
+                  | assignment_stmt
+                  | augmented_assign_stmt
+                  | pass_stmt
+                  | break_stmt
+                  | continue_stmt
+                  | return_stmt
+                  | raise_stmt
+                  | assert_stmt
+                  | del_stmt
+                  | import_stmt
+                  | from_import_stmt
+                  | type_alias_stmt
+                  | const_stmt
+                  | yield_stmt
+
+compound_stmt   ::= if_stmt
+                  | while_stmt
+                  | for_stmt
+                  | try_stmt
+                  | with_stmt
+                  | match_stmt
+                  | func_def
+                  | async_func_def
+                  | class_def
+                  | struct_def
+                  | interface_def
+                  | enum_def
+                  | decorated_def
+
+# -----------------------------------------------------------------------------
+# 2.3 Simple Statements
+# -----------------------------------------------------------------------------
+
+expression_stmt ::= expression
+
+assignment_stmt ::= target_list '=' expression
+                  | identifier ':' type_expr '=' expression
+                  | identifier ':' 'auto' '=' expression
+
+target_list     ::= target { ',' target }
+target          ::= identifier
+                  | subscription
+                  | attribute_ref
+                  | star_target
+
+star_target     ::= '*' identifier
+
+augmented_assign_stmt
+                ::= target augmented_op expression
+
+augmented_op    ::= '+=' | '-=' | '*=' | '/=' | '//=' | '%=' | '**='
+                  | '&=' | '|=' | '^=' | '<<=' | '>>=' | '??='
+
+pass_stmt       ::= 'pass'
+
+break_stmt      ::= 'break' [ expression ]
+                  (* 'break' with expression only valid in do-blocks *)
+
+continue_stmt   ::= 'continue'
+
+return_stmt     ::= 'return' [ expression ]
+
+raise_stmt      ::= 'raise' [ expression [ 'from' expression ] ]
+
+assert_stmt     ::= 'assert' expression [ ',' expression ]
+
+del_stmt        ::= 'del' subscription
+
+yield_stmt      ::= yield_expr
+
+# -----------------------------------------------------------------------------
+# 2.4 Import Statements
+# -----------------------------------------------------------------------------
+
+import_stmt     ::= 'import' module_path [ 'as' identifier ]
+
+from_import_stmt
+                ::= 'from' module_path 'import' import_targets
+
+module_path     ::= identifier { '.' identifier }
+
+import_targets  ::= '*'
+                  | import_target { ',' import_target }
+
+import_target   ::= identifier [ 'as' identifier ]
+
+# -----------------------------------------------------------------------------
+# 2.5 Type Alias Statement
+# -----------------------------------------------------------------------------
+
+type_alias_stmt ::= 'type' identifier [ type_params ] '=' type_expr
+
+# -----------------------------------------------------------------------------
+# 2.6 Constant Declaration
+# -----------------------------------------------------------------------------
+
+const_stmt      ::= 'const' identifier [ ':' type_expr ] '=' expression
+
+# -----------------------------------------------------------------------------
+# 2.7 Compound Statements
+# -----------------------------------------------------------------------------
+
+(* Block/Suite *)
+suite           ::= NEWLINE INDENT { statement } DEDENT
+
+(* If Statement *)
+if_stmt         ::= 'if' expression ':' suite
+                    { 'elif' expression ':' suite }
+                    [ 'else' ':' suite ]
+
+(* While Statement *)
+while_stmt      ::= 'while' expression ':' suite
+                    [ 'else' ':' suite ]
+
+(* For Statement *)
+for_stmt        ::= 'for' target_list 'in' expression ':' suite
+                    [ 'else' ':' suite ]
+
+(* Try Statement *)
+try_stmt        ::= 'try' ':' suite
+                    ( except_clauses [ 'else' ':' suite ] [ 'finally' ':' suite ]
+                    | 'finally' ':' suite )
+
+except_clauses  ::= { except_clause }
+except_clause   ::= 'except' [ type_expr [ 'as' identifier ] ] ':' suite
+
+(* With Statement *)
+with_stmt       ::= 'with' with_items ':' suite
+with_items      ::= with_item { ',' with_item }
+with_item       ::= expression [ 'as' identifier ]
+
+(* Async variants *)
+async_with_stmt ::= 'async' 'with' with_items ':' suite
+async_for_stmt  ::= 'async' 'for' target_list 'in' expression ':' suite
+
+# -----------------------------------------------------------------------------
+# 2.8 Match Statement
+# -----------------------------------------------------------------------------
+
+match_stmt      ::= 'match' expression ':' NEWLINE INDENT
+                    { case_clause }
+                    DEDENT
+
+case_clause     ::= 'case' pattern [ guard ] ':' case_body
+
+guard           ::= 'if' expression
+
+case_body       ::= suite                           (* statement form *)
+                  | expression NEWLINE              (* expression form *)
+
+pattern         ::= or_pattern
+
+or_pattern      ::= closed_pattern { '|' closed_pattern }
+
+closed_pattern  ::= literal_pattern
+                  | capture_pattern
+                  | wildcard_pattern
+                  | type_pattern
+                  | tuple_pattern
+                  | mapping_pattern
+                  | class_pattern
+
+literal_pattern ::= INT_LITERAL | FLOAT_LITERAL | STRING_LITERAL
+                  | BOOL_LITERAL | NONE_LITERAL
+
+capture_pattern ::= identifier
+
+wildcard_pattern ::= '_'
+
+type_pattern    ::= qualified_name '(' ')' [ 'as' identifier ]
+                  | qualified_name '(' pattern_args ')' [ 'as' identifier ]
+
+tuple_pattern   ::= '(' [ pattern { ',' pattern } [ ',' ] ] ')'
+
+mapping_pattern ::= '{' [ mapping_pattern_item { ',' mapping_pattern_item } [ ',' ] ] '}'
+mapping_pattern_item
+                ::= literal_pattern ':' pattern
+                  | identifier '=' pattern      (* property pattern *)
+
+class_pattern   ::= qualified_name '(' [ pattern_args ] ')'
+
+pattern_args    ::= positional_patterns [ ',' keyword_patterns ]
+                  | keyword_patterns
+
+positional_patterns
+                ::= pattern { ',' pattern }
+
+keyword_patterns
+                ::= keyword_pattern { ',' keyword_pattern }
+
+keyword_pattern ::= identifier '=' pattern
+
+# -----------------------------------------------------------------------------
+# 2.9 Function Definition
+# -----------------------------------------------------------------------------
+
+func_def        ::= 'def' identifier [ type_params ] '(' [ parameters ] ')'
+                    [ '->' type_expr ] ':' func_body
+
+async_func_def  ::= 'async' func_def
+
+func_body       ::= suite
+                  | ELLIPSIS NEWLINE
+                  (* Ellipsis indicates abstract or raises NotImplementedError *)
+
+parameters      ::= param_list
+
+param_list      ::= param { ',' param } [ ',' star_param ]
+                  | star_param
+
+param           ::= identifier ':' type_expr [ '=' expression ]
+
+star_param      ::= '*' identifier ':' type_expr
+
+# -----------------------------------------------------------------------------
+# 2.10 Class Definition
+# -----------------------------------------------------------------------------
+
+class_def       ::= 'class' identifier [ type_params ] [ class_bases ] ':' class_body
+
+class_bases     ::= '(' qualified_name { ',' qualified_name } ')'
+
+class_body      ::= NEWLINE INDENT { class_member } DEDENT
+
+class_member    ::= field_decl
+                  | property_decl
+                  | method_def
+                  | const_stmt
+                  | class_def          (* nested class *)
+                  | type_alias_stmt
+                  | event_decl
+                  | 'pass' NEWLINE
+
+field_decl      ::= identifier ':' type_expr [ '=' expression ] NEWLINE
+
+(* Method definition - same as func_def but first param is 'self' for instance methods *)
+method_def      ::= decorated_def
+                  | func_def
+
+# -----------------------------------------------------------------------------
+# 2.11 Property Declaration
+# -----------------------------------------------------------------------------
+
+property_decl   ::= auto_property
+                  | func_property
+
+(* Auto-property: compiler generates backing field *)
+auto_property   ::= 'property' [ property_modifier ] identifier ':' type_expr
+                    [ '=' expression ] NEWLINE
+
+property_modifier
+                ::= 'get' | 'set' | 'init'
+
+(* Function-style property: user provides logic *)
+func_property   ::= 'property' 'get' identifier '(' 'self' ')' '->' type_expr ':'
+                    suite
+                  | 'property' 'set' identifier '(' 'self' ',' identifier ':' type_expr ')' ':'
+                    suite
+                  (* Static property variants *)
+                  | 'property' 'get' identifier '(' ')' '->' type_expr ':'
+                    suite
+                  | 'property' 'set' identifier '(' identifier ':' type_expr ')' ':'
+                    suite
+
+# -----------------------------------------------------------------------------
+# 2.12 Event Declaration
+# -----------------------------------------------------------------------------
+
+event_decl      ::= 'event' identifier ':' type_expr NEWLINE
+
+# -----------------------------------------------------------------------------
+# 2.13 Struct Definition
+# -----------------------------------------------------------------------------
+
+struct_def      ::= 'struct' identifier [ type_params ] [ struct_interfaces ] ':' struct_body
+
+struct_interfaces
+                ::= '(' qualified_name { ',' qualified_name } ')'
+
+struct_body     ::= NEWLINE INDENT { struct_member } DEDENT
+
+struct_member   ::= field_decl
+                  | property_decl
+                  | method_def
+                  | const_stmt
+                  | 'pass' NEWLINE
+
+# -----------------------------------------------------------------------------
+# 2.14 Interface Definition
+# -----------------------------------------------------------------------------
+
+interface_def   ::= 'interface' identifier [ type_params ] [ interface_bases ] ':'
+                    interface_body
+
+interface_bases ::= '(' qualified_name { ',' qualified_name } ')'
+
+interface_body  ::= NEWLINE INDENT { interface_member } DEDENT
+
+interface_member
+                ::= interface_method
+                  | interface_property
+                  | 'pass' NEWLINE
+
+interface_method
+                ::= 'def' identifier [ type_params ] '(' [ parameters ] ')'
+                    [ '->' type_expr ] ':' ( ELLIPSIS NEWLINE | suite )
+
+interface_property
+                ::= 'property' [ property_modifier ] identifier ':' type_expr
+                    [ '=' expression ] NEWLINE
+                  | 'property' 'get' identifier '(' 'self' ')' '->' type_expr ':'
+                    ( ELLIPSIS NEWLINE | suite )
+
+# -----------------------------------------------------------------------------
+# 2.15 Enum Definition
+# -----------------------------------------------------------------------------
+
+enum_def        ::= 'enum' identifier [ type_params ] ':' enum_body
+
+enum_body       ::= NEWLINE INDENT { enum_member } DEDENT
+
+enum_member     ::= simple_enum_case
+                  | tagged_union_case
+                  | method_def         (* for tagged unions *)
+                  | 'pass' NEWLINE
+
+(* Simple enum: explicit values required *)
+simple_enum_case
+                ::= identifier '=' expression NEWLINE
+
+(* Tagged union case *)
+tagged_union_case
+                ::= 'case' identifier [ '(' case_fields ')' ] NEWLINE
+
+case_fields     ::= case_field { ',' case_field }
+case_field      ::= identifier ':' type_expr
+
+# -----------------------------------------------------------------------------
+# 2.16 Decorators
+# -----------------------------------------------------------------------------
+
+decorated_def   ::= { decorator } ( func_def | async_func_def | class_def
+                                  | property_decl | auto_property )
+
+decorator       ::= '@' qualified_name NEWLINE
+                  (* Note: No parameterized decorators in current spec *)
+
+# -----------------------------------------------------------------------------
+# 2.17 Type Parameters and Constraints
+# -----------------------------------------------------------------------------
+
+type_params     ::= '[' type_param { ',' type_param } ']'
+
+type_param      ::= identifier [ ':' type_constraint ]
+
+type_constraint ::= qualified_name [ '[' type_args ']' ]
+                  | 'class'
+                  | 'struct'
+                  (* Multiple constraints: T: IFoo & IBar - NOT YET SPECIFIED *)
+
+# =============================================================================
+# 3. EXPRESSIONS
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 3.1 Expression Hierarchy (Precedence: Low to High)
+# -----------------------------------------------------------------------------
+
+expression      ::= conditional_expr
+                  | lambda_expr
+
+(* Conditional Expression - lowest precedence *)
+conditional_expr
+                ::= try_maybe_expr [ 'if' try_maybe_expr 'else' expression ]
+
+(* Try/Maybe Expressions *)
+try_maybe_expr  ::= 'try' [ '[' type_expr ']' ] null_coalesce_expr
+                  | 'maybe' null_coalesce_expr
+                  | null_coalesce_expr
+
+(* Null Coalescing *)
+null_coalesce_expr
+                ::= or_expr { '??' or_expr }
+
+(* Logical OR *)
+or_expr         ::= and_expr { 'or' and_expr }
+
+(* Logical AND *)
+and_expr        ::= not_expr { 'and' not_expr }
+
+(* Logical NOT *)
+not_expr        ::= 'not' not_expr
+                  | comparison_expr
+
+(* Comparison - supports chaining: a < b < c *)
+comparison_expr ::= bitor_expr { comparison_op bitor_expr }
+
+comparison_op   ::= '<' | '>' | '<=' | '>=' | '==' | '!='
+                  | 'is' [ 'not' ]
+                  | [ 'not' ] 'in'
+
+(* Bitwise OR *)
+bitor_expr      ::= bitxor_expr { '|' bitxor_expr }
+
+(* Bitwise XOR *)
+bitxor_expr     ::= bitand_expr { '^' bitand_expr }
+
+(* Bitwise AND *)
+bitand_expr     ::= shift_expr { '&' shift_expr }
+
+(* Shift *)
+shift_expr      ::= to_expr { ( '<<' | '>>' ) to_expr }
+
+(* Type Coercion *)
+to_expr         ::= additive_expr { 'to' type_expr }
+
+(* Additive *)
+additive_expr   ::= multiplicative_expr { ( '+' | '-' ) multiplicative_expr }
+
+(* Multiplicative *)
+multiplicative_expr
+                ::= unary_expr { ( '*' | '/' | '//' | '%' ) unary_expr }
+
+(* Unary *)
+unary_expr      ::= ( '+' | '-' | '~' ) unary_expr
+                  | power_expr
+
+(* Power - right associative *)
+power_expr      ::= pipe_expr [ '**' unary_expr ]
+
+(* Pipe Operator *)
+pipe_expr       ::= postfix_expr { '|>' postfix_expr }
+
+(* Postfix *)
+postfix_expr    ::= primary_expr { postfix_op }
+
+postfix_op      ::= call
+                  | subscription
+                  | attribute_ref
+                  | null_cond_access
+
+call            ::= '(' [ arguments ] ')'
+
+subscription    ::= '[' subscript_list ']'
+
+subscript_list  ::= subscript { ',' subscript }
+
+subscript       ::= expression
+                  | [ expression ] ':' [ expression ] [ ':' [ expression ] ]
+                  (* slice: start:stop:step *)
+                  | expression '..' expression              (* range exclusive *)
+                  | expression '..=' expression             (* range inclusive *)
+                  | '..' expression                         (* open start *)
+                  | expression '..'                         (* open end *)
+
+attribute_ref   ::= '.' identifier
+
+null_cond_access
+                ::= '?.' identifier [ call ]
+                  | '?.' '[' expression ']'
+
+# -----------------------------------------------------------------------------
+# 3.2 Primary Expressions
+# -----------------------------------------------------------------------------
+
+primary_expr    ::= atom
+                  | atom type_args                          (* generic instantiation *)
+
+atom            ::= identifier
+                  | literal
+                  | enclosure
+                  | 'self'
+                  | 'super' '(' ')' '.' identifier call     (* super().method() *)
+
+literal         ::= INT_LITERAL [ INT_SUFFIX ]
+                  | FLOAT_LITERAL [ FLOAT_SUFFIX ]
+                  | STRING_LITERAL
+                  | BOOL_LITERAL
+                  | NONE_LITERAL
+                  | ELLIPSIS
+
+enclosure       ::= parenth_form
+                  | list_display
+                  | dict_display
+                  | set_display
+                  | do_block
+                  | match_expr
+
+parenth_form    ::= '(' ')'                                 (* empty tuple *)
+                  | '(' expression ',' ')'                  (* single-element tuple *)
+                  | '(' expression { ',' expression } ')'   (* tuple or grouping *)
+
+list_display    ::= '[' ']'
+                  | '[' starred_list ']'
+                  | '[' comprehension ']'
+
+dict_display    ::= '{' '}'
+                  | '{' dict_items '}'
+                  | '{' dict_comprehension '}'
+
+set_display     ::= '{' starred_list '}'
+                  | '{' comprehension '}'
+
+starred_list    ::= starred_item { ',' starred_item } [ ',' ]
+
+starred_item    ::= '*' expression
+                  | expression
+
+dict_items      ::= dict_item { ',' dict_item } [ ',' ]
+
+dict_item       ::= '**' expression
+                  | expression ':' expression
+
+# -----------------------------------------------------------------------------
+# 3.3 Comprehensions
+# -----------------------------------------------------------------------------
+
+comprehension   ::= expression comp_for
+
+dict_comprehension
+                ::= expression ':' expression comp_for
+
+comp_for        ::= 'for' target_list 'in' or_expr [ comp_if ] [ comp_for ]
+
+comp_if         ::= 'if' or_expr [ comp_if ]
+
+# -----------------------------------------------------------------------------
+# 3.4 Lambda Expression
+# -----------------------------------------------------------------------------
+
+lambda_expr     ::= 'lambda' [ lambda_params ] ':' expression
+
+lambda_params   ::= identifier { ',' identifier }
+
+# -----------------------------------------------------------------------------
+# 3.5 Yield Expression
+# -----------------------------------------------------------------------------
+
+yield_expr      ::= 'yield' [ expression ]
+                  | 'yield' 'from' expression
+
+# -----------------------------------------------------------------------------
+# 3.6 Arguments in Calls
+# -----------------------------------------------------------------------------
+
+arguments       ::= positional_args [ ',' keyword_args ] [ ',' starred_args ]
+                  | keyword_args [ ',' starred_args ]
+                  | starred_args
+
+positional_args ::= positional_arg { ',' positional_arg }
+
+positional_arg  ::= expression
+                  | '*' expression                          (* unpack iterable *)
+
+keyword_args    ::= keyword_arg { ',' keyword_arg }
+
+keyword_arg     ::= identifier '=' expression
+                  | '**' expression                         (* unpack dict *)
+
+starred_args    ::= '*' expression
+                  | '**' expression
+
+# -----------------------------------------------------------------------------
+# 3.7 Do-Block Expression
+# -----------------------------------------------------------------------------
+
+do_block        ::= 'do' ':' suite
+                  (* Value is the last expression in the suite *)
+
+# -----------------------------------------------------------------------------
+# 3.8 Match Expression
+# -----------------------------------------------------------------------------
+
+(* Match as expression - inferred from context when assigned *)
+match_expr      ::= 'match' expression ':' NEWLINE INDENT
+                    { case_expr_clause }
+                    DEDENT
+
+case_expr_clause
+                ::= 'case' pattern [ guard ] ':' expression NEWLINE
+
+# =============================================================================
+# 4. TYPES
+# =============================================================================
+
+type_expr       ::= nullable_type
+                  | function_type
+
+nullable_type   ::= union_type [ '?' ]
+
+union_type      ::= primary_type
+                  (* Note: Sharpy doesn't support union types like T | U *)
+
+primary_type    ::= qualified_name [ type_args ]
+                  | tuple_type
+                  | 'auto'
+
+qualified_name  ::= identifier { '.' identifier }
+
+type_args       ::= '[' type_expr { ',' type_expr } ']'
+
+tuple_type      ::= 'tuple' '[' type_list ']'
+                  | 'tuple' '[' named_type_list ']'
+
+type_list       ::= type_expr { ',' type_expr }
+
+named_type_list ::= named_type { ',' named_type }
+
+named_type      ::= identifier ':' type_expr
+
+function_type   ::= '(' [ type_list ] ')' '->' type_expr
+
+# =============================================================================
+# 5. F-STRING GRAMMAR (Lexer Mode Switch)
+# =============================================================================
+
+(* F-strings require lexer mode switching *)
+(* When inside f-string, '{' switches to expression mode *)
+(* '}' returns to string mode *)
+(* '{{' and '}}' are literal braces *)
+
+fstring         ::= 'f' ('"' | "'") { fstring_part } ('"' | "'")
+                  | 'f' ('"""' | "'''") { fstring_part } ('"""' | "'''")
+
+fstring_part    ::= FSTRING_TEXT
+                  | '{' expression [ format_spec ] '}'
+                  | '{{' | '}}'
+
+format_spec     ::= ':' { format_char }
+format_char     ::= (* any char except '{' or '}' *)
+
+# =============================================================================
+# 6. DISAMBIGUATION NOTES
+# =============================================================================
+
+(*
+AMBIGUITY: Tuple vs Parenthesized Expression
+  (x)     -> parenthesized expression
+  (x,)    -> single-element tuple
+  (x, y)  -> tuple
+  ()      -> empty tuple
+Resolution: Trailing comma or multiple elements = tuple
+
+AMBIGUITY: Set vs Dict
+  {}      -> empty dict (by convention, not set)
+  {x}     -> set with one element
+  {x: y}  -> dict with one entry
+Resolution: Presence of ':' determines dict vs set
+
+AMBIGUITY: try Expression vs try Statement
+  try:            -> statement (followed by colon-newline)
+  try expr        -> expression (followed by expression)
+Resolution: Look for ':' NEWLINE after 'try'
+
+AMBIGUITY: match Expression vs Statement
+  Same as try - check if used in expression context (assignment, return, etc.)
+
+AMBIGUITY: Lambda Extent
+  lambda x: x + 1, y   -> (lambda x: x + 1), y
+  Lambda extends to end of line or lower-precedence operator
+Resolution: Lambda body is a single expression at current precedence
+
+AMBIGUITY: Range vs Floating Point
+  0..5    -> range (two dots, lexer handles as '..' token)
+  0.5     -> float
+  .5      -> float (allowed in Sharpy unlike C#)
+Resolution: Lexer treats '..' as single token, distinct from '.'
+
+AMBIGUITY: Property Declaration Forms
+  property get name: Type           -> auto-property with getter only
+  property get name(self) -> Type:  -> function-style property
+Resolution: Presence of '(' after name indicates function-style
+
+AMBIGUITY: Generic vs Comparison
+  x < T >     Could be: (x < T) > ... or x<T> (generic)
+Resolution: In type context, < > are generic brackets.
+            In expression context, < > are comparison operators.
+            After identifier in type position, [ ] are used for generics.
+Note: Sharpy uses [] for generics, not <>, so this ambiguity doesn't exist!
+*)
+
+# =============================================================================
+# 7. OPERATOR PRECEDENCE TABLE (Highest to Lowest)
+# =============================================================================
+
+(*
+ 1. () [] . ?.                   Grouping, subscript, attribute, null-conditional
+ 2. **                           Exponentiation (right-associative)
+ 3. +x -x ~x                     Unary plus, minus, bitwise NOT
+ 4. * / // %                     Multiplicative
+ 5. + -                          Additive
+ 6. << >>                        Shifts
+ 7. &                            Bitwise AND
+ 8. ^                            Bitwise XOR
+ 9. |                            Bitwise OR
+10. to                           Type coercion
+11. == != < <= > >= is in        Comparisons (chainable)
+12. not                          Logical NOT
+13. and                          Logical AND
+14. or                           Logical OR
+15. ??                           Null coalescing
+16. try maybe                    Result/Optional wrapping
+17. x if c else y                Conditional
+18. lambda                       Lambda
+19. |>                           Pipe (Note: spec says low precedence, but
+                                 placing it here for left-to-right chaining)
+*)
+
+# =============================================================================
+# 8. RESERVED FOR FUTURE
+# =============================================================================
+
+(*
+The following are noted in the spec as future/deferred:
+
+- 'defer' keyword (deferred execution)
+- 'do' keyword (already used for do-blocks, may expand)
+- ':=' walrus operator (explicitly NOT supported per spec)
+- Static abstract interface members (C# 11+)
+- List patterns in match (C# 11+)
+- Extension properties/operators (C# 14+)
+- User-defined compound assignment operators (C# 14+)
+*)
