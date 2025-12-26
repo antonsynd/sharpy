@@ -62,6 +62,11 @@ The nullable form integrates naturally with type narrowing:
 ```python
 animal: Animal = get_animal()
 
+if (dog := animal to Dog?) is not None:
+    # dog is narrowed to Dog in this block
+    print(dog.bark())
+
+# Or with simple None check
 result = animal to Dog?
 if result is not None:
     use_dog(result)
@@ -171,6 +176,10 @@ x = value + 1 to long          # Parsed as: (value + 1) to long
 
 # No parentheses needed for comparisons
 if animal to Dog? is not None:
+    pass
+
+# Chained with None check
+if (dog := animal to Dog?) is not None and dog.age > 5:
     pass
 
 # `try` and `maybe` capture the entire cast expression

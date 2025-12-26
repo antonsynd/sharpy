@@ -45,6 +45,7 @@ operators from the highest precedence to the lowest precedence.
 | `x and y` | Boolean AND | Left to right |
 | `x or y` | Boolean OR | Left to right |
 | `if-else` | Conditional expression | Right to left |
+| `:=` | Assignment expression (walrus operator) | Right to left |
 
 Sharpy supports the same operators as Python (plus a few extensions), and they
 have the same precedence levels. For example, the following arithmetic
@@ -532,6 +533,44 @@ A type must explicitly implement in-place assignment methods, so you might
 encounter some types where in-place equivalents are not supported.
 
 :::
+
+### Assignment expressions
+
+The "walrus" operator, `:=`, allows you to assign a value to a variable within
+an expression. The value provided is both assigned to the variable and becomes
+the result of the expression. This often can simplify conditional or looping
+logic. For example, consider the following prompting loop:
+
+```sharpy
+while True:
+    name = input("Enter a name or 'quit' to exit: ")
+    if name == "quit":
+        break
+    print("Hello,", name)
+```
+
+```output
+Enter a name or 'quit' to exit: Coco
+Hello, Coco
+Enter a name or 'quit' to exit: Vivienne
+Hello, Vivienne
+Enter a name or 'quit' to exit: quit
+```
+
+Using the walrus operator, you can implement the same behavior like this:
+
+```sharpy
+while (name := input("Enter a name or 'quit' to exit: ")) != "quit":
+    print("Hello,", name)
+```
+
+```output
+Enter a name or 'quit' to exit: Donna
+Hello, Donna
+Enter a name or 'quit' to exit: Vera
+Hello, Vera
+Enter a name or 'quit' to exit: quit
+```
 
 ### Type merging
 
