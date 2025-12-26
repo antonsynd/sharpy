@@ -19,18 +19,16 @@ result = apply(10, lambda x: x ** 2)
 
 Lambdas can contain any expression, including:
 - Conditional expressions: `lambda x: x if x > 0 else -x`
-- Walrus operator: `lambda x: (y := x * 2, y + 1)[-1]`
 - Function calls, arithmetic, member access, etc.
 
 What lambdas cannot contain (these are statements, not expressions):
-- Assignments without walrus (`x = 5`)
+- Assignments (`x = 5`)
 - Control flow blocks (`if`/`for`/`while` blocks)
 - Multiple statements
 
 ```python
 # Valid lambda expressions
 absolute = lambda x: x if x >= 0 else -x
-complex_calc = lambda a, b: (temp := a * b) + temp ** 2
 method_call = lambda obj: obj.process().result
 
 # Invalid - these require statements, not expressions

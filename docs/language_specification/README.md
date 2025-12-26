@@ -277,11 +277,6 @@ See [maybe_expressions.md](maybe_expressions.md) for maybe expressions and optio
 See [comprehensions.md](comprehensions.md) for list, dict, and set comprehensions.
 
 ---
-## Walrus Operator
-
-See [walrus_operator.md](walrus_operator.md) for assignment expressions using :=.
-
----
 ## Properties
 
 See [properties.md](properties.md) for auto-properties overview and property forms.
