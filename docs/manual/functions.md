@@ -101,28 +101,20 @@ changes to code that calls the function.
 The rules for arguments described in this section apply to both `def`
 and `fn` functions.
 
-:::note Functions with / and * in the argument list
+:::note Variadic arguments
 
-You might see the following characters in
-place of arguments: slash (`/`) and/or star (`*`). For example:
-
-```sharpy
-def myfunc(pos_only, /, pos_or_keyword, *, keyword_only):
-```
-
-Arguments **before** the `/` can be passed only by position. Arguments **after**
-the `*` can be passed only by keyword. For details, see
-[Positional-only and keyword-only arguments](#positional-only-and-keyword-only-arguments)
-
-You may also see argument names prefixed with one or two stars (`*`):
+An argument name prefixed by a single star character, like `*names`, identifies a
+[variadic argument](#variadic-arguments) that accepts multiple positional values.
 
 ```sharpy
-def myfunc2(*names, **attributes):
+def myfunc(*names: str):
+    pass
 ```
-An argument name prefixed by a single star character, like `*names` identifies a
-[variadic argument](#variadic-arguments), while an argument name prefixed with
-a double star, like `**attributes` identifies a
-[variadic keyword-only argument](#variadic-keyword-arguments).
+
+**Note:** Sharpy does not support Python's `**kwargs` (variadic keyword arguments),
+positional-only parameters (`/`), or keyword-only parameter markers (`*`). See
+[Unsupported Python parameter features](#unsupported-python-parameter-features)
+for details.
 
 :::
 
@@ -145,9 +137,7 @@ However, you can't define a default value for an argument that's declared with
 the [`mut`](/sharpy/manual/values/ownership#mutable-arguments-mut) argument
 convention.
 
-Any optional arguments must appear after any required arguments. [Keyword-only
-arguments](#positional-only-and-keyword-only-arguments), discussed later, can
-also be either required or optional.
+Any optional arguments must appear after any required arguments.
 
 ### Keyword arguments
 
@@ -183,88 +173,49 @@ def sum(*values: int) -> int:
 The variadic argument `values` here is a placeholder that accepts any number of
 passed positional arguments. All variadic arguments must be the same type.
 
-You can define zero or more arguments before the variadic argument. When calling
-the function, any remaining positional arguments are assigned to the variadic
-argument, so any arguments declared **after** the variadic argument can only be
-specified by keyword.
+You can define zero or more arguments before the variadic argument. The variadic
+argument must be the last parameter in the function signature.
 
-### Positional-only and keyword-only arguments
+### Unsupported Python parameter features
 
-When defining a function, you can restrict some arguments so that they can
-be passed only as positional arguments, or they can be passed only as keyword
-arguments.
+Sharpy does not support the following Python parameter features because C# has
+no direct equivalent and there is no zero-cost way to implement them:
 
-To define positional-only arguments, add a slash character (`/`) to the
-argument list. Any arguments before the `/` are positional-only: they can't be
-passed as keyword arguments. For example:
+**Positional-only parameters (`/`):** In Python, parameters before `/` can only
+be passed positionally. C# does not support restricting parameters to
+positional-only—callers can always use named arguments.
 
 ```sharpy
+# ❌ Not supported in Sharpy
 fn min(a: Int, b: Int, /) -> Int:
     return a if a < b else b
 ```
 
-This `min()` function can be called with `min(1, 2)` but can't be called using
-keywords, like `min(a=1, b=2)`.
-
-There are several reasons you might want to write a function with
-positional-only arguments:
-
-* The argument names aren't meaningful for the caller.
-* You want the freedom to change the argument names later on without breaking
-  backward compatibility.
-
-For example, in the `min()` function, the argument names don't add any real
-information, and there's no reason to specify arguments by keyword.
-
-For more information on positional-only arguments, see [PEP 570 – Python
-Positional-Only Parameters](https://peps.python.org/pep-0570/).
-
-Keyword-only arguments are the inverse of positional-only arguments: they can
-be specified only by keyword. If a function accepts variadic arguments, any
-arguments defined *after* the variadic arguments are treated as keyword-only.
-For example:
+**Keyword-only parameter marker (`*`):** In Python, a bare `*` forces all
+following parameters to be keyword-only. C# does not support this restriction.
 
 ```sharpy
-fn sort(*values: Float64, ascending: Bool = True): ...
+# ❌ Not supported in Sharpy
+fn configure(host: str, *, port: int, debug: bool) -> None:
+    pass
 ```
 
-In this example, the user can pass any number of `Float64` values, optionally
-followed by the keyword `ascending` argument:
+**Variadic keyword arguments (`**kwargs`):** Python's `**kwargs` accepts
+arbitrary keyword arguments as a dictionary. This cannot be statically typed.
 
 ```sharpy
-a = sort(1.1, 6.5, 4.3, ascending=False)
+# ❌ Not supported in Sharpy
+def configure(**kwargs):
+    pass
 ```
 
-If the function doesn't accept variadic arguments, you can add a single star
-(`*`) to the argument list to separate the keyword-only arguments:
+**Alternatives:** Use explicit named parameters with default values, or pass a
+typed configuration object. See
+[Function Parameters](/sharpy/language_specification/function_parameters) for
+details.
 
-```sharpy
-fn kw_only_args(a1: Int, a2: Int, *, double: Bool) -> Int:
-    product = a1 * a2
-    if double:
-        return product * 2
-    else:
-        return product
-```
-
-Keyword-only arguments often have default values, but this is not required. If a
-keyword-only argument doesn't have a default value, it is a *required
-keyword-only argument*. It must be specified, and it must be specified by
-keyword.
-
-Any required keyword-only arguments must appear in the signature before
-any optional keyword-only arguments. That is, arguments appear in the following
-sequence a function signature:
-
-* Required positional arguments.
-* Optional positional arguments.
-* Variadic arguments.
-* Required keyword-only arguments.
-* Optional keyword-only arguments.
-* Variadic keyword arguments.
-
-For more information on keyword-only arguments, see [PEP 3102 – Keyword-Only
-Arguments](https://peps.python.org/pep-3102/).
+In Sharpy, all parameters can be passed either positionally or by name—the
+choice is the caller's.
 
 ## Overloaded functions
 
@@ -338,13 +289,36 @@ types and whether the functions are instance methods or static methods.
 The overload resolution logic filters for candidates according to the following
 rules, in order of precedence:
 
-1. Candidates requiring the smallest number of implicit conversions.
-2. Candidates without variadic arguments.
-3. Candidates with the shortest argument signature.
-4. Non-`@staticmethod` candidates (over `@staticmethod` ones, if available).
+1. Candidates with parameter names matching all named arguments in the call.
+2. Candidates requiring the smallest number of implicit conversions.
+3. Candidates without variadic arguments.
+4. Candidates with the shortest argument signature.
+5. Non-`@staticmethod` candidates (over `@staticmethod` ones, if available).
 
 If there is more than one candidate after applying these rules, the overload
 resolution fails.
+
+#### Named arguments in overload resolution
+
+Named arguments participate in overload resolution by filtering which overloads
+are candidates. An overload is only considered if it has a parameter matching
+each named argument's name:
+
+```sharpy
+fn do_work(num: Int, message: str = "Hello"):
+    print(f"{num}: {message}")
+
+fn do_work(count: Int):
+    print(f"Count: {count}")
+
+fn main():
+    do_work(21)         # Calls do_work(count) - prefers no optional params
+    do_work(num=21)     # Calls do_work(num, message) - only overload with 'num'
+    do_work(count=21)   # Calls do_work(count) - only overload with 'count'
+```
+
+This allows named arguments to disambiguate between overloads that have the
+same parameter types but different parameter names.
 
 ## Return values
 

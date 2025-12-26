@@ -125,7 +125,7 @@ def process(value: int, multiplier: int) -> str:
 
 **Rules:**
 - Overloads resolved by parameter count and types
-- Parameter names do not affect resolution
+- Named arguments filter candidates to overloads with matching parameter names (see [Named Arguments in Overload Resolution](#named-arguments-in-overload-resolution))
 
 *Implementation*
 - *✅ Native - C# supports method overloading.*
@@ -202,11 +202,51 @@ greet("Alice")  # ERROR: Ambiguous - both overloads applicable
 
 **Recommendation:** Avoid overloads that differ only in having additional defaulted parameters.
 
+### Named Arguments in Overload Resolution
+
+Named arguments participate in overload resolution by filtering which overloads are candidates. An overload is only considered if it has a parameter matching each named argument's name:
+
+```python
+def do_work(num: int, message: str = "Hello") -> None:
+    print(f"{num}: {message}")
+
+def do_work(count: int) -> None:
+    print(f"Count: {count}")
+
+do_work(21)         # Calls do_work(count) - standard resolution prefers no optional params
+do_work(num=21)     # Calls do_work(num, message) - only this overload has 'num' parameter
+do_work(count=21)   # Calls do_work(count) - only this overload has 'count' parameter
+```
+
+This allows named arguments to disambiguate between overloads that have the same parameter types but different parameter names.
+
+**Inheritance and Parameter Names:**
+
+When a method is overridden with different parameter names, the compiler uses the *static type* of the receiver to determine valid parameter names:
+
+```python
+class Animal:
+    def eat(self, food_type: str = "grub") -> None:
+        pass
+
+class Monkey(Animal):
+    def eat(self, banana_type: str = "green banana") -> None:
+        pass
+
+m: Monkey = Monkey()
+a: Animal = m
+
+m.eat(banana_type="ripe banana")  # OK - Monkey has 'banana_type'
+a.eat(food_type="yummy grub")     # OK - Animal has 'food_type'
+m.eat(food_type="grub")           # ERROR - Monkey doesn't have 'food_type'
+```
+
+*Implementation*
+- *✅ Native - Direct mapping to C# named argument resolution.*
+
 ### Reference
 
 For complete details, see the [C# Language Specification: Overload Resolution](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/expressions#overload-resolution).
-
-Sharpy deviates from C# in one area: **named argument handling**. In Sharpy, parameter names are purely documentary in the signature and do not participate in overload resolution.
 
 ## See Also
 
