@@ -62,9 +62,9 @@ FUTURE_KEYWORD  ::= 'defer'
 (* Integer literals *)
 INT_LITERAL     ::= DEC_INTEGER | BIN_INTEGER | OCT_INTEGER | HEX_INTEGER
 DEC_INTEGER     ::= NONZERO_DIGIT { DIGIT | '_' } | '0'
-BIN_INTEGER     ::= '0' ('b' | 'B') { BIN_DIGIT | '_' }
-OCT_INTEGER     ::= '0' ('o' | 'O') { OCT_DIGIT | '_' }
-HEX_INTEGER     ::= '0' ('x' | 'X') { HEX_DIGIT | '_' }
+BIN_INTEGER     ::= '0' ('b' | 'B') BIN_DIGIT { BIN_DIGIT | '_' }
+OCT_INTEGER     ::= '0' ('o' | 'O') OCT_DIGIT { OCT_DIGIT | '_' }
+HEX_INTEGER     ::= '0' ('x' | 'X') HEX_DIGIT { HEX_DIGIT | '_' }
 
 NONZERO_DIGIT   ::= '1'..'9'
 BIN_DIGIT       ::= '0' | '1'
@@ -249,9 +249,9 @@ compound_stmt   ::= if_stmt
 
 expression_stmt ::= expression
 
-assignment_stmt ::= target_list '=' expression
-                  | identifier ':' type_expr '=' expression
+assignment_stmt ::= identifier ':' type_expr '=' expression
                   | identifier ':' 'auto' '=' expression
+                  | target_list '=' expression
 
 target_list     ::= target { ',' target }
 target          ::= identifier
@@ -296,7 +296,7 @@ from_import_stmt
 module_path     ::= identifier { '.' identifier }
 
 import_targets  ::= '*'
-                  | import_target { ',' import_target }
+                  | import_target { ',' import_target } [ ',' ]
 
 import_target   ::= identifier [ 'as' identifier ]
 
@@ -317,7 +317,7 @@ const_stmt      ::= 'const' identifier [ ':' type_expr ] '=' expression
 # -----------------------------------------------------------------------------
 
 (* Block/Suite *)
-suite           ::= NEWLINE INDENT { statement } DEDENT
+suite           ::= NEWLINE INDENT statement { statement } DEDENT
 
 (* If Statement *)
 if_stmt         ::= 'if' expression ':' suite
@@ -337,7 +337,7 @@ try_stmt        ::= 'try' ':' suite
                     ( except_clauses [ 'else' ':' suite ] [ 'finally' ':' suite ]
                     | 'finally' ':' suite )
 
-except_clauses  ::= { except_clause }
+except_clauses  ::= except_clause { except_clause }
 except_clause   ::= 'except' [ type_expr [ 'as' identifier ] ] ':' suite
 
 (* With Statement *)
@@ -354,7 +354,7 @@ async_for_stmt  ::= 'async' 'for' target_list 'in' expression ':' suite
 # -----------------------------------------------------------------------------
 
 match_stmt      ::= 'match' expression ':' NEWLINE INDENT
-                    { case_clause }
+                    case_clause { case_clause }
                     DEDENT
 
 case_clause     ::= 'case' pattern [ guard ] ':' case_body
@@ -371,10 +371,9 @@ or_pattern      ::= closed_pattern { '|' closed_pattern }
 closed_pattern  ::= literal_pattern
                   | capture_pattern
                   | wildcard_pattern
-                  | type_pattern
+                  | class_pattern
                   | tuple_pattern
                   | mapping_pattern
-                  | class_pattern
 
 literal_pattern ::= INT_LITERAL | FLOAT_LITERAL | STRING_LITERAL
                   | BOOL_LITERAL | NONE_LITERAL
@@ -382,9 +381,6 @@ literal_pattern ::= INT_LITERAL | FLOAT_LITERAL | STRING_LITERAL
 capture_pattern ::= identifier
 
 wildcard_pattern ::= '_'
-
-type_pattern    ::= qualified_name '(' ')' [ 'as' identifier ]
-                  | qualified_name '(' pattern_args ')' [ 'as' identifier ]
 
 tuple_pattern   ::= '(' [ pattern { ',' pattern } [ ',' ] ] ')'
 
@@ -421,10 +417,17 @@ func_body       ::= suite
 
 parameters      ::= param_list
 
-param_list      ::= param { ',' param } [ ',' star_param ]
+param_list      ::= param_no_default { ',' param_no_default } [ ',' param_with_default { ',' param_with_default } ] [ ',' star_param ]
+                  | param_with_default { ',' param_with_default } [ ',' star_param ]
                   | star_param
 
-param           ::= identifier ':' type_expr [ '=' expression ]
+param_no_default
+                ::= identifier ':' type_expr
+
+param_with_default
+                ::= identifier ':' type_expr '=' expression
+
+param           ::= param_no_default | param_with_default
 
 star_param      ::= '*' identifier ':' type_expr
 
@@ -434,9 +437,9 @@ star_param      ::= '*' identifier ':' type_expr
 
 class_def       ::= 'class' identifier [ type_params ] [ class_bases ] ':' class_body
 
-class_bases     ::= '(' qualified_name { ',' qualified_name } ')'
+class_bases     ::= '(' [ qualified_name { ',' qualified_name } [ ',' ] ] ')'
 
-class_body      ::= NEWLINE INDENT { class_member } DEDENT
+class_body      ::= NEWLINE INDENT class_member { class_member } DEDENT
 
 class_member    ::= field_decl
                   | property_decl
@@ -491,9 +494,9 @@ event_decl      ::= 'event' identifier ':' type_expr NEWLINE
 struct_def      ::= 'struct' identifier [ type_params ] [ struct_interfaces ] ':' struct_body
 
 struct_interfaces
-                ::= '(' qualified_name { ',' qualified_name } ')'
+                ::= '(' [ qualified_name { ',' qualified_name } [ ',' ] ] ')'
 
-struct_body     ::= NEWLINE INDENT { struct_member } DEDENT
+struct_body     ::= NEWLINE INDENT struct_member { struct_member } DEDENT
 
 struct_member   ::= field_decl
                   | property_decl
@@ -508,9 +511,9 @@ struct_member   ::= field_decl
 interface_def   ::= 'interface' identifier [ type_params ] [ interface_bases ] ':'
                     interface_body
 
-interface_bases ::= '(' qualified_name { ',' qualified_name } ')'
+interface_bases ::= '(' [ qualified_name { ',' qualified_name } [ ',' ] ] ')'
 
-interface_body  ::= NEWLINE INDENT { interface_member } DEDENT
+interface_body  ::= NEWLINE INDENT interface_member { interface_member } DEDENT
 
 interface_member
                 ::= interface_method
@@ -533,7 +536,7 @@ interface_property
 
 enum_def        ::= 'enum' identifier [ type_params ] ':' enum_body
 
-enum_body       ::= NEWLINE INDENT { enum_member } DEDENT
+enum_body       ::= NEWLINE INDENT enum_member { enum_member } DEDENT
 
 enum_member     ::= simple_enum_case
                   | tagged_union_case
@@ -548,15 +551,15 @@ simple_enum_case
 tagged_union_case
                 ::= 'case' identifier [ '(' case_fields ')' ] NEWLINE
 
-case_fields     ::= case_field { ',' case_field }
+case_fields     ::= case_field { ',' case_field } [ ',' ]
 case_field      ::= identifier ':' type_expr
 
 # -----------------------------------------------------------------------------
 # 2.16 Decorators
 # -----------------------------------------------------------------------------
 
-decorated_def   ::= { decorator } ( func_def | async_func_def | class_def
-                                  | property_decl | auto_property )
+decorated_def   ::= decorator { decorator } ( func_def | async_func_def | class_def
+                                            | property_decl )
 
 decorator       ::= '@' qualified_name NEWLINE
                   (* Note: No parameterized decorators in current spec *)
@@ -565,7 +568,7 @@ decorator       ::= '@' qualified_name NEWLINE
 # 2.17 Type Parameters and Constraints
 # -----------------------------------------------------------------------------
 
-type_params     ::= '[' type_param { ',' type_param } ']'
+type_params     ::= '[' type_param { ',' type_param } [ ',' ] ']'
 
 type_param      ::= identifier [ ':' type_constraint ]
 
@@ -594,9 +597,12 @@ named_expr      ::= try_maybe_expr
                   | identifier ':=' try_maybe_expr
 
 (* Try/Maybe Expressions *)
-try_maybe_expr  ::= 'try' [ '[' type_expr ']' ] null_coalesce_expr
-                  | 'maybe' null_coalesce_expr
-                  | null_coalesce_expr
+try_maybe_expr  ::= 'try' [ '[' type_expr ']' ] pipe_expr
+                  | 'maybe' pipe_expr
+                  | pipe_expr
+
+(* Pipe Operator - low precedence, left-to-right *)
+pipe_expr       ::= null_coalesce_expr { '|>' null_coalesce_expr }
 
 (* Null Coalescing *)
 null_coalesce_expr
@@ -646,10 +652,7 @@ unary_expr      ::= ( '+' | '-' | '~' ) unary_expr
                   | power_expr
 
 (* Power - right associative *)
-power_expr      ::= pipe_expr [ '**' unary_expr ]
-
-(* Pipe Operator *)
-pipe_expr       ::= postfix_expr { '|>' postfix_expr }
+power_expr      ::= postfix_expr [ '**' unary_expr ]
 
 (* Postfix *)
 postfix_expr    ::= primary_expr { postfix_op }
@@ -685,6 +688,11 @@ null_cond_access
 
 primary_expr    ::= atom
                   | atom type_args                          (* generic instantiation *)
+                  (* Note: type_args uses [...] which could be confused with subscription.
+                     Resolution: In expression context after an identifier/qualified name,
+                     [...] with type expressions inside is generic instantiation,
+                     [...] with value expressions is subscription. Parser must look ahead
+                     to disambiguate based on whether contents are type or value expressions. *)
 
 atom            ::= identifier
                   | literal
@@ -708,7 +716,8 @@ enclosure       ::= parenth_form
 
 parenth_form    ::= '(' ')'                                 (* empty tuple *)
                   | '(' expression ',' ')'                  (* single-element tuple *)
-                  | '(' expression { ',' expression } ')'   (* tuple or grouping *)
+                  | '(' expression ',' expression { ',' expression } [ ',' ] ')' (* tuple *)
+                  | '(' expression ')'                      (* grouping *)
 
 list_display    ::= '[' ']'
                   | '[' starred_list ']'
@@ -763,21 +772,15 @@ yield_expr      ::= 'yield' [ expression ]
 # 3.6 Arguments in Calls
 # -----------------------------------------------------------------------------
 
-arguments       ::= positional_args [ ',' keyword_args ] [ ',' starred_args ]
-                  | keyword_args [ ',' starred_args ]
-                  | starred_args
+arguments       ::= positional_or_star_args [ ',' keyword_args ] [ ',' ]
+                  | keyword_args [ ',' ]
 
-positional_args ::= positional_arg { ',' positional_arg }
-
-positional_arg  ::= expression
-                  | '*' expression                          (* unpack iterable *)
+positional_or_star_args
+                ::= ( expression | '*' expression ) { ',' ( expression | '*' expression ) }
 
 keyword_args    ::= keyword_arg { ',' keyword_arg }
 
 keyword_arg     ::= identifier '=' expression
-                  | '**' expression                         (* unpack dict *)
-
-starred_args    ::= '*' expression
                   | '**' expression
 
 # -----------------------------------------------------------------------------
@@ -793,7 +796,7 @@ do_block        ::= 'do' ':' suite
 
 (* Match as expression - inferred from context when assigned *)
 match_expr      ::= 'match' expression ':' NEWLINE INDENT
-                    { case_expr_clause }
+                    case_expr_clause { case_expr_clause }
                     DEDENT
 
 case_expr_clause
@@ -804,7 +807,6 @@ case_expr_clause
 # =============================================================================
 
 type_expr       ::= nullable_type
-                  | function_type
 
 nullable_type   ::= union_type [ '?' ]
 
@@ -813,18 +815,19 @@ union_type      ::= primary_type
 
 primary_type    ::= qualified_name [ type_args ]
                   | tuple_type
+                  | function_type
                   | 'auto'
 
 qualified_name  ::= identifier { '.' identifier }
 
-type_args       ::= '[' type_expr { ',' type_expr } ']'
+type_args       ::= '[' type_expr { ',' type_expr } [ ',' ] ']'
 
 tuple_type      ::= 'tuple' '[' type_list ']'
                   | 'tuple' '[' named_type_list ']'
 
-type_list       ::= type_expr { ',' type_expr }
+type_list       ::= type_expr { ',' type_expr } [ ',' ]
 
-named_type_list ::= named_type { ',' named_type }
+named_type_list ::= named_type { ',' named_type } [ ',' ]
 
 named_type      ::= identifier ':' type_expr
 
@@ -910,20 +913,20 @@ Note: Sharpy uses [] for generics, not <>, so this ambiguity doesn't exist!
  4. * / // %                     Multiplicative
  5. + -                          Additive
  6. << >>                        Shifts
- 7. &                            Bitwise AND
- 8. ^                            Bitwise XOR
- 9. |                            Bitwise OR
-10. to                           Type coercion
+ 7. to                           Type coercion
+ 8. &                            Bitwise AND
+ 9. ^                            Bitwise XOR
+10. |                            Bitwise OR
 11. == != < <= > >= is in        Comparisons (chainable)
 12. not                          Logical NOT
 13. and                          Logical AND
 14. or                           Logical OR
 15. ??                           Null coalescing
-16. try maybe                    Result/Optional wrapping
-17. x if c else y                Conditional
-18. lambda                       Lambda
-19. |>                           Pipe (Note: spec says low precedence, but
-                                 placing it here for left-to-right chaining)
+16. |>                           Pipe (left-to-right chaining)
+17. try maybe                    Result/Optional wrapping
+18. :=                           Walrus operator (named expression)
+19. x if c else y                Conditional
+20. lambda                       Lambda
 *)
 
 # =============================================================================
