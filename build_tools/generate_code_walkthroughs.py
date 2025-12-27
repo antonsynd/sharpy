@@ -1,19 +1,27 @@
 #!/usr/bin/env python3
 """
-Generate internal code walkthrough documentation using GitHub Copilot CLI.
+Generate internal code walkthrough documentation using AI CLI tools.
 
 This script analyzes C# source files from Sharpy.Cli and Sharpy.Compiler projects,
-using multiple parallel instances of GitHub Copilot CLI to generate markdown
-documentation that helps newcomers understand the codebase.
+using multiple parallel instances of an AI CLI tool (GitHub Copilot or Claude Code)
+to generate markdown documentation that helps newcomers understand the codebase.
 
-The script uses Copilot CLI's programmatic mode with the --allow-tool 'write'
-permission, which allows Copilot to create markdown documentation files in the
-docs/internal_walkthrough directory without manual approval for each file.
+Supported CLI tools:
+- GitHub Copilot CLI (copilot): Uses explicit tool permissions
+- Claude Code CLI (claude): Uses explicit tool permissions
 
-Permissions model:
-- Read access: Copilot can read source files in the repository
-- Write access: Restricted to creating markdown files via --allow-tool 'write'
-- Working directory: Script runs from repository root for path resolution
+SECURITY MODEL:
+- Read access: AI can read files in the repository (needed to analyze source)
+- Write access: AI can create new files (needed to write documentation)
+- NO shell/bash access: AI cannot execute arbitrary commands
+- NO edit access: AI cannot modify existing files (only create new ones)
+- NO delete access: AI cannot remove files
+
+The AI tools are explicitly restricted to 'Read' and 'Write' operations only.
+This prevents accidental or malicious file deletion, code modification, or
+arbitrary command execution.
+
+Working directory: Script runs from repository root for path resolution.
 """
 
 import argparse
@@ -40,10 +48,15 @@ class Config:
     copilot_timeout: int = 120  # seconds per file
     source_dirs: Optional[List[str]] = None
     output_dir: str = "docs/internal_walkthrough"
+    cli_provider: str = "copilot"  # "copilot" or "claude"
 
     def __post_init__(self):
         if self.source_dirs is None:
             self.source_dirs = ["src/Sharpy.Cli", "src/Sharpy.Compiler"]
+        if self.cli_provider not in ("copilot", "claude"):
+            raise ValueError(
+                f"Invalid CLI provider: {self.cli_provider}. Must be 'copilot' or 'claude'."
+            )
 
 
 def find_cs_files(base_dir: Path, source_dirs: List[str]) -> List[Path]:
@@ -100,13 +113,70 @@ def find_existing_docs(output_dir: Path) -> Set[Path]:
     return set(output_dir.rglob("*.md"))
 
 
-async def analyze_file_with_copilot(
-    cs_file: Path, output_path: Path, base_dir: Path, timeout: int
+def _build_cli_command(cli_provider: str, prompt: str) -> List[str]:
+    """
+    Build the command line arguments for the specified CLI provider.
+
+    SECURITY: Only 'Read' and 'Write' tools are allowed.
+    - Read: Allows reading source files for analysis
+    - Write: Allows creating new markdown documentation files
+
+    NOT allowed (for safety):
+    - Bash/shell: No arbitrary command execution
+    - Edit: No modification of existing files
+    - Delete: No file removal
+    - Other tools that could have side effects
+
+    Args:
+        cli_provider: Either "copilot" or "claude"
+        prompt: The prompt to send to the AI
+
+    Returns:
+        List of command arguments
+    """
+    if cli_provider == "copilot":
+        # GitHub Copilot CLI: explicitly allow only read and write tools
+        # This prevents shell access, file deletion, or editing existing files
+        return [
+            "/opt/homebrew/bin/copilot",
+            "--prompt",
+            prompt,
+            "--allow-tool",
+            "read",
+            "--allow-tool",
+            "write",
+        ]
+    elif cli_provider == "claude":
+        # Claude Code CLI: explicitly allow only Read and Write tools
+        # Do NOT use --dangerously-skip-permissions as it bypasses all safety checks
+        # Only Read and Write are allowed - no Bash, Edit, or other tools
+        return [
+            "claude",
+            "--print",
+            "--allowedTools",
+            "Read,Write",
+            "--prompt",
+            prompt,
+        ]
+    else:
+        raise ValueError(f"Unknown CLI provider: {cli_provider}")
+
+
+async def analyze_file_with_cli(
+    cs_file: Path, output_path: Path, base_dir: Path, timeout: int, cli_provider: str
 ) -> bool:
     """
-    Analyze a single C# file using GitHub Copilot CLI.
+    Analyze a single C# file using the specified AI CLI tool.
 
-    Returns True if successful, False otherwise.
+    Args:
+        cs_file: Path to the C# source file
+        output_path: Path where the markdown documentation should be written
+        base_dir: Base directory of the repository
+        timeout: Timeout in seconds for the CLI command
+        cli_provider: Either "copilot" or "claude"
+
+    Returns:
+        True if successful, False otherwise.
     """
     print(f"Analyzing: {cs_file}")
 
@@ -114,7 +184,7 @@ async def analyze_file_with_copilot(
         # Create output directory if needed
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Create the prompt that asks Copilot to analyze and write the file
+        # Create the prompt that asks the AI to analyze and write the file
         # Use relative paths for better readability
         relative_cs_file = cs_file.relative_to(base_dir)
         relative_output = output_path.relative_to(base_dir)
@@ -144,17 +214,15 @@ Write the walkthrough as a well-structured markdown document to '{relative_outpu
 
 Focus on providing intuition and understanding, not just restating what the code does line-by-line."""
 
-        # Call GitHub Copilot CLI in programmatic mode with write permissions
-        # --allow-tool 'write' allows Copilot to create/modify files without approval
+        # Build the command for the specified CLI provider
+        cmd = _build_cli_command(cli_provider, prompt)
+
+        # Call the AI CLI in programmatic mode with write permissions
         # Change to the base directory so relative paths work
         # Using create_subprocess_exec (not shell) so the prompt argument is safely passed
         # without any shell interpretation - no escaping needed
         process = await asyncio.create_subprocess_exec(
-            "/opt/homebrew/bin/copilot",
-            "--prompt",
-            prompt,
-            "--allow-tool",
-            "write",
+            *cmd,
             cwd=str(base_dir),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -167,12 +235,20 @@ Focus on providing intuition and understanding, not just restating what the code
 
             if process.returncode != 0:
                 stderr_text = stderr.decode("utf-8")
+                stdout_text = stdout.decode("utf-8")
 
-                # Check for rate limiting errors (429 status)
-                if (
-                    "rate_limited" in stderr_text
-                    or "429" in stderr_text
-                    or "exceeded your Copilot token usage" in stderr_text
+                # Check for rate limiting errors (works for both Copilot and Claude)
+                rate_limit_indicators = [
+                    "rate_limited",
+                    "429",
+                    "exceeded your Copilot token usage",
+                    "rate limit",
+                    "too many requests",
+                ]
+                combined_output = (stderr_text + stdout_text).lower()
+                if any(
+                    indicator.lower() in combined_output
+                    for indicator in rate_limit_indicators
                 ):
                     print(
                         "\n" + "=" * 60,
@@ -187,7 +263,7 @@ Focus on providing intuition and understanding, not just restating what the code
                         file=sys.stderr,
                     )
                     print(
-                        f"GitHub Copilot rate limit reached while processing {cs_file}",
+                        f"Rate limit reached while processing {cs_file}",
                         file=sys.stderr,
                     )
                     print(
@@ -206,7 +282,7 @@ Focus on providing intuition and understanding, not just restating what the code
                         "=" * 60 + "\n",
                         file=sys.stderr,
                     )
-                    raise RateLimitExceeded("GitHub Copilot rate limit exceeded")
+                    raise RateLimitExceeded("Rate limit exceeded")
 
                 print(
                     f"Error analyzing {cs_file}: {stderr_text}",
@@ -252,8 +328,8 @@ async def process_batch(
     Raises RateLimitExceeded if rate limit is hit.
     """
     tasks = [
-        analyze_file_with_copilot(
-            cs_file, output_path, base_dir, config.copilot_timeout
+        analyze_file_with_cli(
+            cs_file, output_path, base_dir, config.copilot_timeout, config.cli_provider
         )
         for cs_file, output_path in files_batch
     ]
@@ -281,6 +357,7 @@ async def main_async(config: Config):
         config.source_dirs = ["src/Sharpy.Cli", "src/Sharpy.Compiler"]
 
     print(f"Repository root: {base_dir}")
+    print(f"CLI provider: {config.cli_provider}")
     print(f"Source directories: {config.source_dirs}")
     print(f"Output directory: {config.output_dir}")
     print(f"Parallel instances: {config.parallel_instances}")
@@ -368,13 +445,16 @@ async def main_async(config: Config):
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Generate code walkthrough documentation using GitHub Copilot CLI.\n\n"
-        "Uses Copilot CLI's --allow-tool 'write' permission to create markdown files.",
+        description="Generate code walkthrough documentation using AI CLI tools.\n\n"
+        "Supports GitHub Copilot CLI and Claude Code CLI.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Use default settings (3 parallel instances, 60s timeout)
+  # Use default settings with GitHub Copilot (3 parallel instances, 60s timeout)
   %(prog)s
+
+  # Use Claude Code CLI instead of GitHub Copilot
+  %(prog)s --cli claude
 
   # Use 5 parallel instances with 90s timeout between batches
   %(prog)s --parallel 5 --timeout 90
@@ -382,13 +462,26 @@ Examples:
   # Process only Sharpy.Compiler with custom output directory
   %(prog)s --source-dirs src/Sharpy.Compiler --output-dir docs/compiler_walkthrough
 
-  # Increase timeout for copilot to 3 minutes per file
+  # Increase timeout for CLI to 3 minutes per file
   %(prog)s --copilot-timeout 180
 
-Permissions:
-  Copilot CLI runs with --allow-tool 'write' permission, allowing it to create
-  markdown documentation files in the output directory without manual approval.
-  It has read access to the source files being analyzed.
+CLI Providers:
+  copilot: Uses GitHub Copilot CLI with explicit tool permissions
+  claude:  Uses Claude Code CLI with explicit tool permissions
+
+Security Model:
+  Both CLI tools are restricted to ONLY 'Read' and 'Write' operations:
+  - Read: Can read source files for analysis
+  - Write: Can create new markdown documentation files
+
+  NOT allowed (for safety):
+  - Bash/shell: No arbitrary command execution (no rm, mv, etc.)
+  - Edit: Cannot modify existing files
+  - Delete: Cannot remove files
+  - Other tools with potential side effects
+
+  This ensures the AI cannot accidentally or maliciously delete files,
+  modify existing code, or execute dangerous shell commands.
         """,
     )
 
@@ -427,6 +520,13 @@ Permissions:
         help="Output directory for markdown documentation (default: docs/internal_walkthrough)",
     )
 
+    parser.add_argument(
+        "--cli",
+        choices=["copilot", "claude"],
+        default="copilot",
+        help="CLI provider to use: 'copilot' for GitHub Copilot CLI, 'claude' for Claude Code CLI (default: copilot)",
+    )
+
     args = parser.parse_args()
 
     # Validate arguments
@@ -438,14 +538,36 @@ Permissions:
         print("Error: --timeout must be >= 0", file=sys.stderr)
         sys.exit(1)
 
-    # Check if gh CLI is available
-    try:
-        result = subprocess.run(["gh", "--version"], capture_output=True, check=True)
-        print(f"GitHub CLI version: {result.stdout.decode('utf-8').strip()}")
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        print("Error: GitHub CLI (gh) is not installed or not in PATH", file=sys.stderr)
-        print("Install it from: https://cli.github.com/", file=sys.stderr)
-        sys.exit(1)
+    # Check if the selected CLI tool is available
+    if args.cli == "copilot":
+        try:
+            result = subprocess.run(
+                ["gh", "--version"], capture_output=True, check=True
+            )
+            print(f"GitHub CLI version: {result.stdout.decode('utf-8').strip()}")
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            print(
+                "Error: GitHub CLI (gh) is not installed or not in PATH",
+                file=sys.stderr,
+            )
+            print("Install it from: https://cli.github.com/", file=sys.stderr)
+            sys.exit(1)
+    elif args.cli == "claude":
+        try:
+            result = subprocess.run(
+                ["claude", "--version"], capture_output=True, check=True
+            )
+            print(f"Claude Code CLI version: {result.stdout.decode('utf-8').strip()}")
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            print(
+                "Error: Claude Code CLI (claude) is not installed or not in PATH",
+                file=sys.stderr,
+            )
+            print(
+                "Install it from: https://docs.anthropic.com/en/docs/claude-code",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
     # Create config
     config = Config(
@@ -454,6 +576,7 @@ Permissions:
         copilot_timeout=args.copilot_timeout,
         source_dirs=args.source_dirs,
         output_dir=args.output_dir,
+        cli_provider=args.cli,
     )
 
     # Run async main
