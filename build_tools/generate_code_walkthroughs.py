@@ -47,7 +47,7 @@ class Config:
     timeout_between_batches: int = 60  # seconds
     copilot_timeout: int = 120  # seconds per file
     source_dirs: Optional[List[str]] = None
-    output_dir: str = "docs/internal_walkthrough"
+    output_dir: str = "docs/implementation_walkthrough"
     cli_provider: str = "copilot"  # "copilot" or "claude"
 
     def __post_init__(self):
@@ -516,8 +516,8 @@ Security Model:
 
     parser.add_argument(
         "--output-dir",
-        default="docs/internal_walkthrough",
-        help="Output directory for markdown documentation (default: docs/internal_walkthrough)",
+        default="docs/implementation_walkthrough",
+        help="Output directory for markdown documentation (default: docs/implementation_walkthrough)",
     )
 
     parser.add_argument(
