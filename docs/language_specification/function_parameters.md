@@ -252,5 +252,6 @@ For complete details, see the [C# Language Specification: Overload Resolution](h
 
 - [Function Default Parameters](function_default_parameters.md) - Detailed guide to default parameter values and compile-time constant requirements
 - [Function Variadic Arguments](function_variadic_arguments.md) - Comprehensive coverage of `*args` and unpacking
+- [Parameter Modifiers](parameter_modifiers.md) - `ref`, `out`, and `in` pass-by-reference parameters
 - [Function Definition](function_definition.md) - Basic function syntax and rules
 - [Function Types](function_types.md) - Function type syntax and compatibility

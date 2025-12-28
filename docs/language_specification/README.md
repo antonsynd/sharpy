@@ -183,6 +183,8 @@ See [function_default_parameters.md](function_default_parameters.md) for default
 
 See [function_variadic_arguments.md](function_variadic_arguments.md) for variadic arguments (*args), unpacking, and C# interop.
 
+See [parameter_modifiers.md](parameter_modifiers.md) for `ref`, `out`, and `in` pass-by-reference parameters.
+
 See [contracts.md](contracts.md) for design-by-contract with preconditions, postconditions, and invariants.
 
 ---
@@ -234,6 +236,8 @@ See [decorators.md](decorators.md) for @static, @virtual, @override, @abstract, 
 
 See [generics.md](generics.md) for generic classes, generic methods, and type constraints.
 
+See [generic_variance.md](generic_variance.md) for covariance (`out`) and contravariance (`in`) on type parameters.
+
 ---
 ## Enumerations
 
@@ -245,6 +249,8 @@ See [enums.md](enums.md) for enum definition, usage, and flags.
 See [operator_overloading.md](operator_overloading.md) for dunder methods, arithmetic operators, comparison operators, and container operations.
 
 See [dunder_invocation_rules.md](dunder_invocation_rules.md) for rules on when and how dunder methods can be called, inheritance, and cross-dunder synthesis.
+
+See [conversion_operators.md](conversion_operators.md) for `@implicit` and `@explicit` user-defined type conversions.
 
 ---
 ## Pattern Matching

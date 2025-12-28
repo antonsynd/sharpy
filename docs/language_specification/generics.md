@@ -141,6 +141,8 @@ class SortedSet[T: IComparable[T] & IEquatable[T]]:
 | `T: struct & IFoo` | `where T : struct, IFoo` |
 | `T: class & IFoo & IBar` | `where T : class, IFoo, IBar` |
 
+For variance annotations on type parameters (`out T` for covariance, `in T` for contravariance), see [Generic Variance](generic_variance.md).
+
 **Order matters for `class`/`struct`:**
 
 When combining `class` or `struct` with interface constraints, `class`/`struct` should come first:
