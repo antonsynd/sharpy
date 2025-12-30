@@ -24,7 +24,7 @@ class Person:
 ```
 
 **Rules:**
-- All instance fields must be declared at class level with type annotations
+- All instance fields must be declared at class level with type annotations or an assignment of a default value where the type can be inferred
 - The `self` parameter is required for instance methods
 - The `self` parameter is not type-annotated and cannot be annotated
 - There is no `Self` type in Sharpy currently (C# 9.0 has no equivalent; C# 11+ adds `TSelf` generic constraint patterns which may be supported in a future version)
@@ -32,7 +32,7 @@ class Person:
 
 ```python
 class Builder:
-    name: str = ""
+    name = ""
 
     def with_name(self, name: str) -> Builder:  # Must name the type explicitly
         self.name = name

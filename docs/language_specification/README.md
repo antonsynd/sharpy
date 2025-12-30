@@ -185,8 +185,6 @@ See [function_variadic_arguments.md](function_variadic_arguments.md) for variadi
 
 See [parameter_modifiers.md](parameter_modifiers.md) for `ref`, `out`, and `in` pass-by-reference parameters.
 
-See [contracts.md](contracts.md) for design-by-contract with preconditions, postconditions, and invariants.
-
 ---
 
 ## Classes

@@ -22,9 +22,10 @@ matrix = [[i * j for j in range(3)] for i in range(3)]
 # [[0, 0, 0], [0, 1, 2], [0, 2, 4]]
 ```
 
-*Implementation: 🔄 Lowered - LINQ expressions:*
-- `[expr for x in iter]` → `.Select(x => expr).ToList()`
-- `[expr for x in iter if cond]` → `.Where(x => cond).Select(x => expr).ToList()`
+*Implementation*
+- *🔄 Lowered - LINQ expressions:*
+  - `[expr for x in iter]` → `.Select(x => expr).ToList()`
+  - `[expr for x in iter if cond]` → `.Where(x => cond).Select(x => expr).ToList()`
 
 **Filter and Transform Order:**
 
@@ -69,7 +70,9 @@ triangular = [(x, y) for x in range(4) for y in range(x)]
 # [(1,0), (2,0), (2,1), (3,0), (3,1), (3,2)]
 ```
 
-*Implementation: 🔄 Lowered - LINQ `SelectMany`:*
+*Implementation*
+- *🔄 Lowered - LINQ `SelectMany`:*
+
 ```csharp
 // [(x, y) for x in range(3) for y in range(3)]
 Enumerable.Range(0, 3)
@@ -94,7 +97,8 @@ long_names = {name: len(name) for name in names if len(name) > 3}
 # {"alice": 5, "charlie": 7}
 ```
 
-*Implementation: 🔄 Lowered - `.ToDictionary(x => key, x => value)`*
+*Implementation*
+- *🔄 Lowered - `.ToDictionary(x => key, x => value)`*
 
 ## Set Comprehensions
 
@@ -108,7 +112,8 @@ short_lengths = {len(word) for word in ["apple", "banana", "cherry"] if len(word
 # {5, 6}
 ```
 
-*Implementation: 🔄 Lowered - `.Select(...).ToHashSet()`*
+*Implementation*
+- *🔄 Lowered - `.Select(...).ToHashSet()`*
 
 ## Comprehension Variable Scoping
 
@@ -177,5 +182,3 @@ result = [(x, y) for x in range(5) for y in range(5) if x + y < 4]
 filtered = [x for x in range(20) if x % 2 == 0 if x % 3 == 0]
 # [0, 6, 12, 18]
 ```
-
----

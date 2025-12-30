@@ -18,20 +18,20 @@ Use a dunder method that returns the target type:
 ```python
 class Celsius:
     _degrees: double
-    
+
     def __init__(self, degrees: double):
         self._degrees = degrees
-    
+
     # Implicit conversion to double (safe, no data loss)
     @implicit
     def __double__(self) -> double:
         return self._degrees
-    
+
     # Explicit conversion to int (lossy: truncates decimal)
     @explicit
     def __int__(self) -> int:
         return int(self._degrees)
-    
+
     # Explicit conversion to Fahrenheit (semantic change)
     @explicit
     def __Fahrenheit__(self) -> Fahrenheit:
@@ -45,22 +45,22 @@ Use a static method with the `@implicit` or `@explicit` decorator:
 ```python
 class Celsius:
     _degrees: double
-    
+
     def __init__(self, degrees: double):
         self._degrees = degrees
-    
+
     # Implicit conversion from double (natural construction)
     @implicit
     @staticmethod
     def __from_double__(value: double) -> Celsius:
         return Celsius(value)
-    
+
     # Explicit conversion from Fahrenheit (semantic change)
     @explicit
     @staticmethod
     def __from_Fahrenheit__(value: Fahrenheit) -> Celsius:
         return Celsius((value.degrees - 32.0) * 5.0 / 9.0)
-    
+
     # Explicit conversion from string (may fail)
     @explicit
     @staticmethod
@@ -75,11 +75,11 @@ Implicit conversions happen automatically in these contexts:
 ```python
 class Distance:
     _meters: double
-    
+
     @implicit
     def __double__(self) -> double:
         return self._meters
-    
+
     @implicit
     @staticmethod
     def __from_double__(value: double) -> Distance:
@@ -120,7 +120,7 @@ Only define implicit conversions when:
 def __double__(self) -> double:     # int → double (widening)
     return double(self._value)
 
-@implicit  
+@implicit
 def __str__(self) -> str:           # Any → str (always works via ToString)
     return f"{self._value}"
 
@@ -141,11 +141,11 @@ Explicit conversions require the `to` operator:
 ```python
 class Temperature:
     _kelvin: double
-    
+
     @explicit
     def __Celsius__(self) -> Celsius:
         return Celsius(self._kelvin - 273.15)
-    
+
     @explicit
     def __int__(self) -> int:
         return int(self._kelvin)
@@ -166,7 +166,7 @@ Explicit conversions integrate with the nullable `to T?` form:
 ```python
 class UserId:
     _value: int
-    
+
     @explicit
     @staticmethod
     def __from_str__(value: str) -> UserId:
@@ -264,12 +264,12 @@ Implicit conversions enable operators to work across types:
 class Vector2:
     x: double
     y: double
-    
+
     @implicit
     @staticmethod
     def __from_tuple__(value: tuple[double, double]) -> Vector2:
         return Vector2(value[0], value[1])
-    
+
     def __add__(self, other: Vector2) -> Vector2:
         return Vector2(self.x + other.x, self.y + other.y)
 
@@ -283,26 +283,26 @@ result = v + (3.0, 4.0)  # Tuple implicitly converts to Vector2
 # Sharpy
 class Temperature:
     _celsius: double
-    
+
     def __init__(self, celsius: double):
         self._celsius = celsius
-    
+
     # Implicit conversion TO double
     @implicit
     def __double__(self) -> double:
         return self._celsius
-    
+
     # Explicit conversion TO int
     @explicit
     def __int__(self) -> int:
         return int(self._celsius)
-    
+
     # Implicit conversion FROM double
     @implicit
     @staticmethod
     def __from_double__(value: double) -> Temperature:
         return Temperature(value)
-    
+
     # Explicit conversion FROM string
     @explicit
     @staticmethod
@@ -315,30 +315,30 @@ class Temperature:
 public class Temperature
 {
     private double _celsius;
-    
+
     public Temperature(double celsius)
     {
         _celsius = celsius;
     }
-    
+
     // Implicit conversion TO double
     public static implicit operator double(Temperature t)
     {
         return t._celsius;
     }
-    
+
     // Explicit conversion TO int
     public static explicit operator int(Temperature t)
     {
         return (int)t._celsius;
     }
-    
+
     // Implicit conversion FROM double
     public static implicit operator Temperature(double value)
     {
         return new Temperature(value);
     }
-    
+
     // Explicit conversion FROM string
     public static explicit operator Temperature(string value)
     {
@@ -401,7 +401,7 @@ The following dunders map to built-in C# types:
 class Foo:
     @implicit
     def __int__(self) -> int: ...
-    @explicit  
+    @explicit
     def __int__(self) -> int: ...  # ERROR: duplicate conversion
 
 # ❌ Invalid: neither source nor target is containing type
