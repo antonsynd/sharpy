@@ -285,7 +285,7 @@ Some tokens require lookahead to disambiguate:
 | `/` | 1 char | `/` vs `//` |
 | `:` | 1 char | `:` vs `:=` |
 | `?` | 1 char | `?` vs `?.` vs `??` |
-| `.` | 1 char | `.` vs `..` (range) |
+| `.` | 1 char | `.` vs `...` (ellipsis) |
 | `\|` | 1 char | `\|` vs `\|>` |
 | `0` | 1 char | `0` (decimal) vs `0x`, `0b`, `0o` |
 | `"` | 2 chars | `"` vs `"""` |

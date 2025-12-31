@@ -74,8 +74,6 @@ See [type_narrowing.md](type_narrowing.md) for type narrowing rules with `is not
 
 See [collection_types.md](collection_types.md) for collection types, methods, and .NET interop.
 
-See [smart_ranges.md](smart_ranges.md) for range operations, membership testing, and pattern matching.
-
 See [spread_operator.md](spread_operator.md) for spreading collections and objects.
 
 ### Collection Literals

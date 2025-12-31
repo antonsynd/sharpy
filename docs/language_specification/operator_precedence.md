@@ -14,17 +14,16 @@ Operators listed from highest to lowest precedence:
 | 8 | `^` | Bitwise XOR | Left-to-right |
 | 9 | `\|` | Bitwise OR | Left-to-right |
 | 10 | `\|>` | Pipe operator | Left-to-right |
-| 11 | `..`, `..=` | Range operators | Non-associative |
-| 12 | `to` | Type coercion | Left-to-right |
-| 13 | `in`, `not in`, `is`, `is not`, `<`, `<=`, `>`, `>=`, `!=`, `==` | Comparisons | **Chained** (see below) |
-| 14 | `not` | Logical NOT | Right-to-left (unary) |
-| 15 | `and` | Logical AND | Left-to-right |
-| 16 | `or` | Logical OR | Left-to-right |
-| 17 | `??` | Null coalescing | Left-to-right |
-| 18 | `try`, `maybe` | Result/Optional wrapping expressions | Right-to-left (prefix) |
-| 19 | `x if c else y` | Conditional expression | Right-to-left |
-| 20 | `lambda` | Lambda expression | Right-to-left |
-| 21 | `:=` | Walrus (assignment expression) | Right-to-left |
+| 11 | `to` | Type coercion | Left-to-right |
+| 12 | `in`, `not in`, `is`, `is not`, `<`, `<=`, `>`, `>=`, `!=`, `==` | Comparisons | **Chained** (see below) |
+| 13 | `not` | Logical NOT | Right-to-left (unary) |
+| 14 | `and` | Logical AND | Left-to-right |
+| 15 | `or` | Logical OR | Left-to-right |
+| 16 | `??` | Null coalescing | Left-to-right |
+| 17 | `try`, `maybe` | Result/Optional wrapping expressions | Right-to-left (prefix) |
+| 18 | `x if c else y` | Conditional expression | Right-to-left |
+| 19 | `lambda` | Lambda expression | Right-to-left |
+| 20 | `:=` | Walrus (assignment expression) | Right-to-left |
 
 ## Associativity Details
 
@@ -59,17 +58,9 @@ a in b in c           # (a in b) and (b in c)
 a < b in c            # (a < b) and (b in c)
 ```
 
-**Non-associative operators:**
-
-Range operators cannot be chained:
-```python
-1..5..10    # ERROR: Range operators are non-associative
-(1..5)..10  # ERROR: Cannot create range of ranges this way
-```
-
 ## Pipe Operator Precedence
 
-The pipe operator `|>` has lower precedence than arithmetic but higher than range and type coercion operators, enabling natural data flow:
+The pipe operator `|>` has lower precedence than arithmetic but higher than type coercion operators, enabling natural data flow:
 
 ```python
 # Pipe captures the left-hand expression fully
