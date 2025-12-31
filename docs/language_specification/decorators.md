@@ -14,11 +14,10 @@ def foo():
 # Equivalent to: foo = A(B(foo))
 ```
 
-For Sharpy's built-in decorators (`@static`, `@virtual`, `@override`, `@abstract`, `@final`, etc.), the order typically doesn't matter since they're metadata flags rather than transforming decorators. However, it's conventional to place them in a consistent order:
+For Sharpy's built-in decorators (`@virtual`, `@override`, `@abstract`, `@final`, etc.), the order typically doesn't matter since they're metadata flags rather than transforming decorators. However, it's conventional to place them in a consistent order:
 
 ```python
 # Recommended ordering (when applicable)
-@static          # Binding (static vs instance)
 @virtual         # Inheritance behavior
 @override
 @final
@@ -26,6 +25,8 @@ For Sharpy's built-in decorators (`@static`, `@virtual`, `@override`, `@abstract
 @private
 @internal
 ```
+
+Note that Sharpy does not support any version of static or class methods equating to Python's `@staticmethod` and `@classmethod` decorators. See [static_methods.md](static_methods.md) and [class_methods.md](class_methods.md) respectively for details.
 
 ## Access Modifiers
 
@@ -170,5 +171,3 @@ print(circle.describe())   # "Circle with area 78.53975"
 ```
 
 *Implementation: ✅ Native - Direct mapping to C# keywords.*
-
----

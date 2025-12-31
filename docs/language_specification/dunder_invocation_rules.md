@@ -1,6 +1,6 @@
 # Dunder Invocation Rules
 
-Dunder methods (double-underscore methods like `__add__`, `__eq__`) define *how* a type behaves with operators and built-in functions. However, **dunder methods are a definition mechanism only**—users invoke that behavior through operators and built-in functions, not by calling dunders directly.
+Dunder methods (double-underscore methods like `__add__`, `__eq__`) define *how* a type behaves with operators and built-in functions. However, **dunder methods are a definition mechanism only**-users invoke that behavior through operators and built-in functions, not by calling dunders directly.
 
 ## Dunders Are Definition-Only
 
@@ -22,25 +22,23 @@ obj.__str__()       # ERROR: Cannot invoke dunder methods directly
 Use operators for operator dunders:
 
 ```python
-x == y              # ✅ Correct — compiler uses __eq__ internally
-x + y               # ✅ Correct — compiler uses __add__ internally
--x                  # ✅ Correct — compiler uses __neg__ internally
-x < y               # ✅ Correct — compiler uses __lt__ internally
-x[0]                # ✅ Correct — compiler uses __getitem__ internally
+x == y              # ✅ Correct — compiler uses C# operator == internally (derived from __eq__() if present)
+x + y               # ✅ Correct — compiler uses C# operator + internally (derived from __add__() if present)
+-x                  # ✅ Correct — compiler uses C# operator - internally (derived from __neg__() if present)
+x < y               # ✅ Correct — compiler uses C# operator < internally (derived from __lt__() if present)
+x[0]                # ✅ Correct — compiler uses C# indexer method this[] internally (derived from __getitem__() if present)
 ```
 
 Use built-in functions for protocol dunders:
 
 ```python
-len(x)              # ✅ Correct — uses __len__ internally
-hash(x)             # ✅ Correct — uses __hash__ internally
-str(x)              # ✅ Correct — uses __str__ internally
+len(x)              # ✅ Correct — uses __len__ internally for relevant Sharpy and user-defined types, Count property otherwise
 ```
 
 ## Rationale
 
 - **Uniform syntax**: `str(x)` and `x == y` work on any type, whether primitive or Sharpy-defined
-- **.NET interop**: Primitives from .NET (`int`, `str`, `bool`) don't have dunder methods—the compiler handles dispatch
+- **.NET interop**: Primitives from .NET (`int`, `str`, `bool`) don't have dunder methods-the compiler handles dispatch
 - **Zero overhead**: No wrapper types or boxing required for polymorphic dispatch
 - **Consistency**: Same syntax works whether the type defines a dunder or uses native behavior
 

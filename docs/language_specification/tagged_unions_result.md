@@ -5,7 +5,7 @@ The `Result[T, E]` type is a special tagged union provided by the Sharpy standar
 ## Definition
 
 ```python
-enum Result[T, E]:
+union Result[T, E]:
     case Ok(value: T)
     case Err(error: E)
 ```
@@ -45,7 +45,7 @@ match result:
 The `Result` type provides several useful methods:
 
 ```python
-enum Result[T, E]:
+union Result[T, E]:
     case Ok(value: T)
     case Err(error: E)
 

@@ -5,7 +5,7 @@ The `Optional[T]` type is a special tagged union provided by the Sharpy standard
 ## Definition
 
 ```python
-enum Optional[T]:
+union Optional[T]:
     case Some(value: T)
     case Nothing()  # Or simply: case Nothing
 ```
@@ -46,7 +46,7 @@ match result:
 The `Optional` type provides several useful methods:
 
 ```python
-enum Optional[T]:
+union Optional[T]:
     case Some(value: T)
     case Nothing
 

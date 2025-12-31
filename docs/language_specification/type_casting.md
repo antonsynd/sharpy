@@ -226,6 +226,6 @@ value is int _temp ? (int?)_temp : null
 
 ## See Also
 
-- [Conversion Operators](conversion_operators.md) — User-defined `@implicit` and `@explicit` conversions
+- [Conversion Operators](conversion_operators.md) — User-defined conversions
 - [Type Narrowing](type_narrowing.md) — Narrowing types with `is not None` and `isinstance()`
 - [Nullable Types](nullable_types.md) — Nullable type semantics

@@ -4,21 +4,21 @@ Tagged unions (also called algebraic data types or sum types) allow defining typ
 
 ## Overview
 
-Tagged unions allow cases to carry associated data:
+Unlike simple enums, tagged unions allow cases to carry associated data:
 
 ```python
 # Generic Result type (like Rust's Result)
-enum Result[T, E]:
+union Result[T, E]:
     case Ok(value: T)
     case Err(error: E)
 
 # Optional type (like Rust's Option)
-enum Optional[T]:
+union Optional[T]:
     case Some(value: T)
     case Nothing()
 
 # Tree structure
-enum BinaryTree[T]:
+union BinaryTree[T]:
     case Leaf(value: T)
     case Node(left: BinaryTree[T], right: BinaryTree[T])
 ```
@@ -42,19 +42,19 @@ These types have special syntax and operators. See:
 Cases that carry no associated data can be defined with or without parentheses:
 
 ```python
-enum Option[T]:
+union Option[T]:
     case Some(value: T)
     case Nothing           # No parentheses needed for unit case
     # case Nothing()       # Also valid, but parentheses are optional
 
-enum Result[T, E]:
+union Result[T, E]:
     case Ok(value: T)
     case Err(error: E)
 
-enum LoadState:
-    case NotStarted        # Unit case
-    case Loading           # Unit case
-    case Loaded(data: str) # Data case
+union LoadState:
+    case NotStarted         # Unit case
+    case Loading            # Unit case
+    case Loaded(data: str)  # Data case
     case Failed(error: str) # Data case
 ```
 
@@ -76,10 +76,10 @@ match state:
 
 ## Creating Values
 
-Tagged union cases are created using the enum type name followed by the case name:
+Tagged union cases are created using the union type name followed by the case name:
 
 ```python
-enum Result[T, E]:
+union Result[T, E]:
     case Ok(value: T)
     case Err(error: E)
 
@@ -88,7 +88,7 @@ success: Result[int, str] = Result.Ok(42)
 failure: Result[int, str] = Result.Err("Something went wrong")
 ```
 
-**Note:** Case names follow the same casing as defined in the enum declaration (typically `PascalCase`). The syntax `Result.Ok(42)` is a constructor call that creates an instance of the `Ok` case. This of course is just a convention and is not enforced by the compiler.
+**Note:** Case names follow the same casing as defined in the union declaration (typically `PascalCase`). The syntax `Result.Ok(42)` is a constructor call that creates an instance of the `Ok` case. This of course is just a convention and is not enforced by the compiler.
 
 **Type Inference in Return Statements:**
 
@@ -163,7 +163,7 @@ This makes pattern matching more concise, especially when the matched type is cl
 ## Methods on Tagged Unions
 
 ```python
-enum Result[T, E]:
+union Result[T, E]:
     case Ok(value: T)
     case Err(error: E)
 
@@ -214,6 +214,6 @@ public abstract class Result<T, E> {
 
 - [Result Type](tagged_unions_result.md) - Detailed guide to the Result type for error handling
 - [Optional Type](tagged_unions_optional.md) - Detailed guide to the Optional type for optional values
-- [Enums](enums.md) - Simple enumerations without associated data
+- [Enums](enums.md) - Similar construct, but expressing simple enumerations without associated data
 - [Pattern Matching](match_statement.md) - Using match with tagged unions
 - [Generics](generics.md) - Generic type parameters

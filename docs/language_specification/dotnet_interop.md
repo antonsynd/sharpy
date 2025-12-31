@@ -7,6 +7,9 @@ from system.collections.generic import List, Dictionary
 from system.io import File, Path
 
 # Use .NET types directly
+# As of right now, this example is redundant because Sharpy
+# uses the .NET collection types directly, e.g `list[T]`, so
+# no explicit import is required.
 items = List[int]()
 items.add(42)
 
@@ -47,5 +50,3 @@ from system.io import FileStream, FileMode
 with FileStream("output.dat", FileMode.create) as stream:
     stream.write(data, 0, len(data))
 ```
-
-Where a type implements both `IDisposable` from .NET and Sharpy's own `IContextManager`, the `IContextManager` is used to dictate the behavior within the `with`-block, e.g. calling the methods `Enter()` and `Exit()` (corresponding to the dunder methods `__enter__` and `__exit__`), rather than `Dispose()`.

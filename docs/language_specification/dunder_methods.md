@@ -3,6 +3,16 @@
 Sharpy inherits the syntax of Python's dunder methods, however the semantics
 are, in most cases, different both at compile time and runtime.
 
+Note, in the tables below, the generic type `T` is the class defining the dunder method. `U` (if present)
+could be any type, including `T` itself, and `V` (if present) could be any type,
+including `T` or `U` (if present).
+
+Also, unless stated otherwise:
+- *Operators from dunder methods are always public and static.*
+- *Operators from dunder methods are applied based on C# static resolution rules.*
+  - *The chosen operator is based on the static declared type of the operands.*
+  - *Lookup considers the availability of implicit conversions and/or casting up the class inheritance chain.*
+
 ## Constructor Method
 
 The `__init__` dunder method maps directly to C#'s constructor methods. Like
@@ -105,10 +115,6 @@ In-place operators (e.g. `__iadd__`) do not exist in Sharpy yet as C# 9 does
 not support defining them. When Sharpy is updated to support C# 14, then
 in-place operators will be available to define in Sharpy.
 
-In the tables below, assuming `T` is the class defining the dunder method, and `U` (if present)
-could be any type, including `T` itself, and `V` (if present) could be any type,
-including `T` or `U` (if present), then:
-
 **Binary arithmetic operators**
 
 Note that Sharpy does not support `__pow__` or `__floordiv__` as these are not
@@ -140,21 +146,11 @@ overridable operators in C#, and as a result, `__truediv__` is renamed to
 | `__neg__(self) -> U` | `public static U operator -(T self)` |
 | `__pos__(self) -> U` | `public static U operator +(T self)` |
 
-*Rules*
-- *Arithmetic operators are always public and static.*
-- *Arithmetic operators are applied based on C# static resolution rules.*
-  - *The chosen operator is based on the static declared type of the operands.*
-  - *Lookup considers the availability of implicit conversions and/or casting up the class inheritance chain.*
-
 ## Bitwise Operators
 
 Bitwise dunder methods translate directly to C# static operators. They do
 not exist as callable methods outside of cross-operator synthesis, similarly
 to the arithmetic ones.
-
-In the tables below, assuming `T` is the class defining the dunder method, and `U` (if present)
-could be any type, including `T` itself, and `V` (if present) could be any type,
-including `T` or `U` (if present), then:
 
 **Binary bitwise operators**
 
@@ -184,16 +180,14 @@ including `T` or `U` (if present), then:
 
 ## Comparison Operators
 
-**Comparison Operators:**
-
-| Dunder | C# Output |
-|--------|----------------------|
-| `__eq__(self, other: U) -> bool` | `public static bool operator ==(T lhs, U rhs)` and `public override bool Equals(U rhs)` |
-| `__ne__(self, other: U) -> bool` | `public static bool operator !=(T lhs, U rhs)` |
-| `__lt__(self, other: U) -> bool` | `public static bool operator <(T lhs, U rhs)` |
-| `__le__(self, other: U) -> bool` | `public static bool operator <=(T lhs, U rhs)` |
-| `__gt__(self, other: U) -> bool` | `public static bool operator >(T lhs, U rhs)` |
-| `__ge__(self, other: U) -> bool` | `public static bool operator >=(T lhs, U rhs)` |
+| Dunder | C# Output | Notes |
+|--------|-----------|-------|
+| `__eq__(self, other: U) -> bool` | `public static bool operator ==(T lhs, U rhs)` and `public override bool Equals(U rhs)` | The former invokes the latter |
+| `__ne__(self, other: U) -> bool` | `public static bool operator !=(T lhs, U rhs)` | |
+| `__lt__(self, other: U) -> bool` | `public static bool operator <(T lhs, U rhs)` | |
+| `__le__(self, other: U) -> bool` | `public static bool operator <=(T lhs, U rhs)` | |
+| `__gt__(self, other: U) -> bool` | `public static bool operator >(T lhs, U rhs)` | |
+| `__ge__(self, other: U) -> bool` | `public static bool operator >=(T lhs, U rhs)` | |
 
 ## Conversion Methods
 
@@ -201,86 +195,71 @@ Conversion dunder methods map to C# explicit or implicit conversion operators:
 
 | Dunder | C# Output | Notes |
 |--------|-----------|-------|
-| `__str__(self) -> str` | `public override string ToString()` | Also provides explicit `operator string` |
+| `__bool__(self) -> bool` | `public static bool operator true(T self)` and `public static bool operator false(T self)` | The latter invokes the former and returns the negated value |
+| `__float__(self) -> float` | `public static explicit operator float(T self)` | |
 | `__int__(self) -> int` | `public static explicit operator int(T self)` | |
-| `__float__(self) -> double` | `public static explicit operator double(T self)` | |
-| `__bool__(self) -> bool` | `public static bool operator true(T self)` + `operator false` | |
+| `__str__(self) -> str` | `public override string ToString()` and `public static explicit operator string(T self)` | The latter invokes the former |
 
 **Numeric conversion dunders (all explicit operators):**
 
+Also includes numeric conversion methods from above for thoroughness.
+
 | Dunder | C# Output |
 |--------|-----------|
-| `__int__` | `explicit operator int` |
-| `__float__` | `explicit operator double` |
-| `__double__` | `explicit operator double` |
-| `__decimal__` | `explicit operator decimal` |
-| `__long__` | `explicit operator long` |
-| `__short__` | `explicit operator short` |
-| `__byte__` | `explicit operator byte` |
-| `__sbyte__` | `explicit operator sbyte` |
-| `__uint__` | `explicit operator uint` |
-| `__ulong__` | `explicit operator ulong` |
-| `__ushort__` | `explicit operator ushort` |
+| `__byte__(self) -> byte` | `public static explicit operator byte(T self)` |
+| `__decimal__(self) -> decimal` | `public static explicit operator decimal(T self)` |
+| `__double__(self) -> double` | `public static explicit operator double(T self)` |
+| `__float__(self) -> float` | `public static explicit operator float(T self)` |
+| `__int__(self) -> int` | `public static explicit operator int(T self)` |
+| `__long__(self) -> long` | `public static explicit operator long(T self)` |
+| `__short__(self) -> short` | `public static explicit operator short(T self)` |
+| `__sbyte__(self) -> sbyte` | `public static explicit operator sbyte(T self)` |
+| `__uint__(self) -> uint` | `public static explicit operator uint(T self)` |
+| `__ulong__(self) -> ulong` | `public static explicit operator ulong(T self)` |
+| `__ushort__(self) -> ushort` | `public static explicit operator ushort(T self)` |
 
 ## Special Methods
 
 | Dunder | Required Return Type | C# Mapping | Notes |
 |--------|----------------------|------------|-------|
-| `__str__(self)` | `str` | `ToString()` override | Human-readable string |
-| `__hash__(self)` | `int` | `GetHashCode()` override | Hash code |
-| `__len__(self)` | `int` | `Count` property | Length/count |
-| `__bool__(self)` | `bool` | `operator true`/`operator false` | Truthiness |
 | `__contains__(self, item: T)` | `bool` | `Contains(T item)` method | Membership test (`in` operator) |
-| `__iter__(self)` | `Iterator[T]` | `IEnumerable<T>.GetEnumerator()` | Iteration |
-| `__next__(self)` | `T` | `IEnumerator<T>.MoveNext()` + `Current` | Iterator protocol |
-| `__getitem__(self, key: K)` | `V` | `this[K key] { get; }` indexer | Index access |
-| `__setitem__(self, key: K, value: V)` | `None` | `this[K key] { set; }` indexer | Index assignment |
-| `__delitem__(self, key: K)` | `None` | `Remove(K key)` method | Index deletion |
-| `__index__(self)` | `int` | Used for integer conversion in slice contexts | |
+| `__hash__(self)` | `int` | `GetHashCode()` override | Hash code |
 | `__format__(self, spec: str)` | `str` | `IFormattable.ToString(format, provider)` | Custom formatting |
+| `__getitem__(self, key: K)` | `V` | `this[K key] { get; }` indexer | Index access |
+| `__index__(self)` | `int` | Used for integer conversion in slice contexts | |
+| `__iter__(self)` | `Iterator[T]` | `IEnumerable<T>.GetEnumerator()` | Iteration |
+| `__len__(self)` | `int` | `Count` property | Length/count |
+| `__next__(self)` | `T` | `IEnumerator<T>.MoveNext()` + `Current` | Iterator protocol |
 | `__reversed__(self)` | `Iterator[T]` | `Reverse()` method or custom | Reverse iteration |
+| `__setitem__(self, key: K, value: V)` | `None` | `this[K key] { set; }` indexer | Index assignment |
 
-## Context Manager Methods
-
-| Dunder | C# Mapping | Notes |
-|--------|------------|-------|
-| `__enter__(self)` | `IDisposable` pattern / resource acquisition | Returns resource |
-| `__exit__(self, exc_type, exc_val, exc_tb)` | `Dispose()` or exception handling | Cleanup |
-
-## Async Context Manager Methods
-
-| Dunder | C# Mapping | Notes |
-|--------|------------|-------|
-| `__aenter__(self)` | `IAsyncDisposable` pattern | Async resource acquisition |
-| `__aexit__(self, exc_type, exc_val, exc_tb)` | `DisposeAsync()` | Async cleanup |
-| `__aiter__(self)` | `IAsyncEnumerable<T>` | Async iteration |
-| `__anext__(self)` | `IAsyncEnumerator<T>` | Async iterator protocol |
-| `__await__(self)` | Custom awaiter | Awaitable objects |
-
-## Math Methods
-
-| Dunder | C# Mapping | Notes |
-|--------|------------|-------|
-| `__divmod__(self, other)` | Returns `(quotient, remainder)` tuple | |
-
-## Unsupported/Discouraged Dunders
+## Unsupported Dunders
 
 | Dunder | Status | Rationale |
 |--------|--------|-----------|
 | `__abs__(self)` | Not supported | `Math.Abs()` doesn't dispatch to this |
-| `__round__(self, ndigits: int?)` | Not supported | `Math.Round()` doesn't dispatch |
-| `__floor__(self)` | Not supported | `Math.Floor()` doesn't dispatch |
-| `__trunc__(self)` | Not supported | `Math.Truncate()` doesn't dispatch |
-| `__ceil__(self)` | Not supported | `Math.Ceiling()` doesn't dispatch |
+| `__aenter__(self)` | Not supported yet | Complex feature |
+| `__aexit__(self, exc_type, exc_val, exc_tb)` | Not supported yet | Complex feature |
+| `__aiter__(self)` | Not supported yet | Complex feature |
+| `__anext__(self)` | Not supported yet | Complex feature |
+| `__await__(self)` | Not supported yet | Complex feature |
 | `__call__` | Not supported | C# has no callable object protocol; use explicit `Invoke()` method |
-| `__repr__` | Not supported | No direct C# equivalent; use `__str__` for string representation |
-| `__del__` | Discouraged | Maps to `~Finalizer()` but non-deterministic in .NET. Use `IDisposable` instead. |
+| `__ceil__(self)` | Not supported | `Math.Ceiling()` doesn't dispatch to this |
+| `__complex__` | Not supported | Use explicit conversion methods |
 | `__copy__` | Not supported | Use `ICloneable.Clone()` or explicit copy methods |
 | `__deepcopy__` | Not supported | Use serialization or explicit deep copy methods |
-| `__pow__` | Not supported | `**` is not an overloadable operator in C# |
+| `__del__` | Not supported | Use `IDisposable` instead. |
+| `__delitem__(self, key: K)` | Not supported yet | Use `Remove(K key)` method directly |
+| `__divmod__(self, other)` | Not supported | `Math.DivRem` doesn't dispatch to this |
+| `__enter__(self)` | Not supported yet | Use `IDisposable` instead |
+| `__exit__(self, exc_type, exc_val, exc_tb)` | Not supported yet | Use `IDisposable` instead |
+| `__floor__(self)` | Not supported | `Math.Floor()` doesn't dispatch to this |
 | `__floordiv__` | Not supported | Use `__div__` for `/` operator; `//` handled specially |
 | `__matmul__` | Not supported | `@` operator not available in C# |
-| `__complex__` | Not supported | Use explicit conversion methods |
+| `__round__(self, ndigits: int?)` | Not supported | `Math.Round()` doesn't dispatch to this |
+| `__trunc__(self)` | Not supported | `Math.Truncate()` doesn't dispatch to this |
+| `__pow__` | Not supported | `**` is not an overloadable operator in C# |
+| `__repr__` | Not supported | No direct C# equivalent; use `__str__` for string representation |
 
 ## Dunder Method Invocation Rules
 
