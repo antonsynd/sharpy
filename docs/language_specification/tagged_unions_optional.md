@@ -73,9 +73,9 @@ union Optional[T]:
     def unwrap_or(self, default: T) -> T:
         """Returns the value or the default"""
         match self:
-            case Optional.Some(value):
+            case Some(value):
                 return value
-            case Optional.Nothing:
+            case Nothing:
                 return default
 
     def unwrap_or_else(self, f: () -> T) -> T:

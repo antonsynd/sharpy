@@ -16,10 +16,10 @@ The `Result` type is part of the standard library and provides special syntax an
 
 ```python
 # Success case
-success: Result[int, str] = Result.Ok(42)
+success: Result[int, str] = Ok(42)
 
 # Error case
-failure: Result[int, str] = Result.Err("Something went wrong")
+failure: Result[int, str] = Err("Something went wrong")
 ```
 
 ## Pattern Matching
@@ -29,14 +29,14 @@ Use pattern matching to handle both success and error cases:
 ```python
 def divide(a: double, b: double) -> Result[double, str]:
     if b == 0:
-        return Result.Err("Division by zero")
-    return Result.Ok(a / b)
+        return Err("Division by zero")
+    return Ok(a / b)
 
 result = divide(10, 2)
 match result:
-    case Result.Ok(value):
+    case Ok(value):
         print(f"Success: {value}")
-    case Result.Err(error):
+    case Err(error):
         print(f"Error: {error}")
 ```
 
@@ -52,9 +52,9 @@ union Result[T, E]:
     def is_ok(self) -> bool:
         """Returns True if the result is Ok"""
         match self:
-            case Result.Ok():
+            case Ok(_):
                 return True
-            case Result.Err():
+            case Err(_):
                 return False
 
     def is_err(self) -> bool:
@@ -64,41 +64,27 @@ union Result[T, E]:
     def unwrap(self) -> T:
         """Returns the Ok value or raises an exception"""
         match self:
-            case Result.Ok(value):
+            case Ok(value):
                 return value
-            case Result.Err(error):
+            case Err(error):
                 raise Exception(f"Called unwrap on Err: {error}")
 
     def unwrap_or(self, default: T) -> T:
         """Returns the Ok value or the default"""
         match self:
-            case Result.Ok(value):
+            case Ok(value):
                 return value
-            case Result.Err():
+            case Err(_):
                 return default
 
     def unwrap_or_else(self, f: (E) -> T) -> T:
         """Returns the Ok value or calls f with the error"""
         match self:
-            case Result.Ok(value):
+            case Ok(value):
                 return value
-            case Result.Err(error):
+            case Err(error):
                 return f(error)
 ```
-
-## Try Expressions
-
-Result types have special integration with try expressions for ergonomic error handling:
-
-```python
-def process_data() -> Result[str, str]:
-    # If any operation returns Err, the function returns early
-    data = try? fetch_data()        # Returns Err early if fetch fails
-    validated = try? validate(data) # Returns Err early if validation fails
-    return Result.Ok(validated)
-```
-
-See [Try Expressions](try_expressions.md) for more details on this special syntax.
 
 ## Comparison with Nullable Types
 

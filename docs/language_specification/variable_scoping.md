@@ -16,12 +16,29 @@ To modify outer scope variables, use explicit assignment to a mutable container 
 
 **Block-Scoped Constructs** (variable doesn't leak):
 - For loop variables
-- Comprehension variables
+- Comprehension variables (including walrus assignments inside comprehensions)
 - Exception binding (`except E as e`)
 
 **Containing-Scope Constructs** (variable persists):
 - Regular declarations (`x = value`, `x: type = value`)
-- Walrus operator (`x := value`) - see [Walrus Operator](walrus_operator.md)
+- Walrus operator (`x := value`) in non-block contexts - see [Walrus Operator](walrus_operator.md)
+
+**Walrus Operator Scoping:**
+
+The walrus operator (`:=`) assigns to the *containing scope*. In most cases this is the enclosing function or module. However, inside block-scoped constructs like comprehensions, the walrus variable is scoped to that block:
+
+```python
+# Walrus in if-statement: variable persists in containing scope
+if (match := pattern.search(text)) is not None:
+    print(match)  # OK
+print(match)      # OK - walrus assigned in containing scope
+
+# Walrus in comprehension: variable is comprehension-local
+results = [y * 2 for x in items if (y := transform(x)) > 0]
+print(y)          # ERROR: 'y' does not exist in this scope
+```
+
+**Note:** This differs from Python 3.8+, where walrus in comprehensions leaks to the outer scope. In Sharpy, the syntactic boundary equals the semantic boundary—comprehension delimiters (`[...]`, `{...}`) which fully contain all variables declared within.
 
 ### Example
 

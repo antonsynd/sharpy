@@ -1,6 +1,6 @@
 # Static Methods
 
-Unlike Python and C#, Sharpy has no annotation/decorator for static methods. Static methods on a class, struct, etc. are like regular methods, except they do not have a `self` parameter (which has no type annotation) as the first parameter. This is how the compiler distinguishes between static methods and instance methods: instance methods always have an initial `self` parameter with no type annotation.
+Unlike Python's `@staticmethod` and C# `static`, Sharpy has no annotation/decorator/keyword for static methods. Static methods on a class, struct, etc. are like regular methods, except they do not have a `self` parameter (which has no type annotation) as the first parameter. This is how the compiler distinguishes between static methods and instance methods: instance methods always have an initial `self` parameter with no type annotation.
 
 ```python
 struct Foo:

@@ -129,7 +129,19 @@ ages = {name: age for name, age in pairs}
 print(name)  # ERROR: 'name' does not exist in this scope
 ```
 
-**Note:** Variables assigned using the walrus operator (`:=`) inside a comprehension *do* leak to the containing scope. See [walrus_operator.md](walrus_operator.md) for details.
+**Walrus Operator in Comprehensions:**
+
+Variables assigned using the walrus operator (`:=`) inside a comprehension are also comprehension-local. They do not leak to the containing scope:
+
+```python
+# Walrus useful within comprehension to avoid recomputation
+results = [y * 2 for x in items if (y := expensive(x)) > 0]
+# y is local to the comprehension - used in both filter and transform
+
+print(y)  # ERROR: 'y' does not exist in this scope
+```
+
+**Note:** This differs from Python 3.8+, where walrus assignments leak. In Sharpy, the syntactic boundary (`[...]` / `{...}`) is the semantic boundary: nothing leaks. See [walrus_operator.md](walrus_operator.md) for more details.
 
 **Shadowing Outer Variables:**
 

@@ -169,9 +169,9 @@ union Result[T, E]:
 
     def is_ok(self) -> bool:
         match self:
-            case Ok():      # Type name omitted
+            case Ok(_):      # Type name omitted
                 return True
-            case Err():     # Type name omitted
+            case Err(_):     # Type name omitted
                 return False
 
     def unwrap(self) -> T:
@@ -185,7 +185,7 @@ union Result[T, E]:
         match self:
             case Ok(value):   # Type name omitted
                 return value
-            case Err():       # Type name omitted
+            case Err(_):       # Type name omitted
                 return default
 ```
 
