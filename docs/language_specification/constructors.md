@@ -4,14 +4,14 @@
 
 ```python
 class Point:
-    x: double
-    y: double
+    x: float
+    y: float
 
     def __init__(self):
         self.x = 0.0
         self.y = 0.0
 
-    def __init__(self, x: double, y: double):
+    def __init__(self, x: float, y: float):
         self.x = x
         self.y = y
 
@@ -26,17 +26,17 @@ One constructor can delegate to another using `self.__init__(...)` as the first 
 
 ```python
 class Point:
-    x: double
-    y: double
+    x: float
+    y: float
 
     def __init__(self):
         self.__init__(0.0, 0.0)  # Chains to the two-parameter constructor
 
-    def __init__(self, x: double, y: double):
+    def __init__(self, x: float, y: float):
         self.x = x
         self.y = y
 
-    def __init__(self, xy: double):
+    def __init__(self, xy: float):
         self.__init__(xy, xy)    # Chains to the two-parameter constructor
 ```
 
@@ -49,16 +49,16 @@ class Point:
 
 ```python
 class Rectangle:
-    x: double
-    y: double
-    width: double
-    height: double
+    x: float
+    y: float
+    width: float
+    height: float
 
-    def __init__(self, width: double, height: double):
+    def __init__(self, width: float, height: float):
         self.__init__(0.0, 0.0, width, height)  # Chain first
         print("Created rectangle")              # Then other statements
 
-    def __init__(self, x: double, y: double, width: double, height: double):
+    def __init__(self, x: float, y: float, width: float, height: float):
         self.x = x
         self.y = y
         self.width = width

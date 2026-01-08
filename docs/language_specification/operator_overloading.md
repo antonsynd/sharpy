@@ -16,7 +16,7 @@ Dunder methods have compiler-enforced return types. The compiler validates that 
 | `__sub__(self, other: T)` | Same type as `self` or compatible | Binary `-` |
 | `__mul__(self, other: T)` | Same type as `self` or compatible | Binary `*` |
 | `__truediv__(self, other: T)` | Same type as `self` or compatible | Binary `/` |
-| `__floordiv__(self, other: T)` | `long` or float type | Binary `//` |
+| `__floordiv__(self, other: T)` | `int64` or float type | Binary `//` |
 | `__mod__(self, other: T)` | Same type as `self` or compatible | Binary `%` |
 | `__pow__(self, other: T)` | Same type as `self` or compatible | Binary `**` |
 | `__neg__(self)` | Same type as `self` | Unary `-` |
@@ -93,15 +93,15 @@ While return types are strictly enforced, parameter types for `other` in binary 
 
 ```python
 class Vector:
-    x: double
-    y: double
+    x: float
+    y: float
 
     # Vector + Vector
     def __add__(self, other: Vector) -> Vector:
         return Vector(self.x + other.x, self.y + other.y)
 
     # Vector * scalar (different parameter type)
-    def __mul__(self, other: double) -> Vector:
+    def __mul__(self, other: float) -> Vector:
         return Vector(self.x * other, self.y * other)
 ```
 
@@ -111,10 +111,10 @@ This also applies to comparison operators like `__lt__()`. For `__eq__()` and `_
 
 ```python
 class Vector:
-    x: double
-    y: double
+    x: float
+    y: float
 
-    def __init__(self, x: double, y: double):
+    def __init__(self, x: float, y: float):
         self.x = x
         self.y = y
 
@@ -124,7 +124,7 @@ class Vector:
     def __sub__(self, other: Vector) -> Vector:
         return Vector(self.x - other.x, self.y - other.y)
 
-    def __mul__(self, scalar: double) -> Vector:
+    def __mul__(self, scalar: float) -> Vector:
         return Vector(self.x * scalar, self.y * scalar)
 
     def __neg__(self) -> Vector:

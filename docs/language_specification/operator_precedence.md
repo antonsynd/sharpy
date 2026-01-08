@@ -67,7 +67,7 @@ The pipe operator `|>` has lower precedence than arithmetic but higher than type
 data |> filter(predicate) |> map(transform)  # Chains left-to-right
 
 # Arithmetic happens before piping
-x + 1 |> double    # Equivalent to: (x + 1) |> double
+x + 1 |> float    # Equivalent to: (x + 1) |> float
 
 # Use parentheses for complex right-hand expressions
 items |> (lambda x: x.value)  # Parentheses needed for lambda

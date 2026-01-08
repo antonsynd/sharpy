@@ -9,16 +9,16 @@ interface IDrawable:
     def draw(self):
         ...
 
-    def get_bounds(self) -> tuple[double, double, double, double]:
+    def get_bounds(self) -> tuple[float, float, float, float]:
         ...
 
 # Implementation
 class Circle(IDrawable):
-    radius: double
-    x: double
-    y: double
+    radius: float
+    x: float
+    y: float
 
-    def __init__(self, x: double, y: double, radius: double):
+    def __init__(self, x: float, y: float, radius: float):
         self.x = x
         self.y = y
         self.radius = radius
@@ -26,7 +26,7 @@ class Circle(IDrawable):
     def draw(self):
         print(f"Drawing circle at ({self.x}, {self.y})")
 
-    def get_bounds(self) -> tuple[double, double, double, double]:
+    def get_bounds(self) -> tuple[float, float, float, float]:
         return (self.x - self.radius, self.y - self.radius,
                 self.radius * 2, self.radius * 2)
 ```

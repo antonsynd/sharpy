@@ -77,8 +77,8 @@ def broken(*a: int, *b: str) -> None:  # ERROR
 Inside the function body, the `*args` parameter has type `array[T]`, mapping to C#'s `params T[]`:
 
 ```python
-def analyze(*values: double) -> tuple[double, double]:
-    # values: array[double]
+def analyze(*values: float) -> tuple[float, float]:
+    # values: array[float]
     if len(values) == 0:
         return (0.0, 0.0)
     return (min(values), max(values))

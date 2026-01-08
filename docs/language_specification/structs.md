@@ -6,14 +6,14 @@ Structs are value types that do not support inheritance but can implement interf
 struct Vector2:
     """A 2D vector value type."""
 
-    x: double
-    y: double
+    x: float
+    y: float
 
-    def __init__(self, x: double, y: double):
+    def __init__(self, x: float, y: float):
         self.x = x
         self.y = y
 
-    def magnitude(self) -> double:
+    def magnitude(self) -> float:
         return (self.x ** 2 + self.y ** 2) ** 0.5
 
     def __add__(self, other: Vector2) -> Vector2:
@@ -43,10 +43,10 @@ p1 = Point()           # x = 0, y = 0
 
 # Using explicit constructor
 struct Vector:
-    x: double
-    y: double
+    x: float
+    y: float
 
-    def __init__(self, x: double, y: double):
+    def __init__(self, x: float, y: float):
         self.x = x
         self.y = y
 

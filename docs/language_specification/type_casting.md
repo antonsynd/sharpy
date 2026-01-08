@@ -32,11 +32,11 @@ value = boxed to int             # Throws if not an int
 value = boxed to int?            # None if not an int
 
 # Numeric conversions
-big: long = 1_000_000
+big: int64 = 1_000_000
 small = big to int               # Throws on overflow
 small = big to int?              # None on overflow
 
-precise: double = 3.14159
+precise: float = 3.14159
 rounded = precise to int         # Truncates toward zero (3), throws if out of range
 rounded = precise to int?        # None if out of range
 ```
@@ -94,29 +94,29 @@ The `to` operator handles numeric type conversions including narrowing conversio
 
 | Conversion | Behavior |
 |------------|----------|
-| Widening (e.g., `int` → `long`) | Always succeeds |
-| Narrowing (e.g., `long` → `int`) | Throws/None on overflow |
+| Widening (e.g., `int32` → `int64`) | Always succeeds |
+| Narrowing (e.g., `int64` → `int32`) | Throws/None on overflow |
 | Float → Integer | Truncates toward zero, throws/None if out of range |
 | Integer → Float | May lose precision (no failure) |
 
 ```python
 # Widening - always safe
 x: int = 42
-y = x to long                    # Always succeeds
+y = x to int64                    # Always succeeds
 
 # Narrowing - may fail
-big: long = 10_000_000_000
+big: int64 = 10_000_000_000
 small = big to int               # Throws: value too large for int
 small = big to int?              # None: value too large for int
 
 # Float to integer truncation
-pi: double = 3.99
+pi: float = 3.99
 n = pi to int                    # 3 (truncates toward zero)
-neg: double = -3.99
+neg: float = -3.99
 m = neg to int                   # -3 (truncates toward zero)
 
 # Out of range
-huge: double = 1e100
+huge: float = 1e100
 n = huge to int?                 # None: out of int range
 ```
 
@@ -172,7 +172,7 @@ name = (animal to Dog).name
 result = (obj to IProcessor).process(data)
 
 # Arithmetic binds tighter than `to`
-x = value + 1 to long          # Parsed as: (value + 1) to long
+x = value + 1 to int64          # Parsed as: (value + 1) to int64
 
 # No parentheses needed for comparisons
 if animal to Dog? is not None:

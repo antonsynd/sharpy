@@ -32,7 +32,7 @@ Note that Sharpy does not support any version of static or class methods equatin
 
 | Decorator | C# Equivalent | Visibility |
 |-----------|---------------|------------|
-| (default) | `public` | Everyone |
+| `@public` (can be omitted, it is the default) | `public` | Everyone |
 | `@protected` or `_name` | `protected` | Class and derived |
 | `@private` or `__name` | `private` | Declaring class only |
 | `@internal` | `internal` | Same assembly |
@@ -138,11 +138,11 @@ class Shape:
         self.name = name
 
     @abstract
-    def area(self) -> double:
+    def area(self) -> float:
         ...  # Must be implemented by subclasses
 
     @abstract
-    def perimeter(self) -> double:
+    def perimeter(self) -> float:
         ...  # Must be implemented by subclasses
 
     # Non-abstract methods are allowed
@@ -150,18 +150,18 @@ class Shape:
         return f"{self.name} with area {self.area()}"
 
 class Circle(Shape):
-    radius: double
+    radius: float
 
-    def __init__(self, radius: double):
+    def __init__(self, radius: float):
         super().__init__("Circle")
         self.radius = radius
 
     @override
-    def area(self) -> double:
+    def area(self) -> float:
         return 3.14159 * self.radius ** 2
 
     @override
-    def perimeter(self) -> double:
+    def perimeter(self) -> float:
         return 2 * 3.14159 * self.radius
 
 # Usage

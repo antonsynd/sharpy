@@ -18,9 +18,9 @@ The `/` operator always produces a floating-point result, following Python's sem
 |---------------|-------------|-------|
 | Both `decimal` | `decimal` | High-precision division |
 | `decimal` + any integer | `decimal` | Integer promoted to decimal |
-| Any `double` | `double` | |
-| Any `float` (no `double`/`decimal`) | `float` | |
-| Integer types only | `double` | Always promotes to double |
+| Any `float64` | `float64` | |
+| Any `float32` (no `float64`/`decimal`) | `float32` | |
+| Integer types only | `float64` | Always promotes to `float64` |
 
 ## Floor Division Operator `//`
 
@@ -31,18 +31,18 @@ mathematical quotient (rounds toward negative infinity).
 
 | Operands | Result Type |
 |----------|-------------|
-| Any integer types | `long` |
+| Any integer types | `int64` |
 | Any float type | Same float type |
 | Mixed integer and float | Float type of the float operand |
 
 **Examples:**
 ```python
-7 // 3      # 2 (long)
--7 // 3     # -3 (long), not -2
-7.5 // 2.0  # 3.0 (double)
-7 // 2.0    # 3.0 (double) - mixed: result is double
-7.0 // 2    # 3.0 (double) - mixed: result is double
-7.0f // 2   # 3.0f (float) - mixed: result is float
+7 // 3      # 2 (int64)
+-7 // 3     # -3 (int64), not -2
+7.5 // 2.0  # 3.0 (float64)
+7 // 2.0    # 3.0 (float64) - mixed: result is float64
+7.0 // 2    # 3.0 (float64) - mixed: result is float64
+7.0f // 2   # 3.0f (float32) - mixed: result is float32
 ```
 
 ## Implementation
@@ -59,32 +59,32 @@ When binary arithmetic operators (`+`, `-`, `*`) operate on different numeric ty
 
 | Left Type | Right Type | Result Type | Notes |
 |-----------|------------|-------------|-------|
-| `int` | `int` | `int` | |
-| `int` | `long` | `long` | Smaller promoted to larger |
-| `int` | `double` | `double` | Integer promoted to float |
-| `int` | `decimal` | `decimal` | Integer promoted to decimal |
-| `float` | `double` | `double` | Lower precision promoted |
-| `double` | `decimal` | ❌ Error | Cannot mix double and decimal |
-| `byte` | `int` | `int` | Small integers promote to int |
-| `short` | `int` | `int` | Small integers promote to int |
+| `int32` | `int32` | `int32` | |
+| `int32` | `int64` | `int64` | Smaller promoted to larger |
+| `int32` | `float64` | `float64` | Integer promoted to float |
+| `int32` | `decimal` | `decimal` | Integer promoted to decimal |
+| `float32` | `float64` | `float64` | Lower precision promoted |
+| `float64` | `decimal` | ❌ Error | Cannot mix double and decimal |
+| `uint8` | `int32` | `int32` | Small integers promote to int |
+| `int16` | `int32` | `int32` | Small integers promote to int |
 
 **Key Rules:**
 
-1. **Integer operations**: Result is the larger integer type (but at least `int`)
+1. **Integer operations**: Result is the larger integer type (but at least `int32`)
 2. **Float operations**: Result is the higher-precision float type
 3. **Mixed integer/float**: Integer is promoted to the float type
-4. **Decimal is special**: Can mix with integers, but not with `float`/`double`
+4. **Decimal is special**: Can mix with integers, but not with `float32`/`float64`
 
-*Note: Python itself has only `int`, `float` (equivalent to Sharpy's `double`), and `complex` as built-in numeric types. Sharpy's rules handle .NET's richer type system (`byte`, `short`, `long`, `float` vs `double`, `decimal`) while maintaining Python-like simplicity.*
+*Note: Python itself has only `int`, `float` (equivalent to Sharpy's `int32` and `float64` which have aliases `int` and `float`), and `complex` as built-in numeric types. Sharpy's rules handle .NET's richer type system (`int8`, `int16`, `int64`, ..., `float32` vs `float64`, `decimal`) while maintaining Python-like simplicity.*
 
 ```python
 # Numeric promotion examples
-1 + 2           # int + int = int
-1 + 2L          # int + long = long
-1 + 2.0         # int + double = double
-1.0f + 2.0      # float + double = double
-1 + 2m          # int + decimal = decimal
-1.0 + 2m        # ERROR: double + decimal is not allowed
+1 + 2           # int32 + int32 = int32
+1 + 2L          # int32 + int64 = int64
+1 + 2.0         # int32 + float64 = float64
+1.0f + 2.0      # float + float64 = float64
+1 + 2m          # int32 + decimal = decimal
+1.0 + 2m        # ERROR: float64 + decimal is not allowed
 ```
 
 *Implementation*

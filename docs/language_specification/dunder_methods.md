@@ -196,27 +196,7 @@ Conversion dunder methods map to C# explicit or implicit conversion operators:
 | Dunder | C# Output | Notes |
 |--------|-----------|-------|
 | `__bool__(self) -> bool` | `public static bool operator true(T self)` and `public static bool operator false(T self)` | The latter invokes the former and returns the negated value |
-| `__float__(self) -> float` | `public static explicit operator float(T self)` | |
-| `__int__(self) -> int` | `public static explicit operator int(T self)` | |
 | `__str__(self) -> str` | `public override string ToString()` and `public static explicit operator string(T self)` | The latter invokes the former |
-
-**Numeric conversion dunders (all explicit operators):**
-
-Also includes numeric conversion methods from above for thoroughness.
-
-| Dunder | C# Output |
-|--------|-----------|
-| `__byte__(self) -> byte` | `public static explicit operator byte(T self)` |
-| `__decimal__(self) -> decimal` | `public static explicit operator decimal(T self)` |
-| `__double__(self) -> double` | `public static explicit operator double(T self)` |
-| `__float__(self) -> float` | `public static explicit operator float(T self)` |
-| `__int__(self) -> int` | `public static explicit operator int(T self)` |
-| `__long__(self) -> long` | `public static explicit operator long(T self)` |
-| `__short__(self) -> short` | `public static explicit operator short(T self)` |
-| `__sbyte__(self) -> sbyte` | `public static explicit operator sbyte(T self)` |
-| `__uint__(self) -> uint` | `public static explicit operator uint(T self)` |
-| `__ulong__(self) -> ulong` | `public static explicit operator ulong(T self)` |
-| `__ushort__(self) -> ushort` | `public static explicit operator ushort(T self)` |
 
 ## Special Methods
 
@@ -253,8 +233,10 @@ Also includes numeric conversion methods from above for thoroughness.
 | `__divmod__(self, other)` | Not supported | `Math.DivRem` doesn't dispatch to this |
 | `__enter__(self)` | Not supported yet | Use `IDisposable` instead |
 | `__exit__(self, exc_type, exc_val, exc_tb)` | Not supported yet | Use `IDisposable` instead |
-| `__floor__(self)` | Not supported | `Math.Floor()` doesn't dispatch to this |
+| `__float__(self)` | Not supported | `Math.Floor()` doesn't dispatch to this |
+| `__floor__(self)` | Not supported | Not yet designed |
 | `__floordiv__` | Not supported | Use `__div__` for `/` operator; `//` handled specially |
+| `__int__` | Not supported | Not yet designed |
 | `__matmul__` | Not supported | `@` operator not available in C# |
 | `__round__(self, ndigits: int?)` | Not supported | `Math.Round()` doesn't dispatch to this |
 | `__trunc__(self)` | Not supported | `Math.Truncate()` doesn't dispatch to this |

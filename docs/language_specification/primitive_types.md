@@ -2,21 +2,30 @@
 
 | Sharpy Type | .NET Type | Size | Notes |
 |-------------|-----------|------|-------|
-| `int` | `System.Int32` | 32-bit | Default integer type |
-| `long` | `System.Int64` | 64-bit | Large integers |
-| `short` | `System.Int16` | 16-bit | Small integers |
-| `byte` | `System.Byte` | 8-bit | Unsigned byte |
-| `uint` | `System.UInt32` | 32-bit | Unsigned 32-bit |
-| `ulong` | `System.UInt64` | 64-bit | Unsigned 64-bit |
-| `ushort` | `System.UInt16` | 16-bit | Unsigned 16-bit |
-| `sbyte` | `System.SByte` | 8-bit | Signed byte |
-| `float` | `System.Single` | 32-bit | Single-precision |
-| `double` | `System.Double` | 64-bit | Double-precision (default) |
+| `int32` | `System.Int32` | 32-bit | Default integer type |
+| `int64` | `System.Int64` | 64-bit | Large integers |
+| `int16` | `System.Int16` | 16-bit | Small integers |
+| `int8` | `System.SByte` | 8-bit | Signed byte |
+| `uint32` | `System.UInt32` | 32-bit | Unsigned 32-bit |
+| `uint64` | `System.UInt64` | 64-bit | Unsigned 64-bit |
+| `uint16` | `System.UInt16` | 16-bit | Unsigned 16-bit |
+| `uint8` | `System.Byte` | 8-bit | Unsigned byte |
+| `float32` | `System.Single` | 32-bit | Single-precision |
+| `float64` | `System.Double` | 64-bit | Double-precision (default) |
 | `decimal` | `System.Decimal` | 128-bit | High-precision decimal |
 | `bool` | `System.Boolean` | - | `True` or `False` |
 | `str` | `System.String` | - | Immutable Unicode string |
 | `char` | `System.Char` | 16-bit | Single Unicode character |
 | `object` | `System.Object` | - | Base type for all types |
+
+There are aliases present that help ease both Python and C# developers at the cost of consistency.
+
+| Sharpy Alias | Sharpy Type |
+|--------------|-------------|
+| `byte` | `uint8` |
+| `int` | `int32` |
+| `float` | `float64` |
+| `sbyte` | `int8` |
 
 ## Array Type
 

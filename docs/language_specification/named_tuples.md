@@ -6,8 +6,8 @@ Named tuples provide field names for tuple elements, improving code readability 
 
 ```python
 # Define a named tuple type alias
-type Point = tuple[x: double, y: double]
-type Coordinate = tuple[x: double, y: double, z: double]
+type Point = tuple[x: float, y: float]
+type Coordinate = tuple[x: float, y: float, z: float]
 type Bounds = tuple[min: int, max: int]
 ```
 
@@ -28,7 +28,7 @@ p: Point = (1.0, 2.0)  # Fields are named based on type
 ## Accessing Fields
 
 ```python
-type Point = tuple[x: double, y: double]
+type Point = tuple[x: float, y: float]
 pos: Point = (x=1.0, y=2.0)
 
 # Access by name
@@ -45,7 +45,7 @@ print(pos[1])  # 2.0
 Named tuples support standard tuple unpacking:
 
 ```python
-type Point = tuple[x: double, y: double]
+type Point = tuple[x: float, y: float]
 pos: Point = (x=3.0, y=4.0)
 
 # Positional unpacking
@@ -75,9 +75,9 @@ min_val, max_val = get_bounds()
 ## Function Parameters
 
 ```python
-type Point = tuple[x: double, y: double]
+type Point = tuple[x: float, y: float]
 
-def distance(p1: Point, p2: Point) -> double:
+def distance(p1: Point, p2: Point) -> float:
     dx = p2.x - p1.x
     dy = p2.y - p1.y
     return (dx * dx + dy * dy) ** 0.5
@@ -103,7 +103,7 @@ print(f"{config.host}:{config.port}")  # localhost:8080
 Named tuples work with pattern matching:
 
 ```python
-type Point = tuple[x: double, y: double]
+type Point = tuple[x: float, y: float]
 
 def describe(point: Point) -> str:
     match point:
@@ -129,7 +129,7 @@ match point:
 Named tuples compare by value, element by element:
 
 ```python
-type Point = tuple[x: double, y: double]
+type Point = tuple[x: float, y: float]
 
 p1: Point = (x=1.0, y=2.0)
 p2: Point = (x=1.0, y=2.0)
@@ -145,7 +145,7 @@ print(p1 is p2)  # False - different instances
 Like regular tuples, named tuples are immutable:
 
 ```python
-type Point = tuple[x: double, y: double]
+type Point = tuple[x: float, y: float]
 pos: Point = (x=1.0, y=2.0)
 
 # ❌ Cannot modify fields
@@ -161,17 +161,17 @@ Named tuples map directly to C# `ValueTuple` with named elements:
 
 ```python
 # Sharpy
-type Point = tuple[x: double, y: double]
+type Point = tuple[x: float, y: float]
 pos: Point = (x=1.0, y=2.0)
 print(pos.x)
 ```
 ```csharp
 // C# 9.0
-(double x, double y) pos = (x: 1.0, y: 2.0);
+(float x, float y) pos = (x: 1.0, y: 2.0);
 Console.WriteLine(pos.x);
 
 // Or with type alias
-using Point = (double x, double y);
+using Point = (float x, float y);
 Point pos = (1.0, 2.0);
 ```
 
@@ -180,15 +180,15 @@ Point pos = (1.0, 2.0);
 Named tuples with the same field names and types in the same order are compatible:
 
 ```python
-type Point2D = tuple[x: double, y: double]
-type Coordinate2D = tuple[x: double, y: double]
+type Point2D = tuple[x: float, y: float]
+type Coordinate2D = tuple[x: float, y: float]
 
 p: Point2D = (x=1.0, y=2.0)
 c: Coordinate2D = p  # OK - same structure
 
 # Different names or order - not compatible
-type Position = tuple[x: double, y: double]
-type Size = tuple[width: double, height: double]
+type Position = tuple[x: float, y: float]
+type Size = tuple[width: float, height: float]
 
 pos: Position = (x=1.0, y=2.0)
 size: Size = pos  # ERROR - different field names
@@ -197,7 +197,7 @@ size: Size = pos  # ERROR - different field names
 ## Nested Named Tuples
 
 ```python
-type Point = tuple[x: double, y: double]
+type Point = tuple[x: float, y: float]
 type Line = tuple[start: Point, end: Point]
 
 line: Line = (
@@ -221,15 +221,15 @@ def load_config() -> Config:
 
 **Multiple Return Values:**
 ```python
-def parse_header() -> tuple[status: int, message: str, timestamp: long]:
+def parse_header() -> tuple[status: int, message: str, timestamp: int64]:
     return (status=200, message="OK", timestamp=get_timestamp())
 ```
 
 **Coordinate Systems:**
 ```python
-type Point2D = tuple[x: double, y: double]
-type Point3D = tuple[x: double, y: double, z: double]
-type RGB = tuple[r: byte, g: byte, b: byte]
+type Point2D = tuple[x: float, y: float]
+type Point3D = tuple[x: float, y: float, z: float]
+type RGB = tuple[r: uint8, g: uint8, b: uint8]
 ```
 
 ## Limitations
@@ -244,12 +244,12 @@ type RGB = tuple[r: byte, g: byte, b: byte]
 type Mixed = tuple[x: int, int]  # ERROR
 
 # ❌ Cannot have default values
-type Point = tuple[x: double = 0.0, y: double = 0.0]  # ERROR
+type Point = tuple[x: float = 0.0, y: float = 0.0]  # ERROR
 
 # ✅ Use struct instead for defaults
 struct Point:
-    x: double = 0.0
-    y: double = 0.0
+    x: float = 0.0
+    y: float = 0.0
 ```
 
 *Implementation*

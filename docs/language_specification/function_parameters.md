@@ -157,10 +157,10 @@ An overload A is better than overload B if:
 2. **Fewer conversions needed**: A requires fewer implicit conversions
    ```python
    def f(x: int): ...
-   def f(x: double): ...
+   def f(x: float): ...
 
    f(42)    # Calls f(int) - no conversion needed
-   f(3.14)  # Calls f(double) - exact match
+   f(3.14)  # Calls f(float) - exact match
    ```
 
 3. **Non-variadic preferred**: Non-`*args` overloads are preferred over `*args` overloads
@@ -176,17 +176,17 @@ An overload A is better than overload B if:
 If no single overload is "better" than all others, the call is ambiguous:
 
 ```python
-def f(x: int, y: double): ...
-def f(x: double, y: int): ...
+def f(x: int, y: float): ...
+def f(x: float, y: int): ...
 
 f(1, 2)  # ERROR: Ambiguous - both equally good after implicit conversions
 ```
 
 **Resolution:** Use explicit type conversions to disambiguate:
 ```python
-f(1, 2.0)       # Calls f(int, double)
-f(1.0, 2)       # Calls f(double, int)
-f(1 to double, 2)  # Explicitly calls f(double, int)
+f(1, 2.0)       # Calls f(int, float)
+f(1.0, 2)       # Calls f(float, int)
+f(1 to float, 2)  # Explicitly calls f(float, int)
 ```
 
 ### Default Parameters and Overloads

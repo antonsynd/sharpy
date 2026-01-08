@@ -12,8 +12,8 @@ This design allows code like `len(x)`, `str(x)`, and `repr(x)` to work consisten
 
 | Function | Purpose | C# Mapping |
 |----------|---------|------------|
-| `int(x)` | Convert to integer | `(int)x` or `Convert.ToInt32(x)` |
-| `double(x)` | Convert to double | `(double)x` |
+| `int(x)` | Convert to integer (32-bit) | `(int)x` or `Convert.ToInt32(x)` |
+| `float(x)` | Convert to float (64-bit) | `(double)x` |
 | `str(x)` | Convert to string | Calls `__str__` if defined, else `.ToString()` |
 | `bool(x)` | Convert to boolean | Truthiness check |
 
@@ -258,15 +258,15 @@ The `divmod()` function returns a tuple containing the quotient and remainder. T
 
 | Operand Types | Return Type | Notes |
 |---------------|-------------|-------|
-| Both `int` | `tuple[int, int]` | Integer division and modulo |
-| Any `long` | `tuple[long, long]` | Promoted to long |
-| Any `float`/`double` | `tuple[double, double]` | Float division |
+| Both `int` (32-bit) | `tuple[int, int]` | Integer division and modulo |
+| Any `int64` | `tuple[int64, int64]` | Promoted to int64 |
+| Any `float32`/`float64` | `tuple[float64, float64]` | Float division |
 | Any `decimal` | `tuple[decimal, decimal]` | Decimal division |
 
 ```python
 divmod(17, 5)       # (3, 2) - tuple[int, int]
-divmod(17L, 5)      # (3L, 2L) - tuple[long, long]
-divmod(17.0, 5.0)   # (3.0, 2.0) - tuple[double, double]
+divmod(17L, 5)      # (3L, 2L) - tuple[int64, int64]
+divmod(17.0, 5.0)   # (3.0, 2.0) - tuple[float, float]
 divmod(17.0m, 5.0m) # (3.0m, 2.0m) - tuple[decimal, decimal]
 ```
 

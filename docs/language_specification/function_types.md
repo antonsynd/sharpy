@@ -148,8 +148,8 @@ result = apply(5, lambda x: x * 2)  # 10
 def make_multiplier(factor: int) -> (int) -> int:
     return lambda x: x * factor
 
-double = make_multiplier(2)
-print(double(5))  # 10
+doubler = make_multiplier(2)
+print(doubler(5))  # 10
 ```
 
 **As field types:**

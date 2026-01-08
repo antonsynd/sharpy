@@ -107,15 +107,15 @@ For properties requiring custom logic (validation, transformation, computation),
 
 ```python
 class Rectangle:
-    width: double
-    height: double
+    width: float
+    height: float
 
-    def __init__(self, width: double, height: double):
+    def __init__(self, width: float, height: float):
         self.width = width
         self.height = height
 
     # Computed property (no backing field needed)
-    property get area(self) -> double:
+    property get area(self) -> float:
         return self.width * self.height
 ```
 
@@ -134,7 +134,7 @@ Properties participate in inheritance using `@virtual`, `@abstract`, `@override`
 ```python
 class Shape:
     @abstract
-    property get area(self) -> double:
+    property get area(self) -> float:
         ...
 
     @virtual
@@ -143,7 +143,7 @@ class Shape:
 
 class Circle(Shape):
     @override
-    property get area(self) -> double:
+    property get area(self) -> float:
         return 3.14159 * self.radius ** 2
 ```
 

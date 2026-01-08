@@ -85,10 +85,10 @@ The `in` modifier passes by reference for efficiency but prevents modification. 
 
 ```python
 struct LargeData:
-    matrix: list[list[double]]
+    matrix: list[list[float]]
     metadata: dict[str, object]
 
-def analyze(data: in[LargeData]) -> double:
+def analyze(data: in[LargeData]) -> float:
     """Analyze data without copying the large struct."""
     # data.matrix = []  # ERROR: Cannot modify `in` parameter
     return compute_result(data.matrix)
@@ -142,7 +142,7 @@ When declaring function types, parameter modifiers are part of the signature:
 # Function type with ref parameter
 SwapFunc = (ref[int], ref[int]) -> None
 
-# Function type with out parameter  
+# Function type with out parameter
 TryParseFunc = (str, out[int]) -> bool
 ```
 
@@ -195,7 +195,7 @@ def try_parse(s: str, result: out[int]) -> bool:
     result = 0
     return False
 
-def calculate(data: in[LargeStruct]) -> double:
+def calculate(data: in[LargeStruct]) -> float:
     return data.value
 ```
 
@@ -214,7 +214,7 @@ public static bool TryParse(string s, out int result)
     return false;
 }
 
-public static double Calculate(in LargeStruct data)
+public static float Calculate(in LargeStruct data)
 {
     return data.Value;
 }

@@ -129,9 +129,9 @@ class Shape:
         return "A shape"
 
 class Circle(Shape):
-    radius: double
+    radius: float
 
-    def __init__(self, radius: double):
+    def __init__(self, radius: float):
         self.radius = radius
 
     @override

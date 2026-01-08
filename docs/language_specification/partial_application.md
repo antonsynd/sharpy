@@ -98,12 +98,12 @@ Haskell-style operator sections using `_` for partial application of operators:
 
 ```python
 # Unary operator sections
-double = (_ * 2)        # Multiply by 2
+doubler = (_ * 2)        # Multiply by 2
 is_positive = (_ > 0)   # Check if positive
 negate = (-_)           # Negate number
 
 # Usage
-[1, 2, 3].map(double)           # [2, 4, 6]
+[1, 2, 3].map(float)           # [2, 4, 6]
 [-1, 0, 1].filter(is_positive)  # [1]
 [5, -3, 8].map(negate)          # [-5, 3, -8]
 
@@ -132,11 +132,11 @@ format_smith = lambda a, b: format_name(a, b, "Smith")
 The type of a partially applied function is inferred from the original function:
 
 ```python
-def compute(x: int, y: double, z: str) -> str:
+def compute(x: int, y: float, z: str) -> str:
     return f"{x}, {y}, {z}"
 
 # Partial application infers parameter and return types
-partial: (double, str) -> str = compute(42, _, _)
+partial: (float, str) -> str = compute(42, _, _)
 result = partial(3.14, "test")  # "42, 3.14, test"
 ```
 
@@ -145,7 +145,7 @@ result = partial(3.14, "test")  # "42, 3.14, test"
 Placeholders preserve the original argument order:
 
 ```python
-def divide(numerator: double, denominator: double) -> double:
+def divide(numerator: float, denominator: float) -> float:
     return numerator / denominator
 
 # Fix denominator (second argument)
@@ -274,12 +274,12 @@ var result = addFive(3);
 **Operator Sections:**
 ```python
 # Sharpy
-double = (_ * 2)
+doubler = (_ * 2)
 is_positive = (_ > 0)
 ```
 ```csharp
 // C# 9.0
-Func<int, int> @double = (x) => x * 2;
+Func<int, int> doubler = (x) => x * 2;
 Func<int, bool> isPositive = (x) => x > 0;
 ```
 
@@ -303,19 +303,18 @@ for i in range(1000):
 Explicitly annotate partially applied functions for clarity:
 
 ```python
-def compute(a: int, b: double, c: str) -> str:
+def compute(a: int, b: float, c: str) -> str:
     return f"{a}, {b}, {c}"
 
 # Explicit type annotation
-partial: (double, str) -> str = compute(42, _, _)
+partial: (float, str) -> str = compute(42, _, _)
 
 # Type is inferred if omitted
 partial = compute(42, _, _)  # Same as above
 ```
 
-*Implementation: 🔄 Lowered - Transformed to lambda expression at compile time:*
-- Simple function calls: `f(a, _, c)` → `(b) => f(a, b, c)`
-- Operator sections: `(_ * 2)` → `(x) => x * 2`
-- Multiple placeholders maintain order: `f(_, x, _)` → `(a, c) => f(a, x, c)`
-
----
+*Implementation*
+- *🔄 Lowered - Transformed to lambda expression at compile time:*
+  - Simple function calls: `f(a, _, c)` → `(b) => f(a, b, c)`
+  - Operator sections: `(_ * 2)` → `(x) => x * 2`
+  - Multiple placeholders maintain order: `f(_, x, _)` → `(a, c) => f(a, x, c)`

@@ -27,7 +27,7 @@ failure: Result[int, str] = Err("Something went wrong")
 Use pattern matching to handle both success and error cases:
 
 ```python
-def divide(a: double, b: double) -> Result[double, str]:
+def divide(a: float, b: float) -> Result[float, str]:
     if b == 0:
         return Err("Division by zero")
     return Ok(a / b)

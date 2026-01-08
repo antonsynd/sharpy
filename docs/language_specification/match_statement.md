@@ -189,7 +189,7 @@ match shape:
 For types with a `Deconstruct` method (like records or types with explicit deconstruction), positional patterns extract values in order:
 
 ```python
-# Assuming Point has Deconstruct(out double x, out double y)
+# Assuming Point has Deconstruct(out float x, out float y)
 match point:
     case Point(0, 0):              # Positional - matches x=0, y=0
         print("Origin")

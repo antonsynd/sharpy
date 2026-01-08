@@ -8,7 +8,7 @@ Properties participate in inheritance using the standard decorators: `@virtual`,
 class Shape:
     # Abstract property (must be overridden)
     @abstract
-    property get area(self) -> double:
+    property get area(self) -> float:
         ...
 
     # Virtual property (can be overridden)
@@ -17,14 +17,14 @@ class Shape:
         return "Shape"
 
 class Circle(Shape):
-    property get radius: double
+    property get radius: float
 
-    def __init__(self, radius: double):
+    def __init__(self, radius: float):
         self.radius = radius
 
     # Override abstract property
     @override
-    property get area(self) -> double:
+    property get area(self) -> float:
         return 3.14159 * self.radius ** 2
 
     # Override virtual property
@@ -55,10 +55,10 @@ class UnitCircle(Circle):
 
 *Implementation: ✅ Native*
 ```csharp
-public abstract double Area { get; }
+public abstract float Area { get; }
 public virtual string Name => "Shape";
 
-public override double Area => 3.14159 * Radius * Radius;
+public override float Area => 3.14159 * Radius * Radius;
 public override string Name => "Circle";
 
 public sealed override string Name => "Unit Circle";

@@ -27,7 +27,7 @@ The type is inferred from the initializer expression:
 count = 0              # Inferred as int
 name = "Alice"         # Inferred as str
 items = [1, 2, 3]      # Inferred as list[int]
-pi = 3.14159           # Inferred as double
+pi = 3.14159           # Inferred as float
 ```
 
 **Form 3: Type Inference (Explicit with `auto`)**

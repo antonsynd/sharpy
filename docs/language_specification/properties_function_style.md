@@ -6,25 +6,25 @@ For properties requiring custom logic (validation, transformation, computation),
 
 ```python
 class Rectangle:
-    width: double
-    height: double
+    width: float
+    height: float
 
-    def __init__(self, width: double, height: double):
+    def __init__(self, width: float, height: float):
         self.width = width
         self.height = height
 
     # Computed property (no backing field needed)
-    property get area(self) -> double:
+    property get area(self) -> float:
         return self.width * self.height
 
-    property get perimeter(self) -> double:
+    property get perimeter(self) -> float:
         return 2 * (self.width + self.height)
 
     property get is_square(self) -> bool:
         return self.width == self.height
 
     # Multi-statement bodies work naturally
-    property get diagonal(self) -> double:
+    property get diagonal(self) -> float:
         w_sq = self.width ** 2
         h_sq = self.height ** 2
         return (w_sq + h_sq) ** 0.5
@@ -37,11 +37,11 @@ class Rectangle:
 
 *Implementation: ✅ Native*
 ```csharp
-public double Area => Width * Height;
-public double Perimeter => 2 * (Width + Height);
+public float Area => Width * Height;
+public float Perimeter => 2 * (Width + Height);
 public bool IsSquare => Width == Height;
 
-public double Diagonal {
+public float Diagonal {
     get {
         var wSq = Width * Width;
         var hSq = Height * Height;
@@ -54,16 +54,16 @@ public double Diagonal {
 
 ```python
 class Temperature:
-    _celsius: double = 0.0
+    _celsius: float = 0.0
 
     # Function-style setter with validation
-    property set celsius(self, value: double):
+    property set celsius(self, value: float):
         if value < -273.15:
             raise ValueError("Temperature below absolute zero")
         self._celsius = value
 
     # Cannot combine with auto getter
-    property get celsius: double # ERROR: no auto backing field with function-style!
+    property get celsius: float # ERROR: no auto backing field with function-style!
 ```
 
 It is possible to have both a function-style getter and setter. However, function-style getter/setters cannot coexist with an auto-property for the same property name since there is no way to retrieve the backing field.

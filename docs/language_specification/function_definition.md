@@ -9,7 +9,7 @@ def print_message(message: str):
     print(message)
 
 # With default parameters
-def power(base: double, exponent: double = 2.0) -> double:
+def power(base: float, exponent: float = 2.0) -> float:
     return base ** exponent
 
 # Multiple return values via tuple

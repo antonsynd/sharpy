@@ -6,7 +6,7 @@ Functions can specify default values for parameters. Parameters with defaults mu
 def greet(name: str, greeting: str = "Hello") -> str:
     return f"{greeting}, {name}!"
 
-def connect(host: str, port: int = 8080, timeout: double = 30.0) -> Connection:
+def connect(host: str, port: int = 8080, timeout: float = 30.0) -> Connection:
     # ...
 ```
 
@@ -32,7 +32,7 @@ Default parameter values must be compile-time constants, matching C# semantics. 
 def process(
     name: str = "default",
     count: int = 0,
-    factor: double = 1.0,
+    factor: float = 1.0,
     enabled: bool = True,
     mode: Mode = Mode.NORMAL,
     callback: Callable? = None
@@ -46,10 +46,10 @@ def search(query: str, limit: int? = None, offset: int? = None) -> list[Result]:
     # ...
 
 # ✅ Referencing constants
-const DEFAULT_TIMEOUT: double = 30.0
+const DEFAULT_TIMEOUT: float = 30.0
 const DEFAULT_RETRIES: int = 3
 
-def fetch(url: str, timeout: double = DEFAULT_TIMEOUT, retries: int = DEFAULT_RETRIES) -> Response:
+def fetch(url: str, timeout: float = DEFAULT_TIMEOUT, retries: int = DEFAULT_RETRIES) -> Response:
     # ...
 
 # ❌ Invalid: mutable default values

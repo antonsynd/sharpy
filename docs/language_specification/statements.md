@@ -39,7 +39,7 @@ The type is inferred from the initializer expression:
 count = 0              # Inferred as int
 name = "Alice"         # Inferred as str
 items = [1, 2, 3]      # Inferred as list[int]
-pi = 3.14159           # Inferred as double
+pi = 3.14159           # Inferred as float
 ```
 
 **Form 3: Type Inference (Explicit with `auto`)**
@@ -120,7 +120,7 @@ Constants are declared with `const` and must have a compile-time constant initia
 
 ```python
 # Module-level constants
-const PI: double = 3.14159
+const PI: float = 3.14159
 const MAX_SIZE: int = 1000
 const APP_NAME = "MyApp"       # Type inferred as str
 const DEBUG: bool = True
@@ -132,12 +132,12 @@ Constants can also be declared within classes. Class-level constants are implici
 
 ```python
 class Math:
-    const PI: double = 3.14159265358979
-    const E: double = 2.71828182845904
-    const TAU: double = 6.28318530717958
+    const PI: float = 3.14159265358979
+    const E: float = 2.71828182845904
+    const TAU: float = 6.28318530717958
 
     @static
-    def circle_area(radius: double) -> double:
+    def circle_area(radius: float) -> float:
         return Math.PI * radius ** 2
 
 class HttpStatus:

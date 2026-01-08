@@ -95,7 +95,7 @@ failure: Result[int, str] = Result.Err("Something went wrong")
 When returning from a function with a tagged union return type, the type name can be omitted and the case name used directly:
 
 ```python
-def divide(a: double, b: double) -> Result[double, str]:
+def divide(a: float, b: float) -> Result[float, str]:
     if b == 0:
         return Err("Division by zero")  # Short for Result.Err(...)
     return Ok(a / b)                     # Short for Result.Ok(...)
@@ -131,7 +131,7 @@ The compiler infers the full type from the variable's type annotation or the par
 ## Pattern Matching
 
 ```python
-def divide(a: double, b: double) -> Result[double, str]:
+def divide(a: float, b: float) -> Result[float, str]:
     if b == 0:
         return Err("Division by zero")  # Type name omitted in return
     return Ok(a / b)                     # Type name omitted in return
