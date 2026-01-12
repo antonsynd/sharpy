@@ -151,6 +151,8 @@ class Config:
 
     # Execution settings
     max_retries_per_task: int = 3
+    max_test_fix_attempts: int = 3  # Max attempts to fix tests the agent broke
+    create_followup_task_on_fix_failure: bool = True  # Create a task when agent can't fix tests
     require_human_approval_for_critical: bool = True
     auto_commit: bool = False
     create_pr: bool = False
@@ -192,6 +194,8 @@ class Config:
             "run_verification_after_implementation": self.run_verification_after_implementation,
             "run_hallucination_defense": self.run_hallucination_defense,
             "max_retries_per_task": self.max_retries_per_task,
+            "max_test_fix_attempts": self.max_test_fix_attempts,
+            "create_followup_task_on_fix_failure": self.create_followup_task_on_fix_failure,
             "require_human_approval_for_critical": self.require_human_approval_for_critical,
         }
 
@@ -220,6 +224,10 @@ class Config:
             config.run_hallucination_defense = data["run_hallucination_defense"]
         if "max_retries_per_task" in data:
             config.max_retries_per_task = data["max_retries_per_task"]
+        if "max_test_fix_attempts" in data:
+            config.max_test_fix_attempts = data["max_test_fix_attempts"]
+        if "create_followup_task_on_fix_failure" in data:
+            config.create_followup_task_on_fix_failure = data["create_followup_task_on_fix_failure"]
         if "require_human_approval_for_critical" in data:
             config.require_human_approval_for_critical = data[
                 "require_human_approval_for_critical"

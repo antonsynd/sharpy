@@ -363,6 +363,7 @@ public class LexerTests
     [InlineData("?.", TokenType.NullConditional)]
     [InlineData("??", TokenType.NullCoalesce)]
     [InlineData("...", TokenType.Ellipsis)]
+    [InlineData("|>", TokenType.PipeForward)]
     public void Tokenize_SpecialOperator_ReturnsCorrectToken(string op, TokenType expectedType)
     {
         var token = SingleToken(op);
@@ -642,6 +643,16 @@ def method(self) -> None:
 
         tokens.Should().Contain(t => t.Type == TokenType.NullConditional);
         tokens.Should().Contain(t => t.Type == TokenType.NullCoalesce);
+    }
+
+    [Fact]
+    public void Tokenize_PipeForwardOperator_ParsesCorrectly()
+    {
+        var source = "result = data |> transform() |> filter()";
+        var tokens = Tokenize(source);
+
+        tokens.Should().Contain(t => t.Type == TokenType.PipeForward);
+        tokens.Count(t => t.Type == TokenType.PipeForward).Should().Be(2);
     }
 
     [Fact]

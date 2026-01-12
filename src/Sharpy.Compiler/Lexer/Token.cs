@@ -130,6 +130,7 @@ public enum TokenType
     NullConditional,   // ?.
     NullCoalesce,      // ??
     Ellipsis,          // ...
+    PipeForward,       // |>
 
     // Delimiters
     LeftParen,      // (

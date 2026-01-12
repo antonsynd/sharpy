@@ -32,5 +32,7 @@
   "run_verification_after_implementation": true,
   "run_hallucination_defense": true,
   "max_retries_per_task": 3,
+  "max_test_fix_attempts": 3,
+  "create_followup_task_on_fix_failure": true,
   "require_human_approval_for_critical": true
 }

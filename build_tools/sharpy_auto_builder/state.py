@@ -293,6 +293,52 @@ class GroundTruth:
                     tasks.append(task)
         return tasks
 
+    def add_followup_task(
+        self,
+        original_task: Task,
+        title: str,
+        description: str,
+        files: list[str] | None = None,
+    ) -> Task:
+        """Add a follow-up task after an existing task.
+
+        The new task will have an ID like "X.X.X.X-fix-1" and will be
+        inserted after the original task in the same phase.
+        """
+        # Find the phase containing the original task
+        phase = self.get_phase(original_task.phase)
+        if not phase:
+            raise ValueError(f"Phase {original_task.phase} not found")
+
+        # Generate a unique follow-up task ID
+        base_id = original_task.id
+        suffix = 1
+        while self.get_task(f"{base_id}-fix-{suffix}"):
+            suffix += 1
+        new_task_id = f"{base_id}-fix-{suffix}"
+
+        # Create the new task
+        new_task = Task(
+            id=new_task_id,
+            phase=original_task.phase,
+            title=title,
+            description=description,
+            files=files or original_task.files.copy(),
+            status=TaskStatus.PENDING,
+            dependencies=[original_task.id],  # Depends on original task
+            is_critical=False,  # Follow-up fixes aren't critical
+            notes=[f"Auto-generated follow-up from task {original_task.id}"],
+        )
+
+        # Insert after the original task in the phase
+        original_index = next(
+            (i for i, t in enumerate(phase.tasks) if t.id == original_task.id),
+            len(phase.tasks) - 1
+        )
+        phase.tasks.insert(original_index + 1, new_task)
+
+        return new_task
+
     @property
     def overall_progress(self) -> float:
         """Calculate overall completion percentage."""

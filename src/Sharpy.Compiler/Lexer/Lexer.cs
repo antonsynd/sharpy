@@ -1618,6 +1618,10 @@ public class Lexer
                     _position += 2;
                     _column += 2;
                     return new Token(TokenType.PipeAssign, twoChar, startLine, startColumn);
+                case "|>":
+                    _position += 2;
+                    _column += 2;
+                    return new Token(TokenType.PipeForward, twoChar, startLine, startColumn);
                 case "^=":
                     _position += 2;
                     _column += 2;

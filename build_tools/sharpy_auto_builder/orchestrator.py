@@ -564,15 +564,25 @@ Provide:
         """Let the agent fix test failures they introduced."""
         task_data = state["current_task"]
         fix_attempt = state.get("fix_attempt", 0) + 1
-        max_fix_attempts = 2  # Don't let them try forever
+        max_fix_attempts = self.config.max_test_fix_attempts
 
         if fix_attempt > max_fix_attempts:
+            # Max fix attempts reached - create a follow-up task if configured
+            if self.config.create_followup_task_on_fix_failure:
+                await self._create_test_fix_followup_task(state)
+
             return {
                 **state,
                 "fix_attempt": fix_attempt,
                 "next_action": "error",
+                "error_message": f"Agent failed to fix tests after {max_fix_attempts} attempts",
                 "messages": [
-                    f"Max fix attempts ({max_fix_attempts}) reached, escalating to error handler"
+                    f"Max fix attempts ({max_fix_attempts}) reached",
+                    (
+                        "Created follow-up task for test fix"
+                        if self.config.create_followup_task_on_fix_failure
+                        else "Escalating to error handler"
+                    ),
                 ],
             }
 
@@ -588,16 +598,23 @@ Provide:
 
 ## Test Failure Output
 ```
-{test_output[:2000]}
+{test_output[:3000]}
 ```
 
+## Fix Attempt
+This is fix attempt {fix_attempt} of {max_fix_attempts}.
+
 ## Instructions
-1. Analyze the test failures
-2. Fix the code to make the tests pass
-3. Do NOT modify test expected values - fix the implementation instead
-4. Run the tests after your fix to verify
+1. Analyze the test failures carefully
+2. Identify the root cause - is it in your implementation or an incorrect test?
+3. Fix the **implementation** to make the tests pass
+4. Do NOT modify test expected values - fix the implementation instead
+5. If you added new tests that are failing, you may fix those tests
+6. Run the tests after your fix to verify
 
 Focus only on fixing the failing tests. Do not re-implement the entire task.
+
+{f"Previous fix attempt failed. Try a different approach." if fix_attempt > 1 else ""}
 """
 
         # Log the fix prompt
@@ -605,7 +622,7 @@ Focus only on fixing the failing tests. Do not re-implement the entire task.
             event_type="fix_prompt",
             task_id=task_data["id"],
             prompt=prompt,
-            extra={"fix_attempt": fix_attempt},
+            extra={"fix_attempt": fix_attempt, "max_fix_attempts": max_fix_attempts},
         )
 
         # Execute fix via backend
@@ -627,7 +644,7 @@ Focus only on fixing the failing tests. Do not re-implement the entire task.
         )
 
         messages = [
-            f"Fix attempt {fix_attempt} {'succeeded' if result.success else 'failed'}"
+            f"Fix attempt {fix_attempt}/{max_fix_attempts} {'succeeded' if result.success else 'failed'}"
         ]
         if not result.success and result.error:
             error_preview = (
@@ -641,6 +658,68 @@ Focus only on fixing the failing tests. Do not re-implement the entire task.
             "next_action": "test" if result.success else "error",
             "messages": messages,
         }
+
+    async def _create_test_fix_followup_task(self, state: OrchestratorState) -> None:
+        """Create a follow-up task when agent fails to fix tests."""
+        task_data = state["current_task"]
+        execution_result = state.get("last_execution_result", {})
+        test_output = execution_result.get("test_output", "")
+        fix_attempt = state.get("fix_attempt", 0)
+
+        # Reload ground truth and get the original task
+        self.ground_truth = GroundTruth.load(Path(state["ground_truth_path"]))
+        original_task = self.ground_truth.get_task(task_data["id"])
+
+        if not original_task:
+            return
+
+        # Create description with context about what failed
+        description = f"""Fix test failures introduced during task {task_data['id']}: {task_data['title']}
+
+## Context
+The original task was implemented but caused test failures that could not be
+automatically fixed after {fix_attempt} attempts.
+
+## Test Failure Summary
+```
+{test_output[:1500]}
+```
+
+## Instructions
+1. Review the failing tests and the implementation from task {task_data['id']}
+2. Identify the root cause of the test failures
+3. Fix the implementation (not the test expected values)
+4. Ensure all tests pass before marking complete
+
+## Related Files
+{chr(10).join(f"- {f}" for f in task_data.get('files', []))}
+"""
+
+        # Add the follow-up task
+        new_task = self.ground_truth.add_followup_task(
+            original_task=original_task,
+            title=f"Fix test failures from: {task_data['title'][:50]}",
+            description=description,
+            files=task_data.get("files"),
+        )
+
+        # Add a note to the original task
+        original_task.notes.append(
+            f"Test fix failed after {fix_attempt} attempts. Follow-up task created: {new_task.id}"
+        )
+
+        # Save updated ground truth
+        self.ground_truth.save(Path(state["ground_truth_path"]))
+
+        self._log_execution(
+            event_type="followup_task_created",
+            task_id=task_data["id"],
+            extra={
+                "followup_task_id": new_task.id,
+                "fix_attempts": fix_attempt,
+                "reason": "test_fix_failure",
+            },
+        )
 
     async def _validate_spec_adherence_node(
         self, state: OrchestratorState
