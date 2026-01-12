@@ -1,3 +1,6 @@
+# Test results
+**/TestResults/
+
 # .NET compiled artifacts
 *.dll
 *.pdb
