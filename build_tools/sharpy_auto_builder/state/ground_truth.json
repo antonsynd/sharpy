@@ -1,12 +1,12 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-11T21:45:42.934361",
+  "last_updated": "2026-01-11T21:48:54.818230",
   "phases": [
     {
       "id": "0.1.0",
       "name": "Lexer Foundation",
       "goal": "Tokenize Sharpy source code with Python-style indentation handling.",
-      "status": "in_progress",
+      "status": "pending",
       "progress": 25.0,
       "tasks": [
         {
@@ -127,7 +127,7 @@
             "src/Sharpy.Compiler/Lexer/Token.cs",
             "src/Sharpy.Compiler.Tests/Lexer/LexerTests.cs"
           ],
-          "status": "in_progress",
+          "status": "pending",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
