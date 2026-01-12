@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-11T21:33:28.773869",
+  "last_updated": "2026-01-11T21:36:00.776027",
   "phases": [
     {
       "id": "0.1.0",
@@ -33,7 +33,7 @@
           "files": [
             "src/Sharpy.Compiler/Lexer/Lexer.cs"
           ],
-          "status": "in_progress",
+          "status": "pending",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -51,7 +51,7 @@
             "src/Sharpy.Compiler/Lexer/Token.cs",
             "src/Sharpy.Compiler.Tests/Lexer/LexerTests.cs"
           ],
-          "status": "in_progress",
+          "status": "pending",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -67,7 +67,7 @@
           "files": [
             "src/Sharpy.Compiler/Lexer/Lexer.cs"
           ],
-          "status": "in_progress",
+          "status": "pending",
           "executions": [],
           "dependencies": [],
           "is_critical": false,

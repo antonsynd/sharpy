@@ -487,7 +487,8 @@ Provide:
 
     def _build_test_command(self, component: str) -> str:
         """Build the dotnet test command."""
-        base_cmd = 'dotnet test --no-logo "--logger:console;verbosity=minimal"'
+        # Note: Don't use --no-logo as it conflicts with MSBuild's -nologo
+        base_cmd = 'dotnet test "--logger:console;verbosity=minimal"'
         if component:
             return f'{base_cmd} --filter "FullyQualifiedName~{component}"'
         return base_cmd
