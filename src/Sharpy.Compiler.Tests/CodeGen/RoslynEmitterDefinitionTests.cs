@@ -162,6 +162,49 @@ public class RoslynEmitterDefinitionTests
         Assert.Contains("private static void Helper()", code);
     }
 
+    [Fact]
+    public void GenerateFunctionDeclaration_ExampleFromSpec_GeneratesCorrectSignature()
+    {
+        // Example from spec: def add(a: int, b: int = 1) -> int: return a * b
+        // Should generate: public static int Add(int a, int b = 1)
+        var func = new FunctionDef
+        {
+            Name = "add",
+            Parameters = new List<Parameter>
+            {
+                new Parameter { Name = "a", Type = new TypeAnnotation { Name = "int" } },
+                new Parameter
+                {
+                    Name = "b",
+                    Type = new TypeAnnotation { Name = "int" },
+                    DefaultValue = new IntegerLiteral { Value = "1" }
+                }
+            },
+            ReturnType = new TypeAnnotation { Name = "int" },
+            Body = new List<Statement>
+            {
+                new ReturnStatement
+                {
+                    Value = new BinaryOp
+                    {
+                        Left = new Identifier { Name = "a" },
+                        Operator = BinaryOperator.Multiply,
+                        Right = new Identifier { Name = "b" }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { func } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public static int Add(int a, int b = 1)", code);
+        Assert.Contains("return a * b;", code);
+    }
+
     #endregion
 
     #region Class Definition Tests

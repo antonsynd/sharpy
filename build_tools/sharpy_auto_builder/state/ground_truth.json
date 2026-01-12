@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-12T10:55:01.272257",
+  "last_updated": "2026-01-12T11:11:39.714928",
   "phases": [
     {
       "id": "0.1.0",
@@ -1839,7 +1839,7 @@
       "name": "Functions",
       "goal": "Function definitions with parameters and return values.",
       "status": "in_progress",
-      "progress": 55.55555555555556,
+      "progress": 66.66666666666666,
       "tasks": [
         {
           "id": "0.1.5.1",
@@ -2120,8 +2120,46 @@
           "files": [
             "src/Sharpy.Compiler/Semantic/ReturnTypeChecker.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude_code",
+              "started_at": "2026-01-12T11:11:39.702072",
+              "completed_at": "2026-01-12T11:11:39.702076",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-12T11:11:39.702043",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the information needed to write the complete spec adherence report.\n\n## Spec Adherence Report: Implement Return Type Validation\n\n**Spec:** `docs/language_specification/return_statement.md`, `docs/language_specification/function_definition.md`, `docs/language_specification/nullable_types.md`\n\n**Implementation:** `src/Sharpy.Compiler/Semantic/TypeChecker.cs` (lines 637-660), `src/Sharpy.Compiler/Semantic/ControlFlowValidator.cs`\n\n**Note:** The file `src/Sharpy.Compiler/Semantic/ReturnTypeChecker.cs` does not exist. Return type validation is implemented within `TypeChecker.cs` and `ControlFlowValidator.cs`.\n\n---\n\n### Spec Requirements Extracted\n\nFrom `function_definition.md`:\n1. \"Return type annotation required if function returns a value\"\n2. \"Return type can be omitted for `-> None` functions (functions without a return type annotation implicitly return nothing, i.e. C# `void`)\"\n\nFrom `return_statement.md`:\n1. Return statement with value: `return x + y`\n2. Return statement without value (for None/void functions): `return  # Optional`\n\nFrom `nullable_types.md`:\n1. \"Cannot assign None to non-nullable type\"\n2. None can be assigned to nullable types (T?)\n\n---\n\n### Compliant\n\n- [x] **Return type checking for return statements with values** (`TypeChecker.cs:646-653`)\n  - Spec says: functions with return type annotations must return compatible types\n  - Implementation: `CheckReturn` validates that `returnType.IsAssignableTo(_currentFunctionReturnType)` and reports error if incompatible\n\n- [x] **Return statement without value for void functions** (`TypeChecker.cs:655-659`)\n  - Spec says: \"Return type can be omitted for `-> None` functions\"\n  - Implementation: Allows `return` without value when `_currentFunctionReturnType == SemanticType.Void`\n\n- [x] **Error for missing return value in non-void functions** (`TypeChecker.cs:655-659`)\n  - Spec says: \"Return type annotation required if function returns a value\"\n  - Implementation: Reports error when return statement has no value but function expects non-void return\n\n- [x] **Return statement outside function detection** (`TypeChecker.cs:639-644`)\n  - Implementation correctly detects and errors on return statements outside functions\n\n- [x] **Functions without return type default to void** (`TypeChecker.cs:187-191`)\n  - Spec says: \"functions without a return type annotation implicitly return nothing\"\n  - Implementation: `returnType = SemanticType.Void` when `functionDef.ReturnType == null`\n\n- [x] **`__init__` always returns void** (`TypeChecker.cs:183-186`)\n  - Spec implies constructors don't return values\n  - Implementation: Forces `returnType = SemanticType.Void` for `__init__`\n\n- [x] **None assignable to nullable types** (`SemanticType.cs:56-63`)\n  - Spec says: \"Nullable type annotations (type followed by ?)\" can hold None\n  - Implementation: `VoidType.IsAssignableTo()` returns true for `NullableType`\n\n- [x] **Control flow validation for return paths** (`ControlFlowValidator.cs:30-44`)\n  - Implementation validates that all code paths return a value for non-void functions\n\n- [x] **Unreachable code detection** (`ControlFlowValidator.cs:60-69`)\n  - Implementation detects and reports unreachable code after return/raise/break/continue\n\n---\n\n### Deviations\n\n- [ ] **Section: None Handling**: Partial deviation\n  - **Spec says:** `other: int = None # ERROR: Cannot assign None to non-nullable type`\n  - **Implementation:** `TypeChecker.cs:649` checks `IsAssignable(returnType, _currentFunctionReturnType)`. The `VoidType.IsAssignableTo()` only allows assignment to `NullableType`, but the error message at line 651 says \"Cannot return type 'None'\" rather than explicitly mentioning non-nullable.\n  - **Impact:** Low - Functionally correct, error message could be more specific for None-to-non-nullable cases\n\n---\n\n### Undocumented Behavior\n\n1. **Type covariance for return types** (`TypeChecker.cs:1763-1796`)\n   - The `IsAssignable` method allows covariant assignment (e.g., `list[Dog]` to `list[Animal]`)\n   - This is not explicitly documented in the return statement spec\n\n2. **Return type validation order**\n   - Return type is checked after parameter validation in function checking\n   - Order is implementation detail, not spec-mandated\n\n---\n\n### Recommendations\n\n1. **No critical changes required** - The implementation correctly enforces all documented return type validation requirements.\n\n2. **Minor enhancement** - Consider adding a more specific error message when returning `None` from a non-void, non-nullable function (e.g., \"Cannot return 'None' from function expecting non-nullable type 'int'\").\n\n3. **Documentation** - The covariant return type behavior could be documented in the spec if this is intended behavior.\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-12T11:11:39.702055",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the information needed to generate the verification report:\n\n## Verification Report: Implement Return Type Validation\n\n### Test Results\n- **Total: 3191** | **Passed: 3166** | **Failed: 0** | **Skipped: 25**\n\nThe full test suite passes with no failures. Skipped tests are for unimplemented features not related to return type validation.\n\n### Behavior Checks\n- [x] Missing return in non-void function detected (`RejectsMissingReturnStatement` - passes)\n- [x] Missing return in specific branch detected (`DetectsMissingReturnInComplexFlow` - passes)\n- [x] Wrong return type detected (`DetectsWrongReturnType` - passes)\n- [x] `-> None` functions allow omitting return entirely (`FunctionWithNoneReturnTypeIsVoid` - passes)\n- [x] `-> None` functions allow bare return (`FunctionWithNoneReturnTypeCanHaveEmptyReturn` - passes)  \n- [x] `-> None` functions disallow value return (`FunctionWithNoneReturnTypeCannotReturnValue` - passes)\n- [x] Functions without return annotation default to void (`FunctionWithNoReturnTypeIsEquivalentToNone` - passes)\n- [x] `__init__` methods treated as void (`ConstructorWithNoReturnTypeIsValid`, `ConstructorWithNoneReturnTypeIsValid` - pass)\n- [x] Constructors with invalid return types rejected (`ConstructorWithInvalidReturnTypeRaisesError`, `ConstructorWithStrReturnTypeRaisesError` - pass)\n\n### Coverage Assessment\nThe implementation is complete with comprehensive test coverage:\n\n1. **TypeChecker** (`TypeChecker.cs:637-660`): Validates individual return statement types against expected function return type\n2. **ControlFlowValidator** (`ControlFlowValidator.cs:30-44`): Ensures all code paths return for non-void functions\n\nKey test files:\n- `TypeCheckerTests.cs`: 75 tests covering return type validation\n- `SemanticAnalyzerNegativeTests.cs`: Tests for error conditions including missing returns\n- `SemanticAnalyzerEdgeCaseTests.cs`: Tests for complex control flow scenarios\n- `ControlFlowTests.cs`: 33 integration tests for control flow behavior\n\n### Regression Check\n**No regressions detected.** All 3166 tests pass successfully.\n\n### Recommendations\nNone. The implementation is complete and all tests pass. The PLAN.md correctly identified that no new file (`ReturnTypeChecker.cs`) was needed since the existing infrastructure in `TypeChecker` and `ControlFlowValidator` already handles all return type validation requirements:\n- Return type checking for individual return statements \u2713\n- Control flow analysis ensuring all paths return \u2713\n- `-> None` functions allowing bare return \u2713\n- `-> None` functions disallowing value returns \u2713\n- `__init__` methods treated as void \u2713\n- Functions without return annotation default to void \u2713\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-12T11:11:39.702064",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the evidence needed to produce my verification report.\n\n---\n\n# Hallucination Defense Report: Return Type Validation Claims\n\n## Claim 1: Track return type of function being analyzed\n**Claim:** Field `_currentFunctionReturnType` tracks the expected return type at `TypeChecker.cs:25`, set when entering function (line 193), cleared when exiting (line 302).\n\n**Verification:** Direct file read of `TypeChecker.cs`\n\n**Result:** \u2705 CORRECT\n- Line 25: `private SemanticType? _currentFunctionReturnType = null;`\n- Line 193: `_currentFunctionReturnType = returnType;`\n- Line 302: `_currentFunctionReturnType = null;`\n\n---\n\n## Claim 2: Verify all code paths return compatible type\n**Claim:** `ControlFlowValidator.cs:30-44` validates that non-void functions return in all code paths.\n\n**Verification:** Direct file read of `ControlFlowValidator.cs`\n\n**Result:** \u2705 CORRECT\n- Lines 30-44 contain `ValidateFunction` method\n- Line 39-42 checks: `if (returnType != SemanticType.Void && !alwaysReturns)` and adds error `\"Function '{functionDef.Name}' must return a value of type '{returnType.GetDisplayName()}' in all code paths\"`\n- The validator correctly handles if/elif/else (lines 142-168), while (170-178), for (180-188), and try/except/finally (190-214)\n\n---\n\n## Claim 3: `-> None` functions handling\n**Claim:** Located at `TypeChecker.cs:179-191, 637-660` - functions with `-> None` or no return annotation default to `Void`; `__init__` always returns Void; allows omitting return or empty `return`; rejects `return <value>`.\n\n**Verification:** Direct file read of `TypeChecker.cs`\n\n**Result:** \u26a0\ufe0f PARTIALLY CORRECT (line numbers off)\n- Lines 183-186: `__init__` correctly returns Void\n- Lines 187-191: Functions without return annotation default to Void\n- Lines 637-660: `CheckReturn` method handles return validation\n  - Line 655: `else if (_currentFunctionReturnType != SemanticType.Void)` - allows empty returns for void functions\n  - Lines 649-653: Rejects incompatible return types\n\n**Note:** The claim says lines 179-191, but the actual relevant code starts at line 183. This is a minor off-by-four discrepancy.\n\n---\n\n## Claim 4: Test existence verification\n**Claim:** 10 specific test methods exist\n\n**Verification:** Grep search in test directory\n\n**Result:** \u2705 CORRECT - All 10 tests found:\n\n| Test Name | Location |\n|-----------|----------|\n| `RequiresReturnInAllBranchesOfNonVoidFunction` | SemanticAnalyzerEdgeCaseTests.cs:121 |\n| `AcceptsReturnInAllBranches` | SemanticAnalyzerEdgeCaseTests.cs:136 |\n| `AcceptsReturnInElifBranches` | SemanticAnalyzerEdgeCaseTests.cs:152 |\n| `DoesNotRequireReturnInVoidFunction` | SemanticAnalyzerEdgeCaseTests.cs:170 |\n| `InitMethodDoesNotRequireReturn` | SemanticAnalyzerEdgeCaseTests.cs:186 |\n| `FunctionWithNoneReturnTypeCanHaveEmptyReturn` | TypeCheckerTests.cs:638 |\n| `FunctionWithNoneReturnTypeCannotReturnValue` | TypeCheckerTests.cs:609 |\n| `RejectsMissingReturnStatement` | SemanticAnalyzerNegativeTests.cs:413 |\n| `ValidatesReturnInTryExcept` | SemanticAnalyzerEdgeCaseTests.cs:709 |\n| `RequiresReturnInAllExceptionHandlers` | SemanticAnalyzerEdgeCaseTests.cs:725 |\n\n---\n\n## Claim 5: Test count\n**Claim:** \"All 754 semantic tests pass\"\n\n**Verification:** Ran `dotnet test --filter \"FullyQualifiedName~Semantic\"`\n\n**Result:** \u2705 CORRECT\n- Output: `Passed! - Failed: 0, Passed: 754, Skipped: 8, Total: 762`\n\n---\n\n## Summary\n\n| Category | Result |\n|----------|--------|\n| Code locations | \u2705 Verified (minor line offset) |\n| Functionality description | \u2705 Accurate |\n| Test existence | \u2705 All 10 tests confirmed |\n| Test count | \u2705 754 passing confirmed |\n| Error message format | \u2705 Matches actual code |\n\n**Overall Assessment:** The claims are **factually accurate**. The implementation is complete and well-tested as described. The only minor discrepancy is a 4-line offset in one location reference (claimed 179-191, actual 183-191), which doesn't affect correctness.\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": false,
           "human_question": null,
@@ -2136,7 +2174,7 @@
           "files": [
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -2180,14 +2218,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "0.1.5.6",
-  "total_attempts": 49,
-  "total_successes": 39,
+  "current_task_id": "0.1.5.7",
+  "total_attempts": 50,
+  "total_successes": 40,
   "total_failures": 10,
   "backend_stats": {
     "claude_code": {
-      "attempts": 44,
-      "successes": 34,
+      "attempts": 45,
+      "successes": 35,
       "failures": 10
     },
     "copilot": {
@@ -2196,5 +2234,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 90.47619047619048
+  "overall_progress": 92.85714285714286
 }

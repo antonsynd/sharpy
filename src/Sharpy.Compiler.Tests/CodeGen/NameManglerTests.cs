@@ -10,6 +10,7 @@ public class NameManglerTests
     #region PascalCase Conversion Tests
 
     [Theory]
+    [InlineData("hello_world", "HelloWorld")]
     [InlineData("my_function", "MyFunction")]
     [InlineData("calculate_total", "CalculateTotal")]
     [InlineData("get_user_name", "GetUserName")]
