@@ -33,8 +33,9 @@ public class TypeMapper
             {
                 "int" => SemanticType.Int,
                 "long" => SemanticType.Long,
-                "float" => SemanticType.Float,
-                "double" => SemanticType.Double,
+                "float" => SemanticType.Float,       // float -> double (per spec)
+                "float32" => SemanticType.Float32,   // float32 -> C# float
+                "float64" or "double" => SemanticType.Double,
                 "bool" => SemanticType.Bool,
                 "str" or "string" => SemanticType.Str,
                 "void" or "None" => SemanticType.Void,

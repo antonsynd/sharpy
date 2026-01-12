@@ -117,19 +117,4 @@ public class Wrapper<T>(T value) : Object, Sharpy.Core.IEquatable<Wrapper<T>>, S
         return !__Eq__(other);
     }
 
-    // TODO: Fix Equals override - cannot override sealed Object.Equals
-    // public override bool Equals(object obj)
-    // {
-    //     if (ReferenceEquals(this, obj))
-    //     {
-    //         return true;
-    //     }
-    //
-    //     if (ReferenceEquals(obj, null))
-    //     {
-    //         return false;
-    //     }
-    //
-    //     throw new NotImplementedException();
-    // }
 }

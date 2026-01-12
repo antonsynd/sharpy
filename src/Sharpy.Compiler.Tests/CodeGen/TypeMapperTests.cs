@@ -28,7 +28,8 @@ public class TypeMapperTests
     [Theory]
     [InlineData("int", "int")]
     [InlineData("long", "long")]
-    [InlineData("float", "float")]
+    [InlineData("float", "double")]      // Per spec: Sharpy float -> C# double
+    [InlineData("float32", "float")]     // Per spec: Sharpy float32 -> C# float
     [InlineData("double", "double")]
     [InlineData("bool", "bool")]
     [InlineData("byte", "byte")]

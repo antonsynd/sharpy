@@ -24,6 +24,12 @@ public class CodeGenContext
     /// </summary>
     public string? ProjectRootPath { get; set; }
 
+    /// <summary>
+    /// If true, this file should generate a Main entry point.
+    /// Defaults to true for single-file compilation, false for multi-file.
+    /// </summary>
+    public bool IsEntryPoint { get; set; } = true;
+
     public CodeGenContext(SymbolTable symbolTable, BuiltinRegistry builtins)
     {
         SymbolTable = symbolTable;

@@ -83,10 +83,10 @@ public class TypeMappingConsistencyTests
     [Theory]
     [InlineData(typeof(int), "int")]
     [InlineData(typeof(long), "long")]
-    [InlineData(typeof(float), "float")]
-    [InlineData(typeof(double), "double")]
+    [InlineData(typeof(float), "float32")]     // C# float -> Sharpy float32
+    [InlineData(typeof(double), "double")]     // C# double -> Sharpy double (last registered canonical name)
     [InlineData(typeof(bool), "bool")]
-    [InlineData(typeof(string), "string")] // Note: "str" is alias, "string" is canonical by CLR type
+    [InlineData(typeof(string), "string")]     // Note: "str" is alias, "string" is canonical by CLR type
     [InlineData(typeof(sbyte), "sbyte")]
     [InlineData(typeof(byte), "byte")]
     [InlineData(typeof(short), "short")]
@@ -170,11 +170,14 @@ public class TypeMappingConsistencyTests
         var mapper = new Sharpy.Compiler.CodeGen.TypeMapper(context);
 
         // Test each primitive (excluding void, which cannot be used as a value type)
+        // Per spec: Sharpy 'float' -> C# 'double', 'float32' -> C# 'float'
         var primitiveTests = new Dictionary<string, string>
         {
             { "int", "int" },
             { "long", "long" },
-            { "float", "float" },
+            { "float", "double" },      // Sharpy float -> C# double
+            { "float32", "float" },     // Sharpy float32 -> C# float
+            { "float64", "double" },    // Sharpy float64 -> C# double
             { "double", "double" },
             { "bool", "bool" },
             { "str", "string" },

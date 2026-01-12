@@ -321,37 +321,36 @@ public class RoslynEmitter
             }
         }
 
-        // If there are executable statements, we need to handle them
-        if (executableStatements.Count > 0)
+        // Generate a Main method if:
+        // 1. There's no user-defined main function, AND
+        // 2. This is the entry point file (or there are executable statements that need wrapping)
+        if (!hasMainFunction && (_context.IsEntryPoint || executableStatements.Count > 0))
         {
-            if (!hasMainFunction)
-            {
-                // No main function - create a Main method for executable statements
-                // Clear declared variables and version tracking for Main method scope
-                _declaredVariables.Clear();
-                _variableVersions.Clear();
+            // Create a Main method for executable statements (or empty if no statements)
+            // Clear declared variables and version tracking for Main method scope
+            _declaredVariables.Clear();
+            _variableVersions.Clear();
 
-                var mainBody = Block(executableStatements
-                    .Select(GenerateBodyStatement)
-                    .OfType<StatementSyntax>());
+            var mainBody = Block(executableStatements
+                .Select(GenerateBodyStatement)
+                .OfType<StatementSyntax>());
 
-                var mainMethod = MethodDeclaration(
-                        PredefinedType(Token(SyntaxKind.VoidKeyword)),
-                        "Main")
-                    .WithModifiers(TokenList(
-                        Token(SyntaxKind.PublicKeyword),
-                        Token(SyntaxKind.StaticKeyword)))
-                    .WithBody(mainBody);
+            var mainMethod = MethodDeclaration(
+                    PredefinedType(Token(SyntaxKind.VoidKeyword)),
+                    "Main")
+                .WithModifiers(TokenList(
+                    Token(SyntaxKind.PublicKeyword),
+                    Token(SyntaxKind.StaticKeyword)))
+                .WithBody(mainBody);
 
-                declarations.Add(mainMethod);
-            }
-            else
-            {
-                // There's a main function - put executable statements in module initializer
-                // For now, just ignore them or add to Main after the user's main is called
-                // This is a corner case we'll handle later
-                Console.WriteLine($"Warning: {executableStatements.Count} module-level statement(s) ignored because a 'main' function is defined");
-            }
+            declarations.Add(mainMethod);
+        }
+        else if (hasMainFunction && executableStatements.Count > 0)
+        {
+            // There's a main function and also module-level statements
+            // For now, just ignore them or add to Main after the user's main is called
+            // This is a corner case we'll handle later
+            Console.WriteLine($"Warning: {executableStatements.Count} module-level statement(s) ignored because a 'main' function is defined");
         }
 
         return ClassDeclaration("Exports")
@@ -1023,13 +1022,26 @@ public class RoslynEmitter
             parameters = new[] { objParam };
         }
 
-        // Generate method body
-        var body = Block(func.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+        // Check if this is an abstract method
+        bool isAbstract = func.Decorators.Any(d =>
+            d.Name == "abstractmethod" || d.Name == "abstract");
 
+        // Generate method declaration
         var method = MethodDeclaration(returnType, mangledName)
             .WithModifiers(modifiers)
-            .WithParameterList(ParameterList(SeparatedList(parameters)))
-            .WithBody(body);
+            .WithParameterList(ParameterList(SeparatedList(parameters)));
+
+        // Abstract methods must not have a body in C#
+        if (isAbstract)
+        {
+            method = method.WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
+        }
+        else
+        {
+            // Generate method body for concrete methods
+            var body = Block(func.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+            method = method.WithBody(body);
+        }
 
         // Add XML documentation from docstring if present
         if (!string.IsNullOrEmpty(func.DocString))
@@ -1202,7 +1214,7 @@ public class RoslynEmitter
             ReturnStatement ret => GenerateReturn(ret),
             Assignment assign => GenerateAssignment(assign),
             VariableDeclaration varDecl => GenerateVariableDeclaration(varDecl),
-            ExpressionStatement exprStmt => ExpressionStatement(GenerateExpression(exprStmt.Expression)),
+            ExpressionStatement exprStmt => GenerateExpressionStatement(exprStmt),
             PassStatement => EmptyStatement(),
             Sharpy.Compiler.Parser.Ast.BreakStatement => SyntaxFactory.BreakStatement(),
             Sharpy.Compiler.Parser.Ast.ContinueStatement => SyntaxFactory.ContinueStatement(),
@@ -1213,6 +1225,62 @@ public class RoslynEmitter
             ForStatement forStmt => GenerateFor(forStmt),
             TryStatement tryStmt => GenerateTry(tryStmt),
             _ => null
+        };
+    }
+
+    /// <summary>
+    /// Generates a C# statement from a Sharpy expression statement.
+    /// In C#, only certain expressions are valid as statements (invocations, assignments, new, ++/--).
+    /// For other expressions (literals, arithmetic, comparison, etc.), we use a discard: _ = expr;
+    /// </summary>
+    private StatementSyntax GenerateExpressionStatement(ExpressionStatement exprStmt)
+    {
+        var expr = exprStmt.Expression;
+
+        // None as a statement is a no-op (like Python's None expression)
+        // We generate an empty statement since `_ = null;` requires type annotation in C#
+        if (expr is NoneLiteral)
+        {
+            return EmptyStatement();
+        }
+
+        var generated = GenerateExpression(expr);
+
+        // Check if the expression is valid as a C# statement
+        if (IsValidCSharpStatementExpression(expr))
+        {
+            return ExpressionStatement(generated);
+        }
+
+        // Otherwise, wrap in a discard: _ = expr;
+        return ExpressionStatement(
+            AssignmentExpression(
+                SyntaxKind.SimpleAssignmentExpression,
+                IdentifierName("_"),
+                generated));
+    }
+
+    /// <summary>
+    /// Determines if an expression is valid as a standalone C# statement.
+    /// Valid statement expressions in C# are:
+    /// - Invocation expressions (method calls)
+    /// - Object creation expressions (new)
+    /// - Assignment expressions
+    /// - Increment/decrement expressions (++/--)
+    /// - Await expressions
+    /// </summary>
+    private bool IsValidCSharpStatementExpression(Expression expr)
+    {
+        return expr switch
+        {
+            // Method calls are valid statements
+            FunctionCall => true,
+
+            // Await expressions are valid (if we had them in AST)
+            // AwaitExpression => true,
+
+            // All other expressions need a discard
+            _ => false
         };
     }
 
@@ -1272,8 +1340,7 @@ public class RoslynEmitter
                 // This references the current version and modifies it
                 var varName = GetMangledVariableName(name.Name, isNewDeclaration: false);
                 var left = IdentifierName(varName);
-                var binaryOp = GetAugmentedAssignmentOperator(assign.Operator);
-                var augmentedValue = BinaryExpression(binaryOp, left, value);
+                var augmentedValue = GenerateAugmentedValue(assign.Operator, left, value);
 
                 return ExpressionStatement(
                     AssignmentExpression(
@@ -1295,7 +1362,7 @@ public class RoslynEmitter
 
             var assignmentValue = assign.Operator == AssignmentOperator.Assign
                 ? value
-                : BinaryExpression(GetAugmentedAssignmentOperator(assign.Operator), elementAccess, value);
+                : GenerateAugmentedValue(assign.Operator, elementAccess, value);
 
             return ExpressionStatement(
                 AssignmentExpression(
@@ -1311,7 +1378,7 @@ public class RoslynEmitter
 
             var assignmentValue = assign.Operator == AssignmentOperator.Assign
                 ? value
-                : BinaryExpression(GetAugmentedAssignmentOperator(assign.Operator), target, value);
+                : GenerateAugmentedValue(assign.Operator, target, value);
 
             return ExpressionStatement(
                 AssignmentExpression(
@@ -1379,10 +1446,40 @@ public class RoslynEmitter
             AssignmentOperator.XorAssign => SyntaxKind.ExclusiveOrExpression,
             AssignmentOperator.LeftShiftAssign => SyntaxKind.LeftShiftExpression,
             AssignmentOperator.RightShiftAssign => SyntaxKind.RightShiftExpression,
-            // Special cases for floor division and power
-            AssignmentOperator.DoubleSlashAssign => SyntaxKind.DivideExpression, // Will need cast to int
-            AssignmentOperator.PowerAssign => SyntaxKind.None, // Will need Math.Pow
+            // Special cases handled by GenerateAugmentedValue
+            AssignmentOperator.DoubleSlashAssign => SyntaxKind.None,
+            AssignmentOperator.PowerAssign => SyntaxKind.None,
             _ => throw new NotImplementedException($"Augmented assignment operator not supported: {op}")
+        };
+    }
+
+    /// <summary>
+    /// Generates the value expression for an augmented assignment.
+    /// Handles special cases like //= (floor divide) and **= (power) that require
+    /// method calls or casts instead of simple binary expressions.
+    /// </summary>
+    private ExpressionSyntax GenerateAugmentedValue(AssignmentOperator op, ExpressionSyntax left, ExpressionSyntax right)
+    {
+        return op switch
+        {
+            // x **= y → Math.Pow(x, y)
+            AssignmentOperator.PowerAssign =>
+                InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName("Math"),
+                        IdentifierName("Pow")))
+                    .AddArgumentListArguments(
+                        Argument(left),
+                        Argument(right)),
+
+            // x //= y → (int)(x / y)
+            AssignmentOperator.DoubleSlashAssign =>
+                CastExpression(
+                    PredefinedType(Token(SyntaxKind.IntKeyword)),
+                    BinaryExpression(SyntaxKind.DivideExpression, left, right)),
+
+            // All other operators use simple binary expressions
+            _ => BinaryExpression(GetAugmentedAssignmentOperator(op), left, right)
         };
     }
 
@@ -1833,9 +1930,9 @@ public class RoslynEmitter
 
     private ExpressionSyntax GenerateEllipsisLiteral()
     {
-        // Ellipsis in v0.1 is used as a placeholder, similar to pass
-        // We'll generate a comment or throw NotImplementedException
-        // For now, generate: throw new NotImplementedException()
+        // Ellipsis (...) in concrete method bodies generates throw NotImplementedException()
+        // Note: For abstract methods/interface methods, the ellipsis is ignored and
+        // the method has no body (handled in GenerateClassMethod/GenerateInterfaceMethod)
         return ThrowExpression(
             ObjectCreationExpression(ParseTypeName("System.NotImplementedException"))
                 .WithArgumentList(ArgumentList()));

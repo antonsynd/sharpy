@@ -15,7 +15,7 @@ public class TypeMapperTests
     {
         Assert.Equal(SemanticType.Int, _mapper.MapClrTypeToSemanticType(typeof(int)));
         Assert.Equal(SemanticType.Long, _mapper.MapClrTypeToSemanticType(typeof(long)));
-        Assert.Equal(SemanticType.Float, _mapper.MapClrTypeToSemanticType(typeof(float)));
+        Assert.Equal(SemanticType.Float32, _mapper.MapClrTypeToSemanticType(typeof(float)));  // C# float -> Sharpy float32
         Assert.Equal(SemanticType.Double, _mapper.MapClrTypeToSemanticType(typeof(double)));
         Assert.Equal(SemanticType.Bool, _mapper.MapClrTypeToSemanticType(typeof(bool)));
         Assert.Equal(SemanticType.Str, _mapper.MapClrTypeToSemanticType(typeof(string)));

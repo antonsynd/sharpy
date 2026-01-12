@@ -118,8 +118,10 @@ public class OperatorValidatorTests
     }
 
     [Fact]
-    public void ValidateBinaryOp_IntAddFloat_ReturnsFloat()
+    public void ValidateBinaryOp_IntAddFloat_ReturnsDouble()
     {
+        // Per spec: Sharpy 'float' maps to C# double. int + double = double.
+        // The result semantic type is 'double' (the canonical name for typeof(double)).
         var validator = CreateValidator();
         var result = validator.ValidateBinaryOp(
             BinaryOperator.Add,
@@ -127,12 +129,14 @@ public class OperatorValidatorTests
             SemanticType.Float,
             1, 1);
 
-        result.Should().Be(SemanticType.Float);
+        result.Should().Be(SemanticType.Double);
     }
 
     [Fact]
     public void ValidateBinaryOp_FloatAddDouble_ReturnsDouble()
     {
+        // Per spec: Both 'float' and 'double' map to C# double.
+        // The canonical name for typeof(double) is 'double' in PrimitiveCatalog.
         var validator = CreateValidator();
         var result = validator.ValidateBinaryOp(
             BinaryOperator.Add,
@@ -222,8 +226,10 @@ public class OperatorValidatorTests
     }
 
     [Fact]
-    public void ValidateBinaryOp_FloatPowerFloat_ReturnsFloat()
+    public void ValidateBinaryOp_FloatPowerFloat_ReturnsDouble()
     {
+        // Per spec: Sharpy 'float' maps to C# double. double ** double = double.
+        // The canonical name for typeof(double) is 'double' in PrimitiveCatalog.
         var validator = CreateValidator();
         var result = validator.ValidateBinaryOp(
             BinaryOperator.Power,
@@ -231,7 +237,7 @@ public class OperatorValidatorTests
             SemanticType.Float,
             1, 1);
 
-        result.Should().Be(SemanticType.Float);
+        result.Should().Be(SemanticType.Double);
     }
 
     #endregion
@@ -1545,7 +1551,8 @@ public class OperatorValidatorTests
     [Fact]
     public void ValidateAugmentedAssignment_NumericPromotion_WorksCorrectly()
     {
-        // Test that numeric promotion works correctly (int += float -> float)
+        // Test that numeric promotion works correctly (float += int -> double)
+        // Per spec: Sharpy 'float' maps to C# double. float + int = double.
         var validator = CreateValidator();
 
         var result = validator.ValidateAugmentedAssignment(
@@ -1554,7 +1561,7 @@ public class OperatorValidatorTests
             SemanticType.Int,
             1, 1);
 
-        result.Should().Be(SemanticType.Float);
+        result.Should().Be(SemanticType.Double);
     }
 
     #endregion

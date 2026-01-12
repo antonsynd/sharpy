@@ -679,6 +679,95 @@ public class RoslynEmitterDefinitionTests
     }
 
     [Fact]
+    public void GenerateMethod_WithAbstractMethodDecorator_GeneratesAbstractMethodWithoutBody()
+    {
+        // Arrange - Abstract method with ellipsis should have no body
+        var classDef = new ClassDef
+        {
+            Name = "Shape",
+            Decorators = new List<Decorator>
+            {
+                new Decorator { Name = "abstract" }
+            },
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "area",
+                    Decorators = new List<Decorator>
+                    {
+                        new Decorator { Name = "abstractmethod" }
+                    },
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self" }
+                    },
+                    ReturnType = new TypeAnnotation { Name = "float" },
+                    Body = new List<Statement>
+                    {
+                        new ExpressionStatement
+                        {
+                            Expression = new EllipsisLiteral()
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public abstract class Shape", code);
+        // Per spec: Sharpy 'float' -> C# 'double'
+        Assert.Contains("public abstract double Area();", code);
+        // Abstract method should NOT have a body (no braces)
+        Assert.DoesNotContain("Area()\r\n{", code);
+        Assert.DoesNotContain("Area()\n{", code);
+        Assert.DoesNotContain("NotImplementedException", code);
+    }
+
+    [Fact]
+    public void GenerateMethod_ConcreteMethodWithEllipsis_ThrowsNotImplementedException()
+    {
+        // Arrange - Concrete method with ellipsis should throw NotImplementedException
+        var classDef = new ClassDef
+        {
+            Name = "Todo",
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "not_yet_implemented",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self" }
+                    },
+                    ReturnType = new TypeAnnotation { Name = "int" },
+                    Body = new List<Statement>
+                    {
+                        new ExpressionStatement
+                        {
+                            Expression = new EllipsisLiteral()
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public int NotYetImplemented()", code);
+        Assert.Contains("throw new System.NotImplementedException()", code);
+    }
+
+    [Fact]
     public void GenerateMethod_WithStaticDecorator_GeneratesStaticMethod()
     {
         // Arrange

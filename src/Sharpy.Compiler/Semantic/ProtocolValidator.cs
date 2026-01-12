@@ -285,8 +285,8 @@ public class ProtocolValidator
     {
         if (clrType == typeof(int)) return SemanticType.Int;
         if (clrType == typeof(long)) return SemanticType.Long;
-        if (clrType == typeof(float)) return SemanticType.Float;
-        if (clrType == typeof(double)) return SemanticType.Double;
+        if (clrType == typeof(float)) return SemanticType.Float32;  // C# float -> Sharpy float32
+        if (clrType == typeof(double)) return SemanticType.Double;  // C# double -> Sharpy float/double
         if (clrType == typeof(bool)) return SemanticType.Bool;
         if (clrType == typeof(string)) return SemanticType.Str;
         return SemanticType.Object;

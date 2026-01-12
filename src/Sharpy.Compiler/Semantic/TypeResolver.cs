@@ -88,7 +88,9 @@ public class TypeResolver
         {
             "int" => SemanticType.Int,
             "long" => SemanticType.Long,
-            "float" => SemanticType.Float,
+            "float" => SemanticType.Float,       // float -> double (per spec)
+            "float32" => SemanticType.Float32,   // float32 -> C# float
+            "float64" => SemanticType.Double,    // float64 -> double
             "double" => SemanticType.Double,
             "bool" => SemanticType.Bool,
             "str" => SemanticType.Str,

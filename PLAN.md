@@ -1,65 +1,255 @@
-# Implementation Plan: Task 0.1.1.7 - Create Phase 0.1.1 Exit Criteria Test Suite
+# Task 0.1.4.3: Implement/Verify For Loop with `range()`
 
 ## Summary
 
-The Phase 0.1.1 Exit Criteria test file **already exists** at `src/Sharpy.Compiler.Tests/Parser/Phase011ExitCriteriaTests.cs` (963 lines) and is comprehensive. After analysis, the file already covers all exit criteria from the specification.
+This is an **audit/verification task**. Based on comprehensive codebase analysis, the for loop with `range()` feature is **fully implemented and working** across all compiler phases.
 
-## Current Coverage Analysis
+## Current State Analysis
 
-### Exit Criteria from Spec (phases.md lines 158-163)
+### ✅ ForStatement AST Node (COMPLETE)
+**File**: `src/Sharpy.Compiler/Parser/Ast/Statement.cs:136-141`
 
-| Exit Criterion | Status | Tests |
-|----------------|--------|-------|
-| 1. AST correctly represents expression precedence | ✅ Covered | 14 tests (lines 38-267) |
-| 2. Parentheses override precedence | ✅ Covered | 5 tests (lines 269-348) |
-| 3. Type annotations parsed but not validated | ✅ Covered | 9 tests (lines 351-452) |
-| 4. Module structure captured | ✅ Covered | 8 tests (lines 455-553) |
-| 5. Comparison chaining parsed correctly | ✅ Covered | 7 tests (lines 556-653) |
+```csharp
+public record ForStatement : Statement
+{
+    public Expression Target { get; init; } = null!;      // Loop variable(s)
+    public Expression Iterator { get; init; } = null!;    // Expression to iterate over
+    public List<Statement> Body { get; init; } = new();
+}
+```
 
-### Additional Coverage (Beyond Basic Exit Criteria)
+| Required Property | Status | Notes |
+|-------------------|--------|-------|
+| Variable (string or pattern) | ✅ | `Target` - supports identifiers and tuple patterns |
+| Iterable (Expression) | ✅ | `Iterator` - any expression including `range()` calls |
+| Body (List<Statement>) | ✅ | `Body` - list of statements |
 
-| Area | Tests |
-|------|-------|
-| Core AST nodes verification | 14 tests (lines 657-755) |
-| Special operators (`|>`, `to`, `??`, `?.`, `as`, `is`) | 9 tests (lines 757-838) |
-| Comprehensive integration tests | 6 tests (lines 841-960) |
+### ✅ range() Implementation (COMPLETE)
+**File**: `src/Sharpy.Core/Range.cs`
 
-## Recommendation
+All three variants are implemented:
 
-**The test file is already complete and comprehensive.** No new implementation is needed.
+| Variant | Implementation | Maps To |
+|---------|----------------|---------|
+| `range(10)` | `Range(int stop)` | `0..9` (0 to stop-1) |
+| `range(0, 10)` | `Range(int start, int stop)` | `0..9` |
+| `range(0, 10, 2)` | `Range(int start, int stop, int step)` | `0, 2, 4, 6, 8` |
 
-The existing `Phase011ExitCriteriaTests.cs` file:
-- Contains 53 test methods organized into 8 regions
-- Covers all 5 exit criteria from the Phase 0.1.1 specification
-- Includes tests for edge cases and integration scenarios
-- Follows established test patterns in the codebase
+**Runtime Features**:
+- Returns `RangeIterator` which extends `Iterator<int>`
+- Implements `__Next__()` protocol (raises `StopIteration` when exhausted)
+- Validates `step != 0` (throws `ValueError` if zero)
+- Supports negative steps for reverse iteration
 
-## Verification Steps
+### ✅ Builtin Function Discovery (COMPLETE)
+**File**: `src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs:57-76`
 
-1. Run the existing test suite to ensure all tests pass:
-   ```bash
-   dotnet test src/Sharpy.Compiler.Tests --filter "FullyQualifiedName~Phase011ExitCriteriaTests"
-   ```
+- `range()` is automatically discovered via reflection from `Sharpy.Core.Exports`
+- All three overloads are registered as builtin functions
+- Available as lowercase `range` in Sharpy code
 
-2. Verify test coverage includes all operator precedence levels from `docs/language_specification/operator_precedence.md`
+### ✅ Code Generation (COMPLETE)
+**File**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:1620-1672`
 
-## Files
+```csharp
+private StatementSyntax GenerateFor(ForStatement forStmt)
+{
+    // Generates C# foreach statement
+    return ForEachStatement(
+        IdentifierName("var"),
+        Identifier(varName),
+        iterator,
+        body);
+}
+```
 
-| File | Action |
-|------|--------|
-| `src/Sharpy.Compiler.Tests/Parser/Phase011ExitCriteriaTests.cs` | No changes needed - already complete |
+**Generated C# Examples**:
+```csharp
+// Sharpy: for i in range(5): print(i)
+foreach (var i in Sharpy.Core.Exports.Range(5))
+{
+    Sharpy.Core.Exports.Print(i);
+}
 
-## Potential Gaps to Consider (Optional Enhancement)
+// Sharpy: for x, y in pairs: process(x, y)
+foreach (var (x, y) in pairs)
+{
+    Process(x, y);
+}
+```
 
-If the user wants even more thorough coverage, these areas could be expanded:
+**Note**: The implementation uses C# `foreach` with the iterator, NOT traditional `for (int i = 0; i < n; i++)`. This is simpler and leverages the existing iterator infrastructure.
 
-1. **Additional Precedence Tests**: Tests for `try`/`maybe` expressions (precedence 17) if parsing is implemented
-2. **Walrus Operator**: Test for `:=` operator if supported in this phase
-3. **Position Tracking**: Tests for AST node line/column positions (though this is covered in `ParserPositionTests.cs`)
+### ✅ Semantic Analysis (COMPLETE)
+**File**: `src/Sharpy.Compiler/Semantic/TypeChecker.cs:753-856`
+
+- Validates iterator implements `__iter__` protocol
+- Extracts element type from iterator (`int` for `range()`)
+- Handles tuple unpacking (`for x, y in items`)
+- Creates proper scope for loop variables
+
+**File**: `src/Sharpy.Compiler/Semantic/ProtocolValidator.cs:211-252`
+
+- `RangeIterator` is recognized as `Iterator<int>`
+- Element type `int` is correctly inferred
+
+## Existing Test Coverage
+
+### Integration Tests (End-to-End)
+**File**: `src/Sharpy.Compiler.Tests/Integration/ControlFlowTests.cs:181-267`
+
+| Test | Coverage |
+|------|----------|
+| `ForLoop_WithRange_WorksCorrectly` | `range(n)` - 1 argument |
+| `ForLoop_WithRangeStartStop_WorksCorrectly` | `range(start, stop)` - 2 arguments |
+| `ForLoop_WithRangeStep_WorksCorrectly` | `range(start, stop, step)` - 3 arguments |
+| `ForLoop_WithBreak_WorksCorrectly` | break statement in for loop |
+| `ForLoop_WithContinue_WorksCorrectly` | continue statement in for loop |
+| `NestedLoops_WorkCorrectly` | nested for loops with range |
+
+### Parser Tests
+**File**: `src/Sharpy.Compiler.Tests/Parser/ParserTests.cs`
+- Basic for loop parsing
+
+### Code Gen Tests
+**File**: `src/Sharpy.Compiler.Tests/CodeGen/RoslynEmitterStatementTests.cs`
+- For loop code generation
+
+## Implementation Steps (Verification Only)
+
+### Step 1: Run Existing Tests
+```bash
+cd src/Sharpy.Compiler.Tests
+dotnet test --filter "ForLoop"
+```
+**Expected**: All 6 for loop tests pass
+
+### Step 2: Run Full Range Tests
+```bash
+dotnet test --filter "Range"
+```
+**Expected**: All range-related tests pass (including Core.Tests)
+
+### Step 3: Manual Verification (Optional)
+
+**Test File**: `test_range_all_variants.spy`
+```python
+# Test 1-arg range
+print("range(5):")
+for i in range(5):
+    print(i)
+
+# Test 2-arg range
+print("range(2, 7):")
+for i in range(2, 7):
+    print(i)
+
+# Test 3-arg range (step)
+print("range(0, 10, 2):")
+for i in range(0, 10, 2):
+    print(i)
+
+# Test negative step
+print("range(10, 0, -1):")
+for i in range(10, 0, -1):
+    print(i)
+```
+
+**Expected Output**:
+```
+range(5):
+0
+1
+2
+3
+4
+range(2, 7):
+2
+3
+4
+5
+6
+range(0, 10, 2):
+0
+2
+4
+6
+8
+range(10, 0, -1):
+10
+9
+8
+7
+6
+5
+4
+3
+2
+1
+```
+
+## Verification Checklist
+
+| Item | Status | Evidence |
+|------|--------|----------|
+| ForStmt AST node exists | ✅ | `Statement.cs:136-141` |
+| Has Variable (Target) | ✅ | Supports identifier and tuple patterns |
+| Has Iterable (Iterator) | ✅ | Expression field |
+| Has Body (List<Statement>) | ✅ | List of statements |
+| `range(n)` works | ✅ | Test: `ForLoop_WithRange_WorksCorrectly` |
+| `range(start, stop)` works | ✅ | Test: `ForLoop_WithRangeStartStop_WorksCorrectly` |
+| `range(start, stop, step)` works | ✅ | Test: `ForLoop_WithRangeStep_WorksCorrectly` |
+| Code gen produces valid C# | ✅ | Uses `foreach` with `Range()` |
+| Element type inferred as `int` | ✅ | TypeChecker + ProtocolValidator |
+
+## Key Files Summary
+
+| Category | File | Line Numbers |
+|----------|------|--------------|
+| AST Node | `src/Sharpy.Compiler/Parser/Ast/Statement.cs` | 136-141 |
+| Parser | `src/Sharpy.Compiler/Parser/Parser.cs` | 766-795 |
+| Type Checker | `src/Sharpy.Compiler/Semantic/TypeChecker.cs` | 753-856 |
+| Protocol Validation | `src/Sharpy.Compiler/Semantic/ProtocolValidator.cs` | 211-252 |
+| Code Generation | `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` | 1620-1672 |
+| Range Runtime | `src/Sharpy.Core/Range.cs` | Full file |
+| Builtin Registry | `src/Sharpy.Compiler/Semantic/BuiltinRegistry.cs` | 57-76 |
+| Integration Tests | `src/Sharpy.Compiler.Tests/Integration/ControlFlowTests.cs` | 181-267 |
+
+## Risks/Questions
+
+### No Significant Risks
+The implementation is complete and well-tested.
+
+### Design Decision: foreach vs traditional for
+**Current**: Uses `foreach` with `RangeIterator`
+**Alternative**: Could transform `range(n)` to `for (int i = 0; i < n; i++)`
+
+**Why foreach is preferred**:
+1. Consistent with all iterable types (lists, sets, dicts)
+2. Supports all range variants uniformly (including negative steps)
+3. Simpler implementation - single code path
+4. Iterator protocol properly handles edge cases
+
+**Potential optimization** (out of scope): JIT may inline simple ranges, but explicit `for` loop could be faster for hot paths. This would be a future performance enhancement if needed.
+
+### Edge Cases to Note
+1. **Empty range**: `range(0)` or `range(5, 5)` yields no iterations ✅ Works
+2. **Negative step**: `range(10, 0, -1)` counts down ✅ Works
+3. **Zero step**: `range(0, 10, 0)` throws `ValueError` ✅ Works
+
+### Out of Scope Limitations
+1. **Comprehension tuple unpacking**: `[x+y for x, y in pairs]` - not yet implemented
+2. **Nested comprehensions**: `[x*y for x in range(3) for y in range(2)]` - not yet implemented
 
 ## Conclusion
 
-**This task appears to already be complete.** The test file exists and comprehensively covers all Phase 0.1.1 exit criteria. The recommended action is to:
+**No implementation work required.** Task 0.1.4.3 is purely verification - the for loop with `range()` feature is fully implemented across:
 
-1. Run the existing tests to confirm they pass
-2. Mark task 0.1.1.7 as completed if tests pass
+- Lexer (keyword recognition)
+- Parser (AST construction with all required fields)
+- Semantic analysis (type inference, protocol validation)
+- Code generation (C# foreach statement)
+- Runtime support (`RangeIterator` class)
+- Comprehensive test coverage (6+ integration tests)
+
+**Recommended Action**: Mark task 0.1.4.3 as complete after running the test suite to confirm all tests pass.

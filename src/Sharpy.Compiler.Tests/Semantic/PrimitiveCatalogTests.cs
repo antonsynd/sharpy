@@ -15,7 +15,9 @@ public class PrimitiveCatalogTests
     [Theory]
     [InlineData("int", typeof(int))]
     [InlineData("long", typeof(long))]
-    [InlineData("float", typeof(float))]
+    [InlineData("float", typeof(double))]      // Per spec: Sharpy 'float' -> C# 'double'
+    [InlineData("float32", typeof(float))]     // Per spec: Sharpy 'float32' -> C# 'float'
+    [InlineData("float64", typeof(double))]    // Per spec: Sharpy 'float64' -> C# 'double'
     [InlineData("double", typeof(double))]
     [InlineData("bool", typeof(bool))]
     [InlineData("str", typeof(string))]
@@ -56,8 +58,8 @@ public class PrimitiveCatalogTests
     [Theory]
     [InlineData(typeof(int), "int")]
     [InlineData(typeof(long), "long")]
-    [InlineData(typeof(float), "float")]
-    [InlineData(typeof(double), "double")]
+    [InlineData(typeof(float), "float32")]      // C# float -> Sharpy 'float32'
+    [InlineData(typeof(double), "double")]      // C# double -> Sharpy 'double' (last registered canonical name)
     [InlineData(typeof(bool), "bool")]
     [InlineData(typeof(sbyte), "sbyte")]
     [InlineData(typeof(byte), "byte")]
@@ -145,13 +147,15 @@ public class PrimitiveCatalogTests
     [Theory]
     [InlineData("int", "int", "int")]
     [InlineData("int", "long", "long")]
-    [InlineData("int", "float", "float")]
-    [InlineData("float", "double", "double")]
-    [InlineData("long", "double", "double")]
+    [InlineData("int", "float", "float")]      // int + float(double) -> float(double)
+    [InlineData("float", "double", "float")]   // float(double) + double -> float(double), both are C# double
+    [InlineData("long", "double", "double")]   // long + double -> double
     [InlineData("byte", "int", "int")]
-    [InlineData("int", "uint", "long")]   // Mixed signed/unsigned promotes to larger signed
-    [InlineData("short", "ushort", "int")] // 16-bit mixed promotes to 32-bit signed
-    [InlineData("sbyte", "byte", "short")] // 8-bit mixed promotes to 16-bit signed
+    [InlineData("int", "uint", "long")]        // Mixed signed/unsigned promotes to larger signed
+    [InlineData("short", "ushort", "int")]     // 16-bit mixed promotes to 32-bit signed
+    [InlineData("sbyte", "byte", "short")]     // 8-bit mixed promotes to 16-bit signed
+    [InlineData("int", "float32", "float32")]  // int + float32 -> float32
+    [InlineData("float32", "float", "float")]  // float32 + float(double) -> float(double)
     public void GetPromotedType_ReturnsCorrectType(string left, string right, string expected)
     {
         var leftInfo = PrimitiveCatalog.GetByName(left)!;

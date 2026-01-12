@@ -280,11 +280,17 @@ public class Compiler
                     fileMetrics.StartPhase("Code Generation");
                 }
 
+                // Determine if this file is the entry point
+                // Entry point is main.spy or a file that contains executable statements
+                var fileName = Path.GetFileNameWithoutExtension(sourceFile);
+                var isEntryPoint = fileName.Equals("main", StringComparison.OrdinalIgnoreCase);
+
                 var codeGenContext = new CodeGenContext(symbolTable, builtinRegistry)
                 {
                     SourceFilePath = sourceFile,
                     ProjectNamespace = projectConfig.RootNamespace,
-                    ProjectRootPath = Path.Combine(projectConfig.ProjectDirectory, "src")
+                    ProjectRootPath = Path.Combine(projectConfig.ProjectDirectory, "src"),
+                    IsEntryPoint = isEntryPoint
                 };
 
                 var emitter = new RoslynEmitter(codeGenContext);

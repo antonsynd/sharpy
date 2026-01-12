@@ -10,8 +10,10 @@ public abstract record SemanticType
     public static readonly SemanticType Void = new VoidType();
     public static readonly SemanticType Int = new BuiltinType { Name = "int", ClrType = typeof(int) };
     public static readonly SemanticType Long = new BuiltinType { Name = "long", ClrType = typeof(long) };
-    public static readonly SemanticType Float = new BuiltinType { Name = "float", ClrType = typeof(float) };
+    // Per spec: Sharpy 'float' maps to C# 'double' (64-bit), 'float32' maps to C# 'float' (32-bit)
+    public static readonly SemanticType Float = new BuiltinType { Name = "float", ClrType = typeof(double) };
     public static readonly SemanticType Double = new BuiltinType { Name = "double", ClrType = typeof(double) };
+    public static readonly SemanticType Float32 = new BuiltinType { Name = "float32", ClrType = typeof(float) };
     public static readonly SemanticType Bool = new BuiltinType { Name = "bool", ClrType = typeof(bool) };
     public static readonly SemanticType Str = new BuiltinType { Name = "str", ClrType = typeof(string) };
     public static readonly SemanticType Object = new UserDefinedType { Name = "object" };

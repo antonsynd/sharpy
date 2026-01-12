@@ -71,7 +71,10 @@ public static class PrimitiveCatalog
         Register(byName, byClr, new PrimitiveInfo("ulong", "ulong", typeof(ulong), NumericKind.UnsignedInteger, 64, false));
 
         // 1.2.3 Floating-point types
-        Register(byName, byClr, new PrimitiveInfo("float", "float", typeof(float), NumericKind.FloatingPoint, 32, true));
+        // Per spec: float32 -> C# float, float/float64 -> C# double
+        Register(byName, byClr, new PrimitiveInfo("float32", "float", typeof(float), NumericKind.FloatingPoint, 32, true));
+        Register(byName, byClr, new PrimitiveInfo("float", "double", typeof(double), NumericKind.FloatingPoint, 64, true));
+        Register(byName, byClr, new PrimitiveInfo("float64", "double", typeof(double), NumericKind.FloatingPoint, 64, true));
         Register(byName, byClr, new PrimitiveInfo("double", "double", typeof(double), NumericKind.FloatingPoint, 64, true));
         Register(byName, byClr, new PrimitiveInfo("decimal", "decimal", typeof(decimal), NumericKind.Decimal, 128, true));
 
@@ -241,8 +244,8 @@ public static class PrimitiveCatalog
             // Common types - use SemanticType singletons
             Type t when t == typeof(int) => SemanticType.Int,
             Type t when t == typeof(long) => SemanticType.Long,
-            Type t when t == typeof(float) => SemanticType.Float,
-            Type t when t == typeof(double) => SemanticType.Double,
+            Type t when t == typeof(float) => SemanticType.Float32,  // C# float -> Sharpy float32
+            Type t when t == typeof(double) => SemanticType.Double,  // C# double -> Sharpy float/double
             // Less common types - create BuiltinType instances
             // (these are used less frequently in promotion, so creating instances is acceptable)
             Type t when t == typeof(sbyte) => new BuiltinType { Name = "sbyte", ClrType = typeof(sbyte) },

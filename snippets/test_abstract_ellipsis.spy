@@ -1,0 +1,43 @@
+# Test abstract methods with ellipsis and pass
+
+@abstract
+class Shape:
+    """Base shape class with abstract methods"""
+    
+    @abstractmethod
+    def area(self) -> float:
+        ...  # Abstract method - should generate no body in C#
+    
+    @abstractmethod
+    def perimeter(self) -> float:
+        ...  # Another abstract method
+    
+    def describe(self) -> str:
+        return "I am a shape"
+
+class Circle(Shape):
+    def __init__(self, radius: float):
+        self.radius = radius
+    
+    def area(self) -> float:
+        return 3.14159 * self.radius * self.radius
+    
+    def perimeter(self) -> float:
+        return 2.0 * 3.14159 * self.radius
+
+class TodoClass:
+    """A class with unimplemented methods"""
+    
+    def not_done_yet(self) -> int:
+        ...  # Concrete method with ellipsis - should throw NotImplementedException
+    
+    def empty_method(self) -> None:
+        pass  # Empty method with pass - generates empty statement
+
+# Interface with ellipsis
+interface IDrawable:
+    def draw(self) -> None:
+        ...  # Interface method - should generate no body
+    
+    def get_bounds(self) -> tuple[float, float, float, float]:
+        ...
