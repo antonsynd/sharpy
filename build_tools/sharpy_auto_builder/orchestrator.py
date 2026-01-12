@@ -624,15 +624,13 @@ Provide:
                 }
             else:
                 # Need human input - create question
-                question = HumanQuestion(
-                    id=f"q-{task_data['id']}-{datetime.now().timestamp():.0f}",
+                question = self.human_loop.create_question(
                     task_id=task_data["id"],
                     question=f"Agent is asking for guidance on task {task_data['id']}: {task_data.get('title', '')}",
                     context=response_output[:2000],  # First 2000 chars
                     priority=QuestionPriority.HIGH,
                     options=analysis.proposed_actions or analysis.questions,
                 )
-                await self.human_loop.submit_question(question)
 
                 self._log_execution(
                     event_type="human_question_created",
@@ -780,15 +778,13 @@ Provide:
 
         else:  # ESCALATE
             # Couldn't auto-decide, need human
-            question = HumanQuestion(
-                id=f"q-{task_data['id']}-escalate-{datetime.now().timestamp():.0f}",
+            question = self.human_loop.create_question(
                 task_id=task_data["id"],
                 question=f"Auto-decision engine could not decide on task {task_data['id']}",
                 context=decision.reason,
                 priority=QuestionPriority.HIGH,
                 options=analysis.proposed_actions,
             )
-            await self.human_loop.submit_question(question)
 
             return {
                 **state,

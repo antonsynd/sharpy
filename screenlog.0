@@ -844,4 +844,54 @@ Interrupted by user
 [38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h./build_tools/auto_builder.sh run   reset 0.1.. 5.9[?2004l
 ]133;C;Task 0.1.5.9 reset to pending
 [1m[7m%[27m[1m[0m                                                                                             ]133;D;0]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004hggig  ./build_tools/auto_builder.sh reset 0.1.5.9           un[?2004l
+]133;C;Starting Sharpy Auto Builder...
+  Backend priority: ['claude_code', 'copilot']
+  Max tasks: unlimited
+  Spec check: enabled
+  Verification: enabled
+  Hallucination check: enabled
+
+[select_task] Selected task 0.1.5.9: Create Phase 0.1.5 Integration Tests
+[plan_implementation] Implementation plan created for 0.1.5.9
+[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[run_baseline_tests] Baseline tests passed
+[execute_implementation] Execution attempt 1 succeeded
+Traceback (most recent call last):
+  File "/Users/anton/github/sharpy/build_tools/sharpy_auto_builder/run.py", line 43, in <module>
+    main()
+  File "/Users/anton/github/sharpy/build_tools/sharpy_auto_builder/cli.py", line 560, in main
+    commands[args.command](args)
+  File "/Users/anton/github/sharpy/build_tools/sharpy_auto_builder/cli.py", line 159, in cmd_run
+    result = asyncio.run(orchestrator.run(max_tasks=args.max_tasks))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/anaconda3/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/anaconda3/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/anaconda3/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/Users/anton/github/sharpy/build_tools/sharpy_auto_builder/orchestrator.py", line 2149, in run
+    async for event in self.app.astream(initial_state, config):
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/langgraph/pregel/main.py", line 2971, in astream
+    async for _ in runner.atick(
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/langgraph/pregel/_runner.py", line 304, in atick
+    await arun_with_retry(
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/langgraph/pregel/_retry.py", line 137, in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/langgraph/_internal/_runnable.py", line 705, in ainvoke
+    input = await asyncio.create_task(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/langgraph/_internal/_runnable.py", line 473, in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/github/sharpy/build_tools/sharpy_auto_builder/orchestrator.py", line 635, in _analyze_response_node
+    await self.human_loop.submit_question(question)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'HumanLoopManager' object has no attribute 'submit_question'
+During task with name 'analyze_response' and id '5ec8a08a-1e61-f15a-6475-90b682c64b22'
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;1]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
 [38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h
