@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-12T10:38:42.533473",
+  "last_updated": "2026-01-12T10:39:18.953045",
   "phases": [
     {
       "id": "0.1.0",
@@ -1838,7 +1838,7 @@
       "id": "0.1.5",
       "name": "Functions",
       "goal": "Function definitions with parameters and return values.",
-      "status": "pending",
+      "status": "in_progress",
       "progress": 33.33333333333333,
       "tasks": [
         {
@@ -2012,7 +2012,7 @@
             "src/Sharpy.Compiler/Parser/Parser.cs",
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": true,

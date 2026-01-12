@@ -1787,10 +1787,19 @@ public class RoslynEmitter
                 ? $"global::Sharpy.Core.Exports.{NameMangler.ToPascalCase(funcName.Name)}"
                 : NameMangler.ToPascalCase(funcName.Name);
 
-            var args = call.Arguments.Select(GenerateExpression).ToArray();
+            // Generate positional arguments
+            var positionalArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg)));
+
+            // Generate keyword arguments with named syntax
+            var keywordArgs = call.KeywordArguments.Select(kwarg =>
+                Argument(GenerateExpression(kwarg.Value))
+                    .WithNameColon(NameColon(IdentifierName(kwarg.Name))));
+
+            // Combine positional and keyword arguments
+            var allArgs = positionalArgs.Concat(keywordArgs).ToArray();
 
             return InvocationExpression(ParseName(name))
-                .WithArgumentList(ArgumentList(SeparatedList(args.Select(Argument))));
+                .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
         }
 
         throw new NotImplementedException("Complex function expressions not yet supported");
