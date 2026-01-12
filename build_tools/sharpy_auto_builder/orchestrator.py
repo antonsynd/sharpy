@@ -1047,7 +1047,20 @@ automatically fixed after {fix_attempt} attempts.
             task.executions.append(execution)
 
             # Update task status
-            if execution.success and execution.tests_passed:
+            # Task is complete if:
+            # 1. Execution succeeded AND tests passed, OR
+            # 2. Execution succeeded AND tests were already failing (pre-existing)
+            #    AND all validations passed
+            baseline_test_passed = state.get("baseline_test_passed")
+            validations_passed = all(
+                vr.get("status") == "passed" for vr in validation_results
+            )
+
+            tests_ok = execution.tests_passed or (
+                baseline_test_passed is False and validations_passed
+            )
+
+            if execution.success and tests_ok:
                 task.status = TaskStatus.COMPLETED
             elif state.get("execution_attempt", 0) >= self.config.max_retries_per_task:
                 task.status = TaskStatus.FAILED
