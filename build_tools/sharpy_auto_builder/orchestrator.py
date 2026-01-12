@@ -1163,7 +1163,9 @@ automatically fixed after {fix_attempt} attempts.
         error_msg = last_result.get("error", "")
 
         # Check if this is a rate limit exhaustion error
-        is_rate_limited = "exhausted" in error_msg.lower() or "rate limit" in error_msg.lower()
+        is_rate_limited = (
+            "exhausted" in error_msg.lower() or "rate limit" in error_msg.lower()
+        )
 
         if is_rate_limited and self.config.rate_limit_pause_hours > 0:
             # Long pause when all backends are rate-limited
@@ -1171,7 +1173,9 @@ automatically fixed after {fix_attempt} attempts.
             pause_hours = self.config.rate_limit_pause_hours
             print(f"\n{'='*60}")
             print(f"All backends rate-limited. Pausing for {pause_hours} hours...")
-            print(f"Will resume at: {datetime.now() + timedelta(seconds=pause_seconds)}")
+            print(
+                f"Will resume at: {datetime.now() + timedelta(seconds=pause_seconds)}"
+            )
             print(f"{'='*60}\n")
             await asyncio.sleep(pause_seconds)
             return {

@@ -152,11 +152,15 @@ class Config:
     # Execution settings
     max_retries_per_task: int = 3
     max_test_fix_attempts: int = 3  # Max attempts to fix tests the agent broke
-    create_followup_task_on_fix_failure: bool = True  # Create a task when agent can't fix tests
+    create_followup_task_on_fix_failure: bool = (
+        True  # Create a task when agent can't fix tests
+    )
     require_human_approval_for_critical: bool = True
     auto_commit: bool = False
     create_pr: bool = False
-    rate_limit_pause_hours: float = 3.0  # Hours to pause when all backends are rate-limited
+    rate_limit_pause_hours: float = (
+        3.0  # Hours to pause when all backends are rate-limited
+    )
 
     # Human-in-the-loop settings
     human_wait_timeout: float = 3600.0  # 1 hour default timeout for human responses
@@ -228,7 +232,9 @@ class Config:
         if "max_test_fix_attempts" in data:
             config.max_test_fix_attempts = data["max_test_fix_attempts"]
         if "create_followup_task_on_fix_failure" in data:
-            config.create_followup_task_on_fix_failure = data["create_followup_task_on_fix_failure"]
+            config.create_followup_task_on_fix_failure = data[
+                "create_followup_task_on_fix_failure"
+            ]
         if "require_human_approval_for_critical" in data:
             config.require_human_approval_for_critical = data[
                 "require_human_approval_for_critical"
