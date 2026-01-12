@@ -1,0 +1,16 @@
+# Sharpy Auto Builder Dependencies
+
+# LangGraph for orchestration
+langgraph>=0.2.0
+langchain-core>=0.3.0
+
+# Async support
+aiofiles>=23.2.1
+
+# CLI and utilities
+rich>=13.7.0  # For nice terminal output
+click>=8.1.0  # Alternative CLI framework (optional)
+
+# Development
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
