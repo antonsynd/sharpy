@@ -88,8 +88,11 @@ This parses the task list and creates the ground truth state file.
 # Run with specific backend
 ./auto_builder.sh run --backend claude_code --max-tasks 3
 
-# Run with Sonnet 4.5
+# Run with a specific model (default: claude-sonnet-4-5-20250929)
 ./auto_builder.sh run --model claude-sonnet-4-5-20250929
+
+# Skip validation steps for faster iteration
+./auto_builder.sh run --skip-spec-check --skip-verification --skip-hallucination-check
 ```
 
 ## Commands
@@ -168,6 +171,26 @@ Skip a task.
 ```bash
 ./auto_builder.sh skip 0.1.0.3 --reason "Blocked by external dependency"
 ```
+
+### `logs`
+
+View execution logs (prompts, responses, test results).
+
+```bash
+# View last 10 log entries
+./auto_builder.sh logs --last 10
+
+# View logs for a specific task
+./auto_builder.sh logs --task-id 0.1.0.3
+
+# Filter by event type
+./auto_builder.sh logs --event-type agent_response
+
+# Include full prompts and truncate output
+./auto_builder.sh logs --show-prompt --truncate 500
+```
+
+Event types: `agent_prompt`, `agent_response`, `test_run`, `baseline_test_run`, `fix_prompt`, `fix_response`, `followup_task_created`
 
 ## Human-in-the-Loop
 
@@ -273,6 +296,53 @@ RateLimitConfig(
 )
 ```
 
+## Execution Workflow
+
+The orchestrator runs a sophisticated workflow for each task:
+
+```
+select_task → plan_implementation → run_baseline_tests → execute_implementation
+     ↑                                                          ↓
+     │                                                    run_tests
+     │                                                          ↓
+     │    ┌──────────────────────────────────────────────────────┤
+     │    │                                                      │
+     │    ▼                                                      ▼
+     │  validate (if tests pass)              fix_test_failures (if agent broke tests)
+     │    │                                           │
+     │    ▼                                           │ (max 3 attempts)
+     │  human_review (if needed)                      │
+     │    │                                           ▼
+     └────┴───────────── update_ground_truth ◄───────┘
+```
+
+### Baseline Test Tracking
+
+Before executing a task, the system runs tests to establish a baseline:
+- If tests **already fail**: Implementation proceeds, and post-implementation failures are attributed to pre-existing issues (not the agent's fault)
+- If tests **pass**: Any subsequent failures are treated as regressions the agent must fix
+
+### Test Fix Workflow
+
+When an agent breaks tests (tests passed before, fail after):
+
+1. Agent gets up to **3 attempts** to fix the issue (configurable via `max_test_fix_attempts`)
+2. Prompt includes the test failure output and instructions to fix **implementation, not tests**
+3. If all fix attempts fail, a **follow-up task** is automatically created
+4. The original task is marked with a note linking to the follow-up
+
+### Execution Logging
+
+All prompts, responses, and test results are logged to `state/execution_log.jsonl`:
+
+```jsonl
+{"timestamp": "2025-01-11T...", "event_type": "agent_prompt", "task_id": "0.1.0.3", "prompt": "..."}
+{"timestamp": "2025-01-11T...", "event_type": "agent_response", "task_id": "0.1.0.3", "output": "...", "success": true}
+{"timestamp": "2025-01-11T...", "event_type": "test_run", "task_id": "0.1.0.3", "success": false}
+```
+
+Use `./auto_builder.sh logs` to view and filter these logs.
+
 ## Ground Truth State
 
 The ground truth file (`state/ground_truth.json`) tracks:
@@ -294,20 +364,35 @@ build_tools/
     ├── config.py            # Configuration management
     ├── state.py             # Ground truth state management
     ├── agents.py            # Agent definitions and prompts
-    ├── backends.py          # Backend implementations
+    ├── backends.py          # Backend implementations (Claude Code, Copilot)
     ├── human_loop.py        # Human-in-the-loop support
-    ├── orchestrator.py      # LangGraph orchestration
+    ├── orchestrator.py      # LangGraph orchestration (1200+ lines)
     ├── cli.py               # Command-line interface
     ├── run.py               # Main entry point
     ├── requirements.txt     # Python dependencies
     └── state/               # Runtime state (created on init)
         ├── config.json
         ├── ground_truth.json
-        ├── execution_log.jsonl
+        ├── execution_log.jsonl  # Full prompt/response logs
         ├── questions/       # Pending questions
         ├── answers/         # Human answers
         └── human_review/    # Review requests
 ```
+
+## Configuration Options
+
+Key settings in `config.py`:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `max_retries_per_task` | 3 | Max execution attempts per task |
+| `max_test_fix_attempts` | 3 | Max attempts to fix broken tests |
+| `create_followup_task_on_fix_failure` | true | Create follow-up task when test fixes fail |
+| `require_human_approval_for_critical` | true | Require human review for critical tasks |
+| `human_wait_timeout` | 3600s | Timeout waiting for human input |
+| `run_spec_adherence_check` | true | Run spec validation agent |
+| `run_verification_after_implementation` | true | Run verification agent |
+| `run_hallucination_defense` | true | Run hallucination check agent |
 
 ## Integration with Agents
 
@@ -332,7 +417,9 @@ The auto builder uses the same agent definitions as `.github/agents/`:
 3. **Review carefully**: Don't approve reviews without reading them
 4. **Use specific backends**: If one backend is rate-limited, use `--backend` to switch
 5. **Reset on failure**: Use `reset` to retry failed tasks
-6. **Check logs**: See `state/execution_log.jsonl` for detailed history
+6. **Check logs**: Use `./auto_builder.sh logs` for detailed prompt/response history
+7. **Skip validation for speed**: Use `--skip-spec-check --skip-verification` when iterating quickly
+8. **Review execution log**: The `state/execution_log.jsonl` contains full prompts and responses for debugging
 
 ## Troubleshooting
 
@@ -351,6 +438,15 @@ A task has dependencies that aren't completed. Check `status` for blocking tasks
 ### Rate limit errors
 
 The system handles these automatically with backoff. If persistent, wait 15-30 minutes.
+
+### Agent keeps breaking tests
+
+The system tracks baseline test state and will:
+1. Give the agent up to 3 fix attempts
+2. Create a follow-up task if fixes fail
+3. Not blame the agent for pre-existing test failures
+
+Check `./auto_builder.sh logs --event-type fix_response` to see what fixes were attempted.
 
 ### GitHub Copilot CLI limitations
 
