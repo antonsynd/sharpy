@@ -152,6 +152,7 @@ class Config:
     # Execution settings
     max_retries_per_task: int = 3
     max_test_fix_attempts: int = 3  # Max attempts to fix tests the agent broke
+    max_validation_fix_attempts: int = 2  # Max attempts to address validation issues
     create_followup_task_on_fix_failure: bool = (
         True  # Create a task when agent can't fix tests
     )

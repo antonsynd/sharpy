@@ -50,6 +50,7 @@ class OrchestratorState(TypedDict):
     # Execution state
     execution_attempt: int
     fix_attempt: int  # Separate counter for test fix attempts
+    validation_fix_attempt: int  # Counter for validation issue fix attempts
     last_execution_result: Optional[dict]
 
     # Test state
@@ -160,6 +161,9 @@ class Orchestrator:
         graph.add_node("validate_spec_adherence", self._validate_spec_adherence_node)
         graph.add_node("validate_verification", self._validate_verification_node)
         graph.add_node("check_hallucinations", self._check_hallucinations_node)
+        graph.add_node(
+            "address_validation_issues", self._address_validation_issues_node
+        )
         graph.add_node("request_human_review", self._request_human_review_node)
         graph.add_node("wait_for_human", self._wait_for_human_node)
         graph.add_node("process_human_response", self._process_human_response_node)
@@ -230,8 +234,20 @@ class Orchestrator:
             "check_hallucinations",
             self._route_after_hallucination_check,
             {
+                "address_issues": "address_validation_issues",
                 "human_review": "request_human_review",
                 "update": "update_ground_truth",
+            },
+        )
+
+        # After addressing validation issues, run tests again then re-validate
+        graph.add_conditional_edges(
+            "address_validation_issues",
+            self._route_after_address_issues,
+            {
+                "test": "run_tests",
+                "human_review": "request_human_review",
+                "error": "handle_error",
             },
         )
 
@@ -318,6 +334,7 @@ class Orchestrator:
             "current_task": task.to_dict(),
             "execution_attempt": 0,
             "fix_attempt": 0,
+            "validation_fix_attempt": 0,
             "baseline_test_passed": None,
             "baseline_test_output": None,
             "validation_results": [],
@@ -904,7 +921,16 @@ automatically fixed after {fix_attempt} attempts.
         # Check if human review needed
         has_hallucinations = "INCORRECT" in result.output.upper()
 
-        if has_hallucinations and task_data.get("is_critical"):
+        # Check for actionable issues across all validation results
+        actionable_issues = self._extract_actionable_issues(validation_results)
+
+        if (
+            actionable_issues
+            and state.get("validation_fix_attempt", 0)
+            < self.config.max_validation_fix_attempts
+        ):
+            next_action = "address_issues"
+        elif has_hallucinations and task_data.get("is_critical"):
             next_action = "human_review"
         else:
             next_action = "update"
@@ -914,6 +940,273 @@ automatically fixed after {fix_attempt} attempts.
             "validation_results": validation_results,
             "next_action": next_action,
             "messages": ["Hallucination check completed"],
+        }
+
+    def _extract_actionable_issues(self, validation_results: list[dict]) -> list[dict]:
+        """
+        Extract actionable issues from validation results.
+
+        Looks for patterns indicating critical/high priority issues that should
+        be addressed by the agent before proceeding.
+
+        Returns a list of issues with structure:
+        {
+            "agent": str,
+            "severity": "critical" | "high" | "medium" | "low",
+            "description": str,
+            "recommendation": str (optional)
+        }
+        """
+        import re
+
+        actionable_issues = []
+
+        for vr in validation_results:
+            raw_output = vr.get("raw_output", "") or ""
+            agent = vr.get("agent", "unknown")
+
+            # Skip if validation passed cleanly
+            if vr.get("status") == "passed":
+                continue
+
+            # Pattern 1: Look for explicit severity markers
+            # e.g., "**Impact:** High", "Severity: Critical", "[HIGH]", "[CRITICAL]"
+            severity_patterns = [
+                (r"\*\*(?:Impact|Severity)\*\*:\s*(?:High|Critical)", "high"),
+                (r"(?:Impact|Severity):\s*(?:High|Critical)", "high"),
+                (r"\[(?:HIGH|CRITICAL)\]", "high"),
+                (r"❌.*(?:deviation|error|incorrect|broken|failed)", "high"),
+                (
+                    r"- \[ \].*(?:Section|Requirement)",
+                    "medium",
+                ),  # Unchecked requirements in reports
+            ]
+
+            for pattern, severity in severity_patterns:
+                matches = re.findall(pattern, raw_output, re.IGNORECASE)
+                if matches:
+                    # Extract the context around the match
+                    for match in re.finditer(pattern, raw_output, re.IGNORECASE):
+                        start = max(0, match.start() - 100)
+                        end = min(len(raw_output), match.end() + 200)
+                        context = raw_output[start:end].strip()
+
+                        actionable_issues.append(
+                            {
+                                "agent": agent,
+                                "severity": severity,
+                                "description": context[:300],
+                                "pattern_matched": pattern,
+                            }
+                        )
+
+            # Pattern 2: Look for "Deviations" section with content
+            deviations_match = re.search(
+                r"### Deviations\s*\n(.*?)(?=###|\Z)",
+                raw_output,
+                re.DOTALL | re.IGNORECASE,
+            )
+            if deviations_match:
+                deviations_content = deviations_match.group(1).strip()
+                # Check if there's actual content (not just whitespace or "None")
+                if deviations_content and not re.match(
+                    r"^(None|N/A|-|No deviations)?\s*$",
+                    deviations_content,
+                    re.IGNORECASE,
+                ):
+                    actionable_issues.append(
+                        {
+                            "agent": agent,
+                            "severity": "high",
+                            "description": f"Spec deviations found: {deviations_content[:300]}",
+                            "pattern_matched": "deviations_section",
+                        }
+                    )
+
+            # Pattern 3: Look for "Recommendations" section with actionable items
+            recommendations_match = re.search(
+                r"### (?:Recommendations|Suggestions)\s*\n(.*?)(?=###|\Z)",
+                raw_output,
+                re.DOTALL | re.IGNORECASE,
+            )
+            if recommendations_match:
+                rec_content = recommendations_match.group(1).strip()
+                # Check for actionable recommendations (containing action verbs)
+                if re.search(
+                    r"\b(fix|update|change|modify|remove|add|implement|correct)\b",
+                    rec_content,
+                    re.IGNORECASE,
+                ):
+                    actionable_issues.append(
+                        {
+                            "agent": agent,
+                            "severity": "medium",
+                            "description": f"Actionable recommendations: {rec_content[:300]}",
+                            "pattern_matched": "recommendations_section",
+                        }
+                    )
+
+            # Pattern 4: Look for failed behavior checks
+            behavior_failures = re.findall(
+                r"- \[ \].*?(?:has deviation|failed|incorrect|broken).*",
+                raw_output,
+                re.IGNORECASE,
+            )
+            for failure in behavior_failures:
+                actionable_issues.append(
+                    {
+                        "agent": agent,
+                        "severity": "high",
+                        "description": failure[:200],
+                        "pattern_matched": "behavior_failure",
+                    }
+                )
+
+            # Pattern 5: INCORRECT marker from hallucination defense
+            if "INCORRECT" in raw_output.upper():
+                incorrect_context = re.search(
+                    r"INCORRECT[:\s]*(.*?)(?:\n\n|\Z)",
+                    raw_output,
+                    re.IGNORECASE | re.DOTALL,
+                )
+                if incorrect_context:
+                    actionable_issues.append(
+                        {
+                            "agent": agent,
+                            "severity": "critical",
+                            "description": f"Factual incorrectness: {incorrect_context.group(1)[:200]}",
+                            "pattern_matched": "incorrect_marker",
+                        }
+                    )
+
+        # Filter to only critical and high severity issues for automatic remediation
+        return [
+            issue
+            for issue in actionable_issues
+            if issue["severity"] in ("critical", "high")
+        ]
+
+    async def _address_validation_issues_node(
+        self, state: OrchestratorState
+    ) -> OrchestratorState:
+        """Have the agent address critical/high priority validation issues."""
+        task_data = state["current_task"]
+        validation_fix_attempt = state.get("validation_fix_attempt", 0) + 1
+        max_attempts = getattr(self.config, "max_validation_fix_attempts", 2)
+
+        if validation_fix_attempt > max_attempts:
+            # Max attempts reached - escalate to human review or proceed
+            return {
+                **state,
+                "validation_fix_attempt": validation_fix_attempt,
+                "next_action": (
+                    "human_review" if task_data.get("is_critical") else "error"
+                ),
+                "error_message": f"Failed to address validation issues after {max_attempts} attempts",
+                "messages": [
+                    f"Max validation fix attempts ({max_attempts}) reached",
+                    (
+                        "Escalating to human review"
+                        if task_data.get("is_critical")
+                        else "Proceeding with unresolved issues"
+                    ),
+                ],
+            }
+
+        validation_results = state.get("validation_results", [])
+        actionable_issues = self._extract_actionable_issues(validation_results)
+
+        # Build detailed prompt for addressing issues
+        issues_summary = "\n".join(
+            [
+                f"- [{issue['severity'].upper()}] ({issue['agent']}): {issue['description']}"
+                for issue in actionable_issues[:5]  # Limit to top 5 issues
+            ]
+        )
+
+        # Collect raw outputs for context
+        validation_context = "\n\n---\n\n".join(
+            [
+                f"## {vr['agent']} Report\n{vr.get('raw_output', 'No output')[:1500]}"
+                for vr in validation_results
+                if vr.get("status") != "passed"
+            ]
+        )
+
+        prompt = f"""You previously implemented a task but validation checks found critical issues that need to be addressed.
+
+## Task
+{task_data['title']}
+{task_data.get('description', '')}
+
+## Actionable Issues Found
+{issues_summary}
+
+## Validation Reports
+{validation_context[:4000]}
+
+## Fix Attempt
+This is validation fix attempt {validation_fix_attempt} of {max_attempts}.
+
+## Instructions
+1. Carefully review each issue identified above
+2. For spec deviations: Update implementation to match the specification
+3. For behavior failures: Fix the code to produce correct behavior
+4. For factual errors: Correct any incorrect assumptions or implementations
+5. Do NOT modify test expected values to make tests pass - fix the implementation
+6. Run tests after your fixes to verify correctness
+
+Focus on addressing the specific issues identified. Do not re-implement the entire task.
+
+{f"Previous fix attempt did not resolve all issues. Please try a different approach." if validation_fix_attempt > 1 else ""}
+"""
+
+        # Log the prompt
+        self._log_execution(
+            event_type="validation_fix_prompt",
+            task_id=task_data["id"],
+            prompt=prompt,
+            extra={
+                "validation_fix_attempt": validation_fix_attempt,
+                "max_attempts": max_attempts,
+                "issues_count": len(actionable_issues),
+            },
+        )
+
+        # Execute fix via backend
+        result = await self.backend_manager.execute_with_failover(
+            prompt,
+            context={"files": task_data.get("files", [])},
+        )
+
+        # Log the response
+        self._log_execution(
+            event_type="validation_fix_response",
+            task_id=task_data["id"],
+            output=result.output,
+            error=result.error,
+            success=result.success,
+            backend=result.backend,
+            duration=result.duration_seconds,
+            extra={"validation_fix_attempt": validation_fix_attempt},
+        )
+
+        # Clear validation results to force re-validation
+        messages = [
+            f"Validation fix attempt {validation_fix_attempt}/{max_attempts} {'succeeded' if result.success else 'failed'}"
+        ]
+        if not result.success and result.error:
+            error_preview = (
+                result.error[:200] if len(result.error) > 200 else result.error
+            )
+            messages.append(f"  Error: {error_preview}")
+
+        return {
+            **state,
+            "validation_fix_attempt": validation_fix_attempt,
+            "validation_results": [],  # Clear to force re-validation
+            "next_action": "test" if result.success else "error",
+            "messages": messages,
         }
 
     async def _request_human_review_node(
@@ -1237,6 +1530,9 @@ automatically fixed after {fix_attempt} attempts.
     def _route_after_hallucination_check(self, state: OrchestratorState) -> str:
         return state.get("next_action", "update")
 
+    def _route_after_address_issues(self, state: OrchestratorState) -> str:
+        return state.get("next_action", "error")
+
     def _route_after_human_wait(self, state: OrchestratorState) -> str:
         return state.get("next_action", "timeout")
 
@@ -1260,6 +1556,7 @@ automatically fixed after {fix_attempt} attempts.
             "ground_truth_path": str(self.config.ground_truth_path),
             "execution_attempt": 0,
             "fix_attempt": 0,
+            "validation_fix_attempt": 0,
             "last_execution_result": None,
             "baseline_test_passed": None,
             "baseline_test_output": None,
