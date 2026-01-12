@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sharpy-auto-builder"
+version = "0.1.0"
+description = "Automated implementation of Sharpy compiler tasks"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "langgraph>=0.2.0",
+    "langchain-core>=0.3.0",
+    "aiofiles>=23.2.1",
+    "rich>=13.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[project.scripts]
+sharpy-auto-builder = "sharpy_auto_builder.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
