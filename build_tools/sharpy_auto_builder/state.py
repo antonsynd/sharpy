@@ -20,6 +20,8 @@ class TaskStatus(str, Enum):
     IN_PROGRESS = "in_progress"
     AWAITING_VALIDATION = "awaiting_validation"
     AWAITING_HUMAN_REVIEW = "awaiting_human_review"
+    AWAITING_DECISION = "awaiting_decision"  # NEW: Agent asked questions
+    DEFERRED = "deferred"  # NEW: Explicitly deferred (e.g., optional tasks)
     COMPLETED = "completed"
     FAILED = "failed"
     SKIPPED = "skipped"
