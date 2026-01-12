@@ -280,6 +280,89 @@ def cmd_skip(args):
     print(f"Task {args.task_id} marked as skipped")
 
 
+def cmd_logs(args):
+    """View execution logs."""
+    config = Config()
+    if args.project_root:
+        config.project_root = Path(args.project_root)
+
+    log_path = config.execution_log_path
+    if not log_path.exists():
+        print("No execution logs found yet. Run 'run' to generate logs.")
+        sys.exit(0)
+
+    import json
+
+    # Read all log entries
+    entries = []
+    with open(log_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                entries.append(json.loads(line))
+
+    # Filter by task_id if specified
+    if args.task_id:
+        entries = [e for e in entries if e.get("task_id") == args.task_id]
+
+    # Filter by event type if specified
+    if args.event_type:
+        entries = [e for e in entries if e.get("event_type") == args.event_type]
+
+    # Limit entries
+    if args.last:
+        entries = entries[-args.last :]
+
+    if not entries:
+        print("No matching log entries found.")
+        sys.exit(0)
+
+    # Display entries
+    for entry in entries:
+        timestamp = entry.get("timestamp", "?")
+        event_type = entry.get("event_type", "?")
+        task_id = entry.get("task_id", "?")
+
+        print(f"\n{'='*80}")
+        print(f"[{timestamp}] {event_type} - Task: {task_id}")
+        print(f"{'='*80}")
+
+        if entry.get("success") is not None:
+            print(f"Success: {entry['success']}")
+        if entry.get("backend"):
+            print(f"Backend: {entry['backend']}")
+        if entry.get("duration_seconds"):
+            print(f"Duration: {entry['duration_seconds']:.2f}s")
+        if entry.get("attempt"):
+            print(f"Attempt: {entry['attempt']}")
+
+        if args.show_prompt and entry.get("prompt"):
+            print(f"\n--- PROMPT ---")
+            prompt = entry["prompt"]
+            if args.truncate and len(prompt) > args.truncate:
+                print(
+                    prompt[: args.truncate]
+                    + f"\n... [truncated, {len(prompt)} chars total]"
+                )
+            else:
+                print(prompt)
+
+        if entry.get("output"):
+            print(f"\n--- OUTPUT ---")
+            output = entry["output"]
+            if args.truncate and len(output) > args.truncate:
+                print(
+                    output[: args.truncate]
+                    + f"\n... [truncated, {len(output)} chars total]"
+                )
+            else:
+                print(output)
+
+        if entry.get("error"):
+            print(f"\n--- ERROR ---")
+            print(entry["error"])
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="sharpy-auto-builder",
@@ -375,6 +458,27 @@ def main():
     skip_parser.add_argument("task_id", help="ID of the task to skip")
     skip_parser.add_argument("--reason", help="Reason for skipping", default=None)
 
+    # logs command
+    logs_parser = subparsers.add_parser("logs", help="View execution logs")
+    logs_parser.add_argument("--task-id", help="Filter by task ID", default=None)
+    logs_parser.add_argument(
+        "--event-type",
+        help="Filter by event type (agent_prompt, agent_response, test_run)",
+        default=None,
+    )
+    logs_parser.add_argument(
+        "--last", type=int, help="Show only last N entries", default=None
+    )
+    logs_parser.add_argument(
+        "--show-prompt", action="store_true", help="Include full prompts in output"
+    )
+    logs_parser.add_argument(
+        "--truncate",
+        type=int,
+        help="Truncate output/prompt to N characters (default: no truncation)",
+        default=None,
+    )
+
     args = parser.parse_args()
 
     if not args.command:
@@ -390,6 +494,7 @@ def main():
         "review": cmd_review,
         "reset": cmd_reset,
         "skip": cmd_skip,
+        "logs": cmd_logs,
     }
 
     commands[args.command](args)

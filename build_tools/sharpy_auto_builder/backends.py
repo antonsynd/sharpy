@@ -5,6 +5,7 @@ Supports GitHub Copilot CLI and Claude Code with rate limiting and failover.
 """
 
 import asyncio
+import os
 import subprocess
 import json
 import time
@@ -146,7 +147,10 @@ class Backend(ABC):
 
     @abstractmethod
     async def execute_command(
-        self, command: str, cwd: Optional[Path] = None
+        self,
+        command: str,
+        cwd: Optional[Path] = None,
+        env_override: dict[str, str] | None = None,
     ) -> ExecutionResult:
         """Execute a shell command."""
         pass
@@ -236,10 +240,20 @@ class ClaudeCodeBackend(Backend):
             )
 
     async def execute_command(
-        self, command: str, cwd: Optional[Path] = None
+        self,
+        command: str,
+        cwd: Optional[Path] = None,
+        env_override: dict[str, str] | None = None,
     ) -> ExecutionResult:
         """Execute a shell command."""
+        import os
+
         start_time = time.time()
+
+        # Merge environment overrides with current environment
+        env = os.environ.copy()
+        if env_override:
+            env.update(env_override)
 
         try:
             process = await asyncio.create_subprocess_shell(
@@ -247,6 +261,7 @@ class ClaudeCodeBackend(Backend):
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=cwd or self.project_root,
+                env=env,
             )
 
             stdout, stderr = await process.communicate()
@@ -379,10 +394,20 @@ class CopilotBackend(Backend):
             )
 
     async def execute_command(
-        self, command: str, cwd: Optional[Path] = None
+        self,
+        command: str,
+        cwd: Optional[Path] = None,
+        env_override: dict[str, str] | None = None,
     ) -> ExecutionResult:
         """Execute a shell command."""
+        import os
+
         start_time = time.time()
+
+        # Merge environment overrides with current environment
+        env = os.environ.copy()
+        if env_override:
+            env.update(env_override)
 
         try:
             process = await asyncio.create_subprocess_shell(
@@ -390,6 +415,7 @@ class CopilotBackend(Backend):
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=cwd or self.project_root,
+                env=env,
             )
 
             stdout, stderr = await process.communicate()
@@ -498,6 +524,7 @@ class BackendManager:
         command: str,
         cwd: Optional[Path] = None,
         backend_type: Optional[BackendType] = None,
+        env_override: dict[str, str] | None = None,
     ) -> ExecutionResult:
         """Execute a shell command using any available backend."""
         backend = None
@@ -514,7 +541,7 @@ class BackendManager:
                 backend="none",
             )
 
-        return await backend.execute_command(command, cwd)
+        return await backend.execute_command(command, cwd, env_override)
 
     def get_status(self) -> dict[str, Any]:
         """Get status of all backends."""

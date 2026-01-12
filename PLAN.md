@@ -5,82 +5,49 @@ Audit the existing `TokenType` enum in `Token.cs` against the Sharpy language sp
 
 ## Analysis Results
 
-### Current State (Token.cs)
-The lexer already has a comprehensive set of token types implemented:
+### Task-Specific Requirements (All Implemented)
 
-**Implemented Keywords in TokenType enum (lines 26-57):**
-- Control flow: `Def`, `Class`, `Struct`, `Interface`, `Enum`, `If`, `Else`, `Elif`, `While`, `For`, `In`, `Return`, `Break`, `Continue`, `Pass`, `Try`, `Except`, `Finally`, `Raise`, `Assert`, `With`
-- Import: `Import`, `From`, `As`
-- Type/Value: `Auto`, `Const`, `Lambda`
-- Boolean operators: `And`, `Or`, `Not`, `Is`
-- Literals: `True`, `False`, `None`
+The task explicitly requires these keywords - **all are already implemented**:
 
-**Implemented in Lexer.cs Keywords dictionary (lines 34-77):**
-All the above TokenTypes are properly mapped to their string representations.
+| Category | Keywords | Status |
+|----------|----------|--------|
+| Definitions | `def`, `class`, `struct`, `interface`, `enum` | All Implemented |
+| Control Flow | `if`, `elif`, `else`, `while`, `for`, `in` | All Implemented |
+| Statements | `break`, `continue`, `return`, `pass` | All Implemented |
 
-### Specification Requirements (from `docs/language_specification/keywords.md`)
+### Full Spec Compliance Check
 
-**Hard Keywords Required:**
-| Keyword | Status | TokenType |
-|---------|--------|-----------|
-| `and` | ✅ Implemented | `And` |
-| `as` | ✅ Implemented | `As` |
-| `assert` | ✅ Implemented | `Assert` |
-| `auto` | ✅ Implemented | `Auto` |
-| `break` | ✅ Implemented | `Break` |
-| `case` | ❌ **MISSING** | - |
-| `class` | ✅ Implemented | `Class` |
-| `const` | ✅ Implemented | `Const` |
-| `continue` | ✅ Implemented | `Continue` |
-| `def` | ✅ Implemented | `Def` |
-| `elif` | ✅ Implemented | `Elif` |
-| `else` | ✅ Implemented | `Else` |
-| `enum` | ✅ Implemented | `Enum` |
-| `event` | ❌ **MISSING** | - |
-| `except` | ✅ Implemented | `Except` |
-| `False` | ✅ Implemented | `False` |
-| `finally` | ✅ Implemented | `Finally` |
-| `for` | ✅ Implemented | `For` |
-| `from` | ✅ Implemented | `From` |
-| `if` | ✅ Implemented | `If` |
-| `import` | ✅ Implemented | `Import` |
-| `in` | ✅ Implemented | `In` |
-| `interface` | ✅ Implemented | `Interface` |
-| `is` | ✅ Implemented | `Is` |
-| `lambda` | ✅ Implemented | `Lambda` |
-| `match` | ❌ **MISSING** | - |
-| `maybe` | ❌ **MISSING** | - |
-| `None` | ✅ Implemented | `None` |
-| `not` | ✅ Implemented | `Not` |
-| `or` | ✅ Implemented | `Or` |
-| `pass` | ✅ Implemented | `Pass` |
-| `property` | ❌ **MISSING** | - |
-| `raise` | ✅ Implemented | `Raise` |
-| `return` | ✅ Implemented | `Return` |
-| `struct` | ✅ Implemented | `Struct` |
-| `True` | ✅ Implemented | `True` |
-| `to` | ❌ **MISSING** | - |
-| `try` | ✅ Implemented | `Try` |
-| `type` | ❌ **MISSING** | - |
-| `while` | ✅ Implemented | `While` |
-| `with` | ✅ Implemented | `With` |
-| `yield` | ❌ **MISSING** | - |
-| `async` | ❌ **MISSING** | - |
-| `await` | ❌ **MISSING** | - |
-| `del` | ❌ **MISSING** | - |
+Comparing `Token.cs` (lines 26-57) and `Lexer.cs` (lines 34-77) against `docs/language_specification/keywords.md`:
 
-**Future Keywords (reserved but not implemented):**
-| Keyword | Status |
-|---------|--------|
-| `defer` | Not needed yet |
-| `do` | Not needed yet |
+#### Implemented (34 keywords)
+`and`, `as`, `assert`, `auto`, `break`, `class`, `const`, `continue`, `def`, `elif`, `else`, `enum`, `except`, `False`, `finally`, `for`, `from`, `if`, `import`, `in`, `interface`, `is`, `lambda`, `None`, `not`, `or`, `pass`, `raise`, `return`, `struct`, `True`, `try`, `while`, `with`
+
+#### Missing (11 keywords)
+| Keyword | Purpose | Priority |
+|---------|---------|----------|
+| `async` | Async programming | v0.5+ |
+| `await` | Async programming | v0.5+ |
+| `case` | Pattern matching | v0.3+ |
+| `del` | Delete statement | v0.2+ |
+| `event` | Event declaration | v0.4+ |
+| `match` | Pattern matching | v0.3+ |
+| `maybe` | Optional expressions | v0.2+ |
+| `property` | Property declaration | v0.2+ |
+| `to` | Type coercion | v0.2+ |
+| `type` | Type alias | v0.2+ |
+| `yield` | Generators | v0.4+ |
+
+#### Future/Reserved (not in current spec)
+`defer`, `do` - Not needed yet
 
 ---
 
 ## Step-by-Step Implementation Approach
 
 ### Step 1: Add Missing TokenTypes to Token.cs
-Add the following missing token types to the `TokenType` enum:
+
+**File:** `src/Sharpy.Compiler/Lexer/Token.cs`
+**Location:** After line 47 (after `With` keyword section)
 
 ```csharp
 // Keywords - Pattern Matching
@@ -88,21 +55,21 @@ Case,
 Match,
 
 // Keywords - Advanced Features
-Event,
-Property,
-Type,
-Maybe,
-To,
-Yield,
 Async,
 Await,
 Del,
+Event,
+Maybe,
+Property,
+To,
+Type,
+Yield,
 ```
 
-**Location:** `src/Sharpy.Compiler/Lexer/Token.cs` after line 47 (after `With`)
-
 ### Step 2: Update Keywords Dictionary in Lexer.cs
-Add mappings for the new keywords in the `Keywords` dictionary:
+
+**File:** `src/Sharpy.Compiler/Lexer/Lexer.cs`
+**Location:** In the `Keywords` dictionary (around line 57)
 
 ```csharp
 // Pattern Matching
@@ -110,37 +77,34 @@ Add mappings for the new keywords in the `Keywords` dictionary:
 { "match", TokenType.Match },
 
 // Advanced Features
-{ "event", TokenType.Event },
-{ "property", TokenType.Property },
-{ "type", TokenType.Type },
-{ "maybe", TokenType.Maybe },
-{ "to", TokenType.To },
-{ "yield", TokenType.Yield },
 { "async", TokenType.Async },
 { "await", TokenType.Await },
 { "del", TokenType.Del },
+{ "event", TokenType.Event },
+{ "maybe", TokenType.Maybe },
+{ "property", TokenType.Property },
+{ "to", TokenType.To },
+{ "type", TokenType.Type },
+{ "yield", TokenType.Yield },
 ```
 
-**Location:** `src/Sharpy.Compiler/Lexer/Lexer.cs` in the `Keywords` dictionary (around line 57)
-
 ### Step 3: Add Tests for New Keywords
-Add test cases to verify the new keywords are tokenized correctly:
 
-**Location:** `src/Sharpy.Compiler.Tests/Lexer/LexerTests.cs`
+**File:** `src/Sharpy.Compiler.Tests/Lexer/LexerTests.cs`
+**Location:** In the Keywords region, add to `Tokenize_Keyword_ReturnsCorrectToken` theory
 
-Add to the existing keyword test theory:
 ```csharp
 [InlineData("case", TokenType.Case)]
 [InlineData("match", TokenType.Match)]
-[InlineData("event", TokenType.Event)]
-[InlineData("property", TokenType.Property)]
-[InlineData("type", TokenType.Type)]
-[InlineData("maybe", TokenType.Maybe)]
-[InlineData("to", TokenType.To)]
-[InlineData("yield", TokenType.Yield)]
 [InlineData("async", TokenType.Async)]
 [InlineData("await", TokenType.Await)]
 [InlineData("del", TokenType.Del)]
+[InlineData("event", TokenType.Event)]
+[InlineData("maybe", TokenType.Maybe)]
+[InlineData("property", TokenType.Property)]
+[InlineData("to", TokenType.To)]
+[InlineData("type", TokenType.Type)]
+[InlineData("yield", TokenType.Yield)]
 ```
 
 ---
@@ -157,58 +121,50 @@ Add to the existing keyword test theory:
 
 ## Tests to Verify
 
-1. **Unit Tests:** Run the existing lexer test suite to ensure no regressions
-   ```bash
-   dotnet test src/Sharpy.Compiler.Tests --filter "FullyQualifiedName~LexerTests"
-   ```
-
-2. **New Keyword Tests:** Verify each new keyword tokenizes correctly
-   - `case` -> `TokenType.Case`
-   - `match` -> `TokenType.Match`
-   - `event` -> `TokenType.Event`
-   - `property` -> `TokenType.Property`
-   - `type` -> `TokenType.Type`
-   - `maybe` -> `TokenType.Maybe`
-   - `to` -> `TokenType.To`
-   - `yield` -> `TokenType.Yield`
-   - `async` -> `TokenType.Async`
-   - `await` -> `TokenType.Await`
-   - `del` -> `TokenType.Del`
-
-3. **Build Verification:** Ensure the project compiles without errors
+1. **Build the project:**
    ```bash
    dotnet build src/Sharpy.Compiler
    ```
 
----
+2. **Run lexer tests:**
+   ```bash
+   dotnet test src/Sharpy.Compiler.Tests --filter "FullyQualifiedName~LexerTests"
+   ```
 
-## Potential Risks and Questions
-
-### Risks
-
-1. **Parser Impact:** Adding new keywords to the lexer doesn't automatically mean the parser supports them. The parser will need separate updates to handle `match/case`, `async/await`, etc.
-
-2. **Breaking Changes:** If any user code uses these keywords as identifiers (e.g., `type = 5`), it will now fail to compile. However, since these are specified as reserved keywords, this is expected behavior.
-
-3. **Soft Keywords:** The spec mentions soft keywords (`_`, `get`, `init`, `set`) that are context-dependent. These are NOT being added as hard keywords and should remain as identifiers that the parser handles contextually.
-
-### Questions for Clarification
-
-1. **Priority:** Should all 11 missing keywords be added in this task, or should we prioritize based on the v0.1 milestone requirements?
-   - The task description specifically mentions: `def`, `class`, `struct`, `interface`, `enum`, `if`, `elif`, `else`, `while`, `for`, `in`, `break`, `continue`, `return`, `pass`
-   - All of these are **already implemented**
-
-2. **Future Keywords:** Should `defer` and `do` (listed as "Future Keywords" in the spec) be added now as reserved but non-functional keywords?
-
-3. **Soft Keywords:** Should `get`, `set`, `init` be handled at the lexer level or remain as identifiers for the parser to interpret contextually?
+3. **Verify new keywords tokenize correctly:**
+   - Each new keyword should produce its corresponding TokenType
+   - Keywords followed by alphanumeric characters should still be identifiers (e.g., `async_func` -> Identifier)
 
 ---
 
-## Summary
+## Potential Risks
 
-**Good News:** The task's specific requirements are already satisfied. All keywords listed in the task description are already implemented:
-- ✅ `def`, `class`, `struct`, `interface`, `enum`
-- ✅ `if`, `elif`, `else`, `while`, `for`, `in`
-- ✅ `break`, `continue`, `return`, `pass`
+1. **Parser Compatibility**
+   - Adding lexer tokens doesn't mean the parser supports them
+   - Parser updates are separate tasks
 
-**Action Items:** The 11 missing keywords from the full spec should be added to ensure complete spec compliance, but this may be a separate task since the core v0.1 keywords are already present.
+2. **Breaking Changes**
+   - Code using new keywords as identifiers will break (e.g., `type = 5`)
+   - This is expected behavior for reserved keywords
+
+3. **Soft Keywords Not Included**
+   - `_`, `get`, `set`, `init` remain as identifiers (context-dependent)
+   - Parser handles their special meaning
+
+---
+
+## Questions to Clarify
+
+1. **Scope:** Should all 11 missing keywords be added now, or only as their features are implemented?
+
+2. **Future Keywords:** Should `defer` and `do` be reserved now even though they're not in the current spec?
+
+3. **Soft Keywords:** Confirm that `get`, `set`, `init` should remain as identifiers rather than becoming hard keywords.
+
+---
+
+## Conclusion
+
+**Task Status:** The specific v0.1 requirements are **already complete**. All keywords listed in the task description are implemented and tested.
+
+**Recommendation:** Add the 11 missing spec keywords to achieve full specification compliance, but this can be done incrementally as features are implemented.

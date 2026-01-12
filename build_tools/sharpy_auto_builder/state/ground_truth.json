@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-11T21:20:37.211750",
+  "last_updated": "2026-01-11T21:33:28.773869",
   "phases": [
     {
       "id": "0.1.0",
@@ -67,7 +67,7 @@
           "files": [
             "src/Sharpy.Compiler/Lexer/Lexer.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -737,13 +737,13 @@
   ],
   "current_phase_id": null,
   "current_task_id": "0.1.0.1",
-  "total_attempts": 3,
-  "total_successes": 0,
+  "total_attempts": 4,
+  "total_successes": 1,
   "total_failures": 3,
   "backend_stats": {
     "claude_code": {
-      "attempts": 3,
-      "successes": 0,
+      "attempts": 4,
+      "successes": 1,
       "failures": 3
     },
     "copilot": {

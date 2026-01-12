@@ -49,7 +49,12 @@ class OrchestratorState(TypedDict):
 
     # Execution state
     execution_attempt: int
+    fix_attempt: int  # Separate counter for test fix attempts
     last_execution_result: Optional[dict]
+
+    # Test state
+    baseline_test_passed: Optional[bool]  # Did tests pass before agent made changes?
+    baseline_test_output: Optional[str]  # Baseline test output for comparison
 
     # Validation results
     validation_results: list[dict]
@@ -91,6 +96,43 @@ class Orchestrator:
         self.memory = MemorySaver()
         self.app = self.graph.compile(checkpointer=self.memory)
 
+    def _log_execution(
+        self,
+        event_type: str,
+        task_id: str,
+        prompt: str | None = None,
+        output: str | None = None,
+        error: str | None = None,
+        success: bool | None = None,
+        backend: str | None = None,
+        duration: float | None = None,
+        extra: dict | None = None,
+    ) -> None:
+        """Append an execution event to the JSONL log file."""
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "event_type": event_type,
+            "task_id": task_id,
+        }
+        if prompt is not None:
+            log_entry["prompt"] = prompt
+        if output is not None:
+            log_entry["output"] = output
+        if error is not None:
+            log_entry["error"] = error
+        if success is not None:
+            log_entry["success"] = success
+        if backend is not None:
+            log_entry["backend"] = backend
+        if duration is not None:
+            log_entry["duration_seconds"] = duration
+        if extra:
+            log_entry.update(extra)
+
+        # Append to JSONL file
+        with open(self.config.execution_log_path, "a") as f:
+            f.write(json.dumps(log_entry) + "\n")
+
     def _load_or_create_ground_truth(self) -> GroundTruth:
         """Load existing ground truth or create from task list."""
         if self.config.ground_truth_path.exists():
@@ -111,8 +153,10 @@ class Orchestrator:
         # Add nodes
         graph.add_node("select_task", self._select_task_node)
         graph.add_node("plan_implementation", self._plan_implementation_node)
+        graph.add_node("run_baseline_tests", self._run_baseline_tests_node)
         graph.add_node("execute_implementation", self._execute_implementation_node)
         graph.add_node("run_tests", self._run_tests_node)
+        graph.add_node("fix_test_failures", self._fix_test_failures_node)
         graph.add_node("validate_spec_adherence", self._validate_spec_adherence_node)
         graph.add_node("validate_verification", self._validate_verification_node)
         graph.add_node("check_hallucinations", self._check_hallucinations_node)
@@ -136,7 +180,9 @@ class Orchestrator:
             },
         )
 
-        graph.add_edge("plan_implementation", "execute_implementation")
+        # Run baseline tests before implementation to know what was already broken
+        graph.add_edge("plan_implementation", "run_baseline_tests")
+        graph.add_edge("run_baseline_tests", "execute_implementation")
 
         graph.add_conditional_edges(
             "execute_implementation",
@@ -152,6 +198,18 @@ class Orchestrator:
             self._route_after_tests,
             {
                 "validate": "validate_spec_adherence",
+                "fix": "fix_test_failures",  # Agent broke tests, let them fix
+                "preexisting_failure": "validate_spec_adherence",  # Tests were already failing
+                "error": "handle_error",
+            },
+        )
+
+        # After fix attempt, run tests again
+        graph.add_conditional_edges(
+            "fix_test_failures",
+            self._route_after_fix,
+            {
+                "test": "run_tests",
                 "error": "handle_error",
             },
         )
@@ -259,6 +317,9 @@ class Orchestrator:
             **state,
             "current_task": task.to_dict(),
             "execution_attempt": 0,
+            "fix_attempt": 0,
+            "baseline_test_passed": None,
+            "baseline_test_output": None,
             "validation_results": [],
             "next_action": "plan",
             "messages": [f"Selected task {task.id}: {task.title}"],
@@ -324,10 +385,30 @@ Provide:
             if not prev.get("success"):
                 prompt += f"\n\nPrevious attempt failed with error:\n{prev.get('error', 'Unknown error')}"
 
+        # Log the prompt being sent
+        self._log_execution(
+            event_type="agent_prompt",
+            task_id=task_data["id"],
+            prompt=prompt,
+            extra={"attempt": attempt, "specialist": specialist.value},
+        )
+
         # Execute via backend
         result = await self.backend_manager.execute_with_failover(
             prompt,
             context={"files": task_data["files"]},
+        )
+
+        # Log the full response
+        self._log_execution(
+            event_type="agent_response",
+            task_id=task_data["id"],
+            output=result.output,
+            error=result.error,
+            success=result.success,
+            backend=result.backend,
+            duration=result.duration_seconds,
+            extra={"attempt": attempt},
         )
 
         execution_result = {
@@ -343,7 +424,9 @@ Provide:
         ]
         if not result.success and result.error:
             # Include error details in logs for debugging
-            error_preview = result.error[:200] if len(result.error) > 200 else result.error
+            error_preview = (
+                result.error[:200] if len(result.error) > 200 else result.error
+            )
             messages.append(f"  Error: {error_preview}")
 
         return {
@@ -354,37 +437,84 @@ Provide:
             "messages": messages,
         }
 
+    async def _run_baseline_tests_node(
+        self, state: OrchestratorState
+    ) -> OrchestratorState:
+        """Run tests before implementation to establish baseline."""
+        task_data = state["current_task"]
+
+        # Determine which tests to run based on task
+        component = self._get_test_component(task_data)
+
+        # Run baseline tests
+        test_cmd = self._build_test_command(component)
+        result = await self.backend_manager.execute_command(
+            test_cmd,
+            cwd=self.config.project_root,
+            env_override={"NO_COLOR": "1", "DOTNET_CLI_UI_LANGUAGE": "en"},
+        )
+
+        # Log baseline test results
+        self._log_execution(
+            event_type="baseline_test_run",
+            task_id=task_data["id"],
+            output=result.output,
+            error=result.error,
+            success=result.success,
+            extra={"test_command": test_cmd, "component": component},
+        )
+
+        return {
+            **state,
+            "baseline_test_passed": result.success,
+            "baseline_test_output": result.output if not result.success else None,
+            "messages": [
+                f"Baseline tests {'passed' if result.success else 'failed (pre-existing failures)'}"
+            ],
+        }
+
+    def _get_test_component(self, task_data: dict) -> str:
+        """Determine which test component to filter by based on task."""
+        if "lexer" in task_data["id"].lower() or "0.1.0" in task_data["phase"]:
+            return "Lexer"
+        elif "parser" in task_data["id"].lower() or "0.1.1" in task_data["phase"]:
+            return "Parser"
+        elif "codegen" in task_data["id"].lower() or "0.1.2" in task_data["phase"]:
+            return "CodeGen"
+        elif "semantic" in task_data["id"].lower():
+            return "Semantic"
+        return ""
+
+    def _build_test_command(self, component: str) -> str:
+        """Build the dotnet test command."""
+        base_cmd = 'dotnet test --no-logo "--logger:console;verbosity=minimal"'
+        if component:
+            return f'{base_cmd} --filter "FullyQualifiedName~{component}"'
+        return base_cmd
+
     async def _run_tests_node(self, state: OrchestratorState) -> OrchestratorState:
         """Run tests to verify implementation."""
         task_data = state["current_task"]
 
-        # Determine which tests to run based on task
-        component = ""
-        if "lexer" in task_data["id"].lower() or "0.1.0" in task_data["phase"]:
-            component = "Lexer"
-        elif "parser" in task_data["id"].lower() or "0.1.1" in task_data["phase"]:
-            component = "Parser"
-        elif "codegen" in task_data["id"].lower() or "0.1.2" in task_data["phase"]:
-            component = "CodeGen"
-        elif "semantic" in task_data["id"].lower():
-            component = "Semantic"
-
-        # Run filtered tests
-        if component:
-            test_cmd = f'dotnet test --filter "FullyQualifiedName~{component}"'
-        else:
-            test_cmd = "dotnet test"
+        # Use helper methods
+        component = self._get_test_component(task_data)
+        test_cmd = self._build_test_command(component)
 
         result = await self.backend_manager.execute_command(
             test_cmd,
             cwd=self.config.project_root,
+            env_override={"NO_COLOR": "1", "DOTNET_CLI_UI_LANGUAGE": "en"},
         )
 
-        test_result = {
-            "passed": result.success,
-            "output": result.output,
-            "error": result.error,
-        }
+        # Log test results
+        self._log_execution(
+            event_type="test_run",
+            task_id=task_data["id"],
+            output=result.output,
+            error=result.error,
+            success=result.success,
+            extra={"test_command": test_cmd, "component": component},
+        )
 
         # Update execution result
         execution_result = state.get("last_execution_result", {})
@@ -392,11 +522,123 @@ Provide:
         execution_result["tests_passed"] = result.success
         execution_result["test_output"] = result.output
 
+        # Determine next action based on test results and baseline
+        baseline_passed = state.get("baseline_test_passed")
+
+        if result.success:
+            # Tests pass - proceed to validation
+            next_action = "validate"
+            messages = ["Tests passed"]
+        elif baseline_passed is False:
+            # Tests were already failing before agent made changes
+            # This is a pre-existing failure, not the agent's fault
+            next_action = "preexisting_failure"
+            messages = [
+                "Tests failed, but they were already failing before implementation",
+                "Proceeding to validation (pre-existing failures)",
+            ]
+        else:
+            # Tests were passing before, now failing - agent broke something
+            # Give them a chance to fix it
+            next_action = "fix"
+            error_output = result.error or result.output or ""
+            error_preview = (
+                error_output[:300] if len(error_output) > 300 else error_output
+            )
+            messages = [
+                "Tests failed after implementation - agent may have broken something",
+                f"  Test output: {error_preview}" if error_preview else "",
+            ]
+
         return {
             **state,
             "last_execution_result": execution_result,
-            "next_action": "validate" if result.success else "error",
-            "messages": [f"Tests {'passed' if result.success else 'failed'}"],
+            "next_action": next_action,
+            "messages": [m for m in messages if m],  # Filter empty messages
+        }
+
+    async def _fix_test_failures_node(
+        self, state: OrchestratorState
+    ) -> OrchestratorState:
+        """Let the agent fix test failures they introduced."""
+        task_data = state["current_task"]
+        fix_attempt = state.get("fix_attempt", 0) + 1
+        max_fix_attempts = 2  # Don't let them try forever
+
+        if fix_attempt > max_fix_attempts:
+            return {
+                **state,
+                "fix_attempt": fix_attempt,
+                "next_action": "error",
+                "messages": [
+                    f"Max fix attempts ({max_fix_attempts}) reached, escalating to error handler"
+                ],
+            }
+
+        # Get the test failure details
+        execution_result = state.get("last_execution_result", {})
+        test_output = execution_result.get("test_output", "")
+
+        # Create a focused prompt for fixing tests
+        prompt = f"""You previously implemented a task but it caused test failures.
+
+## Task
+{task_data['title']}
+
+## Test Failure Output
+```
+{test_output[:2000]}
+```
+
+## Instructions
+1. Analyze the test failures
+2. Fix the code to make the tests pass
+3. Do NOT modify test expected values - fix the implementation instead
+4. Run the tests after your fix to verify
+
+Focus only on fixing the failing tests. Do not re-implement the entire task.
+"""
+
+        # Log the fix prompt
+        self._log_execution(
+            event_type="fix_prompt",
+            task_id=task_data["id"],
+            prompt=prompt,
+            extra={"fix_attempt": fix_attempt},
+        )
+
+        # Execute fix via backend
+        result = await self.backend_manager.execute_with_failover(
+            prompt,
+            context={"files": task_data["files"]},
+        )
+
+        # Log the fix response
+        self._log_execution(
+            event_type="fix_response",
+            task_id=task_data["id"],
+            output=result.output,
+            error=result.error,
+            success=result.success,
+            backend=result.backend,
+            duration=result.duration_seconds,
+            extra={"fix_attempt": fix_attempt},
+        )
+
+        messages = [
+            f"Fix attempt {fix_attempt} {'succeeded' if result.success else 'failed'}"
+        ]
+        if not result.success and result.error:
+            error_preview = (
+                result.error[:200] if len(result.error) > 200 else result.error
+            )
+            messages.append(f"  Error: {error_preview}")
+
+        return {
+            **state,
+            "fix_attempt": fix_attempt,
+            "next_action": "test" if result.success else "error",
+            "messages": messages,
         }
 
     async def _validate_spec_adherence_node(
@@ -806,6 +1048,9 @@ Provide:
     def _route_after_tests(self, state: OrchestratorState) -> str:
         return state.get("next_action", "error")
 
+    def _route_after_fix(self, state: OrchestratorState) -> str:
+        return state.get("next_action", "error")
+
     def _route_after_verification(self, state: OrchestratorState) -> str:
         return state.get("next_action", "update")
 
@@ -834,7 +1079,10 @@ Provide:
             "current_task": None,
             "ground_truth_path": str(self.config.ground_truth_path),
             "execution_attempt": 0,
+            "fix_attempt": 0,
             "last_execution_result": None,
+            "baseline_test_passed": None,
+            "baseline_test_output": None,
             "validation_results": [],
             "awaiting_human_input": False,
             "human_question_id": None,
