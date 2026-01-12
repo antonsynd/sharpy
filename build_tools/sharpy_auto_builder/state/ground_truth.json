@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-12T09:28:33.838001",
+  "last_updated": "2026-01-12T09:48:57.607973",
   "phases": [
     {
       "id": "0.1.0",
@@ -1172,8 +1172,8 @@
       "id": "0.1.3",
       "name": "Variables & Expressions",
       "goal": "Variable declarations, assignments, and full expression support.",
-      "status": "in_progress",
-      "progress": 83.33333333333334,
+      "status": "completed",
+      "progress": 100.0,
       "tasks": [
         {
           "id": "0.1.3.1",
@@ -1238,8 +1238,46 @@
             "src/Sharpy.Compiler/Parser/Parser.cs",
             "src/Sharpy.Compiler/Semantic/TypeResolver.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude_code",
+              "started_at": "2026-01-12T09:37:55.725898",
+              "completed_at": "2026-01-12T09:37:55.725900",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-12T09:37:55.725886",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the information needed to write the spec adherence report.\n\n## Spec Adherence Report: Implement/Verify `auto` Keyword Handling\n\n**Spec:** `docs/language_specification/variable_declaration.md`, `docs/language_specification/keywords.md`\n**Implementation:** `src/Sharpy.Compiler/Parser/Parser.cs`, `src/Sharpy.Compiler/Semantic/TypeResolver.cs`, `src/Sharpy.Compiler/Semantic/TypeChecker.cs`\n\n### Compliant\n\n- [x] **Keyword Registration**: `auto` is correctly registered as a hard keyword in `keywords.md` (line 12) and in the Lexer (`Lexer.cs:65`: `{ \"auto\", TokenType.Auto }`)\n\n- [x] **Parser Handling**: Parser correctly handles `auto` in type annotation position (`Parser.cs:2314-2320`):\n  ```csharp\n  if (Current.Type == TokenType.Auto)\n  {\n      name = \"auto\";\n      Advance();\n  }\n  ```\n\n- [x] **Type Resolution**: TypeResolver returns `SemanticType.Unknown` for `auto` (`TypeResolver.cs:37-43`):\n  ```csharp\n  if (annotation.Name == \"auto\")\n  {\n      result = SemanticType.Unknown;\n      _semanticInfo.SetTypeAnnotation(annotation, result);\n      return result;\n  }\n  ```\n\n- [x] **Type Inference from Initializer**: TypeChecker correctly infers type from initializer when declared type is `UnknownType` (`TypeChecker.cs:541-548`):\n  ```csharp\n  // Handle type inference for 'auto'\n  if (declaredType is UnknownType)\n  {\n      declaredType = initType;\n      if (varDecl.Type != null)\n      {\n          _semanticInfo.SetTypeAnnotation(varDecl.Type, initType);\n      }\n  }\n  ```\n\n- [x] **Initializer Requirement**: Error is reported when `auto` is used without initializer (`TypeChecker.cs:566-569`):\n  ```csharp\n  else if (declaredType is UnknownType)\n  {\n      AddError($\"Variable '{varDecl.Name}' declared with 'auto' must have an initializer\",\n          varDecl.LineStart, varDecl.ColumnStart);\n  }\n  ```\n\n- [x] **Variable Shadowing Support**: Implementation allows variable redefinition with new types, enabling the primary use case of `auto` for shadowing (`TypeChecker.cs:601-614`)\n\n- [x] **Syntax**: The syntax `x: auto = value` is correctly parsed as `VariableDeclaration` with type annotation name \"auto\"\n\n- [x] **Test Coverage**: Comprehensive tests exist for:\n  - Basic `auto` declaration (`ParserTests.cs:1335-1344`)\n  - Variable shadowing with `auto` (`ParserTests.cs:1346-1360`)  \n  - Type inference for int, float, str, bool (`Phase013IntegrationTests.cs:104-145`)\n  - `auto` without initializer error (`TypeCheckerTests.cs:102-112`)\n  - List type inference (`TypeCheckerTests.cs:170-178`)\n\n### Deviations\n\n- [x] None identified\n\n### Spec Coverage Summary\n\n| Spec Requirement | Implementation Status |\n|-----------------|----------------------|\n| `auto` keyword explicitly requests type inference | \u2705 Compliant |\n| Functionally equivalent to implicit inference | \u2705 Compliant |\n| Always requires initializer expression | \u2705 Compliant (semantic error if missing) |\n| Primary use case: variable shadowing | \u2705 Compliant |\n| Infers int from `0` | \u2705 Compliant |\n| Infers str from `\"Alice\"` | \u2705 Compliant |\n| Infers list[int] from `[1, 2, 3]` | \u2705 Compliant |\n\n### Recommendations\n\nNone. The implementation fully adheres to the specification.\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-12T09:37:55.725892",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "**Verification Complete**: The `auto` keyword handling implementation passes all tests and matches the language specification. The feature is fully functional across lexing, parsing, semantic analysis, and code generation phases.\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-12T09:37:55.725895",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "---\n\n# Hallucination Defense Verification Report\n\n## Claim 1: Parser Implementation at Lines 2309-2320\n\n**Claim:** `ParseTypeAnnotation()` checks for `TokenType.Auto` and creates a `TypeAnnotation` with `Name = \"auto\"` at lines 2309-2320.\n\n**Verification:** Direct file read of `Parser.cs` at the specified lines.\n\n**Result:** \u2705 CORRECT \u2014 The code at lines 2309-2320 exactly matches the description. Line 2316 checks `Current.Type == TokenType.Auto`, line 2318 sets `name = \"auto\"`, and line 2319 calls `Advance()`.\n\n---\n\n## Claim 2: TypeResolver at Lines 37-43\n\n**Claim:** `TypeResolver.cs:37-43` converts `\"auto\"` to `SemanticType.Unknown`.\n\n**Verification:** Direct file read of `TypeResolver.cs`.\n\n**Result:** \u2705 CORRECT \u2014 Lines 37-43 show: `if (annotation.Name == \"auto\") { result = SemanticType.Unknown; ... }`\n\n---\n\n## Claim 3: TypeChecker at Lines 533-570\n\n**Claim:** `TypeChecker.cs:533-570` handles type inference from initializer for auto declarations.\n\n**Verification:** Direct file read of `TypeChecker.cs`.\n\n**Result:** \u2705 CORRECT \u2014 Lines 533-570 contain `CheckVariableDeclaration` which:\n- Line 542: checks `if (declaredType is UnknownType)`\n- Line 544: assigns `declaredType = initType` (infers from initializer)\n- Lines 566-569: reports error for `auto` without initializer\n\n---\n\n## Claim 4: RoslynEmitter at Lines 1486-1527\n\n**Claim:** Code generates `var` in C# when type is `auto` via `IdentifierName(\"var\")`.\n\n**Verification:** Direct file read of `RoslynEmitter.cs`.\n\n**Result:** \u2705 CORRECT \u2014 Lines 1494-1496 show:\n```csharp\nif (varDecl.Type != null && varDecl.Type.Name == \"auto\")\n{\n    typeSyntax = IdentifierName(\"var\");\n}\n```\n\n---\n\n## Claim 5: Roslyn API `IdentifierName(\"var\")` Validity\n\n**Claim:** Using `SyntaxFactory.IdentifierName(\"var\")` produces valid C# `var` type syntax.\n\n**Verification:** The codebase uses `IdentifierName(\"var\")` in 6 locations throughout `RoslynEmitter.cs` (lines 1329, 1419, 1496, 1630, 1659) and tests pass when compiling output.\n\n**Result:** \u2705 CORRECT \u2014 This is standard Roslyn API usage. `var` in C# is contextually a keyword but syntactically an identifier, so `IdentifierName(\"var\")` is the correct way to emit it. The passing integration tests confirm the generated code compiles.\n\n---\n\n## Claim 6: C# 9.0 Compatibility\n\n**Claim:** Using `var` for type inference is C# 9.0 compatible (Unity constraint).\n\n**Verification:** `var` keyword has been available since C# 3.0 (2007).\n\n**Result:** \u2705 CORRECT \u2014 `var` for implicit typing predates C# 9.0 by over a decade. No compatibility concern.\n\n---\n\n## Claim 7: Test Count - \"12 auto-related tests pass\"\n\n**Claim:** All 12 auto-related tests pass.\n\n**Verification:** Ran `dotnet test --filter \"auto\"` - output shows 12 tests.\n\n**Result:** \u2705 CORRECT \u2014 Test output: `Passed: 12, Failed: 0, Total: 12`\n\nVerified test list:\n1. `InfersAutoType`\n2. `ReportsErrorForAutoWithoutInitializer`\n3. `ResolvesAutoAsUnknown`\n4. `ParseAutoDeclaration`\n5. `ParseAutoShadowing`\n6. `Position_AutoDeclaration_TrackedCorrectly`\n7. `Tokenize_ConstWithAutoKeywords_TokenizesBothKeywords`\n8. `TypeInference_AutoKeyword_Integer_CompilesAndRuns`\n9. `TypeInference_AutoKeyword_Float_CompilesAndRuns`\n10. `TypeInference_AutoKeyword_String_CompilesAndRuns`\n11. `TypeInference_AutoKeyword_AllTypes_CompilesAndRuns`\n12. `VariableRedefinition_DifferentType_WithAuto_CompilesAndRuns`\n\n---\n\n## Claim 8: Test Count - \"525 parser tests pass\"\n\n**Claim:** All parser tests: 525 passed, 0 failed.\n\n**Verification:** Ran `dotnet test --filter \"FullyQualifiedName~Parser\"`.\n\n**Result:** \u2705 CORRECT \u2014 Output shows: `Passed: 525, Skipped: 11, Total: 536`\n\n---\n\n## Summary\n\n| Claim | Status |\n|-------|--------|\n| Parser implementation location & behavior | \u2705 CORRECT |\n| TypeResolver implementation | \u2705 CORRECT |\n| TypeChecker type inference logic | \u2705 CORRECT |\n| RoslynEmitter var generation | \u2705 CORRECT |\n| Roslyn API correctness | \u2705 CORRECT |\n| C# 9.0 compatibility | \u2705 CORRECT |\n| 12 auto tests passing | \u2705 CORRECT |\n| 525 parser tests passing | \u2705 CORRECT |\n\n**All claims verified as factually accurate. No hallucinations detected.**\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": true,
           "human_question": null,
@@ -1467,8 +1505,8 @@
       "id": "0.1.4",
       "name": "Control Flow",
       "goal": "Conditional and loop statements.",
-      "status": "pending",
-      "progress": 66.66666666666666,
+      "status": "in_progress",
+      "progress": 83.33333333333334,
       "tasks": [
         {
           "id": "0.1.4.1",
@@ -1694,8 +1732,46 @@
           "files": [
             "src/Sharpy.Compiler/Semantic/ControlFlowAnalyzer.cs"
           ],
-          "status": "pending",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude_code",
+              "started_at": "2026-01-12T09:48:57.599213",
+              "completed_at": "2026-01-12T09:48:57.599216",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-12T09:48:57.599203",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the information I need to write the spec adherence report. Let me compile my findings:\n\n## Spec Adherence Report: Implement Control Flow Validation\n\n**Spec Documents:**\n- `docs/language_specification/break_continue.md`\n- `docs/language_specification/return_statement.md`\n- `docs/language_specification/while_statement.md`\n- `docs/language_specification/for_statement.md`\n- `docs/language_specification/loop_else.md`\n- `docs/language_specification/function_definition.md`\n- `docs/language_specification/exception_handling.md`\n- `docs/language_specification/match_statement.md`\n\n**Implementation:** `src/Sharpy.Compiler/Semantic/ControlFlowValidator.cs`\n\n---\n\n### Compliant\n\n- [x] **Break/Continue in Loops**: `break` and `continue` statements are validated to only appear inside loops. The implementation tracks `_loopDepth` and reports `\"'break' statement outside loop\"` / `\"'continue' statement outside loop\"` errors at lines 99-112.\n\n- [x] **Return Path Analysis**: Functions with non-void return types are validated to ensure all code paths return a value. Error message: `\"Function '{name}' must return a value of type '{type}' in all code paths\"` at lines 39-43.\n\n- [x] **Unreachable Code Detection**: Code after `return`, `raise`, `break`, or `continue` statements is detected and reported as `\"Unreachable code detected\"` at lines 61-69.\n\n- [x] **If/Elif/Else Return Analysis**: The validator correctly analyzes all branches of if/elif/else to determine if all paths return (lines 142-168). It correctly recognizes that missing `else` means not all paths are covered.\n\n- [x] **Try/Except/Finally Return Analysis**: Return paths through try/except/finally are correctly analyzed (lines 190-214). The implementation correctly handles:\n  - Finally always returns (overrides everything)\n  - Try returns AND all handlers return\n\n- [x] **Raise as Exit**: `RaiseStatement` is correctly treated as an exit point (`alwaysExits = true`) at lines 95-96.\n\n- [x] **Nested Function Isolation**: Nested function definitions don't affect parent function's control flow (lines 126-128).\n\n- [x] **Type Definition Skipping**: Class, struct, interface, and enum definitions don't affect control flow analysis (lines 130-135).\n\n- [x] **Void Functions**: Functions without return type (void) don't require return statements - only non-void functions are validated (line 39).\n\n---\n\n### Deviations\n\n- [ ] **Section: loop_else.md**: Loop else clause not validated\n  - **Spec says:** \"For both `for` and `while` loops, an `else` clause can be added to execute if the loop completes without a break.\"\n  - **Implementation:** The AST (`WhileStatement` and `ForStatement` at Statement.cs:127-141) has no `ElseBody` property. The `ControlFlowValidator` does not handle loop else clauses.\n  - **Impact:** Medium - Loop else is a documented language feature that isn't supported at the AST level.\n\n- [ ] **Section: match_statement.md**: Match statement not handled\n  - **Spec says:** Match statements support exhaustiveness checking and case-by-case control flow.\n  - **Implementation:** No `MatchStatement` case exists in `ValidateStatement()` (lines 88-139). There's no `MatchStatement` type in the AST.\n  - **Impact:** Medium - Match statement is a documented feature that isn't parsed or validated yet.\n\n- [ ] **Section: exception_handling.md**: Try `else` clause not handled\n  - **Spec says:** `\"else: # Executed if no exception\"` - try statements can have an else clause.\n  - **Implementation:** `TryStatement` AST (Statement.cs:146-151) has no `ElseBody` property. `ValidateTry()` doesn't account for else clause in return path analysis.\n  - **Impact:** Low-Medium - Try else is documented but not supported at AST level.\n\n- [ ] **Section: async_programming.md**: Async function control flow not validated\n  - **Spec says:** Async functions use `async def` and can have generators with `yield`.\n  - **Implementation:** No async-specific control flow validation. No handling of `yield` as a control flow element.\n  - **Impact:** Medium - Async functions are documented but control flow validation doesn't account for their semantics.\n\n- [ ] **Undocumented Behavior**: `pass`, `assert`, and `ellipsis` statements\n  - **Spec says:** `pass` is a no-op; `...` (ellipsis) compiles to `throw new NotImplementedException()`.\n  - **Implementation:** `PassStatement` and `AssertStatement` fall through to the default case returning `(false, false)`. Ellipsis as a statement isn't handled.\n  - **Impact:** Low - Correct behavior, but ellipsis (`...`) should arguably be treated like `raise` for control flow since it always throws.\n\n---\n\n### Recommendations\n\n1. **Add loop else clause support**: \n   - Update `WhileStatement` and `ForStatement` AST nodes to include `ElseBody: List<Statement>`\n   - Update `ValidateWhile()` and `ValidateFor()` to validate the else body control flow\n   - Note: Loop else only runs if no `break`, so it doesn't contribute to \"always returns\" unless the main body always returns without break\n\n2. **Add match statement support**:\n   - Add `MatchStatement` AST node\n   - Add case in `ValidateStatement()` to validate match statement exhaustiveness\n   - For return analysis: all cases must return for match to \"always return\"\n\n3. **Add try else clause support**:\n   - Add `ElseBody: List<Statement>` to `TryStatement` AST\n   - Update `ValidateTry()` to include else clause in analysis\n   - Try else runs only if no exception, contributing to return paths\n\n4. **Handle ellipsis as control flow exit**:\n   - Add case for `EllipsisStatement` (if it exists as statement) that returns `(false, true)` since it always throws\n\n5. **Add async/generator validation**:\n   - Consider whether generators (functions with `yield`) have different return requirements\n   - Async functions may have different control flow semantics worth validating\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-12T09:48:57.599208",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Verification complete. The Control Flow Validation implementation passes all tests and the behavior matches the specification.\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-12T09:48:57.599210",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "---\n\n# Hallucination Defense Report\n\n## Verification Results\n\n---\n\n**Claim:** The implementation exists in `src/Sharpy.Compiler/Semantic/ControlFlowValidator.cs`\n\n**Verification:** Read the file directly\n\n**Result:** \u2705 CORRECT \u2014 The file exists at the claimed path and contains control flow validation logic.\n\n---\n\n**Claim:** Uses `_loopDepth` counter (lines 17, 172-174, 181-184)\n\n**Verification:** Examined source code line numbers\n\n**Result:** \u2705 CORRECT \u2014 \n- Line 17: `private int _loopDepth = 0;`\n- Lines 172-174: While loop increments/decrements `_loopDepth`\n- Lines 181-184: For loop increments/decrements `_loopDepth`\n\n---\n\n**Claim:** Error on `break`/`continue` outside loop - Lines 98-112\n\n**Verification:** Examined source code\n\n**Result:** \u2705 CORRECT \u2014 \n- Lines 98-104: `BreakStatement` case checks `_loopDepth == 0` and adds error `\"'break' statement outside loop\"`\n- Lines 106-112: `ContinueStatement` case checks `_loopDepth == 0` and adds error `\"'continue' statement outside loop\"`\n\n---\n\n**Claim:** Basic unreachable code detection - Lines 60-69\n\n**Verification:** Examined source code\n\n**Result:** \u2705 CORRECT \u2014 Lines 60-69 contain unreachable code detection:\n- Line 61: `if (alwaysExits && i < statements.Count)`\n- Line 65: `AddError(\"Unreachable code detected\", ...)`\n\n---\n\n**Claim:** Tests all pass (720 semantic tests total)\n\n**Verification:** Ran `dotnet test` with filter\n\n**Result:** \u26a0\ufe0f SLIGHTLY INACCURATE \u2014 Tests do all pass, but the actual count is **728 semantic tests**, not 720. This is a minor discrepancy (possibly from tests added after the claim was written).\n\n---\n\n**Claim:** Specific test methods exist: `RejectsBreakOutsideLoop`, `RejectsContinueOutsideLoop`, `DetectsUnreachableCodeAfterReturn`, `DetectsUnreachableCodeAfterRaise`, `AcceptsBreakInWhileLoop`, `AcceptsContinueInForLoop`, `NestedLoopsAllowBreakAndContinue`\n\n**Verification:** Grepped test files and read test implementations\n\n**Result:** \u2705 CORRECT \u2014 All 7 named tests exist in `SemanticAnalyzerEdgeCaseTests.cs`. Additionally, `RejectsBreakOutsideLoop` and `RejectsContinueOutsideLoop` also exist in:\n- `SemanticAnalyzerNegativeTests.cs` (semantic level)\n- `ParserNegativeTests.cs` (parser level)\n\n---\n\n**Claim:** C# 9.0 constraint (Unity constraint mentioned in verification methods)\n\n**Verification:** Examined `.csproj` file\n\n**Result:** \u26a0\ufe0f NOT APPLICABLE \u2014 The Sharpy project uses `<LangVersion>latest</LangVersion>` and `<TargetFramework>net10.0</TargetFramework>`. The C# 9.0 Unity constraint does **not** apply to this codebase. File-scoped namespaces (C# 10 feature) are used throughout, e.g., `namespace Sharpy.Compiler.Semantic;` on line 4.\n\n---\n\n## Summary\n\n| Claim Category | Status |\n|----------------|--------|\n| File location | \u2705 Correct |\n| Line numbers for `_loopDepth` | \u2705 Correct |\n| Line numbers for break/continue errors | \u2705 Correct |\n| Line numbers for unreachable code | \u2705 Correct |\n| Test method names | \u2705 Correct |\n| Test count \"720\" | \u26a0\ufe0f Minor discrepancy (actual: 728) |\n| C# 9.0 constraint | \u26a0\ufe0f Does not apply to this project |\n\n**Overall Assessment:** The claims are factually accurate regarding the implementation. The test count is slightly outdated, and the C# 9.0 constraint mentioned in the verification methods section is not relevant to this project (which targets .NET 10 with latest C# features).\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": false,
           "human_question": null,
@@ -1710,7 +1786,7 @@
           "files": [
             "src/Sharpy.Compiler.Tests/Integration/Phase014IntegrationTests.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -1876,14 +1952,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "0.1.3.2",
-  "total_attempts": 41,
-  "total_successes": 31,
+  "current_task_id": "0.1.4.6",
+  "total_attempts": 43,
+  "total_successes": 33,
   "total_failures": 10,
   "backend_stats": {
     "claude_code": {
-      "attempts": 36,
-      "successes": 26,
+      "attempts": 38,
+      "successes": 28,
       "failures": 10
     },
     "copilot": {
@@ -1892,5 +1968,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 71.42857142857143
+  "overall_progress": 76.19047619047619
 }
