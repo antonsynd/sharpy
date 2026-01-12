@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-11T23:37:12.880253",
+  "last_updated": "2026-01-11T23:37:32.657811",
   "phases": [
     {
       "id": "0.1.0",
@@ -449,7 +449,7 @@
       "id": "0.1.1",
       "name": "Parser Foundation",
       "goal": "Parse Sharpy source into an Abstract Syntax Tree (AST).",
-      "status": "pending",
+      "status": "in_progress",
       "progress": 71.42857142857143,
       "tasks": [
         {
@@ -735,7 +735,7 @@
           "files": [
             "src/Sharpy.Compiler/Parser/Parser.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
