@@ -669,6 +669,14 @@ public class AstDumper
                 DumpTypeAnnotation(typeCast.TargetType, depth + 2, true);
                 break;
 
+            case TypeCoercion typeCoercion:
+                _output.AppendLine($"{indent}{prefix}TypeCoercion @ L{node.LineStart}:C{node.ColumnStart}");
+                _output.AppendLine($"{indent}{childPrefix}Value:");
+                DumpNode(typeCoercion.Value, depth + 2, false);
+                _output.AppendLine($"{indent}{childPrefix}TargetType:");
+                DumpTypeAnnotation(typeCoercion.TargetType, depth + 2, true);
+                break;
+
             case TypeCheck typeCheck:
                 _output.AppendLine($"{indent}{prefix}TypeCheck @ L{node.LineStart}:C{node.ColumnStart}");
                 _output.AppendLine($"{indent}{childPrefix}Value:");

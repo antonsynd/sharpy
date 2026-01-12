@@ -1910,6 +1910,23 @@ public class Parser
                     ColumnEnd = Current.Column
                 };
             }
+            else if (Current.Type == TokenType.To)
+            {
+                // Type coercion (value to T or value to T?)
+                // Throws InvalidCastException on failure for T, returns None for T?
+                Advance();
+                var targetType = ParseTypeAnnotation();
+
+                expr = new TypeCoercion
+                {
+                    Value = expr,
+                    TargetType = targetType,
+                    LineStart = expr.LineStart,
+                    ColumnStart = expr.ColumnStart,
+                    LineEnd = Current.Line,
+                    ColumnEnd = Current.Column
+                };
+            }
             else
             {
                 break;

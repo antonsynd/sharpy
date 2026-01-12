@@ -357,6 +357,17 @@ public record TypeCast : Expression
 }
 
 /// <summary>
+/// Type coercion (value to Type or value to Type?)
+/// Unlike TypeCast (as), this throws InvalidCastException on failure for non-nullable types
+/// or returns None for nullable types (T?).
+/// </summary>
+public record TypeCoercion : Expression
+{
+    public Expression Value { get; init; } = null!;
+    public TypeAnnotation TargetType { get; init; } = null!;
+}
+
+/// <summary>
 /// Type check (value is Type)
 /// </summary>
 public record TypeCheck : Expression

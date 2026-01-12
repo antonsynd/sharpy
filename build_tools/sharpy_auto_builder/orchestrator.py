@@ -736,9 +736,29 @@ automatically fixed after {fix_attempt} attempts.
             files=task_data["files"],
         )
 
+        # Log the prompt being sent
+        self._log_execution(
+            event_type="validation_prompt",
+            task_id=task_data["id"],
+            prompt=prompt,
+            extra={"validation_type": "spec_adherence"},
+        )
+
         result = await self.backend_manager.execute_with_failover(
             prompt,
             context={"files": task_data["files"]},
+        )
+
+        # Log the response
+        self._log_execution(
+            event_type="validation_response",
+            task_id=task_data["id"],
+            output=result.output,
+            error=result.error,
+            success=result.success,
+            backend=result.backend,
+            duration=result.duration_seconds,
+            extra={"validation_type": "spec_adherence"},
         )
 
         validation_result = {
@@ -780,9 +800,29 @@ automatically fixed after {fix_attempt} attempts.
             component=task_data["phase"],
         )
 
+        # Log the prompt being sent
+        self._log_execution(
+            event_type="validation_prompt",
+            task_id=task_data["id"],
+            prompt=prompt,
+            extra={"validation_type": "verification_expert"},
+        )
+
         result = await self.backend_manager.execute_with_failover(
             prompt,
             context={"files": task_data["files"]},
+        )
+
+        # Log the response
+        self._log_execution(
+            event_type="validation_response",
+            task_id=task_data["id"],
+            output=result.output,
+            error=result.error,
+            success=result.success,
+            backend=result.backend,
+            duration=result.duration_seconds,
+            extra={"validation_type": "verification_expert"},
         )
 
         validation_result = {
@@ -829,7 +869,27 @@ automatically fixed after {fix_attempt} attempts.
             claims=claims,
         )
 
+        # Log the prompt being sent
+        self._log_execution(
+            event_type="validation_prompt",
+            task_id=task_data["id"],
+            prompt=prompt,
+            extra={"validation_type": "hallucination_defense"},
+        )
+
         result = await self.backend_manager.execute_with_failover(prompt)
+
+        # Log the response
+        self._log_execution(
+            event_type="validation_response",
+            task_id=task_data["id"],
+            output=result.output,
+            error=result.error,
+            success=result.success,
+            backend=result.backend,
+            duration=result.duration_seconds,
+            extra={"validation_type": "hallucination_defense"},
+        )
 
         validation_result = {
             "agent": "hallucination-defense",
