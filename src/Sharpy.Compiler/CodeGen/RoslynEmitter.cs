@@ -1755,7 +1755,7 @@ public class RoslynEmitter
             LambdaExpression lambda => GenerateLambdaExpression(lambda),
             TypeCast cast => GenerateTypeCast(cast),
             TypeCheck check => GenerateTypeCheck(check),
-            Parenthesized paren => GenerateExpression(paren.Expression),
+            Parenthesized paren => ParenthesizedExpression(GenerateExpression(paren.Expression)),
 
             // F-strings
             FStringLiteral fstring => GenerateFString(fstring),
@@ -1826,9 +1826,10 @@ public class RoslynEmitter
             case BinaryOperator.FloorDivide:
                 // x // y → (int)(x / y) for integers
                 // For now, cast to int (TODO: handle different numeric types)
+                // Must wrap the division in parentheses so cast applies to the result, not just left operand
                 return CastExpression(
                     PredefinedType(Token(SyntaxKind.IntKeyword)),
-                    BinaryExpression(SyntaxKind.DivideExpression, left, right));
+                    ParenthesizedExpression(BinaryExpression(SyntaxKind.DivideExpression, left, right)));
 
             case BinaryOperator.In:
                 // x in y → y.__Contains__(x)

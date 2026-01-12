@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-12T11:32:24.287561",
+  "last_updated": "2026-01-12T12:44:32.711205",
   "phases": [
     {
       "id": "0.1.0",
@@ -1838,7 +1838,7 @@
       "id": "0.1.5",
       "name": "Functions",
       "goal": "Function definitions with parameters and return values.",
-      "status": "in_progress",
+      "status": "pending",
       "progress": 88.88888888888889,
       "tasks": [
         {
@@ -2282,7 +2282,7 @@
           "files": [
             "src/Sharpy.Compiler.Tests/Integration/Phase015IntegrationTests.cs"
           ],
-          "status": "in_progress",
+          "status": "pending",
           "executions": [],
           "dependencies": [],
           "is_critical": false,

@@ -30,6 +30,9 @@ class ExecutionResult:
     backend: str = ""
     rate_limited: bool = False
     tokens_used: Optional[int] = None
+    timed_out: bool = (
+        False  # True if execution was terminated due to timeout (e.g., infinite loop)
+    )
 
 
 @dataclass
@@ -151,8 +154,19 @@ class Backend(ABC):
         command: str,
         cwd: Optional[Path] = None,
         env_override: dict[str, str] | None = None,
+        timeout: Optional[float] = None,
     ) -> ExecutionResult:
-        """Execute a shell command."""
+        """Execute a shell command.
+
+        Args:
+            command: The shell command to execute
+            cwd: Working directory for the command
+            env_override: Environment variables to override
+            timeout: Maximum seconds to wait for command completion (None for no timeout)
+
+        Returns:
+            ExecutionResult with timed_out=True if timeout was exceeded
+        """
         pass
 
 
@@ -258,8 +272,19 @@ class ClaudeCodeBackend(Backend):
         command: str,
         cwd: Optional[Path] = None,
         env_override: dict[str, str] | None = None,
+        timeout: Optional[float] = None,
     ) -> ExecutionResult:
-        """Execute a shell command."""
+        """Execute a shell command with optional timeout.
+
+        Args:
+            command: The shell command to execute
+            cwd: Working directory for the command
+            env_override: Environment variables to override
+            timeout: Maximum seconds to wait (None for no timeout)
+
+        Returns:
+            ExecutionResult with timed_out=True if timeout was exceeded
+        """
         import os
 
         start_time = time.time()
@@ -278,16 +303,36 @@ class ClaudeCodeBackend(Backend):
                 env=env,
             )
 
-            stdout, stderr = await process.communicate()
-            duration = time.time() - start_time
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    process.communicate(), timeout=timeout
+                )
+                duration = time.time() - start_time
 
-            return ExecutionResult(
-                success=process.returncode == 0,
-                output=stdout.decode(),
-                error=stderr.decode() if process.returncode != 0 else None,
-                duration_seconds=duration,
-                backend=self.name,
-            )
+                return ExecutionResult(
+                    success=process.returncode == 0,
+                    output=stdout.decode(),
+                    error=stderr.decode() if process.returncode != 0 else None,
+                    duration_seconds=duration,
+                    backend=self.name,
+                )
+            except asyncio.TimeoutError:
+                # Kill the process tree on timeout
+                duration = time.time() - start_time
+                try:
+                    process.kill()
+                    await process.wait()
+                except Exception:
+                    pass  # Process may have already exited
+
+                return ExecutionResult(
+                    success=False,
+                    output="",
+                    error=f"Command timed out after {timeout:.1f} seconds. This may indicate an infinite loop in the code.",
+                    duration_seconds=duration,
+                    backend=self.name,
+                    timed_out=True,
+                )
         except Exception as e:
             return ExecutionResult(
                 success=False,
@@ -412,8 +457,19 @@ class CopilotBackend(Backend):
         command: str,
         cwd: Optional[Path] = None,
         env_override: dict[str, str] | None = None,
+        timeout: Optional[float] = None,
     ) -> ExecutionResult:
-        """Execute a shell command."""
+        """Execute a shell command with optional timeout.
+
+        Args:
+            command: The shell command to execute
+            cwd: Working directory for the command
+            env_override: Environment variables to override
+            timeout: Maximum seconds to wait (None for no timeout)
+
+        Returns:
+            ExecutionResult with timed_out=True if timeout was exceeded
+        """
         import os
 
         start_time = time.time()
@@ -432,16 +488,36 @@ class CopilotBackend(Backend):
                 env=env,
             )
 
-            stdout, stderr = await process.communicate()
-            duration = time.time() - start_time
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    process.communicate(), timeout=timeout
+                )
+                duration = time.time() - start_time
 
-            return ExecutionResult(
-                success=process.returncode == 0,
-                output=stdout.decode(),
-                error=stderr.decode() if process.returncode != 0 else None,
-                duration_seconds=duration,
-                backend=self.name,
-            )
+                return ExecutionResult(
+                    success=process.returncode == 0,
+                    output=stdout.decode(),
+                    error=stderr.decode() if process.returncode != 0 else None,
+                    duration_seconds=duration,
+                    backend=self.name,
+                )
+            except asyncio.TimeoutError:
+                # Kill the process tree on timeout
+                duration = time.time() - start_time
+                try:
+                    process.kill()
+                    await process.wait()
+                except Exception:
+                    pass  # Process may have already exited
+
+                return ExecutionResult(
+                    success=False,
+                    output="",
+                    error=f"Command timed out after {timeout:.1f} seconds. This may indicate an infinite loop in the code.",
+                    duration_seconds=duration,
+                    backend=self.name,
+                    timed_out=True,
+                )
         except Exception as e:
             return ExecutionResult(
                 success=False,
@@ -539,8 +615,20 @@ class BackendManager:
         cwd: Optional[Path] = None,
         backend_type: Optional[BackendType] = None,
         env_override: dict[str, str] | None = None,
+        timeout: Optional[float] = None,
     ) -> ExecutionResult:
-        """Execute a shell command using any available backend."""
+        """Execute a shell command using any available backend.
+
+        Args:
+            command: The shell command to execute
+            cwd: Working directory for the command
+            backend_type: Specific backend to use (optional)
+            env_override: Environment variables to override
+            timeout: Maximum seconds to wait (None for no timeout)
+
+        Returns:
+            ExecutionResult with timed_out=True if timeout was exceeded
+        """
         backend = None
         if backend_type and backend_type in self.backends:
             backend = self.backends[backend_type]
@@ -555,7 +643,7 @@ class BackendManager:
                 backend="none",
             )
 
-        return await backend.execute_command(command, cwd, env_override)
+        return await backend.execute_command(command, cwd, env_override, timeout)
 
     def get_status(self) -> dict[str, Any]:
         """Get status of all backends."""

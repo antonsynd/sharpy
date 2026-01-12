@@ -834,4 +834,14 @@ Interrupted by user
 [plan_implementation] Implementation plan created for 0.1.5.9
 [?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[run_baseline_tests] Baseline tests passed
 [execute_implementation] Execution attempt 1 succeeded
-[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=
+[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[run_tests] Tests failed after implementation - agent may have broken something
+[run_tests]   Test output: The active test run was aborted. Reason: Test host process crashed
+Test Run Aborted.
+
+^C
+Interrupted by user
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;1]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h./build_tools/auto_builder.sh run   reset 0.1.. 5.9[?2004l
+]133;C;Task 0.1.5.9 reset to pending
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;0]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h

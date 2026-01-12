@@ -517,12 +517,13 @@ Provide:
         # Determine which tests to run based on task
         component = self._get_test_component(task_data)
 
-        # Run baseline tests
+        # Run baseline tests with timeout to catch infinite loops
         test_cmd = self._build_test_command(component)
         result = await self.backend_manager.execute_command(
             test_cmd,
             cwd=self.config.project_root,
             env_override={"NO_COLOR": "1", "DOTNET_CLI_UI_LANGUAGE": "en"},
+            timeout=self.config.test_timeout,
         )
 
         # Log baseline test results
@@ -532,8 +533,23 @@ Provide:
             output=result.output,
             error=result.error,
             success=result.success,
-            extra={"test_command": test_cmd, "component": component},
+            extra={
+                "test_command": test_cmd,
+                "component": component,
+                "timed_out": result.timed_out,
+            },
         )
+
+        # Handle timeout (infinite loop in baseline tests is a pre-existing issue)
+        if result.timed_out:
+            return {
+                **state,
+                "baseline_test_passed": False,
+                "baseline_test_output": f"TIMEOUT: Tests timed out after {self.config.test_timeout} seconds. This may indicate a pre-existing infinite loop in the test code.",
+                "messages": [
+                    f"Baseline tests TIMED OUT after {self.config.test_timeout}s (possible infinite loop)"
+                ],
+            }
 
         return {
             **state,
@@ -819,6 +835,7 @@ Provide:
             test_cmd,
             cwd=self.config.project_root,
             env_override={"NO_COLOR": "1", "DOTNET_CLI_UI_LANGUAGE": "en"},
+            timeout=self.config.test_timeout,
         )
 
         # Log test results
@@ -828,7 +845,11 @@ Provide:
             output=result.output,
             error=result.error,
             success=result.success,
-            extra={"test_command": test_cmd, "component": component},
+            extra={
+                "test_command": test_cmd,
+                "component": component,
+                "timed_out": result.timed_out,
+            },
         )
 
         # Update execution result
@@ -836,6 +857,42 @@ Provide:
         execution_result["tests_run"] = True
         execution_result["tests_passed"] = result.success
         execution_result["test_output"] = result.output
+        execution_result["tests_timed_out"] = result.timed_out
+
+        # Handle timeout case - this is likely an infinite loop introduced by the agent
+        if result.timed_out:
+            baseline_timed_out = state.get("baseline_test_output", "").startswith(
+                "TIMEOUT:"
+            )
+            if baseline_timed_out:
+                # Tests were already timing out before agent made changes
+                next_action = "preexisting_failure"
+                messages = [
+                    f"Tests TIMED OUT after {self.config.test_timeout}s, but baseline tests also timed out",
+                    "This is a pre-existing infinite loop issue, not caused by this implementation",
+                ]
+            else:
+                # Agent introduced the infinite loop
+                next_action = "fix"
+                execution_result["test_output"] = (
+                    f"INFINITE LOOP DETECTED: Tests timed out after {self.config.test_timeout} seconds.\n"
+                    "Your implementation appears to have introduced an infinite loop.\n"
+                    "Please review your code for:\n"
+                    "- While/for loops without proper termination conditions\n"
+                    "- Recursive calls without base cases\n"
+                    "- Circular dependencies or references\n"
+                )
+                messages = [
+                    f"Tests TIMED OUT after {self.config.test_timeout}s - likely infinite loop introduced by agent",
+                    "Agent will be asked to fix the infinite loop",
+                ]
+
+            return {
+                **state,
+                "last_execution_result": execution_result,
+                "next_action": next_action,
+                "messages": messages,
+            }
 
         # Determine next action based on test results and baseline
         baseline_passed = state.get("baseline_test_passed")
@@ -903,9 +960,49 @@ Provide:
         # Get the test failure details
         execution_result = state.get("last_execution_result", {})
         test_output = execution_result.get("test_output", "")
+        tests_timed_out = execution_result.get("tests_timed_out", False)
 
-        # Create a focused prompt for fixing tests
-        prompt = f"""You previously implemented a task but it caused test failures.
+        # Build appropriate prompt based on failure type
+        if tests_timed_out:
+            # Special prompt for infinite loop issues
+            prompt = f"""CRITICAL: Your implementation caused an infinite loop!
+
+## Task
+{task_data['title']}
+
+## Problem
+The tests timed out after {self.config.test_timeout} seconds because your code contains an infinite loop.
+
+## Error Details
+```
+{test_output[:3000]}
+```
+
+## Fix Attempt
+This is fix attempt {fix_attempt} of {max_fix_attempts}.
+
+## Instructions - FOCUS ON INFINITE LOOP
+1. **Find the infinite loop** - Look for:
+   - While loops without proper termination conditions
+   - For loops that never reach their end condition
+   - Recursive functions without base cases or that always recurse
+   - Circular method calls (A calls B calls A)
+   - Iterator/generator issues that never terminate
+
+2. **Fix the loop termination** - Ensure:
+   - All loops have reachable exit conditions
+   - Recursive functions have proper base cases
+   - No circular dependencies in your logic
+
+3. **Test locally** before committing
+
+4. Do NOT just add a counter/max iterations as a band-aid - fix the root cause
+
+{f"Previous fix attempt {fix_attempt - 1} did not resolve the infinite loop. The issue persists." if fix_attempt > 1 else ""}
+"""
+        else:
+            # Standard test failure prompt
+            prompt = f"""You previously implemented a task but it caused test failures.
 
 ## Task
 {task_data['title']}
@@ -936,7 +1033,11 @@ Focus only on fixing the failing tests. Do not re-implement the entire task.
             event_type="fix_prompt",
             task_id=task_data["id"],
             prompt=prompt,
-            extra={"fix_attempt": fix_attempt, "max_fix_attempts": max_fix_attempts},
+            extra={
+                "fix_attempt": fix_attempt,
+                "max_fix_attempts": max_fix_attempts,
+                "is_infinite_loop": tests_timed_out,
+            },
         )
 
         # Execute fix via backend

@@ -893,7 +893,7 @@ public class RoslynEmitterExpressionTests
     #region Parenthesized Expression Tests
 
     [Fact]
-    public void GenerateExpression_Parenthesized_UnwrapsExpression()
+    public void GenerateExpression_Parenthesized_PreservesParentheses()
     {
         // Arrange
         var expr = new Parenthesized
@@ -904,8 +904,8 @@ public class RoslynEmitterExpressionTests
         // Act
         var result = InvokeGenerateExpression(expr);
 
-        // Assert
-        result.ToString().Should().Be("42");
+        // Assert - parentheses must be preserved to maintain correct operator precedence
+        result.ToString().Should().Be("(42)");
     }
 
     #endregion

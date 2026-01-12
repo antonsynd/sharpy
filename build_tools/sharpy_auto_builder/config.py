@@ -163,6 +163,11 @@ class Config:
         3.0  # Hours to pause when all backends are rate-limited
     )
 
+    # Test execution settings
+    test_timeout: float = (
+        300.0  # 5 minutes default timeout for test execution (to catch infinite loops)
+    )
+
     # Human-in-the-loop settings
     human_wait_timeout: float = 3600.0  # 1 hour default timeout for human responses
     human_check_interval: float = 5.0  # seconds between checks for human input
@@ -204,6 +209,7 @@ class Config:
             "create_followup_task_on_fix_failure": self.create_followup_task_on_fix_failure,
             "require_human_approval_for_critical": self.require_human_approval_for_critical,
             "auto_commit": self.auto_commit,
+            "test_timeout": self.test_timeout,
         }
 
     @classmethod
@@ -243,6 +249,8 @@ class Config:
             ]
         if "auto_commit" in data:
             config.auto_commit = data["auto_commit"]
+        if "test_timeout" in data:
+            config.test_timeout = data["test_timeout"]
         return config
 
     def save(self, path: Optional[Path] = None) -> None:

@@ -2,6 +2,28 @@
 
 Automated implementation of Sharpy compiler tasks using GitHub Copilot CLI or Claude Code, with validation agents to ensure spec adherence and quality.
 
+## Recent Changes
+
+### January 2026 - Test Timeout & Infinite Loop Detection
+
+**Critical addition**: Tests now have a configurable timeout (default: 5 minutes) to detect infinite loops.
+
+- **New config**: `test_timeout` (default: 300 seconds) - Maximum time allowed for test execution
+- **Infinite loop detection**: If tests timeout, the system detects whether it's a pre-existing issue or introduced by the agent
+- **Specialized fix prompts**: When an infinite loop is detected, the agent receives targeted guidance to find and fix:
+  - While/for loops without proper termination conditions
+  - Recursive functions without base cases
+  - Circular dependencies
+- **Execution result tracking**: `ExecutionResult.timed_out` flag indicates timeout occurred
+- **Logging**: Timeout status is logged in execution logs for debugging
+
+Configuration:
+```python
+Config(
+    test_timeout=300.0,  # 5 minutes (adjust for your test suite)
+)
+```
+
 ## Overview
 
 The Sharpy Auto Builder orchestrates the implementation of tasks from the implementation plan (`docs/implementation_planning/task_list_0.1.0_to_0.1.5.md`) using AI coding assistants. It provides:
@@ -387,6 +409,7 @@ Key settings in `config.py`:
 |---------|---------|-------------|
 | `max_retries_per_task` | 3 | Max execution attempts per task |
 | `max_test_fix_attempts` | 3 | Max attempts to fix broken tests |
+| `test_timeout` | 300s | Timeout for test execution (catches infinite loops) |
 | `create_followup_task_on_fix_failure` | true | Create follow-up task when test fixes fail |
 | `require_human_approval_for_critical` | true | Require human review for critical tasks |
 | `human_wait_timeout` | 3600s | Timeout waiting for human input |
@@ -447,6 +470,21 @@ The system tracks baseline test state and will:
 3. Not blame the agent for pre-existing test failures
 
 Check `./auto_builder.sh logs --event-type fix_response` to see what fixes were attempted.
+
+### Tests timing out / Infinite loops
+
+If tests timeout (default: 5 minutes), the system will:
+1. Kill the test process
+2. Detect if the timeout is pre-existing or agent-introduced
+3. Provide the agent with specialized infinite loop debugging guidance
+4. Track `timed_out: true` in execution logs
+
+To adjust the timeout for slower test suites, modify `test_timeout` in config:
+```python
+Config(test_timeout=600.0)  # 10 minutes
+```
+
+Check `./auto_builder.sh logs --event-type test_run` and look for `timed_out: true` entries.
 
 ### GitHub Copilot CLI limitations
 
