@@ -48,6 +48,10 @@
    **Soft Keywords (per spec)**:
    - [ ] `_`, `get`, `set`, `init`
 
+   **Future Keywords (reserved but not yet used)**:
+   - [ ] `defer` — deferred execution (future)
+   - [ ] `do` — block expression (future)
+
 3. [ ] Document any **missing** keywords
 4. [ ] Document any **extra** keywords not in spec (may be intentional)
 
@@ -126,6 +130,12 @@ TokenType.Del,       // for 'del' keyword (deletion)
    - [ ] `/=` → `SlashAssign`
    - [ ] `//=` → `DoubleSlashAssign`
    - [ ] `%=` → `PercentAssign`
+   - [ ] `**=` → `DoubleStarAssign`
+   - [ ] `&=` → `AmpersandAssign`
+   - [ ] `|=` → `PipeAssign`
+   - [ ] `^=` → `CaretAssign`
+   - [ ] `<<=` → `LeftShiftAssign`
+   - [ ] `>>=` → `RightShiftAssign`
 
    **Special (Sharpy-specific)**:
    - [ ] `|>` → `PipeOperator` (function pipe)
@@ -265,16 +275,16 @@ def foo():
    ```csharp
    [Fact]
    public void ExitCriteria_AllTokenTypesRecognized() { ... }
-   
+
    [Fact]
    public void ExitCriteria_IndentDedentEmittedCorrectly() { ... }
-   
+
    [Fact]
    public void ExitCriteria_NumericLiteralsWithSuffixes() { ... }
-   
+
    [Fact]
    public void ExitCriteria_AllStringVariantsTokenized() { ... }
-   
+
    [Fact]
    public void ExitCriteria_CommentsStripped() { ... }
    ```
@@ -285,7 +295,7 @@ def foo():
    x = 42
    y = 3.14
    name = "Alice"
-   
+
    # Indentation
    def foo():
        if True:
@@ -307,7 +317,7 @@ def foo():
 
 🔍 **Status Check**: AST nodes exist in `src/Sharpy.Compiler/Parser/Ast/`.
 
-📁 **Files**: 
+📁 **Files**:
 - `src/Sharpy.Compiler/Parser/Ast/Node.cs`
 - `src/Sharpy.Compiler/Parser/Ast/Expression.cs`
 - `src/Sharpy.Compiler/Parser/Ast/Statement.cs`
@@ -353,19 +363,24 @@ def foo():
 
    | Precedence | Spec Operators | Parser Method (expected) |
    |------------|----------------|--------------------------|
-   | Highest | Primary (literals, identifiers, parens, `.`, `?.`) | `ParsePrimary()`, `ParsePostfix()` |
-   | | Unary: `-x`, `+x`, `~x`, `not x` | `ParseUnary()` |
-   | | Power: `**` (right-associative) | `ParsePower()` |
-   | | Multiplicative: `*`, `/`, `//`, `%` | `ParseMultiplicative()` |
-   | | Additive: `+`, `-` | `ParseAdditive()` |
-   | | Bitwise shifts: `<<`, `>>` | `ParseShift()` |
-   | | Bitwise: `&`, `^`, `|` | `ParseBitwiseAnd()`, etc. |
-   | | Pipe: `|>` | `ParsePipe()` (⚠️ may be missing) |
-   | | Type coercion: `to` | `ParseTypeCast()` (⚠️ may be missing) |
-   | | Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`, `in`, `is` | `ParseComparison()` |
-   | | Logical: `not`, `and`, `or` | `ParseLogicalAnd()`, `ParseLogicalOr()` |
-   | | Null coalesce: `??` | `ParseNullCoalesce()` |
-   | Lowest | Conditional: `x if test else y` | `ParseConditionalExpression()` |
+   | 1 (Highest) | `()`, `[]`, `.`, `?.` | `ParsePrimary()`, `ParsePostfix()` |
+   | 2 | `**` (right-associative) | `ParsePower()` |
+   | 3 | Unary: `+x`, `-x`, `~x` | `ParseUnary()` |
+   | 4 | `*`, `/`, `//`, `%` | `ParseMultiplicative()` |
+   | 5 | `+`, `-` | `ParseAdditive()` |
+   | 6 | `<<`, `>>` | `ParseShift()` |
+   | 7-9 | `&`, `^`, `\|` | `ParseBitwiseAnd()`, etc. |
+   | 10 | `\|>` (pipe) | `ParsePipe()` (⚠️ may be missing) |
+   | 11 | `to` (type coercion) | `ParseTypeCast()` (⚠️ may be missing) |
+   | 12 | `in`, `not in`, `is`, `is not`, `<`, `<=`, `>`, `>=`, `!=`, `==` | `ParseComparison()` |
+   | 13 | `not` | `ParseLogicalNot()` |
+   | 14 | `and` | `ParseLogicalAnd()` |
+   | 15 | `or` | `ParseLogicalOr()` |
+   | 16 | `??` | `ParseNullCoalesce()` |
+   | 17 | `try`, `maybe` (prefix) | `ParseTryMaybe()` (⚠️ future phase) |
+   | 18 | `x if c else y` | `ParseConditionalExpression()` |
+   | 19 | `lambda` | `ParseLambda()` (⚠️ future phase) |
+   | 20 (Lowest) | `:=` (walrus) | `ParseWalrus()` (⚠️ future phase) |
 
 2. [ ] Verify **right-associativity** of `**`:
    - `2 ** 3 ** 2` should parse as `2 ** (3 ** 2)` = 512, not `(2 ** 3) ** 2` = 64
@@ -434,12 +449,19 @@ def foo():
 **Actions**:
 
 1. [ ] Search for `to` keyword handling in parser
-2. [ ] If missing, implement:
-   - Grammar: `value to Type` or `value to Type?`
-   - Example: `animal to Dog`, `value to int?`
+2. [ ] If missing, implement both forms per spec:
+   - `value to T` — throws `InvalidCastException` on failure, result type is `T`
+   - `value to T?` — returns `None` on failure, result type is `T?`
+   - Examples:
+     - `animal to Dog` (throws if not a Dog)
+     - `animal to Dog?` (returns None if not a Dog)
+     - `big_int to int` (throws on overflow)
+     - `big_int to int?` (returns None on overflow)
 
-3. [ ] This may need a `TypeCast` or `ToExpression` AST node
-   - Check if `TypeCast` already exists and repurpose
+3. [ ] This needs a `ToExpression` or `TypeCastExpression` AST node with:
+   - `Expression` — the value being cast
+   - `TargetType` — the target type annotation
+   - `IsNullable` — whether the safe form (`T?`) is used
 
 **Verification**:
 - ✅ Test: `"x to int"` parses correctly
@@ -502,25 +524,25 @@ def foo():
    {
        // Test: a + b * c parses as a + (b * c)
    }
-   
+
    [Fact]
    public void ExitCriteria_ParenthesesOverridePrecedence()
    {
        // Test: (a + b) * c parses correctly
    }
-   
+
    [Fact]
    public void ExitCriteria_TypeAnnotationsParsedNotValidated()
    {
        // Test: x: SomeFakeType = 42 parses without error
    }
-   
+
    [Fact]
    public void ExitCriteria_ModuleStructureCaptured()
    {
        // Test: Multiple statements in module
    }
-   
+
    [Fact]
    public void ExitCriteria_ComparisonChainingParsed()
    {
@@ -587,6 +609,7 @@ def foo():
    | `decimal` | `decimal` |
    | `bool` | `bool` |
    | `str` | `string` |
+   | `char` | `char` |
    | `object` | `object` |
    | `array[T]` | `T[]` |
    | `None` | `void` (return) / `null` (value) |
@@ -622,22 +645,26 @@ def foo():
 
 ---
 
-### Task 0.1.2.4: Implement `pass` Statement Code Generation
+### Task 0.1.2.4: Implement `pass` and Ellipsis (`...`) Code Generation
 
-🔍 **Status Check**: `pass` should compile to empty statement or comment.
+🔍 **Status Check**: `pass` and `...` have different semantics per spec.
 
 📁 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`
 
 **Actions**:
 
-1. [ ] Find `PassStatement` handling in emitter
-2. [ ] Verify it generates either:
-   - Empty block: `{ }`
-   - Empty statement: `;`
-   - Comment: `// pass`
+1. [ ] Verify `pass` statement handling:
+   - Generates empty body/statement
+   - Used as placeholder when a statement is syntactically required
+
+2. [ ] Verify `...` (ellipsis literal) handling:
+   - In abstract/interface methods: generates nothing (abstract)
+   - In concrete methods: generates `throw new NotImplementedException()`
+   - Example: `def todo(): ...` → `void Todo() { throw new NotImplementedException(); }`
 
 **Verification**:
-- ✅ Test: `"pass"` compiles and runs without error
+- ✅ Test: `"pass"` compiles to empty body and runs without error
+- ✅ Test: `"..."` in concrete method throws `NotImplementedException` at runtime
 - ✅ Generated C# is valid
 
 ---
@@ -748,12 +775,16 @@ def foo():
 
 **Actions**:
 
-1. [ ] Verify parser handles: `+=`, `-=`, `*=`, `/=`, `//=`, `%=`
+1. [ ] Verify parser handles all augmented assignment operators per spec:
+   - Arithmetic: `+=`, `-=`, `*=`, `/=`, `//=`, `%=`, `**=`
+   - Bitwise: `&=`, `|=`, `^=`, `<<=`, `>>=`
 2. [ ] Verify code generation for each:
    - `x += 1` → `x += 1;` (direct mapping)
-   - `x //= 2` → `x = x / 2;` (floor division needs special handling in codegen)
+   - `x //= 2` → `x = (int)Math.Floor((double)x / 2);` (floor division needs special handling)
+   - `x **= 2` → `x = (int)Math.Pow(x, 2);` (power needs special handling)
+   - Bitwise operators map directly: `x &= y` → `x &= y;`
 
-**Note**: `//=` is floor division assignment — may need special code generation.
+**Note**: `//=` (floor division) and `**=` (power) require lowering since C# doesn't have these operators.
 
 **Verification**:
 - ✅ Test: `"x += 5"` compiles correctly
@@ -823,7 +854,7 @@ def foo():
    y: int = 20
    z = x + y
    z += 5
-   
+
    const MAX: int = 100
    # MAX = 50  # Should error
    ```
@@ -1082,6 +1113,11 @@ def foo():
 - ✅ Test: Default parameters parse correctly
 - ✅ Test: Mutable default produces error (if enforced at parse time)
 
+**Note on Python Differences**:
+- `**kwargs` (keyword variadic arguments) is NOT supported in Sharpy
+- `*args` (positional variadic) IS supported but must be homogeneously typed (see spec)
+- No positional-only (`/`) or keyword-only (`*`) parameter markers
+
 ---
 
 ### Task 0.1.5.3: Implement Default Parameter Validation
@@ -1255,10 +1291,10 @@ public static int Add(int a, int b = 1)
    ```python
    def add(a: int, b: int) -> int:
        return a + b
-   
+
    def multiply(a: int, b: int = 1) -> int:
        return a * b
-   
+
    x = add(2, 3)           # 5
    y = multiply(4)          # 4
    z = multiply(4, b=5)     # 20
@@ -1270,7 +1306,7 @@ public static int Add(int a, int b = 1)
        if n <= 1:
            return 1
        return n * factorial(n - 1)
-   
+
    result = factorial(5)  # 120
    ```
 
@@ -1278,7 +1314,7 @@ public static int Add(int a, int b = 1)
    ```python
    def greet(name: str) -> None:
        pass  # print deferred
-   
+
    greet("World")
    ```
 
@@ -1291,24 +1327,27 @@ public static int Add(int a, int b = 1)
 ## Summary Checklist
 
 ### Phase 0.1.0: Lexer Foundation
-- [ ] All token types implemented and tested
-- [ ] INDENT/DEDENT working correctly
-- [ ] Numeric literals with suffixes
+- [ ] All token types implemented and tested (including future reserved: `defer`, `do`)
+- [ ] INDENT/DEDENT working correctly (4 spaces per level, tabs disallowed)
+- [ ] Numeric literals with suffixes (`L`, `u`, `ul`)
 - [ ] All string variants (basic, triple, raw, f-string)
+- [ ] All augmented assignment operators (`**=`, bitwise: `&=`, `|=`, `^=`, `<<=`, `>>=`)
 - [ ] Comments stripped
 
 ### Phase 0.1.1: Parser Foundation
 - [ ] All required AST nodes exist
-- [ ] Operator precedence correct
+- [ ] Operator precedence correct (20 levels per spec)
 - [ ] Pipe operator (`|>`) implemented
-- [ ] `to` operator implemented
+- [ ] `to` operator implemented (both `to T` and `to T?` forms)
 - [ ] Type annotations parse correctly
 - [ ] Pass statement works
+- [ ] Ellipsis literal (`...`) parsing works
 
 ### Phase 0.1.2: Code Generation Bootstrap
 - [ ] Entry point generation works
-- [ ] Type mapping complete
-- [ ] `pass` compiles to valid C#
+- [ ] Type mapping complete (including `char`)
+- [ ] `pass` compiles to empty body
+- [ ] `...` compiles to `throw new NotImplementedException()`
 - [ ] Binary expressions generate correctly
 - [ ] Output is valid .NET assembly
 
@@ -1316,7 +1355,7 @@ public static int Add(int a, int b = 1)
 - [ ] Variable declarations with types
 - [ ] Type inference working
 - [ ] `auto` keyword working
-- [ ] Augmented assignment operators
+- [ ] All augmented assignment operators (including `**=`, bitwise ops)
 - [ ] `const` declarations
 - [ ] Basic semantic analysis (symbol table, undefined vars, type checking)
 
@@ -1330,10 +1369,12 @@ public static int Add(int a, int b = 1)
 ### Phase 0.1.5: Functions
 - [ ] Function definitions compile
 - [ ] Parameters type-checked
-- [ ] Default values working
+- [ ] Default values working (compile-time constants only)
 - [ ] Keyword arguments working
 - [ ] Return type validation
 - [ ] Recursive functions work
+- [ ] `*args` (homogeneous variadic) working
+- [ ] No `**kwargs` support (by design)
 
 ---
 
