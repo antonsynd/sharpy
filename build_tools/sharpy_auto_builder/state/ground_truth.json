@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-12T10:49:05.769033",
+  "last_updated": "2026-01-12T10:55:01.272257",
   "phases": [
     {
       "id": "0.1.0",
@@ -1839,7 +1839,7 @@
       "name": "Functions",
       "goal": "Function definitions with parameters and return values.",
       "status": "in_progress",
-      "progress": 44.44444444444444,
+      "progress": 55.55555555555556,
       "tasks": [
         {
           "id": "0.1.5.1",
@@ -2066,8 +2066,46 @@
           "files": [
             "src/Sharpy.Compiler/Parser/Ast/Statement.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude_code",
+              "started_at": "2026-01-12T10:55:01.263042",
+              "completed_at": "2026-01-12T10:55:01.263045",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-12T10:55:01.263027",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the information needed to write the spec adherence report.\n\n## Spec Adherence Report: Verify Return Statement\n\n**Spec:** `docs/language_specification/return_statement.md`\n**Additional Context:** `docs/language_specification/function_definition.md`\n**Implementation:** `src/Sharpy.Compiler/Parser/Ast/Statement.cs` (lines 83-86), `src/Sharpy.Compiler/Parser/Parser.cs` (lines 971-992)\n\n### Spec Requirements Extracted\n\nFrom `return_statement.md`:\n1. Return statement with expression: `return x + y`\n2. Return statement without expression (bare `return`): `return  # Optional`\n\nFrom `function_definition.md`:\n- \"Multiple return values via tuple\": `return (min(values), max(values))`\n- Note that parentheses are optional as the tuple is implied by the comma\n\n### Compliant\n\n- [x] **Basic return with expression**: The AST node `ReturnStatement` has `public Expression? Value { get; init; }` which supports returning a value expression\n- [x] **Bare return without expression**: The `Value` property is nullable (`Expression?`), allowing `return` without a value\n- [x] **Parser handles return keyword**: `ParseReturnStatement()` correctly expects `TokenType.Return` (line 976)\n- [x] **Optional expression parsing**: Parser checks if next token is newline/dedent/end before parsing expression (line 979), making the expression optional\n- [x] **Source location tracking**: The AST node inherits from `Statement : Node`, and the parser properly sets `LineStart`, `ColumnStart`, `LineEnd`, `ColumnEnd`\n- [x] **Tuple return values**: Since `Value` is typed as `Expression`, any valid expression including `TupleLiteral` can be returned, supporting multiple return values via tuple\n\n### Deviations\n\nNone identified. The implementation matches the specification.\n\n### Additional Notes\n\n**Undocumented but correct behaviors:**\n1. The parser handles `TokenType.Dedent` as a statement terminator (line 979), which is appropriate for Python-style syntax where return might be the last statement in a block\n2. The parser calls `ExpectStatementEnd()` (line 982) to handle statement termination properly\n\n### Recommendations\n\nNo changes required. The implementation is compliant with the specification.\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-12T10:55:01.263034",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "## Verification Report: Verify Return Statement\n\n### Test Results\n- **Total: 3191** | **Passed: 3166** | **Failed: 0** | **Skipped: 25**\n\nReturn-specific tests:\n| Test Category | Tests | Status |\n|--------------|-------|--------|\n| Return-related tests | 739 | \u2705 All Passed |\n| Parser tests | 525 | \u2705 All Passed (11 skipped - unrelated) |\n| Semantic tests | 754 | \u2705 All Passed (8 skipped - unrelated) |\n| Integration/Function tests | 124 | \u2705 All Passed |\n| CodeGen tests | 279 | \u2705 All Passed |\n| ControlFlow tests | 33 | \u2705 All Passed |\n\n### Behavior Checks\n- [x] `ReturnStatement` AST node correctly defined in `Statement.cs:83` with optional `Value` property\n- [x] Parser correctly handles `return` keyword (`Parser.cs:971-991`)\n  - [x] Parses return with value (`return 42`)\n  - [x] Parses void return (`return`)\n  - [x] Tracks position information correctly\n- [x] Code generation emits correct C# return statements (`RoslynEmitter.cs:1287-1294`)\n  - [x] Returns with expression value\n  - [x] Void returns (no value)\n- [x] Type checking validates return types (`TypeChecker.cs:637-657`)\n  - [x] Rejects return outside function\n  - [x] Validates return type matches function signature\n  - [x] Rejects missing return value for non-void functions\n- [x] Control flow validation (`ControlFlowValidator.cs:92-93`)\n  - [x] Detects missing return paths\n  - [x] Detects unreachable code after return\n\n### Coverage Assessment\nReturn statement functionality is covered across:\n1. **Parser tests**: `ParseReturnStatement`, `ParseReturnVoid`, `Position_ReturnStatement_TrackedCorrectly`, `ParsesComprehensionInReturnStatement`\n2. **Semantic tests**: `RejectsMissingReturnStatement` - validates type-checking rejection\n3. **Integration tests**: Multiple tests in `FunctionTests.cs` use return statements with recursive functions, nested calls, etc.\n4. **ControlFlow tests**: Validates return path analysis\n\n### Regression Check\n- \u2705 No regressions detected\n- All 3166 passing tests maintain expected behavior\n- 25 skipped tests are unrelated features (varargs, kwargs, yield, etc.)\n\n### Recommendations\nNone - Return statement implementation is complete and well-tested.\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-12T10:55:01.263037",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "**Result:** \u2705 CORRECT \u2014 All claimed tests exist:\n- `ParseReturnStatement` (line 508): Tests `return 42`\n- `ParseReturnVoid` (line 517): Tests bare `return` with `Value.Should().BeNull()`\n\n---\n\n**Claim:** C# 9.0 `record` types are available (Unity constraint)\n\n**Verification:** Records were introduced in C# 9.0, which is the target for Unity compatibility.\n\n**Result:** \u2705 CORRECT \u2014 `record` types are a C# 9.0 feature. The code uses `public record ReturnStatement : Statement` which is valid C# 9.0.\n\n---\n\n## Final Verdict\n\n| Claim | Status |\n|-------|--------|\n| `ReturnStatement.Value` is `Expression?` | \u2705 Verified at Statement.cs:85 |\n| Parser handles both return forms | \u2705 Verified at Parser.cs:978-980 |\n| `ParseReturnStatement` test exists | \u2705 Verified at ParserTests.cs:508 |\n| `ParseReturnVoid` test exists | \u2705 Verified at ParserTests.cs:517 |\n| TypeChecker tests exist | \u2705 Verified at TypeCheckerTests.cs:609, 638 |\n| C# 9.0 record syntax valid | \u2705 Records are C# 9.0 feature |\n\n**All claims in the verification report are factually accurate.** No hallucinations detected.\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": false,
           "human_question": null,
@@ -2082,7 +2120,7 @@
           "files": [
             "src/Sharpy.Compiler/Semantic/ReturnTypeChecker.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -2142,14 +2180,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "0.1.5.5",
-  "total_attempts": 48,
-  "total_successes": 38,
+  "current_task_id": "0.1.5.6",
+  "total_attempts": 49,
+  "total_successes": 39,
   "total_failures": 10,
   "backend_stats": {
     "claude_code": {
-      "attempts": 43,
-      "successes": 33,
+      "attempts": 44,
+      "successes": 34,
       "failures": 10
     },
     "copilot": {
@@ -2158,5 +2196,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 88.09523809523809
+  "overall_progress": 90.47619047619048
 }

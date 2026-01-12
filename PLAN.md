@@ -1,192 +1,158 @@
-# Implementation Plan: Task 0.1.4.6 - Phase 0.1.4 Integration Tests
+# Implementation Plan: Task 0.1.5.6 - Return Type Validation
 
-## Executive Summary
+## Overview
 
-**Task**: Create Phase 0.1.4 Integration Tests for control flow features.
-**File**: `src/Sharpy.Compiler.Tests/Integration/Phase014IntegrationTests.cs`
-**Status**: New file to be created
+Implement return type validation to ensure all code paths in non-void functions return a compatible type.
 
----
+## Current State Analysis
 
-## Step-by-Step Implementation Approach
+### Existing Infrastructure
+1. **ControlFlowValidator** (`src/Sharpy.Compiler/Semantic/ControlFlowValidator.cs`):
+   - Already validates that non-void functions return in all code paths
+   - Tracks `(alwaysReturns, alwaysExits)` tuples through control flow
+   - Reports error: "Function '{name}' must return a value of type '{type}' in all code paths"
 
-### Step 1: Create the Test File Structure
+2. **TypeChecker.CheckReturn()** (`src/Sharpy.Compiler/Semantic/TypeChecker.cs:637-660`):
+   - Already validates individual return statement types against `_currentFunctionReturnType`
+   - Handles bare `return` for void functions
+   - Reports type mismatch errors
 
-Create `Phase014IntegrationTests.cs` following the established pattern from `Phase013IntegrationTests.cs`:
+### What's Already Working
+- Return type checking for individual return statements ✓
+- Control flow analysis ensuring all paths return ✓
+- `-> None` functions allowing bare return ✓
+- `-> None` functions disallowing value returns ✓
+- `__init__` methods treated as void ✓
+- Functions without return annotation default to void ✓
 
-```csharp
-using Xunit;
-using Xunit.Abstractions;
+## Analysis: Is a New File Needed?
 
-namespace Sharpy.Compiler.Tests.Integration;
+**Recommendation: No new file required.**
 
-/// <summary>
-/// Integration tests for Phase 0.1.4: Control flow statements (if/elif/else, while, for, break, continue).
-/// These tests verify the full compilation pipeline for control flow features.
-/// </summary>
-public class Phase014IntegrationTests : IntegrationTestBase
-{
-    public Phase014IntegrationTests(ITestOutputHelper output) : base(output)
-    {
-    }
+The existing infrastructure already handles the task requirements:
+- `ControlFlowValidator.ValidateFunction()` ensures all paths return
+- `TypeChecker.CheckReturn()` validates return types
 
-    // Test regions organized by feature
-}
-```
+The task description may have anticipated needing a separate checker, but the existing architecture already addresses these concerns effectively.
 
-### Step 2: Implement Spec Example Tests
+## Implementation Steps
 
-#### 2a. Factorial Example (from task description)
+### Step 1: Verify Existing Coverage
+**Files**: Tests in `TypeCheckerTests.cs`, `ControlFlowTests.cs`
+**Action**: Confirm existing tests cover the required scenarios
+
+Key test scenarios:
+- [x] Missing return in non-void function (already covered by ControlFlowValidator)
+- [x] Wrong return type (TypeChecker.CheckReturn)
+- [x] Bare return in void function (allowed)
+- [x] Value return in void function (error)
+
+### Step 2: Add Missing Tests (if any)
+**Files**: `src/Sharpy.Compiler.Tests/Semantic/TypeCheckerTests.cs`
+
+Add tests for edge cases:
 ```python
-n: int = 5
-result: int = 1
-while n > 1:
-    result *= n
-    n -= 1
-# result should be 120
-```
-- This tests: while loop, comparison operators, augmented assignment, variable updates
+# Test 1: Missing return on else path
+def maybe_double(x: int) -> int:
+    if x > 0:
+        return x * 2
+    # Error: missing return
 
-#### 2b. FizzBuzz-Style Logic (from task description)
-```python
-for i in range(1, 16):
-    if i % 15 == 0:
-        pass  # "FizzBuzz"
-    elif i % 3 == 0:
-        pass  # "Fizz"
-    elif i % 5 == 0:
-        pass  # "Buzz"
+# Test 2: All paths covered
+def maybe_double(x: int) -> int:
+    if x > 0:
+        return x * 2
     else:
-        pass  # number
+        return 0  # OK
+
+# Test 3: Multiple return types must be compatible
+def get_value(flag: bool) -> int:
+    if flag:
+        return 42
+    else:
+        return "hello"  # Error: incompatible type
+
+# Test 4: -> None allows omitting return entirely
+def greet(name: str) -> None:
+    print(f"Hello, {name}")
+    # OK: no return needed
+
+# Test 5: -> None allows bare return
+def maybe_greet(name: str, verbose: bool) -> None:
+    if not verbose:
+        return  # OK: bare return
+    print(f"Hello, {name}")
+
+# Test 6: -> None disallows value return
+def bad_greeter() -> None:
+    return "Hello"  # Error
 ```
-- This tests: for loop, range(), if/elif/else chains, modulo operator
 
-### Step 3: Organize Test Regions
+### Step 3: Enhance Error Messages (Optional)
+**Files**: `src/Sharpy.Compiler/Semantic/ControlFlowValidator.cs`
 
-Following Phase013IntegrationTests pattern, create these regions:
+Current message: "Function '{name}' must return a value of type '{type}' in all code paths"
 
-1. **#region Spec Example Tests** - Task-specified examples
-2. **#region While Loop Tests** - While loop functionality
-3. **#region For Loop Tests** - For loop with range()
-4. **#region If/Elif/Else Tests** - Conditional branching
-5. **#region Break and Continue Tests** - Loop control statements
-6. **#region Nested Control Flow Tests** - Combined constructs
-7. **#region Error Cases** - Control flow validation errors
-
-### Step 4: Implement Each Test Category
-
-#### While Loop Tests
-- Simple counter pattern
-- Factorial calculation (verifies result via print)
-- Multiple variable updates
-- Complex conditions (and/or)
-
-#### For Loop Tests
-- range(n) - single argument
-- range(start, stop) - two arguments
-- range(start, stop, step) - three arguments
-- Accumulator pattern (sum)
-
-#### If/Elif/Else Tests
-- Simple if condition
-- if/else branch
-- Multiple elif chains
-- Nested if statements
-
-#### Break and Continue Tests
-- While loop with break
-- While loop with continue
-- For loop with break
-- For loop with continue
-
-#### Nested Control Flow Tests
-- Nested for loops
-- For loop inside while
-- If statements inside loops
-- Complex FizzBuzz-style logic
-
-#### Error Cases
-- Break outside loop → compilation error
-- Continue outside loop → compilation error
-
----
+Consider enhancing to specify which paths are missing returns (optional improvement).
 
 ## Key Files to Modify
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/Sharpy.Compiler.Tests/Integration/Phase014IntegrationTests.cs` | **CREATE** | New test file |
-
----
+| `src/Sharpy.Compiler.Tests/Semantic/TypeCheckerTests.cs` | MODIFY | Add comprehensive tests |
+| `src/Sharpy.Compiler/Semantic/TypeChecker.cs` | NO CHANGE | Already handles return type validation |
+| `src/Sharpy.Compiler/Semantic/ControlFlowValidator.cs` | NO CHANGE | Already handles "all paths return" check |
+| `src/Sharpy.Compiler/Semantic/ReturnTypeChecker.cs` | NOT NEEDED | Existing infrastructure sufficient |
 
 ## Tests to Verify
 
-After implementation, run:
-```bash
-cd src/Sharpy.Compiler.Tests
-dotnet test --filter "Phase014IntegrationTests"
-```
+### Existing Tests to Validate
+1. `TypeCheckerTests.ChecksFunctionReturnType` - Correct return type
+2. `TypeCheckerTests.DetectsWrongReturnType` - Wrong return type detection
+3. `TypeCheckerTests.FunctionWithNoneReturnTypeCannotReturnValue` - None cannot return value
+4. `TypeCheckerTests.FunctionWithNoneReturnTypeCanHaveEmptyReturn` - None allows bare return
 
-All tests should pass. Additionally, verify no regressions:
-```bash
-dotnet test --filter "ControlFlowTests"
-```
+### New Tests to Add
+1. `DetectsMissingReturnInElseBranch` - The example from the task description
+2. `AllowsOmittedReturnInVoidFunction` - -> None functions need no return
+3. `DetectsIncompatibleReturnTypesInDifferentBranches` - Multiple returns must match
+4. `AllowsEarlyReturnInVoidFunction` - -> None allows bare return for early exit
+5. `DetectsPartialReturnCoverage` - Complex control flow missing return
 
----
-
-## Potential Risks or Questions
+## Potential Risks/Questions
 
 ### Risks
+1. **Edge case: Exceptions** - Does `raise` count as returning? (Yes, ControlFlowValidator marks it as `alwaysExits=true` but `alwaysReturns=false`, which is correct)
 
-1. **Overlap with ControlFlowTests.cs**: The existing `ControlFlowTests.cs` has extensive control flow coverage. Phase014IntegrationTests should:
-   - Focus on spec examples explicitly from the task
-   - Be organized by the Phase 0.1.4 structure
-   - Not duplicate existing tests unnecessarily
+2. **Edge case: Infinite loops** - `while True:` with break only. ControlFlowValidator correctly handles this by not counting loops as guaranteed to execute.
 
-2. **Output Verification**: Some tests (like factorial) produce no output unless we add print statements. Tests should either:
-   - Print the result and assert on output
-   - Or just verify compilation succeeds (for "compiles and runs" style tests)
+3. **Edge case: Match statements** - If match is added, needs handling. Currently not in scope.
 
-3. **FizzBuzz Example Truncated**: The task description shows an incomplete FizzBuzz example (cut off at `elif`). I'll complete it following the standard FizzBuzz pattern:
-   - i % 15 == 0 → "FizzBuzz"
-   - i % 3 == 0 → "Fizz"
-   - i % 5 == 0 → "Buzz"
-   - else → number
+### Questions to Clarify
+1. Should we create `ReturnTypeChecker.cs` as a separate file even though functionality exists?
+   - **Recommendation**: No, keep it simple. The existing architecture works.
 
-### Questions
+2. Should error messages be enhanced to show which specific paths are missing returns?
+   - **Recommendation**: Optional improvement, not critical for this task.
 
-1. **Output vs Compilation-only Tests**: Should tests verify output (like Phase013 does for some tests) or just verify compilation succeeds?
-   - **Recommendation**: Include output verification for spec examples to demonstrate correctness
+## Verification Criteria
 
-2. **Completeness**: Should Phase014IntegrationTests be comprehensive or minimal (just spec examples)?
-   - **Recommendation**: Implement spec examples plus representative tests for each control flow feature, avoiding duplication with ControlFlowTests.cs
+The implementation is complete when:
+1. All existing return-related tests pass
+2. New tests cover the scenarios from the task description
+3. The example `maybe_double` produces an error about missing return
+4. `-> None` functions work correctly with/without return statements
+5. No regressions in the test suite
 
----
+## Summary
 
-## Implementation Order
+**This task is essentially verifying and testing existing functionality rather than implementing new code.** The Sharpy compiler already has:
+- Return type checking via `TypeChecker.CheckReturn()`
+- "All paths return" checking via `ControlFlowValidator.ValidateFunction()`
 
-1. Create file with class structure and constructor
-2. Implement `#region Spec Example Tests` (factorial, FizzBuzz)
-3. Implement `#region While Loop Tests`
-4. Implement `#region For Loop Tests`
-5. Implement `#region If/Elif/Else Tests`
-6. Implement `#region Break and Continue Tests`
-7. Implement `#region Nested Control Flow Tests`
-8. Implement `#region Error Cases`
-9. Run tests and verify all pass
-10. Run full test suite to check for regressions
+The main work is:
+1. Write comprehensive tests to verify these work as expected
+2. Potentially enhance error messages for better developer experience
+3. Document the behavior
 
----
-
-## Estimated Test Count
-
-Based on the task requirements and Phase013IntegrationTests pattern:
-- Spec Example Tests: 2-3 tests
-- While Loop Tests: 4-6 tests
-- For Loop Tests: 4-5 tests
-- If/Elif/Else Tests: 4-5 tests
-- Break and Continue Tests: 4-5 tests
-- Nested Control Flow Tests: 2-3 tests
-- Error Cases: 2-3 tests
-
-**Total: ~25-30 tests**
+**No new `ReturnTypeChecker.cs` file is needed** unless the design preference is to extract this logic into a separate class for modularity (which would be a refactoring task, not new functionality).
