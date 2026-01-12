@@ -138,9 +138,7 @@ class ResponseAnalyzer:
         deferral_score, deferral_matches = self._score_patterns(
             response, self.DEFERRAL_PATTERNS
         )
-        error_score, error_matches = self._score_patterns(
-            response, self.ERROR_PATTERNS
-        )
+        error_score, error_matches = self._score_patterns(response, self.ERROR_PATTERNS)
 
         # Extract specific questions if found
         questions = self._extract_questions(response)
@@ -268,9 +266,7 @@ class ResponseAnalyzer:
                 questions.append(question)
 
         # Look for "Would you like" style questions
-        for match in re.finditer(
-            r"Would you like[^.!?\n]+[.!?]?", text, re.IGNORECASE
-        ):
+        for match in re.finditer(r"Would you like[^.!?\n]+[.!?]?", text, re.IGNORECASE):
             q = match.group().strip()
             if q not in questions:
                 questions.append(q)

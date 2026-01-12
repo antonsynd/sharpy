@@ -335,7 +335,7 @@ class GroundTruth:
         # Insert after the original task in the phase
         original_index = next(
             (i for i, t in enumerate(phase.tasks) if t.id == original_task.id),
-            len(phase.tasks) - 1
+            len(phase.tasks) - 1,
         )
         phase.tasks.insert(original_index + 1, new_task)
 

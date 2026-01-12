@@ -173,7 +173,9 @@ class Orchestrator:
         graph.add_node("run_baseline_tests", self._run_baseline_tests_node)
         graph.add_node("execute_implementation", self._execute_implementation_node)
         graph.add_node("analyze_response", self._analyze_response_node)  # NEW: Overseer
-        graph.add_node("handle_auto_decision", self._handle_auto_decision_node)  # NEW: Overseer
+        graph.add_node(
+            "handle_auto_decision", self._handle_auto_decision_node
+        )  # NEW: Overseer
         graph.add_node("run_tests", self._run_tests_node)
         graph.add_node("fix_test_failures", self._fix_test_failures_node)
         graph.add_node("validate_spec_adherence", self._validate_spec_adherence_node)
@@ -645,7 +647,9 @@ Provide:
                     **state,
                     "response_analysis": analysis_dict,
                     "next_action": "auto_decide",
-                    "messages": ["Response analysis: Deferral recommended, can auto-decide"],
+                    "messages": [
+                        "Response analysis: Deferral recommended, can auto-decide"
+                    ],
                 }
             else:
                 # Deferral for non-optional task needs human review
@@ -653,7 +657,9 @@ Provide:
                     **state,
                     "response_analysis": analysis_dict,
                     "next_action": "wait_human",
-                    "messages": ["Response analysis: Deferral recommended but task is not optional"],
+                    "messages": [
+                        "Response analysis: Deferral recommended but task is not optional"
+                    ],
                 }
 
         elif analysis.response_type == ResponseType.ERROR:
@@ -715,7 +721,11 @@ Provide:
             self.ground_truth = GroundTruth.load(Path(state["ground_truth_path"]))
             task = self.ground_truth.get_task(task_data["id"])
             if task:
-                task.status = TaskStatus.DEFERRED if hasattr(TaskStatus, 'DEFERRED') else TaskStatus.COMPLETED
+                task.status = (
+                    TaskStatus.DEFERRED
+                    if hasattr(TaskStatus, "DEFERRED")
+                    else TaskStatus.COMPLETED
+                )
                 task.notes.append(f"Auto-deferred: {decision.reason}")
                 if decision.selected_option:
                     task.notes.append(f"Selected option: {decision.selected_option}")

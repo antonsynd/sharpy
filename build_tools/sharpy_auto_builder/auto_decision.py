@@ -33,7 +33,9 @@ class AutoDecision:
     auto_decided: bool = True
     confidence: float = 0.0
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
-    selected_option: Optional[str] = None  # Which of agent's proposed options was chosen
+    selected_option: Optional[str] = (
+        None  # Which of agent's proposed options was chosen
+    )
     metadata: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
@@ -264,9 +266,7 @@ class AutoDecisionEngine:
                     return action
         return None
 
-    def _has_clear_default_option(
-        self, task: dict, analysis: ResponseAnalysis
-    ) -> bool:
+    def _has_clear_default_option(self, task: dict, analysis: ResponseAnalysis) -> bool:
         """Check if there's a clear default option among proposed actions."""
         # For now, only support deferral as auto-decidable
         # Future: Could support other clear defaults based on task type
