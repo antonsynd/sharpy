@@ -16,6 +16,8 @@ public class TypeChecker
     private readonly OperatorValidator _operatorValidator;
     // Used for protocol validation (iterability, membership, indexing, len)
     private readonly ProtocolValidator _protocolValidator;
+    // Used for validating default parameter values
+    private readonly DefaultParameterValidator _defaultParameterValidator;
     private readonly ICompilerLogger _logger;
     private readonly List<SemanticError> _errors = new();
 
@@ -50,18 +52,20 @@ public class TypeChecker
         _protocolValidator = new ProtocolValidator(_symbolTable, _logger, sharedClrCache);
         // Pass ProtocolValidator to OperatorValidator for 'in' operator membership checking
         _operatorValidator = new OperatorValidator(_symbolTable, _logger, _protocolValidator, sharedClrCache);
+        _defaultParameterValidator = new DefaultParameterValidator(_symbolTable, _typeResolver, _logger);
     }
 
     public IReadOnlyList<SemanticError> Errors
     {
         get
         {
-            // Combine errors from type checker, control flow validator, access validator, operator validator, and protocol validator.
+            // Combine errors from type checker, control flow validator, access validator, operator validator, protocol validator, and default parameter validator.
             var allErrors = new List<SemanticError>(_errors);
             allErrors.AddRange(_controlFlowValidator.Errors);
             allErrors.AddRange(_accessValidator.Errors);
             allErrors.AddRange(_operatorValidator.Errors);
             allErrors.AddRange(_protocolValidator.Errors);
+            allErrors.AddRange(_defaultParameterValidator.Errors);
             return allErrors;
         }
     }
@@ -224,6 +228,9 @@ public class TypeChecker
                     param.LineStart, param.ColumnStart);
             }
         }
+
+        // Validate default parameter values (compile-time constants, no mutable defaults, None for nullable types only)
+        _defaultParameterValidator.ValidateFunctionDefaults(functionDef);
 
         // Register parameters in scope and update the function symbol's parameter types
         for (int i = 0; i < functionDef.Parameters.Count; i++)
