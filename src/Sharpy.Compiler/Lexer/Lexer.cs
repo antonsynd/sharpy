@@ -65,6 +65,29 @@ public class Lexer
         { "auto", TokenType.Auto },
         { "const", TokenType.Const },
         { "lambda", TokenType.Lambda },
+        { "type", TokenType.Type },
+
+        // Pattern Matching
+        { "match", TokenType.Match },
+        { "case", TokenType.Case },
+
+        // Async
+        { "async", TokenType.Async },
+        { "await", TokenType.Await },
+        { "yield", TokenType.Yield },
+
+        // Members
+        { "property", TokenType.Property },
+        { "event", TokenType.Event },
+
+        // Other
+        { "del", TokenType.Del },
+        { "to", TokenType.To },
+        { "maybe", TokenType.Maybe },
+
+        // Future Keywords (reserved)
+        { "defer", TokenType.Defer },
+        { "do", TokenType.Do },
 
         // Boolean values and operators
         { "True", TokenType.True },

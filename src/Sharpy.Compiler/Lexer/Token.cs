@@ -55,6 +55,29 @@ public enum TokenType
     Auto,           // Type inference
     Const,
     Lambda,
+    Type,           // Type alias declaration
+
+    // Keywords - Pattern Matching
+    Match,
+    Case,
+
+    // Keywords - Async
+    Async,
+    Await,
+    Yield,
+
+    // Keywords - Members
+    Property,
+    Event,
+
+    // Keywords - Other
+    Del,            // Delete statement
+    To,             // Type coercion operator
+    Maybe,          // Optional from nullable expressions
+
+    // Future Keywords (reserved)
+    Defer,
+    Do,
 
     // Boolean operators (keywords)
     And,
