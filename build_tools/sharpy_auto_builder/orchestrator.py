@@ -1159,8 +1159,8 @@ automatically fixed after {fix_attempt} attempts.
         """Handle errors during execution."""
         attempt = state.get("execution_attempt", 0)
         task_data = state["current_task"]
-        last_result = state.get("last_execution_result", {})
-        error_msg = last_result.get("error", "")
+        last_result = state.get("last_execution_result", {}) or {}
+        error_msg = last_result.get("error") or ""
 
         # Check if this is a rate limit exhaustion error
         is_rate_limited = (
