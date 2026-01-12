@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-11T23:51:34.157675",
+  "last_updated": "2026-01-12T00:22:01.298020",
   "phases": [
     {
       "id": "0.1.0",
@@ -449,8 +449,8 @@
       "id": "0.1.1",
       "name": "Parser Foundation",
       "goal": "Parse Sharpy source into an Abstract Syntax Tree (AST).",
-      "status": "pending",
-      "progress": 85.71428571428571,
+      "status": "completed",
+      "progress": 100.0,
       "tasks": [
         {
           "id": "0.1.1.1",
@@ -789,8 +789,46 @@
           "files": [
             "src/Sharpy.Compiler.Tests/Parser/Phase011ExitCriteriaTests.cs"
           ],
-          "status": "pending",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude_code",
+              "started_at": "2026-01-11T23:59:33.678132",
+              "completed_at": "2026-01-11T23:59:33.678134",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-11T23:59:33.678120",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "I now have enough information from the spec documents to verify the test suite. Let me compile the spec adherence report:\n\n## Spec Adherence Report: Create Phase 0.1.1 Exit Criteria Test Suite\n\n**Spec Files Consulted:**\n- `docs/language_specification/operator_precedence.md`\n- `docs/language_specification/comparison_chaining.md`\n- `docs/language_specification/type_annotations.md`\n- `docs/language_specification/nullable_types.md`\n- `docs/language_specification/expressions.md`\n- `docs/language_specification/pipe_operator.md`\n- `docs/language_specification/type_casting.md`\n- `docs/language_specification/null_coalescing_operator.md`\n- `docs/language_specification/null_conditional_access.md`\n- `docs/language_specification/logical_operators.md`\n- `docs/language_specification/bitwise_operators.md`\n- `docs/language_specification/arithmetic_operators.md`\n- `docs/language_specification/lambdas.md`\n- `docs/language_specification/comprehensions.md`\n- `docs/language_specification/function_definition.md`\n- `docs/language_specification/source_files.md`\n- `docs/language_specification/identity_operators.md`\n\n**Implementation:** `src/Sharpy.Compiler.Tests/Parser/Phase011ExitCriteriaTests.cs`\n\n### Exit Criteria 1: AST Correctly Represents Expression Precedence\n\n#### Compliant\n- [x] **Exponentiation right-to-left associativity** (Line 75-89): Test `ExitCriteria_PowerRightAssociative` correctly verifies `2 ** 3 ** 2` parses as `2 ** (3 ** 2)` per spec line 8: \"`**` | Exponentiation | **Right-to-left**\"\n- [x] **Multiplication before addition** (Line 57-72): Tests verify `*` has precedence 4 and `+` has precedence 5 per spec table\n- [x] **Unary before binary** (Line 91-106): Test `ExitCriteria_UnaryBeforeBinary` correctly verifies `-a * b` parses as `(-a) * b` per spec line 9: \"Unary operators | Right-to-left\"\n- [x] **Comparison after arithmetic** (Line 108-135): Test verifies `a + 1 < b` parses as `(a + 1) < b` per precedence levels 5 vs 12\n- [x] **Logical operator precedence** (Line 137-155): Test `ExitCriteria_LogicalOperatorPrecedence_NotAndOr` correctly verifies `not a and b or c` parses as `((not a) and b) or c` per spec precedence 13, 14, 15\n- [x] **Null coalescing lowest logical precedence** (Line 157-170): Test verifies `??` at precedence 16 per spec\n- [x] **Bitwise AND before OR** (Line 173-185): Test verifies `&` precedence 7 < `|` precedence 9\n- [x] **Bitwise XOR between AND and OR** (Line 187-202): Test verifies `&` < `^` < `|` per spec lines 7-9\n- [x] **Shift operator precedence** (Line 204-217): Test `ExitCriteria_ShiftOperatorPrecedence` verifies `a << 1 + 2` parses as `a << (1 + 2)` per spec (shift at level 6, arithmetic at level 5)\n- [x] **Division/modulo same precedence** (Line 219-234): Test verifies `*`, `//`, `%` all at level 4 with left-to-right associativity\n- [x] **Unary plus and minus** (Line 236-251): Test verifies unary `+` and `-` at precedence 3\n- [x] **Bitwise NOT precedence** (Line 253-265): Test verifies `~` at precedence 3 (unary operators)\n\n#### Deviations\n- [ ] **Section: Shift operator precedence test assertion**: \n  - **Spec says:** operator_precedence.md line 6: \"Bitwise shifts | Left-to-right\" at precedence 6, which is HIGHER than additive (5)\n  - **Test at line 207:** `a << 1 + 2 should parse as a << (1 + 2)` \n  - **Issue:** This assertion appears INCORRECT based on spec. If shift (precedence 6) is LOWER than additive (precedence 5), then `a << 1 + 2` should parse as `a << (1 + 2)`. However, the precedence table lists from highest (1) to lowest (20), so precedence 6 > precedence 5 means shifts bind LOOSER than addition. Actually, reviewing the table more carefully: lower number = higher precedence. So precedence 5 (additive) is HIGHER than precedence 6 (shifts), meaning `1 + 2` groups first. The test is CORRECT.\n  - **Corrected Assessment:** Test is compliant; `a << (1 + 2)` is correct parsing\n\n### Exit Criteria 2: Parentheses Override Precedence\n\n#### Compliant\n- [x] **Basic parentheses override** (Line 271-285): Test verifies `(a + b) * c` correctly groups addition before multiplication\n- [x] **Nested parentheses preserved** (Line 287-297): Test verifies `((a + b))` preserves nesting structure in AST\n- [x] **Parentheses in comparison** (Line 299-313): Test verifies `(a > b) and c` correctly groups comparison\n- [x] **Parentheses override right-associativity** (Line 315-331): Test verifies `(2 ** 3) ** 2` overrides natural right-to-left grouping of `**`\n- [x] **Parentheses in null coalesce** (Line 333-347): Test verifies `a ?? (b ?? c)` preserves explicit grouping\n\n### Exit Criteria 3: Type Annotations Parsed But Not Validated\n\n#### Compliant\n- [x] **Non-existent types accepted** (Line 354-361): Test `ExitCriteria_TypeAnnotationsParsedNotValidated` verifies `FakeType` is parsed without validation error\n- [x] **Simple type annotation** (Line 364-372): Test verifies `x: int` parsing per type_annotations.md\n- [x] **Nullable type annotation** (Line 375-382): Test verifies `x: int?` parsing per nullable_types.md line 13: \"result: int? = get_value()\"\n- [x] **Generic type annotation** (Line 384-392): Test verifies `x: list[int]` parsing per nullable_types.md line 15\n- [x] **Nested generic type annotation** (Line 394-404): Test verifies `dict[str, list[int]]` parsing\n- [x] **Nullable generic type** (Line 406-414): Test verifies `list[int]?` parsing\n- [x] **Function return type annotation** (Line 416-427): Test verifies `-> int` per function_definition.md line 4\n- [x] **Function parameter type annotations** (Line 429-441): Test verifies parameter types per function_definition.md\n- [x] **Custom generic types accepted** (Line 443-451): Test verifies parser accepts arbitrary type names without validation\n\n### Exit Criteria 4: Module Structure Captured\n\n#### Compliant\n- [x] **Module body captured** (Line 457-469): Test verifies multiple statements parsed into Module.Body\n- [x] **Empty module** (Line 471-477): Test verifies empty source produces valid Module with empty Body\n- [x] **Comments skipped** (Line 479-485): Test verifies comment-only source produces empty Body\n- [x] **Top-level statements** (Line 487-500): Test verifies assignment statements captured\n- [x] **Function and class definitions** (Line 502-516): Test verifies FunctionDef and ClassDef parsed into Body\n- [x] **Mixed module content** (Line 518-538): Test verifies import, assignment, function, class all captured\n- [x] **Module docstring** (Line 540-552): Test verifies module-level docstring captured\n\n### Exit Criteria 5: Comparison Chaining Parsed Correctly\n\n#### Compliant\n- [x] **Basic chaining** (Line 558-570): Test verifies `a < b < c` produces ComparisonChain with 3 operands, 2 operators per comparison_chaining.md line 5: \"a < b < c # Equivalent to: a < b and b < c\"\n- [x] **Three operands** (Line 572-584): Test verifies operand and operator counts\n- [x] **Mixed operators in chain** (Line 586-597): Test verifies `a == b != c` chaining per comparison_chaining.md lines 17-18: \"a != b != c\"\n- [x] **Four operands** (Line 599-609): Test verifies `0 <= x < y <= 100` produces 4-operand chain per comparison_chaining.md line 21: \"a < b <= c < d\"\n- [x] **Single comparison handling** (Line 611-630): Test allows either BinaryOp or ComparisonChain for single comparison (implementation choice)\n- [x] **Arithmetic inside chain** (Line 632-642): Test verifies `0 < a + 1 < 10` correctly nests arithmetic within comparison operands\n\n### Special Operators Tests\n\n#### Compliant\n- [x] **Pipe operator** (Line 759-778): Tests verify `|>` parsing per pipe_operator.md, left-to-right associativity\n- [x] **`to` operator** (Line 780-798): Tests verify type coercion `x to int` and `x to int?` per type_casting.md\n- [x] **Null coalesce operator** (Line 800-807): Test verifies `??` per null_coalescing_operator.md\n- [x] **Null conditional access** (Line 809-817): Test verifies `?.` per null_conditional_access.md\n- [x] **`as` type cast** (Line 819-827): Test verifies `x as int` parsing\n- [x] **`is` type check** (Line 829-838): Test verifies `x is int` per identity_operators.md\n\n### Core AST Nodes Verification\n\n#### Compliant\n- [x] **All literal types** (Line 675-720): Tests cover IntegerLiteral, FloatLiteral, StringLiteral, BooleanLiteral (True/False), NoneLiteral per expressions.md lines 7-11\n- [x] **Identifier** (Line 722-728): Test verifies Identifier node\n- [x] **BinaryOp** (Line 730-737): Test verifies binary operator node\n- [x] **UnaryOp** (Line 739-746): Test verifies unary operator node\n- [x] **PassStatement** (Line 748-753): Test verifies pass statement parsing\n\n### Integration Tests\n\n#### Compliant\n- [x] **Complex nested expression** (Line 843-863): Test verifies multi-operator precedence in `(a + b) * c ** d - e`\n- [x] **All literal types together** (Line 865-886): Test verifies all literals parse correctly\n- [x] **Full precedence test** (Line 888-900): Test exercises many precedence levels\n- [x] **Conditional expression** (Line 902-912): Test verifies `x if condition else y` per expressions.md lines 57-58\n- [x] **Lambda expression** (Line 914-923): Test verifies `lambda x, y: x + y` per lambdas.md\n- [x] **List comprehension** (Line 925-935): Test verifies `[x * 2 for x in items]` per comprehensions.md\n- [x] **Function call with keyword args** (Line 937-948): Test verifies keyword argument parsing\n- [x] **Chained method calls** (Line 950-959): Test verifies `obj.method1().method2().method3()` parsing\n\n### Deviations\n\n**None identified.** All tests align with the language specification.\n\n### Recommendations\n\n1. **Test Coverage Enhancement**: Consider adding tests for:\n   - The `try` and `maybe` expressions mentioned in operator_precedence.md at precedence 17\n   - The walrus operator `:=` at precedence 20\n   - More edge cases for `is` and `is not` operators in comparison chains (per spec line 54-58 in operator_precedence.md)\n\n2. **Spec Completeness Note**: The test file thoroughly covers the five stated exit criteria for Phase 0.1.1. The additional tests in the \"Special Operators\" and \"Integration Tests\" regions provide good coverage beyond the minimum requirements.\n\n3. **Minor Enhancement**: The test `ExitCriteria_ComparisonChainingInOperator` at line 644-653 has a comment about `in` operator chaining but actually tests `1 < 2 < 3`. Consider adding an explicit test for `in` chaining if that's important for Phase 0.1.1.\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-11T23:59:33.678127",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "## Verification Report: Create Phase 0.1.1 Exit Criteria Test Suite\n\n### Test Results\n| Suite | Total | Passed | Failed | Skipped |\n|-------|-------|--------|--------|---------|\n| All Tests | 3,012 | 2,990 | 0 | 22 |\n| Sharpy.Core.Tests | 735 | 735 | 0 | 0 |\n| Sharpy.Compiler.Tests | 2,277 | 2,255 | 0 | 22 |\n| **Phase011ExitCriteriaTests** | **69** | **69** | **0** | **0** |\n| Phase010ExitCriteriaTests | 104 | 104 | 0 | 0 |\n\n### Behavior Checks\n- [x] Exit Criteria 1: AST correctly represents expression precedence (14 tests)\n- [x] Exit Criteria 2: Parentheses override precedence (5 tests)\n- [x] Exit Criteria 3: Type annotations parsed but not validated (9 tests)\n- [x] Exit Criteria 4: Module structure captured (8 tests)\n- [x] Exit Criteria 5: Comparison chaining parsed correctly (7 tests)\n- [x] Core AST nodes verification (14 tests)\n- [x] Special operators (`|>`, `to`, `??`, `?.`, `as`, `is`) (9 tests)\n- [x] Comprehensive integration tests (6 tests)\n\n### Coverage Assessment\nThe `Phase011ExitCriteriaTests.cs` file (963 lines) provides **comprehensive coverage** of all Phase 0.1.1 exit criteria:\n\n| Exit Criterion (from phases.md:157-162) | Test Coverage |\n|----------------------------------------|---------------|\n| AST correctly represents expression precedence | \u2705 14 tests covering all precedence levels |\n| Parentheses override precedence | \u2705 5 tests including nested & complex cases |\n| Type annotations parsed but not validated | \u2705 9 tests including generics, nullable, functions |\n| Module structure captured | \u2705 8 tests covering empty, mixed, docstrings |\n| Comparison chaining (from features) | \u2705 7 tests covering 2-4 operand chains |\n\n**Additional coverage beyond basic exit criteria:**\n- Core AST nodes (literals, identifiers, operators)\n- Special Sharpy operators (pipe-forward, null-coalesce, null-conditional)\n- Integration tests for complex nested expressions\n\n### Regression Check\n- **No regressions detected**\n- Phase 0.1.0 (Lexer) tests: 104/104 passed\n- Phase 0.1.1 (Parser) tests: 69/69 passed\n- Full test suite: 2,990/2,990 passed (22 skipped are unrelated to this phase)\n\n### Skipped Tests (Not Related to Phase 0.1.1)\nThe 22 skipped tests are for future features:\n- Parser edge cases (decorators, dict comprehension, kwargs, varargs)\n- Semantic analyzer negative tests (generics validation, yield)\n- Integration tests (loop variable modification, infinite loop detection)\n\n### Recommendations\n**None required.** The test suite is complete and comprehensive.\n\nThe existing `Phase011ExitCriteriaTests.cs` file:\n- Contains 69 test methods organized into 8 regions\n- Covers all 4 explicit exit criteria from `phases.md`\n- Includes comparison chaining tests (feature mentioned in phases.md:150-151)\n- Tests edge cases and integration scenarios\n- Follows established test patterns in the codebase\n\n**Task 0.1.1.7 Status: VERIFIED COMPLETE** \u2713\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "warnings",
+                  "timestamp": "2026-01-11T23:59:33.678129",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "You've hit your limit \u00b7 resets 2am (America/New_York)\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": false,
           "human_question": null,
@@ -803,7 +841,7 @@
       "id": "0.1.2",
       "name": "Code Generation Bootstrap",
       "goal": "Generate executable C# code via Roslyn for minimal programs.",
-      "status": "pending",
+      "status": "in_progress",
       "progress": 0.0,
       "tasks": [
         {
@@ -814,7 +852,7 @@
           "files": [
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -906,7 +944,7 @@
       "id": "0.1.3",
       "name": "Variables & Expressions",
       "goal": "Variable declarations, assignments, and full expression support.",
-      "status": "pending",
+      "status": "in_progress",
       "progress": 0.0,
       "tasks": [
         {
@@ -934,7 +972,7 @@
             "src/Sharpy.Compiler/Parser/Parser.cs",
             "src/Sharpy.Compiler/Semantic/TypeResolver.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": true,
@@ -1268,15 +1306,15 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "0.1.1.7",
-  "total_attempts": 18,
-  "total_successes": 15,
-  "total_failures": 3,
+  "current_task_id": "0.1.2.1",
+  "total_attempts": 26,
+  "total_successes": 16,
+  "total_failures": 10,
   "backend_stats": {
     "claude_code": {
-      "attempts": 18,
-      "successes": 15,
-      "failures": 3
+      "attempts": 26,
+      "successes": 16,
+      "failures": 10
     },
     "copilot": {
       "attempts": 0,
@@ -1284,5 +1322,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 33.33333333333333
+  "overall_progress": 35.714285714285715
 }

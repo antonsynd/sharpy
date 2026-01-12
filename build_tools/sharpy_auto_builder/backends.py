@@ -197,25 +197,39 @@ class ClaudeCodeBackend(Backend):
             stdout, stderr = await process.communicate(input=prompt.encode())
 
             duration = time.time() - start_time
+            stdout_text = stdout.decode()
+            stderr_text = stderr.decode()
 
-            if process.returncode == 0:
+            # Check for rate limiting in both stdout and stderr
+            combined_output = (stdout_text + stderr_text).lower()
+            rate_limited = any(
+                phrase in combined_output
+                for phrase in [
+                    "rate limit",
+                    "hit your limit",
+                    "resets 2am",
+                    "quota exceeded",
+                    "too many requests",
+                ]
+            )
+
+            if process.returncode == 0 and not rate_limited:
                 self.rate_limit_state.record_success()
                 return ExecutionResult(
                     success=True,
-                    output=stdout.decode(),
+                    output=stdout_text,
                     duration_seconds=duration,
                     backend=self.name,
                 )
             else:
-                error_msg = stderr.decode()
-                rate_limited = "rate limit" in error_msg.lower()
+                error_msg = stderr_text or stdout_text
 
                 if rate_limited:
                     self.rate_limit_state.record_error(self.config.rate_limit)
 
                 return ExecutionResult(
                     success=False,
-                    output=stdout.decode(),
+                    output=stdout_text,
                     error=error_msg,
                     duration_seconds=duration,
                     backend=self.name,

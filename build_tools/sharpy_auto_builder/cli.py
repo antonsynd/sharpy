@@ -107,9 +107,16 @@ def cmd_status(args):
 
 def cmd_run(args):
     """Run the auto builder."""
+    # Load config from file if it exists, otherwise use defaults
     config = Config()
     if args.project_root:
         config.project_root = Path(args.project_root)
+
+    config_path = config.state_dir / "config.json"
+    if config_path.exists():
+        config = Config.load(config_path)
+        if args.project_root:
+            config.project_root = Path(args.project_root)
 
     if not config.ground_truth_path.exists():
         print("Error: Ground truth not found. Run 'init' first.")
@@ -237,21 +244,66 @@ def cmd_reset(args):
         sys.exit(1)
 
     ground_truth = GroundTruth.load(config.ground_truth_path)
-    task = ground_truth.get_task(args.task_id)
-
-    if not task:
-        print(f"Error: Task '{args.task_id}' not found")
-        sys.exit(1)
 
     from .state import TaskStatus
 
-    task.status = TaskStatus.PENDING
-    task.executions = []
-    task.human_question = None
-    task.human_answer = None
+    # If --from is specified, reset a range of tasks
+    if args.from_task:
+        # Collect all task IDs in order
+        all_tasks = []
+        for phase in ground_truth.phases:
+            for task in phase.tasks:
+                all_tasks.append(task)
 
-    ground_truth.save(config.ground_truth_path)
-    print(f"Task {args.task_id} reset to pending")
+        # Find the indices of the from and to tasks
+        from_idx = None
+        to_idx = None
+        for idx, task in enumerate(all_tasks):
+            if task.id == args.from_task:
+                from_idx = idx
+            if task.id == args.task_id:
+                to_idx = idx
+
+        if from_idx is None:
+            print(f"Error: Task '{args.from_task}' not found")
+            sys.exit(1)
+        if to_idx is None:
+            print(f"Error: Task '{args.task_id}' not found")
+            sys.exit(1)
+
+        # Ensure from_idx <= to_idx
+        if from_idx > to_idx:
+            from_idx, to_idx = to_idx, from_idx
+
+        # Reset all tasks in the range
+        tasks_to_reset = all_tasks[from_idx : to_idx + 1]
+        for task in tasks_to_reset:
+            task.status = TaskStatus.PENDING
+            task.executions = []
+            task.human_question = None
+            task.human_answer = None
+
+        ground_truth.save(config.ground_truth_path)
+        print(
+            f"Reset {len(tasks_to_reset)} tasks from {args.from_task} to {args.task_id}:"
+        )
+        for task in tasks_to_reset:
+            print(f"  - {task.id}: {task.title}")
+    else:
+        # Single task reset
+        task = ground_truth.get_task(args.task_id)
+
+        if not task:
+            print(f"Error: Task '{args.task_id}' not found")
+            sys.exit(1)
+
+        task.status = TaskStatus.PENDING
+        task.executions = []
+        task.human_question = None
+        task.human_answer = None
+
+        ground_truth.save(config.ground_truth_path)
+        print(f"Task {args.task_id} reset to pending")
 
 
 def cmd_skip(args):
@@ -451,7 +503,15 @@ def main():
 
     # reset command
     reset_parser = subparsers.add_parser("reset", help="Reset a task to pending")
-    reset_parser.add_argument("task_id", help="ID of the task to reset")
+    reset_parser.add_argument(
+        "task_id", help="ID of the task to reset (end of range if --from is specified)"
+    )
+    reset_parser.add_argument(
+        "--from",
+        dest="from_task",
+        help="Reset all tasks from this ID to task_id (inclusive)",
+        default=None,
+    )
 
     # skip command
     skip_parser = subparsers.add_parser("skip", help="Skip a task")

@@ -1,131 +1,65 @@
-# Implementation Plan: Task 0.1.1.6 - Verify Pass Statement Parsing
+# Implementation Plan: Task 0.1.1.7 - Create Phase 0.1.1 Exit Criteria Test Suite
 
 ## Summary
 
-This task is a **verification task** - the `PassStatement` parsing is already fully implemented. The plan outlines the verification steps and confirms implementation completeness.
+The Phase 0.1.1 Exit Criteria test file **already exists** at `src/Sharpy.Compiler.Tests/Parser/Phase011ExitCriteriaTests.cs` (963 lines) and is comprehensive. After analysis, the file already covers all exit criteria from the specification.
 
----
+## Current Coverage Analysis
 
-## Step-by-Step Implementation Approach
+### Exit Criteria from Spec (phases.md lines 158-163)
 
-### Step 1: Verify `pass` Keyword Handling in Parser
+| Exit Criterion | Status | Tests |
+|----------------|--------|-------|
+| 1. AST correctly represents expression precedence | ✅ Covered | 14 tests (lines 38-267) |
+| 2. Parentheses override precedence | ✅ Covered | 5 tests (lines 269-348) |
+| 3. Type annotations parsed but not validated | ✅ Covered | 9 tests (lines 351-452) |
+| 4. Module structure captured | ✅ Covered | 8 tests (lines 455-553) |
+| 5. Comparison chaining parsed correctly | ✅ Covered | 7 tests (lines 556-653) |
 
-**Location**: `src/Sharpy.Compiler/Parser/Parser.cs`
+### Additional Coverage (Beyond Basic Exit Criteria)
 
-**Verification**:
-1. Check `ParseStatement()` method (line 98) - confirm `TokenType.Pass => ParsePassStatement()`
-2. Check `ParsePassStatement()` method (lines 1057-1072) - confirm it:
-   - Captures start position
-   - Consumes `TokenType.Pass` token
-   - Calls `ExpectStatementEnd()`
-   - Returns `PassStatement` with position info
+| Area | Tests |
+|------|-------|
+| Core AST nodes verification | 14 tests (lines 657-755) |
+| Special operators (`|>`, `to`, `??`, `?.`, `as`, `is`) | 9 tests (lines 757-838) |
+| Comprehensive integration tests | 6 tests (lines 841-960) |
 
-**Status**: ✅ Already implemented correctly
+## Recommendation
 
-### Step 2: Verify AST Node Definition
+**The test file is already complete and comprehensive.** No new implementation is needed.
 
-**Location**: `src/Sharpy.Compiler/Parser/Ast/Statement.cs:68`
+The existing `Phase011ExitCriteriaTests.cs` file:
+- Contains 53 test methods organized into 8 regions
+- Covers all 5 exit criteria from the Phase 0.1.1 specification
+- Includes tests for edge cases and integration scenarios
+- Follows established test patterns in the codebase
 
-**Verification**:
-- Confirm `public record PassStatement : Statement;` exists
-- Confirm it inherits position tracking from `Statement` base class
+## Verification Steps
 
-**Status**: ✅ Already implemented correctly
+1. Run the existing test suite to ensure all tests pass:
+   ```bash
+   dotnet test src/Sharpy.Compiler.Tests --filter "FullyQualifiedName~Phase011ExitCriteriaTests"
+   ```
 
-### Step 3: Run Existing Tests
+2. Verify test coverage includes all operator precedence levels from `docs/language_specification/operator_precedence.md`
 
-```bash
-dotnet test src/Sharpy.Compiler.Tests --filter "FullyQualifiedName~Pass"
-```
+## Files
 
-**Expected tests to pass**:
-- `ParsePassStatement` - basic `"pass"` parsing
-- `Position_PassStatement_TrackedCorrectly` - position tracking
-- `ParseEmptyClassWithPass` - pass in class body
-- `ParseEmptyStructWithPass` - pass in struct body
-- `ParseEmptyInterfaceWithPass` - pass in interface body
+| File | Action |
+|------|--------|
+| `src/Sharpy.Compiler.Tests/Parser/Phase011ExitCriteriaTests.cs` | No changes needed - already complete |
 
-### Step 4: (Optional) Add Explicit Function Body Test
+## Potential Gaps to Consider (Optional Enhancement)
 
-If desired for completeness, add a dedicated test:
+If the user wants even more thorough coverage, these areas could be expanded:
 
-```csharp
-[Fact]
-public void ParsePassStatementInFunctionBody()
-{
-    var module = Parse("def foo():\n    pass");
-    var func = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
-    func.Body.Should().HaveCount(1);
-    func.Body[0].Should().BeOfType<PassStatement>();
-}
-```
+1. **Additional Precedence Tests**: Tests for `try`/`maybe` expressions (precedence 17) if parsing is implemented
+2. **Walrus Operator**: Test for `:=` operator if supported in this phase
+3. **Position Tracking**: Tests for AST node line/column positions (though this is covered in `ParserPositionTests.cs`)
 
----
+## Conclusion
 
-## Key Files
+**This task appears to already be complete.** The test file exists and comprehensively covers all Phase 0.1.1 exit criteria. The recommended action is to:
 
-| File | Purpose | Lines |
-|------|---------|-------|
-| `src/Sharpy.Compiler/Parser/Parser.cs` | Parser implementation | 98, 1057-1072 |
-| `src/Sharpy.Compiler/Parser/Ast/Statement.cs` | AST node definition | 68 |
-| `src/Sharpy.Compiler.Tests/Parser/ParserTests.cs` | Parser tests | 484-488 |
-| `src/Sharpy.Compiler.Tests/Parser/ParserPositionTests.cs` | Position tests | 256 |
-
----
-
-## Tests to Verify
-
-### Required Tests (Already Exist)
-
-| Test Case | Test Name | Status |
-|-----------|-----------|--------|
-| `"pass"` parses to `PassStatement` | `ParsePassStatement` | ✅ Exists |
-| Indented `pass` in function body | Multiple negative tests use this pattern | ✅ Exists |
-| Pass in class body | `ParseEmptyClassWithPass` | ✅ Exists |
-| Pass in struct body | `ParseEmptyStructWithPass` | ✅ Exists |
-| Pass in interface body | `ParseEmptyInterfaceWithPass` | ✅ Exists |
-| Position tracking | `Position_PassStatement_TrackedCorrectly` | ✅ Exists |
-
-### Implementation Verification Checklist
-
-- [x] `pass` keyword recognized by Lexer (`TokenType.Pass`)
-- [x] `pass` keyword handled in `ParseStatement()` switch
-- [x] `ParsePassStatement()` method produces `PassStatement` AST node
-- [x] Position tracking (LineStart, ColumnStart, LineEnd, ColumnEnd)
-- [x] Works at top level
-- [x] Works in class/struct/interface bodies
-- [x] Works in function bodies
-
----
-
-## Potential Risks or Questions
-
-### Risks
-**None** - All functionality is already implemented and tested.
-
-### Questions Resolved
-1. **Is `pass` handled in `ParseStatement()` or `ParseSimpleStatement()`?**
-   - Answer: `ParseStatement()` - it has a dedicated case in the switch expression
-
-2. **Does it produce `PassStatement`?**
-   - Answer: Yes, via the `ParsePassStatement()` method
-
-3. **Are there adequate tests?**
-   - Answer: Yes, 5+ tests cover various contexts
-
----
-
-## Recommended Action
-
-1. **Run tests** to confirm all pass-related tests pass
-2. **Mark task as complete** - no code changes needed
-3. Optionally add the explicit function body test if desired for documentation purposes
-
----
-
-## Test Command
-
-```bash
-cd /Users/anton/Documents/github/sharpy
-dotnet test src/Sharpy.Compiler.Tests --filter "FullyQualifiedName~Pass"
-```
+1. Run the existing tests to confirm they pass
+2. Mark task 0.1.1.7 as completed if tests pass
