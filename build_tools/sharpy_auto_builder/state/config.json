@@ -1,0 +1,36 @@
+{
+  "project_root": "/Users/anton/Documents/github/sharpy",
+  "backends": {
+    "claude_code": {
+      "name": "claude_code",
+      "enabled": true,
+      "model": "claude-sonnet-4-5-20250929",
+      "max_tokens": 16384,
+      "rate_limit": {
+        "max_requests_per_window": 50,
+        "window_seconds": 3600,
+        "request_cooldown": 3.0
+      }
+    },
+    "copilot": {
+      "name": "copilot",
+      "enabled": false,
+      "model": "claude-sonnet-4-5-20250929",
+      "max_tokens": 16384,
+      "rate_limit": {
+        "max_requests_per_window": 100,
+        "window_seconds": 3600,
+        "request_cooldown": 2.0
+      }
+    }
+  },
+  "backend_priority": [
+    "claude_code",
+    "copilot"
+  ],
+  "run_spec_adherence_check": true,
+  "run_verification_after_implementation": true,
+  "run_hallucination_defense": true,
+  "max_retries_per_task": 3,
+  "require_human_approval_for_critical": true
+}

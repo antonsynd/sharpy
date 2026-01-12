@@ -170,28 +170,27 @@ class ClaudeCodeBackend(Backend):
 
         try:
             # Build the command
-            # Claude Code CLI flags (matching generate_code_walkthroughs.py pattern):
-            # --print: Non-interactive output mode
+            # Claude Code CLI: pass prompt via stdin for reliability with long/complex prompts
+            # --print (-p): Non-interactive output mode
             # --allowedTools: Restrict to specific tools for safety
-            # --prompt: The prompt to execute
             cmd = [
                 self.claude_code_path,
                 "--print",
                 "--allowedTools",
                 "Read,Write,Edit,Bash",  # Need all tools for implementation
-                "--prompt",
-                prompt,
             ]
 
-            # Run Claude Code
+            # Run Claude Code with prompt via stdin
             process = await asyncio.create_subprocess_exec(
                 *cmd,
+                stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=self.project_root,
             )
 
-            stdout, stderr = await process.communicate()
+            # Pass prompt via stdin
+            stdout, stderr = await process.communicate(input=prompt.encode())
 
             duration = time.time() - start_time
 

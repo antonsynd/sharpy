@@ -338,14 +338,20 @@ Provide:
             "duration": result.duration_seconds,
         }
 
+        messages = [
+            f"Execution attempt {attempt} {'succeeded' if result.success else 'failed'}"
+        ]
+        if not result.success and result.error:
+            # Include error details in logs for debugging
+            error_preview = result.error[:200] if len(result.error) > 200 else result.error
+            messages.append(f"  Error: {error_preview}")
+
         return {
             **state,
             "execution_attempt": attempt,
             "last_execution_result": execution_result,
             "next_action": "test" if result.success else "error",
-            "messages": [
-                f"Execution attempt {attempt} {'succeeded' if result.success else 'failed'}"
-            ],
+            "messages": messages,
         }
 
     async def _run_tests_node(self, state: OrchestratorState) -> OrchestratorState:
@@ -839,7 +845,10 @@ Provide:
             "messages": [],
         }
 
-        config = {"configurable": {"thread_id": "sharpy-auto-builder"}}
+        config = {
+            "configurable": {"thread_id": "sharpy-auto-builder"},
+            "recursion_limit": 150,  # Allow more iterations for multi-task runs with retries
+        }
 
         tasks_processed = 0
 

@@ -10,8 +10,12 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Check for Python
-if command -v python3 &> /dev/null; then
+# Check for Python - prefer conda environment
+if [ -n "$CONDA_PREFIX" ] && [ -x "$CONDA_PREFIX/bin/python3" ]; then
+    PYTHON="$CONDA_PREFIX/bin/python3"
+elif [ -x "/opt/homebrew/anaconda3/bin/python3" ]; then
+    PYTHON="/opt/homebrew/anaconda3/bin/python3"
+elif command -v python3 &> /dev/null; then
     PYTHON=python3
 elif command -v python &> /dev/null; then
     PYTHON=python
