@@ -203,6 +203,7 @@ class Config:
             "max_test_fix_attempts": self.max_test_fix_attempts,
             "create_followup_task_on_fix_failure": self.create_followup_task_on_fix_failure,
             "require_human_approval_for_critical": self.require_human_approval_for_critical,
+            "auto_commit": self.auto_commit,
         }
 
     @classmethod
@@ -240,6 +241,8 @@ class Config:
             config.require_human_approval_for_critical = data[
                 "require_human_approval_for_critical"
             ]
+        if "auto_commit" in data:
+            config.auto_commit = data["auto_commit"]
         return config
 
     def save(self, path: Optional[Path] = None) -> None:

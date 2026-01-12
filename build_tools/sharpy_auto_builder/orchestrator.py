@@ -168,6 +168,7 @@ class Orchestrator:
         graph.add_node("wait_for_human", self._wait_for_human_node)
         graph.add_node("process_human_response", self._process_human_response_node)
         graph.add_node("update_ground_truth", self._update_ground_truth_node)
+        graph.add_node("commit_changes", self._commit_changes_node)
         graph.add_node("handle_error", self._handle_error_node)
 
         # Set entry point
@@ -226,7 +227,7 @@ class Orchestrator:
             {
                 "hallucination_check": "check_hallucinations",
                 "human_review": "request_human_review",
-                "update": "update_ground_truth",
+                "commit": "commit_changes",
             },
         )
 
@@ -236,7 +237,7 @@ class Orchestrator:
             {
                 "address_issues": "address_validation_issues",
                 "human_review": "request_human_review",
-                "update": "update_ground_truth",
+                "commit": "commit_changes",
             },
         )
 
@@ -266,9 +267,18 @@ class Orchestrator:
             "process_human_response",
             self._route_after_human_response,
             {
-                "continue": "update_ground_truth",
+                "continue": "commit_changes",
                 "retry": "execute_implementation",
                 "skip": "update_ground_truth",
+            },
+        )
+
+        graph.add_conditional_edges(
+            "commit_changes",
+            self._route_after_commit,
+            {
+                "update": "update_ground_truth",
+                "error": "handle_error",
             },
         )
 
@@ -802,7 +812,7 @@ automatically fixed after {fix_attempt} attempts.
             return {
                 **state,
                 "next_action": (
-                    "update"
+                    "commit"
                     if not self.config.run_hallucination_defense
                     else "hallucination_check"
                 ),
@@ -862,7 +872,7 @@ automatically fixed after {fix_attempt} attempts.
         elif self.config.run_hallucination_defense:
             next_action = "hallucination_check"
         else:
-            next_action = "update"
+            next_action = "commit"
 
         return {
             **state,
@@ -933,7 +943,7 @@ automatically fixed after {fix_attempt} attempts.
         elif has_hallucinations and task_data.get("is_critical"):
             next_action = "human_review"
         else:
-            next_action = "update"
+            next_action = "commit"
 
         return {
             **state,
@@ -1208,6 +1218,161 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
             "next_action": "test" if result.success else "error",
             "messages": messages,
         }
+
+    async def _commit_changes_node(self, state: OrchestratorState) -> OrchestratorState:
+        """Commit changes made during task implementation."""
+        if not self.config.auto_commit:
+            return {
+                **state,
+                "next_action": "update",
+                "messages": ["Auto-commit disabled, skipping commit"],
+            }
+
+        task_data = state["current_task"]
+        task_id = task_data["id"]
+        task_title = task_data["title"]
+
+        # Get the list of changed files using git
+        try:
+            # First, get list of modified/added/deleted files
+            status_result = await self.backend_manager.execute_command(
+                "git status --porcelain",
+                cwd=self.config.project_root,
+            )
+
+            if not status_result.success:
+                self._log_execution(
+                    event_type="commit_failed",
+                    task_id=task_id,
+                    error=f"Failed to get git status: {status_result.error}",
+                )
+                return {
+                    **state,
+                    "next_action": "update",
+                    "messages": ["Failed to get git status, skipping commit"],
+                }
+
+            changed_files = status_result.output.strip()
+            if not changed_files:
+                return {
+                    **state,
+                    "next_action": "update",
+                    "messages": ["No changes to commit"],
+                }
+
+            # Stage all changes
+            add_result = await self.backend_manager.execute_command(
+                "git add -A",
+                cwd=self.config.project_root,
+            )
+
+            if not add_result.success:
+                self._log_execution(
+                    event_type="commit_failed",
+                    task_id=task_id,
+                    error=f"Failed to stage changes: {add_result.error}",
+                )
+                return {
+                    **state,
+                    "next_action": "update",
+                    "messages": ["Failed to stage changes, skipping commit"],
+                }
+
+            # Generate commit message
+            # Format: "[auto] Task <id>: <title>"
+            # Escape any quotes in the title for shell safety
+            safe_title = task_title.replace('"', '\\"').replace("'", "\\'")
+            commit_message = f"[auto] Task {task_id}: {safe_title}"
+
+            # Create the commit
+            commit_result = await self.backend_manager.execute_command(
+                f'git commit -m "{commit_message}"',
+                cwd=self.config.project_root,
+            )
+
+            if not commit_result.success:
+                # Check if it's just "nothing to commit"
+                if "nothing to commit" in (commit_result.output or "").lower():
+                    return {
+                        **state,
+                        "next_action": "update",
+                        "messages": ["No changes to commit (already committed)"],
+                    }
+
+                self._log_execution(
+                    event_type="commit_failed",
+                    task_id=task_id,
+                    error=f"Failed to commit: {commit_result.error or commit_result.output}",
+                )
+                return {
+                    **state,
+                    "next_action": "update",
+                    "messages": [
+                        f"Failed to commit changes: {commit_result.error or commit_result.output}"
+                    ],
+                }
+
+            # Log successful commit
+            self._log_execution(
+                event_type="commit_success",
+                task_id=task_id,
+                output=commit_result.output,
+                extra={
+                    "commit_message": commit_message,
+                    "files_changed": changed_files,
+                },
+            )
+
+            # Count files changed for message
+            file_count = len([f for f in changed_files.split("\n") if f.strip()])
+
+            # Push the commit
+            push_result = await self.backend_manager.execute_command(
+                "git push",
+                cwd=self.config.project_root,
+            )
+
+            if not push_result.success:
+                self._log_execution(
+                    event_type="push_failed",
+                    task_id=task_id,
+                    error=f"Failed to push: {push_result.error or push_result.output}",
+                )
+                return {
+                    **state,
+                    "next_action": "update",
+                    "messages": [
+                        f"Committed {file_count} file(s): {commit_message}",
+                        f"Warning: Failed to push: {push_result.error or push_result.output}",
+                    ],
+                }
+
+            # Log successful push
+            self._log_execution(
+                event_type="push_success",
+                task_id=task_id,
+                output=push_result.output,
+            )
+
+            return {
+                **state,
+                "next_action": "update",
+                "messages": [
+                    f"Committed and pushed {file_count} file(s): {commit_message}"
+                ],
+            }
+
+        except Exception as e:
+            self._log_execution(
+                event_type="commit_failed",
+                task_id=task_id,
+                error=str(e),
+            )
+            return {
+                **state,
+                "next_action": "update",
+                "messages": [f"Exception during commit: {e}"],
+            }
 
     async def _request_human_review_node(
         self, state: OrchestratorState
@@ -1525,9 +1690,12 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
         return state.get("next_action", "error")
 
     def _route_after_verification(self, state: OrchestratorState) -> str:
-        return state.get("next_action", "update")
+        return state.get("next_action", "commit")
 
     def _route_after_hallucination_check(self, state: OrchestratorState) -> str:
+        return state.get("next_action", "commit")
+
+    def _route_after_commit(self, state: OrchestratorState) -> str:
         return state.get("next_action", "update")
 
     def _route_after_address_issues(self, state: OrchestratorState) -> str:

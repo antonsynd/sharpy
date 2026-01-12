@@ -504,7 +504,7 @@ def foo(items: list[int] = ([])):
         typeChecker.CheckModule(module);
 
         typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors[0].Message.Should().Contain("Mutable default");
+        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Mutable default"));
     }
 
     [Fact]
@@ -517,8 +517,12 @@ def foo(a: list[int] = [], b: int = None, c: dict[str, int] = {}):
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Should have 3 errors: mutable list, None for non-nullable, mutable dict
-        typeChecker.Errors.Should().HaveCount(3);
+        // Should have at least 3 errors from DefaultParameterValidator:
+        // mutable list, None for non-nullable, mutable dict
+        // Plus TypeChecker also adds type mismatch errors
+        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Mutable default") && e.Message.Contains("'a'"));
+        typeChecker.Errors.Should().Contain(e => e.Message.Contains("None") && e.Message.Contains("non-nullable") && e.Message.Contains("'b'"));
+        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Mutable default") && e.Message.Contains("'c'"));
     }
 
     #endregion
