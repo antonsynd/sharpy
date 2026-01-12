@@ -6,6 +6,7 @@ Handles critical questions, human review, and answer processing.
 
 import asyncio
 import json
+import subprocess
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -13,6 +14,43 @@ from pathlib import Path
 from typing import Optional, Callable, Any
 from enum import Enum
 import hashlib
+import platform
+
+
+def send_macos_notification(
+    title: str,
+    message: str,
+    sound: bool = True,
+    subtitle: str = "",
+) -> bool:
+    """
+    Send a macOS notification using osascript.
+
+    Returns True if notification was sent successfully, False otherwise.
+    """
+    if platform.system() != "Darwin":
+        return False
+
+    # Escape quotes in the strings
+    title = title.replace('"', '\\"')
+    message = message.replace('"', '\\"')
+    subtitle = subtitle.replace('"', '\\"')
+
+    script = f'display notification "{message}" with title "{title}"'
+    if subtitle:
+        script = f'display notification "{message}" with title "{title}" subtitle "{subtitle}"'
+    if sound:
+        script += ' sound name "Glass"'
+
+    try:
+        subprocess.run(
+            ["osascript", "-e", script],
+            capture_output=True,
+            timeout=5,
+        )
+        return True
+    except (subprocess.SubprocessError, OSError):
+        return False
 
 
 class QuestionPriority(str, Enum):
@@ -184,6 +222,20 @@ class HumanLoopManager:
         self._questions[question_id] = human_question
         self._save_question(human_question)
 
+        # Send macOS notification
+        priority_emoji = {
+            QuestionPriority.LOW: "📝",
+            QuestionPriority.MEDIUM: "❓",
+            QuestionPriority.HIGH: "⚠️",
+            QuestionPriority.CRITICAL: "🚨",
+        }.get(priority, "❓")
+
+        send_macos_notification(
+            title=f"{priority_emoji} Sharpy: Question Pending",
+            message=question[:100] + ("..." if len(question) > 100 else ""),
+            subtitle=f"Task: {task_id} | Priority: {priority.value}",
+        )
+
         return human_question
 
     def _save_question(self, question: HumanQuestion) -> None:
@@ -288,6 +340,14 @@ class HumanLoopManager:
 
         self._reviews[review_id] = review
         self._save_review(review)
+
+        # Send macOS notification
+        concern_indicator = "⚠️ " if concerns else ""
+        send_macos_notification(
+            title=f"👀 Sharpy: Review Required",
+            message=f"{concern_indicator}{title[:80]}{'...' if len(title) > 80 else ''}",
+            subtitle=f"Task: {task_id} | {len(changes)} changes",
+        )
 
         return review
 
