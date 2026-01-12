@@ -8,7 +8,7 @@ import asyncio
 import json
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Any, TypedDict, Annotated, Literal
 from enum import Enum
@@ -1159,6 +1159,29 @@ automatically fixed after {fix_attempt} attempts.
         """Handle errors during execution."""
         attempt = state.get("execution_attempt", 0)
         task_data = state["current_task"]
+        last_result = state.get("last_execution_result", {})
+        error_msg = last_result.get("error", "")
+
+        # Check if this is a rate limit exhaustion error
+        is_rate_limited = "exhausted" in error_msg.lower() or "rate limit" in error_msg.lower()
+
+        if is_rate_limited and self.config.rate_limit_pause_hours > 0:
+            # Long pause when all backends are rate-limited
+            pause_seconds = self.config.rate_limit_pause_hours * 3600
+            pause_hours = self.config.rate_limit_pause_hours
+            print(f"\n{'='*60}")
+            print(f"All backends rate-limited. Pausing for {pause_hours} hours...")
+            print(f"Will resume at: {datetime.now() + timedelta(seconds=pause_seconds)}")
+            print(f"{'='*60}\n")
+            await asyncio.sleep(pause_seconds)
+            return {
+                **state,
+                "execution_attempt": 0,  # Reset attempt counter after long pause
+                "next_action": "retry",
+                "messages": [
+                    f"Resumed after {pause_hours}h rate-limit pause, retrying task"
+                ],
+            }
 
         if attempt < self.config.max_retries_per_task:
             return {

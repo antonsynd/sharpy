@@ -156,6 +156,7 @@ class Config:
     require_human_approval_for_critical: bool = True
     auto_commit: bool = False
     create_pr: bool = False
+    rate_limit_pause_hours: float = 3.0  # Hours to pause when all backends are rate-limited
 
     # Human-in-the-loop settings
     human_wait_timeout: float = 3600.0  # 1 hour default timeout for human responses
