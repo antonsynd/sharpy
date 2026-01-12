@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-11T23:03:38.914098",
+  "last_updated": "2026-01-11T23:06:43.436424",
   "phases": [
     {
       "id": "0.1.0",
@@ -588,7 +588,7 @@
             "src/Sharpy.Compiler/Parser/Parser.cs",
             "src/Sharpy.Compiler/Parser/Ast/Expression.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": true,

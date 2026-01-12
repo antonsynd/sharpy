@@ -475,8 +475,11 @@ class HumanLoopManager:
                 with open(review_file) as f:
                     data = json.load(f)
                 review = HumanReviewRequest.from_dict(data)
+                # Check if status is pending AND no response file exists
                 if review.status == "pending":
-                    pending.append(review)
+                    response_file = self.review_dir / f"{review.id}_response.json"
+                    if not response_file.exists():
+                        pending.append(review)
             except Exception:
                 continue
         return sorted(pending, key=lambda r: r.created_at, reverse=True)
