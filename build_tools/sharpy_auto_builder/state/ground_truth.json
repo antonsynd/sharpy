@@ -517,7 +517,7 @@
           "files": [
             "src/Sharpy.Compiler/Parser/Parser.cs"
           ],
-          "status": "in_progress",
+          "status": "completed",
           "executions": [
             {
               "attempt_number": 1,

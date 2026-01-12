@@ -295,7 +295,10 @@ public enum BinaryOperator
     IsNot,
 
     // Null coalescing
-    NullCoalesce
+    NullCoalesce,
+
+    // Pipe forward
+    PipeForward
 }
 
 /// <summary>

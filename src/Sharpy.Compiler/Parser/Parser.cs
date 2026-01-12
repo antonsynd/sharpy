@@ -1440,7 +1440,7 @@ public class Parser
 
     private Expression ParseComparison()
     {
-        var left = ParseBitwiseOr();
+        var left = ParsePipe();
 
         // Special case: "is" followed by a type name should be parsed as TypeCheck
         if (Current.Type == TokenType.Is && Peek(1).Type == TokenType.Identifier)
@@ -1494,7 +1494,7 @@ public class Parser
                 operators.Add(TokenTypeToComparisonOperator(op));
             }
 
-            operands.Add(ParseBitwiseOr());
+            operands.Add(ParsePipe());
         }
 
         if (operators.Count == 0)
@@ -1563,6 +1563,30 @@ public class Parser
         ComparisonOperator.IsNot => BinaryOperator.IsNot,
         _ => throw new ParserError($"Cannot convert comparison operator to binary: {op}", Current.Line, Current.Column)
     };
+
+    private Expression ParsePipe()
+    {
+        var left = ParseBitwiseOr();
+
+        while (Current.Type == TokenType.PipeForward)
+        {
+            Advance();
+            var right = ParseBitwiseOr();
+
+            left = new BinaryOp
+            {
+                Operator = BinaryOperator.PipeForward,
+                Left = left,
+                Right = right,
+                LineStart = left.LineStart,
+                ColumnStart = left.ColumnStart,
+                LineEnd = right.LineEnd,
+                ColumnEnd = right.ColumnEnd
+            };
+        }
+
+        return left;
+    }
 
     private Expression ParseBitwiseOr()
     {
@@ -1784,7 +1808,7 @@ public class Parser
                 var isNullConditional = Current.Type == TokenType.NullConditional;
                 Advance();
 
-                var member = ExpectIdentifier();
+                var member = ExpectIdentifierOrKeyword();
 
                 expr = new MemberAccess
                 {
@@ -2349,6 +2373,58 @@ public class Parser
         var value = Current.Value;
         Advance();
         return value;
+    }
+
+    /// <summary>
+    /// Expects an identifier or keyword token and returns its value as a string.
+    /// Used for member access where keywords can be used as member names (e.g., obj.property, obj.type).
+    /// </summary>
+    private string ExpectIdentifierOrKeyword()
+    {
+        if (Current.Type == TokenType.Identifier || IsKeywordToken(Current.Type))
+        {
+            var value = Current.Value;
+            Advance();
+            return value;
+        }
+        throw new ParserError($"Expected identifier, got {Current.Type}", Current.Line, Current.Column);
+    }
+
+    /// <summary>
+    /// Checks if a token type is a keyword that can be used as an identifier in member access context.
+    /// </summary>
+    private static bool IsKeywordToken(TokenType type)
+    {
+        return type switch
+        {
+            // Control flow keywords
+            TokenType.Def or TokenType.Class or TokenType.Struct or TokenType.Interface or
+            TokenType.Enum or TokenType.If or TokenType.Else or TokenType.Elif or
+            TokenType.While or TokenType.For or TokenType.In or TokenType.Return or
+            TokenType.Break or TokenType.Continue or TokenType.Pass or TokenType.Try or
+            TokenType.Except or TokenType.Finally or TokenType.Raise or TokenType.Assert or
+            TokenType.With or
+            // Import keywords
+            TokenType.Import or TokenType.From or TokenType.As or
+            // Type/Value keywords
+            TokenType.Auto or TokenType.Const or TokenType.Lambda or TokenType.Type or
+            // Pattern matching
+            TokenType.Match or TokenType.Case or
+            // Async keywords
+            TokenType.Async or TokenType.Await or TokenType.Yield or
+            // Member keywords
+            TokenType.Property or TokenType.Event or
+            // Other keywords
+            TokenType.Del or TokenType.To or TokenType.Maybe or
+            // Future keywords
+            TokenType.Defer or TokenType.Do or
+            // Boolean operators (keywords)
+            TokenType.And or TokenType.Or or TokenType.Not or TokenType.Is or
+            // Boolean literals
+            TokenType.True or TokenType.False or TokenType.None
+                => true,
+            _ => false
+        };
     }
 
     private void ExpectNewline()
