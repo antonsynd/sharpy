@@ -129,7 +129,7 @@ class Config:
             ),
             "copilot": BackendConfig(
                 name="copilot",
-                enabled=True,
+                enabled=False,  # Disabled by default - gh copilot CLI has limited non-interactive support
                 rate_limit=RateLimitConfig(
                     max_requests_per_window=100,
                     window_seconds=3600,
@@ -154,6 +154,10 @@ class Config:
     require_human_approval_for_critical: bool = True
     auto_commit: bool = False
     create_pr: bool = False
+
+    # Human-in-the-loop settings
+    human_wait_timeout: float = 3600.0  # 1 hour default timeout for human responses
+    human_check_interval: float = 5.0  # seconds between checks for human input
 
     def ensure_directories(self) -> None:
         """Create required directories if they don't exist."""

@@ -275,7 +275,8 @@ class GroundTruth:
                 if task.status == TaskStatus.PENDING:
                     # Check dependencies
                     deps_satisfied = all(
-                        self.get_task(dep).status == TaskStatus.COMPLETED # pyright: ignore[reportOptionalMemberAccess]
+                        self.get_task(dep).status
+                        == TaskStatus.COMPLETED  # pyright: ignore[reportOptionalMemberAccess]
                         for dep in task.dependencies
                         if self.get_task(dep)
                     )
@@ -362,8 +363,13 @@ def parse_task_list(content: str) -> GroundTruth:
     goal_pattern = re.compile(r"\*\*Goal\*\*: (.+?)(?:\n|$)")
     # Task pattern: ### Task X.X.X.X: Title or ### Task X.X.X.X
     task_pattern = re.compile(r"^### Task (\d+\.\d+\.\d+\.\d+):?\s*(.*)$", re.MULTILINE)
-    # File pattern: 📁 **Files**: `path` or 📁 **Files**:\n- `path`
-    file_pattern = re.compile(r"📁 \*\*Files?\*\*:?\s*`([^`]+)`", re.MULTILINE)
+    # File patterns - multiple ways files are referenced:
+    # 1. 📁 **Files**: `path` (single file inline)
+    # 2. 📁 **Files**:\n- `path` (list format)
+    # 3. Multiple backtick-quoted paths anywhere in task
+    file_pattern = re.compile(
+        r"`(src/[^`]+|tests/[^`]+)`"
+    )  # Match paths starting with src/ or tests/
 
     # Split content by phases
     phase_splits = list(phase_pattern.finditer(content))
@@ -399,8 +405,8 @@ def parse_task_list(content: str) -> GroundTruth:
             )
             task_content = phase_content[task_start:task_end]
 
-            # Extract files
-            files = file_pattern.findall(task_content)
+            # Extract files (deduplicated)
+            files = list(dict.fromkeys(file_pattern.findall(task_content)))
 
             # Determine if task is critical (marked with ⚠️ or "Potential Gap")
             is_critical = "⚠️" in task_content or "Potential Gap" in task_content

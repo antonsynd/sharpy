@@ -6,7 +6,7 @@ Automated implementation of Sharpy compiler tasks using GitHub Copilot CLI or Cl
 
 The Sharpy Auto Builder orchestrates the implementation of tasks from the implementation plan (`docs/implementation_planning/task_list_0.1.0_to_0.1.5.md`) using AI coding assistants. It provides:
 
-- **Multi-backend support**: Switch between GitHub Copilot CLI and Claude Code
+- **Multi-backend support**: Primary support for Claude Code, with limited GitHub Copilot CLI fallback
 - **Rate limiting**: Automatic handling of API rate limits with failover
 - **Validation agents**: Spec adherence, verification, and hallucination defense
 - **Human-in-the-loop**: Critical questions and review requests for humans
@@ -351,6 +351,16 @@ A task has dependencies that aren't completed. Check `status` for blocking tasks
 ### Rate limit errors
 
 The system handles these automatically with backoff. If persistent, wait 15-30 minutes.
+
+### GitHub Copilot CLI limitations
+
+The `gh copilot` CLI is designed for interactive shell command suggestions, not arbitrary code implementation. It's disabled by default. To enable it for experimentation:
+
+```bash
+./auto_builder.sh run --backend copilot
+```
+
+Note: Results will be limited. For full code implementation, use Claude Code.
 
 ## Development
 

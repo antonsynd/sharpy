@@ -6,6 +6,7 @@ Coordinates task execution, validation, and human-in-the-loop interactions.
 
 import asyncio
 import json
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -566,41 +567,65 @@ Provide:
         }
 
     async def _wait_for_human_node(self, state: OrchestratorState) -> OrchestratorState:
-        """Wait for human input."""
+        """Wait for human input with polling."""
         question_id = state.get("human_question_id")
         review_id = state.get("human_review_id")
 
-        if question_id:
-            # Check for answer
-            answer = self.human_loop.check_for_answer(question_id)
-            if answer:
-                return {
-                    **state,
-                    "awaiting_human_input": False,
-                    "human_response": {"type": "answer", "value": answer},
-                    "next_action": "process",
-                    "messages": [f"Human answered question {question_id}"],
-                }
+        # Configuration for waiting
+        check_interval = getattr(self.config, "human_check_interval", 5.0)
+        max_wait_time = getattr(self.config, "human_wait_timeout", 3600.0)
 
-        if review_id:
-            # Check for review response
-            response = self.human_loop.check_for_review_response(review_id)
-            if response:
-                return {
-                    **state,
-                    "awaiting_human_input": False,
-                    "human_response": {"type": "review", **response},
-                    "next_action": "process",
-                    "messages": [
-                        f"Human reviewed {review_id}: {response.get('status')}"
-                    ],
-                }
+        start_time = time.time()
+        check_count = 0
 
-        # Still waiting - in real implementation would pause here
+        while (time.time() - start_time) < max_wait_time:
+            check_count += 1
+
+            if question_id:
+                # Check for answer
+                answer = self.human_loop.check_for_answer(question_id)
+                if answer:
+                    return {
+                        **state,
+                        "awaiting_human_input": False,
+                        "human_response": {"type": "answer", "value": answer},
+                        "next_action": "process",
+                        "messages": [
+                            f"Human answered question {question_id} after {check_count} checks"
+                        ],
+                    }
+
+            if review_id:
+                # Check for review response
+                response = self.human_loop.check_for_review_response(review_id)
+                if response:
+                    return {
+                        **state,
+                        "awaiting_human_input": False,
+                        "human_response": {"type": "review", **response},
+                        "next_action": "process",
+                        "messages": [
+                            f"Human reviewed {review_id}: {response.get('status')} after {check_count} checks"
+                        ],
+                    }
+
+            # Log progress periodically
+            if check_count % 12 == 0:  # Every minute
+                elapsed = time.time() - start_time
+                print(
+                    f"[wait_for_human] Still waiting... ({elapsed:.0f}s elapsed, {check_count} checks)"
+                )
+
+            # Wait before next check
+            await asyncio.sleep(check_interval)
+
+        # Timeout reached
         return {
             **state,
-            "next_action": "timeout",  # For now, treat as timeout
-            "messages": ["Waiting for human input..."],
+            "next_action": "timeout",
+            "messages": [
+                f"Human input timeout after {max_wait_time}s ({check_count} checks)"
+            ],
         }
 
     async def _process_human_response_node(
@@ -699,15 +724,23 @@ Provide:
             elif state.get("execution_attempt", 0) >= self.config.max_retries_per_task:
                 task.status = TaskStatus.FAILED
 
-            # Update stats
+            # Update stats - normalize backend name and ensure key exists
+            backend_key = execution.backend.lower().replace("-", "_")
+            if backend_key not in self.ground_truth.backend_stats:
+                self.ground_truth.backend_stats[backend_key] = {
+                    "attempts": 0,
+                    "successes": 0,
+                    "failures": 0,
+                }
+
             self.ground_truth.total_attempts += 1
             if execution.success:
                 self.ground_truth.total_successes += 1
-                self.ground_truth.backend_stats[execution.backend]["successes"] += 1
+                self.ground_truth.backend_stats[backend_key]["successes"] += 1
             else:
                 self.ground_truth.total_failures += 1
-                self.ground_truth.backend_stats[execution.backend]["failures"] += 1
-            self.ground_truth.backend_stats[execution.backend]["attempts"] += 1
+                self.ground_truth.backend_stats[backend_key]["failures"] += 1
+            self.ground_truth.backend_stats[backend_key]["attempts"] += 1
 
         # Save updated ground truth
         self.ground_truth.save(Path(state["ground_truth_path"]))

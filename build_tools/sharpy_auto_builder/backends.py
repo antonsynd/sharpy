@@ -170,28 +170,28 @@ class ClaudeCodeBackend(Backend):
 
         try:
             # Build the command
+            # Claude Code CLI flags (matching generate_code_walkthroughs.py pattern):
+            # --print: Non-interactive output mode
+            # --allowedTools: Restrict to specific tools for safety
+            # --prompt: The prompt to execute
             cmd = [
                 self.claude_code_path,
-                "--print",  # Print output instead of interactive
-                "--model",
-                self.config.model,
+                "--print",
+                "--allowedTools",
+                "Read,Write,Edit,Bash",  # Need all tools for implementation
+                "--prompt",
+                prompt,
             ]
-
-            # Add context files if provided
-            if context and "files" in context:
-                for file_path in context["files"]:
-                    cmd.extend(["--file", str(file_path)])
 
             # Run Claude Code
             process = await asyncio.create_subprocess_exec(
                 *cmd,
-                stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=self.project_root,
             )
 
-            stdout, stderr = await process.communicate(input=prompt.encode())
+            stdout, stderr = await process.communicate()
 
             duration = time.time() - start_time
 
@@ -271,54 +271,83 @@ class ClaudeCodeBackend(Backend):
 
 
 class CopilotBackend(Backend):
-    """Backend for GitHub Copilot CLI."""
+    """Backend for GitHub Copilot CLI (standalone `copilot` command).
+
+    This uses the standalone Copilot CLI tool (not `gh copilot` which is limited
+    to shell command suggestions). The standalone CLI supports:
+    - --prompt: Execute arbitrary prompts
+    - --allow-tool: Explicitly allow specific tools (read, write, edit, bash)
+
+    Security: Only the specified tools are allowed, preventing unintended
+    file operations or command execution.
+    """
 
     def __init__(self, config: BackendConfig, project_root: Path):
         super().__init__(config, project_root)
-        self.copilot_cli_path = config.copilot_cli_path or "gh"
+        # Use standalone 'copilot' CLI, not 'gh copilot' which is for shell suggestions only
+        self.copilot_cli_path = config.copilot_cli_path or "copilot"
 
     async def execute(
         self, prompt: str, context: dict[str, Any] | None = None
     ) -> ExecutionResult:
-        """Execute a prompt using GitHub Copilot CLI."""
+        """Execute a prompt using GitHub Copilot CLI.
+
+        Uses the standalone `copilot` CLI with explicit tool permissions.
+        """
         await self.wait_for_availability()
         self.rate_limit_state.record_request()
 
         start_time = time.time()
 
         try:
-            # Use gh copilot suggest or gh copilot explain
+            # Copilot CLI flags (matching generate_code_walkthroughs.py pattern):
+            # --prompt: The prompt to execute
+            # --allow-tool: Explicitly allow specific tools for safety
             cmd = [
                 self.copilot_cli_path,
-                "copilot",
-                "suggest",  # or "explain" depending on the task
-                "-t",
-                "shell",  # target type
+                "--prompt",
+                prompt,
+                "--allow-tool",
+                "read",
+                "--allow-tool",
+                "write",
+                "--allow-tool",
+                "edit",
+                "--allow-tool",
+                "bash",
             ]
 
             # Run Copilot CLI
             process = await asyncio.create_subprocess_exec(
                 *cmd,
-                stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=self.project_root,
             )
 
-            stdout, stderr = await process.communicate(input=prompt.encode())
+            stdout, stderr = await process.communicate()
 
             duration = time.time() - start_time
 
-            if process.returncode == 0:
+            output = stdout.decode()
+            error_output = stderr.decode()
+
+            # Copilot CLI often returns exit code 0 but with prompts/errors in output
+            # Check if it actually produced useful output
+            if process.returncode == 0 and output and "?" not in output[:50]:
                 self.rate_limit_state.record_success()
                 return ExecutionResult(
                     success=True,
-                    output=stdout.decode(),
+                    output=output,
                     duration_seconds=duration,
                     backend=self.name,
                 )
             else:
-                error_msg = stderr.decode()
+                # Copilot CLI is interactive and likely needs user input
+                error_msg = (
+                    error_output
+                    or "GitHub Copilot CLI requires interactive input. Consider using Claude Code backend for code generation tasks."
+                )
                 rate_limited = "rate limit" in error_msg.lower() or "429" in error_msg
 
                 if rate_limited:
@@ -326,7 +355,7 @@ class CopilotBackend(Backend):
 
                 return ExecutionResult(
                     success=False,
-                    output=stdout.decode(),
+                    output=output,
                     error=error_msg,
                     duration_seconds=duration,
                     backend=self.name,
@@ -337,7 +366,7 @@ class CopilotBackend(Backend):
             return ExecutionResult(
                 success=False,
                 output="",
-                error=f"GitHub CLI not found at: {self.copilot_cli_path}",
+                error=f"Copilot CLI not found at: {self.copilot_cli_path}. Ensure the standalone 'copilot' CLI is installed and in PATH.",
                 backend=self.name,
             )
         except Exception as e:
