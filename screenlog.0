@@ -1,0 +1,56 @@
+]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy]1337;ShellIntegrationVersion=14;shell=zsh[1m[7m%[27m[1m[0m                                                                                             ]133;D;0]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004hrm docs/implementation_walkthrough/execution_log.jsonl[54D                                                      [54D
+bck-i-search: _[K[A[8Crm docs/implementation_walkth[4mr[24mough/execution_log.jsonl[1B[63Dr_[A[36C[29D./build_tools/auto_builder.sh[24m [4mr[4mu[24mn                     [1B[62Du_[A[36C[1C[4mu[4mn[24m[1B[40Dn_[A[35C[24mr[24mu[24mn[1B[K[A[56C[?2004l[1B]133;C;^CTraceback (most recent call last):
+  File "/Users/anton/github/sharpy/build_tools/sharpy_auto_builder/run.py", line 40, in <module>
+    from sharpy_auto_builder.cli import main
+  File "/Users/anton/github/sharpy/build_tools/sharpy_auto_builder/__init__.py", line 47, in <module>
+    from .orchestrator import Orchestrator, OrchestratorState
+  File "/Users/anton/github/sharpy/build_tools/sharpy_auto_builder/orchestrator.py", line 17, in <module>
+    from langgraph.graph import StateGraph, END
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/langgraph/graph/__init__.py", line 2, in <module>
+    from langgraph.graph.message import MessageGraph, MessagesState, add_messages
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/langgraph/graph/message.py", line 26, in <module>
+    from langgraph.graph.state import StateGraph
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/langgraph/graph/state.py", line 25, in <module>
+    from langchain_core.runnables import Runnable, RunnableConfig
+  File "<frozen importlib._bootstrap>", line 1412, in _handle_fromlist
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/langchain_core/runnables/__init__.py", line 129, in __getattr__
+    result = import_attr(attr_name, module_name, __spec__.parent)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/langchain_core/_import_utils.py", line 35, in import_attr
+    module = import_module(f".{module_name}", package=package)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/anaconda3/lib/python3.12/importlib/__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/langchain_core/runnables/base.py", line 44, in <module>
+    from langchain_core.callbacks.manager import AsyncCallbackManager, CallbackManager
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/langchain_core/callbacks/manager.py", line 40, in <module>
+    from langchain_core.tracers.stdout import ConsoleCallbackHandler
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1322, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1262, in _find_spec
+  File "<frozen importlib._bootstrap_external>", line 1532, in find_spec
+  File "<frozen importlib._bootstrap_external>", line 1506, in _get_spec
+  File "<frozen importlib._bootstrap_external>", line 1638, in find_spec
+  File "<frozen importlib._bootstrap_external>", line 161, in _path_isfile
+  File "<frozen importlib._bootstrap_external>", line 153, in _path_is_mode_type
+  File "<frozen importlib._bootstrap_external>", line 147, in _path_stat
+KeyboardInterrupt
+
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;130]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h
+bck-i-search: _[K[A[8C./build_tools/auto_bu[4mi[24mlder.sh run[1B[42Di_[A[28C[21Dpip [4mi[4mn[24mstall -r build_[24mtools/[2Carpy_auto_builder/requirements.txt[1B[71Dn_[A[10C./[13P[12C[7P[12C.sh [4mi[4mn[4mi[24mt                             [1B[70Di_[A[35C[2C[4mi[4mt[24m[1B[40Dt_[A[34C[24mi[24mn[24mi[24mt[1B[K[A[53C[?2004l[1B]133;C;Initialized Sharpy Auto Builder
+  Ground truth: /Users/anton/Documents/github/sharpy/build_tools/sharpy_auto_builder/state/ground_truth.json
+  Config: /Users/anton/Documents/github/sharpy/build_tools/sharpy_auto_builder/state/config.json
+  Phases: 6
+  Total tasks: 42
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;0]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004hggit  g  ./build_tools/auto_builder.sh init[?2004l
+]133;C;Initialized Sharpy Auto Builder
+  Ground truth: /Users/anton/Documents/github/sharpy/build_tools/sharpy_auto_builder/state/ground_truth.json
+  Config: /Users/anton/Documents/github/sharpy/build_tools/sharpy_auto_builder/state/config.json
+  Phases: 6
+  Total tasks: 42
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;0]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h
