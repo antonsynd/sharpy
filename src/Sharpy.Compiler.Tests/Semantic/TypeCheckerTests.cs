@@ -1179,4 +1179,71 @@ X += 5
     }
 
     #endregion
+
+    #region Keyword Argument Tests
+
+    [Fact]
+    public void KeywordArgument_ValidUsage_NoError()
+    {
+        var source = @"
+def greet(name: str, greeting: str = 'Hello') -> str:
+    return greeting + ', ' + name
+
+result: str = greet('World', greeting='Hi')
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void KeywordArgument_UnknownParameter_ReportsError()
+    {
+        var source = @"
+def greet(name: str) -> str:
+    return 'Hello, ' + name
+
+greet(unknown='test')
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Errors[0].Message.Should().Contain("Unknown keyword argument 'unknown'");
+    }
+
+    [Fact]
+    public void KeywordArgument_DuplicatePositionalAndKeyword_ReportsError()
+    {
+        var source = @"
+def greet(name: str, greeting: str = 'Hello') -> str:
+    return greeting + ', ' + name
+
+greet('World', name='Alice')
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Errors[0].Message.Should().Contain("Argument 'name' was already provided positionally");
+    }
+
+    [Fact]
+    public void KeywordArgument_TypeMismatch_ReportsError()
+    {
+        var source = @"
+def greet(name: str, count: int = 1) -> str:
+    return name
+
+greet('World', count='not an int')
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Errors[0].Message.Should().Contain("Cannot pass argument of type");
+    }
+
+    #endregion
 }

@@ -1996,6 +1996,7 @@ public class Parser
                 Advance();
                 var args = new List<Expression>();
                 var kwargs = new List<KeywordArgument>();
+                var seenKeywordArg = false;
 
                 if (Current.Type != TokenType.RightParen)
                 {
@@ -2004,6 +2005,7 @@ public class Parser
                         // Check for keyword argument
                         if (Current.Type == TokenType.Identifier && Peek().Type == TokenType.Assign)
                         {
+                            seenKeywordArg = true;
                             var kwargStartLine = Current.Line;
                             var kwargStartColumn = Current.Column;
                             var name = Current.Value;
@@ -2025,6 +2027,10 @@ public class Parser
                         }
                         else
                         {
+                            if (seenKeywordArg)
+                            {
+                                throw new ParserError("Positional argument cannot follow keyword argument", Current.Line, Current.Column);
+                            }
                             args.Add(ParseExpression());
                         }
 

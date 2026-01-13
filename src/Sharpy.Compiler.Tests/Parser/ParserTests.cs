@@ -1558,6 +1558,15 @@ class Pair[T, U]:
         call.KeywordArguments[0].Name.Should().Be("z");
     }
 
+    [Fact]
+    public void ParseFunctionCallPositionalAfterKeywordThrows()
+    {
+        // foo(x=1, 2) - positional after keyword is a syntax error
+        var action = () => Parse("foo(x=1, 2)");
+        action.Should().Throw<ParserError>()
+            .WithMessage("*Positional argument cannot follow keyword argument*");
+    }
+
     #endregion
 
     #region From Import All Tests
