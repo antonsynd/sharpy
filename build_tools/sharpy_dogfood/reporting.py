@@ -21,6 +21,7 @@ class IssueType(str, Enum):
     EXECUTION_FAILED = "execution_failed"
     OUTPUT_MISMATCH = "output_mismatch"
     TIMEOUT = "timeout"
+    SKIPPED = "skipped"  # Generated code uses unsupported features - not a bug
 
 
 @dataclass
@@ -227,6 +228,7 @@ class SummaryReporter:
         issue_type: Optional[IssueType] = None,
         issue_dir: Optional[Path] = None,
         duration: float = 0.0,
+        skip_reason: Optional[str] = None,
     ) -> None:
         """Record a single run."""
         self.runs.append(
@@ -239,6 +241,7 @@ class SummaryReporter:
                 "issue_dir": str(issue_dir) if issue_dir else None,
                 "duration": duration,
                 "timestamp": datetime.now().isoformat(),
+                "skip_reason": skip_reason,
             }
         )
 
@@ -246,7 +249,8 @@ class SummaryReporter:
         """Generate a summary report of all runs."""
         total = len(self.runs)
         successful = sum(1 for r in self.runs if r["success"])
-        failed = total - successful
+        skipped = sum(1 for r in self.runs if r["issue_type"] == "skipped")
+        failed = total - successful - skipped
 
         # Count issues by type
         issue_counts = {}
@@ -274,6 +278,11 @@ class SummaryReporter:
                 if total > 0
                 else "- **Failed:** 0"
             ),
+            (
+                f"- **Skipped:** {skipped} ({100*skipped/total:.1f}%)"
+                if total > 0
+                else "- **Skipped:** 0"
+            ),
             "",
         ]
 
@@ -288,8 +297,12 @@ class SummaryReporter:
                 lines.append(f"- **{issue_type}:** {count}")
             lines.append("")
 
-        # Recent failures
-        failures = [r for r in self.runs if not r["success"]][-10:]
+        # Recent failures (excluding skips)
+        failures = [
+            r
+            for r in self.runs
+            if not r["success"] and r["issue_type"] != "skipped"
+        ][-10:]
         if failures:
             lines.extend(
                 [
@@ -298,11 +311,27 @@ class SummaryReporter:
                 ]
             )
             for f in failures:
-                issue_dir = f["issue_dir"]
+                issue_dir = f["issue_dir"] or "N/A"
                 lines.append(
                     f"- [{f['issue_type']}]({issue_dir}) - "
                     f"{f['feature_focus']}/{f['complexity']} - "
                     f"{f['duration']:.1f}s"
+                )
+            lines.append("")
+
+        # Recent skips (for debugging generation quality)
+        skips = [r for r in self.runs if r["issue_type"] == "skipped"][-5:]
+        if skips:
+            lines.extend(
+                [
+                    "## Recent Skips",
+                    "",
+                ]
+            )
+            for s in skips:
+                reason = s.get("skip_reason", "Unknown")
+                lines.append(
+                    f"- {s['feature_focus']}/{s['complexity']} - {reason}"
                 )
             lines.append("")
 

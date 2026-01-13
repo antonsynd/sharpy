@@ -8,7 +8,9 @@ import asyncio
 import random
 import re
 import sys
+from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from typing import Optional
 
@@ -23,6 +25,23 @@ from .prompts import (
     extract_code_block,
 )
 from .reporting import Issue, IssueType, IssueReporter, SummaryReporter
+
+
+class IterationStatus(Enum):
+    """Status of a dogfooding iteration."""
+
+    SUCCESS = "success"  # Test passed
+    FAILED = "failed"  # Test failed - compiler bug
+    SKIPPED = "skipped"  # Skipped - generated code uses unsupported features
+
+
+@dataclass
+class IterationResult:
+    """Result of a single dogfooding iteration."""
+
+    status: IterationStatus
+    issue_dir: Optional[Path] = None
+    skip_reason: Optional[str] = None
 
 
 def _outputs_equivalent(expected: str, actual: str, rel_tol: float = 1e-9) -> bool:
@@ -239,8 +258,12 @@ class DogfoodOrchestrator:
         iteration: int,
         feature_focus: str,
         complexity: str,
-    ) -> tuple[bool, Optional[Path]]:
-        """Run a single dogfooding iteration."""
+    ) -> IterationResult:
+        """Run a single dogfooding iteration.
+
+        Returns:
+            IterationResult with status (SUCCESS, FAILED, or SKIPPED) and optional issue_dir
+        """
         print(f"\n{'='*60}", file=sys.stderr)
         print(f"Iteration {iteration}: {feature_focus} ({complexity})", file=sys.stderr)
         print(f"{'='*60}", file=sys.stderr)
@@ -263,7 +286,7 @@ class DogfoodOrchestrator:
                 generation_duration=gen_result.duration_seconds,
             )
             issue_dir = self.issue_reporter.report(issue)
-            return False, issue_dir
+            return IterationResult(IterationStatus.FAILED, issue_dir)
 
         code = extract_code_block(gen_result.output) or gen_result.output
         expected_output = extract_expected_output(code)
@@ -277,7 +300,10 @@ class DogfoodOrchestrator:
                 "  Skipping (generated code uses features beyond phases 0.1.0-0.1.5)",
                 file=sys.stderr,
             )
-            return False, None
+            return IterationResult(
+                IterationStatus.SKIPPED,
+                skip_reason=f"Unsupported feature: {prevalidation_error}",
+            )
 
         # Step 2: Validate against spec (AI-based detailed check)
         print("\n[2/4] Validating against spec...", file=sys.stderr)
@@ -286,12 +312,18 @@ class DogfoodOrchestrator:
             print(f"  Validation failed: {val_result.error}", file=sys.stderr)
             # Skip this iteration rather than reporting as issue
             # Invalid generated code is not a compiler bug
-            return False, None
+            return IterationResult(
+                IterationStatus.SKIPPED,
+                skip_reason=f"Validation backend error: {val_result.error}",
+            )
 
         validation_output = val_result.output
         if "INVALID" in validation_output.upper():
             print(f"  Code is invalid per spec, skipping", file=sys.stderr)
-            return False, None
+            return IterationResult(
+                IterationStatus.SKIPPED,
+                skip_reason="Generated code invalid per spec",
+            )
 
         print("  Code validated successfully", file=sys.stderr)
 
@@ -343,7 +375,7 @@ class DogfoodOrchestrator:
                 )
                 issue_dir = self.issue_reporter.report(issue)
                 print(f"  Issue reported: {issue_dir.name}", file=sys.stderr)
-                return False, issue_dir
+                return IterationResult(IterationStatus.FAILED, issue_dir)
 
         actual_output = run_result.output.strip()
         print(
@@ -382,14 +414,14 @@ class DogfoodOrchestrator:
                             execution_duration=run_result.duration_seconds,
                         )
                     issue_dir = self.issue_reporter.report(issue)
-                    return False, issue_dir
+                    return IterationResult(IterationStatus.FAILED, issue_dir)
         else:
             print(
                 "  No expected output specified, skipping verification", file=sys.stderr
             )
 
         print("\n✓ Iteration completed successfully!", file=sys.stderr)
-        return True, None
+        return IterationResult(IterationStatus.SUCCESS)
 
     async def _generate_code(self, feature_focus: str, complexity: str) -> AIResult:
         """Generate Sharpy code using AI."""
@@ -511,6 +543,7 @@ class DogfoodOrchestrator:
 
         successful = 0
         failed = 0
+        skipped = 0
 
         for i in range(1, max_iterations + 1):
             # Randomize feature focus and complexity
@@ -519,12 +552,10 @@ class DogfoodOrchestrator:
 
             start_time = datetime.now()
             try:
-                success, issue_dir = await self.run_iteration(
-                    i, feature_focus, complexity
-                )
+                result = await self.run_iteration(i, feature_focus, complexity)
                 duration = (datetime.now() - start_time).total_seconds()
 
-                if success:
+                if result.status == IterationStatus.SUCCESS:
                     successful += 1
                     self.summary_reporter.add_run(
                         i,
@@ -533,13 +564,24 @@ class DogfoodOrchestrator:
                         success=True,
                         duration=duration,
                     )
-                else:
+                elif result.status == IterationStatus.SKIPPED:
+                    skipped += 1
+                    self.summary_reporter.add_run(
+                        i,
+                        feature_focus,
+                        complexity,
+                        success=False,
+                        issue_type=IssueType.SKIPPED,
+                        duration=duration,
+                        skip_reason=result.skip_reason,
+                    )
+                else:  # FAILED
                     failed += 1
                     issue_type = None
-                    if issue_dir:
+                    if result.issue_dir:
                         # Extract issue type from the directory name
                         for it in IssueType:
-                            if it.value in issue_dir.name:
+                            if it.value in result.issue_dir.name:
                                 issue_type = it
                                 break
                     self.summary_reporter.add_run(
@@ -548,12 +590,15 @@ class DogfoodOrchestrator:
                         complexity,
                         success=False,
                         issue_type=issue_type,
-                        issue_dir=issue_dir,
+                        issue_dir=result.issue_dir,
                         duration=duration,
                     )
 
             except Exception as e:
+                import traceback
+
                 print(f"ERROR in iteration {i}: {e}", file=sys.stderr)
+                traceback.print_exc(file=sys.stderr)
                 failed += 1
                 self.summary_reporter.add_run(
                     i,
@@ -561,7 +606,8 @@ class DogfoodOrchestrator:
                     complexity,
                     success=False,
                     issue_type=IssueType.EXECUTION_FAILED,
-                    duration=0,
+                    duration=(datetime.now() - start_time).total_seconds(),
+                    skip_reason=f"Unexpected error: {str(e)}",
                 )
 
             # Save summary after each iteration
@@ -573,7 +619,9 @@ class DogfoodOrchestrator:
         print(f"{'='*60}", file=sys.stderr)
         print(f"Successful: {successful}/{max_iterations}", file=sys.stderr)
         print(f"Failed: {failed}/{max_iterations}", file=sys.stderr)
+        print(f"Skipped: {skipped}/{max_iterations}", file=sys.stderr)
         print(f"\nIssues saved to: {self.config.issues_dir}", file=sys.stderr)
         print(f"Summary: {self.config.output_dir / 'SUMMARY.md'}", file=sys.stderr)
 
+        # Return success if no actual failures (skips don't count)
         return 0 if failed == 0 else 1

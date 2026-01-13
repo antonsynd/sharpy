@@ -325,7 +325,29 @@ class CopilotBackend(Backend):
 
     def __init__(self, config: BackendConfig, project_root: Path):
         super().__init__(config, project_root)
-        self.cli_path = config.copilot_cli_path or "/opt/homebrew/bin/copilot"
+        # Try common paths for the Copilot CLI
+        self.cli_path = config.copilot_cli_path or self._find_copilot_cli()
+
+    def _find_copilot_cli(self) -> str:
+        """Find the Copilot CLI executable."""
+        import os
+
+        # Check common installation locations
+        candidates = [
+            # VS Code global storage (macOS)
+            Path.home()
+            / "Library/Application Support/Code/User/globalStorage/github.copilot-chat/copilotCli/copilot",
+            # Homebrew (legacy)
+            Path("/opt/homebrew/bin/copilot"),
+            # Standard PATH
+            Path("/usr/local/bin/copilot"),
+        ]
+        for path in candidates:
+            if path.exists():
+                return str(path)
+
+        # Fall back to assuming it's in PATH
+        return "copilot"
 
     async def execute(
         self, prompt: str, timeout: Optional[float] = None
@@ -338,21 +360,15 @@ class CopilotBackend(Backend):
         effective_timeout = timeout or self.config.execution_timeout
 
         try:
-            # Write prompt to a temp file to avoid shell escaping issues
-            import tempfile
-
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".txt", delete=False
-            ) as f:
-                f.write(prompt)
-                prompt_file = f.name
-
+            # Use --prompt flag for direct prompt input (new CLI API)
+            # --allow-all-tools enables non-interactive execution
             cmd = [
                 self.cli_path,
-                "-t",
-                "agent",
-                "-f",
-                prompt_file,
+                "--prompt",
+                prompt,
+                "--allow-all-tools",
+                "--add-dir",
+                str(self.project_root),
             ]
 
             process = await asyncio.create_subprocess_exec(
@@ -384,14 +400,6 @@ class CopilotBackend(Backend):
                     backend=self.name,
                     timed_out=True,
                 )
-            finally:
-                # Clean up temp file
-                import os
-
-                try:
-                    os.unlink(prompt_file)
-                except Exception:
-                    pass
 
             duration = time.time() - start_time
             stdout_text = stdout.decode()
@@ -476,36 +484,77 @@ class BackendManager:
         return None
 
     async def execute(
-        self, prompt: str, timeout: Optional[float] = None
+        self, prompt: str, timeout: Optional[float] = None, max_retries: int = 3
     ) -> ExecutionResult:
-        """Execute prompt using the best available backend with failover."""
-        for name in self.BACKEND_PRIORITY:
-            if name not in self.backends:
-                continue
+        """Execute prompt using the best available backend with failover and retry.
 
-            backend = self.backends[name]
-            if not backend.is_available:
-                wait_time = backend.get_wait_time()
+        Args:
+            prompt: The prompt to execute
+            timeout: Optional timeout in seconds
+            max_retries: Maximum number of retry attempts when all backends are unavailable
+
+        Returns:
+            ExecutionResult with success/failure status
+        """
+        retry_backoff = 5.0  # Initial backoff in seconds
+        max_backoff = 60.0  # Maximum backoff time
+
+        for retry in range(max_retries + 1):
+            if retry > 0:
+                # Wait with exponential backoff before retry
+                wait_time = min(retry_backoff * (2 ** (retry - 1)), max_backoff)
                 print(
-                    f"[{name}] Not available, wait time: {wait_time:.1f}s",
+                    f"[Retry {retry}/{max_retries}] Waiting {wait_time:.1f}s before retry...",
                     file=sys.stderr,
                 )
-                continue
+                await asyncio.sleep(wait_time)
 
-            print(f"[{name}] Executing prompt...", file=sys.stderr)
-            result = await backend.execute(prompt, timeout)
+            for name in self.BACKEND_PRIORITY:
+                if name not in self.backends:
+                    continue
 
-            if result.success or not result.rate_limited:
-                return result
+                backend = self.backends[name]
+                if not backend.is_available:
+                    wait_time = backend.get_wait_time()
+                    print(
+                        f"[{name}] Not available, wait time: {wait_time:.1f}s",
+                        file=sys.stderr,
+                    )
+                    continue
 
-            # Rate limited, try next backend
-            print(f"[{name}] Rate limited, trying next backend...", file=sys.stderr)
+                print(f"[{name}] Executing prompt...", file=sys.stderr)
+                result = await backend.execute(prompt, timeout)
 
-        # All backends exhausted
+                if result.success:
+                    return result
+
+                if not result.rate_limited:
+                    # Failed but not rate limited - this is a real error, return it
+                    return result
+
+                # Rate limited, try next backend
+                print(f"[{name}] Rate limited, trying next backend...", file=sys.stderr)
+
+            # Check if any backend might become available soon
+            min_wait = float("inf")
+            for name in self.BACKEND_PRIORITY:
+                if name in self.backends:
+                    wait = self.backends[name].get_wait_time()
+                    if wait < min_wait:
+                        min_wait = wait
+
+            if min_wait < float("inf") and min_wait > 0 and retry < max_retries:
+                # A backend will become available - wait for it
+                print(
+                    f"[BackendManager] Backend will be available in {min_wait:.1f}s",
+                    file=sys.stderr,
+                )
+
+        # All backends exhausted after retries
         return ExecutionResult(
             success=False,
             output="",
-            error="All backends are unavailable or rate limited",
+            error=f"All backends are unavailable or rate limited after {max_retries} retries",
             backend="none",
         )
 
