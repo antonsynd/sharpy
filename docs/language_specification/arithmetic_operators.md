@@ -31,14 +31,14 @@ mathematical quotient (rounds toward negative infinity).
 
 | Operands | Result Type |
 |----------|-------------|
-| Any integer types | `int64` |
+| Any integer types | `int32` |
 | Any float type | Same float type |
 | Mixed integer and float | Float type of the float operand |
 
 **Examples:**
 ```python
-7 // 3      # 2 (int64)
--7 // 3     # -3 (int64), not -2
+7 // 3      # 2 (int32)
+-7 // 3     # -3 (int32), not -2
 7.5 // 2.0  # 3.0 (float64)
 7 // 2.0    # 3.0 (float64) - mixed: result is float64
 7.0 // 2    # 3.0 (float64) - mixed: result is float64
@@ -50,7 +50,7 @@ mathematical quotient (rounds toward negative infinity).
 - *Standard: ✅ Native*
 - *`**`: 🔄 Lowered to `Math.Pow()`*
 - *`/`: 🔄 Lowered to floating-point division. See table above.*
-- *`//`: 🔄 Lowered to `(long)Math.Floor((double)a / b)` for integers,
+- *`//`: 🔄 Lowered to `(int)Math.Floor((double)a / b)` for integers,
 `Math.Floor(a / b)` for floats.*
 
 ## Numeric Type Promotion

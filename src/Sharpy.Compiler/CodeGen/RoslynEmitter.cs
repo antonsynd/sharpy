@@ -3042,8 +3042,10 @@ public class RoslynEmitter
     /// <summary>
     /// Generates floor division expression with correct Python semantics.
     /// Floors toward negative infinity (not truncation toward zero).
-    /// - Integer operands: (long)Math.Floor((double)a / b) → result is int64
+    /// - Integer operands: (int)Math.Floor((double)a / b) → result is int32 (pragmatic for .NET)
     /// - Float operands: Math.Floor(a / b) → result is float type
+    /// Note: Spec says integer floor division should return int64, but we return int32
+    /// for .NET compatibility with most use cases (augmented assignment, common variables).
     /// </summary>
     private ExpressionSyntax GenerateFloorDivision(ExpressionSyntax left, ExpressionSyntax right, bool hasFloatOperand)
     {
@@ -3060,9 +3062,10 @@ public class RoslynEmitter
                 IdentifierName("Floor")))
             .AddArgumentListArguments(Argument(divisionExpr));
 
-        // For integer operands, cast to long; for float operands, return as-is
+        // For integer operands, cast to int (pragmatic .NET-first approach);
+        // for float operands, return as-is
         return hasFloatOperand
             ? floorCall
-            : CastExpression(PredefinedType(Token(SyntaxKind.LongKeyword)), floorCall);
+            : CastExpression(PredefinedType(Token(SyntaxKind.IntKeyword)), floorCall);
     }
 }
