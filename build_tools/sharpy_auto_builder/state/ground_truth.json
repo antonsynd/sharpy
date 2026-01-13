@@ -1,13 +1,13 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-13T09:29:08.216649",
+  "last_updated": "2026-01-13T09:38:30.135527",
   "phases": [
     {
       "id": "0.1.1",
       "name": "Parser Foundation - Remediation",
       "goal": "",
       "status": "in_progress",
-      "progress": 0.0,
+      "progress": 20.0,
       "tasks": [
         {
           "id": "R-0.1.1.1",
@@ -17,8 +17,46 @@
           "files": [
             "src/Sharpy.Compiler/Parser/Parser.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude_code",
+              "started_at": "2026-01-13T09:38:30.131930",
+              "completed_at": "2026-01-13T09:38:30.131936",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T09:38:30.131903",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the information needed to write the spec adherence report. Let me compile the findings:\n\n## Spec Adherence Report: Verify Keyword-as-Member-Name Bug Resolution\n\n**Spec:** `docs/language_specification/keywords.md`, `docs/language_specification/identifiers.md`, `docs/language_specification/expressions.md`\n**Implementation:** `src/Sharpy.Compiler/Parser/Parser.cs`\n\n### Spec Requirements Analysis\n\nThe specification defines the following relevant requirements:\n\n1. **keywords.md**: Lists hard keywords (lines 3-54) that are reserved and cannot be used as standalone identifiers\n2. **identifiers.md** (line 18): States \"Cannot be a keyword\" for identifiers\n3. **identifiers.md** (lines 43-58): Defines **Literal Names (Backtick Escaping)** which allows using keywords as identifiers via backtick syntax: `` `class` ``\n4. **expressions.md** (lines 22-32): Defines member access syntax `obj.field` and `obj?.field`\n\n**Critical Observation**: The specification does **not explicitly state** whether keywords can be used as member names after the dot operator without backtick escaping. This is an **undocumented behavior**.\n\n### Implementation Analysis\n\nThe implementation in `Parser.cs` allows keywords as member names:\n\n- **Line 1970**: `ParsePostfix()` calls `ExpectIdentifierOrKeyword()` for member access after `.` or `?.`\n- **Lines 2558-2567**: `ExpectIdentifierOrKeyword()` accepts both `TokenType.Identifier` and keyword tokens\n- **Lines 2572-2603**: `IsKeywordToken()` returns `true` for all keyword token types\n\n### Compliant\n\n- [x] **Member Access Syntax**: `obj.field` and `obj?.field` patterns work as specified (expressions.md:22-32)\n- [x] **Null-Conditional Access**: Both `.` and `?.` operators use the same `ExpectIdentifierOrKeyword()` logic (Parser.cs:1965-1970)\n- [x] **Standard Identifier Parsing**: Regular identifiers work correctly in member access context\n\n### Deviations\n\n- [ ] **Undocumented Behavior**: Keywords as member names without backtick escaping\n  - **Spec says:** identifiers.md only documents backtick escaping (lines 43-58) for using keywords as identifiers: `` `class`() ``\n  - **Implementation:** Allows `obj.class`, `obj.property`, `obj.type` etc. without backtick escaping in member access context\n  - **Impact:** **Low** - This is a permissive enhancement that improves .NET interop but is not documented\n\n### Detailed Findings\n\n| Keyword Category | Tokens in `IsKeywordToken()` | Spec Coverage |\n|-----------------|------------------------------|---------------|\n| Control flow | `def`, `class`, `struct`, `interface`, `enum`, `if`, `else`, `elif`, `while`, `for`, `in`, `return`, `break`, `continue`, `pass`, `try`, `except`, `finally`, `raise`, `assert`, `with` | Listed in keywords.md \u2705 |\n| Import | `import`, `from`, `as` | Listed in keywords.md \u2705 |\n| Type/Value | `auto`, `const`, `lambda`, `type` | Listed in keywords.md \u2705 |\n| Pattern matching | `match`, `case` | Listed in keywords.md \u2705 |\n| Async | `async`, `await`, `yield` | Listed in keywords.md \u2705 |\n| Member | `property`, `event` | Listed in keywords.md \u2705 |\n| Delete | `del`, `to`, `maybe` | Listed in keywords.md \u2705 |\n| Future | `defer`, `do` | Listed in keywords.md \u2705 |\n| Boolean ops | `and`, `or`, `not`, `is` | Listed in keywords.md \u2705 |\n| Literals | `True`, `False`, `None` | Listed in keywords.md \u2705 |\n\n**All keywords in `IsKeywordToken()` are documented in the specification.**\n\n### Verification of Implementation Correctness\n\nThe implementation correctly handles member access at `Parser.cs:1959-1982`:\n\n```csharp\nif (Current.Type == TokenType.Dot || Current.Type == TokenType.NullConditional)\n{\n    var isNullConditional = Current.Type == TokenType.NullConditional;\n    Advance();\n    var member = ExpectIdentifierOrKeyword();  // Line 1970 - Key fix\n    expr = new MemberAccess { ... };\n}\n```\n\n### Recommendations\n\n1. **Document the behavior**: Add to `docs/language_specification/expressions.md` or `keywords.md`:\n   ```markdown\n   ## Keywords as Member Names\n   \n   Keywords may be used as member names after the `.` or `?.` operators without\n   backtick escaping. This supports .NET interop where types may have members\n   named `type`, `property`, `class`, etc.\n   \n   ```python\n   obj.type          # Accessing member named 'type'\n   result.class      # Accessing member named 'class' \n   value?.property   # Null-conditional access to 'property' member\n   ```\n   ```\n\n2. **Add explicit tests**: Consider adding parser tests specifically for keyword-as-member-name scenarios with clearly reserved keywords like `for`, `if`, `class`, `while`.\n\n### Summary\n\n| Aspect | Status |\n|--------|--------|\n| Implementation correct | \u2705 Yes |\n| All keywords covered | \u2705 Yes (47 keywords in `IsKeywordToken`) |\n| Both `.` and `?.` supported | \u2705 Yes |\n| Spec compliance | \u26a0\ufe0f Undocumented permissive behavior |\n| Severity | Low |\n\n**Conclusion**: The keyword-as-member-name fix is **correctly implemented** and covers all documented keywords. The only deviation is that this behavior is undocumented in the language specification. This should be added to the spec as it represents valid, intentional language behavior that improves .NET interoperability.\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T09:38:30.131917",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "## Verification Report: Verify Keyword-as-Member-Name Bug Resolution\n\n### Test Results\n- **Sharpy.Core.Tests**: Total: 735 | Passed: 735 | Failed: 0\n- **Sharpy.Compiler.Tests**: Total: 2533 | Passed: 2500 | Failed: 0 | Skipped: 33\n- **Parser Tests**: Passed: 525 | Skipped: 11 | Failed: 0\n- **Specific Keyword-as-Member Tests**: Passed: 3 | Failed: 0\n- **MemberAccess Tests**: Passed: 18 | Failed: 0\n\n### Behavior Checks\n- [x] `ParseChainedIndexingAndMemberAccess` passes (uses `.property`)\n- [x] `ParseComplexMemberAccessChain` passes (uses `.property`)\n- [x] `Position_ComplexNestedExpression_AllPositionsTracked` passes (uses `.property`)\n- [x] `ExpectIdentifierOrKeyword()` implemented at `Parser.cs:2558-2567`\n- [x] `IsKeywordToken()` implemented at `Parser.cs:2572-2603` with comprehensive keyword coverage\n- [x] `ParsePostfix()` uses `ExpectIdentifierOrKeyword()` at line 1970 for member access\n- [x] Null-conditional member access (`?.`) uses same code path\n\n### Coverage Assessment\n- **Keywords covered in `IsKeywordToken()`**: \n  - Control flow: `def`, `class`, `struct`, `interface`, `enum`, `if`, `else`, `elif`, `while`, `for`, `in`, `return`, `break`, `continue`, `pass`, `try`, `except`, `finally`, `raise`, `assert`, `with`\n  - Import: `import`, `from`, `as`\n  - Type/Value: `auto`, `const`, `lambda`, `type`\n  - Pattern matching: `match`, `case`\n  - Async: `async`, `await`, `yield`\n  - Member: `property`, `event`\n  - Other: `del`, `to`, `maybe`\n  - Future: `defer`, `do`\n  - Boolean operators: `and`, `or`, `not`, `is`\n  - Literals: `true`, `false`, `none`\n- **Test Coverage Note**: While `.property` is used in tests, there are no explicit tests for other keywords like `.class`, `.for`, `.if`, etc. The implementation is comprehensive but test coverage is implicit.\n\n### Regression Check\n- No regressions detected\n- All 3235 tests pass across both test projects\n- Skipped tests (33) are pre-existing and unrelated to this fix\n\n### Implementation Verification\nThe fix is correctly implemented in `src/Sharpy.Compiler/Parser/Parser.cs`:\n1. Line 1970: `ParsePostfix()` calls `ExpectIdentifierOrKeyword()` for member access after `.` or `?.`\n2. Lines 2558-2567: `ExpectIdentifierOrKeyword()` accepts both `TokenType.Identifier` and keywords\n3. Lines 2572-2603: `IsKeywordToken()` covers all 40+ keyword token types\n\n### Recommendations\n1. **Optional Enhancement**: Add explicit tests for non-ambiguous keywords as member names (e.g., `obj.class`, `obj.for`, `obj.if`) to ensure comprehensive coverage\n2. The current implementation is sound and handles all keyword types correctly\n\n### Verdict: **VERIFIED/COMPLETE** \u2713\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T09:38:30.131921",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "---\n\n# Hallucination Defense Report\n\n## Claim 1: `ParsePostfix()` at line 1970 calls `ExpectIdentifierOrKeyword()`\n\n**Verification:** Read Parser.cs lines 1965-1984\n**Result:** \u2705 CORRECT \u2014 Line 1970 shows `var member = ExpectIdentifierOrKeyword();` after advancing past `.` or `?.` operators.\n\n---\n\n## Claim 2: `ExpectIdentifierOrKeyword()` at line 2558\n\n**Verification:** Read Parser.cs lines 2553-2567\n**Result:** \u2705 CORRECT \u2014 The method exists at line 2558 and accepts both `TokenType.Identifier` and keyword tokens via `IsKeywordToken()`.\n\n---\n\n## Claim 3: `IsKeywordToken()` at line 2572 covers `TokenType.Property` and `TokenType.Event`\n\n**Verification:** Read Parser.cs lines 2572-2602\n**Result:** \u2705 CORRECT \u2014 Line 2592 explicitly lists `TokenType.Property or TokenType.Event or` in the switch expression.\n\n---\n\n## Claim 4: 525 parser tests pass (0 failures)\n\n**Verification:** Ran `dotnet test --filter \"FullyQualifiedName~Parser\"`\n**Result:** \u2705 CORRECT \u2014 Output shows `Passed! - Failed: 0, Passed: 525, Skipped: 11, Total: 536`\n\n---\n\n## Claim 5: Existing tests use `property` as a member name exercising the fix\n\n**Verification:** Searched test files for `.property` usage\n**Result:** \u26a0\ufe0f PARTIALLY CORRECT with clarification needed:\n- Tests DO exist using `.property` as member name (e.g., `ParserTests.cs:1758`, `ParserTests.cs:1769`)\n- `property` IS a reserved keyword (defined in `Lexer.cs:80`)\n- **However:** The referenced test `obj.method().property.field` at line 609 is a **Lexer** test, not a Parser test. The **Parser** tests are at different locations (ParserTests.cs lines 1758, 1769).\n\n---\n\n## Claim 6: `property` is a reserved keyword\n\n**Verification:** Grep for `\"property\".*TokenType.Property` in Lexer\n**Result:** \u2705 CORRECT \u2014 `Lexer.cs:80` shows `{ \"property\", TokenType.Property }`\n\n---\n\n# Summary\n\n| Claim | Status |\n|-------|--------|\n| ParsePostfix() line 1970 calls ExpectIdentifierOrKeyword() | \u2705 CORRECT |\n| ExpectIdentifierOrKeyword() at line 2558 | \u2705 CORRECT |\n| IsKeywordToken() covers Property/Event at line 2592 | \u2705 CORRECT |\n| 525 parser tests pass | \u2705 CORRECT |\n| Tests exercise keyword-as-member | \u2705 CORRECT (but cite different file than claimed) |\n\n**Overall Assessment:** The factual claims are accurate. The fix implementation is correctly described. Minor note: the test file location for the `obj.method().property.field` example was misattributed to a Lexer test rather than the actual Parser tests at ParserTests.cs lines 1758 and 1769.\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": false,
           "human_question": null,
@@ -35,7 +73,7 @@
             "src/Sharpy.Compiler/Parser/Parser.cs",
             "src/Sharpy.Compiler/Parser/Ast/Expression.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -347,14 +385,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "R-0.1.1.1",
-  "total_attempts": 0,
-  "total_successes": 0,
+  "current_task_id": "R-0.1.1.2",
+  "total_attempts": 1,
+  "total_successes": 1,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 0,
-      "successes": 0,
+      "attempts": 1,
+      "successes": 1,
       "failures": 0
     },
     "copilot": {
@@ -363,5 +401,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 0.0
+  "overall_progress": 5.555555555555555
 }

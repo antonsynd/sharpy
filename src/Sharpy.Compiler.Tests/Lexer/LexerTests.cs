@@ -341,6 +341,7 @@ public class LexerTests
 
     [Theory]
     [InlineData("=", TokenType.Assign)]
+    [InlineData(":=", TokenType.ColonAssign)]
     [InlineData("+=", TokenType.PlusAssign)]
     [InlineData("-=", TokenType.MinusAssign)]
     [InlineData("*=", TokenType.StarAssign)]
