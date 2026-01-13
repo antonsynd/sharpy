@@ -286,8 +286,12 @@ Determine if the actual output matches the expected output.
 
 Consider:
 - Whitespace differences (trailing spaces, newlines) should be IGNORED
-- Number formatting should match
+- **Floating-point precision**: Minor differences in decimal representation are ACCEPTABLE
+  - Example: "5.14" and "5.140000000000001" are EQUIVALENT (IEEE 754 precision)
+  - Example: "7.85" and "7.8500000000000005" are EQUIVALENT
+  - Compare floating-point numbers to ~10 significant figures
 - String content should be exact
+- Integer values should match exactly
 
 ## Response Format
 

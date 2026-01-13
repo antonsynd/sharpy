@@ -6,6 +6,7 @@ Coordinates code generation, validation, compilation, and verification.
 
 import asyncio
 import random
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -22,6 +23,94 @@ from .prompts import (
     extract_code_block,
 )
 from .reporting import Issue, IssueType, IssueReporter, SummaryReporter
+
+
+def _outputs_equivalent(expected: str, actual: str, rel_tol: float = 1e-9) -> bool:
+    """
+    Compare two outputs line by line, allowing floating-point tolerance.
+
+    Returns True if outputs are equivalent considering:
+    - Exact string matches
+    - Floating-point numbers within relative tolerance
+    """
+    expected_lines = expected.strip().split("\n")
+    actual_lines = actual.strip().split("\n")
+
+    if len(expected_lines) != len(actual_lines):
+        return False
+
+    float_pattern = re.compile(r"^-?\d+\.?\d*$")
+
+    for exp_line, act_line in zip(expected_lines, actual_lines):
+        exp_line = exp_line.strip()
+        act_line = act_line.strip()
+
+        if exp_line == act_line:
+            continue
+
+        # Try float comparison
+        if float_pattern.match(exp_line) and float_pattern.match(act_line):
+            try:
+                exp_val = float(exp_line)
+                act_val = float(act_line)
+                # Use relative tolerance for comparison
+                if exp_val == 0:
+                    if abs(act_val) > rel_tol:
+                        return False
+                elif abs((exp_val - act_val) / exp_val) > rel_tol:
+                    return False
+                continue
+            except ValueError:
+                pass
+
+        # Not equal and not matching floats
+        return False
+
+    return True
+
+
+def _has_multi_arg_print(line: str) -> bool:
+    """
+    Check if a line contains a multi-argument print call.
+
+    Correctly handles nested parentheses, so:
+    - print(add(5, 5))  -> False (single argument: function call result)
+    - print(a, b)       -> True (multiple arguments)
+    - print(func(a, b), c) -> True (two arguments)
+    - print("hello")    -> False (single argument)
+    """
+    # Find print( in the line
+    match = re.search(r"\bprint\s*\(", line)
+    if not match:
+        return False
+
+    start_idx = match.end()  # Position right after 'print('
+
+    # Parse to find top-level commas (not inside nested parens/brackets/braces)
+    depth = 1  # We're already inside the print(
+    in_string = None
+    i = start_idx
+
+    while i < len(line) and depth > 0:
+        char = line[i]
+
+        # Handle string literals
+        if in_string:
+            if char == in_string and (i == 0 or line[i - 1] != "\\"):
+                in_string = None
+        elif char in "\"'":
+            in_string = char
+        elif char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth -= 1
+        elif char == "," and depth == 1:
+            # Found a top-level comma inside print()
+            return True
+
+        i += 1
+
+    return False
 
 
 # Feature focuses for code generation - matched to phases 0.1.0-0.1.5
@@ -270,24 +359,28 @@ class DogfoodOrchestrator:
             actual_normalized = actual_output.strip()
 
             if expected_normalized != actual_normalized:
-                # Try AI-assisted comparison for fuzzy matching
-                verify_result = await self._verify_output(
-                    code, expected_output, actual_output
-                )
-                if "MISMATCH" in verify_result.output.upper():
-                    issue = Issue(
-                        issue_type=IssueType.OUTPUT_MISMATCH,
-                        timestamp=timestamp,
-                        generated_code=code,
-                        expected_output=expected_output,
-                        actual_output=actual_output,
-                        validation_result=validation_output,
-                        feature_focus=feature_focus,
-                        complexity=complexity,
-                        backend_used=gen_result.backend,
-                        generation_duration=gen_result.duration_seconds,
-                        execution_duration=run_result.duration_seconds,
+                # First, try programmatic float-tolerant comparison
+                if _outputs_equivalent(expected_normalized, actual_normalized):
+                    print("  Outputs match (with float tolerance)", file=sys.stderr)
+                else:
+                    # Fall back to AI-assisted comparison for fuzzy matching
+                    verify_result = await self._verify_output(
+                        code, expected_output, actual_output
                     )
+                    if "MISMATCH" in verify_result.output.upper():
+                        issue = Issue(
+                            issue_type=IssueType.OUTPUT_MISMATCH,
+                            timestamp=timestamp,
+                            generated_code=code,
+                            expected_output=expected_output,
+                            actual_output=actual_output,
+                            validation_result=validation_output,
+                            feature_focus=feature_focus,
+                            complexity=complexity,
+                            backend_used=gen_result.backend,
+                            generation_duration=gen_result.duration_seconds,
+                            execution_duration=run_result.duration_seconds,
+                        )
                     issue_dir = self.issue_reporter.report(issue)
                     return False, issue_dir
         else:
@@ -326,7 +419,7 @@ class DogfoodOrchestrator:
         forbidden_checks = [
             (r'f"[^"]*\{', "f-string interpolation"),
             (r"f'[^']*\{", "f-string interpolation"),
-            (r"print\s*\([^)]*,[^)]+\)", "multi-argument print (use multiple print() calls)"),
+            # Note: multi-argument print is checked separately with _has_multi_arg_print()
             (r"def\s+\w+\s*\([^)]*=\s*[^,)]+", "default parameter value"),
             (
                 r"\w+\s*=\s*\w+\s*\(",
@@ -366,6 +459,10 @@ class DogfoodOrchestrator:
             stripped = line.split("#")[0].strip()
             if not stripped:
                 continue
+
+            # Special check for multi-argument print (needs proper paren parsing)
+            if _has_multi_arg_print(stripped):
+                return f"Line {i}: multi-argument print (use multiple print() calls) - '{stripped[:50]}...'"
 
             for pattern, description in forbidden_checks:
                 if description is None:
