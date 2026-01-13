@@ -568,8 +568,8 @@ def sum_all(*numbers: int) -> int:
 
 **Actions**:
 
-1. [ ] Document decision to defer function overloading
-2. [ ] Keep test `RegistersMultipleOverloadsOfSameOperator` skipped with message "Method overloading not yet supported in symbol table"
+1. [x] Document decision to defer function overloading
+2. [x] Keep test `RegistersMultipleOverloadsOfSameOperator` skipped with message "Method overloading not yet supported in symbol table"
 3. [ ] Consider implementing in v0.2.x+ phase
 
 **Notes**: Python doesn't natively support function overloading. When implementing:

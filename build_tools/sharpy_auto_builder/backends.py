@@ -143,9 +143,18 @@ class Backend(ABC):
 
     @abstractmethod
     async def execute(
-        self, prompt: str, context: dict[str, Any] | None = None
+        self, prompt: str, context: dict[str, Any] | None = None, timeout: Optional[float] = None
     ) -> ExecutionResult:
-        """Execute a prompt and return the result."""
+        """Execute a prompt and return the result.
+
+        Args:
+            prompt: The prompt to execute
+            context: Optional context dictionary
+            timeout: Maximum seconds to wait for execution (None uses backend default)
+
+        Returns:
+            ExecutionResult with timed_out=True if timeout was exceeded
+        """
         pass
 
     @abstractmethod
@@ -176,15 +185,25 @@ class ClaudeCodeBackend(Backend):
     def __init__(self, config: BackendConfig, project_root: Path):
         super().__init__(config, project_root)
         self.claude_code_path = config.claude_code_path or "claude"
+        # Default timeout of 10 minutes if not specified in backend config
+        self.execution_timeout = config.execution_timeout or 600.0
+        self.heartbeat_interval = 60.0  # Log heartbeat every 60 seconds
 
     async def execute(
-        self, prompt: str, context: dict[str, Any] | None = None
+        self, prompt: str, context: dict[str, Any] | None = None, timeout: Optional[float] = None
     ) -> ExecutionResult:
-        """Execute a prompt using Claude Code."""
+        """Execute a prompt using Claude Code with timeout protection.
+
+        Args:
+            prompt: The prompt to send to Claude Code
+            context: Optional context dictionary
+            timeout: Override timeout in seconds (None uses default)
+        """
         await self.wait_for_availability()
         self.rate_limit_state.record_request()
 
         start_time = time.time()
+        effective_timeout = timeout or self.execution_timeout
 
         try:
             # Build the command
@@ -207,8 +226,31 @@ class ClaudeCodeBackend(Backend):
                 cwd=self.project_root,
             )
 
-            # Pass prompt via stdin
-            stdout, stderr = await process.communicate(input=prompt.encode())
+            # Execute with timeout and heartbeat logging
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    self._communicate_with_heartbeat(process, prompt.encode(), start_time),
+                    timeout=effective_timeout
+                )
+            except asyncio.TimeoutError:
+                # Kill the process on timeout
+                duration = time.time() - start_time
+                try:
+                    process.kill()
+                    await process.wait()
+                except Exception:
+                    pass  # Process may have already exited
+
+                self.rate_limit_state.record_error(self.config.rate_limit)
+                return ExecutionResult(
+                    success=False,
+                    output="",
+                    error=f"Agent execution timed out after {duration:.1f}s (limit: {effective_timeout:.0f}s). "
+                          f"The Claude Code process was killed. This may indicate a hung API call or network issue.",
+                    duration_seconds=duration,
+                    backend=self.name,
+                    timed_out=True,
+                )
 
             duration = time.time() - start_time
             stdout_text = stdout.decode()
@@ -266,6 +308,111 @@ class ClaudeCodeBackend(Backend):
                 duration_seconds=time.time() - start_time,
                 backend=self.name,
             )
+
+    async def _communicate_with_heartbeat(
+        self,
+        process: asyncio.subprocess.Process,
+        input_data: bytes,
+        start_time: float
+    ) -> tuple[bytes, bytes]:
+        """Communicate with process while logging periodic heartbeats.
+
+        This helps track long-running operations and provides visibility
+        into whether the process is still active.
+        """
+        import sys
+
+        # Send input and close stdin
+        if process.stdin:
+            process.stdin.write(input_data)
+            await process.stdin.drain()
+            process.stdin.close()
+
+        # Read stdout and stderr concurrently with heartbeat logging
+        async def read_with_heartbeat():
+            last_heartbeat = time.time()
+            stdout_chunks = []
+            stderr_chunks = []
+
+            while True:
+                # Check if process has finished
+                if process.returncode is not None:
+                    break
+
+                # Try to read available output (non-blocking check)
+                done, pending = await asyncio.wait(
+                    [
+                        asyncio.create_task(process.stdout.read(4096) if process.stdout else asyncio.sleep(0)),
+                        asyncio.create_task(process.stderr.read(4096) if process.stderr else asyncio.sleep(0)),
+                    ],
+                    timeout=self.heartbeat_interval,
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+
+                # Collect any completed reads
+                for task in done:
+                    try:
+                        data = task.result()
+                        if data:
+                            # Determine which stream this came from based on task
+                            # This is a simplified approach - we append to both and dedupe later
+                            if isinstance(data, bytes):
+                                stdout_chunks.append(data)
+                    except Exception:
+                        pass
+
+                # Cancel pending tasks
+                for task in pending:
+                    task.cancel()
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
+
+                # Log heartbeat if enough time has passed
+                now = time.time()
+                if now - last_heartbeat >= self.heartbeat_interval:
+                    elapsed = now - start_time
+                    print(f"[heartbeat] Agent still running... ({elapsed:.0f}s elapsed)", file=sys.stderr)
+                    last_heartbeat = now
+
+                # Check if process finished
+                try:
+                    await asyncio.wait_for(process.wait(), timeout=0.1)
+                    break
+                except asyncio.TimeoutError:
+                    continue
+
+            # Read any remaining output
+            if process.stdout:
+                remaining = await process.stdout.read()
+                if remaining:
+                    stdout_chunks.append(remaining)
+            if process.stderr:
+                remaining = await process.stderr.read()
+                if remaining:
+                    stderr_chunks.append(remaining)
+
+            return b''.join(stdout_chunks), b''.join(stderr_chunks)
+
+        # Simpler approach: just use communicate with periodic heartbeat in parallel
+        async def heartbeat_logger():
+            last_log = time.time()
+            while True:
+                await asyncio.sleep(self.heartbeat_interval)
+                elapsed = time.time() - start_time
+                print(f"[heartbeat] Agent still running... ({elapsed:.0f}s elapsed)", file=sys.stderr)
+
+        heartbeat_task = asyncio.create_task(heartbeat_logger())
+        try:
+            stdout, stderr = await process.communicate()
+            return stdout, stderr
+        finally:
+            heartbeat_task.cancel()
+            try:
+                await heartbeat_task
+            except asyncio.CancelledError:
+                pass
 
     async def execute_command(
         self,
@@ -359,11 +506,13 @@ class CopilotBackend(Backend):
         super().__init__(config, project_root)
         # Use standalone 'copilot' CLI, not 'gh copilot' which is for shell suggestions only
         self.copilot_cli_path = config.copilot_cli_path or "copilot"
+        # Default timeout of 10 minutes if not specified in backend config
+        self.execution_timeout = config.execution_timeout or 600.0
 
     async def execute(
-        self, prompt: str, context: dict[str, Any] | None = None
+        self, prompt: str, context: dict[str, Any] | None = None, timeout: Optional[float] = None
     ) -> ExecutionResult:
-        """Execute a prompt using GitHub Copilot CLI.
+        """Execute a prompt using GitHub Copilot CLI with timeout protection.
 
         Uses the standalone `copilot` CLI with explicit tool permissions.
         """
@@ -371,6 +520,7 @@ class CopilotBackend(Backend):
         self.rate_limit_state.record_request()
 
         start_time = time.time()
+        effective_timeout = timeout or self.execution_timeout
 
         try:
             # Copilot CLI flags (matching generate_code_walkthroughs.py pattern):
@@ -398,7 +548,29 @@ class CopilotBackend(Backend):
                 cwd=self.project_root,
             )
 
-            stdout, stderr = await process.communicate()
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    process.communicate(),
+                    timeout=effective_timeout
+                )
+            except asyncio.TimeoutError:
+                # Kill the process on timeout
+                duration = time.time() - start_time
+                try:
+                    process.kill()
+                    await process.wait()
+                except Exception:
+                    pass
+
+                self.rate_limit_state.record_error(self.config.rate_limit)
+                return ExecutionResult(
+                    success=False,
+                    output="",
+                    error=f"Agent execution timed out after {duration:.1f}s (limit: {effective_timeout:.0f}s).",
+                    duration_seconds=duration,
+                    backend=self.name,
+                    timed_out=True,
+                )
 
             duration = time.time() - start_time
 
@@ -567,16 +739,28 @@ class BackendManager:
         prompt: str,
         context: dict[str, Any] | None = None,
         preferred_backend: Optional[BackendType] = None,
+        timeout: Optional[float] = None,
     ) -> ExecutionResult:
-        """Execute a prompt with automatic failover to other backends."""
+        """Execute a prompt with automatic failover to other backends.
+
+        Args:
+            prompt: The prompt to execute
+            context: Optional context dictionary
+            preferred_backend: Try this backend first
+            timeout: Override execution timeout (None uses backend default)
+        """
 
         # Try preferred backend first
         if preferred_backend and preferred_backend in self.backends:
             backend = self.backends[preferred_backend]
             if backend.is_available:
-                result = await backend.execute(prompt, context)
-                if result.success or not result.rate_limited:
+                result = await backend.execute(prompt, context, timeout)
+                if result.success or (not result.rate_limited and not result.timed_out):
                     return result
+                # If timed out, try failover to another backend
+                if result.timed_out:
+                    import sys
+                    print(f"[failover] {backend.name} timed out, trying next backend...", file=sys.stderr)
 
         # Try backends in priority order
         for backend_type in self.config.backend_priority:
@@ -590,12 +774,12 @@ class BackendManager:
                 # Wait for availability
                 await backend.wait_for_availability()
 
-                result = await backend.execute(prompt, context)
+                result = await backend.execute(prompt, context, timeout)
                 if result.success:
                     return result
 
-                # If rate limited, try next backend
-                if result.rate_limited:
+                # If rate limited or timed out, try next backend
+                if result.rate_limited or result.timed_out:
                     continue
 
                 # For other errors, return the result

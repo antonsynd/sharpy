@@ -224,6 +224,8 @@ class Orchestrator:
         print(f"  • Auto commit: {self.config.auto_commit}")
         print(f"  • Create PR: {self.config.create_pr}")
         print(f"  • Test timeout: {self.config.test_timeout}s")
+        print(f"  • Agent execution timeout: {self.config.agent_execution_timeout}s")
+        print(f"  • Agent heartbeat interval: {self.config.agent_heartbeat_interval}s")
         print(
             f"  • Human approval for critical: {self.config.require_human_approval_for_critical}"
         )
@@ -593,10 +595,11 @@ Provide:
             extra={"attempt": attempt, "specialist": specialist.value},
         )
 
-        # Execute via backend
+        # Execute via backend with configured timeout
         result = await self.backend_manager.execute_with_failover(
             prompt,
             context={"files": task_data["files"]},
+            timeout=self.config.agent_execution_timeout,
         )
 
         # Log the full response
@@ -608,14 +611,14 @@ Provide:
             success=result.success,
             backend=result.backend,
             duration=result.duration_seconds,
-            extra={"attempt": attempt},
+            extra={"attempt": attempt, "timed_out": result.timed_out},
         )
 
         self._log_step_end(
             "execute_implementation",
             task_data["id"],
             result.success,
-            f"via {result.backend}" if result.backend else "",
+            f"via {result.backend}" if result.backend else "" + (" (TIMED OUT)" if result.timed_out else ""),
         )
 
         execution_result = {

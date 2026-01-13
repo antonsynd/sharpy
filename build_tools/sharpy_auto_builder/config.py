@@ -49,6 +49,9 @@ class BackendConfig:
     model: str = "claude-sonnet-4-5-20250929"  # Default to Sonnet 4.5
     max_tokens: int = 16384
 
+    # Timeout for agent execution (seconds). None means use global config default.
+    execution_timeout: Optional[float] = None
+
     # For Claude Code
     claude_code_path: Optional[str] = None
 
@@ -164,6 +167,14 @@ class Config:
         300.0  # 5 minutes default timeout for test execution (to catch infinite loops)
     )
 
+    # Agent execution settings
+    agent_execution_timeout: float = (
+        600.0  # 10 minutes default timeout for agent execution (Claude Code, etc.)
+    )
+    agent_heartbeat_interval: float = (
+        60.0  # Log heartbeat every 60 seconds during long agent operations
+    )
+
     # Human-in-the-loop settings
     human_wait_timeout: float = 3600.0  # 1 hour default timeout for human responses
     human_check_interval: float = 5.0  # seconds between checks for human input
@@ -210,6 +221,8 @@ class Config:
             "create_pr": self.create_pr,
             "rate_limit_pause_hours": self.rate_limit_pause_hours,
             "test_timeout": self.test_timeout,
+            "agent_execution_timeout": self.agent_execution_timeout,
+            "agent_heartbeat_interval": self.agent_heartbeat_interval,
             "human_wait_timeout": self.human_wait_timeout,
             "human_check_interval": self.human_check_interval,
         }
@@ -289,6 +302,10 @@ class Config:
             config.rate_limit_pause_hours = data["rate_limit_pause_hours"]
         if "test_timeout" in data:
             config.test_timeout = data["test_timeout"]
+        if "agent_execution_timeout" in data:
+            config.agent_execution_timeout = data["agent_execution_timeout"]
+        if "agent_heartbeat_interval" in data:
+            config.agent_heartbeat_interval = data["agent_heartbeat_interval"]
         if "human_wait_timeout" in data:
             config.human_wait_timeout = data["human_wait_timeout"]
         if "human_check_interval" in data:
