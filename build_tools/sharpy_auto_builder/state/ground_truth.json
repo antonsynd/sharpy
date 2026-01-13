@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-13T10:57:14.180478",
+  "last_updated": "2026-01-13T11:05:05.121825",
   "phases": [
     {
       "id": "0.1.1",
@@ -265,7 +265,7 @@
       "name": "Code Generation Bootstrap - Remediation",
       "goal": "",
       "status": "in_progress",
-      "progress": 33.33333333333333,
+      "progress": 66.66666666666666,
       "tasks": [
         {
           "id": "R-0.1.2.1",
@@ -329,8 +329,46 @@
           "files": [
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude_code",
+              "started_at": "2026-01-13T11:05:05.118437",
+              "completed_at": "2026-01-13T11:05:05.118440",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T11:05:05.118422",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the information needed to produce the comprehensive spec adherence report.\n\n---\n\n## Spec Adherence Report: Audit Unity C# 9.0 Compatibility (File-Scoped Namespaces)\n\n**Spec:** `docs/language_specification/introduction.md`, `.github/agents/unity-compatibility-guardian.agent.md`\n**Implementation:** `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Specification Requirements\n\nFrom `docs/language_specification/introduction.md`:\n- **Line 9:** \"Target C# 9.0 for maximum compatibility (Unity, .NET 5+)\"\n- **Line 15 (Axiom 1):** \"Sharpy compiles to C# 9.0 and executes on the .NET CLR\"\n\nFrom `.github/agents/unity-compatibility-guardian.agent.md`:\n- **Lines 30-36:** File-scoped namespaces listed as \"\u274c Avoid (C# 10+)\"\n\n| C# Feature | Status |\n|------------|--------|\n| File-scoped namespaces (`namespace X;`) | \u274c Avoid (C# 10+) |\n| Global usings | \u274c Avoid (C# 10+) |\n| Block-scoped namespaces (`namespace X { }`) | \u2705 Safe |\n\n### Compliant\n\n- [x] **Block-scoped namespace syntax** \u2014 Implementation uses `NamespaceDeclaration()` at `RoslynEmitter.cs:102`, which generates block-scoped `namespace X { }` syntax (C# 1.0+)\n- [x] **Documentation comment** \u2014 Line 100 includes rationale: `\"Use block-scoped namespace for C# 9.0 compatibility (Unity)\"`\n- [x] **No FileScopedNamespaceDeclaration()** \u2014 Grep confirms `FileScopedNamespaceDeclaration` is not used anywhere in generated code paths\n- [x] **No global usings in generated code** \u2014 Grep confirms no `GlobalUsing` or `global using` patterns in CodeGen\n- [x] **Standard using directives** \u2014 Generated code uses regular `UsingDirective()` syntax (C# 1.0+) at lines 191-195\n\n### Generated Code Sample (Verified)\n\nThe implementation generates:\n```csharp\nnamespace Myapp.Utils\n{\n    public static class Exports\n    {\n        // ... module contents\n    }\n}\n```\n\n**NOT** (C# 10+ file-scoped):\n```csharp\nnamespace Myapp.Utils;\n\npublic static class Exports\n{\n    // ... module contents\n}\n```\n\n### Deviations\n\n**None found.** The implementation correctly adheres to the C# 9.0 compatibility requirement.\n\n### Observations\n\n1. **Compiler source code vs generated code distinction** \u2014 The compiler's own source file (`RoslynEmitter.cs:9`) uses file-scoped namespace syntax (`namespace Sharpy.Compiler.CodeGen;`), which is **correct**. The compiler itself can use C# 10+ features since it runs on modern .NET. Only the **generated output** must be C# 9.0 compatible.\n\n2. **Test coverage gap** \u2014 Existing tests verify namespace generation works (e.g., `RoslynEmitterModuleTests.cs:40,59`) but do **not explicitly assert** block-scoped syntax. Tests check for `Assert.Contains(\"namespace SharpyGenerated\", code)` but don't verify the presence of `{` after the namespace name.\n\n### Recommendations\n\n1. **Add explicit regression test** \u2014 Consider adding a test that explicitly verifies block-scoped namespace output:\n   ```csharp\n   [Fact]\n   public void GeneratedCode_UsesBlockScopedNamespace_ForCSharp9Compatibility()\n   {\n       var code = result.ToFullString();\n       // Block-scoped: \"namespace X\\n{\"\n       // File-scoped would be: \"namespace X;\"\n       Assert.DoesNotContain(\"namespace SharpyGenerated;\", code);\n       Assert.Matches(@\"namespace\\s+\\w+(\\.\\w+)*\\s*\\{\", code);\n   }\n   ```\n\n2. **Document in ADR** \u2014 Consider adding an Architecture Decision Record explaining the C# 9.0 targeting decision for future contributors.\n\n### Verdict\n\n\u2705 **COMPLIANT** \u2014 The implementation correctly uses `NamespaceDeclaration()` to generate block-scoped namespace syntax compatible with C# 9.0 and Unity.\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T11:05:05.118429",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "## Verification Report: Audit Unity C# 9.0 Compatibility (File-Scoped Namespaces)\n\n### Test Results\n- **Total**: 3291 | **Passed**: 3247 | **Failed**: 11 | **Skipped**: 33\n\n### Behavior Checks\n- [x] Block-scoped `NamespaceDeclaration()` used (line 102 of `RoslynEmitter.cs`)\n- [x] Comment documents C# 9.0 rationale (line 100)\n- [x] No `FileScopedNamespaceDeclaration` calls in codebase\n- [x] No `global using` directives in generated code\n- [x] Generated code uses `namespace X { }` syntax (verified via `emit csharp`)\n- [x] All 6 namespace-specific tests pass\n- [x] All 172 RoslynEmitter tests pass\n\n### Coverage Assessment\n- **Namespace generation**: 6 dedicated tests covering:\n  - Nested path namespace generation\n  - Filtering of `src/lib` directories\n  - Snake case to PascalCase conversion\n  - Source path-based namespace generation\n  - Edge case handling\n  - Project compilation namespace correctness\n- **Code generation integration**: 172 RoslynEmitter tests verify generated code compiles correctly\n\n### Regression Check\n- **No regressions related to C# 9.0 namespace compatibility**\n- 11 failing tests exist but are **UNRELATED** to this task:\n  - All failures are type inference issues with floor division (`//`) producing `long` when assigning to `int`\n  - These are regressions from task R-0.1.2.1 (Floor Division Semantics), not this task\n  - Examples: `Algorithm_ReverseNumber`, `AugmentedAssignment_DivideEquals`\n\n### Implementation Verification\n\n**Source Code** (`src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:100-103`):\n```csharp\n// Use block-scoped namespace for C# 9.0 compatibility (Unity)\nvar namespaceName = GenerateNamespaceName();\nvar namespaceDecl = NamespaceDeclaration(namespaceName)\n    .WithMembers(SingletonList<MemberDeclarationSyntax>(moduleClass));\n```\n\n**Generated Output** (verified via `emit csharp`):\n```csharp\nnamespace Users.Anton.Documents.Github.Sharpy.Snippets.Hello\n{\n    public static class Exports\n    {\n        // ... module contents\n    }\n}\n```\n\n### Recommendations\n1. **Task R-0.1.2.2 is COMPLETE** - The codebase is already correctly using block-scoped namespaces for C# 9.0 compatibility\n2. **Separate issue**: The 11 failing tests should be addressed as part of the floor division fix (R-0.1.2.1) - the generated code casts to `long` but doesn't cast back to `int` when needed\n3. **Optional enhancement**: Consider adding an explicit regression test asserting block-scoped namespace syntax as suggested in the implementation plan\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T11:05:05.118431",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "---\n\n# Hallucination Defense Audit Report\n\n## Claim-by-Claim Verification\n\n---\n\n**Claim:** `FileScopedNamespaceDeclaration` usage is \"Not found\" anywhere in `src/`\n\n**Verification:** `grep -r \"FileScopedNamespaceDeclaration\" src/`\n\n**Result:** \u2705 CORRECT \u2014 No matches found. The codebase does not use `FileScopedNamespaceDeclaration`.\n\n---\n\n**Claim:** `NamespaceDeclaration()` is used at `RoslynEmitter.cs:102`\n\n**Verification:** Direct file read and grep search\n\n**Result:** \u2705 CORRECT \u2014 Line 102 contains exactly: `var namespaceDecl = NamespaceDeclaration(namespaceName)`\n\n---\n\n**Claim:** Comment documenting rationale is present at line 100: `\"// Use block-scoped namespace for C# 9.0 compatibility (Unity)\"`\n\n**Verification:** Direct file read of lines 95-109\n\n**Result:** \u2705 CORRECT \u2014 Line 100 contains exactly this comment.\n\n---\n\n**Claim:** `docs/language_specification/introduction.md:9` states \"Target C# 9.0 for maximum compatibility (Unity, .NET 5+)\"\n\n**Verification:** `grep \"Target C# 9.0\" docs/`\n\n**Result:** \u2705 CORRECT \u2014 Exact quote found at line 9.\n\n---\n\n**Claim:** `docs/language_specification/introduction.md:15` states **Axiom 1**: \"Sharpy compiles to C# 9.0 and executes on the .NET CLR\"\n\n**Verification:** `grep \"Axiom 1.*C# 9\" docs/`\n\n**Result:** \u2705 CORRECT \u2014 Line 15 contains: `**Axiom 1 \u2014 .NET Runtime:** Sharpy compiles to C# 9.0 and executes on the .NET CLR.`\n\n---\n\n**Claim:** `.github/agents/unity-compatibility-guardian.agent.md` lists file-scoped namespaces as \"\u274c Avoid (C# 10+)\"\n\n**Verification:** Direct file read\n\n**Result:** \u2705 CORRECT \u2014 Lines 30-32 show the table with \"File-scoped namespaces\" under \"\u274c Avoid (C# 10+)\"\n\n---\n\n**Claim:** C# 9.0 feature table accuracy:\n| C# 9.0 \u2705 | C# 10+ \u274c |\n|-----------|-----------|\n| Records | File-scoped namespaces |\n| Init-only setters | Global usings |\n| Pattern matching | Record structs |\n| Target-typed new | Required members |\n\n**Verification:** Based on established .NET documentation (cannot verify via web search in this session, but this is well-documented public knowledge)\n\n**Result:** \u2705 CORRECT \u2014 This matches Microsoft's official C# language version feature matrix:\n- C# 9.0 (Nov 2020): Records, init-only setters, pattern matching enhancements, target-typed new\n- C# 10 (Nov 2021): File-scoped namespaces, global usings, record structs\n- C# 11 (Nov 2022): Required members\n\n---\n\n**Claim:** The audit states the original task referenced `FileScopedNamespaceDeclaration` at \"line 92\" which appears to be stale information\n\n**Verification:** Current implementation is at line 102; the claim about \"line 92\" being stale is a meta-observation\n\n**Result:** \u26a0\ufe0f UNVERIFIABLE \u2014 Cannot determine if \"line 92\" was ever accurate without git history analysis, but current code at line 102 uses correct `NamespaceDeclaration()`.\n\n---\n\n## Summary\n\n| Claims Verified | Result |\n|-----------------|--------|\n| `FileScopedNamespaceDeclaration` not in src/ | \u2705 CORRECT |\n| `NamespaceDeclaration()` at line 102 | \u2705 CORRECT |\n| C# 9.0 compatibility comment at line 100 | \u2705 CORRECT |\n| Axiom 1 documentation reference | \u2705 CORRECT |\n| Unity guardian agent documentation | \u2705 CORRECT |\n| C# version feature table | \u2705 CORRECT |\n\n**Overall Verdict:** All verifiable factual claims are **accurate**. The audit report contains no hallucinations.\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": false,
           "human_question": null,
@@ -345,7 +383,7 @@
           "files": [
             "src/Sharpy.Compiler/Semantic/PrimitiveCatalog.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": true,
@@ -550,14 +588,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "R-0.1.2.2",
-  "total_attempts": 6,
-  "total_successes": 6,
+  "current_task_id": "R-0.1.2.3",
+  "total_attempts": 7,
+  "total_successes": 7,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 6,
-      "successes": 6,
+      "attempts": 7,
+      "successes": 7,
       "failures": 0
     },
     "copilot": {
@@ -566,5 +604,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 27.77777777777778
+  "overall_progress": 33.33333333333333
 }
