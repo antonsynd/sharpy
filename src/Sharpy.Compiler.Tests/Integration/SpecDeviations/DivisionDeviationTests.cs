@@ -21,7 +21,7 @@ public class DivisionDeviationTests : IntegrationTestBase
     /// Per spec: 5 / 2 should equal 2.5 (float64), not 2 (int).
     /// This is the core Python division semantics.
     /// </summary>
-    [Fact(Skip = "TODO: Fix integer division to return float64. See docs/tasks/R-0.1.3.3-implementation-plan.md")]
+    [Fact(Skip = "TODO: Fix integer division to return float64. See docs/tasks/R-0.1.3.4-fix-integer-division.md")]
     public void IntegerDivision_ShouldProduceFloat64Value()
     {
         var source = @"
@@ -40,7 +40,7 @@ print(result)
     /// <summary>
     /// Per spec: 10 / 4 should equal 2.5, demonstrating non-truncating division.
     /// </summary>
-    [Fact(Skip = "TODO: Fix integer division to return float64. See docs/tasks/R-0.1.3.3-implementation-plan.md")]
+    [Fact(Skip = "TODO: Fix integer division to return float64. See docs/tasks/R-0.1.3.4-fix-integer-division.md")]
     public void IntegerDivision_TenDividedByFour_ShouldBeTwoPointFive()
     {
         var source = @"
@@ -59,7 +59,7 @@ print(result)
     /// <summary>
     /// Per spec: 10 / 3 should produce approximately 3.333...
     /// </summary>
-    [Fact(Skip = "TODO: Fix integer division to return float64. See docs/tasks/R-0.1.3.3-implementation-plan.md")]
+    [Fact(Skip = "TODO: Fix integer division to return float64. See docs/tasks/R-0.1.3.4-fix-integer-division.md")]
     public void IntegerDivision_TenDividedByThree_ShouldProduceRepeatingDecimal()
     {
         var source = @"
@@ -78,7 +78,7 @@ print(result)
     /// Per spec: -7 / 2 should equal -3.5 (true division).
     /// Note: This differs from floor division (-7 // 2 = -4).
     /// </summary>
-    [Fact(Skip = "TODO: Fix integer division to return float64. See docs/tasks/R-0.1.3.3-implementation-plan.md")]
+    [Fact(Skip = "TODO: Fix integer division to return float64. See docs/tasks/R-0.1.3.4-fix-integer-division.md")]
     public void IntegerDivision_NegativeSeven_DividedByTwo_ShouldBeNegativeThreePointFive()
     {
         var source = @"
@@ -97,7 +97,7 @@ print(result)
     /// <summary>
     /// Per spec: result of int / int should be assignable to float without cast.
     /// </summary>
-    [Fact(Skip = "TODO: Fix integer division to return float64. See docs/tasks/R-0.1.3.3-implementation-plan.md")]
+    [Fact(Skip = "TODO: Fix integer division to return float64. See docs/tasks/R-0.1.3.4-fix-integer-division.md")]
     public void IntegerDivision_ShouldBeAssignableToFloat()
     {
         var source = @"

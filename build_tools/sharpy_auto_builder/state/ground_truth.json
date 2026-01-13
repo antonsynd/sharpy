@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-13T12:53:47.618631",
+  "last_updated": "2026-01-13T13:09:45.068045",
   "phases": [
     {
       "id": "0.1.1",
@@ -436,7 +436,7 @@
       "name": "Variables & Expressions - Remediation",
       "goal": "",
       "status": "in_progress",
-      "progress": 33.33333333333333,
+      "progress": 66.66666666666666,
       "tasks": [
         {
           "id": "R-0.1.3.1",
@@ -500,8 +500,46 @@
           "files": [
             "src/Sharpy.Compiler/Parser/Parser.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude_code",
+              "started_at": "2026-01-13T13:09:45.064393",
+              "completed_at": "2026-01-13T13:09:45.064396",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T13:09:45.064372",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "I now have all the information needed to produce the spec adherence report. Let me examine the implementation in the parser to verify it matches the spec.\n\nLooking at the key points:\n\n**From the Spec (`docs/language_specification/statements.md` lines 117-127 and `grammar.ebnf.txt` line 313):**\n\n1. Grammar: `const_stmt ::= 'const' identifier [ ':' type_expr ] '=' expression`\n   - The `[ ':' type_expr ]` means type annotation is **optional**\n   \n2. Examples in spec (lines 123-126):\n   - `const PI: float = 3.14159` (explicit type)\n   - `const MAX_SIZE: int = 1000` (explicit type)\n   - `const APP_NAME = \"MyApp\"` (type inferred as str) - **No type annotation**\n   - `const DEBUG: bool = True` (explicit type)\n\n**From the Implementation (`Parser.cs` lines 665-698):**\n\n```csharp\nprivate VariableDeclaration ParseConstDeclaration()\n{\n    // ...\n    Expect(TokenType.Const);\n    var name = ExpectIdentifier();\n\n    // Type annotation is optional for const declarations\n    // const X: int = 1  (explicit type)\n    // const X = \"MyApp\" (type inferred)\n    TypeAnnotation? type = null;\n    if (Current.Type == TokenType.Colon)\n    {\n        Advance(); // consume ':'\n        type = ParseTypeAnnotation();\n    }\n\n    Expect(TokenType.Assign);\n    var value = ParseExpression();\n    // ...\n}\n```\n\n## Spec Adherence Report: Make Const Type Annotation Optional\n\n**Spec:** `docs/language_specification/statements.md` (Section: Constants, lines 117-127)  \n**Grammar:** `docs/language_specification/grammar.ebnf.txt` (line 313)  \n**Implementation:** `src/Sharpy.Compiler/Parser/Parser.cs` (lines 665-698)\n\n### Compliant\n\n- [x] **Syntax `const identifier = expression`**: Implementation correctly makes the type annotation optional by checking for `TokenType.Colon` before parsing the type (lines 677-681)\n- [x] **Syntax `const identifier : type = expression`**: Implementation parses the type annotation when `:` is present (lines 678-681)\n- [x] **Grammar compliance**: Implementation matches `const_stmt ::= 'const' identifier [ ':' type_expr ] '=' expression`\n- [x] **Initializer required**: Implementation always expects `TokenType.Assign` and parses an expression (lines 683-684)\n- [x] **IsConst flag**: The resulting `VariableDeclaration` has `IsConst = true` (line 692)\n- [x] **Type is nullable**: The `Type` property is correctly `TypeAnnotation?` allowing null when type is inferred (line 676)\n\n### Deviations\n\nNone found.\n\n### Undocumented Behavior\n\nNone found. The implementation precisely follows the grammar specification.\n\n### Verification Summary\n\nThe implementation at `Parser.cs:665-698` correctly implements the optional type annotation for const declarations as specified in:\n\n1. **Grammar** (`grammar.ebnf.txt:313`): \n   > `const_stmt ::= 'const' identifier [ ':' type_expr ] '=' expression`\n\n2. **Specification examples** (`statements.md:125`):\n   > `const APP_NAME = \"MyApp\"       # Type inferred as str`\n\nThe parser:\n- Expects the `const` keyword\n- Parses the identifier name\n- **Optionally** parses `: type` if a colon is present\n- Requires `=` followed by an expression\n- Returns a `VariableDeclaration` with `IsConst = true` and `Type = null` when no annotation is provided\n\n**Status: FULLY COMPLIANT** \u2713\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T13:09:45.064380",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "## Verification Report: Make Const Type Annotation Optional\n\n### Test Results\n- **Total: 3293** | **Passed: 3260** | **Failed: 0** | **Skipped: 33**\n\n| Test Suite | Passed | Skipped | Total |\n|------------|--------|---------|-------|\n| Sharpy.Core.Tests | 735 | 0 | 735 |\n| Sharpy.Compiler.Tests | 2525 | 33 | 2558 |\n\n### Behavior Checks\n- [x] Parser accepts `const NAME = value` (no type annotation)\n- [x] Parser accepts `const NAME: type = value` (explicit type annotation)  \n- [x] Type inference works for all literal types (int, float, string, bool)\n- [x] Code generation infers correct C# types from initializer expressions\n- [x] Class-level const without type annotation compiles correctly\n- [x] Module-level const without type annotation compiles correctly\n\n### Coverage Assessment\n**Comprehensive test coverage exists across all layers:**\n\n1. **Parser tests** (3 tests in `ParserTests.cs:1330-1380`):\n   - `ParseConstDeclaration` - explicit type annotation\n   - `ParseConstDeclaration_WithInferredType` - no type annotation (string)\n   - `ParseConstDeclaration_AllLiteralTypes_WithInferredType` - all literal types\n\n2. **Code Generation** (`RoslynEmitter.cs`):\n   - Line 1562-1565: Module-level const type inference\n   - Line 1149-1152: Class-level const type inference\n\n3. **Type Mapper** (`TypeMapper.cs:230-259`):\n   - `InferTypeFromExpression()` handles all literal types\n   - `InferExpressionType()` maps literals \u2192 type names\n   - `MapTypeFromInferredType()` maps type names \u2192 C# TypeSyntax\n\n4. **Integration tests** (Phase013):\n   - 53 passing tests covering const declarations and operations\n\n### Specification Alignment\n- [x] Implementation matches spec (`statements.md` line 125: `const APP_NAME = \"MyApp\" # Type inferred as str`)\n\n### Regression Check\n- No regressions detected\n- All 3260 tests pass\n- 33 skipped tests are pre-existing and unrelated to this feature\n\n### Recommendations\nNone - the implementation is complete and all tests pass.\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T13:09:45.064386",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "---\n\n# Hallucination Defense Report\n\n## Claim 1: Parser Implementation Location\n**Claim:** `ParseConstDeclaration()` method in `Parser.cs` (lines 665-698) implements optional type annotation  \n**Verification:** Read `Parser.cs` lines 665-698  \n**Result:** \u2705 CORRECT \u2014 The method exists at exactly lines 665-698 and contains the optional type annotation logic with the conditional colon check at lines 677-681.\n\n---\n\n## Claim 2: Implementation Pattern\n**Claim:** The code uses pattern:\n```csharp\nTypeAnnotation? type = null;\nif (Current.Type == TokenType.Colon) { ... }\n```\n**Verification:** Direct file read of Parser.cs:676-681  \n**Result:** \u2705 CORRECT \u2014 The exact code pattern exists at lines 676-681.\n\n---\n\n## Claim 3: Grammar Specification Location\n**Claim:** Spec at `grammar.ebnf.txt:313` defines `const_stmt ::= 'const' identifier [ ':' type_expr ] '=' expression`  \n**Verification:** Read grammar.ebnf.txt line 313  \n**Result:** \u2705 CORRECT \u2014 Line 313 contains exactly this grammar definition. The `[ ':' type_expr ]` brackets indicate optional type annotation per EBNF notation.\n\n---\n\n## Claim 4: Documentation Reference\n**Claim:** Docs at `statements.md:125` show `const APP_NAME = \"MyApp\"  # Type inferred as str`  \n**Verification:** Grep search for pattern in docs  \n**Result:** \u2705 CORRECT \u2014 Line 125 of `docs/language_specification/statements.md` contains exactly `const APP_NAME = \"MyApp\"       # Type inferred as str`\n\n---\n\n## Claim 5: Test Methods Exist\n**Claim:** Tests exist:\n- `ParseConstDeclaration()` - explicit type\n- `ParseConstDeclaration_WithInferredType()` - inferred type\n- `ParseConstDeclaration_AllLiteralTypes_WithInferredType()` - all literal types\n\n**Verification:** Grep search and direct read of ParserTests.cs  \n**Result:** \u2705 CORRECT \u2014 All three test methods exist at lines 1320, 1331, and 1343 respectively. Tests verify exactly the scenarios claimed.\n\n---\n\n## Claim 6: Test Count\n**Claim:** \"538 parser tests total\"  \n**Verification:** `dotnet test --list-tests` shows ~188 parser tests  \n**Result:** \u274c INCORRECT \u2014 There are approximately 188 parser tests, not 538. The \"538\" figure may refer to total tests across all test files, not just parser tests.\n\n---\n\n## Claim 7: Tests Pass\n**Claim:** All const declaration tests pass  \n**Verification:** `dotnet test --filter \"ParseConstDeclaration\"` executed  \n**Result:** \u2705 CORRECT \u2014 All 3 const declaration tests pass (Passed: 3, Failed: 0).\n\n---\n\n## Claim 8: C# 9.0 Compatibility\n**Claim:** The implementation is C# 9.0 compatible (Unity constraint)  \n**Verification:** Code review of patterns used  \n**Result:** \u2705 CORRECT \u2014 The code uses:\n- Nullable reference types (`TypeAnnotation?`) \u2014 available in C# 8.0+\n- Object initializer syntax \u2014 available since C# 3.0\n- No file-scoped namespaces, global usings, or record structs\n\nAll patterns are C# 9.0 compatible.\n\n---\n\n## Summary\n\n| Claim | Status |\n|-------|--------|\n| Parser location (lines 665-698) | \u2705 CORRECT |\n| Implementation pattern | \u2705 CORRECT |\n| Grammar spec location | \u2705 CORRECT |\n| Documentation reference | \u2705 CORRECT |\n| Test methods exist | \u2705 CORRECT |\n| Test count \"538 parser tests\" | \u274c INCORRECT (188 parser tests) |\n| Tests pass | \u2705 CORRECT |\n| C# 9.0 compatibility | \u2705 CORRECT |\n\n**Overall Assessment:** The implementation claims are accurate. The only discrepancy is the test count figure, which appears to be total test count rather than parser-specific tests. This is a minor documentation error that does not affect the correctness of the implementation.\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": true,
           "human_question": null,
@@ -516,7 +554,7 @@
           "files": [
             "src/Sharpy.Compiler.Tests/Integration/"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -664,14 +702,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "R-0.1.3.2",
-  "total_attempts": 9,
-  "total_successes": 9,
+  "current_task_id": "R-0.1.3.3",
+  "total_attempts": 10,
+  "total_successes": 10,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 9,
-      "successes": 9,
+      "attempts": 10,
+      "successes": 10,
       "failures": 0
     },
     "copilot": {
@@ -680,5 +718,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 44.44444444444444
+  "overall_progress": 50.0
 }
