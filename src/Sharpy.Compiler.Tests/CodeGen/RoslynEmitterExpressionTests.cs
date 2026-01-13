@@ -284,7 +284,7 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        code.Should().Contain("Math.Pow");
+        code.Should().Contain("System.Math.Pow");
         code.Should().Contain("2");
         code.Should().Contain("3");
     }
@@ -303,12 +303,12 @@ public class RoslynEmitterExpressionTests
         // Act
         var result = InvokeGenerateExpression(expr);
 
-        // Assert - Floor division should use Math.Floor for correct negative number handling
-        // (int)Math.Floor((double)x / y) rounds toward negative infinity (Python semantics)
+        // Assert - Floor division should use System.Math.Floor for correct negative number handling
+        // (int)System.Math.Floor((double)x / y) rounds toward negative infinity (Python semantics)
         // Result is int32 for pragmatic .NET compatibility with augmented assignments
         var code = result.ToString();
         code.Should().Contain("(int)");
-        code.Should().Contain("Math.Floor");
+        code.Should().Contain("System.Math.Floor");
         code.Should().Contain("(double)");
         code.Should().Contain("/");
     }
@@ -327,10 +327,10 @@ public class RoslynEmitterExpressionTests
         // Act
         var result = InvokeGenerateExpression(expr);
 
-        // Assert - Float floor division should use Math.Floor but NOT cast to long
+        // Assert - Float floor division should use System.Math.Floor but NOT cast to long
         // 7.5 // 2.0 = 3.0 (float), not 3 (int)
         var code = result.ToString();
-        code.Should().Contain("Math.Floor");
+        code.Should().Contain("System.Math.Floor");
         code.Should().Contain("/");
         code.Should().NotContain("(long)");
         code.Should().NotContain("(int)");
@@ -353,7 +353,7 @@ public class RoslynEmitterExpressionTests
         // Assert - Mixed floor division should return float type
         // 7 // 2.0 = 3.0 (float), not 3 (int)
         var code = result.ToString();
-        code.Should().Contain("Math.Floor");
+        code.Should().Contain("System.Math.Floor");
         code.Should().Contain("/");
         code.Should().NotContain("(long)");
         code.Should().NotContain("(int)");

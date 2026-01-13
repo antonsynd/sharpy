@@ -166,6 +166,135 @@ public class RoslynEmitterStatementTests
         Assert.Contains("= 100;", result);
     }
 
+    [Fact]
+    public void GenerateStatement_ListVarDeclaration_UsesTargetTypeForElements()
+    {
+        // Test that list[int] = [1, 2, 3] generates List<int>, not List<object>
+        var stmt = new VariableDeclaration
+        {
+            Name = "numbers",
+            Type = new TypeAnnotation
+            {
+                Name = "list",
+                TypeArguments = new List<TypeAnnotation>
+                {
+                    new TypeAnnotation { Name = "int" }
+                }
+            },
+            InitialValue = new ListLiteral
+            {
+                Elements = new List<Expression>
+                {
+                    new IntegerLiteral { Value = "1" },
+                    new IntegerLiteral { Value = "2" },
+                    new IntegerLiteral { Value = "3" }
+                }
+            }
+        };
+
+        var result = GenerateStatementCode(stmt);
+
+        // Should generate List<int>, not List<object>
+        Assert.Contains("global::Sharpy.Core.List<int>", result);
+        Assert.Contains("new global::Sharpy.Core.List<int>", result);
+        Assert.DoesNotContain("List<object>", result);
+    }
+
+    [Fact]
+    public void GenerateStatement_DictVarDeclaration_UsesTargetTypeForElements()
+    {
+        // Test that dict[str, int] = {"a": 1} generates Dict<string, int>
+        var stmt = new VariableDeclaration
+        {
+            Name = "lookup",
+            Type = new TypeAnnotation
+            {
+                Name = "dict",
+                TypeArguments = new List<TypeAnnotation>
+                {
+                    new TypeAnnotation { Name = "str" },
+                    new TypeAnnotation { Name = "int" }
+                }
+            },
+            InitialValue = new DictLiteral
+            {
+                Entries = new List<DictEntry>
+                {
+                    new DictEntry
+                    {
+                        Key = new StringLiteral { Value = "a" },
+                        Value = new IntegerLiteral { Value = "1" }
+                    }
+                }
+            }
+        };
+
+        var result = GenerateStatementCode(stmt);
+
+        // Should generate Dict<string, int>
+        Assert.Contains("global::Sharpy.Core.Dict<string, int>", result);
+        Assert.Contains("new global::Sharpy.Core.Dict<string, int>", result);
+        Assert.DoesNotContain("Dict<object", result);
+    }
+
+    [Fact]
+    public void GenerateStatement_SetVarDeclaration_UsesTargetTypeForElements()
+    {
+        // Test that set[int] = {1, 2, 3} generates Set<int>
+        var stmt = new VariableDeclaration
+        {
+            Name = "unique_nums",
+            Type = new TypeAnnotation
+            {
+                Name = "set",
+                TypeArguments = new List<TypeAnnotation>
+                {
+                    new TypeAnnotation { Name = "int" }
+                }
+            },
+            InitialValue = new SetLiteral
+            {
+                Elements = new List<Expression>
+                {
+                    new IntegerLiteral { Value = "1" },
+                    new IntegerLiteral { Value = "2" },
+                    new IntegerLiteral { Value = "3" }
+                }
+            }
+        };
+
+        var result = GenerateStatementCode(stmt);
+
+        // Should generate Set<int>
+        Assert.Contains("global::Sharpy.Core.Set<int>", result);
+        Assert.Contains("new global::Sharpy.Core.Set<int>", result);
+        Assert.DoesNotContain("Set<object>", result);
+    }
+
+    [Fact]
+    public void GenerateStatement_ListVarWithoutType_InfersFromElements()
+    {
+        // Test that when no type annotation is provided, inference works
+        var stmt = new VariableDeclaration
+        {
+            Name = "numbers",
+            Type = null, // No type annotation - use inference
+            InitialValue = new ListLiteral
+            {
+                Elements = new List<Expression>
+                {
+                    new IntegerLiteral { Value = "1" },
+                    new IntegerLiteral { Value = "2" }
+                }
+            }
+        };
+
+        var result = GenerateStatementCode(stmt);
+
+        // Should infer List<int> from element types
+        Assert.Contains("new global::Sharpy.Core.List<int>", result);
+    }
+
     #endregion
 
     #region Assignment Statements

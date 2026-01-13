@@ -42,9 +42,9 @@ public class RoslynEmitterModuleTests
     }
 
     [Fact]
-    public void GenerateCompilationUnit_WithSourcePath_GeneratesProperNamespace()
+    public void GenerateCompilationUnit_WithSourcePath_GeneratesSimplerNamespace()
     {
-        // Arrange
+        // Arrange - Single-file compilation without project namespace
         var emitter = CreateEmitter("src/myapp/utils.spy");
         var module = new Module
         {
@@ -55,8 +55,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert
-        Assert.Contains("namespace Myapp.Utils", code);
+        // Assert - Single-file uses simpler file-name-based namespace
+        Assert.Contains("namespace Sharpy.Utils", code);
     }
 
     [Fact]
@@ -296,7 +296,33 @@ public class RoslynEmitterModuleTests
     [Fact]
     public void GenerateNamespace_WithNestedPath_GeneratesNestedNamespace()
     {
-        // Arrange
+        // Arrange - For project-based compilation, set both ProjectNamespace and ProjectRootPath
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = "/project/src/myapp/services/auth.spy",
+            ProjectNamespace = "MyProject",
+            ProjectRootPath = "/project/src"
+        };
+        var emitter = new RoslynEmitter(context);
+        var module = new Module
+        {
+            Body = new List<Statement>()
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - project-based namespace generation
+        Assert.Contains("namespace MyProject.Myapp.Services.Auth", code);
+    }
+
+    [Fact]
+    public void GenerateNamespace_SingleFileWithPath_UsesSimplerNamespace()
+    {
+        // Arrange - Single-file compilation (no ProjectNamespace set)
         var emitter = CreateEmitter("src/myapp/services/auth.spy");
         var module = new Module
         {
@@ -307,14 +333,40 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert
-        Assert.Contains("namespace Myapp.Services.Auth", code);
+        // Assert - Single-file uses simpler file-name-based namespace
+        Assert.Contains("namespace Sharpy.Auth", code);
     }
 
     [Fact]
     public void GenerateNamespace_FiltersSrcAndLib_ExcludesCommonDirs()
     {
-        // Arrange
+        // Arrange - Project-based compilation to test directory filtering
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = "/project/src/lib/mymodule.spy",
+            ProjectNamespace = "MyApp",
+            ProjectRootPath = "/project/src"
+        };
+        var emitter = new RoslynEmitter(context);
+        var module = new Module
+        {
+            Body = new List<Statement>()
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - Project-based namespace includes relative path from root
+        Assert.Contains("namespace MyApp.Lib.Mymodule", code);
+    }
+
+    [Fact]
+    public void GenerateNamespace_SingleFile_UsesSimpleNamespace()
+    {
+        // Arrange - Single-file (no project namespace)
         var emitter = CreateEmitter("src/lib/mymodule.spy");
         var module = new Module
         {
@@ -325,11 +377,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert
-        // Should only have Mymodule, not Src.Lib.Mymodule
-        Assert.Contains("namespace Mymodule", code);
-        Assert.DoesNotContain("namespace Src", code);
-        Assert.DoesNotContain("namespace Lib", code);
+        // Assert - Single-file uses simpler file-name-based namespace
+        Assert.Contains("namespace Sharpy.Mymodule", code);
     }
 
     [Fact]
@@ -382,4 +431,148 @@ public class RoslynEmitterModuleTests
         Assert.Contains("namespace", code1);
         Assert.Contains("namespace", code2);
     }
+
+    #region Namespace Edge Cases
+
+    [Fact]
+    public void GenerateNamespace_PathStartsWithNumber_PrefixesWithUnderscore()
+    {
+        // Arrange - Path with directory starting with number
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = "/project/src/20260113_test/module.spy",
+            ProjectNamespace = "TestApp",
+            ProjectRootPath = "/project/src"
+        };
+        var emitter = new RoslynEmitter(context);
+        var module = new Module { Body = new List<Statement>() };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - numeric directory should be prefixed with underscore
+        Assert.Contains("namespace TestApp._20260113Test.Module", code);
+    }
+
+    [Fact]
+    public void GenerateNamespace_FileNameStartsWithNumber_PrefixesWithUnderscore()
+    {
+        // Arrange - File name starting with number
+        var emitter = CreateEmitter("/some/path/123test.spy");
+        var module = new Module { Body = new List<Statement>() };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - numeric-starting filename should be prefixed with underscore
+        // Note: The SimpleToPascalCase doesn't capitalize after numbers, so it stays lowercase
+        Assert.Contains("namespace Sharpy._123test", code);
+    }
+
+    [Fact]
+    public void GenerateNamespace_PathWithSpecialChars_SanitizesChars()
+    {
+        // Arrange - Path with special characters (dashes, dots)
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = "/project/src/my-app.test/module.spy",
+            ProjectNamespace = "TestApp",
+            ProjectRootPath = "/project/src"
+        };
+        var emitter = new RoslynEmitter(context);
+        var module = new Module { Body = new List<Statement>() };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - special chars should be converted to valid C# identifiers
+        Assert.Contains("namespace TestApp.MyAppTest.Module", code);
+    }
+
+    [Fact]
+    public void GenerateNamespace_NestedNumericDirs_HandlesMultipleLevels()
+    {
+        // Arrange - Multiple nested directories with numeric names
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = "/dogfood/issues/20260113_failed_0001/source.spy",
+            ProjectNamespace = "Dogfood",
+            ProjectRootPath = "/dogfood/issues"
+        };
+        var emitter = new RoslynEmitter(context);
+        var module = new Module { Body = new List<Statement>() };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - numeric directory should be valid C# namespace
+        Assert.Contains("namespace Dogfood._20260113Failed0001.Source", code);
+    }
+
+    [Fact]
+    public void GenerateNamespace_SingleFileNumericPath_UsesFileNameOnly()
+    {
+        // Arrange - Single-file compilation with numeric-starting path
+        // This simulates the dogfooding scenario where path is /20260113.../source.spy
+        var emitter = CreateEmitter("/dogfood/20260113_compilation_failed/source.spy");
+        var module = new Module { Body = new List<Statement>() };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - Single-file should use simple file-name-based namespace
+        // avoiding the problematic path entirely
+        Assert.Contains("namespace Sharpy.Source", code);
+    }
+
+    [Fact]
+    public void GenerateNamespace_ProjectNamespaceOnlyNoPath_UsesProjectNamespaceWithFileName()
+    {
+        // Arrange - ProjectNamespace set but no ProjectRootPath
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = "/some/path/mymodule.spy",
+            ProjectNamespace = "MyApp"
+            // ProjectRootPath not set
+        };
+        var emitter = new RoslynEmitter(context);
+        var module = new Module { Body = new List<Statement>() };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - Should use ProjectNamespace with file name
+        Assert.Contains("namespace MyApp.Mymodule", code);
+    }
+
+    [Fact]
+    public void GenerateNamespace_NoSourceFilePath_UsesDefault()
+    {
+        // Arrange - No source file path
+        var emitter = CreateEmitter(null);
+        var module = new Module { Body = new List<Statement>() };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - Should use default namespace
+        Assert.Contains("namespace SharpyGenerated", code);
+    }
+
+    #endregion
 }

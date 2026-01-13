@@ -439,9 +439,20 @@ public class Compiler
             // Phase 4: Code Generation - Generate C# code from AST using RoslynEmitter
             _logger.LogInfo("Phase 4: Code Generation");
             metrics.StartPhase("Code Generation");
+
+            // For single-file compilation, derive a namespace from the file name
+            var defaultNamespace = !string.IsNullOrEmpty(filePath)
+                ? Path.GetFileNameWithoutExtension(filePath)
+                : null;
+
             var codeGenContext = new CodeGenContext(symbolTable, builtinRegistry)
             {
-                SourceFilePath = filePath
+                SourceFilePath = filePath,
+                // For single-file, we only set ProjectNamespace (not ProjectRootPath)
+                // This tells the emitter to use a simple file-based namespace
+                ProjectNamespace = !string.IsNullOrEmpty(defaultNamespace)
+                    ? $"Sharpy.{ToPascalCase(defaultNamespace)}"
+                    : null
             };
             var emitter = new RoslynEmitter(codeGenContext);
             var compilationUnit = emitter.GenerateCompilationUnit(module);
@@ -469,6 +480,43 @@ public class Compiler
                 Metrics = metrics
             };
         }
+    }
+
+    /// <summary>
+    /// Simple PascalCase conversion for file names to namespace components.
+    /// Handles snake_case, kebab-case, and ensures valid C# identifiers.
+    /// </summary>
+    private static string ToPascalCase(string name)
+    {
+        if (string.IsNullOrEmpty(name))
+            return name;
+
+        // Replace invalid identifier characters with underscores
+        var sanitized = new System.Text.StringBuilder(name.Length);
+        foreach (var c in name)
+        {
+            if (char.IsLetterOrDigit(c) || c == '_')
+                sanitized.Append(c);
+            else
+                sanitized.Append('_');
+        }
+
+        // Split by underscore and capitalize each part
+        var parts = sanitized.ToString().Split('_', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0)
+            return "_";
+
+        var result = string.Join("", parts.Select(p =>
+            char.ToUpperInvariant(p[0]) + (p.Length > 1 ? p[1..] : "")
+        ));
+
+        // If result starts with a digit, prefix with underscore
+        if (result.Length > 0 && char.IsDigit(result[0]))
+        {
+            result = "_" + result;
+        }
+
+        return result;
     }
 }
 

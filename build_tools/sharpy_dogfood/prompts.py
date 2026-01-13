@@ -108,7 +108,7 @@ Generate COMPLEX code:
 - **For loops**: `for i in range(n):`, `for i in range(start, end):`, `for i in range(start, end, step):`
 - **Functions**: `def name(param: type) -> return_type:` with positional parameters
 - **Return**: `return value`
-- **Print**: `print(value)`, `print(value1, value2)` - multiple args OK
+- **Print**: `print(value)` - SINGLE argument only, NO multiple args
 - **Pass**: `pass` statement
 - **Break/Continue**: inside loops only
 - **Constants**: `const NAME: int = 42`
@@ -117,7 +117,8 @@ Generate COMPLEX code:
 - **None literal**: `None` (but no nullable types)
 
 ### ❌ FORBIDDEN - Do NOT use these features:
-- **NO f-strings**: `f"hello {{x}}"` is NOT allowed - use `print(x)` separately
+- **NO f-strings**: `f"hello {{x}}"` is NOT allowed - use separate `print()` calls
+- **NO multi-argument print**: `print(a, b, c)` is NOT allowed - use multiple `print()` calls
 - **NO string concatenation with +**: `"a" + "b"` may not work yet
 - **NO default parameters**: `def foo(x: int = 5)` is NOT allowed yet
 - **NO keyword arguments**: `foo(name="value")` is NOT allowed yet
@@ -156,8 +157,9 @@ print(result)
 ```
 
 IMPORTANT:
-- Use ONLY simple print() calls - one value or multiple comma-separated values
-- NO string formatting or concatenation
+- Use ONLY simple print() calls with ONE argument: print(value)
+- For multiple values, use multiple print() statements
+- NO string formatting, concatenation, or f-strings
 - Every print() output should appear in EXPECTED OUTPUT
 - Keep the code simple and focused on testing the specified feature"""
 
@@ -192,7 +194,7 @@ def get_spec_validation_prompt(code: str, spec_context: str) -> str:
 - Return statement: `return value`
 
 ### Built-ins
-- `print()` with simple values
+- `print(value)` - single argument only, no multi-arg print
 - `range()` in for loops only
 
 ### Literals
@@ -205,6 +207,7 @@ def get_spec_validation_prompt(code: str, spec_context: str) -> str:
 ## FORBIDDEN Features (NOT in phases 0.1.0-0.1.5):
 
 ❌ f-strings: `f"text {{var}}"` - REJECT
+❌ Multi-argument print: `print(a, b, c)` - REJECT (use multiple print calls)
 ❌ Default parameters: `def foo(x: int = 5)` - REJECT
 ❌ Keyword arguments: `foo(name="value")` - REJECT
 ❌ Nullable types: `int?`, `str?` - REJECT

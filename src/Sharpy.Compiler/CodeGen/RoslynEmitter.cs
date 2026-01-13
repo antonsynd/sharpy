@@ -21,6 +21,10 @@ public class RoslynEmitter
     private readonly HashSet<string> _moduleConstVariables = new(); // Track module-level const names (preserved across function scopes)
     private int _tempVarCounter = 0;
 
+    // Target type context for collection literal type inference
+    // Set before generating expressions that need target type information
+    private TypeAnnotation? _targetTypeContext;
+
     // Common .NET namespace acronyms that should be all uppercase
     private static readonly HashSet<string> UpperCaseAcronyms = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -118,39 +122,40 @@ public class RoslynEmitter
             return GenerateProjectNamespace();
         }
 
+        // If only project namespace is specified (single-file with explicit namespace),
+        // use it directly with the file name
+        if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+        {
+            var fileName = !string.IsNullOrEmpty(_context.SourceFilePath)
+                ? Path.GetFileNameWithoutExtension(_context.SourceFilePath)
+                : null;
+
+            if (!string.IsNullOrEmpty(fileName))
+            {
+                return ParseName($"{_context.ProjectNamespace}.{SimpleToPascalCase(fileName)}");
+            }
+            return ParseName(_context.ProjectNamespace);
+        }
+
         // Fallback to file-based namespace generation for single-file compilation
-        // Get namespace from context source file path
-        // Default to "SharpyGenerated" if no source file specified
+        // For single-file compilation without a project, use a simple namespace based
+        // on just the file name to avoid problematic paths (numeric directories, etc.)
         if (string.IsNullOrEmpty(_context.SourceFilePath))
         {
             return ParseName("SharpyGenerated");
         }
 
-        // Convert file path to namespace
-        // e.g., "src/myapp/utils.spy" -> "Myapp.Utils"
-        var path = Path.GetDirectoryName(_context.SourceFilePath) ?? "";
-        var fileName = Path.GetFileNameWithoutExtension(_context.SourceFilePath);
+        var fileNameOnly = Path.GetFileNameWithoutExtension(_context.SourceFilePath);
 
-        // Split path and filter out common directory names
-        var parts = path.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
-            .Where(p => p != "src" && p != "lib" && p != ".")
-            .Select(p => SimpleToPascalCase(p))
-            .ToList();
-
-        // Add file name as final namespace component
-        if (!string.IsNullOrEmpty(fileName))
+        // Use simple file-name-based namespace for single-file compilation
+        // This avoids issues with paths containing numeric directories, special chars, etc.
+        if (!string.IsNullOrEmpty(fileNameOnly))
         {
-            parts.Add(SimpleToPascalCase(fileName));
+            var sanitizedName = SimpleToPascalCase(fileNameOnly);
+            return ParseName($"Sharpy.{sanitizedName}");
         }
 
-        // If no parts, use default
-        if (parts.Count == 0)
-        {
-            return ParseName("SharpyGenerated");
-        }
-
-        // Build namespace name
-        return ParseName(string.Join(".", parts));
+        return ParseName("SharpyGenerated");
     }
 
     private NameSyntax GenerateProjectNamespace()
@@ -290,18 +295,35 @@ public class RoslynEmitter
             return name.ToUpperInvariant();
         }
 
+        // Replace invalid identifier characters with underscores, then split
+        // Valid C# identifier chars: letters, digits (not at start), underscores
+        var sanitized = new System.Text.StringBuilder(name.Length);
+        foreach (var c in name)
+        {
+            if (char.IsLetterOrDigit(c) || c == '_')
+                sanitized.Append(c);
+            else
+                sanitized.Append('_');
+        }
+
         // Split by underscore and capitalize each part
-        var parts = name.Split('_', StringSplitOptions.RemoveEmptyEntries);
+        var parts = sanitized.ToString().Split('_', StringSplitOptions.RemoveEmptyEntries);
 
         // Handle edge case where name is only underscores (e.g., "___")
         if (parts.Length == 0)
-            return name;
+            return "_";
 
         var result = string.Join("", parts.Select(p =>
             char.ToUpperInvariant(p[0]) + (p.Length > 1 ? p[1..] : "")
         ));
 
-        return result;
+        // If result starts with a digit, prefix with underscore to make it valid
+        if (result.Length > 0 && char.IsDigit(result[0]))
+        {
+            result = "_" + result;
+        }
+
+        return string.IsNullOrEmpty(result) ? "_" : result;
     }
 
     private ClassDeclarationSyntax GenerateModuleClass(List<Statement> statements)
@@ -1515,11 +1537,14 @@ public class RoslynEmitter
     {
         return op switch
         {
-            // x **= y → Math.Pow(x, y)
+            // x **= y → System.Math.Pow(x, y)
+            // Note: We use fully qualified System.Math to avoid conflicts with Sharpy.Math namespace
             AssignmentOperator.PowerAssign =>
                 InvocationExpression(
                     MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName("Math"),
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName("System"),
+                            IdentifierName("Math")),
                         IdentifierName("Pow")))
                     .AddArgumentListArguments(
                         Argument(left),
@@ -1588,9 +1613,20 @@ public class RoslynEmitter
         VariableDeclaratorSyntax declarator;
         if (varDecl.InitialValue != null)
         {
-            var value = GenerateExpression(varDecl.InitialValue);
-            declarator = VariableDeclarator(Identifier(varName))
-                .WithInitializer(EqualsValueClause(value));
+            // Set target type context for collection literal type inference
+            // This allows list/dict/set literals to use the declared type
+            var previousTargetType = _targetTypeContext;
+            _targetTypeContext = varDecl.Type;
+            try
+            {
+                var value = GenerateExpression(varDecl.InitialValue);
+                declarator = VariableDeclarator(Identifier(varName))
+                    .WithInitializer(EqualsValueClause(value));
+            }
+            finally
+            {
+                _targetTypeContext = previousTargetType;
+            }
         }
         else
         {
@@ -2042,10 +2078,13 @@ public class RoslynEmitter
         switch (binOp.Operator)
         {
             case BinaryOperator.Power:
-                // x ** y → Math.Pow(x, y)
+                // x ** y → System.Math.Pow(x, y)
+                // Note: We use fully qualified System.Math to avoid conflicts with Sharpy.Math namespace
                 return InvocationExpression(
                     MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName("Math"),
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName("System"),
+                            IdentifierName("Math")),
                         IdentifierName("Pow")))
                     .AddArgumentListArguments(
                         Argument(left),
@@ -2237,7 +2276,21 @@ public class RoslynEmitter
     private ExpressionSyntax GenerateListLiteral(ListLiteral list)
     {
         // new global::Sharpy.Core.List<T> { elem1, elem2, elem3 }
-        var elementType = _typeMapper.InferElementType(list.Elements);
+        // Prefer target type annotation if available (e.g., list[int] = [...])
+        TypeSyntax elementType;
+        if (_targetTypeContext != null &&
+            _targetTypeContext.Name == "list" &&
+            _targetTypeContext.TypeArguments.Count > 0)
+        {
+            // Use the declared element type from the target type annotation
+            elementType = _typeMapper.MapType(_targetTypeContext.TypeArguments[0]);
+        }
+        else
+        {
+            // Fall back to inference from elements
+            elementType = _typeMapper.InferElementType(list.Elements);
+        }
+
         var elements = list.Elements.Select(GenerateExpression);
 
         var listType = GenericName("global::Sharpy.Core.List")
@@ -2253,8 +2306,20 @@ public class RoslynEmitter
     private ExpressionSyntax GenerateDictLiteral(DictLiteral dict)
     {
         // new global::Sharpy.Core.Dict<K,V> { { key1, value1 }, { key2, value2 } }
-        var keyType = _typeMapper.InferElementType(dict.Entries.Select(e => e.Key));
-        var valueType = _typeMapper.InferElementType(dict.Entries.Select(e => e.Value));
+        // Prefer target type annotation if available (e.g., dict[str, int] = {...})
+        TypeSyntax keyType, valueType;
+        if (_targetTypeContext != null &&
+            _targetTypeContext.Name == "dict" &&
+            _targetTypeContext.TypeArguments.Count >= 2)
+        {
+            keyType = _typeMapper.MapType(_targetTypeContext.TypeArguments[0]);
+            valueType = _typeMapper.MapType(_targetTypeContext.TypeArguments[1]);
+        }
+        else
+        {
+            keyType = _typeMapper.InferElementType(dict.Entries.Select(e => e.Key));
+            valueType = _typeMapper.InferElementType(dict.Entries.Select(e => e.Value));
+        }
 
         var initializers = dict.Entries.Select(entry =>
             InitializerExpression(SyntaxKind.ComplexElementInitializerExpression,
@@ -2277,7 +2342,19 @@ public class RoslynEmitter
     private ExpressionSyntax GenerateSetLiteral(SetLiteral set)
     {
         // new global::Sharpy.Core.Set<T> { elem1, elem2, elem3 }
-        var elementType = _typeMapper.InferElementType(set.Elements);
+        // Prefer target type annotation if available (e.g., set[int] = {...})
+        TypeSyntax elementType;
+        if (_targetTypeContext != null &&
+            _targetTypeContext.Name == "set" &&
+            _targetTypeContext.TypeArguments.Count > 0)
+        {
+            elementType = _typeMapper.MapType(_targetTypeContext.TypeArguments[0]);
+        }
+        else
+        {
+            elementType = _typeMapper.InferElementType(set.Elements);
+        }
+
         var elements = set.Elements.Select(GenerateExpression);
 
         var setType = GenericName("global::Sharpy.Core.Set")
@@ -3156,7 +3233,8 @@ public class RoslynEmitter
     /// </summary>
     private ExpressionSyntax GenerateFloorDivision(ExpressionSyntax left, ExpressionSyntax right, bool hasFloatOperand)
     {
-        // Math.Floor((double)left / right) or Math.Floor(left / right)
+        // System.Math.Floor((double)left / right) or System.Math.Floor(left / right)
+        // Note: We use fully qualified System.Math to avoid conflicts with Sharpy.Math namespace
         var divisionExpr = hasFloatOperand
             ? BinaryExpression(SyntaxKind.DivideExpression, left, right)
             : BinaryExpression(SyntaxKind.DivideExpression,
@@ -3165,7 +3243,9 @@ public class RoslynEmitter
 
         var floorCall = InvocationExpression(
             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                IdentifierName("Math"),
+                MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("System"),
+                    IdentifierName("Math")),
                 IdentifierName("Floor")))
             .AddArgumentListArguments(Argument(divisionExpr));
 

@@ -326,6 +326,7 @@ class DogfoodOrchestrator:
         forbidden_checks = [
             (r'f"[^"]*\{', "f-string interpolation"),
             (r"f'[^']*\{", "f-string interpolation"),
+            (r"print\s*\([^)]*,[^)]+\)", "multi-argument print (use multiple print() calls)"),
             (r"def\s+\w+\s*\([^)]*=\s*[^,)]+", "default parameter value"),
             (
                 r"\w+\s*=\s*\w+\s*\(",
