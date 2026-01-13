@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-13T15:41:10.765119",
+  "last_updated": "2026-01-13T15:49:16.938865",
   "phases": [
     {
       "id": "0.1.1",
@@ -726,8 +726,8 @@
       "id": "0.1.5",
       "name": "Functions - Remediation",
       "goal": "",
-      "status": "in_progress",
-      "progress": 80.0,
+      "status": "completed",
+      "progress": 100.0,
       "tasks": [
         {
           "id": "R-0.1.5.1",
@@ -956,8 +956,46 @@
           "files": [
             "src/Sharpy.Compiler/Semantic/OverloadResolver.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude_code",
+              "started_at": "2026-01-13T15:49:16.938844",
+              "completed_at": "2026-01-13T15:49:16.938846",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T15:49:16.938828",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Based on my thorough investigation, I now have a clear picture of the implementation status. Let me compile my findings into a report.\n\n## Spec Adherence Report: Function Overloading (Deferred)\n\n**Spec:** `docs/language_specification/function_parameters.md`, `docs/language_specification/constructors.md`, `docs/language_specification/parameter_modifiers.md`\n**Implementation:** `src/Sharpy.Compiler/Semantic/OverloadResolver.cs` (does not exist), `src/Sharpy.Compiler/Semantic/TypeChecker.cs`, `src/Sharpy.Compiler/Semantic/NameResolver.cs`\n\n### Summary\n\nThe **`OverloadResolver.cs` file specified for verification does not exist**. Function overloading is **partially implemented** but **not fully supported** for user-defined functions. The implementation currently:\n\n1. **Supports** overloading for builtin functions via `BuiltinRegistry`\n2. **Supports** overloading for dunder methods (operator methods like `__add__`, `__eq__`, etc.)\n3. **Does NOT support** user-defined function overloading at module level\n4. **Does NOT support** constructor overloading (`__init__` methods)\n\n---\n\n### Spec Requirements\n\n#### From `function_parameters.md` (Lines 116-249):\n\n1. **Function Overloading** (Lines 116-131):\n   > ```python\n   > def process(value: int) -> str: ...\n   > def process(value: str) -> str: ...\n   > def process(value: int, multiplier: int) -> str: ...\n   > ```\n   > - Overloads resolved by parameter count and types\n   > - Named arguments filter candidates to overloads with matching parameter names\n\n2. **Resolution Algorithm** (Lines 133-144):\n   > 1. Identify candidate overloads\n   > 2. Filter applicable overloads\n   > 3. Find best overload\n\n3. **\"Better\" Overload Rules** (Lines 145-172):\n   > - More specific types preferred\n   > - Fewer conversions needed preferred\n   > - Non-variadic preferred over `*args`\n\n4. **Named Arguments in Overload Resolution** (Lines 205-221):\n   > Named arguments participate in overload resolution by filtering which overloads are candidates.\n\n#### From `constructors.md` (Lines 1-70):\n\n1. **Constructor Overloading** (Lines 1-21):\n   > ```python\n   > class Point:\n   >     def __init__(self): ...\n   >     def __init__(self, x: float, y: float): ...\n   >     def __init__(self, other: Point): ...\n   > ```\n\n2. **Constructor Chaining** (Lines 23-70):\n   > `self.__init__(...)` as first statement transforms to `: this(...)`\n\n#### From `parameter_modifiers.md` (Lines 121-135):\n\n1. **Overloading with Modifiers** (Lines 121-135):\n   > `ref[T]` and `out[T]` are distinct for overloading purposes. `in[T]` and plain `T` are **not** distinct for overloading.\n\n---\n\n### Compliant\n\n- [x] **Builtin function overload resolution** (`TypeChecker.cs:1455-1506`) - The `TypeChecker` correctly handles overloads for builtin functions via `GetFunctionOverloads()`\n- [x] **Operator dunder method overloading** (`NameResolver.cs:343-351`, `Symbol.cs:62-63`) - `OperatorMethods` dictionary supports multiple overloads per operator name\n- [x] **Protocol dunder method overloading** (`NameResolver.cs:366-374`, `Symbol.cs:66-67`) - `ProtocolMethods` dictionary supports overloads\n- [x] **Type-based overload resolution for operators** (`OperatorValidator.cs:384-489`) - `ResolveBestOverload()` correctly implements C# overload resolution rules for operators\n\n---\n\n### Deviations\n\n- [ ] **Section: Function Overloading** (function_parameters.md lines 116-131)\n  - **Spec says:** \"Functions can be overloaded based on parameter count and types\"\n  - **Implementation:** `NameResolver.ResolveFunctionDeclaration()` (lines 258-288) rejects duplicate function names:\n    ```csharp\n    if (_symbolTable.Lookup(functionDef.Name, searchParents: false) != null)\n    {\n        AddError($\"Function '{functionDef.Name}' is already defined\", ...);\n        return;\n    }\n    ```\n  - **Impact:** **High** - User-defined function overloading is completely unsupported\n\n- [ ] **Section: Constructor Overloading** (constructors.md lines 1-21)\n  - **Spec says:** Multiple `__init__` methods with different signatures are allowed\n  - **Implementation:** The `ResolveMethodDeclaration()` method (NameResolver.cs:291-376) adds methods to `owningType.Methods`, but there is no mechanism to store/resolve overloads of `__init__` since they are added to the same list without conflict checking. However, `Scope.Define()` will throw for duplicate symbols.\n  - **Impact:** **High** - Constructor overloading is unsupported\n\n- [ ] **Section: Constructor Chaining** (constructors.md lines 23-70)  \n  - **Spec says:** `self.__init__(...)` as first statement chains constructors\n  - **Implementation:** No special handling found in `TypeChecker.cs` or code generation for constructor chaining pattern\n  - **Impact:** **Medium** - Constructor chaining pattern not implemented\n\n- [ ] **Section: Overload Resolution Rules** (function_parameters.md lines 133-172)\n  - **Spec says:** \"Sharpy follows C# overload resolution rules exactly\"\n  - **Implementation:** No `OverloadResolver.cs` exists; only partial resolution exists in `OperatorValidator.ResolveBestOverload()` for operator overloads\n  - **Impact:** **High** - No general-purpose overload resolver\n\n- [ ] **Section: Named Arguments in Overload Resolution** (function_parameters.md lines 205-221)\n  - **Spec says:** Named arguments filter overload candidates by parameter name matching\n  - **Implementation:** `TypeChecker.CheckFunctionCall()` validates keyword arguments but doesn't filter overload candidates\n  - **Impact:** **Medium** - Named argument overload disambiguation not implemented\n\n- [ ] **Section: Overloading with Modifiers** (parameter_modifiers.md lines 121-135)\n  - **Spec says:** `ref[T]` and `out[T]` are distinct for overloading; `in[T]` and `T` are not\n  - **Implementation:** No parameter modifier-based overload distinction implemented\n  - **Impact:** **Medium** - Parameter modifier overloading not implemented\n\n---\n\n### Undocumented Behavior\n\n1. **`OperatorMethods` and `ProtocolMethods` dictionaries** in `TypeSymbol` support overloading for dunder methods, but this is not explicitly documented in the spec\n2. **Builtin function overloading** via `BuiltinRegistry.GetFunctionOverloads()` is implemented but spec doesn't mention special handling for builtins\n\n---\n\n### Recommendations\n\n1. **Create `OverloadResolver.cs`**: Implement a dedicated overload resolution class following C# resolution algorithm\n   - File location: `src/Sharpy.Compiler/Semantic/OverloadResolver.cs`\n   - Should implement: candidate filtering, applicability checking, \"better\" overload comparison\n\n2. **Modify `NameResolver` for function overloads**: Change `ResolveFunctionDeclaration()` to:\n   - Store functions in an overload list (like `BuiltinRegistry._functions`)\n   - Remove the \"already defined\" error for functions with same name but different signatures\n\n3. **Implement constructor overloading**: \n   - Allow multiple `__init__` methods on the same class\n   - Store them as overloads in the `Methods` list or dedicated `Constructors` property\n\n4. **Implement constructor chaining**:\n   - Detect `self.__init__(...)` as first statement\n   - Transform to C# `: this(...)` syntax in code generation\n\n5. **Add overload resolution tests**: Create tests for:\n   - Multiple function overloads with different parameter counts\n   - Overloads with different parameter types\n   - Constructor overloading\n   - Named argument disambiguation\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T15:49:16.938835",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "## Verification Report: Function Overloading (Deferred)\n\n### Test Results\n- **Total: 3327** | **Passed: 3296** | **Failed: 0** | **Skipped: 31**\n  - Core Tests: 735 passed\n  - Compiler Tests: 2561 passed, 31 skipped\n\n### Behavior Checks\n\n**Function Overloading Status (Task R-0.1.5.5):**\n- [x] Function overloading is intentionally deferred to v0.2.x+ phase\n- [x] Test `RegistersMultipleOverloadsOfSameOperator` correctly skipped with message: \"Method overloading not yet supported in symbol table\"\n- [x] Decision properly documented in `task_list_remediation.md`\n\n**Related Infrastructure (Working):**\n- [x] `OverloadIndexBuilder` discovers range function overloads (1, 2, 3 params)\n- [x] `OverloadIndexBuilder` discovers print function with variadic params\n- [x] `OverloadIndexBuilder` discovers len function\n- [x] `OverloadIndexCache` tests pass (9/9)\n\n**Phase 0.1.5 Functions (Non-Overloading Features):**\n- [x] Basic function definitions compile and run\n- [x] Recursive functions work correctly (factorial, fibonacci, GCD)\n- [x] Default parameters work correctly\n- [x] Keyword argument syntax parses (e.g., `multiply(4, b=5)`)\n- [x] Void functions work correctly\n- [x] Function composition (nested calls) works\n- [x] Local variable scoping works\n- [x] Control flow in functions works\n- [ ] Keyword-only argument counting has known issue (4 tests skipped)\n- [ ] `global` keyword not implemented (1 test skipped)\n\n### Coverage Assessment\n\n**Function Overloading Coverage:**\n- Overload discovery infrastructure exists (`OverloadIndexBuilder`, `OverloadIndex`, `OverloadIndexCache`)\n- 5 tests cover overload indexing from Sharpy.Core exports\n- No overload resolution implementation exists yet (as expected - deferred)\n\n**Phase 0.1.5 Functions Test Coverage:**\n- 52 Phase015IntegrationTests total\n- 47 passing, 5 skipped\n- Skipped tests are for keyword argument counting and global keyword (known issues)\n\n### Regression Check\n- **No regressions detected**\n- All previously passing tests continue to pass\n- Skipped tests have documented reasons and TODOs\n\n### Related Skipped Tests Summary\n\n| Test Category | Count | Reason |\n|---------------|-------|--------|\n| Keyword argument counting | 4 | TypeChecker doesn't count keyword arguments |\n| Global keyword | 1 | Parser doesn't recognize global statement |\n| Method overloading | 1 | Intentionally deferred |\n| Division semantics | 5 | Integer division doesn't return float64 |\n| Other (unrelated) | 20 | Various unimplemented features |\n\n### Recommendations\n\n1. **Function Overloading (Deferred)** - Status correct per specification:\n   - Keep deferred to v0.2.x+ as documented\n   - When implementing, consider creating `OverloadResolver.cs` as noted in remediation doc\n\n2. **Related High-Priority Tasks** (from `task_list_remediation.md`):\n   - **R-0.1.5.1** (Critical): Fix keyword argument count validation in TypeChecker\n   - **R-0.1.5.2** (Medium): Add keyword argument validation (positional after keyword error)\n   - **R-0.1.5.6** (Medium): Implement `global` keyword\n\n3. **Existing Overload Infrastructure**:\n   - `OverloadIndexBuilder` is functional for external module discovery\n   - Can be leveraged when function overloading is implemented\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T15:49:16.938839",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the data I need to compile my verification report.\n\n---\n\n# Hallucination Defense Verification Report\n\n## Task R-0.1.5.5: Function Overloading (Deferred)\n\n---\n\n### Claim 1: Test Location and Skip Message\n\n**Claim:** `RegistersMultipleOverloadsOfSameOperator` in `src/Sharpy.Compiler.Tests/Semantic/NameResolverOperatorTests.cs:311-333` is skipped with message `\"Method overloading not yet supported in symbol table\"`\n\n**Verification:** Direct file read of `NameResolverOperatorTests.cs` lines 305-337\n\n**Result:** \u2705 CORRECT\n- Line 311: `[Fact(Skip = \"Method overloading not yet supported in symbol table\")]`\n- Line 312-333: Method `RegistersMultipleOverloadsOfSameOperator()` is correctly defined\n- Test ran and showed as skipped in test output\n\n---\n\n### Claim 2: Documentation in task_list_remediation.md\n\n**Claim:** The deferral decision is documented in `docs/implementation_planning/task_list_remediation.md` (Task R-0.1.5.5)\n\n**Verification:** Direct file read of `task_list_remediation.md`\n\n**Result:** \u2705 CORRECT\n- Lines 561-580 contain Task R-0.1.5.5: Function Overloading (Deferred)\n- Line 571: `[x] Document decision to defer function overloading`\n- Line 572: `[x] Keep test... skipped with message \"Method overloading not yet supported in symbol table\"`\n- Line 573: `[ ] Consider implementing in v0.2.x+ phase` (unchecked - correct, it's future work)\n\n---\n\n### Claim 3: Documentation in task_list_0.1.0_to_0.1.5.md (Task 0.1.5.8)\n\n**Claim:** The deferral decision is documented in `docs/implementation_planning/task_list_0.1.0_to_0.1.5.md` (Task 0.1.5.8)\n\n**Verification:** Direct grep search for \"0.1.5.8\" in the file\n\n**Result:** \u2705 CORRECT\n- Line 1260: `### Task 0.1.5.8: (Optional) Function Overloading`\n- Line 1274: `Note: Python doesn't have overloading, so this is a Sharpy-specific feature. May be simpler to defer.`\n- Line 1278: `If deferred: Document in phase notes`\n\n---\n\n### Claim 4: Semantic Tests Passing (767 tests, 8 skipped)\n\n**Claim:** All 767 semantic tests pass (8 skipped for expected reasons)\n\n**Verification:** Ran `dotnet test --filter \"FullyQualifiedName~Semantic\"`\n\n**Result:** \u2705 CORRECT\n- Test output: `Passed: 767, Skipped: 8, Total: 775`\n- All 767 tests pass, 8 are skipped as expected\n\n---\n\n### Claim 5: Future Work - OverloadResolver.cs Path\n\n**Claim:** When implementing function overloading, create `src/Sharpy.Compiler/Semantic/OverloadResolver.cs`\n\n**Verification:** Cross-checked against both task documents\n\n**Result:** \u2705 CORRECT (Consistent with documentation)\n- `task_list_remediation.md` line 567: `Would require src/Sharpy.Compiler/Semantic/OverloadResolver.cs`\n- `task_list_0.1.0_to_0.1.5.md` line 1264: `src/Sharpy.Compiler/Semantic/OverloadResolver.cs (would need creation)`\n\n---\n\n### Claim 6: Checklist Items 1 and 2 Marked Complete\n\n**Claim:** Marked checklist items 1 and 2 as complete in `task_list_remediation.md`\n\n**Verification:** Direct file read\n\n**Result:** \u2705 CORRECT\n- Line 571: `1. [x] Document decision to defer function overloading`\n- Line 572: `2. [x] Keep test... skipped`\n- Line 573: `3. [ ] Consider implementing in v0.2.x+ phase` (correctly unchecked)\n\n---\n\n## C# Feature Availability Verification\n\n**Claim (from table):** FileScopedNamespaceDeclaration is a C# 10+ feature\n\n**Verification:** \n1. Grep search for `FileScopedNamespaceDeclaration` in codebase - NOT FOUND\n2. Found `NamespaceDeclaration` at `RoslynEmitter.cs:102` (block-scoped, C# 9.0 compatible)\n\n**Result:** \u2705 CORRECT (The claim is factually accurate)\n- `FileScopedNamespaceDeclaration` IS a C# 10+ Roslyn API\n- The codebase currently uses `NamespaceDeclaration` (block-scoped), which is C# 9.0 compatible\n- This means the flagged issue may have already been addressed or never existed\n\n---\n\n## Python Semantic Verification\n\n**Claim:** Python floor division `-7 // 2 = -4`\n\n**Verification:** `python3 -c \"print(-7 // 2)\"`\n\n**Result:** \u2705 CORRECT \u2014 Output: `-4`\n- Python floor division floors toward negative infinity, not toward zero\n\n---\n\n## Summary\n\n| Claim | Result |\n|-------|--------|\n| Test location and skip message | \u2705 CORRECT |\n| Documentation in task_list_remediation.md | \u2705 CORRECT |\n| Documentation in task_list_0.1.0_to_0.1.5.md | \u2705 CORRECT |\n| 767 semantic tests passing, 8 skipped | \u2705 CORRECT |\n| OverloadResolver.cs future path | \u2705 CORRECT |\n| Checklist items 1 & 2 complete | \u2705 CORRECT |\n| FileScopedNamespace is C# 10+ | \u2705 CORRECT |\n| Python floor division semantics | \u2705 CORRECT |\n\n**Overall Assessment:** All claims verified as factually accurate. No hallucinations detected.\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": true,
           "human_question": null,
@@ -969,13 +1007,13 @@
   ],
   "current_phase_id": null,
   "current_task_id": "R-0.1.5.5",
-  "total_attempts": 17,
-  "total_successes": 17,
+  "total_attempts": 18,
+  "total_successes": 18,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 17,
-      "successes": 17,
+      "attempts": 18,
+      "successes": 18,
       "failures": 0
     },
     "copilot": {
@@ -984,5 +1022,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 88.88888888888889
+  "overall_progress": 94.44444444444444
 }
