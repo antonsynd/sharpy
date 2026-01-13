@@ -69,4 +69,75 @@ Interrupted by user
 [38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h
 bck-i-search: _[K[A[8C./build_tools/auto_builder.sh [4mr[24mun[1B[42Dr_[A[37C[4mr[4me[24mset R-0.1.4.2[1B[53De_[A[36C[1C[4me[4ms[24m[1B[40Ds_[A[35C[2C[4ms[4me[24m[1B[40De_[A[34C[3C[4me[4mt[24m[1B[40Dt_[A[33C[24mr[24me[24ms[24me[24mt[1B[K[A[68C         R-0.1.1.1[?2004l[1B]133;C;Task R-0.1.1.1 reset to pending
 [1m[7m%[27m[1m[0m                                                                                             ]133;D;0]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
-[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h./build_tools/auto_builder.sh reset R-0.1.1.1             un
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h./build_tools/auto_builder.sh reset R-0.1.1.1             un[?2004l
+]133;C;Starting Sharpy Auto Builder...
+  Backend priority: ['claude_code', 'copilot']
+  Max tasks: unlimited
+  Spec check: enabled
+  Verification: enabled
+  Hallucination check: enabled
+
+
+======================================================================
+🔧 ORCHESTRATOR CONFIGURATION (as of 2026-01-13 09:29:08)
+======================================================================
+
+📋 Key Settings:
+  • Project root: /Users/anton/Documents/github/sharpy
+  • Task list: /Users/anton/Documents/github/sharpy/docs/implementation_planning/task_list_remediation.md
+  • Ground truth: /Users/anton/Documents/github/sharpy/build_tools/sharpy_auto_builder/state/ground_truth.json
+
+🔍 Validation Settings:
+  • Spec adherence check: True
+  • Verification after implementation: True
+  • Hallucination defense: True
+
+🔄 Retry/Fix Settings:
+  • Max retries per task: 3
+  • Max test fix attempts: 3
+  • Max validation fix attempts: 2
+  • Create follow-up on fix failure: True
+
+⚙️ Execution Settings:
+  • Auto commit: True
+  • Create PR: False
+  • Test timeout: 300.0s
+  • Human approval for critical: True
+
+🤖 Backend Configuration:
+  • claude_code: ✅ enabled
+      Model: claude-sonnet-4-5-20250929
+      Max tokens: 200000
+      Rate limit: 50/hour
+      Cooldown: 3.0s
+  • copilot: ✅ enabled
+      Model: claude-sonnet-4-5-20250929
+      Max tokens: 128000
+      Rate limit: 100/hour
+      Cooldown: 2.0s
+
+  Backend priority: claude_code → copilot
+
+======================================================================
+
+[select_task] Selected task R-0.1.1.1: Verify Keyword-as-Member-Name Bug Resolution
+⏳ [09:29:08] Starting: plan_implementation - Verify Keyword-as-Member-Name Bug Resolution
+✅ [09:30:35] Completed: plan_implementation (87.8s)
+[plan_implementation] Implementation plan created for R-0.1.1.1
+⏳ [09:30:35] Starting: run_baseline_tests - component: Parser
+[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=✅ [09:30:39] Completed: run_baseline_tests (3.8s)
+[run_baseline_tests] Baseline tests passed
+⏳ [09:30:39] Starting: execute_implementation - attempt 1, specialist: parser-expert
+✅ [09:32:02] Completed: execute_implementation (82.3s) - via claude_code
+[execute_implementation] Execution attempt 1 succeeded
+[analyze_response] Response analysis: Implementation detected (confidence: 0.80)
+⏳ [09:32:02] Starting: run_tests - component: Parser
+[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=✅ [09:32:03] Completed: run_tests (1.6s)
+[run_tests] Tests passed
+⏳ [09:32:03] Starting: validate_spec_adherence
+✅ [09:33:12] Completed: validate_spec_adherence (68.8s)
+[validate_spec_adherence] Spec adherence check completed
+⏳ [09:33:12] Starting: validate_verification
+✅ [09:37:28] Completed: validate_verification (256.2s)
+[validate_verification] Verification check completed
+⏳ [09:37:28] Starting: check_hallucinations

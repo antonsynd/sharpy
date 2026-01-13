@@ -1,12 +1,12 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-13T09:28:34.700801",
+  "last_updated": "2026-01-13T09:29:08.216649",
   "phases": [
     {
       "id": "0.1.1",
       "name": "Parser Foundation - Remediation",
       "goal": "",
-      "status": "pending",
+      "status": "in_progress",
       "progress": 0.0,
       "tasks": [
         {
@@ -17,7 +17,7 @@
           "files": [
             "src/Sharpy.Compiler/Parser/Parser.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
