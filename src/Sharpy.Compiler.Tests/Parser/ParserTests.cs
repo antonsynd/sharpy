@@ -596,6 +596,64 @@ for x in range(10):
         forStmt.Body.Should().HaveCount(1);
     }
 
+    [Fact]
+    public void ParseWhileElse_ParsesElseClause()
+    {
+        var source = @"
+while x > 0:
+    x = x - 1
+else:
+    print(""done"")
+";
+        var module = Parse(source);
+        var whileStmt = module.Body[0].Should().BeOfType<WhileStatement>().Subject;
+        whileStmt.Body.Should().HaveCount(1);
+        whileStmt.ElseBody.Should().HaveCount(1);
+        whileStmt.ElseBody[0].Should().BeOfType<ExpressionStatement>();
+    }
+
+    [Fact]
+    public void ParseForElse_ParsesElseClause()
+    {
+        var source = @"
+for x in items:
+    if x == target:
+        break
+else:
+    print(""not found"")
+";
+        var module = Parse(source);
+        var forStmt = module.Body[0].Should().BeOfType<ForStatement>().Subject;
+        forStmt.Body.Should().HaveCount(1);
+        forStmt.Body[0].Should().BeOfType<IfStatement>();
+        forStmt.ElseBody.Should().HaveCount(1);
+        forStmt.ElseBody[0].Should().BeOfType<ExpressionStatement>();
+    }
+
+    [Fact]
+    public void ParseWhileNoElse_ElseBodyIsEmpty()
+    {
+        var source = @"
+while x > 0:
+    x = x - 1
+";
+        var module = Parse(source);
+        var whileStmt = module.Body[0].Should().BeOfType<WhileStatement>().Subject;
+        whileStmt.ElseBody.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ParseForNoElse_ElseBodyIsEmpty()
+    {
+        var source = @"
+for x in items:
+    print(x)
+";
+        var module = Parse(source);
+        var forStmt = module.Body[0].Should().BeOfType<ForStatement>().Subject;
+        forStmt.ElseBody.Should().BeEmpty();
+    }
+
     #endregion
 
     #region Exception Handling

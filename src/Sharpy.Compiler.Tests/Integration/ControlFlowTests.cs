@@ -606,4 +606,173 @@ print(count)
     }
 
     #endregion
+
+    #region Loop Else Clause
+
+    [Fact]
+    public void ForElse_NoBreak_ElseExecutes()
+    {
+        var source = @"
+items: list[int] = [1, 2, 3]
+
+for item in items:
+    print(item)
+else:
+    print(""completed"")
+";
+
+        var result = CompileAndExecute(source);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("1\n2\n3\ncompleted\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void ForElse_WithBreak_ElseSkipped()
+    {
+        var source = @"
+items: list[int] = [1, 2, 3, 4, 5]
+
+for item in items:
+    if item == 3:
+        print(""found"")
+        break
+    print(item)
+else:
+    print(""not found"")
+";
+
+        var result = CompileAndExecute(source);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("1\n2\nfound\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void WhileElse_NoBreak_ElseExecutes()
+    {
+        var source = @"
+i: int = 0
+
+while i < 3:
+    print(i)
+    i += 1
+else:
+    print(""completed"")
+";
+
+        var result = CompileAndExecute(source);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("0\n1\n2\ncompleted\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void WhileElse_WithBreak_ElseSkipped()
+    {
+        var source = @"
+i: int = 0
+
+while i < 10:
+    if i == 3:
+        print(""found"")
+        break
+    print(i)
+    i += 1
+else:
+    print(""not found"")
+";
+
+        var result = CompileAndExecute(source);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("0\n1\n2\nfound\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void ForElse_EmptyIterable_ElseExecutes()
+    {
+        // Use a range that produces zero iterations
+        var source = @"
+for item in range(0):
+    print(item)
+else:
+    print(""empty range"")
+";
+
+        var result = CompileAndExecute(source);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("empty range\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void WhileElse_FalseCondition_ElseExecutes()
+    {
+        var source = @"
+x: int = 10
+
+while x < 5:
+    print(x)
+    x += 1
+else:
+    print(""never entered"")
+";
+
+        var result = CompileAndExecute(source);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("never entered\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void ForElse_NestedIfBreak_ElseSkipped()
+    {
+        var source = @"
+def find_target(items: list[int], target: int) -> str:
+    for item in items:
+        if item > 0:
+            if item == target:
+                return ""found""
+    else:
+        return ""not found""
+    return ""exited via break""
+
+print(find_target([1, 2, 3], 2))
+print(find_target([1, 2, 3], 5))
+";
+
+        var result = CompileAndExecute(source);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("found\nnot found\n", result.StandardOutput);
+    }
+
+    [Fact]
+    public void ForElse_NestedLoop_IndependentElse()
+    {
+        // Inner loop's break should not affect outer loop's else
+        var source = @"
+outer_items: list[int] = [1, 2]
+inner_items: list[int] = [10, 20]
+
+for outer in outer_items:
+    for inner in inner_items:
+        if inner == 10:
+            break
+    else:
+        print(""inner else"")
+    print(outer)
+else:
+    print(""outer else"")
+";
+
+        var result = CompileAndExecute(source);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        // Inner loop breaks, so inner else is skipped. Outer loop completes, so outer else runs.
+        Assert.Equal("1\n2\nouter else\n", result.StandardOutput);
+    }
+
+    #endregion
 }
