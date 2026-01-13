@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-13T14:02:21.040085",
+  "last_updated": "2026-01-13T14:11:19.002582",
   "phases": [
     {
       "id": "0.1.1",
@@ -727,7 +727,7 @@
       "name": "Functions - Remediation",
       "goal": "",
       "status": "in_progress",
-      "progress": 40.0,
+      "progress": 60.0,
       "tasks": [
         {
           "id": "R-0.1.5.1",
@@ -846,8 +846,46 @@
           "files": [
             "src/Sharpy.Compiler/Semantic/DefaultParameterValidator.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude_code",
+              "started_at": "2026-01-13T14:11:18.997911",
+              "completed_at": "2026-01-13T14:11:18.997913",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T14:11:18.997899",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the information needed to compile the spec adherence report. Let me create a comprehensive analysis.\n\n## Spec Adherence Report: Enhance Default Parameter Validation for Enum Values\n\n**Spec:** `docs/language_specification/function_default_parameters.md`, `docs/language_specification/enums.md`\n**Implementation:** `src/Sharpy.Compiler/Semantic/DefaultParameterValidator.cs`\n\n### Compliant\n\n- [x] **Numeric literals**: Implementation correctly allows `IntegerLiteral` and `FloatLiteral` as compile-time constants (lines 139-140). Matches spec table: \"Numeric literals | `42`, `3.14`, `0xFF`, `1_000_000`\"\n\n- [x] **String literals**: Implementation correctly allows `StringLiteral` as compile-time constant (line 141). Matches spec: \"`\"hello\"`, `'world'`, `r\"path\\to\\file\"`\"\n\n- [x] **Boolean literals**: Implementation correctly allows `BooleanLiteral` as compile-time constant (line 142). Matches spec: \"`True`, `False`\"\n\n- [x] **None for nullable types**: Implementation allows `NoneLiteral` as compile-time constant (line 143) and specifically validates that `None` is only allowed for nullable parameter types (lines 74-87). Matches spec: \"`None` | Only for nullable parameter types\"\n\n- [x] **Enum values**: Implementation correctly validates enum member access as compile-time constant via `IsEnumMemberAccess()` method (lines 207-219). Matches spec: \"`Color.RED`, `HttpMethod.GET`\"\n\n- [x] **Constant references**: Implementation correctly validates `const` declaration references via `IsConstReference()` method (lines 197-201). Matches spec: \"`MAX_SIZE`, `DEFAULT_NAME` | Must reference a `const` declaration\"\n\n- [x] **Mutable defaults rejection - list literals**: Implementation rejects `ListLiteral` in `IsMutableDefault()` (line 99). Matches spec example: \"`def broken(items: list[int] = []) -> int:  # ERROR`\"\n\n- [x] **Mutable defaults rejection - dict literals**: Implementation rejects `DictLiteral` in `IsMutableDefault()` (line 103). Matches spec example: \"`def also_broken(config: dict[str, str] = {}) -> None:  # ERROR`\"\n\n- [x] **Mutable defaults rejection - set literals**: Implementation rejects `SetLiteral` in `IsMutableDefault()` (line 106).\n\n- [x] **Mutable defaults rejection - constructor calls**: Implementation rejects `set()`, `list()`, `dict()` constructor calls (lines 109-115). This aligns with spec principle that constructor calls are not constants.\n\n- [x] **Tuple constants**: Implementation correctly allows `TupleLiteral` when all elements are compile-time constants (line 146). This is consistent with spec since tuples are immutable.\n\n- [x] **Unary operations on constants**: Implementation allows `UnaryOp` when operand is constant (line 149). Supports examples like `-1`, `not True`.\n\n- [x] **Binary operations on constants**: Implementation allows `BinaryOp` when both operands are constants (line 152). Supports examples like `1 + 2`.\n\n- [x] **Conditional expressions with constants**: Implementation allows `ConditionalExpression` when all parts are constants (lines 158-161).\n\n- [x] **Constructor calls rejection**: Implementation rejects `FunctionCall` (line 168), which covers the spec example: \"`def still_broken(point: Point = Point(0, 0)) -> None:  # ERROR: constructor call is not constant`\"\n\n- [x] **Comprehensions rejection**: Implementation rejects `ListComprehension`, `SetComprehension`, `DictComprehension` (lines 182-184) as non-constants.\n\n- [x] **Lambda expressions rejection**: Implementation rejects `LambdaExpression` (line 187) as non-constants.\n\n### Deviations\n\n**None identified.** The implementation fully adheres to the specification.\n\n### Test Coverage Verification\n\nThe test file `DefaultParameterValidatorTests.cs` provides comprehensive coverage:\n\n| Spec Requirement | Test Coverage |\n|------------------|---------------|\n| Numeric defaults | `AllowsIntegerDefault`, `AllowsFloatDefault`, `AllowsNegativeIntegerDefault` |\n| String defaults | `AllowsStringDefault` |\n| Boolean defaults | `AllowsBooleanDefault` |\n| None for nullable | `AllowsNoneDefaultForNullableType`, `AllowsNoneDefaultForNullableStringType` |\n| None for non-nullable (rejected) | `RejectsNoneDefaultForNonNullableInt`, `RejectsNoneDefaultForNonNullableString`, `RejectsNoneDefaultForNonNullableBool`, `RejectsNoneDefaultForNonNullableFloat` |\n| Enum member defaults | `AllowsEnumMemberDefault`, `AllowsEnumMemberDefaultInMethod`, `AllowsMultipleEnumDefaults` |\n| Const reference defaults | `AllowsConstReferenceDefault`, `AllowsIntConstReferenceDefault`, `AllowsStringConstReferenceDefault`, `AllowsBoolConstReferenceDefault`, `AllowsMultipleConstDefaults` |\n| Mutable list rejected | `RejectsEmptyListDefault`, `RejectsListWithElementsDefault`, `RejectsListConstructorDefault` |\n| Mutable dict rejected | `RejectsEmptyDictDefault`, `RejectsDictWithEntriesDefault`, `RejectsDictConstructorDefault` |\n| Mutable set rejected | `RejectsSetLiteralDefault`, `RejectsSetConstructorDefault` |\n| Variable reference rejected | `RejectsVariableReferenceDefault` |\n| Function call rejected | `RejectsFunctionCallDefault` |\n| Tuple defaults | `AllowsTupleDefault`, `AllowsNestedTupleConstant` |\n| Binary operations | `AllowsBinaryOperationOnConstants` |\n| Unary operations | `AllowsUnaryOperationOnConstant` |\n| Parenthesized expressions | `AllowsParenthesizedConstant`, `RejectsParenthesizedMutableDefault` |\n| Class methods | `AllowsValidDefaultInMethod`, `RejectsMutableDefaultInMethod`, `RejectsNoneDefaultForNonNullableInMethod`, `AllowsNoneDefaultForNullableInMethod` |\n\n### Recommendations\n\n**None required.** The implementation is fully compliant with the specification.\n\n### Summary\n\nThe `DefaultParameterValidator` implementation correctly implements all requirements from the function default parameters specification:\n\n1. All allowed default value types are correctly recognized as compile-time constants\n2. All prohibited default value types (mutable collections, function calls, non-const references) are correctly rejected\n3. The special case of `None` being only valid for nullable types is properly enforced\n4. Enum member access (`Color.RED`) is correctly identified as a compile-time constant\n5. Error messages are descriptive and provide helpful guidance to users\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T14:11:18.997902",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "**Verification Complete.** \n\nAll tests pass (3289/3289 active tests). The implementation for enhanced default parameter validation for enum values is working correctly. Key features verified:\n\n- Enum member defaults (`Color.RED`) are accepted as compile-time constants\n- Const reference defaults (`DEFAULT_TIMEOUT`) are accepted\n- Mutable defaults, function calls, and variable references are properly rejected\n- None is only allowed for nullable parameter types\n- No regressions introduced in related semantic analysis components\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T14:11:18.997907",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the information needed to verify the claims. Let me produce my verification report:\n\n---\n\n# Hallucination Defense Report\n\n## Claim Verification Results\n\n---\n\n**Claim:** `IsCompileTimeConstant()` was changed from `static` to instance method to access the symbol table.\n\n**Verification:** Examined `DefaultParameterValidator.cs:134` - the method signature is `private bool IsCompileTimeConstant(Expression expr)` (not static), and it calls `IsConstReference(id)` at line 164 which uses `_symbolTable`.\n\n**Result:** \u2705 CORRECT \u2014 The method is indeed an instance method and accesses `_symbolTable` through helper methods.\n\n---\n\n**Claim:** Added `IsConstReference()` helper method that checks if an `Identifier` resolves to a `VariableSymbol` with `IsConstant: true`.\n\n**Verification:** Examined `DefaultParameterValidator.cs:197-201`. The method exists and uses pattern `symbol is VariableSymbol { IsConstant: true }`. Verified in `Symbol.cs:24` that `VariableSymbol` has `public bool IsConstant { get; init; }`.\n\n**Result:** \u2705 CORRECT \u2014 The method exists exactly as described and the `IsConstant` property exists on `VariableSymbol`.\n\n---\n\n**Claim:** Added `IsEnumMemberAccess()` helper method that checks if a `MemberAccess` expression refers to an enum member.\n\n**Verification:** Examined `DefaultParameterValidator.cs:207-220`. The method exists and checks `symbol is TypeSymbol { TypeKind: TypeKind.Enum }`. Verified in `Symbol.cs:117-123` that `TypeKind.Enum` exists in the `TypeKind` enum.\n\n**Result:** \u2705 CORRECT \u2014 The method exists and correctly checks for enum type symbols.\n\n---\n\n**Claim:** Property pattern syntax `{ IsConstant: true }` and `{ TypeKind: TypeKind.Enum }` is valid C# 9.0.\n\n**Verification:** Property patterns with the simplified `{ Property: value }` syntax were introduced in C# 8.0 and are fully supported in C# 9.0. The project uses `LangVersion=latest` with .NET 10.0, so this syntax is valid.\n\n**Result:** \u2705 CORRECT \u2014 Property pattern matching syntax is available since C# 8.0, well within C# 9.0 constraints.\n\n---\n\n**Claim:** All 42 DefaultParameterValidator tests pass.\n\n**Verification:** Ran `dotnet test` with filter for DefaultParameterValidator tests. Result: `Passed! - Failed: 0, Passed: 42, Skipped: 0, Total: 42`. Counted `[Fact]` attributes in test file: 42.\n\n**Result:** \u2705 CORRECT \u2014 42 tests exist and all pass.\n\n---\n\n**Claim:** Added 3 tests in \"Enum Default Parameters\" region.\n\n**Verification:** Counted `[Fact]` attributes in the `#region Enum Default Parameters` section. Found 3 tests: `AllowsEnumMemberDefault`, `AllowsEnumMemberDefaultInMethod`, `AllowsMultipleEnumDefaults`.\n\n**Result:** \u2705 CORRECT \u2014 Exactly 3 enum tests exist as claimed.\n\n---\n\n**Claim:** Added 5 tests in \"Const Reference Default Parameters\" region.\n\n**Verification:** Counted `[Fact]` attributes in the `#region Const Reference Default Parameters` section. Found 5 tests: `AllowsConstReferenceDefault`, `AllowsIntConstReferenceDefault`, `AllowsStringConstReferenceDefault`, `AllowsBoolConstReferenceDefault`, `AllowsMultipleConstDefaults`.\n\n**Result:** \u2705 CORRECT \u2014 Exactly 5 const reference tests exist as claimed.\n\n---\n\n**Claim:** \"8 new test cases\" were added in two new test regions.\n\n**Verification:** 3 enum tests + 5 const reference tests = 8 total new tests in the two regions.\n\n**Result:** \u2705 CORRECT \u2014 The math adds up.\n\n---\n\n**Claim:** The existing test `RejectsVariableReferenceDefault` correctly distinguishes between non-const variables (rejected) and const declarations (accepted).\n\n**Verification:** Examined `DefaultParameterValidatorTests.cs:491-503`. The test uses `DEFAULT_VALUE: int = 42` (no `const` keyword) and expects rejection. The `IsConstReference` method at line 199-200 only returns `true` for `VariableSymbol { IsConstant: true }`, which requires the `const` keyword in the source.\n\n**Result:** \u2705 CORRECT \u2014 The test uses a mutable variable (no `const` keyword) and correctly expects it to be rejected.\n\n---\n\n**Claim:** All 759 Semantic tests pass.\n\n**Verification:** Not independently verified during this review (would require running full test suite). This claim cannot be confirmed from the files read.\n\n**Result:** \u26a0\ufe0f UNVERIFIED \u2014 Would require running full semantic test suite to confirm.\n\n---\n\n## Summary\n\n| Category | Claims Verified | Result |\n|----------|-----------------|--------|\n| Code Structure | 4 | \u2705 All correct |\n| C# Language Features | 1 | \u2705 Correct |\n| Test Counts | 4 | \u2705 All correct |\n| Full Test Suite | 1 | \u26a0\ufe0f Unverified |\n\n**Overall Assessment:** No hallucinations detected in the claims that could be verified. The code implementation matches the description accurately.\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": false,
           "human_question": null,
@@ -864,7 +902,7 @@
             "src/Sharpy.Compiler/Parser/Parser.cs",
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -892,14 +930,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "R-0.1.5.3",
-  "total_attempts": 15,
-  "total_successes": 15,
+  "current_task_id": "R-0.1.5.4",
+  "total_attempts": 16,
+  "total_successes": 16,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 15,
-      "successes": 15,
+      "attempts": 16,
+      "successes": 16,
       "failures": 0
     },
     "copilot": {
@@ -908,5 +946,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 77.77777777777779
+  "overall_progress": 83.33333333333334
 }

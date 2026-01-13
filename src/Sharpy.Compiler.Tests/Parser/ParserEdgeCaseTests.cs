@@ -370,7 +370,7 @@ def foo(a: int, b: int = 10, c: str = 'default'):
         }
     }
 
-    [Fact(Skip = "Unimplemented: *args variable arguments not yet supported")]
+    [Fact]
     public void ParsesFunctionWithVarArgs()
     {
         var source = @"
@@ -379,6 +379,94 @@ def foo(*args):
 ";
         var module = Parse(source);
         module.Body.Should().HaveCount(1);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Parameters.Should().HaveCount(1);
+        funcDef.Parameters[0].Name.Should().Be("args");
+        funcDef.Parameters[0].IsVariadic.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ParsesFunctionWithTypedVarArgs()
+    {
+        var source = @"
+def sum_all(*numbers: int) -> int:
+    return 0
+";
+        var module = Parse(source);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Parameters.Should().HaveCount(1);
+        funcDef.Parameters[0].Name.Should().Be("numbers");
+        funcDef.Parameters[0].IsVariadic.Should().BeTrue();
+        funcDef.Parameters[0].Type.Should().NotBeNull();
+        funcDef.Parameters[0].Type!.Name.Should().Be("int");
+    }
+
+    [Fact]
+    public void ParsesFunctionWithRegularAndVarArgs()
+    {
+        var source = @"
+def greet(prefix: str, *names: str) -> None:
+    pass
+";
+        var module = Parse(source);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Parameters.Should().HaveCount(2);
+        funcDef.Parameters[0].Name.Should().Be("prefix");
+        funcDef.Parameters[0].IsVariadic.Should().BeFalse();
+        funcDef.Parameters[1].Name.Should().Be("names");
+        funcDef.Parameters[1].IsVariadic.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ParseVarArgsWithDefaultValueThrows()
+    {
+        var source = @"
+def foo(*args: int = []):
+    pass
+";
+        var action = () => Parse(source);
+        action.Should().Throw<ParserError>()
+            .WithMessage("*Variadic parameter*cannot have a default value*");
+    }
+
+    [Fact]
+    public void ParseVarArgsNotLastThrows()
+    {
+        var source = @"
+def foo(*args: int, suffix: str):
+    pass
+";
+        var action = () => Parse(source);
+        action.Should().Throw<ParserError>()
+            .WithMessage("*Variadic parameter*must be the last*");
+    }
+
+    [Fact]
+    public void ParseMultipleVarArgsThrows()
+    {
+        // First variadic parameter followed by comma triggers "must be last" error
+        var source = @"
+def foo(*args: int, *more: str):
+    pass
+";
+        var action = () => Parse(source);
+        action.Should().Throw<ParserError>()
+            .WithMessage("*Variadic parameter*must be the last*");
+    }
+
+    [Fact]
+    public void ParseMultipleVarArgsAtEndThrows()
+    {
+        // If we somehow got past the first variadic (e.g., trailing comma allowed),
+        // then second variadic triggers "only one" error
+        var source = @"
+def foo(*args: int,):
+    pass
+";
+        // Trailing comma after variadic should throw "must be last"
+        var action = () => Parse(source);
+        action.Should().Throw<ParserError>()
+            .WithMessage("*Variadic parameter*must be the last*");
     }
 
     [Fact(Skip = "Unimplemented: **kwargs keyword arguments not yet supported")]

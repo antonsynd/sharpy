@@ -1320,6 +1320,7 @@ public class Parser
     private List<Parameter> ParseParameters()
     {
         var parameters = new List<Parameter>();
+        var hasVariadic = false;
 
         if (Current.Type == TokenType.RightParen)
             return parameters;
@@ -1328,6 +1329,17 @@ public class Parser
         {
             var startLine = Current.Line;
             var startColumn = Current.Column;
+
+            // Check for variadic parameter (*args)
+            var isVariadic = false;
+            if (Current.Type == TokenType.Star)
+            {
+                if (hasVariadic)
+                    throw new ParserError("Only one variadic parameter (*args) is allowed per function", Current.Line, Current.Column);
+                isVariadic = true;
+                hasVariadic = true;
+                Advance();  // Skip *
+            }
 
             var name = ExpectIdentifier();
             TypeAnnotation? type = null;
@@ -1341,6 +1353,8 @@ public class Parser
 
             if (Current.Type == TokenType.Assign)
             {
+                if (isVariadic)
+                    throw new ParserError("Variadic parameter (*args) cannot have a default value", Current.Line, Current.Column);
                 Advance();
                 defaultValue = ParseExpression();
             }
@@ -1353,6 +1367,7 @@ public class Parser
                 Name = name,
                 Type = type,
                 DefaultValue = defaultValue,
+                IsVariadic = isVariadic,
                 LineStart = startLine,
                 ColumnStart = startColumn,
                 LineEnd = endLine,
@@ -1361,6 +1376,8 @@ public class Parser
 
             if (Current.Type == TokenType.Comma)
             {
+                if (isVariadic)
+                    throw new ParserError("Variadic parameter (*args) must be the last parameter", Current.Line, Current.Column);
                 Advance();
                 // Allow trailing comma: def foo(a, b, c,):
                 if (Current.Type == TokenType.RightParen)

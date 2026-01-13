@@ -457,8 +457,21 @@ public class RoslynEmitter
             ? _typeMapper.MapType(param.Type)
             : PredefinedType(Token(SyntaxKind.ObjectKeyword));
 
+        // For variadic parameters (*args), wrap the element type in an array
+        if (param.IsVariadic)
+        {
+            paramType = ArrayType(paramType)
+                .WithRankSpecifiers(SingletonList(ArrayRankSpecifier()));
+        }
+
         var parameter = Parameter(Identifier(paramName))
             .WithType(paramType);
+
+        // For variadic parameters, add the 'params' modifier
+        if (param.IsVariadic)
+        {
+            parameter = parameter.WithModifiers(TokenList(Token(SyntaxKind.ParamsKeyword)));
+        }
 
         // Add default value if present
         if (param.DefaultValue != null)

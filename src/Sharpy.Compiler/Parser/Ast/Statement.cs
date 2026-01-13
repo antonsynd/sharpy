@@ -276,6 +276,10 @@ public record Parameter
     public string Name { get; init; } = "";
     public TypeAnnotation? Type { get; init; }
     public Expression? DefaultValue { get; init; }
+    /// <summary>
+    /// True if this parameter is variadic (*args). Maps to C# params T[].
+    /// </summary>
+    public bool IsVariadic { get; init; }
 
     // Source location
     public int LineStart { get; init; }
