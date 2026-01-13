@@ -304,9 +304,9 @@ public class RoslynEmitterExpressionTests
         var result = InvokeGenerateExpression(expr);
 
         // Assert - Floor division should use Math.Floor for correct negative number handling
-        // (long)Math.Floor((double)x / y) rounds toward negative infinity (Python semantics)
+        // (int)Math.Floor((double)x / y) rounds toward negative infinity (Python semantics)
         var code = result.ToString();
-        code.Should().Contain("(long)");
+        code.Should().Contain("(int)");
         code.Should().Contain("Math.Floor");
         code.Should().Contain("(double)");
         code.Should().Contain("/");

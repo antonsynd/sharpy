@@ -1495,11 +1495,11 @@ public class RoslynEmitter
                         Argument(left),
                         Argument(right)),
 
-            // x //= y → (long)Math.Floor((double)x / y)
+            // x //= y → (int)Math.Floor((double)x / y)
             // Floor division rounds toward negative infinity (Python semantics)
             AssignmentOperator.DoubleSlashAssign =>
                 CastExpression(
-                    PredefinedType(Token(SyntaxKind.LongKeyword)),
+                    PredefinedType(Token(SyntaxKind.IntKeyword)),
                     InvocationExpression(
                         MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             IdentifierName("Math"),
@@ -1868,12 +1868,12 @@ public class RoslynEmitter
                         Argument(right));
 
             case BinaryOperator.FloorDivide:
-                // x // y → (long)Math.Floor((double)x / y) for integers
+                // x // y → (int)Math.Floor((double)x / y) for integers
                 // Floor division rounds toward negative infinity (Python semantics)
-                // For now, assuming integer operands (result is int64/long per spec)
+                // For int operands, result is int (matching Python semantics for small numbers)
                 // TODO: handle float operands where result should be Math.Floor(a / b) without cast
                 return CastExpression(
-                    PredefinedType(Token(SyntaxKind.LongKeyword)),
+                    PredefinedType(Token(SyntaxKind.IntKeyword)),
                     InvocationExpression(
                         MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                             IdentifierName("Math"),
