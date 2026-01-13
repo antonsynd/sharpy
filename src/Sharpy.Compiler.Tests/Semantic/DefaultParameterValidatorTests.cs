@@ -341,6 +341,150 @@ def foo(value: float = None):
 
     #endregion
 
+    #region Enum Default Parameters
+
+    [Fact]
+    public void AllowsEnumMemberDefault()
+    {
+        var source = @"
+enum Color:
+    RED
+    GREEN
+    BLUE
+
+def paint(color: Color = Color.RED):
+    pass
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AllowsEnumMemberDefaultInMethod()
+    {
+        var source = @"
+enum Mode:
+    NORMAL
+    DEBUG
+    VERBOSE
+
+class Logger:
+    def log(self, mode: Mode = Mode.NORMAL):
+        pass
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AllowsMultipleEnumDefaults()
+    {
+        var source = @"
+enum Level:
+    LOW
+    MEDIUM
+    HIGH
+
+enum Status:
+    ACTIVE
+    INACTIVE
+
+def configure(level: Level = Level.MEDIUM, status: Status = Status.ACTIVE):
+    pass
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    #endregion
+
+    #region Const Reference Default Parameters
+
+    [Fact]
+    public void AllowsConstReferenceDefault()
+    {
+        var source = @"
+const DEFAULT_TIMEOUT: float = 30.0
+
+def connect(timeout: float = DEFAULT_TIMEOUT):
+    pass
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AllowsIntConstReferenceDefault()
+    {
+        var source = @"
+const MAX_RETRIES: int = 3
+
+def fetch(retries: int = MAX_RETRIES):
+    pass
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AllowsStringConstReferenceDefault()
+    {
+        var source = @"
+const DEFAULT_NAME: str = ""Anonymous""
+
+def greet(name: str = DEFAULT_NAME):
+    pass
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AllowsBoolConstReferenceDefault()
+    {
+        var source = @"
+const DEBUG_MODE: bool = False
+
+def run(debug: bool = DEBUG_MODE):
+    pass
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AllowsMultipleConstDefaults()
+    {
+        var source = @"
+const DEFAULT_HOST: str = ""localhost""
+const DEFAULT_PORT: int = 8080
+const DEFAULT_TIMEOUT: float = 30.0
+
+def connect(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, timeout: float = DEFAULT_TIMEOUT):
+    pass
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    #endregion
+
     #region Non-Constant Defaults (Not Allowed)
 
     [Fact]

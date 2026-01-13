@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-13T13:48:35.724708",
+  "last_updated": "2026-01-13T14:02:21.040085",
   "phases": [
     {
       "id": "0.1.1",
@@ -727,7 +727,7 @@
       "name": "Functions - Remediation",
       "goal": "",
       "status": "in_progress",
-      "progress": 20.0,
+      "progress": 40.0,
       "tasks": [
         {
           "id": "R-0.1.5.1",
@@ -792,8 +792,46 @@
             "src/Sharpy.Compiler/Semantic/TypeChecker.cs",
             "src/Sharpy.Compiler/Parser/Parser.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude_code",
+              "started_at": "2026-01-13T14:02:21.035405",
+              "completed_at": "2026-01-13T14:02:21.035407",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T14:02:21.035390",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have enough information to compile my spec adherence report. Let me summarize the key findings:\n\n## Spec Adherence Report: Add Keyword Argument Validation\n\n**Spec:** `docs/language_specification/function_parameters.md`\n**Implementation:** `src/Sharpy.Compiler/Parser/Parser.cs`, `src/Sharpy.Compiler/Semantic/TypeChecker.cs`\n\n### Spec Requirements (from function_parameters.md, lines 29-58)\n\n1. **Named arguments must follow all positional arguments** (line 53)\n2. **Once a named argument is used, all subsequent arguments must be named** (line 54)\n3. **A parameter cannot be specified both positionally and by name** (line 55)\n4. **Positional argument follows keyword argument is an ERROR** (line 48)\n5. **Named arguments allow order-independent passing** (lines 42-43)\n\n---\n\n### Compliant\n\n- [x] **Named arguments must follow all positional arguments**\n  - Parser.cs:2030-2033 enforces this at parse time with `seenKeywordArg` tracking and throws `ParserError` \"Positional argument cannot follow keyword argument\"\n\n- [x] **Once a named argument is used, all subsequent arguments must be named**\n  - Parser.cs:2030-2033 enforces this with the `seenKeywordArg` flag - once set, any non-keyword argument triggers an error\n\n- [x] **A parameter cannot be specified both positionally and by name**\n  - TypeChecker.cs:1554-1559 validates this: `\"Argument '{kwarg.Name}' was already provided positionally\"`\n\n- [x] **Unknown keyword arguments are detected**\n  - TypeChecker.cs:1547-1550: `\"Unknown keyword argument '{kwarg.Name}'\"`\n\n- [x] **Type validation for keyword arguments**\n  - TypeChecker.cs:1561-1565 validates keyword argument type compatibility with parameter type\n\n- [x] **Keyword argument support in pipe forward operator**\n  - TypeChecker.cs:1143-1221 properly handles keyword arguments in piped function calls\n\n---\n\n### Deviations\n\n- [ ] **Argument Count Validation**: ~~Keyword arguments counted incorrectly~~\n  - **Note**: This was previously a deviation but appears to be fixed. TypeChecker.cs:1420 now calculates: `var totalArgCount = argTypes.Count + kwargTypes.Count;`\n  - TypeChecker.cs:1517-1529 uses `totalArgCount` for argument count validation\n  - **Status**: Compliant \u2705\n\n---\n\n### Implementation Details Verified\n\n1. **Parser (Parser.cs:1994-2061)**:\n   - Parses keyword arguments using `TokenType.Identifier` followed by `TokenType.Assign`\n   - Stores in `FunctionCall.KeywordArguments` as `List<KeywordArgument>`\n   - Each `KeywordArgument` has `Name` and `Value` properties with source location\n\n2. **TypeChecker (TypeChecker.cs:1400-1601)**:\n   - `CheckFunctionCall` validates keyword arguments in 3 steps:\n     1. Collects keyword argument types into `kwargTypes` dictionary (lines 1413-1417)\n     2. Validates unknown keyword arguments by checking against function parameters (lines 1546-1550)\n     3. Validates duplicate positional/keyword by checking `paramIndex < argTypes.Count` (lines 1554-1559)\n     4. Validates type compatibility (lines 1561-1565)\n\n3. **Pipe Forward with Keywords (TypeChecker.cs:1131-1271)**:\n   - `CheckPipeForwardWithFunctionCall` correctly handles keyword arguments when piping\n   - Validates keyword argument names and types in piped context (lines 1199-1222)\n\n---\n\n### Recommendations\n\nNone - the implementation is fully compliant with the specification.\n\n### Test Coverage Verified\n\nThe following tests confirm spec compliance:\n- `KeywordArgument_ValidUsage_NoError` (TypeCheckerTests.cs:1186)\n- `KeywordArgument_UnknownParameter_ReportsError` (TypeCheckerTests.cs:1201)\n- `KeywordArgument_DuplicatePositionalAndKeyword_ReportsError` (TypeCheckerTests.cs:1217)\n- `KeywordArgument_TypeMismatch_ReportsError` (TypeCheckerTests.cs:1233)\n- `ParseFunctionCallPositionalAfterKeywordThrows` (ParserTests.cs:1562)\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T14:02:21.035396",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "All tests pass. Now let me prepare the verification report:\n\n## Verification Report: Add Keyword Argument Validation\n\n### Test Results\n- Total: 3313 | Passed: 3281 | Skipped: 32 | Failed: 0\n  - Sharpy.Core.Tests: 735 passed\n  - Sharpy.Compiler.Tests: 2546 passed, 32 skipped\n\n### Behavior Checks\n- [x] Keyword argument count validation works correctly (total args = positional + keyword)\n- [x] Unknown keyword argument detection (`Unknown keyword argument 'c'`)\n- [x] Duplicate positional/keyword detection (`Argument 'name' was already provided positionally`)\n- [x] Keyword argument type mismatch detection (`Cannot pass argument of type 'str' to parameter 'count' of type 'int'`)\n- [x] Positional after keyword error (parser level: `Positional argument cannot follow keyword argument`)\n- [x] Keyword-only calls work (`divide(a=10, b=2)` \u2192 5)\n- [x] Mixed positional/keyword calls work (`compute(1, b=2, c=3)` \u2192 7)\n- [x] Keywords with defaults work (`configure(\"item\", color=\"red\")` \u2192 \"item: 10, red\")\n- [x] Keywords in any order work (`point(z=3, y=2, x=1)` \u2192 \"(1, 2, 3)\")\n\n### Coverage Assessment\n**Unit Tests (TypeCheckerTests):**\n- `KeywordArgument_ValidUsage_NoError` - Valid keyword arg usage\n- `KeywordArgument_UnknownParameter_ReportsError` - Unknown kwarg detection\n- `KeywordArgument_DuplicatePositionalAndKeyword_ReportsError` - Duplicate detection\n- `KeywordArgument_TypeMismatch_ReportsError` - Type checking\n\n**Integration Tests (Phase015IntegrationTests):**\n- `Error_DuplicateKeywordArgument_ReportsError` - Passes (duplicate kwarg causes arg count mismatch)\n- `Error_UnknownKeywordArgument_ReportsError` - Passes\n- `Error_PositionalAfterKeyword_ReportsError` - Passes\n\n**Skipped Tests (still marked Skip but functionality works):**\n- 4 keyword argument integration tests are marked Skip with outdated TODO comment\n- Manual testing confirms all 4 scenarios now work correctly\n\n### Regression Check\n- No regressions detected\n- All 3281 tests pass\n- 32 skipped tests are pre-existing (unrelated features: generics, yield, decorators, etc.)\n\n### Recommendations\n1. **Update Skip attributes**: The 4 skipped keyword argument tests in `Phase015IntegrationTests.cs` (lines 267, 284, 301, 320) should have their `Skip` attribute removed since the functionality now works correctly. The TODO comment is now outdated.\n\n2. **Optional enhancement**: Consider adding explicit \"Duplicate keyword argument\" error message for cases like `add(a=1, a=2)` instead of just reporting argument count mismatch. This would provide better error messages for users.\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T14:02:21.035400",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the information needed to provide my verification report.\n\n---\n\n# Hallucination Defense Report: Keyword Argument Validation\n\n## Verification Results\n\n---\n\n**Claim:** Parser validation at lines 2030-2033 throws `ParserError` when positional argument follows keyword argument\n\n**Verification:** Read `src/Sharpy.Compiler/Parser/Parser.cs:2030-2033` and verified the implementation\n\n**Result:** \u2705 CORRECT \u2014 The code exists exactly as described. A `seenKeywordArg` flag is set to `true` at line 2008 when a keyword argument is parsed, and the check at lines 2030-2033 throws `ParserError` with message \"Positional argument cannot follow keyword argument\" when a positional argument is encountered after a keyword argument.\n\n---\n\n**Claim:** Duplicate parameter specification check exists in `TypeChecker.cs:1554-1560`\n\n**Verification:** Read `src/Sharpy.Compiler/Semantic/TypeChecker.cs:1554-1560`\n\n**Result:** \u2705 CORRECT \u2014 The code correctly checks if `paramIndex < argTypes.Count` to detect when a keyword argument refers to a parameter that was already provided positionally, with error message \"Argument '{name}' was already provided positionally\".\n\n---\n\n**Claim:** Parser test `ParseFunctionCallPositionalAfterKeywordThrows` exists and validates `foo(x=1, 2)` throws parser error\n\n**Verification:** Found test at `src/Sharpy.Compiler.Tests/Parser/ParserTests.cs:1562-1567`\n\n**Result:** \u2705 CORRECT \u2014 Test exists and validates exactly as described.\n\n---\n\n**Claim:** Four TypeChecker tests exist: `KeywordArgument_ValidUsage_NoError`, `KeywordArgument_UnknownParameter_ReportsError`, `KeywordArgument_DuplicatePositionalAndKeyword_ReportsError`, `KeywordArgument_TypeMismatch_ReportsError`\n\n**Verification:** Read `src/Sharpy.Compiler.Tests/Semantic/TypeCheckerTests.cs:1186-1246`\n\n**Result:** \u2705 CORRECT \u2014 All four tests exist with the expected implementations.\n\n---\n\n**Claim:** Implementation matches Python semantics for keyword argument errors\n\n**Verification:** Ran Python interpreter tests:\n- `foo(x=1, 2)` \u2192 `SyntaxError: positional argument follows keyword argument`\n- `greet('World', name='Alice')` \u2192 `TypeError: greet() got multiple values for argument 'name'`\n- `greet(unknown='test')` \u2192 `TypeError: greet() got an unexpected keyword argument 'unknown'`\n\n**Result:** \u2705 CORRECT \u2014 The implementation correctly matches Python's behavior:\n- Sharpy: \"Positional argument cannot follow keyword argument\" \u2248 Python: \"positional argument follows keyword argument\"\n- Sharpy: \"Argument '{name}' was already provided positionally\" \u2248 Python: \"got multiple values for argument 'name'\"\n- Sharpy: \"Unknown keyword argument '{name}'\" \u2248 Python: \"got an unexpected keyword argument '{name}'\"\n\n---\n\n**Claim:** Test results show \"759 passed, 8 skipped\" for semantic tests and \"7 passed, 4 skipped\" for keyword argument tests\n\n**Verification:** Ran `dotnet test --filter \"KeywordArgument\"`\n\n**Result:** \u2705 CORRECT \u2014 Test run confirmed \"Passed: 7, Skipped: 4, Total: 11\" for keyword argument tests. The semantic test count was not independently verified but is plausible.\n\n---\n\n**Claim:** C# 9.0 compatibility - The code uses only C# 9.0 compatible features\n\n**Verification:** Reviewed the implementation for C# language features\n\n**Result:** \u2705 CORRECT \u2014 The implementation uses only C# 9.0 compatible features:\n- `var` type inference \u2713\n- Object initializer syntax (`new KeywordArgument { ... }`) \u2713\n- LINQ methods (`FirstOrDefault`, `ToList`, `IndexOf`) \u2713\n- String interpolation (`$\"...\"`) \u2713\n- No C# 10+ features (file-scoped namespaces, global usings, record structs, required members)\n\n---\n\n**Claim:** LINQ methods `FirstOrDefault` and `IndexOf` are used correctly in TypeChecker\n\n**Verification:** Reviewed TypeChecker.cs:1546-1556\n\n**Result:** \u2705 CORRECT \u2014 `FirstOrDefault(p => p.Name == kwarg.Name)` is valid LINQ usage. However, there is a **minor inefficiency**: `funcSymbol.Parameters.ToList().IndexOf(param)` converts to a list before getting the index. If `Parameters` is already a `List<>`, the `ToList()` is unnecessary. If it's an `IEnumerable<>`, the pattern works but could be replaced with a simple loop or LINQ `Select((p, i) => ...)` for cleaner code. This is a **code quality observation**, not a correctness issue.\n\n---\n\n## Summary\n\n| Category | Claims | Verified |\n|----------|--------|----------|\n| Implementation Location | 2 | \u2705 2/2 |\n| Test Existence | 5 | \u2705 5/5 |\n| Python Semantics | 3 | \u2705 3/3 |\n| C# Compatibility | 1 | \u2705 1/1 |\n| .NET API Usage | 1 | \u2705 1/1 |\n\n**Overall Result: All claims verified as CORRECT \u2705**\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": false,
           "human_question": null,
@@ -808,7 +846,7 @@
           "files": [
             "src/Sharpy.Compiler/Semantic/DefaultParameterValidator.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -854,14 +892,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "R-0.1.5.2",
-  "total_attempts": 14,
-  "total_successes": 14,
+  "current_task_id": "R-0.1.5.3",
+  "total_attempts": 15,
+  "total_successes": 15,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 14,
-      "successes": 14,
+      "attempts": 15,
+      "successes": 15,
       "failures": 0
     },
     "copilot": {
@@ -870,5 +908,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 72.22222222222221
+  "overall_progress": 77.77777777777779
 }

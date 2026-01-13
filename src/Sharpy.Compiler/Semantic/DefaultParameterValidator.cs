@@ -128,8 +128,10 @@ public class DefaultParameterValidator
     /// - Tuples of compile-time constants
     /// - Unary operations on constants (-1, +1, not True)
     /// - Binary operations on constants (1 + 2) - though typically not recommended
+    /// - Enum member access (Color.RED, HttpMethod.GET)
+    /// - References to const declarations (MAX_SIZE, DEFAULT_NAME)
     /// </summary>
-    private static bool IsCompileTimeConstant(Expression expr)
+    private bool IsCompileTimeConstant(Expression expr)
     {
         return expr switch
         {
@@ -158,16 +160,15 @@ public class DefaultParameterValidator
                 IsCompileTimeConstant(cond.ThenValue) &&
                 IsCompileTimeConstant(cond.ElseValue),
 
-            // Identifiers are NOT compile-time constants (they reference variables)
-            // Exception could be made for const variables, but that requires symbol table lookup
-            Identifier => false,
+            // Identifiers referencing const declarations are compile-time constants
+            Identifier id => IsConstReference(id),
 
             // Function calls are generally NOT compile-time constants
             // (unless they are special constant constructors, but we'll be strict here)
             FunctionCall => false,
 
-            // Member access is NOT a compile-time constant
-            MemberAccess => false,
+            // Member access to enum members is a compile-time constant
+            MemberAccess memberAccess => IsEnumMemberAccess(memberAccess),
 
             // Index access is NOT a compile-time constant
             IndexAccess => false,
@@ -188,6 +189,34 @@ public class DefaultParameterValidator
             // Default: not a compile-time constant
             _ => false
         };
+    }
+
+    /// <summary>
+    /// Checks if an identifier references a const declaration.
+    /// </summary>
+    private bool IsConstReference(Identifier id)
+    {
+        var symbol = _symbolTable.Lookup(id.Name);
+        return symbol is VariableSymbol { IsConstant: true };
+    }
+
+    /// <summary>
+    /// Checks if a member access expression refers to an enum member.
+    /// E.g., Color.RED, HttpMethod.GET
+    /// </summary>
+    private bool IsEnumMemberAccess(MemberAccess memberAccess)
+    {
+        // The object must be an identifier (the enum type name)
+        if (memberAccess.Object is not Identifier typeId)
+        {
+            return false;
+        }
+
+        // Look up the type in the symbol table
+        var symbol = _symbolTable.Lookup(typeId.Name);
+
+        // Check if it's an enum type
+        return symbol is TypeSymbol { TypeKind: TypeKind.Enum };
     }
 
     private void AddError(string message, int? line = null, int? column = null)
