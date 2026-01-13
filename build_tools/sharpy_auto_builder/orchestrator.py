@@ -188,6 +188,68 @@ class Orchestrator:
             f"{status} [{timestamp}] Completed: {step_name}{duration_str}{detail_str}"
         )
 
+    def _dump_config(self) -> None:
+        """Dump the current configuration at startup for debugging."""
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        config_dict = self.config.to_dict()
+
+        print("\n" + "=" * 70)
+        print(f"🔧 ORCHESTRATOR CONFIGURATION (as of {timestamp})")
+        print("=" * 70)
+
+        # Key settings summary
+        print("\n📋 Key Settings:")
+        print(f"  • Project root: {self.config.project_root}")
+        print(f"  • Task list: {self.config.task_list_path}")
+        print(f"  • Ground truth: {self.config.ground_truth_path}")
+
+        print("\n🔍 Validation Settings:")
+        print(f"  • Spec adherence check: {self.config.run_spec_adherence_check}")
+        print(
+            f"  • Verification after implementation: {self.config.run_verification_after_implementation}"
+        )
+        print(f"  • Hallucination defense: {self.config.run_hallucination_defense}")
+
+        print("\n🔄 Retry/Fix Settings:")
+        print(f"  • Max retries per task: {self.config.max_retries_per_task}")
+        print(f"  • Max test fix attempts: {self.config.max_test_fix_attempts}")
+        print(
+            f"  • Max validation fix attempts: {self.config.max_validation_fix_attempts}"
+        )
+        print(
+            f"  • Create follow-up on fix failure: {self.config.create_followup_task_on_fix_failure}"
+        )
+
+        print("\n⚙️ Execution Settings:")
+        print(f"  • Auto commit: {self.config.auto_commit}")
+        print(f"  • Create PR: {self.config.create_pr}")
+        print(f"  • Test timeout: {self.config.test_timeout}s")
+        print(
+            f"  • Human approval for critical: {self.config.require_human_approval_for_critical}"
+        )
+
+        print("\n🤖 Backend Configuration:")
+        for name, backend in self.config.backends.items():
+            status = "✅ enabled" if backend.enabled else "❌ disabled"
+            print(f"  • {name}: {status}")
+            if backend.enabled:
+                print(f"      Model: {backend.model}")
+                print(
+                    f"      Rate limit: {backend.rate_limit.max_requests_per_window}/hour"
+                )
+                print(f"      Cooldown: {backend.rate_limit.request_cooldown}s")
+
+        print(f"\n  Backend priority: {' → '.join(self.config.backend_priority)}")
+
+        print("\n" + "=" * 70 + "\n")
+
+        # Also log to execution log as JSON
+        self._log_execution(
+            event_type="orchestrator_start",
+            task_id="system",
+            extra={"config": config_dict},
+        )
+
     def _load_or_create_ground_truth(self) -> GroundTruth:
         """Load existing ground truth or create from task list."""
         if self.config.ground_truth_path.exists():
@@ -301,13 +363,22 @@ class Orchestrator:
             },
         )
 
-        graph.add_edge("validate_spec_adherence", "validate_verification")
+        graph.add_conditional_edges(
+            "validate_spec_adherence",
+            self._route_after_spec_adherence,
+            {
+                "verification": "validate_verification",
+                "address_issues": "address_validation_issues",
+                "human_review": "request_human_review",
+            },
+        )
 
         graph.add_conditional_edges(
             "validate_verification",
             self._route_after_verification,
             {
                 "hallucination_check": "check_hallucinations",
+                "address_issues": "address_validation_issues",
                 "human_review": "request_human_review",
                 "commit": "commit_changes",
             },
@@ -1225,6 +1296,93 @@ automatically fixed after {fix_attempt} attempts.
             },
         )
 
+    async def _create_validation_fix_followup_task(
+        self, state: OrchestratorState
+    ) -> None:
+        """Create a follow-up task when validation issues can't be fixed."""
+        task_data = state["current_task"]
+        validation_results = state.get("validation_results", [])
+        validation_fix_attempt = state.get("validation_fix_attempt", 0)
+
+        # Reload ground truth and get the original task
+        self.ground_truth = GroundTruth.load(Path(state["ground_truth_path"]))
+        original_task = self.ground_truth.get_task(task_data["id"])
+
+        if not original_task:
+            return
+
+        # Extract issues for the follow-up description
+        actionable_issues = self._extract_actionable_issues(validation_results)
+        issues_summary = "\n".join(
+            [
+                f"- [{issue['severity'].upper()}] ({issue['agent']}): {issue['description'][:200]}"
+                for issue in actionable_issues[:5]
+            ]
+        )
+
+        # Collect validation context
+        validation_context = "\n\n".join(
+            [
+                f"### {vr['agent']}\n{vr.get('raw_output', 'No output')[:800]}"
+                for vr in validation_results
+                if vr.get("status") != "passed"
+            ]
+        )
+
+        # Create description with context about what failed
+        description = f"""Address validation issues from task {task_data['id']}: {task_data['title']}
+
+## Context
+The original task was implemented but validation checks (spec adherence, verification,
+hallucination defense) found issues that could not be automatically resolved after
+{validation_fix_attempt} attempts.
+
+## Unresolved Issues
+{issues_summary}
+
+## Validation Reports
+{validation_context[:2000]}
+
+## Instructions
+1. Review each issue identified by the validation agents
+2. For spec deviations: Update implementation to exactly match the specification
+3. For verification failures: Ensure behavior is correct and consistent
+4. For hallucination issues: Correct any factually incorrect implementations
+5. Do NOT modify test expected values - fix the implementation
+6. Run all validation checks after your fixes
+
+## Related Files
+{chr(10).join(f"- {f}" for f in task_data.get('files', []))}
+"""
+
+        # Add the follow-up task
+        new_task = self.ground_truth.add_followup_task(
+            original_task=original_task,
+            title=f"Fix validation issues from: {task_data['title'][:50]}",
+            description=description,
+            files=task_data.get("files"),
+        )
+
+        # Add a note to the original task
+        original_task.notes.append(
+            f"Validation fix failed after {validation_fix_attempt} attempts. "
+            f"Follow-up task created: {new_task.id}"
+        )
+
+        # Save updated ground truth
+        self.ground_truth.save(Path(state["ground_truth_path"]))
+
+        self._log_execution(
+            event_type="followup_task_created",
+            task_id=task_data["id"],
+            extra={
+                "followup_task_id": new_task.id,
+                "validation_fix_attempts": validation_fix_attempt,
+                "reason": "validation_fix_failure",
+                "issues_count": len(actionable_issues),
+            },
+        )
+
     async def _validate_spec_adherence_node(
         self, state: OrchestratorState
     ) -> OrchestratorState:
@@ -1276,11 +1434,39 @@ automatically fixed after {fix_attempt} attempts.
         validation_results = state.get("validation_results", [])
         validation_results.append(validation_result)
 
+        # Check for actionable issues that need to be addressed before continuing
+        actionable_issues = self._extract_actionable_issues(validation_results)
+        critical_issues = [i for i in actionable_issues if i["severity"] == "critical"]
+
+        # Determine next action based on issues found
+        validation_fix_attempt = state.get("validation_fix_attempt", 0)
+        max_attempts = getattr(self.config, "max_validation_fix_attempts", 2)
+
+        if critical_issues and validation_fix_attempt < max_attempts:
+            # Found critical spec deviations - route to address issues
+            next_action = "address_issues"
+            messages = [
+                "Spec adherence check found critical issues",
+                f"  {len(critical_issues)} critical issue(s) to address",
+            ]
+        elif critical_issues and task_data.get("is_critical"):
+            # Max attempts reached on critical task - need human review
+            next_action = "human_review"
+            messages = [
+                "Spec adherence check found unresolved critical issues",
+                "Escalating to human review",
+            ]
+        else:
+            # Continue to verification
+            next_action = "verification"
+            messages = ["Spec adherence check completed"]
+
         self._log_step_end("validate_spec_adherence", task_data["id"], result.success)
         return {
             **state,
             "validation_results": validation_results,
-            "messages": ["Spec adherence check completed"],
+            "next_action": next_action,
+            "messages": messages,
         }
 
     async def _validate_verification_node(
@@ -1342,24 +1528,43 @@ automatically fixed after {fix_attempt} attempts.
         validation_results = state.get("validation_results", [])
         validation_results.append(validation_result)
 
-        # Determine next action
-        has_issues = not result.success or any(
-            v.get("status") == "failed" for v in validation_results
-        )
+        # Check for actionable issues that need to be addressed
+        actionable_issues = self._extract_actionable_issues(validation_results)
+        critical_or_high_issues = [
+            i for i in actionable_issues if i["severity"] in ("critical", "high")
+        ]
 
-        if has_issues and task_data.get("is_critical"):
+        # Determine next action
+        validation_fix_attempt = state.get("validation_fix_attempt", 0)
+        max_attempts = getattr(self.config, "max_validation_fix_attempts", 2)
+
+        if critical_or_high_issues and validation_fix_attempt < max_attempts:
+            # Found issues that need addressing - route back to implementation agent
+            next_action = "address_issues"
+            messages = [
+                "Verification found issues requiring fixes",
+                f"  {len(critical_or_high_issues)} issue(s) to address",
+            ]
+        elif critical_or_high_issues and task_data.get("is_critical"):
+            # Max attempts reached on critical task - escalate
             next_action = "human_review"
+            messages = [
+                "Verification found unresolved issues on critical task",
+                "Escalating to human review",
+            ]
         elif self.config.run_hallucination_defense:
             next_action = "hallucination_check"
+            messages = ["Verification check completed"]
         else:
             next_action = "commit"
+            messages = ["Verification check completed"]
 
         self._log_step_end("validate_verification", task_data["id"], result.success)
         return {
             **state,
             "validation_results": validation_results,
             "next_action": next_action,
-            "messages": ["Verification check completed"],
+            "messages": messages,
         }
 
     async def _check_hallucinations_node(
@@ -1595,7 +1800,11 @@ automatically fixed after {fix_attempt} attempts.
         )
 
         if validation_fix_attempt > max_attempts:
-            # Max attempts reached - escalate to human review or proceed
+            # Max attempts reached - create follow-up task if configured
+            if self.config.create_followup_task_on_fix_failure:
+                await self._create_validation_fix_followup_task(state)
+
+            # Escalate to human review or proceed
             return {
                 **state,
                 "validation_fix_attempt": validation_fix_attempt,
@@ -1609,6 +1818,11 @@ automatically fixed after {fix_attempt} attempts.
                         "Escalating to human review"
                         if task_data.get("is_critical")
                         else "Proceeding with unresolved issues"
+                    ),
+                    (
+                        "Created follow-up task for validation issues"
+                        if self.config.create_followup_task_on_fix_failure
+                        else ""
                     ),
                 ],
             }
@@ -2215,6 +2429,10 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
     def _route_after_fix(self, state: OrchestratorState) -> str:
         return state.get("next_action", "error")
 
+    def _route_after_spec_adherence(self, state: OrchestratorState) -> str:
+        """Route based on spec adherence validation results."""
+        return state.get("next_action", "verification")
+
     def _route_after_verification(self, state: OrchestratorState) -> str:
         return state.get("next_action", "commit")
 
@@ -2245,6 +2463,9 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
 
     async def run(self, max_tasks: Optional[int] = None) -> dict:
         """Run the orchestrator to process tasks."""
+        # Dump config at startup for debugging
+        self._dump_config()
+
         initial_state: OrchestratorState = {
             "current_task": None,
             "ground_truth_path": str(self.config.ground_truth_path),

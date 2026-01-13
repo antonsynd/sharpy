@@ -152,12 +152,13 @@ public record ForStatement : Statement
 }
 
 /// <summary>
-/// Try-except-finally statement
+/// Try-except-else-finally statement
 /// </summary>
 public record TryStatement : Statement
 {
     public List<Statement> Body { get; init; } = new();
     public List<ExceptHandler> Handlers { get; init; } = new();
+    public List<Statement> ElseBody { get; init; } = new();
     public List<Statement> FinallyBody { get; init; } = new();
 }
 

@@ -995,6 +995,18 @@ public class Parser
             });
         }
 
+        // else clause (runs if no exception raised in try block)
+        var elseBody = new List<Statement>();
+        if (Current.Type == TokenType.Else)
+        {
+            Advance();
+            Expect(TokenType.Colon);
+            ExpectNewline();
+            Expect(TokenType.Indent);
+            elseBody = ParseBlock();
+            Expect(TokenType.Dedent);
+        }
+
         var finallyBody = new List<Statement>();
         if (Current.Type == TokenType.Finally)
         {
@@ -1010,6 +1022,7 @@ public class Parser
         {
             Body = body,
             Handlers = handlers,
+            ElseBody = elseBody,
             FinallyBody = finallyBody,
             LineStart = startLine,
             ColumnStart = startColumn,
