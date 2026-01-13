@@ -1,0 +1,49 @@
+# Test: Logical operators (and, or, not) with various conditions
+
+def check_range(value: int, low: int, high: int) -> bool:
+    # Test 'and' operator - value must be >= low AND <= high
+    result: bool = value >= low and value <= high
+    return result
+
+def check_either(a: bool, b: bool) -> bool:
+    # Test 'or' operator
+    result: bool = a or b
+    return result
+
+def main():
+    x: int = 15
+    
+    # Test 'and' operator
+    in_range: bool = check_range(x, 10, 20)
+    print(in_range)
+    
+    # Test 'or' operator
+    has_true: bool = check_either(False, True)
+    print(has_true)
+    
+    # Test 'not' operator
+    flag: bool = False
+    inverted: bool = not flag
+    print(inverted)
+    
+    # Test combined logical operators
+    a: bool = True
+    b: bool = False
+    c: bool = True
+    
+    # (True and False) or True = False or True = True
+    combined: bool = a and b or c
+    print(combined)
+    
+    # not (True or False) = not True = False
+    negated: bool = not (a or b)
+    print(negated)
+
+main()
+
+# EXPECTED OUTPUT:
+# True
+# True
+# True
+# True
+# False

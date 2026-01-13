@@ -1,0 +1,17 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-01-13T16:26:59.219894",
+  "generated_code": "# Test: Logical operators (and, or, not) with various conditions\n\ndef check_range(value: int, low: int, high: int) -> bool:\n    # Test 'and' operator - value must be >= low AND <= high\n    result: bool = value >= low and value <= high\n    return result\n\ndef check_either(a: bool, b: bool) -> bool:\n    # Test 'or' operator\n    result: bool = a or b\n    return result\n\ndef main():\n    x: int = 15\n    \n    # Test 'and' operator\n    in_range: bool = check_range(x, 10, 20)\n    print(in_range)\n    \n    # Test 'or' operator\n    has_true: bool = check_either(False, True)\n    print(has_true)\n    \n    # Test 'not' operator\n    flag: bool = False\n    inverted: bool = not flag\n    print(inverted)\n    \n    # Test combined logical operators\n    a: bool = True\n    b: bool = False\n    c: bool = True\n    \n    # (True and False) or True = False or True = True\n    combined: bool = a and b or c\n    print(combined)\n    \n    # not (True or False) = not True = False\n    negated: bool = not (a or b)\n    print(negated)\n\nmain()\n\n# EXPECTED OUTPUT:\n# True\n# True\n# True\n# True\n# False",
+  "expected_output": "True\nTrue\nTrue\nTrue\nFalse",
+  "actual_output": null,
+  "error_message": "Assembly compilation failed:\n  dogfood_test.cs(6,81): error CS0116: A namespace cannot directly contain members such as fields, methods or statements\n  dogfood_test.cs(6,23): error CS1514: { expected\n  dogfood_test.cs(6,93): error CS1022: Type or namespace definition, or end-of-file expected\n",
+  "compiler_output": "Warning: 1 module-level statement(s) ignored because a 'main' function is defined\n",
+  "generated_cs": null,
+  "validation_result": "```\nVALID\nThe code uses only features from phases 0.1.0-0.1.5.\n```\n\n**Features verified:**\n\n- \u2705 Function definitions with typed parameters and return types: `def check_range(value: int, low: int, high: int) -> bool:`\n- \u2705 Variable declarations with type annotations: `result: bool = ...`, `x: int = 15`\n- \u2705 Primitive types only: `int`, `bool`\n- \u2705 Comparison operators: `>=`, `<=`\n- \u2705 Logical operators: `and`, `or`, `not`\n- \u2705 Boolean literals: `True`, `False`\n- \u2705 Integer literals: `15`, `10`, `20`\n- \u2705 Function calls with positional arguments: `check_range(x, 10, 20)`\n- \u2705 Built-in `print()` with simple values\n- \u2705 Return statements: `return result`\n- \u2705 Parentheses for grouping: `not (a or b)`\n- \u2705 Comments: `# Test...`\n\nNo forbidden features detected.\n",
+  "feature_focus": "logical_operators",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 7.998317003250122,
+  "compilation_duration": null,
+  "execution_duration": 1.1795310974121094
+}

@@ -1,0 +1,121 @@
+=== Basic Function Calls ===
+add called
+add(5, 3) = 8
+subtract called
+subtract(10, 4) = 6
+multiply called
+multiply(6, 7) = 42
+
+=== Default Parameters ===
+power called
+power(3) = 9
+power called
+power(2, 5) = 32
+format_value called
+format_value(42) = [42]
+format_value called
+format_value(99, '<<', '>>') = <<99>>
+
+=== Keyword Arguments ===
+format_value called
+format_value(100, suffix=' END') = [100 END
+build_message called
+build_message(200) = [INFO] Code: 200, Status: ON
+build_message called
+build_message(404, level='ERROR') = [ERROR] Code: 404, Status: ON
+build_message called
+build_message(500, active=False, level='WARN') = [WARN] Code: 500, Status: OFF
+
+=== Nested Function Calls ===
+multiply called
+subtract called
+add called
+add(multiply(2, 3), subtract(10, 5)) = 11
+add called
+subtract called
+power called
+power(add(1, 2), subtract(5, 2)) = 27
+nested_operations called
+multiply called
+power called
+power called
+subtract called
+add called
+nested_operations(3, 4) = 5
+
+=== Function Calling Functions ===
+calculate_expression called
+add called
+multiply called
+power called
+calculate_expression(2, 3, 2) = 100
+
+=== Recursive Function ===
+factorial(5) called
+factorial(4) called
+factorial(3) called
+factorial(2) called
+factorial(1) called
+factorial(5) = 120
+
+=== Complex Control Flow in Functions ===
+classify_and_compute(-7) called
+negative branch
+multiply called
+classify_and_compute(-7) = 7
+classify_and_compute(0) called
+zero branch
+classify_and_compute(0) = 0
+classify_and_compute(5) called
+small positive branch
+power called
+classify_and_compute(5) = 125
+classify_and_compute(15) called
+large positive branch
+power called
+add called
+classify_and_compute(15) = 240
+
+=== Chained Operations in Loop ===
+power called
+multiply called
+add called
+i=1: power(1) + multiply(1, 2) = 3
+add called
+power called
+multiply called
+add called
+i=2: power(2) + multiply(2, 2) = 8
+add called
+power called
+multiply called
+add called
+i=3: power(3) + multiply(3, 2) = 15
+add called
+power called
+multiply called
+add called
+i=4: power(4) + multiply(4, 2) = 24
+add called
+power called
+multiply called
+add called
+i=5: power(5) + multiply(5, 2) = 35
+add called
+Total sum = 85
+
+=== Function Results as Conditions ===
+subtract called
+multiply called
+0 is below threshold by 50
+subtract called
+multiply called
+25 is below threshold by 25
+subtract called
+50 equals threshold
+subtract called
+75 exceeds threshold by 25
+subtract called
+100 exceeds threshold by 50
+
+=== All tests completed ===

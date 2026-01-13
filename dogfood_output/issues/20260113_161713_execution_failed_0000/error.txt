@@ -1,0 +1,6 @@
+Compilation failed:
+  Semantic error at line 15, column 5: Function 'print' expects 1 or 1-5 arguments but got 4
+  Semantic error at line 18, column 5: Function 'print' expects 1 or 1-5 arguments but got 2
+  Semantic error at line 30, column 5: Function 'print' expects 1 or 1-5 arguments but got 2
+  Semantic error at line 31, column 5: Function 'print' expects 1 or 1-5 arguments but got 2
+  Semantic error at line 44, column 9: Function 'print' expects 1 or 1-5 arguments but got 2

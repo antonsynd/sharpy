@@ -1,0 +1,20 @@
+# Test: Simple if-else branching
+x: int = 15
+y: int = 10
+
+if x > y:
+    print("x is greater")
+else:
+    print("y is greater or equal")
+
+result: int = 0
+if x == 15:
+    result = 100
+else:
+    result = 200
+
+print(result)
+
+# EXPECTED OUTPUT:
+# x is greater
+# 100

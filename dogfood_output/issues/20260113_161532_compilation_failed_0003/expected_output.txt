@@ -1,0 +1,46 @@
+Testing score 95:
+95
+A
+Excellent
+Honor roll!
+Testing score 82:
+82
+B
+Good
+Passed
+Testing score 73:
+73
+C
+Average
+Passed
+Testing score 65:
+65
+D
+Below Average
+Passed
+Testing score 45:
+45
+F
+Failing
+Failed
+Testing score -5:
+-5
+Invalid: negative score
+Testing score 105:
+105
+Invalid: score too high
+Range checks:
+5
+Small positive
+50
+Medium positive
+500
+Large positive
+-3
+Small negative
+-50
+Medium negative
+-500
+Large negative
+0
+Zero
