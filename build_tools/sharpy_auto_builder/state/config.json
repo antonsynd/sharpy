@@ -1,5 +1,6 @@
 {
   "project_root": "/Users/anton/Documents/github/sharpy",
+  "task_list_path": "/Users/anton/Documents/github/sharpy/docs/implementation_planning/task_list_remediation.md",
   "backends": {
     "claude_code": {
       "name": "claude_code",
@@ -33,7 +34,13 @@
   "run_hallucination_defense": true,
   "max_retries_per_task": 3,
   "max_test_fix_attempts": 3,
+  "max_validation_fix_attempts": 2,
   "create_followup_task_on_fix_failure": true,
   "require_human_approval_for_critical": true,
-  "auto_commit": true
+  "auto_commit": true,
+  "create_pr": false,
+  "rate_limit_pause_hours": 3.0,
+  "test_timeout": 300.0,
+  "human_wait_timeout": 3600.0,
+  "human_check_interval": 5.0
 }

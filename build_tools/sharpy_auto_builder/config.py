@@ -65,12 +65,12 @@ class Config:
         default_factory=lambda: Path("/Users/anton/Documents/github/sharpy")
     )
 
-    @property
-    def task_list_path(self) -> Path:
-        return (
-            self.project_root
-            / "docs/implementation_planning/task_list_0.1.0_to_0.1.5.md"
+    # Task list path (can be overridden)
+    task_list_path: Path = field(
+        default_factory=lambda: Path(
+            "/Users/anton/Documents/github/sharpy/docs/implementation_planning/task_list_0.1.0_to_0.1.5.md"
         )
+    )
 
     @property
     def spec_dir(self) -> Path:
@@ -186,6 +186,7 @@ class Config:
         """Convert config to dictionary for serialization."""
         return {
             "project_root": str(self.project_root),
+            "task_list_path": str(self.task_list_path),
             "backends": {
                 name: {
                     "name": cfg.name,
@@ -206,10 +207,15 @@ class Config:
             "run_hallucination_defense": self.run_hallucination_defense,
             "max_retries_per_task": self.max_retries_per_task,
             "max_test_fix_attempts": self.max_test_fix_attempts,
+            "max_validation_fix_attempts": self.max_validation_fix_attempts,
             "create_followup_task_on_fix_failure": self.create_followup_task_on_fix_failure,
             "require_human_approval_for_critical": self.require_human_approval_for_critical,
             "auto_commit": self.auto_commit,
+            "create_pr": self.create_pr,
+            "rate_limit_pause_hours": self.rate_limit_pause_hours,
             "test_timeout": self.test_timeout,
+            "human_wait_timeout": self.human_wait_timeout,
+            "human_check_interval": self.human_check_interval,
         }
 
     @classmethod
@@ -218,6 +224,8 @@ class Config:
         config = cls()
         if "project_root" in data:
             config.project_root = Path(data["project_root"])
+        if "task_list_path" in data:
+            config.task_list_path = Path(data["task_list_path"])
         if "backends" in data:
             for name, cfg_data in data["backends"].items():
                 if name in config.backends:
@@ -249,8 +257,18 @@ class Config:
             ]
         if "auto_commit" in data:
             config.auto_commit = data["auto_commit"]
+        if "create_pr" in data:
+            config.create_pr = data["create_pr"]
+        if "rate_limit_pause_hours" in data:
+            config.rate_limit_pause_hours = data["rate_limit_pause_hours"]
         if "test_timeout" in data:
             config.test_timeout = data["test_timeout"]
+        if "human_wait_timeout" in data:
+            config.human_wait_timeout = data["human_wait_timeout"]
+        if "human_check_interval" in data:
+            config.human_check_interval = data["human_check_interval"]
+        if "max_validation_fix_attempts" in data:
+            config.max_validation_fix_attempts = data["max_validation_fix_attempts"]
         return config
 
     def save(self, path: Optional[Path] = None) -> None:
