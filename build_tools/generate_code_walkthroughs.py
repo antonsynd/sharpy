@@ -641,7 +641,9 @@ def log_execution(
         f.write(json.dumps(log_entry) + "\n")
 
 
-def _build_cli_command(cli_provider: str, prompt: str) -> List[str]:
+def _build_cli_command(
+    cli_provider: str, prompt: str
+) -> Tuple[List[str], Optional[str]]:
     """
     Build the command line arguments for the specified CLI provider.
 
@@ -660,32 +662,37 @@ def _build_cli_command(cli_provider: str, prompt: str) -> List[str]:
         prompt: The prompt to send to the AI
 
     Returns:
-        List of command arguments
+        Tuple of (command arguments, stdin input or None)
     """
     if cli_provider == "copilot":
         # GitHub Copilot CLI: explicitly allow only read and write tools
         # This prevents shell access, file deletion, or editing existing files
-        return [
-            "/opt/homebrew/bin/copilot",
-            "--prompt",
-            prompt,
-            "--allow-tool",
-            "read",
-            "--allow-tool",
-            "write",
-        ]
+        return (
+            [
+                "/opt/homebrew/bin/copilot",
+                "--prompt",
+                prompt,
+                "--allow-tool",
+                "read",
+                "--allow-tool",
+                "write",
+            ],
+            None,
+        )
     elif cli_provider == "claude":
         # Claude Code CLI: explicitly allow only Read and Write tools
         # Do NOT use --dangerously-skip-permissions as it bypasses all safety checks
         # Only Read and Write are allowed - no Bash, Edit, or other tools
-        # The prompt is passed as a positional argument (not --prompt)
-        return [
-            "claude",
-            "--print",
-            "--allowedTools",
-            "Read,Write",
+        # The prompt is passed via stdin when using --print mode
+        return (
+            [
+                "claude",
+                "--print",
+                "--allowedTools",
+                "Read,Write",
+            ],
             prompt,
-        ]
+        )
     else:
         raise ValueError(f"Unknown CLI provider: {cli_provider}")
 
@@ -803,7 +810,7 @@ Write the walkthrough as a well-structured markdown document to '{relative_outpu
 Focus on providing intuition and understanding, not just restating what the code does line-by-line."""
 
         # Build the command for the specified CLI provider
-        cmd = _build_cli_command(cli_provider, prompt)
+        cmd, stdin_input = _build_cli_command(cli_provider, prompt)
 
         # Call the AI CLI in programmatic mode with write permissions
         # Change to the base directory so relative paths work
@@ -812,13 +819,16 @@ Focus on providing intuition and understanding, not just restating what the code
         process = await asyncio.create_subprocess_exec(
             *cmd,
             cwd=str(base_dir),
+            stdin=asyncio.subprocess.PIPE if stdin_input else None,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
 
         try:
+            # Pass prompt via stdin if required (e.g., for Claude CLI)
+            input_bytes = stdin_input.encode("utf-8") if stdin_input else None
             stdout, stderr = await asyncio.wait_for(
-                process.communicate(), timeout=timeout
+                process.communicate(input=input_bytes), timeout=timeout
             )
             duration = time.time() - start_time
 
