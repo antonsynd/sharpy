@@ -290,7 +290,7 @@ public class RoslynEmitterExpressionTests
     }
 
     [Fact]
-    public void GenerateExpression_FloorDivide_GeneratesCastAndDivide()
+    public void GenerateExpression_FloorDivide_UsesFloorSemantics()
     {
         // Arrange
         var expr = new BinaryOp
@@ -303,9 +303,12 @@ public class RoslynEmitterExpressionTests
         // Act
         var result = InvokeGenerateExpression(expr);
 
-        // Assert
+        // Assert - Floor division should use Math.Floor for correct negative number handling
+        // (long)Math.Floor((double)x / y) rounds toward negative infinity (Python semantics)
         var code = result.ToString();
-        code.Should().Contain("(int)");
+        code.Should().Contain("(long)");
+        code.Should().Contain("Math.Floor");
+        code.Should().Contain("(double)");
         code.Should().Contain("/");
     }
 
@@ -392,6 +395,210 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         result.ToString().Should().Contain("??");
+    }
+
+    #endregion
+
+    #region Pipe Forward Operator Tests
+
+    [Fact]
+    public void GenerateExpression_PipeForward_SimpleFunction_GeneratesFunctionCall()
+    {
+        // Arrange: x |> f → f(x)
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.PipeForward,
+            Left = new Identifier { Name = "x" },
+            Right = new Identifier { Name = "f" }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Be("f(x)");
+    }
+
+    [Fact]
+    public void GenerateExpression_PipeForward_FunctionWithArgs_PrependsToPArguments()
+    {
+        // Arrange: x |> f(y) → f(x, y)
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.PipeForward,
+            Left = new Identifier { Name = "x" },
+            Right = new FunctionCall
+            {
+                Function = new Identifier { Name = "f" },
+                Arguments = new List<Expression>
+                {
+                    new Identifier { Name = "y" }
+                }
+            }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Be("f(x,y)");
+    }
+
+    [Fact]
+    public void GenerateExpression_PipeForward_FunctionWithMultipleArgs_PrependsToPArguments()
+    {
+        // Arrange: x |> f(y, z) → f(x, y, z)
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.PipeForward,
+            Left = new Identifier { Name = "x" },
+            Right = new FunctionCall
+            {
+                Function = new Identifier { Name = "f" },
+                Arguments = new List<Expression>
+                {
+                    new Identifier { Name = "y" },
+                    new Identifier { Name = "z" }
+                }
+            }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Be("f(x,y,z)");
+    }
+
+    [Fact]
+    public void GenerateExpression_PipeForward_Chained_GeneratesNestedCalls()
+    {
+        // Arrange: x |> f |> g → g(f(x))
+        // Parser makes this left-associative: (x |> f) |> g
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.PipeForward,
+            Left = new BinaryOp
+            {
+                Operator = BinaryOperator.PipeForward,
+                Left = new Identifier { Name = "x" },
+                Right = new Identifier { Name = "f" }
+            },
+            Right = new Identifier { Name = "g" }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Be("g(f(x))");
+    }
+
+    [Fact]
+    public void GenerateExpression_PipeForward_ChainedWithArgs_GeneratesNestedCallsWithArgs()
+    {
+        // Arrange: x |> f(y) |> g(z) → g(f(x, y), z)
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.PipeForward,
+            Left = new BinaryOp
+            {
+                Operator = BinaryOperator.PipeForward,
+                Left = new Identifier { Name = "x" },
+                Right = new FunctionCall
+                {
+                    Function = new Identifier { Name = "f" },
+                    Arguments = new List<Expression> { new Identifier { Name = "y" } }
+                }
+            },
+            Right = new FunctionCall
+            {
+                Function = new Identifier { Name = "g" },
+                Arguments = new List<Expression> { new Identifier { Name = "z" } }
+            }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Be("g(f(x,y),z)");
+    }
+
+    [Fact]
+    public void GenerateExpression_PipeForward_MemberAccess_GeneratesMethodCall()
+    {
+        // Arrange: x |> obj.method → obj.method(x)
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.PipeForward,
+            Left = new Identifier { Name = "x" },
+            Right = new MemberAccess
+            {
+                Object = new Identifier { Name = "obj" },
+                Member = "method"
+            }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Contain("obj");
+        code.Should().Contain("method");
+        code.Should().Contain("(x)");
+    }
+
+    [Fact]
+    public void GenerateExpression_PipeForward_WithKeywordArgs_PreservesKeywordArgs()
+    {
+        // Arrange: x |> f(y, key=value) → f(x, y, key: value)
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.PipeForward,
+            Left = new Identifier { Name = "x" },
+            Right = new FunctionCall
+            {
+                Function = new Identifier { Name = "f" },
+                Arguments = new List<Expression> { new Identifier { Name = "y" } },
+                KeywordArguments = new List<KeywordArgument>
+                {
+                    new KeywordArgument { Name = "key", Value = new Identifier { Name = "value" } }
+                }
+            }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Contain("f(x,y,key:value)");
+    }
+
+    [Fact]
+    public void GenerateExpression_PipeForward_LiteralValue_GeneratesFunctionCallWithLiteral()
+    {
+        // Arrange: 42 |> f → f(42)
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.PipeForward,
+            Left = new IntegerLiteral { Value = "42" },
+            Right = new Identifier { Name = "f" }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Be("f(42)");
     }
 
     #endregion
@@ -809,6 +1016,86 @@ public class RoslynEmitterExpressionTests
         var code = result.ToString();
         code.Should().Contain("(int)");
         code.Should().Contain("value");
+    }
+
+    [Fact]
+    public void GenerateExpression_TypeCoercion_NonNullable_GeneratesCastExpression()
+    {
+        // Arrange: value to int → (int)value
+        var expr = new TypeCoercion
+        {
+            Value = new Identifier { Name = "obj" },
+            TargetType = new TypeAnnotation { Name = "int", IsNullable = false }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Contain("(int)");
+        code.Should().Contain("obj");
+    }
+
+    [Fact]
+    public void GenerateExpression_TypeCoercion_NullableValueType_GeneratesIsPattern()
+    {
+        // Arrange: value to int? → value is int _temp ? (int?)_temp : (int?)null
+        var expr = new TypeCoercion
+        {
+            Value = new Identifier { Name = "obj" },
+            TargetType = new TypeAnnotation { Name = "int", IsNullable = true }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        // Should use is pattern for value types
+        code.Should().Contain("is");
+        code.Should().Contain("int");
+        code.Should().Contain("?");
+        code.Should().Contain(":");
+        code.Should().Contain("null");
+    }
+
+    [Fact]
+    public void GenerateExpression_TypeCoercion_NullableReferenceType_GeneratesAsExpression()
+    {
+        // Arrange: value to str? → value as string
+        var expr = new TypeCoercion
+        {
+            Value = new Identifier { Name = "obj" },
+            TargetType = new TypeAnnotation { Name = "str", IsNullable = true }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Contain("as");
+        code.Should().Contain("string");
+    }
+
+    [Fact]
+    public void GenerateExpression_TypeCoercion_NullableUserType_GeneratesAsExpression()
+    {
+        // Arrange: value to Dog? → value as Dog
+        var expr = new TypeCoercion
+        {
+            Value = new Identifier { Name = "animal" },
+            TargetType = new TypeAnnotation { Name = "Dog", IsNullable = true }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Contain("as");
+        code.Should().Contain("Dog");
     }
 
     [Fact]

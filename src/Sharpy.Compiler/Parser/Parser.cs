@@ -81,6 +81,22 @@ public class Parser
         if (Current.Type == TokenType.At)
             return ParseDecoratedStatement();
 
+        // Special handling for 'try' - it can be either a statement (try:) or an expression (try expr)
+        // Disambiguate by looking ahead: try statement has 'try:' while try expression has 'try expr'
+        if (Current.Type == TokenType.Try)
+        {
+            // Check if next token is ':' (try statement) or '[' for try[Type] expression
+            // or something else (try expression)
+            if (Peek().Type == TokenType.Colon)
+                return ParseTryStatement();
+            // Otherwise it's a try expression, fall through to ParseSimpleStatement
+            return ParseSimpleStatement();
+        }
+
+        // Special handling for 'maybe' - it's always an expression at statement level
+        if (Current.Type == TokenType.Maybe)
+            return ParseSimpleStatement();
+
         return Current.Type switch
         {
             TokenType.Def => ParseFunctionDef(),
@@ -91,7 +107,6 @@ public class Parser
             TokenType.If => ParseIfStatement(),
             TokenType.While => ParseWhileStatement(),
             TokenType.For => ParseForStatement(),
-            TokenType.Try => ParseTryStatement(),
             TokenType.Return => ParseReturnStatement(),
             TokenType.Raise => ParseRaiseStatement(),
             TokenType.Assert => ParseAssertStatement(),
@@ -654,8 +669,17 @@ public class Parser
 
         Expect(TokenType.Const);
         var name = ExpectIdentifier();
-        Expect(TokenType.Colon);
-        var type = ParseTypeAnnotation();
+
+        // Type annotation is optional for const declarations
+        // const X: int = 1  (explicit type)
+        // const X = "MyApp" (type inferred)
+        TypeAnnotation? type = null;
+        if (Current.Type == TokenType.Colon)
+        {
+            Advance(); // consume ':'
+            type = ParseTypeAnnotation();
+        }
+
         Expect(TokenType.Assign);
         var value = ParseExpression();
         ExpectNewline();
@@ -1340,7 +1364,76 @@ public class Parser
             };
         }
 
+        return ParseTryMaybeExpression();
+    }
+
+    private Expression ParseTryMaybeExpression()
+    {
+        // try expression: try expr or try[ExceptionType] expr
+        // Wraps expression in Result[T, E]
+        if (Current.Type == TokenType.Try)
+        {
+            var startLine = Current.Line;
+            var startColumn = Current.Column;
+            Advance();  // Skip 'try'
+
+            // Check for optional exception type: try[ValueError] expr
+            TypeAnnotation? exceptionType = null;
+            if (Current.Type == TokenType.LeftBracket)
+            {
+                Advance();  // Skip '['
+                exceptionType = ParseTypeAnnotation();
+                Expect(TokenType.RightBracket);
+            }
+
+            // Parse the operand - try captures everything up to conditional expressions
+            var operand = ParseConditionalOperand();
+
+            return new TryExpression
+            {
+                Operand = operand,
+                ExceptionType = exceptionType,
+                LineStart = startLine,
+                ColumnStart = startColumn,
+                LineEnd = operand.LineEnd,
+                ColumnEnd = operand.ColumnEnd
+            };
+        }
+
+        // maybe expression: maybe expr
+        // Wraps nullable expression in Optional[T]
+        if (Current.Type == TokenType.Maybe)
+        {
+            var startLine = Current.Line;
+            var startColumn = Current.Column;
+            Advance();  // Skip 'maybe'
+
+            // Parse the operand - maybe captures everything up to conditional expressions
+            var operand = ParseConditionalOperand();
+
+            return new MaybeExpression
+            {
+                Operand = operand,
+                LineStart = startLine,
+                ColumnStart = startColumn,
+                LineEnd = operand.LineEnd,
+                ColumnEnd = operand.ColumnEnd
+            };
+        }
+
         return ParseConditionalExpression();
+    }
+
+    /// <summary>
+    /// Parse the operand for try/maybe expressions.
+    /// This captures everything that try/maybe should bind to, which is
+    /// everything up to but not including conditional expressions.
+    /// </summary>
+    private Expression ParseConditionalOperand()
+    {
+        // try/maybe binds to everything except conditional expressions
+        // So we parse NullCoalesce (which includes all higher-precedence operators)
+        return ParseNullCoalesce();
     }
 
     private Expression ParseConditionalExpression()

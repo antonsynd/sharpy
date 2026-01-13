@@ -37,7 +37,7 @@
   "max_validation_fix_attempts": 2,
   "create_followup_task_on_fix_failure": true,
   "require_human_approval_for_critical": true,
-  "auto_commit": false,
+  "auto_commit": true,
   "create_pr": false,
   "rate_limit_pause_hours": 3.0,
   "test_timeout": 300.0,

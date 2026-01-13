@@ -43,12 +43,12 @@ public enum AssignmentOperator
 }
 
 /// <summary>
-/// Variable declaration with type annotation (x: int = 5 or x: int)
+/// Variable declaration with optional type annotation (x: int = 5 or x = 5 with inference)
 /// </summary>
 public record VariableDeclaration : Statement
 {
     public string Name { get; init; } = "";
-    public TypeAnnotation Type { get; init; } = null!;
+    public TypeAnnotation? Type { get; init; }
     public Expression? InitialValue { get; init; }
     public bool IsConst { get; init; }
 }

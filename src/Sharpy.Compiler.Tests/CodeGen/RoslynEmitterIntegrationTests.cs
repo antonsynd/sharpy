@@ -289,4 +289,101 @@ public class RoslynEmitterIntegrationTests
         // Assert
         Assert.True(compiles, $"Generated code should compile. Errors:\n{errors}");
     }
+
+    [Fact]
+    public void GeneratedCode_ConstReferenceInSameScope_UsesConsistentNaming()
+    {
+        // Arrange - Const declared and referenced in the same scope (Main)
+        // This tests that const name mangling is consistent between declaration and reference
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                // const BASE: int = 10
+                new VariableDeclaration
+                {
+                    Name = "BASE",
+                    Type = new TypeAnnotation { Name = "int" },
+                    InitialValue = new IntegerLiteral { Value = "10" },
+                    IsConst = true
+                },
+                // x = BASE * 2 (reference in same scope)
+                new VariableDeclaration
+                {
+                    Name = "x",
+                    Type = new TypeAnnotation { Name = "int" },
+                    InitialValue = new BinaryOp
+                    {
+                        Left = new Identifier { Name = "BASE" },
+                        Operator = BinaryOperator.Multiply,
+                        Right = new IntegerLiteral { Value = "2" }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+        var compiles = CompileCode(code, out var errors);
+
+        // Assert
+        Assert.True(compiles, $"Generated code should compile. Errors:\n{errors}\n\nGenerated code:\n{code}");
+        // Verify both declaration and reference use the same name (BASE with @ escape)
+        Assert.Contains("const int @BASE = 10", code);
+        Assert.Contains("@BASE * 2", code);
+    }
+
+    [Fact]
+    public void GeneratedCode_ConstReferenceInFunctionScope_UsesConsistentNaming()
+    {
+        // Arrange - Const declared at module level, referenced in function
+        // Note: Currently module-level consts become local in Main(), so this tests
+        // that the naming is consistent even though scoping needs future work
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                // const BASE: int = 10
+                new VariableDeclaration
+                {
+                    Name = "BASE",
+                    Type = new TypeAnnotation { Name = "int" },
+                    InitialValue = new IntegerLiteral { Value = "10" },
+                    IsConst = true
+                },
+                // def calculate() -> int:
+                //     return BASE * 2
+                new FunctionDef
+                {
+                    Name = "calculate",
+                    Parameters = new List<Parameter>(),
+                    ReturnType = new TypeAnnotation { Name = "int" },
+                    Body = new List<Statement>
+                    {
+                        new ReturnStatement
+                        {
+                            Value = new BinaryOp
+                            {
+                                Left = new Identifier { Name = "BASE" },  // Reference to module-level const
+                                Operator = BinaryOperator.Multiply,
+                                Right = new IntegerLiteral { Value = "2" }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - verify naming is consistent (both use @BASE)
+        // Note: The code won't compile yet because const is local to Main, but naming is correct
+        Assert.Contains("const int @BASE = 10", code);
+        Assert.Contains("@BASE * 2", code);
+    }
 }

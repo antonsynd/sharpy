@@ -88,9 +88,12 @@ public class ParserNegativeTests
     [Fact]
     public void RejectsMissingColonAfterTry()
     {
+        // Note: With try expressions now supported, `try` followed by newline is parsed as
+        // an incomplete try expression (missing operand), not a try statement missing a colon.
+        // The error message reflects this - it encounters a newline where an expression is expected.
         var source = "try\n    pass\nexcept:\n    pass";
         Action act = () => Parse(source);
-        act.Should().Throw<ParserError>().WithMessage("*Expected Colon*");
+        act.Should().Throw<ParserError>().WithMessage("*Unexpected token*");
     }
 
     [Fact]

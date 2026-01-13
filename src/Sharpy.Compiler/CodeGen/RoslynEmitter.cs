@@ -17,6 +17,8 @@ public class RoslynEmitter
     private readonly TypeMapper _typeMapper;
     private readonly HashSet<string> _declaredVariables = new();
     private readonly Dictionary<string, int> _variableVersions = new();
+    private readonly HashSet<string> _constVariables = new(); // Track const variable names (original Sharpy names)
+    private readonly HashSet<string> _moduleConstVariables = new(); // Track module-level const names (preserved across function scopes)
     private int _tempVarCounter = 0;
 
     // Common .NET namespace acronyms that should be all uppercase
@@ -40,6 +42,13 @@ public class RoslynEmitter
     /// <returns>The C# variable name with version suffix (e.g., "x", "x_1", "x_2")</returns>
     private string GetMangledVariableName(string name, bool isNewDeclaration)
     {
+        // Check if this is a reference to a const variable - use constant case
+        // Check both local and module-level consts
+        if (_constVariables.Contains(name) || _moduleConstVariables.Contains(name))
+        {
+            return NameMangler.ToConstantCase(name);
+        }
+
         var baseName = NameMangler.ToCamelCase(name);
 
         if (isNewDeclaration)
@@ -88,8 +97,9 @@ public class RoslynEmitter
         var moduleClass = GenerateModuleClass(nonImportStatements);
 
         // Generate namespace from source file path (if available)
+        // Use block-scoped namespace for C# 9.0 compatibility (Unity)
         var namespaceName = GenerateNamespaceName();
-        var namespaceDecl = FileScopedNamespaceDeclaration(namespaceName)
+        var namespaceDecl = NamespaceDeclaration(namespaceName)
             .WithMembers(SingletonList<MemberDeclarationSyntax>(moduleClass));
 
         return CompilationUnit()
@@ -296,6 +306,17 @@ public class RoslynEmitter
 
     private ClassDeclarationSyntax GenerateModuleClass(List<Statement> statements)
     {
+        // Pre-scan for module-level const declarations to track them across all scopes
+        // This ensures functions can reference consts that appear anywhere in the module
+        _moduleConstVariables.Clear();
+        foreach (var stmt in statements)
+        {
+            if (stmt is VariableDeclaration varDecl && varDecl.IsConst)
+            {
+                _moduleConstVariables.Add(varDecl.Name);
+            }
+        }
+
         // Separate declarations (class members) from executable statements
         var declarations = new List<MemberDeclarationSyntax>();
         var executableStatements = new List<Statement>();
@@ -330,6 +351,7 @@ public class RoslynEmitter
             // Clear declared variables and version tracking for Main method scope
             _declaredVariables.Clear();
             _variableVersions.Clear();
+            _constVariables.Clear();
 
             var mainBody = Block(executableStatements
                 .Select(GenerateBodyStatement)
@@ -381,6 +403,7 @@ public class RoslynEmitter
         // Clear declared variables and version tracking for new function scope
         _declaredVariables.Clear();
         _variableVersions.Clear();
+        _constVariables.Clear();
 
         // Transform name using NameMangler
         var mangledName = NameMangler.Transform(func.Name, NameContext.Method);
@@ -1472,11 +1495,21 @@ public class RoslynEmitter
                         Argument(left),
                         Argument(right)),
 
-            // x //= y → (int)(x / y)
+            // x //= y → (long)Math.Floor((double)x / y)
+            // Floor division rounds toward negative infinity (Python semantics)
             AssignmentOperator.DoubleSlashAssign =>
                 CastExpression(
-                    PredefinedType(Token(SyntaxKind.IntKeyword)),
-                    BinaryExpression(SyntaxKind.DivideExpression, left, right)),
+                    PredefinedType(Token(SyntaxKind.LongKeyword)),
+                    InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName("Math"),
+                            IdentifierName("Floor")))
+                        .AddArgumentListArguments(
+                            Argument(BinaryExpression(SyntaxKind.DivideExpression,
+                                CastExpression(
+                                    PredefinedType(Token(SyntaxKind.DoubleKeyword)),
+                                    ParenthesizedExpression(left)),
+                                right)))),
 
             // All other operators use simple binary expressions
             _ => BinaryExpression(GetAugmentedAssignmentOperator(op), left, right)
@@ -1485,6 +1518,12 @@ public class RoslynEmitter
 
     private StatementSyntax GenerateVariableDeclaration(VariableDeclaration varDecl)
     {
+        // Track const variables by their original Sharpy name for consistent reference resolution
+        if (varDecl.IsConst)
+        {
+            _constVariables.Add(varDecl.Name);
+        }
+
         var varName = varDecl.IsConst
             ? NameMangler.ToConstantCase(varDecl.Name)
             : GetMangledVariableName(varDecl.Name, isNewDeclaration: true);
@@ -1754,11 +1793,16 @@ public class RoslynEmitter
             ConditionalExpression cond => GenerateConditionalExpression(cond),
             LambdaExpression lambda => GenerateLambdaExpression(lambda),
             TypeCast cast => GenerateTypeCast(cast),
+            TypeCoercion coercion => GenerateTypeCoercion(coercion),
             TypeCheck check => GenerateTypeCheck(check),
             Parenthesized paren => ParenthesizedExpression(GenerateExpression(paren.Expression)),
 
             // F-strings
             FStringLiteral fstring => GenerateFString(fstring),
+
+            // Try/Maybe expressions
+            TryExpression tryExpr => GenerateTryExpression(tryExpr),
+            MaybeExpression maybeExpr => GenerateMaybeExpression(maybeExpr),
 
             _ => throw new NotImplementedException($"Expression type not implemented: {expr.GetType().Name}")
         };
@@ -1824,12 +1868,22 @@ public class RoslynEmitter
                         Argument(right));
 
             case BinaryOperator.FloorDivide:
-                // x // y → (int)(x / y) for integers
-                // For now, cast to int (TODO: handle different numeric types)
-                // Must wrap the division in parentheses so cast applies to the result, not just left operand
+                // x // y → (long)Math.Floor((double)x / y) for integers
+                // Floor division rounds toward negative infinity (Python semantics)
+                // For now, assuming integer operands (result is int64/long per spec)
+                // TODO: handle float operands where result should be Math.Floor(a / b) without cast
                 return CastExpression(
-                    PredefinedType(Token(SyntaxKind.IntKeyword)),
-                    ParenthesizedExpression(BinaryExpression(SyntaxKind.DivideExpression, left, right)));
+                    PredefinedType(Token(SyntaxKind.LongKeyword)),
+                    InvocationExpression(
+                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName("Math"),
+                            IdentifierName("Floor")))
+                        .AddArgumentListArguments(
+                            Argument(BinaryExpression(SyntaxKind.DivideExpression,
+                                CastExpression(
+                                    PredefinedType(Token(SyntaxKind.DoubleKeyword)),
+                                    ParenthesizedExpression(left)),
+                                right))));
 
             case BinaryOperator.In:
                 // x in y → y.__Contains__(x)
@@ -1882,6 +1936,11 @@ public class RoslynEmitter
                         .AddArgumentListArguments(
                             Argument(left),
                             Argument(right)));
+
+            case BinaryOperator.PipeForward:
+                // x |> f → f(x)
+                // x |> f(y) → f(x, y) (prepend to argument list)
+                return GeneratePipeForward(binOp.Left, binOp.Right);
         }
 
         // Standard binary operators
@@ -1920,6 +1979,40 @@ public class RoslynEmitter
         };
 
         return BinaryExpression(kind, left, right);
+    }
+
+    /// <summary>
+    /// Generate code for pipe forward operator (|>).
+    /// x |> f → f(x)
+    /// x |> f(y) → f(x, y) (prepend to argument list)
+    /// x |> f |> g → g(f(x)) (chains via left-associativity in parser)
+    /// </summary>
+    private ExpressionSyntax GeneratePipeForward(Expression leftExpr, Expression rightExpr)
+    {
+        var left = GenerateExpression(leftExpr);
+
+        // Case 1: Right side is already a function call - prepend left to its arguments
+        // x |> f(y, z) → f(x, y, z)
+        if (rightExpr is FunctionCall funcCall)
+        {
+            var func = GenerateExpression(funcCall.Function);
+            var prependedArg = Argument(left);
+            var existingArgs = funcCall.Arguments.Select(a => Argument(GenerateExpression(a)));
+            var keywordArgs = funcCall.KeywordArguments.Select(k =>
+                Argument(GenerateExpression(k.Value))
+                    .WithNameColon(NameColon(IdentifierName(k.Name))));
+
+            var allArgs = new[] { prependedArg }.Concat(existingArgs).Concat(keywordArgs);
+
+            return InvocationExpression(func)
+                .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+        }
+
+        // Case 2: Right side is an identifier or member access - call it with left as the only argument
+        // x |> f → f(x)
+        var right = GenerateExpression(rightExpr);
+        return InvocationExpression(right)
+            .AddArgumentListArguments(Argument(left));
     }
 
     private ExpressionSyntax GenerateUnaryOp(UnaryOp unaryOp)
@@ -2367,6 +2460,68 @@ public class RoslynEmitter
         return CastExpression(targetType, value);
     }
 
+    private ExpressionSyntax GenerateTypeCoercion(TypeCoercion coercion)
+    {
+        // The `to` operator:
+        // - value to T → (T)value (throws InvalidCastException on failure)
+        // - value to T? → value as T (for reference types, returns null on failure)
+        //                 value is T _temp ? (T?)_temp : null (for value types)
+
+        var value = GenerateExpression(coercion.Value);
+
+        if (coercion.TargetType.IsNullable)
+        {
+            // Safe form: value to T?
+            // Create a non-nullable version of the target type for the 'as' expression
+            var baseType = new TypeAnnotation
+            {
+                Name = coercion.TargetType.Name,
+                TypeArguments = coercion.TargetType.TypeArguments,
+                IsNullable = false
+            };
+            var baseTypeSyntax = _typeMapper.MapType(baseType);
+            var nullableTypeSyntax = _typeMapper.MapType(coercion.TargetType);
+
+            // Check if this is a value type (primitives are value types except string/object)
+            var primitiveInfo = PrimitiveCatalog.GetByName(coercion.TargetType.Name);
+            bool isValueType = primitiveInfo != null &&
+                               primitiveInfo.ClrType != typeof(string) &&
+                               primitiveInfo.ClrType != typeof(object) &&
+                               primitiveInfo.ClrType != typeof(void);
+
+            if (isValueType)
+            {
+                // For value types: value is T _temp ? (T?)_temp : null
+                // Generate unique temp variable name
+                var tempName = $"__coerce_temp_{_tempVarCounter++}";
+
+                // value is T tempName ? (T?)tempName : (T?)null
+                return ConditionalExpression(
+                    IsPatternExpression(
+                        value,
+                        DeclarationPattern(
+                            baseTypeSyntax,
+                            SingleVariableDesignation(Identifier(tempName)))),
+                    CastExpression(nullableTypeSyntax, IdentifierName(tempName)),
+                    CastExpression(nullableTypeSyntax, LiteralExpression(SyntaxKind.NullLiteralExpression)));
+            }
+            else
+            {
+                // For reference types: value as T
+                return BinaryExpression(
+                    SyntaxKind.AsExpression,
+                    value,
+                    baseTypeSyntax);
+            }
+        }
+        else
+        {
+            // Throwing form: value to T → (T)value
+            var targetType = _typeMapper.MapType(coercion.TargetType);
+            return CastExpression(targetType, value);
+        }
+    }
+
     private ExpressionSyntax GenerateTypeCheck(TypeCheck check)
     {
         // value is Type → value is Type
@@ -2645,5 +2800,68 @@ public class RoslynEmitter
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
             .WithParameterList(ParameterList(SeparatedList(new[] { param1, param2 })))
             .WithBody(body);
+    }
+
+    /// <summary>
+    /// Generate a try expression: try expr or try[ExceptionType] expr
+    /// Wraps the expression in Result[T, E] using a try/catch pattern.
+    /// </summary>
+    private ExpressionSyntax GenerateTryExpression(TryExpression tryExpr)
+    {
+        // Generate the operand expression
+        var operandExpr = GenerateExpression(tryExpr.Operand);
+
+        // Determine the exception type to catch (default to Exception)
+        var exceptionTypeName = tryExpr.ExceptionType != null
+            ? _typeMapper.MapType(tryExpr.ExceptionType).ToString()
+            : "Exception";
+
+        // Generate: Result.Try(() => operand)
+        // or for specific exception type: Result.Try<ExceptionType>(() => operand)
+        var lambdaExpr = ParenthesizedLambdaExpression()
+            .WithExpressionBody(operandExpr);
+
+        // If exception type is specified and not the default Exception, use generic version
+        if (tryExpr.ExceptionType != null && exceptionTypeName != "Exception")
+        {
+            // Result.Try<ExceptionType>(() => operand)
+            return InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("global::Sharpy.Core.Result"),
+                    GenericName("Try")
+                        .WithTypeArgumentList(TypeArgumentList(
+                            SingletonSeparatedList<TypeSyntax>(IdentifierName(exceptionTypeName))))))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(lambdaExpr))));
+        }
+        else
+        {
+            // Result.Try(() => operand)
+            return InvocationExpression(
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName("global::Sharpy.Core.Result"),
+                    IdentifierName("Try")))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(lambdaExpr))));
+        }
+    }
+
+    /// <summary>
+    /// Generate a maybe expression: maybe expr
+    /// Wraps the nullable expression in Optional[T].
+    /// </summary>
+    private ExpressionSyntax GenerateMaybeExpression(MaybeExpression maybeExpr)
+    {
+        // Generate the operand expression
+        var operandExpr = GenerateExpression(maybeExpr.Operand);
+
+        // Generate: Optional.From(operand)
+        // This converts a nullable T? to Optional[T]
+        return InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName("global::Sharpy.Core.Optional"),
+                IdentifierName("From")))
+            .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(operandExpr))));
     }
 }

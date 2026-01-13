@@ -58,13 +58,23 @@ public static class PrimitiveCatalog
 
     private static void RegisterAll(Dictionary<string, PrimitiveInfo> byName, Dictionary<Type, PrimitiveInfo> byClr)
     {
-        // 1.2.1 Signed integer types
+        // 1.2.1 Signed integer types (Sharpy-style names are primary per spec)
+        Register(byName, byClr, new PrimitiveInfo("int8", "sbyte", typeof(sbyte), NumericKind.SignedInteger, 8, true));
+        Register(byName, byClr, new PrimitiveInfo("int16", "short", typeof(short), NumericKind.SignedInteger, 16, true));
+        Register(byName, byClr, new PrimitiveInfo("int32", "int", typeof(int), NumericKind.SignedInteger, 32, true));
+        Register(byName, byClr, new PrimitiveInfo("int64", "long", typeof(long), NumericKind.SignedInteger, 64, true));
+        // C#-style aliases
         Register(byName, byClr, new PrimitiveInfo("sbyte", "sbyte", typeof(sbyte), NumericKind.SignedInteger, 8, true));
         Register(byName, byClr, new PrimitiveInfo("short", "short", typeof(short), NumericKind.SignedInteger, 16, true));
         Register(byName, byClr, new PrimitiveInfo("int", "int", typeof(int), NumericKind.SignedInteger, 32, true));
         Register(byName, byClr, new PrimitiveInfo("long", "long", typeof(long), NumericKind.SignedInteger, 64, true));
 
-        // 1.2.2 Unsigned integer types
+        // 1.2.2 Unsigned integer types (Sharpy-style names are primary per spec)
+        Register(byName, byClr, new PrimitiveInfo("uint8", "byte", typeof(byte), NumericKind.UnsignedInteger, 8, false));
+        Register(byName, byClr, new PrimitiveInfo("uint16", "ushort", typeof(ushort), NumericKind.UnsignedInteger, 16, false));
+        Register(byName, byClr, new PrimitiveInfo("uint32", "uint", typeof(uint), NumericKind.UnsignedInteger, 32, false));
+        Register(byName, byClr, new PrimitiveInfo("uint64", "ulong", typeof(ulong), NumericKind.UnsignedInteger, 64, false));
+        // C#-style aliases
         Register(byName, byClr, new PrimitiveInfo("byte", "byte", typeof(byte), NumericKind.UnsignedInteger, 8, false));
         Register(byName, byClr, new PrimitiveInfo("ushort", "ushort", typeof(ushort), NumericKind.UnsignedInteger, 16, false));
         Register(byName, byClr, new PrimitiveInfo("uint", "uint", typeof(uint), NumericKind.UnsignedInteger, 32, false));

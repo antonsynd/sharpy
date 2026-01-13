@@ -220,7 +220,7 @@ const DEBUG: bool = False
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
     }
 
-    [Fact(Skip = "TODO: Fix const name mangling - declaration uses ToConstantCase (FACTOR) but reference uses lowercase (factor). See RoslynEmitter name handling.")]
+    [Fact]
     public void Const_UsedInExpression_CompilesAndRuns()
     {
         var source = @"
@@ -233,7 +233,7 @@ x = BASE * 2
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
     }
 
-    [Fact(Skip = "TODO: Fix const name mangling - declaration uses ToConstantCase (FACTOR) but reference uses lowercase (factor). See RoslynEmitter name handling.")]
+    [Fact]
     public void Const_UsedInMultipleExpressions_CompilesAndRuns()
     {
         var source = @"
@@ -637,7 +637,7 @@ f: auto = 200
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
     }
 
-    [Fact(Skip = "TODO: Fix const name mangling - declaration uses ToConstantCase (BASE) but reference uses lowercase (base). See RoslynEmitter name handling.")]
+    [Fact(Skip = "TODO: Augmented assignment type checking issue - '+=' with const operand fails semantic analysis")]
     public void MixedDeclarations_WithOperations_CompilesAndRuns()
     {
         var source = @"

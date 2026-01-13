@@ -394,4 +394,25 @@ public record WalrusExpression : Expression
     public Expression Value { get; init; } = null!;
 }
 
+/// <summary>
+/// Try expression (try expr or try[ExceptionType] expr)
+/// Wraps an expression in Result[T, E] where E is the exception type.
+/// If the expression raises an exception of type E, the result holds its Err case.
+/// </summary>
+public record TryExpression : Expression
+{
+    public Expression Operand { get; init; } = null!;
+    public TypeAnnotation? ExceptionType { get; init; }  // Optional: try[ValueError] expr
+}
+
+/// <summary>
+/// Maybe expression (maybe expr)
+/// Wraps a nullable expression in Optional[T].
+/// If the expression is None, the result holds its Nothing case.
+/// </summary>
+public record MaybeExpression : Expression
+{
+    public Expression Operand { get; init; } = null!;
+}
+
 #endregion
