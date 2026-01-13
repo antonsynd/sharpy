@@ -519,8 +519,11 @@ class HumanLoopManager:
                 with open(question_file) as f:
                     data = json.load(f)
                 question = HumanQuestion.from_dict(data)
+                # Check if status is pending AND no answer file exists
                 if question.status == QuestionStatus.PENDING:
-                    pending.append(question)
+                    answer_file = self.answers_dir / f"{question.id}.json"
+                    if not answer_file.exists():
+                        pending.append(question)
             except Exception:
                 continue
         return sorted(pending, key=lambda q: q.created_at, reverse=True)

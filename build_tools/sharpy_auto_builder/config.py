@@ -229,6 +229,36 @@ class Config:
                     config.backends[name].model = cfg_data.get(
                         "model", "claude-sonnet-4-5-20250929"
                     )
+                    if "max_tokens" in cfg_data:
+                        config.backends[name].max_tokens = cfg_data["max_tokens"]
+                    if "claude_code_path" in cfg_data:
+                        config.backends[name].claude_code_path = cfg_data[
+                            "claude_code_path"
+                        ]
+                    if "copilot_cli_path" in cfg_data:
+                        config.backends[name].copilot_cli_path = cfg_data[
+                            "copilot_cli_path"
+                        ]
+                    # Load rate limit settings
+                    if "rate_limit" in cfg_data:
+                        rl_data = cfg_data["rate_limit"]
+                        rl = config.backends[name].rate_limit
+                        if "max_requests_per_window" in rl_data:
+                            rl.max_requests_per_window = rl_data[
+                                "max_requests_per_window"
+                            ]
+                        if "window_seconds" in rl_data:
+                            rl.window_seconds = rl_data["window_seconds"]
+                        if "request_cooldown" in rl_data:
+                            rl.request_cooldown = rl_data["request_cooldown"]
+                        if "max_consecutive_errors" in rl_data:
+                            rl.max_consecutive_errors = rl_data[
+                                "max_consecutive_errors"
+                            ]
+                        if "backoff_multiplier" in rl_data:
+                            rl.backoff_multiplier = rl_data["backoff_multiplier"]
+                        if "max_backoff" in rl_data:
+                            rl.max_backoff = rl_data["max_backoff"]
         if "backend_priority" in data:
             config.backend_priority = data["backend_priority"]
         if "run_spec_adherence_check" in data:
