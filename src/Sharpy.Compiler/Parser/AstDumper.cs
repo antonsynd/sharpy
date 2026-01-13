@@ -194,7 +194,7 @@ public class AstDumper
                     {
                         var handler = tryStmt.Handlers[i];
                         var handlerIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                        var handlerPrefix = i == tryStmt.Handlers.Count - 1 && tryStmt.FinallyBody.Count == 0 ? "└─ " : "├─ ";
+                        var handlerPrefix = i == tryStmt.Handlers.Count - 1 && tryStmt.ElseBody.Count == 0 && tryStmt.FinallyBody.Count == 0 ? "└─ " : "├─ ";
                         _output.AppendLine($"{handlerIndent}{handlerPrefix}ExceptHandler @ L{handler.LineStart}:C{handler.ColumnStart}");
                         if (handler.ExceptionType != null)
                         {
@@ -210,6 +210,14 @@ public class AstDumper
                         {
                             DumpNode(handler.Body[j], depth + 3, j == handler.Body.Count - 1);
                         }
+                    }
+                }
+                if (tryStmt.ElseBody.Count > 0)
+                {
+                    _output.AppendLine($"{indent}{childPrefix}ElseBody: [{tryStmt.ElseBody.Count} statement(s)]");
+                    for (int i = 0; i < tryStmt.ElseBody.Count; i++)
+                    {
+                        DumpNode(tryStmt.ElseBody[i], depth + 2, i == tryStmt.ElseBody.Count - 1 && tryStmt.FinallyBody.Count == 0);
                     }
                 }
                 if (tryStmt.FinallyBody.Count > 0)

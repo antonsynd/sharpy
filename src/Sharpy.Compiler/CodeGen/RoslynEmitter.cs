@@ -1806,6 +1806,17 @@ public class RoslynEmitter
 
     private StatementSyntax GenerateTry(TryStatement tryStmt)
     {
+        // If there's an else clause, we need to use a flag pattern:
+        // bool __trySucceeded = false;
+        // try { ... __trySucceeded = true; }
+        // catch { ... }
+        // finally { ... }
+        // if (__trySucceeded) { else_body }
+        if (tryStmt.ElseBody.Count > 0)
+        {
+            return GenerateTryWithElse(tryStmt);
+        }
+
         var tryBlock = Block(tryStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
 
         // Generate catch clauses
@@ -1846,6 +1857,72 @@ public class RoslynEmitter
         }
 
         return TryStatement(tryBlock, List(catchClauses), finallyClause);
+    }
+
+    private StatementSyntax GenerateTryWithElse(TryStatement tryStmt)
+    {
+        // Generate: bool __trySucceeded = false;
+        var flagName = GenerateTempVarName("trySucceeded");
+        var flagDecl = LocalDeclarationStatement(
+            VariableDeclaration(PredefinedType(Token(SyntaxKind.BoolKeyword)))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier(flagName))
+                        .WithInitializer(EqualsValueClause(LiteralExpression(SyntaxKind.FalseLiteralExpression))))));
+
+        // Generate try body with flag set to true at the end
+        var tryBodyStatements = tryStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>().ToList();
+        tryBodyStatements.Add(ExpressionStatement(
+            AssignmentExpression(
+                SyntaxKind.SimpleAssignmentExpression,
+                IdentifierName(flagName),
+                LiteralExpression(SyntaxKind.TrueLiteralExpression))));
+        var tryBlock = Block(tryBodyStatements);
+
+        // Generate catch clauses
+        var catchClauses = tryStmt.Handlers.Select(handler =>
+        {
+            var catchBlock = Block(handler.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+
+            if (handler.ExceptionType != null)
+            {
+                var exceptionType = _typeMapper.MapType(handler.ExceptionType);
+
+                if (handler.Name != null)
+                {
+                    var exceptionVar = NameMangler.ToCamelCase(handler.Name);
+                    var declaration = CatchDeclaration(exceptionType, Identifier(exceptionVar));
+                    return CatchClause(declaration, null, catchBlock);
+                }
+                else
+                {
+                    var declaration = CatchDeclaration(exceptionType);
+                    return CatchClause(declaration, null, catchBlock);
+                }
+            }
+            else
+            {
+                // Catch all exceptions
+                return CatchClause()
+                    .WithBlock(catchBlock);
+            }
+        }).ToList();
+
+        // Generate finally block if present
+        FinallyClauseSyntax? finallyClause = null;
+        if (tryStmt.FinallyBody.Count > 0)
+        {
+            var finallyBlock = Block(tryStmt.FinallyBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+            finallyClause = FinallyClause(finallyBlock);
+        }
+
+        var tryCatchFinally = TryStatement(tryBlock, List(catchClauses), finallyClause);
+
+        // Generate: if (__trySucceeded) { else_body }
+        var elseBlock = Block(tryStmt.ElseBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+        var elseIf = IfStatement(IdentifierName(flagName), elseBlock);
+
+        // Return a block containing all statements
+        return Block(flagDecl, tryCatchFinally, elseIf);
     }
 
     private ExpressionSyntax GenerateExpression(Sharpy.Compiler.Parser.Ast.Expression expr)

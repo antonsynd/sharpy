@@ -682,5 +682,121 @@ public class RoslynEmitterStatementTests
         Assert.Contains("catch (KeyError)", result);
     }
 
+    [Fact]
+    public void GenerateStatement_TryExceptElse_GeneratesFlagPattern()
+    {
+        var stmt = new TryStatement
+        {
+            Body = new List<Statement>
+            {
+                new Assignment
+                {
+                    Target = new Identifier { Name = "x" },
+                    Value = new IntegerLiteral { Value = "1" },
+                    Operator = AssignmentOperator.Assign
+                }
+            },
+            Handlers = new List<ExceptHandler>
+            {
+                new ExceptHandler
+                {
+                    ExceptionType = new TypeAnnotation { Name = "Exception" },
+                    Body = new List<Statement>
+                    {
+                        new PassStatement()
+                    }
+                }
+            },
+            ElseBody = new List<Statement>
+            {
+                new ExpressionStatement
+                {
+                    Expression = new FunctionCall
+                    {
+                        Function = new Identifier { Name = "success" },
+                        Arguments = new List<Sharpy.Compiler.Parser.Ast.Expression>()
+                    }
+                }
+            }
+        };
+
+        var result = GenerateStatementCode(stmt);
+
+        // Check for flag pattern: bool __trySucceeded_N = false;
+        Assert.Contains("bool __trySucceeded_", result);
+        Assert.Contains("= false", result);
+        // Check flag is set to true at end of try block
+        Assert.Contains("= true", result);
+        // Check for try-catch
+        Assert.Contains("try", result);
+        Assert.Contains("catch (Exception)", result);
+        // Check for else execution: if (__trySucceeded_N) { Success(); }
+        Assert.Contains("if (__trySucceeded_", result);
+        Assert.Contains("Success();", result);
+    }
+
+    [Fact]
+    public void GenerateStatement_TryExceptElseFinally_GeneratesFlagPatternWithFinally()
+    {
+        var stmt = new TryStatement
+        {
+            Body = new List<Statement>
+            {
+                new Assignment
+                {
+                    Target = new Identifier { Name = "x" },
+                    Value = new IntegerLiteral { Value = "1" },
+                    Operator = AssignmentOperator.Assign
+                }
+            },
+            Handlers = new List<ExceptHandler>
+            {
+                new ExceptHandler
+                {
+                    ExceptionType = new TypeAnnotation { Name = "Exception" },
+                    Body = new List<Statement>
+                    {
+                        new PassStatement()
+                    }
+                }
+            },
+            ElseBody = new List<Statement>
+            {
+                new ExpressionStatement
+                {
+                    Expression = new FunctionCall
+                    {
+                        Function = new Identifier { Name = "success" },
+                        Arguments = new List<Sharpy.Compiler.Parser.Ast.Expression>()
+                    }
+                }
+            },
+            FinallyBody = new List<Statement>
+            {
+                new ExpressionStatement
+                {
+                    Expression = new FunctionCall
+                    {
+                        Function = new Identifier { Name = "cleanup" },
+                        Arguments = new List<Sharpy.Compiler.Parser.Ast.Expression>()
+                    }
+                }
+            }
+        };
+
+        var result = GenerateStatementCode(stmt);
+
+        // Check for flag pattern
+        Assert.Contains("bool __trySucceeded_", result);
+        // Check for try-catch-finally
+        Assert.Contains("try", result);
+        Assert.Contains("catch (Exception)", result);
+        Assert.Contains("finally", result);
+        Assert.Contains("Cleanup();", result);
+        // Check for else execution after try-catch-finally
+        Assert.Contains("if (__trySucceeded_", result);
+        Assert.Contains("Success();", result);
+    }
+
     #endregion
 }

@@ -910,7 +910,7 @@ finally:
         module.Body.Should().HaveCount(1);
     }
 
-    [Fact(Skip = "Unimplemented: Try-except-else blocks not yet supported")]
+    [Fact]
     public void ParsesTryExceptElse()
     {
         var source = @"
@@ -923,6 +923,35 @@ else:
 ";
         var module = Parse(source);
         module.Body.Should().HaveCount(1);
+        var tryStmt = module.Body[0].Should().BeOfType<TryStatement>().Subject;
+        tryStmt.Body.Should().HaveCount(1);
+        tryStmt.Handlers.Should().HaveCount(1);
+        tryStmt.ElseBody.Should().HaveCount(1);
+        tryStmt.ElseBody[0].Should().BeOfType<ExpressionStatement>();
+    }
+
+    [Fact]
+    public void ParsesTryExceptElseFinally()
+    {
+        var source = @"
+try:
+    x: int = 1
+except ValueError:
+    handle_value_error()
+except Exception as e:
+    handle_exception(e)
+else:
+    success()
+finally:
+    cleanup()
+";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(1);
+        var tryStmt = module.Body[0].Should().BeOfType<TryStatement>().Subject;
+        tryStmt.Body.Should().HaveCount(1);
+        tryStmt.Handlers.Should().HaveCount(2);
+        tryStmt.ElseBody.Should().HaveCount(1);
+        tryStmt.FinallyBody.Should().HaveCount(1);
     }
 
     #endregion
