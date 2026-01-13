@@ -234,6 +234,7 @@ class Orchestrator:
             print(f"  • {name}: {status}")
             if backend.enabled:
                 print(f"      Model: {backend.model}")
+                print(f"      Max tokens: {backend.max_tokens}")
                 print(
                     f"      Rate limit: {backend.rate_limit.max_requests_per_window}/hour"
                 )

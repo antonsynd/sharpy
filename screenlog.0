@@ -4,4 +4,69 @@ bck-i-search: _[K[A[8C./build_tools/auto_bu[4mi[24mlder.sh reset R-0.1.4.2
 bck-i-search: in_[K[A[A[36C[1C[4mn[4mi[24m[2B[40Di_[A[A[35C[2C[4mi[4mt[24m[2B[40Dt_[A[A[34C[24mi[24mn[24mi[24mt[2B[K[A[29C[?2004l[1B]133;C;Loaded config from: /Users/anton/github/sharpy/build_tools/sharpy_auto_builder/state/config.json
 Error: Task list file not found: ../docs/implementation_planning/task_list_remediation.md
 [1m[7m%[27m[1m[0m                                                                                             ]133;D;1]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
-[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h./build_tools/auto_builder.sh init --config `pwd`/build_tools/sharpy_auto_builder/state/config.json[K
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h./build_tools/auto_builder.sh init --config `pwd`/build_tools/sharpy_auto_builder/state/config.json[K[?2004l
+]133;C;Loaded config from: /Users/anton/github/sharpy/build_tools/sharpy_auto_builder/state/config.json
+Initialized Sharpy Auto Builder
+  Ground truth: /Users/anton/Documents/github/sharpy/build_tools/sharpy_auto_builder/state/ground_truth.json
+  Config: /Users/anton/Documents/github/sharpy/build_tools/sharpy_auto_builder/state/config.json
+  Phases: 5
+  Total tasks: 18
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;0]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h./build_tools/auto_builder.sh init --config `pwd`/build_tools/sharpy_auto_builder/state/config.json[K[?2004l
+[1m[7m%[27m[1m[0m                                                                                             ]133;C;]133;D;130]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h
+bck-i-search: _[K[A[8C./build_tools/auto_builder.sh init --config `pwd`/build_tools/sharpy_auto_builde[4mr[24m/state/config.json
+bck-i-search: r_[K[A[A[43C[4mr[4mu[24mn[K[1Bbck-i-sear[24mch: ru_            [1B[K[A[A[53C[1C[4mu[4mn[24m[1B[40Dn_[A[35C[30Ddotnet [4mr[4mu[4mn[4m [24m--project src/Sharp[24my[24m.[24mCli -- build /tmp/test_sqrt.spy 2>&1[1B[74D _[A[11C./build[24m_[24mt[24mo[24mols/auto_builder.sh [4mr[4mu[4mn[24m                                   [1B[74D_ [A[34C[24mr[24mu[24mn[1B[K[A[53C[?2004l[1B]133;C;Starting Sharpy Auto Builder...
+  Backend priority: ['claude_code', 'copilot']
+  Max tasks: unlimited
+  Spec check: enabled
+  Verification: enabled
+  Hallucination check: enabled
+
+
+======================================================================
+🔧 ORCHESTRATOR CONFIGURATION (as of 2026-01-13 09:27:39)
+======================================================================
+
+📋 Key Settings:
+  • Project root: /Users/anton/Documents/github/sharpy
+  • Task list: /Users/anton/Documents/github/sharpy/docs/implementation_planning/task_list_remediation.md
+  • Ground truth: /Users/anton/Documents/github/sharpy/build_tools/sharpy_auto_builder/state/ground_truth.json
+
+🔍 Validation Settings:
+  • Spec adherence check: True
+  • Verification after implementation: True
+  • Hallucination defense: True
+
+🔄 Retry/Fix Settings:
+  • Max retries per task: 3
+  • Max test fix attempts: 3
+  • Max validation fix attempts: 2
+  • Create follow-up on fix failure: True
+
+⚙️ Execution Settings:
+  • Auto commit: True
+  • Create PR: False
+  • Test timeout: 300.0s
+  • Human approval for critical: True
+
+🤖 Backend Configuration:
+  • claude_code: ✅ enabled
+      Model: claude-sonnet-4-5-20250929
+      Rate limit: 50/hour
+      Cooldown: 3.0s
+  • copilot: ❌ disabled
+
+  Backend priority: claude_code → copilot
+
+======================================================================
+
+[select_task] Selected task R-0.1.1.1: Verify Keyword-as-Member-Name Bug Resolution
+⏳ [09:27:39] Starting: plan_implementation - Verify Keyword-as-Member-Name Bug Resolution
+^C
+Interrupted by user
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;1]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h
+bck-i-search: _[K[A[8C./build_tools/auto_builder.sh [4mr[24mun[1B[42Dr_[A[37C[4mr[4me[24mset R-0.1.4.2[1B[53De_[A[36C[1C[4me[4ms[24m[1B[40Ds_[A[35C[2C[4ms[4me[24m[1B[40De_[A[34C[3C[4me[4mt[24m[1B[40Dt_[A[33C[24mr[24me[24ms[24me[24mt[1B[K[A[68C         R-0.1.1.1[?2004l[1B]133;C;Task R-0.1.1.1 reset to pending
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;0]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h./build_tools/auto_builder.sh reset R-0.1.1.1             un
