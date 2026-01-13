@@ -304,12 +304,59 @@ public class RoslynEmitterExpressionTests
         var result = InvokeGenerateExpression(expr);
 
         // Assert - Floor division should use Math.Floor for correct negative number handling
-        // (int)Math.Floor((double)x / y) rounds toward negative infinity (Python semantics)
+        // (long)Math.Floor((double)x / y) rounds toward negative infinity (Python semantics)
+        // Result is int64 as per spec: arithmetic_operators.md
         var code = result.ToString();
-        code.Should().Contain("(int)");
+        code.Should().Contain("(long)");
         code.Should().Contain("Math.Floor");
         code.Should().Contain("(double)");
         code.Should().Contain("/");
+    }
+
+    [Fact]
+    public void GenerateExpression_FloorDivide_WithFloatOperand_ReturnsFloat()
+    {
+        // Arrange - Float operands should return float without cast to long
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.FloorDivide,
+            Left = new FloatLiteral { Value = "7.5" },
+            Right = new FloatLiteral { Value = "2.0" }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert - Float floor division should use Math.Floor but NOT cast to long
+        // 7.5 // 2.0 = 3.0 (float), not 3 (int)
+        var code = result.ToString();
+        code.Should().Contain("Math.Floor");
+        code.Should().Contain("/");
+        code.Should().NotContain("(long)");
+        code.Should().NotContain("(int)");
+    }
+
+    [Fact]
+    public void GenerateExpression_FloorDivide_MixedIntFloat_ReturnsFloat()
+    {
+        // Arrange - Mixed int/float should return float
+        var expr = new BinaryOp
+        {
+            Operator = BinaryOperator.FloorDivide,
+            Left = new IntegerLiteral { Value = "7" },
+            Right = new FloatLiteral { Value = "2.0" }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert - Mixed floor division should return float type
+        // 7 // 2.0 = 3.0 (float), not 3 (int)
+        var code = result.ToString();
+        code.Should().Contain("Math.Floor");
+        code.Should().Contain("/");
+        code.Should().NotContain("(long)");
+        code.Should().NotContain("(int)");
     }
 
     [Theory]

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-13T10:26:53.486563",
+  "last_updated": "2026-01-13T10:46:14.491346",
   "phases": [
     {
       "id": "0.1.1",
@@ -238,7 +238,20 @@
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
           ],
           "status": "in_progress",
-          "executions": [],
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude_code",
+              "started_at": "2026-01-13T10:46:14.483578",
+              "completed_at": "2026-01-13T10:46:14.483590",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": false,
+              "tests_passed": false,
+              "validation_results": []
+            }
+          ],
           "dependencies": [],
           "is_critical": false,
           "human_question": null,
@@ -251,7 +264,7 @@
       "id": "0.1.2",
       "name": "Code Generation Bootstrap - Remediation",
       "goal": "",
-      "status": "pending",
+      "status": "in_progress",
       "progress": 0.0,
       "tasks": [
         {
@@ -262,7 +275,7 @@
           "files": [
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": true,
@@ -499,14 +512,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "R-0.1.1.5",
-  "total_attempts": 4,
-  "total_successes": 4,
+  "current_task_id": "R-0.1.2.1",
+  "total_attempts": 5,
+  "total_successes": 5,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 4,
-      "successes": 4,
+      "attempts": 5,
+      "successes": 5,
       "failures": 0
     },
     "copilot": {

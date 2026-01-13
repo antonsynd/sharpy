@@ -1364,7 +1364,7 @@ public class RoslynEmitter
                 // This references the current version and modifies it
                 var varName = GetMangledVariableName(name.Name, isNewDeclaration: false);
                 var left = IdentifierName(varName);
-                var augmentedValue = GenerateAugmentedValue(assign.Operator, left, value);
+                var augmentedValue = GenerateAugmentedValue(assign.Operator, left, value, assign.Target, assign.Value);
 
                 return ExpressionStatement(
                     AssignmentExpression(
@@ -1386,7 +1386,7 @@ public class RoslynEmitter
 
             var assignmentValue = assign.Operator == AssignmentOperator.Assign
                 ? value
-                : GenerateAugmentedValue(assign.Operator, elementAccess, value);
+                : GenerateAugmentedValue(assign.Operator, elementAccess, value, assign.Target, assign.Value);
 
             return ExpressionStatement(
                 AssignmentExpression(
@@ -1402,7 +1402,7 @@ public class RoslynEmitter
 
             var assignmentValue = assign.Operator == AssignmentOperator.Assign
                 ? value
-                : GenerateAugmentedValue(assign.Operator, target, value);
+                : GenerateAugmentedValue(assign.Operator, target, value, assign.Target, assign.Value);
 
             return ExpressionStatement(
                 AssignmentExpression(
@@ -1482,7 +1482,12 @@ public class RoslynEmitter
     /// Handles special cases like //= (floor divide) and **= (power) that require
     /// method calls or casts instead of simple binary expressions.
     /// </summary>
-    private ExpressionSyntax GenerateAugmentedValue(AssignmentOperator op, ExpressionSyntax left, ExpressionSyntax right)
+    /// <param name="op">The assignment operator</param>
+    /// <param name="left">Generated C# expression for the target</param>
+    /// <param name="right">Generated C# expression for the value</param>
+    /// <param name="targetAst">Original AST target expression (for type inference)</param>
+    /// <param name="valueAst">Original AST value expression (for type inference)</param>
+    private ExpressionSyntax GenerateAugmentedValue(AssignmentOperator op, ExpressionSyntax left, ExpressionSyntax right, Expression? targetAst = null, Expression? valueAst = null)
     {
         return op switch
         {
@@ -1496,21 +1501,13 @@ public class RoslynEmitter
                         Argument(left),
                         Argument(right)),
 
-            // x //= y → (int)Math.Floor((double)x / y)
-            // Floor division rounds toward negative infinity (Python semantics)
+            // x //= y → floor division with Python semantics (toward negative infinity)
+            // Integer operands: (long)Math.Floor((double)x / y) → result is int64
+            // Float operands: Math.Floor(x / y) → result is float type
             AssignmentOperator.DoubleSlashAssign =>
-                CastExpression(
-                    PredefinedType(Token(SyntaxKind.IntKeyword)),
-                    InvocationExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            IdentifierName("Math"),
-                            IdentifierName("Floor")))
-                        .AddArgumentListArguments(
-                            Argument(BinaryExpression(SyntaxKind.DivideExpression,
-                                CastExpression(
-                                    PredefinedType(Token(SyntaxKind.DoubleKeyword)),
-                                    ParenthesizedExpression(left)),
-                                right)))),
+                GenerateFloorDivision(left, right,
+                    (targetAst != null && IsFloatExpression(targetAst)) ||
+                    (valueAst != null && IsFloatExpression(valueAst))),
 
             // All other operators use simple binary expressions
             _ => BinaryExpression(GetAugmentedAssignmentOperator(op), left, right)
@@ -1948,22 +1945,11 @@ public class RoslynEmitter
                         Argument(right));
 
             case BinaryOperator.FloorDivide:
-                // x // y → (int)Math.Floor((double)x / y) for integers
-                // Floor division rounds toward negative infinity (Python semantics)
-                // For int operands, result is int (matching Python semantics for small numbers)
-                // TODO: handle float operands where result should be Math.Floor(a / b) without cast
-                return CastExpression(
-                    PredefinedType(Token(SyntaxKind.IntKeyword)),
-                    InvocationExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            IdentifierName("Math"),
-                            IdentifierName("Floor")))
-                        .AddArgumentListArguments(
-                            Argument(BinaryExpression(SyntaxKind.DivideExpression,
-                                CastExpression(
-                                    PredefinedType(Token(SyntaxKind.DoubleKeyword)),
-                                    ParenthesizedExpression(left)),
-                                right))));
+                // x // y → floor division with Python semantics (toward negative infinity)
+                // Integer operands: (long)Math.Floor((double)x / y) → result is int64
+                // Float operands: Math.Floor(x / y) → result is float type
+                var hasFloatOperand = IsFloatExpression(binOp.Left) || IsFloatExpression(binOp.Right);
+                return GenerateFloorDivision(left, right, hasFloatOperand);
 
             case BinaryOperator.In:
                 // x in y → y.__Contains__(x)
@@ -3023,5 +3009,60 @@ public class RoslynEmitter
             // All other statements pass through unchanged
             _ => stmt
         };
+    }
+
+    /// <summary>
+    /// Checks if an expression evaluates to a floating-point type.
+    /// Used to determine floor division semantics.
+    /// </summary>
+    private bool IsFloatExpression(Expression expr)
+    {
+        return expr switch
+        {
+            FloatLiteral => true,
+            UnaryOp unary => IsFloatExpression(unary.Operand),
+            BinaryOp binOp => binOp.Operator switch
+            {
+                // Division always produces float
+                BinaryOperator.Divide => true,
+                // Power produces float (Math.Pow returns double)
+                BinaryOperator.Power => true,
+                // Floor division depends on operands
+                BinaryOperator.FloorDivide => IsFloatExpression(binOp.Left) || IsFloatExpression(binOp.Right),
+                // Other operators: float if either operand is float
+                _ => IsFloatExpression(binOp.Left) || IsFloatExpression(binOp.Right)
+            },
+            Parenthesized paren => IsFloatExpression(paren.Expression),
+            // For other expressions (variables, function calls, etc.), assume integer
+            // A full type system would resolve these properly
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Generates floor division expression with correct Python semantics.
+    /// Floors toward negative infinity (not truncation toward zero).
+    /// - Integer operands: (long)Math.Floor((double)a / b) → result is int64
+    /// - Float operands: Math.Floor(a / b) → result is float type
+    /// </summary>
+    private ExpressionSyntax GenerateFloorDivision(ExpressionSyntax left, ExpressionSyntax right, bool hasFloatOperand)
+    {
+        // Math.Floor((double)left / right) or Math.Floor(left / right)
+        var divisionExpr = hasFloatOperand
+            ? BinaryExpression(SyntaxKind.DivideExpression, left, right)
+            : BinaryExpression(SyntaxKind.DivideExpression,
+                CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
+                right);
+
+        var floorCall = InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName("Math"),
+                IdentifierName("Floor")))
+            .AddArgumentListArguments(Argument(divisionExpr));
+
+        // For integer operands, cast to long; for float operands, return as-is
+        return hasFloatOperand
+            ? floorCall
+            : CastExpression(PredefinedType(Token(SyntaxKind.LongKeyword)), floorCall);
     }
 }
