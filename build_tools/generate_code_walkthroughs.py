@@ -34,8 +34,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import List, Set, Optional, Dict, Any, Tuple
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from datetime import timedelta
 
 
 class RateLimitExceeded(Exception):
@@ -61,19 +61,6 @@ class BackendUnavailable(Exception):
 # =============================================================================
 # Backend Management with Failover
 # =============================================================================
-
-
-@dataclass
-class BackendResult:
-    """Result of executing a command via a backend."""
-
-    success: bool
-    output: str
-    error: Optional[str] = None
-    duration_seconds: float = 0.0
-    backend: str = ""
-    rate_limited: bool = False
-    wait_time: Optional[float] = None  # Seconds to wait if rate limited
 
 
 @dataclass
@@ -274,8 +261,8 @@ def extract_rate_limit_wait_time(output: str) -> Optional[float]:
         now = datetime.now()
         reset_time = now.replace(hour=reset_hour, minute=0, second=0, microsecond=0)
         if reset_time <= now:
-            # Reset is tomorrow
-            reset_time = reset_time.replace(day=now.day + 1)
+            # Reset is tomorrow - use timedelta to handle month boundaries correctly
+            reset_time = reset_time + timedelta(days=1)
 
         wait_seconds = (reset_time - now).total_seconds()
         return max(wait_seconds, 60.0)  # At least 60 seconds
@@ -910,7 +897,7 @@ Focus on providing intuition and understanding, not just restating what the code
                     success=True,
                     duration=duration,
                     is_stale=is_stale,
-                    extra={"cli_provider": cli_provider},
+                    extra={"backend": cli_provider},
                 )
                 print(f"✓ Generated: {output_path} (via {cli_provider})")
                 return True, cli_provider
@@ -1277,7 +1264,7 @@ async def main_async(config: Config):
                 file=sys.stderr,
             )
             print(
-                f"   Try again after: {datetime.now().replace(microsecond=0) + __import__('datetime').timedelta(seconds=e.wait_time)}",
+                f"   Try again after: {datetime.now().replace(microsecond=0) + timedelta(seconds=e.wait_time)}",
                 file=sys.stderr,
             )
 

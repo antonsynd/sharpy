@@ -6,42 +6,48 @@ This directory contains build automation and documentation generation tools for 
 
 ### generate_code_walkthroughs.py
 
-Automatically generates comprehensive code walkthrough documentation for C# source files using GitHub Copilot CLI.
+Generates comprehensive code walkthrough documentation for C# source files using AI CLI tools (Claude Code or GitHub Copilot).
 
-**Purpose**: Creates markdown documentation that helps newcomer engineers understand the codebase structure, design patterns, and how to effectively contribute and debug.
+**Purpose**: Creates markdown documentation that helps newcomer engineers understand the codebase structure, design patterns, and how to contribute and debug effectively.
 
 **Features**:
-- ✅ Parallel processing with configurable instances (default: 3)
-- ✅ Rate limiting protection with configurable timeouts
-- ✅ Smart resumption - skips already documented files
-- ✅ Preserves directory structure in output
-- ✅ Uses Copilot CLI with `--allow-tool 'write'` permission for markdown file creation
+- Automatic backend failover: tries Claude Code first, falls back to GitHub Copilot if rate-limited
+- Parallel processing with configurable instances (default: 3)
+- Incremental updates: only regenerates docs when source files change
+- Rate limit detection with automatic wait time extraction
+- Execution logging to JSONL for debugging
+- Rich context injection (compiler pipeline stage, related specs, dependencies)
 
 **Requirements**:
-- GitHub CLI (`gh`) installed and authenticated
-- GitHub Copilot CLI enabled
 - Python 3.8+
+- At least one of:
+  - Claude Code CLI (`claude`) installed
+  - GitHub Copilot CLI (`copilot`) installed at `/opt/homebrew/bin/copilot`
 
 **Usage**:
 ```bash
-# Basic usage with defaults
+# Recommended: auto mode with failover (Claude → Copilot)
 ./build_tools/generate_code_walkthroughs.py
 
-# Custom configuration
-./build_tools/generate_code_walkthroughs.py --parallel 5 --timeout 90
+# Use a specific backend
+./build_tools/generate_code_walkthroughs.py --cli claude
+./build_tools/generate_code_walkthroughs.py --cli copilot
 
-# See all options
-./build_tools/generate_code_walkthroughs.py --help
+# Force regenerate all docs (ignore timestamps)
+./build_tools/generate_code_walkthroughs.py --force
+
+# Custom parallelism and timing
+./build_tools/generate_code_walkthroughs.py --parallel 5 --timeout 90 --copilot-timeout 180
+
+# Process specific directories
+./build_tools/generate_code_walkthroughs.py --source-dirs src/Sharpy.Compiler
 ```
 
-**Output**: Generated markdown files are placed in `docs/internal_walkthrough/` with the same directory structure as the source files.
+**Output**: Generated markdown files are placed in `docs/implementation_walkthrough/` preserving the source directory structure.
 
-**Permissions**: The script uses Copilot CLI's programmatic mode with `--allow-tool 'write'` permission, which allows Copilot to create documentation files without manual approval for each file. Copilot has:
-- **Read access**: Can read C# source files in the repository
-- **Write access**: Can create/modify markdown files in the output directory
-- **Working directory**: Runs from repository root for proper path resolution
+**Security Model**: Both CLI tools are restricted to `Read` and `Write` operations only—no shell access, no editing existing files, no file deletion.
 
-**Rate Limiting**: Configurable delay between batches (default: 60 seconds) to avoid hitting GitHub Copilot API rate limits.
+**Rate Limiting**: The script detects rate limit errors, extracts wait times from error messages, and can automatically fail over to another backend. A configurable delay between batches (default: 60s) helps avoid hitting limits.
 
 ## Other Tools
 
