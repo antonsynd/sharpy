@@ -1,8 +1,0 @@
-def multiply(a: int, b: int) -> int:
-    return a * b
-
-result: int = multiply(7, 6)
-print(result)
-
-# EXPECTED OUTPUT:
-# 42

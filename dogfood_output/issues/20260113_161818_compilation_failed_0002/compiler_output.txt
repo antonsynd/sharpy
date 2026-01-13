@@ -1,1 +1,0 @@
-Warning: 1 module-level statement(s) ignored because a 'main' function is defined

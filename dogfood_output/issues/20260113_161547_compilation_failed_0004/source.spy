@@ -1,8 +1,0 @@
-def square(n: int) -> int:
-    return n * n
-
-result = square(7)
-print(result)
-
-# EXPECTED OUTPUT:
-# 49
