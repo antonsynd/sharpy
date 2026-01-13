@@ -1,0 +1,37 @@
+# Test: Simple function with if/elif/else control flow
+# Testing function calls and conditional logic
+
+def classify_number(n: int) -> str:
+    if n < 0:
+        return "negative"
+    elif n == 0:
+        return "zero"
+    else:
+        return "positive"
+
+def double(x: int) -> int:
+    result: int = x * 2
+    return result
+
+def main():
+    a: int = -5
+    b: int = 0
+    c: int = 7
+    
+    print(classify_number(a))
+    print(classify_number(b))
+    print(classify_number(c))
+    
+    doubled: int = double(c)
+    print(doubled)
+    
+    print(classify_number(doubled))
+
+main()
+
+# EXPECTED OUTPUT:
+# negative
+# zero
+# positive
+# 14
+# positive

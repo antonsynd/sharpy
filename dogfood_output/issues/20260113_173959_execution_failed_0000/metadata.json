@@ -1,0 +1,17 @@
+{
+  "issue_type": "execution_failed",
+  "timestamp": "2026-01-13T17:39:46.230516",
+  "generated_code": "# Test: Simple function with if/elif/else control flow\n# Testing function calls and conditional logic\n\ndef classify_number(n: int) -> str:\n    if n < 0:\n        return \"negative\"\n    elif n == 0:\n        return \"zero\"\n    else:\n        return \"positive\"\n\ndef double(x: int) -> int:\n    result: int = x * 2\n    return result\n\ndef main():\n    a: int = -5\n    b: int = 0\n    c: int = 7\n    \n    print(classify_number(a))\n    print(classify_number(b))\n    print(classify_number(c))\n    \n    doubled: int = double(c)\n    print(doubled)\n    \n    print(classify_number(doubled))\n\nmain()\n\n# EXPECTED OUTPUT:\n# negative\n# zero\n# positive\n# 14\n# positive",
+  "expected_output": "negative\nzero\npositive\n14\npositive",
+  "actual_output": null,
+  "error_message": "Compilation failed:\n  Semantic error at line 12, column 1: Function 'double' is already defined\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": "```\nVALID\nThe code uses only features from phases 0.1.0-0.1.5.\n```\n\n**Validation Summary:**\n\n- \u2705 Function definitions with typed parameters and return types: `def classify_number(n: int) -> str:`\n- \u2705 If/elif/else control flow with comparison operators\n- \u2705 Return statements with string and integer literals\n- \u2705 Variable declarations with explicit types: `result: int = x * 2`\n- \u2705 Arithmetic operator: `*`\n- \u2705 Function calls as arguments to print: `print(classify_number(a))`\n- \u2705 Single-argument print calls only\n- \u2705 Primitive types only: `int`, `str`\n- \u2705 String literals: `\"negative\"`, `\"zero\"`, `\"positive\"`\n- \u2705 Integer literals: `-5`, `0`, `7`, `2`\n- \u2705 Comparison operators: `<`, `==`\n- \u2705 Top-level function call: `main()`\n",
+  "feature_focus": "simple_function",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 5.588017225265503,
+  "compilation_duration": null,
+  "execution_duration": 0.819706916809082
+}

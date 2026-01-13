@@ -1,0 +1,17 @@
+{
+  "issue_type": "output_mismatch",
+  "timestamp": "2026-01-13T17:45:16.549932",
+  "generated_code": "# Comparison operators test - testing all comparison operations\ndef check_equality(a: int, b: int) -> bool:\n    if a == b:\n        print(1)\n        return True\n    else:\n        print(0)\n        return False\n\n\ndef check_relations(x: int, y: int) -> int:\n    result: int = 0\n    \n    if x < y:\n        result = result + 1\n    \n    if x <= y:\n        result = result + 10\n    \n    if x > y:\n        result = result + 100\n    \n    if x >= y:\n        result = result + 1000\n    \n    if x != y:\n        result = result + 10000\n    \n    return result\n\n\na: int = 5\nb: int = 10\n\nprint(a)\nprint(b)\n\ncheck_equality(a, b)\ncheck_equality(a, a)\n\ncode: int = check_relations(a, b)\nprint(code)\n\ncode2: int = check_relations(b, a)\nprint(code2)\n\n# EXPECTED OUTPUT:\n# 5\n# 10\n# 0\n# 1\n# 10011\n# 10100",
+  "expected_output": "5\n10\n0\n1\n10011\n10100",
+  "actual_output": "Successfully compiled to: /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/dogfood_test_6391eddbf0a544339d59625137d2e179.exe\n\n=== Running Program ===\n\n5\n10\n0\n1\n10011\n11100",
+  "error_message": null,
+  "compiler_output": null,
+  "generated_cs": null,
+  "validation_result": "```\nVALID\nThe code uses only features from phases 0.1.0-0.1.5.\n```\n\n**Validation Summary:**\n\n\u2705 **Variables & Types:** All variables use explicit type annotations with primitive types (`int`, `bool`)\n\u2705 **Functions:** Two function definitions with typed parameters and return types\n\u2705 **Control Flow:** `if/else` statements only\n\u2705 **Operators:** Comparison operators (`==`, `<`, `<=`, `>`, `>=`, `!=`) and arithmetic (`+`)\n\u2705 **Built-ins:** `print()` called with single arguments only\n\u2705 **Literals:** Integer literals only (`1`, `0`, `5`, `10`, etc.)\n\u2705 **Return statements:** Simple `return value` statements\n\n**No forbidden features detected.** The code is a compliant Phase 0.1.0-0.1.5 Sharpy program.\n\n",
+  "feature_focus": "comparison_operators",
+  "complexity": "medium",
+  "backend_used": "copilot",
+  "generation_duration": 8.880537033081055,
+  "compilation_duration": null,
+  "execution_duration": 1.3513200283050537
+}

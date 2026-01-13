@@ -54,4 +54,1087 @@ Iteration 2: bool_variables (simple)
 ^C
 Interrupted by user
 [1m[7m%[27m[1m[0m                                                                                             ]133;D;130]1337;RemoteHost=anton@Antons-MacBook-Pro.local]1337;CurrentDir=/Users/anton/github/sharpy/build_tools[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy/build_tools[39m
-[38;5;129manton@Antons-MacBook-Pro[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004hc 
+[38;5;129manton@Antons-MacBook-Pro[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004hc python -m sharpy_dogfood --iterations 50[?2004l
+]133;C;Sharpy Dogfooding Tool
+========================================
+Project root: /Users/anton/Documents/github/sharpy
+Output dir: /Users/anton/Documents/github/sharpy/dogfood_output
+Issues dir: /Users/anton/Documents/github/sharpy/dogfood_output/issues
+Iterations: 50
+Timeouts: gen=180.0s, compile=60.0s, exec=30.0s
+========================================
+Initializing dogfooding tool...
+Available backends: claude, copilot
+Checking Sharpy compiler...
+[?1h=Sharpy compiler is available
+Loading specification context...
+Loaded 20508 chars of spec context
+Loaded 15 example snippets
+
+Starting dogfooding with 50 iterations...
+Output directory: /Users/anton/Documents/github/sharpy/dogfood_output
+
+============================================================
+Iteration 1: simple_function (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 222 chars of code
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 153 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 2: if_else_simple (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 776 chars of code
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 168 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 3: for_range_single (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 219 chars of code
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 155 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 4: nested_if_in_loop (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 768 chars of code
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 273 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 5: float_variables (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 204 chars of code
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 178 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 6: function_with_print (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 229 chars of code
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 180 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 7: simple_function (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 824 chars of code
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 165 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 8: arithmetic_operators (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 316 chars of code
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 163 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 9: arithmetic_operators (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 330 chars of code
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 163 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 10: logical_operators (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 289 chars of code
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 183 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 11: while_loop (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 171 chars of code
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 155 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 12: break_continue (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 290 chars of code
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 164 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 13: break_continue (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 291 chars of code
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 164 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 14: simple_function (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 644 chars of code
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=  ✗ execution_failed: Compilation failed:
+  Semantic error at line 12, column 1: Function 'double' is already defined
+
+  Issue reported: 20260113_173959_execution_failed_0000
+
+============================================================
+Iteration 15: simple_function (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 233 chars of code
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=  ✗ execution_failed: Compilation failed:
+  Semantic error at line 2, column 1: Function 'double' is already defined
+
+  Issue reported: 20260113_174012_execution_failed_0001
+
+============================================================
+Iteration 16: logical_operators (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 293 chars of code
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 166 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 17: integer_variables (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 535 chars of code
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 247 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 18: for_range_single (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 190 chars of code
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3335.2s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 163 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 3326.0s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 19: arithmetic_operators (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3318.1s
+[copilot] Executing prompt...
+  Generated 335 chars of code
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3311.5s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 163 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 3302.8s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 20: bool_variables (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3296.0s
+[copilot] Executing prompt...
+  Generated 937 chars of code
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3286.7s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 310 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 3274.1s
+[copilot] Executing prompt...
+
+============================================================
+Iteration 21: for_range_start_end (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3264.4s
+[copilot] Executing prompt...
+  Generated 152 chars of code
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3258.5s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 153 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 3250.4s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 22: comparison_operators (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3244.3s
+[copilot] Executing prompt...
+  Generated 230 chars of code
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3237.6s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 186 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 3228.9s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 23: comparison_operators (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3221.4s
+[copilot] Executing prompt...
+  Generated 695 chars of code
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3212.8s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 311 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 3202.4s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 24: if_else_simple (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3194.9s
+[copilot] Executing prompt...
+  Generated 200 chars of code
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3188.2s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 157 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 3177.6s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 25: function_calling_function (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3170.9s
+[copilot] Executing prompt...
+  Generated 806 chars of code
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3162.3s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 216 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 3150.5s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 26: integer_variables (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3142.8s
+[copilot] Executing prompt...
+  Generated 239 chars of code
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3136.8s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 159 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 3128.2s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 27: simple_function (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3122.0s
+[copilot] Executing prompt...
+  Generated 212 chars of code
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3116.3s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 153 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 3108.2s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 28: for_range_single (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3100.5s
+[copilot] Executing prompt...
+  Generated 530 chars of code
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3092.2s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 171 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 3082.0s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 29: comparison_operators (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3066.0s
+[copilot] Executing prompt...
+  Generated 780 chars of code
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3057.1s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 171 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 3045.8s
+[copilot] Executing prompt...
+
+============================================================
+Iteration 30: loop_in_function (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3034.8s
+[copilot] Executing prompt...
+  Generated 676 chars of code
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3026.2s
+[copilot] Executing prompt...
+  Code is invalid per spec, skipping
+
+============================================================
+Iteration 31: while_loop (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3015.6s
+[copilot] Executing prompt...
+  Generated 601 chars of code
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3006.4s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 257 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 2993.5s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 32: bool_variables (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 2986.1s
+[copilot] Executing prompt...
+  Generated 804 chars of code
+  Pre-validation failed: Line 4: with statement - '"""Test boolean logic with multiple conditions"""...'
+  Skipping (generated code uses features beyond phases 0.1.0-0.1.5)
+
+============================================================
+Iteration 33: simple_function (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 2977.4s
+[copilot] Executing prompt...
+  Generated 276 chars of code
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 2970.6s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 153 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 2961.2s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 34: logical_operators (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 2953.6s
+[copilot] Executing prompt...
+  Generated 352 chars of code
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 2946.7s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 172 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 2938.6s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 35: function_with_print (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 2931.6s
+[copilot] Executing prompt...
+  Generated 152 chars of code
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 2926.0s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 159 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 2917.8s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 36: for_range_with_step (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 2911.4s
+[copilot] Not available, wait time: 3176.2s
+[BackendManager] Backend will be available in 2911.4s
+[Retry 1/3] Waiting 5.0s before retry...
+[claude] Not available, wait time: 2906.4s
+[copilot] Not available, wait time: 3171.2s
+[BackendManager] Backend will be available in 2906.4s
+[Retry 2/3] Waiting 10.0s before retry...
+[claude] Not available, wait time: 2896.4s
+[copilot] Not available, wait time: 3161.2s
+[BackendManager] Backend will be available in 2896.4s
+[Retry 3/3] Waiting 20.0s before retry...
+[claude] Not available, wait time: 2876.4s
+[copilot] Not available, wait time: 3141.2s
+
+============================================================
+Iteration 37: integer_variables (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 2876.4s
+[copilot] Not available, wait time: 3141.2s
+[BackendManager] Backend will be available in 2876.4s
+[Retry 1/3] Waiting 5.0s before retry...
+[claude] Not available, wait time: 2871.4s
+[copilot] Not available, wait time: 3136.2s
+[BackendManager] Backend will be available in 2871.4s
+[Retry 2/3] Waiting 10.0s before retry...
+[claude] Not available, wait time: 2861.4s
+[copilot] Not available, wait time: 3126.2s
+[BackendManager] Backend will be available in 2861.4s
+[Retry 3/3] Waiting 20.0s before retry...
+[claude] Not available, wait time: 2841.4s
+[copilot] Not available, wait time: 3106.2s
+
+============================================================
+Iteration 38: augmented_assignment (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 2841.4s
+[copilot] Not available, wait time: 3106.2s
+[BackendManager] Backend will be available in 2841.4s
+[Retry 1/3] Waiting 5.0s before retry...
+[claude] Not available, wait time: 2836.4s
+[copilot] Not available, wait time: 3101.2s
+[BackendManager] Backend will be available in 2836.4s
+[Retry 2/3] Waiting 10.0s before retry...
+[claude] Not available, wait time: 2826.4s
+[copilot] Not available, wait time: 3091.2s
+[BackendManager] Backend will be available in 2826.4s
+[Retry 3/3] Waiting 20.0s before retry...
+[claude] Not available, wait time: 2806.4s
+[copilot] Not available, wait time: 3071.2s
+
+============================================================
+Iteration 39: for_range_with_step (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 2806.4s
+[copilot] Not available, wait time: 3071.2s
+[BackendManager] Backend will be available in 2806.4s
+[Retry 1/3] Waiting 5.0s before retry...
+[claude] Not available, wait time: 2801.4s
+[copilot] Not available, wait time: 3066.2s
+[BackendManager] Backend will be available in 2801.4s
+[Retry 2/3] Waiting 10.0s before retry...
+[claude] Not available, wait time: 2791.4s
+[copilot] Not available, wait time: 3056.2s
+[BackendManager] Backend will be available in 2791.4s
+[Retry 3/3] Waiting 20.0s before retry...
+[claude] Not available, wait time: 2771.4s
+[copilot] Not available, wait time: 3036.2s
+
+============================================================
+Iteration 40: if_elif_else (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 2771.3s
+[copilot] Not available, wait time: 3036.2s
+[BackendManager] Backend will be available in 2771.3s
+[Retry 1/3] Waiting 5.0s before retry...
+[claude] Not available, wait time: 2766.3s
+[copilot] Not available, wait time: 3031.2s
+[BackendManager] Backend will be available in 2766.3s
+[Retry 2/3] Waiting 10.0s before retry...
+[claude] Not available, wait time: 2756.3s
+[copilot] Not available, wait time: 3021.2s
+[BackendManager] Backend will be available in 2756.3s
+[Retry 3/3] Waiting 20.0s before retry...
+[claude] Not available, wait time: 2736.3s
+[copilot] Not available, wait time: 3001.2s
+
+============================================================
+Iteration 41: while_loop (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 2736.3s
+[copilot] Not available, wait time: 3001.2s
+[BackendManager] Backend will be available in 2736.3s
+[Retry 1/3] Waiting 5.0s before retry...
+[claude] Not available, wait time: 2731.3s
+[copilot] Not available, wait time: 2996.2s
+[BackendManager] Backend will be available in 2731.3s
+[Retry 2/3] Waiting 10.0s before retry...
+[claude] Not available, wait time: 2721.3s
+[copilot] Not available, wait time: 2986.2s
+[BackendManager] Backend will be available in 2721.3s
+[Retry 3/3] Waiting 20.0s before retry...
+[claude] Not available, wait time: 2701.3s
+[copilot] Not available, wait time: 2966.2s
+
+============================================================
+Iteration 42: while_loop (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 2701.3s
+[copilot] Not available, wait time: 2966.2s
+[BackendManager] Backend will be available in 2701.3s
+[Retry 1/3] Waiting 5.0s before retry...
+[claude] Not available, wait time: 2696.3s
+[copilot] Not available, wait time: 2961.2s
+[BackendManager] Backend will be available in 2696.3s
+[Retry 2/3] Waiting 10.0s before retry...
+[claude] Not available, wait time: 2686.3s
+[copilot] Not available, wait time: 2951.2s
+[BackendManager] Backend will be available in 2686.3s
+[Retry 3/3] Waiting 20.0s before retry...
+[claude] Not available, wait time: 2666.3s
+[copilot] Not available, wait time: 2931.1s
+
+============================================================
+Iteration 43: integer_variables (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 2666.3s
+[copilot] Not available, wait time: 2931.1s
+[BackendManager] Backend will be available in 2666.3s
+[Retry 1/3] Waiting 5.0s before retry...
+[claude] Not available, wait time: 2661.3s
+[copilot] Not available, wait time: 2926.1s
+[BackendManager] Backend will be available in 2661.3s
+[Retry 2/3] Waiting 10.0s before retry...
+[claude] Not available, wait time: 2651.3s
+[copilot] Not available, wait time: 2916.1s
+[BackendManager] Backend will be available in 2651.3s
+[Retry 3/3] Waiting 20.0s before retry...
+[claude] Not available, wait time: 2631.3s
+[copilot] Not available, wait time: 2896.1s
+
+============================================================
+Iteration 44: simple_function (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 2631.3s
+[copilot] Not available, wait time: 2896.1s
+[BackendManager] Backend will be available in 2631.3s
+[Retry 1/3] Waiting 5.0s before retry...
+[claude] Not available, wait time: 2626.3s
+[copilot] Not available, wait time: 2891.1s
+[BackendManager] Backend will be available in 2626.3s
+[Retry 2/3] Waiting 10.0s before retry...
+[claude] Not available, wait time: 2616.3s
+[copilot] Not available, wait time: 2881.1s
+[BackendManager] Backend will be available in 2616.3s
+[Retry 3/3] Waiting 20.0s before retry...
+[claude] Not available, wait time: 2596.3s
+[copilot] Not available, wait time: 2861.1s
+
+============================================================
+Iteration 45: function_calling_function (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 2596.3s
+[copilot] Not available, wait time: 2861.1s
+[BackendManager] Backend will be available in 2596.3s
+[Retry 1/3] Waiting 5.0s before retry...
+[claude] Not available, wait time: 2591.3s
+[copilot] Not available, wait time: 2856.1s
+[BackendManager] Backend will be available in 2591.3s
+[Retry 2/3] Waiting 10.0s before retry...
+[claude] Not available, wait time: 2581.3s
+[copilot] Not available, wait time: 2846.1s
+[BackendManager] Backend will be available in 2581.3s
+[Retry 3/3] Waiting 20.0s before retry...
+[claude] Not available, wait time: 2561.3s
+[copilot] Not available, wait time: 2826.1s
+
+============================================================
+Iteration 46: float_variables (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 2561.3s
+[copilot] Not available, wait time: 2826.1s
+[BackendManager] Backend will be available in 2561.3s
+[Retry 1/3] Waiting 5.0s before retry...
+[claude] Not available, wait time: 2556.3s
+[copilot] Not available, wait time: 2821.1s
+[BackendManager] Backend will be available in 2556.3s
+[Retry 2/3] Waiting 10.0s before retry...
+[claude] Not available, wait time: 2546.3s
+[copilot] Not available, wait time: 2811.1s
+[BackendManager] Backend will be available in 2546.3s
+[Retry 3/3] Waiting 20.0s before retry...
+[claude] Not available, wait time: 2526.3s
+[copilot] Not available, wait time: 2791.1s
+
+============================================================
+Iteration 47: logical_operators (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 2526.3s
+[copilot] Not available, wait time: 2791.1s
+[BackendManager] Backend will be available in 2526.3s
+[Retry 1/3] Waiting 5.0s before retry...
+[claude] Not available, wait time: 2521.3s
+[copilot] Not available, wait time: 2786.1s
+[BackendManager] Backend will be available in 2521.3s
+[Retry 2/3] Waiting 10.0s before retry...
+[claude] Not available, wait time: 2511.3s
+[copilot] Not available, wait time: 2776.1s
+[BackendManager] Backend will be available in 2511.3s
+[Retry 3/3] Waiting 20.0s before retry...
+[claude] Not available, wait time: 2491.3s
+[copilot] Not available, wait time: 2756.1s
+
+============================================================
+Iteration 48: integer_variables (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 2491.3s
+[copilot] Not available, wait time: 2756.1s
+[BackendManager] Backend will be available in 2491.3s
+[Retry 1/3] Waiting 5.0s before retry...
+[claude] Not available, wait time: 2486.3s
+[copilot] Not available, wait time: 2751.1s
+[BackendManager] Backend will be available in 2486.3s
+[Retry 2/3] Waiting 10.0s before retry...
+[claude] Not available, wait time: 2476.3s
+[copilot] Not available, wait time: 2741.1s
+[BackendManager] Backend will be available in 2476.3s
+[Retry 3/3] Waiting 20.0s before retry...
+[claude] Not available, wait time: 2456.3s
+[copilot] Not available, wait time: 2721.1s
+
+============================================================
+Iteration 49: augmented_assignment (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 2456.3s
+[copilot] Not available, wait time: 2721.1s
+[BackendManager] Backend will be available in 2456.3s
+[Retry 1/3] Waiting 5.0s before retry...
+[claude] Not available, wait time: 2451.3s
+[copilot] Not available, wait time: 2716.1s
+[BackendManager] Backend will be available in 2451.3s
+[Retry 2/3] Waiting 10.0s before retry...
+[claude] Not available, wait time: 2441.3s
+[copilot] Not available, wait time: 2706.1s
+[BackendManager] Backend will be available in 2441.3s
+[Retry 3/3] Waiting 20.0s before retry...
+[claude] Not available, wait time: 2421.2s
+[copilot] Not available, wait time: 2686.1s
+
+============================================================
+Iteration 50: integer_variables (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 2421.2s
+[copilot] Not available, wait time: 2686.1s
+[BackendManager] Backend will be available in 2421.2s
+[Retry 1/3] Waiting 5.0s before retry...
+[claude] Not available, wait time: 2416.2s
+[copilot] Not available, wait time: 2681.1s
+[BackendManager] Backend will be available in 2416.2s
+[Retry 2/3] Waiting 10.0s before retry...
+[claude] Not available, wait time: 2406.2s
+[copilot] Not available, wait time: 2671.1s
+[BackendManager] Backend will be available in 2406.2s
+[Retry 3/3] Waiting 20.0s before retry...
+[claude] Not available, wait time: 2386.2s
+[copilot] Not available, wait time: 2651.1s
+
+============================================================
+DOGFOODING COMPLETE
+============================================================
+Successful: 29/50
+Failed: 19/50
+Skipped: 2/50
+
+Issues saved to: /Users/anton/Documents/github/sharpy/dogfood_output/issues
+Summary: /Users/anton/Documents/github/sharpy/dogfood_output/SUMMARY.md
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;1]1337;RemoteHost=anton@Antons-MacBook-Pro.local]1337;CurrentDir=/Users/anton/github/sharpy/build_tools[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy/build_tools[39m
+[38;5;129manton@Antons-MacBook-Pro[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h

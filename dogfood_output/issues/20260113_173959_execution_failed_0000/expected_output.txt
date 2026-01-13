@@ -1,0 +1,5 @@
+negative
+zero
+positive
+14
+positive

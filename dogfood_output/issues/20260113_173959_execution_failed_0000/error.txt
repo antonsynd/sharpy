@@ -1,0 +1,2 @@
+Compilation failed:
+  Semantic error at line 12, column 1: Function 'double' is already defined

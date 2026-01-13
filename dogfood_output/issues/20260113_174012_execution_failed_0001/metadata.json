@@ -1,0 +1,17 @@
+{
+  "issue_type": "execution_failed",
+  "timestamp": "2026-01-13T17:39:59.829926",
+  "generated_code": "# Simple function test: calculate double of a number\ndef double(n: int) -> int:\n    result: int = n * 2\n    return result\n\nx: int = 7\ndoubled: int = double(x)\nprint(doubled)\n\ny: int = double(15)\nprint(y)\n\n# EXPECTED OUTPUT:\n# 14\n# 30",
+  "expected_output": "14\n30",
+  "actual_output": null,
+  "error_message": "Compilation failed:\n  Semantic error at line 2, column 1: Function 'double' is already defined\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": "```\nVALID\nThe code uses only features from phases 0.1.0-0.1.5.\n```\n\n**Validation breakdown:**\n\n- `def double(n: int) -> int:` \u2713 Function with typed parameter and return type\n- `result: int = n * 2` \u2713 Variable declaration with type annotation and arithmetic\n- `return result` \u2713 Return statement\n- `x: int = 7` \u2713 Variable declaration with type annotation\n- `doubled: int = double(x)` \u2713 Variable declaration with function call\n- `print(doubled)` \u2713 Single-argument print\n- `y: int = double(15)` \u2713 Variable declaration with function call using integer literal\n- `print(y)` \u2713 Single-argument print\n- Comments using `#` \u2713 Allowed\n\nAll constructs are within the allowed feature set for phases 0.1.0-0.1.5.\n",
+  "feature_focus": "simple_function",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 4.940080165863037,
+  "compilation_duration": null,
+  "execution_duration": 0.8339478969573975
+}
