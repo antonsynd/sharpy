@@ -1140,15 +1140,19 @@ public class TypeChecker
             existingArgTypes.Add(CheckExpression(arg));
         }
 
-        // Check keyword arguments too
+        // Check keyword arguments and collect their types
+        var kwargTypes = new Dictionary<string, SemanticType>();
         foreach (var kwarg in call.KeywordArguments)
         {
-            CheckExpression(kwarg.Value);
+            kwargTypes[kwarg.Name] = CheckExpression(kwarg.Value);
         }
 
         // Build the full argument list: piped value + existing args
         var allArgTypes = new List<SemanticType> { pipedType };
         allArgTypes.AddRange(existingArgTypes);
+
+        // Total argument count includes piped value, positional args, and keyword args
+        var totalArgCount = allArgTypes.Count + kwargTypes.Count;
 
         // Try to resolve the function symbol for better validation
         if (call.Function is Identifier id)
@@ -1157,26 +1161,26 @@ public class TypeChecker
 
             if (symbol is FunctionSymbol funcSymbol)
             {
-                // Validate argument count
+                // Validate argument count (include both positional and keyword args)
                 var requiredParamCount = funcSymbol.Parameters.Count(p => !p.HasDefault);
                 var totalParamCount = funcSymbol.Parameters.Count;
 
-                if (allArgTypes.Count < requiredParamCount || allArgTypes.Count > totalParamCount)
+                if (totalArgCount < requiredParamCount || totalArgCount > totalParamCount)
                 {
                     if (requiredParamCount == totalParamCount)
                     {
-                        AddError($"Function '{id.Name}' expects {totalParamCount} arguments but got {allArgTypes.Count} (including piped value)",
+                        AddError($"Function '{id.Name}' expects {totalParamCount} arguments but got {totalArgCount} (including piped value)",
                             call.LineStart, call.ColumnStart);
                     }
                     else
                     {
-                        AddError($"Function '{id.Name}' expects {requiredParamCount} to {totalParamCount} arguments but got {allArgTypes.Count} (including piped value)",
+                        AddError($"Function '{id.Name}' expects {requiredParamCount} to {totalParamCount} arguments but got {totalArgCount} (including piped value)",
                             call.LineStart, call.ColumnStart);
                     }
                     return SemanticType.Unknown;
                 }
 
-                // Validate argument types
+                // Validate positional argument types (piped value + call.Arguments)
                 for (int i = 0; i < allArgTypes.Count; i++)
                 {
                     var argType = allArgTypes[i];
@@ -1188,6 +1192,32 @@ public class TypeChecker
                         AddError($"Cannot pass {argDesc} of type '{argType.GetDisplayName()}' to parameter '{funcSymbol.Parameters[i].Name}' of type '{paramType.GetDisplayName()}'",
                             i == 0 ? binOp.Left.LineStart : call.Arguments[i - 1].LineStart,
                             i == 0 ? binOp.Left.ColumnStart : call.Arguments[i - 1].ColumnStart);
+                    }
+                }
+
+                // Validate keyword arguments
+                foreach (var kwarg in call.KeywordArguments)
+                {
+                    var param = funcSymbol.Parameters.FirstOrDefault(p => p.Name == kwarg.Name);
+                    if (param == null)
+                    {
+                        AddError($"Unknown keyword argument '{kwarg.Name}'",
+                            kwarg.LineStart, kwarg.ColumnStart);
+                    }
+                    else
+                    {
+                        // Check if this parameter was already provided positionally (including piped value)
+                        var paramIndex = funcSymbol.Parameters.ToList().IndexOf(param);
+                        if (paramIndex < allArgTypes.Count)
+                        {
+                            AddError($"Argument '{kwarg.Name}' was already provided positionally",
+                                kwarg.LineStart, kwarg.ColumnStart);
+                        }
+                        else if (!IsAssignable(kwargTypes[kwarg.Name], param.Type))
+                        {
+                            AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{param.Type.GetDisplayName()}'",
+                                kwarg.LineStart, kwarg.ColumnStart);
+                        }
                     }
                 }
 
@@ -1213,14 +1243,14 @@ public class TypeChecker
         // Fallback: check if callee is a FunctionType
         if (calleeType is FunctionType ft)
         {
-            if (allArgTypes.Count != ft.ParameterTypes.Count)
+            if (totalArgCount != ft.ParameterTypes.Count)
             {
-                AddError($"Function expects {ft.ParameterTypes.Count} arguments but got {allArgTypes.Count} (including piped value)",
+                AddError($"Function expects {ft.ParameterTypes.Count} arguments but got {totalArgCount} (including piped value)",
                     call.LineStart, call.ColumnStart);
                 return SemanticType.Unknown;
             }
 
-            // Validate argument types
+            // Validate positional argument types
             for (int i = 0; i < allArgTypes.Count; i++)
             {
                 if (!allArgTypes[i].IsAssignableTo(ft.ParameterTypes[i]))
@@ -1379,10 +1409,15 @@ public class TypeChecker
             argTypes.Add(CheckExpression(arg));
         }
 
+        // Check keyword arguments and collect their types
+        var kwargTypes = new Dictionary<string, SemanticType>();
         foreach (var kwarg in call.KeywordArguments)
         {
-            CheckExpression(kwarg.Value);
+            kwargTypes[kwarg.Name] = CheckExpression(kwarg.Value);
         }
+
+        // Total argument count includes both positional and keyword arguments
+        var totalArgCount = argTypes.Count + kwargTypes.Count;
 
         // Try to get the function symbol directly for better validation
         FunctionSymbol? funcSymbol = null;
@@ -1427,7 +1462,7 @@ public class TypeChecker
                 {
                     var requiredParams = o.Parameters.Count(p => !p.HasDefault);
                     var totalParams = o.Parameters.Count;
-                    return argTypes.Count >= requiredParams && argTypes.Count <= totalParams;
+                    return totalArgCount >= requiredParams && totalArgCount <= totalParams;
                 }).ToList();
 
                 // Second pass: check type compatibility
@@ -1465,7 +1500,7 @@ public class TypeChecker
                         var total = o.Parameters.Count;
                         return required == total ? total.ToString() : $"{required}-{total}";
                     }).Distinct());
-                    AddError($"Function '{id.Name}' expects {expectedCounts} arguments but got {argTypes.Count}",
+                    AddError($"Function '{id.Name}' expects {expectedCounts} arguments but got {totalArgCount}",
                         call.LineStart, call.ColumnStart);
                     return SemanticType.Unknown;
                 }
@@ -1479,29 +1514,55 @@ public class TypeChecker
             var requiredParamCount = funcSymbol.Parameters.Count(p => !p.HasDefault);
             var totalParamCount = funcSymbol.Parameters.Count;
 
-            // Validate argument count considering defaults
-            if (argTypes.Count < requiredParamCount || argTypes.Count > totalParamCount)
+            // Validate argument count considering defaults (include both positional and keyword args)
+            if (totalArgCount < requiredParamCount || totalArgCount > totalParamCount)
             {
                 if (requiredParamCount == totalParamCount)
                 {
-                    AddError($"Function expects {totalParamCount} arguments but got {argTypes.Count}",
+                    AddError($"Function expects {totalParamCount} arguments but got {totalArgCount}",
                         call.LineStart, call.ColumnStart);
                 }
                 else
                 {
-                    AddError($"Function expects {requiredParamCount} to {totalParamCount} arguments but got {argTypes.Count}",
+                    AddError($"Function expects {requiredParamCount} to {totalParamCount} arguments but got {totalArgCount}",
                         call.LineStart, call.ColumnStart);
                 }
             }
             else
             {
-                // Validate argument types for the provided arguments
+                // Validate positional argument types
                 for (int i = 0; i < argTypes.Count; i++)
                 {
                     if (!IsAssignable(argTypes[i], funcSymbol.Parameters[i].Type))
                     {
                         AddError($"Cannot pass argument of type '{argTypes[i].GetDisplayName()}' to parameter of type '{funcSymbol.Parameters[i].Type.GetDisplayName()}'",
                             call.Arguments[i].LineStart, call.Arguments[i].ColumnStart);
+                    }
+                }
+
+                // Validate keyword arguments
+                foreach (var kwarg in call.KeywordArguments)
+                {
+                    var param = funcSymbol.Parameters.FirstOrDefault(p => p.Name == kwarg.Name);
+                    if (param == null)
+                    {
+                        AddError($"Unknown keyword argument '{kwarg.Name}'",
+                            kwarg.LineStart, kwarg.ColumnStart);
+                    }
+                    else
+                    {
+                        // Check if this parameter was already provided positionally
+                        var paramIndex = funcSymbol.Parameters.ToList().IndexOf(param);
+                        if (paramIndex < argTypes.Count)
+                        {
+                            AddError($"Argument '{kwarg.Name}' was already provided positionally",
+                                kwarg.LineStart, kwarg.ColumnStart);
+                        }
+                        else if (!IsAssignable(kwargTypes[kwarg.Name], param.Type))
+                        {
+                            AddError($"Cannot pass argument of type '{kwargTypes[kwarg.Name].GetDisplayName()}' to parameter '{kwarg.Name}' of type '{param.Type.GetDisplayName()}'",
+                                kwarg.LineStart, kwarg.ColumnStart);
+                        }
                     }
                 }
             }
@@ -1514,15 +1575,15 @@ public class TypeChecker
 
         if (funcType is FunctionType ft)
         {
-            // Validate argument count (ignoring keyword arguments for now)
-            if (argTypes.Count != ft.ParameterTypes.Count)
+            // Validate argument count (include both positional and keyword arguments)
+            if (totalArgCount != ft.ParameterTypes.Count)
             {
-                AddError($"Function expects {ft.ParameterTypes.Count} arguments but got {argTypes.Count}",
+                AddError($"Function expects {ft.ParameterTypes.Count} arguments but got {totalArgCount}",
                     call.LineStart, call.ColumnStart);
             }
             else
             {
-                // Validate argument types
+                // Validate positional argument types
                 for (int i = 0; i < argTypes.Count; i++)
                 {
                     if (!IsAssignable(argTypes[i], ft.ParameterTypes[i]))
