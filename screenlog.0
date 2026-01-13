@@ -1,0 +1,7 @@
+]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy]1337;ShellIntegrationVersion=14;shell=zsh[1m[7m%[27m[1m[0m                                                                                             ]133;D;0]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h
+bck-i-search: _[K[A[8C./build_tools/auto_bu[4mi[24mlder.sh reset R-0.1.4.2[1B[54Di_[A[28C[24mi[8C[4mi[4mn[24mit --config `pwd`/build_tools/sharpy_auto_builder/state/config.json
+bck-i-search: in_[K[A[A[36C[1C[4mn[4mi[24m[2B[40Di_[A[A[35C[2C[4mi[4mt[24m[2B[40Dt_[A[A[34C[24mi[24mn[24mi[24mt[2B[K[A[29C[?2004l[1B]133;C;Loaded config from: /Users/anton/github/sharpy/build_tools/sharpy_auto_builder/state/config.json
+Error: Task list file not found: ../docs/implementation_planning/task_list_remediation.md
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;1]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h./build_tools/auto_builder.sh init --config `pwd`/build_tools/sharpy_auto_builder/state/config.json[K
