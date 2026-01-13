@@ -580,40 +580,6 @@ def sum_all(*numbers: int) -> int:
 
 ---
 
-### Task R-0.1.5.6: Implement `global` Keyword
-
-🆕 **Priority**: 🟠 Medium
-
-**Background**: Task 0.1.5.9 identified that `global` keyword is not implemented, needed for modifying module-level variables from within functions.
-
-📁 **Files**:
-- `src/Sharpy.Compiler/Parser/Parser.cs`
-- `src/Sharpy.Compiler/Semantic/NameResolver.cs`
-- `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`
-
-**Actions**:
-
-1. [ ] Add `GlobalStatement` AST node
-2. [ ] Parse `global x, y, z` syntax
-3. [ ] Modify name resolution to mark variables as global
-4. [ ] Generate code that accesses module-level field instead of local
-
-**Test Cases**:
-```python
-counter: int = 0
-
-def increment() -> None:
-    global counter
-    counter += 1
-```
-
-**Verification**:
-- ✅ Unskip test: `VoidFunction_ModifiesGlobalState_WorksCorrectly`
-- ✅ Test: Global variables can be modified from functions
-- ✅ Run: `dotnet test --filter "Global"`
-
----
-
 ## Cross-Phase: Documentation & Spec Alignment
 
 ### Task R-DOC.1: Update collection_types.md Spec

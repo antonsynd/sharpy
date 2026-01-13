@@ -104,4 +104,20 @@ bck-i-search: _[K[A[8C./build_tools/auto_bu[4mi[24mlder.sh run[1B[42Di_[
 ^C
 Interrupted by user
 [1m[7m%[27m[1m[0m                                                                                             ]133;D;1]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
-[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h../build_tools/auto_builder.sh init --config ./build_tools/sharpy_auto_ [Kbbuilder/state/config.json[?2004l
+]133;C;Error: Config file not found: build_tools/sharpy_auto_builder/state/config.json
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;1]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h./build_tools/auto_builder.sh init --config ./build_tools/sharpy_auto_builder/state/config.json[K[K          
+[Janswers/       config.json    human_review/  questions/[A[A[0m[27m[24m[39m[23C./build_tools/auto_builder.sh init --config ./build_tools/sharpy_auto_builder/state/[K[39mconfig.json[1m [0m[0m [A[92C`/build_tools/sharpy_auto_builder/state/config.json[A[43Cp/build_tools/sharpy_auto_builder/state/config.json[A[43C[P[23Co_[P[25C [A[42C[P[24C_b[P[24C [A[42C[P[25Cbu[P[23C [A[42C`/build_tools/sharpy_auto_builder/state/config.json[A[43Cp/build_tools/sharpy_auto_builder/state/config.json[A[43Cw/build_tools/sharpy_auto_builder/state/config.json[A[43Cd/build_tools/sharpy_auto_builder/state/config.json[A[43C`/build_tools/sharpy_auto_builder/state/config.json[A[43C[?2004l[1B
+[J]133;C;Loaded config from: /Users/anton/github/sharpy/build_tools/sharpy_auto_builder/state/config.json
+Initialized Sharpy Auto Builder
+  Ground truth: /Users/anton/Documents/github/sharpy/build_tools/sharpy_auto_builder/state/ground_truth.json
+  Config: /Users/anton/Documents/github/sharpy/build_tools/sharpy_auto_builder/state/config.json
+  Phases: 5
+  Total tasks: 0
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;0]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h./build_tools/auto_builder.sh init --config `pwd`/build_tools/sharpy_auto_builder/state/config.json[K[?2004l
+[1m[7m%[27m[1m[0m                                                                                             ]133;C;]133;D;130]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h
+bck-i-search: _[K[A[8C./build_tools/auto_builder.sh init --config `pwd`/build_tools/sharpy_auto_builder/state/config.j[4ms[24mon
+bck-i-search: s_[K[A[10C[14D[4ms[4mt[24m[12C[24ms[1B[12Dt_[A[1C[4mt[4ma[24m[1B[1Ca_[A[2C[4ma[4mt[24m[1B[1Ct_[A[A[11Crm -rf [4ms[4mt[4ma[4mt[4mu[24ms[K[1B[M[18Cu_[A[10C[4C[4mu[4ms[24m[1B[17Ds_[A[9C       [24m [24m [24m [24m [24m [24m [1B[K[A[23C./build_tools/auto_builder.sh init --config `pwd`/build_tools/sharpy_auto_builder/state/config.json[K[K                          u [K[A[92C[K[1B[K[A[92C                                     

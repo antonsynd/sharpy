@@ -1,6 +1,6 @@
 {
   "project_root": "/Users/anton/Documents/github/sharpy",
-  "task_list_path": "/Users/anton/Documents/github/sharpy/docs/implementation_planning/task_list_remediation.md",
+  "task_list_path": "../docs/implementation_planning/task_list_remediation.md",
   "backends": {
     "claude_code": {
       "name": "claude_code",

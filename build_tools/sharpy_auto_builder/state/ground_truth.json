@@ -1,0 +1,367 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-01-13T00:13:36.301649",
+  "phases": [
+    {
+      "id": "0.1.1",
+      "name": "Parser Foundation - Remediation",
+      "goal": "",
+      "status": "pending",
+      "progress": 0.0,
+      "tasks": [
+        {
+          "id": "R-0.1.1.1",
+          "phase": "0.1.1",
+          "title": "Verify Keyword-as-Member-Name Bug Resolution",
+          "description": "\ud83d\udd0d **Priority**: \ud83d\udfe0 Medium\n\n**Background**: Task 0.1.1.1 identified that reserved keywords (like `property`, `event`) after `.` in member access expressions were not accepted as member names. Task 0.1.1.4 notes indicate test count increased from 453 to 456, suggesting this may have been fixed.\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Parser/Parser.cs` (around line 1787)\n\n**Actions**:\n\n1. [ ] Verify that `ParsePostfix()` now accepts keywords as member names after `.` operator\n2. [ ] Run the following tes",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Parser.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "R-0.1.1.2",
+          "phase": "0.1.1",
+          "title": "Implement Walrus Operator (`:=`)",
+          "description": "\ud83c\udd95 **Priority**: \ud83d\udfe2 Low (can defer to future phase)\n\n**Background**: Task 0.1.1.2 identified that the walrus operator `:=` (assignment expression) at precedence level 20 is not implemented.\n\n\ud83d\udcc1 **Files**:\n- `src/Sharpy.Compiler/Lexer/Token.cs`\n- `src/Sharpy.Compiler/Parser/Parser.cs`\n- `src/Sharpy.Compiler/Parser/Ast/Expression.cs`\n\n**Actions**:\n\n1. [ ] Verify `TokenType.ColonAssign` exists in `Token.cs` for `:=`\n2. [ ] Add `WalrusExpression` AST node if missing:\n   ```csharp\n   public record Walru",
+          "files": [
+            "src/Sharpy.Compiler/Lexer/Token.cs",
+            "src/Sharpy.Compiler/Parser/Parser.cs",
+            "src/Sharpy.Compiler/Parser/Ast/Expression.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "R-0.1.1.3",
+          "phase": "0.1.1",
+          "title": "Implement `try`/`maybe` Expressions",
+          "description": "\ud83c\udd95 **Priority**: \ud83d\udfe0 Medium\n\n**Background**: Task 0.1.1.2 identified that `try` and `maybe` expressions at precedence level 17 are not implemented (only `try` statement exists). Per `maybe_expressions.md`, these wrap expressions in `Result[T, E]` or `Optional[T]`.\n\n\ud83d\udcc1 **Files**:\n- `src/Sharpy.Compiler/Parser/Parser.cs`\n- `src/Sharpy.Compiler/Parser/Ast/Expression.cs`\n- `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n**Actions**:\n\n1. [ ] Add `TryExpression` AST node:\n   ```csharp\n   public record Try",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Parser.cs",
+            "src/Sharpy.Compiler/Parser/Ast/Expression.cs",
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "R-0.1.1.4",
+          "phase": "0.1.1",
+          "title": "Audit Pipe Operator Code Generation",
+          "description": "\ud83d\udd0d **Priority**: \ud83d\udfe0 Medium\n\n**Background**: Task 0.1.1.3 implemented `|>` parsing, but code generation needs verification. Per `pipe_operator.md`, `x |> f` should pass `x` as the first argument to `f`.\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n**Actions**:\n\n1. [ ] Verify code generation handles `BinaryOperator.PipeForward`:\n   - `x |> f` \u2192 `f(x)`\n   - `x |> f(y)` \u2192 `f(x, y)` (prepend to argument list)\n   - `x |> f |> g` \u2192 `g(f(x))`\n2. [ ] Add integration tests for pipe operator",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "R-0.1.1.5",
+          "phase": "0.1.1",
+          "title": "Audit `to` Operator Code Generation",
+          "description": "\ud83d\udd0d **Priority**: \ud83d\udfe0 Medium\n\n**Background**: Task 0.1.1.4 implemented `to` operator parsing. Per `type_casting.md`, need to verify code generation handles both forms.\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n**Actions**:\n\n1. [ ] Verify `TypeCoercion` code generation:\n   - `value to T` \u2192 `(T)value` with potential `InvalidCastException`\n   - `value to T?` \u2192 `value as T` returning `null` on failure\n2. [ ] Add tests for numeric conversions with overflow handling\n3. [ ] Verify type ",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "id": "0.1.2",
+      "name": "Code Generation Bootstrap - Remediation",
+      "goal": "",
+      "status": "pending",
+      "progress": 0.0,
+      "tasks": [
+        {
+          "id": "R-0.1.2.1",
+          "phase": "0.1.2",
+          "title": "Fix Floor Division Semantics",
+          "description": "\ud83d\udd27 **Priority**: \ud83d\udea8 Critical\n\n**Background**: Tasks 0.1.2.3 and 0.1.3.3 identified that floor division (`//` and `//=`) uses incorrect semantics. Implementation uses `(int)(x/y)` which truncates toward zero, but Python/spec requires flooring toward negative infinity.\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n**Spec Reference**: `docs/language_specification/arithmetic_operators.md`\n> `//`: \ud83d\udd04 Lowered to `(long)Math.Floor((double)a / b)` for integers, `Math.Floor(a / b)` for float",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "R-0.1.2.2",
+          "phase": "0.1.2",
+          "title": "Audit Unity C# 9.0 Compatibility (File-Scoped Namespaces)",
+          "description": "\ud83d\udd0d **Priority**: \ud83d\udfe0 Medium\n\n**Background**: Tasks 0.1.2.1, 0.1.2.3, and 0.1.2.4 all flagged that `FileScopedNamespaceDeclaration` at line 92 of `RoslynEmitter.cs` is a C# 10+ feature, but the project targets C# 9.0 for Unity compatibility.\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n**Actions**:\n\n1. [ ] Determine if Unity C# 9.0 compatibility is still a project requirement\n2. [ ] If yes: Replace `FileScopedNamespaceDeclaration()` with block-scoped `NamespaceDeclaration()`\n3. [ ] ",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "R-0.1.2.3",
+          "phase": "0.1.2",
+          "title": "Add Primitive Type Aliases to PrimitiveCatalog",
+          "description": "\u26a0\ufe0f **Priority**: \ud83d\udfe2 Low\n\n**Background**: Task 0.1.2.2 identified that `PrimitiveCatalog` only registers C# names (`sbyte`, `short`, `int`, etc.) but the spec (`primitive_types.md`) defines Sharpy-style names (`int8`, `int16`, `int32`, etc.) as primary.\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Semantic/PrimitiveCatalog.cs`\n\n**Spec Reference**: `docs/language_specification/primitive_types.md`\n\n**Actions**:\n\n1. [ ] Add Sharpy-style aliases to `PrimitiveCatalog.RegisterAll()`:\n   ```csharp\n   // Add these ",
+          "files": [
+            "src/Sharpy.Compiler/Semantic/PrimitiveCatalog.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "id": "0.1.3",
+      "name": "Variables & Expressions - Remediation",
+      "goal": "",
+      "status": "pending",
+      "progress": 0.0,
+      "tasks": [
+        {
+          "id": "R-0.1.3.1",
+          "phase": "0.1.3",
+          "title": "Fix Const Name Mangling Inconsistency",
+          "description": "\ud83d\udd27 **Priority**: \ud83d\udea8 Critical\n\n**Background**: Task 0.1.3.6 identified that const declarations use `ToConstantCase()` (preserves `BASE` as `BASE`) but references use `ToCamelCase()` (converts `BASE` to `base`), causing C# compilation failures when consts are used in expressions.\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n**Actions**:\n\n1. [ ] Locate const declaration generation and const reference generation\n2. [ ] Make naming consistent - either:\n   - Option A: Both use `ToConsta",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "R-0.1.3.2",
+          "phase": "0.1.3",
+          "title": "Make Const Type Annotation Optional",
+          "description": "\u26a0\ufe0f **Priority**: \ud83d\udfe0 Medium\n\n**Background**: Task 0.1.3.4 identified that the parser requires type annotation for const declarations (`const X: int = 1`) but the spec says type annotation should be optional (`const X = \"MyApp\"` with type inference).\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Parser/Parser.cs` (around line 657-658)\n\n**Spec Reference**: `docs/language_specification/statements.md`, `docs/language_specification/grammar.ebnf.txt`\n\n**Actions**:\n\n1. [ ] Modify `ParseConstDeclaration()` to make `",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Parser.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "R-0.1.3.3",
+          "phase": "0.1.3",
+          "title": "Add Spec Deviation Tests for Division",
+          "description": "\ud83d\udd0d **Priority**: \ud83d\udfe2 Low\n\n**Background**: Task 0.1.3.5 noted that division `/` of two integers doesn't force `float64` result per spec.\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler.Tests/Integration/`\n\n**Spec Reference**: `docs/language_specification/arithmetic_operators.md`\n> Integer types only | `float64` | Always promotes to `float64`\n\n**Actions**:\n\n1. [ ] Verify current behavior: `5 / 2` should equal `2.5` (float64), not `2` (int)\n2. [ ] If behavior is incorrect, create fix task\n3. [ ] Add tests document",
+          "files": [
+            "src/Sharpy.Compiler.Tests/Integration/"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "id": "0.1.4",
+      "name": "Control Flow - Remediation",
+      "goal": "",
+      "status": "pending",
+      "progress": 0.0,
+      "tasks": [
+        {
+          "id": "R-0.1.4.1",
+          "phase": "0.1.4",
+          "title": "Implement Loop `else` Clause",
+          "description": "\ud83c\udd95 **Priority**: \ud83d\udfe0 Medium\n\n**Background**: Tasks 0.1.4.2, 0.1.4.3, and 0.1.4.5 all identified that the `else` clause for loops (`for...else`, `while...else`) is NOT implemented.\n\n\ud83d\udcc1 **Files**:\n- `src/Sharpy.Compiler/Parser/Ast/Statement.cs`\n- `src/Sharpy.Compiler/Parser/Parser.cs`\n- `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n**Spec Reference**: `docs/language_specification/loop_else.md`\n\n**Actions**:\n\n1. [ ] Add `ElseBody` property to `WhileStatement`:\n   ```csharp\n   public record WhileState",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Ast/Statement.cs",
+            "src/Sharpy.Compiler/Parser/Parser.cs",
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "R-0.1.4.2",
+          "phase": "0.1.4",
+          "title": "Implement Try `else` Clause",
+          "description": "\ud83c\udd95 **Priority**: \ud83d\udfe2 Low (can defer)\n\n**Background**: Task 0.1.4.5 identified that `TryStatement` lacks `ElseBody` per `exception_handling.md` spec.\n\n\ud83d\udcc1 **Files**:\n- `src/Sharpy.Compiler/Parser/Ast/Statement.cs`\n- `src/Sharpy.Compiler/Parser/Parser.cs`\n\n**Actions**:\n\n1. [ ] Add `ElseBody` property to `TryStatement` AST node\n2. [ ] Update parser to handle `else:` clause in try statements\n3. [ ] Implement code generation (else runs if no exception raised in try block)\n\n**Verification**:\n- \u2705 Test: `try",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Ast/Statement.cs",
+            "src/Sharpy.Compiler/Parser/Parser.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "id": "0.1.5",
+      "name": "Functions - Remediation",
+      "goal": "",
+      "status": "pending",
+      "progress": 0.0,
+      "tasks": [
+        {
+          "id": "R-0.1.5.1",
+          "phase": "0.1.5",
+          "title": "Fix Keyword Argument Count Validation",
+          "description": "\ud83d\udd27 **Priority**: \ud83d\udea8 Critical\n\n**Background**: Task 0.1.5.4 identified that pure keyword argument calls fail semantic analysis because `TypeChecker.cs:1253` only counts positional args (`argTypes.Count`), ignoring `KeywordArguments`.\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Semantic/TypeChecker.cs` (around line 1253)\n\n**Actions**:\n\n1. [ ] Locate function call argument validation\n2. [ ] Change argument count from `argTypes.Count` to `argTypes.Count + call.KeywordArguments.Count`\n3. [ ] Add proper validati",
+          "files": [
+            "src/Sharpy.Compiler/Semantic/TypeChecker.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "R-0.1.5.2",
+          "phase": "0.1.5",
+          "title": "Add Keyword Argument Validation",
+          "description": "\ud83c\udd95 **Priority**: \ud83d\udfe0 Medium\n\n**Background**: Task 0.1.5.4 identified several missing validations for keyword arguments.\n\n\ud83d\udcc1 **Files**:\n- `src/Sharpy.Compiler/Semantic/TypeChecker.cs`\n- `src/Sharpy.Compiler/Parser/Parser.cs`\n\n**Actions**:\n\n1. [ ] Validate positional args cannot follow keyword args:\n   - `foo(x=1, 2)` should produce error\n2. [ ] Detect duplicate parameter specification:\n   - `foo(1, x=2)` where first positional fills `x` should error\n3. [ ] Consider keyword arg name mangling for C# in",
+          "files": [
+            "src/Sharpy.Compiler/Semantic/TypeChecker.cs",
+            "src/Sharpy.Compiler/Parser/Parser.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "R-0.1.5.3",
+          "phase": "0.1.5",
+          "title": "Enhance Default Parameter Validation for Enum Values",
+          "description": "\ud83c\udd95 **Priority**: \ud83d\udfe0 Medium\n\n**Background**: Task 0.1.5.3 implemented `DefaultParameterValidator.cs` but noted that enum values (e.g., `Color.RED`) and const references are NOT supported as defaults.\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Semantic/DefaultParameterValidator.cs`\n\n**Spec Reference**: `docs/language_specification/function_default_parameters.md`\n\n**Actions**:\n\n1. [ ] Modify `IsCompileTimeConstant()` to accept `MemberAccess` expressions that resolve to enum members\n2. [ ] Modify `IsCompileTi",
+          "files": [
+            "src/Sharpy.Compiler/Semantic/DefaultParameterValidator.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "R-0.1.5.4",
+          "phase": "0.1.5",
+          "title": "Implement Variadic Arguments (`*args`)",
+          "description": "\ud83c\udd95 **Priority**: \ud83d\udfe2 Low (deferred feature)\n\n**Background**: Tasks 0.1.5.1 and 0.1.5.2 identified that `*args` variadic parameters are not implemented.\n\n\ud83d\udcc1 **Files**:\n- `src/Sharpy.Compiler/Parser/Ast/Statement.cs`\n- `src/Sharpy.Compiler/Parser/Parser.cs`\n- `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n**Spec Reference**: `docs/language_specification/function_variadic_arguments.md`\n\n**Actions**:\n\n1. [ ] Add `IsVariadic` property to `Parameter` AST node\n2. [ ] Update `ParseParameters()` to check fo",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Ast/Statement.cs",
+            "src/Sharpy.Compiler/Parser/Parser.cs",
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "R-0.1.5.5",
+          "phase": "0.1.5",
+          "title": "Function Overloading (Deferred)",
+          "description": "\u26a0\ufe0f **Priority**: \ud83d\udfe2 Low (intentionally deferred)\n\n**Background**: Task 0.1.5.8 was intentionally deferred. Function overloading (same name, different signatures) is a Sharpy-specific extension not native to Python.\n\n\ud83d\udcc1 **Files**: Would require `src/Sharpy.Compiler/Semantic/OverloadResolver.cs`\n\n**Actions**:\n\n1. [ ] Document decision to defer function overloading\n2. [ ] Keep test `RegistersMultipleOverloadsOfSameOperator` skipped with message \"Method overloading not yet supported in symbol table\"\n3",
+          "files": [
+            "src/Sharpy.Compiler/Semantic/OverloadResolver.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        }
+      ]
+    }
+  ],
+  "current_phase_id": null,
+  "current_task_id": null,
+  "total_attempts": 0,
+  "total_successes": 0,
+  "total_failures": 0,
+  "backend_stats": {
+    "claude_code": {
+      "attempts": 0,
+      "successes": 0,
+      "failures": 0
+    },
+    "copilot": {
+      "attempts": 0,
+      "successes": 0,
+      "failures": 0
+    }
+  },
+  "overall_progress": 0.0
+}

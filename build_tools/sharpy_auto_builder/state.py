@@ -410,7 +410,10 @@ def parse_task_list(content: str) -> GroundTruth:
     # Goal pattern: **Goal**: ...
     goal_pattern = re.compile(r"\*\*Goal\*\*: (.+?)(?:\n|$)")
     # Task pattern: ### Task X.X.X.X: Title or ### Task X.X.X.X
-    task_pattern = re.compile(r"^### Task (\d+\.\d+\.\d+\.\d+):?\s*(.*)$", re.MULTILINE)
+    # Also supports optional prefix like "R-" for remediation tasks
+    task_pattern = re.compile(
+        r"^### Task ([A-Z]+-)?(\d+\.\d+\.\d+\.\d+):?\s*(.*)$", re.MULTILINE
+    )
     # File patterns - multiple ways files are referenced:
     # 1. 📁 **Files**: `path` (single file inline)
     # 2. 📁 **Files**:\n- `path` (list format)
@@ -441,8 +444,10 @@ def parse_task_list(content: str) -> GroundTruth:
         task_matches = list(task_pattern.finditer(phase_content))
 
         for j, task_match in enumerate(task_matches):
-            task_id = task_match.group(1)
-            task_title = task_match.group(2).strip() or f"Task {task_id}"
+            # Group 1 is optional prefix (e.g., "R-"), group 2 is task ID, group 3 is title
+            prefix = task_match.group(1) or ""
+            task_id = prefix + task_match.group(2)  # Include prefix in ID if present
+            task_title = task_match.group(3).strip() or f"Task {task_id}"
 
             # Get content for this task
             task_start = task_match.end()
@@ -456,8 +461,12 @@ def parse_task_list(content: str) -> GroundTruth:
             # Extract files (deduplicated)
             files = list(dict.fromkeys(file_pattern.findall(task_content)))
 
-            # Determine if task is critical (marked with ⚠️ or "Potential Gap")
-            is_critical = "⚠️" in task_content or "Potential Gap" in task_content
+            # Determine if task is critical (marked with ⚠️, 🚨, or "Potential Gap")
+            is_critical = (
+                "⚠️" in task_content
+                or "🚨" in task_content
+                or "Potential Gap" in task_content
+            )
 
             task = Task(
                 id=task_id,
