@@ -1,13 +1,13 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-13T10:03:54.720282",
+  "last_updated": "2026-01-13T10:26:53.486563",
   "phases": [
     {
       "id": "0.1.1",
       "name": "Parser Foundation - Remediation",
       "goal": "",
       "status": "in_progress",
-      "progress": 60.0,
+      "progress": 80.0,
       "tasks": [
         {
           "id": "R-0.1.1.1",
@@ -183,8 +183,46 @@
           "files": [
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude_code",
+              "started_at": "2026-01-13T10:26:53.483513",
+              "completed_at": "2026-01-13T10:26:53.483516",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T10:26:53.483497",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have enough information to compile the full spec adherence report.\n\n## Spec Adherence Report: Audit Pipe Operator Code Generation\n\n**Spec:** `docs/language_specification/pipe_operator.md`  \n**Implementation:** `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:2020-2116`\n\n### Compliant\n\n- [x] **Basic transformation**: `x |> f` \u2192 `f(x)` (spec line 12: \"passes the left-hand value as the **first argument**\")\n  - Implementation at line 2092-2096: `InvocationExpression(right).AddArgumentListArguments(Argument(left))`\n\n- [x] **Argument prepending**: `x |> f(y, z)` \u2192 `f(x, y, z)` (spec lines 136-142)\n  - Implementation at lines 2074-2090: Creates `allArgs = new[] { prependedArg }.Concat(existingArgs)`\n\n- [x] **Pipeline chaining**: `x |> f |> g` \u2192 `g(f(x))` (spec lines 30-42)\n  - Implementation at line 2068: \"chains via left-associativity in parser\"\n  - Tests verify: `G(F(x))` output\n\n- [x] **Name mangling**: Function names transformed to PascalCase for C# (spec line 141: `function(value, arg1, arg2)`)\n  - Implementation at lines 2107-2111: `NameMangler.ToPascalCase(funcName.Name)`\n\n- [x] **Builtin function handling**: Builtin functions resolved to `global::Sharpy.Core.Exports.*`\n  - Implementation at line 2109\n\n- [x] **Method chaining support**: `x |> obj.method` \u2192 `obj.method(x)` (spec lines 144-152)\n  - Implementation at lines 2114-2115: `GenerateExpression(expr)` for member access\n\n- [x] **Keyword arguments preserved**: `x |> f(y, key=value)` \u2192 `f(x, y, key: value)`\n  - Implementation at lines 2082-2084: `keywordArgs` mapped with `NameColon`\n\n- [x] **Left-to-right associativity** (spec line 16 in operator_precedence.md: \"Left-to-right\")\n  - Handled by parser, verified in tests\n\n- [x] **Precedence**: Lower than arithmetic, higher than type coercion (operator_precedence.md line 16: precedence 10)\n  - Test at PipeOperatorTests.cs:136-150 verifies: `(5 |> double_value) + 3`\n\n### Deviations\n\n- [ ] **Section \"Limitations\"**: Constructor piping error handling is inconsistent\n  - **Spec says (line 156-165):** \"Cannot pipe to constructors directly (use factory function instead)\" with error `# \u274c Cannot pipe to constructor`\n  - **Implementation:** TypeChecker (line 1111) reports \"Piping to constructors is not yet supported\" but RoslynEmitter has no guard - if type checking is bypassed, code generation would fail with unclear error\n  - **Impact:** Low - TypeChecker catches it first; only affects edge cases where type checking might be skipped\n\n- [ ] **Section \"Method Chaining\" (line 86)**: Example shows `data.validate()` syntax ambiguity\n  - **Spec says:** `data |> parse() |> data.validate() |> transform()` \n  - **Implementation:** Current implementation at line 2114-2115 calls `GenerateExpression(expr)` for MemberAccess, which would generate `data.validate(piped_value)` - the `data` identifier would reference the original variable, not the piped result\n  - **Impact:** Low - This spec example is confusing/ambiguous; typical usage of `x |> obj.method` works correctly\n\n- [ ] **Undocumented behavior**: FunctionCall with MemberAccess function target\n  - **Spec says:** No explicit example of `x |> obj.method(y)` syntax\n  - **Implementation:** Line 2079 `GeneratePipeCallTarget(funcCall.Function)` handles this via `GenerateExpression`, producing `obj.method(x, y)`\n  - **Impact:** Low - Behavior is reasonable, just undocumented\n\n### Recommendations\n\n1. **No action required for constructor piping** - The type checker correctly blocks this; adding a guard in RoslynEmitter would be defensive but redundant.\n\n2. **Clarify spec example at line 86** - The `data.validate()` example is misleading because `data` appears both as initial value and method target. Consider revising to:\n   ```python\n   data |> parse() |> validator.check() |> transform() |> saver.save()\n   ```\n\n3. **Document method call piping** - Add explicit example for `x |> obj.method(y, z)` \u2192 `obj.method(x, y, z)` in the spec.\n\n### Test Coverage Assessment\n\nThe implementation is well-tested with:\n- Unit tests in `RoslynEmitterExpressionTests.cs` (8 pipe-specific tests)\n- Integration tests in `PipeOperatorTests.cs` (9 end-to-end tests)\n- Coverage includes: simple functions, multi-arg functions, chaining, member access, keyword args, literals\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T10:26:53.483502",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T10:26:53.483507",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have gathered enough information to provide the verification report:\n\n---\n\n# Hallucination Defense Audit Report\n\n## Claim Verification Results\n\n---\n\n**Claim:** \"Code Generation (`RoslynEmitter.cs:2065-2096`): The `GeneratePipeForward` method...\"\n\n**Verification:** Checked actual line numbers via grep\n**Result:** \u274c INCORRECT \u2014 `GeneratePipeForward` is at lines 2070-2097 (method signature at line 2070), not 2065-2096. The summary line numbers are off by ~5 lines.\n\n---\n\n**Claim:** \"Fixed Code Generation Name Mangling (`src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:2099-2116`): Added `GeneratePipeCallTarget()` helper method\"\n\n**Verification:** Checked actual line numbers via grep\n**Result:** \u2705 CORRECT \u2014 `GeneratePipeCallTarget` is at lines 2103-2116 (close enough, method header starts at 2099 with docstring).\n\n---\n\n**Claim:** \"Added `CheckPipeForward()` method to handle pipe operator type checking\" at TypeChecker.cs:993-1241\n\n**Verification:** Checked actual line numbers via grep\n**Result:** \u26a0\ufe0f PARTIALLY CORRECT \u2014 `CheckPipeForward` starts at line 1025, not 993. Line 993 is `CheckBinaryOp`. The range 993-1241 includes the entire binary op + pipe forward section, so it's somewhat misleading but encompasses the relevant code.\n\n---\n\n**Claim:** \"Added `CheckPipeForwardWithFunctionCall()` for cases like `x |> f(y)`\"\n\n**Verification:** Found at TypeChecker.cs:1131\n**Result:** \u2705 CORRECT \u2014 Method exists and handles the described case.\n\n---\n\n**Claim:** \"9 comprehensive end-to-end tests\" in PipeOperatorTests.cs\n\n**Verification:** Counted `[Fact]` attributes via grep\n**Result:** \u2705 CORRECT \u2014 Found exactly 9 test methods.\n\n---\n\n**Claim:** \"Updated 7 existing pipe operator tests\" in RoslynEmitterExpressionTests.cs\n\n**Verification:** Counted pipe test methods via grep  \n**Result:** \u274c INCORRECT \u2014 There are **8** pipe operator tests in RoslynEmitterExpressionTests.cs, not 7:\n1. `GenerateExpression_PipeForward_SimpleFunction_GeneratesFunctionCall`\n2. `GenerateExpression_PipeForward_FunctionWithArgs_PrependsToPArguments`\n3. `GenerateExpression_PipeForward_FunctionWithMultipleArgs_PrependsToPArguments`\n4. `GenerateExpression_PipeForward_Chained_GeneratesNestedCalls`\n5. `GenerateExpression_PipeForward_ChainedWithArgs_GeneratesNestedCallsWithArgs`\n6. `GenerateExpression_PipeForward_MemberAccess_GeneratesMethodCall`\n7. `GenerateExpression_PipeForward_WithKeywordArgs_PreservesKeywordArgs`\n8. `GenerateExpression_PipeForward_LiteralValue_GeneratesFunctionCallWithLiteral`\n\n---\n\n**Claim:** \"All 295 CodeGen tests pass\"\n\n**Verification:** Ran `dotnet test --filter \"FullyQualifiedName~CodeGen\"`\n**Result:** \u2705 CORRECT \u2014 Output shows \"Passed: 295, Failed: 0\"\n\n---\n\n**Claim:** \"Type Checking (`TypeChecker.cs` + `OperatorValidator.cs`): No support for `BinaryOperator.PipeForward`\"\n\n**Verification:** Searched for `PipeForward` in `OperatorValidator.cs`\n**Result:** \u2705 CORRECT \u2014 `PipeForward` only appears in `TypeChecker.cs`, not in `OperatorValidator.cs`. The initial state claim is consistent with the fix being applied to `TypeChecker.cs`.\n\n---\n\n**Claim:** C# 9.0 features table (Records, Init-only setters, Pattern matching, Target-typed new = \u2705; File-scoped namespaces, Global usings, Record structs, Required members = \u274c)\n\n**Verification:** Known C# language version features\n**Result:** \u2705 CORRECT \u2014 This is accurate for C# 9.0. However, note that this project actually uses `LangVersion=latest` targeting .NET 10.0, so Unity compatibility constraints may not apply to this codebase itself.\n\n---\n\n**Claim:** Roslyn SyntaxFactory methods used (`InvocationExpression`, `WithArgumentList`, `ArgumentList`, `SeparatedList`, `Argument`, `ParseName`, `NameColon`, `IdentifierName`, `AddArgumentListArguments`)\n\n**Verification:** Build succeeded, code compiles\n**Result:** \u2705 CORRECT \u2014 All methods exist in Roslyn's SyntaxFactory API and the project builds successfully.\n\n---\n\n## Summary\n\n| Category | Correct | Incorrect | Partial |\n|----------|---------|-----------|---------|\n| Line Numbers | 1 | 1 | 1 |\n| Test Counts | 2 | 1 | 0 |\n| API Claims | 2 | 0 | 0 |\n| Feature Claims | 1 | 0 | 0 |\n\n**Overall:** Most claims are factually accurate. Minor discrepancies in line numbers (off by ~5 lines) and test count (8 vs claimed 7). No major hallucinations about API availability or behavior.\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": false,
           "human_question": null,
@@ -199,7 +237,7 @@
           "files": [
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -461,14 +499,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "R-0.1.1.4",
-  "total_attempts": 3,
-  "total_successes": 3,
+  "current_task_id": "R-0.1.1.5",
+  "total_attempts": 4,
+  "total_successes": 4,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 3,
-      "successes": 3,
+      "attempts": 4,
+      "successes": 4,
       "failures": 0
     },
     "copilot": {
@@ -477,5 +515,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 16.666666666666664
+  "overall_progress": 22.22222222222222
 }
