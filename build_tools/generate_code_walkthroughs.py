@@ -678,12 +678,12 @@ def _build_cli_command(cli_provider: str, prompt: str) -> List[str]:
         # Claude Code CLI: explicitly allow only Read and Write tools
         # Do NOT use --dangerously-skip-permissions as it bypasses all safety checks
         # Only Read and Write are allowed - no Bash, Edit, or other tools
+        # The prompt is passed as a positional argument (not --prompt)
         return [
             "claude",
             "--print",
             "--allowedTools",
             "Read,Write",
-            "--prompt",
             prompt,
         ]
     else:
