@@ -471,11 +471,23 @@ class Orchestrator:
         tasks_awaiting = self.ground_truth.get_tasks_awaiting_review()
         if tasks_awaiting:
             task = tasks_awaiting[0]
+            # Create a review request so wait_for_human has something to check
+            review = self.human_loop.create_review_request(
+                task_id=task.id,
+                title=f"Review: {task.title}",
+                summary=f"Task {task.id} is awaiting human review",
+                changes=[],
+                test_results="See task notes for details",
+                validation_results=[],
+                concerns=task.notes or [],
+            )
             return {
                 **state,
                 "current_task": task.to_dict(),
+                "human_review_id": review.id,
+                "awaiting_human_input": True,
                 "next_action": "wait_human",
-                "messages": [f"Task {task.id} is awaiting human review"],
+                "messages": [f"Task {task.id} is awaiting human review", f"  Review ID: {review.id}"],
             }
 
         # Get next pending task
@@ -819,12 +831,24 @@ Provide:
                 }
             else:
                 # Deferral for non-optional task needs human review
+                # Create a question for the human to decide
+                deferral_reason = analysis.deferral_reason or "Agent recommends deferring this task"
+                question = self.human_loop.create_question(
+                    task_id=task_data["id"],
+                    question=f"Agent recommends deferring task {task_data['id']}: {task_data.get('title', 'Unknown')}",
+                    context=f"Reason: {deferral_reason}\n\nThis task is not marked as optional, so automatic deferral is not allowed.",
+                    priority=QuestionPriority.HIGH,
+                    options=["proceed_anyway", "defer", "skip", "abort"],
+                )
                 return {
                     **state,
                     "response_analysis": analysis_dict,
+                    "human_question_id": question.id,
+                    "awaiting_human_input": True,
                     "next_action": "wait_human",
                     "messages": [
-                        "Response analysis: Deferral recommended but task is not optional"
+                        "Response analysis: Deferral recommended but task is not optional",
+                        f"  Question ID: {question.id}",
                     ],
                 }
 

@@ -1140,10 +1140,21 @@ public class RoslynEmitter
         // Use PascalCase for public fields (C# property-like convention)
         var fieldName = NameMangler.ToPascalCase(varDecl.Name);
 
-        // Get field type from annotation or default to object
-        TypeSyntax fieldType = varDecl.Type != null
-            ? _typeMapper.MapType(varDecl.Type)
-            : PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        // Get field type from annotation, or infer from initializer for consts
+        TypeSyntax fieldType;
+        if (varDecl.Type != null)
+        {
+            fieldType = _typeMapper.MapType(varDecl.Type);
+        }
+        else if (varDecl.IsConst && varDecl.InitialValue != null)
+        {
+            // Infer type from initializer for const declarations without type annotation
+            fieldType = _typeMapper.InferTypeFromExpression(varDecl.InitialValue);
+        }
+        else
+        {
+            fieldType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
+        }
 
         var variable = VariableDeclarator(Identifier(fieldName));
 
@@ -1542,10 +1553,16 @@ public class RoslynEmitter
             : GetMangledVariableName(varDecl.Name, isNewDeclaration: true);
 
         // Handle 'auto' type annotation - use 'var' in C#
+        // For const without type annotation, infer type from initializer (C# const can't use 'var')
         TypeSyntax typeSyntax;
         if (varDecl.Type != null && varDecl.Type.Name == "auto")
         {
             typeSyntax = IdentifierName("var");
+        }
+        else if (varDecl.Type == null && varDecl.IsConst && varDecl.InitialValue != null)
+        {
+            // Infer type from initializer for const declarations without type annotation
+            typeSyntax = _typeMapper.InferTypeFromExpression(varDecl.InitialValue);
         }
         else
         {

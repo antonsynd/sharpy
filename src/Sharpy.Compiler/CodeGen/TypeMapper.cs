@@ -225,6 +225,15 @@ public class TypeMapper
     }
 
     /// <summary>
+    /// Infers and maps the type from an expression to a C# TypeSyntax
+    /// </summary>
+    public TypeSyntax InferTypeFromExpression(Expression expr)
+    {
+        var inferredType = InferExpressionType(expr);
+        return MapTypeFromInferredType(inferredType);
+    }
+
+    /// <summary>
     /// Infers the type of an expression (simple version for literals)
     /// </summary>
     private string InferExpressionType(Expression expr)

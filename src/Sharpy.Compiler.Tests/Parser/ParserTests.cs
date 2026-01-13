@@ -1327,6 +1327,58 @@ for i in range(10):
         constDecl.InitialValue.Should().BeOfType<IntegerLiteral>().Which.Value.Should().Be("100");
     }
 
+    [Fact]
+    public void ParseConstDeclaration_WithInferredType()
+    {
+        // Type annotation is optional for const declarations per spec
+        var module = Parse("const APP_NAME = \"MyApp\"");
+        var constDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
+        constDecl.Name.Should().Be("APP_NAME");
+        constDecl.IsConst.Should().BeTrue();
+        constDecl.Type.Should().BeNull(); // No type annotation
+        constDecl.InitialValue.Should().BeOfType<StringLiteral>().Which.Value.Should().Be("MyApp");
+    }
+
+    [Fact]
+    public void ParseConstDeclaration_AllLiteralTypes_WithInferredType()
+    {
+        // Test all supported literal types for const inference
+        var source = @"const STR = ""hello""
+const INT = 42
+const FLOAT = 3.14
+const BOOL = True";
+        var module = Parse(source);
+        module.Body.Should().HaveCount(4);
+
+        // String const
+        var strConst = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
+        strConst.Name.Should().Be("STR");
+        strConst.IsConst.Should().BeTrue();
+        strConst.Type.Should().BeNull();
+        strConst.InitialValue.Should().BeOfType<StringLiteral>();
+
+        // Int const
+        var intConst = module.Body[1].Should().BeOfType<VariableDeclaration>().Subject;
+        intConst.Name.Should().Be("INT");
+        intConst.IsConst.Should().BeTrue();
+        intConst.Type.Should().BeNull();
+        intConst.InitialValue.Should().BeOfType<IntegerLiteral>();
+
+        // Float const
+        var floatConst = module.Body[2].Should().BeOfType<VariableDeclaration>().Subject;
+        floatConst.Name.Should().Be("FLOAT");
+        floatConst.IsConst.Should().BeTrue();
+        floatConst.Type.Should().BeNull();
+        floatConst.InitialValue.Should().BeOfType<FloatLiteral>();
+
+        // Bool const
+        var boolConst = module.Body[3].Should().BeOfType<VariableDeclaration>().Subject;
+        boolConst.Name.Should().Be("BOOL");
+        boolConst.IsConst.Should().BeTrue();
+        boolConst.Type.Should().BeNull();
+        boolConst.InitialValue.Should().BeOfType<BooleanLiteral>();
+    }
+
     #endregion
 
     #region Auto Type Inference Tests
