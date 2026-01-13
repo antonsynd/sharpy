@@ -2079,4 +2079,120 @@ class MyClass:
     }
 
     #endregion
+
+    #region Try and Maybe Expressions
+
+    [Fact]
+    public void ParseTryExpression_Simple()
+    {
+        var module = Parse("try risky_operation()");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var tryExpr = exprStmt.Expression.Should().BeOfType<TryExpression>().Subject;
+        tryExpr.ExceptionType.Should().BeNull();
+        tryExpr.Operand.Should().BeOfType<FunctionCall>();
+    }
+
+    [Fact]
+    public void ParseTryExpression_WithExceptionType()
+    {
+        var module = Parse("try[ValueError] int(user_input)");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var tryExpr = exprStmt.Expression.Should().BeOfType<TryExpression>().Subject;
+        tryExpr.ExceptionType.Should().NotBeNull();
+        tryExpr.ExceptionType!.Name.Should().Be("ValueError");
+        tryExpr.Operand.Should().BeOfType<FunctionCall>();
+    }
+
+    [Fact]
+    public void ParseTryExpression_WithGenericExceptionType()
+    {
+        var module = Parse("try[HttpError[T]] fetch_data()");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var tryExpr = exprStmt.Expression.Should().BeOfType<TryExpression>().Subject;
+        tryExpr.ExceptionType.Should().NotBeNull();
+        tryExpr.ExceptionType!.Name.Should().Be("HttpError");
+        tryExpr.ExceptionType!.TypeArguments.Should().HaveCount(1);
+        tryExpr.ExceptionType!.TypeArguments[0].Name.Should().Be("T");
+    }
+
+    [Fact]
+    public void ParseTryExpression_InAssignment()
+    {
+        var module = Parse("result = try parse_int(s)");
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var tryExpr = assignment.Value.Should().BeOfType<TryExpression>().Subject;
+        tryExpr.Operand.Should().BeOfType<FunctionCall>();
+    }
+
+    [Fact]
+    public void ParseTryExpression_WithArithmeticOperand()
+    {
+        var module = Parse("try 1 / x");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var tryExpr = exprStmt.Expression.Should().BeOfType<TryExpression>().Subject;
+        var binaryOp = tryExpr.Operand.Should().BeOfType<BinaryOp>().Subject;
+        binaryOp.Operator.Should().Be(BinaryOperator.Divide);
+    }
+
+    [Fact]
+    public void ParseMaybeExpression_Simple()
+    {
+        var module = Parse("maybe nullable_value");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var maybeExpr = exprStmt.Expression.Should().BeOfType<MaybeExpression>().Subject;
+        maybeExpr.Operand.Should().BeOfType<Identifier>();
+    }
+
+    [Fact]
+    public void ParseMaybeExpression_WithMemberAccess()
+    {
+        var module = Parse("maybe user?.name");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var maybeExpr = exprStmt.Expression.Should().BeOfType<MaybeExpression>().Subject;
+        var memberAccess = maybeExpr.Operand.Should().BeOfType<MemberAccess>().Subject;
+        memberAccess.IsNullConditional.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ParseMaybeExpression_InAssignment()
+    {
+        var module = Parse("opt = maybe get_nullable()");
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var maybeExpr = assignment.Value.Should().BeOfType<MaybeExpression>().Subject;
+        maybeExpr.Operand.Should().BeOfType<FunctionCall>();
+    }
+
+    [Fact]
+    public void ParseMaybeExpression_WithNullCoalesce()
+    {
+        // maybe captures up to null coalesce level, so this parses as maybe (x ?? default)
+        var module = Parse("maybe x ?? default");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var maybeExpr = exprStmt.Expression.Should().BeOfType<MaybeExpression>().Subject;
+        var binaryOp = maybeExpr.Operand.Should().BeOfType<BinaryOp>().Subject;
+        binaryOp.Operator.Should().Be(BinaryOperator.NullCoalesce);
+    }
+
+    [Fact]
+    public void ParseTryExpression_DisambiguatedFromTryStatement()
+    {
+        // try followed by ':' is a statement, try followed by expr is an expression
+        var module = Parse("x = try foo()");
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        assignment.Value.Should().BeOfType<TryExpression>();
+    }
+
+    [Fact]
+    public void ParseTryStatement_StillWorks()
+    {
+        // Verify that try statements still parse correctly
+        var source = @"try:
+    risky()
+except:
+    handle()";
+        var module = Parse(source);
+        module.Body[0].Should().BeOfType<TryStatement>();
+    }
+
+    #endregion
 }
