@@ -73,6 +73,15 @@ public record PassStatement : Statement;
 public record BreakStatement : Statement;
 
 /// <summary>
+/// Break statement with flag assignment (internal, generated for loop else support)
+/// Sets the flag to false before breaking.
+/// </summary>
+public record BreakWithFlagStatement : Statement
+{
+    public string FlagName { get; init; } = "";
+}
+
+/// <summary>
 /// Continue statement
 /// </summary>
 public record ContinueStatement : Statement;
@@ -122,22 +131,24 @@ public record ElifClause
 }
 
 /// <summary>
-/// While loop
+/// While loop with optional else clause (runs if loop completes without break)
 /// </summary>
 public record WhileStatement : Statement
 {
     public Expression Test { get; init; } = null!;
     public List<Statement> Body { get; init; } = new();
+    public List<Statement> ElseBody { get; init; } = new();
 }
 
 /// <summary>
-/// For loop (for item in iterable:)
+/// For loop (for item in iterable:) with optional else clause (runs if loop completes without break)
 /// </summary>
 public record ForStatement : Statement
 {
     public Expression Target { get; init; } = null!;  // Loop variable(s)
     public Expression Iterator { get; init; } = null!;
     public List<Statement> Body { get; init; } = new();
+    public List<Statement> ElseBody { get; init; } = new();
 }
 
 /// <summary>

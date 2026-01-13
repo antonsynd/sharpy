@@ -776,10 +776,23 @@ public class Parser
         var body = ParseBlock();
         Expect(TokenType.Dedent);
 
+        // Optional else clause (runs if loop completes without break)
+        var elseBody = new List<Statement>();
+        if (Current.Type == TokenType.Else)
+        {
+            Advance();
+            Expect(TokenType.Colon);
+            ExpectNewline();
+            Expect(TokenType.Indent);
+            elseBody = ParseBlock();
+            Expect(TokenType.Dedent);
+        }
+
         return new WhileStatement
         {
             Test = test,
             Body = body,
+            ElseBody = elseBody,
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = Current.Line,
@@ -806,11 +819,24 @@ public class Parser
         var body = ParseBlock();
         Expect(TokenType.Dedent);
 
+        // Optional else clause (runs if loop completes without break)
+        var elseBody = new List<Statement>();
+        if (Current.Type == TokenType.Else)
+        {
+            Advance();
+            Expect(TokenType.Colon);
+            ExpectNewline();
+            Expect(TokenType.Indent);
+            elseBody = ParseBlock();
+            Expect(TokenType.Dedent);
+        }
+
         return new ForStatement
         {
             Target = target,
             Iterator = iterator,
             Body = body,
+            ElseBody = elseBody,
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = Current.Line,

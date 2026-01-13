@@ -1240,6 +1240,7 @@ public class RoslynEmitter
             ExpressionStatement exprStmt => GenerateExpressionStatement(exprStmt),
             PassStatement => EmptyStatement(),
             Sharpy.Compiler.Parser.Ast.BreakStatement => SyntaxFactory.BreakStatement(),
+            BreakWithFlagStatement breakWithFlag => GenerateBreakWithFlag(breakWithFlag),
             Sharpy.Compiler.Parser.Ast.ContinueStatement => SyntaxFactory.ContinueStatement(),
             AssertStatement assert => GenerateAssert(assert),
             RaiseStatement raise => GenerateRaise(raise),
@@ -1516,6 +1517,21 @@ public class RoslynEmitter
         };
     }
 
+    /// <summary>
+    /// Generate a break statement with flag assignment for loop else support.
+    /// Generates: { flagName = false; break; }
+    /// </summary>
+    private StatementSyntax GenerateBreakWithFlag(BreakWithFlagStatement breakStmt)
+    {
+        return Block(
+            ExpressionStatement(
+                AssignmentExpression(
+                    SyntaxKind.SimpleAssignmentExpression,
+                    IdentifierName(breakStmt.FlagName),
+                    LiteralExpression(SyntaxKind.FalseLiteralExpression))),
+            SyntaxFactory.BreakStatement());
+    }
+
     private StatementSyntax GenerateVariableDeclaration(VariableDeclaration varDecl)
     {
         // Track const variables by their original Sharpy name for consistent reference resolution
@@ -1651,18 +1667,82 @@ public class RoslynEmitter
     private StatementSyntax GenerateWhile(WhileStatement whileStmt)
     {
         var condition = GenerateExpression(whileStmt.Test);
-        var body = Block(whileStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
 
-        return WhileStatement(condition, body);
+        // If there's no else clause, generate simple while loop
+        if (whileStmt.ElseBody.Count == 0)
+        {
+            var body = Block(whileStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+            return WhileStatement(condition, body);
+        }
+
+        // Loop with else clause: use boolean flag pattern
+        // bool _loopCompleted = true;
+        // while (condition) { ... if (break) { _loopCompleted = false; break; } }
+        // if (_loopCompleted) { elseBody }
+        var flagName = GenerateTempVarName("loopCompleted");
+        var statements = new List<StatementSyntax>();
+
+        // bool _loopCompleted = true;
+        statements.Add(LocalDeclarationStatement(
+            VariableDeclaration(PredefinedType(Token(SyntaxKind.BoolKeyword)))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier(flagName))
+                        .WithInitializer(EqualsValueClause(LiteralExpression(SyntaxKind.TrueLiteralExpression)))))));
+
+        // Transform the body to set flag to false before break
+        var transformedBody = TransformLoopBodyForElse(whileStmt.Body, flagName);
+        var bodyBlock = Block(transformedBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+
+        // while (condition) { transformedBody }
+        statements.Add(WhileStatement(condition, bodyBlock));
+
+        // if (_loopCompleted) { elseBody }
+        var elseBodyBlock = Block(whileStmt.ElseBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+        statements.Add(IfStatement(IdentifierName(flagName), elseBodyBlock));
+
+        return Block(statements);
     }
 
     private StatementSyntax GenerateFor(ForStatement forStmt)
     {
         // For-in loop: for item in items: → foreach (var item in items)
         var iterator = GenerateExpression(forStmt.Iterator);
-        var body = Block(forStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
 
-        if (forStmt.Target is Identifier varName)
+        // If there's no else clause, generate simple foreach loop
+        if (forStmt.ElseBody.Count == 0)
+        {
+            var body = Block(forStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+            return GenerateForEachCore(forStmt.Target, iterator, body);
+        }
+
+        // Loop with else clause: use boolean flag pattern
+        var flagName = GenerateTempVarName("loopCompleted");
+        var statements = new List<StatementSyntax>();
+
+        // bool _loopCompleted = true;
+        statements.Add(LocalDeclarationStatement(
+            VariableDeclaration(PredefinedType(Token(SyntaxKind.BoolKeyword)))
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier(flagName))
+                        .WithInitializer(EqualsValueClause(LiteralExpression(SyntaxKind.TrueLiteralExpression)))))));
+
+        // Transform the body to set flag to false before break
+        var transformedBody = TransformLoopBodyForElse(forStmt.Body, flagName);
+        var bodyBlock = Block(transformedBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+
+        // foreach (...) { transformedBody }
+        statements.Add(GenerateForEachCore(forStmt.Target, iterator, bodyBlock));
+
+        // if (_loopCompleted) { elseBody }
+        var elseBodyBlock = Block(forStmt.ElseBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+        statements.Add(IfStatement(IdentifierName(flagName), elseBodyBlock));
+
+        return Block(statements);
+    }
+
+    private StatementSyntax GenerateForEachCore(Expression target, ExpressionSyntax iterator, BlockSyntax body)
+    {
+        if (target is Identifier varName)
         {
             var loopVar = NameMangler.ToCamelCase(varName.Name);
             return ForEachStatement(
@@ -1673,7 +1753,7 @@ public class RoslynEmitter
         }
 
         // Handle tuple unpacking in for loops: for x, y in items
-        if (forStmt.Target is TupleLiteral tuple)
+        if (target is TupleLiteral tuple)
         {
             // Check if all elements are identifiers
             bool allIdentifiers = tuple.Elements.All(e => e is Identifier);
@@ -1686,8 +1766,8 @@ public class RoslynEmitter
                 var variables = identifiers
                     .Select(id =>
                     {
-                        var varName = NameMangler.ToCamelCase(id.Name);
-                        return SingleVariableDesignation(Identifier(varName));
+                        var name = NameMangler.ToCamelCase(id.Name);
+                        return SingleVariableDesignation(Identifier(name));
                     })
                     .ToList();
 
@@ -1707,7 +1787,7 @@ public class RoslynEmitter
             throw new NotImplementedException("Complex for loop tuple unpacking (non-identifier targets) not yet supported");
         }
 
-        throw new NotImplementedException($"For loop target type not supported: {forStmt.Target.GetType().Name}");
+        throw new NotImplementedException($"For loop target type not supported: {target.GetType().Name}");
     }
 
     private StatementSyntax GenerateTry(TryStatement tryStmt)
@@ -2863,5 +2943,65 @@ public class RoslynEmitter
                 IdentifierName("global::Sharpy.Core.Optional"),
                 IdentifierName("From")))
             .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(operandExpr))));
+    }
+
+    /// <summary>
+    /// Generate a unique temporary variable name
+    /// </summary>
+    private string GenerateTempVarName(string prefix)
+    {
+        return $"__{prefix}_{_tempVarCounter++}";
+    }
+
+    /// <summary>
+    /// Transform loop body statements for else clause support.
+    /// Wraps break statements with flag assignment: { flag = false; break; }
+    /// </summary>
+    private List<Statement> TransformLoopBodyForElse(List<Statement> body, string flagName)
+    {
+        var result = new List<Statement>();
+        foreach (var stmt in body)
+        {
+            result.Add(TransformStatementForLoopElse(stmt, flagName));
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Transform a single statement for loop else support.
+    /// Recursively handles nested structures.
+    /// </summary>
+    private Statement TransformStatementForLoopElse(Statement stmt, string flagName)
+    {
+        return stmt switch
+        {
+            // Transform break statements to set flag before breaking
+            BreakStatement breakStmt => new BreakWithFlagStatement
+            {
+                FlagName = flagName,
+                LineStart = breakStmt.LineStart,
+                ColumnStart = breakStmt.ColumnStart,
+                LineEnd = breakStmt.LineEnd,
+                ColumnEnd = breakStmt.ColumnEnd
+            },
+
+            // Recursively transform if statements
+            IfStatement ifStmt => ifStmt with
+            {
+                ThenBody = TransformLoopBodyForElse(ifStmt.ThenBody, flagName),
+                ElifClauses = ifStmt.ElifClauses.Select(e => e with
+                {
+                    Body = TransformLoopBodyForElse(e.Body, flagName)
+                }).ToList(),
+                ElseBody = TransformLoopBodyForElse(ifStmt.ElseBody, flagName)
+            },
+
+            // Don't transform nested loops - their break statements apply to their own loop
+            WhileStatement _ => stmt,
+            ForStatement _ => stmt,
+
+            // All other statements pass through unchanged
+            _ => stmt
+        };
     }
 }
