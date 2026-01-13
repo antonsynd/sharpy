@@ -39,7 +39,7 @@ public class TypeResolver
     private readonly SemanticInfo _semanticInfo;
     private readonly ICompilerLogger _logger;
     private readonly List<SemanticError> _errors = new();
-    
+
     public IReadOnlyList<SemanticError> Errors => _errors;
 }
 ```
@@ -186,7 +186,9 @@ type = name switch
 {
     "int" => SemanticType.Int,
     "long" => SemanticType.Long,
-    "float" => SemanticType.Float,
+    "float" => SemanticType.Float,       // float -> double (per spec)
+    "float32" => SemanticType.Float32,   // float32 -> C# float
+    "float64" => SemanticType.Double,    // float64 -> double
     "double" => SemanticType.Double,
     "bool" => SemanticType.Bool,
     "str" => SemanticType.Str,
@@ -200,6 +202,17 @@ return type != null;
 **Design Decision:** This uses a `switch` expression for performance. The primitive types are **singleton instances** defined in `SemanticType.cs`, which means:
 - No allocations when resolving `int`, `str`, etc.
 - Identity comparisons work: `type == SemanticType.Int`
+
+**Float Type Mapping (per Sharpy specification):**
+
+| Sharpy Type | C# Type | Notes |
+|-------------|---------|-------|
+| `float` | `double` | Default float is 64-bit for precision |
+| `float32` | `float` | Explicit 32-bit when needed |
+| `float64` | `double` | Explicit 64-bit (same as `float`) |
+| `double` | `double` | Alias for `float64` |
+
+This mapping ensures Sharpy's default `float` type provides double-precision semantics (like Python), while allowing explicit control when 32-bit floats are needed for interop or performance.
 
 **Why not use the `SymbolTable`?** Builtins are checked first because they're extremely common. Avoiding a dictionary lookup in `SymbolTable` for every `int` annotation improves performance.
 
@@ -310,7 +323,7 @@ private void AddError(string message, int? line = null, int? column = null)
 #### 2. `SemanticInfo` (`Semantic/SemanticInfo.cs`)
 - **Purpose**: Side-table mapping AST nodes to semantic data.
 - **Used For**: Caching resolved types to avoid redundant work.
-- **Key Methods**: 
+- **Key Methods**:
   - `GetTypeAnnotation(TypeAnnotation)` → `SemanticType?`
   - `SetTypeAnnotation(TypeAnnotation, SemanticType)`
 
@@ -644,6 +657,23 @@ When contributing to `TypeResolver`, ensure you:
    }
    ```
 
+5. **Test float type mappings**:
+   ```csharp
+   [Theory]
+   [InlineData("float", typeof(double))]
+   [InlineData("float32", typeof(float))]
+   [InlineData("float64", typeof(double))]
+   [InlineData("double", typeof(double))]
+   public void ResolveBuiltinType_FloatVariants_MapsCorrectly(string typeName, Type expectedClr)
+   {
+       var resolver = new TypeResolver(symbolTable, semanticInfo);
+       var annotation = new TypeAnnotation { Name = typeName };
+       var result = resolver.ResolveTypeAnnotation(annotation);
+       Assert.IsType<BuiltinType>(result);
+       Assert.Equal(expectedClr, ((BuiltinType)result).ClrType);
+   }
+   ```
+
 ---
 
 ## Summary
@@ -670,4 +700,7 @@ When working with `TypeResolver`, always remember: **it's about translation, not
 - **`SemanticType.cs`**: Understand the type hierarchy and assignability rules.
 - **`SymbolTable.cs`**: See how types are stored and looked up.
 - **`TypeChecker.cs`**: The next step in the pipeline that uses resolved types.
-- **`docs/architecture/semantic-analyzer-architecture.md`**: High-level overview of semantic analysis.
+- **`docs/language_specification/type_annotations.md`**: Language spec for type annotations.
+- **`docs/language_specification/type_hierarchy.md`**: Type hierarchy design.
+- **`docs/language_specification/type_casting.md`**: The `to` operator and casting rules.
+- **`docs/language_specification/type_narrowing.md`**: How types are narrowed in conditionals.

@@ -4,9 +4,21 @@
 
 ---
 
-## Overview
+## 1. Overview
 
 `AstDumper` is a diagnostic utility that transforms Abstract Syntax Trees (AST) into human-readable tree-formatted strings. It's primarily used for debugging the parser and understanding the structure of parsed Sharpy code. When you need to visualize what the parser produced from source code, this is your go-to tool.
+
+### Role in the Compiler Pipeline
+
+```
+Source (.spy) → Lexer → Parser (AST) → Semantic Analysis → RoslynEmitter → C#
+                              ↓
+                        AstDumper (debug visualization)
+```
+
+`AstDumper` is a **side-channel debugging tool**—it observes the AST but doesn't participate in the main compilation pipeline. It's invaluable for:
+- **Upstream verification**: Confirming the Parser created the expected AST structure
+- **Downstream debugging**: Understanding what the Semantic Analyzer and CodeGen will receive
 
 **Key Use Cases:**
 - Debugging parser issues (did it parse what you expected?)
@@ -18,7 +30,7 @@
 
 ---
 
-## Class Structure
+## 2. Class/Type Structure
 
 ### Main Class: `AstDumper`
 
@@ -27,7 +39,7 @@ public class AstDumper
 {
     private readonly StringBuilder _output;
     private const string IndentUnit = "  ";
-    
+
     public AstDumper();
     public string Dump(Module module);
 }
@@ -38,11 +50,21 @@ public class AstDumper
 - **Two-space indentation**: The `IndentUnit` constant ensures consistent visual hierarchy
 - **Tree-drawing characters**: Uses Unicode box-drawing characters (`├─`, `└─`, `│`) for visual clarity
 
+### Internal Structure
+
+The class organizes AST node handling into logical sections:
+
+| Section | Node Types | Line Range |
+|---------|------------|------------|
+| Statements | `ExpressionStatement`, `Assignment`, `IfStatement`, `WhileStatement`, `ForStatement`, `TryStatement`, `FunctionDef`, `ClassDef`, etc. | 50-421 |
+| Expressions | `IntegerLiteral`, `StringLiteral`, `BinaryOp`, `FunctionCall`, `ListComprehension`, etc. | 424-696 |
+| Helpers | `DumpParameter`, `DumpTypeAnnotation`, `FormatType`, `EscapeString`, `DumpComprehensionClause` | 699-779 |
+
 ---
 
-## Key Methods
+## 3. Key Functions/Methods
 
-### 1. `Dump(Module module)` - Entry Point
+### 3.1 `Dump(Module module)` - Entry Point
 
 **Purpose:** Converts an entire parsed module (file) into a formatted string representation.
 
@@ -77,7 +99,7 @@ Module @ L1:C1
 
 ---
 
-### 2. `DumpNode(Node node, int depth, bool isLast)` - The Workhorse
+### 3.2 `DumpNode(Node node, int depth, bool isLast)` - The Workhorse
 
 **Purpose:** Recursively dumps any AST node with appropriate indentation and tree-drawing characters.
 
@@ -96,14 +118,14 @@ Module @ L1:C1
 **Why the `isLast` parameter matters:**
 ```
 ├─ Statement 1        # isLast=false, draws vertical line connector
-│  └─ Child           
+│  └─ Child
 └─ Statement 2        # isLast=true, no vertical line after
    └─ Child
 ```
 
 ---
 
-### 3. Node Type Handling (The Big Switch Statement)
+### 3.3 Node Type Handling (The Big Switch Statement)
 
 The `DumpNode` method contains a massive switch statement with 40+ cases. Here's how it's organized:
 
@@ -179,7 +201,7 @@ Display operator symbol, then dump left and right operands.
 
 ---
 
-### 4. Helper Methods
+### 3.4 Helper Methods
 
 #### `DumpParameter(Parameter param, int depth, bool isLast)`
 
@@ -211,7 +233,7 @@ private void DumpParameter(Parameter param, int depth, bool isLast)
 ```
 Parameters: [2]
 ├─ Parameter: x @ L5:C10 : int
-└─ Parameter: y @ L5:C17 : int = 
+└─ Parameter: y @ L5:C17 : int =
    └─ IntegerLiteral: 42
 ```
 
@@ -315,7 +337,7 @@ ListComprehension @ L10:C5
 
 ---
 
-## Dependencies
+## 4. Dependencies
 
 ### Internal Dependencies
 
@@ -324,16 +346,24 @@ ListComprehension @ L10:C5
 - `System.Text` - For `StringBuilder`
 
 **Indirectly depends on:**
-- AST node definitions in `Parser/Ast/Node.cs`, `Statement.cs`, `Expression.cs`
+- AST node definitions in `Parser/Ast/Node.cs`, `Statement.cs`, `Expression.cs`, `Types.cs`
 - The parser that creates these AST nodes
+
+### Connection to Upstream/Downstream Components
+
+| Component | Relationship |
+|-----------|--------------|
+| **Parser** (upstream) | Creates the `Module` and AST nodes that AstDumper visualizes |
+| **Semantic Analysis** (downstream) | Also consumes the same AST; AstDumper helps verify what they receive |
+| **RoslynEmitter** (downstream) | Translates AST to C#; use AstDumper to debug unexpected codegen |
 
 **Important:** `AstDumper` is read-only—it never modifies AST nodes, just reads their properties.
 
 ---
 
-## Patterns and Design Decisions
+## 5. Patterns and Design Decisions
 
-### 1. **Visitor Pattern (Informal)**
+### 5.1 Visitor Pattern (Informal)
 
 While not using the formal Visitor pattern with `Accept()` methods, `AstDumper` follows the same spirit:
 - Single method (`DumpNode`) handles all node types
@@ -347,7 +377,7 @@ While not using the formal Visitor pattern with `Accept()` methods, `AstDumper` 
 
 ---
 
-### 2. **StringBuilder for Performance**
+### 5.2 StringBuilder for Performance
 
 ```csharp
 private readonly StringBuilder _output;
@@ -362,7 +392,7 @@ private readonly StringBuilder _output;
 
 ---
 
-### 3. **Tree-Drawing Character Choice**
+### 5.3 Tree-Drawing Character Choice
 
 ```csharp
 var prefix = isLast ? "└─ " : "├─ ";
@@ -380,7 +410,7 @@ var childPrefix = isLast ? "   " : "│  ";
 
 ---
 
-### 4. **Location Tracking (`@ L{line}:C{col}`)**
+### 5.4 Location Tracking (`@ L{line}:C{col}`)
 
 Every node includes its source position:
 ```csharp
@@ -394,7 +424,7 @@ _output.AppendLine($"{indent}{prefix}IntegerLiteral: {value} @ L{node.LineStart}
 
 ---
 
-### 5. **Depth-First Traversal**
+### 5.5 Depth-First Traversal
 
 The dumper uses depth-first traversal (DFS):
 ```csharp
@@ -411,7 +441,7 @@ DumpNode(parent.Child2, depth + 1, true);
 
 ---
 
-### 6. **Null Safety**
+### 5.6 Null Safety
 
 Many optional fields are checked before dumping:
 ```csharp
@@ -428,7 +458,7 @@ if (funcDef.DocString != null)
 
 ---
 
-## Debugging Tips
+## 6. Debugging Tips
 
 ### Using AstDumper for Debugging
 
@@ -501,7 +531,7 @@ DumpNode(children[i], depth + 1, i == children.Count - 1);
 
 **Cause:** Not incrementing `depth` parameter
 
-**Solution:** 
+**Solution:**
 ```csharp
 DumpNode(child, depth + 1, isLast);  // Correct
 DumpNode(child, depth, isLast);      // Wrong - stays at same level
@@ -520,7 +550,24 @@ Console.OutputEncoding = System.Text.Encoding.UTF8;
 
 ---
 
-## Contribution Guidelines
+**Problem:** New AST node falls through to default case
+
+**Cause:** Missing case in the switch statement
+
+**Solution:** Search for `default:` in `DumpNode` and add your specific case above it:
+```csharp
+case YourNewNode yourNode:
+    // ... handle it
+    break;
+
+default:
+    _output.AppendLine($"{indent}{prefix}{node.GetType().Name} @ L{node.LineStart}:C{node.ColumnStart}");
+    break;
+```
+
+---
+
+## 7. Contribution Guidelines
 
 ### Adding Support for New AST Nodes
 
@@ -534,14 +581,14 @@ When adding a new statement or expression type to the AST:
    ```csharp
    case YourNewNode yourNode:
        _output.AppendLine($"{indent}{prefix}YourNewNode @ L{node.LineStart}:C{node.ColumnStart}");
-       
+
        // For simple properties:
        _output.AppendLine($"{indent}{childPrefix}PropertyName: {yourNode.Property}");
-       
+
        // For child nodes:
        _output.AppendLine($"{indent}{childPrefix}ChildName:");
        DumpNode(yourNode.Child, depth + 2, isLast);
-       
+
        break;
    ```
 
@@ -642,26 +689,71 @@ public void DumpIncludesSourceLocations()
 
 ---
 
-## Summary
+## 8. Quick Reference
+
+### Summary
 
 `AstDumper` is a straightforward but essential tool in the Sharpy compiler:
 
-✅ **What it does well:**
+**What it does well:**
 - Provides clear visual representation of AST structure
 - Includes source location info for debugging
-- Handles all AST node types comprehensively
+- Handles all AST node types comprehensively (40+ cases)
 - Uses tree-drawing characters for readability
 
-⚠️ **Limitations to be aware of:**
+**Limitations to be aware of:**
 - Output can be very large for big files
 - No filtering or collapsing of sections
 - Formatting can break with very deep nesting (> 20 levels)
 - No syntax highlighting or color coding
 
-🎯 **Best used for:**
+**Best used for:**
 - Parser development and debugging
 - Understanding how code structures parse
 - Creating test fixtures for expected AST shapes
 - Teaching/learning compiler internals
+
+### Common Commands
+
+```bash
+# Build compiler:
+dotnet build
+
+# Test parser:
+dotnet test --filter "FullyQualifiedName~Parser"
+
+# Compile a .spy file:
+dotnet run --project src/Sharpy.Cli -- build file.spy
+```
+
+### Quick Usage
+
+```csharp
+// Dump AST for debugging (add to code):
+var dumper = new AstDumper();
+Console.WriteLine(dumper.Dump(module));
+```
+
+### Node Type Coverage
+
+The switch statement handles these categories:
+
+| Category | Example Nodes |
+|----------|---------------|
+| Simple Statements | `PassStatement`, `BreakStatement`, `ContinueStatement` |
+| Value Statements | `ReturnStatement`, `RaiseStatement`, `AssertStatement` |
+| Control Flow | `IfStatement`, `WhileStatement`, `ForStatement`, `TryStatement` |
+| Declarations | `FunctionDef`, `ClassDef`, `StructDef`, `InterfaceDef`, `EnumDef` |
+| Variables | `VariableDeclaration`, `Assignment` |
+| Imports | `ImportStatement`, `FromImportStatement` |
+| Literals | `IntegerLiteral`, `FloatLiteral`, `StringLiteral`, `BooleanLiteral`, etc. |
+| Collections | `ListLiteral`, `DictLiteral`, `SetLiteral`, `TupleLiteral` |
+| Comprehensions | `ListComprehension`, `SetComprehension`, `DictComprehension` |
+| Operators | `UnaryOp`, `BinaryOp`, `ComparisonChain` |
+| Access | `Identifier`, `MemberAccess`, `IndexAccess`, `SliceAccess`, `FunctionCall` |
+| Type Operations | `TypeCast`, `TypeCoercion`, `TypeCheck` |
+| Misc | `LambdaExpression`, `ConditionalExpression`, `Parenthesized`, `FStringLiteral` |
+
+---
 
 When in doubt about what the parser produced, dump the AST first—it'll save you hours of guessing!

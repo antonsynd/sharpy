@@ -4,13 +4,15 @@
 
 ---
 
-## Overview
+## 1. Overview
 
 `Expression.cs` defines the complete Abstract Syntax Tree (AST) node hierarchy for **all expressions** in the Sharpy language. This file is the foundation of how the Sharpy compiler represents executable code that produces values—everything from simple literals like `42` to complex constructs like list comprehensions `[x * 2 for x in range(10) if x > 5]`.
 
 **Role in the compiler pipeline:**
 ```
 Source Code → Lexer → Parser → AST (Expression.cs) → Semantic Analysis → Code Generation → C#
+                                    ↑
+                            Expression.cs lives here
 ```
 
 The parser (`Parser.cs`) reads tokens from the lexer and constructs these expression nodes, which are then:
@@ -25,9 +27,9 @@ The parser (`Parser.cs`) reads tokens from the lexer and constructs these expres
 
 ---
 
-## Class Structure
+## 2. Class/Type Structure
 
-### Base Class
+### 2.1 Base Class
 
 ```csharp
 public abstract record Expression : Node;
@@ -47,15 +49,120 @@ public abstract record Node
 
 **Why this matters:** Every expression knows exactly where it came from in the source code, enabling precise error messages like "Error at line 5, column 12: Cannot add 'str' and 'int'".
 
+### 2.2 Expression Taxonomy
+
+The file is organized into 6 major categories using `#region` directives:
+
+```
+Expression (abstract)
+├── Literals
+│   ├── IntegerLiteral      (42, 1_000, 42L)
+│   ├── FloatLiteral        (3.14, 3.14f, 3.14m)
+│   ├── StringLiteral       ("hello", r"C:\path", """multiline""")
+│   ├── FStringLiteral      (f"Hello {name}")
+│   ├── BooleanLiteral      (True, False)
+│   ├── NoneLiteral         (None)
+│   └── EllipsisLiteral     (...)
+│
+├── Collections
+│   ├── ListLiteral         ([1, 2, 3])
+│   ├── DictLiteral         ({"a": 1, "b": 2})
+│   ├── SetLiteral          ({1, 2, 3})
+│   └── TupleLiteral        ((1, 2, 3))
+│
+├── Comprehensions
+│   ├── ListComprehension   ([x*2 for x in items if x > 0])
+│   ├── SetComprehension    ({x*2 for x in items})
+│   └── DictComprehension   ({k: v for k, v in items})
+│
+├── Primary Expressions
+│   ├── Identifier          (variable_name)
+│   ├── MemberAccess        (obj.field, obj?.field)
+│   ├── IndexAccess         (arr[0])
+│   ├── SliceAccess         (arr[1:3], arr[::2])
+│   └── FunctionCall        (func(a, b, key=val))
+│
+├── Operators
+│   ├── UnaryOp             (+x, -x, not x, ~x)
+│   ├── BinaryOp            (a + b, a and b, a |> func, a ?? b)
+│   └── ComparisonChain     (a < b < c)
+│
+└── Advanced Expressions
+    ├── ConditionalExpression (x if cond else y)
+    ├── LambdaExpression      (lambda x: x * 2)
+    ├── TypeCast              (value as Type)
+    ├── TypeCoercion          (value to Type)
+    ├── TypeCheck             (value is Type)
+    └── Parenthesized         ((expr))
+```
+
 ---
 
-## Expression Categories
+## 3. Key Functions/Methods
 
-The file is organized into 7 major categories using `#region` directives:
+Since AST nodes are pure data structures (C# records), this file doesn't contain traditional methods. Instead, the "functions" are the record constructors and the implicit `with` expressions for creating modified copies.
 
-### 1. Literals (`#region Literals`)
+### 3.1 Record Construction Patterns
 
-Represent constant values directly written in source code.
+**How nodes are created (in Parser.cs):**
+
+```csharp
+// Creating a binary operation node
+var binaryOp = new BinaryOp
+{
+    Operator = BinaryOperator.Add,
+    Left = leftExpression,
+    Right = rightExpression,
+    LineStart = leftExpression.LineStart,
+    ColumnStart = leftExpression.ColumnStart,
+    LineEnd = rightExpression.LineEnd,
+    ColumnEnd = rightExpression.ColumnEnd
+};
+```
+
+**Key parameters for each node type:**
+
+| Node Type | Required Properties | Optional Properties |
+|-----------|-------------------|-------------------|
+| `IntegerLiteral` | `Value` (string) | `Suffix` (L, U, UL) |
+| `StringLiteral` | `Value` (string) | `IsRaw` (bool) |
+| `FStringLiteral` | `Parts` (list) | — |
+| `BinaryOp` | `Operator`, `Left`, `Right` | — |
+| `FunctionCall` | `Function` | `Arguments`, `KeywordArguments` |
+| `SliceAccess` | `Object` | `Start`, `Stop`, `Step` |
+| `TypeCast` | `Value`, `TargetType` | — |
+| `TypeCoercion` | `Value`, `TargetType` | — |
+
+### 3.2 Consuming Expressions Downstream
+
+**In Semantic Analysis (TypeChecker.cs):**
+```csharp
+SemanticType CheckExpression(Expression expr) => expr switch
+{
+    IntegerLiteral lit => ResolveIntegerType(lit),
+    BinaryOp binOp => CheckBinaryOperation(binOp),
+    FunctionCall call => CheckFunctionCall(call),
+    TypeCoercion coercion => CheckTypeCoercion(coercion),
+    // ... ~25 more cases
+};
+```
+
+**In Code Generation (RoslynEmitter.cs):**
+```csharp
+ExpressionSyntax EmitExpression(Expression expr) => expr switch
+{
+    IntegerLiteral lit => SyntaxFactory.LiteralExpression(...),
+    BinaryOp binOp => EmitBinaryOp(binOp),
+    ComparisonChain chain => EmitComparisonChain(chain),
+    // Maps each Sharpy expression to Roslyn C# syntax
+};
+```
+
+---
+
+## 4. Detailed Type Reference
+
+### 4.1 Literals (`#region Literals`)
 
 #### IntegerLiteral
 ```csharp
@@ -70,12 +177,6 @@ public record IntegerLiteral : Expression
 - `Value`: The numeric string (preserves underscores and format from source)
 - `Suffix`: Type suffix for .NET interop (e.g., `L` for long, `U` for unsigned)
 
-**Example usage:**
-```python
-x = 1_000_000  # IntegerLiteral(Value="1_000_000", Suffix=null)
-y = 42L        # IntegerLiteral(Value="42", Suffix="L")
-```
-
 #### FloatLiteral
 ```csharp
 public record FloatLiteral : Expression
@@ -86,7 +187,6 @@ public record FloatLiteral : Expression
 ```
 
 **Represents:** `3.14`, `3.14f`, `3.14m` (decimal)
-- Suffix determines .NET type: `f` = float, `d` = double, `m` = decimal
 
 #### StringLiteral
 ```csharp
@@ -115,21 +215,12 @@ public record FStringPart
 }
 ```
 
-**Represents:** Python-style f-strings with embedded expressions: `f"Hello {name}, you have {count:.2f} items"`
+**Represents:** Python-style f-strings: `f"Hello {name}, you have {count:.2f} items"`
 
 **How it works:**
 - The string is broken into alternating text and expression parts
 - Each `FStringPart` is either text (`Text != null`) or an embedded expression (`Expression != null`)
 - `FormatSpec` holds the optional format specification (e.g., `.2f`, `>10`)
-
-**Example:**
-```python
-f"Score: {score:.2f}"
-# Parts: [
-#   FStringPart(Text="Score: ", Expression=null, FormatSpec=null),
-#   FStringPart(Text=null, Expression=Identifier("score"), FormatSpec=".2f")
-# ]
-```
 
 #### BooleanLiteral, NoneLiteral, EllipsisLiteral
 ```csharp
@@ -144,21 +235,20 @@ public record EllipsisLiteral : Expression;
 
 ---
 
-### 2. Collections (`#region Collections`)
+### 4.2 Collections (`#region Collections`)
 
-Python's built-in collection literals.
-
-#### ListLiteral
+#### ListLiteral, SetLiteral, TupleLiteral
 ```csharp
 public record ListLiteral : Expression
 {
     public List<Expression> Elements { get; init; } = new();
 }
+// SetLiteral and TupleLiteral have identical structure
 ```
 
-**Represents:** `[1, 2, 3]`, `["a", "b", "c"]`, `[]`
-- Simply a list of element expressions
-- Elements can be any expression type (literals, variables, function calls, etc.)
+**Represents:** `[1, 2, 3]`, `{1, 2, 3}`, `(1, 2, 3)`
+
+**Disambiguation:** `{}` is parsed as `DictLiteral` (empty dict), not `SetLiteral`. Use `set()` for empty sets.
 
 #### DictLiteral
 ```csharp
@@ -175,71 +265,26 @@ public record DictEntry
 ```
 
 **Represents:** `{"name": "Alice", "age": 30}`, `{}`
-- Each entry is a key-value pair
-- Both keys and values are arbitrary expressions
-
-#### SetLiteral
-```csharp
-public record SetLiteral : Expression
-{
-    public List<Expression> Elements { get; init; } = new();
-}
-```
-
-**Represents:** `{1, 2, 3}`, `{"apple", "banana"}`
-
-**Ambiguity note:** `{}` is parsed as `DictLiteral` (empty dict), not `SetLiteral`. Use `set()` for empty sets.
-
-#### TupleLiteral
-```csharp
-public record TupleLiteral : Expression
-{
-    public List<Expression> Elements { get; init; } = new();
-}
-```
-
-**Represents:** `(1, 2, 3)`, `(1,)` (single-element tuple)
-- Tuples are immutable sequences
-- Parser distinguishes tuples from parenthesized expressions by comma presence
 
 ---
 
-### 3. Comprehensions (`#region Comprehensions`)
+### 4.3 Comprehensions (`#region Comprehensions`)
 
-Python's powerful collection-building syntax using for/if clauses.
-
-#### ListComprehension
+#### ListComprehension, SetComprehension, DictComprehension
 ```csharp
 public record ListComprehension : Expression
 {
     public Expression Element { get; init; } = null!;
     public List<ComprehensionClause> Clauses { get; init; } = new();
 }
-```
 
-**Represents:** `[x * 2 for x in range(10) if x > 5]`
+public record DictComprehension : Expression
+{
+    public Expression Key { get; init; } = null!;
+    public Expression Value { get; init; } = null!;
+    public List<ComprehensionClause> Clauses { get; init; } = new();
+}
 
-**Structure:**
-- `Element`: The expression to evaluate for each item (`x * 2`)
-- `Clauses`: Sequence of `ForClause` and `IfClause` nodes
-
-**Example breakdown:**
-```python
-[x * 2 for x in range(10) if x > 5]
-# Element: BinaryOp(x * 2)
-# Clauses: [
-#   ForClause(Target=Identifier("x"), Iterator=FunctionCall(Identifier("range"), [10])),
-#   IfClause(Condition=BinaryOp(x > 5))
-# ]
-```
-
-#### SetComprehension, DictComprehension
-Similar structure, but:
-- `SetComprehension`: Creates sets `{x * 2 for x in range(10)}`
-- `DictComprehension`: Has both `Key` and `Value` expressions `{x: x*2 for x in range(10)}`
-
-#### ComprehensionClause (Abstract Base)
-```csharp
 public abstract record ComprehensionClause : Node;
 
 public record ForClause : ComprehensionClause
@@ -254,15 +299,19 @@ public record IfClause : ComprehensionClause
 }
 ```
 
-**Design note:** Clauses can appear in any order and quantity:
-- `[x for x in items for y in x]` (nested loops)
-- `[x for x in items if x > 0 if x < 10]` (multiple filters)
+**Example breakdown:**
+```python
+[x * 2 for x in range(10) if x > 5]
+# Element: BinaryOp(x * 2)
+# Clauses: [
+#   ForClause(Target=Identifier("x"), Iterator=FunctionCall(range, [10])),
+#   IfClause(Condition=BinaryOp(x > 5))
+# ]
+```
 
 ---
 
-### 4. Primary Expressions (`#region Primary Expressions`)
-
-The building blocks for accessing data and calling functions.
+### 4.4 Primary Expressions (`#region Primary Expressions`)
 
 #### Identifier
 ```csharp
@@ -272,8 +321,7 @@ public record Identifier : Expression
 }
 ```
 
-**Represents:** Variable names and function names: `x`, `my_function`, `Person`
-- The semantic analyzer resolves what this name refers to (variable, function, class, etc.)
+**Represents:** Variable and function names: `x`, `my_function`, `Person`
 
 #### MemberAccess
 ```csharp
@@ -285,38 +333,18 @@ public record MemberAccess : Expression
 }
 ```
 
-**Represents:** 
-- `obj.property` → `MemberAccess(Object=Identifier("obj"), Member="property", IsNullConditional=false)`
-- `obj?.property` → `MemberAccess(Object=..., Member="property", IsNullConditional=true)`
+**Represents:**
+- `obj.property` → `IsNullConditional=false`
+- `obj?.property` → `IsNullConditional=true` (short-circuits to `None` if object is null)
 
-**Null-conditional operator (`?.`)**: If `obj` is `None`, the entire expression evaluates to `None` instead of throwing.
-
-**Chaining:** Member accesses can nest:
-```python
-person.address.street
-# MemberAccess(
-#   Object=MemberAccess(Object=Identifier("person"), Member="address"),
-#   Member="street"
-# )
-```
-
-#### IndexAccess
+#### IndexAccess and SliceAccess
 ```csharp
 public record IndexAccess : Expression
 {
     public Expression Object { get; init; } = null!;
     public Expression Index { get; init; } = null!;
 }
-```
 
-**Represents:** `list[0]`, `dict["key"]`, `matrix[i][j]`
-- `Object`: The collection being indexed
-- `Index`: The index expression (integer, string, or any hashable type for dicts)
-
-**Python semantics:** Supports negative indices: `list[-1]` (last element)
-
-#### SliceAccess
-```csharp
 public record SliceAccess : Expression
 {
     public Expression Object { get; init; } = null!;
@@ -326,14 +354,10 @@ public record SliceAccess : Expression
 }
 ```
 
-**Represents:** Python slice notation: `list[start:stop:step]`
-
 **Examples:**
-- `list[1:5]` → `SliceAccess(Object=..., Start=1, Stop=5, Step=null)`
-- `list[::2]` → `SliceAccess(Object=..., Start=null, Stop=null, Step=2)` (every 2nd element)
-- `list[::-1]` → `SliceAccess(Object=..., Start=null, Stop=null, Step=-1)` (reverse)
-
-**All three are optional:** `list[:]` copies the entire list.
+- `list[0]` → `IndexAccess`
+- `list[1:5]` → `SliceAccess(Start=1, Stop=5, Step=null)`
+- `list[::-1]` → `SliceAccess(Start=null, Stop=null, Step=-1)` (reverse)
 
 #### FunctionCall
 ```csharp
@@ -348,27 +372,18 @@ public record KeywordArgument
 {
     public string Name { get; init; } = "";
     public Expression Value { get; init; } = null!;
-    // ... location info
+    public int LineStart { get; init; }
+    public int ColumnStart { get; init; }
+    public int LineEnd { get; init; }
+    public int ColumnEnd { get; init; }
 }
 ```
 
-**Represents:** `print("hello")`, `max(a, b)`, `create_user(name="Alice", age=30)`
-
-**Python calling conventions:**
-- **Positional arguments:** `func(1, 2, 3)` → stored in `Arguments`
-- **Keyword arguments:** `func(x=1, y=2)` → stored in `KeywordArguments`
-- **Mixed:** `func(1, 2, x=3, y=4)` → positional must come before keyword
-
-**Note:** `Function` is an `Expression`, allowing higher-order functions:
-```python
-get_function()(args)  # Function = FunctionCall(get_function)
-```
+**Note:** `Function` is an `Expression`, allowing higher-order calls like `get_handler()(args)`.
 
 ---
 
-### 5. Operators (`#region Operators`)
-
-Binary and unary operations with explicit operator enums.
+### 4.5 Operators (`#region Operators`)
 
 #### UnaryOp
 ```csharp
@@ -387,10 +402,6 @@ public enum UnaryOperator
 }
 ```
 
-**Represents:** `-5`, `not is_valid`, `~flags`
-
-**Evaluation order:** The operand is evaluated first, then the operator is applied.
-
 #### BinaryOp
 ```csharp
 public record BinaryOp : Expression
@@ -402,27 +413,32 @@ public record BinaryOp : Expression
 
 public enum BinaryOperator
 {
-    // Arithmetic: Add, Subtract, Multiply, Divide, FloorDivide, Modulo, Power
-    // Comparison: Equal, NotEqual, LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual
-    // Logical: And, Or
-    // Bitwise: BitwiseAnd, BitwiseOr, BitwiseXor, LeftShift, RightShift
-    // Membership: In, NotIn
-    // Identity: Is, IsNot
-    // Null coalescing: NullCoalesce
+    // Arithmetic
+    Add, Subtract, Multiply, Divide, FloorDivide, Modulo, Power,
+
+    // Comparison
+    Equal, NotEqual, LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual,
+
+    // Logical
+    And, Or,
+
+    // Bitwise
+    BitwiseAnd, BitwiseOr, BitwiseXor, LeftShift, RightShift,
+
+    // Membership and Identity
+    In, NotIn, Is, IsNot,
+
+    // Null coalescing
+    NullCoalesce,   // a ?? b
+
+    // Pipe forward
+    PipeForward     // a |> func
 }
 ```
 
-**Represents:** `a + b`, `x < y`, `a and b`, `key in dict`, `value is None`, `x ?? 0`
-
 **Key operators:**
-- **Arithmetic:** Standard math operations
-- **Comparison:** Return boolean values
-- **Logical:** `and`/`or` with short-circuit evaluation
-- **Membership:** `in`/`not in` for testing collection membership
-- **Identity:** `is`/`is not` for reference equality (especially for `None` checks)
-- **Null coalescing (`??`):** Returns left side if not None, otherwise right side
-
-**Design decision:** The `NullCoalesce` operator is .NET-inspired, not standard Python (Python uses `or` idiom).
+- **`NullCoalesce` (`??`)**: Returns left side if not None, otherwise right side
+- **`PipeForward` (`|>`)**: Passes left operand as first argument to right function: `data |> filter(pred) |> map(transform)`
 
 #### ComparisonChain
 ```csharp
@@ -431,25 +447,20 @@ public record ComparisonChain : Expression
     public List<Expression> Operands { get; init; } = new();
     public List<ComparisonOperator> Operators { get; init; } = new();
 }
+
+public enum ComparisonOperator
+{
+    Equal, NotEqual, LessThan, LessThanOrEqual,
+    GreaterThan, GreaterThanOrEqual, In, NotIn, Is, IsNot
+}
 ```
 
-**Represents:** Python's chained comparisons: `a < b < c`, `1 <= x <= 10`
-
-**How it works:**
-```python
-1 < x < 10
-# Operands: [1, x, 10]
-# Operators: [LessThan, LessThan]
-# Semantically equivalent to: (1 < x) and (x < 10)
-```
-
-**Important:** Each operand is evaluated only once (unlike the expanded form).
+**Represents:** Python's chained comparisons: `1 < x < 10`
+- Semantically equivalent to `(1 < x) and (x < 10)` but `x` is evaluated only once
 
 ---
 
-### 6. Advanced Expressions (`#region Advanced Expressions`)
-
-Complex control flow and type-related expressions.
+### 4.6 Advanced Expressions (`#region Advanced Expressions`)
 
 #### ConditionalExpression
 ```csharp
@@ -461,17 +472,7 @@ public record ConditionalExpression : Expression
 }
 ```
 
-**Represents:** Python's ternary operator: `value if test else other`
-
-**Example:**
-```python
-result = "positive" if x > 0 else "non-positive"
-# Test: BinaryOp(x > 0)
-# ThenValue: StringLiteral("positive")
-# ElseValue: StringLiteral("non-positive")
-```
-
-**Syntax note:** Unlike C's `test ? then : else`, Python uses `then if test else other`.
+**Represents:** Python's ternary: `value if test else other`
 
 #### LambdaExpression
 ```csharp
@@ -482,37 +483,23 @@ public record LambdaExpression : Expression
 }
 ```
 
-**Represents:** Anonymous functions: `lambda x, y: x + y`
+**Represents:** `lambda x, y: x + y`
+- `Parameter` is defined in `Statement.cs` and includes type annotations and default values
 
-**Limitation:** Lambda body must be a single expression (no statements).
-
-**Usage:**
-```python
-sorted(items, key=lambda x: x.name)
-# Parameters: [Parameter(Name="x")]
-# Body: MemberAccess(Object=Identifier("x"), Member="name")
-```
-
-**Note:** `Parameter` is defined in `Statement.cs` and includes type annotations and default values.
-
-#### TypeCast
+#### TypeCast, TypeCoercion, TypeCheck
 ```csharp
 public record TypeCast : Expression
 {
     public Expression Value { get; init; } = null!;
     public TypeAnnotation TargetType { get; init; } = null!;
 }
-```
 
-**Represents:** Explicit type conversion: `value as int`
+public record TypeCoercion : Expression
+{
+    public Expression Value { get; init; } = null!;
+    public TypeAnnotation TargetType { get; init; } = null!;
+}
 
-**Semantics:** 
-- Returns `None` if cast fails (safe cast)
-- Does NOT throw exception (unlike C#'s cast operator)
-- Similar to C#'s `as` operator for reference types
-
-#### TypeCheck
-```csharp
 public record TypeCheck : Expression
 {
     public Expression Value { get; init; } = null!;
@@ -520,14 +507,16 @@ public record TypeCheck : Expression
 }
 ```
 
-**Represents:** Type testing: `isinstance(value, int)`, `value is MyClass`
+**Key distinction between `TypeCast` and `TypeCoercion`:**
 
-**Type narrowing:** The semantic analyzer uses this for flow-sensitive typing:
-```python
-if isinstance(x, str):
-    # Inside this block, x is narrowed from 'object' to 'str'
-    print(x.upper())  # OK: str has upper() method
-```
+| Feature | `TypeCast` (`as`) | `TypeCoercion` (`to`) |
+|---------|-------------------|----------------------|
+| Syntax | `value as Type` | `value to Type` |
+| On failure (non-nullable) | Returns `None` | Throws `InvalidCastException` |
+| On failure (nullable `T?`) | Returns `None` | Returns `None` |
+| Use case | Safe/optional casts | Assertive conversions |
+
+See `docs/language_specification/operator_precedence.md` for how `to` interacts with `try` and `maybe` expressions.
 
 #### Parenthesized
 ```csharp
@@ -537,37 +526,36 @@ public record Parenthesized : Expression
 }
 ```
 
-**Represents:** Grouping parentheses: `(x + y) * z`
-
-**Why separate node?** Preserves the AST structure exactly as written for:
-- Better error messages
-- Code formatting/pretty-printing
-- Maintaining programmer intent
+**Represents:** `(x + y) * z`
+- Preserves AST structure exactly as written for better error messages and code formatting
 
 ---
 
-## Dependencies and Integration
+## 5. Dependencies
 
-### Upstream Dependencies
-- **`Node.cs`**: Base class providing source location tracking
-- **`Types.cs`**: `TypeAnnotation` used in `TypeCast`, `TypeCheck`, `LambdaExpression`
-- **`Statement.cs`**: `Parameter` used in `LambdaExpression`
+### 5.1 Internal Dependencies
 
-### Downstream Consumers
-1. **Parser (`Parser.cs`)**: Creates these expression nodes from tokens
-2. **Semantic Analyzer:**
-   - `NameResolver`: Binds `Identifier` nodes to their declarations
-   - `TypeResolver`: Determines the type of each expression
-   - `TypeChecker`: Validates type correctness and performs type narrowing
-3. **Code Generator (`RoslynEmitter`)**: Converts expressions to C# Roslyn syntax trees
-4. **AST Visitors**: Any code that walks the AST (e.g., `AstDumper` for debugging)
+| File | Types Used |
+|------|------------|
+| `Node.cs` | `Node` base class (location tracking) |
+| `Types.cs` | `TypeAnnotation` (for `TypeCast`, `TypeCoercion`, `TypeCheck`) |
+| `Statement.cs` | `Parameter` (for `LambdaExpression`) |
 
-### Type System Integration
+### 5.2 Downstream Consumers
 
-Expressions don't carry type information directly. Instead, the `SemanticInfo` class maintains a mapping:
+| Consumer | How It Uses Expressions |
+|----------|------------------------|
+| **Parser** (`Parser.cs`) | Creates all expression nodes from tokens |
+| **NameResolver** (`Semantic/NameResolver.cs`) | Resolves `Identifier` nodes to declarations |
+| **TypeChecker** (`Semantic/TypeChecker.cs`) | Validates types, infers expression types |
+| **RoslynEmitter** (`CodeGen/RoslynEmitter.cs`) | Converts to C# Roslyn syntax trees |
+| **AstDumper** (`Parser/AstDumper.cs`) | Debug visualization of AST |
+
+### 5.3 Type System Integration
+
+Expressions don't carry type information directly. The `SemanticInfo` class maintains a separate mapping:
 ```csharp
 // In semantic analysis
-SemanticInfo semanticInfo = new();
 semanticInfo.SetType(expression, resolvedType);
 
 // Later retrieval
@@ -578,9 +566,9 @@ var type = semanticInfo.GetType(expression);
 
 ---
 
-## Patterns and Design Decisions
+## 6. Patterns and Design Decisions
 
-### 1. **Immutability via Records**
+### 6.1 Immutability via Records
 ```csharp
 public record BinaryOp : Expression { ... }
 ```
@@ -590,74 +578,50 @@ C# records provide:
 - Immutability (init-only properties)
 - Copy-with syntax: `expr with { Operator = BinaryOperator.Add }`
 
-**Benefit:** Safe to share AST nodes across threads; no defensive copying needed.
+### 6.2 Explicit Operator Enums
 
-### 2. **Explicit Operator Enums**
-Rather than storing operators as strings (`"+"`, `"-"`), Sharpy uses typed enums:
+Rather than storing operators as strings, Sharpy uses typed enums:
 ```csharp
 public enum BinaryOperator { Add, Subtract, ... }
 ```
 
-**Benefits:**
-- Type safety (no typos)
-- Easy pattern matching
-- IDE autocomplete
-- Efficient switch statements in code generation
+**Benefits:** Type safety, IDE autocomplete, efficient switch statements in code generation.
 
-### 3. **Null-Aware Properties**
+### 6.3 The `= null!` Pattern
+
+Throughout the file you'll see:
 ```csharp
-public Expression? Start { get; init; }  // Nullable for optional slice bounds
-public string? Suffix { get; init; }     // Nullable for optional suffixes
+public Expression Left { get; init; } = null!;
 ```
 
-Sharpy uses C# nullable reference types to encode optionality at the type level.
+This tells the compiler "trust me, this will be initialized." The parser always sets these via object initializers.
 
-### 4. **Composite Pattern**
-Expressions form a tree structure where:
-- Leaf nodes: Literals, Identifiers
-- Internal nodes: BinaryOp, FunctionCall, MemberAccess
+### 6.4 Operator Precedence Encoding
 
-This enables recursive traversal:
-```csharp
-void Visit(Expression expr)
-{
-    switch (expr)
-    {
-        case BinaryOp binOp:
-            Visit(binOp.Left);
-            Visit(binOp.Right);
-            break;
-        case FunctionCall call:
-            Visit(call.Function);
-            foreach (var arg in call.Arguments)
-                Visit(arg);
-            break;
-        // ... more cases
-    }
-}
+The AST structure **implicitly encodes precedence** through nesting. For `1 + 2 * 3`:
+```
+BinaryOp (Add)
+├── Left: IntegerLiteral(1)
+└── Right: BinaryOp (Multiply)
+           ├── Left: IntegerLiteral(2)
+           └── Right: IntegerLiteral(3)
 ```
 
-### 5. **Location Tracking**
-Every expression knows its source position:
-```csharp
-throw new CompilerError(
-    $"Cannot add {leftType} and {rightType}",
-    expr.LineStart, expr.ColumnStart
-);
-```
+The parser handles precedence during construction. See `docs/language_specification/operator_precedence.md` for the full precedence table.
 
-**User experience:** Precise error messages like:
-```
-Error at line 42, column 15: Type mismatch
-    result = "hello" + 5
-                      ^
-```
+### 6.5 Helper Records Outside Node Hierarchy
+
+Several helper records don't inherit from `Node`:
+- `FStringPart` - component of f-strings
+- `DictEntry` - key-value pair in dictionaries
+- `KeywordArgument` - named argument in function calls (but does track its own location)
 
 ---
 
-## Debugging Tips
+## 7. Debugging Tips
 
-### 1. **Visualizing the AST**
+### 7.1 Visualizing the AST
+
 Use `AstDumper` to see the structure:
 ```csharp
 var dumper = new AstDumper();
@@ -671,238 +635,159 @@ BinaryOp (Add)
 └─ Right: IntegerLiteral (8)
 ```
 
-### 2. **Breakpoint Locations**
-When debugging parser issues:
-- Set breakpoints in `Parser.cs` methods like `ParseExpression()`, `ParsePrimary()`
-- Watch the `_currentToken` field to see what the parser is consuming
-- Check that the created AST node matches expectations
+### 7.2 Common Issues
 
-When debugging semantic issues:
-- Set breakpoints in `TypeChecker.cs`'s `Visit(Expression)` methods
-- Inspect the `semanticInfo.GetType(expr)` to see resolved types
-- Check `_narrowedTypes` dictionary for type narrowing state
+**Issue: "Null reference on expression property"**
+- **Cause:** Parser created node without setting required property
+- **Debug:** Check parser code that creates this node type
 
-### 3. **Common Mistakes**
+**Issue: "Unexpected expression type in semantic analysis"**
+- **Cause:** Missing case in pattern match
+- **Fix:** Search for `switch (expr)` and add the missing case
 
-**Forgetting to set location info:**
-```csharp
-// BAD: No location info
-return new BinaryOp { Operator = op, Left = left, Right = right };
+**Issue: "Wrong operator precedence"**
+- **Debug:** Dump the AST and verify tree structure
+- **Cause:** Parser's precedence climbing has wrong precedence level
 
-// GOOD: Copy location from token
-return new BinaryOp 
-{ 
-    Operator = op, 
-    Left = left, 
-    Right = right,
-    LineStart = startToken.LineStart,
-    ColumnStart = startToken.ColumnStart,
-    LineEnd = endToken.LineEnd,
-    ColumnEnd = endToken.ColumnEnd
-};
-```
+**Issue: Confusing `TypeCast` vs `TypeCoercion`:**
+- `as` → `TypeCast` (safe, returns None on failure)
+- `to` → `TypeCoercion` (assertive, throws on failure)
 
-**Confusing expression types:**
-- `{}` is `DictLiteral` (empty dict), NOT `SetLiteral`
-- `(x)` is `Parenthesized`, but `(x,)` is `TupleLiteral`
-- `value is Type` can be `TypeCheck` OR `BinaryOp` with `Is` operator (check context)
+### 7.3 Useful Search Commands
 
-### 4. **Testing Expressions**
-Write parser tests for each expression type:
-```csharp
-[Fact]
-public void TestParseBinaryOp()
-{
-    var parser = new Parser("2 + 3");
-    var module = parser.Parse();
-    var expr = ((ExpressionStatement)module.Body[0]).Expression;
-    
-    Assert.IsType<BinaryOp>(expr);
-    var binOp = (BinaryOp)expr;
-    Assert.Equal(BinaryOperator.Add, binOp.Operator);
-    Assert.IsType<IntegerLiteral>(binOp.Left);
-    Assert.IsType<IntegerLiteral>(binOp.Right);
-}
+```bash
+# Find where a specific expression type is created:
+grep -r "new BinaryOp" src/Sharpy.Compiler/Parser/
+
+# Find where an expression type is handled:
+grep -r "case BinaryOp" src/Sharpy.Compiler/
+
+# Find all expression pattern matching:
+grep -r "switch.*Expression" src/Sharpy.Compiler/
 ```
 
 ---
 
-## Contribution Guidelines
+## 8. Contribution Guidelines
 
-### Adding a New Expression Type
+### 8.1 Adding a New Expression Type
 
-**Example:** Adding support for the walrus operator `:=` (assignment expression)
+1. **Define the AST node** in the appropriate `#region`:
+   ```csharp
+   public record AwaitExpression : Expression
+   {
+       public Expression Awaitable { get; init; } = null!;
+   }
+   ```
 
-1. **Define the AST node:**
-```csharp
-/// <summary>
-/// Assignment expression (walrus operator) - (x := value)
-/// </summary>
-public record AssignmentExpression : Expression
-{
-    public Identifier Target { get; init; } = null!;
-    public Expression Value { get; init; } = null!;
-}
-```
+2. **Update Parser** (`Parser.cs`):
+   - Add parsing logic at appropriate precedence level
+   - Create node with all properties and locations
 
-2. **Update the parser:**
-- Add token recognition in `Lexer.cs`: `TokenType.ColonEqual`
-- Add parsing logic in `Parser.cs`: `ParseAssignmentExpression()`
-- Determine operator precedence (walrus is low precedence)
+3. **Update Type Checker** (`Semantic/TypeChecker.cs`):
+   - Add case to expression type checking
+   - Implement type inference rules
 
-3. **Add semantic analysis:**
-- In `TypeChecker.cs`, add visitor method:
-```csharp
-protected override void Visit(AssignmentExpression assignExpr)
-{
-    Visit(assignExpr.Value);
-    var valueType = semanticInfo.GetType(assignExpr.Value);
-    
-    // Register the target variable
-    symbolTable.Define(assignExpr.Target.Name, valueType);
-    
-    // The expression itself evaluates to the assigned value
-    semanticInfo.SetType(assignExpr, valueType);
-}
-```
+4. **Update Code Generator** (`CodeGen/RoslynEmitter.cs`):
+   - Add case to emit as C# code
 
-4. **Update code generation:**
-- In `RoslynEmitter.cs`, add:
-```csharp
-protected override SyntaxNode VisitAssignmentExpression(AssignmentExpression node)
-{
-    // C# doesn't have walrus operator, emit as variable declaration + value
-    var value = Visit(node.Value);
-    var assignment = SyntaxFactory.AssignmentExpression(
-        SyntaxKind.SimpleAssignmentExpression,
-        SyntaxFactory.IdentifierName(node.Target.Name),
-        value
-    );
-    return assignment;
-}
-```
+5. **Update AST Dumper** (`Parser/AstDumper.cs`):
+   - Add formatting for debug output
 
-5. **Add tests:**
-```csharp
-// In Sharpy.Compiler.Tests/Parser/ExpressionTests.cs
-[Fact]
-public void TestParseWalrusOperator()
-{
-    var parser = new Parser("if (x := get_value()) > 0:");
-    // ... assertions
-}
+6. **Add Tests**:
+   - Parser test: verify AST structure
+   - Semantic test: verify type checking
+   - CodeGen test: verify generated C#
+   - Integration test: end-to-end compilation
 
-// In Sharpy.Compiler.Tests/Integration/WalrusOperatorTests.cs
-[Fact]
-public void TestWalrusOperatorExecution()
-{
-    var source = @"
-def process():
-    if (x := compute()) is not None:
-        return x * 2
-    return 0
-";
-    var result = CompileAndExecute(source);
-    Assert.Equal("42\n", result.StandardOutput);
-}
-```
+### 8.2 Adding a New Operator
 
-### Modifying Existing Expression Types
-
-**Before modifying:**
-- Check if the change affects semantic analysis or code generation
-- Search for all uses: `grep -r "TypeCheck" src/`
-- Run existing tests: `dotnet test --filter "FullyQualifiedName~TypeCheck"`
-
-**After modifying:**
-- Update related documentation in `docs/specs/`
-- Ensure all tests pass
-- Update integration tests if behavior changed
-
-### Expression Design Checklist
-
-When adding or modifying expression types:
-
-- [ ] Does it have proper location tracking (inherited from `Node`)?
-- [ ] Are all properties init-only (immutable)?
-- [ ] Does it have XML documentation comments?
-- [ ] Does the parser create it correctly?
-- [ ] Does semantic analysis handle it?
-- [ ] Does code generation emit correct C#?
-- [ ] Are there unit tests for parsing?
-- [ ] Are there integration tests for execution?
-- [ ] Does it match Python semantics (verify with `python3 -c "..."`)?
-
-### Common Extension Points
-
-**Adding operator support:**
 1. Add to `BinaryOperator` or `UnaryOperator` enum
-2. Update parser's operator precedence table
-3. Add semantic rules in `TypeChecker`
-4. Map to C# operator in `RoslynEmitter`
+2. Add lexer token (if new syntax)
+3. Update `ParseBinaryExpression()` with precedence
+4. Handle in `TypeChecker` for operand type validation
+5. Handle in `RoslynEmitter` for C# code generation
 
-**Adding collection syntax:**
-1. Create new record type (e.g., `MapLiteral`)
-2. Add parsing in `ParsePrimary()` or `ParseCollectionLiteral()`
-3. Ensure semantic analyzer knows the result type
-4. Generate appropriate C# initialization code
+### 8.3 What NOT to Do
 
-**Adding comprehension support:**
-1. Extend `ComprehensionClause` with new clause type
-2. Update parser's comprehension parsing
-3. Handle in code generation (often becomes LINQ or loop)
+- **Don't add semantic info to nodes:**
+  ```csharp
+  // BAD:
+  public Symbol? ResolvedSymbol { get; init; }  // Use SemanticInfo instead
+  ```
+
+- **Don't add behavior to nodes:**
+  ```csharp
+  // BAD:
+  public object Evaluate() { ... }  // Nodes are pure data
+  ```
+
+- **Don't use mutable properties:**
+  ```csharp
+  // BAD:
+  public List<Expression> Elements { get; set; }  // Use 'init'
+  ```
 
 ---
 
-## Quick Reference
+## 9. Related Documentation
+
+### Language Specification
+- `docs/language_specification/expressions.md` - Expression syntax and semantics
+- `docs/language_specification/operator_precedence.md` - Operator precedence table including `|>`, `to`, `??`
+
+### Related Implementation Files
+| File | Purpose |
+|------|---------|
+| `Node.cs` | Base `Node` class with location tracking |
+| `Statement.cs` | Statement nodes + `Parameter` record |
+| `Types.cs` | `TypeAnnotation` for type-related expressions |
+| `Parser.cs` | Creates expression nodes |
+| `TypeChecker.cs` | Type-checks expressions |
+| `RoslynEmitter.cs` | Generates C# from expressions |
+| `AstDumper.cs` | Debug visualization |
+
+---
+
+## 10. Quick Reference
 
 ### Expression Type Cheat Sheet
 
-| Sharpy Syntax | AST Node | Example |
-|---------------|----------|---------|
-| `42` | `IntegerLiteral` | `IntegerLiteral(Value="42")` |
-| `3.14` | `FloatLiteral` | `FloatLiteral(Value="3.14")` |
-| `"hello"` | `StringLiteral` | `StringLiteral(Value="hello")` |
-| `f"{x}"` | `FStringLiteral` | `FStringLiteral(Parts=[...])` |
-| `True` | `BooleanLiteral` | `BooleanLiteral(Value=true)` |
-| `None` | `NoneLiteral` | `NoneLiteral()` |
-| `[1, 2]` | `ListLiteral` | `ListLiteral(Elements=[...])` |
-| `{"a": 1}` | `DictLiteral` | `DictLiteral(Entries=[...])` |
-| `{1, 2}` | `SetLiteral` | `SetLiteral(Elements=[...])` |
-| `(1, 2)` | `TupleLiteral` | `TupleLiteral(Elements=[...])` |
-| `[x for x in items]` | `ListComprehension` | `ListComprehension(Element=..., Clauses=[...])` |
-| `x` | `Identifier` | `Identifier(Name="x")` |
-| `obj.attr` | `MemberAccess` | `MemberAccess(Object=..., Member="attr")` |
-| `list[0]` | `IndexAccess` | `IndexAccess(Object=..., Index=...)` |
-| `list[1:5]` | `SliceAccess` | `SliceAccess(Object=..., Start=..., Stop=...)` |
-| `func(a, b)` | `FunctionCall` | `FunctionCall(Function=..., Arguments=[...])` |
-| `-x` | `UnaryOp` | `UnaryOp(Operator=Minus, Operand=...)` |
-| `a + b` | `BinaryOp` | `BinaryOp(Operator=Add, Left=..., Right=...)` |
-| `a < b < c` | `ComparisonChain` | `ComparisonChain(Operands=[...], Operators=[...])` |
-| `x if test else y` | `ConditionalExpression` | `ConditionalExpression(Test=..., ThenValue=..., ElseValue=...)` |
-| `lambda x: x*2` | `LambdaExpression` | `LambdaExpression(Parameters=[...], Body=...)` |
-| `value as int` | `TypeCast` | `TypeCast(Value=..., TargetType=...)` |
-| `isinstance(x, str)` | `TypeCheck` | `TypeCheck(Value=..., CheckType=...)` |
+| Sharpy Syntax | AST Node |
+|---------------|----------|
+| `42`, `1_000L` | `IntegerLiteral` |
+| `3.14`, `3.14f` | `FloatLiteral` |
+| `"hello"`, `r"raw"` | `StringLiteral` |
+| `f"{x}"` | `FStringLiteral` |
+| `True`, `False` | `BooleanLiteral` |
+| `None` | `NoneLiteral` |
+| `...` | `EllipsisLiteral` |
+| `[1, 2, 3]` | `ListLiteral` |
+| `{"a": 1}` | `DictLiteral` |
+| `{1, 2, 3}` | `SetLiteral` |
+| `(1, 2)` | `TupleLiteral` |
+| `[x for x in items]` | `ListComprehension` |
+| `x`, `my_var` | `Identifier` |
+| `obj.attr`, `obj?.attr` | `MemberAccess` |
+| `list[0]` | `IndexAccess` |
+| `list[1:5]` | `SliceAccess` |
+| `func(a, b=1)` | `FunctionCall` |
+| `-x`, `not x` | `UnaryOp` |
+| `a + b`, `a |> f` | `BinaryOp` |
+| `a ?? b` | `BinaryOp(NullCoalesce)` |
+| `a < b < c` | `ComparisonChain` |
+| `x if cond else y` | `ConditionalExpression` |
+| `lambda x: x*2` | `LambdaExpression` |
+| `value as Type` | `TypeCast` |
+| `value to Type` | `TypeCoercion` |
+| `value is Type` | `TypeCheck` |
+| `(expr)` | `Parenthesized` |
 
-### Related Files
+### Learning Path
 
-- **`Node.cs`**: Base class with location tracking
-- **`Statement.cs`**: Statement AST nodes, `Parameter` definition
-- **`Types.cs`**: Type annotation nodes
-- **`Parser.cs`**: Creates expression nodes from tokens
-- **`Lexer.cs`**: Tokenizes source code
-- **`TypeChecker.cs`**: Validates and infers expression types
-- **`RoslynEmitter.cs`**: Converts expressions to C# code
-
----
-
-## Further Reading
-
-- **Architecture doc**: `docs/architecture/semantic-analyzer-architecture.md` - How semantic analysis uses these nodes
-- **Type system spec**: `docs/specs/type_system.md` - Type rules for expressions
-- **Parser design**: `docs/architecture/parser-design.md` - How expressions are parsed
-- **Samples**: `snippets/*.spy` - Example Sharpy programs to see expressions in action
-
----
-
-**Welcome to the Sharpy compiler team!** This file is the heart of representing executable code. Understanding these expression types will help you work on any part of the compiler pipeline. When in doubt, look at how Python does it (`python3 -c "..."`), check the tests, and don't hesitate to add debug output with `AstDumper`.
+1. **Start here** - Understand the expression taxonomy
+2. **Read `Node.cs` walkthrough** - Understand base node concepts
+3. **Explore `Parser.cs`** - See how `ParseExpression()` builds these nodes
+4. **Study `TypeChecker.cs`** - See how expressions are validated
+5. **Review `RoslynEmitter.cs`** - See how expressions become C# code
+6. **Run tests** - `dotnet test --filter "Expression"` to see examples

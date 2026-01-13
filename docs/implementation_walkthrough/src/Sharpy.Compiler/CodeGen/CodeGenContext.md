@@ -4,57 +4,66 @@
 
 ---
 
-## Overview
+## 1. Overview
 
-`CodeGenContext` is a **state management class** that serves as the central hub during the code generation phase of the Sharpy compiler. Think of it as the "context object" or "session state" that gets passed around to various parts of the code generator as it transforms the Sharpy Abstract Syntax Tree (AST) into C# code using Roslyn.
+`CodeGenContext` is a lightweight state container that serves as the shared context for the code generation phase of the Sharpy compiler. It acts as a bridge between semantic analysis and code generation, carrying forward the symbol information and builtin registry that the `RoslynEmitter` and `TypeMapper` need to produce valid C# code.
 
-**Primary Purpose**: Maintain and provide access to:
-- Symbol table lookups (variables, functions, types)
-- Builtin type and function registry
-- Indentation state for code formatting
-- Project metadata (namespace, root path, source file)
+**Position in the Pipeline:**
+```
+Source (.spy) → Lexer → Parser → Semantic Analysis → [CodeGenContext] → RoslynEmitter → C#
+                                        ↓                    ↓
+                                   SymbolTable          Uses context
+                                   BuiltinRegistry      for lookups
+```
 
-This class doesn't generate code itself—instead, it acts as a **data provider and state container** for classes like `RoslynEmitter` and `TypeMapper` that do the actual code generation work.
+The context is instantiated *after* semantic analysis completes and is passed to `RoslynEmitter`, which then uses it to:
+- Look up symbols to determine their types and properties
+- Check if identifiers refer to builtin functions or types
+- Track source file information for namespace generation
+- Manage indentation state (though this is largely unused in the Roslyn-based emitter)
 
 ---
 
-## Class Structure
+## 2. Class/Type Structure
 
-### Main Class Definition
+### `CodeGenContext`
+
+A simple, mutable state container class with no inheritance or interface implementation.
 
 ```csharp
 public class CodeGenContext
 {
-    // State fields
+    // Private state
     private int _indentLevel = 0;
     private const int IndentSize = 4;
-    
+
     // Core dependencies (immutable after construction)
     public SymbolTable SymbolTable { get; }
     public BuiltinRegistry Builtins { get; }
-    
-    // Contextual information (mutable during compilation)
+
+    // Configuration properties (mutable)
     public string? SourceFilePath { get; set; }
     public string? ProjectNamespace { get; set; }
     public string? ProjectRootPath { get; set; }
+    public bool IsEntryPoint { get; set; } = true;
 }
 ```
 
-### Key Properties
+### Property Categories
 
-| Property | Type | Purpose |
-|----------|------|---------|
-| `SymbolTable` | `SymbolTable` | **Symbol resolution**: Contains all declared variables, functions, types, and their scopes |
-| `Builtins` | `BuiltinRegistry` | **Builtin identification**: Registry of Sharpy.Core's builtin functions and types (like `print()`, `len()`, `list`, `dict`) |
-| `SourceFilePath` | `string?` | **Source tracking**: Path to the `.spy` file being compiled (used for error messages and namespace generation) |
-| `ProjectNamespace` | `string?` | **Multi-file compilation**: Root namespace for projects (e.g., `"MyApp"`) |
-| `ProjectRootPath` | `string?` | **Relative path computation**: Base directory for computing relative namespaces in multi-file projects |
+| Category | Properties | Purpose |
+|----------|------------|---------|
+| **Core Dependencies** | `SymbolTable`, `Builtins` | Read-only references from semantic analysis |
+| **File Context** | `SourceFilePath` | Used to derive namespace names from file paths |
+| **Project Context** | `ProjectNamespace`, `ProjectRootPath` | Multi-file compilation support |
+| **Entry Point** | `IsEntryPoint` | Controls whether `Main()` is generated |
+| **Indentation** | `_indentLevel`, `IndentSize` | Legacy text-based emission support |
 
 ---
 
-## Key Methods Deep Dive
+## 3. Key Functions/Methods
 
-### 1. Constructor
+### Constructor
 
 ```csharp
 public CodeGenContext(SymbolTable symbolTable, BuiltinRegistry builtins)
@@ -64,7 +73,11 @@ public CodeGenContext(SymbolTable symbolTable, BuiltinRegistry builtins)
 }
 ```
 
-**What it does**: Initializes the context with required dependencies from earlier compiler phases.
+**Purpose**: Establishes the connection to semantic analysis results.
+
+**Parameters**:
+- `symbolTable`: Contains all declared symbols (variables, functions, types) discovered during semantic analysis
+- `builtins`: Registry of built-in types (`int`, `str`, `list`, etc.) and functions (`print`, `len`, etc.)
 
 **When it's called**: During the compiler pipeline, after semantic analysis completes:
 ```
@@ -77,36 +90,11 @@ Lexer → Parser → NameResolver → TypeResolver → TypeChecker
                                               RoslynEmitter
 ```
 
-**Important**: The `SymbolTable` passed in is fully populated with all names resolved and types checked. The code generator assumes this information is correct and complete.
+**Design Note**: Both dependencies are passed explicitly rather than retrieved from a service locator, making the class easy to test and understand.
 
 ---
 
-### 2. Indentation Management
-
-```csharp
-public void Indent() => _indentLevel++;
-public void Dedent() => _indentLevel = System.Math.Max(0, _indentLevel - 1);
-public string GetIndent() => new string(' ', _indentLevel * IndentSize);
-```
-
-**What it does**: Manages whitespace indentation for generated code readability.
-
-**Why it exists**: While Roslyn's `NormalizeWhitespace()` handles most formatting, certain code generation patterns (especially multi-line string building or debugging output) benefit from explicit indentation tracking.
-
-**Usage Pattern**:
-```csharp
-context.Indent();
-// Generate nested code here
-context.Dedent();
-```
-
-**Safety Feature**: `Dedent()` uses `Math.Max(0, ...)` to prevent negative indentation levels—a defensive programming pattern that prevents crashes from mismatched indent/dedent calls.
-
-**Note**: In the current codebase, `RoslynEmitter` primarily uses Roslyn's built-in formatting rather than manual indentation. These methods are **legacy utilities** kept for backward compatibility and potential future use (e.g., generating intermediate representations or debug output).
-
----
-
-### 3. Symbol Lookup
+### Symbol Lookup
 
 ```csharp
 public Symbol? LookupSymbol(string name)
@@ -115,42 +103,50 @@ public Symbol? LookupSymbol(string name)
 }
 ```
 
-**What it does**: Delegates to the symbol table to find a symbol by name, respecting scope hierarchy.
+**Purpose**: Provides a convenient passthrough to the symbol table for looking up any symbol by name.
 
-**Returns**: 
-- `Symbol?` - Can be `VariableSymbol`, `FunctionSymbol`, `TypeSymbol`, `ModuleSymbol`, or `null` if not found
-- `null` indicates the name doesn't exist in any visible scope
+**Returns**: The `Symbol` if found (can be `VariableSymbol`, `FunctionSymbol`, `TypeSymbol`), or `null` if the name is not declared.
 
 **Scope Resolution**: The lookup searches from the current scope outward to parent scopes (including global scope), so local variables shadow outer variables with the same name.
 
-**Example Usage in Code Generation**:
+**Usage in Pipeline**: The `RoslynEmitter` uses this to:
+- Determine the type of a variable reference
+- Check if a function call refers to a user-defined or builtin function
+- Resolve type names in annotations
+
+**Example Usage**:
 ```csharp
 // When generating code for: x = 10
 var symbol = context.LookupSymbol("x");
 if (symbol is VariableSymbol varSymbol)
 {
-    // Generate assignment with proper type information
     var csharpType = mapper.MapType(varSymbol.Type);
-    // ...
+    // Generate assignment with proper type information
 }
 ```
 
 ---
 
-### 4. Builtin Function Detection
+### Builtin Checks
 
 ```csharp
 public bool IsBuiltinFunction(string name)
 {
     return Builtins.GetFunction(name) != null;
 }
+
+public bool IsBuiltinType(string name)
+{
+    return Builtins.GetType(name) != null;
+}
 ```
 
-**What it does**: Checks if a function name refers to a Sharpy.Core builtin (like `print()`, `len()`, `range()`).
+**Purpose**: Quick boolean checks for whether a name refers to a builtin.
 
-**Why this matters**: Builtins require special handling during code generation:
+**Why These Exist**: During code generation, builtin functions and types are handled differently from user-defined ones:
 - **Builtin functions** → Map to static calls on `Sharpy.Core.Exports` (e.g., `print(x)` becomes `Exports.Print(x)`)
 - **User functions** → Map to local method calls or qualified method calls
+- **Builtin types** → Map to specific C# types (e.g., `list[int]` → `Sharpy.Core.List<int>`)
 
 **Example Decision Tree**:
 ```csharp
@@ -166,91 +162,122 @@ else
 }
 ```
 
----
-
-### 5. Builtin Type Detection
-
-```csharp
-public bool IsBuiltinType(string name)
-{
-    return Builtins.GetType(name) != null;
-}
-```
-
-**What it does**: Checks if a type name is a Sharpy builtin type.
-
 **Builtin Types Include**:
 - Primitives: `int`, `float`, `bool`, `str`, `None`
 - Collections: `list`, `dict`, `set`
 - Special: `object`
 
-**Code Generation Impact**:
+---
+
+### Indentation Management
+
 ```csharp
-// Type annotation: def foo(x: list[int]) -> None:
-
-if (context.IsBuiltinType("list"))
-{
-    // Map to: Sharpy.Core.List<int>
-}
-else
-{
-    // Map to user-defined type
-}
+public void Indent() => _indentLevel++;
+public void Dedent() => _indentLevel = System.Math.Max(0, _indentLevel - 1);
+public string GetIndent() => new string(' ', _indentLevel * IndentSize);
 ```
 
-**Edge Case**: Generic types like `list[T]` require additional handling—the base name `"list"` is checked, then type parameters are processed recursively.
+**Purpose**: Track and produce indentation for formatted code output.
+
+**Historical Context**: These methods are vestiges of an earlier string-based code generation approach. The current `RoslynEmitter` uses Roslyn's `SyntaxFactory` and `NormalizeWhitespace()` for formatting, making these methods largely unused. They remain for potential debugging or alternative emission strategies.
+
+**Usage Pattern**:
+```csharp
+context.Indent();
+// Generate nested code here
+context.Dedent();
+```
+
+**Safety Feature**: `Dedent()` guards against negative indentation with `Math.Max(0, ...)`, preventing crashes from mismatched indent/dedent calls.
 
 ---
 
-## Dependencies
+## 4. Dependencies
 
-### Upstream Dependencies (What CodeGenContext Needs)
+### Internal Dependencies
 
-1. **`Sharpy.Compiler.Semantic.SymbolTable`**
-   - Provides: All declared names, types, scopes
-   - Populated by: `NameResolver` and `TypeResolver`
-   - Used for: Symbol lookups during code generation
+| Dependency | Namespace | Role |
+|------------|-----------|------|
+| `SymbolTable` | `Sharpy.Compiler.Semantic` | Scope-based symbol storage from semantic analysis |
+| `BuiltinRegistry` | `Sharpy.Compiler.Semantic` | Registry of Sharpy's built-in types and functions |
+| `Symbol` | `Sharpy.Compiler.Semantic` | Base class for all symbol types |
 
-2. **`Sharpy.Compiler.Semantic.BuiltinRegistry`**
-   - Provides: Registry of Sharpy.Core builtins
-   - Initialized at: Compiler startup
-   - Used for: Distinguishing builtins from user code
+### Relationship Diagram
 
-### Downstream Dependencies (What Uses CodeGenContext)
-
-1. **`RoslynEmitter`** (primary consumer)
-   - Uses: All context methods
-   - Purpose: Generates C# syntax trees from Sharpy AST nodes
-
-2. **`TypeMapper`**
-   - Uses: `SymbolTable`, `Builtins`
-   - Purpose: Maps Sharpy types to C# types (e.g., `list[int]` → `List<int>`)
-
-3. **`NameMangler`** (indirectly)
-   - May use: Symbol lookups for name conflict resolution
-   - Purpose: Converts Python-style names to C#-style names
-
-**Dependency Graph**:
 ```
-        SymbolTable ──┐
-                      ├──> CodeGenContext ──┐
-    BuiltinRegistry ──┘                     ├──> RoslynEmitter
-                                            │
-                                            └──> TypeMapper
+┌─────────────────────────────────────────────────────────────┐
+│                    Semantic Analysis Phase                   │
+├─────────────────────────────────────────────────────────────┤
+│  BuiltinRegistry ◄──── SymbolTable                          │
+│       │                     │                               │
+│       │                     │  (populated during analysis)  │
+│       ▼                     ▼                               │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              │ passed to constructor
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      CodeGenContext                          │
+│  ┌──────────────┐  ┌───────────────┐  ┌──────────────────┐  │
+│  │ SymbolTable  │  │ BuiltinRegistry│  │ Config Properties│  │
+│  └──────────────┘  └───────────────┘  └──────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              │ injected into
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Code Generation Phase                     │
+├─────────────────────────────────────────────────────────────┤
+│  RoslynEmitter ────────► TypeMapper                         │
+│       │                      │                              │
+│       │ (uses context)       │ (uses context)               │
+│       ▼                      ▼                              │
+│  CompilationUnitSyntax   TypeSyntax nodes                   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Patterns and Design Decisions
+## 5. Patterns and Design Decisions
 
-### 1. **Separation of Concerns**
+### Dependency Injection Over Service Location
 
-`CodeGenContext` is a **pure data holder**—it doesn't implement code generation logic. This follows the **Context Object pattern**:
-- **Benefits**: Clean separation between state management and logic
-- **Testability**: Easy to mock or stub for unit tests
-- **Maintainability**: Changes to code generation logic don't affect context structure
+The context receives its dependencies via the constructor rather than looking them up from a global registry. This pattern:
+- Makes testing straightforward (just construct with mock dependencies)
+- Makes the dependency graph explicit and visible
+- Avoids hidden coupling to global state
 
-### 2. **Immutable Core, Mutable Metadata**
+### Mutable Configuration Properties
+
+The "init-style" pattern is used for configuration:
+
+```csharp
+var codeGenContext = new CodeGenContext(symbolTable, builtins)
+{
+    SourceFilePath = sourceFile,
+    ProjectNamespace = projectConfig.RootNamespace,
+    ProjectRootPath = projectRoot,
+    IsEntryPoint = fileName.Equals("main", StringComparison.OrdinalIgnoreCase)
+};
+```
+
+This approach allows the core dependencies to be set via constructor (required) while optional configuration can be set via object initializer syntax.
+
+### Single-File vs Multi-File Compilation
+
+The context supports both compilation modes:
+
+| Property | Single-File | Multi-File |
+|----------|-------------|------------|
+| `IsEntryPoint` | `true` (default) | `true` only for `main.spy` |
+| `ProjectNamespace` | `null` | Set from project config |
+| `ProjectRootPath` | `null` | Points to `src/` directory |
+
+### Minimal Abstraction
+
+The class is deliberately simple—it's essentially a struct with some convenience methods. This reflects the philosophy that code generation context is "just data" that flows through the system, not a complex abstraction with behavior.
+
+### Immutable Core, Mutable Metadata
 
 ```csharp
 // Immutable (set once in constructor)
@@ -262,66 +289,41 @@ public string? SourceFilePath { get; set; }
 public string? ProjectNamespace { get; set; }
 ```
 
-**Design Rationale**: 
+**Design Rationale**:
 - Core dependencies (`SymbolTable`, `Builtins`) are immutable to prevent accidental modification
 - Metadata properties are mutable to support single-file vs. multi-file compilation modes
 
-### 3. **Nullable Reference Types**
-
-Project-related properties are nullable (`string?`) because:
-- **Single-file compilation**: `ProjectNamespace` and `ProjectRootPath` are `null`
-- **Project compilation**: These are set based on `.spyproj` file configuration
-
-**Code Pattern**:
-```csharp
-var namespaceName = context.ProjectNamespace ?? "Sharpy.Generated";
-```
-
-### 4. **Defensive Programming**
-
-```csharp
-public void Dedent() => _indentLevel = System.Math.Max(0, _indentLevel - 1);
-```
-
-The `Math.Max(0, ...)` prevents negative indentation even if `Dedent()` is called more times than `Indent()`. This is a fail-safe against programming errors.
-
 ---
 
-## Debugging Tips
+## 6. Debugging Tips
 
-### Problem: "Symbol not found during code generation"
+### Inspecting Symbol Resolution
 
-**Check**:
+If code generation produces incorrect output for a variable or function, check what the context sees:
+
 ```csharp
-var symbol = context.LookupSymbol(name);
-if (symbol == null)
-{
-    // Breakpoint here - symbol should exist after semantic analysis
-    // If null, either:
-    // 1. NameResolver didn't register it
-    // 2. Wrong scope is active
-    // 3. Name mismatch (Python name vs. mangled name)
-}
+// Add temporary debugging in RoslynEmitter
+var symbol = _context.LookupSymbol("myVariable");
+Console.WriteLine($"Symbol: {symbol?.Name}, Kind: {symbol?.Kind}, Type: {(symbol as VariableSymbol)?.Type}");
 ```
 
-**Common Causes**:
+**Common Causes of "Symbol not found"**:
 - Variable declared in inner scope but lookup happening in outer scope
 - Typo in variable name
 - Symbol table not properly populated by semantic analysis
 
----
+### Tracing Builtin Detection
 
-### Problem: "Builtin function not recognized"
+If a builtin function is being emitted incorrectly:
 
-**Diagnostic**:
 ```csharp
-if (!context.IsBuiltinFunction("print"))
-{
-    // Breakpoint here
-    // Check: Is BuiltinRegistry properly initialized?
-    var allBuiltins = context.Builtins.GetAllFunctions();
-    // Inspect: Does "print" appear in the list?
-}
+// Check if it's recognized as a builtin
+Console.WriteLine($"Is 'print' builtin function? {_context.IsBuiltinFunction("print")}");
+Console.WriteLine($"Is 'str' builtin type? {_context.IsBuiltinType("str")}");
+
+// If not recognized, inspect the registry
+var allBuiltins = _context.Builtins.GetAllFunctions();
+// Does "print" appear in the list?
 ```
 
 **Possible Issues**:
@@ -329,58 +331,55 @@ if (!context.IsBuiltinFunction("print"))
 - Function name mismatch (Python `print` vs. C# `Print`)
 - Sharpy.Core assembly not loaded properly
 
----
+### Namespace Generation Issues
 
-### Problem: "Wrong namespace generated"
+If generated namespaces are wrong, check the context configuration:
 
-**Debug Flow**:
 ```csharp
+Console.WriteLine($"SourceFilePath: {context.SourceFilePath}");
 Console.WriteLine($"ProjectNamespace: {context.ProjectNamespace}");
 Console.WriteLine($"ProjectRootPath: {context.ProjectRootPath}");
-Console.WriteLine($"SourceFilePath: {context.SourceFilePath}");
-
-// Expected values for project compilation:
-// ProjectNamespace: "MyApp"
-// ProjectRootPath: "/path/to/project"
-// SourceFilePath: "/path/to/project/src/module.spy"
 ```
 
-**Check**: Ensure `AssemblyCompiler` sets these properties before calling `RoslynEmitter`.
+### Common Issues Quick Reference
+
+| Symptom | Likely Cause | Check |
+|---------|--------------|-------|
+| "Symbol not found" at codegen | Symbol not registered during semantic analysis | Verify semantic analysis completed successfully |
+| Wrong C# type emitted | Builtin type not recognized | Check `IsBuiltinType()` returns expected value |
+| Missing `Main()` method | `IsEntryPoint` is false | Verify entry point detection logic |
+| Wrong namespace in output | `ProjectRootPath` mismatch | Check path computation logic |
 
 ---
 
-### Debugging Indentation Issues
+## 7. Contribution Guidelines
 
-If generated code has indentation problems:
+### Types of Changes
 
-1. **Check Roslyn output**: Run `.NormalizeWhitespace()` on syntax trees
-2. **Manual indentation**: If using `GetIndent()`, verify matching `Indent()`/`Dedent()` calls:
-   ```csharp
-   int indentLevel = 0;
-   // Trace indent/dedent calls to ensure balance
-   ```
+**Likely Changes:**
+- Adding new configuration properties for new compilation modes
+- Adding new lookup convenience methods (following the pattern of `IsBuiltinFunction`/`IsBuiltinType`)
+- Adding properties to support new code generation features
 
----
+**Unlikely Changes:**
+- Changing the constructor signature (would require updating all call sites)
+- Adding complex behavior (this class should remain a simple container)
+- Removing the indentation methods (kept for backward compatibility)
 
-## Contribution Guidelines
+### Adding a New Property
 
-### When to Modify CodeGenContext
+When adding a configuration property:
 
-**Add new properties when**:
-- ✅ Code generation needs new compiler-wide state
-- ✅ Information should be accessible to multiple code generation components
-- ✅ Data comes from earlier compiler phases (semantic analysis, project configuration)
+1. Add the property with a sensible default:
+```csharp
+/// <summary>
+/// Description of what this controls
+/// </summary>
+public bool NewFeatureEnabled { get; set; } = false;
+```
 
-**Examples of good additions**:
-- `public bool EnableOptimizations { get; set; }` - for conditional optimizations
-- `public string? TargetFramework { get; set; }` - for framework-specific code generation
-
-**DON'T add**:
-- ❌ Generation logic methods (put in `RoslynEmitter` instead)
-- ❌ Per-node temporary state (use local variables in generator methods)
-- ❌ AST node references (context should be AST-agnostic)
-
----
+2. Update all `new CodeGenContext` call sites if the property needs explicit initialization
+3. Document how `RoslynEmitter` or `TypeMapper` uses the new property
 
 ### Adding New Lookup Methods
 
@@ -400,195 +399,42 @@ public VariableSymbol? LookupLocalVariable(string name)
 - Add XML documentation comments
 - Consider if the logic belongs in `SymbolTable` instead
 
----
+### Coding Conventions
 
-### Testing Considerations
+- Use XML doc comments for all public members
+- Keep methods small and focused (single responsibility)
+- Prefer explicit null checks over null-conditional operators for clarity
+- Follow the existing naming conventions (`_privateField`, `PublicProperty`)
+
+### Testing
+
+The context itself has minimal logic to test, but changes should be validated through:
+- `RoslynEmitterIntegrationTests` - End-to-end code generation
+- `TypeMapperTests` - Type mapping with various context configurations
+- Manual inspection of generated C# code for edge cases
 
 **Unit Testing Pattern**:
 ```csharp
 [Fact]
 public void TestSymbolLookup()
 {
-    var symbolTable = new SymbolTable(new BuiltinRegistry());
     var builtins = new BuiltinRegistry();
+    var symbolTable = new SymbolTable(builtins);
     var context = new CodeGenContext(symbolTable, builtins);
-    
+
     // Register a test symbol
-    symbolTable.Define(new VariableSymbol 
-    { 
-        Name = "testVar", 
-        Type = SemanticType.Int 
+    symbolTable.Define(new VariableSymbol
+    {
+        Name = "testVar",
+        Type = SemanticType.Int
     });
-    
+
     // Test lookup
     var result = context.LookupSymbol("testVar");
     Assert.NotNull(result);
     Assert.IsType<VariableSymbol>(result);
 }
 ```
-
-**Integration Testing**: Most testing happens through `RoslynEmitter` integration tests:
-```csharp
-// In Sharpy.Compiler.Tests/CodeGen/RoslynEmitterTests.cs
-[Fact]
-public void CompileFunctionWithBuiltins()
-{
-    var source = @"
-        def greet(name: str) -> None:
-            print(f'Hello, {name}!')
-    ";
-    
-    // Context is created internally
-    var result = CompileAndExecute(source);
-    Assert.Equal("Hello, World!\n", result.StandardOutput);
-}
-```
-
----
-
-### Common Contribution Scenarios
-
-#### Scenario 1: Supporting Debug Symbol Generation
-
-**Goal**: Add debug information to generated C#.
-
-**Changes**:
-```csharp
-// Add property
-public bool EmitDebugInfo { get; set; } = true;
-
-// Usage in RoslynEmitter
-if (_context.EmitDebugInfo)
-{
-    // Add #line directives
-    var lineDirective = LineDirectiveTrivia(...);
-    // ...
-}
-```
-
----
-
-#### Scenario 2: Multi-Target Framework Support
-
-**Goal**: Generate different C# code for .NET 9 vs. .NET 10.
-
-**Changes**:
-```csharp
-// Add property
-public string TargetFramework { get; set; } = "net9.0";
-
-// Usage in TypeMapper
-if (_context.TargetFramework.StartsWith("net10"))
-{
-    // Use .NET 10-specific types
-}
-```
-
----
-
-#### Scenario 3: Custom Namespace Strategies
-
-**Goal**: Support different namespace naming conventions.
-
-**Changes**:
-```csharp
-public enum NamespaceStrategy { FlatStructure, MirrorDirectory, Custom }
-public NamespaceStrategy NamespaceMode { get; set; } = NamespaceStrategy.MirrorDirectory;
-public Func<string, string>? CustomNamespaceMapper { get; set; }
-```
-
----
-
-## Relationship to Other Components
-
-### CodeGenContext in the Compilation Pipeline
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Compiler.cs                          │
-│  (Orchestrates compilation of single .spy file)         │
-└───────────────────────┬─────────────────────────────────┘
-                        │
-        ┌───────────────┴───────────────┐
-        │                               │
-        ▼                               ▼
-┌───────────────┐              ┌────────────────┐
-│  Lexer        │              │  Semantic      │
-│  → Parser     │─────────────>│  Analysis      │
-└───────────────┘              │  (builds       │
-                               │  SymbolTable)  │
-                               └────────┬───────┘
-                                        │
-                                        ▼
-                               ┌────────────────┐
-                               │ CodeGenContext │<── You are here
-                               │ (initialized)  │
-                               └────────┬───────┘
-                                        │
-                                        ▼
-                               ┌────────────────┐
-                               │ RoslynEmitter  │
-                               │ (uses context) │
-                               └────────┬───────┘
-                                        │
-                                        ▼
-                                  C# Syntax Tree
-                                        │
-                                        ▼
-                                  Roslyn Compiler
-                                        │
-                                        ▼
-                                    .NET IL
-```
-
----
-
-## Advanced Topics
-
-### Thread Safety
-
-**Current State**: `CodeGenContext` is **NOT thread-safe**.
-
-**Implication**: Each compilation should use its own `CodeGenContext` instance. Don't share across threads.
-
-**Future Consideration**: If parallel compilation is needed:
-```csharp
-// Would need concurrent collections for mutable state
-public ConcurrentDictionary<string, string> ThreadSafeMetadata { get; }
-```
-
----
-
-### Extension Points
-
-`CodeGenContext` can be extended through subclassing if needed:
-
-```csharp
-public class OptimizingCodeGenContext : CodeGenContext
-{
-    public OptimizationLevel Optimizations { get; set; }
-    
-    public OptimizingCodeGenContext(SymbolTable symbolTable, BuiltinRegistry builtins)
-        : base(symbolTable, builtins)
-    {
-    }
-}
-```
-
-However, **prefer composition over inheritance**—add properties to the base class unless you need polymorphic behavior.
-
----
-
-## Summary
-
-`CodeGenContext` is the **state management backbone** of Sharpy's code generation phase:
-
-- **Small but critical**: Only ~50 lines, but used throughout code generation
-- **Glue layer**: Connects semantic analysis results with code generation logic
-- **Query interface**: Provides convenient methods for symbol and builtin lookups
-- **Configuration container**: Holds project-level settings and metadata
-
-**Key Takeaway**: This class doesn't generate code—it **enables** code generation by providing necessary context and state. Think of it as the "toolbox" that `RoslynEmitter` reaches into while doing the actual work.
 
 ---
 
@@ -601,19 +447,16 @@ However, **prefer composition over inheritance**—add properties to the base cl
 | `SymbolTable.cs` | Provides symbol lookup functionality |
 | `BuiltinRegistry.cs` | Provides builtin identification |
 | `Compiler.cs` | Creates and initializes context |
-| `AssemblyCompiler.cs` | Sets project-specific context properties |
 
 ---
 
-## Next Steps for Learning
+## Summary
 
-1. **Read Next**: `RoslynEmitter.cs` - See how `CodeGenContext` is actually used
-2. **Understand**: `SymbolTable.cs` - Learn how symbols are stored and retrieved
-3. **Explore**: `BuiltinRegistry.cs` - See how builtins are registered and queried
-4. **Practice**: Write a unit test that creates a `CodeGenContext` and performs lookups
+`CodeGenContext` is the **state management backbone** of Sharpy's code generation phase:
 
----
+- **Small but critical**: Only ~58 lines, but used throughout code generation
+- **Glue layer**: Connects semantic analysis results with code generation logic
+- **Query interface**: Provides convenient methods for symbol and builtin lookups
+- **Configuration container**: Holds project-level settings and metadata
 
-**Document Version**: 1.0  
-**Last Updated**: 2025-12-27  
-**Maintainer**: Sharpy Compiler Team
+**Key Takeaway**: This class doesn't generate code—it **enables** code generation by providing necessary context and state. Think of it as the "toolbox" that `RoslynEmitter` reaches into while doing the actual work.

@@ -6,7 +6,7 @@
 
 ## 1. Overview
 
-The `Parser` class is the heart of Sharpy's syntax analysis phase. It transforms a flat stream of tokens (produced by the Lexer) into a hierarchical Abstract Syntax Tree (AST) that represents the semantic structure of Sharpy code. 
+The `Parser` class is the heart of Sharpy's syntax analysis phase. It transforms a flat stream of tokens (produced by the Lexer) into a hierarchical Abstract Syntax Tree (AST) that represents the semantic structure of Sharpy code.
 
 **Key responsibilities:**
 - Convert tokens into AST nodes (statements and expressions)
@@ -81,7 +81,7 @@ public Module ParseModule()
     string? docString = null;
 
     SkipNewlines();
-    
+
     // Module-level docstring
     if (Current.Type == TokenType.String) {
         docString = Current.Value;
@@ -119,11 +119,22 @@ private Statement ParseStatement()
     {
         TokenType.Def => ParseFunctionDef(),
         TokenType.Class => ParseClassDef(),
+        TokenType.Struct => ParseStructDef(),
+        TokenType.Interface => ParseInterfaceDef(),
+        TokenType.Enum => ParseEnumDef(),
         TokenType.If => ParseIfStatement(),
+        TokenType.While => ParseWhileStatement(),
         TokenType.For => ParseForStatement(),
+        TokenType.Try => ParseTryStatement(),
         TokenType.Return => ParseReturnStatement(),
+        TokenType.Raise => ParseRaiseStatement(),
+        TokenType.Assert => ParseAssertStatement(),
+        TokenType.Pass => ParsePassStatement(),
+        TokenType.Break => ParseBreakStatement(),
+        TokenType.Continue => ParseContinueStatement(),
         TokenType.Import => ParseImportStatement(),
-        // ... more cases
+        TokenType.From => ParseFromImportStatement(),
+        TokenType.Const => ParseConstDeclaration(),
         _ => ParseSimpleStatement()  // Assignments, expressions, declarations
     };
 }
@@ -160,7 +171,7 @@ private Statement ParseSimpleStatement()
             Advance();
             elements.Add(ParseExpression());
         }
-        
+
         if (IsAssignmentOperator(Current.Type)) {
             var tuple = new TupleLiteral { Elements = elements };
             // ... create Assignment node
@@ -183,6 +194,32 @@ private Statement ParseSimpleStatement()
 ```
 
 **Debugging tip**: If you see unexpected parse errors with assignments or declarations, add logging here to see which branch is taken.
+
+---
+
+#### Assignment Operators
+
+The parser supports a full range of compound assignment operators via `TokenTypeToAssignmentOperator()`:
+
+```csharp
+private AssignmentOperator TokenTypeToAssignmentOperator(TokenType type) => type switch
+{
+    TokenType.Assign => AssignmentOperator.Assign,           // =
+    TokenType.PlusAssign => AssignmentOperator.PlusAssign,   // +=
+    TokenType.MinusAssign => AssignmentOperator.MinusAssign, // -=
+    TokenType.StarAssign => AssignmentOperator.StarAssign,   // *=
+    TokenType.SlashAssign => AssignmentOperator.SlashAssign, // /=
+    TokenType.DoubleSlashAssign => AssignmentOperator.DoubleSlashAssign, // //=
+    TokenType.PercentAssign => AssignmentOperator.PercentAssign, // %=
+    TokenType.DoubleStarAssign => AssignmentOperator.PowerAssign, // **=
+    TokenType.AmpersandAssign => AssignmentOperator.AndAssign,    // &=
+    TokenType.PipeAssign => AssignmentOperator.OrAssign,          // |=
+    TokenType.CaretAssign => AssignmentOperator.XorAssign,        // ^=
+    TokenType.LeftShiftAssign => AssignmentOperator.LeftShiftAssign,   // <<=
+    TokenType.RightShiftAssign => AssignmentOperator.RightShiftAssign, // >>=
+    _ => throw new ParserError(...)
+};
+```
 
 ---
 
@@ -272,6 +309,146 @@ struct MyStruct(IComparable, IEquatable):  # Structs can only implement interfac
 
 ---
 
+#### `ParseInterfaceDef()`
+
+**Purpose**: Parse interface definitions.
+
+**Sharpy syntax**:
+```python
+interface IMyInterface[T](IBaseInterface1, IBaseInterface2):
+    """Optional docstring"""
+    def method(x: int) -> str:
+        pass
+```
+
+Similar to class/struct parsing but stored in an `InterfaceDef` AST node with `BaseInterfaces` instead of `BaseClasses`.
+
+---
+
+#### `ParseEnumDef()`
+
+**Purpose**: Parse enumeration definitions.
+
+**Sharpy syntax**:
+```python
+enum Color:
+    """Optional docstring"""
+    Red = 1
+    Green = 2
+    Blue = 3
+```
+
+**Key features**:
+- Each member can have an optional value assignment
+- `pass` statement is allowed for consistency but results in an error if no real members exist
+- Validation: enum must have at least one member
+
+```csharp
+private EnumDef ParseEnumDef()
+{
+    Expect(TokenType.Enum);
+    var name = ExpectIdentifier();
+    Expect(TokenType.Colon);
+    ExpectNewline();
+    Expect(TokenType.Indent);
+
+    // Check for docstring
+    // ...
+
+    var members = new List<EnumMember>();
+
+    while (Current.Type != TokenType.Dedent && !IsAtEnd) {
+        // Handle pass statement
+        if (Current.Type == TokenType.Pass) {
+            Advance();
+            ExpectNewline();
+            continue;
+        }
+
+        var memberName = ExpectIdentifier();
+        Expression? value = null;
+
+        if (Current.Type == TokenType.Assign) {
+            Advance();
+            value = ParseExpression();
+        }
+
+        members.Add(new EnumMember { Name = memberName, Value = value, ... });
+        ExpectNewline();
+    }
+
+    Expect(TokenType.Dedent);
+
+    // Validation: enum must have at least one member
+    if (members.Count == 0)
+        throw new ParserError($"Enum '{name}' must have at least one member", ...);
+
+    return new EnumDef { Name = name, Members = members, ... };
+}
+```
+
+---
+
+#### `ParseDecoratedStatement()`
+
+**Purpose**: Parse statements preceded by decorators.
+
+**Sharpy syntax**:
+```python
+@decorator1
+@decorator2
+def my_function():
+    pass
+
+@singleton
+class MyClass:
+    pass
+```
+
+**Algorithm**:
+1. Collect all consecutive `@decorator` lines
+2. Parse the decorated definition (function, class, or struct)
+3. Attach decorators to the definition using record `with` expressions
+
+```csharp
+private Statement ParseDecoratedStatement()
+{
+    var decorators = new List<Decorator>();
+
+    while (Current.Type == TokenType.At) {
+        Advance();  // Skip @
+        if (Current.Type != TokenType.Identifier)
+            throw new ParserError("Expected decorator name", ...);
+
+        var decoratorName = Current.Value;
+        Advance();
+
+        decorators.Add(new Decorator { Name = decoratorName, ... });
+        ExpectNewline();
+    }
+
+    // Parse the decorated definition
+    Statement stmt = Current.Type switch
+    {
+        TokenType.Def => ParseFunctionDef(),
+        TokenType.Class => ParseClassDef(),
+        TokenType.Struct => ParseStructDef(),
+        _ => throw new ParserError("Decorators can only be applied to functions, classes, or structs", ...)
+    };
+
+    // Attach decorators using record 'with' expressions
+    return stmt switch
+    {
+        FunctionDef func => func with { Decorators = decorators },
+        ClassDef cls => cls with { Decorators = decorators },
+        StructDef str => str with { Decorators = decorators },
+        _ => throw new ParserError("Unexpected decorated statement type", ...)
+    };
+}
+```
+
+---
+
 #### `ParseIfStatement()`
 
 **Purpose**: Parse if/elif/else chains.
@@ -350,7 +527,7 @@ private Expression ParseForTarget()
 {
     // Parse identifier or tuple, stopping before 'in'
     var first = ParsePrimary();
-    
+
     if (Current.Type == TokenType.Comma) {
         // Tuple unpacking: for x, y in ...
         var elements = new List<Expression> { first };
@@ -361,7 +538,7 @@ private Expression ParseForTarget()
         }
         return new TupleLiteral { Elements = elements };
     }
-    
+
     return first;
 }
 ```
@@ -395,10 +572,10 @@ private TryStatement ParseTryStatement()
     var handlers = new List<ExceptHandler>();
     while (Current.Type == TokenType.Except) {
         Advance();
-        
+
         TypeAnnotation? exceptionType = null;
         string? name = null;
-        
+
         if (Current.Type != TokenType.Colon) {
             exceptionType = ParseTypeAnnotation();
             if (Current.Type == TokenType.As) {
@@ -406,7 +583,7 @@ private TryStatement ParseTryStatement()
                 name = ExpectIdentifier();
             }
         }
-        
+
         // ... parse handler body
         handlers.Add(new ExceptHandler { ExceptionType = exceptionType, Name = name, Body = handlerBody });
     }
@@ -417,6 +594,76 @@ private TryStatement ParseTryStatement()
     }
 
     return new TryStatement { Body = body, Handlers = handlers, FinallyBody = finallyBody };
+}
+```
+
+---
+
+#### `ParseRaiseStatement()`
+
+**Purpose**: Parse exception raising statements.
+
+**Sharpy syntax**:
+```python
+raise                           # Re-raise current exception
+raise ValueError("message")     # Raise new exception
+raise NewError() from original  # Exception chaining
+```
+
+```csharp
+private RaiseStatement ParseRaiseStatement()
+{
+    Expect(TokenType.Raise);
+
+    Expression? exception = null;
+    Expression? cause = null;
+
+    if (Current.Type != TokenType.Newline && !IsAtEnd) {
+        exception = ParseExpression();
+
+        // raise ... from cause
+        if (Current.Type == TokenType.From) {
+            Advance();
+            cause = ParseExpression();
+        }
+    }
+
+    ExpectNewline();
+
+    return new RaiseStatement { Exception = exception, Cause = cause, ... };
+}
+```
+
+---
+
+#### `ParseConstDeclaration()`
+
+**Purpose**: Parse constant variable declarations.
+
+**Sharpy syntax**:
+```python
+const PI: float = 3.14159
+const MAX_SIZE: int = 100
+```
+
+```csharp
+private VariableDeclaration ParseConstDeclaration()
+{
+    Expect(TokenType.Const);
+    var name = ExpectIdentifier();
+    Expect(TokenType.Colon);
+    var type = ParseTypeAnnotation();
+    Expect(TokenType.Assign);
+    var value = ParseExpression();
+    ExpectNewline();
+
+    return new VariableDeclaration {
+        Name = name,
+        Type = type,
+        InitialValue = value,
+        IsConst = true,
+        ...
+    };
 }
 ```
 
@@ -439,12 +686,12 @@ from module import *
 private string ParseDottedName()
 {
     var parts = new List<string> { ExpectIdentifier() };
-    
+
     while (Current.Type == TokenType.Dot) {
         Advance();
         parts.Add(ExpectIdentifier());
     }
-    
+
     return string.Join(".", parts);  // "System.Collections.Generic"
 }
 ```
@@ -463,20 +710,21 @@ private string ParseDottedName()
 4. **Logical AND**: `and`
 5. **Logical NOT**: `not`
 6. **Comparison**: `==`, `!=`, `<`, `<=`, `>`, `>=`, `in`, `is`
-7. **Bitwise OR**: `|`
-8. **Bitwise XOR**: `^`
-9. **Bitwise AND**: `&`
-10. **Shift**: `<<`, `>>`
-11. **Additive**: `+`, `-`
-12. **Multiplicative**: `*`, `/`, `//`, `%`
-13. **Unary**: `+x`, `-x`, `~x`, `not x`
-14. **Power**: `**` (right-associative!)
-15. **Postfix**: `.member`, `[index]`, `(call)`, `as Type`
-16. **Primary**: literals, identifiers, parentheses, collections
+7. **Pipe forward**: `|>` (functional pipeline operator)
+8. **Bitwise OR**: `|`
+9. **Bitwise XOR**: `^`
+10. **Bitwise AND**: `&`
+11. **Shift**: `<<`, `>>`
+12. **Additive**: `+`, `-`
+13. **Multiplicative**: `*`, `/`, `//`, `%`
+14. **Unary**: `+x`, `-x`, `~x`, `not x`
+15. **Power**: `**` (right-associative!)
+16. **Postfix**: `.member`, `[index]`, `(call)`, `as Type`, `to Type`
+17. **Primary**: literals, identifiers, parentheses, collections
 
 **Call chain example**:
 ```
-ParseExpression() 
+ParseExpression()
   → ParseConditionalExpression()
     → ParseNullCoalesce()
       → ParseLogicalOr()
@@ -557,6 +805,40 @@ This naturally creates **left-associative** parsing: `a + b + c` becomes `(a + b
 
 ---
 
+#### `ParsePipe()`
+
+**Purpose**: Parse the pipe forward operator (`|>`).
+
+**Sharpy syntax**:
+```python
+data |> transform |> filter |> output
+```
+
+The pipe forward operator enables functional-style data transformation pipelines. It has lower precedence than bitwise operations but higher than comparisons.
+
+```csharp
+private Expression ParsePipe()
+{
+    var left = ParseBitwiseOr();
+
+    while (Current.Type == TokenType.PipeForward) {
+        Advance();
+        var right = ParseBitwiseOr();
+
+        left = new BinaryOp {
+            Operator = BinaryOperator.PipeForward,
+            Left = left,
+            Right = right,
+            ...
+        };
+    }
+
+    return left;
+}
+```
+
+---
+
 #### `ParseComparison()` - Special Cases
 
 **Purpose**: Parse comparison operators, including chained comparisons.
@@ -569,7 +851,7 @@ This naturally creates **left-associative** parsing: `a + b + c` becomes `(a + b
 ```csharp
 private Expression ParseComparison()
 {
-    var left = ParseBitwiseOr();
+    var left = ParsePipe();
 
     // Special case: "is Type" for isinstance checks
     if (Current.Type == TokenType.Is && Peek(1).Type == TokenType.Identifier) {
@@ -599,7 +881,7 @@ private Expression ParseComparison()
             operators.Add(TokenTypeToComparisonOperator(op));
         }
 
-        operands.Add(ParseBitwiseOr());
+        operands.Add(ParsePipe());
     }
 
     if (operators.Count == 0)
@@ -615,7 +897,7 @@ private Expression ParseComparison()
 }
 ```
 
-**Why separate `ComparisonChain`?** 
+**Why separate `ComparisonChain`?**
 - Easier codegen: `a < b < c` can be efficiently compiled to `.NET` code that evaluates `b` only once
 - Clear semantic representation
 
@@ -651,13 +933,14 @@ private Expression ParsePower()
 
 #### `ParsePostfix()`
 
-**Purpose**: Parse postfix operations (member access, indexing, calls).
+**Purpose**: Parse postfix operations (member access, indexing, calls, type operations).
 
 **Operations**:
 - **Member access**: `obj.member`, `obj?.member` (null-conditional)
 - **Indexing**: `obj[index]`, `obj[start:stop:step]` (slicing)
 - **Function calls**: `func(arg1, arg2, key=value)`
-- **Type cast**: `value as TargetType`
+- **Type cast**: `value as TargetType` (safe cast, returns null on failure)
+- **Type coercion**: `value to TargetType` (throws on failure, or returns null for nullable types)
 
 ```csharp
 private Expression ParsePostfix()
@@ -669,31 +952,39 @@ private Expression ParsePostfix()
             // Member access
             var isNullConditional = (Current.Type == TokenType.NullConditional);
             Advance();
-            var member = ExpectIdentifier();
+            var member = ExpectIdentifierOrKeyword();  // Allows keywords as member names
             expr = new MemberAccess { Object = expr, Member = member, IsNullConditional = isNullConditional };
         }
         else if (Current.Type == TokenType.LeftBracket) {
             // Indexing or slicing
             Advance();
-            var index = ParseSliceOrIndex();  // Returns IndexAccess or SliceAccess
+            var index = ParseSliceOrIndex();
             Expect(TokenType.RightBracket);
-            expr = index with { Object = expr };  // Fill in the object
+            expr = index with { Object = expr };
         }
         else if (Current.Type == TokenType.LeftParen) {
-            // Function call
+            // Function call with positional and keyword arguments
             Advance();
-            var args = ParseArgumentList();
+            var args = new List<Expression>();
+            var kwargs = new List<KeywordArgument>();
+            // ... parse arguments
             Expect(TokenType.RightParen);
-            expr = new FunctionCall { Function = expr, Arguments = args };
+            expr = new FunctionCall { Function = expr, Arguments = args, KeywordArguments = kwargs };
         }
         else if (Current.Type == TokenType.As) {
-            // Type cast
+            // Type cast (safe, returns null on failure)
             Advance();
             var targetType = ParseTypeAnnotation();
             expr = new TypeCast { Value = expr, TargetType = targetType };
         }
+        else if (Current.Type == TokenType.To) {
+            // Type coercion (throws InvalidCastException on failure for T, returns None for T?)
+            Advance();
+            var targetType = ParseTypeAnnotation();
+            expr = new TypeCoercion { Value = expr, TargetType = targetType };
+        }
         else {
-            break;  // No more postfix operations
+            break;
         }
     }
 
@@ -702,6 +993,40 @@ private Expression ParsePostfix()
 ```
 
 **Chaining**: This naturally handles chained operations like `obj.method()[0].property`.
+
+---
+
+#### `ExpectIdentifierOrKeyword()`
+
+**Purpose**: Allow keywords as member names in member access expressions.
+
+**Motivation**: .NET types may have members named after Sharpy keywords (e.g., `object.type`, `collection.count`).
+
+```csharp
+private string ExpectIdentifierOrKeyword()
+{
+    if (Current.Type == TokenType.Identifier || IsKeywordToken(Current.Type)) {
+        var value = Current.Value;
+        Advance();
+        return value;
+    }
+    throw new ParserError($"Expected identifier, got {Current.Type}", ...);
+}
+
+private static bool IsKeywordToken(TokenType type)
+{
+    return type switch
+    {
+        TokenType.Def or TokenType.Class or TokenType.Struct or TokenType.Interface or
+        TokenType.Enum or TokenType.If or TokenType.Else or TokenType.Elif or
+        TokenType.While or TokenType.For or TokenType.In or TokenType.Return or
+        // ... many more keywords
+        TokenType.True or TokenType.False or TokenType.None
+            => true,
+        _ => false
+    };
+}
+```
 
 ---
 
@@ -755,48 +1080,49 @@ private Expression ParseSliceOrIndex()
 **Purpose**: Parse the lowest-level expressions (literals, identifiers, collections).
 
 **Handles**:
-- **Literals**: integers, floats, strings, booleans, `None`
+- **Literals**: integers, floats, strings, booleans, `None`, `...` (ellipsis)
 - **Identifiers**: variable names
 - **Collections**: lists `[...]`, tuples `(...)`, sets `{...}`, dicts `{k:v}`
+- **Empty set**: `{/}` (special Sharpy syntax to distinguish from empty dict)
 - **Comprehensions**: `[x for x in items]`, `{x for x in items}`, `{k:v for ...}`
 - **Lambda expressions**: `lambda x, y: x + y`
 - **F-strings**: `f"Hello {name}"`
 
-**Example: List parsing**:
+**Example: Collection parsing**:
 ```csharp
-case TokenType.LeftBracket:
+case TokenType.LeftBrace:
 {
     Advance();
 
-    // Empty list []
-    if (Current.Type == TokenType.RightBracket) {
+    // Empty set {/} - special Sharpy syntax
+    if (Current.Type == TokenType.Slash) {
         Advance();
-        return new ListLiteral { Elements = new List<Expression>() };
+        Expect(TokenType.RightBrace);
+        return new SetLiteral { Elements = new List<Expression>() };
+    }
+
+    // Empty dict {}
+    if (Current.Type == TokenType.RightBrace) {
+        Advance();
+        return new DictLiteral { Entries = new List<DictEntry>() };
     }
 
     var firstExpr = ParseExpression();
 
-    // List comprehension: [expr for x in iterable]
-    if (Current.Type == TokenType.For) {
-        var clauses = ParseComprehensionClauses();
-        Expect(TokenType.RightBracket);
-        return new ListComprehension { Element = firstExpr, Clauses = clauses };
+    // Dict {key: value, ...}
+    if (Current.Type == TokenType.Colon) {
+        // ... parse dict literal or dict comprehension
     }
-
-    // Regular list: [elem1, elem2, ...]
-    var elements = new List<Expression> { firstExpr };
-    while (Current.Type == TokenType.Comma) {
-        Advance();
-        if (Current.Type == TokenType.RightBracket) break;  // Trailing comma
-        elements.Add(ParseExpression());
+    // Set {elem1, elem2, ...}
+    else {
+        // ... parse set literal or set comprehension
     }
-
-    Expect(TokenType.RightBracket);
-    return new ListLiteral { Elements = elements };
 }
 ```
 
-**Design note**: Comprehensions are detected by the `for` keyword after the first expression.
+**Design note**:
+- `{}` is an empty dict (matching Python semantics)
+- `{/}` is an empty set (Sharpy-specific, since Python requires `set()`)
 
 ---
 
@@ -829,13 +1155,13 @@ private FStringLiteral ParseSegmentedFString(int startLine, int startColumn)
             // Interpolated expression
             Advance();
             var expr = ParseExpression();
-            
+
             string? formatSpec = null;
             if (Current.Type == TokenType.FStringFormatSpec) {
                 formatSpec = Current.Value;
                 Advance();
             }
-            
+
             parts.Add(new FStringPart { Expression = expr, FormatSpec = formatSpec });
             Expect(TokenType.FStringExprEnd);
         }
@@ -853,6 +1179,45 @@ private FStringLiteral ParseSegmentedFString(int startLine, int startColumn)
 - Text part: `", you have "`
 - Expression part: `count` (format: `"d"`)
 - Text part: `" items"`
+
+---
+
+#### `ParseComprehensionClauses()`
+
+**Purpose**: Parse the clauses in list/set/dict comprehensions.
+
+**Syntax**: `[expr for x in iterable if condition for y in iterable2 ...]`
+
+```csharp
+private List<ComprehensionClause> ParseComprehensionClauses()
+{
+    var clauses = new List<ComprehensionClause>();
+
+    while (true) {
+        if (Current.Type == TokenType.For) {
+            Advance();
+            var target = ParseForTarget();  // Reuse for-loop target parsing
+            Expect(TokenType.In);
+            var iterator = ParseLogicalOr();  // Use lower precedence to avoid consuming too much
+
+            clauses.Add(new ForClause { Target = target, Iterator = iterator, ... });
+        }
+        else if (Current.Type == TokenType.If) {
+            Advance();
+            var condition = ParseLogicalOr();
+
+            clauses.Add(new IfClause { Condition = condition, ... });
+        }
+        else {
+            break;
+        }
+    }
+
+    return clauses;
+}
+```
+
+**Important**: Uses `ParseLogicalOr()` instead of `ParseExpression()` to avoid consuming tokens that belong to the enclosing comprehension structure.
 
 ---
 
@@ -1265,7 +1630,7 @@ Console.WriteLine(dumper.Dump(module));
    {
        var left = ParseUnary();
 
-       while (Current.Type == TokenType.Star || 
+       while (Current.Type == TokenType.Star ||
               Current.Type == TokenType.Slash ||
               Current.Type == TokenType.At) {  // NEW
            var op = Current.Type switch {
@@ -1346,7 +1711,7 @@ public void TestParseIfStatement()
     var tokens = Lex("if x > 0:\n    print(x)\n");
     var parser = new Parser(tokens);
     var module = parser.ParseModule();
-    
+
     Assert.Single(module.Body);
     var ifStmt = Assert.IsType<IfStatement>(module.Body[0]);
     Assert.IsType<BinaryOp>(ifStmt.Test);
@@ -1467,6 +1832,25 @@ public record FunctionDef : Statement
 
 ---
 
+### 8.6 Type Conversion Operators
+
+Sharpy provides two type conversion operators:
+
+**`as` (Safe Cast)**:
+```python
+result = value as SomeType  # Returns null if cast fails
+```
+Parsed as `TypeCast` node, compiles to C#'s `as` operator.
+
+**`to` (Coercion)**:
+```python
+result = value to int           # Throws InvalidCastException on failure
+result = value to int?          # Returns None on failure (nullable target)
+```
+Parsed as `TypeCoercion` node, compiles to explicit cast with optional null handling.
+
+---
+
 ## 9. Future Enhancements
 
 ### 9.1 Error Recovery
@@ -1515,12 +1899,12 @@ public record FunctionDef : Statement
 
 The `Parser` class is a well-structured recursive descent parser with precedence climbing for expressions. Key takeaways:
 
-✅ **Entry point**: `ParseModule()` parses an entire source file  
-✅ **Statement parsing**: Dispatched via `ParseStatement()`, with `ParseSimpleStatement()` handling the complex cases  
-✅ **Expression parsing**: Precedence climbing from `ParseExpression()` down to `ParsePrimary()`  
-✅ **Immutable AST**: All nodes are records with location tracking  
-✅ **Clear error messages**: `Expect*()` methods provide good diagnostics  
-✅ **Extensible design**: Easy to add new operators, statements, or expressions  
+- **Entry point**: `ParseModule()` parses an entire source file
+- **Statement parsing**: Dispatched via `ParseStatement()`, with `ParseSimpleStatement()` handling the complex cases
+- **Expression parsing**: Precedence climbing from `ParseExpression()` down to `ParsePrimary()`
+- **Immutable AST**: All nodes are records with location tracking
+- **Clear error messages**: `Expect*()` methods provide good diagnostics
+- **Extensible design**: Easy to add new operators, statements, or expressions
 
 **When debugging**: Start with the token stream, add logging, and use `AstDumper` to visualize the result.
 
@@ -1528,4 +1912,4 @@ The `Parser` class is a well-structured recursive descent parser with precedence
 
 ---
 
-**Happy parsing!** 🎉
+**Happy parsing!**

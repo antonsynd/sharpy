@@ -52,13 +52,22 @@ An **abstract record** that uses C# 9's record feature for:
 public static readonly SemanticType Unknown = new UnknownType();
 public static readonly SemanticType Void = new VoidType();
 public static readonly SemanticType Int = new BuiltinType { Name = "int", ClrType = typeof(int) };
-// ... etc
+public static readonly SemanticType Long = new BuiltinType { Name = "long", ClrType = typeof(long) };
+// Per spec: Sharpy 'float' maps to C# 'double' (64-bit), 'float32' maps to C# 'float' (32-bit)
+public static readonly SemanticType Float = new BuiltinType { Name = "float", ClrType = typeof(double) };
+public static readonly SemanticType Double = new BuiltinType { Name = "double", ClrType = typeof(double) };
+public static readonly SemanticType Float32 = new BuiltinType { Name = "float32", ClrType = typeof(float) };
+public static readonly SemanticType Bool = new BuiltinType { Name = "bool", ClrType = typeof(bool) };
+public static readonly SemanticType Str = new BuiltinType { Name = "str", ClrType = typeof(string) };
+public static readonly SemanticType Object = new UserDefinedType { Name = "object" };
 ```
 
 **Design Decision**: Common types are pre-allocated singletons to:
 - **Reduce allocations**: `SemanticType.Int` reused everywhere instead of creating new instances
 - **Enable reference equality**: `type == SemanticType.Int` works quickly
 - **Improve debugging**: Easier to see "ah, this is THE Int type" in the debugger
+
+**Note on `Object`**: The `object` type is a `UserDefinedType`, not a `BuiltinType`. This is because `object` represents `System.Object`—the universal base type that all other types can be assigned to.
 
 ---
 
@@ -70,7 +79,7 @@ SemanticType (abstract)
 ├── VoidType             // "None" in Python, void in C#
 ├── BuiltinType          // int, float, bool, str, etc.
 ├── GenericType          // list[T], dict[K,V]
-├── UserDefinedType      // Classes, interfaces
+├── UserDefinedType      // Classes, interfaces, object
 ├── NullableType         // T?
 ├── FunctionType         // (int, str) -> bool
 └── TupleType            // tuple[int, str, float]
@@ -180,6 +189,10 @@ public override bool IsAssignableTo(SemanticType other)
 
     if (other is UserDefinedType otherUdt && Symbol != null)
     {
+        // Same type
+        if (Symbol == otherUdt.Symbol || Name == otherUdt.Name)
+            return true;
+
         // Check inheritance chain
         var current = Symbol.BaseType;
         while (current != null)
@@ -270,10 +283,16 @@ public record BuiltinType : SemanticType
 |-------------|----------|-------|
 | `int` | `System.Int32` | Default integer |
 | `long` | `System.Int64` | Large integers |
-| `float` | `System.Single` | 32-bit float |
-| `double` | `System.Double` | 64-bit float (default floating) |
+| `float` | `System.Double` | **64-bit** (per spec: Sharpy `float` = C# `double`) |
+| `float32` | `System.Single` | 32-bit float (explicit when needed) |
+| `double` | `System.Double` | 64-bit float (alias for `float`) |
 | `bool` | `System.Boolean` | True/False |
 | `str` | `System.String` | Immutable strings |
+
+**Important**: Note that Sharpy's `float` maps to C# `double` (64-bit), not `float` (32-bit). This is a deliberate design decision—see the comment in source:
+```csharp
+// Per spec: Sharpy 'float' maps to C# 'double' (64-bit), 'float32' maps to C# 'float' (32-bit)
+```
 
 **The `ClrType` field**: Critical for code generation! The `RoslynEmitter` uses this to emit the correct C# type.
 
@@ -358,7 +377,7 @@ public record UserDefinedType : SemanticType
 }
 ```
 
-**Represents**: User-defined classes, structs, interfaces from Sharpy code
+**Represents**: User-defined classes, structs, interfaces from Sharpy code, plus `object`
 
 **The `Symbol` field**: Links to `TypeSymbol` which contains:
 - Base class (`BaseType`)

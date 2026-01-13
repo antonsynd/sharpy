@@ -106,13 +106,15 @@ static PrimitiveCatalog()
 Registers all primitives in categorized sections:
 1. **Signed integers** (sbyte → long)
 2. **Unsigned integers** (byte → ulong)
-3. **Floating-point** (float, double, decimal)
-4. **Non-numeric** (bool, char, str, object)
-5. **Void/None** (with `str`/`string` and `None`/`void` aliases)
+3. **Floating-point** (float32, float, float64, double, decimal)
+4. **Non-numeric** (bool, char, str, string, object)
+5. **Void/None** (with `None`/`void` aliases)
 
 **Important Details**:
 - `str` and `string` both map to C# `string` (alias support)
 - `None` and `void` both map to C# `void` (Pythonic vs. C# naming)
+- `float` and `float64` both map to C# `double` (Sharpy `float` is 64-bit by default)
+- `float32` maps to C# `float` (32-bit single precision)
 - Size is 0 for reference types (string, object) since they're not value types
 
 ### 3.2 Query Methods
@@ -152,10 +154,11 @@ public static PrimitiveInfo? GetPrimitiveInfo(SemanticType type)
 #### Helper Predicates
 
 ```csharp
-IsNumeric(type)      // Any numeric type
-IsInteger(type)      // Signed or unsigned integer
+IsNumeric(type)       // Any numeric type
+IsInteger(type)       // Signed or unsigned integer
 IsFloatingPoint(type) // float or double
-IsDecimal(type)      // decimal only
+IsDecimal(type)       // decimal only
+IsPrimitive(name)     // Check if name refers to a registered primitive
 ```
 
 These are **semantic sugar** over `GetPrimitiveInfo()` + checking the `Kind`. Used extensively in `TypeChecker` for readable validation:
@@ -166,6 +169,15 @@ if (PrimitiveCatalog.IsNumeric(leftType) && PrimitiveCatalog.IsNumeric(rightType
     // Can perform arithmetic
 }
 ```
+
+#### `GetAllPrimitives()`
+
+```csharp
+public static IEnumerable<(string Name, PrimitiveInfo Info)> GetAllPrimitives()
+    => _bySharpyName.Select(kv => (kv.Key, kv.Value));
+```
+
+Returns all registered primitives for iteration—useful for debugging and tooling.
 
 ### 3.3 Numeric Promotion Rules
 
@@ -186,6 +198,7 @@ ushort:    31
 short:     30
 byte:      29
 sbyte:     28
+void:       0  (special case)
 ```
 
 **Design Rationale**:
@@ -223,7 +236,7 @@ sbyte:     28
        64-bit → null (ERROR: no safe promotion exists)
    }
    ```
-   
+
    **Why?**: Mixing `int` and `uint` could overflow. C# promotes to `long` for safety. But `long + ulong` has nowhere to go—requires explicit cast.
 
 4. **Standard promotion**:
@@ -294,11 +307,11 @@ return promoted.ClrType switch
    // Unsigned → Signed requires extra bit
    if (!from.IsSigned && to.IsSigned)
        return to.SizeInBits > from.SizeInBits;
-   
+
    // Signed → Unsigned: NOT implicit
    if (from.IsSigned && !to.IsSigned)
        return false;
-   
+
    // Same signedness: size must be >=
    return to.SizeInBits >= from.SizeInBits;
    ```
@@ -330,7 +343,7 @@ return promoted.ClrType switch
 - **`SemanticType` hierarchy**: `PrimitiveCatalog` works with `BuiltinType` records and returns `SemanticType` instances.
 - **`TypeChecker`**: Calls `GetPromotedType()`, `CanImplicitlyConvert()` during type validation.
 - **`TypeResolver`**: Uses `GetByName()` to resolve type annotations like `: int`.
-- **`BuiltinRegistry`**: Coordinates with primitive definitions (though `PrimitiveCatalog` is the source of truth for primitives themselves).
+- **`BuiltinType.IsAssignableTo()`**: The `BuiltinType` class delegates implicit conversion checking to `PrimitiveCatalog.CanImplicitlyConvert()`.
 
 ### External Dependencies
 
@@ -439,8 +452,8 @@ public void ByteCanImplicitlyConvertToShort()
 1. **Add to `RegisterAll()`**:
    ```csharp
    Register(byName, byClr, new PrimitiveInfo(
-       "complex", "System.Numerics.Complex", 
-       typeof(System.Numerics.Complex), 
+       "complex", "System.Numerics.Complex",
+       typeof(System.Numerics.Complex),
        NumericKind.None,  // Or create a new kind
        0, false
    ));
@@ -487,7 +500,7 @@ public void ImplicitConversionRules(string from, string to, bool expected)
 {
     var fromInfo = PrimitiveCatalog.GetByName(from);
     var toInfo = PrimitiveCatalog.GetByName(to);
-    Assert.Equal(expected, 
+    Assert.Equal(expected,
                  PrimitiveCatalog.CanImplicitlyConvert(fromInfo, toInfo));
 }
 ```
@@ -510,7 +523,7 @@ public void ImplicitConversionRules(string from, string to, bool expected)
 
 After understanding `PrimitiveCatalog`, check out:
 
-1. **`SemanticType.cs`**: See how `BuiltinType` and other semantic types are defined.
+1. **`SemanticType.cs`**: See how `BuiltinType` and other semantic types are defined, and note how `BuiltinType.IsAssignableTo()` delegates to `PrimitiveCatalog`.
 2. **`TypeChecker.cs`**: See how `PrimitiveCatalog` is used during type checking.
 3. **`RoslynEmitter.cs`** (in CodeGen): See how `CSharpName` is used to emit correct C# code.
 4. **`BuiltinRegistry.cs`**: See how builtin functions (`len()`, `print()`) work alongside primitives.
@@ -544,7 +557,7 @@ if (resultType == null)
 ```csharp
 var fromInfo = PrimitiveCatalog.GetPrimitiveInfo(valueType);
 var toInfo = PrimitiveCatalog.GetPrimitiveInfo(targetType);
-if (fromInfo != null && toInfo != null && 
+if (fromInfo != null && toInfo != null &&
     !PrimitiveCatalog.CanImplicitlyConvert(fromInfo, toInfo))
 {
     // Error: cannot implicitly convert
@@ -556,6 +569,15 @@ if (fromInfo != null && toInfo != null &&
 ```csharp
 var info = PrimitiveCatalog.GetByName(sharpyTypeName);
 var csharpName = info?.CSharpName;  // e.g., "str" → "string"
+```
+
+### Scenario 5: Iterate all primitives
+
+```csharp
+foreach (var (name, info) in PrimitiveCatalog.GetAllPrimitives())
+{
+    Console.WriteLine($"{name}: {info.Kind}");
+}
 ```
 
 ---

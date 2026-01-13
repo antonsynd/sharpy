@@ -4,67 +4,202 @@
 
 ---
 
-## 1. Overview
+## Overview
 
-The `Token.cs` file is the fundamental data structure for the **lexical analysis** phase of the Sharpy compiler. It defines:
+The `Token.cs` file defines the fundamental data structures for **lexical analysis** (tokenization)—the first phase of the Sharpy compiler pipeline. It contains:
 
-- **`TokenType`**: An enumeration of all possible token categories in the Sharpy language
-- **`Token`**: A record representing a single lexical unit (token) with its type, value, and position
+- **`TokenType`**: An enum cataloging all possible token categories in the Sharpy language
+- **`Token`**: A record representing a single lexical unit with its type, value, and source position
 
-This file sits at the very beginning of the compilation pipeline. When source code is fed into the lexer, it's broken down into a stream of `Token` objects that the parser can then work with. Think of tokens as the "words" of the programming language, where the lexer is performing the equivalent of breaking prose into individual words and punctuation marks.
+**Pipeline Position:**
+```
+Source (.spy) → [LEXER produces Tokens] → Parser → AST → Semantic Analysis → Code Generation
+```
 
-**Key Role**: This file doesn't contain any logic—it's purely **data definitions**. The actual tokenization logic lives in `Lexer.cs`, which creates instances of these types.
+Think of tokens as the "words" of the programming language. Just as reading prose involves recognizing individual words and punctuation, the lexer breaks source code into tokens that the parser can work with. This file defines **what** those tokens look like; the actual tokenization logic lives in `Lexer.cs`.
+
+**Key Insight:** This file contains no logic—it's purely **data definitions**. The `Token` record is the contract between the Lexer (producer) and Parser (consumer).
 
 ---
 
-## 2. Class/Type Structure
+## Class/Type Structure
 
-### 2.1 `TokenType` Enum
+### `TokenType` Enum
 
 ```csharp
 public enum TokenType
 {
-    // 135 different token types organized into logical groups
+    // ~80 different token types organized into logical groups
 }
 ```
 
-The `TokenType` enum is the heart of this file. It catalogs **every distinct lexical element** that can appear in Sharpy source code. The enum is organized into intuitive categories:
+The `TokenType` enum exhaustively lists every distinct lexical element that can appear in Sharpy source code. Understanding these categories is essential for working anywhere in the compiler.
 
-#### **Literals** (lines 8-21)
-- Numeric: `Integer`, `Float`
-- String types: `String`, `RawString` (Python's r-strings)
-- F-string components: `FStringStart`, `FStringText`, `FStringExprStart`, etc.
-  - *Note*: F-strings require multiple tokens because they mix literal text with embedded expressions
-- Boolean and null: `True`, `False`, `None`
+#### Literals (lines 8-21)
 
-#### **Keywords** (lines 24-63)
-Organized by purpose:
-- **Control Flow**: `If`, `Elif`, `Else`, `While`, `For`, `Return`, `Break`, `Continue`, etc.
-- **Definitions**: `Def`, `Class`, `Struct`, `Interface`, `Enum`
-- **Imports**: `Import`, `From`, `As`
-- **Type System**: `Auto` (type inference), `Const`, `Lambda`
-- **Boolean Logic**: `And`, `Or`, `Not`, `Is` (keywords, not operators)
+Represent constant values in source code:
 
-#### **Operators** (lines 65-109)
-Grouped by function:
-- **Arithmetic**: `Plus`, `Minus`, `Star`, `Slash`, `DoubleSlash` (floor division), `DoubleStar` (exponentiation)
-- **Comparison**: `Equal`, `NotEqual`, `Less`, `Greater`, etc.
-- **Bitwise**: `Ampersand`, `Pipe`, `Caret`, `Tilde`, `LeftShift`, `RightShift`
-- **Assignment**: `Assign`, `PlusAssign`, `MinusAssign`, etc. (compound assignments)
-- **Special**: `Question` (nullable type marker), `NullConditional` (`?.`), `NullCoalesce` (`??`), `Ellipsis` (`...`)
+| Token Type | Description | Example |
+|------------|-------------|---------|
+| `Integer` | Whole numbers | `42`, `0xFF`, `0b1010`, `1_000_000` |
+| `Float` | Floating-point numbers | `3.14`, `1e10`, `2.5f` |
+| `String` | Regular string literals | `"hello"`, `'world'`, `"""multi"""` |
+| `RawString` | Raw strings (r-prefix, no escape processing) | `r"C:\path"`, `r'\d+\.\d+'` |
+| `True`, `False` | Boolean literals | `True`, `False` |
+| `None` | Null/none value | `None` |
 
-#### **Delimiters** (lines 111-124)
-Punctuation and structural markers:
-- Brackets: `LeftParen`, `RightParen`, `LeftBracket`, `RightBracket`, `LeftBrace`, `RightBrace`
-- Separators: `Comma`, `Colon`, `Semicolon`, `Dot`
-- Special: `Arrow` (function return type `->`, decorators `@`)
+#### F-String Tokens (lines 13-18)
 
-#### **Special Tokens** (lines 127-134)
-- **Indentation-sensitive**: `Indent`, `Dedent`, `Newline` (Python-style whitespace significance)
-- **Structural**: `Eof` (end of file)
-- **Miscellaneous**: `Backtick` (for literal/escaped names), `Comment`, `Backslash` (line continuation)
+F-strings require multiple token types because they interleave literal text with embedded expressions:
 
-### 2.2 `Token` Record
+```python
+f"Hello {name}!"
+```
+
+Tokenizes to this sequence:
+```
+FStringStart("f\"") → FStringText("Hello ") → FStringExprStart("{")
+→ Identifier("name") → FStringExprEnd("}") → FStringText("!")
+→ FStringEnd("\"")
+```
+
+| Token Type | Description |
+|------------|-------------|
+| `FStringStart` | Opening `f"` or `f'` |
+| `FStringText` | Literal text segments between expressions |
+| `FStringExprStart` | `{` starting an interpolated expression |
+| `FStringExprEnd` | `}` ending an interpolated expression |
+| `FStringFormatSpec` | Format spec after `:` (e.g., `.2f`, `>10`) |
+| `FStringEnd` | Closing quote |
+
+**Why so many token types for f-strings?** The lexer needs to track state as it transitions between "literal text mode" and "expression mode." Using distinct tokens makes this state machine explicit and allows the parser to handle embedded expressions correctly.
+
+#### Keywords (lines 24-86)
+
+Reserved words organized by purpose. Each keyword gets its own enum value (e.g., `Def` for `def`) rather than a generic `Keyword` type—this enables type-safe pattern matching in the parser.
+
+**Control Flow:**
+```csharp
+Def, Class, Struct, Interface, Enum,
+If, Else, Elif, While, For, In, Return, Break, Continue, Pass,
+Try, Except, Finally, Raise, Assert, With
+```
+
+**Imports:**
+```csharp
+Import, From, As
+```
+
+**Type/Value:**
+```csharp
+Auto,     // Type inference
+Const,    // Constant declaration
+Lambda,   // Lambda expressions
+Type,     // Type alias declaration
+```
+
+**Pattern Matching:**
+```csharp
+Match, Case
+```
+
+**Async:**
+```csharp
+Async, Await, Yield
+```
+
+**Members:**
+```csharp
+Property, Event
+```
+
+**Boolean Operators (as keywords, following Python):**
+```csharp
+And, Or, Not, Is
+```
+
+**Other:**
+```csharp
+Del,     // Delete statement
+To,      // Type coercion operator
+Maybe,   // Optional from nullable expressions
+```
+
+**Future Reserved (not yet implemented):**
+```csharp
+Defer, Do
+```
+
+See `docs/language_specification/keywords.md` for the complete keyword reference.
+
+#### Operators (lines 88-133)
+
+Mathematical, comparison, bitwise, and assignment operators:
+
+**Arithmetic:**
+- `Plus` (+), `Minus` (-), `Star` (*), `Slash` (/)
+- `DoubleSlash` (//) — floor division
+- `Percent` (%) — modulo
+- `DoubleStar` (**) — exponentiation
+
+**Comparison:**
+- `Equal` (==), `NotEqual` (!=)
+- `Less` (<), `Greater` (>), `LessEqual` (<=), `GreaterEqual` (>=)
+
+**Bitwise:**
+- `Ampersand` (&), `Pipe` (|), `Caret` (^), `Tilde` (~)
+- `LeftShift` (<<), `RightShift` (>>)
+
+**Assignment:**
+- `Assign` (=)
+- Compound: `PlusAssign` (+=), `MinusAssign` (-=), `StarAssign` (*=), etc.
+
+**Special Operators:**
+- `Question` (?) — nullable type marker
+- `NullConditional` (?.) — safe navigation
+- `NullCoalesce` (??) — null coalescing
+- `Ellipsis` (...) — spread/rest operator
+- `PipeForward` (|>) — pipeline operator
+
+#### Delimiters (lines 135-148)
+
+Structural punctuation:
+
+```csharp
+LeftParen, RightParen,     // ( )
+LeftBracket, RightBracket, // [ ]
+LeftBrace, RightBrace,     // { }
+Comma, Colon, Semicolon,   // , : ;
+Dot, Arrow, At, Backslash  // . -> @ \
+```
+
+**Note:** Brackets are significant for implicit line continuation—inside `()`, `[]`, or `{}`, newlines are ignored. The lexer tracks bracket depth to implement this.
+
+#### Structural Tokens (lines 150-158)
+
+Special tokens for Python-style block structure and document boundaries:
+
+| Token Type | Description |
+|------------|-------------|
+| `Newline` | End of a logical line (significant in Python-style syntax) |
+| `Indent` | Indentation increase → block start |
+| `Dedent` | Indentation decrease → block end |
+| `Eof` | End of file |
+| `Backtick` | For literal/escaped identifiers (`` `class` ``) |
+| `Comment` | Comment text (typically skipped but available for tooling) |
+
+**Indentation tokens** are what make Python-style syntax possible. The lexer converts invisible whitespace changes into explicit `Indent`/`Dedent` tokens:
+
+```python
+def foo():      # ← Newline
+    x = 1       # ← Indent (entering function body)
+    if True:    # ← Newline
+        y = 2   # ← Indent (entering if body)
+    z = 3       # ← Dedent (exiting if body)
+                # ← Dedent (exiting function at EOF)
+```
+
+### `Token` Record
 
 ```csharp
 public record Token
@@ -73,291 +208,341 @@ public record Token
     public string Value { get; init; } = string.Empty;
     public int Line { get; init; }
     public int Column { get; init; }
+
+    public Token(TokenType type, string value, int line, int column)
+    {
+        Type = type;
+        Value = value;
+        Line = line;
+        Column = column;
+    }
 }
 ```
 
-The `Token` record is a **immutable data container** representing a single token. It uses C# 9+ record syntax for concise, value-based equality.
+The `Token` record is an **immutable data container** representing a single token:
 
-**Properties**:
+| Property | Description | Example |
+|----------|-------------|---------|
+| `Type` | Which kind of token (from `TokenType` enum) | `TokenType.Identifier` |
+| `Value` | The actual text from source code | `"myVariable"`, `"+"`, `"42"` |
+| `Line` | 1-indexed line number in source | `42` |
+| `Column` | 1-indexed column position | `10` |
 
-- **`Type`**: Which kind of token this is (from the `TokenType` enum)
-- **`Value`**: The actual text from the source code (e.g., `"42"`, `"myVariable"`, `"+"`)
-  - For keywords/operators, this might be redundant with the type, but it preserves the original source text
-  - For identifiers and literals, this contains the actual value
-- **`Line`** and **`Column`**: Position in the source file (1-indexed)
-  - Critical for error reporting: "Syntax error at line 42, column 10"
-  - Used throughout the compiler for diagnostics
-
-**Why a record?**
-- Immutability: Once created, tokens never change (safe for concurrent analysis)
-- Value equality: Two tokens with same Type/Value/Line/Column are considered equal
-- Concise syntax: `with` expressions allow non-destructive mutations if needed
-- Pattern matching: Records work well with C# pattern matching in the parser
+**Why use a `record`?**
+- **Immutability**: Tokens can't be accidentally modified after creation (thread-safe)
+- **Value equality**: Two tokens with same fields are equal (great for testing)
+- **Built-in `ToString()`**: Useful for debugging
+- **Pattern matching**: Works well with C# switch expressions in the parser
 
 ---
 
-## 3. Key Functions/Methods
+## Key Functions/Methods
 
-### 3.1 Constructor
+### Constructor
 
 ```csharp
 public Token(TokenType type, string value, int line, int column)
-{
-    Type = type;
-    Value = value;
-    Line = line;
-    Column = column;
-}
 ```
 
-**Purpose**: Creates a new token instance with all required information.
+Creates a new token instance. This is the only way to create tokens (no factory methods or builders).
 
-**Parameters**:
-- `type`: The category of token (keyword, operator, identifier, etc.)
-- `value`: The literal text from source code
-- `line`: 1-indexed line number in source file
-- `column`: 1-indexed column number (character position in line)
-
-**Usage Pattern** (in `Lexer.cs`):
+**Usage in Lexer.cs:**
 ```csharp
-// When the lexer recognizes "def" at position 1:5
-var token = new Token(TokenType.Def, "def", line: 1, column: 5);
+// When the lexer recognizes "def" at line 1, column 5
+return new Token(TokenType.Def, "def", _line, _column);
+
+// When it finds an identifier
+return new Token(TokenType.Identifier, identifierText, startLine, startColumn);
 ```
 
-**Design Note**: The constructor is straightforward because tokens are simple data carriers. All the intelligence lives in the lexer that creates them.
+**Design Note:** The constructor is intentionally simple because tokens are pure data carriers. All intelligence lives in the lexer that creates them.
 
 ---
 
-## 4. Dependencies
+## Dependencies
 
-### 4.1 Inbound Dependencies (Who Uses This File)
+### Inbound Dependencies (Who Uses This File)
+
+This file is **foundational**—many parts of the compiler depend on it:
 
 - **`Lexer.cs`**: Creates `Token` instances during tokenization
 - **`Parser/Parser.cs`**: Consumes token streams, pattern matches on `TokenType`
-- **All Parser AST files**: Store position info using `Token.Line` and `Token.Column`
-- **`Diagnostics/`**: Uses position info for error messages
-- **Semantic analysis**: Indirectly via AST nodes that track token positions
+- **`LexerError.cs`**: References token types for error messages
+- **`ParserError.cs`**: Uses token positions for error reporting
+- **AST node classes**: Store position info using `Line` and `Column`
+- **`Diagnostics/`**: Uses position info for compiler messages
+- **Test files**: Verify token sequences
 
-### 4.2 Outbound Dependencies (What This File Needs)
+### Outbound Dependencies (What This File Needs)
 
-**None**. This file is completely self-contained—no imports beyond the `namespace` declaration. This is intentional design for a foundational data structure.
+**None.** This file is completely self-contained—no imports beyond the `namespace` declaration. This is intentional for a foundational data structure.
 
 ---
 
-## 5. Patterns and Design Decisions
+## Patterns and Design Decisions
 
-### 5.1 Enum-Based Token Types
+### 1. Single Large Enum for All Token Types
 
-**Decision**: Use a single large enum rather than a class hierarchy.
+**Decision:** Use one `TokenType` enum rather than separate enums for keywords, operators, etc.
 
-**Rationale**:
-- **Performance**: Enums are lightweight integers (no heap allocation)
-- **Exhaustiveness**: Pattern matching can check all cases
-- **Simplicity**: Easy to add new token types without complex inheritance
+**Benefits:**
+- Simple switch statements in the parser
+- Easy token comparisons
+- Straightforward serialization and debugging
 
-**Alternative Considered**: A class hierarchy (`Token` base with `KeywordToken`, `OperatorToken`, etc.) would be more OOP but adds unnecessary complexity for simple data.
+**Trade-off:** The enum is large (~80 values), but comments organize it into navigable sections.
 
-### 5.2 Immutable Record
+### 2. Keywords as Distinct Token Types
 
-**Decision**: Use C# `record` with `init`-only properties.
+**Decision:** Each keyword gets its own enum value (`Def`, `Class`, `If`) rather than a generic `Keyword` type with a string value.
 
-**Benefits**:
-- Thread-safe by default (important for parallel parsing experiments)
-- Value semantics: Easy to compare tokens in tests
-- Structural equality: `token1 == token2` works intuitively
-
-**Impact**: Once created, tokens are snapshots of a moment in lexical analysis. If you need to "modify" a token, use `with` expressions:
+**Benefits:**
 ```csharp
-var newToken = oldToken with { Line = 5 };
+// Parser can use type-safe pattern matching
+switch (token.Type)
+{
+    case TokenType.Def:
+        return ParseFunctionDef();
+    case TokenType.Class:
+        return ParseClassDef();
+    // ...
+}
+
+// No string comparisons needed
+// Can't accidentally check for misspelled keyword
 ```
 
-### 5.3 Positional Information
+### 3. F-String Decomposition
 
-**Decision**: Every token carries `Line` and `Column` information.
+**Decision:** F-strings are tokenized into multiple specialized token types.
 
-**Why**: Enables high-quality error messages throughout the pipeline:
+**Why:** This mirrors Python's approach and enables:
+- Proper expression parsing within f-strings
+- Nested f-string support
+- Clean separation between lexer and parser responsibilities
+
+The lexer handles f-string structure; the parser handles embedded expressions.
+
+### 4. Boolean Operators as Keywords
+
+**Decision:** `And`, `Or`, `Not`, and `Is` are keywords, not operators like `&&` or `||`.
+
+**Why:** This follows Python's syntax:
+```python
+# Sharpy/Python style
+if x and y:
+    pass
+
+# NOT C#/Java style
+# if (x && y) { }
+```
+
+### 5. Position Tracking on Every Token
+
+**Decision:** Every token carries `Line` and `Column` information.
+
+**Why:** Essential for high-quality error messages:
 ```
 Error: Undefined variable 'x' at line 42, column 10
     if x > 0:
        ^
 ```
 
-**Cost**: ~8 bytes per token (two ints), but this is negligible compared to the value of good diagnostics.
+**Cost:** ~8 bytes per token (two ints), negligible compared to the value of good diagnostics.
 
-### 5.4 F-String Token Decomposition
+### 6. Immutable Record Type
 
-**Decision**: F-strings are broken into multiple token types (`FStringStart`, `FStringText`, `FStringExprStart`, etc.).
+**Decision:** Use C# `record` with `init`-only properties.
 
-**Why**: F-strings like `f"Hello {name}, you are {age} years old"` mix literal text with expressions. The lexer needs to track state as it transitions between text and expressions.
-
-**Example Token Stream**:
-```python
-f"Result: {x + 1}"
-```
-Produces:
-1. `FStringStart` (`f"`)
-2. `FStringText` (`"Result: "`)
-3. `FStringExprStart` (`{`)
-4. `Identifier` (`x`)
-5. `Plus` (`+`)
-6. `Integer` (`1`)
-7. `FStringExprEnd` (`}`)
-8. `FStringEnd` (`"`)
-
-### 5.5 Python-Inspired Indentation Tokens
-
-**Decision**: Include `Indent`, `Dedent`, and `Newline` as first-class tokens.
-
-**Context**: Sharpy uses Python-style significant whitespace. The lexer converts invisible indentation changes into explicit `Indent` and `Dedent` tokens, making the parser's job simpler.
-
-**Example**:
-```python
-def foo():      # <- Newline here
-    x = 1       # <- Indent before this line
-    if True:    # <- Newline
-        y = 2   # <- Indent
-                # <- Dedent after this
-    z = 3       # <- Back to function body indent
-                # <- Dedent to module level
-```
+**Benefits:**
+- Thread-safe by default (important for potential parallel analysis)
+- Value semantics make testing easy
+- Once created, tokens are snapshots that never change
 
 ---
 
-## 6. Debugging Tips
+## Debugging Tips
 
-### 6.1 Inspecting Token Streams
+### 1. Inspecting Token Streams
 
-When debugging lexer issues, you can dump token streams:
+When debugging lexer/parser issues, dump the token stream:
 
 ```csharp
-// In Lexer.cs or a test
-var tokens = lexer.Tokenize();
+var lexer = new Lexer(source);
+var tokens = lexer.TokenizeAll();
 foreach (var token in tokens)
 {
     Console.WriteLine($"{token.Type,-20} '{token.Value}' at {token.Line}:{token.Column}");
 }
 ```
 
-**Output Example**:
+**Output example:**
 ```
 Def                  'def' at 1:1
 Identifier           'hello' at 1:5
 LeftParen            '(' at 1:10
 RightParen           ')' at 1:11
 Colon                ':' at 1:12
-Newline              '\n' at 1:13
-Indent               '    ' at 2:1
+Newline              '' at 1:13
+Indent               '' at 2:1
 ```
 
-### 6.2 Common Issues
+### 2. Using the CLI
 
-**Issue**: Token positions are off by one.
-- **Check**: Are Line/Column 0-indexed or 1-indexed? (They should be 1-indexed)
-- **Solution**: Look for `line + 1` or `column + 1` in lexer code
+The Sharpy CLI can emit tokens:
+```bash
+dotnet run --project src/Sharpy.Cli -- --emit-tokens file.spy
+```
 
-**Issue**: F-string parsing fails.
-- **Check**: Is the lexer tracking state correctly through `FStringStart → FStringExprStart → FStringExprEnd` transitions?
-- **Solution**: Add logging in `Lexer.cs` to print state changes
+### 3. Checking Token Values
 
-**Issue**: Indentation errors in Python-style code.
-- **Check**: Are `Indent`/`Dedent` tokens being generated correctly?
-- **Tip**: Print the indentation stack in the lexer to see nesting levels
-
-### 6.3 Test Strategies
-
-**Unit Test Pattern**:
+For tokens like `Identifier` or `String`, the content is in `Value`:
 ```csharp
-[Fact]
-public void Lexer_Tokenizes_DefKeyword()
+if (token.Type == TokenType.Identifier)
 {
-    var lexer = new Lexer("def foo():");
-    var tokens = lexer.Tokenize();
-    
-    Assert.Equal(TokenType.Def, tokens[0].Type);
-    Assert.Equal("def", tokens[0].Value);
-    Assert.Equal(1, tokens[0].Line);
-    Assert.Equal(1, tokens[0].Column);
+    var name = token.Value;  // e.g., "myVariable"
 }
 ```
 
-**Integration Test**: Compile a small Sharpy program and check tokens are passed correctly to the parser.
+For keywords and operators, use `Type` (not `Value`) for checks:
+```csharp
+// Don't do this (fragile, typo-prone):
+if (token.Value == "def")
+
+// Do this (type-safe):
+if (token.Type == TokenType.Def)
+```
+
+### 4. INDENT/DEDENT Debugging
+
+`Indent` and `Dedent` tokens have empty `Value` strings—the information is purely in the token type. When debugging indentation issues:
+- Look at the sequence of `Indent`/`Dedent` tokens relative to `Newline` tokens
+- Check the lexer's indentation stack state
+
+### 5. Record Equality for Testing
+
+Since `Token` is a record, you can compare tokens directly:
+```csharp
+var expected = new Token(TokenType.Plus, "+", 1, 5);
+var actual = lexer.NextToken();
+Assert.Equal(expected, actual);  // Works!
+```
+
+### 6. Common Issues
+
+| Issue | Check | Solution |
+|-------|-------|----------|
+| Token positions off by one | Are Line/Column 0-indexed or 1-indexed? | They should be 1-indexed |
+| F-string parsing fails | Is lexer tracking state correctly? | Add logging for state transitions |
+| Indentation errors | Are Indent/Dedent tokens generated correctly? | Print the indentation stack |
 
 ---
 
-## 7. Contribution Guidelines
+## Contribution Guidelines
 
-### 7.1 Adding a New Token Type
+### Adding a New Keyword
 
-**When to add**: Introducing a new language feature that needs a new keyword, operator, or literal type.
+1. **Add to `TokenType` enum** in the appropriate category:
+   ```csharp
+   // Keywords - Your Category
+   YourKeyword,
+   ```
 
-**Steps**:
-1. **Add to enum**: Insert in the appropriate category in `TokenType`
-2. **Update lexer**: Modify `Lexer.cs` to recognize and emit the new token
-3. **Add tests**: Create tests in `Lexer/LexerTests.cs`
-4. **Update parser**: Add parsing logic for the new token in `Parser/Parser.cs`
-5. **Document**: Add to language spec if it's a user-facing feature
+2. **Update the keyword dictionary** in `Lexer.cs`:
+   ```csharp
+   { "yourkeyword", TokenType.YourKeyword }
+   ```
 
-**Example**: Adding a `match` statement keyword:
+3. **Update language specification** in `docs/language_specification/keywords.md`
+
+4. **Add parser handling** if the keyword introduces new syntax
+
+5. **Write tests** covering:
+   - Lexer recognizes the keyword
+   - Parser handles it correctly
+   - Error cases (keyword used as identifier)
+
+### Adding a New Operator
+
+1. **Add to `TokenType` enum** with a comment showing the symbol:
+   ```csharp
+   // Operators - Special
+   YourOperator,    // @@ (describe the symbol)
+   ```
+
+2. **Update `ReadOperatorOrDelimiter()`** in `Lexer.cs`
+
+3. **Update parser** to handle the operator in expressions
+
+4. **Document precedence** if it's a binary operator
+
+### Adding a New Literal Type
+
+Example: Adding byte string literals (`b"..."`)
+
+1. **Add token type(s)**:
+   ```csharp
+   ByteString,  // b"bytes"
+   ```
+
+2. **Update lexer** to recognize the prefix and call appropriate reader
+
+3. **Update parser** to create appropriate AST node
+
+4. **Update code generator** to emit correct C# code
+
+### Modifying Token Structure
+
+**Caution:** The `Token` record is used throughout the codebase. Changes ripple widely.
+
+**Safe additions:**
 ```csharp
-// In TokenType enum (around line 40)
-Match,
-
-// In Lexer.cs
-if (word == "match")
-    return new Token(TokenType.Match, word, line, column);
+// Add optional properties with default values
+public string? Trivia { get; init; } = null;  // For preserving whitespace/comments
 ```
-
-### 7.2 Modifying Token Structure
-
-**Caution**: The `Token` record is used throughout the codebase. Changes here ripple widely.
-
-**Safe additions**:
-- Add optional properties with default values:
-  ```csharp
-  public string? Trivia { get; init; } = null;  // For preserving whitespace/comments
-  ```
 
 **Breaking changes** (require updates everywhere):
 - Changing constructor signature
 - Removing properties
 - Renaming properties
 
-**Best practice**: If you need to track additional token metadata, consider adding it to a separate data structure (e.g., `TokenMetadata` dictionary) rather than modifying `Token` itself.
+**Best practice:** If you need additional metadata, consider a separate data structure rather than modifying `Token`.
 
-### 7.3 Refactoring Considerations
-
-**Potential improvements**:
-- **Span support**: Replace `string Value` with `ReadOnlySpan<char>` for zero-allocation tokenization (performance optimization)
-- **Interning**: Intern common token values (keywords, operators) to reduce memory usage
-- **Token trivia**: Add support for preserving whitespace/comments for code formatters
-
-**Anti-patterns to avoid**:
-- Adding behavior/methods to `Token` (keep it as pure data)
-- Making properties mutable (breaks thread-safety guarantees)
-- Storing complex objects in `Value` (keep it as a string)
-
-### 7.4 Testing Checklist
+### Testing Checklist
 
 When modifying this file:
 - [ ] All lexer tests pass (`dotnet test --filter "FullyQualifiedName~Lexer"`)
 - [ ] Parser tests still pass (they consume tokens)
 - [ ] Integration tests compile sample programs successfully
-- [ ] Error messages still display correct line/column numbers
-- [ ] Added documentation for new token types in language specs
+- [ ] Error messages display correct line/column numbers
+- [ ] New token types are documented in language specs
 
 ---
 
-## 8. Related Files
+## Relationship to Language Specification
+
+The token types correspond directly to specification documents:
+
+| Spec Document | Relevant Token Types |
+|---------------|----------------------|
+| `docs/language_specification/keywords.md` | All keyword tokens |
+| `docs/language_specification/lexer_implementation.md` | Structural tokens, state machine |
+| `docs/language_specification/string_literals.md` | `String`, `RawString`, f-string tokens |
+
+When the language spec changes, this file must be updated to match. The enum serves as the **executable definition** of what tokens exist in the language.
+
+---
+
+## Related Files
 
 - **`Lexer/Lexer.cs`**: The tokenization engine that creates `Token` instances
+- **`Lexer/LexerError.cs`**: Exception type for lexical errors
 - **`Parser/Parser.cs`**: Consumes token streams and builds the AST
-- **`Diagnostics/Logger.cs`**: Uses token position info for error reporting
 - **`Lexer/LexerTests.cs`**: Unit tests for tokenization
-- **`Parser/Ast/Node.cs`**: AST nodes store token positions for source mapping
 
 ---
 
-## 9. Quick Reference: Token Categories
+## Quick Reference: Token Categories
 
 | Category | Example Types | Purpose |
 |----------|---------------|---------|
@@ -370,32 +555,24 @@ When modifying this file:
 
 ---
 
-## 10. Learning Path
+## Summary
 
-**For newcomers**, study files in this order:
-1. **Token.cs** (you are here) - Understand the data
-2. **Lexer.cs** - See how tokens are created
-3. **LexerTests.cs** - Learn expected behavior through examples
-4. **Parser.cs** - See how tokens are consumed
-5. **AST nodes** - Understand how tokens become syntax trees
+`Token.cs` is a small but foundational file that defines:
+- **What tokens exist** in the Sharpy language (via `TokenType`)
+- **How tokens are represented** at runtime (via `Token` record)
 
-**Key insight**: Tokens are the **contract** between the lexer and parser. The lexer promises to produce well-formed tokens; the parser promises to handle any valid token sequence.
+Understanding this file is essential because every phase of the compiler after lexing works with tokens. The parser pattern-matches on `TokenType` to build the AST, error reporters use source locations for messages, and tooling uses tokens for syntax highlighting.
 
----
+**Key takeaways:**
+- `TokenType` is exhaustive—if it can appear in source code, there's a token type for it
+- `Token` is immutable and carries source location for error reporting
+- Keywords are distinct types (not strings) for type safety
+- F-strings use multiple token types to handle embedded expressions
+- Indentation tokens (`Indent`/`Dedent`) make Python-style syntax possible
 
-## Appendix: Historical Context
+When you encounter a lexer or parser issue, this file is your reference for what tokens should be in play.
 
-The token design reflects Sharpy's goal of being a **Pythonic language for .NET**:
-
-- **Python influences**: 
-  - Significant whitespace (`Indent`/`Dedent` tokens)
-  - F-strings (complex tokenization for string interpolation)
-  - Keyword operators (`and`, `or`, `not`, `is`)
-  - Floor division (`//`) and exponentiation (`**`)
-
-- **.NET influences**:
-  - Null-conditional operators (`?.`, `??`)
-  - Explicit type annotations (`->` for return types)
-  - `Struct`, `Interface` keywords (not in Python)
-
-This dual heritage is visible in every decision in `Token.cs`—it's not just a token file, it's a **map of two language worlds meeting**.
+**Next steps after understanding Token.cs:**
+1. Study `Lexer.cs` to see how tokens are created
+2. Look at `LexerTests.cs` to see expected token sequences
+3. Read `Parser.cs` to see how tokens become an AST
