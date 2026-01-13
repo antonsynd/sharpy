@@ -1,13 +1,13 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-13T00:13:36.301649",
+  "last_updated": "2026-01-13T00:24:56.997001",
   "phases": [
     {
       "id": "0.1.1",
       "name": "Parser Foundation - Remediation",
       "goal": "",
-      "status": "pending",
-      "progress": 0.0,
+      "status": "in_progress",
+      "progress": 20.0,
       "tasks": [
         {
           "id": "R-0.1.1.1",
@@ -17,8 +17,46 @@
           "files": [
             "src/Sharpy.Compiler/Parser/Parser.cs"
           ],
-          "status": "pending",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 2,
+              "backend": "claude_code",
+              "started_at": "2026-01-13T00:24:56.995471",
+              "completed_at": "2026-01-13T00:24:56.995473",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T00:24:56.995461",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "I notice the tests use `.property` as a member name. The word `property` is a keyword in Sharpy, so these tests are implicitly testing keyword-as-member-name support. Now I have all the information I need to compile the Spec Adherence Report.\n\n## Spec Adherence Report: Verify Keyword-as-Member-Name Bug Resolution\n\n**Spec:** `docs/language_specification/keywords.md`, `docs/language_specification/identifiers.md`, `docs/language_specification/grammar.ebnf.txt`\n**Implementation:** `src/Sharpy.Compiler/Parser/Parser.cs`\n\n### Specification Requirements\n\nFrom `docs/language_specification/keywords.md`:\n- **Hard keywords** include: `property`, `type`, `event`, `class`, `def`, `if`, `else`, `for`, `in`, `return`, `True`, `False`, `None`, etc.\n- These are \"reserved keywords\" that cannot be used as regular identifiers\n\nFrom `docs/language_specification/identifiers.md`:\n- \"Cannot be a keyword\" (line 18)\n- However, **backtick escaping** (`` `keyword` ``) allows using keywords as identifiers (lines 43-57)\n\nFrom `docs/language_specification/grammar.ebnf.txt`:\n- `attribute_ref ::= '.' identifier` (line 679)\n- The grammar does NOT explicitly allow keywords after `.` in member access\n\n**Implicit Requirement (from .NET interop):**\nPer `docs/implementation_planning/task_list_remediation.md` (lines 27-31):\n> .NET types may have members named after Sharpy keywords (e.g., `object.type`, `collection.count`)\n\nThis creates an **implicit requirement** that keywords should be allowed as member names after the `.` operator, even though the formal grammar doesn't explicitly state this.\n\n### Implementation Analysis\n\nThe implementation in `src/Sharpy.Compiler/Parser/Parser.cs` provides:\n\n1. **`ExpectIdentifierOrKeyword()` method** (lines 2399-2408):\n   ```csharp\n   private string ExpectIdentifierOrKeyword()\n   {\n       if (Current.Type == TokenType.Identifier || IsKeywordToken(Current.Type))\n       {\n           var value = Current.Value;\n           Advance();\n           return value;\n       }\n       throw new ParserError($\"Expected identifier, got {Current.Type}\", Current.Line, Current.Column);\n   }\n   ```\n\n2. **`IsKeywordToken()` helper** (lines 2413-2445):\n   - Covers all control flow keywords (`Def`, `Class`, `If`, `Else`, `While`, `For`, etc.)\n   - Covers import keywords (`Import`, `From`, `As`)\n   - Covers type/value keywords (`Auto`, `Const`, `Lambda`, `Type`)\n   - Covers pattern matching keywords (`Match`, `Case`)\n   - Covers async keywords (`Async`, `Await`, `Yield`)\n   - Covers member keywords (`Property`, `Event`)\n   - Covers boolean operators (`And`, `Or`, `Not`, `Is`)\n   - Covers boolean literals (`True`, `False`, `None`)\n   - Covers other keywords (`Del`, `To`, `Maybe`, `Defer`, `Do`)\n\n3. **`ParsePostfix()` usage** (lines 1806-1822):\n   ```csharp\n   if (Current.Type == TokenType.Dot || Current.Type == TokenType.NullConditional)\n   {\n       var isNullConditional = Current.Type == TokenType.NullConditional;\n       Advance();\n\n       var member = ExpectIdentifierOrKeyword();  // <-- Allows keywords as member names\n\n       expr = new MemberAccess { ... };\n   }\n   ```\n\n### Compliant\n\n- [x] **Keywords allowed in member access**: The parser correctly calls `ExpectIdentifierOrKeyword()` after `.` and `?.` operators, allowing all Sharpy keywords to be used as member names\n- [x] **Control flow keywords**: `Def`, `Class`, `Struct`, `Interface`, `Enum`, `If`, `Else`, `Elif`, `While`, `For`, `In`, `Return`, `Break`, `Continue`, `Pass`, `Try`, `Except`, `Finally`, `Raise`, `Assert`, `With`\n- [x] **Import keywords**: `Import`, `From`, `As`\n- [x] **Type/value keywords**: `Auto`, `Const`, `Lambda`, `Type`\n- [x] **Pattern matching keywords**: `Match`, `Case`\n- [x] **Async keywords**: `Async`, `Await`, `Yield`\n- [x] **Member keywords**: `Property`, `Event`\n- [x] **Boolean operators**: `And`, `Or`, `Not`, `Is`\n- [x] **Boolean literals**: `True`, `False`, `None`\n- [x] **Other keywords**: `Del`, `To`, `Maybe`\n- [x] **Future keywords**: `Defer`, `Do`\n- [x] **Null-conditional access** (`?.`): Also uses `ExpectIdentifierOrKeyword()` for consistency\n\n### Deviations\n\n- [ ] **Section: Grammar (attribute_ref)**: Undocumented behavior\n  - **Spec says:** `attribute_ref ::= '.' identifier` - only `identifier` allowed\n  - **Implementation:** Allows both identifiers AND keywords after `.`\n  - **Impact:** Low - This is a necessary extension for .NET interop, but the formal grammar in `grammar.ebnf.txt` should be updated to reflect this behavior\n\n### Recommendations\n\n1. **Update formal grammar** in `docs/language_specification/grammar.ebnf.txt`:\n   ```\n   attribute_ref   ::= '.' ( identifier | KEYWORD )\n   null_cond_access ::= '?.' ( identifier | KEYWORD ) [ call ]\n   ```\n\n2. **Add explicit spec section** in `docs/language_specification/expressions.md` or `docs/language_specification/identifiers.md`:\n   ```markdown\n   ## Keywords as Member Names\n   \n   In member access expressions, keywords may be used as member names without \n   backtick escaping. This enables seamless interop with .NET types that have \n   members matching Sharpy keywords:\n   \n   ```python\n   # All valid - keywords after '.' are allowed\n   x = obj.type\n   y = widget.property\n   z = items.class\n   ```\n   \n   This behavior applies to both standard member access (`.`) and null-conditional \n   access (`?.`).\n   ```\n\n3. **Add dedicated tests** for keyword-as-member-name scenarios beyond `property`:\n   - `obj.type` (common in .NET reflection)\n   - `obj.class` (common in Java interop)\n   - `obj.event` (common in .NET event patterns)\n   - `obj.is` / `obj.in` (less common but should work)\n\n### Test Coverage Status\n\nThe existing tests (`ParseComplexMemberAccessChain`, `ParseChainedIndexingAndMemberAccess`, `Position_ComplexNestedExpression_AllPositionsTracked`) implicitly test this feature by using `.property` in their source strings. These tests validate that the `property` keyword is correctly parsed as a member name.\n\n### Conclusion\n\n**The implementation is COMPLIANT** with the implicit requirement for .NET interop. The keyword-as-member-name bug has been correctly resolved by:\n\n1. Adding the `ExpectIdentifierOrKeyword()` helper method\n2. Using comprehensive keyword detection via `IsKeywordToken()`\n3. Calling this helper in `ParsePostfix()` for both `.` and `?.` operators\n\nThe only recommendation is to update the formal spec/grammar to document this behavior explicitly.\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T00:24:56.995464",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "All 17 MemberAccess tests pass. Now I have enough information to provide the verification report:\n\n---\n\n## Verification Report: Verify Keyword-as-Member-Name Bug Resolution\n\n### Test Results\n- **Sharpy.Core.Tests**: 735 Passed | 0 Failed | 0 Skipped\n- **Sharpy.Compiler.Tests**: 2480 Passed | 0 Failed | 30 Skipped\n- **Total**: 3215 Passed | 0 Failed | 30 Skipped\n\n#### Key Test Categories:\n| Category | Total | Passed | Skipped |\n|----------|-------|--------|---------|\n| Parser Tests | 536 | 525 | 11 |\n| NameMangler Tests | 74 | 74 | 0 |\n| MemberAccess Tests | 17 | 17 | 0 |\n\n### Behavior Checks\n- [x] **Parser Fix Implemented**: `ParsePostfix()` at `Parser.cs:1811` uses `ExpectIdentifierOrKeyword()` instead of `ExpectIdentifier()`\n- [x] **Comprehensive Keyword Coverage**: `IsKeywordToken()` at `Parser.cs:2413-2445` covers all keyword categories:\n  - Control flow: `def`, `class`, `struct`, `if`, `else`, `for`, `while`, `return`, etc.\n  - Import: `import`, `from`, `as`\n  - Type/Value: `auto`, `const`, `lambda`, `type`\n  - Pattern matching: `match`, `case`\n  - Async: `async`, `await`, `yield`\n  - Member: `property`, `event`\n  - Boolean operators: `and`, `or`, `not`, `is`\n  - Boolean literals: `True`, `False`, `None`\n- [x] **Null-Conditional Support**: Same code path handles both `.` and `?.` operators (`Parser.cs:1806-1808`)\n- [x] **C# Keyword Escaping**: `NameMangler` properly escapes C# keywords with `@` prefix during code generation\n\n### Coverage Assessment\n- **Existing Coverage**: MemberAccess parsing is well-tested through 17 dedicated tests plus numerous integration tests\n- **Keyword-as-Member-Name Specific**: No explicit tests exist for keywords-as-member-names (e.g., `obj.class`, `obj.type`)\n- **Gap Identified**: The proposed tests in `PLAN.md` (lines 79-132) were NOT added to the test suite\n\n### Regression Check\n- **No regressions detected**: All 3215 tests pass\n- All parser tests (525/525) pass\n- All MemberAccess tests (17/17) pass\n- All NameMangler tests (74/74) pass\n\n### Recommendations\n\n1. **Add Explicit Test Coverage**: The tests proposed in `PLAN.md` should be added to `ParserEdgeCaseTests.cs`:\n   - Theory tests for various keywords as member names (`obj.property`, `obj.class`, `obj.for`, etc.)\n   - Null-conditional variant test (`obj?.property`)\n   - Chained keyword member names test (`obj.class.type.property`)\n\n2. **Verification Note**: The fix is correctly implemented and working. The lack of explicit tests is a test coverage gap, not a functionality issue.\n\n3. **Future Maintenance**: When new keywords are added to the Sharpy language, `IsKeywordToken()` must be updated to include them for member access compatibility.\n\n### Conclusion\n**VERIFIED**: The Keyword-as-Member-Name bug resolution is correctly implemented. The parser properly allows keywords to be used as member names in expressions like `obj.property`, `obj.class`, `obj?.type`, etc. All existing tests pass with no regressions. However, explicit test coverage for this specific feature should be added as documented in `PLAN.md`.\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-13T00:24:56.995466",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Both tests pass. Let me provide the verification report:\n\n---\n\n## Hallucination Defense Report\n\n**Claim 1:** `property` is a reserved keyword\n\n**Verification:** Examined the Lexer.cs file at line 80:\n```csharp\n{ \"property\", TokenType.Property },\n```\n\n**Result:** \u2705 CORRECT \u2014 `property` is defined as a reserved keyword in the lexer's keyword dictionary, mapping to `TokenType.Property`.\n\n---\n\n**Claim 2:** The existing parser tests at `ParserTests.cs:1758` and `ParserTests.cs:1769` use `.property` as a member access\n\n**Verification:** Read `src/Sharpy.Compiler.Tests/Parser/ParserTests.cs`:\n- Line 1758: `var source = \"result = obj.method().property.nested_method(arg).field\";`\n- Line 1769: `var source = \"value = array[0].method()[key].property\";`\n\n**Result:** \u2705 CORRECT \u2014 Both tests use `.property` as member access on a chain expression.\n\n---\n\n**Claim 3:** These tests pass, confirming the fix is working\n\n**Verification:** Ran the tests with `dotnet test --filter`:\n```\nPassed!  - Failed:     0, Passed:     2, Skipped:     0, Total:     2\n```\n\n**Result:** \u2705 CORRECT \u2014 Both `ParseComplexMemberAccessChain` and `ParseChainedIndexingAndMemberAccess` pass.\n\n---\n\n**Claim 4:** The fix is at `Parser.cs:1811` where `ParsePostfix()` calls `ExpectIdentifierOrKeyword()` instead of `ExpectIdentifier()`\n\n**Verification:** Read `Parser.cs:1811`:\n```csharp\nvar member = ExpectIdentifierOrKeyword();\n```\n\nAnd `ExpectIdentifierOrKeyword()` at lines 2399-2408 accepts both identifiers and keyword tokens via `IsKeywordToken()`.\n\n**Result:** \u2705 CORRECT \u2014 The fix correctly uses `ExpectIdentifierOrKeyword()` after the `.` or `?.` operator.\n\n---\n\n### Summary\n\n| Claim | Status |\n|-------|--------|\n| `property` is a reserved keyword | \u2705 CORRECT |\n| Tests at lines 1758 and 1769 use `.property` | \u2705 CORRECT |\n| Tests pass | \u2705 CORRECT |\n| Fix location at Parser.cs:1811 | \u2705 CORRECT |\n\n**All claims verified as factually accurate.**\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": false,
           "human_question": null,
@@ -35,7 +73,7 @@
             "src/Sharpy.Compiler/Parser/Parser.cs",
             "src/Sharpy.Compiler/Parser/Ast/Expression.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -347,14 +385,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": null,
-  "total_attempts": 0,
-  "total_successes": 0,
+  "current_task_id": "R-0.1.1.2",
+  "total_attempts": 1,
+  "total_successes": 1,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 0,
-      "successes": 0,
+      "attempts": 1,
+      "successes": 1,
       "failures": 0
     },
     "copilot": {
@@ -363,5 +401,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 0.0
+  "overall_progress": 5.555555555555555
 }

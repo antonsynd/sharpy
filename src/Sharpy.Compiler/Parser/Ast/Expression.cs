@@ -384,4 +384,14 @@ public record Parenthesized : Expression
     public Expression Expression { get; init; } = null!;
 }
 
+/// <summary>
+/// Walrus/assignment expression (name := value)
+/// Assigns value to name and returns the value.
+/// </summary>
+public record WalrusExpression : Expression
+{
+    public string Target { get; init; } = "";
+    public Expression Value { get; init; } = null!;
+}
+
 #endregion

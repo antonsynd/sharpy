@@ -112,6 +112,7 @@ public enum TokenType
 
     // Operators - Assignment
     Assign,         // =
+    ColonAssign,    // := (walrus operator)
     PlusAssign,     // +=
     MinusAssign,    // -=
     StarAssign,     // *=

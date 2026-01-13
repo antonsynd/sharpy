@@ -1626,6 +1626,10 @@ public class Lexer
                     _position += 2;
                     _column += 2;
                     return new Token(TokenType.CaretAssign, twoChar, startLine, startColumn);
+                case ":=":
+                    _position += 2;
+                    _column += 2;
+                    return new Token(TokenType.ColonAssign, twoChar, startLine, startColumn);
             }
         }
 

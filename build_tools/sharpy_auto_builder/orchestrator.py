@@ -92,6 +92,9 @@ class Orchestrator:
         self.config = config
         self.config.ensure_directories()
 
+        # Track step start times for duration logging
+        self._step_start_times: dict[str, float] = {}
+
         # Initialize components
         self.backend_manager = BackendManager(config)
         self.human_loop = HumanLoopManager(
@@ -154,6 +157,36 @@ class Orchestrator:
         # Append to JSONL file
         with open(self.config.execution_log_path, "a") as f:
             f.write(json.dumps(log_entry) + "\n")
+
+    def _log_step_start(self, step_name: str, task_id: str, details: str = "") -> None:
+        """Log when a potentially long-running step begins."""
+        self._step_start_times[step_name] = time.time()
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        detail_str = f" - {details}" if details else ""
+        print(f"⏳ [{timestamp}] Starting: {step_name}{detail_str}")
+
+        # Also log to JSONL
+        self._log_execution(
+            event_type=f"{step_name}_start",
+            task_id=task_id,
+            extra={"details": details} if details else None,
+        )
+
+    def _log_step_end(
+        self, step_name: str, task_id: str, success: bool = True, details: str = ""
+    ) -> None:
+        """Log when a step completes with duration."""
+        duration = None
+        if step_name in self._step_start_times:
+            duration = time.time() - self._step_start_times.pop(step_name)
+
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        status = "✅" if success else "❌"
+        duration_str = f" ({duration:.1f}s)" if duration else ""
+        detail_str = f" - {details}" if details else ""
+        print(
+            f"{status} [{timestamp}] Completed: {step_name}{duration_str}{detail_str}"
+        )
 
     def _load_or_create_ground_truth(self) -> GroundTruth:
         """Load existing ground truth or create from task list."""
@@ -406,6 +439,7 @@ class Orchestrator:
     ) -> OrchestratorState:
         """Plan the implementation approach."""
         task_data = state["current_task"]
+        self._log_step_start("plan_implementation", task_data["id"], task_data["title"])
 
         # Determine which specialist to use
         specialist = get_specialist_for_task(task_data["id"], task_data["files"])
@@ -431,6 +465,7 @@ Provide:
             context={"files": task_data["files"]},
         )
 
+        self._log_step_end("plan_implementation", task_data["id"], result.success)
         return {
             **state,
             "messages": [f"Implementation plan created for {task_data['id']}"],
@@ -445,6 +480,11 @@ Provide:
 
         # Get specialist for this task
         specialist = get_specialist_for_task(task_data["id"], task_data["files"])
+        self._log_step_start(
+            "execute_implementation",
+            task_data["id"],
+            f"attempt {attempt}, specialist: {specialist.value}",
+        )
 
         # Generate implementation prompt
         prompt = get_agent_prompt(
@@ -487,6 +527,13 @@ Provide:
             extra={"attempt": attempt},
         )
 
+        self._log_step_end(
+            "execute_implementation",
+            task_data["id"],
+            result.success,
+            f"via {result.backend}" if result.backend else "",
+        )
+
         execution_result = {
             "success": result.success,
             "output": result.output,
@@ -521,6 +568,11 @@ Provide:
 
         # Determine which tests to run based on task
         component = self._get_test_component(task_data)
+        self._log_step_start(
+            "run_baseline_tests",
+            task_data["id"],
+            f"component: {component}" if component else "all tests",
+        )
 
         # Run baseline tests with timeout to catch infinite loops
         test_cmd = self._build_test_command(component)
@@ -547,6 +599,7 @@ Provide:
 
         # Handle timeout (infinite loop in baseline tests is a pre-existing issue)
         if result.timed_out:
+            self._log_step_end("run_baseline_tests", task_data["id"], False, "TIMEOUT")
             return {
                 **state,
                 "baseline_test_passed": False,
@@ -556,6 +609,7 @@ Provide:
                 ],
             }
 
+        self._log_step_end("run_baseline_tests", task_data["id"], result.success)
         return {
             **state,
             "baseline_test_passed": result.success,
@@ -852,6 +906,11 @@ Provide:
         # Use helper methods
         component = self._get_test_component(task_data)
         test_cmd = self._build_test_command(component)
+        self._log_step_start(
+            "run_tests",
+            task_data["id"],
+            f"component: {component}" if component else "all tests",
+        )
 
         result = await self.backend_manager.execute_command(
             test_cmd,
@@ -883,6 +942,7 @@ Provide:
 
         # Handle timeout case - this is likely an infinite loop introduced by the agent
         if result.timed_out:
+            self._log_step_end("run_tests", task_data["id"], False, "TIMEOUT")
             baseline_timed_out = state.get("baseline_test_output", "").startswith(
                 "TIMEOUT:"
             )
@@ -944,6 +1004,7 @@ Provide:
                 f"  Test output: {error_preview}" if error_preview else "",
             ]
 
+        self._log_step_end("run_tests", task_data["id"], result.success)
         return {
             **state,
             "last_execution_result": execution_result,
@@ -958,6 +1019,11 @@ Provide:
         task_data = state["current_task"]
         fix_attempt = state.get("fix_attempt", 0) + 1
         max_fix_attempts = self.config.max_test_fix_attempts
+        self._log_step_start(
+            "fix_test_failures",
+            task_data["id"],
+            f"attempt {fix_attempt}/{max_fix_attempts}",
+        )
 
         if fix_attempt > max_fix_attempts:
             # Max fix attempts reached - create a follow-up task if configured
@@ -1089,6 +1155,7 @@ Focus only on fixing the failing tests. Do not re-implement the entire task.
             )
             messages.append(f"  Error: {error_preview}")
 
+        self._log_step_end("fix_test_failures", task_data["id"], result.success)
         return {
             **state,
             "fix_attempt": fix_attempt,
@@ -1166,6 +1233,7 @@ automatically fixed after {fix_attempt} attempts.
             return state
 
         task_data = state["current_task"]
+        self._log_step_start("validate_spec_adherence", task_data["id"])
 
         prompt = get_agent_prompt(
             AgentRole.SPEC_ADHERENCE,
@@ -1208,6 +1276,7 @@ automatically fixed after {fix_attempt} attempts.
         validation_results = state.get("validation_results", [])
         validation_results.append(validation_result)
 
+        self._log_step_end("validate_spec_adherence", task_data["id"], result.success)
         return {
             **state,
             "validation_results": validation_results,
@@ -1229,6 +1298,7 @@ automatically fixed after {fix_attempt} attempts.
             }
 
         task_data = state["current_task"]
+        self._log_step_start("validate_verification", task_data["id"])
 
         prompt = get_agent_prompt(
             AgentRole.VERIFICATION_EXPERT,
@@ -1284,6 +1354,7 @@ automatically fixed after {fix_attempt} attempts.
         else:
             next_action = "commit"
 
+        self._log_step_end("validate_verification", task_data["id"], result.success)
         return {
             **state,
             "validation_results": validation_results,
@@ -1297,6 +1368,7 @@ automatically fixed after {fix_attempt} attempts.
         """Check for potential hallucinations in the implementation."""
         task_data = state["current_task"]
         execution_result = state.get("last_execution_result", {})
+        self._log_step_start("check_hallucinations", task_data["id"])
 
         # Extract claims from implementation output
         claims = execution_result.get("output", "")[:2000]  # First 2000 chars
@@ -1355,6 +1427,9 @@ automatically fixed after {fix_attempt} attempts.
         else:
             next_action = "commit"
 
+        self._log_step_end(
+            "check_hallucinations", task_data["id"], not has_hallucinations
+        )
         return {
             **state,
             "validation_results": validation_results,
@@ -1513,6 +1588,11 @@ automatically fixed after {fix_attempt} attempts.
         task_data = state["current_task"]
         validation_fix_attempt = state.get("validation_fix_attempt", 0) + 1
         max_attempts = getattr(self.config, "max_validation_fix_attempts", 2)
+        self._log_step_start(
+            "address_validation_issues",
+            task_data["id"],
+            f"attempt {validation_fix_attempt}/{max_attempts}",
+        )
 
         if validation_fix_attempt > max_attempts:
             # Max attempts reached - escalate to human review or proceed
@@ -1621,6 +1701,7 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
             )
             messages.append(f"  Error: {error_preview}")
 
+        self._log_step_end("address_validation_issues", task_data["id"], result.success)
         return {
             **state,
             "validation_fix_attempt": validation_fix_attempt,
@@ -1641,6 +1722,7 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
         task_data = state["current_task"]
         task_id = task_data["id"]
         task_title = task_data["title"]
+        self._log_step_start("commit_changes", task_id)
 
         # Get the list of changed files using git
         try:
@@ -1764,6 +1846,7 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
                 output=push_result.output,
             )
 
+            self._log_step_end("commit_changes", task_id, True, f"{file_count} file(s)")
             return {
                 **state,
                 "next_action": "update",
@@ -1773,6 +1856,7 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
             }
 
         except Exception as e:
+            self._log_step_end("commit_changes", task_id, False, str(e)[:50])
             self._log_execution(
                 event_type="commit_failed",
                 task_id=task_id,
@@ -1826,6 +1910,13 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
         """Wait for human input with polling."""
         question_id = state.get("human_question_id")
         review_id = state.get("human_review_id")
+        task_data = state.get("current_task", {})
+        task_id = task_data.get("id", "unknown")
+        self._log_step_start(
+            "wait_for_human",
+            task_id,
+            f"question={question_id}" if question_id else f"review={review_id}",
+        )
 
         # Configuration for waiting
         check_interval = getattr(self.config, "human_check_interval", 5.0)
@@ -1841,6 +1932,12 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
                 # Check for answer
                 answer = self.human_loop.check_for_answer(question_id)
                 if answer:
+                    self._log_step_end(
+                        "wait_for_human",
+                        task_id,
+                        True,
+                        f"answered after {check_count} checks",
+                    )
                     return {
                         **state,
                         "awaiting_human_input": False,
@@ -1855,6 +1952,12 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
                 # Check for review response
                 response = self.human_loop.check_for_review_response(review_id)
                 if response:
+                    self._log_step_end(
+                        "wait_for_human",
+                        task_id,
+                        True,
+                        f"reviewed after {check_count} checks",
+                    )
                     return {
                         **state,
                         "awaiting_human_input": False,
@@ -1876,6 +1979,7 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
             await asyncio.sleep(check_interval)
 
         # Timeout reached
+        self._log_step_end("wait_for_human", task_id, False, "TIMEOUT")
         return {
             **state,
             "next_action": "timeout",

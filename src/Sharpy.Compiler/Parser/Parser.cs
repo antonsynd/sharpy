@@ -1314,7 +1314,34 @@ public class Parser
 
     #region Expression Parsing (Precedence Climbing)
 
-    private Expression ParseExpression() => ParseConditionalExpression();
+    private Expression ParseExpression() => ParseWalrusExpression();
+
+    private Expression ParseWalrusExpression()
+    {
+        // Walrus operator: name := value
+        // Check if we have identifier := pattern
+        if (Current.Type == TokenType.Identifier && Peek().Type == TokenType.ColonAssign)
+        {
+            var startLine = Current.Line;
+            var startColumn = Current.Column;
+            var name = Current.Value;
+            Advance();  // Skip identifier
+            Advance();  // Skip :=
+            var value = ParseWalrusExpression();  // Right-associative
+
+            return new WalrusExpression
+            {
+                Target = name,
+                Value = value,
+                LineStart = startLine,
+                ColumnStart = startColumn,
+                LineEnd = value.LineEnd,
+                ColumnEnd = value.ColumnEnd
+            };
+        }
+
+        return ParseConditionalExpression();
+    }
 
     private Expression ParseConditionalExpression()
     {
