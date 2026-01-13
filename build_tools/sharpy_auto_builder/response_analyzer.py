@@ -15,11 +15,22 @@ class ResponseType(str, Enum):
     """Types of agent responses."""
 
     IMPLEMENTATION = "implementation"  # Agent did actual work
+    AUDIT = "audit"  # Agent completed an audit/verification task (no code changes)
     QUESTION = "question"  # Agent is asking questions
     DEFERRAL = "deferral"  # Agent recommends deferring the task
     CLARIFICATION = "clarification"  # Agent needs more info
     ERROR = "error"  # Agent encountered an error
     EMPTY = "empty"  # No meaningful response
+
+
+class TaskType(str, Enum):
+    """Types of tasks - affects how responses are analyzed."""
+
+    IMPLEMENTATION = "implementation"  # Code changes expected
+    AUDIT = "audit"  # Read-only verification, no code changes expected
+    DOCUMENTATION = "documentation"  # Documentation updates
+    TEST = "test"  # Test creation
+    AUTO = "auto"  # Auto-detect from task title/description
 
 
 @dataclass
@@ -31,9 +42,11 @@ class ResponseAnalysis:
     questions: list[str] = field(default_factory=list)
     proposed_actions: list[str] = field(default_factory=list)
     work_indicators: list[str] = field(default_factory=list)
+    audit_indicators: list[str] = field(default_factory=list)
     deferral_indicators: list[str] = field(default_factory=list)
     raw_response: str = ""
     reasoning: str = ""
+    detected_task_type: Optional[TaskType] = None
 
     def to_dict(self) -> dict:
         return {
@@ -42,8 +55,12 @@ class ResponseAnalysis:
             "questions": self.questions,
             "proposed_actions": self.proposed_actions,
             "work_indicators": self.work_indicators,
+            "audit_indicators": self.audit_indicators,
             "deferral_indicators": self.deferral_indicators,
             "reasoning": self.reasoning,
+            "detected_task_type": (
+                self.detected_task_type.value if self.detected_task_type else None
+            ),
         }
 
 
@@ -82,6 +99,42 @@ class ResponseAnalyzer:
         (r"```\w+\n.*?```", 0.5),  # Code blocks suggest work was done
     ]
 
+    # Patterns indicating audit/verification task completion (no code changes)
+    AUDIT_PATTERNS = [
+        (r"Audit\s+(Complete|Done|Finished)", 0.95),
+        (r"Verification\s+(Complete|Done|Finished)", 0.95),
+        (
+            r"(All|\d+)\s+(items?|requirements?|keywords?)\s+(verified|present|implemented)",
+            0.9,
+        ),
+        (r"(fully\s+)?compliant\s+(with|to)\s+(the\s+)?(spec|specification)", 0.9),
+        (r"No\s+(changes?|modifications?)\s+(required|needed|necessary)", 0.85),
+        (r"(Status|Summary)\s*:?\s*[\u2705✓]\s*(Complete|Done|Verified|Pass)", 0.9),
+        (r"\[x\]\s*.+", 0.7),  # Checked checkbox items in markdown
+        (r"[\u2705✓✔]\s*(Complete|Verified|Present|Implemented)", 0.85),
+        (r"(review|analysis|check)\s+(complete|done|finished)", 0.85),
+        (r"everything\s+(is|looks)\s+(correct|good|in\s+place)", 0.8),
+        (r"\|\s*[\u2705✓]\s*(Complete|Done|Pass)", 0.85),  # Table with checkmarks
+        (r"(\d+)\s+tests?\s+(pass|passed).*no\s+(failures?|errors?)", 0.85),
+        (
+            r"all\s+required\s+.+\s+(are|have been)\s+(present|implemented|verified)",
+            0.85,
+        ),
+    ]
+
+    # Patterns in task titles indicating audit/verification tasks
+    AUDIT_TASK_PATTERNS = [
+        r"^Audit\b",
+        r"^Verify\b",
+        r"^Check\b",
+        r"^Review\b",
+        r"^Validate\b",
+        r"^Status\s+Check\b",
+        r"\bAudit\b",
+        r"\bVerify\b",
+        r"\bVerification\b",
+    ]
+
     # Patterns indicating deferral recommendation
     DEFERRAL_PATTERNS = [
         (r"(recommend|suggest|advise)\s+(deferr?ing|postponing|delaying)", 0.9),
@@ -111,13 +164,19 @@ class ResponseAnalyzer:
         """
         self.min_confidence = min_confidence
 
-    def analyze(self, response: str, task_title: str = "") -> ResponseAnalysis:
+    def analyze(
+        self,
+        response: str,
+        task_title: str = "",
+        task_type: TaskType = TaskType.AUTO,
+    ) -> ResponseAnalysis:
         """
         Analyze an agent response.
 
         Args:
             response: The agent's response text
             task_title: The task title (used for context)
+            task_type: The type of task (AUDIT, IMPLEMENTATION, AUTO to detect)
 
         Returns:
             ResponseAnalysis with detected type and confidence
@@ -130,11 +189,15 @@ class ResponseAnalyzer:
                 reasoning="Response is empty or whitespace only",
             )
 
+        # Detect task type if not specified
+        detected_task_type = self._detect_task_type(task_title, task_type)
+
         # Check each pattern type and collect scores
         question_score, question_matches = self._score_patterns(
             response, self.QUESTION_PATTERNS
         )
         work_score, work_matches = self._score_patterns(response, self.WORK_PATTERNS)
+        audit_score, audit_matches = self._score_patterns(response, self.AUDIT_PATTERNS)
         deferral_score, deferral_matches = self._score_patterns(
             response, self.DEFERRAL_PATTERNS
         )
@@ -145,7 +208,7 @@ class ResponseAnalyzer:
         proposed_actions = self._extract_proposed_actions(response)
 
         # Determine response type based on scores
-        # Priority: ERROR > QUESTION > DEFERRAL > IMPLEMENTATION > EMPTY
+        # Priority: ERROR > QUESTION > DEFERRAL > AUDIT > IMPLEMENTATION > UNCLEAR
 
         reasoning_parts = []
 
@@ -169,26 +232,35 @@ class ResponseAnalyzer:
                 response_type=ResponseType.ERROR,
                 confidence=error_score,
                 work_indicators=work_matches,
+                audit_indicators=audit_matches,
                 raw_response=response,
                 reasoning=f"Error patterns detected: {error_matches}",
+                detected_task_type=detected_task_type,
             )
 
         # Question detection - key issue from 0.1.5.8
         if question_score >= self.min_confidence:
-            # If there's also significant work, it's implementation with follow-up questions
-            if work_score >= 0.7:
+            # If there's also significant work or audit completion, it's done with follow-up
+            if work_score >= 0.7 or audit_score >= 0.7:
                 reasoning_parts.append(
-                    f"Work score ({work_score:.2f}) indicates implementation was done"
+                    f"Work/audit score ({max(work_score, audit_score):.2f}) indicates task was done"
+                )
+                resp_type = (
+                    ResponseType.AUDIT
+                    if audit_score > work_score
+                    else ResponseType.IMPLEMENTATION
                 )
                 return ResponseAnalysis(
-                    response_type=ResponseType.IMPLEMENTATION,
-                    confidence=work_score,
+                    response_type=resp_type,
+                    confidence=max(work_score, audit_score),
                     questions=questions,
                     proposed_actions=proposed_actions,
                     work_indicators=work_matches,
+                    audit_indicators=audit_matches,
                     raw_response=response,
                     reasoning="; ".join(reasoning_parts)
-                    or "Work patterns detected alongside questions",
+                    or "Work/audit patterns detected alongside questions",
+                    detected_task_type=detected_task_type,
                 )
 
             # Pure question response (like 0.1.5.8)
@@ -200,12 +272,13 @@ class ResponseAnalyzer:
                 proposed_actions=proposed_actions,
                 raw_response=response,
                 reasoning="; ".join(reasoning_parts),
+                detected_task_type=detected_task_type,
             )
 
         # Deferral recommendation
         if deferral_score >= self.min_confidence:
             # Check if this is a recommendation or actual deferral with no work
-            if work_score < 0.5:
+            if work_score < 0.5 and audit_score < 0.5:
                 return ResponseAnalysis(
                     response_type=ResponseType.DEFERRAL,
                     confidence=deferral_score,
@@ -214,7 +287,45 @@ class ResponseAnalyzer:
                     proposed_actions=proposed_actions,
                     raw_response=response,
                     reasoning=f"Deferral patterns detected: {deferral_matches}",
+                    detected_task_type=detected_task_type,
                 )
+
+        # IMPROVEMENT: For audit tasks, check audit patterns first
+        # This prevents false CLARIFICATION for successful audit completions
+        if detected_task_type == TaskType.AUDIT:
+            if audit_score >= self.min_confidence:
+                return ResponseAnalysis(
+                    response_type=ResponseType.AUDIT,
+                    confidence=audit_score,
+                    audit_indicators=audit_matches,
+                    work_indicators=work_matches,
+                    raw_response=response,
+                    reasoning=f"Audit patterns detected (task type: audit): {audit_matches}",
+                    detected_task_type=detected_task_type,
+                )
+            # For audit tasks, lower the threshold for accepting audit completion
+            if audit_score >= 0.5:
+                return ResponseAnalysis(
+                    response_type=ResponseType.AUDIT,
+                    confidence=audit_score,
+                    audit_indicators=audit_matches,
+                    work_indicators=work_matches,
+                    raw_response=response,
+                    reasoning=f"Audit task completed (lower threshold): {audit_matches}",
+                    detected_task_type=detected_task_type,
+                )
+
+        # Check for audit completion even if task type wasn't detected as audit
+        if audit_score >= self.min_confidence and audit_score >= work_score:
+            return ResponseAnalysis(
+                response_type=ResponseType.AUDIT,
+                confidence=audit_score,
+                audit_indicators=audit_matches,
+                work_indicators=work_matches,
+                raw_response=response,
+                reasoning=f"Audit patterns detected: {audit_matches}",
+                detected_task_type=detected_task_type,
+            )
 
         # If we have work indicators, it's an implementation
         if work_score >= self.min_confidence:
@@ -222,20 +333,82 @@ class ResponseAnalyzer:
                 response_type=ResponseType.IMPLEMENTATION,
                 confidence=work_score,
                 work_indicators=work_matches,
+                audit_indicators=audit_matches,
                 raw_response=response,
                 reasoning=f"Work patterns detected: {work_matches}",
+                detected_task_type=detected_task_type,
             )
 
+        # IMPROVEMENT 3: Better handling of unclear responses
+        # If we have ANY positive indicators but below threshold, still classify accordingly
+        # rather than returning a generic CLARIFICATION
+        max_score = max(work_score, audit_score, deferral_score)
+        if max_score >= 0.4:  # Lower threshold for classification
+            if audit_score == max_score:
+                return ResponseAnalysis(
+                    response_type=ResponseType.AUDIT,
+                    confidence=audit_score,
+                    audit_indicators=audit_matches,
+                    work_indicators=work_matches,
+                    raw_response=response,
+                    reasoning=f"Likely audit completion (below threshold): {audit_matches}",
+                    detected_task_type=detected_task_type,
+                )
+            elif work_score == max_score:
+                return ResponseAnalysis(
+                    response_type=ResponseType.IMPLEMENTATION,
+                    confidence=work_score,
+                    work_indicators=work_matches,
+                    audit_indicators=audit_matches,
+                    raw_response=response,
+                    reasoning=f"Likely implementation (below threshold): {work_matches}",
+                    detected_task_type=detected_task_type,
+                )
+            elif deferral_score == max_score:
+                return ResponseAnalysis(
+                    response_type=ResponseType.DEFERRAL,
+                    confidence=deferral_score,
+                    deferral_indicators=deferral_matches,
+                    raw_response=response,
+                    reasoning=f"Likely deferral (below threshold): {deferral_matches}",
+                    detected_task_type=detected_task_type,
+                )
+
         # Default: Unclear/needs clarification
+        # IMPROVEMENT 3: Include more context about what WAS detected
         return ResponseAnalysis(
             response_type=ResponseType.CLARIFICATION,
-            confidence=0.5,
+            confidence=max(0.3, max_score),  # At least 0.3, or actual max
             questions=questions,
             proposed_actions=proposed_actions,
             work_indicators=work_matches,
+            audit_indicators=audit_matches,
             raw_response=response,
-            reasoning="No clear pattern detected; response type unclear",
+            reasoning=f"No clear pattern detected; scores: work={work_score:.2f}, audit={audit_score:.2f}, question={question_score:.2f}",
+            detected_task_type=detected_task_type,
         )
+
+    def _detect_task_type(self, task_title: str, explicit_type: TaskType) -> TaskType:
+        """
+        Detect the task type from title or use explicit type.
+
+        Args:
+            task_title: The task title to analyze
+            explicit_type: Explicitly specified task type
+
+        Returns:
+            Detected or specified TaskType
+        """
+        if explicit_type != TaskType.AUTO:
+            return explicit_type
+
+        # Check title against audit patterns
+        for pattern in self.AUDIT_TASK_PATTERNS:
+            if re.search(pattern, task_title, re.IGNORECASE):
+                return TaskType.AUDIT
+
+        # Default to implementation
+        return TaskType.IMPLEMENTATION
 
     def _score_patterns(
         self, text: str, patterns: list[tuple[str, float]]
@@ -301,7 +474,10 @@ class ResponseAnalyzer:
         Quick check if a response indicates actual work was done.
         """
         analysis = self.analyze(response, task_title)
-        return analysis.response_type == ResponseType.IMPLEMENTATION
+        return analysis.response_type in (
+            ResponseType.IMPLEMENTATION,
+            ResponseType.AUDIT,
+        )
 
 
 # Test cases for development
@@ -316,6 +492,7 @@ if __name__ == "__main__":
 """
     result = analyzer.analyze(question_response, "(Optional) Function Overloading")
     print(f"Question response: {result.response_type} ({result.confidence:.2f})")
+    print(f"  Task type: {result.detected_task_type}")
     print(f"  Questions: {result.questions}")
     print(f"  Actions: {result.proposed_actions}")
 
@@ -331,6 +508,7 @@ All 54 tests pass. The implementation follows the spec exactly.
 """
     result = analyzer.analyze(impl_response, "Implement Function Code Generation")
     print(f"\nImpl response: {result.response_type} ({result.confidence:.2f})")
+    print(f"  Task type: {result.detected_task_type}")
     print(f"  Work indicators: {result.work_indicators}")
 
     # Test case 3: Deferral recommendation
@@ -341,4 +519,43 @@ and we can revisit function overloading once the basic function support is stabl
 """
     result = analyzer.analyze(defer_response, "(Optional) Function Overloading")
     print(f"\nDeferral response: {result.response_type} ({result.confidence:.2f})")
+    print(f"  Task type: {result.detected_task_type}")
     print(f"  Deferral indicators: {result.deferral_indicators}")
+
+    # Test case 4: Audit completion (the original issue from 0.1.0.1)
+    audit_response = """## Summary
+
+**Audit Complete** ✅
+
+The `TokenType` enum in `src/Sharpy.Compiler/Lexer/Token.cs` is **fully compliant** with the language specification:
+
+| Category | Spec Count | Implemented | Status |
+|----------|------------|-------------|--------|
+| Hard Keywords | 37 | 37 | ✅ Complete |
+| Future Keywords | 2 | 2 | ✅ Complete |
+| Special Operators | 3 | 3 | ✅ Complete |
+
+**No changes required** - the lexer token types are complete and aligned with the specification.
+"""
+    result = analyzer.analyze(audit_response, "Audit Existing Token Types")
+    print(f"\nAudit response: {result.response_type} ({result.confidence:.2f})")
+    print(f"  Task type: {result.detected_task_type}")
+    print(f"  Audit indicators: {result.audit_indicators}")
+    print(f"  Reasoning: {result.reasoning}")
+
+    # Test case 5: Audit task with verification language
+    verify_response = """All 620 lexer tests pass.
+
+**Verification Complete** ✅
+
+- [x] `def`, `class`, `struct`, `interface`, `enum` - all present
+- [x] `if`, `elif`, `else`, `while`, `for`, `in` - all present
+- [x] All operators including |>, ??, ?. - verified
+
+The implementation is compliant with the spec.
+"""
+    result = analyzer.analyze(verify_response, "Verify Indentation Handling")
+    print(f"\nVerify response: {result.response_type} ({result.confidence:.2f})")
+    print(f"  Task type: {result.detected_task_type}")
+    print(f"  Audit indicators: {result.audit_indicators}")
+    print(f"  Reasoning: {result.reasoning}")

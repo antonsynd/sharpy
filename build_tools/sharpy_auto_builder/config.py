@@ -65,12 +65,8 @@ class Config:
         default_factory=lambda: Path("/Users/anton/Documents/github/sharpy")
     )
 
-    # Task list path (can be overridden)
-    task_list_path: Path = field(
-        default_factory=lambda: Path(
-            "/Users/anton/Documents/github/sharpy/docs/implementation_planning/task_list_0.1.0_to_0.1.5.md"
-        )
-    )
+    # Task list path (required - no default)
+    task_list_path: Optional[Path] = None
 
     @property
     def spec_dir(self) -> Path:
@@ -186,7 +182,7 @@ class Config:
         """Convert config to dictionary for serialization."""
         return {
             "project_root": str(self.project_root),
-            "task_list_path": str(self.task_list_path),
+            "task_list_path": str(self.task_list_path) if self.task_list_path else None,
             "backends": {
                 name: {
                     "name": cfg.name,
@@ -224,7 +220,7 @@ class Config:
         config = cls()
         if "project_root" in data:
             config.project_root = Path(data["project_root"])
-        if "task_list_path" in data:
+        if "task_list_path" in data and data["task_list_path"] is not None:
             config.task_list_path = Path(data["task_list_path"])
         if "backends" in data:
             for name, cfg_data in data["backends"].items():

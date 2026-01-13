@@ -38,6 +38,7 @@ from .response_analyzer import (
     ResponseAnalyzer,
     ResponseAnalysis,
     ResponseType,
+    TaskType,
 )
 from .auto_decision import (
     AutoDecisionEngine,
@@ -83,6 +84,7 @@ __all__ = [
     "ResponseAnalyzer",
     "ResponseAnalysis",
     "ResponseType",
+    "TaskType",
     # Auto-Decision (Overseer)
     "AutoDecisionEngine",
     "AutoDecision",

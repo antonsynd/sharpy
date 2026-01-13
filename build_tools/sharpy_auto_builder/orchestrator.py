@@ -36,7 +36,12 @@ from .human_loop import (
     HumanReviewRequest,
     QuestionPriority,
 )
-from .response_analyzer import ResponseAnalyzer, ResponseAnalysis, ResponseType
+from .response_analyzer import (
+    ResponseAnalyzer,
+    ResponseAnalysis,
+    ResponseType,
+    TaskType,
+)
 from .auto_decision import AutoDecisionEngine, AutoDecision, DecisionType
 
 
@@ -577,9 +582,13 @@ Provide:
         execution_result = state.get("last_execution_result", {})
         response_output = execution_result.get("output", "")
 
-        # Analyze the response
+        # Detect task type from task data (can be extended to read from task schema)
+        task_title = task_data.get("title", "")
+        task_type = TaskType.AUTO  # Let analyzer auto-detect based on title
+
+        # Analyze the response with task type context
         analysis = self.response_analyzer.analyze(
-            response_output, task_data.get("title", "")
+            response_output, task_title, task_type
         )
 
         # Log the analysis
@@ -591,6 +600,12 @@ Provide:
                 "confidence": analysis.confidence,
                 "questions_count": len(analysis.questions),
                 "work_indicators_count": len(analysis.work_indicators),
+                "audit_indicators_count": len(analysis.audit_indicators),
+                "detected_task_type": (
+                    analysis.detected_task_type.value
+                    if analysis.detected_task_type
+                    else None
+                ),
                 "reasoning": analysis.reasoning,
             },
         )
@@ -607,6 +622,17 @@ Provide:
                 "next_action": "test",
                 "messages": [
                     f"Response analysis: Implementation detected (confidence: {analysis.confidence:.2f})"
+                ],
+            }
+
+        elif analysis.response_type == ResponseType.AUDIT:
+            # Agent completed an audit/verification task - proceed to tests
+            return {
+                **state,
+                "response_analysis": analysis_dict,
+                "next_action": "test",
+                "messages": [
+                    f"Response analysis: Audit completed (confidence: {analysis.confidence:.2f})"
                 ],
             }
 

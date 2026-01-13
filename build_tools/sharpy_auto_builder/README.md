@@ -26,7 +26,7 @@ Config(
 
 ## Overview
 
-The Sharpy Auto Builder orchestrates the implementation of tasks from the implementation plan (`docs/implementation_planning/task_list_0.1.0_to_0.1.5.md`) using AI coding assistants. It provides:
+The Sharpy Auto Builder orchestrates the implementation of tasks from a task list markdown file using AI coding assistants. It provides:
 
 - **Multi-backend support**: Primary support for Claude Code, with limited GitHub Copilot CLI fallback
 - **Rate limiting**: Automatic handling of API rate limits with failover
@@ -90,7 +90,11 @@ pip install -r requirements.txt
 ### 2. Initialize
 
 ```bash
-./auto_builder.sh init
+# Initialize with a task list (required)
+./auto_builder.sh init --task-list docs/implementation_planning/task_list_0.1.0_to_0.1.5.md
+
+# Or load from a config file
+./auto_builder.sh init --config my_config.json
 ```
 
 This parses the task list and creates the ground truth state file.
@@ -124,7 +128,23 @@ This parses the task list and creates the ground truth state file.
 Initialize the auto builder by parsing the task list and creating ground truth.
 
 ```bash
-./auto_builder.sh init
+./auto_builder.sh init [OPTIONS]
+
+Options:
+  --config, -c PATH       Load settings from a config.json file
+  --task-list, -t PATH    Path to task list markdown file (required if not in config)
+```
+
+Examples:
+```bash
+# Initialize with task list
+./auto_builder.sh init --task-list docs/implementation_planning/task_list_remediation.md
+
+# Initialize from config file
+./auto_builder.sh init --config ./my_config.json
+
+# Config file with task-list override
+./auto_builder.sh init --config ./my_config.json --task-list ./different_tasks.md
 ```
 
 ### `status`

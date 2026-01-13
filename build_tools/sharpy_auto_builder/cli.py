@@ -17,9 +17,33 @@ from .human_loop import HumanLoopManager
 
 def cmd_init(args):
     """Initialize the auto builder state."""
-    config = Config()
+    # Load from config file if provided, otherwise use defaults
+    if args.config:
+        config_path = Path(args.config)
+        if not config_path.exists():
+            print(f"Error: Config file not found: {config_path}")
+            sys.exit(1)
+        config = Config.load(config_path)
+        print(f"Loaded config from: {config_path}")
+    else:
+        config = Config()
+
+    # Override with command-line arguments
     if args.project_root:
         config.project_root = Path(args.project_root)
+    if args.task_list:
+        config.task_list_path = Path(args.task_list)
+
+    # Validate required fields
+    if config.task_list_path is None:
+        print(
+            "Error: task_list_path is required. Provide via --task-list or in config.json"
+        )
+        sys.exit(1)
+
+    if not config.task_list_path.exists():
+        print(f"Error: Task list file not found: {config.task_list_path}")
+        sys.exit(1)
 
     config.ensure_directories()
 
@@ -430,6 +454,18 @@ def main():
 
     # init command
     init_parser = subparsers.add_parser("init", help="Initialize the auto builder")
+    init_parser.add_argument(
+        "--config",
+        "-c",
+        help="Path to config.json file to load settings from",
+        default=None,
+    )
+    init_parser.add_argument(
+        "--task-list",
+        "-t",
+        help="Path to task list markdown file (required if not in config)",
+        default=None,
+    )
 
     # status command
     status_parser = subparsers.add_parser("status", help="Show current status")
