@@ -1,0 +1,875 @@
+
+================================================================================
+[2026-01-12T09:50:56.299957] baseline_test_run - Task: 0.1.4.6
+================================================================================
+Success: True
+
+--- OUTPUT ---
+  Determining projects to restore...
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+  All projects are up-to-date for restore.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+  Sharpy.Core -> /Users/anton/Documents/github/sharpy/src/Sharpy.Core/bin/Debug/net10.0/Sharpy.Core.dll
+  Sharpy.Compiler -> /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler/bin/Debug/net10.0/Sharpy.Compiler.dll
+  Sharpy.Core.Tests -> /Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/bin/Debug/net10.0/Sharpy.Core.Tests.dll
+Test run for /Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/bin/Debug/net10.0/Sharpy.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+  Sharpy.Compiler.Tests -> /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/bin/Debug/net10.0/Sharpy.Compiler.Tests.dll
+Test run for /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/bin/Debug/net10.0/Sharpy.Compiler.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:   735, Skipped:     0, Total:   735, Duration: 88 ms - Sharpy.Core.Tests.dll (net10.0)
+[xUnit.net 00:00:00.35]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesNestedListComprehension [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesNestedListComprehension [1 ms]
+[xUnit.net 00:00:00.35]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDecoratorWithArguments [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDecoratorWithArguments [1 ms]
+[xUnit.net 00:00:00.36]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithAllParameterTypes [SKIP]
+[xUnit.net 00:00:00.36]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesCallableType [SKIP]
+[xUnit.net 00:00:00.36]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesWithStatement [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithAllParameterTypes [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesCallableType [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesWithStatement [1 ms]
+[xUnit.net 00:00:00.37]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesMultipleWithItems [SKIP]
+[xUnit.net 00:00:00.37]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithKwargs [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesMultipleWithItems [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithKwargs [1 ms]
+[xUnit.net 00:00:00.37]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDictComprehension [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDictComprehension [1 ms]
+[xUnit.net 00:00:00.39]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesTryExceptElse [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesTryExceptElse [1 ms]
+[xUnit.net 00:00:00.40]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithVarArgs [SKIP]
+[xUnit.net 00:00:00.40]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesLambdaWithDefaultArgs [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithVarArgs [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesLambdaWithDefaultArgs [1 ms]
+[xUnit.net 00:00:00.52]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongGenericType [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongGenericType [1 ms]
+[xUnit.net 00:00:00.52]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsAssignmentToFunctionCall [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsAssignmentToFunctionCall [1 ms]
+[xUnit.net 00:00:00.56]     Sharpy.Compiler.Tests.Semantic.NameResolverOperatorTests.RegistersMultipleOverloadsOfSameOperator [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.NameResolverOperatorTests.RegistersMultipleOverloadsOfSameOperator [1 ms]
+[xUnit.net 00:00:00.57]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsIncompatibleDictTypes [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsIncompatibleDictTypes [1 ms]
+[xUnit.net 00:00:00.58]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsBoolToIntAssignment [SKIP]
+[xUnit.net 00:00:00.58]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongNumberOfGenericArguments [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsBoolToIntAssignment [1 ms]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongNumberOfGenericArguments [1 ms]
+[xUnit.net 00:00:00.58]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsYieldOutsideFunction [SKIP]
+[xUnit.net 00:00:00.58]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsInvalidGenericArgument [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsYieldOutsideFunction [1 ms]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsInvalidGenericArgument [1 ms]
+[xUnit.net 00:00:00.79]     Sharpy.Compiler.Tests.Integration.Phase013IntegrationTests.Const_UsedInMultipleExpressions_CompilesAndRuns [SKIP]
+[xUnit.net 00:00:00.79]     Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.ForLoop_ModifyLoopVariable_WorksCorrectly [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.Phase013IntegrationTests.Const_UsedInMultipleExpressions_CompilesAndRuns [1 ms]
+  Skipped Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.ForLoop_ModifyLoopVariable_WorksCorrectly [1 ms]
+[xUnit.net 00:00:00.86]     Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.WhileLoop_InfiniteLoop_Detection_TimeoutTest [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.WhileLoop_InfiniteLoop_Detection_TimeoutTest [1 ms]
+[xUnit.net 00:00:00.89]     Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.Assignment_OperatorPrecedence_InUpdate_WorksCorrectly [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.Assignment_OperatorPrecedence_InUpdate_WorksCorrectly [1 ms]
+[xUnit.net 00:00:01.03]     Sharpy.Compiler.Tests.Integration.Phase013IntegrationTests.Const_UsedInExpression_CompilesAndRuns [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.Phase013IntegrationTests.Const_UsedInExpression_CompilesAndRuns [1 ms]
+[xUnit.net 00:00:01.23]     Sharpy.Compiler.Tests.Integration.Phase013IntegrationTests.MixedDeclarations_WithOperations_CompilesAndRuns [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.Phase013IntegrationTests.MixedDeclarations_WithOperations_CompilesAndRuns [1 ms]
+
+Passed!  - Failed:     0, Passed:  2359, Skipped:    25, Total:  2384, Duration: 1 s - Sharpy.Compiler.Tests.dll (net10.0)
+
+
+================================================================================
+[2026-01-12T09:50:56.300983] agent_prompt - Task: 0.1.4.6
+================================================================================
+Attempt: 1
+
+--- PROMPT ---
+You are the Test Expert for the Sharpy compiler project.
+
+## Your Domain
+- xUnit test creation
+- Integration tests
+- Phase exit criteria tests
+- Test coverage
+
+## Owned Paths
+- src/Sharpy.Compiler.Tests/
+- src/Sharpy.Core.Tests/
+
+## Current Task
+Create Phase 0.1.4 Integration Tests
+
+🆕 **New Implementation**: Control flow tests.
+
+📁 **Files**: `src/Sharpy.Compiler.Tests/Integration/Phase014IntegrationTests.cs`
+
+**Actions**:
+
+1. [ ] Test factorial example from spec:
+   ```python
+   n: int = 5
+   result: int = 1
+   while n > 1:
+       result *= n
+       n -= 1
+   # result should be 120
+   ```
+
+2. [ ] Test FizzBuzz-style logic:
+   ```python
+   for i in range(1, 16):
+       if i % 15 == 0:
+           pass  # "FizzBuzz"
+       elif i % 3 == 0:
+           pass  # "Fizz"
+       elif
+
+## Testing
+```bash
+dotnet test                                          # All tests
+dotnet test --filter "Phase"          # Phase tests
+```
+
+## CRITICAL RULE
+**NEVER alter expected values to make tests pass. Fix the implementation.**
+
+If a test cannot be fixed immediately:
+```csharp
+[Fact(Skip = "TODO: Fix <specific issue>. See issue #123")]
+```
+
+
+================================================================================
+[2026-01-12T09:53:01.605441] agent_response - Task: 0.1.4.6
+================================================================================
+Success: True
+Backend: claude_code
+Duration: 125.30s
+Attempt: 1
+
+--- OUTPUT ---
+Done! I've created `src/Sharpy.Compiler.Tests/Integration/Phase014IntegrationTests.cs` with **38 integration tests** for Phase 0.1.4 control flow features. All tests pass.
+
+## Summary
+
+The test file includes:
+
+### Spec Example Tests
+- **Factorial** - while loop implementation from spec (`n=5 → 120`)
+- **Factorial function** - reusable function version
+- **FizzBuzz** - if/elif/else with modulo operations
+- **FizzBuzz function** - reusable function version
+
+### While Loop Tests
+- Count down, sum of numbers, power calculation
+- GCD using Euclidean algorithm
+
+### For Loop Tests
+- Sum 1 to N, multiplication (factorial via for)
+- Even/odd numbers with step, squares
+
+### If/Elif/Else Tests
+- Absolute value, sign function
+- Max/min of three values
+
+### Break and Continue Tests
+- Find first multiple, search in range
+- Skip multiples, sum non-multiples
+
+### Nested Control Flow Tests
+- Multiplication table, triangle pattern
+- Classify numbers, count pairs
+
+### Complex Algorithm Tests
+- **IsPrime** - prime number detection
+- **Fibonacci** - iterative implementation
+- **Collatz Conjecture** - sequence length calculation
+- **Count/Sum/Reverse Digits** - digit manipulation
+
+### Edge Cases
+- Loops that never execute
+- Empty range, single iteration
+- Deeply nested if, immediate break/continue
+
+
+================================================================================
+[2026-01-12T09:53:04.531687] test_run - Task: 0.1.4.6
+================================================================================
+Success: True
+
+--- OUTPUT ---
+  Determining projects to restore...
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+  All projects are up-to-date for restore.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+  Sharpy.Core -> /Users/anton/Documents/github/sharpy/src/Sharpy.Core/bin/Debug/net10.0/Sharpy.Core.dll
+  Sharpy.Compiler -> /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler/bin/Debug/net10.0/Sharpy.Compiler.dll
+  Sharpy.Core.Tests -> /Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/bin/Debug/net10.0/Sharpy.Core.Tests.dll
+Test run for /Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/bin/Debug/net10.0/Sharpy.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+  Sharpy.Compiler.Tests -> /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/bin/Debug/net10.0/Sharpy.Compiler.Tests.dll
+A total of 1 test files matched the specified pattern.
+Test run for /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/bin/Debug/net10.0/Sharpy.Compiler.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:   735, Skipped:     0, Total:   735, Duration: 87 ms - Sharpy.Core.Tests.dll (net10.0)
+[xUnit.net 00:00:00.31]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesNestedListComprehension [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesNestedListComprehension [1 ms]
+[xUnit.net 00:00:00.32]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDecoratorWithArguments [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDecoratorWithArguments [1 ms]
+[xUnit.net 00:00:00.33]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithAllParameterTypes [SKIP]
+[xUnit.net 00:00:00.33]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesCallableType [SKIP]
+[xUnit.net 00:00:00.33]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesWithStatement [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithAllParameterTypes [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesCallableType [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesWithStatement [1 ms]
+[xUnit.net 00:00:00.35]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesMultipleWithItems [SKIP]
+[xUnit.net 00:00:00.35]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithKwargs [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesMultipleWithItems [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithKwargs [1 ms]
+[xUnit.net 00:00:00.35]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDictComprehension [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDictComprehension [1 ms]
+[xUnit.net 00:00:00.36]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesTryExceptElse [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesTryExceptElse [1 ms]
+[xUnit.net 00:00:00.36]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithVarArgs [SKIP]
+[xUnit.net 00:00:00.36]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesLambdaWithDefaultArgs [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithVarArgs [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesLambdaWithDefaultArgs [1 ms]
+[xUnit.net 00:00:00.36]     Sharpy.Compiler.Tests.Semantic.NameResolverOperatorTests.RegistersMultipleOverloadsOfSameOperator [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.NameResolverOperatorTests.RegistersMultipleOverloadsOfSameOperator [1 ms]
+[xUnit.net 00:00:00.40]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongGenericType [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongGenericType [1 ms]
+[xUnit.net 00:00:00.40]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsAssignmentToFunctionCall [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsAssignmentToFunctionCall [1 ms]
+[xUnit.net 00:00:00.44]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsIncompatibleDictTypes [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsIncompatibleDictTypes [1 ms]
+[xUnit.net 00:00:00.50]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsBoolToIntAssignment [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsBoolToIntAssignment [1 ms]
+[xUnit.net 00:00:00.50]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongNumberOfGenericArguments [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongNumberOfGenericArguments [1 ms]
+[xUnit.net 00:00:00.51]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsYieldOutsideFunction [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsYieldOutsideFunction [1 ms]
+[xUnit.net 00:00:00.52]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsInvalidGenericArgument [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsInvalidGenericArgument [1 ms]
+[xUnit.net 00:00:00.78]     Sharpy.Compiler.Tests.Integration.Phase013IntegrationTests.Const_UsedInMultipleExpressions_CompilesAndRuns [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.Phase013IntegrationTests.Const_UsedInMultipleExpressions_CompilesAndRuns [1 ms]
+[xUnit.net 00:00:00.78]     Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.ForLoop_ModifyLoopVariable_WorksCorrectly [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.ForLoop_ModifyLoopVariable_WorksCorrectly [1 ms]
+[xUnit.net 00:00:00.83]     Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.WhileLoop_InfiniteLoop_Detection_TimeoutTest [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.WhileLoop_InfiniteLoop_Detection_TimeoutTest [1 ms]
+[xUnit.net 00:00:00.87]     Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.Assignment_OperatorPrecedence_InUpdate_WorksCorrectly [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.Assignment_OperatorPrecedence_InUpdate_WorksCorrectly [1 ms]
+[xUnit.net 00:00:01.02]     Sharpy.Compiler.Tests.Integration.Phase013IntegrationTests.Const_UsedInExpression_CompilesAndRuns [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.Phase013IntegrationTests.Const_UsedInExpression_CompilesAndRuns [1 ms]
+[xUnit.net 00:00:01.25]     Sharpy.Compiler.Tests.Integration.Phase013IntegrationTests.MixedDeclarations_WithOperations_CompilesAndRuns [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.Phase013IntegrationTests.MixedDeclarations_WithOperations_CompilesAndRuns [1 ms]
+
+Passed!  - Failed:     0, Passed:  2397, Skipped:    25, Total:  2422, Duration: 1 s - Sharpy.Compiler.Tests.dll (net10.0)
+
+
+================================================================================
+[2026-01-12T09:53:04.532898] validation_prompt - Task: 0.1.4.6
+================================================================================
+
+--- PROMPT ---
+You are the Spec Adherence agent for the Sharpy compiler project.
+
+## Your Role
+Verify that the implementation matches the language specification. You are READ-ONLY and do not modify code.
+
+## Task Being Verified
+Create Phase 0.1.4 Integration Tests
+
+## Files to Verify
+- src/Sharpy.Compiler.Tests/Integration/Phase014IntegrationTests.cs
+
+## Verification Process
+1. Identify the relevant spec document in docs/language_specification/
+2. Extract exact requirements from the spec
+3. Locate the corresponding implementation code
+4. Verify behavior matches spec
+5. Report compliance or deviations
+
+## Report Format
+```markdown
+## Spec Adherence Report: Create Phase 0.1.4 Integration Tests
+
+**Spec:** `docs/language_specification/[feature].md`
+**Implementation:** `src/Sharpy.Compiler/[path]`
+
+### Compliant
+- [x] Requirement 1
+- [x] Requirement 2
+
+### Deviations
+- [ ] **Section X.Y**: [Description]
+  - **Spec says:** "..."
+  - **Implementation:** [What it actually does]
+  - **Impact:** [Severity: Low/Medium/High]
+
+### Recommendations
+- [Suggestions for fixing deviations]
+```
+
+## Important
+- Always cite exact spec text
+- Flag any undocumented behavior
+- Be precise about what matches and what doesn't
+
+
+================================================================================
+[2026-01-12T09:53:52.872230] validation_response - Task: 0.1.4.6
+================================================================================
+Success: True
+Backend: claude_code
+Duration: 48.34s
+
+--- OUTPUT ---
+Now I have all the spec information I need. Let me compile the Spec Adherence Report:
+
+---
+
+## Spec Adherence Report: Create Phase 0.1.4 Integration Tests
+
+**Spec Documents:**
+- `docs/language_specification/if_statement.md`
+- `docs/language_specification/while_statement.md`
+- `docs/language_specification/for_statement.md`
+- `docs/language_specification/break_continue.md`
+- `docs/language_specification/loop_else.md`
+- `docs/language_specification/builtin_functions.md` (for `range()`)
+- `docs/language_specification/logical_operators.md` (for `and`/`or`/`not`)
+
+**Implementation:** `src/Sharpy.Compiler.Tests/Integration/Phase014IntegrationTests.cs`
+
+---
+
+### Compliant
+
+#### If/Elif/Else Statement (if_statement.md)
+- [x] Basic `if`/`elif`/`else` syntax with colon and indentation (lines 273-364)
+- [x] Multiple `elif` branches supported (tests: `IfElifElse_Sign_WorksCorrectly`, `IfElifElse_MaxOfThree_WorksCorrectly`)
+- [x] Deeply nested `if` statements (test: `EdgeCase_DeeplyNestedIf_WorksCorrectly`, lines 756-779)
+
+#### While Loop (while_statement.md)
+- [x] Basic `while condition:` syntax (lines 114-191)
+- [x] Loop body with indentation
+- [x] Condition evaluated at each iteration (test: `WhileLoop_CountDown_WorksCorrectly`)
+- [x] While loop that never executes (test: `EdgeCase_WhileLoopNeverExecutes_WorksCorrectly`, lines 694-708)
+- [x] Single iteration while loop (test: `EdgeCase_SingleIterationWhile_WorksCorrectly`, lines 726-739)
+
+#### For Loop (for_statement.md)
+- [x] `for i in range(n):` syntax - single argument (lines 745, 801, 785)
+- [x] `for i in range(start, stop):` syntax - two arguments (lines 66, 200, 489)
+- [x] `for i in range(start, stop, step):` syntax - three arguments (lines 231, 245)
+- [x] Empty range produces no iterations (test: `EdgeCase_ForLoopEmptyRange_WorksCorrectly`, lines 711-723)
+- [x] Single iteration for loop (test: `EdgeCase_SingleIterationFor_WorksCorrectly`, lines 742-753)
+
+#### range() Function (builtin_functions.md)
+- [x] `range(stop)` - 0 to stop-1 (line 745: `range(1)`, line 576: `range(10)`)
+- [x] `range(start, stop)` - start to stop-1 (line 200: `range(1, 11)`, line 66: `range(1, 16)`)
+- [x] `range(start, stop, step)` - start to stop-1 by step (line 231: `range(0, 10, 2)`, line 245: `range(1, 10, 2)`)
+- [x] Negative start values supported (line 489: `range(-2, 3)`)
+
+#### Break Statement (break_continue.md)
+- [x] `break` exits the innermost loop (test: `Break_SearchInRange_WorksCorrectly`, lines 391-413)
+- [x] Immediate break on first iteration (test: `EdgeCase_ImmediateBreak_WorksCorrectly`, lines 782-794)
+
+#### Continue Statement (break_continue.md)
+- [x] `continue` skips to next iteration (test: `Continue_SkipMultiples_WorksCorrectly`, lines 416-429)
+- [x] Immediate continue (test: `EdgeCase_ImmediateContinue_WorksCorrectly`, lines 797-811)
+
+#### Logical Operators (logical_operators.md)
+- [x] `and` operator (line 322: `a >= b and a >= c`)
+- [x] Short-circuit evaluation behavior implied by test correctness
+
+#### Nested Control Flow
+- [x] Nested for loops (test: `NestedLoops_MultiplicationTable_WorksCorrectly`, lines 454-466)
+- [x] For loop containing while loop (test: `NestedLoops_TrianglePattern_WorksCorrectly`, lines 469-483)
+- [x] If/elif/else inside for loop (test: `NestedIfInLoop_ClassifyNumbers_WorksCorrectly`, lines 486-502)
+- [x] Nested while loops (test: `NestedWhileLoops_CountPairs_WorksCorrectly`, lines 505-524)
+
+---
+
+### Deviations
+
+- [ ] **Section: loop_else.md**: Loop `else` clause not tested
+  - **Spec says:** "For both `for` and `while` loops, an `else` clause can be added to execute if the loop completes without a break."
+  - **Implementation:** No integration tests verify loop-else behavior
+  - **Impact:** Medium - Loop-else is a Phase 0.1.4 control flow feature that should be tested
+
+- [ ] **Section: for_statement.md**: `enumerate()` not tested
+  - **Spec says:** `for index, name in enumerate(names): print(f"{index}: {name}")`
+  - **Implementation:** No tests for `enumerate()` in for loops
+  - **Impact:** Low - `enumerate()` may be tested elsewhere or deferred
+
+- [ ] **Section: for_statement.md**: Collection iteration not tested
+  - **Spec says:** `for name in names: print(name)` - iterating over collections
+  - **Implementation:** All for-loop tests use `range()`, none iterate over list/collection types directly
+  - **Impact:** Low - Collection iteration may be tested elsewhere
+
+- [ ] **Section: builtin_functions.md**: Negative step `range()` not tested
+  - **Spec says:** `range(10, 0, -1)` → 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
+  - **Implementation:** No tests verify negative step in range
+  - **Impact:** Low - Basic countdown functionality exists via while loop tests
+
+---
+
+### Recommendations
+
+1. **Add loop-else tests** (Medium priority):
+   ```python
+   # Test for-else when loop completes without break
+   for i in range(5):
+       if i == 10:
+           break
+   else:
+       print("completed")  # Should print
+   
+   # Test for-else when break is triggered
+   for i in range(5):
+       if i == 3:
+           break
+   else:
+       print("completed")  # Should NOT print
+   ```
+
+2. **Add negative step range test** (Low priority):
+   ```python
+   for i in range(5, 0, -1):
+       print(i)  # 5, 4, 3, 2, 1
+   ```
+
+3. **Add collection iteration test** (Low priority):
+   ```python
+   items: list[int] = [10, 20, 30]
+   for item in items:
+       print(item)
+   ```
+
+4. **Add enumerate test** (Low priority):
+   ```python
+   names: list[str] = ["a", "b", "c"]
+   for i, name in enumerate(names):
+       print(i, name)
+   ```
+
+---
+
+### Summary
+
+| Category | Status |
+|----------|--------|
+| If/Elif/Else | ✅ Fully compliant |
+| While Loop | ✅ Fully compliant |
+| For Loop with range() | ✅ Fully compliant |
+| Break | ✅ Fully compliant |
+| Continue | ✅ Fully compliant |
+| Nested Control Flow | ✅ Fully compliant |
+| Loop-Else | ⚠️ Not tested |
+| enumerate() | ⚠️ Not tested |
+| Collection iteration | ⚠️ Not tested |
+| Negative step range | ⚠️ Not tested |
+
+**Overall Assessment:** The integration tests provide excellent coverage of core Phase 0.1.4 control flow features. The primary gap is the absence of loop-else clause testing, which is explicitly documented in the spec. The other missing tests are for features that may be considered secondary or may be tested in other test files.
+
+
+================================================================================
+[2026-01-12T09:53:52.874332] validation_prompt - Task: 0.1.4.6
+================================================================================
+
+--- PROMPT ---
+You are the Verification Expert for the Sharpy compiler project.
+
+## Your Role
+Provide independent verification that:
+- Implementation matches specification
+- Tests pass and cover requirements
+- Behavior is correct and consistent
+- No regressions introduced
+
+You are READ-ONLY and do not modify code.
+
+## Task Being Verified
+Create Phase 0.1.4 Integration Tests
+
+## Verification Steps
+1. Run all relevant tests
+2. Verify behavior matches expected outcomes
+3. Check for regressions
+4. Validate test coverage
+
+## Commands
+```bash
+dotnet test --logger "trx;LogFileName=results.trx"
+dotnet test --filter "FullyQualifiedName~0.1.4"
+```
+
+## Report Format
+```markdown
+## Verification Report: Create Phase 0.1.4 Integration Tests
+
+### Test Results
+- Total: X | Passed: Y | Failed: Z
+
+### Behavior Checks
+- [x] Feature A works as expected
+- [ ] Feature B has deviation (see details)
+
+### Coverage Assessment
+- [Description of test coverage]
+
+### Regression Check
+- No regressions detected / Regressions found in: [list]
+
+### Recommendations
+- [Suggestions if issues found]
+```
+
+
+================================================================================
+[2026-01-12T09:55:14.463450] validation_response - Task: 0.1.4.6
+================================================================================
+Success: True
+Backend: claude_code
+Duration: 81.59s
+
+--- OUTPUT ---
+All integration tests pass. Let me generate the verification report:
+
+---
+
+## Verification Report: Create Phase 0.1.4 Integration Tests
+
+### Test Results
+- **Total: 38 | Passed: 38 | Failed: 0**
+
+All 38 Phase 0.1.4 integration tests pass successfully.
+
+### Behavior Checks
+
+#### Spec Examples (4 tests)
+- [x] `SpecExample_Factorial_WhileLoop_CompilesAndComputesCorrectly` - Factorial using while loop outputs `120`
+- [x] `SpecExample_Factorial_Function_CompilesAndComputesCorrectly` - Factorial as function outputs `120`, `1`, `1`, `720`
+- [x] `SpecExample_FizzBuzz_CompilesAndRunsCorrectly` - FizzBuzz logic works correctly for 1-15
+- [x] `SpecExample_FizzBuzz_AsFunction_CompilesAndRunsCorrectly` - FizzBuzz as reusable function works
+
+#### While Loop Tests (5 tests)
+- [x] `WhileLoop_CountDown_WorksCorrectly` - Countdown from 5 to 1
+- [x] `WhileLoop_SumOfNumbers_WorksCorrectly` - Sum 1-10 = 55
+- [x] `WhileLoop_Power_WorksCorrectly` - 2^10 = 1024
+- [x] `WhileLoop_GCD_EuclideanAlgorithm_WorksCorrectly` - GCD(48,18)=6, GCD(100,35)=5, GCD(17,13)=1
+
+#### For Loop Tests (5 tests)
+- [x] `ForLoop_Sum1ToN_WorksCorrectly` - Sum 1-10 = 55
+- [x] `ForLoop_Multiplication_WorksCorrectly` - 5! = 120
+- [x] `ForLoop_EvenNumbers_WorksCorrectly` - range(0,10,2) outputs 0,2,4,6,8
+- [x] `ForLoop_OddNumbers_WorksCorrectly` - range(1,10,2) outputs 1,3,5,7,9
+- [x] `ForLoop_CountSquares_WorksCorrectly` - Squares 1,4,9,16,25
+
+#### If/Elif/Else Tests (4 tests)
+- [x] `IfElse_AbsoluteValue_WorksCorrectly` - abs(5)=5, abs(-5)=5, abs(0)=0
+- [x] `IfElifElse_Sign_WorksCorrectly` - sign(10)=1, sign(-10)=-1, sign(0)=0
+- [x] `IfElifElse_MaxOfThree_WorksCorrectly` - Max of three integers
+- [x] `IfElifElse_MinOfThree_WorksCorrectly` - Min of three integers
+
+#### Break and Continue Tests (4 tests)
+- [x] `Break_FindFirstMultiple_WorksCorrectly` - Early return from loop
+- [x] `Break_SearchInRange_WorksCorrectly` - Break exits while loop
+- [x] `Continue_SkipMultiples_WorksCorrectly` - Skip multiples of 3
+- [x] `Continue_SumNonMultiples_WorksCorrectly` - Sum odd numbers 1-10 = 25
+
+#### Nested Control Flow Tests (4 tests)
+- [x] `NestedLoops_MultiplicationTable_WorksCorrectly` - 3x3 multiplication table
+- [x] `NestedLoops_TrianglePattern_WorksCorrectly` - Mixed for/while nesting
+- [x] `NestedIfInLoop_ClassifyNumbers_WorksCorrectly` - If/elif/else inside for loop
+- [x] `NestedWhileLoops_CountPairs_WorksCorrectly` - Nested while loops count pairs
+
+#### Complex Algorithm Tests (6 tests)
+- [x] `Algorithm_IsPrime_WorksCorrectly` - Primes 2,3,5,7,11,13,17,19
+- [x] `Algorithm_Fibonacci_WhileLoop_WorksCorrectly` - Fib sequence 0,1,1,2,3,5,8,13,21,34
+- [x] `Algorithm_CollatzConjecture_WorksCorrectly` - Collatz steps for 6,7,27
+- [x] `Algorithm_CountDigits_WorksCorrectly` - Digit counting
+- [x] `Algorithm_SumDigits_WorksCorrectly` - Digit sum
+- [x] `Algorithm_ReverseNumber_WorksCorrectly` - Number reversal
+
+#### Edge Cases (6 tests)
+- [x] `EdgeCase_WhileLoopNeverExecutes_WorksCorrectly` - False condition
+- [x] `EdgeCase_ForLoopEmptyRange_WorksCorrectly` - range(5,5) is empty
+- [x] `EdgeCase_SingleIterationWhile_WorksCorrectly` - Single iteration
+- [x] `EdgeCase_SingleIterationFor_WorksCorrectly` - range(1) single iteration
+- [x] `EdgeCase_DeeplyNestedIf_WorksCorrectly` - 4-level nested if
+- [x] `EdgeCase_ImmediateBreak_WorksCorrectly` - Break as first statement
+- [x] `EdgeCase_ImmediateContinue_WorksCorrectly` - Continue as last statement
+
+### Coverage Assessment
+
+The test suite provides **comprehensive coverage** of Phase 0.1.4 features as specified in `docs/implementation_planning/phases.md`:
+
+| Specification Requirement | Test Coverage |
+|---------------------------|---------------|
+| `if/elif/else` statements | ✅ 4+ tests including nested, chained |
+| `while` loops | ✅ 5+ tests including GCD algorithm |
+| `for` loops with `range()` | ✅ 5+ tests with 1/2/3 arg variants |
+| `break` statement | ✅ 2 tests (for and while) |
+| `continue` statement | ✅ 2 tests (skip and sum patterns) |
+| Nested control flow | ✅ 4 tests (loops in loops, if in loops) |
+| Edge cases | ✅ 6 tests (empty ranges, immediate break/continue) |
+
+### Regression Check
+
+**Full test suite results:**
+- Total tests: 2,422
+- Passed: 2,397
+- Skipped: 25
+- Failed: 0
+
+**Integration tests only:**
+- Total: 234
+- Passed: 228
+- Skipped: 6
+- Failed: 0
+
+**No regressions detected.** All existing tests continue to pass.
+
+### Recommendations
+
+None. The Phase 0.1.4 integration tests are complete and well-designed:
+
+1. Tests align precisely with the specification in `phases.md`
+2. Both spec examples (Factorial, FizzBuzz) are covered
+3. Edge cases are thoroughly tested
+4. Complex algorithms demonstrate real-world usage
+5. Generated C# code shown in test output is correct and idiomatic
+
+
+================================================================================
+[2026-01-12T09:55:14.466171] validation_prompt - Task: 0.1.4.6
+================================================================================
+
+--- PROMPT ---
+You are the Hallucination Defense agent for the Sharpy compiler project.
+
+## Your Role
+Validate factual accuracy of claims about:
+- .NET API behavior and availability
+- Roslyn SyntaxFactory methods
+- Python language semantics
+- C# 9.0 feature availability (Unity constraint)
+
+You are READ-ONLY and do not modify code.
+
+## Claims to Verify
+Done! I've created `src/Sharpy.Compiler.Tests/Integration/Phase014IntegrationTests.cs` with **38 integration tests** for Phase 0.1.4 control flow features. All tests pass.
+
+## Summary
+
+The test file includes:
+
+### Spec Example Tests
+- **Factorial** - while loop implementation from spec (`n=5 → 120`)
+- **Factorial function** - reusable function version
+- **FizzBuzz** - if/elif/else with modulo operations
+- **FizzBuzz function** - reusable function version
+
+### While Loop Tests
+- Count down, sum of numbers, power calculation
+- GCD using Euclidean algorithm
+
+### For Loop Tests
+- Sum 1 to N, multiplication (factorial via for)
+- Even/odd numbers with step, squares
+
+### If/Elif/Else Tests
+- Absolute value, sign function
+- Max/min of three values
+
+### Break and Continue Tests
+- Find first multiple, search in range
+- Skip multiples, sum non-multiples
+
+### Nested Control Flow Tests
+- Multiplication table, triangle pattern
+- Classify numbers, count pairs
+
+### Complex Algorithm Tests
+- **IsPrime** - prime number detection
+- **Fibonacci** - iterative implementation
+- **Collatz Conjecture** - sequence length calculation
+- **Count/Sum/Reverse Digits** - digit manipulation
+
+### Edge Cases
+- Loops that never execute
+- Empty range, single iteration
+- Deeply nested if, immediate break/continue
+
+
+## Verification Methods
+
+### .NET API Claims
+```bash
+dotnet script -e "var list = new List<int>{1,2,3}; list.Insert(1, 99); Console.WriteLine(list.Count);"
+```
+
+### Python Semantic Claims
+```bash
+python3 -c "print(-7 // 2)"  # Verify Python floor division
+```
+
+### C# 9.0 Availability
+| C# 9.0 ✅ | C# 10+ ❌ |
+|-----------|-----------|
+| Records | File-scoped namespaces |
+| Init-only setters | Global usings |
+| Pattern matching | Record structs |
+| Target-typed new | Required members |
+
+## Output Format
+```markdown
+**Claim:** [The assertion being checked]
+**Verification:** [How it was verified]
+**Result:** ✅ CORRECT / ❌ INCORRECT — [Explanation]
+```
+
+
+================================================================================
+[2026-01-12T09:56:25.696105] validation_response - Task: 0.1.4.6
+================================================================================
+Success: True
+Backend: claude_code
+Duration: 71.23s
+
+--- OUTPUT ---
+The project uses `LangVersion=latest` with .NET 10.0, so file-scoped namespaces are allowed in this project (not restricted to C# 9.0). Let me now compile my verification report:
+
+---
+
+# Hallucination Defense Report: Phase014IntegrationTests.cs
+
+## Claim Verification Summary
+
+---
+
+**Claim:** "38 integration tests"
+**Verification:** `grep -c "\[Fact\]"` on the file
+**Result:** ✅ CORRECT — Exactly 38 `[Fact]` attributes found.
+
+---
+
+**Claim:** "Factorial n=5 → 120"
+**Verification:** `python3` calculation of factorial algorithm
+**Result:** ✅ CORRECT — 5! = 120
+
+---
+
+**Claim:** "GCD using Euclidean algorithm" with outputs `6, 5, 1`
+**Verification:** `python3` verification of GCD(48,18)=6, GCD(100,35)=5, GCD(17,13)=1
+**Result:** ✅ CORRECT — All GCD values match.
+
+---
+
+**Claim:** "Collatz Conjecture - sequence length calculation" with outputs `8, 16, 111`
+**Verification:** `python3` calculation of collatz_length(6), collatz_length(7), collatz_length(27)
+**Result:** ✅ CORRECT — Collatz(6)=8, Collatz(7)=16, Collatz(27)=111
+
+---
+
+**Claim:** "Fibonacci - iterative implementation" (0,1,1,2,3,5,8,13,21,34)
+**Verification:** `python3` verification of first 10 Fibonacci numbers
+**Result:** ✅ CORRECT — Sequence matches expected output.
+
+---
+
+**Claim:** "IsPrime - prime number detection" for primes 1-19
+**Verification:** `python3` primality test
+**Result:** ✅ CORRECT — Primes: 2, 3, 5, 7, 11, 13, 17, 19
+
+---
+
+**Claim:** "Sum 1 to N" yields 55 for N=10
+**Verification:** `sum(range(1,11))` = 55
+**Result:** ✅ CORRECT
+
+---
+
+**Claim:** "Sum non-multiples of 2" (odd numbers 1-9) = 25
+**Verification:** 1+3+5+7+9 = 25
+**Result:** ✅ CORRECT
+
+---
+
+**Claim:** "Count pairs where i≠j" for i,j ∈ {1,2,3} = 6
+**Verification:** 3×3 - 3 = 6 pairs
+**Result:** ✅ CORRECT
+
+---
+
+**Claim:** "Count digits" algorithm with outputs 1, 1, 3, 4
+**Verification:** `python3` execution of count_digits(0), (5), (123), (-9876)
+**Result:** ✅ CORRECT — All digit counts match.
+
+---
+
+## C# Compatibility Check
+
+**Claim:** File uses C# 9.0 compatible syntax (Unity constraint mentioned)
+**Verification:** File uses file-scoped namespace (line 4: `namespace Sharpy.Compiler.Tests.Integration;`)
+**Result:** ⚠️ NOT APPLICABLE — The project targets .NET 10.0 with `LangVersion=latest`, not C# 9.0. File-scoped namespaces (C# 10+) are valid for this project. The C# 9.0 constraint mentioned in the verification prompt does not apply to the test project itself.
+
+---
+
+## Test Category Verification
+
+| Category | Claimed | Actual Tests |
+|----------|---------|--------------|
+| Spec Example Tests | 4 | ✅ 4 (Factorial×2, FizzBuzz×2) |
+| While Loop Tests | 4 | ✅ 4 (CountDown, Sum, Power, GCD) |
+| For Loop Tests | 5 | ✅ 5 (Sum, Multiplication, Even, Odd, Squares) |
+| If/Elif/Else Tests | 4 | ✅ 4 (AbsoluteValue, Sign, MaxOfThree, MinOfThree) |
+| Break and Continue Tests | 4 | ✅ 4 (FirstMultiple, SearchInRange, SkipMultiples, SumNonMultiples) |
+| Nested Control Flow Tests | 4 | ✅ 4 (MultiplicationTable, Triangle, ClassifyNumbers, CountPairs) |
+| Complex Algorithm Tests | 7 | ✅ 7 (IsPrime, Fibonacci, Collatz, CountDigits, SumDigits, ReverseNumber) |
+| Edge Cases | 6 | ✅ 6 (NeverExecutes×2, SingleIteration×2, DeeplyNestedIf, ImmediateBreak, ImmediateContinue) |
+
+**Note:** Claimed 6 edge cases, actually 8 tests in edge cases region. Total still 38.
+
+---
+
+## Python Semantic Considerations
+
+**Observation:** The `//=` operator (floor division) in tests like `collatz_length` and `count_digits` has different semantics in Python vs C#:
+- Python `//` = floor division (rounds toward negative infinity)
+- C# `/` with integers = truncation toward zero
+
+For **positive numbers**, both produce the same result.
+For **negative numbers**, they differ:
+- Python: `-7 // 2 = -4`
+- C#: `-7 / 2 = -3`
+
+**In these tests:** The digit algorithms convert negative numbers to positive (`n = -n`) before division, so the Python/C# semantic difference is safely avoided.
+**Result:** ✅ CORRECT — Test logic handles this correctly.
+
+---
+
+## Final Verdict
+
+**All 38 tests exist and mathematical claims are accurate.** No hallucinations detected in the test content or expected outputs.
+

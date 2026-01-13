@@ -1,0 +1,339 @@
+
+================================================================================
+[2026-01-11T22:29:46.396082] baseline_test_run - Task: 0.1.0.8
+================================================================================
+Success: True
+
+--- OUTPUT ---
+  Determining projects to restore...
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+  All projects are up-to-date for restore.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+  Sharpy.Core -> /Users/anton/Documents/github/sharpy/src/Sharpy.Core/bin/Debug/net10.0/Sharpy.Core.dll
+  Sharpy.Compiler -> /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler/bin/Debug/net10.0/Sharpy.Compiler.dll
+  Sharpy.Core.Tests -> /Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/bin/Debug/net10.0/Sharpy.Core.Tests.dll
+Test run for /Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/bin/Debug/net10.0/Sharpy.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+  Sharpy.Compiler.Tests -> /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/bin/Debug/net10.0/Sharpy.Compiler.Tests.dll
+A total of 1 test files matched the specified pattern.
+Test run for /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/bin/Debug/net10.0/Sharpy.Compiler.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+No test matches the given testcase filter `FullyQualifiedName~Lexer` in /Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/bin/Debug/net10.0/Sharpy.Core.Tests.dll
+
+
+Passed!  - Failed:     0, Passed:   516, Skipped:     0, Total:   516, Duration: 74 ms - Sharpy.Compiler.Tests.dll (net10.0)
+
+
+================================================================================
+[2026-01-11T22:29:46.397077] agent_prompt - Task: 0.1.0.8
+================================================================================
+Attempt: 1
+
+--- PROMPT ---
+You are the Lexer Expert for the Sharpy compiler project.
+
+## Your Domain
+- Tokenization of Sharpy source code
+- Token types and definitions
+- INDENT/DEDENT handling
+- Numeric and string literal parsing
+
+## Owned Paths
+- src/Sharpy.Compiler/Lexer/
+
+## Current Task
+Create Phase 0.1.0 Exit Criteria Test Suite
+
+🆕 **New Implementation**: Create comprehensive test file for phase 0.1.0.
+
+📁 **Files**: `src/Sharpy.Compiler.Tests/Lexer/Phase010ExitCriteriaTests.cs` (new file)
+
+**Actions**:
+
+1. [ ] Create test file with the following test cases:
+   ```csharp
+   [Fact]
+   public void ExitCriteria_AllTokenTypesRecognized() { ... }
+
+   [Fact]
+   public void ExitCriteria_IndentDedentEmittedCorrectly() { ... }
+
+   [Fact]
+   public void ExitCriteria_NumericLiteralsWithSuffixes() { ... }
+
+   [Fact]
+   public void Ex
+
+## Testing
+```bash
+dotnet test --filter "FullyQualifiedName~Lexer"
+```
+
+## Key Requirements
+- 4-space indentation (no tabs)
+- Python-style keywords (def, class, if, etc.)
+- All operators including |>, ??, ?.
+- F-string support
+
+
+================================================================================
+[2026-01-11T22:33:33.022346] agent_response - Task: 0.1.0.8
+================================================================================
+Success: True
+Backend: claude_code
+Duration: 226.62s
+Attempt: 1
+
+--- OUTPUT ---
+I've created the comprehensive Phase 0.1.0 Exit Criteria test file at `src/Sharpy.Compiler.Tests/Lexer/Phase010ExitCriteriaTests.cs`. Here's a summary:
+
+## Created Test File
+
+**File**: `src/Sharpy.Compiler.Tests/Lexer/Phase010ExitCriteriaTests.cs`
+
+**Test Count**: 104 tests (all passing)
+
+**Test Coverage**:
+
+1. **Exit Criteria: All Token Types Recognized** (5 tests)
+   - All token types from TokenType enum
+   - F-string tokens (FStringStart, FStringText, FStringExprStart, etc.)
+   - Special tokens (Newline, Indent, Dedent, Eof)
+   - Backtick literal names
+
+2. **Exit Criteria: Indent/Dedent Emitted Correctly** (7 tests)
+   - 4-space indentation requirement
+   - Tab rejection
+   - Multiple dedents at once
+   - No indent/dedent inside brackets
+   - Indentation mismatch detection
+
+3. **Exit Criteria: Numeric Literals with Suffixes** (5 tests)
+   - Integer suffixes (L, U, UL)
+   - Float suffixes (f, d, m)
+   - Underscores in numbers
+   - Hex/binary/octal literals
+   - Scientific notation
+
+4. **Exit Criteria: Complete Keyword Coverage** (48 theory tests)
+   - All 44 hard keywords
+   - Boolean literals (True, False, None)
+   - Case sensitivity verification
+
+5. **Exit Criteria: String Types** (8 tests)
+   - Regular strings (single/double quotes)
+   - Raw strings
+   - Triple-quoted strings
+   - F-strings with format specs
+   - Escape sequence processing
+
+6. **Exit Criteria: All Operators** (8 tests)
+   - Special operators (|>, ??, ?.)
+   - Comparison, arithmetic, bitwise, assignment operators
+   - Operator chaining
+
+7. **Exit Criteria: Special Characters** (5 tests)
+   - Comments (skipped)
+   - Line continuation
+   - Decorators (@)
+   - Ellipsis (...)
+   - Arrow (->)
+
+8. **Exit Criteria: Error Handling** (10 tests)
+   - Unterminated strings
+   - Invalid escape sequences
+   - Unexpected characters
+   - Invalid indentation
+   - Error line/column reporting
+
+9. **Exit Criteria: Position Tracking** (2 tests)
+   - Accurate line/column tracking
+
+10. **Exit Criteria: Comprehensive Integration** (8 tests)
+    - Complete function definitions
+    - Complete class definitions
+    - Match statements
+    - Null-safety patterns
+    - Pipeline patterns
+    - Async/await patterns
+    - Generic type syntax
+    - Nullable type syntax
+
+
+================================================================================
+[2026-01-11T22:33:34.777400] test_run - Task: 0.1.0.8
+================================================================================
+Success: True
+
+--- OUTPUT ---
+  Determining projects to restore...
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+  All projects are up-to-date for restore.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+  Sharpy.Core -> /Users/anton/Documents/github/sharpy/src/Sharpy.Core/bin/Debug/net10.0/Sharpy.Core.dll
+  Sharpy.Compiler -> /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler/bin/Debug/net10.0/Sharpy.Compiler.dll
+  Sharpy.Compiler.Tests -> /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/bin/Debug/net10.0/Sharpy.Compiler.Tests.dll
+Test run for /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/bin/Debug/net10.0/Sharpy.Compiler.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/IdentityWrapper.cs(5,21): warning CS0660: 'IdentityWrapper<T>' defines operator == or operator != but does not override Object.Equals(object o) [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/IdentityWrapper.cs(5,21): warning CS0661: 'IdentityWrapper<T>' defines operator == or operator != but does not override Object.GetHashCode() [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Wrapper.cs(5,14): warning CS0660: 'Wrapper<T>' defines operator == or operator != but does not override Object.Equals(object o) [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Wrapper.cs(5,14): warning CS0661: 'Wrapper<T>' defines operator == or operator != but does not override Object.GetHashCode() [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Comparison.cs(86,51): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Addition.cs(46,43): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Addition.cs(46,43): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Comparison.cs(94,44): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Comparison.cs(94,44): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Addition.cs(73,42): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Addition.cs(73,42): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Addition.cs(83,38): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Addition.cs(83,38): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/WrapperTests.cs(86,25): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Addition.cs(110,48): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/DictTests.cs(399,29): warning CS8714: The type 'Sharpy.Core.Str?' cannot be used as type parameter 'K' in the generic type or method 'Dict<K, V>'. Nullability of type argument 'Sharpy.Core.Str?' doesn't match 'notnull' constraint. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/WrapperTests.cs(113,25): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Addition.cs(137,49): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/DictTests.cs(410,29): warning CS8714: The type 'Sharpy.Core.Str?' cannot be used as type parameter 'K' in the generic type or method 'Dict<K, V>'. Nullability of type argument 'Sharpy.Core.Str?' doesn't match 'notnull' constraint. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/WrapperTests.cs(145,9): warning CS8602: Dereference of a possibly null reference. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Addition.cs(164,49): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/DictTests.cs(509,18): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/DictTests.cs(510,10): warning CS8604: Possible null reference argument for parameter 'left' in 'bool Dict<Str, int>.operator !=(Dict<Str, int> left, Dict<Str, int> right)'. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/DictTests.cs(510,18): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(56,15): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(56,15): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(57,15): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(57,10): warning CS8604: Possible null reference argument for parameter 'left' in 'bool Object.operator ==(Object left, Object right)'. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(57,15): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(58,15): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(58,10): warning CS8604: Possible null reference argument for parameter 'left' in 'bool Object.operator ==(Object left, object right)'. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(58,15): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(59,9): warning CS8602: Dereference of a possibly null reference. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(59,18): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(60,9): warning CS8602: Dereference of a possibly null reference. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(60,18): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(61,9): warning CS8602: Dereference of a possibly null reference. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(61,18): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(62,9): warning CS8602: Dereference of a possibly null reference. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(62,18): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(62,18): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(63,18): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(63,18): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(64,18): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(64,18): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(74,10): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(74,10): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(75,10): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(75,10): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(75,26): warning CS8604: Possible null reference argument for parameter 'right' in 'bool Object.operator ==(Object left, Object right)'. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(76,10): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(76,10): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(76,26): warning CS8604: Possible null reference argument for parameter 'right' in 'bool Object.operator ==(object left, Object right)'. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(120,15): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(120,15): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(121,15): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(121,10): warning CS8604: Possible null reference argument for parameter 'left' in 'bool Object.operator !=(Object left, Object right)'. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(121,15): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(122,15): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(122,10): warning CS8604: Possible null reference argument for parameter 'left' in 'bool Object.operator !=(Object left, object right)'. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(122,15): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(123,9): warning CS8602: Dereference of a possibly null reference. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(123,18): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(123,18): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(124,18): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(124,18): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(125,18): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(125,18): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(134,10): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(134,10): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(135,10): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(135,10): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(135,26): warning CS8604: Possible null reference argument for parameter 'right' in 'bool Object.operator !=(Object left, Object right)'. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(136,10): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(136,10): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.SetTests/SetTests.Equality.cs(136,26): warning CS8604: Possible null reference argument for parameter 'right' in 'bool Object.operator !=(object left, Object right)'. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/StrMethodsTests.cs(787,10): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/StrMethodsTests.cs(788,10): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/StrMethodsTests.cs(789,10): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(56,15): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(56,15): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(57,15): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(57,10): warning CS8604: Possible null reference argument for parameter 'left' in 'bool Object.operator ==(Object left, Object right)'. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(57,15): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(58,15): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(58,10): warning CS8604: Possible null reference argument for parameter 'left' in 'bool Object.operator ==(Object left, object right)'. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(58,15): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(59,9): warning CS8602: Dereference of a possibly null reference. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(59,18): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(60,9): warning CS8602: Dereference of a possibly null reference. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(60,18): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(61,9): warning CS8602: Dereference of a possibly null reference. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(61,18): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(62,9): warning CS8602: Dereference of a possibly null reference. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(62,18): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(62,18): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(63,18): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(63,18): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(64,18): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(64,18): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(74,10): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(74,10): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(75,10): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(75,10): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(75,26): warning CS8604: Possible null reference argument for parameter 'right' in 'bool Object.operator ==(Object left, Object right)'. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(76,10): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(76,10): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(76,26): warning CS8604: Possible null reference argument for parameter 'right' in 'bool Object.operator ==(object left, Object right)'. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(120,15): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(120,15): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(121,15): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(121,10): warning CS8604: Possible null reference argument for parameter 'left' in 'bool Object.operator !=(Object left, Object right)'. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(121,15): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(122,15): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(122,10): warning CS8604: Possible null reference argument for parameter 'left' in 'bool Object.operator !=(Object left, object right)'. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(122,15): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(123,9): warning CS8602: Dereference of a possibly null reference. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(123,18): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(123,18): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(124,18): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(124,18): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(125,18): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(125,18): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(134,10): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(134,10): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(135,10): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(135,10): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(135,26): warning CS8604: Possible null reference argument for parameter 'right' in 'bool Object.operator !=(Object left, Object right)'. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(136,10): warning CS8600: Converting null literal or possible null value to non-nullable type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(136,10): warning CS8625: Cannot convert null literal to non-nullable reference type. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Partial.ListTests/ListTests.Equality.cs(136,26): warning CS8604: Possible null reference argument for parameter 'right' in 'bool Object.operator !=(object left, Object right)'. [/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj]
+  Sharpy.Core.Tests -> /Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/bin/Debug/net10.0/Sharpy.Core.Tests.dll
+Test run for /Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/bin/Debug/net10.0/Sharpy.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+No test matches the given testcase filter `FullyQualifiedName~Lexer` in /Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/bin/Debug/net10.0/Sharpy.Core.Tests.dll
+
+
+Passed!  - Failed:     0, Passed:   620, Skipped:     0, Total:   620, Duration: 85 ms - Sharpy.Compiler.Tests.dll (net10.0)
+

@@ -1,0 +1,756 @@
+
+================================================================================
+[2026-01-12T03:17:15.319662] baseline_test_run - Task: 0.1.3.6
+================================================================================
+Success: True
+
+--- OUTPUT ---
+  Determining projects to restore...
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+  All projects are up-to-date for restore.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+  Sharpy.Core -> /Users/anton/Documents/github/sharpy/src/Sharpy.Core/bin/Debug/net10.0/Sharpy.Core.dll
+  Sharpy.Compiler -> /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler/bin/Debug/net10.0/Sharpy.Compiler.dll
+  Sharpy.Core.Tests -> /Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/bin/Debug/net10.0/Sharpy.Core.Tests.dll
+Test run for /Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/bin/Debug/net10.0/Sharpy.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+  Sharpy.Compiler.Tests -> /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/bin/Debug/net10.0/Sharpy.Compiler.Tests.dll
+A total of 1 test files matched the specified pattern.
+Test run for /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/bin/Debug/net10.0/Sharpy.Compiler.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:   735, Skipped:     0, Total:   735, Duration: 86 ms - Sharpy.Core.Tests.dll (net10.0)
+[xUnit.net 00:00:00.31]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongGenericType [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongGenericType [1 ms]
+[xUnit.net 00:00:00.32]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsAssignmentToFunctionCall [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsAssignmentToFunctionCall [1 ms]
+[xUnit.net 00:00:00.38]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsIncompatibleDictTypes [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsIncompatibleDictTypes [1 ms]
+[xUnit.net 00:00:00.42]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsBoolToIntAssignment [SKIP]
+[xUnit.net 00:00:00.42]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongNumberOfGenericArguments [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsBoolToIntAssignment [1 ms]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongNumberOfGenericArguments [1 ms]
+[xUnit.net 00:00:00.42]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsYieldOutsideFunction [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsYieldOutsideFunction [1 ms]
+[xUnit.net 00:00:00.43]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsInvalidGenericArgument [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsInvalidGenericArgument [1 ms]
+[xUnit.net 00:00:00.43]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesNestedListComprehension [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesNestedListComprehension [1 ms]
+[xUnit.net 00:00:00.44]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDecoratorWithArguments [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDecoratorWithArguments [1 ms]
+[xUnit.net 00:00:00.45]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithAllParameterTypes [SKIP]
+[xUnit.net 00:00:00.45]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesCallableType [SKIP]
+[xUnit.net 00:00:00.45]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesWithStatement [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithAllParameterTypes [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesCallableType [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesWithStatement [1 ms]
+[xUnit.net 00:00:00.46]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesMultipleWithItems [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesMultipleWithItems [1 ms]
+[xUnit.net 00:00:00.46]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithKwargs [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithKwargs [1 ms]
+[xUnit.net 00:00:00.47]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDictComprehension [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDictComprehension [1 ms]
+[xUnit.net 00:00:00.48]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesTryExceptElse [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesTryExceptElse [1 ms]
+[xUnit.net 00:00:00.48]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithVarArgs [SKIP]
+[xUnit.net 00:00:00.48]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesLambdaWithDefaultArgs [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithVarArgs [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesLambdaWithDefaultArgs [1 ms]
+[xUnit.net 00:00:00.55]     Sharpy.Compiler.Tests.Semantic.NameResolverOperatorTests.RegistersMultipleOverloadsOfSameOperator [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.NameResolverOperatorTests.RegistersMultipleOverloadsOfSameOperator [1 ms]
+[xUnit.net 00:00:00.74]     Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.ForLoop_ModifyLoopVariable_WorksCorrectly [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.ForLoop_ModifyLoopVariable_WorksCorrectly [1 ms]
+[xUnit.net 00:00:00.80]     Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.WhileLoop_InfiniteLoop_Detection_TimeoutTest [SKIP]
+[xUnit.net 00:00:00.82]     Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.Assignment_OperatorPrecedence_InUpdate_WorksCorrectly [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.WhileLoop_InfiniteLoop_Detection_TimeoutTest [1 ms]
+  Skipped Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.Assignment_OperatorPrecedence_InUpdate_WorksCorrectly [1 ms]
+
+Passed!  - Failed:     0, Passed:  2308, Skipped:    22, Total:  2330, Duration: 1 s - Sharpy.Compiler.Tests.dll (net10.0)
+
+
+================================================================================
+[2026-01-12T03:17:15.320691] agent_prompt - Task: 0.1.3.6
+================================================================================
+Attempt: 1
+
+--- PROMPT ---
+You are the Test Expert for the Sharpy compiler project.
+
+## Your Domain
+- xUnit test creation
+- Integration tests
+- Phase exit criteria tests
+- Test coverage
+
+## Owned Paths
+- src/Sharpy.Compiler.Tests/
+- src/Sharpy.Core.Tests/
+
+## Current Task
+Create Phase 0.1.3 Integration Tests
+
+🆕 **New Implementation**: Comprehensive variable tests.
+
+📁 **Files**: `src/Sharpy.Compiler.Tests/Integration/Phase013IntegrationTests.cs`
+
+**Actions**:
+
+1. [ ] Test spec example:
+   ```python
+   x: int = 10
+   y: int = 20
+   z = x + y
+   z += 5
+
+   const MAX: int = 100
+   # MAX = 50  # Should error
+   ```
+
+2. [ ] Test type inference:
+   ```python
+   x = 42        # Inferred as int32
+   y = 3.14      # Inferred as float64
+   ```
+
+3. [ ] Test error cases:
+   - Undefined variable
+   - Const reassig
+
+## Testing
+```bash
+dotnet test                                          # All tests
+dotnet test --filter "Phase"          # Phase tests
+```
+
+## CRITICAL RULE
+**NEVER alter expected values to make tests pass. Fix the implementation.**
+
+If a test cannot be fixed immediately:
+```csharp
+[Fact(Skip = "TODO: Fix <specific issue>. See issue #123")]
+```
+
+
+================================================================================
+[2026-01-12T03:19:47.276572] agent_response - Task: 0.1.3.6
+================================================================================
+Success: True
+Backend: claude_code
+Duration: 151.96s
+Attempt: 1
+
+--- OUTPUT ---
+Phase 0.1.3 Integration Tests are complete. Here's the summary:
+
+## Summary
+
+Created `src/Sharpy.Compiler.Tests/Integration/Phase013IntegrationTests.cs` with **54 comprehensive tests** covering:
+
+### Test Categories
+
+| Category | Tests | Status |
+|----------|-------|--------|
+| Spec Examples | 3 | ✅ Pass |
+| Type Inference | 9 | ✅ Pass |
+| Const Declarations | 9 | 6 ✅ Pass, 3 ⏭️ Skipped |
+| Error - Undefined Variable | 3 | ✅ Pass |
+| Error - Const Reassignment | 4 | ✅ Pass |
+| Error - Type Mismatch | 5 | ✅ Pass |
+| Variable Redefinition | 4 | ✅ Pass |
+| Augmented Assignment | 6 | ✅ Pass |
+| Mixed Declarations | 4 | 3 ✅ Pass, 1 ⏭️ Skipped |
+| Edge Cases | 7 | ✅ Pass |
+
+### Results
+- **Passed**: 51
+- **Skipped**: 3
+- **Failed**: 0
+
+### Skipped Tests (Implementation Bugs)
+
+3 tests are skipped due to a **const name mangling bug** in `RoslynEmitter`:
+- `Const_UsedInExpression_CompilesAndRuns` 
+- `Const_UsedInMultipleExpressions_CompilesAndRuns`
+- `MixedDeclarations_WithOperations_CompilesAndRuns`
+
+**Bug**: When a const is declared (e.g., `const BASE: int = 10`), the declaration generates `const int @BASE = 10;` but references generate lowercase `@base`. The name mangling is inconsistent between declaration and reference.
+
+
+================================================================================
+[2026-01-12T03:19:49.973788] test_run - Task: 0.1.3.6
+================================================================================
+Success: True
+
+--- OUTPUT ---
+  Determining projects to restore...
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+  All projects are up-to-date for restore.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+  Sharpy.Core -> /Users/anton/Documents/github/sharpy/src/Sharpy.Core/bin/Debug/net10.0/Sharpy.Core.dll
+  Sharpy.Compiler -> /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler/bin/Debug/net10.0/Sharpy.Compiler.dll
+  Sharpy.Core.Tests -> /Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/bin/Debug/net10.0/Sharpy.Core.Tests.dll
+Test run for /Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/bin/Debug/net10.0/Sharpy.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+  Sharpy.Compiler.Tests -> /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/bin/Debug/net10.0/Sharpy.Compiler.Tests.dll
+Test run for /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/bin/Debug/net10.0/Sharpy.Compiler.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:   735, Skipped:     0, Total:   735, Duration: 91 ms - Sharpy.Core.Tests.dll (net10.0)
+[xUnit.net 00:00:00.28]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesNestedListComprehension [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesNestedListComprehension [1 ms]
+[xUnit.net 00:00:00.29]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDecoratorWithArguments [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDecoratorWithArguments [1 ms]
+[xUnit.net 00:00:00.29]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithAllParameterTypes [SKIP]
+[xUnit.net 00:00:00.29]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesCallableType [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithAllParameterTypes [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesCallableType [1 ms]
+[xUnit.net 00:00:00.29]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesWithStatement [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesWithStatement [1 ms]
+[xUnit.net 00:00:00.32]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesMultipleWithItems [SKIP]
+[xUnit.net 00:00:00.32]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithKwargs [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesMultipleWithItems [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithKwargs [1 ms]
+[xUnit.net 00:00:00.32]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDictComprehension [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDictComprehension [1 ms]
+[xUnit.net 00:00:00.33]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesTryExceptElse [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesTryExceptElse [1 ms]
+[xUnit.net 00:00:00.33]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithVarArgs [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithVarArgs [1 ms]
+[xUnit.net 00:00:00.33]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesLambdaWithDefaultArgs [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesLambdaWithDefaultArgs [1 ms]
+[xUnit.net 00:00:00.36]     Sharpy.Compiler.Tests.Semantic.NameResolverOperatorTests.RegistersMultipleOverloadsOfSameOperator [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.NameResolverOperatorTests.RegistersMultipleOverloadsOfSameOperator [1 ms]
+[xUnit.net 00:00:00.39]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongGenericType [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongGenericType [1 ms]
+[xUnit.net 00:00:00.40]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsAssignmentToFunctionCall [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsAssignmentToFunctionCall [1 ms]
+[xUnit.net 00:00:00.45]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsIncompatibleDictTypes [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsIncompatibleDictTypes [1 ms]
+[xUnit.net 00:00:00.51]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsBoolToIntAssignment [SKIP]
+[xUnit.net 00:00:00.51]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongNumberOfGenericArguments [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsBoolToIntAssignment [1 ms]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongNumberOfGenericArguments [1 ms]
+[xUnit.net 00:00:00.51]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsYieldOutsideFunction [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsYieldOutsideFunction [1 ms]
+[xUnit.net 00:00:00.51]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsInvalidGenericArgument [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsInvalidGenericArgument [1 ms]
+[xUnit.net 00:00:00.77]     Sharpy.Compiler.Tests.Integration.Phase013IntegrationTests.Const_UsedInMultipleExpressions_CompilesAndRuns [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.Phase013IntegrationTests.Const_UsedInMultipleExpressions_CompilesAndRuns [1 ms]
+[xUnit.net 00:00:00.77]     Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.ForLoop_ModifyLoopVariable_WorksCorrectly [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.ForLoop_ModifyLoopVariable_WorksCorrectly [1 ms]
+[xUnit.net 00:00:00.83]     Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.WhileLoop_InfiniteLoop_Detection_TimeoutTest [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.WhileLoop_InfiniteLoop_Detection_TimeoutTest [1 ms]
+[xUnit.net 00:00:00.86]     Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.Assignment_OperatorPrecedence_InUpdate_WorksCorrectly [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.Assignment_OperatorPrecedence_InUpdate_WorksCorrectly [1 ms]
+[xUnit.net 00:00:00.99]     Sharpy.Compiler.Tests.Integration.Phase013IntegrationTests.Const_UsedInExpression_CompilesAndRuns [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.Phase013IntegrationTests.Const_UsedInExpression_CompilesAndRuns [1 ms]
+[xUnit.net 00:00:01.18]     Sharpy.Compiler.Tests.Integration.Phase013IntegrationTests.MixedDeclarations_WithOperations_CompilesAndRuns [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.Phase013IntegrationTests.MixedDeclarations_WithOperations_CompilesAndRuns [1 ms]
+
+Passed!  - Failed:     0, Passed:  2359, Skipped:    25, Total:  2384, Duration: 1 s - Sharpy.Compiler.Tests.dll (net10.0)
+
+
+================================================================================
+[2026-01-12T03:19:49.975079] validation_prompt - Task: 0.1.3.6
+================================================================================
+
+--- PROMPT ---
+You are the Spec Adherence agent for the Sharpy compiler project.
+
+## Your Role
+Verify that the implementation matches the language specification. You are READ-ONLY and do not modify code.
+
+## Task Being Verified
+Create Phase 0.1.3 Integration Tests
+
+## Files to Verify
+- src/Sharpy.Compiler.Tests/Integration/Phase013IntegrationTests.cs
+
+## Verification Process
+1. Identify the relevant spec document in docs/language_specification/
+2. Extract exact requirements from the spec
+3. Locate the corresponding implementation code
+4. Verify behavior matches spec
+5. Report compliance or deviations
+
+## Report Format
+```markdown
+## Spec Adherence Report: Create Phase 0.1.3 Integration Tests
+
+**Spec:** `docs/language_specification/[feature].md`
+**Implementation:** `src/Sharpy.Compiler/[path]`
+
+### Compliant
+- [x] Requirement 1
+- [x] Requirement 2
+
+### Deviations
+- [ ] **Section X.Y**: [Description]
+  - **Spec says:** "..."
+  - **Implementation:** [What it actually does]
+  - **Impact:** [Severity: Low/Medium/High]
+
+### Recommendations
+- [Suggestions for fixing deviations]
+```
+
+## Important
+- Always cite exact spec text
+- Flag any undocumented behavior
+- Be precise about what matches and what doesn't
+
+
+================================================================================
+[2026-01-12T03:21:05.726898] validation_response - Task: 0.1.3.6
+================================================================================
+Success: True
+Backend: claude_code
+Duration: 75.75s
+
+--- OUTPUT ---
+Now I have a comprehensive understanding of the spec. Let me verify the test file against the spec requirements. I notice a potential issue - the spec in `integer_literals.md` says integer literals are inferred as `int` (32-bit/`int32`), but the test comments say `int32`. Similarly for `float_literals.md` which says `float64`. Let me compile my findings:
+
+## Spec Adherence Report: Create Phase 0.1.3 Integration Tests
+
+**Spec Documents:**
+- `docs/language_specification/variable_declaration.md`
+- `docs/language_specification/statements.md` (Section: Variable Declaration, Constants)
+- `docs/language_specification/type_annotations.md`
+- `docs/language_specification/assignment_operators.md`
+- `docs/language_specification/integer_literals.md`
+- `docs/language_specification/float_literals.md`
+- `docs/language_specification/boolean_literals.md`
+- `docs/language_specification/string_literals.md`
+- `docs/language_specification/identifiers.md`
+- `docs/language_specification/comments.md`
+- `docs/language_specification/variable_scoping.md`
+
+**Implementation:** `src/Sharpy.Compiler.Tests/Integration/Phase013IntegrationTests.cs`
+
+### Compliant
+
+#### Variable Declaration Forms
+- [x] **Form 1 - Explicit type annotation** (`x: int = 5`): Tested in `SpecExample_TypedVariablesWithOperations_CompilesAndRuns` (line 22-23)
+- [x] **Form 2 - Type inference implicit** (`x = 5`): Tested in `TypeInference_IntegerLiteral_InferredAsInt32_CompilesAndRuns` (line 64)
+- [x] **Form 3 - Type inference explicit with `auto`** (`x: auto = 5`): Tested in `TypeInference_AutoKeyword_Integer_CompilesAndRuns` (line 107)
+
+#### Type Inference
+- [x] **Integer literals inferred as `int`** (spec: `integer_literals.md:17`): Tested in lines 62-69
+- [x] **Float literals inferred as `float64`** (spec: `float_literals.md:21`): Tested in lines 73-79
+- [x] **String literals inferred as `str`**: Tested in lines 83-89
+- [x] **Boolean literals `True`/`False`**: Tested in lines 92-102
+- [x] **`auto` keyword for all types**: Tested in lines 104-147
+
+#### Const Declarations
+- [x] **`const` keyword for constant declaration** (spec: `statements.md:119-127`): Tested in lines 167-221
+- [x] **`const` with int**: Tested in `Const_IntegerDeclaration_CompilesAndRuns` (line 170)
+- [x] **`const` with float**: Tested in `Const_FloatDeclaration_CompilesAndRuns` (line 180)
+- [x] **`const` with str**: Tested in `Const_StringDeclaration_CompilesAndRuns` (line 190)
+- [x] **`const` with bool**: Tested in `Const_BoolDeclaration_CompilesAndRuns` (line 200)
+- [x] **`const` cannot be reassigned** (spec: `statements.md:159-164`): Tested in lines 323-388
+
+#### Assignment Operators
+- [x] **Simple assignment `=`** (spec: `assignment_operators.md:5`): Tested throughout
+- [x] **Augmented assignment `+=`**: Tested in `AugmentedAssignment_AddEquals_CompilesAndRuns` (line 522-532)
+- [x] **Augmented assignment `-=`**: Tested in `AugmentedAssignment_SubtractEquals_CompilesAndRuns` (line 534-545)
+- [x] **Augmented assignment `*=`**: Tested in `AugmentedAssignment_MultiplyEquals_CompilesAndRuns` (line 547-558)
+- [x] **Augmented assignment `//=`**: Tested in `AugmentedAssignment_DivideEquals_CompilesAndRuns` (line 560-571)
+
+#### Variable Shadowing/Redefinition
+- [x] **Variable shadowing with same type** (spec: `variable_scoping.md:80-91`): Tested in `VariableRedefinition_SameType_CompilesAndRuns` (lines 464-474)
+- [x] **Variable shadowing with `auto` for different type**: Tested in `VariableRedefinition_DifferentType_WithAuto_CompilesAndRuns` (lines 477-488)
+
+#### Error Cases
+- [x] **Undefined variable error**: Tested in lines 275-316
+- [x] **Type mismatch errors**: Tested in lines 392-457
+- [x] **Const reassignment error** (spec: `statements.md:162-163`): Tested in lines 320-388
+
+#### Identifiers
+- [x] **Underscore prefix allowed** (spec: `identifiers.md:27`): Tested in `EdgeCase_VariableNameStartsWithUnderscore_CompilesAndRuns` (lines 740-747)
+- [x] **Numbers in identifiers after first char** (spec: `identifiers.md:7-8`): Tested in `EdgeCase_VariableNameWithNumbers_CompilesAndRuns` (lines 749-757)
+
+#### Comments
+- [x] **Single-line comments with `#`** (spec: `comments.md:6-8`): Tested in `MixedDeclarations_CommentsInterspersed_CompilesAndRuns` (lines 657-677)
+
+### Deviations
+
+- [x] **No Deviations Found**: All tests align with the spec.
+
+### Known Issues (Documented in Tests)
+
+The following tests are skipped with TODO comments, indicating known implementation issues rather than spec deviations:
+
+1. **`Const_UsedInExpression_CompilesAndRuns`** (line 223): Skipped due to const name mangling issue - declaration uses `ToConstantCase` but reference uses lowercase.
+
+2. **`Const_UsedInMultipleExpressions_CompilesAndRuns`** (line 236): Same const name mangling issue.
+
+3. **`MixedDeclarations_WithOperations_CompilesAndRuns`** (line 640): Same const name mangling issue.
+
+### Minor Observations
+
+1. **Test Comment Accuracy**: The test at line 64 comments `// Inferred as int32`, but the spec uses `int` as the alias. Both are correct (spec: `primitive_types.md:26` states `int` is an alias for `int32`), but for consistency with spec examples, `int` would be more appropriate.
+
+2. **Test Comment at line 74**: Comments `// Inferred as float64`, which matches the spec exactly (`float_literals.md:21`).
+
+3. **Const Type Inference**: The spec shows `const APP_NAME = "MyApp"  # Type inferred as str` (statements.md:125), demonstrating const can use type inference. The tests don't explicitly test const with type inference (all const tests use explicit types), but this is a minor gap as the feature tests for explicit const types are comprehensive.
+
+### Recommendations
+
+1. **Add test for const with type inference**: 
+   ```python
+   const NAME = "Sharpy"  # No explicit type, inferred as str
+   ```
+
+2. **Fix const name mangling**: The three skipped tests indicate a bug in `RoslynEmitter` name handling where const declarations and references use different casing strategies.
+
+3. **Consider adding tests for**:
+   - Const with negative values using expressions (e.g., `const MIN: int = -100` already exists, but `const OFFSET: int = -5 + 3` could test expression evaluation)
+   - Augmented bitwise assignment operators (`&=`, `|=`, etc.) per spec `assignment_operators.md:7`
+
+
+================================================================================
+[2026-01-12T03:21:05.729421] validation_prompt - Task: 0.1.3.6
+================================================================================
+
+--- PROMPT ---
+You are the Verification Expert for the Sharpy compiler project.
+
+## Your Role
+Provide independent verification that:
+- Implementation matches specification
+- Tests pass and cover requirements
+- Behavior is correct and consistent
+- No regressions introduced
+
+You are READ-ONLY and do not modify code.
+
+## Task Being Verified
+Create Phase 0.1.3 Integration Tests
+
+## Verification Steps
+1. Run all relevant tests
+2. Verify behavior matches expected outcomes
+3. Check for regressions
+4. Validate test coverage
+
+## Commands
+```bash
+dotnet test --logger "trx;LogFileName=results.trx"
+dotnet test --filter "FullyQualifiedName~0.1.3"
+```
+
+## Report Format
+```markdown
+## Verification Report: Create Phase 0.1.3 Integration Tests
+
+### Test Results
+- Total: X | Passed: Y | Failed: Z
+
+### Behavior Checks
+- [x] Feature A works as expected
+- [ ] Feature B has deviation (see details)
+
+### Coverage Assessment
+- [Description of test coverage]
+
+### Regression Check
+- No regressions detected / Regressions found in: [list]
+
+### Recommendations
+- [Suggestions if issues found]
+```
+
+
+================================================================================
+[2026-01-12T03:22:13.070972] validation_response - Task: 0.1.3.6
+================================================================================
+Success: True
+Backend: claude_code
+Duration: 67.34s
+
+--- OUTPUT ---
+Now I have all the information needed to produce the verification report. Let me summarize the findings:
+
+## Verification Report: Create Phase 0.1.3 Integration Tests
+
+### Test Results
+- **Total Phase 0.1.3 Tests**: 54 | **Passed**: 51 | **Skipped**: 3 | **Failed**: 0
+- **Overall Test Suite**: 3,119 total | Passed: 3,094 | Skipped: 25 | Failed: 0
+
+### Behavior Checks
+- [x] **Spec Examples** work as expected (typed variables with operations, const declarations)
+- [x] **Type Inference** correctly infers types from literals (int32, float64, str, bool)
+- [x] **`auto` keyword** works for explicit type inference
+- [x] **Const declarations** compile for all primitive types (int, float, str, bool)
+- [x] **Const reassignment errors** are properly detected (simple and augmented assignments)
+- [x] **Type mismatch errors** are properly reported (str→int, int→str, bool→int, int→bool)
+- [x] **Undefined variable errors** are properly detected
+- [x] **Augmented assignments** work correctly (+=, -=, *=, //=)
+- [x] **Variable redefinition** works as expected
+- [x] **Edge cases** handled (zero values, empty strings, large integers, scientific notation, underscore prefixes)
+- [ ] **Const used in expressions** has known issue (3 tests skipped - see below)
+
+### Skipped Tests (Known Issues)
+Three tests are skipped with documented TODO notes:
+1. `Const_UsedInExpression_CompilesAndRuns` - const name mangling issue
+2. `Const_UsedInMultipleExpressions_CompilesAndRuns` - const name mangling issue  
+3. `MixedDeclarations_WithOperations_CompilesAndRuns` - const name mangling issue
+
+**Root Cause**: `RoslynEmitter` uses `ToConstantCase()` for const declaration names (e.g., `FACTOR`) but references use lowercase (`factor`), causing name mismatch at runtime.
+
+### Coverage Assessment
+The Phase 0.1.3 test suite provides comprehensive coverage of:
+
+| Category | Test Count | Coverage |
+|----------|------------|----------|
+| Spec Examples | 3 | ✅ Complete |
+| Type Inference | 10 | ✅ Comprehensive |
+| Const Declarations | 10 | ✅ Good (3 skipped for known issue) |
+| Error Cases - Undefined Variables | 3 | ✅ Complete |
+| Error Cases - Const Reassignment | 4 | ✅ Complete |
+| Error Cases - Type Mismatch | 5 | ✅ Complete |
+| Variable Redefinition | 4 | ✅ Complete |
+| Augmented Assignments | 6 | ✅ Complete |
+| Mixed Declarations | 4 | ✅ Good (1 skipped) |
+| Edge Cases | 7 | ✅ Complete |
+
+### Regression Check
+- **Phase 0.1.2 Integration Tests**: 46 passed, 0 failed, 0 skipped ✅
+- **Sharpy.Core.Tests**: 735 passed, 0 failed, 0 skipped ✅
+- **Sharpy.Compiler.Tests**: 2,359 passed, 25 skipped, 0 failed ✅
+
+**No regressions detected.** All existing functionality continues to work correctly.
+
+### Recommendations
+
+1. **High Priority**: Fix the const name mangling issue in `RoslynEmitter.cs` to enable the 3 skipped tests:
+   - Declaration uses `ToConstantCase()` producing `FACTOR`
+   - Reference lookup uses lowercase `factor`
+   - This is a code generation bug, not a test issue
+
+2. **Low Priority**: Consider adding tests for:
+   - Const inside class bodies (field-level const)
+   - Const with non-literal initializers (should fail or use `static readonly`)
+
+3. **Documentation**: The skipped tests have clear TODO comments explaining the issue - this is good practice.
+
+### Verdict: ✅ PASS
+
+The Phase 0.1.3 integration tests are well-structured, comprehensive, and correctly verify the variable declarations, type inference, and const functionality. The 3 skipped tests are appropriately documented with clear explanations of the underlying issue. No regressions were introduced.
+
+
+================================================================================
+[2026-01-12T03:22:13.073978] validation_prompt - Task: 0.1.3.6
+================================================================================
+
+--- PROMPT ---
+You are the Hallucination Defense agent for the Sharpy compiler project.
+
+## Your Role
+Validate factual accuracy of claims about:
+- .NET API behavior and availability
+- Roslyn SyntaxFactory methods
+- Python language semantics
+- C# 9.0 feature availability (Unity constraint)
+
+You are READ-ONLY and do not modify code.
+
+## Claims to Verify
+Phase 0.1.3 Integration Tests are complete. Here's the summary:
+
+## Summary
+
+Created `src/Sharpy.Compiler.Tests/Integration/Phase013IntegrationTests.cs` with **54 comprehensive tests** covering:
+
+### Test Categories
+
+| Category | Tests | Status |
+|----------|-------|--------|
+| Spec Examples | 3 | ✅ Pass |
+| Type Inference | 9 | ✅ Pass |
+| Const Declarations | 9 | 6 ✅ Pass, 3 ⏭️ Skipped |
+| Error - Undefined Variable | 3 | ✅ Pass |
+| Error - Const Reassignment | 4 | ✅ Pass |
+| Error - Type Mismatch | 5 | ✅ Pass |
+| Variable Redefinition | 4 | ✅ Pass |
+| Augmented Assignment | 6 | ✅ Pass |
+| Mixed Declarations | 4 | 3 ✅ Pass, 1 ⏭️ Skipped |
+| Edge Cases | 7 | ✅ Pass |
+
+### Results
+- **Passed**: 51
+- **Skipped**: 3
+- **Failed**: 0
+
+### Skipped Tests (Implementation Bugs)
+
+3 tests are skipped due to a **const name mangling bug** in `RoslynEmitter`:
+- `Const_UsedInExpression_CompilesAndRuns` 
+- `Const_UsedInMultipleExpressions_CompilesAndRuns`
+- `MixedDeclarations_WithOperations_CompilesAndRuns`
+
+**Bug**: When a const is declared (e.g., `const BASE: int = 10`), the declaration generates `const int @BASE = 10;` but references generate lowercase `@base`. The name mangling is inconsistent between declaration and reference.
+
+
+## Verification Methods
+
+### .NET API Claims
+```bash
+dotnet script -e "var list = new List<int>{1,2,3}; list.Insert(1, 99); Console.WriteLine(list.Count);"
+```
+
+### Python Semantic Claims
+```bash
+python3 -c "print(-7 // 2)"  # Verify Python floor division
+```
+
+### C# 9.0 Availability
+| C# 9.0 ✅ | C# 10+ ❌ |
+|-----------|-----------|
+| Records | File-scoped namespaces |
+| Init-only setters | Global usings |
+| Pattern matching | Record structs |
+| Target-typed new | Required members |
+
+## Output Format
+```markdown
+**Claim:** [The assertion being checked]
+**Verification:** [How it was verified]
+**Result:** ✅ CORRECT / ❌ INCORRECT — [Explanation]
+```
+
+
+================================================================================
+[2026-01-12T03:23:51.753714] validation_response - Task: 0.1.3.6
+================================================================================
+Success: True
+Backend: claude_code
+Duration: 98.68s
+
+--- OUTPUT ---
+Now I have all the information needed to provide the verification report:
+
+---
+
+# Hallucination Defense Report: Phase 0.1.3 Integration Tests
+
+## Test Count Verification
+
+**Claim:** 54 comprehensive tests created
+**Verification:** `grep -c '\[Fact'` on the test file
+**Result:** ✅ CORRECT — File contains exactly 54 `[Fact]` attributes
+
+---
+
+**Claim:** 51 Passed, 3 Skipped, 0 Failed
+**Verification:** Ran `dotnet test --filter "FullyQualifiedName~Phase013"`
+**Result:** ✅ CORRECT — Test output confirms:
+```
+Total tests: 54
+     Passed: 51
+    Skipped: 3
+```
+
+---
+
+## Test Category Counts
+
+**Claim:** Spec Examples: 3 tests
+**Verification:** Manual count in `#region Spec Example Tests`
+**Result:** ✅ CORRECT — 3 tests (lines 18-56)
+
+**Claim:** Type Inference: 9 tests
+**Verification:** Manual count in `#region Type Inference Tests`
+**Result:** ✅ CORRECT — 9 tests (lines 62-162)
+
+**Claim:** Const Declarations: 9 tests (6 pass, 3 skip)
+**Verification:** Manual count in `#region Const Declaration Tests`
+**Result:** ✅ CORRECT — 9 tests total, 3 have `Skip` attribute
+
+**Claim:** Error - Undefined Variable: 3 tests
+**Verification:** Manual count
+**Result:** ✅ CORRECT — 3 tests (lines 276-316)
+
+**Claim:** Error - Const Reassignment: 4 tests
+**Verification:** Manual count
+**Result:** ✅ CORRECT — 4 tests (lines 323-388)
+
+**Claim:** Error - Type Mismatch: 5 tests
+**Verification:** Manual count
+**Result:** ✅ CORRECT — 5 tests (lines 395-457)
+
+**Claim:** Variable Redefinition: 4 tests
+**Verification:** Manual count
+**Result:** ✅ CORRECT — 4 tests (lines 464-515)
+
+**Claim:** Augmented Assignment: 6 tests
+**Verification:** Manual count
+**Result:** ✅ CORRECT — 6 tests (lines 522-601)
+
+**Claim:** Mixed Declarations: 4 tests (3 pass, 1 skip)
+**Verification:** Manual count
+**Result:** ✅ CORRECT — 4 tests, 1 has `Skip` attribute
+
+**Claim:** Edge Cases: 7 tests
+**Verification:** Manual count
+**Result:** ✅ CORRECT — 7 tests (lines 684-757)
+
+---
+
+## Bug Description Verification
+
+**Claim:** Const name mangling bug - declaration uses `ToConstantCase` but reference uses lowercase
+**Verification:** Code inspection of `RoslynEmitter.cs`
+**Result:** ✅ CORRECT — Verified:
+- Line 1488-1489: `varDecl.IsConst ? NameMangler.ToConstantCase(varDecl.Name)` 
+- Line 1742: `Identifier name => IdentifierName(GetMangledVariableName(name.Name, isNewDeclaration: false))`
+- `GetMangledVariableName` calls `ToCamelCase` (line 43) which converts `"BASE"` → `"base"` (line 154: `parts[0].ToLowerInvariant()`)
+- `ToConstantCase` preserves `"BASE"` as-is (line 180: `return EscapeKeywordIfNeeded(name)`)
+
+**Bug Impact:** Declaration `const BASE: int = 10` generates C# `const int @BASE = 10;` but the reference `x = BASE * 2` generates `@base * 2` — identifier mismatch causes compilation failure.
+
+---
+
+## C# Version Compliance
+
+**Claim:** Tests use file-scoped namespaces (C# 10+)
+**Verification:** Line 4 shows `namespace Sharpy.Compiler.Tests.Integration;`
+**Result:** ⚠️ NOTE — The test project uses `<LangVersion>latest</LangVersion>` with `<TargetFramework>net10.0</TargetFramework>`, not C# 9.0/Unity constraint. This is acceptable for test code (only runtime library has Unity constraint).
+
+---
+
+## Summary
+
+| Category | Verification Status |
+|----------|---------------------|
+| Total Test Count | ✅ Accurate (54) |
+| Pass/Skip/Fail Counts | ✅ Accurate (51/3/0) |
+| Category Breakdowns | ✅ All 10 categories verified |
+| Skipped Test Names | ✅ Accurate (3 tests identified) |
+| Bug Description | ✅ Root cause correctly identified |
+
+**Overall Assessment:** All factual claims in the summary are **accurate and verifiable**.
+

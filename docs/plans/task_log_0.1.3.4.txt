@@ -1,0 +1,747 @@
+
+================================================================================
+[2026-01-12T02:54:00.123433] baseline_test_run - Task: 0.1.3.4
+================================================================================
+Success: True
+
+--- OUTPUT ---
+  Determining projects to restore...
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+  All projects are up-to-date for restore.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+  Sharpy.Core -> /Users/anton/Documents/github/sharpy/src/Sharpy.Core/bin/Debug/net10.0/Sharpy.Core.dll
+  Sharpy.Compiler -> /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler/bin/Debug/net10.0/Sharpy.Compiler.dll
+  Sharpy.Core.Tests -> /Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/bin/Debug/net10.0/Sharpy.Core.Tests.dll
+Test run for /Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/bin/Debug/net10.0/Sharpy.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+  Sharpy.Compiler.Tests -> /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/bin/Debug/net10.0/Sharpy.Compiler.Tests.dll
+Test run for /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/bin/Debug/net10.0/Sharpy.Compiler.Tests.dll (.NETCoreApp,Version=v10.0)
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:   735, Skipped:     0, Total:   735, Duration: 91 ms - Sharpy.Core.Tests.dll (net10.0)
+[xUnit.net 00:00:00.38]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongGenericType [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongGenericType [1 ms]
+[xUnit.net 00:00:00.38]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsAssignmentToFunctionCall [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsAssignmentToFunctionCall [1 ms]
+[xUnit.net 00:00:00.44]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsIncompatibleDictTypes [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsIncompatibleDictTypes [1 ms]
+[xUnit.net 00:00:00.44]     Sharpy.Compiler.Tests.Semantic.NameResolverOperatorTests.RegistersMultipleOverloadsOfSameOperator [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.NameResolverOperatorTests.RegistersMultipleOverloadsOfSameOperator [1 ms]
+[xUnit.net 00:00:00.45]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesNestedListComprehension [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesNestedListComprehension [1 ms]
+[xUnit.net 00:00:00.45]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDecoratorWithArguments [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDecoratorWithArguments [1 ms]
+[xUnit.net 00:00:00.46]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithAllParameterTypes [SKIP]
+[xUnit.net 00:00:00.46]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesCallableType [SKIP]
+[xUnit.net 00:00:00.46]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesWithStatement [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithAllParameterTypes [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesCallableType [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesWithStatement [1 ms]
+[xUnit.net 00:00:00.46]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesMultipleWithItems [SKIP]
+[xUnit.net 00:00:00.46]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithKwargs [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesMultipleWithItems [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithKwargs [1 ms]
+[xUnit.net 00:00:00.47]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDictComprehension [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDictComprehension [1 ms]
+[xUnit.net 00:00:00.47]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesTryExceptElse [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesTryExceptElse [1 ms]
+[xUnit.net 00:00:00.47]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithVarArgs [SKIP]
+[xUnit.net 00:00:00.47]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesLambdaWithDefaultArgs [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithVarArgs [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesLambdaWithDefaultArgs [1 ms]
+[xUnit.net 00:00:00.50]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsBoolToIntAssignment [SKIP]
+[xUnit.net 00:00:00.50]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongNumberOfGenericArguments [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsBoolToIntAssignment [1 ms]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongNumberOfGenericArguments [1 ms]
+[xUnit.net 00:00:00.50]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsYieldOutsideFunction [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsYieldOutsideFunction [1 ms]
+[xUnit.net 00:00:00.51]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsInvalidGenericArgument [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsInvalidGenericArgument [1 ms]
+[xUnit.net 00:00:00.76]     Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.ForLoop_ModifyLoopVariable_WorksCorrectly [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.ForLoop_ModifyLoopVariable_WorksCorrectly [1 ms]
+[xUnit.net 00:00:00.82]     Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.WhileLoop_InfiniteLoop_Detection_TimeoutTest [SKIP]
+[xUnit.net 00:00:00.84]     Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.Assignment_OperatorPrecedence_InUpdate_WorksCorrectly [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.WhileLoop_InfiniteLoop_Detection_TimeoutTest [1 ms]
+  Skipped Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.Assignment_OperatorPrecedence_InUpdate_WorksCorrectly [1 ms]
+
+Passed!  - Failed:     0, Passed:  2308, Skipped:    22, Total:  2330, Duration: 1 s - Sharpy.Compiler.Tests.dll (net10.0)
+
+
+================================================================================
+[2026-01-12T02:54:00.124624] agent_prompt - Task: 0.1.3.4
+================================================================================
+Attempt: 1
+
+--- PROMPT ---
+You are the Implementer agent for the Sharpy compiler project.
+
+## Your Role
+Implement tasks and features for the Sharpy compiler and standard library, following the specification.
+
+## Current Task
+Implement `const` Declarations
+
+## Task Description
+⚠️ **Potential Gap**: `const` keyword for immutable values.
+
+📁 **Files**: Multiple locations
+
+**Actions**:
+
+1. [ ] **Lexer**: Verify `const` keyword tokenizes to `TokenType.Const`
+2. [ ] **Parser**: Parse `const PI: float = 3.14159`
+   - May need `ConstDeclaration` AST node or flag on `VariableDeclaration`
+3. [ ] **Semantic**: Track const-ness in symbol table
+4. [ ] **Semantic**: Error on reassignment: `PI = 3` should fail
+5. [ ] **CodeGen**: Emit as `const` in C# if compile-time constant, other
+
+## Files to Modify
+
+
+## Key Guidelines
+1. Follow Sharpy's philosophy: .NET first, Pythonic second
+2. Use static typing and compile-time resolution
+3. PascalCase for public APIs, _camelCase for private fields
+4. NEVER alter test expected values to make tests pass - fix the implementation
+5. Run tests before and after changes
+
+## Available Commands
+```bash
+dotnet build sharpy.sln      # Build
+dotnet test                   # Test
+dotnet format                 # Format before committing
+dotnet test --filter "FullyQualifiedName~0.1.3"  # Filtered tests
+```
+
+## Specification Reference
+Refer to docs/language_specification/ for authoritative behavior definitions.
+
+## Output Format
+After completing the task:
+1. List all files modified
+2. Describe changes made
+3. Report test results
+4. Note any concerns or questions for human review
+
+
+================================================================================
+[2026-01-12T02:56:57.297925] agent_response - Task: 0.1.3.4
+================================================================================
+Success: True
+Backend: claude_code
+Duration: 177.17s
+Attempt: 1
+
+--- OUTPUT ---
+## Summary: `const` Declarations Implementation
+
+### Files Reviewed
+
+The `const` declaration feature is **already fully implemented** across all compiler stages:
+
+| Stage | File | Key Implementation |
+|-------|------|-------------------|
+| **Lexer** | `src/Sharpy.Compiler/Lexer/Token.cs:56` | `TokenType.Const` enum value defined |
+| **Lexer** | `src/Sharpy.Compiler/Lexer/Lexer.cs:66` | `"const" → TokenType.Const` keyword mapping |
+| **Parser** | `src/Sharpy.Compiler/Parser/Ast/Statement.cs:48-54` | `VariableDeclaration.IsConst` property |
+| **Parser** | `src/Sharpy.Compiler/Parser/Parser.cs:650-674` | `ParseConstDeclaration()` method |
+| **Semantic** | `src/Sharpy.Compiler/Semantic/Symbol.cs:24` | `VariableSymbol.IsConstant` property |
+| **Semantic** | `src/Sharpy.Compiler/Semantic/TypeChecker.cs:399,444,453,494,578-598` | Const tracking and reassignment errors |
+| **Semantic** | `src/Sharpy.Compiler/Semantic/NameResolver.cs:86,389,414` | Module-level const resolution |
+| **CodeGen** | `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:1140-1142,1488-1523` | C# `const` keyword emission |
+
+### Changes Made
+
+**None required.** The implementation is complete and functioning.
+
+### Test Results
+
+All 36 const-related tests pass:
+- Lexer tests: Tokenization of `const` keyword ✅
+- Parser tests: `ParseConstDeclaration`, `ParseConstWithExplicitType` ✅
+- Semantic tests: `TestConstantDeclaration`, `TestConstantMustBeConst`, `TestDuplicateConstantDefinition` ✅
+- Negative tests: `RejectsConstantReassignment`, `RejectsConstReassignmentInNestedScope`, `AugmentedAssignment_ToConstant_ReportsError`, etc. ✅
+- CodeGen tests: `GenerateStatement_ConstDeclaration_GeneratesConstLocalDeclaration` ✅
+- Integration tests: `Assignment_ToConstant_ShouldFail` ✅
+
+### Implementation Details
+
+1. **Lexer**: `const` tokenizes to `TokenType.Const`
+2. **Parser**: Parses `const PI: float = 3.14159` syntax creating `VariableDeclaration` with `IsConst = true`
+3. **Semantic**: 
+   - `VariableSymbol.IsConstant` tracks const-ness in symbol table
+   - TypeChecker rejects reassignment: `"Cannot reassign constant variable 'X'"`
+   - TypeChecker rejects augmented assignment on consts
+   - TypeChecker rejects redefinition of consts
+4. **CodeGen**: 
+   - Class fields: adds `public const` modifiers
+   - Local variables: uses `CONSTANT_CASE` naming and `const` keyword
+
+### Notes
+
+This feature was already implemented and tested. No code modifications were necessary.
+
+
+================================================================================
+[2026-01-12T02:56:59.939571] test_run - Task: 0.1.3.4
+================================================================================
+Success: True
+
+--- OUTPUT ---
+  Determining projects to restore...
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary. [/Users/anton/Documents/github/sharpy/sharpy.sln]
+  All projects are up-to-date for restore.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Net.Http will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+/Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj : warning NU1510: PackageReference System.Text.RegularExpressions will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.
+  Sharpy.Core -> /Users/anton/Documents/github/sharpy/src/Sharpy.Core/bin/Debug/net10.0/Sharpy.Core.dll
+  Sharpy.Compiler -> /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler/bin/Debug/net10.0/Sharpy.Compiler.dll
+  Sharpy.Core.Tests -> /Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/bin/Debug/net10.0/Sharpy.Core.Tests.dll
+Test run for /Users/anton/Documents/github/sharpy/src/Sharpy.Core.Tests/bin/Debug/net10.0/Sharpy.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1 (arm64)
+
+  Sharpy.Compiler.Tests -> /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/bin/Debug/net10.0/Sharpy.Compiler.Tests.dll
+Test run for /Users/anton/Documents/github/sharpy/src/Sharpy.Compiler.Tests/bin/Debug/net10.0/Sharpy.Compiler.Tests.dll (.NETCoreApp,Version=v10.0)
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+VSTest version 18.0.1 (arm64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:   735, Skipped:     0, Total:   735, Duration: 84 ms - Sharpy.Core.Tests.dll (net10.0)
+[xUnit.net 00:00:00.31]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesNestedListComprehension [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesNestedListComprehension [1 ms]
+[xUnit.net 00:00:00.33]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDecoratorWithArguments [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDecoratorWithArguments [1 ms]
+[xUnit.net 00:00:00.33]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithAllParameterTypes [SKIP]
+[xUnit.net 00:00:00.33]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesCallableType [SKIP]
+[xUnit.net 00:00:00.33]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesWithStatement [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithAllParameterTypes [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesCallableType [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesWithStatement [1 ms]
+[xUnit.net 00:00:00.34]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongGenericType [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongGenericType [1 ms]
+[xUnit.net 00:00:00.35]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsAssignmentToFunctionCall [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsAssignmentToFunctionCall [1 ms]
+[xUnit.net 00:00:00.36]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesMultipleWithItems [SKIP]
+[xUnit.net 00:00:00.36]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithKwargs [SKIP]
+[xUnit.net 00:00:00.36]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDictComprehension [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesMultipleWithItems [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithKwargs [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesDictComprehension [1 ms]
+[xUnit.net 00:00:00.36]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesTryExceptElse [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesTryExceptElse [1 ms]
+[xUnit.net 00:00:00.37]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithVarArgs [SKIP]
+[xUnit.net 00:00:00.37]     Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesLambdaWithDefaultArgs [SKIP]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesFunctionWithVarArgs [1 ms]
+  Skipped Sharpy.Compiler.Tests.Parser.ParserEdgeCaseTests.ParsesLambdaWithDefaultArgs [1 ms]
+[xUnit.net 00:00:00.43]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsIncompatibleDictTypes [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsIncompatibleDictTypes [1 ms]
+[xUnit.net 00:00:00.47]     Sharpy.Compiler.Tests.Semantic.NameResolverOperatorTests.RegistersMultipleOverloadsOfSameOperator [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.NameResolverOperatorTests.RegistersMultipleOverloadsOfSameOperator [1 ms]
+[xUnit.net 00:00:00.49]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsBoolToIntAssignment [SKIP]
+[xUnit.net 00:00:00.49]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongNumberOfGenericArguments [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsBoolToIntAssignment [1 ms]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsWrongNumberOfGenericArguments [1 ms]
+[xUnit.net 00:00:00.49]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsYieldOutsideFunction [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsYieldOutsideFunction [1 ms]
+[xUnit.net 00:00:00.51]     Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsInvalidGenericArgument [SKIP]
+  Skipped Sharpy.Compiler.Tests.Semantic.SemanticAnalyzerNegativeTests.RejectsInvalidGenericArgument [1 ms]
+[xUnit.net 00:00:00.75]     Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.ForLoop_ModifyLoopVariable_WorksCorrectly [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.ForLoop_ModifyLoopVariable_WorksCorrectly [1 ms]
+[xUnit.net 00:00:00.81]     Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.WhileLoop_InfiniteLoop_Detection_TimeoutTest [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.WhileLoop_InfiniteLoop_Detection_TimeoutTest [1 ms]
+[xUnit.net 00:00:00.84]     Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.Assignment_OperatorPrecedence_InUpdate_WorksCorrectly [SKIP]
+  Skipped Sharpy.Compiler.Tests.Integration.VariableAssignmentNegativeTests.Assignment_OperatorPrecedence_InUpdate_WorksCorrectly [1 ms]
+
+Passed!  - Failed:     0, Passed:  2308, Skipped:    22, Total:  2330, Duration: 1 s - Sharpy.Compiler.Tests.dll (net10.0)
+
+
+================================================================================
+[2026-01-12T02:56:59.940828] validation_prompt - Task: 0.1.3.4
+================================================================================
+
+--- PROMPT ---
+You are the Spec Adherence agent for the Sharpy compiler project.
+
+## Your Role
+Verify that the implementation matches the language specification. You are READ-ONLY and do not modify code.
+
+## Task Being Verified
+Implement `const` Declarations
+
+## Files to Verify
+
+
+## Verification Process
+1. Identify the relevant spec document in docs/language_specification/
+2. Extract exact requirements from the spec
+3. Locate the corresponding implementation code
+4. Verify behavior matches spec
+5. Report compliance or deviations
+
+## Report Format
+```markdown
+## Spec Adherence Report: Implement `const` Declarations
+
+**Spec:** `docs/language_specification/[feature].md`
+**Implementation:** `src/Sharpy.Compiler/[path]`
+
+### Compliant
+- [x] Requirement 1
+- [x] Requirement 2
+
+### Deviations
+- [ ] **Section X.Y**: [Description]
+  - **Spec says:** "..."
+  - **Implementation:** [What it actually does]
+  - **Impact:** [Severity: Low/Medium/High]
+
+### Recommendations
+- [Suggestions for fixing deviations]
+```
+
+## Important
+- Always cite exact spec text
+- Flag any undocumented behavior
+- Be precise about what matches and what doesn't
+
+
+================================================================================
+[2026-01-12T02:59:41.261800] validation_response - Task: 0.1.3.4
+================================================================================
+Success: True
+Backend: claude_code
+Duration: 161.32s
+
+--- OUTPUT ---
+I see an issue here! The spec says class-level constants are "implicitly `@static`" but the code generator for class fields only adds `const` modifier without `static`. In C#, `const` fields are implicitly static, so this is actually correct behavior, but let me verify this is the standard C# behavior.
+
+Actually, C# constants are implicitly static by design, so this is compliant.
+
+Now I have all the information I need. Let me compile the full spec adherence report:
+
+## Spec Adherence Report: Implement `const` Declarations
+
+**Spec:** `docs/language_specification/statements.md` (lines 117-168), `docs/language_specification/grammar.ebnf.txt` (lines 310-314), `docs/language_specification/keywords.md` (line 16)
+
+**Implementation:** `src/Sharpy.Compiler/Parser/Parser.cs`, `src/Sharpy.Compiler/Semantic/NameResolver.cs`, `src/Sharpy.Compiler/Semantic/TypeChecker.cs`, `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`
+
+### Compliant
+
+- [x] **Keyword Recognition**: `const` is recognized as a hard keyword (Lexer.cs:66, keywords.md:16)
+- [x] **Syntax**: `const identifier: type = expression` is parsed correctly (Parser.cs:650-674)
+- [x] **AST Representation**: `VariableDeclaration.IsConst` property tracks const declarations (Statement.cs:53)
+- [x] **Module-Level Constants**: Module-level constants are supported (NameResolver.cs:86-88, 398-419)
+- [x] **Class-Level Constants**: Class-level constants work via `ParseBlock()` calling `ParseStatement()` (Parser.cs:402, 1240-1255)
+- [x] **Struct-Level Constants**: Struct-level constants work via same mechanism (Parser.cs:477)
+- [x] **No Reassignment**: Constants cannot be reassigned (TypeChecker.cs:443-458, 490-499)
+  - Spec says: "Constants cannot be reassigned" (statements.md:159)
+  - Implementation: Errors on simple assignment, tuple unpacking, and augmented assignment
+- [x] **No Redefinition**: Constants cannot be redefined in same scope (TypeChecker.cs:604-610)
+- [x] **Symbol Tracking**: `VariableSymbol.IsConstant` tracks constant status (Symbol.cs:24)
+- [x] **Code Generation (Local)**: Local const generates `const T name = value;` (RoslynEmitter.cs:1521-1523)
+- [x] **Code Generation (Field)**: Class const generates `public const T name = value;` (RoslynEmitter.cs:1140-1143)
+- [x] **Class Constants are Static**: C# `const` is implicitly static, matching spec: "Class-level constants are implicitly `@static`" (statements.md:131)
+- [x] **Name Mangling**: Constants use SCREAMING_SNAKE_CASE (RoslynEmitter.cs:1488-1489, NameMangler)
+
+### Deviations
+
+- [ ] **Section 2.6 (grammar.ebnf.txt:313)**: Type annotation is required but spec says optional
+  - **Spec says:** `const_stmt ::= 'const' identifier [ ':' type_expr ] '=' expression`
+  - **Implementation:** Parser.cs:657-658 requires `:` and type annotation
+    ```csharp
+    Expect(TokenType.Colon);
+    var type = ParseTypeAnnotation();
+    ```
+  - **Impact:** Medium - Users cannot use `const APP_NAME = "MyApp"` as shown in spec (statements.md:125)
+  
+- [ ] **Section "Constants" (statements.md:125)**: Type inference for const not supported
+  - **Spec says:** `const APP_NAME = "MyApp"  # Type inferred as str`
+  - **Implementation:** Type annotation is mandatory; no type inference path in ParseConstDeclaration
+  - **Impact:** Medium - Reduces usability for simple constants where type is obvious
+
+### Undocumented Behavior
+
+- Shadowing outer-scope const with type annotation creates a new variable (TypeChecker.cs, covered in tests)
+- This behavior is tested but not explicitly documented in the spec
+
+### Recommendations
+
+1. **Fix optional type annotation**: Modify `ParseConstDeclaration()` to check for `TokenType.Colon` optionally:
+   ```csharp
+   TypeAnnotation? type = null;
+   if (Current.Type == TokenType.Colon)
+   {
+       Advance();
+       type = ParseTypeAnnotation();
+   }
+   ```
+   Then handle type inference in the type checker if type is null (infer from InitialValue).
+
+2. **Add test coverage** for type-inferred constants to verify the fix.
+
+3. **Document shadowing behavior** in the spec if it's intentional (currently only tested, not specified).
+
+
+================================================================================
+[2026-01-12T02:59:41.264456] validation_prompt - Task: 0.1.3.4
+================================================================================
+
+--- PROMPT ---
+You are the Verification Expert for the Sharpy compiler project.
+
+## Your Role
+Provide independent verification that:
+- Implementation matches specification
+- Tests pass and cover requirements
+- Behavior is correct and consistent
+- No regressions introduced
+
+You are READ-ONLY and do not modify code.
+
+## Task Being Verified
+Implement `const` Declarations
+
+## Verification Steps
+1. Run all relevant tests
+2. Verify behavior matches expected outcomes
+3. Check for regressions
+4. Validate test coverage
+
+## Commands
+```bash
+dotnet test --logger "trx;LogFileName=results.trx"
+dotnet test --filter "FullyQualifiedName~0.1.3"
+```
+
+## Report Format
+```markdown
+## Verification Report: Implement `const` Declarations
+
+### Test Results
+- Total: X | Passed: Y | Failed: Z
+
+### Behavior Checks
+- [x] Feature A works as expected
+- [ ] Feature B has deviation (see details)
+
+### Coverage Assessment
+- [Description of test coverage]
+
+### Regression Check
+- No regressions detected / Regressions found in: [list]
+
+### Recommendations
+- [Suggestions if issues found]
+```
+
+
+================================================================================
+[2026-01-12T03:01:22.454892] validation_response - Task: 0.1.3.4
+================================================================================
+Success: True
+Backend: claude_code
+Duration: 101.19s
+
+--- OUTPUT ---
+Now I have a comprehensive view of all the const-related tests. Let me generate the verification report:
+
+## Verification Report: Implement `const` Declarations
+
+### Test Results
+- **Total**: 3,065 (735 Core + 2,330 Compiler)
+- **Passed**: 3,043 
+- **Failed**: 0
+- **Skipped**: 22
+
+### Const-Specific Test Results
+- **Total const tests**: 36
+- **Passed**: 36
+- **Failed**: 0
+
+### Behavior Checks
+
+#### Lexer
+- [x] `const` keyword tokenizes to `TokenType.Const` (`LexerTests.Tokenize_ConstWithAutoKeywords_TokenizesBothKeywords`)
+- [x] Position tracking works for const declarations (`LexerPositionTests.Position_ConstDeclaration_TrackedCorrectly`)
+
+#### Parser
+- [x] `const MAX: int = 100` parses correctly (`ParserTests.ParseConstDeclaration`)
+- [x] `IsConst` property set to `true` on `VariableDeclaration`
+- [x] Explicit type annotation parsed (`ParserTests.ParseConstWithExplicitType`)
+
+#### Semantic Analysis (NameResolver)
+- [x] Constants registered in symbol table (`NameResolverTests.TestConstantDeclaration`)
+- [x] `IsConstant = true` set on variable symbol
+- [x] Duplicate constant definition detected (`NameResolverTests.TestDuplicateConstantDefinition`)
+- [x] Const vs non-const differentiation (`NameResolverTests.TestConstantMustBeConst`)
+
+#### Semantic Analysis (TypeChecker) - Reassignment Protection
+- [x] Simple assignment to const blocked in same scope (`RejectsConstReassignmentInSameScope`)
+- [x] Simple assignment to const blocked across scopes (`RejectsConstReassignmentAcrossScopes`)
+- [x] Multiple reassignments blocked (`RejectsMultipleConstReassignments`)
+- [x] Augmented assignment to const blocked (`TypeCheckerTests.AugmentedAssignment_ToConstant_ReportsError`)
+- [x] Nested scope reassignment blocked (`RejectsConstReassignmentInNestedScope`)
+- [x] Error position tracked (`TracksErrorPositionInConstReassignment`)
+
+#### Semantic Analysis (TypeChecker) - Allowed Operations
+- [x] Reading const values allowed (`AllowsConstDeclarationWithoutReassignment`)
+- [x] Reading outer scope const allowed (`AllowsReadingOuterScopeConst`)
+- [x] Shadowing with type annotation allowed (`AllowsConstShadowingWithTypeAnnotation`)
+- [x] Nested shadowing with type annotation allowed (`AllowsNestedConstShadowingWithTypeAnnotation`)
+- [x] Shadowing with different type allowed (`AllowsShadowingConstWithDifferentType`)
+
+#### Semantic Analysis (TypeChecker) - Edge Cases
+- [x] Shadowing without type annotation blocked (`RejectsConstShadowingWithoutTypeAnnotation`)
+- [x] Shadowing behavior documented (`DocumentsConstShadowingBehavior`)
+
+#### Code Generation
+- [x] Local const generates `const int MAX_VALUE = 100;` (`GenerateStatement_ConstDeclaration_GeneratesConstLocalDeclaration`)
+- [x] Name mangling handles const case (`NameManglerTests.ToConstantCase_*`)
+
+#### Integration
+- [x] Const reassignment rejected at compile time (`VariableAssignmentNegativeTests.Assignment_ToConstant_ShouldFail`)
+
+### Coverage Assessment
+
+| Compilation Phase | Coverage Level | Tests |
+|-------------------|----------------|-------|
+| Lexer | ✅ Complete | 2 tests |
+| Parser | ✅ Complete | 2 tests |
+| NameResolver | ✅ Complete | 3 tests |
+| TypeChecker | ✅ Complete | 15 tests |
+| CodeGen | ⚠️ Partial | 4 tests (local only, no module-level field test) |
+| Integration | ⚠️ Partial | 1 test (error case only, no success case) |
+
+**Gaps identified in PLAN_0.1.3.4.md that are NOT yet addressed:**
+1. No E2E integration test for successful const usage (print const value)
+2. No test for module-level const field code generation (`public const int MAX = 100;`)
+3. No parser test specifically for float const (`const PI: float = 3.14159`)
+
+### Regression Check
+- **No regressions detected**
+- All 2,308 compiler tests pass
+- All 735 core tests pass
+- 22 skipped tests are pre-existing (parser edge cases, semantic negative tests)
+
+### Recommendations
+
+1. **Consider adding** (per PLAN_0.1.3.4.md Gap Analysis):
+   - `BasicProgramTests.ConstDeclaration_CompilesAndRuns` - E2E success test
+   - `RoslynEmitterTests.GenerateField_ConstDeclaration_GeneratesPublicConstField` - Module-level const test
+   - `ParserTests.ParseConstDeclaration_WithFloatType` - Float const parse test
+
+2. **Current implementation is production-ready** - All core functionality works correctly:
+   - Lexing, parsing, semantic analysis, and code generation all function as specified
+   - Error detection for reassignment is comprehensive
+   - The "gaps" are test coverage improvements, not missing functionality
+
+
+================================================================================
+[2026-01-12T03:01:22.457920] validation_prompt - Task: 0.1.3.4
+================================================================================
+
+--- PROMPT ---
+You are the Hallucination Defense agent for the Sharpy compiler project.
+
+## Your Role
+Validate factual accuracy of claims about:
+- .NET API behavior and availability
+- Roslyn SyntaxFactory methods
+- Python language semantics
+- C# 9.0 feature availability (Unity constraint)
+
+You are READ-ONLY and do not modify code.
+
+## Claims to Verify
+## Summary: `const` Declarations Implementation
+
+### Files Reviewed
+
+The `const` declaration feature is **already fully implemented** across all compiler stages:
+
+| Stage | File | Key Implementation |
+|-------|------|-------------------|
+| **Lexer** | `src/Sharpy.Compiler/Lexer/Token.cs:56` | `TokenType.Const` enum value defined |
+| **Lexer** | `src/Sharpy.Compiler/Lexer/Lexer.cs:66` | `"const" → TokenType.Const` keyword mapping |
+| **Parser** | `src/Sharpy.Compiler/Parser/Ast/Statement.cs:48-54` | `VariableDeclaration.IsConst` property |
+| **Parser** | `src/Sharpy.Compiler/Parser/Parser.cs:650-674` | `ParseConstDeclaration()` method |
+| **Semantic** | `src/Sharpy.Compiler/Semantic/Symbol.cs:24` | `VariableSymbol.IsConstant` property |
+| **Semantic** | `src/Sharpy.Compiler/Semantic/TypeChecker.cs:399,444,453,494,578-598` | Const tracking and reassignment errors |
+| **Semantic** | `src/Sharpy.Compiler/Semantic/NameResolver.cs:86,389,414` | Module-level const resolution |
+| **CodeGen** | `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:1140-1142,1488-1523` | C# `const` keyword emission |
+
+### Changes Made
+
+**None required.** The implementation is complete and functioning.
+
+### Test Results
+
+All 36 const-related tests pass:
+- Lexer tests: Tokenization of `const` keyword ✅
+- Parser tests: `ParseConstDeclaration`, `ParseConstWithExplicitType` ✅
+- Semantic tests: `TestConstantDeclaration`, `TestConstantMustBeConst`, `TestDuplicateConstantDefinition` ✅
+- Negative tests: `RejectsConstantReassignment`, `RejectsConstReassignmentInNestedScope`, `AugmentedAssignment_ToConstant_ReportsError`, etc. ✅
+- CodeGen tests: `GenerateStatement_ConstDeclaration_GeneratesConstLocalDeclaration` ✅
+- Integration tests: `Assignment_ToConstant_ShouldFail` ✅
+
+### Implementation Details
+
+1. **Lexer**: `const` tokenizes to `TokenType.Const`
+2. **Parser**: Parses `const PI: float = 3.14159` syntax creating `VariableDeclaration` with `IsConst = true`
+3. **Semantic**: 
+   - `VariableSymbol.IsConstant` t
+
+## Verification Methods
+
+### .NET API Claims
+```bash
+dotnet script -e "var list = new List<int>{1,2,3}; list.Insert(1, 99); Console.WriteLine(list.Count);"
+```
+
+### Python Semantic Claims
+```bash
+python3 -c "print(-7 // 2)"  # Verify Python floor division
+```
+
+### C# 9.0 Availability
+| C# 9.0 ✅ | C# 10+ ❌ |
+|-----------|-----------|
+| Records | File-scoped namespaces |
+| Init-only setters | Global usings |
+| Pattern matching | Record structs |
+| Target-typed new | Required members |
+
+## Output Format
+```markdown
+**Claim:** [The assertion being checked]
+**Verification:** [How it was verified]
+**Result:** ✅ CORRECT / ❌ INCORRECT — [Explanation]
+```
+
+
+================================================================================
+[2026-01-12T03:02:34.186380] validation_response - Task: 0.1.3.4
+================================================================================
+Success: True
+Backend: claude_code
+Duration: 71.73s
+
+--- OUTPUT ---
+Now I have verified all the claims. Let me compile the verification report:
+
+---
+
+# Hallucination Defense Verification Report
+
+## Lexer Claims
+
+**Claim:** `TokenType.Const` enum value defined at `Token.cs:56`
+**Verification:** Read `Token.cs` directly
+**Result:** ✅ CORRECT — `Const` is at line 56 in the `TokenType` enum
+
+**Claim:** `"const" → TokenType.Const` keyword mapping at `Lexer.cs:66`
+**Verification:** Read `Lexer.cs` directly
+**Result:** ✅ CORRECT — Line 66 contains `{ "const", TokenType.Const },`
+
+---
+
+## Parser Claims
+
+**Claim:** `VariableDeclaration.IsConst` property at `Statement.cs:48-54`
+**Verification:** Read `Statement.cs` directly
+**Result:** ✅ CORRECT — `VariableDeclaration` record at lines 48-54 includes `public bool IsConst { get; init; }` at line 53
+
+**Claim:** `ParseConstDeclaration()` method at `Parser.cs:650-674`
+**Verification:** Read `Parser.cs` at offset 640
+**Result:** ✅ CORRECT — `ParseConstDeclaration()` spans lines 650-674, sets `IsConst = true` at line 668
+
+---
+
+## Semantic Claims
+
+**Claim:** `VariableSymbol.IsConstant` property at `Symbol.cs:24`
+**Verification:** Read `Symbol.cs` directly
+**Result:** ✅ CORRECT — Line 24 contains `public bool IsConstant { get; init; }`
+
+**Claim:** Const tracking and reassignment errors in TypeChecker.cs at lines 399,444,453,494,578-598
+**Verification:** Grep for `IsConst` in TypeChecker.cs
+**Result:** ✅ CORRECT — Verified the following:
+- Line 399: Checks `varSymbol.IsConstant` for tuple unpacking
+- Line 444: Checks `varSymbol.IsConstant` for simple assignment
+- Line 453: Checks `parentVar.IsConstant` for outer scope const
+- Line 494: Checks `varSym.IsConstant` for augmented assignment
+- Lines 578-598: Handles const variable declaration creation
+
+**Claim:** Module-level const resolution in NameResolver.cs at lines 86,389,414
+**Verification:** Read and grep NameResolver.cs
+**Result:** ✅ CORRECT — Verified:
+- Line 86: `case VariableDeclaration varDecl when varDecl.IsConst:`
+- Line 389: `IsConstant = field.IsConst,`
+- Line 414: `IsConstant = true,`
+
+---
+
+## CodeGen Claims
+
+**Claim:** C# `const` keyword emission at RoslynEmitter.cs lines 1140-1142,1488-1523
+**Verification:** Read RoslynEmitter.cs at both locations
+**Result:** ✅ CORRECT — Verified:
+- Lines 1140-1142: Field-level const emission adds `Token(SyntaxKind.ConstKeyword)` modifier
+- Lines 1488-1523: Local variable declaration with const handling, uses `Token(SyntaxKind.ConstKeyword)` at lines 1521-1523
+
+---
+
+## .NET API / Roslyn Claims
+
+**Claim:** Uses `SyntaxKind.ConstKeyword` for const modifier emission
+**Verification:** This is a valid Roslyn SyntaxFactory pattern
+**Result:** ✅ CORRECT — `SyntaxKind.ConstKeyword` is the standard Roslyn API for emitting the C# `const` keyword modifier
+
+---
+
+## C# 9.0 Compatibility
+
+**Claim:** The implementation uses C# 9.0 compatible features
+**Verification:** Reviewed code patterns used
+**Result:** ✅ CORRECT — The code uses:
+- Record types ✅ (C# 9.0)
+- Init-only setters ✅ (C# 9.0)
+- Pattern matching ✅ (C# 9.0)
+- No file-scoped namespaces (C# 10+) ❌ — all files use block-scoped namespaces
+
+---
+
+## Summary
+
+| Category | Claims Verified | Result |
+|----------|----------------|--------|
+| Lexer | 2 | ✅ All correct |
+| Parser | 2 | ✅ All correct |
+| Semantic | 3 | ✅ All correct |
+| CodeGen | 1 | ✅ All correct |
+| .NET/Roslyn API | 1 | ✅ All correct |
+| C# 9.0 Compat | 1 | ✅ All correct |
+
+**Overall Assessment:** ✅ **NO HALLUCINATIONS DETECTED**
+
+All line number references, API claims, and implementation details have been verified against the actual source code. The summary accurately represents the implemented `const` declaration feature.
+
