@@ -413,8 +413,10 @@ class DogfoodOrchestrator:
                             generation_duration=gen_result.duration_seconds,
                             execution_duration=run_result.duration_seconds,
                         )
-                    issue_dir = self.issue_reporter.report(issue)
-                    return IterationResult(IterationStatus.FAILED, issue_dir)
+                        issue_dir = self.issue_reporter.report(issue)
+                        return IterationResult(IterationStatus.FAILED, issue_dir)
+                    else:
+                        print("  Outputs match (AI verified)", file=sys.stderr)
         else:
             print(
                 "  No expected output specified, skipping verification", file=sys.stderr

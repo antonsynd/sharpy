@@ -1,3 +1,0 @@
-error: unknown option '-t'
-
-Try 'copilot --help' for more information.
