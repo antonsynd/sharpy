@@ -2075,7 +2075,8 @@ public class RoslynEmitter
         // x |> f(y, z) → f(x, y, z)
         if (rightExpr is FunctionCall funcCall)
         {
-            var func = GenerateExpression(funcCall.Function);
+            // Generate the function name with proper name mangling (same as GenerateCall)
+            var func = GeneratePipeCallTarget(funcCall.Function);
             var prependedArg = Argument(left);
             var existingArgs = funcCall.Arguments.Select(a => Argument(GenerateExpression(a)));
             var keywordArgs = funcCall.KeywordArguments.Select(k =>
@@ -2090,9 +2091,28 @@ public class RoslynEmitter
 
         // Case 2: Right side is an identifier or member access - call it with left as the only argument
         // x |> f → f(x)
-        var right = GenerateExpression(rightExpr);
+        var right = GeneratePipeCallTarget(rightExpr);
         return InvocationExpression(right)
             .AddArgumentListArguments(Argument(left));
+    }
+
+    /// <summary>
+    /// Generate the call target expression for a pipe operator.
+    /// Handles proper name mangling for function names (PascalCase) and builtin functions.
+    /// </summary>
+    private ExpressionSyntax GeneratePipeCallTarget(Expression expr)
+    {
+        if (expr is Identifier funcName)
+        {
+            // Use the same name mangling logic as GenerateCall
+            var name = _context.IsBuiltinFunction(funcName.Name)
+                ? $"global::Sharpy.Core.Exports.{NameMangler.ToPascalCase(funcName.Name)}"
+                : NameMangler.ToPascalCase(funcName.Name);
+            return ParseName(name);
+        }
+
+        // For member access and other expressions, use standard expression generation
+        return GenerateExpression(expr);
     }
 
     private ExpressionSyntax GenerateUnaryOp(UnaryOp unaryOp)

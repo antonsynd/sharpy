@@ -992,6 +992,12 @@ public class TypeChecker
 
     private SemanticType CheckBinaryOp(BinaryOp binOp)
     {
+        // Handle pipe forward operator specially - it's a syntactic transformation, not a regular operator
+        if (binOp.Operator == BinaryOperator.PipeForward)
+        {
+            return CheckPipeForward(binOp);
+        }
+
         var leftType = CheckExpression(binOp.Left);
         var rightType = CheckExpression(binOp.Right);
 
@@ -1008,6 +1014,230 @@ public class TypeChecker
             rightType,
             binOp.LineStart,
             binOp.ColumnStart);
+    }
+
+    /// <summary>
+    /// Type-checks the pipe forward operator (|>).
+    /// x |> f → f(x)
+    /// x |> f(y) → f(x, y) (prepend x to argument list)
+    /// x |> f |> g → g(f(x)) (chains via left-associativity)
+    /// </summary>
+    private SemanticType CheckPipeForward(BinaryOp binOp)
+    {
+        var leftType = CheckExpression(binOp.Left);
+
+        if (leftType is UnknownType)
+        {
+            return SemanticType.Unknown;
+        }
+
+        // Case 1: x |> f(y, z) - right side is already a function call
+        // We need to re-validate with x prepended to arguments
+        if (binOp.Right is FunctionCall funcCall)
+        {
+            return CheckPipeForwardWithFunctionCall(leftType, funcCall, binOp);
+        }
+
+        // Case 2: x |> f - right side is an identifier or expression that should be callable
+        var rightType = CheckExpression(binOp.Right);
+
+        if (rightType is UnknownType)
+        {
+            return SemanticType.Unknown;
+        }
+
+        // Check if right side is a function type
+        if (rightType is FunctionType ft)
+        {
+            // Validate that the function accepts leftType as first argument
+            if (ft.ParameterTypes.Count < 1)
+            {
+                AddError($"Pipe target function takes no arguments, cannot pipe a value to it",
+                    binOp.Right.LineStart, binOp.Right.ColumnStart);
+                return SemanticType.Unknown;
+            }
+
+            if (!leftType.IsAssignableTo(ft.ParameterTypes[0]))
+            {
+                AddError($"Cannot pipe value of type '{leftType.GetDisplayName()}' to function expecting '{ft.ParameterTypes[0].GetDisplayName()}'",
+                    binOp.LineStart, binOp.ColumnStart);
+                return SemanticType.Unknown;
+            }
+
+            return ft.ReturnType;
+        }
+
+        // If right side is an identifier, look up the function symbol
+        if (binOp.Right is Identifier id)
+        {
+            var symbol = _symbolTable.Lookup(id.Name);
+
+            if (symbol is FunctionSymbol funcSymbol)
+            {
+                // Validate argument count
+                var requiredParamCount = funcSymbol.Parameters.Count(p => !p.HasDefault);
+
+                if (requiredParamCount < 1)
+                {
+                    AddError($"Pipe target function '{id.Name}' takes no required arguments, cannot pipe a value to it",
+                        binOp.Right.LineStart, binOp.Right.ColumnStart);
+                    return SemanticType.Unknown;
+                }
+
+                // Validate the piped value type matches first parameter
+                var firstParam = funcSymbol.Parameters[0];
+                if (!leftType.IsAssignableTo(firstParam.Type))
+                {
+                    AddError($"Cannot pipe value of type '{leftType.GetDisplayName()}' to function '{id.Name}' expecting '{firstParam.Type.GetDisplayName()}'",
+                        binOp.LineStart, binOp.ColumnStart);
+                    return SemanticType.Unknown;
+                }
+
+                // Check if remaining required args are satisfied (they must all have defaults)
+                if (requiredParamCount > 1)
+                {
+                    AddError($"Function '{id.Name}' requires {requiredParamCount} arguments but only 1 is provided via pipe",
+                        binOp.Right.LineStart, binOp.Right.ColumnStart);
+                    return SemanticType.Unknown;
+                }
+
+                return funcSymbol.ReturnType;
+            }
+
+            if (symbol is TypeSymbol)
+            {
+                // Constructor call via pipe - x |> SomeClass → SomeClass(x)
+                // This is allowed, handled similarly to function call
+                AddError($"Piping to constructors is not yet supported",
+                    binOp.Right.LineStart, binOp.Right.ColumnStart);
+                return SemanticType.Unknown;
+            }
+
+            AddError($"'{id.Name}' is not callable",
+                binOp.Right.LineStart, binOp.Right.ColumnStart);
+            return SemanticType.Unknown;
+        }
+
+        // Right side is some other expression that's not callable
+        AddError($"Pipe target must be callable, got '{rightType.GetDisplayName()}'",
+            binOp.Right.LineStart, binOp.Right.ColumnStart);
+        return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Type-checks a pipe forward where the right side is a function call.
+    /// x |> f(y, z) → f(x, y, z) - prepend piped value to argument list.
+    /// </summary>
+    private SemanticType CheckPipeForwardWithFunctionCall(SemanticType pipedType, FunctionCall call, BinaryOp binOp)
+    {
+        // Get the function being called
+        var calleeType = CheckExpression(call.Function);
+
+        // Collect existing argument types
+        var existingArgTypes = new List<SemanticType>();
+        foreach (var arg in call.Arguments)
+        {
+            existingArgTypes.Add(CheckExpression(arg));
+        }
+
+        // Check keyword arguments too
+        foreach (var kwarg in call.KeywordArguments)
+        {
+            CheckExpression(kwarg.Value);
+        }
+
+        // Build the full argument list: piped value + existing args
+        var allArgTypes = new List<SemanticType> { pipedType };
+        allArgTypes.AddRange(existingArgTypes);
+
+        // Try to resolve the function symbol for better validation
+        if (call.Function is Identifier id)
+        {
+            var symbol = _symbolTable.Lookup(id.Name);
+
+            if (symbol is FunctionSymbol funcSymbol)
+            {
+                // Validate argument count
+                var requiredParamCount = funcSymbol.Parameters.Count(p => !p.HasDefault);
+                var totalParamCount = funcSymbol.Parameters.Count;
+
+                if (allArgTypes.Count < requiredParamCount || allArgTypes.Count > totalParamCount)
+                {
+                    if (requiredParamCount == totalParamCount)
+                    {
+                        AddError($"Function '{id.Name}' expects {totalParamCount} arguments but got {allArgTypes.Count} (including piped value)",
+                            call.LineStart, call.ColumnStart);
+                    }
+                    else
+                    {
+                        AddError($"Function '{id.Name}' expects {requiredParamCount} to {totalParamCount} arguments but got {allArgTypes.Count} (including piped value)",
+                            call.LineStart, call.ColumnStart);
+                    }
+                    return SemanticType.Unknown;
+                }
+
+                // Validate argument types
+                for (int i = 0; i < allArgTypes.Count; i++)
+                {
+                    var argType = allArgTypes[i];
+                    var paramType = funcSymbol.Parameters[i].Type;
+
+                    if (!argType.IsAssignableTo(paramType))
+                    {
+                        var argDesc = i == 0 ? "piped value" : $"argument {i}";
+                        AddError($"Cannot pass {argDesc} of type '{argType.GetDisplayName()}' to parameter '{funcSymbol.Parameters[i].Name}' of type '{paramType.GetDisplayName()}'",
+                            i == 0 ? binOp.Left.LineStart : call.Arguments[i - 1].LineStart,
+                            i == 0 ? binOp.Left.ColumnStart : call.Arguments[i - 1].ColumnStart);
+                    }
+                }
+
+                return funcSymbol.ReturnType;
+            }
+
+            if (symbol is TypeSymbol typeSymbol)
+            {
+                // Constructor call via pipe - x |> SomeClass(y) → SomeClass(x, y)
+                AddError($"Piping to constructors is not yet supported",
+                    binOp.Right.LineStart, binOp.Right.ColumnStart);
+                return SemanticType.Unknown;
+            }
+
+            if (symbol != null)
+            {
+                AddError($"'{id.Name}' is not callable",
+                    call.LineStart, call.ColumnStart);
+                return SemanticType.Unknown;
+            }
+        }
+
+        // Fallback: check if callee is a FunctionType
+        if (calleeType is FunctionType ft)
+        {
+            if (allArgTypes.Count != ft.ParameterTypes.Count)
+            {
+                AddError($"Function expects {ft.ParameterTypes.Count} arguments but got {allArgTypes.Count} (including piped value)",
+                    call.LineStart, call.ColumnStart);
+                return SemanticType.Unknown;
+            }
+
+            // Validate argument types
+            for (int i = 0; i < allArgTypes.Count; i++)
+            {
+                if (!allArgTypes[i].IsAssignableTo(ft.ParameterTypes[i]))
+                {
+                    var argDesc = i == 0 ? "piped value" : $"argument {i}";
+                    AddError($"Cannot pass {argDesc} of type '{allArgTypes[i].GetDisplayName()}' where '{ft.ParameterTypes[i].GetDisplayName()}' is expected",
+                        i == 0 ? binOp.Left.LineStart : call.Arguments[i - 1].LineStart,
+                        i == 0 ? binOp.Left.ColumnStart : call.Arguments[i - 1].ColumnStart);
+                }
+            }
+
+            return ft.ReturnType;
+        }
+
+        AddError($"Pipe target must be callable, got '{calleeType.GetDisplayName()}'",
+            call.LineStart, call.ColumnStart);
+        return SemanticType.Unknown;
     }
 
     private SemanticType CheckUnaryOp(UnaryOp unOp)

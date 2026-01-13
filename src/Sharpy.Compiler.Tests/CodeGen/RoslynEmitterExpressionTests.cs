@@ -404,7 +404,7 @@ public class RoslynEmitterExpressionTests
     [Fact]
     public void GenerateExpression_PipeForward_SimpleFunction_GeneratesFunctionCall()
     {
-        // Arrange: x |> f → f(x)
+        // Arrange: x |> f → F(x) (function names are PascalCase in C#)
         var expr = new BinaryOp
         {
             Operator = BinaryOperator.PipeForward,
@@ -417,13 +417,13 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        code.Should().Be("f(x)");
+        code.Should().Be("F(x)");
     }
 
     [Fact]
     public void GenerateExpression_PipeForward_FunctionWithArgs_PrependsToPArguments()
     {
-        // Arrange: x |> f(y) → f(x, y)
+        // Arrange: x |> f(y) → F(x, y) (function names are PascalCase in C#)
         var expr = new BinaryOp
         {
             Operator = BinaryOperator.PipeForward,
@@ -443,13 +443,13 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        code.Should().Be("f(x,y)");
+        code.Should().Be("F(x,y)");
     }
 
     [Fact]
     public void GenerateExpression_PipeForward_FunctionWithMultipleArgs_PrependsToPArguments()
     {
-        // Arrange: x |> f(y, z) → f(x, y, z)
+        // Arrange: x |> f(y, z) → F(x, y, z) (function names are PascalCase in C#)
         var expr = new BinaryOp
         {
             Operator = BinaryOperator.PipeForward,
@@ -470,13 +470,13 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        code.Should().Be("f(x,y,z)");
+        code.Should().Be("F(x,y,z)");
     }
 
     [Fact]
     public void GenerateExpression_PipeForward_Chained_GeneratesNestedCalls()
     {
-        // Arrange: x |> f |> g → g(f(x))
+        // Arrange: x |> f |> g → G(F(x)) (function names are PascalCase in C#)
         // Parser makes this left-associative: (x |> f) |> g
         var expr = new BinaryOp
         {
@@ -495,13 +495,13 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        code.Should().Be("g(f(x))");
+        code.Should().Be("G(F(x))");
     }
 
     [Fact]
     public void GenerateExpression_PipeForward_ChainedWithArgs_GeneratesNestedCallsWithArgs()
     {
-        // Arrange: x |> f(y) |> g(z) → g(f(x, y), z)
+        // Arrange: x |> f(y) |> g(z) → G(F(x, y), z) (function names are PascalCase in C#)
         var expr = new BinaryOp
         {
             Operator = BinaryOperator.PipeForward,
@@ -527,7 +527,7 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        code.Should().Be("g(f(x,y),z)");
+        code.Should().Be("G(F(x,y),z)");
     }
 
     [Fact]
@@ -558,7 +558,7 @@ public class RoslynEmitterExpressionTests
     [Fact]
     public void GenerateExpression_PipeForward_WithKeywordArgs_PreservesKeywordArgs()
     {
-        // Arrange: x |> f(y, key=value) → f(x, y, key: value)
+        // Arrange: x |> f(y, key=value) → F(x, y, key: value) (function names are PascalCase in C#)
         var expr = new BinaryOp
         {
             Operator = BinaryOperator.PipeForward,
@@ -579,13 +579,13 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        code.Should().Contain("f(x,y,key:value)");
+        code.Should().Contain("F(x,y,key:value)");
     }
 
     [Fact]
     public void GenerateExpression_PipeForward_LiteralValue_GeneratesFunctionCallWithLiteral()
     {
-        // Arrange: 42 |> f → f(42)
+        // Arrange: 42 |> f → F(42) (function names are PascalCase in C#)
         var expr = new BinaryOp
         {
             Operator = BinaryOperator.PipeForward,
@@ -598,7 +598,7 @@ public class RoslynEmitterExpressionTests
 
         // Assert
         var code = result.ToString();
-        code.Should().Be("f(42)");
+        code.Should().Be("F(42)");
     }
 
     #endregion
