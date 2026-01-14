@@ -717,11 +717,24 @@ class ModelSelector:
 | Implementation | Sonnet | Sonnet | Sonnet | Opus | Opus |
 
 **Acceptance Criteria**:
-- [ ] Clear mapping from task characteristics to models
-- [ ] Heuristic task classification from descriptions
-- [ ] Override mechanism for when heuristics are wrong
-- [ ] Logging of model selection decisions
-- [ ] Cost tracking considerations documented
+- [x] Clear mapping from task characteristics to models
+- [x] Heuristic task classification from descriptions
+- [x] Override mechanism for when heuristics are wrong
+- [x] Logging of model selection decisions
+- [x] Cost tracking considerations documented
+
+**Implementation Notes**:
+- Completed on 2026-01-13
+- Extended `model_selector.py` with heuristic classification and override support
+- Added `classify_task()` method with keyword-based task type and complexity detection
+- Added `ModelOverride` dataclass for explicit model overrides with reasoning
+- Added `set_selection_callback()` for logging/metrics integration
+- Added `select_model_for_description()` convenience method combining classification + selection
+- Extended `ModelRecommendation` with `was_overridden` and `original_model` fields
+- Cost tracking considerations documented in module docstring (pricing table, optimization strategies)
+- Complexity classification uses weighted scoring with context boosting when no keywords match
+- 77 comprehensive unit tests covering matrix, heuristics, overrides, and callbacks
+- All tests passing
 
 ---
 
