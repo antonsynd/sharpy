@@ -85,11 +85,10 @@ class DogfoodRateLimitState(RateLimitState):
                 return True, max(0.0, wait_time)
 
         # Check cooldown with backoff
+        # Note: backoff parameters are applied in record_error_with_config(),
+        # get_backoff_delay() returns the pre-computed backoff_multiplier
         if self.last_request_time:
-            backoff_delay = self.get_backoff_delay(
-                base_cooldown=config.request_cooldown,
-                max_backoff=config.max_backoff,
-            )
+            backoff_delay = self.get_backoff_delay()
             cooldown_remaining = (
                 self.last_request_time + config.request_cooldown + backoff_delay - now
             )

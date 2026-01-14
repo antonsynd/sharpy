@@ -1243,4 +1243,726 @@ usage: __main__.py [-h] [-n ITERATIONS] [-o OUTPUT_DIR] [--project-root PROJECT_
                    [--execution-timeout EXECUTION_TIMEOUT] [-v] [--dry-run]
 __main__.py: error: unrecognized arguments: dogfood run
 [1m[7m%[27m[1m[0m                                                                                             ]133;D;2]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
-[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004hpython -m build_tools dogfood run -n 25 -v[?2004l
+]133;C;Sharpy Dogfooding Tool
+========================================
+Project root: /Users/anton/Documents/github/sharpy
+Output dir: /Users/anton/Documents/github/sharpy/dogfood_output
+Issues dir: /Users/anton/Documents/github/sharpy/dogfood_output/issues
+Iterations: 25
+Timeouts: gen=180.0s, compile=60.0s, exec=30.0s
+========================================
+Sharpy Dogfooding Tool
+========================================
+Project root: /Users/anton/Documents/github/sharpy
+Output dir: /Users/anton/Documents/github/sharpy/dogfood_output
+Issues dir: /Users/anton/Documents/github/sharpy/dogfood_output/issues
+Iterations: 25
+Timeouts: gen=180.0s, compile=60.0s, exec=30.0s
+========================================
+Initializing dogfooding tool...
+Available backends: claude, copilot
+Checking Sharpy compiler...
+[?1h=Sharpy compiler is available
+Loading specification context...
+Loaded 20508 chars of spec context
+Loaded 15 example snippets
+
+Starting dogfooding with 25 iterations...
+Output directory: /Users/anton/Documents/github/sharpy/dogfood_output
+
+============================================================
+Iteration 1: arithmetic_operators (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 317 chars of code
+  Expected output verified with Python: 19
+11
+60
+3
+3...
+
+[2/4] Validating against spec...
+ERROR in iteration 1: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 462, in run_iteration
+    val_result = await self._validate_code(code)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 672, in _validate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 2: function_with_print (medium)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 2: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 3: for_range_single (medium)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 3: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 4: float_variables (simple)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 4: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 5: if_elif_else (medium)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 5: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 6: loop_in_function (simple)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 6: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 7: float_variables (simple)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 7: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 8: integer_variables (medium)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 8: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 9: if_elif_else (simple)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 9: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 10: nested_if_in_loop (medium)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 10: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 11: function_calling_function (simple)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 11: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 12: for_range_single (medium)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 12: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 13: break_continue (simple)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 13: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 14: break_continue (medium)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 14: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 15: break_continue (medium)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 15: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 16: if_elif_else (simple)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 16: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 17: simple_function (medium)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 17: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 18: bool_variables (medium)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 18: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 19: arithmetic_operators (simple)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 19: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 20: function_calling_function (simple)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 20: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 21: arithmetic_operators (simple)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 21: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 22: loop_in_function (medium)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 22: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 23: function_with_print (simple)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 23: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 24: augmented_assignment (simple)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 24: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+Iteration 25: while_loop (simple)
+============================================================
+
+[1/4] Generating code...
+ERROR in iteration 25: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+Traceback (most recent call last):
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 709, in run
+    result = await self.run_iteration(i, feature_focus, complexity)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 383, in run_iteration
+    gen_result = await self._generate_code(feature_focus, complexity)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/orchestrator.py", line 592, in _generate_code
+    return await self.backend_manager.execute(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 456, in execute
+    if not backend.is_available:
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 119, in is_available
+    should_wait, _ = self.rate_limit_state.should_wait_with_config(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/anton/Documents/github/sharpy/build_tools/sharpy_dogfood/backends.py", line 89, in should_wait_with_config
+    backoff_delay = self.get_backoff_delay(
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: RateLimitState.get_backoff_delay() got an unexpected keyword argument 'base_cooldown'
+
+============================================================
+DOGFOODING COMPLETE
+============================================================
+Successful: 0/25
+Failed: 25/25
+Skipped: 0/25
+
+Issues saved to: /Users/anton/Documents/github/sharpy/dogfood_output/issues
+Summary: /Users/anton/Documents/github/sharpy/dogfood_output/SUMMARY.md
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;1]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004hpython -m build_tools dogfood run -n 25 -v
