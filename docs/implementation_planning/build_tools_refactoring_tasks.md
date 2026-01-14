@@ -427,10 +427,30 @@ class CopilotBackend(Backend):
 ```
 
 **Acceptance Criteria**:
-- [ ] Works with existing Copilot CLI installation
-- [ ] Handles Copilot-specific error patterns
-- [ ] Configurable binary path
-- [ ] Maps ToolPermission to Copilot tool names
+- [x] Works with existing Copilot CLI installation
+- [x] Handles Copilot-specific error patterns
+- [x] Configurable binary path
+- [x] Maps ToolPermission to Copilot tool names
+
+**Implementation Notes**:
+- Completed on 2026-01-13
+- Created `build_tools/shared/backends/copilot.py` following ClaudeCodeBackend pattern
+- Implements full Backend interface with async execution
+- Supports configurable tool permissions via `BackendConfig.allowed_tools`
+- Maps ToolPermission enum values to lowercase tool names for Copilot CLI (read, write, edit, bash)
+- Integrates with shared `RateLimitState` for tracking and automatic backoff
+- Optional heartbeat callback for visibility into long-running operations
+- Proper timeout handling: terminates process on timeout and returns descriptive error
+- Command building via `_build_command()` passes prompt via `--prompt` flag
+- Each tool added via separate `--allow-tool` flags (Copilot CLI pattern)
+- Detects interactive prompts (output starting with "?" or empty output)
+- Special handling for Copilot's interactive nature - detects when it requires user input
+- Detects rate limits via `is_rate_limit_error()` and extracts wait times
+- Finds CLI via PATH or default Homebrew location `/opt/homebrew/bin/copilot`
+- Logs warning if model selection is attempted (Copilot CLI doesn't support this)
+- 21 comprehensive unit tests covering all functionality including interactive prompt detection
+- All tests passing
+- Exported via `build_tools/shared/backends/__init__.py`
 
 ---
 

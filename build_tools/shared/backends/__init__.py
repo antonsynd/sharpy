@@ -14,6 +14,7 @@ from .base import (
     ToolPermission,
 )
 from .claude import ClaudeCodeBackend
+from .copilot import CopilotBackend
 
 __all__ = [
     "Backend",
@@ -22,4 +23,5 @@ __all__ = [
     "BackendResponse",
     "ToolPermission",
     "ClaudeCodeBackend",
+    "CopilotBackend",
 ]

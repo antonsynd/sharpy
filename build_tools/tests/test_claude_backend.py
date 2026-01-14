@@ -36,14 +36,14 @@ class TestClaudeCodeBackend:
         """Test availability when backend is rate limited."""
         rate_state = RateLimitState()
         rate_state.disable_temporarily(60.0)
-        
+
         backend = ClaudeCodeBackend(rate_limit_state=rate_state)
         assert not backend.is_available()
 
     def test_is_available_when_ready(self):
         """Test availability when backend is ready."""
         rate_state = RateLimitState()
-        
+
         with patch("shutil.which", return_value="/usr/bin/claude"):
             backend = ClaudeCodeBackend(
                 rate_limit_state=rate_state,
@@ -55,9 +55,9 @@ class TestClaudeCodeBackend:
         """Test command building with minimal config."""
         backend = ClaudeCodeBackend(cli_path="claude")
         config = BackendConfig()
-        
+
         cmd = backend._build_command(config)
-        
+
         assert cmd[0] == "claude"
         assert "--print" in cmd
 
@@ -67,9 +67,9 @@ class TestClaudeCodeBackend:
         config = BackendConfig(
             allowed_tools={ToolPermission.READ, ToolPermission.WRITE}
         )
-        
+
         cmd = backend._build_command(config)
-        
+
         assert "--allowedTools" in cmd
         tools_idx = cmd.index("--allowedTools") + 1
         tools_str = cmd[tools_idx]
@@ -80,9 +80,9 @@ class TestClaudeCodeBackend:
         """Test command building with model specification."""
         backend = ClaudeCodeBackend(cli_path="claude")
         config = BackendConfig(model="claude-sonnet-4-5-20250929")
-        
+
         cmd = backend._build_command(config)
-        
+
         assert "--model" in cmd
         model_idx = cmd.index("--model") + 1
         assert cmd[model_idx] == "claude-sonnet-4-5-20250929"
@@ -92,9 +92,9 @@ class TestClaudeCodeBackend:
         """Test execution when CLI is not found."""
         backend = ClaudeCodeBackend(cli_path="/nonexistent/claude")
         config = BackendConfig()
-        
+
         response = await backend.execute("Test prompt", config)
-        
+
         assert not response.success
         assert "not found" in response.error_message.lower()
 
@@ -102,7 +102,7 @@ class TestClaudeCodeBackend:
     async def test_execute_success(self):
         """Test successful execution."""
         backend = ClaudeCodeBackend(cli_path="claude")
-        
+
         # Mock subprocess
         mock_process = AsyncMock()
         mock_process.returncode = 0
@@ -115,11 +115,11 @@ class TestClaudeCodeBackend:
         mock_process.stderr = AsyncMock()
         mock_process.stderr.read = AsyncMock(return_value=b"")
         mock_process.wait = AsyncMock()
-        
+
         with patch("asyncio.create_subprocess_exec", return_value=mock_process):
             config = BackendConfig(timeout_seconds=10)
             response = await backend.execute("Test prompt", config)
-            
+
             assert response.success
             assert response.output == "Success output"
             assert response.exit_code == 0
@@ -129,7 +129,7 @@ class TestClaudeCodeBackend:
     async def test_execute_rate_limited(self):
         """Test execution when rate limited."""
         backend = ClaudeCodeBackend(cli_path="claude")
-        
+
         # Mock subprocess with rate limit error
         mock_process = AsyncMock()
         mock_process.returncode = 1
@@ -144,11 +144,11 @@ class TestClaudeCodeBackend:
         mock_process.stderr = AsyncMock()
         mock_process.stderr.read = AsyncMock(return_value=b"")
         mock_process.wait = AsyncMock()
-        
+
         with patch("asyncio.create_subprocess_exec", return_value=mock_process):
             config = BackendConfig(timeout_seconds=10)
             response = await backend.execute("Test prompt", config)
-            
+
             assert not response.success
             assert response.rate_limited
             assert "rate limit" in response.error_message.lower()
@@ -157,7 +157,7 @@ class TestClaudeCodeBackend:
     async def test_execute_timeout(self):
         """Test execution timeout handling."""
         backend = ClaudeCodeBackend(cli_path="claude")
-        
+
         # Mock subprocess that hangs
         mock_process = AsyncMock()
         mock_process.stdin = MagicMock()
@@ -171,12 +171,12 @@ class TestClaudeCodeBackend:
         mock_process.stderr = AsyncMock()
         mock_process.wait = AsyncMock()
         mock_process.kill = MagicMock()
-        
+
         with patch("asyncio.create_subprocess_exec", return_value=mock_process):
             with patch("asyncio.wait_for", side_effect=asyncio.TimeoutError()):
                 config = BackendConfig(timeout_seconds=1)
                 response = await backend.execute("Test prompt", config)
-                
+
                 assert not response.success
                 assert "timed out" in response.error_message.lower()
                 mock_process.kill.assert_called_once()
@@ -184,19 +184,19 @@ class TestClaudeCodeBackend:
     def test_heartbeat_callback_invoked(self):
         """Test that heartbeat callback is invoked during execution."""
         callback_messages = []
-        
+
         def callback(msg: str):
             callback_messages.append(msg)
-        
+
         backend = ClaudeCodeBackend(heartbeat_callback=callback)
         rate_state = backend._rate_limit_state
         rate_state.disable_temporarily(1.0)
-        
+
         # Simulate waiting (would normally happen in execute)
         wait_time = rate_state.get_wait_time()
         if wait_time and backend._heartbeat_callback:
             backend._heartbeat_callback(f"Waiting {wait_time:.1f}s")
-        
+
         assert len(callback_messages) > 0
         assert "Waiting" in callback_messages[0]
 

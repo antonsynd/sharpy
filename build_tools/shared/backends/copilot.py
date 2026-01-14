@@ -1,7 +1,7 @@
 """
-Claude Code CLI backend implementation.
+GitHub Copilot CLI backend implementation.
 
-Provides execution via the Claude Code CLI with rate limiting,
+Provides execution via the GitHub Copilot CLI with rate limiting,
 timeout handling, and heartbeat logging for long-running operations.
 """
 
@@ -15,18 +15,21 @@ from .base import Backend, BackendType, BackendConfig, BackendResponse, ToolPerm
 from ..rate_limiting import RateLimitState, is_rate_limit_error, extract_rate_limit_wait_time
 
 
-class ClaudeCodeBackend(Backend):
-    """Backend for Claude Code CLI execution.
+class CopilotBackend(Backend):
+    """Backend for GitHub Copilot CLI execution.
 
-    Executes prompts via the Claude Code CLI with:
+    Executes prompts via the GitHub Copilot CLI with:
     - Rate limit detection and automatic backoff
     - Configurable timeouts with process termination
     - Heartbeat logging for long-running operations
     - Tool permission enforcement
 
+    Note: This uses the standalone `copilot` CLI, not `gh copilot`
+    (which is limited to shell command suggestions).
+
     Example:
         ```python
-        backend = ClaudeCodeBackend()
+        backend = CopilotBackend()
         config = BackendConfig(
             timeout_seconds=600,
             allowed_tools={ToolPermission.READ, ToolPermission.WRITE},
@@ -35,6 +38,9 @@ class ClaudeCodeBackend(Backend):
         ```
     """
 
+    # Default path for Homebrew-installed copilot CLI on macOS
+    DEFAULT_CLI_PATH = "/opt/homebrew/bin/copilot"
+
     def __init__(
         self,
         rate_limit_state: Optional[RateLimitState] = None,
@@ -42,29 +48,30 @@ class ClaudeCodeBackend(Backend):
         cli_path: Optional[str] = None,
         project_root: Optional[Path] = None,
     ):
-        """Initialize Claude Code backend.
+        """Initialize GitHub Copilot backend.
 
         Args:
             rate_limit_state: Optional existing rate limit state to use.
                 If None, creates a new one.
             heartbeat_callback: Optional callback for heartbeat messages during
                 long operations. Called with status messages.
-            cli_path: Path to claude CLI executable. If None, searches PATH.
+            cli_path: Path to copilot CLI executable. If None, searches PATH
+                and common locations.
             project_root: Working directory for execution. If None, uses cwd.
         """
         self._rate_limit_state = rate_limit_state or RateLimitState()
         self._heartbeat_callback = heartbeat_callback
-        self._cli_path = cli_path or self._find_claude_cli()
+        self._cli_path = cli_path or self._find_copilot_cli()
         self._project_root = project_root or Path.cwd()
         self._heartbeat_interval = 60.0  # Log heartbeat every 60 seconds
 
     @property
     def backend_type(self) -> BackendType:
         """Get backend type identifier."""
-        return BackendType.CLAUDE_CODE
+        return BackendType.COPILOT
 
     def is_available(self) -> bool:
-        """Check if Claude Code CLI is available and not rate limited.
+        """Check if Copilot CLI is available and not rate limited.
 
         Returns:
             True if the backend can accept requests, False if rate limited
@@ -80,10 +87,10 @@ class ClaudeCodeBackend(Backend):
     async def execute(
         self, prompt: str, config: Optional[BackendConfig] = None
     ) -> BackendResponse:
-        """Execute a prompt via Claude Code CLI.
+        """Execute a prompt via GitHub Copilot CLI.
 
         Args:
-            prompt: The instruction/prompt to send to Claude Code
+            prompt: The instruction/prompt to send to Copilot
             config: Optional execution configuration
 
         Returns:
@@ -93,7 +100,7 @@ class ClaudeCodeBackend(Backend):
         if config is None:
             config = BackendConfig()
 
-        # Wait if rate limited (check simple availability without per-request params)
+        # Wait if rate limited
         wait_time = self._rate_limit_state.get_wait_time()
         if wait_time is not None and wait_time > 0:
             if self._heartbeat_callback:
@@ -108,12 +115,11 @@ class ClaudeCodeBackend(Backend):
 
         try:
             # Build command
-            cmd = self._build_command(config)
+            cmd = self._build_command(prompt, config)
 
             # Execute with timeout and heartbeat logging
             process = await asyncio.create_subprocess_exec(
                 *cmd,
-                stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=self._project_root,
@@ -121,9 +127,7 @@ class ClaudeCodeBackend(Backend):
 
             try:
                 stdout, stderr = await asyncio.wait_for(
-                    self._communicate_with_heartbeat(
-                        process, prompt.encode(), start_time
-                    ),
+                    self._communicate_with_heartbeat(process, start_time),
                     timeout=config.timeout_seconds,
                 )
             except asyncio.TimeoutError:
@@ -175,7 +179,9 @@ class ClaudeCodeBackend(Backend):
                 )
 
             # Check for success
-            if process.returncode == 0:
+            # Copilot CLI returns exit code 0 even when it needs user input
+            # Check if output looks valid (not interactive prompt)
+            if process.returncode == 0 and self._is_valid_output(stdout_text):
                 self._rate_limit_state.record_success()
                 return BackendResponse(
                     success=True,
@@ -187,14 +193,23 @@ class ClaudeCodeBackend(Backend):
                     error_message=None,
                 )
             else:
-                # Non-zero exit code but not rate limited
+                # Non-zero exit code or interactive prompt detected
                 self._rate_limit_state.record_error()
-                error_msg = stderr_text or stdout_text or "Unknown error"
+                
+                # Detect if Copilot requires interactive input
+                if "?" in stdout_text[:100] or not stdout_text.strip():
+                    error_msg = (
+                        "GitHub Copilot CLI requires interactive input. "
+                        "Consider using Claude Code backend for automated tasks."
+                    )
+                else:
+                    error_msg = stderr_text or stdout_text or "Unknown error"
+                
                 return BackendResponse(
                     success=False,
                     output=stdout_text,
                     stderr=stderr_text,
-                    exit_code=process.returncode,
+                    exit_code=process.returncode or 1,
                     duration_seconds=duration,
                     rate_limited=False,
                     error_message=f"Execution failed: {error_msg}",
@@ -208,7 +223,7 @@ class ClaudeCodeBackend(Backend):
                 exit_code=-1,
                 duration_seconds=time.time() - start_time,
                 rate_limited=False,
-                error_message=f"Claude Code CLI not found at: {self._cli_path}",
+                error_message=f"Copilot CLI not found at: {self._cli_path}",
             )
         except Exception as e:
             self._rate_limit_state.record_error()
@@ -222,51 +237,72 @@ class ClaudeCodeBackend(Backend):
                 error_message=f"Unexpected error: {str(e)}",
             )
 
-    def _build_command(self, config: BackendConfig) -> list[str]:
-        """Build the Claude Code CLI command.
+    def _build_command(self, prompt: str, config: BackendConfig) -> list[str]:
+        """Build the Copilot CLI command.
 
         Args:
+            prompt: The prompt to execute
             config: Execution configuration
 
         Returns:
             Command as list of arguments
         """
-        cmd = [self._cli_path, "--print"]
+        cmd = [self._cli_path, "--prompt", prompt]
 
-        # Add tool permissions
+        # Add tool permissions - Copilot uses --allow-tool flag (lowercase values)
         if config.allowed_tools:
-            tools_str = ",".join(t.value for t in config.allowed_tools)
-            cmd.extend(["--allowedTools", tools_str])
+            for tool in config.allowed_tools:
+                # Map ToolPermission enum values to copilot CLI tool names
+                # Copilot expects lowercase: read, write, edit, bash, etc.
+                tool_name = tool.value.lower()
+                cmd.extend(["--allow-tool", tool_name])
 
-        # Add model if specified
-        if config.model:
-            cmd.extend(["--model", config.model])
+        # Note: Copilot CLI doesn't support model selection via CLI flags
+        # If model is specified, we log a warning but proceed
+        if config.model and self._heartbeat_callback:
+            self._heartbeat_callback(
+                f"Warning: Copilot CLI doesn't support model selection. "
+                f"Ignoring model: {config.model}"
+            )
 
         return cmd
 
+    def _is_valid_output(self, output: str) -> bool:
+        """Check if output looks like valid non-interactive output.
+
+        Args:
+            output: The stdout text from Copilot CLI
+
+        Returns:
+            True if output appears valid, False if it looks like an interactive prompt
+        """
+        # Empty output is not valid
+        if not output.strip():
+            return False
+
+        # Interactive prompts often start with "?" in first 100 chars
+        if "?" in output[:100]:
+            return False
+
+        # Valid output should have some substance
+        return len(output.strip()) > 10
+
     async def _communicate_with_heartbeat(
-        self, process: asyncio.subprocess.Process, input_data: bytes, start_time: float
+        self, process: asyncio.subprocess.Process, start_time: float
     ) -> tuple[bytes, bytes]:
-        """Communicate with process while logging periodic heartbeats.
+        """Wait for process completion while logging periodic heartbeats.
 
         This helps track long-running operations and provides visibility
         into whether the process is still active.
 
         Args:
-            process: The subprocess to communicate with
-            input_data: Data to send to stdin
+            process: The subprocess to monitor
             start_time: Execution start time for elapsed time calculation
 
         Returns:
             Tuple of (stdout_bytes, stderr_bytes)
         """
-        # Send input and close stdin
-        if process.stdin:
-            process.stdin.write(input_data)
-            await process.stdin.drain()
-            process.stdin.close()
-
-        # Read output with periodic heartbeats
+        # Start reading output
         last_heartbeat = time.time()
         stdout_task = None
         stderr_task = None
@@ -284,7 +320,7 @@ class ClaudeCodeBackend(Backend):
                 elapsed = now - start_time
                 if self._heartbeat_callback:
                     self._heartbeat_callback(
-                        f"Claude Code still running... ({elapsed:.0f}s elapsed)"
+                        f"Copilot CLI still running... ({elapsed:.0f}s elapsed)"
                     )
                 last_heartbeat = now
 
@@ -301,16 +337,20 @@ class ClaudeCodeBackend(Backend):
 
         return stdout_bytes, stderr_bytes
 
-    def _find_claude_cli(self) -> str:
-        """Find the Claude Code CLI executable.
+    def _find_copilot_cli(self) -> str:
+        """Find the Copilot CLI executable.
 
         Returns:
-            Path to claude CLI, or "claude" if not found (assumes in PATH)
+            Path to copilot CLI, or default path if not found
         """
-        # Check if 'claude' is in PATH
-        claude_path = shutil.which("claude")
-        if claude_path:
-            return claude_path
+        # Check if 'copilot' is in PATH
+        copilot_path = shutil.which("copilot")
+        if copilot_path:
+            return copilot_path
+
+        # Check default Homebrew location on macOS
+        if Path(self.DEFAULT_CLI_PATH).exists():
+            return self.DEFAULT_CLI_PATH
 
         # Fall back to assuming it's in PATH
-        return "claude"
+        return "copilot"
