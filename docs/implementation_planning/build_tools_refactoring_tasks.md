@@ -498,11 +498,28 @@ class BackendManager:
 ```
 
 **Acceptance Criteria**:
-- [ ] Automatic failover when primary backend is rate limited
-- [ ] Tracks rate limit state per backend
-- [ ] Returns which backend was actually used
-- [ ] Status reporting for monitoring
-- [ ] Proper async handling
+- [x] Automatic failover when primary backend is rate limited
+- [x] Tracks rate limit state per backend
+- [x] Returns which backend was actually used
+- [x] Status reporting for monitoring
+- [x] Proper async handling
+
+**Implementation Notes**:
+- Completed on 2026-01-13
+- Created `build_tools/shared/backends/manager.py` with full manager implementation
+- `BackendManagerConfig` supports primary/fallback ordering, rate window config, auto_failover toggle
+- `BackendManager` coordinates execution across registered backends
+- `execute()` returns `tuple[BackendResponse, BackendType]` - response and which backend was used
+- Automatic failover tries backends in order: preferred → primary → fallbacks → any registered
+- Per-backend rate limit tracking via `RateLimitState` instances
+- Skips backends at capacity (requests_in_window >= max_requests_per_window)
+- Skips backends that report `is_available() == False`
+- `get_available_backends()` returns list of backends ready to accept requests
+- `get_backend_status()` returns detailed monitoring info per backend
+- Helper methods: `register_backend()`, `unregister_backend()`, `reset_backend_state()`, `get_rate_state()`
+- 32 comprehensive unit tests covering config, registration, execution, failover, tracking, status
+- All tests passing
+- Exported via `build_tools/shared/backends/__init__.py`
 
 ---
 
