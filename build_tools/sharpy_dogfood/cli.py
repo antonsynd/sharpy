@@ -96,9 +96,10 @@ Examples:
     return parser.parse_args()
 
 
-async def main() -> int:
+async def main(args: argparse.Namespace | None = None) -> int:
     """Main entry point."""
-    args = parse_args()
+    if args is None:
+        args = parse_args()
 
     # Build configuration
     config = Config()

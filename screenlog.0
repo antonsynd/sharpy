@@ -1137,4 +1137,110 @@ Skipped: 2/50
 Issues saved to: /Users/anton/Documents/github/sharpy/dogfood_output/issues
 Summary: /Users/anton/Documents/github/sharpy/dogfood_output/SUMMARY.md
 [1m[7m%[27m[1m[0m                                                                                             ]133;D;1]1337;RemoteHost=anton@Antons-MacBook-Pro.local]1337;CurrentDir=/Users/anton/github/sharpy/build_tools[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy/build_tools[39m
-[38;5;129manton@Antons-MacBook-Pro[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h
+[38;5;129manton@Antons-MacBook-Pro[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy]1337;ShellIntegrationVersion=14;shell=zsh[1m[7m%[27m[1m[0m                                                                                             ]133;D;0]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004hppython -m build_tools dogfood run --help[?2004l
+]133;C;Usage: python -m build_tools dogfood run [OPTIONS]
+
+  Run dogfood iterations to test the compiler.
+
+Options:
+  -n, --iterations INTEGER     Number of iterations to run (default: 10)
+  -o, --output-dir PATH        Output directory for results and issues
+                               (default: dogfood_output)
+  --project-root PATH          Path to the Sharpy project root (default: auto-
+                               detected)
+  --generation-timeout FLOAT   Timeout for code generation in seconds
+                               (default: 180)
+  --compilation-timeout FLOAT  Timeout for compilation in seconds (default:
+                               60)
+  --execution-timeout FLOAT    Timeout for execution in seconds (default: 30)
+  -v, --verbose                Enable verbose output
+  --dry-run                    Check configuration without running iterations
+  --help                       Show this message and exit.
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;0]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004hpython -m build_tools dogfood run --help     n 25  -v[?2004l
+]133;C;Sharpy Dogfooding Tool
+========================================
+Project root: /Users/anton/Documents/github/sharpy
+Output dir: /Users/anton/Documents/github/sharpy/dogfood_output
+Issues dir: /Users/anton/Documents/github/sharpy/dogfood_output/issues
+Iterations: 25
+Timeouts: gen=180.0s, compile=60.0s, exec=30.0s
+========================================
+usage: __main__.py [-h] [-n ITERATIONS] [-o OUTPUT_DIR] [--project-root PROJECT_ROOT]
+                   [--generation-timeout GENERATION_TIMEOUT]
+                   [--compilation-timeout COMPILATION_TIMEOUT]
+                   [--execution-timeout EXECUTION_TIMEOUT] [-v] [--dry-run]
+__main__.py: error: unrecognized arguments: dogfood run
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;2]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004hpython -m build_tools dogfood run -n 25 -v[1C[1C -n 25 -v[9D- -n 25 -v[9D- -n 25 -v[9D[1C -n 25 -v[9D[1C-n 25 -v [10D[?2004l
+]133;C;Usage: python -m build_tools dogfood run [OPTIONS]
+Try 'python -m build_tools dogfood run --help' for help.
+
+Error: Got unexpected extra arguments (-n 25 -v)
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;2]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004hpython -m build_tools dogfood run -- -n 25 -v[P[9C [10D[P[9C [10D-n 25 -v [10D-dogfood run -n 25 -v[20D-dogfood run -n 25 -v[20D dogfood run -n 25 -v[20D[?2004l
+]133;C;Sharpy Dogfooding Tool
+========================================
+Project root: /Users/anton/Documents/github/sharpy
+Output dir: /Users/anton/Documents/github/sharpy/dogfood_output
+Issues dir: /Users/anton/Documents/github/sharpy/dogfood_output/issues
+Iterations: 25
+Timeouts: gen=180.0s, compile=60.0s, exec=30.0s
+========================================
+usage: __main__.py [-h] [-n ITERATIONS] [-o OUTPUT_DIR] [--project-root PROJECT_ROOT]
+                   [--generation-timeout GENERATION_TIMEOUT]
+                   [--compilation-timeout COMPILATION_TIMEOUT]
+                   [--execution-timeout EXECUTION_TIMEOUT] [-v] [--dry-run]
+__main__.py: error: unrecognized arguments: -- dogfood run -n 25 -v
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;2]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004hpython -m build_tools -- dogfood run -n 25 -v[1C[P[20C [21D[P[20C [21D[P[20C [21D[1C[1C[1C[1C[1C[1C[1C[1C run -n 25 -v[13D- run -n 25 -v[13D- run -n 25 -v[13D[?2004l
+]133;C;Sharpy Dogfooding Tool
+========================================
+Project root: /Users/anton/Documents/github/sharpy
+Output dir: /Users/anton/Documents/github/sharpy/dogfood_output
+Issues dir: /Users/anton/Documents/github/sharpy/dogfood_output/issues
+Iterations: 25
+Timeouts: gen=180.0s, compile=60.0s, exec=30.0s
+========================================
+usage: __main__.py [-h] [-n ITERATIONS] [-o OUTPUT_DIR] [--project-root PROJECT_ROOT]
+                   [--generation-timeout GENERATION_TIMEOUT]
+                   [--compilation-timeout COMPILATION_TIMEOUT]
+                   [--execution-timeout EXECUTION_TIMEOUT] [-v] [--dry-run]
+__main__.py: error: unrecognized arguments: dogfood -- run -n 25 -v
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;2]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004hpython -m build_tools dogfood -- run -n 25 -v[P[12C [13D[P[12C [13D[P[12C [13D[1C[1C[1C[1C[1C[1C[1C[1C[1C[1C[1C[1C[1C[?2004l
+[1m[7m%[27m[1m[0m                                                                                             ]133;C;]133;D;130]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h[?2004l
+]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy]1337;ShellIntegrationVersion=14;shell=zsh[1m[7m%[27m[1m[0m                                                                                             ]133;D;0]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004hpython -m build_tools dogfood -- run -n 25 -v[P[12C [13D[P[12C [13D[P[12C [13D-dogfood run -n 25 -v[20D-dogfood run -n 25 -v[20D dogfood run -n 25 -v[20D[?2004l
+]133;C;Sharpy Dogfooding Tool
+========================================
+Project root: /Users/anton/Documents/github/sharpy
+Output dir: /Users/anton/Documents/github/sharpy/dogfood_output
+Issues dir: /Users/anton/Documents/github/sharpy/dogfood_output/issues
+Iterations: 25
+Timeouts: gen=180.0s, compile=60.0s, exec=30.0s
+========================================
+usage: __main__.py [-h] [-n ITERATIONS] [-o OUTPUT_DIR] [--project-root PROJECT_ROOT]
+                   [--generation-timeout GENERATION_TIMEOUT]
+                   [--compilation-timeout COMPILATION_TIMEOUT]
+                   [--execution-timeout EXECUTION_TIMEOUT] [-v] [--dry-run]
+__main__.py: error: unrecognized arguments: -- dogfood run -n 25 -v
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;2]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004hpython -m build_tools -- dogfood run -n 25 -v[P[20C [21D[P[20C [21D[P[20C [21D[?2004l
+]133;C;Sharpy Dogfooding Tool
+========================================
+Project root: /Users/anton/Documents/github/sharpy
+Output dir: /Users/anton/Documents/github/sharpy/dogfood_output
+Issues dir: /Users/anton/Documents/github/sharpy/dogfood_output/issues
+Iterations: 25
+Timeouts: gen=180.0s, compile=60.0s, exec=30.0s
+========================================
+usage: __main__.py [-h] [-n ITERATIONS] [-o OUTPUT_DIR] [--project-root PROJECT_ROOT]
+                   [--generation-timeout GENERATION_TIMEOUT]
+                   [--compilation-timeout COMPILATION_TIMEOUT]
+                   [--execution-timeout EXECUTION_TIMEOUT] [-v] [--dry-run]
+__main__.py: error: unrecognized arguments: dogfood run
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;2]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h

@@ -290,10 +290,9 @@ def dogfood_run(
     click.echo("=" * 40, err=True)
 
     # Create a mock args object for compatibility with existing code
-    class Args:
-        pass
+    import argparse
 
-    args = Args()
+    args = argparse.Namespace()
     args.iterations = iterations
     args.output_dir = output_dir
     args.project_root = project_root
@@ -305,7 +304,7 @@ def dogfood_run(
 
     # Run async main
     try:
-        exit_code = asyncio.run(dogfood_main_async())
+        exit_code = asyncio.run(dogfood_main_async(args))
         sys.exit(exit_code)
     except KeyboardInterrupt:
         click.echo("\nInterrupted by user", err=True)
@@ -348,11 +347,10 @@ def build():
 def build_init(task_list: Path, project_root: Path | None, config: Path | None):
     """Initialize the auto builder with a task list."""
 
-    # Create mock args for compatibility
-    class Args:
-        pass
+    # Create args namespace for compatibility
+    import argparse
 
-    args = Args()
+    args = argparse.Namespace()
     args.task_list = task_list
     args.project_root = project_root
     args.config = config
@@ -375,10 +373,9 @@ def build_init(task_list: Path, project_root: Path | None, config: Path | None):
 def build_status(project_root: Path | None):
     """Show current auto builder status."""
 
-    class Args:
-        pass
+    import argparse
 
-    args = Args()
+    args = argparse.Namespace()
     args.project_root = project_root
 
     try:
@@ -427,10 +424,9 @@ def build_run(
 ):
     """Run auto builder to process tasks."""
 
-    class Args:
-        pass
+    import argparse
 
-    args = Args()
+    args = argparse.Namespace()
     args.project_root = project_root
     args.max_tasks = max_tasks
     args.skip_tests = skip_tests
@@ -461,10 +457,9 @@ def build_run(
 def build_report(project_root: Path | None, output: Path | None):
     """Generate a detailed report of progress and results."""
 
-    class Args:
-        pass
+    import argparse
 
-    args = Args()
+    args = argparse.Namespace()
     args.project_root = project_root
     args.output = output
 
@@ -488,10 +483,9 @@ def build_report(project_root: Path | None, output: Path | None):
 def build_answer(question_id: str, answer: str, project_root: Path | None):
     """Answer a pending question from the auto builder."""
 
-    class Args:
-        pass
+    import argparse
 
-    args = Args()
+    args = argparse.Namespace()
     args.question_id = question_id
     args.answer = answer
     args.project_root = project_root
@@ -523,10 +517,9 @@ def build_review(
 ):
     """Review and approve/reject a task implementation."""
 
-    class Args:
-        pass
+    import argparse
 
-    args = Args()
+    args = argparse.Namespace()
     args.task_id = task_id
     args.decision = decision
     args.project_root = project_root
@@ -555,10 +548,9 @@ def build_review(
 def build_reset(project_root: Path | None, confirm: bool):
     """Reset the auto builder state."""
 
-    class Args:
-        pass
+    import argparse
 
-    args = Args()
+    args = argparse.Namespace()
     args.project_root = project_root
     args.confirm = confirm
 
@@ -586,10 +578,9 @@ def build_reset(project_root: Path | None, confirm: bool):
 def build_skip(task_id: str, project_root: Path | None, reason: str | None):
     """Skip a task in the auto builder."""
 
-    class Args:
-        pass
+    import argparse
 
-    args = Args()
+    args = argparse.Namespace()
     args.task_id = task_id
     args.reason = reason
     args.project_root = project_root
@@ -643,10 +634,9 @@ def build_logs(
 ):
     """View execution logs from the auto builder."""
 
-    class Args:
-        pass
+    import argparse
 
-    args = Args()
+    args = argparse.Namespace()
     args.project_root = project_root
     args.task_id = task_id
     args.event_type = event_type
