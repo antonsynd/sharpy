@@ -2,6 +2,7 @@
 Configuration for Sharpy Auto Builder.
 
 Handles rate limiting, backend selection, and paths.
+Uses shared BaseConfig for common path handling and serialization utilities.
 """
 
 from dataclasses import dataclass, field
@@ -9,6 +10,11 @@ from pathlib import Path
 from typing import Literal, Optional
 from datetime import timedelta
 import json
+
+# Import shared configuration base
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from shared.config import BaseConfig
 
 
 BackendType = Literal["copilot", "claude_code"]
@@ -60,10 +66,15 @@ class BackendConfig:
 
 
 @dataclass
-class Config:
-    """Main configuration for Sharpy Auto Builder."""
+class Config(BaseConfig):
+    """
+    Main configuration for Sharpy Auto Builder.
 
-    # Project paths
+    Extends BaseConfig to inherit common path handling and serialization utilities.
+    Provides additional configuration specific to the auto builder workflow.
+    """
+
+    # Override project_root with Sharpy-specific default
     project_root: Path = field(
         default_factory=lambda: Path("/Users/anton/Documents/github/sharpy")
     )
@@ -79,13 +90,7 @@ class Config:
     def agents_dir(self) -> Path:
         return self.project_root / ".github/agents"
 
-    @property
-    def src_dir(self) -> Path:
-        return self.project_root / "src"
-
-    @property
-    def build_tools_dir(self) -> Path:
-        return self.project_root / "build_tools"
+    # Note: src_dir and build_tools_dir inherited from BaseConfig
 
     # State and tracking
     @property
@@ -180,7 +185,18 @@ class Config:
     human_check_interval: float = 5.0  # seconds between checks for human input
 
     def ensure_directories(self) -> None:
-        """Create required directories if they don't exist."""
+        """
+        Create required directories if they don't exist.
+
+        Extends BaseConfig.ensure_directories() with auto_builder-specific directories:
+        - state_dir: For execution state persistence
+        - questions_dir, answers_dir: Human-in-the-loop interaction
+        - human_review_dir: Review requests for critical changes
+        """
+        # Call parent to create build_tools, docs, src directories
+        super().ensure_directories()
+
+        # Create auto_builder-specific directories
         for path in [
             self.state_dir,
             self.questions_dir,

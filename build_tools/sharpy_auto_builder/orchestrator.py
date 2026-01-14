@@ -2,6 +2,7 @@
 LangGraph-based orchestrator for Sharpy Auto Builder.
 
 Coordinates task execution, validation, and human-in-the-loop interactions.
+Uses shared logging utilities from build_tools.shared.
 """
 
 import asyncio
@@ -43,6 +44,11 @@ from .response_analyzer import (
     TaskType,
 )
 from .auto_decision import AutoDecisionEngine, AutoDecision, DecisionType
+
+# Import shared logging utilities
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from shared.logging import ExecutionLogger, LogEventType
 
 
 class OrchestratorState(TypedDict):
@@ -95,6 +101,9 @@ class Orchestrator:
         # Track step start times for duration logging
         self._step_start_times: dict[str, float] = {}
 
+        # Initialize shared execution logger
+        self._execution_logger = ExecutionLogger(config.execution_log_path)
+
         # Initialize components
         self.backend_manager = BackendManager(config)
         self.human_loop = HumanLoopManager(
@@ -133,30 +142,31 @@ class Orchestrator:
         duration: float | None = None,
         extra: dict | None = None,
     ) -> None:
-        """Append an execution event to the JSONL log file."""
-        log_entry = {
-            "timestamp": datetime.now().isoformat(),
-            "event_type": event_type,
-            "task_id": task_id,
-        }
-        if prompt is not None:
-            log_entry["prompt"] = prompt
-        if output is not None:
-            log_entry["output"] = output
-        if error is not None:
-            log_entry["error"] = error
-        if success is not None:
-            log_entry["success"] = success
-        if backend is not None:
-            log_entry["backend"] = backend
-        if duration is not None:
-            log_entry["duration_seconds"] = duration
-        if extra:
-            log_entry.update(extra)
+        """
+        Append an execution event to the JSONL log file.
 
-        # Append to JSONL file
-        with open(self.config.execution_log_path, "a") as f:
-            f.write(json.dumps(log_entry) + "\n")
+        Uses the shared ExecutionLogger for consistent logging format across
+        all build tools. Maintains backward compatibility with existing callers.
+        """
+        # Build details dictionary
+        details: dict[str, Any] = {"task_id": task_id}
+        if prompt is not None:
+            details["prompt"] = prompt
+        if output is not None:
+            details["output"] = output
+        if error is not None:
+            details["error"] = error
+        if success is not None:
+            details["success"] = success
+        if backend is not None:
+            details["backend"] = backend
+        if duration is not None:
+            details["duration_seconds"] = duration
+        if extra:
+            details.update(extra)
+
+        # Log using shared ExecutionLogger
+        self._execution_logger.log(event_type, details)
 
     def _log_step_start(self, step_name: str, task_id: str, details: str = "") -> None:
         """Log when a potentially long-running step begins."""
@@ -165,11 +175,10 @@ class Orchestrator:
         detail_str = f" - {details}" if details else ""
         print(f"⏳ [{timestamp}] Starting: {step_name}{detail_str}")
 
-        # Also log to JSONL
-        self._log_execution(
-            event_type=f"{step_name}_start",
-            task_id=task_id,
-            extra={"details": details} if details else None,
+        # Also log to JSONL using shared logger
+        self._execution_logger.log(
+            LogEventType.STEP_START,
+            {"task_id": task_id, "step_name": step_name, "details": details},
         )
 
     def _log_step_end(
@@ -186,6 +195,18 @@ class Orchestrator:
         detail_str = f" - {details}" if details else ""
         print(
             f"{status} [{timestamp}] Completed: {step_name}{duration_str}{detail_str}"
+        )
+
+        # Also log to JSONL using shared logger
+        self._execution_logger.log(
+            LogEventType.STEP_END,
+            {
+                "task_id": task_id,
+                "step_name": step_name,
+                "success": success,
+                "details": details,
+                "duration_seconds": duration,
+            },
         )
 
     def _dump_config(self) -> None:

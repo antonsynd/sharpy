@@ -2,6 +2,7 @@
 Backend implementations for executing agent tasks.
 
 Supports GitHub Copilot CLI and Claude Code with rate limiting and failover.
+Uses shared rate limiting utilities from build_tools.shared.
 """
 
 import asyncio
@@ -17,6 +18,16 @@ from typing import Optional, Any, AsyncIterator
 from collections import deque
 
 from .config import Config, BackendConfig, RateLimitConfig, BackendType
+
+# Import shared rate limiting utilities
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from shared.rate_limiting import (
+    is_rate_limit_error,
+    extract_rate_limit_wait_time,
+    RateLimitState as SharedRateLimitState,
+)
+from shared.model_selector import TaskType, TaskComplexity
 
 
 @dataclass
@@ -35,77 +46,81 @@ class ExecutionResult:
     )
 
 
-@dataclass
-class RateLimitState:
-    """Tracks rate limit state for a backend."""
+class AutoBuilderRateLimitState:
+    """
+    Adapter for shared RateLimitState that works with local RateLimitConfig.
 
-    request_times: deque = field(default_factory=lambda: deque(maxlen=1000))
-    consecutive_errors: int = 0
-    current_backoff: float = 0.0
-    last_request_time: Optional[float] = None
-    disabled_until: Optional[float] = None
+    Bridges the shared rate limit state implementation with the auto_builder's
+    existing RateLimitConfig parameters. This allows using the shared state
+    tracking while maintaining compatibility with the existing configuration
+    structure.
+    """
+
+    def __init__(self):
+        """Initialize with shared state implementation."""
+        self._state = SharedRateLimitState()
+
+    @property
+    def request_times(self) -> deque:
+        """Access underlying request times deque."""
+        return self._state.request_times
+
+    @property
+    def consecutive_errors(self) -> int:
+        """Get consecutive error count."""
+        return self._state.consecutive_errors
+
+    @property
+    def current_backoff(self) -> float:
+        """Get current backoff delay."""
+        return self._state.backoff_multiplier
+
+    @property
+    def last_request_time(self) -> Optional[float]:
+        """Get last request timestamp."""
+        return self._state.last_request_time
+
+    @property
+    def disabled_until(self) -> Optional[float]:
+        """Get disabled until timestamp."""
+        return self._state.disabled_until
 
     def record_request(self) -> None:
         """Record a request timestamp."""
-        now = time.time()
-        self.request_times.append(now)
-        self.last_request_time = now
+        self._state.record_request()
 
     def record_success(self) -> None:
         """Record a successful request."""
-        self.consecutive_errors = 0
-        self.current_backoff = 0.0
+        self._state.record_success()
 
     def record_error(self, config: RateLimitConfig) -> None:
-        """Record a failed request and update backoff."""
-        self.consecutive_errors += 1
-        if self.current_backoff == 0:
-            self.current_backoff = config.request_cooldown
-        else:
-            self.current_backoff = min(
-                self.current_backoff * config.backoff_multiplier, config.max_backoff
-            )
+        """Record a failed request and update backoff using config parameters."""
+        self._state.record_error(
+            wait_seconds=None,  # No explicit wait time
+            base_cooldown=config.request_cooldown,
+            max_backoff=config.max_backoff,
+            multiplier=config.backoff_multiplier,
+        )
 
     def get_requests_in_window(self, window_seconds: int) -> int:
         """Count requests in the current time window."""
-        now = time.time()
-        cutoff = now - window_seconds
-        return sum(1 for t in self.request_times if t > cutoff)
+        return self._state.requests_in_window(window_seconds)
 
     def should_wait(self, config: RateLimitConfig) -> tuple[bool, float]:
         """Check if we should wait before making a request."""
-        now = time.time()
-
-        # Check if disabled
-        if self.disabled_until and now < self.disabled_until:
-            return True, self.disabled_until - now
-
-        # Check rate limit
-        requests_in_window = self.get_requests_in_window(config.window_seconds)
-        if requests_in_window >= config.max_requests_per_window:
-            # Calculate when the oldest request will expire
-            oldest_in_window = min(
-                t for t in self.request_times if t > now - config.window_seconds
-            )
-            wait_time = oldest_in_window + config.window_seconds - now
-            return True, wait_time
-
-        # Check cooldown
-        if self.last_request_time:
-            cooldown_remaining = (
-                self.last_request_time
-                + config.request_cooldown
-                + self.current_backoff
-                - now
-            )
-            if cooldown_remaining > 0:
-                return True, cooldown_remaining
-
-        return False, 0.0
+        return self._state.should_wait(
+            max_requests_per_window=config.max_requests_per_window,
+            window_seconds=config.window_seconds,
+            request_cooldown=config.request_cooldown,
+        )
 
     def disable_temporarily(self, seconds: float) -> None:
         """Temporarily disable this backend."""
-        self.disabled_until = time.time() + seconds
+        self._state.disable_temporarily(seconds)
+
+
+# Alias for backwards compatibility
+RateLimitState = AutoBuilderRateLimitState
 
 
 class Backend(ABC):
@@ -256,18 +271,8 @@ class ClaudeCodeBackend(Backend):
             stdout_text = stdout.decode()
             stderr_text = stderr.decode()
 
-            # Check for rate limiting in both stdout and stderr
-            combined_output = (stdout_text + stderr_text).lower()
-            rate_limited = any(
-                phrase in combined_output
-                for phrase in [
-                    "rate limit",
-                    "hit your limit",
-                    "resets 2am",
-                    "quota exceeded",
-                    "too many requests",
-                ]
-            )
+            # Check for rate limiting using shared detection function
+            rate_limited = is_rate_limit_error(stdout_text, stderr_text)
 
             if process.returncode == 0 and not rate_limited:
                 self.rate_limit_state.record_success()
@@ -281,6 +286,10 @@ class ClaudeCodeBackend(Backend):
                 error_msg = stderr_text or stdout_text
 
                 if rate_limited:
+                    # Extract wait time if available
+                    wait_time = extract_rate_limit_wait_time(stdout_text, stderr_text)
+                    if wait_time:
+                        self.rate_limit_state.disable_temporarily(wait_time)
                     self.rate_limit_state.record_error(self.config.rate_limit)
 
                 return ExecutionResult(
@@ -593,9 +602,14 @@ class CopilotBackend(Backend):
                     error_output
                     or "GitHub Copilot CLI requires interactive input. Consider using Claude Code backend for code generation tasks."
                 )
-                rate_limited = "rate limit" in error_msg.lower() or "429" in error_msg
+                # Use shared rate limit detection function
+                rate_limited = is_rate_limit_error(output, error_output)
 
                 if rate_limited:
+                    # Extract wait time if available
+                    wait_time = extract_rate_limit_wait_time(output, error_output)
+                    if wait_time:
+                        self.rate_limit_state.disable_temporarily(wait_time)
                     self.rate_limit_state.record_error(self.config.rate_limit)
 
                 return ExecutionResult(
