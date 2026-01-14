@@ -110,7 +110,6 @@ async def main(args: argparse.Namespace | None = None) -> int:
     if args.output_dir:
         config.output_dir = args.output_dir
         config.issues_dir = args.output_dir / "issues"
-        config.generated_dir = args.output_dir / "generated"
 
     config.max_iterations = args.iterations
     config.generation_timeout = args.generation_timeout

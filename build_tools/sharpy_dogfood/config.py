@@ -64,9 +64,6 @@ class Config(BaseConfig):
     # Output configuration
     output_dir: Path = field(default_factory=lambda: Path("dogfood_output"))
     issues_dir: Path = field(default_factory=lambda: Path("dogfood_output/issues"))
-    generated_dir: Path = field(
-        default_factory=lambda: Path("dogfood_output/generated")
-    )
 
     # Execution limits
     max_iterations: int = 10
@@ -128,11 +125,9 @@ class Config(BaseConfig):
         # Make paths absolute relative to project root
         self.output_dir = self.project_root / self.output_dir
         self.issues_dir = self.project_root / self.issues_dir
-        self.generated_dir = self.project_root / self.generated_dir
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.issues_dir.mkdir(parents=True, exist_ok=True)
-        self.generated_dir.mkdir(parents=True, exist_ok=True)
 
     @classmethod
     def from_file(cls, path: Path) -> "Config":
