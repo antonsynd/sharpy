@@ -38,9 +38,7 @@ class MockBackend(Backend):
     ):
         self._backend_type = backend_type
         self._available = available
-        self._response = response or BackendResponse(
-            success=True, output="Mock output"
-        )
+        self._response = response or BackendResponse(success=True, output="Mock output")
         self.execute_calls: list[tuple[str, BackendConfig | None]] = []
 
     @property
@@ -393,9 +391,7 @@ class TestRateLimitTracking:
     @pytest.mark.asyncio
     async def test_records_error_on_failure(self):
         manager = BackendManager()
-        backend = MockBackend(
-            BackendType.CLAUDE_CODE, response=create_error_response()
-        )
+        backend = MockBackend(BackendType.CLAUDE_CODE, response=create_error_response())
         manager.register_backend(backend)
 
         # Force auto_failover off to stop at first failure
@@ -625,7 +621,9 @@ class TestIntegration:
 
         manager.register_backend(FlakyClaude())
         manager.register_backend(
-            MockBackend(BackendType.COPILOT, response=create_success_response("Copilot"))
+            MockBackend(
+                BackendType.COPILOT, response=create_success_response("Copilot")
+            )
         )
 
         # First two requests should use Claude

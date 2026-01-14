@@ -32,7 +32,7 @@ from .config import Config, BackendConfig, RateLimitConfig, BackendType
 @dataclass
 class ExecutionResult:
     """Result of executing an AI prompt.
-    
+
     This is a dogfood-specific result type that wraps execution results
     with additional fields like timed_out. The shared BackendResponse
     provides the core response fields.
@@ -51,11 +51,11 @@ class ExecutionResult:
 class DogfoodRateLimitState(RateLimitState):
     """
     Rate limit state adapter for the dogfood tool.
-    
+
     Extends the shared RateLimitState with methods that accept
     the dogfood-specific RateLimitConfig.
     """
-    
+
     def record_error_with_config(self, config: RateLimitConfig) -> None:
         """Record a failed request using local config parameters."""
         self.record_error(
@@ -64,15 +64,15 @@ class DogfoodRateLimitState(RateLimitState):
             max_backoff=config.max_backoff,
             multiplier=config.backoff_multiplier,
         )
-    
+
     def should_wait_with_config(self, config: RateLimitConfig) -> tuple[bool, float]:
         """Check if we should wait before making a request using local config."""
         now = time.time()
-        
+
         # Check if disabled
         if self.disabled_until and now < self.disabled_until:
             return True, self.disabled_until - now
-        
+
         # Check rate limit window
         requests_in_window = self.requests_in_window(config.window_seconds)
         if requests_in_window >= config.max_requests_per_window:
@@ -83,7 +83,7 @@ class DogfoodRateLimitState(RateLimitState):
                 )
                 wait_time = oldest_in_window + config.window_seconds - now
                 return True, max(0.0, wait_time)
-        
+
         # Check cooldown with backoff
         if self.last_request_time:
             backoff_delay = self.get_backoff_delay(
@@ -95,7 +95,7 @@ class DogfoodRateLimitState(RateLimitState):
             )
             if cooldown_remaining > 0:
                 return True, cooldown_remaining
-        
+
         return False, 0.0
 
 
@@ -116,12 +116,16 @@ class Backend(ABC):
         """Check if this backend is currently available."""
         if not self.config.enabled:
             return False
-        should_wait, _ = self.rate_limit_state.should_wait_with_config(self.config.rate_limit)
+        should_wait, _ = self.rate_limit_state.should_wait_with_config(
+            self.config.rate_limit
+        )
         return not should_wait
 
     def get_wait_time(self) -> float:
         """Get time to wait before next request."""
-        _, wait_time = self.rate_limit_state.should_wait_with_config(self.config.rate_limit)
+        _, wait_time = self.rate_limit_state.should_wait_with_config(
+            self.config.rate_limit
+        )
         return wait_time
 
     async def wait_for_availability(self) -> None:
@@ -219,7 +223,9 @@ class ClaudeBackend(Backend):
                 error_msg = stderr_text or stdout_text
 
                 if rate_limited:
-                    self.rate_limit_state.record_error_with_config(self.config.rate_limit)
+                    self.rate_limit_state.record_error_with_config(
+                        self.config.rate_limit
+                    )
                     wait_time = extract_rate_limit_wait_time(combined_output)
                     if wait_time:
                         self.rate_limit_state.disable_temporarily(wait_time)
@@ -351,7 +357,9 @@ class CopilotBackend(Backend):
                 error_msg = stderr_text or stdout_text
 
                 if rate_limited:
-                    self.rate_limit_state.record_error_with_config(self.config.rate_limit)
+                    self.rate_limit_state.record_error_with_config(
+                        self.config.rate_limit
+                    )
                     wait_time = extract_rate_limit_wait_time(combined_output)
                     if wait_time:
                         self.rate_limit_state.disable_temporarily(wait_time)

@@ -12,7 +12,10 @@ class TestExtractRateLimitWaitTime(unittest.TestCase):
 
     def test_try_again_in_minutes(self):
         """Test parsing 'try again in X minutes' pattern."""
-        assert extract_rate_limit_wait_time("Rate limit exceeded. Try again in 5 minutes.") == 300
+        assert (
+            extract_rate_limit_wait_time("Rate limit exceeded. Try again in 5 minutes.")
+            == 300
+        )
         assert extract_rate_limit_wait_time("Please try again in 10 minutes") == 600
         assert extract_rate_limit_wait_time("try again in 1 minute") == 60
 

@@ -36,8 +36,14 @@ import click
 try:
     # Use absolute imports when run as script, relative when as module
     try:
-        from build_tools.generate_code_walkthroughs import Config as WalkthroughConfig, main_async as walkthrough_main
-        from build_tools.sharpy_dogfood.cli import main as dogfood_main_async, Config as DogfoodConfig
+        from build_tools.generate_code_walkthroughs import (
+            Config as WalkthroughConfig,
+            main_async as walkthrough_main,
+        )
+        from build_tools.sharpy_dogfood.cli import (
+            main as dogfood_main_async,
+            Config as DogfoodConfig,
+        )
         from build_tools.sharpy_auto_builder.cli import (
             cmd_init as builder_init,
             cmd_status as builder_status,
@@ -52,8 +58,14 @@ try:
         from build_tools.sharpy_auto_builder.config import Config as BuilderConfig
     except ImportError:
         # Fallback to relative imports
-        from .generate_code_walkthroughs import Config as WalkthroughConfig, main_async as walkthrough_main
-        from .sharpy_dogfood.cli import main as dogfood_main_async, Config as DogfoodConfig
+        from .generate_code_walkthroughs import (
+            Config as WalkthroughConfig,
+            main_async as walkthrough_main,
+        )
+        from .sharpy_dogfood.cli import (
+            main as dogfood_main_async,
+            Config as DogfoodConfig,
+        )
         from .sharpy_auto_builder.cli import (
             cmd_init as builder_init,
             cmd_status as builder_status,
@@ -82,6 +94,7 @@ def cli():
 # ==============================================================================
 # Walkthrough Commands
 # ==============================================================================
+
 
 @cli.group()
 def walkthrough():
@@ -177,6 +190,7 @@ def walkthrough_generate(
 # ==============================================================================
 # Dogfood Commands
 # ==============================================================================
+
 
 @cli.group()
 def dogfood():
@@ -305,6 +319,7 @@ def dogfood_run(
 # Auto Builder Commands
 # ==============================================================================
 
+
 @cli.group(name="build")
 def build():
     """Automated task implementation tool."""
@@ -332,6 +347,7 @@ def build():
 )
 def build_init(task_list: Path, project_root: Path | None, config: Path | None):
     """Initialize the auto builder with a task list."""
+
     # Create mock args for compatibility
     class Args:
         pass
@@ -358,6 +374,7 @@ def build_init(task_list: Path, project_root: Path | None, config: Path | None):
 )
 def build_status(project_root: Path | None):
     """Show current auto builder status."""
+
     class Args:
         pass
 
@@ -409,6 +426,7 @@ def build_run(
     agents: tuple,
 ):
     """Run auto builder to process tasks."""
+
     class Args:
         pass
 
@@ -442,6 +460,7 @@ def build_run(
 )
 def build_report(project_root: Path | None, output: Path | None):
     """Generate a detailed report of progress and results."""
+
     class Args:
         pass
 
@@ -468,6 +487,7 @@ def build_report(project_root: Path | None, output: Path | None):
 )
 def build_answer(question_id: str, answer: str, project_root: Path | None):
     """Answer a pending question from the auto builder."""
+
     class Args:
         pass
 
@@ -502,6 +522,7 @@ def build_review(
     task_id: str, decision: str, project_root: Path | None, feedback: str | None
 ):
     """Review and approve/reject a task implementation."""
+
     class Args:
         pass
 
@@ -533,6 +554,7 @@ def build_review(
 )
 def build_reset(project_root: Path | None, confirm: bool):
     """Reset the auto builder state."""
+
     class Args:
         pass
 
@@ -563,6 +585,7 @@ def build_reset(project_root: Path | None, confirm: bool):
 )
 def build_skip(task_id: str, project_root: Path | None, reason: str | None):
     """Skip a task in the auto builder."""
+
     class Args:
         pass
 
@@ -619,6 +642,7 @@ def build_logs(
     truncate: int | None,
 ):
     """View execution logs from the auto builder."""
+
     class Args:
         pass
 
@@ -642,6 +666,7 @@ def build_logs(
 # ==============================================================================
 # Global Status Command
 # ==============================================================================
+
 
 @cli.command()
 def status():
@@ -667,7 +692,9 @@ def status():
     if dogfood_dir.exists():
         generated_dir = dogfood_dir / "generated"
         issues_dir = dogfood_dir / "issues"
-        generated_count = len(list(generated_dir.glob("*.spy"))) if generated_dir.exists() else 0
+        generated_count = (
+            len(list(generated_dir.glob("*.spy"))) if generated_dir.exists() else 0
+        )
         issue_count = len(list(issues_dir.glob("*.json"))) if issues_dir.exists() else 0
         click.echo(f"   ✓ Output directory exists: {dogfood_dir}")
         click.echo(f"   ✓ Generated files: {generated_count}")
@@ -681,6 +708,7 @@ def status():
     builder_config = BuilderConfig()
     if builder_config.ground_truth_path.exists():
         from .sharpy_auto_builder.state import GroundTruth
+
         ground_truth = GroundTruth.load(builder_config.ground_truth_path)
         click.echo(f"   ✓ Initialized with ground truth")
         click.echo(f"   ✓ Overall progress: {ground_truth.overall_progress:.1f}%")
@@ -697,6 +725,7 @@ def status():
     click.echo("🔧 Shared Modules:")
     try:
         from .shared import backends, rate_limiting, model_selector, config, logging
+
         click.echo("   ✓ Backends module available")
         click.echo("   ✓ Rate limiting module available")
         click.echo("   ✓ Model selector module available")

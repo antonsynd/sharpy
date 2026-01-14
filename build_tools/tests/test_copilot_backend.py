@@ -46,10 +46,7 @@ class TestCopilotBackend:
         rate_state = RateLimitState()
 
         with patch("shutil.which", return_value="/opt/homebrew/bin/copilot"):
-            backend = CopilotBackend(
-                rate_limit_state=rate_state,
-                cli_path="copilot"
-            )
+            backend = CopilotBackend(rate_limit_state=rate_state, cli_path="copilot")
             assert backend.is_available()
 
     def test_build_command_basic(self):
@@ -242,9 +239,7 @@ class TestCopilotBackend:
         # Mock subprocess that hangs
         mock_process = AsyncMock()
         mock_process.stdout = AsyncMock()
-        mock_process.stdout.read = AsyncMock(
-            side_effect=asyncio.TimeoutError()
-        )
+        mock_process.stdout.read = AsyncMock(side_effect=asyncio.TimeoutError())
         mock_process.stderr = AsyncMock()
         mock_process.wait = AsyncMock()
         mock_process.kill = MagicMock()

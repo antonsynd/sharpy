@@ -21,6 +21,7 @@ from .config import Config, BackendConfig, RateLimitConfig, BackendType
 
 # Import shared rate limiting utilities
 import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from shared.rate_limiting import (
     is_rate_limit_error,
@@ -158,7 +159,10 @@ class Backend(ABC):
 
     @abstractmethod
     async def execute(
-        self, prompt: str, context: dict[str, Any] | None = None, timeout: Optional[float] = None
+        self,
+        prompt: str,
+        context: dict[str, Any] | None = None,
+        timeout: Optional[float] = None,
     ) -> ExecutionResult:
         """Execute a prompt and return the result.
 
@@ -205,7 +209,10 @@ class ClaudeCodeBackend(Backend):
         self.heartbeat_interval = 60.0  # Log heartbeat every 60 seconds
 
     async def execute(
-        self, prompt: str, context: dict[str, Any] | None = None, timeout: Optional[float] = None
+        self,
+        prompt: str,
+        context: dict[str, Any] | None = None,
+        timeout: Optional[float] = None,
     ) -> ExecutionResult:
         """Execute a prompt using Claude Code with timeout protection.
 
@@ -244,8 +251,10 @@ class ClaudeCodeBackend(Backend):
             # Execute with timeout and heartbeat logging
             try:
                 stdout, stderr = await asyncio.wait_for(
-                    self._communicate_with_heartbeat(process, prompt.encode(), start_time),
-                    timeout=effective_timeout
+                    self._communicate_with_heartbeat(
+                        process, prompt.encode(), start_time
+                    ),
+                    timeout=effective_timeout,
                 )
             except asyncio.TimeoutError:
                 # Kill the process on timeout
@@ -261,7 +270,7 @@ class ClaudeCodeBackend(Backend):
                     success=False,
                     output="",
                     error=f"Agent execution timed out after {duration:.1f}s (limit: {effective_timeout:.0f}s). "
-                          f"The Claude Code process was killed. This may indicate a hung API call or network issue.",
+                    f"The Claude Code process was killed. This may indicate a hung API call or network issue.",
                     duration_seconds=duration,
                     backend=self.name,
                     timed_out=True,
@@ -319,10 +328,7 @@ class ClaudeCodeBackend(Backend):
             )
 
     async def _communicate_with_heartbeat(
-        self,
-        process: asyncio.subprocess.Process,
-        input_data: bytes,
-        start_time: float
+        self, process: asyncio.subprocess.Process, input_data: bytes, start_time: float
     ) -> tuple[bytes, bytes]:
         """Communicate with process while logging periodic heartbeats.
 
@@ -351,8 +357,16 @@ class ClaudeCodeBackend(Backend):
                 # Try to read available output (non-blocking check)
                 done, pending = await asyncio.wait(
                     [
-                        asyncio.create_task(process.stdout.read(4096) if process.stdout else asyncio.sleep(0)),
-                        asyncio.create_task(process.stderr.read(4096) if process.stderr else asyncio.sleep(0)),
+                        asyncio.create_task(
+                            process.stdout.read(4096)
+                            if process.stdout
+                            else asyncio.sleep(0)
+                        ),
+                        asyncio.create_task(
+                            process.stderr.read(4096)
+                            if process.stderr
+                            else asyncio.sleep(0)
+                        ),
                     ],
                     timeout=self.heartbeat_interval,
                     return_when=asyncio.FIRST_COMPLETED,
@@ -382,7 +396,10 @@ class ClaudeCodeBackend(Backend):
                 now = time.time()
                 if now - last_heartbeat >= self.heartbeat_interval:
                     elapsed = now - start_time
-                    print(f"[heartbeat] Agent still running... ({elapsed:.0f}s elapsed)", file=sys.stderr)
+                    print(
+                        f"[heartbeat] Agent still running... ({elapsed:.0f}s elapsed)",
+                        file=sys.stderr,
+                    )
                     last_heartbeat = now
 
                 # Check if process finished
@@ -402,7 +419,7 @@ class ClaudeCodeBackend(Backend):
                 if remaining:
                     stderr_chunks.append(remaining)
 
-            return b''.join(stdout_chunks), b''.join(stderr_chunks)
+            return b"".join(stdout_chunks), b"".join(stderr_chunks)
 
         # Simpler approach: just use communicate with periodic heartbeat in parallel
         async def heartbeat_logger():
@@ -410,7 +427,10 @@ class ClaudeCodeBackend(Backend):
             while True:
                 await asyncio.sleep(self.heartbeat_interval)
                 elapsed = time.time() - start_time
-                print(f"[heartbeat] Agent still running... ({elapsed:.0f}s elapsed)", file=sys.stderr)
+                print(
+                    f"[heartbeat] Agent still running... ({elapsed:.0f}s elapsed)",
+                    file=sys.stderr,
+                )
 
         heartbeat_task = asyncio.create_task(heartbeat_logger())
         try:
@@ -519,7 +539,10 @@ class CopilotBackend(Backend):
         self.execution_timeout = config.execution_timeout or 600.0
 
     async def execute(
-        self, prompt: str, context: dict[str, Any] | None = None, timeout: Optional[float] = None
+        self,
+        prompt: str,
+        context: dict[str, Any] | None = None,
+        timeout: Optional[float] = None,
     ) -> ExecutionResult:
         """Execute a prompt using GitHub Copilot CLI with timeout protection.
 
@@ -559,8 +582,7 @@ class CopilotBackend(Backend):
 
             try:
                 stdout, stderr = await asyncio.wait_for(
-                    process.communicate(),
-                    timeout=effective_timeout
+                    process.communicate(), timeout=effective_timeout
                 )
             except asyncio.TimeoutError:
                 # Kill the process on timeout
@@ -774,7 +796,11 @@ class BackendManager:
                 # If timed out, try failover to another backend
                 if result.timed_out:
                     import sys
-                    print(f"[failover] {backend.name} timed out, trying next backend...", file=sys.stderr)
+
+                    print(
+                        f"[failover] {backend.name} timed out, trying next backend...",
+                        file=sys.stderr,
+                    )
 
         # Try backends in priority order
         for backend_type in self.config.backend_priority:

@@ -396,21 +396,16 @@ class ExecutionLogger:
 
         if start_time is not None:
             events = [
-                e for e in events
-                if datetime.fromisoformat(e.timestamp) >= start_time
+                e for e in events if datetime.fromisoformat(e.timestamp) >= start_time
             ]
 
         if end_time is not None:
             events = [
-                e for e in events
-                if datetime.fromisoformat(e.timestamp) <= end_time
+                e for e in events if datetime.fromisoformat(e.timestamp) <= end_time
             ]
 
         if task_id is not None:
-            events = [
-                e for e in events
-                if e.details.get("task_id") == task_id
-            ]
+            events = [e for e in events if e.details.get("task_id") == task_id]
 
         return events
 

@@ -45,10 +45,7 @@ class TestClaudeCodeBackend:
         rate_state = RateLimitState()
 
         with patch("shutil.which", return_value="/usr/bin/claude"):
-            backend = ClaudeCodeBackend(
-                rate_limit_state=rate_state,
-                cli_path="claude"
-            )
+            backend = ClaudeCodeBackend(rate_limit_state=rate_state, cli_path="claude")
             assert backend.is_available()
 
     def test_build_command_basic(self):
@@ -165,9 +162,7 @@ class TestClaudeCodeBackend:
         mock_process.stdin.drain = AsyncMock()
         mock_process.stdin.close = MagicMock()
         mock_process.stdout = AsyncMock()
-        mock_process.stdout.read = AsyncMock(
-            side_effect=asyncio.TimeoutError()
-        )
+        mock_process.stdout.read = AsyncMock(side_effect=asyncio.TimeoutError())
         mock_process.stderr = AsyncMock()
         mock_process.wait = AsyncMock()
         mock_process.kill = MagicMock()

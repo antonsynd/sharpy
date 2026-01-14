@@ -209,8 +209,7 @@ class TestRateLimitState(unittest.TestCase):
     def test_should_wait_initially_false(self):
         """Test that should_wait returns False for fresh state."""
         should_wait, wait_time = self.state.should_wait(
-            max_requests_per_window=10,
-            window_seconds=60
+            max_requests_per_window=10, window_seconds=60
         )
         self.assertFalse(should_wait)
         self.assertEqual(wait_time, 0.0)
@@ -220,8 +219,7 @@ class TestRateLimitState(unittest.TestCase):
         self.state.disable_temporarily(30)
 
         should_wait, wait_time = self.state.should_wait(
-            max_requests_per_window=10,
-            window_seconds=60
+            max_requests_per_window=10, window_seconds=60
         )
         self.assertTrue(should_wait)
         self.assertGreater(wait_time, 29)
@@ -234,8 +232,7 @@ class TestRateLimitState(unittest.TestCase):
             self.state.record_request()
 
         should_wait, wait_time = self.state.should_wait(
-            max_requests_per_window=5,
-            window_seconds=60
+            max_requests_per_window=5, window_seconds=60
         )
         self.assertTrue(should_wait)
         self.assertGreater(wait_time, 0)
@@ -245,9 +242,7 @@ class TestRateLimitState(unittest.TestCase):
         self.state.record_request()
 
         should_wait, wait_time = self.state.should_wait(
-            max_requests_per_window=100,
-            window_seconds=60,
-            request_cooldown=5.0
+            max_requests_per_window=100, window_seconds=60, request_cooldown=5.0
         )
         self.assertTrue(should_wait)
         self.assertGreater(wait_time, 4)
@@ -259,9 +254,7 @@ class TestRateLimitState(unittest.TestCase):
         self.state.record_error(base_cooldown=10.0)
 
         should_wait, wait_time = self.state.should_wait(
-            max_requests_per_window=100,
-            window_seconds=60,
-            request_cooldown=2.0
+            max_requests_per_window=100, window_seconds=60, request_cooldown=2.0
         )
         self.assertTrue(should_wait)
         # Should wait for cooldown (2.0) + backoff (10.0) = 12.0 seconds
@@ -274,9 +267,7 @@ class TestRateLimitState(unittest.TestCase):
         time.sleep(0.15)  # Wait for cooldown to expire
 
         should_wait, wait_time = self.state.should_wait(
-            max_requests_per_window=100,
-            window_seconds=60,
-            request_cooldown=0.1
+            max_requests_per_window=100, window_seconds=60, request_cooldown=0.1
         )
         self.assertFalse(should_wait)
         self.assertEqual(wait_time, 0.0)
@@ -321,9 +312,7 @@ class TestRateLimitStateIntegration(unittest.TestCase):
         # Make several successful requests
         for _ in range(5):
             should_wait, _ = state.should_wait(
-                max_requests_per_window=10,
-                window_seconds=60,
-                request_cooldown=0.1
+                max_requests_per_window=10, window_seconds=60, request_cooldown=0.1
             )
             if should_wait:
                 time.sleep(0.1)

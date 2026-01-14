@@ -47,6 +47,7 @@ from .auto_decision import AutoDecisionEngine, AutoDecision, DecisionType
 
 # Import shared logging utilities
 import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from shared.logging import ExecutionLogger, LogEventType
 
@@ -510,7 +511,10 @@ class Orchestrator:
                 "human_review_id": review.id,
                 "awaiting_human_input": True,
                 "next_action": "wait_human",
-                "messages": [f"Task {task.id} is awaiting human review", f"  Review ID: {review.id}"],
+                "messages": [
+                    f"Task {task.id} is awaiting human review",
+                    f"  Review ID: {review.id}",
+                ],
             }
 
         # Get next pending task
@@ -639,7 +643,11 @@ Provide:
             "execute_implementation",
             task_data["id"],
             result.success,
-            f"via {result.backend}" if result.backend else "" + (" (TIMED OUT)" if result.timed_out else ""),
+            (
+                f"via {result.backend}"
+                if result.backend
+                else "" + (" (TIMED OUT)" if result.timed_out else "")
+            ),
         )
 
         execution_result = {
@@ -856,7 +864,9 @@ Provide:
             else:
                 # Deferral for non-optional task needs human review
                 # Create a question for the human to decide
-                deferral_reason = analysis.deferral_reason or "Agent recommends deferring this task"
+                deferral_reason = (
+                    analysis.deferral_reason or "Agent recommends deferring this task"
+                )
                 question = self.human_loop.create_question(
                     task_id=task_data["id"],
                     question=f"Agent recommends deferring task {task_data['id']}: {task_data.get('title', 'Unknown')}",

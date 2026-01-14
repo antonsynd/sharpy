@@ -13,6 +13,7 @@ _logger: logging.Logger = logging.getLogger(name="build_sharpy")
 ROOT_DIR: Path = Path(__file__).parent.parent.parent
 TOOLS_DIR: Path = ROOT_DIR / "tools"
 DATA_DIR: Path = ROOT_DIR / "data"
+BUILD_TOOLS_DIR: Path = ROOT_DIR / "build_tools"
 
 SRC_DIR: Path = ROOT_DIR / "src"
 
@@ -59,19 +60,26 @@ def main() -> None:
         install(args=args, rest=rest)
     elif command == "format":
         format(args=args, rest=rest)
+        format_python(args=args, rest=rest)
     elif command == "debug":
         format(args=args, rest=rest)
+        format_python(args=args, rest=rest)
         build(args=args, rest=rest, release=False)
         test(args=args, rest=rest, release=False)
+        test_python(args=args, rest=rest)
     elif command == "release":
         format(args=args, rest=rest)
+        format_python(args=args, rest=rest)
         build(args=args, rest=rest, release=False)
         test(args=args, rest=rest, release=False)
+        test_python(args=args, rest=rest)
         build(args=args, rest=rest, release=True)
         test(args=args, rest=rest, release=True)
+        test_python(args=args, rest=rest)
         install(args=args, rest=rest)
     elif command == "test":
         test(args=args, rest=rest, release=False)
+        test_python(args=args, rest=rest)
     elif command == "help":
         parser.print_help()
     else:
@@ -350,6 +358,36 @@ def format(args: argparse.Namespace, rest: Sequence[str]) -> None:
         sys.exit(1)
 
 
+def format_python(args: argparse.Namespace, rest: Sequence[str]) -> None:
+    """Format Python code in build_tools using ruff and black."""
+    get_logger().info("Formatting Python code in build_tools...")
+
+    # First try ruff format (fast and comprehensive)
+    try:
+        get_logger().info("Running ruff format...")
+        subprocess.run(
+            ["ruff", "format", str(BUILD_TOOLS_DIR)],
+            check=True,
+        )
+    except FileNotFoundError:
+        get_logger().warning("ruff not found, skipping ruff formatting")
+    except subprocess.CalledProcessError as e:
+        get_logger().warning(f"ruff format failed: {e}")
+
+    # Then try black as fallback
+    try:
+        get_logger().info("Running black...")
+        subprocess.run(
+            ["black", str(BUILD_TOOLS_DIR)],
+            check=True,
+        )
+    except FileNotFoundError:
+        get_logger().warning("black not found, skipping black formatting")
+    except subprocess.CalledProcessError as e:
+        get_logger().error(f"black formatting failed: {e}")
+        sys.exit(1)
+
+
 def test(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
     build_type: str = "Release" if release else "Debug"
 
@@ -368,6 +406,32 @@ def test(args: argparse.Namespace, rest: Sequence[str], release: bool) -> None:
         )
     except subprocess.CalledProcessError as e:
         get_logger().error(f"Encountered error {e}")
+        sys.exit(1)
+
+
+def test_python(args: argparse.Namespace, rest: Sequence[str]) -> None:
+    """Run Python tests in build_tools using pytest."""
+    get_logger().info("Running Python tests in build_tools...")
+
+    pytest_args = [
+        "pytest",
+        str(BUILD_TOOLS_DIR / "tests"),
+        "-v",
+        "--tb=short",
+    ]
+
+    # Add any extra arguments passed after --
+    if rest:
+        pytest_args.extend(rest)
+
+    try:
+        subprocess.run(pytest_args, check=True, cwd=ROOT_DIR)
+        get_logger().info("✓ Python tests passed")
+    except FileNotFoundError:
+        get_logger().error("pytest not found. Install it with: pip install pytest")
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        get_logger().error(f"Python tests failed: {e}")
         sys.exit(1)
 
 

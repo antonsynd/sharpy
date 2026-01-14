@@ -80,8 +80,8 @@ class TestBaseConfig:
         config = BaseConfig(project_root=Path("/project"))
         data = config.to_dict()
 
-        assert isinstance(data['project_root'], str)
-        assert data['project_root'] == "/project"
+        assert isinstance(data["project_root"], str)
+        assert data["project_root"] == "/project"
 
     def test_to_dict_excludes_properties(self):
         """to_dict should only include fields, not @property methods."""
@@ -89,16 +89,16 @@ class TestBaseConfig:
         data = config.to_dict()
 
         # Should have project_root field
-        assert 'project_root' in data
+        assert "project_root" in data
 
         # Should NOT have property-based paths (they're computed)
-        assert 'build_tools_dir' not in data
-        assert 'docs_dir' not in data
-        assert 'src_dir' not in data
+        assert "build_tools_dir" not in data
+        assert "docs_dir" not in data
+        assert "src_dir" not in data
 
     def test_from_dict_converts_strings_to_paths(self):
         """from_dict should convert string paths back to Path objects."""
-        data = {'project_root': '/project'}
+        data = {"project_root": "/project"}
         config = BaseConfig.from_dict(data)
 
         assert isinstance(config.project_root, Path)
@@ -107,15 +107,15 @@ class TestBaseConfig:
     def test_from_dict_ignores_unknown_fields(self):
         """from_dict should ignore fields not defined in dataclass."""
         data = {
-            'project_root': '/project',
-            'unknown_field': 'should be ignored',
-            'another_unknown': 123
+            "project_root": "/project",
+            "unknown_field": "should be ignored",
+            "another_unknown": 123,
         }
         config = BaseConfig.from_dict(data)
 
         # Should construct successfully without unknown fields
         assert config.project_root == Path("/project")
-        assert not hasattr(config, 'unknown_field')
+        assert not hasattr(config, "unknown_field")
 
     def test_save_creates_parent_directories(self):
         """save should create parent directories if they don't exist."""
@@ -143,7 +143,7 @@ class TestBaseConfig:
             with open(config_path) as f:
                 data = json.load(f)
 
-            assert data['project_root'] == "/project"
+            assert data["project_root"] == "/project"
 
     def test_load_reads_configuration(self):
         """load should read configuration from JSON file."""
@@ -151,8 +151,8 @@ class TestBaseConfig:
             config_path = Path(tmpdir) / "config.json"
 
             # Write a config file manually
-            with open(config_path, 'w') as f:
-                json.dump({'project_root': '/loaded/path'}, f)
+            with open(config_path, "w") as f:
+                json.dump({"project_root": "/loaded/path"}, f)
 
             # Load it
             config = BaseConfig.load(config_path)
@@ -181,7 +181,7 @@ class TestBaseConfig:
         """load should raise JSONDecodeError for invalid JSON."""
         with TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "invalid.json"
-            with open(config_path, 'w') as f:
+            with open(config_path, "w") as f:
                 f.write("{ invalid json }")
 
             with pytest.raises(json.JSONDecodeError):
@@ -193,6 +193,7 @@ class TestBaseConfigInheritance:
 
     def test_subclass_extends_base_config(self):
         """Subclasses should inherit BaseConfig functionality."""
+
         @dataclass
         class ToolConfig(BaseConfig):
             tool_option: str = "default"
@@ -209,6 +210,7 @@ class TestBaseConfigInheritance:
 
     def test_subclass_to_dict_includes_all_fields(self):
         """Subclass to_dict should include both base and subclass fields."""
+
         @dataclass
         class ToolConfig(BaseConfig):
             tool_option: str = "value"
@@ -216,20 +218,18 @@ class TestBaseConfigInheritance:
         config = ToolConfig(project_root=Path("/tool"))
         data = config.to_dict()
 
-        assert 'project_root' in data
-        assert 'tool_option' in data
-        assert data['tool_option'] == "value"
+        assert "project_root" in data
+        assert "tool_option" in data
+        assert data["tool_option"] == "value"
 
     def test_subclass_from_dict_constructs_correctly(self):
         """Subclass from_dict should populate all fields."""
+
         @dataclass
         class ToolConfig(BaseConfig):
             tool_option: str = "default"
 
-        data = {
-            'project_root': '/tool',
-            'tool_option': 'custom'
-        }
+        data = {"project_root": "/tool", "tool_option": "custom"}
         config = ToolConfig.from_dict(data)
 
         assert config.project_root == Path("/tool")
@@ -237,6 +237,7 @@ class TestBaseConfigInheritance:
 
     def test_subclass_save_and_load_roundtrip(self):
         """Subclass configuration should survive save/load roundtrip."""
+
         @dataclass
         class ToolConfig(BaseConfig):
             tool_option: str = "value"
@@ -245,9 +246,7 @@ class TestBaseConfigInheritance:
         with TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "tool_config.json"
             original = ToolConfig(
-                project_root=Path("/roundtrip"),
-                tool_option="custom",
-                count=100
+                project_root=Path("/roundtrip"), tool_option="custom", count=100
             )
 
             # Save and load
@@ -260,6 +259,7 @@ class TestBaseConfigInheritance:
 
     def test_subclass_can_override_ensure_directories(self):
         """Subclasses can override ensure_directories to add custom dirs."""
+
         @dataclass
         class ToolConfig(BaseConfig):
             output_dir: Path = field(default_factory=lambda: Path("output"))
@@ -283,6 +283,7 @@ class TestBaseConfigInheritance:
 
     def test_subclass_with_nested_dataclass(self):
         """Subclass can include nested dataclasses in serialization."""
+
         @dataclass
         class NestedOptions:
             option_a: str = "a"
@@ -294,44 +295,45 @@ class TestBaseConfigInheritance:
 
         config = ToolConfig(
             project_root=Path("/tool"),
-            nested=NestedOptions(option_a="custom", option_b=42)
+            nested=NestedOptions(option_a="custom", option_b=42),
         )
 
         # Should serialize nested dataclass
         data = config.to_dict()
-        assert 'nested' in data
-        assert data['nested']['option_a'] == "custom"
-        assert data['nested']['option_b'] == 42
+        assert "nested" in data
+        assert data["nested"]["option_a"] == "custom"
+        assert data["nested"]["option_b"] == 42
 
     def test_subclass_with_path_list(self):
         """Subclass with list of Path objects should serialize correctly."""
+
         @dataclass
         class ToolConfig(BaseConfig):
             search_paths: list[Path] = field(default_factory=list)
 
         config = ToolConfig(
-            project_root=Path("/tool"),
-            search_paths=[Path("/path1"), Path("/path2")]
+            project_root=Path("/tool"), search_paths=[Path("/path1"), Path("/path2")]
         )
 
         # Should convert all paths to strings
         data = config.to_dict()
-        assert data['search_paths'] == ["/path1", "/path2"]
+        assert data["search_paths"] == ["/path1", "/path2"]
 
     def test_subclass_with_path_dict(self):
         """Subclass with dict containing Path values should serialize correctly."""
+
         @dataclass
         class ToolConfig(BaseConfig):
             mappings: dict[str, Path] = field(default_factory=dict)
 
         config = ToolConfig(
             project_root=Path("/tool"),
-            mappings={"key1": Path("/value1"), "key2": Path("/value2")}
+            mappings={"key1": Path("/value1"), "key2": Path("/value2")},
         )
 
         # Should convert path values to strings
         data = config.to_dict()
-        assert data['mappings'] == {"key1": "/value1", "key2": "/value2"}
+        assert data["mappings"] == {"key1": "/value1", "key2": "/value2"}
 
 
 if __name__ == "__main__":

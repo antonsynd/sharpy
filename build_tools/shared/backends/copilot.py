@@ -12,7 +12,11 @@ from pathlib import Path
 from typing import Optional, Callable
 
 from .base import Backend, BackendType, BackendConfig, BackendResponse, ToolPermission
-from ..rate_limiting import RateLimitState, is_rate_limit_error, extract_rate_limit_wait_time
+from ..rate_limiting import (
+    RateLimitState,
+    is_rate_limit_error,
+    extract_rate_limit_wait_time,
+)
 
 
 class CopilotBackend(Backend):
@@ -173,9 +177,11 @@ class CopilotBackend(Backend):
                     exit_code=process.returncode or 1,
                     duration_seconds=duration,
                     rate_limited=True,
-                    error_message=f"Rate limited. Wait {wait_seconds}s before retry."
-                    if wait_seconds
-                    else "Rate limited.",
+                    error_message=(
+                        f"Rate limited. Wait {wait_seconds}s before retry."
+                        if wait_seconds
+                        else "Rate limited."
+                    ),
                 )
 
             # Check for success

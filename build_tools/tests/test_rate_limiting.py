@@ -103,7 +103,9 @@ class TestRateLimitDetection:
 
     def test_real_world_copilot_error(self):
         """Should detect real-world Copilot rate limit error."""
-        error = "You have exceeded your copilot token usage limit. Please try again later."
+        error = (
+            "You have exceeded your copilot token usage limit. Please try again later."
+        )
         assert is_rate_limit_error(error, "")
 
     def test_real_world_http_429_error(self):

@@ -24,7 +24,7 @@ class BackendType(Enum):
 
 class ToolPermission(Enum):
     """Tool permissions that can be granted to AI backends.
-    
+
     These map to the tools that the AI can use during execution,
     such as reading files, editing code, running bash commands, etc.
     """
@@ -40,7 +40,7 @@ class ToolPermission(Enum):
 @dataclass
 class BackendConfig:
     """Configuration for a backend execution request.
-    
+
     Attributes:
         timeout_seconds: Maximum execution time before termination
         allowed_tools: Set of tool permissions granted for this request
@@ -64,10 +64,10 @@ class BackendConfig:
 @dataclass
 class BackendResponse:
     """Standardized response from any backend.
-    
+
     All backends return this type to enable consistent error handling
     and response processing regardless of the underlying implementation.
-    
+
     Attributes:
         success: Whether the execution completed successfully
         output: Standard output from the execution
@@ -89,10 +89,10 @@ class BackendResponse:
 
 class Backend(ABC):
     """Abstract base class for AI backends.
-    
+
     All backend implementations (Claude Code, Copilot, etc.) must
     inherit from this class and implement its abstract methods.
-    
+
     This ensures a consistent interface for executing prompts,
     checking availability, and handling responses.
     """
@@ -101,7 +101,7 @@ class Backend(ABC):
     @abstractmethod
     def backend_type(self) -> BackendType:
         """Get the type identifier for this backend.
-        
+
         Returns:
             BackendType enum value identifying this backend
         """
@@ -112,14 +112,14 @@ class Backend(ABC):
         self, prompt: str, config: Optional[BackendConfig] = None
     ) -> BackendResponse:
         """Execute a prompt via this backend.
-        
+
         Args:
             prompt: The prompt/instruction to send to the AI
             config: Optional configuration for this execution
-            
+
         Returns:
             BackendResponse with execution results
-            
+
         Raises:
             May raise exceptions for unrecoverable errors (connection issues, etc.)
         """
@@ -128,10 +128,10 @@ class Backend(ABC):
     @abstractmethod
     def is_available(self) -> bool:
         """Check if this backend is currently available.
-        
+
         Returns:
             True if the backend can accept requests, False otherwise
-            
+
         Note:
             This should check both installation status and rate limit state.
         """

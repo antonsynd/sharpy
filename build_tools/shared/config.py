@@ -11,7 +11,7 @@ from typing import TypeVar, Any
 import json
 
 
-T = TypeVar('T', bound='BaseConfig')
+T = TypeVar("T", bound="BaseConfig")
 
 
 @dataclass
@@ -76,6 +76,7 @@ class BaseConfig:
         Returns:
             Dictionary representation suitable for JSON serialization.
         """
+
         def convert_value(value: Any) -> Any:
             """Convert value to JSON-serializable format."""
             if isinstance(value, Path):
@@ -84,11 +85,10 @@ class BaseConfig:
                 return {k: convert_value(v) for k, v in value.items()}
             elif isinstance(value, (list, tuple)):
                 return [convert_value(item) for item in value]
-            elif hasattr(value, '__dataclass_fields__'):
+            elif hasattr(value, "__dataclass_fields__"):
                 # Nested dataclass
                 return {
-                    f.name: convert_value(getattr(value, f.name))
-                    for f in fields(value)
+                    f.name: convert_value(getattr(value, f.name)) for f in fields(value)
                 }
             else:
                 return value
@@ -126,7 +126,9 @@ class BaseConfig:
 
             # Convert string paths back to Path objects
             field_type = field_info[key]
-            if field_type == Path or (hasattr(field_type, '__origin__') and Path in str(field_type)):
+            if field_type == Path or (
+                hasattr(field_type, "__origin__") and Path in str(field_type)
+            ):
                 if isinstance(value, str):
                     filtered_data[key] = Path(value)
                 elif isinstance(value, Path):
@@ -152,7 +154,7 @@ class BaseConfig:
             OSError: If file cannot be written.
         """
         path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, 'w', encoding='utf-8') as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, indent=2)
 
     @classmethod
@@ -170,9 +172,9 @@ class BaseConfig:
             FileNotFoundError: If the configuration file doesn't exist.
             json.JSONDecodeError: If the file contains invalid JSON.
         """
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         return cls.from_dict(data)
 
 
-__all__ = ['BaseConfig']
+__all__ = ["BaseConfig"]

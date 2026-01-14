@@ -70,7 +70,7 @@ state.record_request()
 
 if error_occurred:
     state.record_error(wait_seconds=300)
-    
+
 if state.is_available():
     # Backend is ready for more requests
     pass
@@ -164,11 +164,11 @@ class MyCustomBackend(Backend):
     @property
     def backend_type(self) -> BackendType:
         return BackendType.CLAUDE_CODE  # Or define your own
-    
+
     async def execute(self, prompt: str, config: BackendConfig | None = None) -> BackendResponse:
         # Your implementation
         ...
-    
+
     def is_available(self) -> bool:
         # Check if backend is ready
         return True
@@ -374,15 +374,15 @@ from build_tools.shared.config import BaseConfig
 @dataclass
 class MyToolConfig(BaseConfig):
     """Configuration for my tool."""
-    
+
     max_iterations: int = 10
     output_format: str = "json"
-    
+
     @property
     def output_dir(self) -> Path:
         """Tool-specific output directory."""
         return self.build_tools_dir / "my_tool" / "output"
-    
+
     def ensure_directories(self) -> None:
         """Create both base and tool-specific directories."""
         super().ensure_directories()
@@ -581,38 +581,38 @@ class MyToolConfig(BaseConfig):
     """Configuration for my tool."""
     max_retries: int = 3
     output_dir: Path = None
-    
+
     def __post_init__(self):
         if self.output_dir is None:
             self.output_dir = self.build_tools_dir / "my_tool" / "output"
 
 class MyTool:
     """Example tool using shared utilities."""
-    
+
     def __init__(self, config: MyToolConfig):
         self.config = config
         self.backend_manager = BackendManager()
         self.logger = ExecutionLogger(
             config.build_tools_dir / "my_tool" / "execution.log"
         )
-        
+
         # Ensure directories exist
         self.config.ensure_directories()
         self.config.output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     async def process_task(self, description: str, code_context: str):
         """Process a task with automatic model selection and error handling."""
-        
+
         # Log task start
         task_id = self.logger.log_task(
             event_type=LogEventType.TASK_START,
             task_id=description[:50],
             description=description,
         )
-        
+
         # Build prompt
         prompt = f"{description}\n\nContext:\n{code_context}"
-        
+
         # Configure backend with automatic model selection
         config = BackendConfig(
             task_type=TaskType.CODE_GENERATION,
@@ -620,25 +620,25 @@ class MyTool:
             allowed_tools={ToolPermission.READ, ToolPermission.WRITE},
             timeout_seconds=300,
         )
-        
+
         # Execute with automatic failover
         try:
             response, backend_used = await self.backend_manager.execute(
                 prompt, config
             )
-            
+
             if response.success:
                 # Process successful response
                 output_file = self.config.output_dir / f"{task_id}.py"
                 output_file.write_text(response.output)
-                
+
                 self.logger.log_task(
                     event_type=LogEventType.TASK_COMPLETE,
                     task_id=task_id,
                     description=description,
                     details={"backend": str(backend_used), "duration": response.duration_seconds},
                 )
-                
+
                 return output_file
             else:
                 # Handle error
@@ -651,7 +651,7 @@ class MyTool:
                     },
                 )
                 return None
-                
+
         except Exception as e:
             self.logger.log(LogEventType.ERROR, {"task_id": task_id, "exception": str(e)})
             raise
@@ -660,12 +660,12 @@ class MyTool:
 async def main():
     config = MyToolConfig(project_root=Path("/path/to/sharpy"))
     tool = MyTool(config)
-    
+
     result = await tool.process_task(
         description="Generate a parser for JSON files",
         code_context="# existing code here",
     )
-    
+
     print(f"Generated: {result}")
 
 if __name__ == "__main__":

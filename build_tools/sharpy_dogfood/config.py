@@ -46,12 +46,12 @@ class BackendConfig:
 @dataclass
 class Config(BaseConfig):
     """Main configuration for the dogfooding tool.
-    
+
     Extends BaseConfig to inherit:
     - Common path handling (project_root, build_tools_dir, docs_dir, src_dir)
     - JSON serialization/deserialization (to_dict, from_dict, save, load)
     - Directory creation (ensure_directories)
-    
+
     Adds dogfood-specific configuration for code generation, validation,
     and backend management.
     """
@@ -119,12 +119,12 @@ class Config(BaseConfig):
 
     def ensure_dirs(self) -> None:
         """Create output directories if they don't exist.
-        
+
         Extends parent class to also create dogfood-specific output directories.
         """
         # First ensure parent directories via BaseConfig
         super().ensure_directories()
-        
+
         # Make paths absolute relative to project root
         self.output_dir = self.project_root / self.output_dir
         self.issues_dir = self.project_root / self.issues_dir
@@ -137,7 +137,7 @@ class Config(BaseConfig):
     @classmethod
     def from_file(cls, path: Path) -> "Config":
         """Load configuration from a JSON file.
-        
+
         This method is kept for backward compatibility with existing code
         that calls Config.from_file(). Internally uses BaseConfig.load().
         """

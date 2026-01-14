@@ -268,7 +268,7 @@ class TestCLIBuilderEdgeCases:
 
     def test_prompt_with_special_characters(self):
         """Test with prompt containing special characters."""
-        prompt = 'Test "quotes" and \'apostrophes\' and $variables'
+        prompt = "Test \"quotes\" and 'apostrophes' and $variables"
         cmd = CLIBuilder.build_claude_command(prompt=prompt, tools=set())
         assert cmd.stdin == prompt
 

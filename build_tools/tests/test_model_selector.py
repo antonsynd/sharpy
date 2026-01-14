@@ -95,10 +95,7 @@ class TestModelSelectionMatrix:
 
     @pytest.mark.parametrize(
         "task_type,complexity,expected_model",
-        [
-            (tt, comp, model)
-            for (tt, comp), model in EXPECTED_MAPPINGS.items()
-        ],
+        [(tt, comp, model) for (tt, comp), model in EXPECTED_MAPPINGS.items()],
     )
     def test_selection_matrix(self, task_type, complexity, expected_model):
         """Test that each task type × complexity maps to expected model."""
@@ -241,9 +238,7 @@ class TestTaskClassification:
 
     def test_default_to_implementation(self):
         """Test that unknown descriptions default to IMPLEMENTATION."""
-        task_type, _ = ModelSelector.classify_task(
-            "Do something with the code"
-        )
+        task_type, _ = ModelSelector.classify_task("Do something with the code")
         assert task_type == TaskType.IMPLEMENTATION
 
 
@@ -280,7 +275,11 @@ class TestComplexityClassification:
         )
         # High file count should bump complexity, but default is MEDIUM
         # With file_count > 5, we add to HIGH and VERY_HIGH scores
-        assert complexity in (TaskComplexity.MEDIUM, TaskComplexity.HIGH, TaskComplexity.VERY_HIGH)
+        assert complexity in (
+            TaskComplexity.MEDIUM,
+            TaskComplexity.HIGH,
+            TaskComplexity.VERY_HIGH,
+        )
 
     def test_line_count_increases_complexity(self):
         """Test that high line count increases complexity."""
@@ -294,9 +293,7 @@ class TestComplexityClassification:
 
     def test_default_to_medium(self):
         """Test that unknown descriptions default to MEDIUM complexity."""
-        _, complexity = ModelSelector.classify_task(
-            "Do something undefined"
-        )
+        _, complexity = ModelSelector.classify_task("Do something undefined")
         assert complexity == TaskComplexity.MEDIUM
 
 
@@ -398,6 +395,7 @@ class TestLoggingCallback:
 
     def test_callback_error_does_not_break_selection(self):
         """Test that callback errors don't break model selection."""
+
         def failing_callback(rec, desc):
             raise ValueError("Callback failed!")
 

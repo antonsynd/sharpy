@@ -87,8 +87,7 @@ class RateLimitState:
             self.backoff_multiplier = base_cooldown
         else:
             self.backoff_multiplier = min(
-                self.backoff_multiplier * multiplier,
-                max_backoff
+                self.backoff_multiplier * multiplier, max_backoff
             )
 
     def record_success(self) -> None:
@@ -203,7 +202,9 @@ class RateLimitState:
         requests_in_window = self.requests_in_window(window_seconds)
         if requests_in_window >= max_requests_per_window:
             # Find the oldest request in the window
-            recent_requests = [t for t in self.request_times if t > now - window_seconds]
+            recent_requests = [
+                t for t in self.request_times if t > now - window_seconds
+            ]
             if recent_requests:
                 oldest_in_window = min(recent_requests)
                 wait_time = oldest_in_window + window_seconds - now

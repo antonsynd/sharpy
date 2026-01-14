@@ -399,9 +399,7 @@ class BackendManager:
         complexity = config.task_complexity or TaskComplexity.MEDIUM
 
         # Select model based on task characteristics
-        recommendation = self._model_selector.select_model(
-            config.task_type, complexity
-        )
+        recommendation = self._model_selector.select_model(config.task_type, complexity)
 
         # Log the selection decision
         logger.info(
