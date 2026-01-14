@@ -8,7 +8,10 @@ must follow, ensuring consistent behavior across different AI providers.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..model_selector import TaskType, TaskComplexity
 
 
 class BackendType(Enum):
@@ -41,8 +44,11 @@ class BackendConfig:
     Attributes:
         timeout_seconds: Maximum execution time before termination
         allowed_tools: Set of tool permissions granted for this request
-        model: Specific model to use (if backend supports selection)
+        model: Specific model to use (if backend supports selection).
+               If None and task_type is provided, model will be auto-selected.
         max_retries: Maximum number of retry attempts on transient failures
+        task_type: Optional task type for automatic model selection
+        task_complexity: Optional complexity level for automatic model selection
     """
 
     timeout_seconds: int = 300
@@ -51,6 +57,8 @@ class BackendConfig:
     )
     model: Optional[str] = None  # For backends that support model selection
     max_retries: int = 3
+    task_type: Optional["TaskType"] = None
+    task_complexity: Optional["TaskComplexity"] = None
 
 
 @dataclass

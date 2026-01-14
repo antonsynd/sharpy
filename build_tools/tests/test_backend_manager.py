@@ -209,7 +209,7 @@ class TestExecute:
             fallback_backends=[BackendType.CLAUDE_CODE],
         )
         manager = BackendManager(config)
-        
+
         claude = MockBackend(
             BackendType.CLAUDE_CODE, response=create_success_response("Claude")
         )
@@ -259,7 +259,7 @@ class TestFailover:
             auto_failover=True,
         )
         manager = BackendManager(config)
-        
+
         claude = MockBackend(
             BackendType.CLAUDE_CODE, response=create_rate_limit_response()
         )
@@ -284,7 +284,7 @@ class TestFailover:
             auto_failover=True,
         )
         manager = BackendManager(config)
-        
+
         claude = MockBackend(
             BackendType.CLAUDE_CODE, response=create_error_response("Network error")
         )
@@ -302,7 +302,7 @@ class TestFailover:
     @pytest.mark.asyncio
     async def test_failover_on_unavailable(self):
         manager = BackendManager()
-        
+
         claude = MockBackend(BackendType.CLAUDE_CODE, available=False)
         copilot = MockBackend(
             BackendType.COPILOT, response=create_success_response("Copilot available")
@@ -325,7 +325,7 @@ class TestFailover:
             auto_failover=False,
         )
         manager = BackendManager(config)
-        
+
         claude = MockBackend(
             BackendType.CLAUDE_CODE, response=create_rate_limit_response()
         )
@@ -350,7 +350,7 @@ class TestFailover:
             fallback_backends=[BackendType.COPILOT],
         )
         manager = BackendManager(config)
-        
+
         claude = MockBackend(
             BackendType.CLAUDE_CODE, response=create_rate_limit_response()
         )
@@ -378,7 +378,7 @@ class TestRateLimitTracking:
             BackendType.CLAUDE_CODE, response=create_success_response()
         )
         manager.register_backend(backend)
-        
+
         # Add some errors first
         rate_state = manager.get_rate_state(BackendType.CLAUDE_CODE)
         rate_state.record_error()
@@ -400,7 +400,7 @@ class TestRateLimitTracking:
 
         # Force auto_failover off to stop at first failure
         manager._config.auto_failover = False
-        
+
         await manager.execute("Test prompt")
 
         rate_state = manager.get_rate_state(BackendType.CLAUDE_CODE)
@@ -413,7 +413,7 @@ class TestRateLimitTracking:
             rate_limit_window_seconds=3600,
         )
         manager = BackendManager(config)
-        
+
         claude = MockBackend(
             BackendType.CLAUDE_CODE, response=create_success_response("Claude")
         )
@@ -438,7 +438,7 @@ class TestRateLimitTracking:
         manager = BackendManager()
         backend = MockBackend(BackendType.CLAUDE_CODE)
         manager.register_backend(backend)
-        
+
         rate_state = manager.get_rate_state(BackendType.CLAUDE_CODE)
         rate_state.record_error()
         rate_state.record_error()
@@ -641,6 +641,218 @@ class TestIntegration:
         r3, b3 = await manager.execute("Request 3")
         assert b3 == BackendType.COPILOT
         assert "Copilot" in r3.output
+
+
+class TestModelSelectionIntegration:
+    """Tests for automatic model selection in BackendManager."""
+
+    @pytest.mark.asyncio
+    async def test_model_selection_when_not_specified(self):
+        """Test that model is auto-selected when task_type is provided but model is None."""
+        from build_tools.shared.model_selector import TaskType, TaskComplexity, SONNET
+
+        manager = BackendManager()
+        backend = MockBackend(BackendType.CLAUDE_CODE)
+        manager.register_backend(backend)
+
+        config = BackendConfig(
+            task_type=TaskType.CODE_GENERATION,
+            task_complexity=TaskComplexity.MEDIUM,
+            model=None,  # Should trigger auto-selection
+        )
+
+        await manager.execute("Generate code", config)
+
+        # Check that backend was called with model set to SONNET
+        assert len(backend.execute_calls) == 1
+        _, executed_config = backend.execute_calls[0]
+        assert executed_config is not None
+        assert executed_config.model == SONNET
+
+    @pytest.mark.asyncio
+    async def test_explicit_model_overrides_selection(self):
+        """Test that explicitly specified model is not overridden."""
+        from build_tools.shared.model_selector import TaskType, TaskComplexity, HAIKU
+
+        manager = BackendManager()
+        backend = MockBackend(BackendType.CLAUDE_CODE)
+        manager.register_backend(backend)
+
+        config = BackendConfig(
+            task_type=TaskType.CODE_GENERATION,
+            task_complexity=TaskComplexity.MEDIUM,
+            model=HAIKU,  # Explicit model - should not be overridden
+        )
+
+        await manager.execute("Generate code", config)
+
+        # Check that backend was called with explicitly specified HAIKU
+        assert len(backend.execute_calls) == 1
+        _, executed_config = backend.execute_calls[0]
+        assert executed_config is not None
+        assert executed_config.model == HAIKU
+
+    @pytest.mark.asyncio
+    async def test_no_selection_without_task_type(self):
+        """Test that no model selection occurs if task_type is not provided."""
+        manager = BackendManager()
+        backend = MockBackend(BackendType.CLAUDE_CODE)
+        manager.register_backend(backend)
+
+        config = BackendConfig(
+            model=None,  # No model
+            task_type=None,  # No task type - no selection possible
+        )
+
+        await manager.execute("Do something", config)
+
+        # Check that backend was called with model still None
+        assert len(backend.execute_calls) == 1
+        _, executed_config = backend.execute_calls[0]
+        assert executed_config is not None
+        assert executed_config.model is None
+
+    @pytest.mark.asyncio
+    async def test_default_complexity_used_when_not_specified(self):
+        """Test that MEDIUM complexity is used when not specified."""
+        from build_tools.shared.model_selector import TaskType, SONNET
+
+        manager = BackendManager()
+        backend = MockBackend(BackendType.CLAUDE_CODE)
+        manager.register_backend(backend)
+
+        config = BackendConfig(
+            task_type=TaskType.IMPLEMENTATION,
+            task_complexity=None,  # Should default to MEDIUM
+            model=None,
+        )
+
+        await manager.execute("Implement feature", config)
+
+        # IMPLEMENTATION + MEDIUM = SONNET
+        assert len(backend.execute_calls) == 1
+        _, executed_config = backend.execute_calls[0]
+        assert executed_config is not None
+        assert executed_config.model == SONNET
+
+    @pytest.mark.asyncio
+    async def test_model_selection_with_different_complexities(self):
+        """Test that different complexities result in different model selections."""
+        from build_tools.shared.model_selector import (
+            TaskType,
+            TaskComplexity,
+            HAIKU,
+            OPUS,
+        )
+
+        manager = BackendManager()
+
+        # Test TRIVIAL classification → HAIKU
+        backend1 = MockBackend(BackendType.CLAUDE_CODE)
+        manager.register_backend(backend1)
+
+        config1 = BackendConfig(
+            task_type=TaskType.CLASSIFICATION,
+            task_complexity=TaskComplexity.TRIVIAL,
+            model=None,
+        )
+        await manager.execute("Is this an error?", config1)
+        _, executed_config1 = backend1.execute_calls[0]
+        assert executed_config1.model == HAIKU
+
+        # Test VERY_HIGH architecture → OPUS
+        manager = BackendManager()  # Fresh manager
+        backend2 = MockBackend(BackendType.CLAUDE_CODE)
+        manager.register_backend(backend2)
+
+        config2 = BackendConfig(
+            task_type=TaskType.ARCHITECTURE,
+            task_complexity=TaskComplexity.VERY_HIGH,
+            model=None,
+        )
+        await manager.execute("Design compiler subsystem", config2)
+        _, executed_config2 = backend2.execute_calls[0]
+        assert executed_config2.model == OPUS
+
+    @pytest.mark.asyncio
+    async def test_model_selection_with_custom_selector(self):
+        """Test that custom ModelSelector instance is used if provided."""
+        from build_tools.shared.model_selector import (
+            ModelSelector,
+            TaskType,
+            TaskComplexity,
+        )
+        from unittest.mock import MagicMock
+
+        custom_selector = MagicMock(spec=ModelSelector)
+        manager = BackendManager(model_selector=custom_selector)
+        backend = MockBackend(BackendType.CLAUDE_CODE)
+        manager.register_backend(backend)
+
+        # Configure mock to return a recommendation
+        from build_tools.shared.model_selector import ModelRecommendation
+
+        custom_selector.select_model.return_value = ModelRecommendation(
+            model="custom-model-id", reasoning="Custom selection logic"
+        )
+
+        config = BackendConfig(
+            task_type=TaskType.CODE_GENERATION,
+            task_complexity=TaskComplexity.HIGH,
+            model=None,
+        )
+
+        await manager.execute("Generate code", config)
+
+        # Verify custom selector was called
+        custom_selector.select_model.assert_called_once_with(
+            TaskType.CODE_GENERATION, TaskComplexity.HIGH
+        )
+
+        # Verify backend received the custom model
+        _, executed_config = backend.execute_calls[0]
+        assert executed_config.model == "custom-model-id"
+
+    @pytest.mark.asyncio
+    async def test_model_selection_logging(self):
+        """Test that model selection decisions are logged."""
+        from build_tools.shared.model_selector import TaskType, TaskComplexity
+        import logging
+
+        manager = BackendManager()
+        backend = MockBackend(BackendType.CLAUDE_CODE)
+        manager.register_backend(backend)
+
+        config = BackendConfig(
+            task_type=TaskType.DEBUGGING,
+            task_complexity=TaskComplexity.HIGH,
+            model=None,
+        )
+
+        # Capture log output
+        with patch("build_tools.shared.backends.manager.logger") as mock_logger:
+            await manager.execute("Debug issue", config)
+
+            # Verify logging was called with model selection info
+            mock_logger.info.assert_called_once()
+            log_call = mock_logger.info.call_args[0][0]
+            assert "Auto-selected model" in log_call
+            assert "debugging" in log_call
+            assert "high complexity" in log_call
+
+    @pytest.mark.asyncio
+    async def test_no_config_provided(self):
+        """Test that None config doesn't break model selection."""
+        manager = BackendManager()
+        backend = MockBackend(BackendType.CLAUDE_CODE)
+        manager.register_backend(backend)
+
+        # Should work fine with no config
+        await manager.execute("Do something")
+
+        assert len(backend.execute_calls) == 1
+        _, executed_config = backend.execute_calls[0]
+        assert executed_config is None  # Config should remain None
 
 
 if __name__ == "__main__":

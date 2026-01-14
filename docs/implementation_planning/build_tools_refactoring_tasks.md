@@ -781,10 +781,34 @@ class BackendManager:
 ```
 
 **Acceptance Criteria**:
-- [ ] Automatic model selection when not explicitly specified
-- [ ] Task type/complexity can be passed through to backend
-- [ ] Logging of which model was selected and why
-- [ ] Easy override for explicit model specification
+- [x] Automatic model selection when not explicitly specified
+- [x] Task type/complexity can be passed through to backend
+- [x] Logging of which model was selected and why
+- [x] Easy override for explicit model specification
+
+**Implementation Notes**:
+- Completed on 2026-01-13
+- Extended `BackendConfig` with `task_type` and `task_complexity` fields
+- Added `model_selector` parameter to `BackendManager.__init__()` with default instantiation
+- Implemented `_apply_model_selection()` helper method that:
+  - Returns original config if model is already specified (explicit override)
+  - Returns original config if no task_type provided (can't do selection)
+  - Uses TaskComplexity.MEDIUM as default when complexity not specified
+  - Creates immutable updated config with selected model using dataclass `replace()`
+- Modified `execute()` to call `_apply_model_selection()` before backend selection
+- Added INFO-level logging of model selection decisions with task type, complexity, and reasoning
+- Uses TYPE_CHECKING import pattern to avoid circular imports with model_selector
+- 8 comprehensive unit tests covering all integration scenarios:
+  - Auto-selection when model is None and task_type provided
+  - Explicit model override (not replaced by auto-selection)
+  - No selection when task_type is None
+  - Default complexity (MEDIUM) when not specified
+  - Different complexities result in different model selections
+  - Custom ModelSelector instance can be injected
+  - Model selection decisions are logged
+  - None config handled gracefully
+- All 226 tests passing (40 backend manager tests, 186 other tests)
+- No regressions in existing functionality
 
 ---
 

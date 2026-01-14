@@ -195,7 +195,7 @@ class CopilotBackend(Backend):
             else:
                 # Non-zero exit code or interactive prompt detected
                 self._rate_limit_state.record_error()
-                
+
                 # Detect if Copilot requires interactive input
                 if "?" in stdout_text[:100] or not stdout_text.strip():
                     error_msg = (
@@ -204,7 +204,7 @@ class CopilotBackend(Backend):
                     )
                 else:
                     error_msg = stderr_text or stdout_text or "Unknown error"
-                
+
                 return BackendResponse(
                     success=False,
                     output=stdout_text,

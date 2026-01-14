@@ -103,21 +103,21 @@ class TestCopilotBackend:
     def test_is_valid_output_with_valid_text(self):
         """Test output validation with valid text."""
         backend = CopilotBackend()
-        
+
         valid_output = "This is a valid response with substantial content."
         assert backend._is_valid_output(valid_output)
 
     def test_is_valid_output_with_empty(self):
         """Test output validation with empty text."""
         backend = CopilotBackend()
-        
+
         assert not backend._is_valid_output("")
         assert not backend._is_valid_output("   ")
 
     def test_is_valid_output_with_interactive_prompt(self):
         """Test output validation with interactive prompt."""
         backend = CopilotBackend()
-        
+
         # Interactive prompts often start with "?"
         interactive = "? What would you like to do?"
         assert not backend._is_valid_output(interactive)
@@ -125,7 +125,7 @@ class TestCopilotBackend:
     def test_is_valid_output_with_short_text(self):
         """Test output validation with very short text."""
         backend = CopilotBackend()
-        
+
         # Too short to be meaningful
         assert not backend._is_valid_output("ok")
         assert not backend._is_valid_output("yes")
