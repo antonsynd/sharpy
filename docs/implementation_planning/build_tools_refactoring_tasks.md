@@ -144,10 +144,23 @@ def extract_rate_limit_wait_time(output: str) -> int | None:
 ```
 
 **Acceptance Criteria**:
-- [ ] Handles all existing patterns from both tools
-- [ ] Handles edge cases (timezone for "resets at X" patterns)
-- [ ] Returns sensible default when pattern not matched
-- [ ] Unit tests with sample error messages from production logs
+- [x] Handles all existing patterns from both tools
+- [x] Handles edge cases (timezone for "resets at X" patterns)
+- [x] Returns sensible default when pattern not matched
+- [x] Unit tests with sample error messages from production logs
+
+**Implementation Notes**:
+- Completed on 2026-01-13
+- Created `build_tools/shared/rate_limiting/extractor.py` with consolidated logic
+- Consolidates patterns from `generate_code_walkthroughs.py` and `sharpy_dogfood/backends.py`
+- Returns `int` (seconds) instead of `float` for consistency
+- Handles 7 different pattern types: try again, wait, retry after, resets at, quota resets, time windows
+- Special handling for "resets at Xam/pm" with proper 12-hour to 24-hour conversion
+- Returns minimum 60 seconds for time-based resets to avoid too-short waits
+- 24 comprehensive unit tests covering all patterns, edge cases, and real-world scenarios
+- All tests passing
+- Function signature: `extract_rate_limit_wait_time(output: str, stderr: str = "") -> Optional[int]`
+- Exported via `build_tools/shared/rate_limiting/__init__.py`
 
 ---
 
