@@ -1439,9 +1439,26 @@ class TestModelSelector:
 ```
 
 **Acceptance Criteria**:
-- [ ] Tests for all task type × complexity combinations
-- [ ] Tests for heuristic classification
-- [ ] Tests for override mechanism
+- [x] Tests for all task type × complexity combinations
+- [x] Tests for heuristic classification
+- [x] Tests for override mechanism
+
+**Implementation Notes**:
+- Completed on 2026-01-14 (tests were created during Task 3.2 on 2026-01-13)
+- Created `build_tools/tests/test_model_selector.py` with 77 comprehensive tests
+- Test coverage:
+  - `TestModelConstants` (4 tests): model constant definitions
+  - `TestModelSelectionMatrix` (38 tests): all 35 task type × complexity combinations via parametrized tests + 3 explicit examples
+  - `TestModelRecommendation` (7 tests): reasoning, fallback models, extended thinking detection
+  - `TestTaskClassification` (7 tests): heuristic task type classification from descriptions
+  - `TestComplexityClassification` (6 tests): complexity detection from keywords and context
+  - `TestModelOverride` (4 tests): manual override mechanism with reason tracking
+  - `TestLoggingCallback` (5 tests): callback mechanism for logging/metrics
+  - `TestSelectModelForDescription` (4 tests): convenience method combining classification and selection
+  - `TestGetModelForTask` (2 tests): convenience method for direct model lookup
+- All 77 tests passing
+- Covers all acceptance criteria plus additional edge cases and convenience methods
+- Uses pytest parametrization for comprehensive matrix coverage
 
 ---
 
