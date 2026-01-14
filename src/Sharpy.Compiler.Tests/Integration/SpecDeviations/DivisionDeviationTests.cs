@@ -191,4 +191,24 @@ print(result)
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
         Assert.Equal("2.5\n", result.StandardOutput);
     }
+
+    /// <summary>
+    /// Floor division with float operands should compile and produce float result.
+    /// Regression test for CS0121 ambiguity between Math.Floor(double) and Math.Floor(decimal).
+    /// </summary>
+    [Fact]
+    public void FloatFloorDivision_ShouldNotCauseAmbiguity()
+    {
+        var source = @"
+x: float = 7.0
+y: float = 2.0
+result: float = x // y
+print(result)
+";
+
+        var result = CompileAndExecute(source);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal("3\n", result.StandardOutput);
+    }
 }

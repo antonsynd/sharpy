@@ -3227,19 +3227,23 @@ public class RoslynEmitter
     /// Generates floor division expression with correct Python semantics.
     /// Floors toward negative infinity (not truncation toward zero).
     /// - Integer operands: (int)Math.Floor((double)a / b) → result is int32 (pragmatic for .NET)
-    /// - Float operands: Math.Floor(a / b) → result is float type
+    /// - Float operands: Math.Floor((double)(a / b)) → result is double (cast to avoid CS0121 ambiguity)
     /// Note: Spec says integer floor division should return int64, but we return int32
     /// for .NET compatibility with most use cases (augmented assignment, common variables).
     /// </summary>
     private ExpressionSyntax GenerateFloorDivision(ExpressionSyntax left, ExpressionSyntax right, bool hasFloatOperand)
     {
-        // System.Math.Floor((double)left / right) or System.Math.Floor(left / right)
+        // System.Math.Floor((double)(left / right)) for both cases
         // Note: We use fully qualified System.Math to avoid conflicts with Sharpy.Math namespace
-        var divisionExpr = hasFloatOperand
-            ? BinaryExpression(SyntaxKind.DivideExpression, left, right)
-            : BinaryExpression(SyntaxKind.DivideExpression,
-                CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
-                right);
+        // Note: We always cast to double to avoid CS0121 ambiguity between Math.Floor(double) and Math.Floor(decimal)
+        var divisionExpr = BinaryExpression(SyntaxKind.DivideExpression,
+            hasFloatOperand ? left : CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
+            right);
+
+        // Cast division result to double to resolve Math.Floor overload ambiguity
+        var castToDouble = CastExpression(
+            PredefinedType(Token(SyntaxKind.DoubleKeyword)),
+            ParenthesizedExpression(divisionExpr));
 
         var floorCall = InvocationExpression(
             MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
@@ -3247,10 +3251,10 @@ public class RoslynEmitter
                     IdentifierName("System"),
                     IdentifierName("Math")),
                 IdentifierName("Floor")))
-            .AddArgumentListArguments(Argument(divisionExpr));
+            .AddArgumentListArguments(Argument(castToDouble));
 
         // For integer operands, cast to int (pragmatic .NET-first approach);
-        // for float operands, return as-is
+        // for float operands, return as-is (double from Math.Floor)
         return hasFloatOperand
             ? floorCall
             : CastExpression(PredefinedType(Token(SyntaxKind.IntKeyword)), floorCall);

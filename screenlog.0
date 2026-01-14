@@ -1965,4 +1965,726 @@ Skipped: 0/25
 Issues saved to: /Users/anton/Documents/github/sharpy/dogfood_output/issues
 Summary: /Users/anton/Documents/github/sharpy/dogfood_output/SUMMARY.md
 [1m[7m%[27m[1m[0m                                                                                             ]133;D;1]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
-[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004hpython -m build_tools dogfood run -n 25 -v
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004hpython -m build_tools dogfood run -n 25 -v[?2004l
+]133;C;Sharpy Dogfooding Tool
+========================================
+Project root: /Users/anton/Documents/github/sharpy
+Output dir: /Users/anton/Documents/github/sharpy/dogfood_output
+Issues dir: /Users/anton/Documents/github/sharpy/dogfood_output/issues
+Iterations: 25
+Timeouts: gen=180.0s, compile=60.0s, exec=30.0s
+========================================
+Sharpy Dogfooding Tool
+========================================
+Project root: /Users/anton/Documents/github/sharpy
+Output dir: /Users/anton/Documents/github/sharpy/dogfood_output
+Issues dir: /Users/anton/Documents/github/sharpy/dogfood_output/issues
+Iterations: 25
+Timeouts: gen=180.0s, compile=60.0s, exec=30.0s
+========================================
+Initializing dogfooding tool...
+Available backends: claude, copilot
+Checking Sharpy compiler...
+[?1h=Sharpy compiler is available
+Loading specification context...
+Loaded 20508 chars of spec context
+Loaded 15 example snippets
+
+Starting dogfooding with 25 iterations...
+Output directory: /Users/anton/Documents/github/sharpy/dogfood_output
+
+============================================================
+Iteration 1: integer_variables (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 229 chars of code
+  Expected output verified with Python: 22
+8
+105...
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 159 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 2: logical_operators (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 293 chars of code
+  Expected output verified with Python: False
+True
+True...
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 166 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 3: function_with_print (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 238 chars of code
+  Expected output verified with Python: 7
+49
+49...
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 158 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 4: function_calling_function (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 284 chars of code
+  Expected output verified with Python: 13...
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 153 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 5: break_continue (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 284 chars of code
+  Expected output verified with Python: 0
+1
+2
+1
+3...
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 160 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 6: for_range_with_step (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 565 chars of code
+  Expected output verified with Python: 100
+0
+2
+4
+6
+8
+5
+200
+20
+17
+14
+11
+8
+300...
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 270 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 7: for_range_start_end (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 170 chars of code
+  Expected output verified with Python: 3
+4
+5
+6
+7
+25...
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 163 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 8: if_elif_else (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 751 chars of code
+  Expected output verified with Python: 4
+2
+0
+4
+2
+0...
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 162 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 9: float_variables (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 765 chars of code
+  Expected output verified with Python: 3.5
+2.0
+4.5
+3.3333333333333335
+6.666666666666667
+2...
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=[?1h=  ✗ compilation_failed: Assembly compilation failed:
+  dogfood_test.cs(36,46): error CS0121: The call is ambiguous between the following methods or properties: 'Math.Floor(double)' and 'Math.Floor(decimal)'
+
+  Issue reported: 20260114_084133_compilation_failed_0000
+
+============================================================
+Iteration 10: simple_function (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 246 chars of code
+  Expected output verified with Python: 14
+17...
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 156 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 11: for_range_start_end (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 669 chars of code
+  Expected output verified with Python: 35
+15
+5
+25...
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 161 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 12: function_calling_function (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 286 chars of code
+  Expected output verified with Python: 17...
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 153 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 13: while_loop (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 182 chars of code
+  Expected output verified with Python: 15
+0...
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 155 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 14: logical_operators (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 371 chars of code
+  Expected output verified with Python: False
+True
+True
+True...
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 171 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 15: arithmetic_operators (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 616 chars of code
+  Expected output verified with Python: 15
+7
+176
+36
+104...
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 166 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 16: break_continue (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 181 chars of code
+  Expected output verified with Python: 1
+2
+4
+5...
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 158 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 17: nested_if_in_loop (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Executing prompt...
+  Generated 241 chars of code
+  Expected output verified with Python: 0
+0
+1
+1
+2...
+
+[2/4] Validating against spec...
+[claude] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 160 chars output
+
+[4/4] Verifying output...
+[claude] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 18: function_with_print (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3327.1s
+[copilot] Executing prompt...
+  Generated 282 chars of code
+  Expected output verified with Python: 8
+15
+15...
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3320.2s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 158 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 3308.9s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 19: comparison_operators (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3301.7s
+[copilot] Executing prompt...
+  Generated 397 chars of code
+  Expected output verified with Python: False
+True
+True
+False
+True
+False
+True
+True...
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3293.8s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 193 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 3285.0s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 20: comparison_operators (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3277.3s
+[copilot] Executing prompt...
+  Generated 438 chars of code
+  Expected output verified with Python: True
+False
+True
+False
+True
+True
+True
+True
+True
+Tru...
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3269.8s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 202 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 3260.7s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 21: simple_function (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3253.1s
+[copilot] Executing prompt...
+  Generated 736 chars of code
+  Expected output verified with Python: 5
+15
+0
+200
+30...
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3243.2s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 246 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 3232.0s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 22: augmented_assignment (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3223.0s
+[copilot] Executing prompt...
+  Generated 174 chars of code
+  Expected output verified with Python: 10
+15
+12
+24
+6...
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3216.6s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 164 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 3206.3s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 23: bool_variables (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3198.5s
+[copilot] Executing prompt...
+  Generated 325 chars of code
+  Expected output verified with Python: True
+False
+False
+True
+False
+True...
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3192.1s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 183 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 3181.5s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+Iteration 24: nested_if_in_loop (medium)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3173.8s
+[copilot] Executing prompt...
+  Generated 595 chars of code
+  Expected output verification failed: Expected output doesn't match Python: got '-2
+-1
+3
+5
+8
+3
+13
+4
+18
+2', expected '-2
+-1
+3
+0
+8
+3
+13
+4
+18
+2'
+  Python output: -2
+-1
+3
+5
+8
+3
+13
+4
+18
+2
+  AI expected:   -2
+-1
+3
+0
+8
+3
+13
+4
+18
+2
+  Skipping (AI generated incorrect expected output)
+
+============================================================
+Iteration 25: if_else_simple (simple)
+============================================================
+
+[1/4] Generating code...
+[claude] Not available, wait time: 3165.6s
+[copilot] Executing prompt...
+  Generated 200 chars of code
+  Expected output verified with Python: 42
+200...
+
+[2/4] Validating against spec...
+[claude] Not available, wait time: 3159.3s
+[copilot] Executing prompt...
+  Code validated successfully
+
+[3/4] Compiling and running...
+[?1h=[?1h=[?1h=[?1h=[?1h=  Execution successful, got 157 chars output
+
+[4/4] Verifying output...
+[claude] Not available, wait time: 3150.0s
+[copilot] Executing prompt...
+  Outputs match (AI verified)
+
+✓ Iteration completed successfully!
+
+============================================================
+DOGFOODING COMPLETE
+============================================================
+Successful: 23/25
+Failed: 1/25
+Skipped: 1/25
+
+Issues saved to: /Users/anton/Documents/github/sharpy/dogfood_output/issues
+Summary: /Users/anton/Documents/github/sharpy/dogfood_output/SUMMARY.md
+[1m[7m%[27m[1m[0m                                                                                             ]133;D;1]1337;RemoteHost=anton@mac.lan]1337;CurrentDir=/Users/anton/github/sharpy[0m[27m[24m[J]133;A(base) [38;5;82m/Users/anton/github/sharpy[39m
+[38;5;129manton@mac[39m ([38;5;202mmainline[39m) % ]133;B[K[?2004h
