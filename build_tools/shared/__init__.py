@@ -9,6 +9,7 @@ This module provides common functionality used across multiple build tools:
 - Execution logging
 """
 
+from .config import BaseConfig
 from .model_selector import (
     TaskComplexity,
     TaskType,
@@ -20,6 +21,8 @@ from .model_selector import (
 )
 
 __all__ = [
+    # Configuration
+    "BaseConfig",
     # Model selection
     "TaskComplexity",
     "TaskType",

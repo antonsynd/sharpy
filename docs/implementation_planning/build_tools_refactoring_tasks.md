@@ -871,10 +871,27 @@ class BaseConfig:
 ```
 
 **Acceptance Criteria**:
-- [ ] Works as base class for tool-specific configs
-- [ ] Handles path resolution consistently
-- [ ] JSON serialization/deserialization
-- [ ] Directory creation utilities
+- [x] Works as base class for tool-specific configs
+- [x] Handles path resolution consistently
+- [x] JSON serialization/deserialization
+- [x] Directory creation utilities
+
+**Implementation Notes**:
+- Completed on 2026-01-13
+- Created `build_tools/shared/config.py` with full BaseConfig implementation
+- Provides three standard path properties: build_tools_dir, docs_dir, src_dir
+- `ensure_directories()` creates all standard directories with parents
+- `to_dict()` handles Path serialization and nested dataclasses recursively
+- `from_dict()` converts string paths back to Path objects, filters unknown fields
+- `save()` writes JSON with 2-space indentation, creates parent directories
+- `load()` reads JSON and constructs config instances
+- TypeVar-based generics enable subclass type safety
+- 25 comprehensive unit tests in `build_tools/tests/test_config.py`:
+  - 17 tests for BaseConfig: paths, directories, serialization, edge cases
+  - 8 tests for inheritance: subclassing, overrides, nested dataclasses, collections
+- All 251 tests passing (25 new config tests, 226 existing tests)
+- Exported from `build_tools.shared` module for easy access
+- Ready to be extended by tool-specific configuration classes
 
 ---
 
