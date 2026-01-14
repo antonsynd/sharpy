@@ -6,4 +6,18 @@ AI backends (Claude Code CLI, GitHub Copilot, etc.) with automatic
 failover and rate limit handling.
 """
 
-__all__ = []
+from .base import (
+    Backend,
+    BackendType,
+    BackendConfig,
+    BackendResponse,
+    ToolPermission,
+)
+
+__all__ = [
+    "Backend",
+    "BackendType",
+    "BackendConfig",
+    "BackendResponse",
+    "ToolPermission",
+]

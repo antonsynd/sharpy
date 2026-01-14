@@ -316,10 +316,22 @@ class Backend(ABC):
 ```
 
 **Acceptance Criteria**:
-- [ ] Clean abstract interface that all backends implement
-- [ ] Unified response type for consistent handling
-- [ ] Configurable tool permissions per-request
-- [ ] Support for model selection (for future Claude API backend)
+- [x] Clean abstract interface that all backends implement
+- [x] Unified response type for consistent handling
+- [x] Configurable tool permissions per-request
+- [x] Support for model selection (for future Claude API backend)
+
+**Implementation Notes**:
+- Completed on 2026-01-13
+- Created `build_tools/shared/backends/base.py` with all required interfaces
+- `BackendType` enum defines CLAUDE_CODE and COPILOT (with comment for future CLAUDE_API)
+- `ToolPermission` enum maps to existing tool names used by CLI backends (Read, Write, Edit, Bash, Glob, Grep)
+- `BackendConfig` provides configurable timeout, tool permissions, model selection, and retry logic
+- `BackendResponse` standardizes output format across all backends with success/error tracking
+- `Backend` abstract class enforces consistent interface: `backend_type`, `execute()`, `is_available()`
+- All types exported via `build_tools/shared/backends/__init__.py`
+- Verified imports work correctly with test instantiation
+- Default BackendConfig uses factory lambda to avoid mutable default argument issues
 
 ---
 
