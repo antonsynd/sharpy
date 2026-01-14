@@ -29,6 +29,15 @@ public class Scope
                 return;
             }
 
+            // Allow shadowing builtins (which have no source location)
+            // This matches Python behavior where user code can shadow builtins like print, len, etc.
+            bool isBuiltin = existingSymbol.DeclarationLine == null;
+            if (isBuiltin)
+            {
+                _symbols[symbol.Name] = symbol;
+                return;
+            }
+
             // For all other cases (constants, functions, types, etc.), redefinition is an error
             throw new SemanticError($"Symbol '{symbol.Name}' is already defined in this scope");
         }

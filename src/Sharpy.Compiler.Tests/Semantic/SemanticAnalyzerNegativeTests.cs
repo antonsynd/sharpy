@@ -112,6 +112,26 @@ def foo():
     }
 
     [Fact]
+    public void AllowsShadowingBuiltinFunction()
+    {
+        // User code can shadow builtin functions like 'double', 'print', 'len', etc.
+        // This matches Python behavior where builtins can be overridden
+        var source = @"
+def double(n: int) -> int:
+    return n * 2
+
+x: int = double(5)
+";
+        var (module, _, _, nameResolver, typeChecker) = CompileAndCheck(source);
+
+        // Name resolution should succeed (builtin 'double' is shadowed)
+        nameResolver.Errors.Should().BeEmpty();
+
+        typeChecker.CheckModule(module);
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
     public void RejectsAccessToPrivateMemberFromOutside()
     {
         var source = @"

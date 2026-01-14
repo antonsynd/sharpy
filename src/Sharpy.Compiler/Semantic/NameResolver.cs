@@ -259,11 +259,19 @@ public class NameResolver
     {
         _logger.LogDebug($"Resolving function declaration: {functionDef.Name}");
 
-        if (_symbolTable.Lookup(functionDef.Name, searchParents: false) != null)
+        var existingSymbol = _symbolTable.Lookup(functionDef.Name, searchParents: false);
+        if (existingSymbol != null)
         {
-            AddError($"Function '{functionDef.Name}' is already defined",
-                functionDef.LineStart, functionDef.ColumnStart);
-            return;
+            // Allow shadowing builtins (which have no source location)
+            // This matches Python behavior where user code can shadow builtins
+            bool isBuiltin = existingSymbol.DeclarationLine == null;
+            if (!isBuiltin)
+            {
+                AddError($"Function '{functionDef.Name}' is already defined",
+                    functionDef.LineStart, functionDef.ColumnStart);
+                return;
+            }
+            // For builtins, we'll replace the symbol below
         }
 
         // Add parameters to the function symbol (types will be resolved later by TypeChecker)

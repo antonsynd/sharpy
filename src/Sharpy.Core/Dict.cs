@@ -418,4 +418,18 @@ public sealed partial class Dict<K, V> : Object, IMutableMapping<K, V> where K :
         }
     }
 
+    public override bool Equals(object obj)
+    {
+        if (ReferenceEquals(this, obj))
+        {
+            return true;
+        }
+
+        if (ReferenceEquals(obj, null))
+        {
+            return false;
+        }
+
+        throw new NotImplementedException();
+    }
 }
