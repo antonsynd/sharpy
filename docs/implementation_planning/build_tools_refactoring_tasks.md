@@ -1054,9 +1054,39 @@ class CLIBuilder:
 ```
 
 **Acceptance Criteria**:
-- [ ] Consistent command building for all backends
-- [ ] Handles model specification for Claude
-- [ ] Proper escaping/quoting where needed
+- [x] Consistent command building for all backends
+- [x] Handles model specification for Claude
+- [x] Proper escaping/quoting where needed
+
+**Implementation Notes**:
+- Completed on 2026-01-13
+- Created `build_tools/shared/cli_builder.py` with CLICommand dataclass and CLIBuilder class
+- CLICommand includes args, stdin, and optional cwd fields
+- CLIBuilder provides three methods:
+  - `build_claude_command()` - Builds Claude Code CLI command with stdin for prompt
+  - `build_copilot_command()` - Builds Copilot CLI command with --prompt flag
+  - `build_command()` - Generic builder that delegates to backend-specific methods
+- Claude command building:
+  - Supports print_mode flag (default: True)
+  - Supports tool permissions as comma-separated list via --allowedTools
+  - Supports optional model specification via --model
+  - Sends prompt via stdin (more reliable for long prompts)
+  - Tools are sorted deterministically for consistent ordering
+- Copilot command building:
+  - Supports tool permissions as separate --allow-tool flags
+  - Converts ToolPermission enum values to lowercase (copilot expects lowercase)
+  - Uses --prompt flag for prompt text (no stdin)
+  - Tools are sorted deterministically for consistent ordering
+- 29 comprehensive unit tests in `build_tools/tests/test_cli_builder.py`:
+  - 3 tests for CLICommand dataclass
+  - 7 tests for Claude command building
+  - 6 tests for Copilot command building
+  - 5 tests for generic build_command() method
+  - 5 tests for edge cases (empty prompts, special characters, unicode, etc.)
+  - 3 integration tests for real-world scenarios
+- All 316 tests passing (29 new CLI builder tests, 287 existing tests)
+- Exported from `build_tools.shared` module for convenient access
+- Note: Proper escaping is handled automatically by subprocess module when passing args as list
 
 ---
 
