@@ -44,20 +44,38 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 # Import shared modules
-from shared.backends import (
-    BackendConfig,
-    BackendType,
-    ToolPermission,
-    ClaudeCodeBackend,
-    CopilotBackend,
-)
-from shared.rate_limiting import (
-    is_rate_limit_error,
-    extract_rate_limit_wait_time,
-    RateLimitState,
-)
-from shared.logging import ExecutionLogger, LogEventType
-from shared.model_selector import TaskType, TaskComplexity
+try:
+    # Try relative imports first (when used as module)
+    from .shared.backends import (
+        BackendConfig,
+        BackendType,
+        ToolPermission,
+        ClaudeCodeBackend,
+        CopilotBackend,
+    )
+    from .shared.rate_limiting import (
+        is_rate_limit_error,
+        extract_rate_limit_wait_time,
+        RateLimitState,
+    )
+    from .shared.logging import ExecutionLogger, LogEventType
+    from .shared.model_selector import TaskType, TaskComplexity
+except ImportError:
+    # Fall back to absolute imports (when run as script)
+    from shared.backends import (
+        BackendConfig,
+        BackendType,
+        ToolPermission,
+        ClaudeCodeBackend,
+        CopilotBackend,
+    )
+    from shared.rate_limiting import (
+        is_rate_limit_error,
+        extract_rate_limit_wait_time,
+        RateLimitState,
+    )
+    from shared.logging import ExecutionLogger, LogEventType
+    from shared.model_selector import TaskType, TaskComplexity
 
 
 class RateLimitExceeded(Exception):

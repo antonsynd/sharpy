@@ -1706,10 +1706,31 @@ python -m build_tools status
 ```
 
 **Acceptance Criteria**:
-- [ ] Unified entry point for all tools
-- [ ] Consistent option naming
-- [ ] Help text for all commands
-- [ ] Backwards compatibility with existing invocation methods
+- [x] Unified entry point for all tools
+- [x] Consistent option naming
+- [x] Help text for all commands
+- [x] Backwards compatibility with existing invocation methods
+
+**Implementation Notes**:
+- Completed on 2026-01-14
+- Created `build_tools/cli.py` with click-based unified CLI
+- Created `build_tools/__main__.py` to enable `python -m build_tools` invocation
+- Three main command groups implemented:
+  - `walkthrough`: Code walkthrough documentation generation
+    - `generate` command with all original options (parallel, timeout, source-dirs, output-dir, cli provider, force)
+  - `dogfood`: Compiler testing with generated code
+    - `run` command with all original options (iterations, output-dir, project-root, timeouts, verbose, dry-run)
+  - `build`: Automated task implementation
+    - 9 subcommands: init, status, run, report, answer, review, reset, skip, logs
+- Global `status` command shows status across all tools and shared modules
+- Backwards compatibility maintained:
+  - `python generate_code_walkthroughs.py` still works as before
+  - `python -m build_tools.sharpy_dogfood` still works as before
+  - `python -m build_tools.sharpy_auto_builder` still works as before
+- Fixed import issues in `generate_code_walkthroughs.py` to support both script and module usage
+- All help text includes clear descriptions and option documentation
+- Consistent option naming using click conventions (kebab-case for flags, short options where appropriate)
+- Version info available via `python -m build_tools --version`
 
 ---
 
