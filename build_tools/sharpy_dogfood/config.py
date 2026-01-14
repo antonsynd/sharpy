@@ -2,13 +2,16 @@
 Configuration for Sharpy Dogfooding Tool.
 
 Handles paths, timeouts, and backend configuration.
+Extends the shared BaseConfig for common path handling and serialization.
 """
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal, Optional
-from datetime import datetime
+from typing import Literal, Optional, Any
 import json
+
+# Import shared configuration base
+from build_tools.shared.config import BaseConfig
 
 
 BackendType = Literal["copilot", "claude"]
@@ -41,10 +44,19 @@ class BackendConfig:
 
 
 @dataclass
-class Config:
-    """Main configuration for the dogfooding tool."""
+class Config(BaseConfig):
+    """Main configuration for the dogfooding tool.
+    
+    Extends BaseConfig to inherit:
+    - Common path handling (project_root, build_tools_dir, docs_dir, src_dir)
+    - JSON serialization/deserialization (to_dict, from_dict, save, load)
+    - Directory creation (ensure_directories)
+    
+    Adds dogfood-specific configuration for code generation, validation,
+    and backend management.
+    """
 
-    # Project paths
+    # Override project_root with dogfood-specific default
     project_root: Path = field(
         default_factory=lambda: Path(__file__).parent.parent.parent.resolve()
     )
@@ -106,7 +118,13 @@ class Config:
         return self.project_root / "snippets"
 
     def ensure_dirs(self) -> None:
-        """Create output directories if they don't exist."""
+        """Create output directories if they don't exist.
+        
+        Extends parent class to also create dogfood-specific output directories.
+        """
+        # First ensure parent directories via BaseConfig
+        super().ensure_directories()
+        
         # Make paths absolute relative to project root
         self.output_dir = self.project_root / self.output_dir
         self.issues_dir = self.project_root / self.issues_dir
@@ -116,43 +134,11 @@ class Config:
         self.issues_dir.mkdir(parents=True, exist_ok=True)
         self.generated_dir.mkdir(parents=True, exist_ok=True)
 
-    def to_dict(self) -> dict:
-        """Convert config to a serializable dictionary."""
-        return {
-            "project_root": str(self.project_root),
-            "output_dir": str(self.output_dir),
-            "issues_dir": str(self.issues_dir),
-            "generated_dir": str(self.generated_dir),
-            "max_iterations": self.max_iterations,
-            "generation_timeout": self.generation_timeout,
-            "compilation_timeout": self.compilation_timeout,
-            "execution_timeout": self.execution_timeout,
-            "supported_phases": self.supported_phases,
-        }
-
     @classmethod
     def from_file(cls, path: Path) -> "Config":
-        """Load configuration from a JSON file."""
-        with open(path) as f:
-            data = json.load(f)
-
-        config = cls()
-        if "project_root" in data:
-            config.project_root = Path(data["project_root"])
-        if "max_iterations" in data:
-            config.max_iterations = data["max_iterations"]
-        if "generation_timeout" in data:
-            config.generation_timeout = data["generation_timeout"]
-        if "compilation_timeout" in data:
-            config.compilation_timeout = data["compilation_timeout"]
-        if "execution_timeout" in data:
-            config.execution_timeout = data["execution_timeout"]
-        if "supported_phases" in data:
-            config.supported_phases = data["supported_phases"]
-
-        return config
-
-    def save(self, path: Path) -> None:
-        """Save configuration to a JSON file."""
-        with open(path, "w") as f:
-            json.dump(self.to_dict(), f, indent=2)
+        """Load configuration from a JSON file.
+        
+        This method is kept for backward compatibility with existing code
+        that calls Config.from_file(). Internally uses BaseConfig.load().
+        """
+        return cls.load(path)

@@ -2,26 +2,41 @@
 AI Backend implementations for code generation and validation.
 
 Supports GitHub Copilot CLI and Claude Code with rate limiting and failover.
+
+This module has been refactored to use shared utilities from build_tools.shared:
+- Rate limit detection: shared.rate_limiting.is_rate_limit_error
+- Wait time extraction: shared.rate_limiting.extract_rate_limit_wait_time
+- Rate limit state tracking: shared.rate_limiting.RateLimitState
+- Model selection: shared.model_selector.TaskType, TaskComplexity
 """
 
 import asyncio
-import subprocess
-import time
-import re
 import sys
+import time
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Any
-from collections import deque
-from datetime import datetime, timedelta
+from typing import Optional
+
+# Import shared utilities
+from build_tools.shared.rate_limiting import (
+    is_rate_limit_error,
+    extract_rate_limit_wait_time,
+    RateLimitState,
+)
+from build_tools.shared.model_selector import TaskType, TaskComplexity
 
 from .config import Config, BackendConfig, RateLimitConfig, BackendType
 
 
 @dataclass
 class ExecutionResult:
-    """Result of executing an AI prompt."""
+    """Result of executing an AI prompt.
+    
+    This is a dogfood-specific result type that wraps execution results
+    with additional fields like timed_out. The shared BackendResponse
+    provides the core response fields.
+    """
 
     success: bool
     output: str
@@ -32,140 +47,56 @@ class ExecutionResult:
     timed_out: bool = False
 
 
-@dataclass
-class RateLimitState:
-    """Tracks rate limit state for a backend."""
-
-    request_times: deque = field(default_factory=lambda: deque(maxlen=1000))
-    consecutive_errors: int = 0
-    current_backoff: float = 0.0
-    last_request_time: Optional[float] = None
-    disabled_until: Optional[float] = None
-
-    def record_request(self) -> None:
-        """Record a request timestamp."""
+# Adapter class to bridge shared RateLimitState with local RateLimitConfig
+class DogfoodRateLimitState(RateLimitState):
+    """
+    Rate limit state adapter for the dogfood tool.
+    
+    Extends the shared RateLimitState with methods that accept
+    the dogfood-specific RateLimitConfig.
+    """
+    
+    def record_error_with_config(self, config: RateLimitConfig) -> None:
+        """Record a failed request using local config parameters."""
+        self.record_error(
+            wait_seconds=None,
+            base_cooldown=config.request_cooldown,
+            max_backoff=config.max_backoff,
+            multiplier=config.backoff_multiplier,
+        )
+    
+    def should_wait_with_config(self, config: RateLimitConfig) -> tuple[bool, float]:
+        """Check if we should wait before making a request using local config."""
         now = time.time()
-        self.request_times.append(now)
-        self.last_request_time = now
-
-    def record_success(self) -> None:
-        """Record a successful request."""
-        self.consecutive_errors = 0
-        self.current_backoff = 0.0
-
-    def record_error(self, config: RateLimitConfig) -> None:
-        """Record a failed request and update backoff."""
-        self.consecutive_errors += 1
-        if self.current_backoff == 0:
-            self.current_backoff = config.request_cooldown
-        else:
-            self.current_backoff = min(
-                self.current_backoff * config.backoff_multiplier, config.max_backoff
-            )
-
-    def get_requests_in_window(self, window_seconds: int) -> int:
-        """Count requests in the current time window."""
-        now = time.time()
-        cutoff = now - window_seconds
-        return sum(1 for t in self.request_times if t > cutoff)
-
-    def should_wait(self, config: RateLimitConfig) -> tuple[bool, float]:
-        """Check if we should wait before making a request."""
-        now = time.time()
-
+        
         # Check if disabled
         if self.disabled_until and now < self.disabled_until:
             return True, self.disabled_until - now
-
-        # Check rate limit
-        requests_in_window = self.get_requests_in_window(config.window_seconds)
+        
+        # Check rate limit window
+        requests_in_window = self.requests_in_window(config.window_seconds)
         if requests_in_window >= config.max_requests_per_window:
-            oldest_in_window = min(
-                t for t in self.request_times if t > now - config.window_seconds
-            )
-            wait_time = oldest_in_window + config.window_seconds - now
-            return True, wait_time
-
-        # Check cooldown
+            # Find oldest request in window to calculate wait time
+            if self.request_times:
+                oldest_in_window = min(
+                    t for t in self.request_times if t > now - config.window_seconds
+                )
+                wait_time = oldest_in_window + config.window_seconds - now
+                return True, max(0.0, wait_time)
+        
+        # Check cooldown with backoff
         if self.last_request_time:
+            backoff_delay = self.get_backoff_delay(
+                base_cooldown=config.request_cooldown,
+                max_backoff=config.max_backoff,
+            )
             cooldown_remaining = (
-                self.last_request_time
-                + config.request_cooldown
-                + self.current_backoff
-                - now
+                self.last_request_time + config.request_cooldown + backoff_delay - now
             )
             if cooldown_remaining > 0:
                 return True, cooldown_remaining
-
+        
         return False, 0.0
-
-    def disable_temporarily(self, seconds: float) -> None:
-        """Temporarily disable this backend."""
-        self.disabled_until = time.time() + seconds
-
-
-def is_rate_limit_error(output: str) -> bool:
-    """Check if output indicates a rate limit error."""
-    indicators = [
-        "rate_limited",
-        "rate limit",
-        "rate-limit",
-        "429",
-        "too many requests",
-        "exceeded your copilot token usage",
-        "hit your limit",
-        "quota exceeded",
-        "resets 2am",
-        "resets at",
-        "try again later",
-        "request limit",
-    ]
-    output_lower = output.lower()
-    return any(indicator in output_lower for indicator in indicators)
-
-
-def extract_rate_limit_wait_time(output: str) -> Optional[float]:
-    """Extract wait time from rate limit error messages."""
-    output_lower = output.lower()
-
-    # Pattern: "try again in X minutes/hours/seconds"
-    match = re.search(r"try again in (\d+)\s*(second|minute|hour)s?", output_lower)
-    if match:
-        value = int(match.group(1))
-        unit = match.group(2)
-        if unit == "hour":
-            return value * 3600
-        elif unit == "minute":
-            return value * 60
-        else:
-            return float(value)
-
-    # Pattern: "wait X seconds/minutes"
-    match = re.search(r"wait (\d+)\s*(second|minute)s?", output_lower)
-    if match:
-        value = int(match.group(1))
-        unit = match.group(2)
-        return value * 60 if unit == "minute" else float(value)
-
-    # Pattern: "resets (at)? Xam/pm"
-    match = re.search(r"resets\s*(?:at\s*)?(\d{1,2})([ap]m)", output_lower)
-    if match:
-        reset_hour = int(match.group(1))
-        is_pm = match.group(2) == "pm"
-        if is_pm and reset_hour != 12:
-            reset_hour += 12
-        elif not is_pm and reset_hour == 12:
-            reset_hour = 0
-
-        now = datetime.now()
-        reset_time = now.replace(hour=reset_hour, minute=0, second=0, microsecond=0)
-        if reset_time <= now:
-            reset_time = reset_time + timedelta(days=1)
-
-        wait_seconds = (reset_time - now).total_seconds()
-        return max(wait_seconds, 60.0)
-
-    return None
 
 
 class Backend(ABC):
@@ -174,7 +105,7 @@ class Backend(ABC):
     def __init__(self, config: BackendConfig, project_root: Path):
         self.config = config
         self.project_root = project_root
-        self.rate_limit_state = RateLimitState()
+        self.rate_limit_state = DogfoodRateLimitState()
 
     @property
     def name(self) -> str:
@@ -185,17 +116,17 @@ class Backend(ABC):
         """Check if this backend is currently available."""
         if not self.config.enabled:
             return False
-        should_wait, _ = self.rate_limit_state.should_wait(self.config.rate_limit)
+        should_wait, _ = self.rate_limit_state.should_wait_with_config(self.config.rate_limit)
         return not should_wait
 
     def get_wait_time(self) -> float:
         """Get time to wait before next request."""
-        _, wait_time = self.rate_limit_state.should_wait(self.config.rate_limit)
+        _, wait_time = self.rate_limit_state.should_wait_with_config(self.config.rate_limit)
         return wait_time
 
     async def wait_for_availability(self) -> None:
         """Wait until this backend is available."""
-        should_wait, wait_time = self.rate_limit_state.should_wait(
+        should_wait, wait_time = self.rate_limit_state.should_wait_with_config(
             self.config.rate_limit
         )
         if should_wait and wait_time > 0:
@@ -259,7 +190,7 @@ class ClaudeBackend(Backend):
                 except Exception:
                     pass
 
-                self.rate_limit_state.record_error(self.config.rate_limit)
+                self.rate_limit_state.record_error_with_config(self.config.rate_limit)
                 return ExecutionResult(
                     success=False,
                     output="",
@@ -288,7 +219,7 @@ class ClaudeBackend(Backend):
                 error_msg = stderr_text or stdout_text
 
                 if rate_limited:
-                    self.rate_limit_state.record_error(self.config.rate_limit)
+                    self.rate_limit_state.record_error_with_config(self.config.rate_limit)
                     wait_time = extract_rate_limit_wait_time(combined_output)
                     if wait_time:
                         self.rate_limit_state.disable_temporarily(wait_time)
@@ -310,7 +241,7 @@ class ClaudeBackend(Backend):
                 backend=self.name,
             )
         except Exception as e:
-            self.rate_limit_state.record_error(self.config.rate_limit)
+            self.rate_limit_state.record_error_with_config(self.config.rate_limit)
             return ExecutionResult(
                 success=False,
                 output="",
@@ -391,7 +322,7 @@ class CopilotBackend(Backend):
                 except Exception:
                     pass
 
-                self.rate_limit_state.record_error(self.config.rate_limit)
+                self.rate_limit_state.record_error_with_config(self.config.rate_limit)
                 return ExecutionResult(
                     success=False,
                     output="",
@@ -420,7 +351,7 @@ class CopilotBackend(Backend):
                 error_msg = stderr_text or stdout_text
 
                 if rate_limited:
-                    self.rate_limit_state.record_error(self.config.rate_limit)
+                    self.rate_limit_state.record_error_with_config(self.config.rate_limit)
                     wait_time = extract_rate_limit_wait_time(combined_output)
                     if wait_time:
                         self.rate_limit_state.disable_temporarily(wait_time)
@@ -442,7 +373,7 @@ class CopilotBackend(Backend):
                 backend=self.name,
             )
         except Exception as e:
-            self.rate_limit_state.record_error(self.config.rate_limit)
+            self.rate_limit_state.record_error_with_config(self.config.rate_limit)
             return ExecutionResult(
                 success=False,
                 output="",
