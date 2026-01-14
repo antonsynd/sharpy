@@ -622,9 +622,22 @@ class ModelRecommendation:
 ```
 
 **Acceptance Criteria**:
-- [ ] Clear taxonomy that maps to real use cases
-- [ ] Documented examples for each complexity level
-- [ ] Task types cover all existing tool use cases
+- [x] Clear taxonomy that maps to real use cases
+- [x] Documented examples for each complexity level
+- [x] Task types cover all existing tool use cases
+
+**Implementation Notes**:
+- Completed on 2026-01-13
+- Created `build_tools/shared/model_selector.py` with full taxonomy implementation
+- `TaskComplexity` enum: TRIVIAL, LOW, MEDIUM, HIGH, VERY_HIGH with detailed docstring examples
+- `TaskType` enum: CLASSIFICATION, CODE_GENERATION, VALIDATION, DOCUMENTATION, DEBUGGING, ARCHITECTURE, IMPLEMENTATION
+- Each enum value includes comprehensive docstring explaining when to use it and which models handle it best
+- `ModelRecommendation` dataclass with model, reasoning, fallback_model, and requires_extended_thinking fields
+- `ModelSelector` class implements the full mapping table from the task specification
+- Includes model constants: HAIKU, SONNET, OPUS with their full identifiers
+- Extended thinking tracking for (ARCHITECTURE, HIGH), (ARCHITECTURE, VERY_HIGH), (DEBUGGING, VERY_HIGH), (IMPLEMENTATION, VERY_HIGH)
+- Exported via `build_tools/shared/__init__.py` for convenient access
+- All imports verified working correctly
 
 ---
 

@@ -9,4 +9,23 @@ This module provides common functionality used across multiple build tools:
 - Execution logging
 """
 
-__all__ = []
+from .model_selector import (
+    TaskComplexity,
+    TaskType,
+    ModelRecommendation,
+    ModelSelector,
+    HAIKU,
+    SONNET,
+    OPUS,
+)
+
+__all__ = [
+    # Model selection
+    "TaskComplexity",
+    "TaskType",
+    "ModelRecommendation",
+    "ModelSelector",
+    "HAIKU",
+    "SONNET",
+    "OPUS",
+]
