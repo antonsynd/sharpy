@@ -232,7 +232,7 @@ class TestCLIBuilderGeneric:
         # This test documents that the function has error handling for future
         # backend types that might be added to the enum but not yet supported.
         # For now, we verify the function works with valid backend types.
-        
+
         # If we add a new BackendType in the future without implementing it,
         # this would raise ValueError. For now, all defined types are supported.
         pass

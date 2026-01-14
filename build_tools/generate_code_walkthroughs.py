@@ -22,11 +22,17 @@ This prevents accidental or malicious file deletion, code modification, or
 arbitrary command execution.
 
 Working directory: Script runs from repository root for path resolution.
+
+Migration Notes (2026-01-13):
+- Refactored to use shared modules from build_tools.shared
+- Backend management now uses shared.backends.BackendManager (async-based)
+- Rate limiting uses shared.rate_limiting module
+- Logging uses shared.logging.ExecutionLogger
+- Model selection integrated for documentation tasks
 """
 
 import argparse
 import asyncio
-import json
 import re
 import subprocess
 import sys
@@ -36,6 +42,22 @@ from pathlib import Path
 from typing import List, Set, Optional, Dict, Any, Tuple
 from dataclasses import dataclass
 from datetime import timedelta
+
+# Import shared modules
+from shared.backends import (
+    BackendConfig,
+    BackendType,
+    ToolPermission,
+    ClaudeCodeBackend,
+    CopilotBackend,
+)
+from shared.rate_limiting import (
+    is_rate_limit_error,
+    extract_rate_limit_wait_time,
+    RateLimitState,
+)
+from shared.logging import ExecutionLogger, LogEventType
+from shared.model_selector import TaskType, TaskComplexity
 
 
 class RateLimitExceeded(Exception):
@@ -61,6 +83,9 @@ class BackendUnavailable(Exception):
 # =============================================================================
 # Backend Management with Failover
 # =============================================================================
+# This module now uses a simplified BackendManager that wraps the shared
+# ClaudeCodeBackend and CopilotBackend classes. The legacy synchronous
+# pattern is preserved for compatibility with the existing async workflow.
 
 
 @dataclass
@@ -73,6 +98,11 @@ class BackendState:
     consecutive_errors: int = 0
     last_error: Optional[str] = None
     disabled_until: Optional[float] = None  # Unix timestamp
+    rate_limit_state: RateLimitState = None  # type: ignore
+
+    def __post_init__(self):
+        if self.rate_limit_state is None:
+            self.rate_limit_state = RateLimitState()
 
     def is_available(self) -> bool:
         """Check if backend is currently available."""
@@ -80,13 +110,15 @@ class BackendState:
             return False
         if self.disabled_until and time.time() < self.disabled_until:
             return False
-        return self.available
+        return self.available and self.rate_limit_state.is_available()
 
     def disable_temporarily(self, seconds: float, reason: str) -> None:
         """Temporarily disable this backend."""
         self.disabled_until = time.time() + seconds
         self.available = False
         self.last_error = reason
+        # Also record in shared rate limit state
+        self.rate_limit_state.record_error(int(seconds))
 
     def get_wait_time(self) -> Optional[float]:
         """Get remaining wait time if disabled."""
@@ -101,6 +133,9 @@ class BackendManager:
 
     Priority order: Claude Code → GitHub Copilot
     Falls back to the next backend if one is rate limited or unavailable.
+
+    This is a wrapper around the shared backend implementations that
+    preserves the existing interface used by the walkthrough generator.
     """
 
     # Backend priority order (first = preferred)
@@ -111,40 +146,34 @@ class BackendManager:
             "claude": BackendState(name="claude"),
             "copilot": BackendState(name="copilot"),
         }
+        self._shared_backends: Dict[str, Any] = {}
         self._check_backend_availability()
 
     def _check_backend_availability(self) -> None:
         """Check which backends are installed and available."""
-        # Check Claude Code CLI
-        try:
-            result = subprocess.run(
-                ["claude", "--version"],
-                capture_output=True,
-                timeout=5,
-            )
-            self.backends["claude"].available = result.returncode == 0
-            if result.returncode == 0:
-                print(f"✓ Claude Code CLI available")
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            self.backends["claude"].available = False
+        # Check Claude Code CLI using shared backend
+        claude_backend = ClaudeCodeBackend(
+            rate_limit_state=self.backends["claude"].rate_limit_state
+        )
+        self.backends["claude"].available = claude_backend.is_available()
+        if self.backends["claude"].available:
+            print("✓ Claude Code CLI available")
+            self._shared_backends["claude"] = claude_backend
+        else:
             self.backends["claude"].last_error = "CLI not found"
-            print(f"✗ Claude Code CLI not available")
+            print("✗ Claude Code CLI not available")
 
-        # Check GitHub Copilot CLI
-        try:
-            # Check for standalone copilot CLI
-            result = subprocess.run(
-                ["/opt/homebrew/bin/copilot", "--version"],
-                capture_output=True,
-                timeout=5,
-            )
-            self.backends["copilot"].available = result.returncode == 0
-            if result.returncode == 0:
-                print(f"✓ GitHub Copilot CLI available")
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            self.backends["copilot"].available = False
+        # Check GitHub Copilot CLI using shared backend
+        copilot_backend = CopilotBackend(
+            rate_limit_state=self.backends["copilot"].rate_limit_state
+        )
+        self.backends["copilot"].available = copilot_backend.is_available()
+        if self.backends["copilot"].available:
+            print("✓ GitHub Copilot CLI available")
+            self._shared_backends["copilot"] = copilot_backend
+        else:
             self.backends["copilot"].last_error = "CLI not found"
-            print(f"✗ GitHub Copilot CLI not available")
+            print("✗ GitHub Copilot CLI not available")
 
     def get_available_backend(self) -> Optional[str]:
         """Get the best available backend based on priority."""
@@ -182,6 +211,7 @@ class BackendManager:
             state = self.backends[backend]
             state.consecutive_errors = 0
             state.available = True
+            state.rate_limit_state.record_success()
 
     def get_status(self) -> Dict[str, Any]:
         """Get status of all backends."""
@@ -212,89 +242,9 @@ class BackendManager:
         return True, min_wait
 
 
-def extract_rate_limit_wait_time(output: str) -> Optional[float]:
-    """
-    Extract wait time from rate limit error messages.
-
-    Looks for patterns like:
-    - "resets 2am" / "resets at 2am"
-    - "try again in X minutes/hours"
-    - "wait X seconds"
-    - "retry after X"
-    """
-    output_lower = output.lower()
-
-    # Pattern: "try again in X minutes/hours/seconds"
-    match = re.search(r"try again in (\d+)\s*(second|minute|hour)s?", output_lower)
-    if match:
-        value = int(match.group(1))
-        unit = match.group(2)
-        if unit == "hour":
-            return value * 3600
-        elif unit == "minute":
-            return value * 60
-        else:
-            return float(value)
-
-    # Pattern: "wait X seconds/minutes"
-    match = re.search(r"wait (\d+)\s*(second|minute)s?", output_lower)
-    if match:
-        value = int(match.group(1))
-        unit = match.group(2)
-        return value * 60 if unit == "minute" else float(value)
-
-    # Pattern: "retry after X seconds"
-    match = re.search(r"retry after (\d+)", output_lower)
-    if match:
-        return float(match.group(1))
-
-    # Pattern: "resets (at)? Xam/pm" - calculate time until reset
-    match = re.search(r"resets\s*(?:at\s*)?(\d{1,2})([ap]m)", output_lower)
-    if match:
-        reset_hour = int(match.group(1))
-        is_pm = match.group(2) == "pm"
-        if is_pm and reset_hour != 12:
-            reset_hour += 12
-        elif not is_pm and reset_hour == 12:
-            reset_hour = 0
-
-        now = datetime.now()
-        reset_time = now.replace(hour=reset_hour, minute=0, second=0, microsecond=0)
-        if reset_time <= now:
-            # Reset is tomorrow - use timedelta to handle month boundaries correctly
-            reset_time = reset_time + timedelta(days=1)
-
-        wait_seconds = (reset_time - now).total_seconds()
-        return max(wait_seconds, 60.0)  # At least 60 seconds
-
-    # Pattern: X-minute/hour window
-    match = re.search(r"(\d+)[- ](minute|hour)\s*window", output_lower)
-    if match:
-        value = int(match.group(1))
-        unit = match.group(2)
-        return value * 3600 if unit == "hour" else value * 60
-
-    return None
-
-
-def is_rate_limit_error(output: str) -> bool:
-    """Check if output indicates a rate limit error."""
-    indicators = [
-        "rate_limited",
-        "rate limit",
-        "rate-limit",
-        "429",
-        "too many requests",
-        "exceeded your copilot token usage",
-        "hit your limit",
-        "quota exceeded",
-        "resets 2am",
-        "resets at",
-        "try again later",
-        "request limit",
-    ]
-    output_lower = output.lower()
-    return any(indicator in output_lower for indicator in indicators)
+# Note: is_rate_limit_error() and extract_rate_limit_wait_time() are now
+# imported from shared.rate_limiting module (see imports at top of file).
+# The shared module consolidates detection patterns from all build tools.
 
 
 @dataclass
@@ -593,6 +543,10 @@ def extract_dependencies(cs_file: Path) -> Dict[str, List[str]]:
     }
 
 
+# Global logger instance - initialized in main_async
+_execution_logger: Optional[ExecutionLogger] = None
+
+
 def log_execution(
     log_path: Path,
     event_type: str,
@@ -605,7 +559,10 @@ def log_execution(
     extra: Optional[Dict[str, Any]] = None,
 ) -> None:
     """
-    Append an execution event to the JSONL log file.
+    Append an execution event to the JSONL log file using shared ExecutionLogger.
+
+    This function wraps the shared ExecutionLogger to maintain backward
+    compatibility with the existing calling code.
 
     Args:
         log_path: Path to the JSONL log file
@@ -618,9 +575,14 @@ def log_execution(
         is_stale: Whether this was a stale doc regeneration
         extra: Optional additional metadata
     """
-    log_entry = {
-        "timestamp": datetime.now().isoformat(),
-        "event_type": event_type,
+    global _execution_logger
+
+    # Initialize logger lazily if not already done
+    if _execution_logger is None or _execution_logger._log_path != log_path:
+        _execution_logger = ExecutionLogger(log_path)
+
+    # Build details dict matching the shared logger format
+    details: Dict[str, Any] = {
         "source_file": str(cs_file),
         "output_file": str(output_path),
         "success": success,
@@ -629,16 +591,13 @@ def log_execution(
     }
 
     if error:
-        log_entry["error"] = error
+        details["error"] = error
     if extra:
-        log_entry.update(extra)
+        details.update(extra)
 
-    # Ensure log directory exists
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Append to JSONL file
-    with open(log_path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(log_entry) + "\n")
+    # Map event_type string to LogEventType
+    # The shared logger will handle unknown types gracefully
+    _execution_logger.log(event_type, details)
 
 
 def _build_cli_command(

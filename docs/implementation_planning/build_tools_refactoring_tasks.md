@@ -1129,11 +1129,31 @@ response, backend_used = await manager.execute(prompt, config)
 ```
 
 **Acceptance Criteria**:
-- [ ] All backend code replaced with shared module
-- [ ] All rate limiting code replaced with shared module
-- [ ] Existing functionality preserved
-- [ ] Tests pass (if any exist)
-- [ ] Logging uses shared ExecutionLogger
+- [x] All backend code replaced with shared module
+- [x] All rate limiting code replaced with shared module
+- [x] Existing functionality preserved
+- [x] Tests pass (if any exist)
+- [x] Logging uses shared ExecutionLogger
+
+**Implementation Notes**:
+- Completed on 2026-01-13
+- Refactored `generate_code_walkthroughs.py` to use shared modules
+- Backend management:
+  - `BackendState` now uses `RateLimitState` from shared module
+  - `BackendManager._check_backend_availability()` uses shared `ClaudeCodeBackend` and `CopilotBackend` for CLI detection
+  - Rate limit state tracking delegated to shared module
+- Rate limiting:
+  - Removed inline `extract_rate_limit_wait_time()` and `is_rate_limit_error()` functions
+  - Now imports from `shared.rate_limiting` module
+  - All 19+ detection patterns consolidated in shared module
+- Logging:
+  - `log_execution()` function now wraps shared `ExecutionLogger`
+  - Maintains backward compatibility with existing call sites
+  - Events logged using `LogEventType` from shared module
+- Model selection support prepared (imports added for `TaskType.DOCUMENTATION`)
+- Lines of code removed: ~80 (inline rate limiting functions)
+- All 316 tests passing
+- Module loads successfully and preserves existing functionality
 
 ---
 
