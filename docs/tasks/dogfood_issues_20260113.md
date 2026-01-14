@@ -91,12 +91,29 @@ These were correctly skipped due to unsupported features:
 
 ---
 
-## Recommendations for Dogfood Tool Improvements
+## ✅ Dogfood Tool Improvements (Implemented)
 
-1. **Validate expected outputs**: Run generated code through a Python interpreter or add heuristics to catch obviously wrong expected outputs
+The following improvements have been made to the dogfood tool:
 
-2. **Better prompts**: Include examples of correct expected output calculation in prompts
+### 1. Python Verification for Expected Outputs
+**File:** [orchestrator.py](../../build_tools/sharpy_dogfood/orchestrator.py)
 
-3. **Retry on rate limits**: Implement exponential backoff for rate-limited requests instead of marking as failed
+Added `_verify_expected_with_python()` function that:
+- Converts Sharpy code to Python (minimal transformation needed for basic features)
+- Runs the Python code to get the actual expected output
+- Compares against AI-generated expected output
+- Skips iterations where the AI generated incorrect expected outputs
 
-4. **Test name collision avoidance**: Instruct AI to avoid using function names that match common builtins (`double`, `int`, `str`, `len`, `print`, etc.)
+### 2. Builtin Name Collision Guidance
+**File:** [prompts.py](../../build_tools/sharpy_dogfood/prompts.py)
+
+Added explicit naming rules to the code generation prompt:
+- Lists common builtins to avoid: `double`, `int`, `str`, `float`, `bool`, `len`, `print`, `range`, etc.
+- Suggests descriptive alternatives like `double_value`, `multiply_by_two`
+
+### 3. Rate Limit Handling Improvements
+**File:** [orchestrator.py](../../build_tools/sharpy_dogfood/orchestrator.py), [reporting.py](../../build_tools/sharpy_dogfood/reporting.py)
+
+- Added `GENERATION_RATE_LIMITED` issue type to distinguish from real generation failures
+- Rate-limited iterations are now marked as `SKIPPED` instead of `FAILED`
+- Existing exponential backoff retry logic (5s → 10s → 20s → 60s max) was already in place

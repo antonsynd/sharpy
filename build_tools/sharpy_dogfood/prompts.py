@@ -132,6 +132,10 @@ Generate COMPLEX code:
 - **NO recursion**: keep functions non-recursive for simplicity
 - **NO nested functions**: define all functions at top level
 
+### ⚠️ NAMING RULES - Avoid builtin conflicts:
+- **Do NOT name functions** `double`, `int`, `str`, `float`, `bool`, `len`, `print`, `range`, `abs`, `min`, `max`, `sum`, `round`, `input`, `type`, `list`, `dict`, `set`, `tuple`, `map`, `filter`, `zip`, `any`, `all`, `sorted`, `reversed`, `enumerate`, `chr`, `ord`, `hex`, `bin`, `oct`, `hash`, `id`, `open`, `file`, `exit`, `quit`
+- Use **descriptive names** like `double_value`, `multiply_by_two`, `calculate_double` instead
+
 ## Task
 
 Generate a novel, valid Sharpy program testing: **{feature_focus}**

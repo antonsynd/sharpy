@@ -16,6 +16,7 @@ class IssueType(str, Enum):
     """Types of issues that can be detected."""
 
     GENERATION_FAILED = "generation_failed"
+    GENERATION_RATE_LIMITED = "generation_rate_limited"  # Rate limited, not a bug
     VALIDATION_FAILED = "validation_failed"
     COMPILATION_FAILED = "compilation_failed"
     EXECUTION_FAILED = "execution_failed"
@@ -299,9 +300,7 @@ class SummaryReporter:
 
         # Recent failures (excluding skips)
         failures = [
-            r
-            for r in self.runs
-            if not r["success"] and r["issue_type"] != "skipped"
+            r for r in self.runs if not r["success"] and r["issue_type"] != "skipped"
         ][-10:]
         if failures:
             lines.extend(
@@ -330,9 +329,7 @@ class SummaryReporter:
             )
             for s in skips:
                 reason = s.get("skip_reason", "Unknown")
-                lines.append(
-                    f"- {s['feature_focus']}/{s['complexity']} - {reason}"
-                )
+                lines.append(f"- {s['feature_focus']}/{s['complexity']} - {reason}")
             lines.append("")
 
         return "\n".join(lines)

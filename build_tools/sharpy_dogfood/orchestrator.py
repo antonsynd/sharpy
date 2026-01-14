@@ -88,6 +88,113 @@ def _outputs_equivalent(expected: str, actual: str, rel_tol: float = 1e-9) -> bo
     return True
 
 
+async def _verify_expected_with_python(
+    code: str, expected_output: str, timeout: float = 5.0
+) -> tuple[bool, Optional[str], Optional[str]]:
+    """
+    Verify expected output by running the code as Python.
+
+    Since Sharpy is syntactically similar to Python for basic features,
+    we can use Python to verify the expected output is correct.
+
+    Returns:
+        (is_valid, python_output, error_message)
+        - is_valid: True if Python output matches expected, or Python execution failed
+        - python_output: The actual output from Python (if successful)
+        - error_message: Error details if Python execution failed
+    """
+    import tempfile
+    import os
+
+    # Convert Sharpy to Python (minimal transformations needed for basic code)
+    python_code = _sharpy_to_python(code)
+
+    # Create a temporary file for the Python code
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+        f.write(python_code)
+        temp_path = f.name
+
+    try:
+        process = await asyncio.create_subprocess_exec(
+            sys.executable,
+            temp_path,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+
+        try:
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(), timeout=timeout
+            )
+        except asyncio.TimeoutError:
+            try:
+                process.kill()
+                await process.wait()
+            except Exception:
+                pass
+            return True, None, "Python execution timed out (not a validation failure)"
+
+        if process.returncode != 0:
+            # Python failed to run the code - this might be due to Sharpy-specific
+            # syntax that doesn't translate, so we don't treat it as validation failure
+            return True, None, f"Python execution failed: {stderr.decode().strip()}"
+
+        python_output = stdout.decode().strip()
+        expected_stripped = expected_output.strip()
+
+        # Compare outputs
+        if _outputs_equivalent(expected_stripped, python_output):
+            return True, python_output, None
+        else:
+            # Expected output doesn't match Python output - likely an AI mistake
+            return (
+                False,
+                python_output,
+                f"Expected output doesn't match Python: got '{python_output}', expected '{expected_stripped}'",
+            )
+    finally:
+        try:
+            os.unlink(temp_path)
+        except Exception:
+            pass
+
+
+def _sharpy_to_python(sharpy_code: str) -> str:
+    """
+    Convert Sharpy code to Python for verification.
+
+    For basic features (phases 0.1.0-0.1.5), Sharpy is syntactically
+    identical to Python, so minimal transformation is needed.
+    """
+    lines = []
+    for line in sharpy_code.split("\n"):
+        # Skip lines that are pure comments starting with EXPECTED OUTPUT
+        stripped = line.strip()
+        if stripped.upper().startswith(
+            "# EXPECTED OUTPUT"
+        ) or stripped.upper().startswith("#EXPECTED OUTPUT"):
+            # Start of expected output block - skip rest of comments
+            break
+        if stripped.upper().startswith("# EXPECTED:"):
+            break
+
+        # Remove type annotations from variable declarations: x: int = 5 -> x = 5
+        # But preserve in function signatures for Python's type hints
+        if ":" in line and "=" in line and "def " not in line:
+            # Simple variable declaration with type annotation
+            match = re.match(r"^(\s*)(\w+)\s*:\s*\w+\s*=(.*)$", line)
+            if match:
+                indent, name, value = match.groups()
+                line = f"{indent}{name} ={value}"
+
+        # Remove 'const' keyword (not valid Python)
+        line = re.sub(r"\bconst\s+", "", line)
+
+        lines.append(line)
+
+    return "\n".join(lines)
+
+
 def _has_multi_arg_print(line: str) -> bool:
     """
     Check if a line contains a multi-argument print call.
@@ -275,6 +382,25 @@ class DogfoodOrchestrator:
         print("\n[1/4] Generating code...", file=sys.stderr)
         gen_result = await self._generate_code(feature_focus, complexity)
         if not gen_result.success or not gen_result.output:
+            # Check if it's a rate limit issue (not a real failure)
+            is_rate_limited = gen_result.rate_limited or (
+                gen_result.error
+                and any(
+                    x in gen_result.error.lower()
+                    for x in ["rate limit", "rate-limit", "unavailable", "429"]
+                )
+            )
+
+            if is_rate_limited:
+                print(
+                    "  Generation failed due to rate limiting (not a bug)",
+                    file=sys.stderr,
+                )
+                return IterationResult(
+                    IterationStatus.SKIPPED,
+                    skip_reason=f"Rate limited: {gen_result.error or 'All backends unavailable'}",
+                )
+
             issue = Issue(
                 issue_type=IssueType.GENERATION_FAILED,
                 timestamp=timestamp,
@@ -304,6 +430,32 @@ class DogfoodOrchestrator:
                 IterationStatus.SKIPPED,
                 skip_reason=f"Unsupported feature: {prevalidation_error}",
             )
+
+        # Step 1.6: Verify expected output using Python (catches AI mistakes in expected output)
+        if expected_output:
+            is_valid, python_output, verify_error = await _verify_expected_with_python(
+                code, expected_output
+            )
+            if not is_valid:
+                print(
+                    f"  Expected output verification failed: {verify_error}",
+                    file=sys.stderr,
+                )
+                print(f"  Python output: {python_output}", file=sys.stderr)
+                print(f"  AI expected:   {expected_output}", file=sys.stderr)
+                print(
+                    "  Skipping (AI generated incorrect expected output)",
+                    file=sys.stderr,
+                )
+                return IterationResult(
+                    IterationStatus.SKIPPED,
+                    skip_reason=f"Invalid expected output (Python says: {python_output})",
+                )
+            elif python_output is not None:
+                print(
+                    f"  Expected output verified with Python: {python_output[:50]}...",
+                    file=sys.stderr,
+                )
 
         # Step 2: Validate against spec (AI-based detailed check)
         print("\n[2/4] Validating against spec...", file=sys.stderr)
