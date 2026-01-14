@@ -99,10 +99,19 @@ RATE_LIMIT_INDICATORS = [
 ```
 
 **Acceptance Criteria**:
-- [ ] Single canonical implementation of rate limit detection
-- [ ] Handles all patterns from existing implementations
-- [ ] Unit tests covering known rate limit error messages
-- [ ] Type hints throughout
+- [x] Single canonical implementation of rate limit detection
+- [x] Handles all patterns from existing implementations
+- [x] Unit tests covering known rate limit error messages
+- [x] Type hints throughout
+
+**Implementation Notes**:
+- Completed on 2026-01-13
+- Created `build_tools/shared/rate_limiting/detector.py` with comprehensive detection
+- Consolidates patterns from all three tools (walkthrough generator, dogfood, auto_builder)
+- Includes 19 unit tests covering edge cases and real-world error messages
+- All tests passing
+- Function signature: `is_rate_limit_error(output: str, stderr: str = "") -> bool`
+- Exported via `build_tools/shared/rate_limiting/__init__.py`
 
 ---
 

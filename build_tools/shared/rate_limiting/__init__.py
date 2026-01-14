@@ -7,4 +7,10 @@ Provides functionality to:
 - Track rate limit state across multiple requests
 """
 
-__all__ = []
+from .detector import is_rate_limit_error, RATE_LIMIT_INDICATORS
+
+__all__ = [
+    "is_rate_limit_error",
+    "RATE_LIMIT_INDICATORS",
+]
+
