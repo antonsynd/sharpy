@@ -13,6 +13,7 @@ from .base import (
     BackendResponse,
     ToolPermission,
 )
+from .claude import ClaudeCodeBackend
 
 __all__ = [
     "Backend",
@@ -20,4 +21,5 @@ __all__ = [
     "BackendConfig",
     "BackendResponse",
     "ToolPermission",
+    "ClaudeCodeBackend",
 ]

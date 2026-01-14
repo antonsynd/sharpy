@@ -375,11 +375,27 @@ class ClaudeCodeBackend(Backend):
 ```
 
 **Acceptance Criteria**:
-- [ ] Works with existing Claude Code CLI
-- [ ] Supports configurable tool permissions
-- [ ] Integrates with shared rate limit state
-- [ ] Optional heartbeat callback for long operations
-- [ ] Proper timeout handling with process termination
+- [x] Works with existing Claude Code CLI
+- [x] Supports configurable tool permissions
+- [x] Integrates with shared rate limit state
+- [x] Optional heartbeat callback for long operations
+- [x] Proper timeout handling with process termination
+
+**Implementation Notes**:
+- Completed on 2026-01-13
+- Created `build_tools/shared/backends/claude.py` consolidating code from all three tools
+- Implements full Backend interface with async execution
+- Supports configurable tool permissions via `BackendConfig.allowed_tools`
+- Integrates with shared `RateLimitState` for tracking and automatic backoff
+- Optional heartbeat callback for visibility into long-running operations
+- Proper timeout handling: terminates process on timeout and returns descriptive error
+- Command building via `_build_command()` supports model selection and tool restrictions
+- Uses stdin for prompt passing (more reliable for long/complex prompts)
+- Heartbeat logging every 60 seconds during long operations
+- Detects rate limits via `is_rate_limit_error()` and extracts wait times
+- 12 comprehensive unit tests covering all functionality
+- All tests passing
+- Exported via `build_tools/shared/backends/__init__.py`
 
 ---
 
