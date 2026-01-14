@@ -1372,9 +1372,31 @@ class TestBackendManager:
 ```
 
 **Acceptance Criteria**:
-- [ ] Unit tests for each backend type
-- [ ] Integration tests for failover logic
-- [ ] Mock subprocess for deterministic testing
+- [x] Unit tests for each backend type
+- [x] Integration tests for failover logic
+- [x] Mock subprocess for deterministic testing
+
+**Implementation Notes**:
+- Completed on 2026-01-13 (tests were already created during Tasks 2.2, 2.3, and 2.4)
+- Three comprehensive test files:
+  - `build_tools/tests/test_claude_backend.py` - 12 tests for ClaudeCodeBackend
+  - `build_tools/tests/test_copilot_backend.py` - 21 tests for CopilotBackend
+  - `build_tools/tests/test_backend_manager.py` - 40 tests for BackendManager
+- Total: 73 tests, all passing
+- Coverage includes:
+  - Backend type identification and availability checks
+  - Command building with various configurations (tools, model, timeout)
+  - Execute success/failure/timeout scenarios
+  - Rate limit detection and handling
+  - Failover logic (rate limits, errors, unavailable backends)
+  - Backend selection order (primary, fallbacks, preferred)
+  - Rate limit state tracking and capacity checks
+  - Backend status reporting
+  - Model selection integration
+  - Heartbeat callbacks for long operations
+  - Interactive prompt detection (Copilot-specific)
+- All tests use mocked `asyncio.create_subprocess_exec` for deterministic subprocess simulation
+- Tests verify that `execute()` returns tuple of (BackendResponse, BackendType) showing which backend was used
 
 ---
 
