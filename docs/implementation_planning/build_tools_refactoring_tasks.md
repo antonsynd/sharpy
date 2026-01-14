@@ -1512,10 +1512,28 @@ response, backend = await manager.execute(prompt, config)
 ```
 
 **Acceptance Criteria**:
-- [ ] Clear overview of module structure
-- [ ] Usage examples for common scenarios
-- [ ] Model selection guidelines with examples
-- [ ] API reference for key classes
+- [x] Clear overview of module structure
+- [x] Usage examples for common scenarios
+- [x] Model selection guidelines with examples
+- [x] API reference for key classes
+
+**Implementation Notes**:
+- Completed on 2026-01-14
+- Created comprehensive 869-line README covering all shared modules
+- Includes quick start guide and complete working example
+- Documented all 6 modules:
+  - Rate limiting: detection, extraction, state tracking
+  - Backends: abstract interface, Claude/Copilot implementations, BackendManager
+  - Model selection: taxonomy, routing guidelines, cost considerations
+  - Configuration: BaseConfig with extension examples
+  - Logging: JSONL format, event types, query utilities
+  - CLI building: command construction for different backends
+- Usage examples for each module with actual code snippets
+- Complete API reference for all public classes and methods
+- Model selection guidelines table (task type × complexity matrix)
+- Full working example showing how to build a tool using all utilities
+- Testing instructions for running unit tests
+- Design principles and future enhancements documented
 
 ---
 
