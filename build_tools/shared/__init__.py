@@ -19,6 +19,11 @@ from .model_selector import (
     SONNET,
     OPUS,
 )
+from .logging import (
+    LogEvent,
+    LogEventType,
+    ExecutionLogger,
+)
 
 __all__ = [
     # Configuration
@@ -31,4 +36,8 @@ __all__ = [
     "HAIKU",
     "SONNET",
     "OPUS",
+    # Logging
+    "LogEvent",
+    "LogEventType",
+    "ExecutionLogger",
 ]

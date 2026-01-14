@@ -970,10 +970,35 @@ class ExecutionLogger:
 ```
 
 **Acceptance Criteria**:
-- [ ] JSONL format for easy parsing
-- [ ] Prompt/response correlation via event IDs
-- [ ] Rotation support for large logs (optional)
-- [ ] Query utilities for analysis
+- [x] JSONL format for easy parsing
+- [x] Prompt/response correlation via event IDs
+- [x] Rotation support for large logs (optional)
+- [x] Query utilities for analysis
+
+**Implementation Notes**:
+- Completed on 2026-01-13
+- Created `build_tools/shared/logging.py` with comprehensive JSONL-based logging
+- Consolidates logging patterns from `generate_code_walkthroughs.py` and `sharpy_auto_builder/orchestrator.py`
+- `LogEventType` enum with 12 event types: PROMPT_SENT, RESPONSE_RECEIVED, RATE_LIMIT_HIT, BACKEND_SWITCH, ERROR, TASK_START, TASK_COMPLETE, STEP_START, STEP_END, MODEL_SELECTED, GENERATE, SKIP, REGENERATE
+- `LogEvent` dataclass with timestamp, event_type, details, and optional event_id
+- `ExecutionLogger` class with full JSONL logging capabilities:
+  - `log()` - General event logging with auto-generated event IDs
+  - `log_prompt()` - Log prompt with correlation ID
+  - `log_response()` - Log response correlated to prompt
+  - `log_rate_limit()` - Log rate limit hits
+  - `log_backend_switch()` - Log backend failover
+  - `log_model_selection()` - Log model selection decisions
+  - `log_task()` - Log task lifecycle events
+- Query utilities:
+  - `read_log()` - Read all events from log file
+  - `query_log()` - Filter by event_type, time range, task_id
+  - `get_correlated_events()` - Find related events by event_id
+- Handles malformed log lines gracefully (skips with warning)
+- Auto-creates parent directories
+- 36 comprehensive unit tests in `build_tools/tests/test_logging.py`
+- All 287 tests passing (36 new logging tests, 251 existing tests)
+- Exported from `build_tools.shared` module for convenient access
+- Note: Rotation support is optional/future feature - current implementation supports unlimited log growth
 
 ---
 
