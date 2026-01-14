@@ -195,10 +195,23 @@ class RateLimitState:
 ```
 
 **Acceptance Criteria**:
-- [ ] Consolidates logic from all three tools
-- [ ] Thread-safe (uses appropriate locking if needed)
-- [ ] Configurable window sizes and backoff parameters
-- [ ] Unit tests for backoff calculation and availability checks
+- [x] Consolidates logic from all three tools
+- [x] Thread-safe (uses appropriate locking if needed)
+- [x] Configurable window sizes and backoff parameters
+- [x] Unit tests for backoff calculation and availability checks
+
+**Implementation Notes**:
+- Completed on 2026-01-13
+- Created `build_tools/shared/rate_limiting/state.py` with comprehensive state tracking
+- Consolidates patterns from all three tools (walkthrough generator, auto_builder, dogfood)
+- Uses dataclass with deque for efficient sliding window request tracking
+- Implements exponential backoff with configurable parameters (base_cooldown, max_backoff, multiplier)
+- Supports temporary backend disabling with Unix timestamp tracking
+- 33 comprehensive unit tests covering all methods, edge cases, and integration scenarios
+- All tests passing
+- Thread-safe for reads via immutable dataclass fields (writes should be single-threaded per instance)
+- Key methods: `record_request()`, `record_error()`, `record_success()`, `is_available()`, `should_wait()`, `requests_in_window()`, `get_backoff_delay()`
+- Exported via `build_tools/shared/rate_limiting/__init__.py`
 
 ---
 
