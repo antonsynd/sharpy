@@ -5,6 +5,7 @@ Command-line interface for Sharpy Auto Builder.
 import asyncio
 import argparse
 import json
+import sqlite3
 import sys
 from pathlib import Path
 from datetime import datetime
@@ -13,6 +14,49 @@ from .config import Config
 from .state import GroundTruth, parse_task_list
 from .orchestrator import Orchestrator
 from .human_loop import HumanLoopManager
+
+
+def list_sessions(config: Config) -> list[dict]:
+    """
+    Query checkpoint database for unique thread IDs and session info.
+
+    Args:
+        config: Configuration object with checkpoint_db_path
+
+    Returns:
+        list[dict]: List of sessions with thread_id, checkpoint_count, and last_updated
+    """
+    db_path = config.checkpoint_db_path
+    if not db_path.exists():
+        return []
+
+    sessions = []
+    try:
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+
+        # Query for unique thread IDs with checkpoint count and most recent checkpoint
+        cursor.execute(
+            """
+            SELECT thread_id, COUNT(*) as checkpoint_count, MAX(checkpoint_id) as last_checkpoint
+            FROM checkpoints
+            GROUP BY thread_id
+            ORDER BY last_checkpoint DESC
+            """
+        )
+
+        for row in cursor.fetchall():
+            sessions.append({
+                "thread_id": row[0],
+                "checkpoint_count": row[1],
+                "last_checkpoint_id": row[2],
+            })
+
+        conn.close()
+    except Exception as e:
+        print(f"Warning: Could not query checkpoint database: {e}")
+
+    return sessions
 
 
 def cmd_init(args):
@@ -142,6 +186,23 @@ def cmd_run(args):
         if args.project_root:
             config.project_root = Path(args.project_root)
 
+    # Handle --list-sessions before anything else
+    if args.list_sessions:
+        sessions = list_sessions(config)
+        if not sessions:
+            print("No saved sessions found.")
+            print(f"  (No checkpoint database at {config.checkpoint_db_path})")
+        else:
+            print(f"\n{'='*60}")
+            print("SAVED SESSIONS")
+            print(f"{'='*60}")
+            for session in sessions:
+                print(f"\n  Thread ID: {session['thread_id']}")
+                print(f"    Checkpoints: {session['checkpoint_count']}")
+                print(f"    Resume with: ./auto_builder.sh run --thread-id {session['thread_id']}")
+            print()
+        return
+
     if not config.ground_truth_path.exists():
         print("Error: Ground truth not found. Run 'init' first.")
         sys.exit(1)
@@ -166,6 +227,8 @@ def cmd_run(args):
     print(f"Starting Sharpy Auto Builder...")
     print(f"  Backend priority: {config.backend_priority}")
     print(f"  Max tasks: {args.max_tasks or 'unlimited'}")
+    if args.thread_id:
+        print(f"  Resuming thread: {args.thread_id}")
     print(
         f"  Spec check: {'enabled' if config.run_spec_adherence_check else 'disabled'}"
     )
@@ -180,7 +243,7 @@ def cmd_run(args):
     orchestrator = Orchestrator(config)
 
     try:
-        result = asyncio.run(orchestrator.run(max_tasks=args.max_tasks))
+        result = asyncio.run(orchestrator.run(max_tasks=args.max_tasks, thread_id=args.thread_id))
 
         print()
         print(f"{'='*60}")
@@ -439,6 +502,163 @@ def cmd_logs(args):
             print(entry["error"])
 
 
+def cmd_checkpoint_stats(args):
+    """Show checkpoint storage statistics."""
+    config = Config()
+    if args.project_root:
+        config.project_root = Path(args.project_root)
+
+    db_path = config.checkpoint_db_path
+    if not db_path.exists():
+        print("No checkpoint database found.")
+        print(f"  (Expected at {db_path})")
+        print("  Run the auto builder first to create checkpoints.")
+        return
+
+    # Get stats using the orchestrator
+    orchestrator = Orchestrator(config)
+    stats = orchestrator.get_checkpoint_stats()
+
+    if "error" in stats:
+        print(f"Error getting checkpoint stats: {stats['error']}")
+        sys.exit(1)
+
+    print(f"\n{'='*60}")
+    print("CHECKPOINT STATISTICS")
+    print(f"{'='*60}")
+    print(f"\nDatabase: {db_path}")
+    print(f"Database size: {stats['db_size_mb']} MB ({stats['db_size_bytes']} bytes)")
+    print(f"\nTotal checkpoints: {stats['total_checkpoints']}")
+    print(f"Unique threads: {stats['unique_threads']}")
+    print(f"Max checkpoints per thread: {stats['max_checkpoints_per_thread']}")
+    print(f"Cleanup interval: {stats['cleanup_interval']}")
+
+    if stats['thread_stats']:
+        print(f"\nCheckpoints per thread:")
+        for thread in stats['thread_stats'][:10]:  # Show top 10
+            print(f"  {thread['thread_id']}: {thread['checkpoint_count']}")
+        if len(stats['thread_stats']) > 10:
+            print(f"  ... and {len(stats['thread_stats']) - 10} more threads")
+
+    print()
+
+
+def cmd_checkpoint_cleanup(args):
+    """Clean up old checkpoints."""
+    config = Config()
+    if args.project_root:
+        config.project_root = Path(args.project_root)
+
+    db_path = config.checkpoint_db_path
+    if not db_path.exists():
+        print("No checkpoint database found.")
+        return
+
+    try:
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+
+        # Get current counts
+        cursor.execute("SELECT COUNT(*) FROM checkpoints")
+        total_before = cursor.fetchone()[0]
+
+        if args.thread_id:
+            # Clean up specific thread
+            cursor.execute(
+                "SELECT COUNT(*) FROM checkpoints WHERE thread_id = ?",
+                (args.thread_id,)
+            )
+            thread_count = cursor.fetchone()[0]
+
+            if thread_count == 0:
+                print(f"No checkpoints found for thread: {args.thread_id}")
+                conn.close()
+                return
+
+            # Get checkpoints to keep
+            keep = args.keep or 10
+            cursor.execute(
+                """
+                SELECT checkpoint_id, checkpoint_ns
+                FROM checkpoints
+                WHERE thread_id = ?
+                ORDER BY checkpoint_id DESC
+                """,
+                (args.thread_id,)
+            )
+            all_checkpoints = cursor.fetchall()
+
+            to_delete = all_checkpoints[keep:]
+
+            if not to_delete:
+                print(f"Thread {args.thread_id} has {len(all_checkpoints)} checkpoints, keeping all (--keep={keep})")
+                conn.close()
+                return
+
+            if args.dry_run:
+                print(f"DRY RUN: Would delete {len(to_delete)} checkpoints from thread {args.thread_id}")
+                print(f"  (Keeping newest {keep} of {len(all_checkpoints)})")
+            else:
+                for checkpoint_id, checkpoint_ns in to_delete:
+                    cursor.execute(
+                        "DELETE FROM checkpoints WHERE checkpoint_id = ? AND checkpoint_ns = ?",
+                        (checkpoint_id, checkpoint_ns)
+                    )
+                conn.commit()
+                print(f"Deleted {len(to_delete)} checkpoints from thread {args.thread_id}")
+                print(f"  (Kept newest {keep} of {len(all_checkpoints)})")
+        else:
+            # Clean up all threads
+            keep = args.keep or 10
+
+            # Get all threads
+            cursor.execute("SELECT DISTINCT thread_id FROM checkpoints")
+            threads = [row[0] for row in cursor.fetchall()]
+
+            total_deleted = 0
+            for thread_id in threads:
+                cursor.execute(
+                    """
+                    SELECT checkpoint_id, checkpoint_ns
+                    FROM checkpoints
+                    WHERE thread_id = ?
+                    ORDER BY checkpoint_id DESC
+                    """,
+                    (thread_id,)
+                )
+                all_checkpoints = cursor.fetchall()
+                to_delete = all_checkpoints[keep:]
+
+                if to_delete:
+                    if args.dry_run:
+                        print(f"  DRY RUN: Would delete {len(to_delete)} from {thread_id}")
+                    else:
+                        for checkpoint_id, checkpoint_ns in to_delete:
+                            cursor.execute(
+                                "DELETE FROM checkpoints WHERE checkpoint_id = ? AND checkpoint_ns = ?",
+                                (checkpoint_id, checkpoint_ns)
+                            )
+                        total_deleted += len(to_delete)
+
+            if args.dry_run:
+                cursor.execute("SELECT COUNT(*) FROM checkpoints")
+                would_keep = sum(min(keep, len([c for c in cursor.execute(
+                    "SELECT checkpoint_id FROM checkpoints WHERE thread_id = ?", (t,)
+                ).fetchall()])) for t in threads)
+                print(f"\nDRY RUN: Would delete approximately {total_before - would_keep} checkpoints total")
+            else:
+                conn.commit()
+                cursor.execute("SELECT COUNT(*) FROM checkpoints")
+                total_after = cursor.fetchone()[0]
+                print(f"Deleted {total_deleted} checkpoints ({total_before} -> {total_after})")
+
+        conn.close()
+
+    except Exception as e:
+        print(f"Error during cleanup: {e}")
+        sys.exit(1)
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="sharpy-auto-builder",
@@ -509,6 +729,16 @@ def main():
         action="store_true",
         help="Don't require human approval for critical tasks",
     )
+    run_parser.add_argument(
+        "--thread-id",
+        help="Thread ID to resume a previous session",
+        default=None,
+    )
+    run_parser.add_argument(
+        "--list-sessions",
+        action="store_true",
+        help="List saved sessions instead of running",
+    )
 
     # report command
     report_parser = subparsers.add_parser("report", help="Generate status report")
@@ -575,6 +805,32 @@ def main():
         default=None,
     )
 
+    # checkpoint-stats command
+    checkpoint_stats_parser = subparsers.add_parser(
+        "checkpoint-stats", help="Show checkpoint storage statistics"
+    )
+
+    # checkpoint-cleanup command
+    checkpoint_cleanup_parser = subparsers.add_parser(
+        "checkpoint-cleanup", help="Clean up old checkpoints"
+    )
+    checkpoint_cleanup_parser.add_argument(
+        "--thread-id",
+        help="Clean up only this thread's checkpoints",
+        default=None,
+    )
+    checkpoint_cleanup_parser.add_argument(
+        "--keep",
+        type=int,
+        help="Number of checkpoints to keep per thread (default: 10)",
+        default=None,
+    )
+    checkpoint_cleanup_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be deleted without actually deleting",
+    )
+
     args = parser.parse_args()
 
     if not args.command:
@@ -591,6 +847,8 @@ def main():
         "reset": cmd_reset,
         "skip": cmd_skip,
         "logs": cmd_logs,
+        "checkpoint-stats": cmd_checkpoint_stats,
+        "checkpoint-cleanup": cmd_checkpoint_cleanup,
     }
 
     commands[args.command](args)

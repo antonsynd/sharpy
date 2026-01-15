@@ -67,6 +67,23 @@ class BackendConfig:
 
 
 @dataclass
+class CheckpointConfig:
+    """Configuration for LangGraph checkpoint persistence."""
+
+    # Durability mode: "async" for better performance, "sync" for immediate writes
+    durability_mode: Literal["async", "sync"] = "async"
+
+    # Maximum number of checkpoints to retain per thread (for cleanup)
+    max_checkpoints_per_thread: int = 100
+
+    # Run cleanup every N checkpoints
+    cleanup_interval: int = 50
+
+    # Retain failed/errored checkpoints for N days before cleanup
+    retain_failed_checkpoints_days: int = 7
+
+
+@dataclass
 class Config(BaseConfig):
     """
     Main configuration for Sharpy Auto Builder.
@@ -118,6 +135,10 @@ class Config(BaseConfig):
     @property
     def human_review_dir(self) -> Path:
         return self.state_dir / "human_review"
+
+    @property
+    def checkpoint_db_path(self) -> Path:
+        return self.state_dir / "orchestrator_checkpoints.db"
 
     # Backend configurations
     backends: dict[BackendType, BackendConfig] = field(
@@ -185,6 +206,9 @@ class Config(BaseConfig):
     human_wait_timeout: float = 3600.0  # 1 hour default timeout for human responses
     human_check_interval: float = 5.0  # seconds between checks for human input
 
+    # Checkpoint configuration
+    checkpoint: CheckpointConfig = field(default_factory=CheckpointConfig)
+
     def ensure_directories(self) -> None:
         """
         Create required directories if they don't exist.
@@ -242,6 +266,12 @@ class Config(BaseConfig):
             "agent_heartbeat_interval": self.agent_heartbeat_interval,
             "human_wait_timeout": self.human_wait_timeout,
             "human_check_interval": self.human_check_interval,
+            "checkpoint": {
+                "durability_mode": self.checkpoint.durability_mode,
+                "max_checkpoints_per_thread": self.checkpoint.max_checkpoints_per_thread,
+                "cleanup_interval": self.checkpoint.cleanup_interval,
+                "retain_failed_checkpoints_days": self.checkpoint.retain_failed_checkpoints_days,
+            },
         }
 
     @classmethod
@@ -329,6 +359,14 @@ class Config(BaseConfig):
             config.human_check_interval = data["human_check_interval"]
         if "max_validation_fix_attempts" in data:
             config.max_validation_fix_attempts = data["max_validation_fix_attempts"]
+        if "checkpoint" in data:
+            cp_data = data["checkpoint"]
+            config.checkpoint = CheckpointConfig(
+                durability_mode=cp_data.get("durability_mode", "async"),
+                max_checkpoints_per_thread=cp_data.get("max_checkpoints_per_thread", 100),
+                cleanup_interval=cp_data.get("cleanup_interval", 50),
+                retain_failed_checkpoints_days=cp_data.get("retain_failed_checkpoints_days", 7),
+            )
         return config
 
     def save(self, path: Optional[Path] = None) -> None:

@@ -40,7 +40,7 @@
 
 **Actions**:
 
-1. [ ] Add `langgraph-checkpoint-sqlite>=2.0.0` to requirements.txt
+1. [x] Add `langgraph-checkpoint-sqlite>=2.0.0` to requirements.txt
 
 **Verification**:
 - ✅ Run: `pip install -r requirements.txt`
@@ -56,13 +56,13 @@
 
 **Actions**:
 
-1. [ ] Add `checkpoint_db_path` property to `Config` class returning `self.state_dir / "orchestrator_checkpoints.db"`
-2. [ ] Add `CheckpointConfig` dataclass with fields:
+1. [x] Add `checkpoint_db_path` property to `Config` class returning `self.state_dir / "orchestrator_checkpoints.db"`
+2. [x] Add `CheckpointConfig` dataclass with fields:
    - `durability_mode: Literal["async", "sync"] = "async"`
    - `max_checkpoints_per_thread: int = 100`
    - `cleanup_interval: int = 50`
    - `retain_failed_checkpoints_days: int = 7`
-3. [ ] Add `checkpoint: CheckpointConfig` field to main `Config` class
+3. [x] Add `checkpoint: CheckpointConfig` field to main `Config` class
 
 **Verification**:
 - ✅ Test: `Config().checkpoint_db_path` returns valid path
@@ -78,16 +78,16 @@
 
 **Actions**:
 
-1. [ ] Remove import: `from langgraph.checkpoint.memory import MemorySaver`
-2. [ ] Add imports: `import sqlite3` and `from langgraph.checkpoint.sqlite import SqliteSaver`
-3. [ ] In `__init__`, replace `self.memory = MemorySaver()` with:
+1. [x] Remove import: `from langgraph.checkpoint.memory import MemorySaver`
+2. [x] Add imports: `import sqlite3` and `from langgraph.checkpoint.sqlite import SqliteSaver`
+3. [x] In `__init__`, replace `self.memory = MemorySaver()` with:
    - Create `self._db_connection = sqlite3.connect(str(self.config.checkpoint_db_path), check_same_thread=False)`
    - Create `self.checkpointer = SqliteSaver(self._db_connection)`
    - Call `self.checkpointer.setup()`
-4. [ ] Update `self.app = self.graph.compile(checkpointer=self.checkpointer)`
-5. [ ] Add `close()` method to close database connection
-6. [ ] Add `__del__` method calling `self.close()`
-7. [ ] Add `__enter__` and `__exit__` for context manager support
+4. [x] Update `self.app = self.graph.compile(checkpointer=self.checkpointer)`
+5. [x] Add `close()` method to close database connection
+6. [x] Add `__del__` method calling `self.close()`
+7. [x] Add `__enter__` and `__exit__` for context manager support
 
 **Verification**:
 - ✅ Test: `orchestrator_checkpoints.db` created in `state/` directory
@@ -103,11 +103,11 @@
 
 **Actions**:
 
-1. [ ] Add `_setup_checkpoint_cleanup()` method initializing `_checkpoint_count` and `_cleanup_interval`
-2. [ ] Add `_maybe_cleanup_checkpoints(thread_id)` method that runs cleanup periodically
-3. [ ] Add `_cleanup_thread_checkpoints(thread_id)` method to remove old checkpoints beyond `max_checkpoints_per_thread`
-4. [ ] Add `get_checkpoint_stats()` method returning checkpoint counts, thread info, and database size
-5. [ ] Call `_setup_checkpoint_cleanup()` in `__init__`
+1. [x] Add `_setup_checkpoint_cleanup()` method initializing `_checkpoint_count` and `_cleanup_interval`
+2. [x] Add `_maybe_cleanup_checkpoints(thread_id)` method that runs cleanup periodically
+3. [x] Add `_cleanup_thread_checkpoints(thread_id)` method to remove old checkpoints beyond `max_checkpoints_per_thread`
+4. [x] Add `get_checkpoint_stats()` method returning checkpoint counts, thread info, and database size
+5. [x] Call `_setup_checkpoint_cleanup()` in `__init__`
 
 **Verification**:
 - ✅ Test: Cleanup runs every N checkpoints
@@ -123,12 +123,12 @@
 
 **Actions**:
 
-1. [ ] Update `run()` method signature to accept `thread_id: Optional[str] = None`
-2. [ ] Generate thread ID if not provided: `f"sharpy-build-{datetime.now().strftime('%Y%m%d-%H%M%S')}"`
-3. [ ] Store as `self._current_thread_id`
-4. [ ] Print thread ID with resume instructions
-5. [ ] Check for existing state via `self.app.get_state(config)` to detect resume vs new session
-6. [ ] Add `_create_initial_state()` helper method
+1. [x] Update `run()` method signature to accept `thread_id: Optional[str] = None`
+2. [x] Generate thread ID if not provided: `f"sharpy-build-{datetime.now().strftime('%Y%m%d-%H%M%S')}"`
+3. [x] Store as `self._current_thread_id`
+4. [x] Print thread ID with resume instructions
+5. [x] Check for existing state via `self.app.get_state(config)` to detect resume vs new session
+6. [x] Add `_create_initial_state()` helper method
 
 **Verification**:
 - ✅ Test: Thread ID printed on run start
@@ -144,11 +144,11 @@
 
 **Actions**:
 
-1. [ ] Add `--thread-id` argument to resume previous sessions
-2. [ ] Add `--list-sessions` argument to show saved sessions
-3. [ ] Add `list_sessions(config)` function querying checkpoint database for unique thread IDs
-4. [ ] Add `checkpoint-stats` command showing storage statistics
-5. [ ] Add `checkpoint-cleanup` command with `--thread-id`, `--keep`, `--dry-run` options
+1. [x] Add `--thread-id` argument to resume previous sessions
+2. [x] Add `--list-sessions` argument to show saved sessions
+3. [x] Add `list_sessions(config)` function querying checkpoint database for unique thread IDs
+4. [x] Add `checkpoint-stats` command showing storage statistics
+5. [x] Add `checkpoint-cleanup` command with `--thread-id`, `--keep`, `--dry-run` options
 
 **Verification**:
 - ✅ Test: `./auto_builder.sh run --thread-id <id>` resumes session
@@ -164,10 +164,11 @@
 
 **Actions**:
 
-1. [ ] Update `_handle_error_node` to detect rate limiting
-2. [ ] When rate limited, print session checkpoint message with thread ID
-3. [ ] Print resume command: `./auto_builder.sh run --thread-id {thread_id}`
-4. [ ] Return state with `next_action: "pause_rate_limited"`
+1. [x] Update `_handle_error_node` to detect rate limiting
+2. [x] When rate limited, print session checkpoint message with thread ID
+3. [x] Print resume command: `./auto_builder.sh run --thread-id {thread_id}`
+4. [x] Return state with `next_action: "pause_rate_limited"`
+5. [x] Add `pause_rate_limited` to graph routing (routes to END)
 
 **Verification**:
 - ✅ Test: Rate limit shows resume instructions
@@ -183,15 +184,19 @@
 
 **Actions**:
 
-1. [ ] Create test file with `TestCheckpointPersistence` class
-2. [ ] Test checkpoint database creation on init
-3. [ ] Test required tables are created
-4. [ ] Test session can be resumed with thread_id
-5. [ ] Add `TestThreadIdManagement` class
-6. [ ] Add `TestCleanup` class for resource cleanup tests
+1. [x] Create test file with `TestCheckpointPersistence` class
+2. [x] Test checkpoint database creation on init
+3. [x] Test required tables are created
+4. [x] Test session can be resumed with thread_id
+5. [x] Add `TestThreadIdManagement` class
+6. [x] Add `TestCleanup` class for resource cleanup tests
+7. [x] Add `TestCheckpointStats` class for statistics testing
+8. [x] Add `TestRateLimitRecovery` class for rate limit handling tests
+9. [x] Add `TestGraphRouting` class for graph routing tests
 
 **Verification**:
 - ✅ Run: `pytest build_tools/tests/test_orchestrator_persistence.py`
+- ✅ All 16 tests pass
 
 ---
 

@@ -8,6 +8,7 @@ Uses shared logging utilities from build_tools.shared.
 import asyncio
 import json
 import time
+import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -16,7 +17,7 @@ from enum import Enum
 import operator
 
 from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 
 from .config import Config, BackendType
 from .state import (
@@ -126,10 +127,19 @@ class Orchestrator:
         # Load or initialize ground truth
         self.ground_truth = self._load_or_create_ground_truth()
 
+        # Initialize SQLite checkpointer for durable persistence
+        self._db_connection = sqlite3.connect(
+            str(self.config.checkpoint_db_path), check_same_thread=False
+        )
+        self.checkpointer = SqliteSaver(self._db_connection)
+        self.checkpointer.setup()
+
+        # Setup checkpoint cleanup tracking
+        self._setup_checkpoint_cleanup()
+
         # Build the graph
         self.graph = self._build_graph()
-        self.memory = MemorySaver()
-        self.app = self.graph.compile(checkpointer=self.memory)
+        self.app = self.graph.compile(checkpointer=self.checkpointer)
 
     def _log_execution(
         self,
@@ -477,6 +487,7 @@ class Orchestrator:
                 "human": "request_human_review",
                 "skip": "update_ground_truth",
                 "abort": END,
+                "pause_rate_limited": END,  # End graph to allow session resume
             },
         )
 
@@ -2413,22 +2424,27 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
         )
 
         if is_rate_limited and self.config.rate_limit_pause_hours > 0:
-            # Long pause when all backends are rate-limited
-            pause_seconds = self.config.rate_limit_pause_hours * 3600
+            # Session paused due to rate limiting - provide resume instructions
             pause_hours = self.config.rate_limit_pause_hours
+            resume_time = datetime.now() + timedelta(hours=pause_hours)
+
             print(f"\n{'='*60}")
-            print(f"All backends rate-limited. Pausing for {pause_hours} hours...")
-            print(
-                f"Will resume at: {datetime.now() + timedelta(seconds=pause_seconds)}"
-            )
-            print(f"{'='*60}\n")
-            await asyncio.sleep(pause_seconds)
+            print(f"⏸️  SESSION PAUSED - Rate limit reached")
+            print(f"{'='*60}")
+            print(f"\nAll backends are rate-limited.")
+            print(f"Session checkpointed. Resume after {pause_hours} hours.")
+            print(f"\nEstimated resume time: {resume_time.strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"\n📌 Session saved with thread ID: {self._current_thread_id}")
+            print(f"\n▶️  To resume this session, run:")
+            print(f"   ./auto_builder.sh run --thread-id {self._current_thread_id}")
+            print(f"\n{'='*60}\n")
+
             return {
                 **state,
-                "execution_attempt": 0,  # Reset attempt counter after long pause
-                "next_action": "retry",
+                "execution_attempt": 0,  # Reset attempt counter for next resume
+                "next_action": "pause_rate_limited",
                 "messages": [
-                    f"Resumed after {pause_hours}h rate-limit pause, retrying task"
+                    f"Session paused due to rate limiting. Thread ID: {self._current_thread_id}"
                 ],
             }
 
@@ -2520,12 +2536,14 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
     # Public API
     # =========================================================================
 
-    async def run(self, max_tasks: Optional[int] = None) -> dict:
-        """Run the orchestrator to process tasks."""
-        # Dump config at startup for debugging
-        self._dump_config()
+    def _create_initial_state(self) -> OrchestratorState:
+        """
+        Create initial state for a new orchestrator run.
 
-        initial_state: OrchestratorState = {
+        Returns:
+            OrchestratorState: Initial state with all fields set to defaults
+        """
+        return {
             "current_task": None,
             "ground_truth_path": str(self.config.ground_truth_path),
             "execution_attempt": 0,
@@ -2539,20 +2557,68 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
             "human_question_id": None,
             "human_review_id": None,
             "human_response": None,
+            "response_analysis": None,
+            "auto_decision": None,
             "next_action": "",
             "error_message": None,
             "messages": [],
         }
 
+    async def run(self, max_tasks: Optional[int] = None, thread_id: Optional[str] = None) -> dict:
+        """
+        Run the orchestrator to process tasks.
+
+        Args:
+            max_tasks: Maximum number of tasks to process in this run
+            thread_id: Thread ID for checkpoint persistence. If not provided, a new one will be generated.
+
+        Returns:
+            dict: Run statistics including tasks_processed, final_progress, backend_stats
+        """
+        # Dump config at startup for debugging
+        self._dump_config()
+
+        # Generate thread ID if not provided
+        if thread_id is None:
+            thread_id = f"sharpy-build-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+
+        # Store current thread ID
+        self._current_thread_id = thread_id
+
+        # Print thread ID and resume instructions
+        print(f"\n{'='*60}")
+        print(f"🔗 Thread ID: {thread_id}")
+        print(f"{'='*60}")
+        print(f"💡 To resume this session later, use:")
+        print(f"   ./auto_builder.sh run --thread-id {thread_id}")
+        print(f"{'='*60}\n")
+
         config = {
-            "configurable": {"thread_id": "sharpy-auto-builder"},
+            "configurable": {"thread_id": thread_id},
             "recursion_limit": 150,  # Allow more iterations for multi-task runs with retries
         }
 
+        # Check if we're resuming an existing session
+        existing_state = self.app.get_state(config)
+        is_resume = existing_state.values != {}
+
+        if is_resume:
+            print(f"🔄 Resuming existing session from checkpoint...")
+            print(f"   Previous state found for thread: {thread_id}\n")
+            initial_state = None  # Will use existing state from checkpoint
+        else:
+            print(f"🆕 Starting new session...")
+            initial_state = self._create_initial_state()
+
         tasks_processed = 0
 
-        # Run the graph
-        async for event in self.app.astream(initial_state, config):
+        # Run the graph (pass initial_state only if starting new session)
+        if initial_state is not None:
+            stream_input = initial_state
+        else:
+            stream_input = None  # Resume from checkpoint
+
+        async for event in self.app.astream(stream_input, config):
             # Log progress
             for node_name, node_state in event.items():
                 if node_state.get("messages"):
@@ -2646,3 +2712,122 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
         )
 
         return "\n".join(lines)
+
+    def _setup_checkpoint_cleanup(self) -> None:
+        """Initialize checkpoint cleanup tracking."""
+        self._checkpoint_count = 0
+        self._cleanup_interval = self.config.checkpoint.cleanup_interval
+
+    def _maybe_cleanup_checkpoints(self, thread_id: str) -> None:
+        """Run checkpoint cleanup periodically based on cleanup_interval."""
+        self._checkpoint_count += 1
+        if self._checkpoint_count >= self._cleanup_interval:
+            self._cleanup_thread_checkpoints(thread_id)
+            self._checkpoint_count = 0
+
+    def _cleanup_thread_checkpoints(self, thread_id: str) -> None:
+        """
+        Remove old checkpoints beyond max_checkpoints_per_thread.
+
+        Keeps the most recent N checkpoints per thread, where N is
+        config.checkpoint.max_checkpoints_per_thread.
+        """
+        try:
+            max_checkpoints = self.config.checkpoint.max_checkpoints_per_thread
+
+            # Query checkpoints for this thread, ordered by timestamp descending
+            cursor = self._db_connection.cursor()
+            cursor.execute(
+                """
+                SELECT checkpoint_id, checkpoint_ns
+                FROM checkpoints
+                WHERE thread_id = ?
+                ORDER BY checkpoint_id DESC
+                """,
+                (thread_id,)
+            )
+            checkpoints = cursor.fetchall()
+
+            # If we have more than max_checkpoints, delete the oldest ones
+            if len(checkpoints) > max_checkpoints:
+                checkpoints_to_delete = checkpoints[max_checkpoints:]
+                for checkpoint_id, checkpoint_ns in checkpoints_to_delete:
+                    cursor.execute(
+                        "DELETE FROM checkpoints WHERE checkpoint_id = ? AND checkpoint_ns = ?",
+                        (checkpoint_id, checkpoint_ns)
+                    )
+
+                self._db_connection.commit()
+                deleted_count = len(checkpoints_to_delete)
+                print(f"🧹 Cleaned up {deleted_count} old checkpoints for thread {thread_id}")
+
+        except Exception as e:
+            # Don't fail the whole operation if cleanup fails
+            print(f"⚠️ Checkpoint cleanup failed: {e}")
+
+    def get_checkpoint_stats(self) -> dict:
+        """
+        Get statistics about checkpoint storage.
+
+        Returns:
+            dict: Statistics including checkpoint counts, thread info, and database size
+        """
+        try:
+            cursor = self._db_connection.cursor()
+
+            # Get total checkpoint count
+            cursor.execute("SELECT COUNT(*) FROM checkpoints")
+            total_checkpoints = cursor.fetchone()[0]
+
+            # Get unique thread count
+            cursor.execute("SELECT COUNT(DISTINCT thread_id) FROM checkpoints")
+            unique_threads = cursor.fetchone()[0]
+
+            # Get checkpoints per thread
+            cursor.execute(
+                """
+                SELECT thread_id, COUNT(*) as count
+                FROM checkpoints
+                GROUP BY thread_id
+                ORDER BY count DESC
+                """
+            )
+            thread_stats = [{"thread_id": row[0], "checkpoint_count": row[1]}
+                          for row in cursor.fetchall()]
+
+            # Get database file size
+            import os
+            db_size = os.path.getsize(self.config.checkpoint_db_path)
+
+            return {
+                "total_checkpoints": total_checkpoints,
+                "unique_threads": unique_threads,
+                "db_size_bytes": db_size,
+                "db_size_mb": round(db_size / (1024 * 1024), 2),
+                "thread_stats": thread_stats,
+                "max_checkpoints_per_thread": self.config.checkpoint.max_checkpoints_per_thread,
+                "cleanup_interval": self.config.checkpoint.cleanup_interval,
+            }
+
+        except Exception as e:
+            return {"error": str(e)}
+
+    def close(self) -> None:
+        """Close the database connection."""
+        if hasattr(self, "_db_connection") and self._db_connection:
+            try:
+                self._db_connection.close()
+            except Exception:
+                pass  # Ignore errors during cleanup
+
+    def __del__(self) -> None:
+        """Cleanup when object is destroyed."""
+        self.close()
+
+    def __enter__(self) -> "Orchestrator":
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Context manager exit - close database connection."""
+        self.close()
