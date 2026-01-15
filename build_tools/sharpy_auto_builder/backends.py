@@ -576,8 +576,10 @@ class CopilotBackend(Backend):
             ]
 
             # Run Copilot CLI
+            # Important: stdin must be DEVNULL for non-interactive mode
             process = await asyncio.create_subprocess_exec(
                 *cmd,
+                stdin=asyncio.subprocess.DEVNULL,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=self.project_root,

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-15T15:16:29.243935",
+  "last_updated": "2026-01-15T15:28:55.772562",
   "phases": [
     {
       "id": "0.1.6",
@@ -1240,7 +1240,7 @@
       "name": "Structs & Enums - Comprehensive Task List (v2)",
       "goal": "",
       "status": "in_progress",
-      "progress": 63.63636363636363,
+      "progress": 72.72727272727273,
       "tasks": [
         {
           "id": "0.1.8.1",
@@ -1657,8 +1657,46 @@
           "files": [
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude-code",
+              "started_at": "2026-01-15T15:28:55.763925",
+              "completed_at": "2026-01-15T15:28:55.763927",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T15:28:55.763910",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have enough information to generate the spec adherence report. Let me compile my findings:\n\n## Spec Adherence Report: Implement Struct Instantiation and Assignment\n\n**Spec:** `docs/language_specification/structs.md`\n**Implementation:** `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Summary\n\nThe implementation for struct instantiation and assignment in `RoslynEmitter.cs` was verified against the language specification in `docs/language_specification/structs.md`.\n\n---\n\n### Compliant\n\n- [x] **Struct Declaration Generation** (Lines 681-726): Structs are generated as C# `struct` declarations using `StructDeclaration()`, mapping directly to the spec requirement \"Direct mapping to C# `struct`\"\n\n- [x] **Struct Instantiation with `new` keyword** (Lines 2298-2328): Struct instantiation generates `ObjectCreationExpression` with `new TypeName(args)` syntax. The implementation correctly detects struct types via `_structNames` set and `TypeSymbol.TypeKind == Struct` symbol lookup.\n\n- [x] **Parameterized Constructor Support** (Lines 2313-2322): Arguments and keyword arguments are correctly mapped to C# constructor parameters, supporting both positional and named arguments.\n\n- [x] **Parameterless Constructor Support** (Lines 2324-2328): Calling a struct without arguments generates `new TypeName()`, supporting the spec's implicit parameterless constructor behavior (C# 9.0 semantics).\n\n- [x] **Constructor Overloading** (Lines 1083-1086): Multiple `__init__` methods are collected and each generates a separate C# constructor, supporting the spec's constructor overloading requirement.\n\n- [x] **Field Declarations** (Lines 993-1017): Struct fields declared at struct level are generated as C# field members with proper type mapping.\n\n- [x] **Constructor Field Initialization** (Lines 1156-1175): `self.field = value` assignments in `__init__` are correctly transformed to `this.Field = value` in the generated constructor body.\n\n- [x] **Member Access** (Lines 2885-2938): `obj.member` generates `MemberAccessExpression` with proper PascalCase name mangling for fields and methods.\n\n- [x] **Member Assignment** (Lines 1689-1703): `obj.field = value` generates proper assignment via `GenerateMemberAccess` producing `SimpleMemberAccessExpression`.\n\n- [x] **Name Mangling for Types** (Lines 687, 2311): Struct names are transformed using `NameMangler.Transform` with `NameContext.Type`, converting snake_case to PascalCase.\n\n- [x] **Interface Implementation** (Lines 706-712): Structs can implement interfaces as specified, with base types mapped to C#'s `BaseList`.\n\n- [x] **Value Semantics** (Implicit): Since generated code produces C# `struct`, value semantics (copy-on-assignment, pass-by-value) are automatically inherited from C#'s struct behavior.\n\n- [x] **Generic Struct Support** (Lines 696-704): Type parameters are handled and generated as C# generic type parameters.\n\n---\n\n### Deviations\n\n- [ ] **None identified** - The implementation fully adheres to the specification for struct instantiation and assignment.\n\n---\n\n### Undocumented Behavior (Implementation Details)\n\n1. **Struct Name Tracking** (Line 684): The emitter tracks struct names in `_structNames` HashSet to detect instantiation patterns without requiring full symbol table lookup. This is an optimization not explicitly specified but doesn't violate the spec.\n\n2. **Decorator Processing** (Line 690): `GenerateTypeModifiersFromDecorators` is applied to structs, allowing decorators like `@public` or `@internal`. This extends Python-like decorator syntax to access modifiers, consistent with class handling.\n\n3. **Reuses Class Member Generation** (Line 716): `GenerateClassMembers` is shared between class and struct generation. This is an internal implementation choice that correctly handles fields, constructors, and methods for both types.\n\n---\n\n### Test Coverage Verification\n\nThe following integration tests in `Phase018IntegrationTests.cs` validate spec compliance:\n\n| Test | Spec Requirement |\n|------|------------------|\n| `StructInstantiation_WithArguments_CompilesAndRuns` | Constructor with parameters |\n| `StructInstantiation_DefaultConstructor_CompilesAndRuns` | Parameterless constructor |\n| `StructInstantiation_MultipleInstances_CompilesAndRuns` | Multiple struct instances |\n| `StructInstantiation_WithMethod_CompilesAndRuns` | Struct methods |\n| `StructInstantiation_ConstructorOverloading_CompilesAndRuns` | Multiple constructors |\n| `StructInstantiation_PascalCaseName_PreservesCasing` | Name mangling |\n| `StructInstantiation_WithFloatFields_CompilesAndRuns` | Float field types |\n| `StructInstantiation_NestedInExpression_CompilesAndRuns` | Expression contexts |\n\nAdditional tests in `RoslynEmitterExpressionTests.cs`:\n- `GenerateExpression_StructInstantiation_WithArguments_GeneratesObjectCreation`\n- `GenerateExpression_StructInstantiation_ParameterlessConstructor_GeneratesEmptyArgList`\n- `GenerateExpression_StructInstantiation_WithSnakeCaseName_AppliesNameMangling`\n- `GenerateExpression_StructInstantiation_WithKeywordArguments_GeneratesNamedArguments`\n\n---\n\n### Recommendations\n\n**None** - The implementation correctly follows the specification. All major features are implemented and tested:\n\n1. \u2705 Struct instantiation generates `new TypeName(args)`\n2. \u2705 Both parameterized and parameterless constructors work\n3. \u2705 Constructor overloading is supported\n4. \u2705 Field and member access uses proper name mangling\n5. \u2705 Value semantics are inherited from C# struct\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T15:28:55.763914",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "## Verification Report: Implement Struct Instantiation and Assignment\n\n### Test Results\n- **Total: 3,598** | **Passed: 3,565** | **Failed: 0** | **Skipped: 33**\n  - Sharpy.Core.Tests: 735 passed\n  - Sharpy.Compiler.Tests: 2,830 passed, 33 skipped (unrelated to struct functionality)\n\n### Behavior Checks\n\n#### Struct Instantiation (Phase 018 Integration Tests - All Passed)\n- [x] `StructInstantiation_WithArguments_CompilesAndRuns` - Constructor with parameters works\n- [x] `StructInstantiation_DefaultConstructor_CompilesAndRuns` - Parameterless constructor works\n- [x] `StructInstantiation_MultipleInstances_CompilesAndRuns` - Multiple struct instances work correctly\n- [x] `StructInstantiation_WithMethod_CompilesAndRuns` - Struct methods work correctly\n- [x] `StructInstantiation_ConstructorOverloading_CompilesAndRuns` - Multiple constructor overloads supported\n- [x] `StructInstantiation_PascalCaseName_PreservesCasing` - Name mangling preserves casing\n- [x] `StructInstantiation_WithFloatFields_CompilesAndRuns` - Float fields work correctly\n- [x] `StructInstantiation_NestedInExpression_CompilesAndRuns` - Inline instantiation and method call works\n\n#### Struct Semantic Validation Tests (19 Tests - All Passed)\n- [x] Field initialization validation (all fields must be initialized in constructors)\n- [x] Conditional/loop field initialization detection (reports errors correctly)\n- [x] Constructor field counting (ignores non-field members)\n- [x] Method field access/modification works correctly\n- [x] Complex expression initialization support\n\n#### Code Generation Tests (RoslynEmitter - 236 Tests for Expressions)\n- [x] `GenerateExpression_StructInstantiation_WithArguments_GeneratesObjectCreation` - Generates `new TypeName(args)`\n- [x] `GenerateExpression_StructInstantiation_ParameterlessConstructor_GeneratesEmptyArgList` - Generates `new TypeName()`\n- [x] `GenerateExpression_StructInstantiation_WithSnakeCaseName_AppliesNameMangling` - snake_case \u2192 PascalCase\n- [x] `GenerateExpression_StructInstantiation_WithKeywordArguments_GeneratesNamedArguments` - Named arguments work\n\n#### Struct Declaration Code Generation Tests\n- [x] Simple struct generation\n- [x] Struct with fields\n- [x] Struct with methods\n- [x] Struct with interface implementation\n- [x] Struct with generic type parameters\n- [x] Complete Vector2 example\n\n### Coverage Assessment\n\n**Comprehensive coverage across all layers:**\n\n1. **Parsing/AST**: Struct definitions are parsed correctly (implicit via integration tests)\n2. **Semantic Analysis**: \n   - Field initialization validation (19 dedicated tests)\n   - Constructor validation\n   - Type resolution for fields\n3. **Code Generation**:\n   - Struct declaration \u2192 C# `struct` keyword\n   - Struct instantiation \u2192 `new TypeName(args)`\n   - Name mangling applied correctly\n   - Keyword arguments \u2192 named arguments in C#\n4. **End-to-End Integration**: 8 tests verifying full compilation and execution\n\n### Regression Check\n- **No regressions detected**\n- All 3,565 passing tests continue to pass\n- The 33 skipped tests are pre-existing and unrelated to struct functionality (division semantics, keyword arguments edge cases, decorator validation)\n\n### Key Implementation Details Verified\n\nFrom `RoslynEmitter.cs:2294-2329`:\n- Struct instantiation is detected via `_structNames` set or symbol table lookup\n- Both `TypeKind.Class` and `TypeKind.Struct` trigger `ObjectCreationExpression` generation\n- Proper `new TypeName(args)` syntax is generated for struct constructors\n\n### Recommendations\n- None - implementation is complete and verified\n- All struct instantiation and assignment behaviors match the specification in `docs/language_specification/structs.md`\n- Value semantics documentation is in place for future implementation phases (copy-on-assignment, pass-by-value, parameter modifiers)\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T15:28:55.763919",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the information needed. Here is my verification report:\n\n---\n\n# Hallucination Defense Report: Struct Instantiation Implementation\n\n## Verified Claims\n\n**Claim:** `_structNames` HashSet field added at line 23\n**Verification:** Read RoslynEmitter.cs line 23\n**Result:** \u2705 CORRECT \u2014 Line 23 contains exactly: `private readonly HashSet<string> _structNames = new(); // Track struct names defined in the current module`\n\n---\n\n**Claim:** Struct names tracked during declaration at lines 683-684\n**Verification:** Grep for GenerateStructDeclaration method\n**Result:** \u2705 CORRECT \u2014 Lines 683-684 contain `_structNames.Add(structDef.Name);` inside the `GenerateStructDeclaration` method\n\n---\n\n**Claim:** Name mangling updated to recognize structs at lines 57-61\n**Verification:** Read RoslynEmitter.cs lines 58-62\n**Result:** \u2705 CORRECT \u2014 Lines 58-62 check `_classNames.Contains(name) || _structNames.Contains(name)` and return `NameMangler.ToPascalCase(name)`\n\n---\n\n**Claim:** Instantiation detection updated at lines 2297-2304\n**Verification:** Read RoslynEmitter.cs lines 2297-2307\n**Result:** \u26a0\ufe0f PARTIALLY CORRECT \u2014 The line numbers are slightly off. The check starts at line 2298 (not 2297). The actual implementation spans lines 2298-2307, checking `_classNames.Contains(funcName.Name) || _structNames.Contains(funcName.Name)` plus symbol table lookup\n\n---\n\n**Claim:** `ObjectCreationExpression(ParseName(name)).WithArgumentList(ArgumentList(SeparatedList(allArgs)))` is valid Roslyn API\n**Verification:** Project compiles successfully with `dotnet build`\n**Result:** \u2705 CORRECT \u2014 All Roslyn SyntaxFactory methods exist and are used correctly:\n- `ObjectCreationExpression` \u2014 valid\n- `ParseName` \u2014 valid  \n- `WithArgumentList` \u2014 valid fluent method\n- `ArgumentList` \u2014 valid\n- `SeparatedList` \u2014 valid\n\n---\n\n**Claim:** C# 9.0 compatibility for Unity constraint\n**Verification:** Checked generated code uses `NamespaceDeclaration` (not `FileScopedNamespaceDeclaration`)\n**Result:** \u2705 CORRECT \u2014 Generated output uses block-scoped namespaces (C# 9.0 compatible). The compiler itself uses C# latest features (allowed since it's a build tool, not Unity runtime code)\n\n---\n\n**Claim:** \"Structs now work identically to classes for instantiation purposes\"\n**Verification:** Code inspection shows both use same `ObjectCreationExpression` path when `isTypeInstantiation` is true\n**Result:** \u2705 CORRECT \u2014 Both class and struct instantiation generate `new TypeName(args)` syntax via identical code path at lines 2325-2328\n\n---\n\n## Test Verification\n\n**Claim:** Implementation tests exist and pass\n**Verification:** Ran `dotnet test --filter \"Struct\"` \n**Result:** \u2705 CORRECT \u2014 88 tests pass, including:\n- `GenerateExpression_StructInstantiation_WithArguments_GeneratesObjectCreation`\n- `GenerateExpression_StructInstantiation_ParameterlessConstructor_GeneratesEmptyArgList`  \n- `GenerateExpression_StructInstantiation_WithSnakeCaseName_AppliesNameMangling`\n- `GenerateExpression_StructInstantiation_WithKeywordArguments_GeneratesNamedArguments`\n- 8 integration tests in `Phase018IntegrationTests`\n\n---\n\n## Summary\n\n| Category | Result |\n|----------|--------|\n| Code location claims | \u2705 3/4 exact, 1 off by 1 line |\n| Roslyn API claims | \u2705 All valid |\n| Semantic claims | \u2705 All correct |\n| Test claims | \u2705 All pass |\n\n**Overall: No hallucinations detected.** One minor line number discrepancy (2297 vs 2298) but the code exists and functions as described.\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": false,
           "human_question": null,
@@ -1673,7 +1711,7 @@
           "files": [
             "src/Sharpy.Compiler.Tests/Integration/Phase018IntegrationTests.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -2127,14 +2165,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "0.1.8.9",
-  "total_attempts": 31,
-  "total_successes": 31,
+  "current_task_id": "0.1.8.10",
+  "total_attempts": 32,
+  "total_successes": 32,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 31,
-      "successes": 31,
+      "attempts": 32,
+      "successes": 32,
       "failures": 0
     },
     "copilot": {
@@ -2143,5 +2181,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 46.666666666666664
+  "overall_progress": 48.333333333333336
 }
