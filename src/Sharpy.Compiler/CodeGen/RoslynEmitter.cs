@@ -1073,6 +1073,16 @@ public class RoslynEmitter
             modifiers = modifiers.Add(Token(SyntaxKind.OverrideKeyword));
         }
 
+        // Primary mechanism: Method is static if it doesn't have 'self' parameter (Pythonic)
+        // @static decorator is valid but OPTIONAL/redundant
+        bool hasSelfParameter = func.Parameters.Any(p =>
+            string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+
+        if (!hasSelfParameter && !modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword)))
+        {
+            modifiers = modifiers.Add(Token(SyntaxKind.StaticKeyword));
+        }
+
         // Generate parameters with type annotations, skipping 'self' and 'cls' parameters
         var parameters = func.Parameters
             .Where(p =>

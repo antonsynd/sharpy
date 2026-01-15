@@ -304,7 +304,15 @@ public class NameResolver
         var accessLevel = DetermineAccessLevel(method.Name);
 
         // Check for special decorators
-        bool isStatic = method.Decorators.Any(d => d.Name == "static" || d.Name == "staticmethod");
+        bool hasStaticDecorator = method.Decorators.Any(d => d.Name == "static" || d.Name == "staticmethod");
+
+        // Primary mechanism: Method is static if it doesn't have 'self' parameter (Pythonic)
+        // @static decorator is valid but OPTIONAL/redundant
+        bool hasSelfParameter = method.Parameters.Any(p =>
+            string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase));
+
+        bool isStatic = hasStaticDecorator || !hasSelfParameter;
+
         bool isAbstract = method.Decorators.Any(d => d.Name == "abstract" || d.Name == "abstractmethod");
         bool isVirtual = method.Decorators.Any(d => d.Name == "virtual");
         bool isOverride = method.Decorators.Any(d => d.Name == "override");

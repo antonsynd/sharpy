@@ -1255,5 +1255,78 @@ public class RoslynEmitterDefinitionTests
         Assert.Contains("public static int Add(int x, int y)", code);
     }
 
+    [Fact]
+    public void GenerateMethod_WithoutSelfParameter_GeneratesStaticMethod()
+    {
+        // Arrange - Method without 'self' parameter should be static (primary mechanism)
+        var classDef = new ClassDef
+        {
+            Name = "Calculator",
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "multiply",
+                    Decorators = new List<Decorator>(), // No @static decorator needed!
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "a", Type = new TypeAnnotation { Name = "int" } },
+                        new Parameter { Name = "b", Type = new TypeAnnotation { Name = "int" } }
+                    },
+                    ReturnType = new TypeAnnotation { Name = "int" },
+                    Body = new List<Statement>
+                    {
+                        new ReturnStatement { Value = new IntegerLiteral { Value = "0" } }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public static int Multiply(int a, int b)", code);
+    }
+
+    [Fact]
+    public void GenerateMethod_WithSelfParameter_GeneratesInstanceMethod()
+    {
+        // Arrange - Method with 'self' parameter should be instance method
+        var classDef = new ClassDef
+        {
+            Name = "Counter",
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "increment",
+                    Decorators = new List<Decorator>(),
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self", Type = null },
+                        new Parameter { Name = "amount", Type = new TypeAnnotation { Name = "int" } }
+                    },
+                    ReturnType = null,
+                    Body = new List<Statement>
+                    {
+                        new PassStatement()
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public void Increment(int amount)", code);
+        Assert.DoesNotContain("static void Increment", code);
+    }
+
     #endregion
 }
