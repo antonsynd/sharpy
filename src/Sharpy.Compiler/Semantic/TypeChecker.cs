@@ -209,20 +209,29 @@ public class TypeChecker
         _symbolTable.EnterScope($"function:{functionDef.Name}");
 
         // Validate self parameter for instance methods
-        if (_currentClass != null && functionDef.Parameters.Count > 0)
+        // In Sharpy, methods without 'self' as the first parameter are treated as static methods
+        // This is consistent with how the code generator handles them
+        if (_currentClass != null)
         {
-            // Instance method should have 'self' as first parameter
-            if (functionDef.Parameters[0].Name != "self")
+            // Check if this is a static method (explicitly decorated OR no self parameter)
+            bool hasStaticDecorator = functionDef.Decorators.Any(d =>
+                d.Name == "static" || d.Name == "staticmethod");
+
+            bool hasSelfParameter = functionDef.Parameters.Count > 0 &&
+                functionDef.Parameters[0].Name == "self";
+
+            // Method is static if it has decorator OR doesn't have self parameter
+            // No error needed - code generator will make it static
+            if (!hasStaticDecorator && !hasSelfParameter)
             {
-                AddError($"Instance method '{functionDef.Name}' must have 'self' as the first parameter",
-                    functionDef.LineStart, functionDef.ColumnStart);
+                // This is implicitly a static method - valid, no error
             }
-        }
-        else if (_currentClass != null && functionDef.Parameters.Count == 0)
-        {
-            // Instance method with no parameters at all
-            AddError($"Instance method '{functionDef.Name}' is missing required 'self' parameter",
-                functionDef.LineStart, functionDef.ColumnStart);
+            else if (hasSelfParameter && hasStaticDecorator)
+            {
+                // Warning: static decorator with self parameter - self will be ignored
+                // This is allowed but could be confusing
+            }
+            // Instance methods with self are valid - no action needed
         }
 
         // Validate parameter ordering: non-default parameters cannot follow default parameters

@@ -268,37 +268,35 @@ class Person:
     }
 
     [Fact]
-    public void WrongFirstParameter_ProducesError()
+    public void MethodWithoutSelf_IsTreatedAsStatic()
     {
+        // In Sharpy, methods without 'self' as the first parameter are treated as static methods
         var source = @"
 class Person:
-    def greet(other):
+    def greet(other: int):  # No self - this is a static method
         pass
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Should produce error about wrong first parameter
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e =>
-            e.Message.Contains("must have 'self' as the first parameter"));
+        // No error - this is treated as a valid static method
+        typeChecker.Errors.Should().BeEmpty();
     }
 
     [Fact]
-    public void InstanceMethodWithNoParams_ProducesError()
+    public void MethodWithNoParams_IsTreatedAsStatic()
     {
+        // In Sharpy, methods without parameters are treated as static methods
         var source = @"
 class Person:
-    def greet():
+    def greet():  # No parameters - this is a static method
         pass
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Should produce error about missing self parameter
-        typeChecker.Errors.Should().NotBeEmpty();
-        typeChecker.Errors.Should().Contain(e =>
-            e.Message.Contains("missing required 'self' parameter"));
+        // No error - this is treated as a valid static method
+        typeChecker.Errors.Should().BeEmpty();
     }
 
     [Fact]

@@ -54,6 +54,12 @@ public class RoslynEmitter
             return NameMangler.ToConstantCase(name);
         }
 
+        // Check if this is a reference to a class name - preserve PascalCase
+        if (_classNames.Contains(name))
+        {
+            return NameMangler.ToPascalCase(name);
+        }
+
         var baseName = NameMangler.ToCamelCase(name);
 
         if (isNewDeclaration)
@@ -2021,6 +2027,8 @@ public class RoslynEmitter
             DictComprehension dictComp => GenerateDictComprehension(dictComp),
 
             // Primary expressions
+            // Handle 'self' -> 'this' conversion for instance methods
+            Identifier name when string.Equals(name.Name, "self", StringComparison.OrdinalIgnoreCase) => ThisExpression(),
             Identifier name => IdentifierName(GetMangledVariableName(name.Name, isNewDeclaration: false)),
             MemberAccess memberAccess => GenerateMemberAccess(memberAccess),
             IndexAccess indexAccess => GenerateIndexAccess(indexAccess),
@@ -2103,6 +2111,35 @@ public class RoslynEmitter
 
             // Regular function call
             return InvocationExpression(ParseName(name))
+                .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+        }
+
+        // Handle method calls on objects: obj.method() or ClassName.static_method()
+        if (call.Function is MemberAccess memberAccess)
+        {
+            var obj = GenerateExpression(memberAccess.Object);
+
+            // Apply name mangling to method name
+            var methodName = NameMangler.ToPascalCase(memberAccess.Member);
+
+            // Generate positional arguments
+            var positionalArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg)));
+
+            // Generate keyword arguments with named syntax
+            var keywordArgs = call.KeywordArguments.Select(kwarg =>
+                Argument(GenerateExpression(kwarg.Value))
+                    .WithNameColon(NameColon(IdentifierName(NameMangler.ToCamelCase(kwarg.Name)))));
+
+            // Combine positional and keyword arguments
+            var allArgs = positionalArgs.Concat(keywordArgs).ToArray();
+
+            // Generate: obj.Method(args)
+            var methodAccess = MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                obj,
+                IdentifierName(methodName));
+
+            return InvocationExpression(methodAccess)
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
         }
 
@@ -2629,7 +2666,10 @@ public class RoslynEmitter
     private ExpressionSyntax GenerateMemberAccess(MemberAccess memberAccess)
     {
         var obj = GenerateExpression(memberAccess.Object);
-        var member = IdentifierName(memberAccess.Member);
+
+        // Apply name mangling to member names - fields and methods use PascalCase in generated C#
+        var mangledMemberName = NameMangler.ToPascalCase(memberAccess.Member);
+        var member = IdentifierName(mangledMemberName);
 
         if (memberAccess.IsNullConditional)
         {

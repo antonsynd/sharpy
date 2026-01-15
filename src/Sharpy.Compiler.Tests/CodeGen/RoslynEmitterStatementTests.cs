@@ -394,7 +394,8 @@ public class RoslynEmitterStatementTests
 
         var result = GenerateStatementCode(stmt);
 
-        Assert.Equal("obj.field = 42;", result);
+        // Member access uses PascalCase for field names (Python snake_case -> C# PascalCase)
+        Assert.Equal("obj.Field = 42;", result);
     }
 
     #endregion

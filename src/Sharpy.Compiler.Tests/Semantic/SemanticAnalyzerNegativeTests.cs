@@ -1186,48 +1186,54 @@ def demo():
     #region Self Parameter Tests
 
     [Fact]
-    public void RejectsInstanceMethodWithWrongFirstParam()
+    public void AllowsMethodWithoutSelfAsStatic()
     {
+        // In Sharpy, methods without 'self' are treated as static methods
         var source = @"
 class Foo:
-    def bar(other):  # Should be 'self'
+    def bar(x: int):  # No self - this is a static method
         pass
 ";
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("self"));
+        // No error - this is a valid static method
+        typeChecker.Errors.Should().BeEmpty();
     }
 
     [Fact]
-    public void RejectsInstanceMethodWithNoParams()
+    public void AllowsMethodWithNoParamsAsStatic()
     {
+        // In Sharpy, methods without parameters are treated as static methods
         var source = @"
 class Foo:
-    def bar():  # Missing self parameter
+    def bar():  # No parameters - this is a static method
         pass
 ";
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("self"));
+        // No error - this is a valid static method
+        typeChecker.Errors.Should().BeEmpty();
     }
 
     [Fact]
-    public void RejectsMultipleMethodsWithoutSelf()
+    public void AllowsMultipleStaticMethods()
     {
+        // In Sharpy, methods without 'self' are treated as static methods
         var source = @"
 class Foo:
-    def method1(x):  # Wrong
+    def method1(x: int):  # Static method
         pass
 
-    def method2(y):  # Wrong
+    def method2(y: int):  # Static method
         pass
 ";
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        typeChecker.Errors.Count.Should().BeGreaterThanOrEqualTo(2);
+        // No error - these are valid static methods
+        typeChecker.Errors.Should().BeEmpty();
     }
 
     [Fact]

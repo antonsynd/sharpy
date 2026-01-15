@@ -580,7 +580,7 @@ public class RoslynEmitterExpressionTests
     [Fact]
     public void GenerateExpression_PipeForward_MemberAccess_GeneratesMethodCall()
     {
-        // Arrange: x |> obj.method → obj.method(x)
+        // Arrange: x |> obj.method → obj.Method(x) (method names are PascalCase in C#)
         var expr = new BinaryOp
         {
             Operator = BinaryOperator.PipeForward,
@@ -595,10 +595,10 @@ public class RoslynEmitterExpressionTests
         // Act
         var result = InvokeGenerateExpression(expr);
 
-        // Assert
+        // Assert - method names are transformed to PascalCase (method -> Method)
         var code = result.ToString();
         code.Should().Contain("obj");
-        code.Should().Contain("method");
+        code.Should().Contain("Method");
         code.Should().Contain("(x)");
     }
 
@@ -822,11 +822,11 @@ public class RoslynEmitterExpressionTests
         // Act
         var result = InvokeGenerateExpression(expr);
 
-        // Assert
+        // Assert - Member names are transformed to PascalCase (field -> Field)
         var code = result.ToString();
         code.Should().Contain("obj");
         code.Should().Contain(".");
-        code.Should().Contain("field");
+        code.Should().Contain("Field");
         code.Should().NotContain("?");
     }
 
@@ -844,11 +844,11 @@ public class RoslynEmitterExpressionTests
         // Act
         var result = InvokeGenerateExpression(expr);
 
-        // Assert
+        // Assert - Member names are transformed to PascalCase (field -> Field)
         var code = result.ToString();
         code.Should().Contain("obj");
         code.Should().Contain("?");
-        code.Should().Contain("field");
+        code.Should().Contain("Field");
     }
 
     #endregion
