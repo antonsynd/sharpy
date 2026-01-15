@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-15T14:56:48.544494",
+  "last_updated": "2026-01-15T15:16:29.243935",
   "phases": [
     {
       "id": "0.1.6",
@@ -1240,7 +1240,7 @@
       "name": "Structs & Enums - Comprehensive Task List (v2)",
       "goal": "",
       "status": "in_progress",
-      "progress": 54.54545454545454,
+      "progress": 63.63636363636363,
       "tasks": [
         {
           "id": "0.1.8.1",
@@ -1603,8 +1603,46 @@
           "files": [
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude-code",
+              "started_at": "2026-01-15T15:16:29.237208",
+              "completed_at": "2026-01-15T15:16:29.237211",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T15:16:29.237198",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the information needed to write the Spec Adherence Report.\n\n## Spec Adherence Report: Implement Enum Usage Code Generation\n\n**Spec:** `docs/language_specification/enums.md`\n**Implementation:** `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Compliant\n\n- [x] **Enum member access** (`Color.RED`): Correctly transforms to C# PascalCase (`Color.Red`) via `TransformEnumMemberName()` at line 2889-2896\n- [x] **Name mangling for enum types**: Enum type names are converted to PascalCase via `NameMangler.Transform()` at line 805\n- [x] **Name mangling for enum members**: Uppercase/underscore names (e.g., `RED`, `DARK_BLUE`) are transformed to PascalCase (e.g., `Red`, `DarkBlue`) via `TransformEnumMemberName()` at line 916-932\n- [x] **Integer enum code generation**: Integer enums generate native C# `enum` types via `GenerateIntegerEnum()` at lines 802-826\n- [x] **String enum code generation**: String enums generate sealed classes with `public static readonly string` fields via `GenerateStringEnumClass()` at lines 831-896\n- [x] **`.value` property for integer enums**: Correctly generates cast expression `(int)enumInstance` at lines 2902-2913\n- [x] **Enum type registration in symbol table**: Pre-scans for enum declarations and registers them for member access resolution at lines 349-365\n- [x] **Explicit constant values**: Enum members with explicit values are preserved in generated code at lines 906-911\n\n### Deviations\n\n- [ ] **Section \"Simple Enums\" (line 24)**: `.name` property not implemented\n  - **Spec says:** `name = favorite.name    # \"RED\"` - Access enum member name as string\n  - **Implementation:** No handling for `.name` property on enum instances. The `GenerateMemberAccess()` function only handles `.value` (lines 2902-2913), not `.name`.\n  - **Impact:** **Medium** - Users cannot access the name of an enum value as a string. The spec explicitly requires this feature.\n\n- [ ] **Section \"Enum Iteration and Methods\" (lines 40-56)**: Enum iteration not implemented\n  - **Spec says:** `for color in Color:` - Iterate over all enum values; `list(Color)` - Get all values as list\n  - **Implementation:** No special handling for iterating over enum types or converting them to lists. The `for` loop and `list()` call would not recognize enum types as iterables.\n  - **Impact:** **Medium** - Users cannot iterate over enum members or get all enum values. These are documented features.\n\n- [ ] **Section \"Implementation Notes\" (line 63)**: `.name` implementation strategy documented but not coded\n  - **Spec says:** `.name` property: \ud83d\udd04 Lowered - `Enum.GetName()` or lookup\n  - **Implementation:** Not implemented. Should generate `Enum.GetName(typeof(ColorEnum), value)` or similar.\n  - **Impact:** **Medium** - Documented lowering strategy exists but is not implemented.\n\n### Recommendations\n\n1. **Implement `.name` property**: Add handling in `GenerateMemberAccess()` similar to `.value`:\n   ```csharp\n   if (string.Equals(memberAccess.Member, \"name\", StringComparison.OrdinalIgnoreCase))\n   {\n       if (IsEnumTypeExpression(memberAccess.Object))\n       {\n           // Generate: Enum.GetName(typeof(EnumType), enumValue)\n           return InvocationExpression(\n               MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,\n                   IdentifierName(\"Enum\"),\n                   IdentifierName(\"GetName\")))\n               .AddArgumentListArguments(\n                   Argument(TypeOfExpression(IdentifierName(enumTypeName))),\n                   Argument(obj));\n       }\n   }\n   ```\n\n2. **Implement enum iteration**: This requires:\n   - Detecting when an enum type is used in a `for` loop iterator position\n   - Generating `Enum.GetValues<EnumType>()` or `(EnumType[])Enum.GetValues(typeof(EnumType))`\n   - Potentially handling `list(EnumType)` as a special case\n\n3. **Add tests**: Create test cases for `.name` property access and enum iteration\n\n### Summary\n\nThe implementation correctly handles the core enum usage patterns:\n- Enum member access with proper name mangling\n- `.value` property access\n- Both integer and string enum code generation\n\nHowever, two documented features are missing:\n1. `.name` property access (returns the member name as a string)\n2. Enum iteration (`for x in EnumType:`)\n\nBoth are explicitly documented in the spec with examples and implementation notes.\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T15:16:29.237202",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "All tests pass. Let me compile a comprehensive verification report.\n\n## Verification Report: Implement Enum Usage Code Generation\n\n### Test Results\n- **Sharpy.Core.Tests**: Total: 735 | Passed: 735 | Failed: 0 | Skipped: 0\n- **Sharpy.Compiler.Tests**: Total: 2851 | Passed: 2818 | Failed: 0 | Skipped: 33\n- **Enum-specific tests**: Total: 54 | Passed: 54 | Failed: 0\n\n### Behavior Checks\n- [x] **Enum definition code generation** - Integer enums generate C# `public enum` declarations\n- [x] **Enum member name transformation** - `RED`, `DARK_BLUE` \u2192 `Red`, `DarkBlue` (PascalCase)\n- [x] **Enum member access** - `Color.RED` \u2192 `Color.Red` (correctly transforms member access expressions)\n- [x] **Enum `.value` property** - `favorite.value` \u2192 `(int)favorite` (casts enum to underlying int)\n- [x] **String enum support** - String enums generate sealed classes with static readonly string fields\n- [x] **DocString support** - Enum docstrings generate XML documentation comments\n- [x] **Symbol table registration** - Enum types are registered in symbol table for proper type resolution\n\n### Coverage Assessment\nThe enum usage code generation implementation is well tested across multiple test files:\n\n1. **RoslynEmitterDefinitionTests.cs** (lines 1556-1750):\n   - `GenerateEnumDeclaration_SimpleEnum_GeneratesPublicEnum` - Basic enum declaration\n   - `GenerateEnumDeclaration_WithoutExplicitValues_GeneratesEnumMembers` - Auto-value enums\n   - `GenerateEnumDeclaration_WithDocstring_GeneratesXmlDoc` - Documentation generation\n   - `GenerateEnumMemberAccess_TransformsToPascalCase` - Member access name transformation\n   - `GenerateEnumValueProperty_GeneratesCastToInt` - `.value` property translation\n\n2. **EnumValidationTests.cs** - 18 semantic validation tests for enum correctness\n\n3. **RoslynEmitterIntegrationTests.cs**:\n   - `GeneratedCode_EnumDeclaration_CompilesSuccessfully` - Roslyn compilation verification\n\n4. **Parser and Lexer tests** - Multiple tests for enum parsing and tokenization\n\n### Regression Check\n- No regressions detected\n- The single test failure (`IfElifElseStatement_WorksCorrectly`) observed in the first run was a flaky test that passed on subsequent runs and is unrelated to enum code generation\n\n### Key Implementation Details Verified (RoslynEmitter.cs)\n\n1. **Line 768-780**: `GenerateEnumDeclaration()` - Dispatches to integer or string enum generation\n2. **Line 786-796**: `IsStringEnum()` - Detects string-valued enums \n3. **Line 802-826**: `GenerateIntegerEnum()` - C# enum declaration with members\n4. **Line 831-896**: `GenerateStringEnumClass()` - Sealed class for string enums\n5. **Line 898-914**: `GenerateEnumMember()` - Individual member with value assignment\n6. **Line 916-932**: `TransformEnumMemberName()` - SCREAMING_SNAKE_CASE \u2192 PascalCase\n7. **Line 2880-2897**: Enum member access transformation in `GenerateMemberAccess()`\n8. **Line 2902-2913**: `.value` property \u2192 `(int)` cast\n9. **Line 3588-3605**: `IsEnumTypeExpression()` - Type detection for `.value` transformation\n\n### Recommendations\n- None - Implementation is complete and all tests pass\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T15:16:29.237204",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now let me compile the verification report:\n\n---\n\n# Hallucination Defense Verification Report\n\n## Claim 1: Line Number for `TransformEnumMemberName()` helper function\n**Claim:** \"Added `TransformEnumMemberName()` helper function\" at lines 878-912\n**Verification:** Used `grep -n` to find actual line numbers\n**Result:** \u274c INCORRECT \u2014 The function `TransformEnumMemberName` is defined at **lines 916-932**, not 878-912. Lines 878-882 contain field modifier code (PublicKeyword, StaticKeyword, ReadOnlyKeyword). The `GenerateEnumMember` function that uses it is at lines 898-914.\n\n## Claim 2: Line Number for `GenerateMemberAccess()` enum handling\n**Claim:** \"Enhanced `GenerateMemberAccess()` to detect enum member access patterns\" at lines 2859-2878\n**Verification:** Used `grep -n` to find actual line numbers\n**Result:** \u274c INCORRECT \u2014 `GenerateMemberAccess()` starts at **line 2879**, not 2859. Lines 2859-2877 contain dictionary comprehension code (`GenerateDictComprehension`). The enum member access handling is at lines 2881-2897.\n\n## Claim 3: Line Number for `.value` property support\n**Claim:** \"Added special handling for the `.value` property\" at lines 2882-2892\n**Verification:** Read the actual code at those lines\n**Result:** \u274c INCORRECT \u2014 Lines 2882-2892 contain the enum member access check (checking if `memberAccess.Object is Identifier`). The `.value` property handling is at **lines 2902-2912**.\n\n## Claim 4: Line Number for Enum Symbol Table Registration\n**Claim:** \"Pre-scans enum declarations\" at lines 349-367\n**Verification:** Read the actual code\n**Result:** \u2705 CORRECT \u2014 Lines 349-367 do contain the enum pre-scanning loop that registers enums in the symbol table with `TypeKind.Enum`.\n\n## Claim 5: Roslyn API - `EnumMemberDeclaration()`\n**Claim:** Uses `EnumMemberDeclaration(Identifier(memberName))` \n**Verification:** Compiled test program using the API\n**Result:** \u2705 CORRECT \u2014 The Roslyn `SyntaxFactory.EnumMemberDeclaration()` method exists and works as described.\n\n## Claim 6: Roslyn API - `MemberAccessExpression()`\n**Claim:** Uses `MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, ...)`\n**Verification:** Compiled test program using the API\n**Result:** \u2705 CORRECT \u2014 The API exists and generates `Color.Red` as expected.\n\n## Claim 7: Roslyn API - `CastExpression()`\n**Claim:** \"Generates a cast to `int`\" using `CastExpression(PredefinedType(Token(SyntaxKind.IntKeyword)), obj)`\n**Verification:** Compiled test and verified output is `(int)favorite`\n**Result:** \u2705 CORRECT \u2014 The cast expression generates exactly as claimed.\n\n## Claim 8: Enum Name Transformation Logic\n**Claim:** `RED` \u2192 `Red`, `DARK_BLUE` \u2192 `DarkBlue`\n**Verification:** Ran the transformation function with test inputs\n**Result:** \u2705 CORRECT \u2014 The transformation logic produces exactly the claimed outputs.\n\n## Claim 9: Backtick-Escaped Name Handling\n**Claim:** \"Handles backtick-escaped names\"\n**Verification:** Tested `\\`literal\\`` \u2192 `literal`\n**Result:** \u2705 CORRECT \u2014 Backtick-escaped names are stripped of backticks as claimed.\n\n## Claim 10: C# 9.0 Pattern Matching Compatibility\n**Claim:** Uses `symbol is TypeSymbol { TypeKind: Semantic.TypeKind.Enum }`\n**Verification:** Compiled with `-LangVersion:9.0` explicitly\n**Result:** \u2705 CORRECT \u2014 This property pattern matching syntax is valid C# 9.0.\n\n## Claim 11: Tests Pass\n**Claim:** \"All tests pass\"\n**Verification:** Ran `dotnet test --filter Enum`\n**Result:** \u2705 CORRECT \u2014 54 enum-related tests pass.\n\n---\n\n## Summary\n\n| Category | Correct | Incorrect |\n|----------|---------|-----------|\n| Line Numbers | 1 | 3 |\n| Roslyn API | 3 | 0 |\n| Logic/Behavior | 3 | 0 |\n| C# Compatibility | 1 | 0 |\n| **Total** | **8** | **3** |\n\n**Overall Assessment:** The implementation is **functionally correct**. All Roslyn API usage, transformation logic, and C# 9.0 compatibility claims are accurate. However, **3 of 4 line number references are off by 20-40 lines**, suggesting the summary was written from memory or the code shifted after the summary was drafted. The actual functionality works exactly as described.\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": true,
           "human_question": null,
@@ -1619,7 +1657,7 @@
           "files": [
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -2089,14 +2127,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "0.1.8.8",
-  "total_attempts": 30,
-  "total_successes": 30,
+  "current_task_id": "0.1.8.9",
+  "total_attempts": 31,
+  "total_successes": 31,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 30,
-      "successes": 30,
+      "attempts": 31,
+      "successes": 31,
       "failures": 0
     },
     "copilot": {
@@ -2105,5 +2143,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 45.0
+  "overall_progress": 46.666666666666664
 }

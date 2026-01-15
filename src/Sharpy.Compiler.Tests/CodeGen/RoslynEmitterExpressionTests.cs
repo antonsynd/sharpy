@@ -1363,6 +1363,153 @@ public class RoslynEmitterExpressionTests
     }
 
     [Fact]
+    public void GenerateExpression_StructInstantiation_WithArguments_GeneratesObjectCreation()
+    {
+        // Arrange: Register a struct type
+        var structSymbol = new TypeSymbol
+        {
+            Name = "Point",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Struct
+        };
+        _context.SymbolTable.Define(structSymbol);
+
+        var expr = new FunctionCall
+        {
+            Function = new Identifier { Name = "Point" },
+            Arguments = new List<Expression>
+            {
+                new IntegerLiteral { Value = "10" },
+                new IntegerLiteral { Value = "20" }
+            }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().StartWith("new");
+        code.Should().Contain("Point");
+        code.Should().Contain("10");
+        code.Should().Contain("20");
+        result.Should().BeOfType<ObjectCreationExpressionSyntax>();
+    }
+
+    [Fact]
+    public void GenerateExpression_StructInstantiation_ParameterlessConstructor_GeneratesEmptyArgList()
+    {
+        // Arrange: Register a struct type
+        var structSymbol = new TypeSymbol
+        {
+            Name = "Vector2",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Struct
+        };
+        _context.SymbolTable.Define(structSymbol);
+
+        var expr = new FunctionCall
+        {
+            Function = new Identifier { Name = "Vector2" },
+            Arguments = new List<Expression>()
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().StartWith("new");
+        code.Should().Contain("Vector2");
+        code.Should().Contain("()");
+        result.Should().BeOfType<ObjectCreationExpressionSyntax>();
+    }
+
+    [Fact]
+    public void GenerateExpression_StructInstantiation_WithSnakeCaseName_AppliesNameMangling()
+    {
+        // Arrange: Register a struct type with snake_case name
+        var structSymbol = new TypeSymbol
+        {
+            Name = "game_state",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Struct
+        };
+        _context.SymbolTable.Define(structSymbol);
+
+        var expr = new FunctionCall
+        {
+            Function = new Identifier { Name = "game_state" },
+            Arguments = new List<Expression>
+            {
+                new IntegerLiteral { Value = "1" }
+            }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().StartWith("new");
+        code.Should().Contain("GameState");
+        code.Should().Contain("1");
+        result.Should().BeOfType<ObjectCreationExpressionSyntax>();
+    }
+
+    [Fact]
+    public void GenerateExpression_StructInstantiation_WithKeywordArguments_GeneratesNamedArguments()
+    {
+        // Arrange: Register a struct type
+        var structSymbol = new TypeSymbol
+        {
+            Name = "Color",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Struct
+        };
+        _context.SymbolTable.Define(structSymbol);
+
+        var expr = new FunctionCall
+        {
+            Function = new Identifier { Name = "Color" },
+            Arguments = new List<Expression>(),
+            KeywordArguments = new List<KeywordArgument>
+            {
+                new KeywordArgument
+                {
+                    Name = "r",
+                    Value = new IntegerLiteral { Value = "255" }
+                },
+                new KeywordArgument
+                {
+                    Name = "g",
+                    Value = new IntegerLiteral { Value = "128" }
+                },
+                new KeywordArgument
+                {
+                    Name = "b",
+                    Value = new IntegerLiteral { Value = "0" }
+                }
+            }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().StartWith("new");
+        code.Should().Contain("Color");
+        code.Should().Contain("r");
+        code.Should().Contain("255");
+        code.Should().Contain("g");
+        code.Should().Contain("128");
+        code.Should().Contain("b");
+        code.Should().Contain("0");
+        result.Should().BeOfType<ObjectCreationExpressionSyntax>();
+    }
+
+    [Fact]
     public void GenerateExpression_RegularFunctionCall_NotClass_GeneratesInvocation()
     {
         // Arrange: Register a regular function (not a class)

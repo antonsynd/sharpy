@@ -20,6 +20,7 @@ public class RoslynEmitter
     private readonly HashSet<string> _constVariables = new(); // Track const variable names (original Sharpy names)
     private readonly HashSet<string> _moduleConstVariables = new(); // Track module-level const names (preserved across function scopes)
     private readonly HashSet<string> _classNames = new(); // Track class names defined in the current module
+    private readonly HashSet<string> _structNames = new(); // Track struct names defined in the current module
     private int _tempVarCounter = 0;
 
     // Target type context for collection literal type inference
@@ -54,8 +55,8 @@ public class RoslynEmitter
             return NameMangler.ToConstantCase(name);
         }
 
-        // Check if this is a reference to a class name - preserve PascalCase
-        if (_classNames.Contains(name))
+        // Check if this is a reference to a class or struct name - preserve PascalCase
+        if (_classNames.Contains(name) || _structNames.Contains(name))
         {
             return NameMangler.ToPascalCase(name);
         }
@@ -679,6 +680,9 @@ public class RoslynEmitter
 
     private StructDeclarationSyntax GenerateStructDeclaration(StructDef structDef)
     {
+        // Track this struct name for instantiation detection
+        _structNames.Add(structDef.Name);
+
         // Transform struct name
         var structName = NameMangler.Transform(structDef.Name, NameContext.Type);
 
@@ -2291,14 +2295,16 @@ public class RoslynEmitter
     {
         if (call.Function is Identifier funcName)
         {
-            // Check if this is a class instantiation (calling a class constructor)
+            // Check if this is a type instantiation (calling a class or struct constructor)
             // We check both:
-            // 1. The _classNames set (populated during GenerateClassDeclaration)
-            // 2. The symbol table (for testing and imported classes)
+            // 1. The _classNames and _structNames sets (populated during type declaration generation)
+            // 2. The symbol table (for testing and imported types)
             var symbol = _context.LookupSymbol(funcName.Name);
-            var isClassInstantiation = _classNames.Contains(funcName.Name) ||
-                                      (symbol is TypeSymbol typeSymbol &&
-                                       typeSymbol.TypeKind == Semantic.TypeKind.Class);
+            var isTypeInstantiation = _classNames.Contains(funcName.Name) ||
+                                     _structNames.Contains(funcName.Name) ||
+                                     (symbol is TypeSymbol typeSymbol &&
+                                      (typeSymbol.TypeKind == Semantic.TypeKind.Class ||
+                                       typeSymbol.TypeKind == Semantic.TypeKind.Struct));
 
             var name = _context.IsBuiltinFunction(funcName.Name)
                 ? $"global::Sharpy.Core.Exports.{NameMangler.ToPascalCase(funcName.Name)}"
@@ -2315,8 +2321,8 @@ public class RoslynEmitter
             // Combine positional and keyword arguments
             var allArgs = positionalArgs.Concat(keywordArgs).ToArray();
 
-            // For class instantiation, generate 'new ClassName(args)' instead of 'ClassName(args)'
-            if (isClassInstantiation)
+            // For type instantiation (class or struct), generate 'new TypeName(args)' instead of 'TypeName(args)'
+            if (isTypeInstantiation)
             {
                 return ObjectCreationExpression(ParseName(name))
                     .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
