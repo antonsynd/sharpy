@@ -228,6 +228,20 @@ public class TypeChecker
         _controlFlowDepth = 0;
         _superInitCalled = false;
 
+        // Validate @override is required for dunders that override System.Object methods
+        if (_currentClass != null && _currentMethodIsDunder)
+        {
+            bool requiresOverride = ProtocolRegistry.IsObjectOverrideDunder(functionDef.Name);
+
+            if (requiresOverride && !_currentMethodIsOverride)
+            {
+                AddError(
+                    $"Dunder method '{functionDef.Name}' overrides a System.Object method and requires the @override decorator",
+                    functionDef.LineStart,
+                    functionDef.ColumnStart);
+            }
+        }
+
         // Check for @abstract decorator
         bool isAbstract = functionDef.Decorators.Any(d => d.Name == "abstract" || d.Name == "abstractmethod");
 

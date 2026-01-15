@@ -78,10 +78,12 @@ class Child(Parent):
     {
         var source = @"
 class Parent:
+    @override
     def __eq__(self, other: object) -> bool:
         return True
 
 class Child(Parent):
+    @override
     def __eq__(self, other: object) -> bool:
         return super().__eq__(other)
 ";
