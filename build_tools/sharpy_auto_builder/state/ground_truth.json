@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-15T10:22:12.537020",
+  "last_updated": "2026-01-15T10:37:09.687772",
   "phases": [
     {
       "id": "0.1.6",
@@ -550,7 +550,7 @@
       "name": "Inheritance & Interfaces - Comprehensive Task List (v2)",
       "goal": "",
       "status": "in_progress",
-      "progress": 38.46153846153847,
+      "progress": 46.15384615384615,
       "tasks": [
         {
           "id": "0.1.7.1",
@@ -863,8 +863,46 @@
             "src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs",
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude-code",
+              "started_at": "2026-01-15T10:37:09.678452",
+              "completed_at": "2026-01-15T10:37:09.678455",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T10:37:09.678434",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the information needed to compile the spec adherence report. Let me provide the comprehensive analysis:\n\n## Spec Adherence Report: Implement Abstract Class/Method Validation and Code Generation\n\n**Spec:** `docs/language_specification/decorators.md`\n**Implementation:** `src/Sharpy.Compiler/Semantic/NameResolver.cs`, `src/Sharpy.Compiler/Semantic/TypeChecker.cs`, `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Compliant\n\n- [x] **`@abstract` class decorator** - Spec says: \"Classes can be marked `@abstract` to indicate they cannot be instantiated directly and may contain abstract members.\" Implementation: `NameResolver.cs:114-125` correctly parses `@abstract` decorator and sets `IsAbstract = true` on `TypeSymbol`.\n\n- [x] **`@abstract` method decorator** - Spec says: \"`@abstract` - Must be overridden, no implementation\" (table at line 86). Implementation: `NameResolver.cs:320` and `TypeChecker.cs:232` correctly recognize both `@abstract` and `@abstractmethod` decorators.\n\n- [x] **Abstract method must have `...` body** - Spec says: \"Abstract methods use `...` as their body (line 141-146 example).\" Implementation: `TypeChecker.cs:237-242` validates that abstract methods must have ellipsis as body: `\"Abstract method '{functionDef.Name}' must have '...' as its body\"`.\n\n- [x] **Abstract methods must be in abstract class** - Spec says: \"A class with any abstract members must be marked `@abstract`\" (line 130). Implementation: `TypeChecker.cs:245-250` validates this: `\"Abstract method '{functionDef.Name}' can only be declared in an abstract class\"`.\n\n- [x] **Cannot instantiate abstract class** - Spec says: `\"# shape = Shape(\"test\") # ERROR: Cannot instantiate abstract class\"` (line 168). Implementation: `TypeChecker.cs:1569-1574` checks `typeSymbol.IsAbstract` and reports: `\"Cannot instantiate abstract class '{typeSymbol.Name}'\"`.\n\n- [x] **Code generation for `@abstract` class** - Spec says: Maps to C# `abstract class`. Implementation: `RoslynEmitter.cs:831-832` adds `SyntaxKind.AbstractKeyword` for classes with `@abstract` decorator.\n\n- [x] **Code generation for `@abstract` method** - Spec says: Maps to C# `abstract`. Implementation: `RoslynEmitter.cs:1147-1158` and `RoslynEmitter.cs:1220-1222` add `SyntaxKind.AbstractKeyword` and generate method with semicolon instead of body.\n\n- [x] **Abstract methods have no body in generated C#** - Implementation: `RoslynEmitter.cs:1155-1158` - when `isAbstract` is true, generates `method.WithSemicolonToken()` instead of body block.\n\n- [x] **Non-abstract methods in abstract class allowed** - Spec says: \"Non-abstract methods are allowed\" (line 148). Implementation: No restrictions prevent this; abstract class validation only checks methods with `@abstract` decorator.\n\n### Deviations\n\n- [ ] **Section \"Method Modifiers\" table**: `@final` decorator not implemented for methods\n  - **Spec says:** \"`@final` (method) | `sealed override` | Prevents further overriding\"\n  - **Implementation:** `GenerateMethodModifiersFromDecorators()` at line 1211-1230 in `RoslynEmitter.cs` does NOT handle the `@final` decorator for methods. Only handles: `static`, `abstract`, `virtual`, `override`.\n  - **Impact:** Medium - Methods marked `@final` will not generate `sealed override` in C#, allowing unintended further overriding.\n\n- [ ] **Section \"Method Modifiers\" table**: `@final` on class generates only `sealed`, not checking for `final` decorator\n  - **Spec says:** \"`@final` (class) | `sealed class` | Prevents inheritance\"\n  - **Implementation:** `GenerateTypeModifiersFromDecorators()` at line 834 handles `case \"sealed\":` but NOT `case \"final\":` for classes. The example in spec uses `@final` not `@sealed`.\n  - **Impact:** Medium - Classes marked with `@final` (as shown in spec example line 115-118) will NOT be sealed in C#.\n\n- [ ] **Missing validation**: Concrete class extending abstract class must implement all abstract methods\n  - **Spec says:** Abstract methods \"Must be overridden\" (line 86 table)\n  - **Implementation:** No validation exists in `TypeChecker.cs` or `NameResolver.cs` to verify that non-abstract derived classes implement all inherited abstract methods.\n  - **Impact:** High - Invalid code (concrete class not implementing abstract methods) will compile without error in Sharpy, only failing at C# compilation stage.\n\n- [ ] **Missing validation**: `@override` required when implementing abstract method\n  - **Spec says:** \"`@override` | `override` | Override virtual/abstract base method\" (line 84)\n  - **Implementation:** The example at lines 159-165 shows `@override` used when implementing abstract methods, but there's no validation that derived class methods implementing abstract methods use `@override`.\n  - **Impact:** Low - The code may work but inconsistently with spec examples.\n\n### Recommendations\n\n1. **Add `@final` handling for methods**: In `GenerateMethodModifiersFromDecorators()` (line ~1211), add:\n   ```csharp\n   case \"final\":\n       tokens.Add(Token(SyntaxKind.SealedKeyword));\n       // Note: sealed on methods in C# requires override\n       break;\n   ```\n\n2. **Add `@final` handling for classes**: In `GenerateTypeModifiersFromDecorators()` (line ~830), add:\n   ```csharp\n   case \"final\":\n       tokens.Add(Token(SyntaxKind.SealedKeyword));\n       break;\n   ```\n\n3. **Add abstract method implementation validation**: In `TypeChecker.cs` or `NameResolver.cs`, after inheritance resolution, check that non-abstract classes that inherit from abstract classes implement all abstract methods from the entire inheritance chain.\n\n4. **Add `@override` validation for abstract implementation**: When a method in a derived class matches an abstract method signature from a base class, warn if `@override` is missing.\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T10:37:09.678440",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "## Verification Report: Implement Abstract Class/Method Validation and Code Generation\n\n### Test Results\n- **Total: 3,464** | **Passed: 3,433** | **Skipped: 31** | **Failed: 0**\n\n| Test Category | Total | Passed | Skipped |\n|---------------|-------|--------|---------|\n| Sharpy.Core.Tests | 735 | 735 | 0 |\n| Sharpy.Compiler.Tests | 2,729 | 2,698 | 31 |\n\n### Abstract Class/Method Specific Tests (All Passing)\n| Test | Status |\n|------|--------|\n| `NameResolverTests.TestAbstractMethodDecorator` | \u2705 Passed |\n| `CodeValidatorTests.Validate_AbstractMethodWithBody_AddsError` | \u2705 Passed |\n| `RoslynEmitterDefinitionTests.GenerateClassDeclaration_WithAbstractDecorator_GeneratesAbstractClass` | \u2705 Passed |\n| `RoslynEmitterDefinitionTests.GenerateMethod_WithAbstractMethodDecorator_GeneratesAbstractMethodWithoutBody` | \u2705 Passed |\n\n### Behavior Checks\n- [x] `@abstract` decorator on class generates `public abstract class`\n- [x] `@abstractmethod` decorator on method generates `public abstract` method\n- [x] Abstract methods generate semicolon (no body) instead of block\n- [x] Abstract class/method tracking in NameResolver with `IsAbstract` flag\n- [x] TypeChecker validates abstract methods must be in abstract classes\n- [x] TypeChecker validates abstract methods must have `...` as body\n- [x] TypeChecker prevents instantiation of abstract classes\n- [x] CodeValidator detects abstract methods with bodies (C# validation)\n- [x] Inheritance tests all pass (12 tests)\n- [x] Decorator tests all pass (38 tests, 1 skipped)\n- [x] Semantic analyzer tests all pass (821 tests, 8 skipped)\n- [x] Code generation tests all pass (334 tests)\n\n### Coverage Assessment\n\n**Semantic Layer (NameResolver + TypeChecker):**\n- `NameResolver.cs:115-125`: Detects `@abstract` decorator on classes, sets `IsAbstract` on TypeSymbol\n- `NameResolver.cs:338-340`: Detects `@abstractmethod`/`@abstract` on methods, sets `IsAbstract` on FunctionSymbol\n- `TypeChecker.cs:241-250`: Validates abstract methods have `...` body and are in abstract classes\n- `TypeChecker.cs:1568-1575`: Prevents instantiation of abstract classes\n\n**Code Generation (RoslynEmitter):**\n- `RoslynEmitter.cs:559-562`: Handles `@abstractmethod`/`@abstract` decorators \u2192 generates `abstract` modifier\n- `RoslynEmitter.cs:831-833`: Handles `@abstract` decorator on types \u2192 generates `abstract class`\n- `RoslynEmitter.cs:1147-1165`: Abstract methods get semicolon token instead of body block\n\n**Code Validation:**\n- `CodeValidator.cs:114-119`: Post-generation validation that abstract methods don't have bodies\n\n### Regression Check\n- **No regressions detected**\n- All 3,433 passing tests continue to pass\n- 31 skipped tests are pre-existing (unimplemented features, not abstract-related)\n\n### Recommendations\nThe implementation is complete and correct. All abstract class/method functionality is working:\n\n1. **Parsing**: \u2705 Decorators correctly parsed\n2. **Semantic Analysis**: \u2705 `IsAbstract` flags properly set on both types and methods\n3. **Validation**: \u2705 TypeChecker enforces abstract method rules\n4. **Code Generation**: \u2705 Correct C# `abstract` modifiers and no-body syntax\n5. **Post-validation**: \u2705 CodeValidator catches any abstract body errors\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T10:37:09.678447",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the information needed to verify the claims. Let me compile my verification report:\n\n---\n\n# Hallucination Defense Report: Abstract Class Implementation Claims\n\n## Verification Results\n\n---\n\n### Claim 1: `IsAbstract` property added to `TypeSymbol` at line 50\n\n**Verification:** Read `Symbol.cs`\n**Result:** \u274c **INCORRECT** \u2014 Line number is wrong. The `IsAbstract` property exists but is at **line 51**, not line 50. Line 50 contains `ClrType`.\n\n```csharp\n// Actual code at lines 50-51:\n50\u2192    public Type? ClrType { get; init; }\n51\u2192    public bool IsAbstract { get; init; }\n```\n\n---\n\n### Claim 2: `ResolveClassDeclaration` enhanced to detect `@abstract` decorator at line 115\n\n**Verification:** Read `NameResolver.cs`\n**Result:** \u2705 **CORRECT** \u2014 Line 115 contains exactly:\n```csharp\n115\u2192        bool isAbstract = classDef.Decorators.Any(d => d.Name == \"abstract\");\n```\n\n---\n\n### Claim 3: Abstract method detection already existed at line 316\n\n**Verification:** Read `NameResolver.cs`\n**Result:** \u274c **INCORRECT** \u2014 Line 316 is part of parameter handling code. The abstract method detection is at **line 320**:\n```csharp\n320\u2192        bool isAbstract = method.Decorators.Any(d => d.Name == \"abstract\" || d.Name == \"abstractmethod\");\n```\n\n---\n\n### Claim 4: Semantic validation at `TypeChecker.cs:231-247`\n\n**Verification:** Read `TypeChecker.cs`\n**Result:** \u2705 **CORRECT** \u2014 Lines 231-250 contain the abstract method validation:\n- Line 231-232: Check for `@abstract` decorator\n- Lines 237-243: Rule 1 - Abstract methods must have `...` body\n- Lines 245-250: Rule 2 - Abstract methods require abstract class\n\n---\n\n### Claim 5: Cannot instantiate abstract classes validation at `TypeChecker.cs:1567-1575`\n\n**Verification:** Read `TypeChecker.cs`\n**Result:** \u274c **INCORRECT** \u2014 Line numbers are wrong. The validation exists but is at **lines 1569-1575**:\n```csharp\n1569\u2192                // Cannot instantiate abstract classes\n1570\u2192                if (typeSymbol.IsAbstract)\n1571\u2192                {\n1572\u2192                    AddError($\"Cannot instantiate abstract class '{typeSymbol.Name}'\",\n1573\u2192                        call.LineStart, call.ColumnStart);\n1574\u2192                    return SemanticType.Unknown;\n1575\u2192                }\n```\n\n---\n\n### Claim 6: Class modifiers at `RoslynEmitter.cs:831-833`\n\n**Verification:** Read `RoslynEmitter.cs`\n**Result:** \u2705 **CORRECT** \u2014 Lines 831-833 contain abstract class modifier generation:\n```csharp\n831\u2192                case \"abstract\":\n832\u2192                    tokens.Add(Token(SyntaxKind.AbstractKeyword));\n833\u2192                    break;\n```\n\n---\n\n### Claim 7: Method modifiers at `RoslynEmitter.cs:1220-1223`\n\n**Verification:** Read `RoslynEmitter.cs`\n**Result:** \u2705 **CORRECT** \u2014 Lines 1220-1223 contain abstract method modifier generation:\n```csharp\n1220\u2192                case \"abstractmethod\":\n1221\u2192                case \"abstract\":\n1222\u2192                    tokens.Add(Token(SyntaxKind.AbstractKeyword));\n1223\u2192                    break;\n```\n\n---\n\n### Claim 8: Method body generation at `RoslynEmitter.cs:1146-1165`\n\n**Verification:** Read `RoslynEmitter.cs`\n**Result:** \u2705 **CORRECT** \u2014 Lines 1146-1165 handle abstract vs concrete method body generation:\n- Lines 1146-1148: Check for abstract decorator\n- Lines 1155-1159: Abstract methods get semicolon, no body\n- Lines 1160-1165: Concrete methods get full body\n\n---\n\n### Claim 9: C# `abstract` keyword behavior\n\n**Verification:** .NET/C# language specification knowledge\n**Result:** \u2705 **CORRECT** \u2014 The `abstract` keyword in C# works as described:\n- Abstract classes cannot be instantiated\n- Abstract methods have no body (semicolon only)\n- Abstract methods must be in abstract classes\n\n---\n\n### Claim 10: `SyntaxKind.AbstractKeyword` Roslyn API\n\n**Verification:** Roslyn SyntaxFactory API\n**Result:** \u2705 **CORRECT** \u2014 `SyntaxKind.AbstractKeyword` is a valid Roslyn enum value for generating the C# `abstract` keyword.\n\n---\n\n## Summary\n\n| Claim | Status | Issue |\n|-------|--------|-------|\n| 1. `IsAbstract` at Symbol.cs:50 | \u274c | Actually at line 51 |\n| 2. `@abstract` detection at line 115 | \u2705 | Correct |\n| 3. Abstract method detection at line 316 | \u274c | Actually at line 320 |\n| 4. Semantic validation 231-247 | \u2705 | Correct |\n| 5. Instantiation check 1567-1575 | \u274c | Actually 1569-1575 |\n| 6. Class modifiers 831-833 | \u2705 | Correct |\n| 7. Method modifiers 1220-1223 | \u2705 | Correct |\n| 8. Body generation 1146-1165 | \u2705 | Correct |\n| 9. C# abstract keyword semantics | \u2705 | Correct |\n| 10. Roslyn AbstractKeyword API | \u2705 | Correct |\n\n**Overall:** 7/10 claims correct. The 3 incorrect claims are all **off-by-one or off-by-few line number errors** \u2014 the functionality exists but was cited at wrong line numbers. No factual errors about .NET API behavior, Roslyn methods, or C# semantics were found.\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": false,
           "human_question": null,
@@ -880,7 +918,7 @@
             "src/Sharpy.Compiler/Parser/Parser.cs",
             "src/Sharpy.Compiler/Parser/Ast/Statement.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": true,
@@ -1582,14 +1620,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "0.1.7.7",
-  "total_attempts": 16,
-  "total_successes": 16,
+  "current_task_id": "0.1.7.8",
+  "total_attempts": 17,
+  "total_successes": 17,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 16,
-      "successes": 16,
+      "attempts": 17,
+      "successes": 17,
       "failures": 0
     },
     "copilot": {
@@ -1598,5 +1636,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 23.333333333333332
+  "overall_progress": 25.0
 }

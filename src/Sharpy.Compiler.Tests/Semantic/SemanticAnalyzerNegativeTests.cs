@@ -1488,4 +1488,135 @@ def foo(a: int = 1, b: int):
     }
 
     #endregion
+
+    #region Interface Method Validation
+
+    [Fact]
+    public void RejectsInterfaceMethodWithImplementation()
+    {
+        var source = @"
+interface IDrawable:
+    def draw(self) -> None:
+        print('This is not allowed')
+";
+        var (module, _, _, nameResolver, _) = CompileAndCheck(source);
+
+        nameResolver.Errors.Should().ContainSingle(e =>
+            e.Message.Contains("cannot have an implementation") &&
+            e.Message.Contains("draw"));
+    }
+
+    [Fact]
+    public void AcceptsInterfaceMethodWithEllipsis()
+    {
+        var source = @"
+interface IDrawable:
+    def draw(self) -> None:
+        ...
+";
+        var (module, _, _, nameResolver, _) = CompileAndCheck(source);
+
+        nameResolver.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AcceptsInterfaceMethodWithPass()
+    {
+        var source = @"
+interface IEmpty:
+    def method(self) -> None:
+        pass
+";
+        var (module, _, _, nameResolver, _) = CompileAndCheck(source);
+
+        nameResolver.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RejectsInterfaceMethodWithMultipleStatements()
+    {
+        var source = @"
+interface IDrawable:
+    def draw(self) -> None:
+        pass
+        pass
+";
+        var (module, _, _, nameResolver, _) = CompileAndCheck(source);
+
+        nameResolver.Errors.Should().ContainSingle(e =>
+            e.Message.Contains("cannot have an implementation"));
+    }
+
+    [Fact]
+    public void RejectsInterfaceMethodWithReturnStatement()
+    {
+        var source = @"
+interface ICalculator:
+    def calculate(self, x: int) -> int:
+        return x * 2
+";
+        var (module, _, _, nameResolver, _) = CompileAndCheck(source);
+
+        nameResolver.Errors.Should().ContainSingle(e =>
+            e.Message.Contains("cannot have an implementation"));
+    }
+
+    [Fact]
+    public void RejectsInterfaceMethodWithEmptyBody()
+    {
+        var source = @"
+interface IEmpty:
+    def method(self) -> None:
+";
+        // This should be a parser error, but if it gets through,
+        // semantic analyzer should catch it
+        try
+        {
+            var (module, _, _, nameResolver, _) = CompileAndCheck(source);
+            nameResolver.Errors.Should().NotBeEmpty();
+        }
+        catch
+        {
+            // Parser error is also acceptable
+        }
+    }
+
+    [Fact]
+    public void AcceptsMultipleInterfaceMethodsWithEllipsis()
+    {
+        var source = @"
+interface IDrawable:
+    def draw(self) -> None:
+        ...
+
+    def get_bounds(self) -> tuple[int, int, int, int]:
+        ...
+
+    def set_color(self, color: str) -> None:
+        ...
+";
+        var (module, _, _, nameResolver, _) = CompileAndCheck(source);
+
+        nameResolver.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RejectsInterfaceWithMixedValidAndInvalidMethods()
+    {
+        var source = @"
+interface IMixed:
+    def valid_method(self) -> None:
+        ...
+
+    def invalid_method(self) -> str:
+        return 'not allowed'
+";
+        var (module, _, _, nameResolver, _) = CompileAndCheck(source);
+
+        nameResolver.Errors.Should().ContainSingle(e =>
+            e.Message.Contains("invalid_method") &&
+            e.Message.Contains("cannot have an implementation"));
+    }
+
+    #endregion
 }

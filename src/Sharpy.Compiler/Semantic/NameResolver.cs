@@ -228,6 +228,8 @@ public class NameResolver
         {
             if (statement is FunctionDef method)
             {
+                // Validate that interface methods have no implementation (only ... or pass)
+                ValidateInterfaceMethod(method, interfaceDef.Name);
                 ResolveMethodDeclaration(method, typeSymbol);
             }
         }
@@ -487,6 +489,36 @@ public class NameResolver
         if (name.StartsWith("_"))
             return AccessLevel.Protected;
         return AccessLevel.Public;
+    }
+
+    private void ValidateInterfaceMethod(FunctionDef method, string interfaceName)
+    {
+        // Interface methods must have only ... (ellipsis) or pass as their body
+        // They cannot contain actual implementation
+
+        if (method.Body.Count == 0)
+        {
+            AddError($"Interface method '{method.Name}' in interface '{interfaceName}' must have a body with '...' or 'pass'",
+                method.LineStart, method.ColumnStart);
+            return;
+        }
+
+        if (method.Body.Count == 1)
+        {
+            var stmt = method.Body[0];
+
+            // Allow: pass
+            if (stmt is PassStatement)
+                return;
+
+            // Allow: ... (ExpressionStatement containing EllipsisLiteral)
+            if (stmt is ExpressionStatement exprStmt && exprStmt.Expression is EllipsisLiteral)
+                return;
+        }
+
+        // If we get here, the method has an invalid body (implementation)
+        AddError($"Interface method '{method.Name}' in interface '{interfaceName}' cannot have an implementation. Use '...' or 'pass' instead",
+            method.LineStart, method.ColumnStart);
     }
 
     private void AddError(string message, int? line = null, int? column = null)
