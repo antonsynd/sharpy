@@ -415,12 +415,58 @@ def build_status(project_root: Path | None):
     multiple=True,
     help="Enable specific agents (planner, implementer, etc.)",
 )
+@click.option(
+    "--backend",
+    type=click.Choice(["claude", "copilot"]),
+    help="Use specific backend only",
+)
+@click.option(
+    "--model",
+    help="Override model for all backends",
+)
+@click.option(
+    "--skip-spec-check",
+    is_flag=True,
+    help="Skip spec adherence check",
+)
+@click.option(
+    "--skip-verification",
+    is_flag=True,
+    help="Skip verification after implementation",
+)
+@click.option(
+    "--skip-hallucination-check",
+    is_flag=True,
+    help="Skip hallucination defense check",
+)
+@click.option(
+    "--no-human-approval",
+    is_flag=True,
+    help="Don't require human approval for critical tasks",
+)
+@click.option(
+    "--thread-id",
+    help="Thread ID to resume a previous session",
+)
+@click.option(
+    "--list-sessions",
+    is_flag=True,
+    help="List saved sessions instead of running",
+)
 def build_run(
     project_root: Path | None,
     max_tasks: int,
     skip_tests: bool,
     auto_decide: bool,
     agents: tuple,
+    backend: str | None,
+    model: str | None,
+    skip_spec_check: bool,
+    skip_verification: bool,
+    skip_hallucination_check: bool,
+    no_human_approval: bool,
+    thread_id: str | None,
+    list_sessions: bool,
 ):
     """Run auto builder to process tasks."""
 
@@ -432,6 +478,14 @@ def build_run(
     args.skip_tests = skip_tests
     args.auto_decide = auto_decide
     args.agents = list(agents) if agents else None
+    args.backend = backend
+    args.model = model
+    args.skip_spec_check = skip_spec_check
+    args.skip_verification = skip_verification
+    args.skip_hallucination_check = skip_hallucination_check
+    args.no_human_approval = no_human_approval
+    args.thread_id = thread_id
+    args.list_sessions = list_sessions
 
     try:
         builder_run(args)

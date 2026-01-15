@@ -48,7 +48,7 @@ async def run_with_interrupts(
     }
 
     # Check if we're resuming an existing session
-    existing_state = orchestrator.app.get_state(config)
+    existing_state = await orchestrator.app.aget_state(config)
     is_resume = existing_state.values != {}
 
     if is_resume:
@@ -130,7 +130,7 @@ async def run_with_interrupts(
             break
 
     # Get final state and stats
-    final_state = orchestrator.app.get_state(config)
+    final_state = await orchestrator.app.aget_state(config)
 
     return {
         "tasks_processed": tasks_processed,
@@ -382,11 +382,19 @@ def cmd_run(args):
     print(f"   ./auto_builder.sh run --thread-id {thread_id}")
     print(f"{'='*60}\n")
 
+    async def run_async():
+        """Run with async setup and cleanup."""
+        await orchestrator.setup()
+        try:
+            return await run_with_interrupts(
+                orchestrator, thread_id, max_tasks=args.max_tasks
+            )
+        finally:
+            await orchestrator.aclose()
+
     try:
         # Use the new interrupt-aware run function
-        result = asyncio.run(
-            run_with_interrupts(orchestrator, thread_id, max_tasks=args.max_tasks)
-        )
+        result = asyncio.run(run_async())
 
         print()
         print(f"{'='*60}")

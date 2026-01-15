@@ -17,7 +17,7 @@ from enum import Enum
 import operator
 
 from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.store.memory import InMemoryStore
 from langgraph.types import interrupt, Command
 
@@ -171,12 +171,9 @@ class Orchestrator:
         # Load or initialize ground truth
         self.ground_truth = self._load_or_create_ground_truth()
 
-        # Initialize SQLite checkpointer for durable persistence
-        self._db_connection = sqlite3.connect(
-            str(self.config.checkpoint_db_path), check_same_thread=False
-        )
-        self.checkpointer = SqliteSaver(self._db_connection)
-        self.checkpointer.setup()
+        # Checkpointer will be initialized async in setup()
+        self.checkpointer = None
+        self._checkpointer_context = None
 
         # Setup checkpoint cleanup tracking
         self._setup_checkpoint_cleanup()
@@ -185,8 +182,27 @@ class Orchestrator:
         self.memory_store = self._create_memory_store()
         self.memory_manager = MemoryManager(self.memory_store, self.config.memory)
 
-        # Build the graph
+        # Build the graph (app will be compiled in setup())
         self.graph = self._build_graph()
+        self.app = None  # Will be set in async setup()
+
+    async def setup(self) -> None:
+        """Async setup - must be called before using the orchestrator."""
+        import aiosqlite
+        
+        # Initialize async SQLite checkpointer
+        # We use aiosqlite.connect directly and add is_alive method to work around
+        # a bug in langgraph-checkpoint-sqlite where setup() calls conn.is_alive()
+        # which doesn't exist on aiosqlite.Connection
+        self._async_db_conn = await aiosqlite.connect(
+            str(self.config.checkpoint_db_path)
+        )
+        # Monkey-patch is_alive method that langgraph expects
+        self._async_db_conn.is_alive = lambda: True
+        
+        self.checkpointer = AsyncSqliteSaver(self._async_db_conn)
+
+        # Compile the graph with the checkpointer
         self.app = self.graph.compile(
             checkpointer=self.checkpointer, store=self.memory_store
         )
@@ -3055,7 +3071,7 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
         }
 
         # Check if we're resuming an existing session
-        existing_state = self.app.get_state(config)
+        existing_state = await self.app.aget_state(config)
         is_resume = existing_state.values != {}
 
         if is_resume:
@@ -3090,7 +3106,7 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
                 tasks_processed += 1
 
         # Get final state
-        final_state = self.app.get_state(config)
+        final_state = await self.app.aget_state(config)
 
         return {
             "tasks_processed": tasks_processed,
@@ -3273,22 +3289,37 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
         except Exception as e:
             return {"error": str(e)}
 
-    def close(self) -> None:
-        """Close the database connection."""
-        if hasattr(self, "_db_connection") and self._db_connection:
+    async def aclose(self) -> None:
+        """Close the async database connection."""
+        if hasattr(self, "_async_db_conn") and self._async_db_conn:
             try:
-                self._db_connection.close()
+                await self._async_db_conn.close()
             except Exception:
                 pass  # Ignore errors during cleanup
 
+    def close(self) -> None:
+        """Close the database connection (sync wrapper for cleanup)."""
+        # For sync contexts, we can't properly close async connections
+        # The async connection will be closed when the event loop ends
+        pass
+
     def __del__(self) -> None:
         """Cleanup when object is destroyed."""
-        self.close()
+        pass  # Can't run async cleanup in __del__
 
     def __enter__(self) -> "Orchestrator":
         """Context manager entry."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        """Context manager exit - close database connection."""
-        self.close()
+        """Context manager exit."""
+        pass  # Use async context manager instead
+
+    async def __aenter__(self) -> "Orchestrator":
+        """Async context manager entry."""
+        await self.setup()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Async context manager exit - close database connection."""
+        await self.aclose()

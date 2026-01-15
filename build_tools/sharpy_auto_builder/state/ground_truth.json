@@ -1,12 +1,12 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-14T23:18:09.576387",
+  "last_updated": "2026-01-15T00:04:02.545895",
   "phases": [
     {
       "id": "0.1.6",
       "name": "Classes - Comprehensive Task List (v2)",
       "goal": "",
-      "status": "pending",
+      "status": "in_progress",
       "progress": 0.0,
       "tasks": [
         {
@@ -18,7 +18,7 @@
             "src/Sharpy.Compiler/Parser/Ast/Statement.cs",
             "src/Sharpy.Compiler/Parser/Ast/Node.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -1024,7 +1024,7 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": null,
+  "current_task_id": "0.1.6.1",
   "total_attempts": 0,
   "total_successes": 0,
   "total_failures": 0,
