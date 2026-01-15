@@ -685,6 +685,7 @@ Key settings in `config.py`:
 |---------|---------|-------------|
 | `max_retries_per_task` | 3 | Max execution attempts per task |
 | `max_test_fix_attempts` | 3 | Max attempts to fix broken tests |
+| `max_validation_fix_attempts` | 2 | Max attempts to address validation issues |
 | `test_timeout` | 300s | Timeout for test execution (catches infinite loops) |
 | `create_followup_task_on_fix_failure` | true | Create follow-up task when test fixes fail |
 | `require_human_approval_for_critical` | true | Require human review for critical tasks |
@@ -692,6 +693,33 @@ Key settings in `config.py`:
 | `run_spec_adherence_check` | true | Run spec validation agent |
 | `run_verification_after_implementation` | true | Run verification agent |
 | `run_hallucination_defense` | true | Run hallucination check agent |
+| `treat_execution_errors_as_validation_failure` | true | Route permission/execution errors to remediation |
+
+### Backend Permission Configuration
+
+When validation agents need to run tests (e.g., `dotnet test`), they may require elevated permissions. Configure this per backend:
+
+```json
+{
+  "backends": {
+    "claude_code": {
+      "name": "claude_code",
+      "enabled": true,
+      "permission_mode": "bypassPermissions"
+    }
+  }
+}
+```
+
+**Permission modes for Claude Code CLI:**
+| Mode | Description |
+|------|-------------|
+| `default` | Normal permissions - prompts for dangerous operations |
+| `acceptEdits` | Auto-accept file edits without prompting |
+| `bypassPermissions` | Skip all permission checks (recommended for automated validation) |
+| `plan` | Planning mode only - no execution |
+
+**⚠️ Note:** The `copilot` backend (VS Code Copilot) may still encounter permission issues when running terminal commands like `dotnet test`, as VS Code's agent mode has built-in security restrictions. For fully automated validation, prefer `claude_code` with `bypassPermissions`.
 
 ## Integration with Agents
 
@@ -778,6 +806,30 @@ The `gh copilot` CLI is designed for interactive shell command suggestions, not 
 ```bash
 ./auto_builder.sh run --backend copilot
 ```
+
+### "Permission denied" during validation
+
+If validation agents fail with "Permission denied" when trying to run `dotnet test` or other commands:
+
+**For Claude Code backend:**
+Set `permission_mode: "bypassPermissions"` in your config.json:
+```json
+{
+  "backends": {
+    "claude_code": {
+      "permission_mode": "bypassPermissions"
+    }
+  }
+}
+```
+
+**For Copilot backend:**
+VS Code's agent mode restricts terminal commands for security. The orchestrator will now:
+1. Detect "Permission denied" patterns in validation output
+2. Mark these as actionable issues requiring remediation
+3. Route to `address_validation_issues` for retry
+
+If you need fully automated test execution, use Claude Code as the primary backend.
 
 Note: Results will be limited. For full code implementation, use Claude Code.
 

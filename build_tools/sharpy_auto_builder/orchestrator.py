@@ -1714,6 +1714,8 @@ hallucination defense) found issues that could not be automatically resolved aft
             "status": "passed" if result.success else "warnings",
             "findings": [],  # Would parse from result.output
             "raw_output": result.output,
+            # Include execution error for detection of permission/timeout issues
+            "execution_error": result.error if not result.success else None,
         }
 
         validation_results = state.get("validation_results", [])
@@ -1808,6 +1810,8 @@ hallucination defense) found issues that could not be automatically resolved aft
             "status": "passed" if result.success else "warnings",
             "findings": [],
             "raw_output": result.output,
+            # Include execution error for detection of permission/timeout issues
+            "execution_error": result.error if not result.success else None,
         }
 
         validation_results = state.get("validation_results", [])
@@ -1875,7 +1879,7 @@ hallucination defense) found issues that could not be automatically resolved aft
                 truncated.rfind("?\n"),
             )
             if last_sentence_end > 1000:  # Only use if we keep enough content
-                claims = truncated[:last_sentence_end + 1]
+                claims = truncated[: last_sentence_end + 1]
             else:
                 claims = truncated
             claims += "\n\n[... content truncated for validation, see full output for remaining claims]"
@@ -1914,6 +1918,8 @@ hallucination defense) found issues that could not be automatically resolved aft
             "status": "passed" if result.success else "warnings",
             "findings": [],
             "raw_output": result.output,
+            # Include execution error for detection of permission/timeout issues
+            "execution_error": result.error if not result.success else None,
         }
 
         validation_results = state.get("validation_results", [])
@@ -1968,9 +1974,44 @@ hallucination defense) found issues that could not be automatically resolved aft
         for vr in validation_results:
             raw_output = vr.get("raw_output", "") or ""
             agent = vr.get("agent", "unknown")
+            status = vr.get("status", "")
+
+            # Check for execution errors first (these are critical failures)
+            # If the validation agent itself couldn't run (permission denied, timeout),
+            # this is an execution failure that needs attention
+            execution_error = vr.get("execution_error")
+            if execution_error:
+                actionable_issues.append(
+                    {
+                        "agent": agent,
+                        "severity": "critical",
+                        "description": f"Validation execution failed: {execution_error[:300]}",
+                        "pattern_matched": "execution_error",
+                    }
+                )
+                continue  # Skip pattern matching for failed executions
+
+            # Pattern 0: Detect permission denied errors in output
+            # These indicate the agent couldn't run necessary commands
+            permission_patterns = [
+                r"Permission denied",
+                r"could not request permission from user",
+                r"✘.*Permission denied",
+            ]
+            for pattern in permission_patterns:
+                if re.search(pattern, raw_output, re.IGNORECASE):
+                    actionable_issues.append(
+                        {
+                            "agent": agent,
+                            "severity": "high",
+                            "description": f"Agent encountered permission issues - commands could not be executed. May need to configure permission_mode for the backend or verify permissions.",
+                            "pattern_matched": "permission_denied",
+                        }
+                    )
+                    break  # Only add one permission issue per validation result
 
             # Skip if validation passed cleanly
-            if vr.get("status") == "passed":
+            if status == "passed":
                 continue
 
             # Pattern 1: Look for explicit severity markers

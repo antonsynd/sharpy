@@ -61,6 +61,14 @@ class BackendConfig:
 
     # For Claude Code
     claude_code_path: Optional[str] = None
+    # Permission mode for Claude Code CLI:
+    # - "default": Normal permissions (prompts for dangerous ops)
+    # - "acceptEdits": Auto-accept file edits
+    # - "bypassPermissions": Skip all permission checks (use with caution)
+    # - "plan": Planning mode only
+    # For automated validation agents that need to run tests, "bypassPermissions"
+    # or "acceptEdits" may be needed.
+    permission_mode: Optional[str] = None
 
     # For GitHub Copilot CLI
     copilot_cli_path: Optional[str] = None
@@ -207,6 +215,9 @@ class Config(BaseConfig):
     run_spec_adherence_check: bool = True
     run_verification_after_implementation: bool = True
     run_hallucination_defense: bool = True
+    # When validation agent execution fails (permission denied, timeout, etc.),
+    # treat it as a validation failure requiring remediation
+    treat_execution_errors_as_validation_failure: bool = True
 
     # Execution settings
     max_retries_per_task: int = 3

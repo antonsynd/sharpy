@@ -239,6 +239,11 @@ class ClaudeCodeBackend(Backend):
                 "Read,Write,Edit,Bash",  # Need all tools for implementation
             ]
 
+            # Add permission mode if configured
+            # This allows validation agents to run tests without permission prompts
+            if self.config.permission_mode:
+                cmd.extend(["--permission-mode", self.config.permission_mode])
+
             # Run Claude Code with prompt via stdin
             process = await asyncio.create_subprocess_exec(
                 *cmd,
