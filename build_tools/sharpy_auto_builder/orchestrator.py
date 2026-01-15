@@ -790,6 +790,20 @@ Provide:
             component=task_data["phase"],
         )
 
+        # Add memory context from past implementations and errors
+        if self.memory_manager and self.config.memory.enabled:
+            task_desc = task_data["description"]
+
+            # Get relevant implementation patterns
+            impl_context = self.memory_manager.get_implementation_context(task_desc)
+            if impl_context:
+                prompt += f"\n\n{impl_context}"
+
+            # Get error avoidance patterns
+            error_context = self.memory_manager.get_error_avoidance_context(task_desc)
+            if error_context:
+                prompt += f"\n\n{error_context}"
+
         # Add context from previous attempts if any
         if state.get("last_execution_result"):
             prev = state["last_execution_result"]

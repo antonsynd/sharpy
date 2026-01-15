@@ -774,10 +774,10 @@
 
 **Actions**:
 
-1. [ ] Update `_build_implementation_prompt(task_data, state)` to include memory context
-2. [ ] Call `memory_manager.get_implementation_context(task_description)`
-3. [ ] Call `memory_manager.get_error_avoidance_context(task_description)`
-4. [ ] Append context to prompt parts
+1. [x] Update `_build_implementation_prompt(task_data, state)` to include memory context
+2. [x] Call `memory_manager.get_implementation_context(task_description)`
+3. [x] Call `memory_manager.get_error_avoidance_context(task_description)`
+4. [x] Append context to prompt parts
 
 **Verification**:
 - ✅ Test: Prompts include relevant past patterns
