@@ -1,143 +1,172 @@
-# Implementation Plan: Task 0.1.6.7 - Static Method Detection and Code Generation
+# Implementation Plan: Task 0.1.7.9 - Implement Interface Code Generation
 
-## Summary
+## Executive Summary
 
-Implement static method detection based on the **absence of `self` parameter** per the language specification, rather than relying solely on decorators.
+**Finding:** Interface code generation is **already fully implemented** in the codebase.
 
-## Current State Analysis
+After thorough analysis of the Sharpy compiler, I found that all core interface code generation functionality is complete:
+- AST representation (`InterfaceDef` record) ✅
+- Parser support for interface declarations ✅
+- Roslyn code generator for C# output ✅
+- Test coverage for common scenarios ✅
 
-### Problem
-The current implementation uses **decorator-based detection** (`@static` or `@staticmethod`), but the specification states:
+## Current Implementation Status
 
-> "Sharpy has no annotation/decorator/keyword for static methods. Static methods on a class, struct, etc. are like regular methods, except they do not have a `self` parameter"
+### 1. AST Definition (`src/Sharpy.Compiler/Parser/Ast/Statement.cs:224-231`)
 
-### Current Implementation
-- **NameResolver.cs:307**: `bool isStatic = method.Decorators.Any(d => d.Name == "static" || d.Name == "staticmethod");`
-- **TypeChecker.cs:211-226**: Validates that instance methods MUST have `self` - but this validation happens unconditionally for ALL methods in a class
-- **RoslynEmitter.cs:548-550**: Generates `static` keyword based on decorators only
-
-### Bug in TypeChecker
-The TypeChecker currently requires ALL methods in a class to have a `self` parameter (lines 211-226). This is incorrect - static methods should NOT have `self`.
-
----
-
-## Step-by-Step Implementation
-
-### Step 1: Update NameResolver.cs - Detect Static Methods by Absence of `self`
-
-**File:** `src/Sharpy.Compiler/Semantic/NameResolver.cs`
-**Line:** ~307
-
-**Change:**
 ```csharp
-// OLD:
-bool isStatic = method.Decorators.Any(d => d.Name == "static" || d.Name == "staticmethod");
-
-// NEW:
-// Primary mechanism: method is static if it doesn't have 'self' as first parameter
-// Decorators are optional/redundant but still supported for compatibility
-bool hasSelfParameter = method.Parameters.Count > 0 &&
-    method.Parameters[0].Name == "self" &&
-    method.Parameters[0].Type == null;  // self has no type annotation
-bool hasStaticDecorator = method.Decorators.Any(d => d.Name == "static" || d.Name == "staticmethod");
-bool isStatic = !hasSelfParameter || hasStaticDecorator;
+public record InterfaceDef : Statement
+{
+    public string Name { get; init; } = "";
+    public List<string> TypeParameters { get; init; } = new();
+    public List<TypeAnnotation> BaseInterfaces { get; init; } = new();
+    public List<Statement> Body { get; init; } = new();
+    public string? DocString { get; init; }
+}
 ```
 
-**Rationale:** Per spec, a method without `self` as the first untyped parameter is static.
+### 2. Code Generation (`src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:704-746`)
+
+The `GenerateInterfaceDeclaration` method handles:
+- ✅ Interface name transformation (preserves I prefix)
+- ✅ Public modifier (always public)
+- ✅ Generic type parameters (`IRepository<T>`)
+- ✅ Base interface inheritance (`IShape : IDrawable`)
+- ✅ Method signature generation (via `GenerateInterfaceMembers`)
+- ✅ XML documentation from docstrings
+
+### 3. Interface Method Generation (`src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:1311-1337`)
+
+The `GenerateInterfaceMethod` method:
+- ✅ Transforms method names to PascalCase
+- ✅ Maps return types (defaults to void)
+- ✅ Filters out `self` parameter
+- ✅ Generates parameter list
+- ✅ Adds semicolon (no body)
+- ✅ Adds XML documentation
+
+### 4. Existing Test Coverage (`src/Sharpy.Compiler.Tests/CodeGen/RoslynEmitterDefinitionTests.cs:919-1018`)
+
+| Test | Status |
+|------|--------|
+| Simple interface generation | ✅ |
+| Interface with method signatures | ✅ |
+| Base interface inheritance | ✅ |
+| Generic interface parameters | ✅ |
 
 ---
 
-### Step 2: Update TypeChecker.cs - Remove Incorrect Validation
+## What May Be Missing (Based on Task Description)
 
-**File:** `src/Sharpy.Compiler/Semantic/TypeChecker.cs`
-**Lines:** ~211-226
+The task description mentions "Handle interface properties" but was truncated. Let me analyze:
 
-**Change:** The validation that all methods must have `self` should only apply to **instance methods**, not static methods.
+### Interface Properties - NOT YET IMPLEMENTED
+
+The current implementation only handles methods. Properties would be a new feature:
+
+**Sharpy syntax (hypothetical):**
+```python
+interface IDrawable:
+    color: str  # Property definition
+
+    def draw(self) -> None:
+        ...
+```
+
+**Expected C# output:**
+```csharp
+public interface IDrawable
+{
+    string Color { get; set; }
+    void Draw();
+}
+```
+
+---
+
+## Step-by-Step Implementation Approach
+
+### If Properties Need to be Added:
+
+#### Step 1: Update AST (Optional - may use existing `TypedField`)
+No changes needed if we use existing field syntax within interfaces.
+
+#### Step 2: Update `GenerateInterfaceMembers` (`RoslynEmitter.cs:1281-1309`)
+
+Add handling for property definitions:
 
 ```csharp
-// OLD (unconditional validation):
-if (_currentClass != null && functionDef.Parameters.Count > 0)
+private List<MemberDeclarationSyntax> GenerateInterfaceMembers(List<Statement> body)
 {
-    if (functionDef.Parameters[0].Name != "self")
-    {
-        AddError($"Instance method '{functionDef.Name}' must have 'self' as the first parameter", ...);
-    }
-}
-else if (_currentClass != null && functionDef.Parameters.Count == 0)
-{
-    AddError($"Instance method '{functionDef.Name}' is missing required 'self' parameter", ...);
-}
+    var members = new List<MemberDeclarationSyntax>();
 
-// NEW (check if method is static first):
-if (_currentClass != null)
-{
-    // Determine if this is a static method (no 'self' parameter)
-    bool hasSelfParameter = functionDef.Parameters.Count > 0 &&
-        functionDef.Parameters[0].Name == "self" &&
-        functionDef.Parameters[0].Type == null;
-    bool hasStaticDecorator = functionDef.Decorators.Any(d =>
-        d.Name == "static" || d.Name == "staticmethod");
-    bool isStaticMethod = !hasSelfParameter || hasStaticDecorator;
-
-    // Only validate 'self' parameter for instance methods
-    if (!isStaticMethod)
+    foreach (var stmt in body)
     {
-        if (functionDef.Parameters.Count == 0 || functionDef.Parameters[0].Name != "self")
+        switch (stmt)
         {
-            AddError($"Instance method '{functionDef.Name}' must have 'self' as the first parameter",
-                functionDef.LineStart, functionDef.ColumnStart);
+            case FunctionDef funcDef:
+                members.Add(GenerateInterfaceMethod(funcDef));
+                break;
+
+            // ADD: Handle interface properties (field annotations)
+            case TypedField field:
+                members.Add(GenerateInterfaceProperty(field));
+                break;
+
+            case PassStatement:
+            case ExpressionStatement { Expression: EllipsisLiteral }:
+                break;
         }
     }
+    return members;
 }
 ```
 
----
-
-### Step 3: Update RoslynEmitter.cs - Generate Static Based on Symbol
-
-**File:** `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`
-
-The emitter currently uses `GenerateMethodModifiersFromDecorators()` which only checks decorators. We need to also check the `IsStatic` flag from the symbol.
-
-**Option A (Preferred):** Pass the `FunctionSymbol` to `GenerateClassMethod` and use its `IsStatic` property.
-
-**Option B:** Check for absence of `self` parameter directly in the emitter.
-
-**Implementation for Option B** (simpler, self-contained):
-
-In `GenerateClassMethod()` around line 1061, modify the modifiers logic:
+#### Step 3: Add `GenerateInterfaceProperty` Method
 
 ```csharp
-// Process decorators to determine modifiers
-var modifiers = GenerateMethodModifiersFromDecorators(func.Decorators);
-
-// Check if this is a static method (no 'self' parameter with no type annotation)
-bool hasSelfParameter = func.Parameters.Count > 0 &&
-    func.Parameters[0].Name == "self" &&
-    func.Parameters[0].Type == null;
-bool isStatic = !hasSelfParameter;
-
-// Add static keyword if method is static and not already present
-if (isStatic && !modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword)))
+private PropertyDeclarationSyntax GenerateInterfaceProperty(TypedField field)
 {
-    modifiers = modifiers.Add(Token(SyntaxKind.StaticKeyword));
+    var propertyName = NameMangler.Transform(field.Name, NameContext.Method); // PascalCase
+    var propertyType = _typeMapper.MapType(field.Type);
+
+    var property = PropertyDeclaration(propertyType, propertyName)
+        .WithAccessorList(AccessorList(List(new[]
+        {
+            AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)),
+            AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken))
+        })));
+
+    return property;
 }
 ```
 
----
-
-### Step 4: Add Warning for Redundant `@static` Decorator (Optional)
-
-Since the spec says decorators are "valid but optional/redundant", consider adding a warning when `@static` is used on a method that's already static (no `self`).
-
-**File:** `src/Sharpy.Compiler/Semantic/NameResolver.cs` or `TypeChecker.cs`
+#### Step 4: Add Tests for Interface Properties
 
 ```csharp
-// If method has @static decorator but no self parameter, warn about redundancy
-if (hasStaticDecorator && !hasSelfParameter)
+[Fact]
+public void GenerateInterfaceDeclaration_WithProperty_GeneratesPropertySignature()
 {
-    AddWarning($"Method '{method.Name}' is already static (no 'self' parameter). The @static decorator is redundant.",
-        method.LineStart, method.ColumnStart);
+    var interfaceDef = new InterfaceDef
+    {
+        Name = "IDrawable",
+        Body = new List<Statement>
+        {
+            new TypedField
+            {
+                Name = "color",
+                Type = new TypeAnnotation { Name = "str" }
+            }
+        }
+    };
+
+    var module = new Module { Body = new List<Statement> { interfaceDef } };
+    var compilationUnit = _emitter.GenerateCompilationUnit(module);
+    var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+    Assert.Contains("string Color { get; set; }", code);
 }
 ```
 
@@ -145,129 +174,60 @@ if (hasStaticDecorator && !hasSelfParameter)
 
 ## Key Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/Sharpy.Compiler/Semantic/NameResolver.cs` | Update `IsStatic` detection logic (line ~307) |
-| `src/Sharpy.Compiler/Semantic/TypeChecker.cs` | Fix validation to skip static methods (lines ~211-226) |
-| `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` | Add static keyword based on `self` absence (line ~1061) |
+| File | Changes Needed |
+|------|---------------|
+| `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` | Add `GenerateInterfaceProperty`, update `GenerateInterfaceMembers` |
+| `src/Sharpy.Compiler.Tests/CodeGen/RoslynEmitterDefinitionTests.cs` | Add property test cases |
 
 ---
 
-## Tests to Add/Verify
+## Tests to Verify
 
-### 1. New Tests for `self`-based Static Detection
+### Existing Tests (Should Continue to Pass)
+1. `GenerateInterfaceDeclaration_SimpleInterface_GeneratesPublicInterface`
+2. `GenerateInterfaceDeclaration_WithMethod_GeneratesMethodSignature`
+3. `GenerateInterfaceDeclaration_WithBaseInterface_GeneratesInheritance`
+4. `GenerateInterfaceDeclaration_WithGenericTypeParameter_GeneratesGenericInterface`
 
-**File:** `src/Sharpy.Compiler.Tests/Semantic/NameResolverTests.cs`
-
-```csharp
-[Fact]
-public void TestStaticMethodWithoutSelfParameter()
-{
-    var source = @"
-class Math:
-    def add(a: int, b: int) -> int:  # Static - no self parameter
-        return a + b
-
-    def instance_method(self) -> int:  # Instance - has self
-        return 1
-";
-    var (resolver, module, symbolTable) = CreateResolver(source);
-    resolver.ResolveDeclarations(module);
-
-    Assert.Empty(resolver.Errors);
-
-    var mathType = symbolTable.LookupType("Math");
-    var addMethod = mathType.Methods.First(m => m.Name == "add");
-    Assert.True(addMethod.IsStatic);  // No self = static
-
-    var instanceMethod = mathType.Methods.First(m => m.Name == "instance_method");
-    Assert.False(instanceMethod.IsStatic);  // Has self = instance
-}
-```
-
-### 2. Code Generation Test
-
-**File:** `src/Sharpy.Compiler.Tests/CodeGen/RoslynEmitterDefinitionTests.cs`
-
-```csharp
-[Fact]
-public void GenerateMethod_WithoutSelfParameter_GeneratesStaticMethod()
-{
-    var source = @"
-class Math:
-    def add(a: int, b: int) -> int:
-        return a + b
-";
-    // Compile and verify output contains "public static int Add(int a, int b)"
-}
-```
-
-### 3. Integration Test - Mixed Methods
-
-```csharp
-[Fact]
-public void GenerateClass_WithMixedStaticAndInstanceMethods()
-{
-    var source = @"
-struct Foo:
-    x: int
-
-    def name() -> str:  # static
-        return ""Foo""
-
-    def get_x(self) -> int:  # instance
-        return self.x
-";
-    // Verify: static method has `static` keyword, instance method doesn't
-}
-```
-
-### 4. Edge Case - `self` with Type Annotation
-
-```csharp
-[Fact]
-public void TestSelfWithTypeAnnotation_TreatedAsRegularParameter()
-{
-    var source = @"
-class Foo:
-    def weird(self: int) -> int:  # 'self' with type = NOT the special self
-        return self
-";
-    // This should be treated as a static method with a parameter named 'self'
-    // Per spec: "self parameter (which has no type annotation)"
-}
-```
+### New Tests (If Properties Added)
+1. `GenerateInterfaceDeclaration_WithProperty_GeneratesPropertySignature`
+2. `GenerateInterfaceDeclaration_WithReadonlyProperty_GeneratesGetterOnly`
+3. `GenerateInterfaceDeclaration_WithMethodsAndProperties_GeneratesBoth`
 
 ---
 
-## Potential Risks and Questions
-
-### Risks
-
-1. **Breaking Change:** Existing code using `@static` decorators will still work (decorator sets `IsStatic = true`), but code that relies on the TypeChecker error for missing `self` may behave differently.
-
-2. **`self` with Type Annotation:** Per spec, `self` must have NO type annotation to be the special instance reference. A method like `def foo(self: int)` would be treated as static with a parameter named `self`. Need to verify this edge case is handled correctly.
-
-3. **Interface Methods:** Spec says "interfaces cannot have static methods; all interface methods are instance methods." Need to add validation that interface methods MUST have `self`.
+## Potential Risks or Questions
 
 ### Questions to Clarify
 
-1. **Warning for Redundant Decorator?** Should we warn when `@static` is used on a method that's already static due to no `self`? The task description says "Valid but OPTIONAL/redundant for methods".
+1. **Property syntax in Sharpy interfaces:** How are properties defined?
+   - Is it `color: str` (field annotation)?
+   - Or `@property def color(self) -> str: ...` (Python-style)?
 
-2. **Constructors (`__init__`):** Should `__init__` always be treated as instance method? Current code registers it specially. Need to ensure static detection doesn't affect constructors.
+2. **Read-only vs read-write properties:** Should interfaces support:
+   - `{ get; }` only?
+   - `{ get; set; }` only?
+   - User-controlled via decorator?
 
-3. **`cls` Parameter:** For classmethods, is `cls` treated like `self`? The emitter currently filters both `self` and `cls` (line 1079-1080). Need to clarify if `cls` makes a method non-static.
+3. **Is this task actually needed?** The core interface generation is complete. The task description was truncated - need to confirm if properties are in scope.
+
+### Risks
+
+1. **Parser support:** If properties use a new syntax, the parser may need updates.
+
+2. **TypedField in interfaces:** Need to verify the parser allows `TypedField` statements inside interface bodies.
+
+3. **Backward compatibility:** Adding new AST handling shouldn't break existing tests, but verify with test run.
 
 ---
 
-## Validation Checklist
+## Recommendation
 
-- [ ] Static methods (no `self`) get `IsStatic = true` in NameResolver
-- [ ] TypeChecker doesn't error on static methods without `self`
-- [ ] RoslynEmitter generates `static` keyword for methods without `self`
-- [ ] Instance methods (with `self`) work unchanged
-- [ ] Decorators (`@static`, `@staticmethod`) still work for compatibility
-- [ ] Interface methods validate that `self` is required
-- [ ] Edge case: `self` WITH type annotation treated as regular parameter
-- [ ] All existing tests pass
-- [ ] New tests added for `self`-based detection
+**Before implementation, clarify:**
+1. Is the task truly "not done" or is this a verification task?
+2. What specific interface property syntax is expected?
+3. Are there edge cases (readonly, writeonly, indexed properties)?
+
+**If no properties needed:** Mark task as complete after running existing tests.
+
+**If properties needed:** Follow the step-by-step approach above (~30 minutes of implementation).

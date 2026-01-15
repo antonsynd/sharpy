@@ -1,0 +1,508 @@
+using Microsoft.CodeAnalysis.CSharp;
+using Sharpy.Compiler.CodeGen;
+using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Semantic;
+using Xunit;
+
+namespace Sharpy.Compiler.Tests.CodeGen;
+
+/// <summary>
+/// Tests for interface code generation
+/// </summary>
+public class RoslynEmitterInterfaceTests
+{
+    private RoslynEmitter CreateEmitter()
+    {
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins);
+        return new RoslynEmitter(context);
+    }
+
+    [Fact]
+    public void GenerateInterface_SimpleInterface_GeneratesCorrectDeclaration()
+    {
+        // Arrange
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new InterfaceDef
+                {
+                    Name = "IDrawable",
+                    TypeParameters = new List<string>(),
+                    BaseInterfaces = new List<TypeAnnotation>(),
+                    Body = new List<Statement>
+                    {
+                        new FunctionDef
+                        {
+                            Name = "draw",
+                            Parameters = new List<Parameter>
+                            {
+                                new Parameter { Name = "self" }
+                            },
+                            ReturnType = new TypeAnnotation { Name = "None" },
+                            Body = new List<Statement>
+                            {
+                                new ExpressionStatement
+                                {
+                                    Expression = new EllipsisLiteral()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert
+        Assert.Contains("public interface IDrawable", code);
+        Assert.Contains("void Draw();", code);
+    }
+
+    [Fact]
+    public void GenerateInterface_WithMethodReturnType_GeneratesCorrectSignature()
+    {
+        // Arrange
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new InterfaceDef
+                {
+                    Name = "IShape",
+                    TypeParameters = new List<string>(),
+                    BaseInterfaces = new List<TypeAnnotation>(),
+                    Body = new List<Statement>
+                    {
+                        new FunctionDef
+                        {
+                            Name = "get_area",
+                            Parameters = new List<Parameter>
+                            {
+                                new Parameter { Name = "self" }
+                            },
+                            ReturnType = new TypeAnnotation { Name = "float" },
+                            Body = new List<Statement>
+                            {
+                                new ExpressionStatement
+                                {
+                                    Expression = new EllipsisLiteral()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert
+        Assert.Contains("public interface IShape", code);
+        Assert.Contains("double GetArea();", code);
+    }
+
+    [Fact]
+    public void GenerateInterface_WithMethodParameters_GeneratesCorrectSignature()
+    {
+        // Arrange
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new InterfaceDef
+                {
+                    Name = "IMovable",
+                    TypeParameters = new List<string>(),
+                    BaseInterfaces = new List<TypeAnnotation>(),
+                    Body = new List<Statement>
+                    {
+                        new FunctionDef
+                        {
+                            Name = "move",
+                            Parameters = new List<Parameter>
+                            {
+                                new Parameter { Name = "self" },
+                                new Parameter
+                                {
+                                    Name = "x",
+                                    Type = new TypeAnnotation { Name = "int" }
+                                },
+                                new Parameter
+                                {
+                                    Name = "y",
+                                    Type = new TypeAnnotation { Name = "int" }
+                                }
+                            },
+                            ReturnType = new TypeAnnotation { Name = "None" },
+                            Body = new List<Statement>
+                            {
+                                new ExpressionStatement
+                                {
+                                    Expression = new EllipsisLiteral()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert
+        Assert.Contains("public interface IMovable", code);
+        Assert.Contains("void Move(int x, int y);", code);
+    }
+
+    [Fact]
+    public void GenerateInterface_WithProperty_GeneratesPropertyWithGetSet()
+    {
+        // Arrange
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new InterfaceDef
+                {
+                    Name = "IEntity",
+                    TypeParameters = new List<string>(),
+                    BaseInterfaces = new List<TypeAnnotation>(),
+                    Body = new List<Statement>
+                    {
+                        new VariableDeclaration
+                        {
+                            Name = "name",
+                            Type = new TypeAnnotation { Name = "str" },
+                            InitialValue = null
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert
+        Assert.Contains("public interface IEntity", code);
+        Assert.Contains("string Name", code);
+        Assert.Contains("get;", code);
+        Assert.Contains("set;", code);
+    }
+
+    [Fact]
+    public void GenerateInterface_WithMultipleMembers_GeneratesAllMembers()
+    {
+        // Arrange
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new InterfaceDef
+                {
+                    Name = "IGameObject",
+                    TypeParameters = new List<string>(),
+                    BaseInterfaces = new List<TypeAnnotation>(),
+                    Body = new List<Statement>
+                    {
+                        new VariableDeclaration
+                        {
+                            Name = "position",
+                            Type = new TypeAnnotation { Name = "Vector3" },
+                            InitialValue = null
+                        },
+                        new FunctionDef
+                        {
+                            Name = "update",
+                            Parameters = new List<Parameter>
+                            {
+                                new Parameter { Name = "self" },
+                                new Parameter
+                                {
+                                    Name = "delta_time",
+                                    Type = new TypeAnnotation { Name = "float" }
+                                }
+                            },
+                            ReturnType = new TypeAnnotation { Name = "None" },
+                            Body = new List<Statement>
+                            {
+                                new ExpressionStatement
+                                {
+                                    Expression = new EllipsisLiteral()
+                                }
+                            }
+                        },
+                        new FunctionDef
+                        {
+                            Name = "render",
+                            Parameters = new List<Parameter>
+                            {
+                                new Parameter { Name = "self" }
+                            },
+                            ReturnType = new TypeAnnotation { Name = "None" },
+                            Body = new List<Statement>
+                            {
+                                new ExpressionStatement
+                                {
+                                    Expression = new EllipsisLiteral()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert
+        Assert.Contains("public interface IGameObject", code);
+        Assert.Contains("Vector3 Position", code);
+        Assert.Contains("void Update(double deltaTime);", code);
+        Assert.Contains("void Render();", code);
+    }
+
+    [Fact]
+    public void GenerateInterface_WithBaseInterface_GeneratesInheritance()
+    {
+        // Arrange
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new InterfaceDef
+                {
+                    Name = "IClickable",
+                    TypeParameters = new List<string>(),
+                    BaseInterfaces = new List<TypeAnnotation>
+                    {
+                        new TypeAnnotation { Name = "IDrawable" }
+                    },
+                    Body = new List<Statement>
+                    {
+                        new FunctionDef
+                        {
+                            Name = "on_click",
+                            Parameters = new List<Parameter>
+                            {
+                                new Parameter { Name = "self" }
+                            },
+                            ReturnType = new TypeAnnotation { Name = "None" },
+                            Body = new List<Statement>
+                            {
+                                new ExpressionStatement
+                                {
+                                    Expression = new EllipsisLiteral()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert
+        Assert.Contains("public interface IClickable : IDrawable", code);
+        Assert.Contains("void OnClick();", code);
+    }
+
+    [Fact]
+    public void GenerateInterface_WithMultipleBaseInterfaces_GeneratesMultipleInheritance()
+    {
+        // Arrange
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new InterfaceDef
+                {
+                    Name = "IUIElement",
+                    TypeParameters = new List<string>(),
+                    BaseInterfaces = new List<TypeAnnotation>
+                    {
+                        new TypeAnnotation { Name = "IDrawable" },
+                        new TypeAnnotation { Name = "IClickable" }
+                    },
+                    Body = new List<Statement>
+                    {
+                        new FunctionDef
+                        {
+                            Name = "focus",
+                            Parameters = new List<Parameter>
+                            {
+                                new Parameter { Name = "self" }
+                            },
+                            ReturnType = new TypeAnnotation { Name = "None" },
+                            Body = new List<Statement>
+                            {
+                                new ExpressionStatement
+                                {
+                                    Expression = new EllipsisLiteral()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert
+        Assert.Contains("public interface IUIElement : IDrawable, IClickable", code);
+        Assert.Contains("void Focus();", code);
+    }
+
+    [Fact]
+    public void GenerateInterface_WithGenericTypeParameter_GeneratesGenericInterface()
+    {
+        // Arrange
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new InterfaceDef
+                {
+                    Name = "IRepository",
+                    TypeParameters = new List<string> { "T" },
+                    BaseInterfaces = new List<TypeAnnotation>(),
+                    Body = new List<Statement>
+                    {
+                        new FunctionDef
+                        {
+                            Name = "get",
+                            Parameters = new List<Parameter>
+                            {
+                                new Parameter { Name = "self" },
+                                new Parameter
+                                {
+                                    Name = "id",
+                                    Type = new TypeAnnotation { Name = "int" }
+                                }
+                            },
+                            ReturnType = new TypeAnnotation { Name = "T" },
+                            Body = new List<Statement>
+                            {
+                                new ExpressionStatement
+                                {
+                                    Expression = new EllipsisLiteral()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert
+        Assert.Contains("public interface IRepository<T>", code);
+        Assert.Contains("T Get(int id);", code);
+    }
+
+    [Fact]
+    public void GenerateInterface_WithDocstring_GeneratesXmlDocComment()
+    {
+        // Arrange
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new InterfaceDef
+                {
+                    Name = "IDrawable",
+                    TypeParameters = new List<string>(),
+                    BaseInterfaces = new List<TypeAnnotation>(),
+                    DocString = "Represents an object that can be drawn on screen",
+                    Body = new List<Statement>
+                    {
+                        new FunctionDef
+                        {
+                            Name = "draw",
+                            Parameters = new List<Parameter>
+                            {
+                                new Parameter { Name = "self" }
+                            },
+                            ReturnType = new TypeAnnotation { Name = "None" },
+                            DocString = "Draws the object",
+                            Body = new List<Statement>
+                            {
+                                new ExpressionStatement
+                                {
+                                    Expression = new EllipsisLiteral()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert
+        Assert.Contains("/// <summary>", code);
+        Assert.Contains("/// Represents an object that can be drawn on screen", code);
+        Assert.Contains("/// Draws the object", code);
+    }
+
+    [Fact]
+    public void GenerateInterface_NamePreservesIPrefix_MaintainsInterfaceNamingConvention()
+    {
+        // Arrange
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new InterfaceDef
+                {
+                    Name = "IDrawable",
+                    TypeParameters = new List<string>(),
+                    BaseInterfaces = new List<TypeAnnotation>(),
+                    Body = new List<Statement>()
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - Interfaces preserve exact casing (no transformation)
+        Assert.Contains("public interface IDrawable", code);
+    }
+}

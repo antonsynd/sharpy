@@ -1291,6 +1291,11 @@ public class RoslynEmitter
                     members.Add(GenerateInterfaceMethod(funcDef));
                     break;
 
+                case VariableDeclaration varDecl:
+                    // Interface properties (get/set accessors)
+                    members.Add(GenerateInterfaceProperty(varDecl));
+                    break;
+
                 case PassStatement:
                     // Ignore pass in interface body
                     break;
@@ -1334,6 +1339,36 @@ public class RoslynEmitter
         }
 
         return method;
+    }
+
+    private PropertyDeclarationSyntax GenerateInterfaceProperty(VariableDeclaration varDecl)
+    {
+        // Use PascalCase for property names
+        var propertyName = NameMangler.ToPascalCase(varDecl.Name);
+
+        // Get property type from annotation
+        // Interface properties must have type annotations in Sharpy
+        if (varDecl.Type == null)
+        {
+            throw new InvalidOperationException(
+                $"Interface property '{varDecl.Name}' must have a type annotation at {varDecl.LineStart}:{varDecl.ColumnStart}");
+        }
+
+        var propertyType = _typeMapper.MapType(varDecl.Type);
+
+        // Interface properties have get and set accessors with no body
+        var accessors = new[]
+        {
+            AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)),
+            AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                .WithSemicolonToken(Token(SyntaxKind.SemicolonToken))
+        };
+
+        var property = PropertyDeclaration(propertyType, propertyName)
+            .WithAccessorList(AccessorList(List(accessors)));
+
+        return property;
     }
 
     #endregion
