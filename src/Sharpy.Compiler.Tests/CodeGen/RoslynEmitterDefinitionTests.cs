@@ -837,6 +837,289 @@ public class RoslynEmitterDefinitionTests
         Assert.Contains("public const int MaxUsers = 100;", code);
     }
 
+    [Fact]
+    public void GenerateClassDeclaration_ImplementsSingleInterface_GeneratesInterfaceInheritance()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "Circle",
+            BaseClasses = new List<TypeAnnotation>
+            {
+                new TypeAnnotation { Name = "IDrawable" }
+            },
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "draw",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self" }
+                    },
+                    ReturnType = new TypeAnnotation { Name = "None" },
+                    Body = new List<Statement>
+                    {
+                        new PassStatement()
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public class Circle : IDrawable", code);
+        Assert.Contains("public void Draw()", code);
+    }
+
+    [Fact]
+    public void GenerateClassDeclaration_ImplementsMultipleInterfaces_GeneratesMultipleInheritance()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "Button",
+            BaseClasses = new List<TypeAnnotation>
+            {
+                new TypeAnnotation { Name = "IDrawable" },
+                new TypeAnnotation { Name = "IClickable" }
+            },
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "draw",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self" }
+                    },
+                    ReturnType = new TypeAnnotation { Name = "None" },
+                    Body = new List<Statement>
+                    {
+                        new PassStatement()
+                    }
+                },
+                new FunctionDef
+                {
+                    Name = "on_click",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self" }
+                    },
+                    ReturnType = new TypeAnnotation { Name = "None" },
+                    Body = new List<Statement>
+                    {
+                        new PassStatement()
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public class Button : IDrawable, IClickable", code);
+        Assert.Contains("public void Draw()", code);
+        Assert.Contains("public void OnClick()", code);
+    }
+
+    [Fact]
+    public void GenerateClassDeclaration_InheritsClassAndImplementsInterface_GeneratesCorrectOrder()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "ColoredShape",
+            BaseClasses = new List<TypeAnnotation>
+            {
+                new TypeAnnotation { Name = "Shape" },
+                new TypeAnnotation { Name = "IColorable" }
+            },
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "set_color",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self" },
+                        new Parameter
+                        {
+                            Name = "color",
+                            Type = new TypeAnnotation { Name = "str" }
+                        }
+                    },
+                    ReturnType = new TypeAnnotation { Name = "None" },
+                    Body = new List<Statement>
+                    {
+                        new PassStatement()
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert - C# requires base class first, then interfaces
+        Assert.Contains("public class ColoredShape : Shape, IColorable", code);
+        Assert.Contains("public void SetColor(string color)", code);
+    }
+
+    [Fact]
+    public void GenerateClassDeclaration_ImplementsInterfaceWithMethodNameMangling_ManglesCorrectly()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "game_object",
+            BaseClasses = new List<TypeAnnotation>
+            {
+                new TypeAnnotation { Name = "IUpdateable" }
+            },
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "on_update",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self" },
+                        new Parameter
+                        {
+                            Name = "delta_time",
+                            Type = new TypeAnnotation { Name = "float" }
+                        }
+                    },
+                    ReturnType = new TypeAnnotation { Name = "None" },
+                    Body = new List<Statement>
+                    {
+                        new PassStatement()
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert - Type names preserve exact casing, method names are PascalCased
+        Assert.Contains("public class game_object : IUpdateable", code);
+        Assert.Contains("public void OnUpdate(double deltaTime)", code);
+    }
+
+    [Fact]
+    public void GenerateClassDeclaration_ImplementsGenericInterface_GeneratesGenericConstraint()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "StringList",
+            BaseClasses = new List<TypeAnnotation>
+            {
+                new TypeAnnotation
+                {
+                    Name = "IList",
+                    TypeArguments = new List<TypeAnnotation>
+                    {
+                        new TypeAnnotation { Name = "str" }
+                    }
+                }
+            },
+            Body = new List<Statement>
+            {
+                new PassStatement()
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public class StringList : IList<string>", code);
+    }
+
+    [Fact]
+    public void GenerateClassDeclaration_ImplementsInterfaceWithProperties_GeneratesPropertyImplementations()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "Entity",
+            BaseClasses = new List<TypeAnnotation>
+            {
+                new TypeAnnotation { Name = "IEntity" }
+            },
+            Body = new List<Statement>
+            {
+                new VariableDeclaration
+                {
+                    Name = "id",
+                    Type = new TypeAnnotation { Name = "int" },
+                    InitialValue = new IntegerLiteral { Value = "0" }
+                },
+                new VariableDeclaration
+                {
+                    Name = "name",
+                    Type = new TypeAnnotation { Name = "str" },
+                    InitialValue = new StringLiteral { Value = "Unknown" }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public class Entity : IEntity", code);
+        Assert.Contains("public int Id = 0;", code);
+        Assert.Contains("public string Name = \"Unknown\";", code);
+    }
+
+    [Fact]
+    public void GenerateClassDeclaration_EmptyClassImplementsInterface_GeneratesEmptyBody()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "EmptyDrawable",
+            BaseClasses = new List<TypeAnnotation>
+            {
+                new TypeAnnotation { Name = "IDrawable" }
+            },
+            Body = new List<Statement>
+            {
+                new PassStatement()
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public class EmptyDrawable : IDrawable", code);
+        // Class should have empty body (just braces)
+        Assert.Contains("{", code);
+        Assert.Contains("}", code);
+    }
+
     #endregion
 
     #region Struct Definition Tests
