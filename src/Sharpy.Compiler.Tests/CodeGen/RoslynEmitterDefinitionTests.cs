@@ -723,6 +723,65 @@ public class RoslynEmitterDefinitionTests
         Assert.Contains("public Box(int width, int height, int depth)", code);
     }
 
+    [Fact]
+    public void GenerateClassDeclaration_WithFieldEdgeCases_GeneratesCorrectFields()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "DataClass",
+            Body = new List<Statement>
+            {
+                // Field with type annotation and no initializer
+                new VariableDeclaration
+                {
+                    Name = "user_name",
+                    Type = new TypeAnnotation { Name = "string" },
+                    InitialValue = null
+                },
+                // Field with type annotation and initializer
+                new VariableDeclaration
+                {
+                    Name = "user_count",
+                    Type = new TypeAnnotation { Name = "int" },
+                    InitialValue = new IntegerLiteral { Value = "0" }
+                },
+                // Field without type annotation but with initializer (falls back to object)
+                new VariableDeclaration
+                {
+                    Name = "default_data",
+                    Type = null,
+                    InitialValue = new IntegerLiteral { Value = "42" }
+                },
+                // Const field with type annotation and initializer
+                new VariableDeclaration
+                {
+                    Name = "max_users",
+                    Type = new TypeAnnotation { Name = "int" },
+                    InitialValue = new IntegerLiteral { Value = "100" },
+                    IsConst = true
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert - verify name mangling (snake_case -> PascalCase)
+        Assert.Contains("public string UserName;", code);
+
+        // Assert - verify field with initializer
+        Assert.Contains("public int UserCount = 0;", code);
+
+        // Assert - verify field without type annotation falls back to object
+        Assert.Contains("public object DefaultData = 42;", code);
+
+        // Assert - verify const field
+        Assert.Contains("public const int MaxUsers = 100;", code);
+    }
+
     #endregion
 
     #region Struct Definition Tests
