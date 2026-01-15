@@ -18,9 +18,11 @@ import operator
 
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.store.memory import InMemoryStore
 from langgraph.types import interrupt, Command
 
 from .config import Config, BackendType
+from .memory import MemoryManager
 from .state import (
     GroundTruth,
     Task,
@@ -179,9 +181,15 @@ class Orchestrator:
         # Setup checkpoint cleanup tracking
         self._setup_checkpoint_cleanup()
 
+        # Initialize memory store and manager
+        self.memory_store = self._create_memory_store()
+        self.memory_manager = MemoryManager(self.memory_store, self.config.memory)
+
         # Build the graph
         self.graph = self._build_graph()
-        self.app = self.graph.compile(checkpointer=self.checkpointer)
+        self.app = self.graph.compile(
+            checkpointer=self.checkpointer, store=self.memory_store
+        )
 
     def _log_execution(
         self,
@@ -337,6 +345,55 @@ class Orchestrator:
         ground_truth = parse_task_list(task_list_content)
         ground_truth.save(self.config.ground_truth_path)
         return ground_truth
+
+    def _create_memory_store(self) -> Optional[InMemoryStore]:
+        """
+        Create and configure LangGraph memory store.
+
+        Returns:
+            InMemoryStore if memory enabled, None otherwise
+        """
+        if not self.config.memory.enabled:
+            return None
+
+        # Create in-memory store (can be swapped for persistent store later)
+        store = InMemoryStore()
+
+        # Configure embeddings if provider specified
+        if self.config.memory.embedding_provider == "openai":
+            try:
+                from langchain_openai import OpenAIEmbeddings
+
+                embeddings = OpenAIEmbeddings(
+                    model=self.config.memory.openai_embedding_model
+                )
+                store = InMemoryStore(index={"embed": embeddings})
+                print(
+                    f"  Memory store: Enabled with OpenAI embeddings ({self.config.memory.openai_embedding_model})"
+                )
+            except ImportError:
+                print(
+                    "  Memory store: Warning - langchain-openai not installed, using exact key matching"
+                )
+        elif self.config.memory.embedding_provider == "local":
+            try:
+                from langchain_community.embeddings import HuggingFaceEmbeddings
+
+                embeddings = HuggingFaceEmbeddings(
+                    model_name=self.config.memory.local_embedding_model
+                )
+                store = InMemoryStore(index={"embed": embeddings})
+                print(
+                    f"  Memory store: Enabled with local embeddings ({self.config.memory.local_embedding_model})"
+                )
+            except ImportError:
+                print(
+                    "  Memory store: Warning - sentence-transformers not installed, using exact key matching"
+                )
+        else:
+            print("  Memory store: Enabled with exact key matching (no embeddings)")
+
+        return store
 
     def _build_graph(self) -> StateGraph:
         """Build the LangGraph state machine."""

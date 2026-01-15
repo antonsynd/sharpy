@@ -754,11 +754,11 @@
 
 **Actions**:
 
-1. [ ] Add imports: `from langgraph.store.memory import InMemoryStore`, `from .memory import MemoryManager`
-2. [ ] Add `_create_memory_store()` method returning configured `InMemoryStore`
-3. [ ] Configure embeddings if provider specified in config
-4. [ ] Create `self.memory_store` and `self.memory_manager` in `__init__`
-5. [ ] Update graph compilation: `self.app = self.graph.compile(checkpointer=..., store=self.memory_store)`
+1. [x] Add imports: `from langgraph.store.memory import InMemoryStore`, `from .memory import MemoryManager`
+2. [x] Add `_create_memory_store()` method returning configured `InMemoryStore`
+3. [x] Configure embeddings if provider specified in config
+4. [x] Create `self.memory_store` and `self.memory_manager` in `__init__`
+5. [x] Update graph compilation: `self.app = self.graph.compile(checkpointer=..., store=self.memory_store)`
 
 **Verification**:
 - ✅ Test: Memory store initialized
