@@ -189,7 +189,7 @@ class Orchestrator:
     async def setup(self) -> None:
         """Async setup - must be called before using the orchestrator."""
         import aiosqlite
-        
+
         # Initialize async SQLite checkpointer
         # We use aiosqlite.connect directly and add is_alive method to work around
         # a bug in langgraph-checkpoint-sqlite where setup() calls conn.is_alive()
@@ -199,7 +199,7 @@ class Orchestrator:
         )
         # Monkey-patch is_alive method that langgraph expects
         self._async_db_conn.is_alive = lambda: True
-        
+
         self.checkpointer = AsyncSqliteSaver(self._async_db_conn)
 
         # Compile the graph with the checkpointer
