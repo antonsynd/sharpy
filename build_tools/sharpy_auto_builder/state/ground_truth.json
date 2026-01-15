@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-15T14:34:18.236849",
+  "last_updated": "2026-01-15T14:42:46.364279",
   "phases": [
     {
       "id": "0.1.6",
@@ -1240,7 +1240,7 @@
       "name": "Structs & Enums - Comprehensive Task List (v2)",
       "goal": "",
       "status": "in_progress",
-      "progress": 36.36363636363637,
+      "progress": 45.45454545454545,
       "tasks": [
         {
           "id": "0.1.8.1",
@@ -1495,8 +1495,46 @@
           "files": [
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude-code",
+              "started_at": "2026-01-15T14:42:46.356648",
+              "completed_at": "2026-01-15T14:42:46.356650",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T14:42:46.356632",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have a complete picture. Let me prepare the spec adherence report:\n\n## Spec Adherence Report: Implement Enum Code Generation\n\n**Spec:** `docs/language_specification/enums.md`\n**Implementation:** `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:748-893`\n\n### Compliant\n\n- [x] **Integer enums \u2192 C# `enum`**: The `GenerateIntegerEnum()` method (line 782-805) correctly generates a native C# `enum` for integer-valued enums\n- [x] **String enums \u2192 Static class**: The `GenerateStringEnumClass()` method (line 811-875) correctly generates a sealed class with `public static readonly string` fields\n- [x] **Enum detection logic**: The `IsStringEnum()` method (line 766-777) correctly distinguishes between integer and string enums by checking for `StringLiteral` values\n- [x] **Public modifier**: Both integer and string enums are generated with `public` modifier (spec doesn't restrict this)\n- [x] **Name mangling applied**: Enum names use `NameContext.Type` (PascalCase), member names use `NameContext.Constant`\n- [x] **XML documentation**: DocStrings are correctly converted to XML doc comments via `GenerateXmlDocComment()`\n- [x] **Explicit values preserved**: Integer enum members retain their explicit values via `EqualsValueClause`\n\n### Deviations\n\n- [ ] **Section \"Rules\"**: Missing validation for \"all cases must have explicit constant values\"\n  - **Spec says:** \"All cases must have explicit constant values\"\n  - **Implementation:** The `GenerateEnumMember()` method (line 878-892) handles `member.Value == null` case by simply not adding an equals clause, allowing C# to auto-assign values\n  - **Impact:** Low - This is likely a semantic validation concern (not code generation), but tests show enums without explicit values are accepted\n\n- [ ] **Section \"Rules\"**: Missing validation for \"All values must be of the same type\"\n  - **Spec says:** \"All values must be of the same type, either an integer type or the `str` type\"\n  - **Implementation:** `IsStringEnum()` returns `true` if **any** member has a string literal (line 771-774), but doesn't validate all members are consistent\n  - **Impact:** Medium - Mixed-type enums would produce inconsistent output (some string fields from literals, some from member names)\n\n- [ ] **Section \"Rules\"**: Missing validation for \"Enums must have at least one case\"\n  - **Spec says:** \"Enums must have at least one case\"\n  - **Implementation:** No check for empty `Members` list\n  - **Impact:** Low - C# compiler would reject empty enum anyway; semantic validation should handle this\n\n- [ ] **Section \"Access underlying value\"**: `.value` property not lowered for integer enums\n  - **Spec says:** `value = favorite.value  # 1`\n  - **Implementation notes say:** `.name` property needs lowering to `Enum.GetName()` or lookup, but `.value` for integer enums needs casting\n  - **Implementation:** `GenerateMemberAccess()` (line 2840-2862) does generic PascalCase transform, doesn't special-case `.value` to cast enum to int\n  - **Impact:** High - `Color.RED.value` would not work; needs to become `(int)Color.RED`\n\n- [ ] **Section \"Access underlying value\"**: `.name` property not lowered for integer enums\n  - **Spec says:** `name = favorite.name  # \"RED\"`\n  - **Implementation notes say:** \"\ud83d\udd04 Lowered - `Enum.GetName()` or lookup\"\n  - **Implementation:** No special handling for `.name` on enum values\n  - **Impact:** High - `Color.RED.name` would not compile; needs to become `Enum.GetName(typeof(Color), Color.RED)` or `nameof(Color.RED)`\n\n- [ ] **Section \"Enum Iteration and Methods\"**: Iteration over enum type not implemented\n  - **Spec says:** `for color in Color:` and `list(Color)`\n  - **Implementation:** No lowering for iterating over enum type or converting to list\n  - **Impact:** High - Core enum functionality missing; needs `Enum.GetValues<Color>()` lowering\n\n- [ ] **String enum**: Missing `.value` and `.name` support for string enums\n  - **Spec says:** Both integer and string enums support `.value` and `.name`\n  - **Implementation:** String enums generate plain `string` fields, not a wrapper type with `.value`/`.name` properties\n  - **Impact:** High - `HttpMethod.GET.value` would not work on string enums\n\n### Undocumented Behavior\n\n1. **String enum fallback value**: When a string enum member has a non-string value (which violates spec), the implementation uses the original member name as the string value (line 840-844). This is defensive but undocumented.\n\n2. **Sealed class for string enums**: The spec says \"Static class with string constants\" but implementation generates a `sealed class`, not a `static class`. This prevents instantiation but differs from spec wording.\n\n### Recommendations\n\n1. **High Priority**: Implement lowering for `.value` and `.name` property access on enum instances:\n   - For integer enums: `.value` \u2192 `(int)enumValue`, `.name` \u2192 `Enum.GetName(typeof(EnumType), enumValue)`\n   - For string enums: Need a wrapper type or different approach\n\n2. **High Priority**: Implement enum iteration lowering:\n   - `for x in EnumType:` \u2192 `foreach (var x in Enum.GetValues<EnumType>())`\n   - `list(EnumType)` \u2192 `Enum.GetValues<EnumType>().ToList()`\n\n3. **Medium Priority**: Add semantic validation for:\n   - All enum members must have explicit values\n   - All enum members must have same-type values\n   - Enums must have at least one member\n\n4. **Low Priority**: Consider using `static class` instead of `sealed class` for string enums to match spec wording exactly (though `sealed` is functionally equivalent for this use case)\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T14:42:46.356638",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "I have now collected all the information needed for the verification report. Let me compile the final report:\n\n## Verification Report: Implement Enum Code Generation\n\n### Test Results\n- **Total:** 3565 | **Passed:** 3532 | **Skipped:** 33 | **Failed:** 0\n\n**Enum-Specific Tests:**\n- Total: 5 | Passed: 5\n\n| Test Name | Status |\n|-----------|--------|\n| `RoslynEmitterDefinitionTests.GenerateEnumDeclaration_SimpleEnum_GeneratesPublicEnum` | \u2705 Passed |\n| `RoslynEmitterDefinitionTests.GenerateEnumDeclaration_WithoutExplicitValues_GeneratesEnumMembers` | \u2705 Passed |\n| `RoslynEmitterDefinitionTests.GenerateEnumDeclaration_WithDocstring_GeneratesXmlDoc` | \u2705 Passed |\n| `RoslynEmitterIntegrationTests.GeneratedCode_EnumDeclaration_CompilesSuccessfully` | \u2705 Passed |\n| `NameResolverTests.TestEnumDeclaration` | \u2705 Passed |\n\n### Behavior Checks\n\nBased on specification in `task_list_0_1_8_structs_enums_v2.md` (Task 0.1.8.6):\n\n- [x] **Integer enums generate C# `enum`** - `GenerateIntegerEnum()` at `RoslynEmitter.cs:782` correctly generates public enum declarations\n- [x] **String enums generate sealed static class** - `GenerateStringEnumClass()` at `RoslynEmitter.cs:811` generates sealed classes with static readonly fields\n- [x] **Enum detection logic** - `IsStringEnum()` at `RoslynEmitter.cs:766` correctly determines enum type by checking for StringLiteral values\n- [x] **Enum members have explicit values** - `GenerateEnumMember()` at `RoslynEmitter.cs:878` generates members with assigned values\n- [x] **XML documentation support** - Both integer and string enum generators include docstring \u2192 XML doc conversion\n- [x] **EnumDef AST node exists** - Defined at `Statement.cs:236` with Name, Members, and DocString properties\n- [x] **Parser support** - `ParseEnumDef()` at `Parser.cs:584` correctly parses enum definitions\n\n### Deviations Found\n\n1. **\u26a0\ufe0f Enum member name mangling uses `NameContext.Constant`** (preserves CAPS_SNAKE_CASE)\n   - Specification states: \"Enum members should be transformed to PascalCase: `RED` \u2192 `Red`\"\n   - Current implementation at `RoslynEmitter.cs:881`: `var memberName = NameMangler.Transform(member.Name, NameContext.Constant);`\n   - `NameMangler.ToConstantCase()` preserves original casing (CAPS_SNAKE_CASE stays as-is)\n   - This means `RED` stays as `RED`, not `Red` as spec requires\n\n2. **String enum uses `public static readonly` instead of `public const`**\n   - Specification example shows: `public const string Get = \"GET\";`\n   - Implementation at `RoslynEmitter.cs:858-862` uses: `PublicKeyword, StaticKeyword, ReadOnlyKeyword`\n   - Both approaches work, but `const` is slightly more efficient (compile-time constant)\n\n### Coverage Assessment\n\n**Covered:**\n- Integer enum code generation with explicit values\n- String enum code generation (sealed class with static fields)\n- Enum without explicit values (generates members without value assignment)\n- XML documentation generation from docstrings\n- Integration test verifying generated code compiles\n\n**Not Covered by Current Tests:**\n- String enum generation and compilation (no specific test)\n- Enum `.name` property usage\n- Enum `.value` property usage  \n- Enum member name mangling verification (PascalCase conversion)\n- Mixed type enum validation (error case)\n- Enum with methods validation (error case)\n- Enum usage in expressions\n\n### Regression Check\n- **No regressions detected** - All 3532 tests passing\n- Full test suite runs successfully\n\n### Recommendations\n\n1. **HIGH PRIORITY: Fix enum member name mangling** - Update `GenerateEnumMember()` and `GenerateStringEnumClass()` to use PascalCase conversion instead of constant case. Add `NameContext.EnumMember` or use `ToPascalCase()` directly as suggested in spec.\n\n2. **Consider changing string enum fields to `const`** - Minor optimization to match spec more closely.\n\n3. **Add missing tests:**\n   - String enum code generation and compilation test\n   - Enum member name mangling verification test (`RED` \u2192 `Red`)\n   - Enum `.name` and `.value` property tests (Task 0.1.8.8)\n   - Negative tests for mixed types and methods in enums (Task 0.1.8.7)\n\n4. **Integration tests from spec not yet implemented** - Task 0.1.8.10 lists comprehensive integration tests that should be added to `Phase018IntegrationTests.cs`\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T14:42:46.356642",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have the implementation. Let me verify the specific claims made:\n\n## Verification Results\n\n---\n\n**Claim 1:** Updated `GenerateEnumDeclaration` signature (line 748) - Changed return type from `EnumDeclarationSyntax` to `SyntaxNode`\n\n**Verification:** Direct code inspection at line 748\n**Result:** \u2705 CORRECT \u2014 Line 748 shows `private SyntaxNode GenerateEnumDeclaration(EnumDef enumDef)` which returns `SyntaxNode`, not `EnumDeclarationSyntax`.\n\n---\n\n**Claim 2:** Added `IsStringEnum` helper method (line 766-777)\n\n**Verification:** Direct code inspection\n**Result:** \u274c INCORRECT (line numbers) \u2014 The method exists, but it's at lines **766-777** in the claim vs actual lines **766-777**. Wait, actually rechecking: the XML doc comment starts at 763-765, and the method is at 766-777. The claim says lines 766-777 which matches the method body exactly. \u2705 CORRECT\n\n---\n\n**Claim 3:** `IsStringEnum` checks if any enum member has a `StringLiteral` value\n\n**Verification:** Direct code inspection at lines 769-775\n**Result:** \u2705 CORRECT \u2014 The code iterates through members and checks `if (member.Value is StringLiteral)`.\n\n---\n\n**Claim 4:** Renamed original `GenerateEnumDeclaration` to `GenerateIntegerEnum` (line 782-806)\n\n**Verification:** Direct code inspection\n**Result:** \u2705 CORRECT \u2014 `GenerateIntegerEnum` exists at lines 782-806 and generates standard C# enums.\n\n---\n\n**Claim 5:** String enums generate `sealed class` with `public static readonly string` fields\n\n**Verification:** Direct code inspection at lines 811-876\n**Result:** \u2705 CORRECT \u2014 `GenerateStringEnumClass` at line 811 creates a sealed class (lines 817-820) with `public static readonly string` fields (lines 858-862 show the modifiers: `PublicKeyword`, `StaticKeyword`, `ReadOnlyKeyword`).\n\n---\n\n**Claim 6:** Integer enums use standard C# `enum` with integer values\n\n**Verification:** Direct code inspection at line 795\n**Result:** \u2705 CORRECT \u2014 `EnumDeclaration(enumName)` is used which creates a standard C# enum.\n\n---\n\n### Roslyn API Verification\n\n**Claim:** Uses `SyntaxFactory.EnumDeclaration`, `SyntaxFactory.ClassDeclaration`, `SyntaxFactory.FieldDeclaration`, `Token(SyntaxKind.SealedKeyword)`, `Token(SyntaxKind.ReadOnlyKeyword)`\n\n**Verification:** These are standard Roslyn SyntaxFactory methods\n**Result:** \u2705 CORRECT \u2014 All these Roslyn APIs exist and are used correctly:\n- `EnumDeclaration(string)` - valid\n- `ClassDeclaration(string)` - valid\n- `FieldDeclaration(VariableDeclarationSyntax)` - valid\n- `Token(SyntaxKind.SealedKeyword)` - valid\n- `Token(SyntaxKind.ReadOnlyKeyword)` - valid\n\n---\n\n### C# 9.0 Compatibility Check\n\n**Verification:** Review code for C# 10+ features\n**Result:** \u2705 CORRECT \u2014 The implementation uses only C# 9.0-compatible features:\n- Pattern matching with `is` (C# 7.0+) \u2705\n- No file-scoped namespaces \u2705\n- No global usings \u2705\n- No record structs \u2705\n- No required members \u2705\n\n---\n\n## Summary\n\n| Claim | Status |\n|-------|--------|\n| Return type changed to `SyntaxNode` | \u2705 CORRECT |\n| `IsStringEnum` helper at lines 766-777 | \u2705 CORRECT |\n| StringLiteral detection logic | \u2705 CORRECT |\n| `GenerateIntegerEnum` at lines 782-806 | \u2705 CORRECT |\n| Sealed class with static readonly fields | \u2705 CORRECT |\n| Standard C# enum for integers | \u2705 CORRECT |\n| Roslyn API usage | \u2705 CORRECT |\n| C# 9.0 compatibility | \u2705 CORRECT |\n\n**Overall Assessment:** All verifiable claims are **factually accurate**. The implementation matches the description provided.\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": true,
           "human_question": null,
@@ -1511,7 +1549,7 @@
           "files": [
             "src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": true,
@@ -2013,14 +2051,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "0.1.8.6",
-  "total_attempts": 28,
-  "total_successes": 28,
+  "current_task_id": "0.1.8.7",
+  "total_attempts": 29,
+  "total_successes": 29,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 28,
-      "successes": 28,
+      "attempts": 29,
+      "successes": 29,
       "failures": 0
     },
     "copilot": {
@@ -2029,5 +2067,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 41.66666666666667
+  "overall_progress": 43.333333333333336
 }

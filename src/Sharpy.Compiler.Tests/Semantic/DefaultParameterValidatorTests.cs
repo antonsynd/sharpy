@@ -348,9 +348,9 @@ def foo(value: float = None):
     {
         var source = @"
 enum Color:
-    RED
-    GREEN
-    BLUE
+    RED = 0
+    GREEN = 1
+    BLUE = 2
 
 def paint(color: Color = Color.RED):
     pass
@@ -366,9 +366,9 @@ def paint(color: Color = Color.RED):
     {
         var source = @"
 enum Mode:
-    NORMAL
-    DEBUG
-    VERBOSE
+    NORMAL = 0
+    DEBUG = 1
+    VERBOSE = 2
 
 class Logger:
     def log(self, mode: Mode = Mode.NORMAL):
@@ -385,13 +385,13 @@ class Logger:
     {
         var source = @"
 enum Level:
-    LOW
-    MEDIUM
-    HIGH
+    LOW = 0
+    MEDIUM = 1
+    HIGH = 2
 
 enum Status:
-    ACTIVE
-    INACTIVE
+    ACTIVE = 0
+    INACTIVE = 1
 
 def configure(level: Level = Level.MEDIUM, status: Status = Status.ACTIVE):
     pass

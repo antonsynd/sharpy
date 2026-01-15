@@ -111,7 +111,7 @@ public class TypeChecker
                 break;
 
             case EnumDef enumDef:
-                // Enums don't need type checking
+                CheckEnum(enumDef);
                 break;
 
             case Assignment assignment:
@@ -495,6 +495,14 @@ public class TypeChecker
         _accessValidator.ExitClass();
 
         _symbolTable.ExitScope();
+    }
+
+    private void CheckEnum(EnumDef enumDef)
+    {
+        _logger.LogDebug($"Type checking enum: {enumDef.Name}");
+
+        // Validate enum-specific rules
+        ValidateEnumRules(enumDef);
     }
 
     private void CheckAssignment(Assignment assignment)
@@ -2500,6 +2508,58 @@ public class TypeChecker
     }
 
     /// <summary>
+    /// Validate enum-specific rules
+    /// </summary>
+    private void ValidateEnumRules(EnumDef enumDef)
+    {
+        _logger.LogDebug($"Validating enum-specific rules for '{enumDef.Name}'");
+
+        // Track the type of enum values to ensure consistency
+        SemanticType? enumValueType = null;
+
+        // Rule 1: All enum values must be explicit
+        // Rule 2: All values must be of the same type (int or str)
+        foreach (var member in enumDef.Members)
+        {
+            // Rule 1: Check if value is explicit
+            if (member.Value == null)
+            {
+                AddError(
+                    $"Enum member '{member.Name}' requires an explicit value. All enum members must have explicit constant values.",
+                    member.LineStart,
+                    member.ColumnStart);
+                continue;
+            }
+
+            // Check the type of the value
+            var valueType = CheckExpression(member.Value);
+
+            // Rule 2: Ensure value is int or str
+            if (!IsIntType(valueType) && !IsStrType(valueType))
+            {
+                AddError(
+                    $"Enum member '{member.Name}' has invalid value type '{valueType.GetDisplayName()}'. Enum values must be int or str.",
+                    member.LineStart,
+                    member.ColumnStart);
+                continue;
+            }
+
+            // Rule 2: Ensure all values are the same type
+            if (enumValueType == null)
+            {
+                enumValueType = valueType;
+            }
+            else if (!valueType.Equals(enumValueType))
+            {
+                AddError(
+                    $"Enum member '{member.Name}' has type '{valueType.GetDisplayName()}' but previous members have type '{enumValueType.GetDisplayName()}'. All enum values must be the same type.",
+                    member.LineStart,
+                    member.ColumnStart);
+            }
+        }
+    }
+
+    /// <summary>
     /// Check if a method name is a dunder method (starts and ends with __ and has content in between)
     /// </summary>
     private static bool IsDunderMethod(string name) =>
@@ -2648,6 +2708,22 @@ public class TypeChecker
         // Case 4: Regular method - super() not allowed
         AddError("super() cannot be used in regular methods; only in __init__, @override, or dunder methods",
             superExpr.LineStart, superExpr.ColumnStart);
+    }
+
+    /// <summary>
+    /// Check if a type is an int type
+    /// </summary>
+    private static bool IsIntType(SemanticType type)
+    {
+        return type == SemanticType.Int || type == SemanticType.Long;
+    }
+
+    /// <summary>
+    /// Check if a type is a str type
+    /// </summary>
+    private static bool IsStrType(SemanticType type)
+    {
+        return type == SemanticType.Str;
     }
 
     private void AddError(string message, int? line = null, int? column = null)
