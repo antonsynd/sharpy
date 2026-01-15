@@ -266,7 +266,9 @@ class TestMemoryManager:
         )
 
         # Get context
-        context = memory_manager.get_implementation_context("improve parser error handling")
+        context = memory_manager.get_implementation_context(
+            "improve parser error handling"
+        )
 
         assert isinstance(context, str)
         if context:  # May be empty if search doesn't find relevant patterns

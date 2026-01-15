@@ -413,7 +413,9 @@ class MemoryManager:
         context_parts = ["## Codebase Knowledge\n"]
         for pattern in patterns:
             confidence = pattern.metadata.get("confidence", 1.0)
-            context_parts.append(f"### {pattern.task_type} (confidence: {confidence:.2f})")
+            context_parts.append(
+                f"### {pattern.task_type} (confidence: {confidence:.2f})"
+            )
             context_parts.append(pattern.solution)
             context_parts.append("")
 

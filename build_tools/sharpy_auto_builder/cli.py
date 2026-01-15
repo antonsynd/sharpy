@@ -963,7 +963,9 @@ def cmd_memory_stats(args):
 
     print(f"\nConfiguration:")
     print(f"  Enabled: {config.memory.enabled}")
-    print(f"  Embedding provider: {config.memory.embedding_provider or 'None (exact key matching)'}")
+    print(
+        f"  Embedding provider: {config.memory.embedding_provider or 'None (exact key matching)'}"
+    )
     print(f"  Max patterns per query: {config.memory.max_patterns_per_query}")
     print(f"  Max pattern length: {config.memory.max_pattern_length}")
 
@@ -983,7 +985,9 @@ def cmd_memory_stats(args):
     for name, ns in namespaces_to_query.items():
         try:
             # List all patterns in this namespace
-            patterns = memory_manager.search_patterns(query="", namespace=ns, limit=10000)
+            patterns = memory_manager.search_patterns(
+                query="", namespace=ns, limit=10000
+            )
             count = len(patterns)
             total_patterns += count
             print(f"  {name}: {count} patterns")
@@ -993,7 +997,9 @@ def cmd_memory_stats(args):
                 task_types = {}
                 for p in patterns:
                     task_types[p.task_type] = task_types.get(p.task_type, 0) + 1
-                print(f"     Types: {', '.join(f'{k}({v})' for k, v in sorted(task_types.items())[:5])}")
+                print(
+                    f"     Types: {', '.join(f'{k}({v})' for k, v in sorted(task_types.items())[:5])}"
+                )
                 if len(task_types) > 5:
                     print(f"            ... and {len(task_types) - 5} more types")
         except Exception as e:
@@ -1038,9 +1044,7 @@ def cmd_memory_clear(args):
     # Require confirmation
     if not args.confirm:
         if namespace:
-            print(
-                f"This will delete all patterns from namespace '{args.namespace}'."
-            )
+            print(f"This will delete all patterns from namespace '{args.namespace}'.")
         else:
             print("This will delete ALL patterns from the memory store.")
         print("Add --confirm to proceed.")
@@ -1076,7 +1080,9 @@ def cmd_memory_clear(args):
             # Delete from all namespaces
             total_deleted = 0
             for name, ns in namespace_map.items():
-                patterns = memory_manager.search_patterns(query="", namespace=ns, limit=10000)
+                patterns = memory_manager.search_patterns(
+                    query="", namespace=ns, limit=10000
+                )
                 for pattern in patterns:
                     try:
                         store.delete(namespace=ns, key=pattern.id)
