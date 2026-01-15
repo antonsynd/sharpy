@@ -242,6 +242,9 @@ You are READ-ONLY and do not modify code.
 ## Claims to Verify
 {claims}
 
+**Note:** If the content above appears truncated, verify as many complete claims as possible.
+For any claim that is cut off mid-sentence, note it as "INCOMPLETE" and move on.
+
 ## Verification Methods
 
 ### .NET API Claims

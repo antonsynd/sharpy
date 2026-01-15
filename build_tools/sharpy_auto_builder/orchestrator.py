@@ -1860,8 +1860,27 @@ hallucination defense) found issues that could not be automatically resolved aft
         execution_result = state.get("last_execution_result", {})
         self._log_step_start("check_hallucinations", task_data["id"])
 
-        # Extract claims from implementation output
-        claims = execution_result.get("output", "")[:2000]  # First 2000 chars
+        # Extract claims from implementation output with smart truncation
+        full_output = execution_result.get("output", "")
+        if len(full_output) > 2000:
+            # Find last complete sentence within limit
+            truncated = full_output[:2000]
+            # Look for sentence endings (.!?) followed by space or newline
+            last_sentence_end = max(
+                truncated.rfind(". "),
+                truncated.rfind(".\n"),
+                truncated.rfind("! "),
+                truncated.rfind("!\n"),
+                truncated.rfind("? "),
+                truncated.rfind("?\n"),
+            )
+            if last_sentence_end > 1000:  # Only use if we keep enough content
+                claims = truncated[:last_sentence_end + 1]
+            else:
+                claims = truncated
+            claims += "\n\n[... content truncated for validation, see full output for remaining claims]"
+        else:
+            claims = full_output
 
         prompt = get_agent_prompt(
             AgentRole.HALLUCINATION_DEFENSE,
