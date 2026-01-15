@@ -1,0 +1,1044 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-01-14T23:18:09.576387",
+  "phases": [
+    {
+      "id": "0.1.6",
+      "name": "Classes - Comprehensive Task List (v2)",
+      "goal": "",
+      "status": "pending",
+      "progress": 0.0,
+      "tasks": [
+        {
+          "id": "0.1.6.1",
+          "phase": "0.1.6",
+          "title": "Audit/Verify Class Definition AST",
+          "description": "**Type:** \ud83d\udd0d Status Check  \n**Priority:** Critical  \n**Estimated Time:** 30 minutes\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Parser/Ast/Statement.cs`, `src/Sharpy.Compiler/Parser/Ast/Node.cs`\n\n### Objective\nVerify that `ClassDef` AST node exists and captures all required information.\n\n### Actions\n\n1. **Verify `ClassDef` record exists** with these properties:\n   - `Name` (string) \u2014 class name\n   - `BaseClasses` (List<TypeAnnotation> or similar) \u2014 inheritance (can be empty for now)\n   - `Body` (List<Stat",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Ast/Statement.cs",
+            "src/Sharpy.Compiler/Parser/Ast/Node.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.6.2",
+          "phase": "0.1.6",
+          "title": "Verify Class Definition Parsing",
+          "description": "**Type:** \ud83d\udd0d Status Check  \n**Priority:** Critical  \n**Estimated Time:** 1 hour\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Parser/Parser.cs`\n\n### Objective\nEnsure the parser correctly handles class definitions with fields, methods, and multiple `__init__` overloads.\n\n### Actions\n\n1. **Verify basic class parsing:**\n   ```python\n   class Point:\n       x: int\n       y: int\n   ```\n   - Parser recognizes `class` keyword\n   - Class name is captured\n   - Body is parsed as indented block\n   - Field declarations ",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Parser.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.6.3",
+          "phase": "0.1.6",
+          "title": "Implement/Verify `self` Handling in Semantic Analysis",
+          "description": "**Type:** \u26a0\ufe0f Likely Implementation Needed  \n**Priority:** Critical  \n**Estimated Time:** 3-4 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs`, `src/Sharpy.Compiler/Semantic/SymbolTable.cs`, `src/Sharpy.Compiler/Semantic/TypeChecker.cs`\n\n### Objective\nEnsure `self` is properly typed, `self.x` resolves to field access, and semantic validation rules are enforced.\n\n### Actions\n\n1. **When entering a class scope:**\n   - Register the class type in the symbol table\n   - Track \"curr",
+          "files": [
+            "src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs",
+            "src/Sharpy.Compiler/Semantic/SymbolTable.cs",
+            "src/Sharpy.Compiler/Semantic/TypeChecker.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.6.4",
+          "phase": "0.1.6",
+          "title": "Implement/Verify `__init__` Code Generation with Overloading and Chaining",
+          "description": "**Type:** \u26a0\ufe0f Likely Implementation Needed  \n**Priority:** Critical  \n**Estimated Time:** 3-4 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nGenerate C# constructors from `__init__` methods, supporting overloading and chaining.\n\n### Actions\n\n1. **Identify `__init__` methods** within class body:\n   - Check if method name is `__init__`\n   - Generate C# constructor instead of regular method\n\n2. **\u26a0\ufe0f NEW: Support constructor overloading (multiple `__init__` methods)",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.6.5",
+          "phase": "0.1.6",
+          "title": "Implement/Verify Field Code Generation",
+          "description": "**Type:** \ud83d\udd0d Status Check / Implementation  \n**Priority:** High  \n**Estimated Time:** 1-2 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nGenerate C# fields from class field declarations with correct name mangling.\n\n### Actions\n\n1. **Identify field declarations** in class body:\n   - `VariableDeclaration` with type annotation at class level\n\n2. **Generate C# fields with correct name mangling:**\n   - Public fields: `snake_case` \u2192 `PascalCase` (e.g., `user_count` \u2192 ",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.6.6",
+          "phase": "0.1.6",
+          "title": "Implement/Verify Instance Method Code Generation",
+          "description": "**Type:** \u26a0\ufe0f Likely Implementation Needed  \n**Priority:** High  \n**Estimated Time:** 2 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nGenerate C# instance methods from Sharpy methods that have `self` parameter.\n\n### Actions\n\n1. **Detect instance methods:**\n   - Method has `self` as first parameter\n\n2. **Generate C# method:**\n   - Skip `self` parameter\n   - Method name: `snake_case` \u2192 `PascalCase`\n   - Parameter names: `snake_case` \u2192 `camelCase`\n   - Transform `",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.6.7",
+          "phase": "0.1.6",
+          "title": "Implement/Verify Static Method Detection and Code Generation",
+          "description": "**Type:** \u26a0\ufe0f Likely Implementation Needed  \n**Priority:** High  \n**Estimated Time:** 1-2 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`, `src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs`\n\n### Objective\nDetect and generate static methods (methods without `self` parameter).\n\n### Key Rules (Per Specification)\n\n1. **Primary mechanism:** Absence of `self` parameter makes method static (Pythonic)\n2. **`@static` decorator:** Valid but OPTIONAL/redundant for methods\n3. **Validation:",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs",
+            "src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.6.8",
+          "phase": "0.1.6",
+          "title": "Verify Name Mangling Implementation",
+          "description": "**Type:** \ud83d\udd0d Status Check  \n**Priority:** High  \n**Estimated Time:** 1 hour\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/NameMangler.cs`, `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nEnsure name mangling correctly transforms Sharpy identifiers to C# conventions.\n\n### Name Mangling Rules\n\n| Sharpy | C# | Example |\n|--------|-----|---------|\n| Public `snake_case` fields | `PascalCase` | `user_count` \u2192 `UserCount` |\n| Private `_snake_case` fields | `_camelCase` | `_user_count` \u2192 `_use",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/NameMangler.cs",
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.6.9",
+          "phase": "0.1.6",
+          "title": "Implement/Verify Class Instantiation Code Generation",
+          "description": "**Type:** \u26a0\ufe0f Likely Implementation Needed  \n**Priority:** High  \n**Estimated Time:** 1-2 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nGenerate correct C# `new` expressions for class instantiation.\n\n### Actions\n\n1. **Detect class instantiation:**\n   - Call expression where callee is a class name\n   - Example: `Point(3, 4)` where `Point` is a class\n\n2. **Generate `new` expression:**\n   - `Point(3, 4)` \u2192 `new Point(3, 4)`\n   - Apply name mangling to class name i",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.6.10",
+          "phase": "0.1.6",
+          "title": "Create Phase 0.1.6 Integration Tests",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** Critical  \n**Estimated Time:** 3-4 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler.Tests/Integration/Phase016IntegrationTests.cs`\n\n### Objective\nCreate comprehensive end-to-end tests for class functionality including all amendments.\n\n### Test Cases\n\n```csharp\n[Fact]\npublic void SimpleClass_CompilesAndRuns()\n{\n    // Note: Classes without explicit __init__ get implicit parameterless constructor\n    // that initializes fields to default values (0 for int) - ",
+          "files": [
+            "src/Sharpy.Compiler.Tests/Integration/Phase016IntegrationTests.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.6.11",
+          "phase": "0.1.6",
+          "title": "Document Phase 0.1.6 Exit Criteria Verification",
+          "description": "**Type:** \ud83d\udcdd Documentation  \n**Priority:** High  \n**Estimated Time:** 30 minutes\n\n\ud83d\udcc1 **Files**: `docs/implementation/phase_0_1_6_complete.md`\n\n### Objective\nVerify and document that all exit criteria are met.\n\n### Exit Criteria Checklist\n\n| Criterion | Test | Status |\n|-----------|------|--------|\n| Classes compile to C# classes | `SimpleClass_CompilesAndRuns` | [ ] |\n| Fields declared and accessible | `ClassWithConstructor_InitializesFields` | [ ] |\n| `__init__` compiles to constructor | `ClassWi",
+          "files": [],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "id": "0.1.7",
+      "name": "Inheritance & Interfaces - Comprehensive Task List (v2)",
+      "goal": "",
+      "status": "pending",
+      "progress": 0.0,
+      "tasks": [
+        {
+          "id": "0.1.7.1",
+          "phase": "0.1.7",
+          "title": "Verify Inheritance AST and Parsing",
+          "description": "**Type:** \ud83d\udd0d Status Check  \n**Priority:** Critical  \n**Estimated Time:** 1 hour\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Parser/Ast/Statement.cs`, `src/Sharpy.Compiler/Parser/Parser.cs`\n\n### Objective\nVerify that class inheritance (`class Dog(Animal):`) is parsed correctly.\n\n### Actions\n\n1. **Verify `ClassDef.BaseClasses` property exists:**\n   - Should be `List<TypeAnnotation>` or similar\n   - Captures base class for single inheritance\n   - Can hold multiple entries (for interfaces)\n\n2. **Test parsing ",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Ast/Statement.cs",
+            "src/Sharpy.Compiler/Parser/Parser.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.7.2",
+          "phase": "0.1.7",
+          "title": "Implement/Verify `super()` Parsing and AST",
+          "description": "**Type:** \u26a0\ufe0f Likely Implementation Needed  \n**Priority:** Critical  \n**Estimated Time:** 2 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Parser/Ast/Expression.cs`, `src/Sharpy.Compiler/Parser/Parser.cs`\n\n### Objective\nParse `super()` calls and represent them in the AST.\n\n### Spec Requirements\n\n`super()` can ONLY be called in:\n- `__init__` to call `super().__init__(...)`\n- Dunder methods to call `super().__any_dunder__(...)`\n- `@override` methods to call `super().method()`\n\nCalling `super()` in regula",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Ast/Expression.cs",
+            "src/Sharpy.Compiler/Parser/Parser.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.7.3",
+          "phase": "0.1.7",
+          "title": "Implement `super()` Semantic Validation",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** Critical  \n**Estimated Time:** 3-4 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs`\n\n### Objective\nValidate that `super()` is only used in allowed contexts with correct rules.\n\n### Updated Validation Table (Per Amendments)\n\n| Context | Allowed `super()` Calls |\n|---------|------------------------|\n| `__init__` | `super().__init__(...)` only |\n| `@override` method | `super().same_method_name(...)` |\n| Dunder method | `super().__",
+          "files": [
+            "src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.7.4",
+          "phase": "0.1.7",
+          "title": "Implement Inheritance Code Generation",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** Critical  \n**Estimated Time:** 2-3 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nGenerate C# inheritance syntax from Sharpy class definitions.\n\n### Actions\n\n1. **Generate base class in class declaration:**\n   ```python\n   class Dog(Animal):\n       pass\n   ```\n   \n   **Generated C#:**\n   ```csharp\n   public class Dog : Animal\n   {\n   }\n   ```\n\n2. **Generate `super().__init__()` as constructor initializer (`: base(.",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.7.5",
+          "phase": "0.1.7",
+          "title": "Implement Decorator Parsing",
+          "description": "**Type:** \ud83d\udd0d Status Check / Implementation  \n**Priority:** High  \n**Estimated Time:** 1-2 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Parser/Parser.cs`, `src/Sharpy.Compiler/Parser/Ast/Decorator.cs`\n\n### Objective\nParse decorator syntax and store in AST.\n\n### Supported Decorators\n\n| Decorator | C# Equivalent | Applies To |\n|-----------|--------------|------------|\n| `@virtual` | `virtual` | Methods |\n| `@override` | `override` | Methods overriding base |\n| `@abstract` | `abstract` | Classes, Methods",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Parser.cs",
+            "src/Sharpy.Compiler/Parser/Ast/Decorator.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.7.6",
+          "phase": "0.1.7",
+          "title": "Implement Decorator Code Generation",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 2-3 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nGenerate C# modifiers from Sharpy decorators.\n\n### Actions\n\n1. **Map decorators to C# modifiers:**\n\n```csharp\nprivate SyntaxTokenList GenerateModifiers(List<Decorator> decorators, bool isClass)\n{\n    var tokens = new List<SyntaxToken>();\n    bool hasAccessModifier = false;\n    \n    foreach (var decorator in decorators)\n    {\n        switc",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.7.7",
+          "phase": "0.1.7",
+          "title": "Implement Abstract Class/Method Validation and Code Generation",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 2 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs`, `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nHandle abstract classes and methods.\n\n### Actions\n\n1. **Parse `@abstract` decorator:**\n   ```python\n   @abstract\n   class Shape:\n       @abstract\n       def area(self) -> float:\n           ...\n   ```\n\n2. **Validate abstract rules:**\n   - Abstract methods must have `...` body (no implementa",
+          "files": [
+            "src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs",
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.7.8",
+          "phase": "0.1.7",
+          "title": "Implement Interface Definition Parsing",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 2 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Parser/Parser.cs`, `src/Sharpy.Compiler/Parser/Ast/Statement.cs`\n\n### Objective\nParse interface definitions.\n\n### Syntax\n```python\ninterface IDrawable:\n    def draw(self) -> None:\n        ...\n    \n    def get_bounds(self) -> Rect:\n        ...\n```\n\n### \u26a0\ufe0f Key Rules (Per Amendments)\n\n1. **Interface methods MUST have `...` body (no implementation)**\n2. **Interface methods do NOT requ",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Parser.cs",
+            "src/Sharpy.Compiler/Parser/Ast/Statement.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.7.9",
+          "phase": "0.1.7",
+          "title": "Implement Interface Code Generation",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 1-2 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nGenerate C# interfaces from Sharpy interface definitions.\n\n### Actions\n\n1. **Generate interface declaration:**\n   ```python\n   interface IDrawable:\n       def draw(self) -> None:\n           ...\n   ```\n   \n   **Generated C#:**\n   ```csharp\n   public interface IDrawable\n   {\n       void Draw();\n   }\n   ```\n\n2. **Handle interface properties:",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.7.10",
+          "phase": "0.1.7",
+          "title": "Implement Interface Implementation Code Generation",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 1-2 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nGenerate C# code for classes implementing interfaces.\n\n### Syntax\n```python\nclass Circle(IDrawable):\n    def draw(self) -> None:\n        print(\"Drawing circle\")\n```\n\n**Generated C#:**\n```csharp\npublic class Circle : IDrawable\n{\n    public void Draw()\n    {\n        Console.WriteLine(\"Drawing circle\");\n    }\n}\n```\n\n### Actions\n\n1. **Detect ",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.7.11",
+          "phase": "0.1.7",
+          "title": "Implement Dunder Method Override Rules",
+          "description": "**Type:** \u26a0\ufe0f Clarification / Implementation  \n**Priority:** Medium  \n**Estimated Time:** 1 hour\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs`, `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nHandle dunder method override semantics correctly.\n\n### Key Rules\n\n1. **Dunder methods overriding Object methods need `@override`:**\n   - `__str__` \u2192 overrides `Object.ToString()`\n   - `__eq__` \u2192 overrides `Object.Equals()`\n   - `__hash__` \u2192 overrides `Object.GetHashCode()`\n\n",
+          "files": [
+            "src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs",
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.7.12",
+          "phase": "0.1.7",
+          "title": "Create Phase 0.1.7 Integration Tests",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** Critical  \n**Estimated Time:** 3-4 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler.Tests/Integration/Phase017IntegrationTests.cs`\n\n### Test Cases\n\n```csharp\n[Fact]\npublic void SingleInheritance_CompilesAndRuns()\n{\n    var source = @\"\nclass Animal:\n    name: str\n    \n    def __init__(self, name: str):\n        self.name = name\n    \n    def speak(self) -> str:\n        return 'Some sound'\n\nclass Dog(Animal):\n    breed: str\n    \n    def __init__(self, name: str",
+          "files": [
+            "src/Sharpy.Compiler.Tests/Integration/Phase017IntegrationTests.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.7.13",
+          "phase": "0.1.7",
+          "title": "Document Phase 0.1.7 Exit Criteria Verification",
+          "description": "**Type:** \ud83d\udcdd Documentation  \n**Priority:** High  \n**Estimated Time:** 30 minutes\n\n\ud83d\udcc1 **Files**: `docs/implementation/phase_0_1_7_complete.md`\n\n### Exit Criteria Checklist\n\n| Criterion | Test | Status |\n|-----------|------|--------|\n| Single inheritance works | `SingleInheritance_CompilesAndRuns` | [ ] |\n| `super()` calls parent constructor | `SingleInheritance_CompilesAndRuns` | [ ] |\n| `super()` in override calls parent | `SuperCallInOverride_Works` | [ ] |\n| `super()` chaining blocked | `SuperCh",
+          "files": [],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "id": "0.1.8",
+      "name": "Structs & Enums - Comprehensive Task List (v2)",
+      "goal": "",
+      "status": "pending",
+      "progress": 0.0,
+      "tasks": [
+        {
+          "id": "0.1.8.1",
+          "phase": "0.1.8",
+          "title": "Implement Struct Definition AST and Parsing",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** Critical  \n**Estimated Time:** 2 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Parser/Ast/Statement.cs`, `src/Sharpy.Compiler/Parser/Parser.cs`\n\n### Objective\nParse struct definitions and create AST nodes.\n\n### Syntax\n```python\nstruct Point:\n    x: int\n    y: int\n\nstruct Vector2:\n    x: float\n    y: float\n    \n    def __init__(self, x: float, y: float):\n        self.x = x\n        self.y = y\n    \n    def length(self) -> float:\n        return (self.x ** 2 ",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Ast/Statement.cs",
+            "src/Sharpy.Compiler/Parser/Parser.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.8.2",
+          "phase": "0.1.8",
+          "title": "Implement Struct Code Generation",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** Critical  \n**Estimated Time:** 2-3 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nGenerate C# structs from Sharpy struct definitions.\n\n### Type Mapping Note\n\nSharpy `float` \u2192 C# `double` (64-bit, like Python)\nSharpy `float32` \u2192 C# `float` (32-bit)\n\n### Code Generation Example\n\n**Input:**\n```python\nstruct Vector2:\n    x: float\n    y: float\n    \n    def __init__(self, x: float, y: float):\n        self.x = x\n        s",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.8.3",
+          "phase": "0.1.8",
+          "title": "Implement Struct Semantic Validation",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 2-3 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs`\n\n### Objective\nValidate struct-specific rules.\n\n### Validation Rules\n\n1. **\u26a0\ufe0f Constructor must initialize ALL fields:**\n   ```python\n   struct Point:\n       x: int\n       y: int\n       z: int\n       \n       def __init__(self, x: int, y: int):\n           self.x = x\n           self.y = y\n           # ERROR: Field 'z' is not initialized in constructor\n",
+          "files": [
+            "src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.8.4",
+          "phase": "0.1.8",
+          "title": "Document Struct Value Semantics",
+          "description": "**Type:** \ud83d\udcdd Documentation / Awareness  \n**Priority:** Medium  \n**Estimated Time:** 30 minutes\n\n\ud83d\udcc1 **Files**: `docs/language_specification/structs.md`\n\n### Objective\nDocument value type semantics for engineers/users.\n\n### Key Points\n\n1. **Structs are value types:**\n   - Copied on assignment\n   - Passed by value to functions\n   - Stored inline (no heap allocation for the struct itself)\n\n2. **For large structs, use parameter modifiers to avoid copies:**\n   - `in[T]` \u2014 pass by reference, read-only (n",
+          "files": [],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.8.5",
+          "phase": "0.1.8",
+          "title": "Implement Enum Definition AST and Parsing",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** Critical  \n**Estimated Time:** 2 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Parser/Ast/Statement.cs`, `src/Sharpy.Compiler/Parser/Parser.cs`\n\n### Objective\nParse enum definitions and create AST nodes.\n\n### Syntax\n```python\nenum Color:\n    RED = 1\n    GREEN = 2\n    BLUE = 3\n\nenum HttpMethod:\n    GET = \"GET\"\n    POST = \"POST\"\n    PUT = \"PUT\"\n    DELETE = \"DELETE\"\n```\n\n### Grammar\n```ebnf\nenum_def ::= 'enum' identifier ':' NEWLINE INDENT { enum_member } ",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Ast/Statement.cs",
+            "src/Sharpy.Compiler/Parser/Parser.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.8.6",
+          "phase": "0.1.8",
+          "title": "Implement Enum Code Generation",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** Critical  \n**Estimated Time:** 2-3 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nGenerate C# code for enums.\n\n### \u26a0\ufe0f Two Code Generation Strategies\n\n1. **Integer enums \u2192 C# `enum`:**\n   ```python\n   enum Color:\n       RED = 1\n       GREEN = 2\n       BLUE = 3\n   ```\n   \n   **Generated C#:**\n   ```csharp\n   public enum Color\n   {\n       Red = 1,\n       Green = 2,\n       Blue = 3\n   }\n   ```\n\n2. **\u26a0\ufe0f String enums \u2192 S",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.8.7",
+          "phase": "0.1.8",
+          "title": "Implement Enum Semantic Validation",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 1-2 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs`\n\n### Objective\nValidate enum-specific rules.\n\n### Validation Rules\n\n1. **All enum values must be explicit:**\n   ```python\n   enum Bad:\n       A        # ERROR: requires explicit value\n       B = 1\n   ```\n   - Error message: \"Enum member 'A' requires an explicit value. All enum members must have explicit constant values.\"\n\n2. **All values must be of ",
+          "files": [
+            "src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.8.8",
+          "phase": "0.1.8",
+          "title": "Implement Enum Usage Code Generation",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 2-3 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nGenerate code for enum member access and properties.\n\n### Actions\n\n1. **Enum member access:**\n   ```python\n   favorite = Color.RED\n   ```\n   \n   **Generated C#:**\n   ```csharp\n   var favorite = Color.Red;  // Note: PascalCase\n   ```\n\n2. **\u26a0\ufe0f `.value` property:**\n   ```python\n   value = favorite.value  # Returns underlying value\n   ```\n   ",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.8.9",
+          "phase": "0.1.8",
+          "title": "Implement Struct Instantiation and Assignment",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 1-2 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nGenerate correct code for struct instantiation and value semantics.\n\n### Actions\n\n1. **Struct instantiation:**\n   ```python\n   p = Point(10, 20)\n   ```\n   \n   **Generated C#:**\n   ```csharp\n   var p = new Point(10, 20);\n   ```\n\n2. **Default instantiation:**\n   ```python\n   p = Point()  # Uses implicit parameterless constructor\n   ```\n   \n",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.8.10",
+          "phase": "0.1.8",
+          "title": "Create Phase 0.1.8 Integration Tests",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** Critical  \n**Estimated Time:** 3-4 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler.Tests/Integration/Phase018IntegrationTests.cs`\n\n### Test Cases\n\n```csharp\n[Fact]\npublic void BasicStruct_CompilesAndRuns()\n{\n    var source = @\"\nstruct Point:\n    x: int\n    y: int\n\np = Point()\np.x = 10\np.y = 20\n\";\n    var result = CompileAndExecute(source);\n    Assert.True(result.Success);\n}\n\n[Fact]\npublic void StructWithConstructor_Works()\n{\n    var source = @\"\nstruct Vect",
+          "files": [
+            "src/Sharpy.Compiler.Tests/Integration/Phase018IntegrationTests.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.8.11",
+          "phase": "0.1.8",
+          "title": "Document Phase 0.1.8 Exit Criteria Verification",
+          "description": "**Type:** \ud83d\udcdd Documentation  \n**Priority:** High  \n**Estimated Time:** 30 minutes\n\n\ud83d\udcc1 **Files**: `docs/implementation/phase_0_1_8_complete.md`\n\n### Exit Criteria Checklist\n\n| Criterion | Test | Status |\n|-----------|------|--------|\n| Basic struct compiles | `BasicStruct_CompilesAndRuns` | [ ] |\n| Struct with constructor | `StructWithConstructor_Works` | [ ] |\n| Struct field init validation | `StructConstructorMustInitializeAllFields` | [ ] |\n| Struct implements interface | `StructWithInterface_Wor",
+          "files": [],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "id": "0.1.9",
+      "name": "Type System Enhancements - Comprehensive Task List (v2)",
+      "goal": "",
+      "status": "pending",
+      "progress": 0.0,
+      "tasks": [
+        {
+          "id": "0.1.9.1",
+          "phase": "0.1.9",
+          "title": "Implement Nullable Type Parsing",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** Critical  \n**Estimated Time:** 2 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Parser/Parser.cs`, `src/Sharpy.Compiler/Parser/Ast/Type.cs`\n\n### Objective\nParse nullable type syntax (`T?`).\n\n### Syntax\n```python\nx: int?             # Nullable int (value type)\nname: str?          # Nullable string (reference type)\npoints: list[int?]  # List of nullable ints\ndata: list[int]?    # Nullable list of ints\nboth: list[int?]?   # Nullable list of nullable ints\n```",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Parser.cs",
+            "src/Sharpy.Compiler/Parser/Ast/Type.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.9.2",
+          "phase": "0.1.9",
+          "title": "Implement Nullable Type Code Generation",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** Critical  \n**Estimated Time:** 2-3 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nGenerate correct C# nullable types.\n\n### \u26a0\ufe0f Key Requirement: `#nullable enable`\n\nAll generated C# files should include `#nullable enable` at the top. This enables C# nullable reference types (C# 8+) and aligns with Sharpy's \"null-safe by default\" principle (Axiom 3).\n\n```csharp\n#nullable enable\n\nnamespace MyProject\n{\n    // ...\n}\n```\n",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.9.3",
+          "phase": "0.1.9",
+          "title": "Implement Null Coalescing Operator (`??`)",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 1-2 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Parser/Parser.cs`, `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nParse and generate null coalescing operator.\n\n### Syntax\n```python\nresult = value ?? default_value\n```\n\n### Actions\n\n1. **Parse `??` operator:**\n   - Binary operator with left associativity\n   - Lower precedence than comparison operators\n\n2. **Generate C# `??`:**\n   ```python\n   name = user_name ?? ",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Parser.cs",
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.9.4",
+          "phase": "0.1.9",
+          "title": "Implement Null Coalescing Assignment (`??=`)",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** Medium  \n**Estimated Time:** 1 hour\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Parser/Parser.cs`, `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nParse and generate null coalescing assignment operator.\n\n### Syntax\n```python\nname: str? = None\nname ??= \"default\"  # Assign only if name is None\n```\n\n### Generated C#\n```csharp\nstring? name = null;\nname ??= \"default\";\n```\n\n### Actions\n\n1. **Parse `??=` as compound assignment:**\n   - Target must be a",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Parser.cs",
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.9.5",
+          "phase": "0.1.9",
+          "title": "Implement Null Conditional Operator (`?.`)",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 2-3 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Parser/Parser.cs`, `src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs`, `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nParse and generate null conditional operator with correct type inference.\n\n### Syntax\n```python\nname: str? = \"hello\"\nupper = name?.upper()  # upper is str? (not str!)\nlength = name?.length  # length is int?\n```\n\n### \u26a0\ufe0f Result Type Inference\n\nThe re",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Parser.cs",
+            "src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs",
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.9.6",
+          "phase": "0.1.9",
+          "title": "Implement Type Narrowing",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 2-3 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs`, `src/Sharpy.Compiler/Semantic/TypeChecker.cs`\n\n### Objective\nNarrow types within conditional blocks.\n\n### Type Narrowing Patterns\n\n1. **`is not None` check:**\n   ```python\n   def process(value: str?) -> str:\n       if value is not None:\n           # value is narrowed from str? to str\n           return value.upper()\n       return \"empty\"\n   ```\n\n2. ",
+          "files": [
+            "src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs",
+            "src/Sharpy.Compiler/Semantic/TypeChecker.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.9.7",
+          "phase": "0.1.9",
+          "title": "Implement Type Alias Parsing",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 1-2 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Parser/Parser.cs`, `src/Sharpy.Compiler/Parser/Ast/Statement.cs`\n\n### Objective\nParse type alias declarations.\n\n### Syntax\n```python\ntype UserId = int\ntype StringList = list[str]\ntype Callback = (int, str) -> bool\ntype Effect = () -> None\n```\n\n### Grammar\n```ebnf\ntype_alias ::= 'type' identifier '=' type_expression\ntype_expression ::= type_annotation\n                  | function",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Parser.cs",
+            "src/Sharpy.Compiler/Parser/Ast/Statement.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.9.8",
+          "phase": "0.1.9",
+          "title": "Implement Type Alias Expansion",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 2-3 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs`, `src/Sharpy.Compiler/Semantic/TypeResolver.cs`\n\n### Objective\nExpand type aliases at compile time (no C# output for aliases).\n\n### Key Principle\n\nType aliases are **compile-time only**. They are expanded at every usage point, and NO C# declaration is generated for the alias itself.\n\n### Example\n\n```python\ntype UserId = int\ntype StringList = list[st",
+          "files": [
+            "src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs",
+            "src/Sharpy.Compiler/Semantic/TypeResolver.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.9.9",
+          "phase": "0.1.9",
+          "title": "Implement Generic Type Parsing",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 2 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Parser/Parser.cs`, `src/Sharpy.Compiler/Parser/Ast/Statement.cs`\n\n### Objective\nParse generic class/method definitions with `[T]` syntax.\n\n### \u26a0\ufe0f Key Syntax Difference from C#\n\nSharpy uses **square brackets** `[T]` for generics, not angle brackets `<T>`:\n\n```python\nclass Box[T]:\n    value: T\n\ndef find_max[T](a: T, b: T) -> T:\n    ...\n\nbox = Box[int](42)  # Usage\n```\n\n### Grammar\n`",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Parser.cs",
+            "src/Sharpy.Compiler/Parser/Ast/Statement.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.9.10",
+          "phase": "0.1.9",
+          "title": "Implement Generic Code Generation",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 2-3 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nTransform Sharpy `[T]` syntax to C# `<T>` syntax.\n\n### Code Generation Examples\n\n**Input:**\n```python\nclass Box[T]:\n    value: T\n    \n    def __init__(self, value: T):\n        self.value = value\n    \n    def get(self) -> T:\n        return self.value\n\nbox = Box[int](42)\n```\n\n**Output:**\n```csharp\npublic class Box<T>\n{\n    public T Value;\n ",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.9.11",
+          "phase": "0.1.9",
+          "title": "Implement Type Constraints",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 2-3 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Parser/Parser.cs`, `src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs`, `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nParse and generate type constraints.\n\n### Syntax\n```python\ndef find_max[T: IComparable](a: T, b: T) -> T:  # Interface constraint\n    ...\n\nclass Container[T: class](value: T):  # Reference type constraint\n    ...\n\nstruct Wrapper[T: struct](value: T",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Parser.cs",
+            "src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs",
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.9.12",
+          "phase": "0.1.9",
+          "title": "Create Phase 0.1.9 Integration Tests",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** Critical  \n**Estimated Time:** 3-4 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler.Tests/Integration/Phase019IntegrationTests.cs`\n\n### Test Cases\n\n```csharp\n[Fact]\npublic void NullableValueType_CompilesCorrectly()\n{\n    var source = @\"\nx: int? = None\ny: int? = 42\n\nif x is not None:\n    z = x + 1\n\";\n    var result = CompileAndExecute(source);\n    Assert.True(result.Success);\n}\n\n[Fact]\npublic void NullableReferenceType_CompilesCorrectly()\n{\n    var source = ",
+          "files": [
+            "src/Sharpy.Compiler.Tests/Integration/Phase019IntegrationTests.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.9.13",
+          "phase": "0.1.9",
+          "title": "Document Phase 0.1.9 Exit Criteria Verification",
+          "description": "**Type:** \ud83d\udcdd Documentation  \n**Priority:** High  \n**Estimated Time:** 30 minutes\n\n\ud83d\udcc1 **Files**: `docs/implementation/phase_0_1_9_complete.md`\n\n### Exit Criteria Checklist\n\n| Criterion | Test | Status |\n|-----------|------|--------|\n| Nullable value type | `NullableValueType_CompilesCorrectly` | [ ] |\n| Nullable reference type | `NullableReferenceType_CompilesCorrectly` | [ ] |\n| `??` operator | `NullCoalescing_Works` | [ ] |\n| `??=` operator | `NullCoalescingAssignment_Works` | [ ] |\n| `?.` operat",
+          "files": [],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        }
+      ]
+    },
+    {
+      "id": "0.1.10",
+      "name": "Module System - Comprehensive Task List (v2)",
+      "goal": "",
+      "status": "pending",
+      "progress": 0.0,
+      "tasks": [
+        {
+          "id": "0.1.10.1",
+          "phase": "0.1.10",
+          "title": "Implement Import Statement Parsing",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** Critical  \n**Estimated Time:** 2-3 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Parser/Parser.cs`, `src/Sharpy.Compiler/Parser/Ast/Statement.cs`\n\n### Objective\nParse all import statement forms.\n\n### Import Syntax Forms\n\n```python\nimport utils.helpers                    # Full module import\nimport utils.helpers as h               # Aliased module import\nfrom utils.helpers import format_text   # Specific symbol import\nfrom utils.helpers import func1, func",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Parser.cs",
+            "src/Sharpy.Compiler/Parser/Ast/Statement.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.10.2",
+          "phase": "0.1.10",
+          "title": "Implement Module Resolution",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** Critical  \n**Estimated Time:** 3-4 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Semantic/ModuleResolver.cs`\n\n### Objective\nResolve module paths to actual source files.\n\n### Resolution Algorithm\n\n1. **Module path to file path:**\n   - `utils.helpers` \u2192 `utils/helpers.spy`\n   - `mypackage.submodule` \u2192 `mypackage/submodule.spy`\n\n2. **Search paths:**\n   - Current project directory\n   - Standard library paths (future)\n   - External package paths (future)\n\n3. ",
+          "files": [
+            "src/Sharpy.Compiler/Semantic/ModuleResolver.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.10.3",
+          "phase": "0.1.10",
+          "title": "Implement Import Symbol Resolution",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** Critical  \n**Estimated Time:** 3-4 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs`, `src/Sharpy.Compiler/Semantic/SymbolTable.cs`\n\n### Objective\nResolve imported symbols and enforce visibility rules.\n\n### \u26a0\ufe0f Export Rules\n\n| Symbol Pattern | Exported by `import *` | Directly Importable |\n|---------------|------------------------|---------------------|\n| `public_func` | \u2705 Yes | \u2705 Yes |\n| `_protected_func` | \u274c No | \u2705 Yes |\n| `__p",
+          "files": [
+            "src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs",
+            "src/Sharpy.Compiler/Semantic/SymbolTable.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.10.4",
+          "phase": "0.1.10",
+          "title": "Implement Multi-File Compilation",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** Critical  \n**Estimated Time:** 4-5 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Compiler.cs`, `src/Sharpy.Compiler/Project/ProjectCompiler.cs`\n\n### Objective\nCompile multiple source files into a single assembly.\n\n### Compilation Pipeline\n\n```\n1. Discover all .spy files in project\n       \u2193\n2. Parse all files (AST generation)\n       \u2193\n3. Phase 1: Collect type declarations (classes, structs, enums, interfaces)\n       \u2193\n4. Phase 2: Resolve imports and build",
+          "files": [
+            "src/Sharpy.Compiler/Compiler.cs",
+            "src/Sharpy.Compiler/Project/ProjectCompiler.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.10.5",
+          "phase": "0.1.10",
+          "title": "Implement Namespace Generation from Module Path",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 2-3 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nGenerate C# namespaces from file paths.\n\n### \u26a0\ufe0f Detailed Algorithm\n\n1. **Project name** from `.spyproj` becomes root namespace\n2. **Directory path** segments become namespace segments\n3. **File name** (without `.spy`) becomes final namespace segment OR class container\n4. **Apply PascalCase** transformation to each segment\n\n### Example\n\n``",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.10.6",
+          "phase": "0.1.10",
+          "title": "Implement Circular Import Detection",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 3-4 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Semantic/ImportResolver.cs`\n\n### Objective\nDetect and report circular imports with clear error messages.\n\n### Two-Phase Resolution Algorithm\n\n**Phase 1: Type Collection**\n- Parse all files\n- Collect type declarations (classes, structs, enums, interfaces)\n- Do NOT resolve type bodies yet\n- This allows forward references\n\n**Phase 2: Body Resolution**\n- Resolve imports and type bod",
+          "files": [
+            "src/Sharpy.Compiler/Semantic/ImportResolver.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": true,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.10.7",
+          "phase": "0.1.10",
+          "title": "Implement Import Code Generation",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 2-3 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Objective\nGenerate C# `using` statements from Sharpy imports.\n\n### Import Mapping\n\n1. **`import module`:**\n   ```python\n   import utils.helpers\n   # Usage: utils.helpers.function()\n   ```\n   \n   **C# Option A:** Fully qualified calls (no using)\n   ```csharp\n   MyProject.Utils.Helpers.Function();\n   ```\n   \n   **C# Option B:** Using alias\n   ```csha",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.10.8",
+          "phase": "0.1.10",
+          "title": "Implement `__init__.spy` Support",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 3-4 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Semantic/PackageResolver.cs`\n\n### Objective\nSupport package initialization and re-exports.\n\n### `__init__.spy` Purpose\n\n1. **Marks directory as a package**\n2. **Defines package-level exports (re-exports)**\n3. **Executes when package is imported**\n\n### Example Structure\n\n```\nmypackage/\n\u251c\u2500\u2500 __init__.spy      # Package initialization\n\u251c\u2500\u2500 module_a.spy\n\u2514\u2500\u2500 module_b.spy\n```\n\n### `__in",
+          "files": [
+            "src/Sharpy.Compiler/Semantic/PackageResolver.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.10.9",
+          "phase": "0.1.10",
+          "title": "Implement Project File Support (`.spyproj`)",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** Medium  \n**Estimated Time:** 2-3 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler/Project/SpyProject.cs`\n\n### Objective\nParse and use project configuration files.\n\n### `.spyproj` Format\n\n```xml\n<Project>\n  <PropertyGroup>\n    <OutputType>Exe</OutputType>\n    <TargetFramework>net6.0</TargetFramework>\n    <RootNamespace>MyProject</RootNamespace>\n    <EntryPoint>main.spy</EntryPoint>\n  </PropertyGroup>\n  <ItemGroup>\n    <SourceFile Include=\"**/*.spy\" />\n    <E",
+          "files": [
+            "src/Sharpy.Compiler/Project/SpyProject.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.10.10",
+          "phase": "0.1.10",
+          "title": "Create Test Infrastructure for Multi-File Compilation",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** High  \n**Estimated Time:** 2-3 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler.Tests/TestHelpers/ProjectCompilationHelper.cs`\n\n### Objective\nCreate test infrastructure for multi-file compilation tests.\n\n### Required Test Helpers\n\n```csharp\npublic class ProjectCompilationHelper\n{\n    private readonly string _tempDir;\n    \n    public ProjectCompilationHelper()\n    {\n        _tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());\n        Direc",
+          "files": [
+            "src/Sharpy.Compiler.Tests/TestHelpers/ProjectCompilationHelper.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.10.11",
+          "phase": "0.1.10",
+          "title": "Create Phase 0.1.10 Integration Tests",
+          "description": "**Type:** \ud83c\udd95 New Implementation  \n**Priority:** Critical  \n**Estimated Time:** 4-5 hours\n\n\ud83d\udcc1 **Files**: `src/Sharpy.Compiler.Tests/Integration/Phase0110IntegrationTests.cs`\n\n### Test Cases\n\n```csharp\n[Fact]\npublic void BasicImport_Works()\n{\n    _helper.WriteFile(\"utils.spy\", @\"\ndef helper() -> str:\n    return 'help'\n\");\n    _helper.WriteFile(\"main.spy\", @\"\nimport utils\n\nresult = utils.helper()\n\");\n    var result = _helper.CompileProject(\"main.spy\");\n    Assert.True(result.Success);\n}\n\n[Fact]\npubli",
+          "files": [
+            "src/Sharpy.Compiler.Tests/Integration/Phase0110IntegrationTests.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.10.12",
+          "phase": "0.1.10",
+          "title": "Document Phase 0.1.10 Exit Criteria Verification",
+          "description": "**Type:** \ud83d\udcdd Documentation  \n**Priority:** High  \n**Estimated Time:** 30 minutes\n\n\ud83d\udcc1 **Files**: `docs/implementation/phase_0_1_10_complete.md`\n\n### Exit Criteria Checklist\n\n| Criterion | Test | Status |\n|-----------|------|--------|\n| Basic import | `BasicImport_Works` | [ ] |\n| Import as alias | `ImportAsAlias_Works` | [ ] |\n| From import | `FromImport_Works` | [ ] |\n| Wildcard import | `WildcardImport_Works` | [ ] |\n| Protected exclusion | `WildcardImport_ExcludesProtected` | [ ] |\n| Private imp",
+          "files": [],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        }
+      ]
+    }
+  ],
+  "current_phase_id": null,
+  "current_task_id": null,
+  "total_attempts": 0,
+  "total_successes": 0,
+  "total_failures": 0,
+  "backend_stats": {
+    "claude_code": {
+      "attempts": 0,
+      "successes": 0,
+      "failures": 0
+    },
+    "copilot": {
+      "attempts": 0,
+      "successes": 0,
+      "failures": 0
+    }
+  },
+  "overall_progress": 0.0
+}

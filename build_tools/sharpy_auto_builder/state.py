@@ -405,14 +405,14 @@ def parse_task_list(content: str) -> GroundTruth:
     """Parse the task list markdown into a GroundTruth structure."""
     ground_truth = GroundTruth()
 
-    # Phase pattern: ## Phase 0.1.X: Name
-    phase_pattern = re.compile(r"^## Phase (\d+\.\d+\.\d+): (.+)$", re.MULTILINE)
+    # Phase pattern: # Phase 0.1.X: Name or ## Phase 0.1.X: Name
+    phase_pattern = re.compile(r"^#{1,2} Phase (\d+\.\d+\.\d+): (.+)$", re.MULTILINE)
     # Goal pattern: **Goal**: ...
     goal_pattern = re.compile(r"\*\*Goal\*\*: (.+?)(?:\n|$)")
-    # Task pattern: ### Task X.X.X.X: Title or ### Task X.X.X.X
+    # Task pattern: ## Task X.X.X.X: Title or ### Task X.X.X.X: Title
     # Also supports optional prefix like "R-" for remediation tasks
     task_pattern = re.compile(
-        r"^### Task ([A-Z]+-)?(\d+\.\d+\.\d+\.\d+):?\s*(.*)$", re.MULTILINE
+        r"^#{2,3} Task ([A-Z]+-)?(\d+\.\d+\.\d+\.\d+):?\s*(.*)$", re.MULTILINE
     )
     # File patterns - multiple ways files are referenced:
     # 1. 📁 **Files**: `path` (single file inline)
