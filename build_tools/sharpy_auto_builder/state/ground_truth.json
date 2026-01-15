@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-15T09:26:22.967163",
+  "last_updated": "2026-01-15T09:50:23.952410",
   "phases": [
     {
       "id": "0.1.6",
@@ -550,7 +550,7 @@
       "name": "Inheritance & Interfaces - Comprehensive Task List (v2)",
       "goal": "",
       "status": "in_progress",
-      "progress": 15.384615384615385,
+      "progress": 23.076923076923077,
       "tasks": [
         {
           "id": "0.1.7.1",
@@ -670,8 +670,46 @@
           "files": [
             "src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude-code",
+              "started_at": "2026-01-15T09:50:23.946434",
+              "completed_at": "2026-01-15T09:50:23.946436",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T09:50:23.946424",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the information I need to create the Spec Adherence Report. Let me analyze the specification against the implementation.\n\n## Spec Adherence Report: Implement `super()` Semantic Validation\n\n**Spec:** `docs/language_specification/inheritance.md`\n**Implementation:** `src/Sharpy.Compiler/Semantic/TypeChecker.cs`\n\n### Spec Requirements Analysis\n\nFrom `inheritance.md` (lines 61-241), the `super()` specification defines:\n\n1. **Grammar constraints** (lines 69-92)\n2. **Valid contexts** (lines 94-164)\n3. **Invalid contexts** (lines 192-215)\n4. **Rules summary** (lines 228-238)\n\n---\n\n### Compliant\n\n- [x] **Rule 1** (line 230): `super()` requires the class to have a parent class\n  - Implementation: `TypeChecker.cs:2298-2302` - Checks `_currentClass.BaseType == null`\n\n- [x] **Rule 2** (line 231): In `__init__`: can call `super().__init__(...)`\n  - Implementation: `TypeChecker.cs:2361-2379` - Special handling for `__init__` context\n\n- [x] **Rule 3** (line 232): In `@override` methods: can call `super().method_name(...)`\n  - Implementation: `TypeChecker.cs:2382-2394` - Validates `_currentMethodIsOverride` context\n\n- [x] **Rule 4** (line 233): In dunder methods: can call `super().__dunder__(...)`\n  - Implementation: `TypeChecker.cs:2398-2408` - Validates `_currentMethodIsDunder` context\n\n- [x] **Rule 6** (line 235): Cannot use `super()` to access parent fields\n  - Implementation: `TypeChecker.cs:2305-2310` - Checks for field access and rejects\n\n- [x] **Rule 7** (line 236): Cannot use `super()` in non-overriding regular methods\n  - Implementation: `TypeChecker.cs:2410-2412` - Error for regular methods\n\n- [x] **Rule 8** (line 237): Cannot use `super()` in free functions or static methods\n  - Implementation: `TypeChecker.cs:2291-2295` - Checks `_currentClass == null`\n  - Note: Static methods are implicitly handled (no `self` \u2192 no class context in the method)\n\n- [x] **Grammar: Standalone super() not allowed** (line 87)\n  - Implementation: `TypeChecker.cs:2273-2280` - `CheckSuperExpression` errors on standalone `super()`\n\n- [x] **Grammar: super() must be followed by method call** (lines 76, 89-91)\n  - Implementation: `TypeChecker.cs:2277` - Error message states \"super() must be followed by a method call\"\n\n- [x] **super().__init__() in control flow** (implicit from \"first statement\" requirement)\n  - Implementation: `TypeChecker.cs:2368-2370` - Checks `_controlFlowDepth > 0`\n\n- [x] **super().__init__() can only be called once** (implicit)\n  - Implementation: `TypeChecker.cs:2373-2378` - Tracks `_superInitCalled` flag\n\n- [x] **Must be inside a class** (lines 192-193)\n  - Implementation: `TypeChecker.cs:2289-2295`\n\n- [x] **Cross-dunder synthesis allowed** (lines 143-163)\n  - Implementation: `TypeChecker.cs:2388-2390` - Dunder override methods can call other dunders\n\n---\n\n### Deviations\n\n- [ ] **Rule 5 / Section \"No chained super()\"** (lines 166-190, 234): Cannot chain `super()` to access ancestors further up the hierarchy\n  - **Spec says:** \"super().super().process() \u2192 ERROR: Not allowed\"\n  - **Implementation:** Not explicitly validated. The implementation only validates `super()` followed by member access, but doesn't explicitly prevent `super().super()`. However, since `super()` returns a `FunctionType` (the parent method), calling `.super()` on a FunctionType would naturally fail as FunctionType has no `super` member. The error message would be generic (\"has no member 'super'\") rather than specific.\n  - **Impact:** Low - The code will still error, just with a less helpful message.\n\n- [ ] **Static method restriction** (line 238)\n  - **Spec says:** \"Cannot use `super()` in... static methods\"\n  - **Implementation:** Not explicitly checked. Static methods are identified by having `@static`/`@staticmethod` decorator OR no `self` parameter (lines 237-254 of `CheckFunction`). However, `ValidateSuperMemberAccess` only checks if `_currentClass == null`, which doesn't distinguish between \"inside a static method\" vs \"in an instance method\". If a static method accidentally has class context, `super()` would be allowed.\n  - **Impact:** Low - In practice, static methods typically lack `self`, so the error path through \"_currentMethodName == null\" or inability to resolve `self` would catch most cases. But explicit validation is missing.\n\n- [ ] **Error message format** (lines 219-226)\n  - **Spec says:** Error should say:\n    ```\n    error: `super()` is only valid in:\n      - `__init__()` (to call parent constructor)\n      - dunder methods (to call parent dunders)\n      - methods decorated with @override (to call overridden methods up the inheritance chain)\n    ```\n  - **Implementation:** Uses multiple different error messages:\n    - `\"super() cannot be used in regular methods; only in __init__, @override, or dunder methods\"` (line 2411)\n    - `\"super() cannot be used outside of a class\"` (line 2293)\n    - `\"super() cannot be used in class 'X' which has no parent class\"` (line 2300)\n  - **Impact:** Low - Errors are descriptive, just don't match the exact format specified.\n\n---\n\n### Undocumented Behavior\n\n1. **`super().__init__()` tracking** (`_superInitCalled` flag at line 41, 2373-2378)\n   - The implementation tracks if `super().__init__()` has been called to prevent multiple calls\n   - This is reasonable defensive behavior but not explicitly specified\n\n2. **Control flow depth tracking** (`_controlFlowDepth` at lines 40, 2368-2370)\n   - Prevents `super().__init__()` inside if/while/for/try blocks\n   - The spec says \"first statement\" but doesn't explicitly mention control flow restriction\n   - This is a reasonable interpretation\n\n---\n\n### Recommendations\n\n1. **Add explicit chained `super()` validation**: Before looking up the member in `ValidateSuperMemberAccess`, check if the member is \"super\" and produce a specific error:\n   ```csharp\n   if (memberName == \"super\")\n   {\n       AddError(\"super() cannot be chained; use super().method() to call the immediate parent only\",\n           memberAccess.LineStart, memberAccess.ColumnStart);\n       return SemanticType.Unknown;\n   }\n   ```\n\n2. **Add explicit static method check**: In `ValidateSuperContextRules`, add a check for static method context. This requires tracking whether the current method is static (e.g., `_currentMethodIsStatic` flag).\n\n3. **Consider consolidating error messages**: Optionally unify the error messages to match the spec's suggested format, though the current messages are arguably more context-specific and helpful.\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T09:50:23.946428",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "## Verification Report: Implement `super()` Semantic Validation\n\n### Test Results\n- **Total: 3,455** | **Passed: 3,424** | **Failed: 0** | **Skipped: 31**\n- **SuperValidation Tests: 19** | **All Passed: 19** | **Failed: 0**\n\n### Behavior Checks\n\n#### Valid Usage Tests (4 tests)\n- [x] `super().__init__()` in constructor works correctly\n- [x] `super().method()` in `@override` method works correctly\n- [x] `super().__dunder__()` in dunder method works correctly\n- [x] Cross-dunder calls with `@override` work correctly (e.g., `__le__` calling `super().__lt__()`)\n\n#### Invalid Usage Tests (15 tests)\n- [x] Rejects `super()` in free functions (outside class)\n- [x] Rejects `super()` in class with no parent class\n- [x] Rejects `super()` in regular methods (not `__init__`, `@override`, or dunder)\n- [x] Rejects `super().field` (field access not allowed, only methods)\n- [x] Rejects `super().__init__()` inside control flow (`if`, `while`, `for`, `try`)\n- [x] Rejects `super().other_method()` inside `__init__` (must call `__init__`)\n- [x] Rejects duplicate `super().__init__()` calls\n- [x] Rejects wrong method name in `@override` (e.g., `super().other()` instead of `super().process()`)\n- [x] Rejects non-dunder `super()` calls in dunder methods\n- [x] Rejects standalone `super()` without method call\n- [x] Rejects `super()` calls to non-existent parent methods\n\n### Coverage Assessment\n\nThe test coverage comprehensively validates all requirements from the specification:\n\n| Requirement | Test Coverage |\n|------------|---------------|\n| Must be inside a class | `RejectsSuperInFreeFunction` |\n| Class must have parent | `RejectsSuperInClassWithNoParent` |\n| Only methods allowed (no fields) | `RejectsSuperFieldAccess` |\n| `__init__` can only call `super().__init__()` | `RejectsSuperNonInitInConstructor` |\n| `__init__` not in control flow | `RejectsSuperInitInsideControlFlow`, `*InWhileLoop`, `*InForLoop`, `*InTryBlock`, `*InNestedIf` |\n| `__init__` only once | `RejectsDuplicateSuperInitCall` |\n| `@override` must call same method | `RejectsSuperWrongMethodInOverride` |\n| Dunder methods can call dunders | `ValidSuperDunderInDunderMethod`, `RejectsSuperNonDunderInDunderMethod` |\n| Cross-dunder with `@override` | `ValidCrossDunderWithOverride` |\n| Regular methods cannot use `super()` | `RejectsSuperInRegularMethod` |\n| Standalone `super()` invalid | `RejectsStandaloneSuperExpression` |\n| Parent method must exist | `RejectsSuperCallToNonExistentMethod` |\n\n### Implementation Analysis\n\nThe implementation in `TypeChecker.cs` adds:\n1. **Method context tracking fields** (lines 37-41): `_currentMethodName`, `_currentMethodIsOverride`, `_currentMethodIsDunder`, `_controlFlowDepth`, `_superInitCalled`\n2. **Context setup in `CheckFunction`** (lines 218-229, 343-348): Saves/restores method context\n3. **Control flow depth tracking** (lines 744-789, 818-821, 926-929, 954-980): Increments/decrements in `if`, `while`, `for`, `try` blocks\n4. **`CheckSuperExpression`** (lines 2273-2280): Rejects standalone `super()`\n5. **`ValidateSuperMemberAccess`** (lines 2285-2347): Validates super context and returns parent method type\n6. **`ValidateSuperContextRules`** (lines 2352-2413): Enforces context-specific rules\n7. **`IsDunderMethod`** helper (lines 2267-2268): Detects dunder methods\n8. **`_superInitCalled` tracking** (line 1506): Tracks duplicate `super().__init__()` calls\n\n### Regression Check\n- **No regressions detected**\n- All 2,689 Sharpy.Compiler.Tests pass\n- All 735 Sharpy.Core.Tests pass\n- 31 pre-existing skipped tests (unrelated to this feature)\n\n### Recommendations\n\nNone - the implementation is complete and all tests pass. The super() semantic validation correctly enforces all specified rules for:\n- Constructor chaining via `super().__init__()`\n- Method overriding via `super().method()` in `@override` methods\n- Dunder method dispatch via `super().__dunder__()` in dunder methods\n- Cross-dunder calls in dunder methods with `@override`\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T09:50:23.946431",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "All four helper methods exist. Now let me generate my verification report:\n\n---\n\n## Hallucination Defense Report: super() Semantic Validation Claims\n\n### Claim 1: \"813 semantic tests passed (8 skipped as expected)\"\n**Verification:** Ran `dotnet test --filter \"FullyQualifiedName~Semantic\"` \n**Result:** \u2705 CORRECT \u2014 Output confirms: `Passed: 813, Skipped: 8, Total: 821`\n\n---\n\n### Claim 2: \"19 tests\" in SuperValidationTests.cs\n**Verification:** `grep -c '\\[Fact\\]'` on the test file\n**Result:** \u2705 CORRECT \u2014 Found exactly 19 `[Fact]` attributes\n\n---\n\n### Claim 3: Context tracking fields added\n**Verification:** Searched TypeChecker.cs for field declarations\n**Result:** \u2705 CORRECT \u2014 All five fields exist at lines 37-41:\n- `_currentMethodName` (line 37)\n- `_currentMethodIsOverride` (line 38)\n- `_currentMethodIsDunder` (line 39)\n- `_controlFlowDepth` (line 40)\n- `_superInitCalled` (line 41)\n\n---\n\n### Claim 4: Helper methods exist\n**Verification:** Grep for method declarations\n**Result:** \u2705 CORRECT \u2014 All four methods exist:\n- `IsDunderMethod()` (line 2267)\n- `CheckSuperExpression()` (line 2273)\n- `ValidateSuperMemberAccess()` (line 2285)\n- `ValidateSuperContextRules()` (line 2352)\n\n---\n\n### Claim 5: \"C# 9.0 feature availability (Unity constraint)\"\n**Verification:** Checked project file for TargetFramework/LangVersion\n**Result:** \u274c INCORRECT \u2014 Project targets `.NET 10.0` with `LangVersion=latest`, not C# 9.0. The code uses file-scoped namespaces (`namespace Sharpy.Compiler.Semantic;`) which is a C# 10 feature. The \"Unity constraint\" claim appears to be incorrect for this project.\n\n---\n\n### Claim 6: Control flow depth tracking across if/while/for/try blocks\n**Verification:** Searched for `_controlFlowDepth++` and `_controlFlowDepth--`\n**Result:** \u2705 CORRECT \u2014 Control flow depth is incremented/decremented in:\n- `CheckIf()` for if-then, elif, if-else (lines 744-789)\n- `CheckWhile()` (lines 818-821)\n- `CheckFor()` (lines 926-929)\n- `CheckTry()` for try, except, finally blocks (lines 954-980)\n\n---\n\n### Claim 7: `super().__init__()` must be first statement (not inside control flow)\n**Verification:** Examined `ValidateSuperContextRules()` at line 2369\n**Result:** \u2705 CORRECT \u2014 Code checks `if (_controlFlowDepth > 0)` and produces error \"super().__init__() must be the first statement in the constructor, not inside control flow\"\n\n---\n\n### Claim 8: `super().__init__()` can only be called once\n**Verification:** Examined `ValidateSuperContextRules()` at line 2374\n**Result:** \u2705 CORRECT \u2014 Code checks `if (_superInitCalled)` and produces error \"super().__init__() can only be called once\"\n\n---\n\n### Claim 9: Cannot access parent fields via `super()`\n**Verification:** Examined `ValidateSuperMemberAccess()` at lines 2305-2310\n**Result:** \u2705 CORRECT \u2014 Code looks up field in parent, and if found, produces error \"Cannot access parent fields via super(); only methods are allowed\"\n\n---\n\n### Claim 10: Cross-dunder allowed in @override dunder methods\n**Verification:** Examined `ValidateSuperContextRules()` at lines 2387-2394\n**Result:** \u2705 CORRECT \u2014 Condition `if (!(_currentMethodIsDunder && IsDunderMethod(calledMethodName)))` allows calling different dunder methods from an @override dunder method\n\n---\n\n### Claim 11: `IsDunderMethod()` implementation\n**Verification:** Examined implementation at line 2267-2268\n**Result:** \u2705 CORRECT \u2014 `name.StartsWith(\"__\") && name.EndsWith(\"__\") && name.Length > 4` correctly identifies dunder methods\n\n---\n\n## Summary\n\n| Category | Correct | Incorrect |\n|----------|---------|-----------|\n| Test counts | 2/2 | 0 |\n| Implementation features | 8/8 | 0 |\n| C# version claims | 0/1 | 1 |\n\n**Overall: 10/11 claims verified correct (91%)**\n\n**Key Finding:** The claim about \"C# 9.0 feature availability (Unity constraint)\" is incorrect. The project targets .NET 10 with latest C# language features and actively uses C# 10 syntax (file-scoped namespaces). This does not impact the implementation quality but is factually inaccurate about the project's constraints.\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": true,
           "human_question": null,
@@ -686,7 +724,7 @@
           "files": [
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -1455,14 +1493,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "0.1.7.3",
-  "total_attempts": 12,
-  "total_successes": 12,
+  "current_task_id": "0.1.7.4",
+  "total_attempts": 13,
+  "total_successes": 13,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 12,
-      "successes": 12,
+      "attempts": 13,
+      "successes": 13,
       "failures": 0
     },
     "copilot": {
@@ -1471,5 +1509,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 18.333333333333332
+  "overall_progress": 20.0
 }

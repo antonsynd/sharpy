@@ -971,13 +971,41 @@ public class RoslynEmitter
                 p => p.Name,
                 p => NameMangler.Transform(p.Name, NameContext.Parameter));
 
+        // Check if the first statement is a super().__init__() call
+        // This needs to be converted to a constructor initializer (: base(...))
+        ConstructorInitializerSyntax? baseInitializer = null;
+        var bodyStartIndex = 0;
+
+        if (func.Body.Count > 0 && func.Body[0] is ExpressionStatement exprStmt)
+        {
+            // Check if it's super().__init__(...)
+            if (exprStmt.Expression is FunctionCall call &&
+                call.Function is MemberAccess memberAccess &&
+                memberAccess.Object is SuperExpression &&
+                memberAccess.Member == "__init__")
+            {
+                // Generate the base constructor arguments
+                var baseArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg))).ToArray();
+
+                // Create the base initializer: : base(...)
+                baseInitializer = ConstructorInitializer(
+                    SyntaxKind.BaseConstructorInitializer,
+                    ArgumentList(SeparatedList(baseArgs)));
+
+                // Skip this statement in the body (it becomes the initializer)
+                bodyStartIndex = 1;
+            }
+        }
+
         // Generate constructor body
         // In Python __init__, assignments like self.name = name set instance fields
         // In C#, these become this.Name = name in the constructor body
         var bodyStatements = new List<StatementSyntax>();
 
-        foreach (var stmt in func.Body)
+        for (int i = bodyStartIndex; i < func.Body.Count; i++)
         {
+            var stmt = func.Body[i];
+
             // Convert self.field = value to this.Field = value (capitalized)
             if (stmt is Assignment assign)
             {
@@ -1031,6 +1059,12 @@ public class RoslynEmitter
             .WithModifiers(modifiers)
             .WithParameterList(ParameterList(SeparatedList(parameters)))
             .WithBody(body);
+
+        // Add base initializer if present
+        if (baseInitializer != null)
+        {
+            constructor = constructor.WithInitializer(baseInitializer);
+        }
 
         // Add XML documentation from docstring if present
         if (!string.IsNullOrEmpty(func.DocString))
@@ -2030,6 +2064,7 @@ public class RoslynEmitter
             // Handle 'self' -> 'this' conversion for instance methods
             Identifier name when string.Equals(name.Name, "self", StringComparison.OrdinalIgnoreCase) => ThisExpression(),
             Identifier name => IdentifierName(GetMangledVariableName(name.Name, isNewDeclaration: false)),
+            SuperExpression => BaseExpression(),  // super() -> base
             MemberAccess memberAccess => GenerateMemberAccess(memberAccess),
             IndexAccess indexAccess => GenerateIndexAccess(indexAccess),
             SliceAccess sliceAccess => GenerateSliceAccess(sliceAccess),
