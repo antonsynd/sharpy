@@ -417,6 +417,7 @@ public class ParserTests
         var module = Parse("x: int?");
         var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
         varDecl.Type.IsNullable.Should().BeTrue();
+        varDecl.Type.Name.Should().Be("int");
     }
 
     [Fact]
@@ -437,6 +438,48 @@ public class ParserTests
         var check = exprStmt.Expression.Should().BeOfType<TypeCheck>().Subject;
         check.Value.Should().BeOfType<Identifier>().Which.Name.Should().Be("x");
         check.CheckType.Name.Should().Be("int");
+    }
+
+    [Fact]
+    public void ParseNullableTypeInFunctionParameter()
+    {
+        var module = Parse(@"
+def greet(name: str?):
+    pass
+");
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Parameters.Should().HaveCount(1);
+        funcDef.Parameters[0].Type.Should().NotBeNull();
+        funcDef.Parameters[0].Type.Name.Should().Be("str");
+        funcDef.Parameters[0].Type.IsNullable.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ParseNullableReturnType()
+    {
+        var module = Parse(@"
+def find_user(id: int) -> User?:
+    pass
+");
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.ReturnType.Should().NotBeNull();
+        funcDef.ReturnType.Name.Should().Be("User");
+        funcDef.ReturnType.IsNullable.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ParseNullableDictType()
+    {
+        var module = Parse("mapping: dict[str, int?]?");
+        var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
+        varDecl.Type.Should().NotBeNull();
+        varDecl.Type.Name.Should().Be("dict");
+        varDecl.Type.IsNullable.Should().BeTrue();
+        varDecl.Type.TypeArguments.Should().HaveCount(2);
+        varDecl.Type.TypeArguments[0].Name.Should().Be("str");
+        varDecl.Type.TypeArguments[0].IsNullable.Should().BeFalse();
+        varDecl.Type.TypeArguments[1].Name.Should().Be("int");
+        varDecl.Type.TypeArguments[1].IsNullable.Should().BeTrue();
     }
 
     #endregion
@@ -1858,6 +1901,40 @@ class Point:
         varDecl.Type.Name.Should().Be("dict");
         varDecl.Type.TypeArguments[1].Name.Should().Be("list");
         varDecl.Type.TypeArguments[1].IsNullable.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ParseListOfNullableInts()
+    {
+        var source = "points: list[int?]";
+        var module = Parse(source);
+        var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
+        varDecl.Type.Name.Should().Be("list");
+        varDecl.Type.IsNullable.Should().BeFalse();
+        varDecl.Type.TypeArguments[0].Name.Should().Be("int");
+        varDecl.Type.TypeArguments[0].IsNullable.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ParseNullableListOfNullableInts()
+    {
+        var source = "both: list[int?]?";
+        var module = Parse(source);
+        var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
+        varDecl.Type.Name.Should().Be("list");
+        varDecl.Type.IsNullable.Should().BeTrue();
+        varDecl.Type.TypeArguments[0].Name.Should().Be("int");
+        varDecl.Type.TypeArguments[0].IsNullable.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ParseNullableStringType()
+    {
+        var source = "name: str?";
+        var module = Parse(source);
+        var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
+        varDecl.Type.Name.Should().Be("str");
+        varDecl.Type.IsNullable.Should().BeTrue();
     }
 
     [Fact]
