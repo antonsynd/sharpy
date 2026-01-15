@@ -2269,6 +2269,15 @@ public class Parser
                     return new Identifier { Name = name, LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
                 }
 
+            case TokenType.Super:
+                {
+                    Advance();
+                    // Expect super() - must be followed by ()
+                    Expect(TokenType.LeftParen);
+                    Expect(TokenType.RightParen);
+                    return new SuperExpression { LineStart = startLine, ColumnStart = startColumn, LineEnd = Current.Line, ColumnEnd = Current.Column };
+                }
+
             case TokenType.LeftParen:
                 {
                     Advance();
@@ -2614,7 +2623,7 @@ public class Parser
             // Member keywords
             TokenType.Property or TokenType.Event or
             // Other keywords
-            TokenType.Del or TokenType.To or TokenType.Maybe or
+            TokenType.Del or TokenType.To or TokenType.Maybe or TokenType.Super or
             // Future keywords
             TokenType.Defer or TokenType.Do or
             // Boolean operators (keywords)

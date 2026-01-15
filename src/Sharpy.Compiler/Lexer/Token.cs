@@ -74,6 +74,7 @@ public enum TokenType
     Del,            // Delete statement
     To,             // Type coercion operator
     Maybe,          // Optional from nullable expressions
+    Super,          // Super class access
 
     // Future Keywords (reserved)
     Defer,

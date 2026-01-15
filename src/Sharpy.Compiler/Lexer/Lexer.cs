@@ -84,6 +84,7 @@ public class Lexer
         { "del", TokenType.Del },
         { "to", TokenType.To },
         { "maybe", TokenType.Maybe },
+        { "super", TokenType.Super },
 
         // Future Keywords (reserved)
         { "defer", TokenType.Defer },

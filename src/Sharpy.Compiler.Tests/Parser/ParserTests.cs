@@ -2314,4 +2314,123 @@ except:
     }
 
     #endregion
+
+    #region Super Expression
+
+    [Fact]
+    public void ParseSuperExpression_Simple()
+    {
+        var module = Parse("super()");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        exprStmt.Expression.Should().BeOfType<SuperExpression>();
+    }
+
+    [Fact]
+    public void ParseSuperExpression_WithMemberAccess()
+    {
+        var module = Parse("super().__init__");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var memberAccess = exprStmt.Expression.Should().BeOfType<MemberAccess>().Subject;
+        memberAccess.Object.Should().BeOfType<SuperExpression>();
+        memberAccess.Member.Should().Be("__init__");
+    }
+
+    [Fact]
+    public void ParseSuperExpression_WithMethodCall()
+    {
+        var module = Parse("super().__init__(x, y)");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var call = exprStmt.Expression.Should().BeOfType<FunctionCall>().Subject;
+        var memberAccess = call.Function.Should().BeOfType<MemberAccess>().Subject;
+        memberAccess.Object.Should().BeOfType<SuperExpression>();
+        memberAccess.Member.Should().Be("__init__");
+        call.Arguments.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void ParseSuperExpression_InDunderMethod()
+    {
+        var source = @"class Child(Parent):
+    def __init__(self, x: int):
+        super().__init__(x)";
+        var module = Parse(source);
+        var classDef = module.Body[0].Should().BeOfType<ClassDef>().Subject;
+        var funcDef = classDef.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        var exprStmt = funcDef.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var call = exprStmt.Expression.Should().BeOfType<FunctionCall>().Subject;
+        var memberAccess = call.Function.Should().BeOfType<MemberAccess>().Subject;
+        memberAccess.Object.Should().BeOfType<SuperExpression>();
+    }
+
+    [Fact]
+    public void ParseSuperExpression_InOverrideMethod()
+    {
+        var source = @"class Child(Parent):
+    @override
+    def process(self, data: str) -> str:
+        result = super().process(data)
+        return result";
+        var module = Parse(source);
+        var classDef = module.Body[0].Should().BeOfType<ClassDef>().Subject;
+        var funcDef = classDef.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Decorators.Should().HaveCount(1);
+        funcDef.Decorators[0].Name.Should().Be("override");
+        var assignment = funcDef.Body[0].Should().BeOfType<Assignment>().Subject;
+        var call = assignment.Value.Should().BeOfType<FunctionCall>().Subject;
+        var memberAccess = call.Function.Should().BeOfType<MemberAccess>().Subject;
+        memberAccess.Object.Should().BeOfType<SuperExpression>();
+        memberAccess.Member.Should().Be("process");
+    }
+
+    [Fact]
+    public void ParseSuperExpression_WithDunderMethod()
+    {
+        var module = Parse("super().__str__()");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var call = exprStmt.Expression.Should().BeOfType<FunctionCall>().Subject;
+        var memberAccess = call.Function.Should().BeOfType<MemberAccess>().Subject;
+        memberAccess.Object.Should().BeOfType<SuperExpression>();
+        memberAccess.Member.Should().Be("__str__");
+    }
+
+    [Fact]
+    public void ParseSuperExpression_InAssignment()
+    {
+        var module = Parse("result = super().get_value()");
+        var assignment = module.Body[0].Should().BeOfType<Assignment>().Subject;
+        var call = assignment.Value.Should().BeOfType<FunctionCall>().Subject;
+        var memberAccess = call.Function.Should().BeOfType<MemberAccess>().Subject;
+        memberAccess.Object.Should().BeOfType<SuperExpression>();
+        memberAccess.Member.Should().Be("get_value");
+    }
+
+    [Fact]
+    public void ParseSuperExpression_WithKeywordArguments()
+    {
+        var module = Parse("super().setup(name=\"test\", count=10)");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var call = exprStmt.Expression.Should().BeOfType<FunctionCall>().Subject;
+        var memberAccess = call.Function.Should().BeOfType<MemberAccess>().Subject;
+        memberAccess.Object.Should().BeOfType<SuperExpression>();
+        memberAccess.Member.Should().Be("setup");
+        call.KeywordArguments.Should().HaveCount(2);
+        call.KeywordArguments[0].Name.Should().Be("name");
+        call.KeywordArguments[1].Name.Should().Be("count");
+    }
+
+    [Fact]
+    public void ParseSuperExpression_ChainedCalls()
+    {
+        var module = Parse("super().get_manager().process()");
+        var exprStmt = module.Body[0].Should().BeOfType<ExpressionStatement>().Subject;
+        var outerCall = exprStmt.Expression.Should().BeOfType<FunctionCall>().Subject;
+        var outerMember = outerCall.Function.Should().BeOfType<MemberAccess>().Subject;
+        outerMember.Member.Should().Be("process");
+        var innerCall = outerMember.Object.Should().BeOfType<FunctionCall>().Subject;
+        var innerMember = innerCall.Function.Should().BeOfType<MemberAccess>().Subject;
+        innerMember.Object.Should().BeOfType<SuperExpression>();
+        innerMember.Member.Should().Be("get_manager");
+    }
+
+    #endregion
 }

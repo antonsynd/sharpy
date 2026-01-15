@@ -385,6 +385,15 @@ public record Parenthesized : Expression
 }
 
 /// <summary>
+/// Super expression (super())
+/// Provides access to the parent class. Can only be used in specific contexts:
+/// - __init__ methods to call super().__init__(...)
+/// - Dunder methods to call super().__any_dunder__(...)
+/// - @override methods to call super().method(...)
+/// </summary>
+public record SuperExpression : Expression;
+
+/// <summary>
 /// Walrus/assignment expression (name := value)
 /// Assigns value to name and returns the value.
 /// </summary>
