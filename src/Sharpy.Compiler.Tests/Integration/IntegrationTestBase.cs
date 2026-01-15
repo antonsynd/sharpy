@@ -123,13 +123,13 @@ public abstract class IntegrationTestBase
                 // Find Sharpy.Core.dll in the build output directory
                 var testAssemblyPath = Assembly.GetExecutingAssembly().Location;
                 var testDir = Path.GetDirectoryName(testAssemblyPath);
-                
+
                 // Detect the current .NET version from the test assembly path
                 // Path format: .../bin/Debug/net10.0/...
                 var targetFramework = testDir!.Split(Path.DirectorySeparatorChar)
                     .FirstOrDefault(s => s.StartsWith("net") && char.IsDigit(s.Length > 3 ? s[3] : ' '))
                     ?? "net10.0"; // Default to net10.0
-                
+
                 runtimePath = Path.Combine(testDir!, "..", "..", "..", "..", "Sharpy.Core", "bin", "Debug", targetFramework, "Sharpy.Core.dll");
                 runtimePath = Path.GetFullPath(runtimePath);
 

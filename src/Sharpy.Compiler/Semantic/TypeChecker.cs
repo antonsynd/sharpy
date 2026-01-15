@@ -2502,7 +2502,7 @@ public class TypeChecker
                     // Don't track fields initialized inside try/except
                     break;
 
-                // For other statement types, we don't need special handling
+                    // For other statement types, we don't need special handling
             }
         }
     }

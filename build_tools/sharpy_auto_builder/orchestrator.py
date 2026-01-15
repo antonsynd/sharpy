@@ -3,6 +3,42 @@ LangGraph-based orchestrator for Sharpy Auto Builder.
 
 Coordinates task execution, validation, and human-in-the-loop interactions.
 Uses shared logging utilities from build_tools.shared.
+
+## Feedback Loop Architecture
+
+This orchestrator implements comprehensive feedback loops to ensure that validation
+failures, human feedback, and comments are never simply created and forgotten:
+
+### 1. Validation Feedback → Implementation
+When validation checks (spec adherence, verification, hallucination defense) find
+issues, they are:
+- Fed back to the implementer agent via `address_validation_issues` node
+- Included in the prompt context if retry is triggered
+- Tracked in follow-up tasks if max attempts are reached
+
+### 2. Human Review Feedback → Implementation
+When a human reviewer provides feedback during review:
+- If approved: changes are committed
+- If retry requested: feedback is included in the next implementation prompt
+  (see `human_response['feedback']` handling in `_execute_implementation_node`)
+- Follow-up tasks capture any unresolved feedback
+
+### 3. Follow-up Task Creation
+Failed tasks create follow-up tasks to ensure work is tracked:
+- `_create_test_fix_followup_task`: When test fixes fail
+- `_create_validation_fix_followup_task`: When validation issues can't be resolved
+- `_create_execution_error_followup_task`: When execution fails after max retries
+
+These follow-up tasks include:
+- Original task context
+- Error details
+- Validation agent feedback
+- Human reviewer feedback (if any)
+
+### Key State Fields for Feedback
+- `validation_results`: List of validation reports to feed back
+- `human_response`: Human review decision and feedback
+- `last_execution_result`: Previous attempt errors for context
 """
 
 import asyncio
@@ -85,7 +121,8 @@ class HumanReviewPayload(TypedDict):
     execution_result: dict
     validation_results: list[dict]
     files_changed: list[str]
-    diff_summary: str
+    diff_summary: str  # git diff --stat output (file statistics)
+    diff_content: str  # Full git diff output (actual code changes)
 
 
 class HumanResponse(TypedDict):
@@ -825,6 +862,40 @@ Provide:
             prev = state["last_execution_result"]
             if not prev.get("success"):
                 prompt += f"\n\nPrevious attempt failed with error:\n{prev.get('error', 'Unknown error')}"
+
+        # FEEDBACK LOOP: Include human review feedback if this is a retry
+        # This ensures human comments/concerns are addressed in the next attempt
+        human_response = state.get("human_response")
+        if (
+            human_response
+            and human_response.get("retry")
+            and human_response.get("feedback")
+        ):
+            prompt += f"\n\n## Human Reviewer Feedback (MUST ADDRESS)\nThe human reviewer requested a retry with the following feedback:\n{human_response['feedback']}\n\nPlease carefully address these concerns in this implementation attempt."
+
+        # FEEDBACK LOOP: Include validation issues if we're retrying after validation failure
+        # This ensures spec/verification/hallucination findings are fed back to the implementer
+        validation_results = state.get("validation_results", [])
+        if validation_results and attempt > 1:
+            # Extract any issues or concerns from validation reports
+            validation_feedback = []
+            for vr in validation_results:
+                agent = vr.get("agent", "unknown")
+                status = vr.get("status", "")
+                raw_output = vr.get("raw_output", "")
+                if status != "passed" and raw_output:
+                    # Truncate for prompt context
+                    truncated = (
+                        raw_output[:1000] if len(raw_output) > 1000 else raw_output
+                    )
+                    validation_feedback.append(f"### {agent} Report\n{truncated}")
+
+            if validation_feedback:
+                prompt += "\n\n## Validation Issues (MUST ADDRESS)\nPrevious validation checks found issues that need to be addressed:\n\n"
+                prompt += "\n\n---\n\n".join(
+                    validation_feedback[:3]
+                )  # Limit to 3 reports
+                prompt += "\n\nPlease fix the issues identified above before completing the task."
 
         # Log the prompt being sent
         self._log_execution(
@@ -1665,6 +1736,102 @@ hallucination defense) found issues that could not be automatically resolved aft
                 "validation_fix_attempts": validation_fix_attempt,
                 "reason": "validation_fix_failure",
                 "issues_count": len(actionable_issues),
+            },
+        )
+
+    async def _create_execution_error_followup_task(
+        self, state: OrchestratorState
+    ) -> None:
+        """Create a follow-up task when execution fails after max retries.
+
+        FEEDBACK LOOP: This ensures that failed tasks are not forgotten.
+        The follow-up task captures the execution context, errors, and any
+        validation feedback so the issue can be addressed in a future session.
+        """
+        task_data = state["current_task"]
+        execution_result = state.get("last_execution_result", {})
+        validation_results = state.get("validation_results", [])
+        human_response = state.get("human_response")
+        attempt = state.get("execution_attempt", 0)
+
+        # Reload ground truth and get the original task
+        self.ground_truth = GroundTruth.load(Path(state["ground_truth_path"]))
+        original_task = self.ground_truth.get_task(task_data["id"])
+
+        if not original_task:
+            return
+
+        # Build context about what failed
+        error_details = execution_result.get("error", "Unknown error")[:1000]
+
+        # Include validation feedback if any
+        validation_context = ""
+        if validation_results:
+            validation_context = "\n## Validation Feedback\n"
+            for vr in validation_results:
+                if vr.get("status") != "passed":
+                    validation_context += f"\n### {vr['agent']}\n{vr.get('raw_output', 'No output')[:500]}\n"
+
+        # Include human feedback if any
+        human_feedback = ""
+        if human_response and human_response.get("feedback"):
+            human_feedback = (
+                f"\n## Human Reviewer Feedback\n{human_response['feedback']}\n"
+            )
+
+        description = f"""Resume implementation of task {task_data['id']}: {task_data['title']}
+
+## Context
+The original task failed after {attempt} execution attempts and could not be
+automatically completed. This follow-up task is created to track the work
+and allow resumption in a future session.
+
+## Last Error
+```
+{error_details}
+```
+{validation_context}
+{human_feedback}
+## Instructions
+1. Review the error details and any validation feedback above
+2. Address the specific issues that caused the failures
+3. Complete the original task requirements
+4. Run tests to verify the implementation
+
+## Related Files
+{chr(10).join(f"- {f}" for f in task_data.get('files', []))}
+
+## Original Task Description
+{task_data.get('description', task_data.get('title', ''))}
+"""
+
+        # Add the follow-up task
+        new_task = self.ground_truth.add_followup_task(
+            original_task=original_task,
+            title=f"Resume: {task_data['title'][:50]}",
+            description=description,
+            files=task_data.get("files"),
+        )
+
+        # Add a note to the original task
+        original_task.notes.append(
+            f"Execution failed after {attempt} attempts. Follow-up task created: {new_task.id}"
+        )
+
+        # Save updated ground truth
+        self.ground_truth.save(Path(state["ground_truth_path"]))
+
+        self._log_execution(
+            event_type="followup_task_created",
+            task_id=task_data["id"],
+            extra={
+                "followup_task_id": new_task.id,
+                "execution_attempts": attempt,
+                "reason": "execution_error",
+                "had_validation_feedback": bool(validation_results),
+                "had_human_feedback": bool(
+                    human_response and human_response.get("feedback")
+                ),
             },
         )
 
@@ -2678,7 +2845,7 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
                 error=str(e),
             )
 
-        # Get diff summary (idempotent - just reads git diff)
+        # Get diff summary (idempotent - just reads git diff --stat for file statistics)
         diff_summary = ""
         try:
             result = subprocess.run(
@@ -2697,6 +2864,33 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
                 error=str(e),
             )
 
+        # Get full diff content (idempotent - reads actual code changes for review)
+        # This allows human reviewers to see the actual code being changed
+        diff_content = ""
+        try:
+            result = subprocess.run(
+                ["git", "diff"],
+                cwd=self.config.repo_root,
+                capture_output=True,
+                text=True,
+                timeout=30,  # Longer timeout for potentially large diffs
+            )
+            if result.returncode == 0:
+                diff_content = result.stdout.strip()
+                # Truncate very large diffs to avoid overwhelming the terminal
+                max_diff_chars = 50000  # ~50KB should be reasonable
+                if len(diff_content) > max_diff_chars:
+                    diff_content = (
+                        diff_content[:max_diff_chars]
+                        + "\n\n... [diff truncated, run 'git diff' for full content]"
+                    )
+        except Exception as e:
+            self._log_execution(
+                event_type="git_diff_content_error",
+                task_id=task_id,
+                error=str(e),
+            )
+
         # Build the review payload (idempotent - no side effects)
         review_payload: HumanReviewPayload = {
             "type": "review",
@@ -2708,6 +2902,7 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
             "validation_results": validation_results,
             "files_changed": files_changed,
             "diff_summary": diff_summary,
+            "diff_content": diff_content,
         }
 
         # Log that we're requesting review
@@ -2717,6 +2912,7 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
             extra={
                 "files_changed_count": len(files_changed),
                 "validation_count": len(validation_results),
+                "diff_content_chars": len(diff_content),
             },
         )
 
@@ -3000,10 +3196,21 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
                 ],
             }
 
+        # FEEDBACK LOOP: Create follow-up task for failed non-critical tasks
+        # This ensures the failure is tracked and can be addressed later
+        if self.config.create_followup_task_on_fix_failure:
+            await self._create_execution_error_followup_task(state)
+
         return {
             **state,
             "next_action": "skip",
-            "messages": ["Max retries reached, skipping task"],
+            "messages": [
+                (
+                    "Max retries reached, skipping task (follow-up task created)"
+                    if self.config.create_followup_task_on_fix_failure
+                    else "Max retries reached, skipping task"
+                )
+            ],
         }
 
     # =========================================================================

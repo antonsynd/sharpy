@@ -392,6 +392,113 @@ def _route_after_human_response(self, state):
         return "update_ground_truth"  # Skip
 ```
 
+## Feedback Loop Architecture
+
+The orchestrator implements comprehensive feedback loops to ensure validation failures,
+human feedback, and agent comments are never created and forgotten. Instead, they are
+fed back into the build/implementation flow.
+
+### Feedback Flow Diagram
+
+```
+┌─────────────────┐
+│  execute_impl   │ ◄────────────────────────────────────┐
+└────────┬────────┘                                      │
+         │                                               │
+         ▼                                               │
+┌─────────────────┐                                      │
+│   run_tests     │                                      │
+└────────┬────────┘                                      │
+         │                                               │
+    ┌────┴────┬────────────────┐                        │
+    │         │                │                        │
+    ▼         ▼                ▼                        │
+  pass      fix            error ──► followup_task      │
+    │         │                                         │
+    ▼         └──► retry with context ─────────────────►│
+┌─────────────────┐                                      │
+│ validate_spec   │                                      │
+└────────┬────────┘                                      │
+         │ issues found?                                │
+         ├──────────────────────────────────────────────┤
+         │ yes                                    no    │
+         ▼                                        │     │
+┌─────────────────┐                               │     │
+│ address_issues  │──► retry with validation ────►│     │
+└────────┬────────┘    context                    │     │
+         │ max attempts?                          │     │
+         │ yes                                    │     │
+         ▼                                        │     │
+    followup_task (captures                       │     │
+    validation feedback)                          │     │
+                                                  │     │
+         ┌────────────────────────────────────────┘     │
+         ▼                                              │
+┌─────────────────┐                                     │
+│ human_review    │                                     │
+└────────┬────────┘                                     │
+         │                                              │
+    ┌────┴────┬────────────────┐                       │
+    │         │                │                       │
+    ▼         ▼                ▼                       │
+ approve    retry          skip                        │
+    │         │                │                       │
+    │         │                ▼                       │
+    │         │         followup_task                  │
+    │         │         (with human feedback)          │
+    │         │                                        │
+    │         └──► execute_impl ◄──────────────────────┘
+    │              (with human feedback in prompt)
+    ▼
+  commit
+```
+
+### Feedback Implementation Details
+
+#### 1. Human Feedback → Implementation Prompt
+
+When a human reviewer requests retry with feedback, the feedback is included
+in the next implementation attempt:
+
+```python
+# In _execute_implementation_node
+human_response = state.get("human_response")
+if human_response and human_response.get("retry") and human_response.get("feedback"):
+    prompt += f"\n\n## Human Reviewer Feedback (MUST ADDRESS)\n{human_response['feedback']}"
+```
+
+#### 2. Validation Results → Implementation Prompt
+
+When retrying after validation failures, the validation reports are included:
+
+```python
+# In _execute_implementation_node
+validation_results = state.get("validation_results", [])
+if validation_results and attempt > 1:
+    # Include validation feedback in prompt context
+    prompt += "\n\n## Validation Issues (MUST ADDRESS)\n..."
+```
+
+#### 3. Follow-up Task Creation
+
+When tasks fail after max attempts, follow-up tasks are created that capture
+all relevant context:
+
+| Scenario | Follow-up Task | Context Captured |
+|----------|----------------|------------------|
+| Test fix failure | `_create_test_fix_followup_task` | Test output, files |
+| Validation failure | `_create_validation_fix_followup_task` | All validation reports |
+| Execution error | `_create_execution_error_followup_task` | Error, validation, human feedback |
+
+### Configuration
+
+Feedback loops are controlled by `create_followup_task_on_fix_failure` in config:
+
+```python
+# config.py
+create_followup_task_on_fix_failure: bool = True  # Default: enabled
+```
+
 ## Durable Persistence (Phase 1)
 
 ### Architecture

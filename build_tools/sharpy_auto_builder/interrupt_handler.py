@@ -48,6 +48,7 @@ def _display_review_request(data: Dict[str, Any]) -> None:
     validation_results = data.get("validation_results", [])
     files_changed = data.get("files_changed", [])
     diff_summary = data.get("diff_summary", "")
+    diff_content = data.get("diff_content", "")  # Full diff for code review
     validation_error = data.get("validation_error")
     attempt = data.get("attempt", 0)
 
@@ -98,7 +99,7 @@ def _display_review_request(data: Dict[str, Any]) -> None:
             console.print(f"  ... and {len(files_changed) - 10} more")
         console.print()
 
-    # Diff summary
+    # Diff summary (file statistics)
     if diff_summary:
         console.print("[bold]Changes Summary:[/bold]")
         console.print(Panel(diff_summary[:500], border_style="dim"))
@@ -125,6 +126,20 @@ def _display_review_request(data: Dict[str, Any]) -> None:
             )
 
         console.print(table)
+        console.print()
+
+    # Full diff content (actual code changes for review)
+    if diff_content:
+        console.print("[bold cyan]═══ Code Changes (git diff) ═══[/bold cyan]")
+        console.print()
+        # Use Syntax for diff highlighting
+        console.print(Syntax(diff_content, "diff", theme="monokai", line_numbers=False))
+        console.print()
+        console.print("[bold cyan]═══ End of Changes ═══[/bold cyan]")
+        console.print()
+    elif files_changed:
+        # If we have files but no diff content, suggest running git diff manually
+        console.print("[yellow]Note: Run 'git diff' to see full code changes[/yellow]")
         console.print()
 
 

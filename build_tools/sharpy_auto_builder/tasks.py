@@ -43,6 +43,7 @@ async def _communicate_with_heartbeat(
     Returns:
         tuple[bytes, bytes]: (stdout, stderr) from the process
     """
+
     async def heartbeat_logger():
         """Log periodic heartbeats while waiting for process."""
         while True:
@@ -66,6 +67,7 @@ async def _communicate_with_heartbeat(
             await heartbeat_task
         except asyncio.CancelledError:
             pass
+
 
 try:
     from langgraph.func import task
