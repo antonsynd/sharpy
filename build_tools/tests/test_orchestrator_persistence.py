@@ -72,8 +72,9 @@ class TestCheckpointPersistence:
         """Test that orchestrator uses SqliteSaver, not MemorySaver."""
         with Orchestrator(temp_config) as orch:
             checkpointer_type = type(orch.checkpointer).__name__
-            assert checkpointer_type == "SqliteSaver", \
-                f"Should use SqliteSaver, got {checkpointer_type}"
+            assert (
+                checkpointer_type == "SqliteSaver"
+            ), f"Should use SqliteSaver, got {checkpointer_type}"
 
     def test_checkpoint_config_applied(self, temp_config):
         """Test that checkpoint configuration is properly applied."""
@@ -113,9 +114,11 @@ class TestThreadIdManagement:
 
             # Verify format: sharpy-build-YYYYMMDD-HHMMSS
             import re
+
             pattern = r"^sharpy-build-\d{8}-\d{6}$"
-            assert re.match(pattern, thread_id), \
-                f"Thread ID should match pattern {pattern}, got {thread_id}"
+            assert re.match(
+                pattern, thread_id
+            ), f"Thread ID should match pattern {pattern}, got {thread_id}"
 
     def test_thread_id_storage(self, temp_config):
         """Test that current thread ID is stored in orchestrator."""
@@ -124,8 +127,9 @@ class TestThreadIdManagement:
             test_thread_id = "sharpy-build-20260114-120000"
             orch._current_thread_id = test_thread_id
 
-            assert orch._current_thread_id == test_thread_id, \
-                "Thread ID should be stored"
+            assert (
+                orch._current_thread_id == test_thread_id
+            ), "Thread ID should be stored"
 
     def test_create_initial_state(self, temp_config):
         """Test that _create_initial_state produces valid state."""
@@ -159,8 +163,9 @@ class TestCheckpointStats:
             assert "db_size_bytes" in stats, "Should have db_size_bytes"
             assert "db_size_mb" in stats, "Should have db_size_mb"
             assert "thread_stats" in stats, "Should have thread_stats"
-            assert "max_checkpoints_per_thread" in stats, \
-                "Should have max_checkpoints_per_thread"
+            assert (
+                "max_checkpoints_per_thread" in stats
+            ), "Should have max_checkpoints_per_thread"
             assert "cleanup_interval" in stats, "Should have cleanup_interval"
 
     def test_checkpoint_stats_initial_values(self, temp_config):
@@ -172,11 +177,15 @@ class TestCheckpointStats:
             assert stats["total_checkpoints"] >= 0, "Total should be non-negative"
             assert stats["unique_threads"] >= 0, "Unique threads should be non-negative"
             assert stats["db_size_bytes"] > 0, "Database should have size"
-            assert stats["db_size_mb"] >= 0, "Database size in MB should be non-negative"
+            assert (
+                stats["db_size_mb"] >= 0
+            ), "Database size in MB should be non-negative"
 
             # Config values should match
-            assert stats["max_checkpoints_per_thread"] == \
-                temp_config.checkpoint.max_checkpoints_per_thread
+            assert (
+                stats["max_checkpoints_per_thread"]
+                == temp_config.checkpoint.max_checkpoints_per_thread
+            )
             assert stats["cleanup_interval"] == temp_config.checkpoint.cleanup_interval
 
 
@@ -186,22 +195,26 @@ class TestCleanup:
     def test_cleanup_tracking_initialization(self, temp_config):
         """Test that cleanup tracking is initialized correctly."""
         with Orchestrator(temp_config) as orch:
-            assert hasattr(orch, "_checkpoint_count"), \
-                "Should have _checkpoint_count attribute"
-            assert hasattr(orch, "_cleanup_interval"), \
-                "Should have _cleanup_interval attribute"
+            assert hasattr(
+                orch, "_checkpoint_count"
+            ), "Should have _checkpoint_count attribute"
+            assert hasattr(
+                orch, "_cleanup_interval"
+            ), "Should have _cleanup_interval attribute"
 
             assert orch._checkpoint_count == 0, "Initial count should be 0"
-            assert orch._cleanup_interval == temp_config.checkpoint.cleanup_interval, \
-                "Cleanup interval should match config"
+            assert (
+                orch._cleanup_interval == temp_config.checkpoint.cleanup_interval
+            ), "Cleanup interval should match config"
 
     def test_cleanup_interval_configuration(self, temp_config):
         """Test that cleanup interval can be configured."""
         temp_config.checkpoint.cleanup_interval = 100
 
         with Orchestrator(temp_config) as orch:
-            assert orch._cleanup_interval == 100, \
-                "Cleanup interval should match configured value"
+            assert (
+                orch._cleanup_interval == 100
+            ), "Cleanup interval should match configured value"
 
     def test_database_connection_closed(self, temp_config):
         """Test that database connection is properly closed on cleanup."""
@@ -244,12 +257,13 @@ class TestRateLimitRecovery:
             result = await orch._handle_error_node(state)
 
             # Verify rate limit handling
-            assert result["next_action"] == "pause_rate_limited", \
-                "Should set next_action to pause_rate_limited"
-            assert result["execution_attempt"] == 0, \
-                "Should reset execution attempt"
-            assert any("rate limiting" in msg.lower() for msg in result["messages"]), \
-                "Should include rate limit message"
+            assert (
+                result["next_action"] == "pause_rate_limited"
+            ), "Should set next_action to pause_rate_limited"
+            assert result["execution_attempt"] == 0, "Should reset execution attempt"
+            assert any(
+                "rate limiting" in msg.lower() for msg in result["messages"]
+            ), "Should include rate limit message"
 
     @pytest.mark.asyncio
     async def test_non_rate_limit_error_handling(self, temp_config):
@@ -259,9 +273,7 @@ class TestRateLimitRecovery:
             state = {
                 "current_task": {"id": "test", "description": "Test task"},
                 "execution_attempt": 1,
-                "last_execution_result": {
-                    "error": "Some other error"
-                },
+                "last_execution_result": {"error": "Some other error"},
                 "messages": [],
             }
 
@@ -269,10 +281,10 @@ class TestRateLimitRecovery:
             result = await orch._handle_error_node(state)
 
             # Should retry, not pause for rate limit
-            assert result["next_action"] != "pause_rate_limited", \
-                "Should not pause for non-rate-limit errors"
-            assert result["next_action"] == "retry", \
-                "Should retry on normal errors"
+            assert (
+                result["next_action"] != "pause_rate_limited"
+            ), "Should not pause for non-rate-limit errors"
+            assert result["next_action"] == "retry", "Should retry on normal errors"
 
 
 class TestGraphRouting:

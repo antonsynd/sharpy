@@ -340,8 +340,12 @@ class TestInterruptHandler:
 
     def test_collect_response_routes_correctly(self):
         """Test that collect_response routes to correct collection function."""
-        with patch("sharpy_auto_builder.interrupt_handler._collect_review_response") as mock_review:
-            with patch("sharpy_auto_builder.interrupt_handler._collect_question_response") as mock_question:
+        with patch(
+            "sharpy_auto_builder.interrupt_handler._collect_review_response"
+        ) as mock_review:
+            with patch(
+                "sharpy_auto_builder.interrupt_handler._collect_question_response"
+            ) as mock_question:
                 mock_review.return_value = {"approved": True, "retry": False}
                 mock_question.return_value = {"value": "Answer"}
 

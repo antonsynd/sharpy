@@ -22,9 +22,7 @@ from langgraph.types import Command
 
 
 async def run_with_interrupts(
-    orchestrator: Orchestrator,
-    thread_id: str,
-    max_tasks: Optional[int] = None
+    orchestrator: Orchestrator, thread_id: str, max_tasks: Optional[int] = None
 ) -> dict:
     """
     Run the orchestrator with interrupt handling for human-in-the-loop.
@@ -107,7 +105,9 @@ async def run_with_interrupts(
         # Check for rate limit pause
         if next_action == "pause_rate_limited":
             print(f"\n⏸️  Session paused due to rate limiting")
-            print(f"   Resume later with: ./auto_builder.sh run --thread-id {thread_id}")
+            print(
+                f"   Resume later with: ./auto_builder.sh run --thread-id {thread_id}"
+            )
             break
 
         # Track task completion
@@ -168,11 +168,13 @@ def list_sessions(config: Config) -> list[dict]:
         )
 
         for row in cursor.fetchall():
-            sessions.append({
-                "thread_id": row[0],
-                "checkpoint_count": row[1],
-                "last_checkpoint_id": row[2],
-            })
+            sessions.append(
+                {
+                    "thread_id": row[0],
+                    "checkpoint_count": row[1],
+                    "last_checkpoint_id": row[2],
+                }
+            )
 
         conn.close()
     except Exception as e:
@@ -321,7 +323,9 @@ def cmd_run(args):
             for session in sessions:
                 print(f"\n  Thread ID: {session['thread_id']}")
                 print(f"    Checkpoints: {session['checkpoint_count']}")
-                print(f"    Resume with: ./auto_builder.sh run --thread-id {session['thread_id']}")
+                print(
+                    f"    Resume with: ./auto_builder.sh run --thread-id {session['thread_id']}"
+                )
             print()
         return
 
@@ -671,11 +675,11 @@ def cmd_checkpoint_stats(args):
     print(f"Max checkpoints per thread: {stats['max_checkpoints_per_thread']}")
     print(f"Cleanup interval: {stats['cleanup_interval']}")
 
-    if stats['thread_stats']:
+    if stats["thread_stats"]:
         print(f"\nCheckpoints per thread:")
-        for thread in stats['thread_stats'][:10]:  # Show top 10
+        for thread in stats["thread_stats"][:10]:  # Show top 10
             print(f"  {thread['thread_id']}: {thread['checkpoint_count']}")
-        if len(stats['thread_stats']) > 10:
+        if len(stats["thread_stats"]) > 10:
             print(f"  ... and {len(stats['thread_stats']) - 10} more threads")
 
     print()
@@ -704,7 +708,7 @@ def cmd_checkpoint_cleanup(args):
             # Clean up specific thread
             cursor.execute(
                 "SELECT COUNT(*) FROM checkpoints WHERE thread_id = ?",
-                (args.thread_id,)
+                (args.thread_id,),
             )
             thread_count = cursor.fetchone()[0]
 
@@ -722,28 +726,34 @@ def cmd_checkpoint_cleanup(args):
                 WHERE thread_id = ?
                 ORDER BY checkpoint_id DESC
                 """,
-                (args.thread_id,)
+                (args.thread_id,),
             )
             all_checkpoints = cursor.fetchall()
 
             to_delete = all_checkpoints[keep:]
 
             if not to_delete:
-                print(f"Thread {args.thread_id} has {len(all_checkpoints)} checkpoints, keeping all (--keep={keep})")
+                print(
+                    f"Thread {args.thread_id} has {len(all_checkpoints)} checkpoints, keeping all (--keep={keep})"
+                )
                 conn.close()
                 return
 
             if args.dry_run:
-                print(f"DRY RUN: Would delete {len(to_delete)} checkpoints from thread {args.thread_id}")
+                print(
+                    f"DRY RUN: Would delete {len(to_delete)} checkpoints from thread {args.thread_id}"
+                )
                 print(f"  (Keeping newest {keep} of {len(all_checkpoints)})")
             else:
                 for checkpoint_id, checkpoint_ns in to_delete:
                     cursor.execute(
                         "DELETE FROM checkpoints WHERE checkpoint_id = ? AND checkpoint_ns = ?",
-                        (checkpoint_id, checkpoint_ns)
+                        (checkpoint_id, checkpoint_ns),
                     )
                 conn.commit()
-                print(f"Deleted {len(to_delete)} checkpoints from thread {args.thread_id}")
+                print(
+                    f"Deleted {len(to_delete)} checkpoints from thread {args.thread_id}"
+                )
                 print(f"  (Kept newest {keep} of {len(all_checkpoints)})")
         else:
             # Clean up all threads
@@ -762,33 +772,51 @@ def cmd_checkpoint_cleanup(args):
                     WHERE thread_id = ?
                     ORDER BY checkpoint_id DESC
                     """,
-                    (thread_id,)
+                    (thread_id,),
                 )
                 all_checkpoints = cursor.fetchall()
                 to_delete = all_checkpoints[keep:]
 
                 if to_delete:
                     if args.dry_run:
-                        print(f"  DRY RUN: Would delete {len(to_delete)} from {thread_id}")
+                        print(
+                            f"  DRY RUN: Would delete {len(to_delete)} from {thread_id}"
+                        )
                     else:
                         for checkpoint_id, checkpoint_ns in to_delete:
                             cursor.execute(
                                 "DELETE FROM checkpoints WHERE checkpoint_id = ? AND checkpoint_ns = ?",
-                                (checkpoint_id, checkpoint_ns)
+                                (checkpoint_id, checkpoint_ns),
                             )
                         total_deleted += len(to_delete)
 
             if args.dry_run:
                 cursor.execute("SELECT COUNT(*) FROM checkpoints")
-                would_keep = sum(min(keep, len([c for c in cursor.execute(
-                    "SELECT checkpoint_id FROM checkpoints WHERE thread_id = ?", (t,)
-                ).fetchall()])) for t in threads)
-                print(f"\nDRY RUN: Would delete approximately {total_before - would_keep} checkpoints total")
+                would_keep = sum(
+                    min(
+                        keep,
+                        len(
+                            [
+                                c
+                                for c in cursor.execute(
+                                    "SELECT checkpoint_id FROM checkpoints WHERE thread_id = ?",
+                                    (t,),
+                                ).fetchall()
+                            ]
+                        ),
+                    )
+                    for t in threads
+                )
+                print(
+                    f"\nDRY RUN: Would delete approximately {total_before - would_keep} checkpoints total"
+                )
             else:
                 conn.commit()
                 cursor.execute("SELECT COUNT(*) FROM checkpoints")
                 total_after = cursor.fetchone()[0]
-                print(f"Deleted {total_deleted} checkpoints ({total_before} -> {total_after})")
+                print(
+                    f"Deleted {total_deleted} checkpoints ({total_before} -> {total_after})"
+                )
 
         conn.close()
 

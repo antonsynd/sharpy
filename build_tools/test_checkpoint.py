@@ -10,6 +10,7 @@ from sharpy_auto_builder.config import Config
 from sharpy_auto_builder.orchestrator import Orchestrator
 import os
 
+
 def test_checkpoint_integration():
     """Test that orchestrator initializes with SqliteSaver."""
     c = Config()
@@ -27,7 +28,9 @@ def test_checkpoint_integration():
         print(f"✓ DB file exists: {os.path.exists(c.checkpoint_db_path)}")
 
         # Verify it's SqliteSaver, not MemorySaver
-        assert type(orch.checkpointer).__name__ == "SqliteSaver", "Should be SqliteSaver"
+        assert (
+            type(orch.checkpointer).__name__ == "SqliteSaver"
+        ), "Should be SqliteSaver"
         assert os.path.exists(c.checkpoint_db_path), "Database file should exist"
 
     print("\n✓ Context manager cleanup successful")
@@ -36,6 +39,7 @@ def test_checkpoint_integration():
     # Cleanup test file
     if task_list_path.exists():
         task_list_path.unlink()
+
 
 if __name__ == "__main__":
     test_checkpoint_integration()

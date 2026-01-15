@@ -61,11 +61,13 @@ def _display_review_request(data: Dict[str, Any]) -> None:
 
     # Show validation error if this is a retry
     if validation_error:
-        console.print(Panel(
-            f"[red bold]Previous response was invalid:[/red bold]\n{validation_error}",
-            title="Validation Error",
-            border_style="red"
-        ))
+        console.print(
+            Panel(
+                f"[red bold]Previous response was invalid:[/red bold]\n{validation_error}",
+                title="Validation Error",
+                border_style="red",
+            )
+        )
         console.print()
 
     # Task information
@@ -76,10 +78,12 @@ def _display_review_request(data: Dict[str, Any]) -> None:
     # Execution result
     success = execution_result.get("success", False)
     status_color = "green" if success else "red"
-    console.print(Panel(
-        f"[{status_color}]{'✓ Success' if success else '✗ Failed'}[/{status_color}]",
-        title="Execution Status"
-    ))
+    console.print(
+        Panel(
+            f"[{status_color}]{'✓ Success' if success else '✗ Failed'}[/{status_color}]",
+            title="Execution Status",
+        )
+    )
 
     if execution_result.get("error"):
         console.print(f"[red]Error:[/red] {execution_result['error'][:200]}")
@@ -109,11 +113,15 @@ def _display_review_request(data: Dict[str, Any]) -> None:
 
         for vr in validation_results:
             status = vr.get("status", "unknown")
-            status_color = "green" if status == "passed" else "red" if status == "failed" else "yellow"
+            status_color = (
+                "green"
+                if status == "passed"
+                else "red" if status == "failed" else "yellow"
+            )
             table.add_row(
                 vr.get("agent", "unknown"),
                 f"[{status_color}]{status}[/{status_color}]",
-                str(vr.get("message", ""))[:60]
+                str(vr.get("message", ""))[:60],
             )
 
         console.print(table)
@@ -137,7 +145,9 @@ def _display_question(data: Dict[str, Any]) -> None:
     attempt = data.get("attempt", 0)
 
     # Title with priority indicator
-    priority_color = {"high": "red", "medium": "yellow", "low": "blue"}.get(priority, "white")
+    priority_color = {"high": "red", "medium": "yellow", "low": "blue"}.get(
+        priority, "white"
+    )
     title = f"[bold {priority_color}]Question ({priority.upper()} priority)[/bold {priority_color}]"
     if attempt > 0:
         title += f" [yellow](Attempt {attempt + 1})[/yellow]"
@@ -147,11 +157,13 @@ def _display_question(data: Dict[str, Any]) -> None:
 
     # Show validation error if this is a retry
     if validation_error:
-        console.print(Panel(
-            f"[red bold]Previous answer was invalid:[/red bold]\n{validation_error}",
-            title="Validation Error",
-            border_style="red"
-        ))
+        console.print(
+            Panel(
+                f"[red bold]Previous answer was invalid:[/red bold]\n{validation_error}",
+                title="Validation Error",
+                border_style="red",
+            )
+        )
         console.print()
 
     # Task info
@@ -215,7 +227,7 @@ def _collect_review_response() -> Dict[str, Any]:
     choice = Prompt.ask(
         "Enter your choice",
         choices=["1", "2", "3", "approve", "retry", "skip"],
-        default="1"
+        default="1",
     )
 
     # Normalize choice
@@ -257,7 +269,7 @@ def _collect_review_response() -> Dict[str, Any]:
         "approved": approved,
         "retry": retry,
         "feedback": feedback,
-        "modified_value": None
+        "modified_value": None,
     }
 
 
@@ -284,8 +296,7 @@ def _collect_question_response(data: Dict[str, Any]) -> Dict[str, Any]:
         choices = [str(i) for i in range(1, len(options) + 1)] + options
 
         choice = Prompt.ask(
-            "Enter your choice (number or option text)",
-            choices=choices
+            "Enter your choice (number or option text)", choices=choices
         )
 
         # Convert number to option text
@@ -304,7 +315,9 @@ def _collect_question_response(data: Dict[str, Any]) -> Dict[str, Any]:
 
     # Collect optional additional feedback
     console.print()
-    has_feedback = Confirm.ask("Would you like to add additional feedback?", default=False)
+    has_feedback = Confirm.ask(
+        "Would you like to add additional feedback?", default=False
+    )
 
     additional_feedback = None
     if has_feedback:
@@ -317,7 +330,4 @@ def _collect_question_response(data: Dict[str, Any]) -> Dict[str, Any]:
         console.print(f"[dim]Additional feedback: {additional_feedback}[/dim]")
     console.print()
 
-    return {
-        "value": answer,
-        "additional_feedback": additional_feedback
-    }
+    return {"value": answer, "additional_feedback": additional_feedback}

@@ -2262,7 +2262,10 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
             return False, "Answer cannot be empty"
 
         # Validate optional feedback field
-        if "additional_feedback" in response and response["additional_feedback"] is not None:
+        if (
+            "additional_feedback" in response
+            and response["additional_feedback"] is not None
+        ):
             if not isinstance(response["additional_feedback"], str):
                 return False, "'additional_feedback' must be a string if provided"
 
@@ -2408,6 +2411,7 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
         files_changed = []
         try:
             import subprocess
+
             result = subprocess.run(
                 ["git", "status", "--short"],
                 cwd=self.config.repo_root,
@@ -2452,7 +2456,9 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
         review_payload: HumanReviewPayload = {
             "type": "review",
             "task_id": task_id,
-            "task_description": task_data.get("description", task_data.get("title", "")),
+            "task_description": task_data.get(
+                "description", task_data.get("title", "")
+            ),
             "execution_result": execution_result,
             "validation_results": validation_results,
             "files_changed": files_changed,
@@ -2619,7 +2625,9 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
             print(f"{'='*60}")
             print(f"\nAll backends are rate-limited.")
             print(f"Session checkpointed. Resume after {pause_hours} hours.")
-            print(f"\nEstimated resume time: {resume_time.strftime('%Y-%m-%d %H:%M:%S')}")
+            print(
+                f"\nEstimated resume time: {resume_time.strftime('%Y-%m-%d %H:%M:%S')}"
+            )
             print(f"\n📌 Session saved with thread ID: {self._current_thread_id}")
             print(f"\n▶️  To resume this session, run:")
             print(f"   ./auto_builder.sh run --thread-id {self._current_thread_id}")
@@ -2750,7 +2758,9 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
             "messages": [],
         }
 
-    async def run(self, max_tasks: Optional[int] = None, thread_id: Optional[str] = None) -> dict:
+    async def run(
+        self, max_tasks: Optional[int] = None, thread_id: Optional[str] = None
+    ) -> dict:
         """
         Run the orchestrator to process tasks.
 
@@ -2930,7 +2940,7 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
                 WHERE thread_id = ?
                 ORDER BY checkpoint_id DESC
                 """,
-                (thread_id,)
+                (thread_id,),
             )
             checkpoints = cursor.fetchall()
 
@@ -2940,12 +2950,14 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
                 for checkpoint_id, checkpoint_ns in checkpoints_to_delete:
                     cursor.execute(
                         "DELETE FROM checkpoints WHERE checkpoint_id = ? AND checkpoint_ns = ?",
-                        (checkpoint_id, checkpoint_ns)
+                        (checkpoint_id, checkpoint_ns),
                     )
 
                 self._db_connection.commit()
                 deleted_count = len(checkpoints_to_delete)
-                print(f"🧹 Cleaned up {deleted_count} old checkpoints for thread {thread_id}")
+                print(
+                    f"🧹 Cleaned up {deleted_count} old checkpoints for thread {thread_id}"
+                )
 
         except Exception as e:
             # Don't fail the whole operation if cleanup fails
@@ -2978,11 +2990,14 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
                 ORDER BY count DESC
                 """
             )
-            thread_stats = [{"thread_id": row[0], "checkpoint_count": row[1]}
-                          for row in cursor.fetchall()]
+            thread_stats = [
+                {"thread_id": row[0], "checkpoint_count": row[1]}
+                for row in cursor.fetchall()
+            ]
 
             # Get database file size
             import os
+
             db_size = os.path.getsize(self.config.checkpoint_db_path)
 
             return {

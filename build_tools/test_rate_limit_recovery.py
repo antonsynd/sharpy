@@ -22,7 +22,9 @@ def test_rate_limit_detection():
         print("✓ Orchestrator initialized\n")
 
         # Test 1: Verify _handle_error_node exists
-        assert hasattr(orch, "_handle_error_node"), "Should have _handle_error_node method"
+        assert hasattr(
+            orch, "_handle_error_node"
+        ), "Should have _handle_error_node method"
         print("✓ _handle_error_node method exists")
 
         # Test 2: Verify graph routes pause_rate_limited to END

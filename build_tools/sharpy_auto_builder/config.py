@@ -363,9 +363,13 @@ class Config(BaseConfig):
             cp_data = data["checkpoint"]
             config.checkpoint = CheckpointConfig(
                 durability_mode=cp_data.get("durability_mode", "async"),
-                max_checkpoints_per_thread=cp_data.get("max_checkpoints_per_thread", 100),
+                max_checkpoints_per_thread=cp_data.get(
+                    "max_checkpoints_per_thread", 100
+                ),
                 cleanup_interval=cp_data.get("cleanup_interval", 50),
-                retain_failed_checkpoints_days=cp_data.get("retain_failed_checkpoints_days", 7),
+                retain_failed_checkpoints_days=cp_data.get(
+                    "retain_failed_checkpoints_days", 7
+                ),
             )
         return config
 

@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from sharpy_auto_builder.config import Config
 from sharpy_auto_builder.orchestrator import Orchestrator
 
+
 def test_checkpoint_cleanup():
     """Test checkpoint cleanup tracking and statistics."""
     c = Config()
@@ -25,7 +26,9 @@ def test_checkpoint_cleanup():
         assert hasattr(orch, "_checkpoint_count"), "Should have _checkpoint_count"
         assert hasattr(orch, "_cleanup_interval"), "Should have _cleanup_interval"
         assert orch._checkpoint_count == 0, "Initial count should be 0"
-        assert orch._cleanup_interval == c.checkpoint.cleanup_interval, "Should match config"
+        assert (
+            orch._cleanup_interval == c.checkpoint.cleanup_interval
+        ), "Should match config"
         print(f"✓ Cleanup tracking initialized: interval={orch._cleanup_interval}")
 
         # Get checkpoint stats
@@ -43,7 +46,9 @@ def test_checkpoint_cleanup():
         assert "db_size_bytes" in stats, "Should have db_size_bytes"
         assert "db_size_mb" in stats, "Should have db_size_mb"
         assert "thread_stats" in stats, "Should have thread_stats"
-        assert "max_checkpoints_per_thread" in stats, "Should have max_checkpoints_per_thread"
+        assert (
+            "max_checkpoints_per_thread" in stats
+        ), "Should have max_checkpoints_per_thread"
         assert "cleanup_interval" in stats, "Should have cleanup_interval"
 
         print("\n✓ All checkpoint cleanup tests passed!")
@@ -51,6 +56,7 @@ def test_checkpoint_cleanup():
     # Cleanup test file
     if task_list_path.exists():
         task_list_path.unlink()
+
 
 if __name__ == "__main__":
     test_checkpoint_cleanup()

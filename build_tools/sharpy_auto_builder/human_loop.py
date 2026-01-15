@@ -204,7 +204,7 @@ class HumanLoopManager:
             "function for human-in-the-loop interactions. See orchestrator.py and "
             "interrupt_handler.py for the new interrupt-based system.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
 
         self.questions_dir = questions_dir
