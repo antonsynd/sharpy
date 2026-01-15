@@ -333,7 +333,26 @@ public class NameResolver
         };
 
         owningType.Methods.Add(funcSymbol);
-        _symbolTable.Define(funcSymbol);
+
+        // Register constructors (__init__ methods)
+        // For constructors, we allow multiple overloads with the same name
+        if (method.Name == "__init__")
+        {
+            owningType.Constructors.Add(funcSymbol);
+            _logger.LogDebug($"Registered constructor overload: {owningType.Name}.__init__ (params: {method.Parameters.Count})");
+
+            // Only register the first __init__ in the symbol table to avoid duplicate name errors
+            // All overloads are tracked in the Constructors list
+            if (owningType.Constructors.Count == 1)
+            {
+                _symbolTable.Define(funcSymbol);
+            }
+        }
+        else
+        {
+            // For non-constructor methods, register in symbol table normally
+            _symbolTable.Define(funcSymbol);
+        }
 
         // Validate and register operator dunder methods
         if (OperatorSignatureValidator.IsOperatorDunder(method.Name))

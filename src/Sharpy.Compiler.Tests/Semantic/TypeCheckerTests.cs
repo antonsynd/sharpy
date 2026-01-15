@@ -1246,4 +1246,126 @@ greet('World', count='not an int')
     }
 
     #endregion
+
+    #region Constructor Overloading Tests
+
+    [Fact]
+    public void DuplicateConstructorSignature_ProducesError()
+    {
+        var source = @"
+class Person:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def __init__(self, name: str):
+        self.name = name
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Errors[0].Message.Should().Contain("Duplicate constructor signature");
+    }
+
+    [Fact]
+    public void MultipleConstructors_DifferentSignatures_NoError()
+    {
+        var source = @"
+class Person:
+    name: str
+    age: int
+
+    def __init__(self):
+        self.name = ''
+        self.age = 0
+
+    def __init__(self, name: str):
+        self.name = name
+        self.age = 0
+
+    def __init__(self, name: str, age: int):
+        self.name = name
+        self.age = age
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void MultipleConstructors_DifferentParamTypes_NoError()
+    {
+        var source = @"
+class Value:
+    data: object
+
+    def __init__(self, value: int):
+        self.data = value
+
+    def __init__(self, value: str):
+        self.data = value
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void DuplicateConstructor_SameParamTypes_ProducesError()
+    {
+        var source = @"
+class Box:
+    width: int
+    height: int
+
+    def __init__(self, w: int, h: int):
+        self.width = w
+        self.height = h
+
+    def __init__(self, width: int, height: int):
+        self.width = width
+        self.height = height
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().NotBeEmpty();
+        typeChecker.Errors[0].Message.Should().Contain("Duplicate constructor signature");
+    }
+
+    [Fact]
+    public void SingleConstructor_NoValidationError()
+    {
+        var source = @"
+class Person:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ParameterlessConstructor_Works()
+    {
+        var source = @"
+class EmptyClass:
+    def __init__(self):
+        pass
+";
+        var (module, _, _, typeChecker) = CompileAndCheck(source);
+        typeChecker.CheckModule(module);
+
+        typeChecker.Errors.Should().BeEmpty();
+    }
+
+    #endregion
 }

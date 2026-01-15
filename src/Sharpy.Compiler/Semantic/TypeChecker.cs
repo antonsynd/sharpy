@@ -173,7 +173,20 @@ public class TypeChecker
         _logger.LogDebug($"Type checking function: {functionDef.Name}");
 
         // Look up the function symbol to update its types
-        var functionSymbol = _symbolTable.LookupFunction(functionDef.Name);
+        // For __init__ methods in classes, we need to look up from the Constructors list
+        // since multiple overloads may exist with the same name
+        FunctionSymbol? functionSymbol = null;
+        if (functionDef.Name == "__init__" && _currentClass != null)
+        {
+            // Find the matching constructor by declaration line number
+            // This uniquely identifies which overload we're checking
+            functionSymbol = _currentClass.Constructors
+                .FirstOrDefault(c => c.DeclarationLine == functionDef.LineStart);
+        }
+        else
+        {
+            functionSymbol = _symbolTable.LookupFunction(functionDef.Name);
+        }
 
         // Resolve return type
         var returnType = _typeResolver.ResolveTypeAnnotation(functionDef.ReturnType);
@@ -347,6 +360,9 @@ public class TypeChecker
             CheckStatement(statement);
         }
 
+        // Validate constructor overloads after all members are checked
+        ValidateConstructorOverloads(classSymbol);
+
         // Restore previous class
         _currentClass = previousClass;
         _accessValidator.ExitClass();
@@ -371,6 +387,14 @@ public class TypeChecker
 
     private void CheckAssignment(Assignment assignment)
     {
+        // Validate that 'self' cannot be reassigned
+        if (assignment.Target is Identifier selfId && selfId.Name == "self")
+        {
+            AddError("Cannot reassign 'self'",
+                assignment.LineStart, assignment.ColumnStart);
+            return;
+        }
+
         // Handle tuple unpacking: x, y = expr
         if (assignment.Operator == AssignmentOperator.Assign && assignment.Target is TupleLiteral targetTuple)
         {
@@ -961,6 +985,18 @@ public class TypeChecker
 
     private SemanticType CheckIdentifier(Identifier id)
     {
+        // Special validation for 'self' - must be used inside an instance method
+        if (id.Name == "self")
+        {
+            if (_currentClass == null)
+            {
+                AddError("'self' can only be used inside instance methods",
+                    id.LineStart, id.ColumnStart);
+                return SemanticType.Unknown;
+            }
+            // Normal identifier lookup will follow and find the self parameter
+        }
+
         var symbol = _symbolTable.Lookup(id.Name);
         if (symbol == null)
         {
@@ -1362,9 +1398,13 @@ public class TypeChecker
                 // Validate access level
                 _accessValidator.ValidateMethodAccess(method, udt.Symbol, memberAccess.LineStart, memberAccess.ColumnStart);
 
+                // When accessing a method via member access (obj.method), the object is implicitly
+                // bound as the first parameter (self), so we skip it when creating the FunctionType
+                var paramTypes = method.Parameters.Skip(1).Select(p => p.Type).ToList();
+
                 return new FunctionType
                 {
-                    ParameterTypes = method.Parameters.Select(p => p.Type).ToList(),
+                    ParameterTypes = paramTypes,
                     ReturnType = method.ReturnType
                 };
             }
@@ -2120,6 +2160,39 @@ public class TypeChecker
 
         // Unknown iterable type
         return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Validates that no two __init__ methods have the same parameter signature.
+    /// Unlike Python (which only allows one __init__), Sharpy supports constructor overloading
+    /// by mapping multiple __init__ methods to C# constructor overloads.
+    /// </summary>
+    private void ValidateConstructorOverloads(TypeSymbol type)
+    {
+        var constructors = type.Constructors;
+        if (constructors.Count <= 1)
+            return;  // No overload conflict possible
+
+        _logger.LogDebug($"Validating {constructors.Count} constructor overloads for '{type.Name}'");
+
+        var signatures = new HashSet<string>();
+        foreach (var ctor in constructors)
+        {
+            // Build signature string from parameter types (excluding self)
+            var paramTypes = ctor.Parameters
+                .Where(p => !string.Equals(p.Name, "self", StringComparison.OrdinalIgnoreCase))
+                .Select(p => p.Type.GetDisplayName())
+                .ToList();
+            var signature = string.Join(",", paramTypes);
+
+            if (!signatures.Add(signature))
+            {
+                AddError(
+                    $"Duplicate constructor signature in '{type.Name}': __init__({signature})",
+                    ctor.DeclarationLine,
+                    ctor.DeclarationColumn);
+            }
+        }
     }
 
     private void AddError(string message, int? line = null, int? column = null)

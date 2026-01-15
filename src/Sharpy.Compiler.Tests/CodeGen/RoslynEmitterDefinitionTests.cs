@@ -431,6 +431,298 @@ public class RoslynEmitterDefinitionTests
         Assert.Contains("Age = age", code);
     }
 
+    [Fact]
+    public void GenerateClassDeclaration_WithMultipleConstructors_GeneratesOverloads()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "Person",
+            Body = new List<Statement>
+            {
+                new VariableDeclaration
+                {
+                    Name = "name",
+                    Type = new TypeAnnotation { Name = "string" },
+                    InitialValue = null
+                },
+                new VariableDeclaration
+                {
+                    Name = "age",
+                    Type = new TypeAnnotation { Name = "int" },
+                    InitialValue = null
+                },
+                // Constructor 1: No params (default values)
+                new FunctionDef
+                {
+                    Name = "__init__",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self", Type = null }
+                    },
+                    ReturnType = null,
+                    Body = new List<Statement>
+                    {
+                        new Assignment
+                        {
+                            Target = new MemberAccess
+                            {
+                                Object = new Identifier { Name = "self" },
+                                Member = "name"
+                            },
+                            Value = new StringLiteral { Value = "" }
+                        },
+                        new Assignment
+                        {
+                            Target = new MemberAccess
+                            {
+                                Object = new Identifier { Name = "self" },
+                                Member = "age"
+                            },
+                            Value = new IntegerLiteral { Value = "0" }
+                        }
+                    }
+                },
+                // Constructor 2: name only
+                new FunctionDef
+                {
+                    Name = "__init__",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self", Type = null },
+                        new Parameter { Name = "name", Type = new TypeAnnotation { Name = "string" } }
+                    },
+                    ReturnType = null,
+                    Body = new List<Statement>
+                    {
+                        new Assignment
+                        {
+                            Target = new MemberAccess
+                            {
+                                Object = new Identifier { Name = "self" },
+                                Member = "name"
+                            },
+                            Value = new Identifier { Name = "name" }
+                        },
+                        new Assignment
+                        {
+                            Target = new MemberAccess
+                            {
+                                Object = new Identifier { Name = "self" },
+                                Member = "age"
+                            },
+                            Value = new IntegerLiteral { Value = "0" }
+                        }
+                    }
+                },
+                // Constructor 3: name and age
+                new FunctionDef
+                {
+                    Name = "__init__",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self", Type = null },
+                        new Parameter { Name = "name", Type = new TypeAnnotation { Name = "string" } },
+                        new Parameter { Name = "age", Type = new TypeAnnotation { Name = "int" } }
+                    },
+                    ReturnType = null,
+                    Body = new List<Statement>
+                    {
+                        new Assignment
+                        {
+                            Target = new MemberAccess
+                            {
+                                Object = new Identifier { Name = "self" },
+                                Member = "name"
+                            },
+                            Value = new Identifier { Name = "name" }
+                        },
+                        new Assignment
+                        {
+                            Target = new MemberAccess
+                            {
+                                Object = new Identifier { Name = "self" },
+                                Member = "age"
+                            },
+                            Value = new Identifier { Name = "age" }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert - all three constructors are generated
+        Assert.Contains("public Person()", code);
+        Assert.Contains("public Person(string name)", code);
+        Assert.Contains("public Person(string name, int age)", code);
+    }
+
+    [Fact]
+    public void GenerateClassDeclaration_WithParameterlessConstructor_Works()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "EmptyClass",
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "__init__",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self", Type = null }
+                    },
+                    ReturnType = null,
+                    Body = new List<Statement>
+                    {
+                        new PassStatement()
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public EmptyClass()", code);
+    }
+
+    [Fact]
+    public void GenerateClassDeclaration_ConstructorOverloads_DifferentParamTypes_Allowed()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "Value",
+            Body = new List<Statement>
+            {
+                new VariableDeclaration
+                {
+                    Name = "data",
+                    Type = new TypeAnnotation { Name = "object" },
+                    InitialValue = null
+                },
+                // Constructor 1: int param
+                new FunctionDef
+                {
+                    Name = "__init__",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self", Type = null },
+                        new Parameter { Name = "value", Type = new TypeAnnotation { Name = "int" } }
+                    },
+                    ReturnType = null,
+                    Body = new List<Statement>
+                    {
+                        new Assignment
+                        {
+                            Target = new MemberAccess { Object = new Identifier { Name = "self" }, Member = "data" },
+                            Value = new Identifier { Name = "value" }
+                        }
+                    }
+                },
+                // Constructor 2: string param
+                new FunctionDef
+                {
+                    Name = "__init__",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self", Type = null },
+                        new Parameter { Name = "value", Type = new TypeAnnotation { Name = "string" } }
+                    },
+                    ReturnType = null,
+                    Body = new List<Statement>
+                    {
+                        new Assignment
+                        {
+                            Target = new MemberAccess { Object = new Identifier { Name = "self" }, Member = "data" },
+                            Value = new Identifier { Name = "value" }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert - both constructors with different parameter types
+        Assert.Contains("public Value(int value)", code);
+        Assert.Contains("public Value(string value)", code);
+    }
+
+    [Fact]
+    public void GenerateClassDeclaration_ConstructorOverloads_DifferentParamCounts_Allowed()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "Box",
+            Body = new List<Statement>
+            {
+                new VariableDeclaration { Name = "width", Type = new TypeAnnotation { Name = "int" } },
+                new VariableDeclaration { Name = "height", Type = new TypeAnnotation { Name = "int" } },
+                new VariableDeclaration { Name = "depth", Type = new TypeAnnotation { Name = "int" } },
+                // Constructor 1: one param (cube)
+                new FunctionDef
+                {
+                    Name = "__init__",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self", Type = null },
+                        new Parameter { Name = "size", Type = new TypeAnnotation { Name = "int" } }
+                    },
+                    ReturnType = null,
+                    Body = new List<Statement>
+                    {
+                        new Assignment { Target = new MemberAccess { Object = new Identifier { Name = "self" }, Member = "width" }, Value = new Identifier { Name = "size" } },
+                        new Assignment { Target = new MemberAccess { Object = new Identifier { Name = "self" }, Member = "height" }, Value = new Identifier { Name = "size" } },
+                        new Assignment { Target = new MemberAccess { Object = new Identifier { Name = "self" }, Member = "depth" }, Value = new Identifier { Name = "size" } }
+                    }
+                },
+                // Constructor 2: three params
+                new FunctionDef
+                {
+                    Name = "__init__",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self", Type = null },
+                        new Parameter { Name = "width", Type = new TypeAnnotation { Name = "int" } },
+                        new Parameter { Name = "height", Type = new TypeAnnotation { Name = "int" } },
+                        new Parameter { Name = "depth", Type = new TypeAnnotation { Name = "int" } }
+                    },
+                    ReturnType = null,
+                    Body = new List<Statement>
+                    {
+                        new Assignment { Target = new MemberAccess { Object = new Identifier { Name = "self" }, Member = "width" }, Value = new Identifier { Name = "width" } },
+                        new Assignment { Target = new MemberAccess { Object = new Identifier { Name = "self" }, Member = "height" }, Value = new Identifier { Name = "height" } },
+                        new Assignment { Target = new MemberAccess { Object = new Identifier { Name = "self" }, Member = "depth" }, Value = new Identifier { Name = "depth" } }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public Box(int size)", code);
+        Assert.Contains("public Box(int width, int height, int depth)", code);
+    }
+
     #endregion
 
     #region Struct Definition Tests

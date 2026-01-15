@@ -859,6 +859,9 @@ public class RoslynEmitter
         members.AddRange(fieldMembers);
 
         // Second pass: generate methods, constructors, and operator overloads
+        // Collect all __init__ methods for constructor generation (supports overloading)
+        var initMethods = new List<FunctionDef>();
+
         // Track which dunder methods are present for complementary operator generation
         var dunders = new HashSet<string>();
         foreach (var stmt in body)
@@ -877,8 +880,8 @@ public class RoslynEmitter
                     // Check if this is a constructor (__init__)
                     if (funcDef.Name == "__init__")
                     {
-                        // Generate constructor with field mapping
-                        members.Add(GenerateConstructor(funcDef, className, fieldMapping));
+                        // Collect for later generation (supports multiple overloads)
+                        initMethods.Add(funcDef);
                     }
                     // Check if this is a dunder method that needs operator synthesis
                     else if (NameMangler.IsDunderMethod(funcDef.Name))
@@ -917,6 +920,12 @@ public class RoslynEmitter
                     // Ignore other statements for now
                     break;
             }
+        }
+
+        // Generate all constructors (supports overloading)
+        foreach (var initMethod in initMethods)
+        {
+            members.Add(GenerateConstructor(initMethod, className, fieldMapping));
         }
 
         // Generate complementary operators for C# requirements

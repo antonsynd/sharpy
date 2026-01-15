@@ -66,6 +66,11 @@ public record TypeSymbol : Symbol
     // Maps protocol dunder names to lists of overloads (usually just one, but allows flexibility)
     public Dictionary<string, List<FunctionSymbol>> ProtocolMethods { get; init; } = new();
 
+    // Constructors - tracks all __init__ overloads
+    // Unlike Python (which allows only one __init__ that gets replaced), Sharpy supports
+    // multiple __init__ methods that map to C# constructor overloads
+    public List<FunctionSymbol> Constructors { get; init; } = new();
+
     // Inheritance
     public TypeSymbol? BaseType { get; set; }
     public List<TypeSymbol> Interfaces { get; init; } = new();
