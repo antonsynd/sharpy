@@ -2,12 +2,25 @@
 Human-in-the-loop support for Sharpy Auto Builder.
 
 Handles critical questions, human review, and answer processing.
+
+DEPRECATED: This file-based polling system is deprecated in favor of LangGraph's
+native interrupt() function. The new interrupt-based system provides:
+- Better integration with LangGraph's state management
+- Automatic state persistence across interrupts
+- Cleaner code without polling loops
+- Interactive CLI prompts instead of file watching
+
+This module is kept for backwards compatibility with batch processing workflows.
+For new code, use the interrupt-based system in orchestrator.py and interrupt_handler.py.
+
+See: docs/implementation_planning/implementation_plan_2_native_interrupts.md
 """
 
 import asyncio
 import json
 import subprocess
 import time
+import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -171,7 +184,13 @@ class HumanReviewRequest:
 
 
 class HumanLoopManager:
-    """Manages human-in-the-loop interactions."""
+    """
+    Manages human-in-the-loop interactions.
+
+    DEPRECATED: This class is deprecated in favor of LangGraph's native interrupt()
+    function. Use the interrupt-based system in orchestrator.py and interrupt_handler.py
+    instead. This class is kept for backwards compatibility with batch processing workflows.
+    """
 
     def __init__(
         self,
@@ -180,6 +199,14 @@ class HumanLoopManager:
         review_dir: Path,
         check_interval: float = 5.0,
     ):
+        warnings.warn(
+            "HumanLoopManager is deprecated. Use LangGraph's native interrupt() "
+            "function for human-in-the-loop interactions. See orchestrator.py and "
+            "interrupt_handler.py for the new interrupt-based system.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+
         self.questions_dir = questions_dir
         self.answers_dir = answers_dir
         self.review_dir = review_dir

@@ -355,8 +355,7 @@ class Orchestrator:
             "address_validation_issues", self._address_validation_issues_node
         )
         graph.add_node("request_human_review", self._request_human_review_node)
-        graph.add_node("wait_for_human", self._wait_for_human_node)
-        graph.add_node("process_human_response", self._process_human_response_node)
+        # NOTE: wait_for_human and process_human_response nodes removed - replaced by native interrupts
         graph.add_node("update_ground_truth", self._update_ground_truth_node)
         graph.add_node("commit_changes", self._commit_changes_node)
         graph.add_node("handle_error", self._handle_error_node)
@@ -371,7 +370,7 @@ class Orchestrator:
             {
                 "plan": "plan_implementation",
                 "complete": END,
-                "wait_human": "wait_for_human",
+                "wait_human": "request_human_review",  # Updated to use interrupt-based review
             },
         )
 
@@ -396,7 +395,7 @@ class Orchestrator:
             {
                 "test": "run_tests",  # Implementation done, run tests
                 "auto_decide": "handle_auto_decision",  # Can auto-decide
-                "wait_human": "wait_for_human",  # Need human input
+                "wait_human": "request_human_review",  # Updated to use interrupt-based review
                 "error": "handle_error",
             },
         )
@@ -475,26 +474,22 @@ class Orchestrator:
             },
         )
 
-        graph.add_edge("request_human_review", "wait_for_human")
-
+        # Native interrupt routing - request_human_review now handles both waiting
+        # and processing the response via interrupt(), so route directly based on
+        # the human's decision stored in next_action
         graph.add_conditional_edges(
-            "wait_for_human",
-            self._route_after_human_wait,
-            {
-                "process": "process_human_response",
-                "timeout": "handle_error",
-            },
-        )
-
-        graph.add_conditional_edges(
-            "process_human_response",
+            "request_human_review",
             self._route_after_human_response,
             {
-                "continue": "commit_changes",
-                "retry": "execute_implementation",
-                "skip": "update_ground_truth",
+                "commit_changes": "commit_changes",
+                "execute_implementation": "execute_implementation",
+                "update_ground_truth": "update_ground_truth",
+                "handle_error": "handle_error",
             },
         )
+
+        # NOTE: Legacy wait_for_human and process_human_response edges removed
+        # Replaced by native interrupt handling in request_human_review node
 
         graph.add_conditional_edges(
             "commit_changes",
@@ -2187,180 +2182,336 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
                 "messages": [f"Exception during commit: {e}"],
             }
 
+    @staticmethod
+    def _validate_review_response(response: dict) -> tuple[bool, Optional[str]]:
+        """
+        Validate a human review response.
+
+        Args:
+            response: The response dictionary from the human
+
+        Returns:
+            Tuple of (is_valid, error_message)
+            - is_valid: True if response is valid
+            - error_message: None if valid, error description if invalid
+        """
+        # Check that response is a dictionary
+        if not isinstance(response, dict):
+            return False, "Response must be a dictionary"
+
+        # Check for required decision field
+        if "approved" not in response and "retry" not in response:
+            return False, "Response must include either 'approved' or 'retry' field"
+
+        # Validate boolean fields
+        if "approved" in response and not isinstance(response["approved"], bool):
+            return False, "'approved' must be a boolean (true/false)"
+
+        if "retry" in response and not isinstance(response["retry"], bool):
+            return False, "'retry' must be a boolean (true/false)"
+
+        # Check for conflicting decisions
+        if response.get("approved") and response.get("retry"):
+            return False, "Cannot both approve and request retry"
+
+        # Validate optional fields
+        if "feedback" in response and response["feedback"] is not None:
+            if not isinstance(response["feedback"], str):
+                return False, "'feedback' must be a string if provided"
+
+        if "modified_value" in response and response["modified_value"] is not None:
+            if not isinstance(response["modified_value"], str):
+                return False, "'modified_value' must be a string if provided"
+
+        return True, None
+
+    @staticmethod
+    def _validate_question_response(
+        response: dict, options: Optional[list[str]] = None
+    ) -> tuple[bool, Optional[str]]:
+        """
+        Validate a human question response.
+
+        Args:
+            response: The response dictionary from the human
+            options: Optional list of valid answer options
+
+        Returns:
+            Tuple of (is_valid, error_message)
+            - is_valid: True if response is valid
+            - error_message: None if valid, error description if invalid
+        """
+        # Check that response is a dictionary
+        if not isinstance(response, dict):
+            return False, "Response must be a dictionary"
+
+        # Check for required value field
+        if "value" not in response:
+            return False, "Response must include 'value' field with the answer"
+
+        answer = response["value"]
+
+        # If options are provided, validate the answer is one of them
+        if options:
+            if answer not in options:
+                valid_opts = ", ".join(f"'{opt}'" for opt in options)
+                return False, f"Answer must be one of: {valid_opts}"
+
+        # Validate that answer is not empty
+        if not answer or (isinstance(answer, str) and not answer.strip()):
+            return False, "Answer cannot be empty"
+
+        # Validate optional feedback field
+        if "additional_feedback" in response and response["additional_feedback"] is not None:
+            if not isinstance(response["additional_feedback"], str):
+                return False, "'additional_feedback' must be a string if provided"
+
+        return True, None
+
+    def _interrupt_with_validation(
+        self,
+        payload: dict,
+        validator: callable,
+        max_attempts: int = 3,
+    ) -> dict:
+        """
+        Call interrupt with validation loop, re-prompting on invalid input.
+
+        Args:
+            payload: The interrupt payload to send
+            validator: Function that validates response, returns (is_valid, error_message)
+            max_attempts: Maximum number of attempts before giving up
+
+        Returns:
+            Valid response dictionary
+
+        Raises:
+            RuntimeError: If max attempts exceeded without valid response
+        """
+        attempt = 0
+
+        while attempt < max_attempts:
+            attempt += 1
+
+            # Call interrupt (will pause execution here)
+            response = interrupt(payload)
+
+            # Validate the response
+            is_valid, error_message = validator(response)
+
+            if is_valid:
+                # Valid response, return it
+                return response
+
+            # Invalid response - update payload with error and try again
+            self._log_execution(
+                event_type="invalid_interrupt_response",
+                task_id=payload.get("task_id", "unknown"),
+                extra={
+                    "attempt": attempt,
+                    "error": error_message,
+                    "max_attempts": max_attempts,
+                },
+            )
+
+            # Add validation error to payload for next attempt
+            payload["validation_error"] = error_message
+            payload["attempt"] = attempt
+
+        # Max attempts exceeded
+        error_msg = f"Failed to get valid response after {max_attempts} attempts"
+        self._log_execution(
+            event_type="interrupt_validation_failed",
+            task_id=payload.get("task_id", "unknown"),
+            error=error_msg,
+        )
+        raise RuntimeError(error_msg)
+
+    def _ask_human_question(
+        self,
+        task_id: str,
+        question: str,
+        priority: str = "medium",
+        context: str = "",
+        options: Optional[list[str]] = None,
+    ) -> dict:
+        """
+        Ask human a question using native LangGraph interrupt.
+
+        Args:
+            task_id: ID of the task this question is about
+            question: The question to ask
+            priority: Priority level ("high", "medium", "low")
+            context: Additional context for the question
+            options: Optional list of predefined answer options
+
+        Returns:
+            Dictionary containing the human's response with keys:
+            - value: The answer provided
+            - additional_feedback: Optional additional comments
+        """
+        # Get task description for context (idempotent - just reads state)
+        task_description = ""
+        current_task = self.ground_truth.get_task_by_id(task_id)
+        if current_task:
+            task_description = current_task.description or current_task.title
+
+        # Build the question payload (idempotent - no side effects)
+        question_payload: HumanQuestionPayload = {
+            "type": "question",
+            "task_id": task_id,
+            "task_description": task_description,
+            "question": question,
+            "priority": priority,
+            "context": context,
+            "options": options,
+        }
+
+        # Log that we're asking a question
+        self._log_execution(
+            event_type="human_question_asked",
+            task_id=task_id,
+            extra={
+                "question": question[:100],  # First 100 chars
+                "priority": priority,
+                "has_options": options is not None,
+            },
+        )
+
+        # Call interrupt - this will pause execution and wait for human response
+        # CRITICAL: Everything above this line will re-run on resume, so it must be idempotent
+        human_response: dict = interrupt(question_payload)
+
+        # After resume: Log the response
+        self._log_execution(
+            event_type="human_question_answered",
+            task_id=task_id,
+            extra={
+                "answer": str(human_response.get("value", ""))[:100],
+                "has_feedback": bool(human_response.get("additional_feedback")),
+            },
+        )
+
+        # Return the response
+        return human_response
+
     async def _request_human_review_node(
         self, state: OrchestratorState
     ) -> OrchestratorState:
-        """Request human review of the implementation."""
+        """Request human review of the implementation using native LangGraph interrupt."""
         task_data = state["current_task"]
+        task_id = task_data["id"]
         execution_result = state.get("last_execution_result", {})
         validation_results = state.get("validation_results", [])
 
-        # Collect concerns
-        concerns = []
-        for vr in validation_results:
-            if vr.get("status") in ["failed", "warnings"]:
-                concerns.append(f"{vr['agent']}: {vr.get('status')}")
+        # Build files_changed list (idempotent - just reads git status)
+        files_changed = []
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["git", "status", "--short"],
+                cwd=self.config.repo_root,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode == 0:
+                for line in result.stdout.strip().split("\n"):
+                    if line.strip():
+                        # Format: "XY filename" where XY are status codes
+                        parts = line.strip().split(maxsplit=1)
+                        if len(parts) == 2:
+                            files_changed.append(parts[1])
+        except Exception as e:
+            self._log_execution(
+                event_type="git_status_error",
+                task_id=task_id,
+                error=str(e),
+            )
 
-        if execution_result.get("error"):
-            concerns.append(f"Execution error: {execution_result['error'][:200]}")
+        # Get diff summary (idempotent - just reads git diff)
+        diff_summary = ""
+        try:
+            result = subprocess.run(
+                ["git", "diff", "--stat"],
+                cwd=self.config.repo_root,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode == 0:
+                diff_summary = result.stdout.strip()
+        except Exception as e:
+            self._log_execution(
+                event_type="git_diff_error",
+                task_id=task_id,
+                error=str(e),
+            )
 
-        # Create review request
-        review = self.human_loop.create_review_request(
-            task_id=task_data["id"],
-            title=f"Review: {task_data['title']}",
-            summary=f"Task {task_data['id']} implementation requires review",
-            changes=execution_result.get("output", "").split("\n")[
-                :20
-            ],  # First 20 lines
-            test_results=execution_result.get("test_output", "No test output"),
-            validation_results=validation_results,
-            concerns=concerns,
+        # Build the review payload (idempotent - no side effects)
+        review_payload: HumanReviewPayload = {
+            "type": "review",
+            "task_id": task_id,
+            "task_description": task_data.get("description", task_data.get("title", "")),
+            "execution_result": execution_result,
+            "validation_results": validation_results,
+            "files_changed": files_changed,
+            "diff_summary": diff_summary,
+        }
+
+        # Log that we're requesting review
+        self._log_execution(
+            event_type="human_review_requested",
+            task_id=task_id,
+            extra={
+                "files_changed_count": len(files_changed),
+                "validation_count": len(validation_results),
+            },
         )
 
-        return {
-            **state,
-            "awaiting_human_input": True,
-            "human_review_id": review.id,
-            "next_action": "wait",
-            "messages": [f"Human review requested: {review.id}"],
-        }
+        # Call interrupt - this will pause execution and wait for human response
+        # CRITICAL: Everything above this line will re-run on resume, so it must be idempotent
+        human_response: HumanResponse = interrupt(review_payload)
 
-    async def _wait_for_human_node(self, state: OrchestratorState) -> OrchestratorState:
-        """Wait for human input with polling."""
-        question_id = state.get("human_question_id")
-        review_id = state.get("human_review_id")
-        task_data = state.get("current_task", {})
-        task_id = task_data.get("id", "unknown")
-        self._log_step_start(
-            "wait_for_human",
-            task_id,
-            f"question={question_id}" if question_id else f"review={review_id}",
+        # After resume: Log the response
+        self._log_execution(
+            event_type="human_review_received",
+            task_id=task_id,
+            extra={
+                "approved": human_response.get("approved", False),
+                "retry": human_response.get("retry", False),
+                "has_feedback": bool(human_response.get("feedback")),
+            },
         )
 
-        # Configuration for waiting
-        check_interval = getattr(self.config, "human_check_interval", 5.0)
-        max_wait_time = getattr(self.config, "human_wait_timeout", 3600.0)
-
-        start_time = time.time()
-        check_count = 0
-
-        while (time.time() - start_time) < max_wait_time:
-            check_count += 1
-
-            if question_id:
-                # Check for answer
-                answer = self.human_loop.check_for_answer(question_id)
-                if answer:
-                    self._log_step_end(
-                        "wait_for_human",
-                        task_id,
-                        True,
-                        f"answered after {check_count} checks",
-                    )
-                    return {
-                        **state,
-                        "awaiting_human_input": False,
-                        "human_response": {"type": "answer", "value": answer},
-                        "next_action": "process",
-                        "messages": [
-                            f"Human answered question {question_id} after {check_count} checks"
-                        ],
-                    }
-
-            if review_id:
-                # Check for review response
-                response = self.human_loop.check_for_review_response(review_id)
-                if response:
-                    self._log_step_end(
-                        "wait_for_human",
-                        task_id,
-                        True,
-                        f"reviewed after {check_count} checks",
-                    )
-                    return {
-                        **state,
-                        "awaiting_human_input": False,
-                        "human_response": {"type": "review", **response},
-                        "next_action": "process",
-                        "messages": [
-                            f"Human reviewed {review_id}: {response.get('status')} after {check_count} checks"
-                        ],
-                    }
-
-            # Log progress periodically
-            if check_count % 12 == 0:  # Every minute
-                elapsed = time.time() - start_time
-                print(
-                    f"[wait_for_human] Still waiting... ({elapsed:.0f}s elapsed, {check_count} checks)"
-                )
-
-            # Wait before next check
-            await asyncio.sleep(check_interval)
-
-        # Timeout reached
-        self._log_step_end("wait_for_human", task_id, False, "TIMEOUT")
-        return {
-            **state,
-            "next_action": "timeout",
-            "messages": [
-                f"Human input timeout after {max_wait_time}s ({check_count} checks)"
-            ],
-        }
-
-    async def _process_human_response_node(
-        self, state: OrchestratorState
-    ) -> OrchestratorState:
-        """Process human response and determine next action."""
-        response = state.get("human_response", {})
-
-        if response.get("type") == "review":
-            status = response.get("status", "")
-
-            if status == "approved":
-                return {
-                    **state,
-                    "next_action": "continue",
-                    "messages": ["Human approved implementation"],
-                }
-            elif status == "rejected":
-                return {
-                    **state,
-                    "next_action": "retry",
-                    "messages": [
-                        f"Human rejected: {response.get('notes', 'No notes')}"
-                    ],
-                }
-            elif status == "needs_changes":
-                return {
-                    **state,
-                    "next_action": "retry",
-                    "messages": [
-                        f"Changes requested: {response.get('notes', 'No notes')}"
-                    ],
-                }
-            else:
-                return {
-                    **state,
-                    "next_action": "skip",
-                    "messages": ["Unknown review status, skipping task"],
-                }
-
-        elif response.get("type") == "answer":
-            # Store answer in task
-            task_data = state["current_task"]
-            task_data["human_answer"] = response.get("value")
-            return {
-                **state,
-                "current_task": task_data,
-                "next_action": "continue",
-                "messages": ["Human provided answer"],
-            }
+        # Route based on response
+        if human_response.get("approved"):
+            next_action = "commit_changes"
+            messages = [f"Human approved task {task_id}"]
+            if human_response.get("feedback"):
+                messages.append(f"Feedback: {human_response['feedback']}")
+        elif human_response.get("retry"):
+            next_action = "execute_implementation"
+            messages = [f"Human requested retry for task {task_id}"]
+            if human_response.get("feedback"):
+                messages.append(f"Feedback: {human_response['feedback']}")
+        else:
+            # Skip this task
+            next_action = "update_ground_truth"
+            messages = [f"Human skipped task {task_id}"]
+            if human_response.get("feedback"):
+                messages.append(f"Feedback: {human_response['feedback']}")
 
         return {
             **state,
-            "next_action": "skip",
-            "messages": ["Unknown response type"],
+            "human_response": human_response,
+            "next_action": next_action,
+            "messages": messages,
         }
+
+    # NOTE: _wait_for_human_node and _process_human_response_node have been removed
+    # Both are replaced by native LangGraph interrupts in _request_human_review_node
+    # and _ask_human_question methods which handle waiting and processing in one step
 
     async def _update_ground_truth_node(
         self, state: OrchestratorState

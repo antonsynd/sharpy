@@ -9,11 +9,133 @@ import sqlite3
 import sys
 from pathlib import Path
 from datetime import datetime
+from typing import Optional
 
 from .config import Config
 from .state import GroundTruth, parse_task_list
 from .orchestrator import Orchestrator
 from .human_loop import HumanLoopManager
+from .interrupt_handler import display_interrupt, collect_response
+
+# Import Command for interrupt resume
+from langgraph.types import Command
+
+
+async def run_with_interrupts(
+    orchestrator: Orchestrator,
+    thread_id: str,
+    max_tasks: Optional[int] = None
+) -> dict:
+    """
+    Run the orchestrator with interrupt handling for human-in-the-loop.
+
+    This function handles LangGraph interrupts by:
+    1. Invoking the graph and checking for __interrupt__ in the result
+    2. If interrupted, displaying the payload and collecting user response
+    3. Resuming with Command(resume=response)
+    4. Continuing until completion or rate limit pause
+
+    Args:
+        orchestrator: The Orchestrator instance
+        thread_id: Thread ID for checkpoint persistence
+        max_tasks: Maximum number of tasks to process (optional)
+
+    Returns:
+        dict: Run statistics including tasks_processed, final_progress, backend_stats
+    """
+    config = {
+        "configurable": {"thread_id": thread_id},
+        "recursion_limit": 150,
+    }
+
+    # Check if we're resuming an existing session
+    existing_state = orchestrator.app.get_state(config)
+    is_resume = existing_state.values != {}
+
+    if is_resume:
+        print(f"🔄 Resuming existing session from checkpoint...")
+        print(f"   Previous state found for thread: {thread_id}\n")
+        input_data = None  # Resume from checkpoint
+    else:
+        print(f"🆕 Starting new session...")
+        input_data = orchestrator._create_initial_state()
+
+    tasks_processed = 0
+    iteration = 0
+
+    while True:
+        iteration += 1
+
+        # Invoke the graph (single step)
+        try:
+            result = await orchestrator.app.ainvoke(input_data, config)
+        except Exception as e:
+            print(f"[red]Error during graph execution: {e}[/red]")
+            break
+
+        # Check if we hit an interrupt
+        if "__interrupt__" in result:
+            interrupt_data = result["__interrupt__"][0]  # Get first interrupt
+            interrupt_value = interrupt_data.value
+
+            print(f"\n{'='*60}")
+            print("⏸️  INTERRUPT - Human Input Required")
+            print(f"{'='*60}\n")
+
+            # Display the interrupt to the user
+            display_interrupt(interrupt_value)
+
+            # Collect response from user
+            response = collect_response(interrupt_value)
+
+            # Resume with the response
+            print(f"\n{'='*60}")
+            print("▶️  Resuming execution...")
+            print(f"{'='*60}\n")
+
+            input_data = Command(resume=response)
+            continue
+
+        # No interrupt - check for completion conditions
+        next_action = result.get("next_action", "")
+
+        # Check for completion
+        if next_action == "complete":
+            print(f"\n✅ Session complete!")
+            break
+
+        # Check for rate limit pause
+        if next_action == "pause_rate_limited":
+            print(f"\n⏸️  Session paused due to rate limiting")
+            print(f"   Resume later with: ./auto_builder.sh run --thread-id {thread_id}")
+            break
+
+        # Track task completion
+        if next_action == "next_task":
+            tasks_processed += 1
+            print(f"\n📋 Tasks completed: {tasks_processed}")
+
+            # Check max tasks limit
+            if max_tasks and tasks_processed >= max_tasks:
+                print(f"\n🎯 Reached maximum task limit ({max_tasks})")
+                break
+
+        # Continue with next iteration (no input needed, resume from checkpoint)
+        input_data = None
+
+        # Safety limit to prevent infinite loops
+        if iteration > 1000:
+            print(f"\n⚠️  Reached safety iteration limit (1000)")
+            break
+
+    # Get final state and stats
+    final_state = orchestrator.app.get_state(config)
+
+    return {
+        "tasks_processed": tasks_processed,
+        "final_progress": orchestrator.ground_truth.overall_progress,
+        "backend_stats": orchestrator.backend_manager.get_status(),
+    }
 
 
 def list_sessions(config: Config) -> list[dict]:
@@ -242,8 +364,24 @@ def cmd_run(args):
 
     orchestrator = Orchestrator(config)
 
+    # Generate thread ID if not provided
+    thread_id = args.thread_id
+    if thread_id is None:
+        thread_id = f"sharpy-build-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+
+    # Print thread ID and resume instructions
+    print(f"\n{'='*60}")
+    print(f"🔗 Thread ID: {thread_id}")
+    print(f"{'='*60}")
+    print(f"💡 To resume this session later, use:")
+    print(f"   ./auto_builder.sh run --thread-id {thread_id}")
+    print(f"{'='*60}\n")
+
     try:
-        result = asyncio.run(orchestrator.run(max_tasks=args.max_tasks, thread_id=args.thread_id))
+        # Use the new interrupt-aware run function
+        result = asyncio.run(
+            run_with_interrupts(orchestrator, thread_id, max_tasks=args.max_tasks)
+        )
 
         print()
         print(f"{'='*60}")

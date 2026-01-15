@@ -253,11 +253,11 @@
 
 **Actions**:
 
-1. [ ] Rewrite `_request_human_review_node` to use `interrupt(review_payload)` instead of file-based polling
-2. [ ] Build `HumanReviewPayload` with task info, execution result, validation results, files changed
-3. [ ] Call `human_response: HumanResponse = interrupt(review_payload)`
-4. [ ] After interrupt resumes, log response and route based on `approved`, `retry`, or skip
-5. [ ] Ensure pre-interrupt code is idempotent (no side effects)
+1. [x] Rewrite `_request_human_review_node` to use `interrupt(review_payload)` instead of file-based polling
+2. [x] Build `HumanReviewPayload` with task info, execution result, validation results, files changed
+3. [x] Call `human_response: HumanResponse = interrupt(review_payload)`
+4. [x] After interrupt resumes, log response and route based on `approved`, `retry`, or skip
+5. [x] Ensure pre-interrupt code is idempotent (no side effects)
 
 ⚠️ **Critical**: Code before `interrupt()` will re-run on resume. Keep it minimal and idempotent.
 
@@ -275,9 +275,9 @@
 
 **Actions**:
 
-1. [ ] Add `_ask_human_question(task_id, question, priority, context, options)` method
-2. [ ] Build `HumanQuestionPayload` and call `interrupt(payload)`
-3. [ ] Return the human's response
+1. [x] Add `_ask_human_question(task_id, question, priority, context, options)` method
+2. [x] Build `HumanQuestionPayload` and call `interrupt(payload)`
+3. [x] Return the human's response
 
 **Verification**:
 - ✅ Test: Questions interrupt and wait for response
@@ -292,11 +292,11 @@
 
 **Actions**:
 
-1. [ ] Add `interrupt_with_validation(payload, validator, max_attempts)` function
-2. [ ] Loop until valid response or max attempts reached
-3. [ ] On invalid input, update payload with `validation_error` and re-interrupt
-4. [ ] Add `validate_review_response(response)` function returning `(is_valid, error_message)`
-5. [ ] Add `validate_question_response(response, options)` function
+1. [x] Add `interrupt_with_validation(payload, validator, max_attempts)` function
+2. [x] Loop until valid response or max attempts reached
+3. [x] On invalid input, update payload with `validation_error` and re-interrupt
+4. [x] Add `validate_review_response(response)` function returning `(is_valid, error_message)`
+5. [x] Add `validate_question_response(response, options)` function
 
 **Verification**:
 - ✅ Test: Invalid input triggers re-prompt
@@ -312,9 +312,9 @@
 
 **Actions**:
 
-1. [ ] Add `_route_after_human_response(state)` method routing based on `next_action`
-2. [ ] Return `"commit_changes"`, `"execute_implementation"`, `"update_ground_truth"`, or `"handle_error"`
-3. [ ] Update graph with conditional edge from `request_human_review`
+1. [x] Add `_route_after_human_response(state)` method routing based on `next_action`
+2. [x] Return `"commit_changes"`, `"execute_implementation"`, `"update_ground_truth"`, or `"handle_error"`
+3. [x] Update graph with conditional edge from `request_human_review`
 
 **Verification**:
 - ✅ Test: Routing works for approve, retry, skip
@@ -329,10 +329,10 @@
 
 **Actions**:
 
-1. [ ] Delete `_wait_for_human_node` method
-2. [ ] Remove `graph.add_node("wait_for_human", ...)` from `_build_graph`
-3. [ ] Remove edges involving `wait_for_human`
-4. [ ] Optionally remove state fields: `awaiting_human_input`, `human_question_id`, `human_review_id`
+1. [x] Delete `_wait_for_human_node` method
+2. [x] Remove `graph.add_node("wait_for_human", ...)` from `_build_graph`
+3. [x] Remove edges involving `wait_for_human`
+4. [ ] Optionally remove state fields: `awaiting_human_input`, `human_question_id`, `human_review_id` (kept for backwards compatibility)
 
 **Verification**:
 - ✅ Test: Graph builds without wait_for_human
@@ -348,13 +348,13 @@
 
 **Actions**:
 
-1. [ ] Create new file `interrupt_handler.py`
-2. [ ] Add `display_interrupt(interrupt_data)` function using rich for pretty output
-3. [ ] Add `_display_review_request(data)` showing task, execution result, validations, files
-4. [ ] Add `_display_question(data)` showing question, context, options
-5. [ ] Add `collect_response(interrupt_data)` function for user input
-6. [ ] Add `_collect_review_response()` with approve/retry/skip choices
-7. [ ] Add `_collect_question_response(data)` handling options or free text
+1. [x] Create new file `interrupt_handler.py`
+2. [x] Add `display_interrupt(interrupt_data)` function using rich for pretty output
+3. [x] Add `_display_review_request(data)` showing task, execution result, validations, files
+4. [x] Add `_display_question(data)` showing question, context, options
+5. [x] Add `collect_response(interrupt_data)` function for user input
+6. [x] Add `_collect_review_response()` with approve/retry/skip choices
+7. [x] Add `_collect_question_response(data)` handling options or free text
 
 **Verification**:
 - ✅ Test: Review requests display properly
@@ -370,11 +370,11 @@
 
 **Actions**:
 
-1. [ ] Create `run_with_interrupts(config, thread_id, max_tasks)` async function
-2. [ ] Loop: invoke graph, check for `__interrupt__` in result
-3. [ ] If interrupted: call `display_interrupt()`, `collect_response()`, resume with `Command(resume=response)`
-4. [ ] Check for `next_action == "complete"` or `"pause_rate_limited"` to exit
-5. [ ] Track tasks processed and respect `max_tasks` limit
+1. [x] Create `run_with_interrupts(config, thread_id, max_tasks)` async function
+2. [x] Loop: invoke graph, check for `__interrupt__` in result
+3. [x] If interrupted: call `display_interrupt()`, `collect_response()`, resume with `Command(resume=response)`
+4. [x] Check for `next_action == "complete"` or `"pause_rate_limited"` to exit
+5. [x] Track tasks processed and respect `max_tasks` limit
 
 **Verification**:
 - ✅ Test: Interrupts handled interactively
@@ -390,9 +390,9 @@
 
 **Actions**:
 
-1. [ ] Add deprecation notice to module docstring
-2. [ ] Add `warnings.warn()` in `HumanLoopManager.__init__`
-3. [ ] Keep for backwards compatibility with batch processing
+1. [x] Add deprecation notice to module docstring
+2. [x] Add `warnings.warn()` in `HumanLoopManager.__init__`
+3. [x] Keep for backwards compatibility with batch processing
 
 **Verification**:
 - ✅ Test: Deprecation warning appears on import
@@ -407,13 +407,13 @@
 
 **Actions**:
 
-1. [ ] Create test file with `TestInterruptPayloads` class
-2. [ ] Add `TestInterruptResume` class testing interrupt and Command(resume=) flow
-3. [ ] Add `TestInterruptHandler` class for CLI handler tests
-4. [ ] Add `TestInterruptValidation` class for validation loop tests
+1. [x] Create test file with `TestInterruptPayloads` class
+2. [x] Add `TestInterruptResume` class testing interrupt and Command(resume=) flow
+3. [x] Add `TestInterruptHandler` class for CLI handler tests
+4. [x] Add `TestInterruptValidation` class for validation loop tests
 
 **Verification**:
-- ✅ Run: `pytest build_tools/tests/test_orchestrator_interrupts.py`
+- ✅ Run: `pytest build_tools/tests/test_orchestrator_interrupts.py` - 24 tests passed
 
 ---
 
