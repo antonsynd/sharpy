@@ -33,6 +33,13 @@ public class TypeChecker
     // Track whether we're inside an except block (for bare raise validation)
     private bool _inExceptBlock = false;
 
+    // Track current method context for super() validation
+    private string? _currentMethodName = null;
+    private bool _currentMethodIsOverride = false;
+    private bool _currentMethodIsDunder = false;
+    private int _controlFlowDepth = 0;
+    private bool _superInitCalled = false;  // Track if super().__init__() was called
+
     // Configuration
     public bool ContinueAfterError { get; set; } = true;
     public int MaxErrors { get; set; } = 100;
@@ -208,6 +215,19 @@ public class TypeChecker
         // Enter function scope
         _symbolTable.EnterScope($"function:{functionDef.Name}");
 
+        // Save previous method context and set new context for super() validation
+        var previousMethodName = _currentMethodName;
+        var previousMethodIsOverride = _currentMethodIsOverride;
+        var previousMethodIsDunder = _currentMethodIsDunder;
+        var previousControlFlowDepth = _controlFlowDepth;
+        var previousSuperInitCalled = _superInitCalled;
+
+        _currentMethodName = functionDef.Name;
+        _currentMethodIsOverride = functionDef.Decorators.Any(d => d.Name == "override");
+        _currentMethodIsDunder = IsDunderMethod(functionDef.Name);
+        _controlFlowDepth = 0;
+        _superInitCalled = false;
+
         // Validate self parameter for instance methods
         // In Sharpy, methods without 'self' as the first parameter are treated as static methods
         // This is consistent with how the code generator handles them
@@ -319,6 +339,13 @@ public class TypeChecker
 
         // Validate control flow
         _controlFlowValidator.ValidateFunction(functionDef, returnType);
+
+        // Restore previous method context
+        _currentMethodName = previousMethodName;
+        _currentMethodIsOverride = previousMethodIsOverride;
+        _currentMethodIsDunder = previousMethodIsDunder;
+        _controlFlowDepth = previousControlFlowDepth;
+        _superInitCalled = previousSuperInitCalled;
 
         _symbolTable.ExitScope();
         _currentFunctionReturnType = null;
@@ -714,8 +741,10 @@ public class TypeChecker
 
         // Enter scope for if-then block
         _symbolTable.EnterScope("if-then");
+        _controlFlowDepth++;
         foreach (var stmt in ifStmt.ThenBody)
             CheckStatement(stmt);
+        _controlFlowDepth--;
         _symbolTable.ExitScope();
 
         // Check elif clauses
@@ -736,8 +765,10 @@ public class TypeChecker
             }
 
             _symbolTable.EnterScope("elif");
+            _controlFlowDepth++;
             foreach (var stmt in elif.Body)
                 CheckStatement(stmt);
+            _controlFlowDepth--;
             _symbolTable.ExitScope();
         }
 
@@ -752,8 +783,10 @@ public class TypeChecker
         if (ifStmt.ElseBody.Count > 0)
         {
             _symbolTable.EnterScope("if-else");
+            _controlFlowDepth++;
             foreach (var stmt in ifStmt.ElseBody)
                 CheckStatement(stmt);
+            _controlFlowDepth--;
             _symbolTable.ExitScope();
         }
 
@@ -782,8 +815,10 @@ public class TypeChecker
 
         // Enter scope for while-body block
         _symbolTable.EnterScope("while-body");
+        _controlFlowDepth++;
         foreach (var stmt in whileStmt.Body)
             CheckStatement(stmt);
+        _controlFlowDepth--;
         _symbolTable.ExitScope();
 
         // Restore original narrowed types
@@ -888,8 +923,10 @@ public class TypeChecker
         }
 
         // Check loop body statements
+        _controlFlowDepth++;
         foreach (var stmt in forStmt.Body)
             CheckStatement(stmt);
+        _controlFlowDepth--;
 
         // Exit for-body scope
         _symbolTable.ExitScope();
@@ -914,18 +951,22 @@ public class TypeChecker
     {
         // Try block has its own scope
         _symbolTable.EnterScope("try");
+        _controlFlowDepth++;
         foreach (var stmt in tryStmt.Body)
             CheckStatement(stmt);
+        _controlFlowDepth--;
         _symbolTable.ExitScope();
 
         // Each exception handler has its own scope
         foreach (var handler in tryStmt.Handlers)
         {
             _symbolTable.EnterScope("except");
+            _controlFlowDepth++;
             _inExceptBlock = true;
             foreach (var stmt in handler.Body)
                 CheckStatement(stmt);
             _inExceptBlock = false;
+            _controlFlowDepth--;
             _symbolTable.ExitScope();
         }
 
@@ -933,8 +974,10 @@ public class TypeChecker
         if (tryStmt.FinallyBody != null && tryStmt.FinallyBody.Count > 0)
         {
             _symbolTable.EnterScope("finally");
+            _controlFlowDepth++;
             foreach (var stmt in tryStmt.FinallyBody)
                 CheckStatement(stmt);
+            _controlFlowDepth--;
             _symbolTable.ExitScope();
         }
     }
@@ -969,6 +1012,7 @@ public class TypeChecker
             BinaryOp binOp => CheckBinaryOp(binOp),
             UnaryOp unOp => CheckUnaryOp(unOp),
             ComparisonChain chain => CheckComparisonChain(chain),
+            SuperExpression superExpr => CheckSuperExpression(superExpr),
             MemberAccess memberAccess => CheckMemberAccess(memberAccess),
             IndexAccess indexAccess => CheckIndexAccess(indexAccess),
             FunctionCall call => CheckFunctionCall(call),
@@ -1387,6 +1431,12 @@ public class TypeChecker
 
     private SemanticType CheckMemberAccess(MemberAccess memberAccess)
     {
+        // Check for super() usage
+        if (memberAccess.Object is SuperExpression superExpr)
+        {
+            return ValidateSuperMemberAccess(memberAccess, superExpr);
+        }
+
         var objectType = CheckExpression(memberAccess.Object);
 
         if (objectType is UserDefinedType udt && udt.Symbol != null)
@@ -1450,6 +1500,13 @@ public class TypeChecker
     {
         // Check the called expression type first
         var calleeType = CheckExpression(call.Function);
+
+        // Track super().__init__() calls AFTER validation completes
+        // (do this after CheckExpression so the validation doesn't see it as already called)
+        if (call.Function is MemberAccess ma && ma.Object is SuperExpression && ma.Member == "__init__")
+        {
+            _superInitCalled = true;
+        }
 
         // Check arguments and collect their types
         var argTypes = new List<SemanticType>();
@@ -2202,6 +2259,157 @@ public class TypeChecker
                     ctor.DeclarationColumn);
             }
         }
+    }
+
+    /// <summary>
+    /// Check if a method name is a dunder method (starts and ends with __ and has content in between)
+    /// </summary>
+    private static bool IsDunderMethod(string name) =>
+        name.StartsWith("__") && name.EndsWith("__") && name.Length > 4;
+
+    /// <summary>
+    /// Validate standalone super() expression (which is always invalid - must be followed by method call)
+    /// </summary>
+    private SemanticType CheckSuperExpression(SuperExpression superExpr)
+    {
+        // Standalone super() is not valid - must be used as super().method()
+        // The parser allows it, but semantically it's invalid
+        AddError("super() must be followed by a method call (e.g., super().__init__())",
+            superExpr.LineStart, superExpr.ColumnStart);
+        return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Validate super().method() member access and return the method's type
+    /// </summary>
+    private SemanticType ValidateSuperMemberAccess(MemberAccess memberAccess, SuperExpression superExpr)
+    {
+        var memberName = memberAccess.Member;
+
+        // Check 1: Must be inside a class
+        if (_currentClass == null)
+        {
+            AddError("super() cannot be used outside of a class",
+                superExpr.LineStart, superExpr.ColumnStart);
+            return SemanticType.Unknown;
+        }
+
+        // Check 2: Class must have a parent
+        if (_currentClass.BaseType == null)
+        {
+            AddError($"super() cannot be used in class '{_currentClass.Name}' which has no parent class",
+                superExpr.LineStart, superExpr.ColumnStart);
+            return SemanticType.Unknown;
+        }
+
+        // Check 3: Cannot access fields via super()
+        var parentField = _currentClass.BaseType.Fields.FirstOrDefault(f => f.Name == memberName);
+        if (parentField != null)
+        {
+            AddError("Cannot access parent fields via super(); only methods are allowed",
+                memberAccess.LineStart, memberAccess.ColumnStart);
+            return SemanticType.Unknown;
+        }
+
+        // Check 4: Validate based on method context
+        ValidateSuperContextRules(memberName, superExpr, memberAccess);
+
+        // Look up the method in the parent class and return its type
+        var parentMethod = _currentClass.BaseType.Methods.FirstOrDefault(m => m.Name == memberName);
+        if (parentMethod == null && memberName == "__init__")
+        {
+            // __init__ might be in Constructors list
+            var parentCtor = _currentClass.BaseType.Constructors.FirstOrDefault();
+            if (parentCtor != null)
+            {
+                var paramTypes = parentCtor.Parameters.Skip(1).Select(p => p.Type).ToList();
+                return new FunctionType
+                {
+                    ParameterTypes = paramTypes,
+                    ReturnType = SemanticType.Void
+                };
+            }
+        }
+
+        if (parentMethod != null)
+        {
+            var paramTypes = parentMethod.Parameters.Skip(1).Select(p => p.Type).ToList();
+            return new FunctionType
+            {
+                ParameterTypes = paramTypes,
+                ReturnType = parentMethod.ReturnType
+            };
+        }
+
+        AddError($"Parent class '{_currentClass.BaseType.Name}' has no method '{memberName}'",
+            memberAccess.LineStart, memberAccess.ColumnStart);
+        return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Validate super() context rules based on current method type
+    /// </summary>
+    private void ValidateSuperContextRules(string calledMethodName, SuperExpression superExpr, MemberAccess memberAccess)
+    {
+        if (_currentMethodName == null)
+        {
+            AddError("super() cannot be used outside of a method",
+                superExpr.LineStart, superExpr.ColumnStart);
+            return;
+        }
+
+        // Case 1: Inside __init__
+        if (_currentMethodName == "__init__")
+        {
+            if (calledMethodName != "__init__")
+            {
+                AddError("super() in __init__ can only call super().__init__(...)",
+                    memberAccess.LineStart, memberAccess.ColumnStart);
+            }
+            else if (_controlFlowDepth > 0)
+            {
+                AddError("super().__init__() must be the first statement in the constructor, not inside control flow",
+                    superExpr.LineStart, superExpr.ColumnStart);
+            }
+            else if (_superInitCalled)
+            {
+                AddError("super().__init__() can only be called once",
+                    superExpr.LineStart, superExpr.ColumnStart);
+            }
+            return;
+        }
+
+        // Case 2: Inside @override method
+        if (_currentMethodIsOverride)
+        {
+            // In @override methods, can call same method name
+            // OR if it's a dunder override, can call other dunders (cross-dunder)
+            if (calledMethodName != _currentMethodName)
+            {
+                if (!(_currentMethodIsDunder && IsDunderMethod(calledMethodName)))
+                {
+                    AddError($"super() in @override method must call super().{_currentMethodName}(...)",
+                        memberAccess.LineStart, memberAccess.ColumnStart);
+                }
+            }
+            return;
+        }
+
+        // Case 3: Inside dunder method (not __init__, not @override)
+        if (_currentMethodIsDunder)
+        {
+            // Dunder methods can call any dunder via super()
+            if (!IsDunderMethod(calledMethodName))
+            {
+                AddError("super() in dunder method must call a dunder method (e.g., super().__eq__(...))",
+                    memberAccess.LineStart, memberAccess.ColumnStart);
+            }
+            return;
+        }
+
+        // Case 4: Regular method - super() not allowed
+        AddError("super() cannot be used in regular methods; only in __init__, @override, or dunder methods",
+            superExpr.LineStart, superExpr.ColumnStart);
     }
 
     private void AddError(string message, int? line = null, int? column = null)
