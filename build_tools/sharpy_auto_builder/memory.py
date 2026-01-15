@@ -316,31 +316,22 @@ class MemoryManager:
         limit = limit or self.config.max_patterns_per_query
 
         try:
-            # Try semantic search if embeddings are configured
-            if self.config.embedding_provider:
-                results = self.store.search(
-                    namespace_prefix=namespace,
-                    query=query,
-                    limit=limit,
-                )
-            else:
-                # Fallback to listing all items (exact key matching)
-                results = self.store.list(namespace_prefix=namespace)
+            # Use search method for both semantic and non-semantic cases
+            # InMemoryStore.search works even without embeddings
+            # search() signature: search(namespace_prefix, /, query, limit=10, filter=None)
+            results = self.store.search(
+                namespace,  # positional argument
+                query=query if query else "",  # Empty query returns all items
+                limit=limit if limit else 100,  # Provide a default limit
+            )
 
             patterns = [Pattern.from_store_item(item) for item in results]
             logger.debug(f"Found {len(patterns)} patterns for query: {query}")
-            return patterns[:limit]
+            return patterns[:limit] if limit else patterns
 
         except Exception as e:
             logger.error(f"Failed to search patterns: {e}")
-            # Fallback to listing
-            try:
-                results = self.store.list(namespace_prefix=namespace)
-                patterns = [Pattern.from_store_item(item) for item in results]
-                return patterns[:limit]
-            except Exception as e2:
-                logger.error(f"Failed to list patterns: {e2}")
-                return []
+            return []
 
     def get_implementation_context(self, task_description: str) -> str:
         """
