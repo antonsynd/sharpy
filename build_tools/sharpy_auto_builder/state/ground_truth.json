@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-15T14:21:42.312715",
+  "last_updated": "2026-01-15T14:27:12.965763",
   "phases": [
     {
       "id": "0.1.6",
@@ -1240,7 +1240,7 @@
       "name": "Structs & Enums - Comprehensive Task List (v2)",
       "goal": "",
       "status": "in_progress",
-      "progress": 18.181818181818183,
+      "progress": 27.27272727272727,
       "tasks": [
         {
           "id": "0.1.8.1",
@@ -1386,8 +1386,46 @@
           "title": "Document Struct Value Semantics",
           "description": "**Type:** \ud83d\udcdd Documentation / Awareness  \n**Priority:** Medium  \n**Estimated Time:** 30 minutes\n\n\ud83d\udcc1 **Files**: `docs/language_specification/structs.md`\n\n### Objective\nDocument value type semantics for engineers/users.\n\n### Key Points\n\n1. **Structs are value types:**\n   - Copied on assignment\n   - Passed by value to functions\n   - Stored inline (no heap allocation for the struct itself)\n\n2. **For large structs, use parameter modifiers to avoid copies:**\n   - `in[T]` \u2014 pass by reference, read-only (n",
           "files": [],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude-code",
+              "started_at": "2026-01-15T14:27:12.957943",
+              "completed_at": "2026-01-15T14:27:12.957945",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T14:27:12.957928",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the information needed. Let me compile the spec adherence report by verifying the implemented documentation against what was planned.\n\n## Spec Adherence Report: Document Struct Value Semantics\n\n**Spec:** `docs/plans/task-0.1.8.4-struct-value-semantics.md`  \n**Implementation:** `docs/language_specification/structs.md`\n\n### Summary\n\nTask 0.1.8.4 was a documentation task to add value semantics documentation to the struct specification. The implementation has been completed and the `structs.md` file now contains comprehensive value semantics documentation (284 lines total, up from the original ~96 lines).\n\n---\n\n### Compliant\n\n- [x] **Value Semantics section added** (lines 94-278)\n  - Spec required: \"Dedicated section explaining value type semantics in detail\"\n  - Implementation: Section \"## Value Semantics\" exists at line 94\n\n- [x] **Copy-on-Assignment documented** (lines 98-133)\n  - Spec required: \"Copy-on-assignment behavior with examples\"\n  - Implementation: \"### Copy-on-Assignment\" section with Point struct example showing `p2 = p1` creates a copy\n\n- [x] **Pass-by-Value documented** (lines 134-148)\n  - Spec required: \"Pass-by-value semantics with examples\"\n  - Implementation: \"### Pass-by-Value\" section with Counter struct showing function receives a copy\n\n- [x] **Inline Storage / Memory Model documented** (lines 150-158)\n  - Spec required: \"Memory model explanation (inline storage, no heap for struct itself)\"\n  - Implementation: \"### Inline Storage\" section explains stack, inline in class fields, and contiguous arrays\n\n- [x] **Comparison with reference types** (lines 115-133)\n  - Spec required: \"Comparison with reference types (classes)\"\n  - Implementation: PointClass example contrasts struct copy behavior with class reference behavior\n\n- [x] **Parameter modifiers for avoiding copies** (lines 160-238)\n  - Spec required: \"Cross-reference to parameter modifiers (`in[T]`, `ref[T]`, `out[T]`)\"\n  - Implementation: \"### Avoiding Copies with Parameter Modifiers\" section documents `in[T]`, `mut[T]`, and `out[T]`\n\n- [x] **Performance guidelines** (lines 239-245)\n  - Spec required: Size threshold guidance\n  - Implementation: Table showing \u226416 bytes, >16 bytes, and very large struct recommendations\n\n- [x] **Immutability best practice** (lines 247-278)\n  - Implementation: \"### Immutability Best Practice\" section with Vector2 example and benefits\n\n- [x] **Cross-references present** \n  - Parameter modifiers: Referenced via syntax `in[T]`, `mut[T]`, `out[T]`\n  - Classes comparison: Included inline in Copy-on-Assignment section\n\n- [x] **C# mapping documented** (lines 279-284)\n  - Implementation notes confirm native C# mappings for struct and parameter modifiers\n\n---\n\n### Deviations\n\n- [ ] **Minor: Naming inconsistency for ref parameter**\n  - **Plan says:** Uses `ref[T]` syntax in examples and table\n  - **Implementation:** Uses `mut[T]` syntax instead\n  - **Analysis:** Checking `parameter_modifiers.md`, the official syntax is `ref[T]` (line 16). However, `structs.md` uses `mut[T]` (lines 189, 197, 209, 244).\n  - **Impact:** Low - This may be intentional semantic aliasing (mut = mutable reference), but creates terminology inconsistency with `parameter_modifiers.md`\n\n- [ ] **Missing: \"See Also\" section**\n  - **Plan says:** Add cross-references section linking to `parameter_modifiers.md`, `classes.md`, `type_hierarchy.md`\n  - **Implementation:** No explicit \"See Also\" section exists at the end of `structs.md`\n  - **Impact:** Low - The document does reference parameter modifier syntax inline, but lacks formal cross-reference links\n\n- [ ] **Missing: Struct equality discussion**\n  - **Plan noted question:** \"Does Sharpy generate value-based equality for structs automatically?\"\n  - **Implementation:** Not addressed - The \"Value Semantics Implications\" bullet about equality was not added\n  - **Impact:** Low - Users may be unsure whether structs have automatic `__eq__` implementation\n\n---\n\n### Verification of Cross-Referenced Documents\n\n| Document | Status | Notes |\n|----------|--------|-------|\n| `parameter_modifiers.md` | \u2705 Exists | 251 lines, documents `ref[T]`, `out[T]`, `in[T]` |\n| `classes.md` | \u2705 Exists | 71 lines |\n| `type_hierarchy.md` | \u2705 Exists | 31 lines |\n\n---\n\n### Recommendations\n\n1. **Terminology Alignment (Low Priority):** Consider aligning `mut[T]` in `structs.md` with `ref[T]` in `parameter_modifiers.md`, or document that `mut[T]` is an alias for `ref[T]` for semantic clarity.\n\n2. **Add \"See Also\" Section (Low Priority):** Add explicit cross-reference links at the end of `structs.md`:\n   ```markdown\n   ## See Also\n   \n   - [Parameter Modifiers](parameter_modifiers.md) \u2014 `in`, `ref`, `out` for efficient struct passing\n   - [Classes](classes.md) \u2014 Reference types with different semantics\n   - [Type Hierarchy](type_hierarchy.md) \u2014 How structs fit in the type system\n   ```\n\n3. **Document Struct Equality (Low Priority):** Clarify whether Sharpy structs automatically get value-based equality or if users must implement `__eq__`.\n\n---\n\n### Conclusion\n\n**Overall Compliance: HIGH** \u2705\n\nThe implementation successfully documents struct value semantics as specified in task 0.1.8.4. All major requirements are met:\n- Value semantics explained with clear examples\n- Copy-on-assignment and pass-by-value behavior documented\n- Memory model (inline storage) explained\n- Comparison with reference types included\n- Parameter modifiers for large structs documented\n- Performance guidelines with size thresholds provided\n- Immutability best practices included\n\nThe deviations identified are minor documentation polish items (`mut[T]` vs `ref[T]` naming, missing \"See Also\" section) that do not affect technical correctness.\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T14:27:12.957933",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "## Verification Report: Document Struct Value Semantics\n\n### Test Results\n- **Total: 3,565 | Passed: 3,532 | Skipped: 33 | Failed: 0**\n\n| Test Suite | Passed | Skipped | Failed |\n|------------|--------|---------|--------|\n| Sharpy.Core.Tests | 735 | 0 | 0 |\n| Sharpy.Compiler.Tests | 2,797 | 33 | 0 |\n\n### Struct-Specific Tests\n- **Passed: 85** - All struct-related tests passing (parsing, name resolution, semantic validation, code generation, integration)\n\n### Behavior Checks\n- [x] Struct documentation exists at `docs/language_specification/structs.md` (284 lines)\n- [x] Value semantics section documented with copy-on-assignment behavior\n- [x] Pass-by-value semantics explained with examples\n- [x] Inline storage model documented (stack vs heap)\n- [x] Parameter modifiers (`in[T]`, `mut[T]`, `out[T]`) documented for avoiding copies\n- [x] Comparison with reference types (classes) included\n- [x] Performance guidelines table provided (16-byte threshold)\n- [x] Immutability best practices documented\n- [x] Cross-references valid:\n  - `parameter_modifiers.md` \u2713 exists\n  - `classes.md` \u2713 exists  \n  - `type_hierarchy.md` \u2713 exists\n\n### Coverage Assessment\nThe documentation covers all key aspects outlined in the implementation plan:\n1. **Copy-on-assignment** - Clear example showing struct vs class behavior\n2. **Pass-by-value** - Example demonstrating function receives copy\n3. **Inline storage** - Explanation of stack/heap allocation model\n4. **Parameter modifiers** - `in[T]`, `mut[T]`, `out[T]` for efficient passing\n5. **Performance guidelines** - Table with size-based recommendations\n6. **Immutability best practice** - Recommended pattern with Vector2 example\n7. **Implementation markers** - All marked as \u2705 Native (C# direct mapping)\n\n### Regression Check\n- **No regressions detected**\n- All 444 Phase 0.1.x integration tests pass (436 passed, 8 skipped for known deferred features)\n- All struct validation tests pass (constructor field initialization, method access, generic structs)\n- Code generation tests confirm correct C# struct emission\n\n### Documentation Quality\n| Criterion | Status |\n|-----------|--------|\n| Syntax examples valid | \u2705 Consistent with parser implementation |\n| Terminology consistent | \u2705 Uses \"value types\", \"reference types\" per existing docs |\n| No duplicate content | \u2705 Boxing kept in existing section |\n| Cross-references valid | \u2705 All linked docs exist |\n| Implementation markers | \u2705 All marked as Native |\n\n### Recommendations\nNone - documentation is complete and accurate per the implementation plan. The structs.md has grown from ~96 lines (as noted in the plan's \"Current State Analysis\") to 284 lines, adding the comprehensive value semantics documentation as specified.\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T14:27:12.957938",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now let me verify the key technical claims made in the documentation.\n\n## Verification Results\n\n---\n\n**Claim:** `in[T]` maps to C# `in T` parameter modifier\n\n**Verification:** C# language specification knowledge\n\n**Result:** \u2705 CORRECT \u2014 The `in` modifier in C# passes arguments by readonly reference, preventing modification of the parameter inside the method. This is available in C# 7.2+, and thus available in C# 9.0 (Unity constraint satisfied).\n\n---\n\n**Claim:** `mut[T]` maps to C# `ref T` parameter modifier\n\n**Verification:** C# language specification knowledge\n\n**Result:** \u2705 CORRECT \u2014 The `ref` modifier in C# passes arguments by reference, allowing modification. This has been available since C# 1.0, so it's available in C# 9.0.\n\n---\n\n**Claim:** `out[T]` maps to C# `out T` parameter modifier\n\n**Verification:** C# language specification knowledge\n\n**Result:** \u2705 CORRECT \u2014 The `out` modifier in C# requires the callee to assign a value before returning. This has been available since C# 1.0, so it's available in C# 9.0.\n\n---\n\n**Claim:** C# structs always have an implicit parameterless constructor that zero-initializes all fields (lines 34, 54)\n\n**Verification:** C# language specification knowledge\n\n**Result:** \u2705 CORRECT \u2014 Prior to C# 10, structs always had an implicit public parameterless constructor that zero-initialized all fields. In C# 10+, you can define your own parameterless constructor, but in C# 9.0 (Unity's target), the implicit parameterless constructor always exists and cannot be replaced.\n\n---\n\n**Claim:** Structs are copied when assigned to a new variable (value semantics)\n\n**Verification:** C# language specification knowledge\n\n**Result:** \u2705 CORRECT \u2014 This is fundamental C#/.NET behavior. Value types (structs) are copied on assignment, unlike reference types (classes) which copy the reference.\n\n---\n\n**Claim:** Structs are stored inline in arrays providing contiguous memory (line 156)\n\n**Verification:** .NET runtime behavior knowledge\n\n**Result:** \u2705 CORRECT \u2014 Arrays of structs store the struct values contiguously in memory without indirection, unlike arrays of reference types which store references.\n\n---\n\n**Claim:** Structs stored in local variables are stored on the stack (line 154)\n\n**Verification:** .NET runtime behavior knowledge\n\n**Result:** \u2705 CORRECT \u2014 Local struct variables are typically stored on the stack (with some JIT optimizations possible). This is a well-documented .NET behavior.\n\n---\n\n**Claim:** 16 bytes is the recommended threshold for struct size (lines 90, 186, 243-244)\n\n**Verification:** Microsoft .NET design guidelines\n\n**Result:** \u2705 CORRECT \u2014 Microsoft's official guidance recommends structs be \u226416 bytes for efficient pass-by-value. This is based on register sizes and copy costs. Reference: [Microsoft Choosing Between Class and Struct](https://docs.microsoft.com/en-us/dotnet/standard/design-guidelines/choosing-between-class-and-struct)\n\n---\n\n**Claim:** Boxing occurs when a struct is assigned to an interface variable (lines 82-84, 87)\n\n**Verification:** .NET runtime behavior knowledge\n\n**Result:** \u2705 CORRECT \u2014 When a value type is assigned to an interface-typed variable, boxing occurs (the value is copied to the heap and wrapped in an object). This is fundamental .NET behavior.\n\n---\n\n**Claim:** Documentation states it added \"190 lines\" to the Value Semantics section\n\n**Verification:** Line count from file\n\n**Result:** \u274c INCORRECT \u2014 The Value Semantics section (lines 94-284) is approximately 190 lines, but this is the **total** content of that section, not just new additions. The claim is roughly accurate but imprecise. The actual line count from 94-284 is 191 lines.\n\n---\n\n**Claim:** Line references in the task summary (e.g., lines 98-132 for Copy-on-Assignment)\n\n**Verification:** Direct file inspection\n\n**Result:** \u2705 CORRECT \u2014 The line references are accurate:\n- Copy-on-Assignment: lines 98-132 \u2713\n- Pass-by-Value: lines 134-148 \u2713\n- Inline Storage: lines 150-158 \u2713\n- Parameter Modifiers: lines 160-237 \u2713\n\n---\n\n## Summary\n\n| Category | Verified | Correct | Incorrect |\n|----------|----------|---------|-----------|\n| C# Parameter Modifiers | 3 | 3 | 0 |\n| Value Semantics | 3 | 3 | 0 |\n| Performance Guidelines | 2 | 2 | 0 |\n| Line References | 4 | 4 | 0 |\n| Line Count Claim | 1 | 0 | 1 |\n\n**Overall Result:** \u2705 **11/12 claims verified as correct**\n\nThe only minor issue is the \"190 lines\" claim which is approximately correct but imprecise (actual count is 191 lines for the section). All technical claims about C# behavior, parameter modifiers, and value semantics are accurate and appropriate for the C# 9.0 Unity constraint.\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": false,
           "human_question": null,
@@ -1403,7 +1441,7 @@
             "src/Sharpy.Compiler/Parser/Ast/Statement.cs",
             "src/Sharpy.Compiler/Parser/Parser.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -1937,14 +1975,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "0.1.8.4",
-  "total_attempts": 26,
-  "total_successes": 26,
+  "current_task_id": "0.1.8.5",
+  "total_attempts": 27,
+  "total_successes": 27,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 26,
-      "successes": 26,
+      "attempts": 27,
+      "successes": 27,
       "failures": 0
     },
     "copilot": {
@@ -1953,5 +1991,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 38.333333333333336
+  "overall_progress": 40.0
 }
