@@ -91,5 +91,193 @@ print(d.describe())  # "Point(10, 20)" - works but allocates
 - Immutable value types (Vector2, Point, Color)
 - Types that benefit from value semantics
 
+## Value Semantics
+
+Structs in Sharpy are **value types**, meaning they have fundamentally different behavior from classes (reference types):
+
+### Copy-on-Assignment
+
+Structs are **copied** when assigned to a new variable:
+
+```python
+struct Point:
+    x: int
+    y: int
+
+p1 = Point(10, 20)
+p2 = p1              # p2 is a COPY of p1
+
+p2.x = 99            # Only p2.x changes
+print(p1.x)          # Prints: 10 (p1 is unchanged)
+print(p2.x)          # Prints: 99
+```
+
+This is different from classes, where assignment creates a new reference to the same object:
+
+```python
+class PointClass:
+    x: int
+    y: int
+
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+
+p1 = PointClass(10, 20)
+p2 = p1              # p2 references the SAME object as p1
+
+p2.x = 99            # Changes the shared object
+print(p1.x)          # Prints: 99 (p1.x also changed!)
+print(p2.x)          # Prints: 99
+```
+
+### Pass-by-Value
+
+Structs are **copied** when passed to functions by default:
+
+```python
+struct Counter:
+    count: int
+
+def increment(c: Counter) -> None:
+    c.count += 1
+
+counter = Counter(10)
+increment(counter)
+print(counter.count)  # Prints: 10 (unchanged - function modified a copy)
+```
+
+### Inline Storage
+
+Structs are stored **inline** wherever they are declared:
+
+- In local variables → stored on the stack
+- In class/struct fields → stored inline in the containing object (no separate heap allocation)
+- In arrays → stored contiguously in memory (no indirection)
+
+This provides excellent cache locality and performance, but can be inefficient for large structs.
+
+### Avoiding Copies with Parameter Modifiers
+
+For large structs or performance-critical code, use parameter modifiers to avoid expensive copies:
+
+#### `in[T]` - Read-Only Reference
+
+Pass a struct by reference without allowing modifications:
+
+```python
+struct LargeData:
+    buffer: list[int]  # Assume this is large
+
+    def process(self) -> int:
+        return sum(self.buffer)
+
+def analyze(data: in[LargeData]) -> int:
+    # 'data' is passed by reference (no copy)
+    # 'data' cannot be modified (read-only)
+    return data.process()
+
+large = LargeData([1, 2, 3, 4, 5])
+result = analyze(large)  # No copy! Efficient.
+```
+
+**Use `in[T]` when:**
+- You need to read the struct but not modify it
+- The struct is large (> 16 bytes)
+- Performance is critical
+
+#### `mut[T]` - Mutable Reference
+
+Pass a struct by reference and allow modifications:
+
+```python
+struct Counter:
+    count: int
+
+def increment(c: mut[Counter]) -> None:
+    # 'c' is passed by reference
+    # Changes to 'c' affect the original struct
+    c.count += 1
+
+counter = Counter(10)
+increment(counter)
+print(counter.count)  # Prints: 11 (modified!)
+```
+
+**Use `mut[T]` when:**
+- You need to modify the caller's struct
+- You want to avoid copies for large structs
+
+#### `out[T]` - Output Parameter
+
+Initialize a struct and return it via parameter:
+
+```python
+struct Point:
+    x: int
+    y: int
+
+def try_parse_point(text: str, result: out[Point]) -> bool:
+    # 'result' must be assigned before returning
+    parts = text.split(',')
+    if len(parts) != 2:
+        result = Point(0, 0)
+        return False
+
+    result = Point(int(parts[0]), int(parts[1]))
+    return True
+
+point: Point
+if try_parse_point("10,20", point):
+    print(f"Parsed: ({point.x}, {point.y})")
+```
+
+**Use `out[T]` when:**
+- Implementing try-parse patterns
+- Returning multiple values (one via return, others via `out`)
+
+### Performance Guidelines
+
+| Struct Size | Assignment/Parameter Passing | Recommendation |
+|-------------|------------------------------|----------------|
+| ≤ 16 bytes  | Cheap to copy | Pass by value (default) is fine |
+| > 16 bytes  | Expensive to copy | Use `in[T]` for read-only, `mut[T]` for mutation |
+| Very large  | Very expensive | Consider using a class instead |
+
+### Immutability Best Practice
+
+For best performance and safety, prefer **immutable structs**:
+
+```python
+struct Vector2:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    # Return new instances instead of modifying
+    def __add__(self, other: Vector2) -> Vector2:
+        return Vector2(self.x + other.x, self.y + other.y)
+
+    def scale(self, factor: float) -> Vector2:
+        return Vector2(self.x * factor, self.y * factor)
+
+# Immutable usage pattern
+v1 = Vector2(1.0, 2.0)
+v2 = Vector2(3.0, 4.0)
+v3 = v1 + v2           # Creates new Vector2
+v4 = v3.scale(2.0)     # Creates new Vector2
+```
+
+**Benefits of immutable structs:**
+- Thread-safe by default (no shared mutable state)
+- Easier to reason about (no hidden state changes)
+- Can be safely passed by value without defensive copies
+
 *Implementation*
 - *✅ Native - Direct mapping to C# `struct`.*
+- *✅ Native - `in[T]` maps to C# `in T` parameter modifier*
+- *✅ Native - `mut[T]` maps to C# `ref T` parameter modifier*
+- *✅ Native - `out[T]` maps to C# `out T` parameter modifier*
