@@ -1,2 +1,0 @@
-Assembly compilation failed:
-  dogfood_test.cs(36,46): error CS0121: The call is ambiguous between the following methods or properties: 'Math.Floor(double)' and 'Math.Floor(decimal)'
