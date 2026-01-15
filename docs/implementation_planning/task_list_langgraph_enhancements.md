@@ -792,12 +792,12 @@
 
 **Actions**:
 
-1. [ ] Update `_update_ground_truth_node` to store successful patterns
-2. [ ] On success: call `memory_manager.store_implementation_pattern()`
-3. [ ] On failure with error: call `memory_manager.store_error_pattern()`
-4. [ ] Add `_extract_solution_summary(result)` helper to extract key solution parts
-5. [ ] Add `_categorize_error(error_message)` helper returning error type
-6. [ ] Wrap in try/except to not fail task on memory errors
+1. [x] Update `_update_ground_truth_node` to store successful patterns
+2. [x] On success: call `memory_manager.store_implementation_pattern()`
+3. [x] On failure with error: call `memory_manager.store_error_pattern()`
+4. [x] Add `_extract_solution_summary(result)` helper to extract key solution parts
+5. [x] Add `_categorize_error(error_message)` helper returning error type
+6. [x] Wrap in try/except to not fail task on memory errors
 
 **Verification**:
 - ✅ Test: Successful tasks create patterns

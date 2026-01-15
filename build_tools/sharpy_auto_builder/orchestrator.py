@@ -2688,6 +2688,56 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
     # Both are replaced by native LangGraph interrupts in _request_human_review_node
     # and _ask_human_question methods which handle waiting and processing in one step
 
+    def _extract_solution_summary(self, result: dict) -> str:
+        """
+        Extract key solution parts from execution result.
+
+        Args:
+            result: Execution result dictionary
+
+        Returns:
+            Summary of the solution/approach
+        """
+        output = result.get("output", "")
+
+        # Truncate to reasonable length for storage
+        max_length = 500
+        if len(output) > max_length:
+            return output[:max_length] + "..."
+        return output
+
+    def _categorize_error(self, error_message: str) -> str:
+        """
+        Categorize error type from error message.
+
+        Args:
+            error_message: The error message
+
+        Returns:
+            Error category (e.g., "syntax_error", "type_error", "test_failure")
+        """
+        error_lower = error_message.lower()
+
+        # Common error patterns
+        if "syntax" in error_lower:
+            return "syntax_error"
+        elif "type" in error_lower or "typing" in error_lower:
+            return "type_error"
+        elif "import" in error_lower or "module" in error_lower:
+            return "import_error"
+        elif "test" in error_lower and "fail" in error_lower:
+            return "test_failure"
+        elif "timeout" in error_lower:
+            return "timeout_error"
+        elif "rate limit" in error_lower:
+            return "rate_limit_error"
+        elif "file not found" in error_lower or "no such file" in error_lower:
+            return "file_not_found"
+        elif "permission" in error_lower:
+            return "permission_error"
+        else:
+            return "unknown_error"
+
     async def _update_ground_truth_node(
         self, state: OrchestratorState
     ) -> OrchestratorState:
@@ -2759,6 +2809,47 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
                 self.ground_truth.total_failures += 1
                 self.ground_truth.backend_stats[backend_key]["failures"] += 1
             self.ground_truth.backend_stats[backend_key]["attempts"] += 1
+
+        # Store patterns in memory for future learning
+        if self.memory_manager and self.config.memory.enabled:
+            try:
+                task_desc = task_data.get("description", task_data.get("title", ""))
+                files = task_data.get("files", [])
+
+                if execution.success and tests_ok:
+                    # Store successful implementation pattern
+                    solution = self._extract_solution_summary(execution_result)
+                    task_type = task_data.get("phase", "implementation")
+
+                    self.memory_manager.store_implementation_pattern(
+                        task_type=task_type,
+                        description=task_desc,
+                        solution=solution,
+                        files=files,
+                        tags=[task_type, "success"],
+                        task_id=task_data["id"],
+                        metadata={
+                            "backend": execution.backend,
+                            "tests_passed": execution.tests_passed,
+                            "attempt_number": execution.attempt_number,
+                        },
+                    )
+                elif execution.error_message:
+                    # Store error pattern for future avoidance
+                    error_type = self._categorize_error(execution.error_message)
+                    solution = self._extract_solution_summary(execution_result)
+
+                    self.memory_manager.store_error_pattern(
+                        error_type=error_type,
+                        description=task_desc,
+                        error_message=execution.error_message,
+                        solution=solution if solution else "No solution found",
+                        files=files,
+                        task_id=task_data["id"],
+                    )
+            except Exception as e:
+                # Don't fail task on memory errors - just log
+                print(f"Warning: Failed to store pattern in memory: {e}")
 
         # Save updated ground truth
         self.ground_truth.save(Path(state["ground_truth_path"]))
