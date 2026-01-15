@@ -448,6 +448,36 @@ class ClaudeCodeBackend(Backend):
             except asyncio.CancelledError:
                 pass
 
+    async def _communicate_command_with_heartbeat(
+        self, process: asyncio.subprocess.Process, start_time: float
+    ) -> tuple[bytes, bytes]:
+        """Communicate with command process while logging periodic heartbeats.
+
+        This helps track long-running shell commands (like tests) and provides
+        visibility into whether the process is still active.
+        """
+        import sys
+
+        async def heartbeat_logger():
+            while True:
+                await asyncio.sleep(self.heartbeat_interval)
+                elapsed = time.time() - start_time
+                print(
+                    f"[heartbeat] Command still running... ({elapsed:.0f}s elapsed)",
+                    file=sys.stderr,
+                )
+
+        heartbeat_task = asyncio.create_task(heartbeat_logger())
+        try:
+            stdout, stderr = await process.communicate()
+            return stdout, stderr
+        finally:
+            heartbeat_task.cancel()
+            try:
+                await heartbeat_task
+            except asyncio.CancelledError:
+                pass
+
     async def execute_command(
         self,
         command: str,
@@ -455,7 +485,7 @@ class ClaudeCodeBackend(Backend):
         env_override: dict[str, str] | None = None,
         timeout: Optional[float] = None,
     ) -> ExecutionResult:
-        """Execute a shell command with optional timeout.
+        """Execute a shell command with optional timeout and heartbeat logging.
 
         Args:
             command: The shell command to execute
@@ -484,9 +514,11 @@ class ClaudeCodeBackend(Backend):
                 env=env,
             )
 
+            # Execute with timeout and heartbeat logging
             try:
                 stdout, stderr = await asyncio.wait_for(
-                    process.communicate(), timeout=timeout
+                    self._communicate_command_with_heartbeat(process, start_time),
+                    timeout=timeout,
                 )
                 duration = time.time() - start_time
 
@@ -542,6 +574,7 @@ class CopilotBackend(Backend):
         self.copilot_cli_path = config.copilot_cli_path or "copilot"
         # Default timeout of 10 minutes if not specified in backend config
         self.execution_timeout = config.execution_timeout or 600.0
+        self.heartbeat_interval = 60.0  # Log heartbeat every 60 seconds
 
     async def execute(
         self,
@@ -585,9 +618,11 @@ class CopilotBackend(Backend):
                 cwd=self.project_root,
             )
 
+            # Execute with timeout and heartbeat logging
             try:
                 stdout, stderr = await asyncio.wait_for(
-                    process.communicate(), timeout=effective_timeout
+                    self._communicate_with_heartbeat_copilot(process, start_time),
+                    timeout=effective_timeout,
                 )
             except asyncio.TimeoutError:
                 # Kill the process on timeout
@@ -665,6 +700,66 @@ class CopilotBackend(Backend):
                 backend=self.name,
             )
 
+    async def _communicate_with_heartbeat_copilot(
+        self, process: asyncio.subprocess.Process, start_time: float
+    ) -> tuple[bytes, bytes]:
+        """Communicate with Copilot process while logging periodic heartbeats.
+
+        This helps track long-running operations and provides visibility
+        into whether the process is still active.
+        """
+        import sys
+
+        async def heartbeat_logger():
+            while True:
+                await asyncio.sleep(self.heartbeat_interval)
+                elapsed = time.time() - start_time
+                print(
+                    f"[heartbeat] Copilot agent still running... ({elapsed:.0f}s elapsed)",
+                    file=sys.stderr,
+                )
+
+        heartbeat_task = asyncio.create_task(heartbeat_logger())
+        try:
+            stdout, stderr = await process.communicate()
+            return stdout, stderr
+        finally:
+            heartbeat_task.cancel()
+            try:
+                await heartbeat_task
+            except asyncio.CancelledError:
+                pass
+
+    async def _communicate_command_with_heartbeat(
+        self, process: asyncio.subprocess.Process, start_time: float
+    ) -> tuple[bytes, bytes]:
+        """Communicate with command process while logging periodic heartbeats.
+
+        This helps track long-running shell commands (like tests) and provides
+        visibility into whether the process is still active.
+        """
+        import sys
+
+        async def heartbeat_logger():
+            while True:
+                await asyncio.sleep(self.heartbeat_interval)
+                elapsed = time.time() - start_time
+                print(
+                    f"[heartbeat] Command still running... ({elapsed:.0f}s elapsed)",
+                    file=sys.stderr,
+                )
+
+        heartbeat_task = asyncio.create_task(heartbeat_logger())
+        try:
+            stdout, stderr = await process.communicate()
+            return stdout, stderr
+        finally:
+            heartbeat_task.cancel()
+            try:
+                await heartbeat_task
+            except asyncio.CancelledError:
+                pass
+
     async def execute_command(
         self,
         command: str,
@@ -672,7 +767,7 @@ class CopilotBackend(Backend):
         env_override: dict[str, str] | None = None,
         timeout: Optional[float] = None,
     ) -> ExecutionResult:
-        """Execute a shell command with optional timeout.
+        """Execute a shell command with optional timeout and heartbeat logging.
 
         Args:
             command: The shell command to execute
@@ -701,9 +796,11 @@ class CopilotBackend(Backend):
                 env=env,
             )
 
+            # Execute with timeout and heartbeat logging
             try:
                 stdout, stderr = await asyncio.wait_for(
-                    process.communicate(), timeout=timeout
+                    self._communicate_command_with_heartbeat(process, start_time),
+                    timeout=timeout,
                 )
                 duration = time.time() - start_time
 
