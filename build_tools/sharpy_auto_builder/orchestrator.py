@@ -841,7 +841,9 @@ Provide:
         )
 
         # Handle timeout (infinite loop in baseline tests is a pre-existing issue)
-        timed_out = result.exit_code == -1 and "timed out" in (result.error or "").lower()
+        timed_out = (
+            result.exit_code == -1 and "timed out" in (result.error or "").lower()
+        )
         if timed_out:
             self._log_step_end("run_baseline_tests", task_data["id"], False, "TIMEOUT")
             return {
@@ -1181,7 +1183,9 @@ Provide:
         )
 
         # Detect timeout from exit code and error message
-        timed_out = result.exit_code == -1 and "timed out" in (result.error or "").lower()
+        timed_out = (
+            result.exit_code == -1 and "timed out" in (result.error or "").lower()
+        )
 
         # Log test results
         self._log_execution(
