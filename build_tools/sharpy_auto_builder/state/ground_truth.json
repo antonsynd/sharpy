@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-15T10:03:52.032869",
+  "last_updated": "2026-01-15T10:13:13.175644",
   "phases": [
     {
       "id": "0.1.6",
@@ -550,7 +550,7 @@
       "name": "Inheritance & Interfaces - Comprehensive Task List (v2)",
       "goal": "",
       "status": "in_progress",
-      "progress": 30.76923076923077,
+      "progress": 38.46153846153847,
       "tasks": [
         {
           "id": "0.1.7.1",
@@ -779,8 +779,46 @@
             "src/Sharpy.Compiler/Parser/Parser.cs",
             "src/Sharpy.Compiler/Parser/Ast/Decorator.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude-code",
+              "started_at": "2026-01-15T10:13:13.165109",
+              "completed_at": "2026-01-15T10:13:13.165113",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T10:13:13.165081",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have enough information. Let me compile the spec adherence report.\n\n## Spec Adherence Report: Implement Decorator Parsing\n\n**Spec:** `docs/language_specification/decorators.md`\n**Implementation:** `src/Sharpy.Compiler/Parser/Parser.cs` (lines 123-168), `src/Sharpy.Compiler/Parser/Ast/Statement.cs` (lines 258-269)\n\n### Compliant\n\n- [x] **Basic Decorator Syntax**: Decorator starts with `@` followed by an identifier name (Parser.cs:127-136)\n- [x] **Multiple Decorators**: Parser supports multiple decorators stacked before a definition (Parser.cs:127-149)\n- [x] **Decorator Order Preserved**: Decorators are stored in order from top to bottom in the list (Parser.cs:140-147)\n- [x] **Decorators on Functions**: `@decorator` before `def` is supported (Parser.cs:154)\n- [x] **Decorators on Classes**: `@decorator` before `class` is supported (Parser.cs:155)\n- [x] **Decorators on Structs**: `@decorator` before `struct` is supported (Parser.cs:156)\n- [x] **Newline Required After Decorator**: Parser expects newline after each decorator (Parser.cs:148)\n- [x] **Error on Invalid Target**: Parser rejects decorators on non-supported constructs like variable assignments (Parser.cs:157)\n- [x] **Error on Missing Decorator Name**: Parser throws error when `@` is not followed by identifier (Parser.cs:132-133)\n- [x] **Source Location Tracking**: Decorator AST node includes LineStart, ColumnStart, LineEnd, ColumnEnd (Statement.cs:265-268)\n\n### Deviations\n\n- [ ] **Section: Decorator Ordering** (Semantic consideration, not parsing):\n  - **Spec says:** \"they are processed bottom-up (closest to the definition first), matching Python semantics: @A @B def foo(): \u2192 foo = A(B(foo))\"\n  - **Implementation:** Parser stores decorators in top-down order (decorator[0] is the outermost). The semantic/code generation phase must apply them bottom-up.\n  - **Impact:** Low (parsing phase correctly captures order; semantic phase must handle application order)\n\n- [ ] **Decorator Arguments Not Supported** (Documented limitation):\n  - **Spec says:** The spec shows simple decorator usage only (`@virtual`, `@override`, etc.) with no examples of arguments\n  - **Implementation:** AST note states \"v0.3 only supports simple identifier decorators. No arguments or dotted names in v0.3\" (Statement.cs:261-262). Test marked as skipped: `ParsesDecoratorWithArguments` \n  - **Impact:** Low (spec does not require decorator arguments for built-in decorators)\n\n- [ ] **No Interface Decorator Support**:\n  - **Spec says:** Decorators can be applied to \"functions, methods, and classes\" (decorators.md:3)\n  - **Implementation:** Parser explicitly allows decorators on `def`, `class`, `struct` (Parser.cs:152-157) but NOT on `interface`\n  - **Impact:** Low (spec doesn't explicitly require decorators on interfaces, and interfaces don't typically need access modifiers in the same way)\n\n### Undocumented Behavior (Implementation-specific)\n\n1. **`@` Token Type**: The parser checks for `TokenType.At` to identify decorator start (Parser.cs:81, 127)\n2. **FunctionDef, ClassDef, StructDef have Decorators property**: All three definition types have `List<Decorator> Decorators` initialized to empty list (Statement.cs:191, 204, 217)\n3. **InterfaceDef does NOT have Decorators property**: Interfaces cannot be decorated at the parser level\n\n### Recommendations\n\n1. **Document v0.3 Limitation**: The limitation on decorator arguments and dotted names should be explicitly documented in the spec or a versioning document.\n\n2. **Consider Interface Decorators**: If interfaces should support decorators like `@internal`, the parser would need updating at line 157 to include `TokenType.Interface` in the switch.\n\n3. **Semantic Phase Verification**: Verify that the code generation/semantic analysis phase applies decorators in bottom-up order as specified.\n\n### Summary\n\nThe decorator parsing implementation is **compliant** with the language specification for v0.3 scope. The parser correctly:\n- Recognizes the `@identifier` syntax\n- Supports multiple stacked decorators\n- Attaches decorators to functions, classes, and structs\n- Rejects decorators on invalid targets\n- Tracks source locations for error reporting\n\nThe noted limitations (no arguments, no dotted names) are documented in code comments and align with the built-in decorator usage shown in the specification.\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T10:13:13.165092",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "## Verification Report: Implement Decorator Parsing\n\n### Test Results\n- **Total**: 3455 (735 Core + 2720 Compiler)\n- **Passed**: 3424 \n- **Failed**: 0\n- **Skipped**: 31\n\n### Decorator-Specific Tests\n- **Total**: 29\n- **Passed**: 28\n- **Skipped**: 1 (`ParsesDecoratorWithArguments` - intentionally marked as unimplemented)\n\n### Behavior Checks\n- [x] Single decorator parsing (`@decorator\\ndef foo():`) works correctly\n- [x] Multiple decorators parsing (`@dec1\\n@dec2\\n@dec3\\ndef foo():`) works correctly\n- [x] Decorator on class (`@decorator\\nclass Foo:`) works correctly\n- [x] Decorator on struct (`@decorator\\nstruct Bar:`) works correctly\n- [x] Lexer tokenizes `@` symbol as `TokenType.At`\n- [x] Lexer handles decorators with arguments tokenization\n- [x] Lexer handles multiple decorators on separate lines\n- [x] Parser position tracking for decorators is accurate\n- [x] Invalid decorator (missing name after `@`) rejected with proper error\n- [x] Decorator on non-function/class/struct rejected with proper error\n- [x] Semantic analysis recognizes built-in decorators (`@static`, `@abstract`, `@virtual`, `@override`, `@private`)\n- [x] Code generation respects decorator semantics (static methods, abstract classes, etc.)\n- [x] Integration tests verify decorated functions compile and run correctly\n- [ ] Decorators with arguments (`@decorator(arg1, arg2)`) not yet supported (skipped)\n\n### Coverage Assessment\nTest coverage spans the complete decorator pipeline:\n1. **Lexer** (6 tests): Token recognition for `@` symbol, decorator syntax, multiple decorators\n2. **Parser** (9 tests): Single/multiple decorators, decorator on class, negative cases, position tracking\n3. **Semantic** (6 tests): Name resolution for built-in decorators (`@static`, `@abstract`, `@virtual`, `@override`, `@private`)\n4. **CodeGen** (4 tests): C# code generation for decorated methods/classes\n5. **Integration** (2 tests): End-to-end compilation and execution\n\n### Regression Check\n- **No regressions detected**\n- Parser tests: 577 total, 568 passed, 9 skipped (unrelated features)\n- Lexer tests: 621 total, all passed\n- Full test suite: 3424 passed, 0 failed\n\n### Implementation Summary\nThe decorator parsing implementation:\n- Uses `TokenType.At` for the `@` symbol\n- `ParseDecoratedStatement()` in `Parser.cs:123-168` handles decorator collection\n- Decorators stored in `List<Decorator>` on `FunctionDef`, `ClassDef`, and `StructDef` AST nodes\n- `Decorator` record contains `Name` and source location tracking\n- Current implementation supports simple identifier decorators only (v0.3 scope)\n\n### Known Limitations\n- Decorators with arguments (`@decorator(arg1, arg2)`) are not yet supported (documented skip in tests)\n- Dotted decorator names (`@module.decorator`) are not supported (v0.3 design decision)\n\n### Recommendations\nNone - implementation is complete and verified for the current scope.\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T10:13:13.165104",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the information needed for my verification report.\n\n---\n\n# Hallucination Defense Report: Decorator Parsing Implementation\n\n## Verification Results\n\n### Claim 1: Parser Implementation Location\n**Claim:** \"Parser Implementation (Parser.cs:123-168)\"\n**Verification:** Direct file read of Parser.cs\n**Result:** \u2705 CORRECT \u2014 `ParseDecoratedStatement()` method is at exactly lines 123-168, handling `@` token parsing, decorator collection, and attachment to FunctionDef/ClassDef/StructDef.\n\n---\n\n### Claim 2: AST Node Definition Location  \n**Claim:** \"AST Node Definition (Statement.cs:258-269)\"\n**Verification:** Direct file read of Statement.cs\n**Result:** \u2705 CORRECT \u2014 The `Decorator` record is at exactly lines 258-269 with `Name`, `LineStart`, `ColumnStart`, `LineEnd`, `ColumnEnd` properties.\n\n---\n\n### Claim 3: Decorator Properties\n**Claim:** \"Name property for the decorator identifier, Source location tracking\"\n**Verification:** File read confirmed record structure\n**Result:** \u2705 CORRECT \u2014 All claimed properties exist: `Name`, `LineStart`, `ColumnStart`, `LineEnd`, `ColumnEnd`.\n\n---\n\n### Claim 4: Supported Decorators Table\n**Claim:** `@virtual` \u2192 `virtual`, `@override` \u2192 `override`, `@abstract` \u2192 `abstract`, `@static` \u2192 `static`\n**Verification:** Grep of RoslynEmitter.cs code generation\n**Result:** \u2705 CORRECT \u2014 Lines 553-568 and 1214-1229 in RoslynEmitter.cs confirm all four decorators map to their corresponding C# keywords via `SyntaxKind.*Keyword` tokens.\n\n---\n\n### Claim 5: Test Count - \"29 decorator-related tests\"\n**Claim:** \"29 decorator-related tests (28 passing, 1 skipped)\"\n**Verification:** `dotnet test --filter \"FullyQualifiedName~Decorator\"`\n**Result:** \u2705 CORRECT \u2014 Test run confirms: `Passed: 28, Skipped: 1, Total: 29`\n\n---\n\n### Claim 6: Specific Test Methods Exist\n**Claim:** Tests named `ParseDecoratorWithSimpleExpression`, `ParseMultipleDecorators`, `ParseMultipleDecoratorsOnClass`, `ParseError_MalformedDecorator_ThrowsError`, `TestStaticMethodDecorator`\n**Verification:** Grep and test list enumeration\n**Result:** \u2705 CORRECT \u2014 All claimed test methods exist:\n- `ParserTests.ParseDecoratorWithSimpleExpression` (line 2000)\n- `ParserTests.ParseMultipleDecorators` (line 794)\n- `ParserTests.ParseMultipleDecoratorsOnClass` (line 1813)\n- `ParserTests.ParseError_MalformedDecorator_ThrowsError` (exists in list)\n- `NameResolverTests.TestStaticMethodDecorator` (line 546)\n\n---\n\n### Claim 7: v0.3 Limitation - \"No arguments or dotted names\"\n**Claim:** \"Support limited to simple identifiers (no arguments) in v0.3\"\n**Verification:** Code comment in Statement.cs:261-262\n**Result:** \u2705 CORRECT \u2014 Comment states: \"v0.3 only supports simple identifier decorators. No arguments or dotted names in v0.3\"\n\n---\n\n### Claim 8: C# 9.0 Feature Table\n**Claim:** C# 9.0 supports Records, Init-only setters, Pattern matching, Target-typed new\n**Verification:** Standard C# language specification knowledge + codebase uses `LangVersion=latest`\n**Result:** \u2705 CORRECT \u2014 All listed C# 9.0 features are accurate. The codebase itself uses records and init-only setters throughout (e.g., `Decorator` record).\n\n---\n\n## Summary\n\n| Claim | Status |\n|-------|--------|\n| Parser.cs location (123-168) | \u2705 CORRECT |\n| Statement.cs location (258-269) | \u2705 CORRECT |\n| Decorator properties | \u2705 CORRECT |\n| Four decorator mappings | \u2705 CORRECT |\n| 29 tests (28 pass, 1 skip) | \u2705 CORRECT |\n| Named test methods | \u2705 CORRECT |\n| v0.3 limitation on arguments | \u2705 CORRECT |\n| C# 9.0 feature availability | \u2705 CORRECT |\n\n**Overall Assessment:** All claims verified as factually accurate. No hallucinations detected.\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": true,
           "human_question": null,
@@ -795,7 +833,7 @@
           "files": [
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": true,
@@ -1531,14 +1569,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "0.1.7.5",
-  "total_attempts": 14,
-  "total_successes": 14,
+  "current_task_id": "0.1.7.6",
+  "total_attempts": 15,
+  "total_successes": 15,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 14,
-      "successes": 14,
+      "attempts": 15,
+      "successes": 15,
       "failures": 0
     },
     "copilot": {
@@ -1547,5 +1585,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 21.666666666666668
+  "overall_progress": 23.333333333333332
 }

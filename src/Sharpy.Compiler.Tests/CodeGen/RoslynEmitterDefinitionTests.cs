@@ -1328,5 +1328,303 @@ public class RoslynEmitterDefinitionTests
         Assert.DoesNotContain("static void Increment", code);
     }
 
+    [Fact]
+    public void GenerateClassDeclaration_WithSealedDecorator_GeneratesSealedClass()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "FinalImplementation",
+            Decorators = new List<Decorator>
+            {
+                new Decorator { Name = "sealed" }
+            },
+            Body = new List<Statement> { new PassStatement() }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public sealed class FinalImplementation", code);
+    }
+
+    [Fact]
+    public void GenerateMethod_WithProtectedDecorator_GeneratesProtectedMethod()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "BaseClass",
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "internal_helper",
+                    Decorators = new List<Decorator>
+                    {
+                        new Decorator { Name = "protected" }
+                    },
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self" }
+                    },
+                    ReturnType = new TypeAnnotation { Name = "int" },
+                    Body = new List<Statement>
+                    {
+                        new ReturnStatement { Value = new IntegerLiteral { Value = "42" } }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("protected int InternalHelper()", code);
+    }
+
+    [Fact]
+    public void GenerateMethod_WithInternalDecorator_GeneratesInternalMethod()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "AssemblyHelper",
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "assembly_method",
+                    Decorators = new List<Decorator>
+                    {
+                        new Decorator { Name = "internal" }
+                    },
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self" }
+                    },
+                    ReturnType = null,
+                    Body = new List<Statement>
+                    {
+                        new PassStatement()
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("internal void AssemblyMethod()", code);
+    }
+
+    [Fact]
+    public void GenerateMethod_WithVirtualDecorator_GeneratesVirtualMethod()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "BaseClass",
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "overridable_method",
+                    Decorators = new List<Decorator>
+                    {
+                        new Decorator { Name = "virtual" }
+                    },
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self" }
+                    },
+                    ReturnType = new TypeAnnotation { Name = "str" },
+                    Body = new List<Statement>
+                    {
+                        new ReturnStatement { Value = new StringLiteral { Value = "base" } }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public virtual string OverridableMethod()", code);
+    }
+
+    [Fact]
+    public void GenerateMethod_WithOverrideDecorator_GeneratesOverrideMethod()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "DerivedClass",
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "overridden_method",
+                    Decorators = new List<Decorator>
+                    {
+                        new Decorator { Name = "override" }
+                    },
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self" }
+                    },
+                    ReturnType = new TypeAnnotation { Name = "str" },
+                    Body = new List<Statement>
+                    {
+                        new ReturnStatement { Value = new StringLiteral { Value = "derived" } }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public override string OverriddenMethod()", code);
+    }
+
+    [Fact]
+    public void GenerateClassDeclaration_WithStaticDecorator_GeneratesStaticClass()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "UtilityClass",
+            Decorators = new List<Decorator>
+            {
+                new Decorator { Name = "static" }
+            },
+            Body = new List<Statement> { new PassStatement() }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public static class UtilityClass", code);
+    }
+
+    [Fact]
+    public void GenerateMethod_WithMultipleDecorators_GeneratesCorrectModifiers()
+    {
+        // Arrange - protected virtual method
+        var classDef = new ClassDef
+        {
+            Name = "BaseClass",
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "template_method",
+                    Decorators = new List<Decorator>
+                    {
+                        new Decorator { Name = "protected" },
+                        new Decorator { Name = "virtual" }
+                    },
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self" }
+                    },
+                    ReturnType = null,
+                    Body = new List<Statement>
+                    {
+                        new PassStatement()
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("protected virtual void TemplateMethod()", code);
+    }
+
+    [Fact]
+    public void GenerateClassDeclaration_WithPublicDecorator_GeneratesPublicClass()
+    {
+        // Arrange - explicit @public decorator
+        var classDef = new ClassDef
+        {
+            Name = "PublicClass",
+            Decorators = new List<Decorator>
+            {
+                new Decorator { Name = "public" }
+            },
+            Body = new List<Statement> { new PassStatement() }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public class PublicClass", code);
+    }
+
+    [Fact]
+    public void GenerateMethod_WithPublicDecorator_GeneratesPublicMethod()
+    {
+        // Arrange - explicit @public decorator
+        var classDef = new ClassDef
+        {
+            Name = "TestClass",
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "public_method",
+                    Decorators = new List<Decorator>
+                    {
+                        new Decorator { Name = "public" }
+                    },
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self" }
+                    },
+                    ReturnType = null,
+                    Body = new List<Statement>
+                    {
+                        new PassStatement()
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public void PublicMethod()", code);
+    }
+
     #endregion
 }
