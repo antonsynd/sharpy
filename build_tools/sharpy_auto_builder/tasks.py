@@ -9,11 +9,63 @@ import asyncio
 import hashlib
 import json
 import shlex
+import sys
 import time
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Any, Dict, List
+
+# Default heartbeat interval for long-running operations
+DEFAULT_HEARTBEAT_INTERVAL = 60.0  # Log heartbeat every 60 seconds
+
+
+async def _communicate_with_heartbeat(
+    process: asyncio.subprocess.Process,
+    input_data: Optional[bytes],
+    start_time: float,
+    heartbeat_interval: float = DEFAULT_HEARTBEAT_INTERVAL,
+    label: str = "Process",
+) -> tuple[bytes, bytes]:
+    """
+    Communicate with a subprocess while logging periodic heartbeats.
+
+    This helps track long-running operations and provides visibility
+    into whether the process is still active.
+
+    Args:
+        process: The subprocess to communicate with
+        input_data: Data to send to stdin (or None)
+        start_time: When the operation started (for elapsed time calculation)
+        heartbeat_interval: Seconds between heartbeat messages
+        label: Label to use in heartbeat messages (e.g., "Agent", "Tests")
+
+    Returns:
+        tuple[bytes, bytes]: (stdout, stderr) from the process
+    """
+    async def heartbeat_logger():
+        """Log periodic heartbeats while waiting for process."""
+        while True:
+            await asyncio.sleep(heartbeat_interval)
+            elapsed = time.time() - start_time
+            print(
+                f"[heartbeat] {label} still running... ({elapsed:.0f}s elapsed)",
+                file=sys.stderr,
+            )
+
+    heartbeat_task = asyncio.create_task(heartbeat_logger())
+    try:
+        if input_data is not None:
+            stdout, stderr = await process.communicate(input=input_data)
+        else:
+            stdout, stderr = await process.communicate()
+        return stdout, stderr
+    finally:
+        heartbeat_task.cancel()
+        try:
+            await heartbeat_task
+        except asyncio.CancelledError:
+            pass
 
 try:
     from langgraph.func import task
@@ -180,10 +232,15 @@ async def execute_claude_cli(
             cwd=working_dir or Path.cwd(),
         )
 
-        # Execute with timeout
+        # Execute with timeout and heartbeat logging
         try:
             stdout, stderr = await asyncio.wait_for(
-                process.communicate(input=prompt.encode()),
+                _communicate_with_heartbeat(
+                    process,
+                    prompt.encode(),
+                    start_time,
+                    label="Claude Code agent",
+                ),
                 timeout=timeout,
             )
         except asyncio.TimeoutError:
@@ -326,10 +383,15 @@ async def execute_copilot_cli(
             cwd=working_dir or Path.cwd(),
         )
 
-        # Execute with timeout
+        # Execute with timeout and heartbeat logging
         try:
             stdout, stderr = await asyncio.wait_for(
-                process.communicate(),
+                _communicate_with_heartbeat(
+                    process,
+                    None,  # Copilot CLI doesn't use stdin
+                    start_time,
+                    label="Copilot agent",
+                ),
                 timeout=timeout,
             )
         except asyncio.TimeoutError:
@@ -481,10 +543,15 @@ async def run_tests(
             cwd=working_dir or Path.cwd(),
         )
 
-        # Execute with timeout
+        # Execute with timeout and heartbeat logging
         try:
             stdout, stderr = await asyncio.wait_for(
-                process.communicate(),
+                _communicate_with_heartbeat(
+                    process,
+                    None,  # Test command doesn't use stdin
+                    start_time,
+                    label="Tests",
+                ),
                 timeout=timeout,
             )
         except asyncio.TimeoutError:

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-15T15:28:55.772562",
+  "last_updated": "2026-01-15T18:05:04.250385",
   "phases": [
     {
       "id": "0.1.6",
@@ -1240,7 +1240,7 @@
       "name": "Structs & Enums - Comprehensive Task List (v2)",
       "goal": "",
       "status": "in_progress",
-      "progress": 72.72727272727273,
+      "progress": 81.81818181818183,
       "tasks": [
         {
           "id": "0.1.8.1",
@@ -1711,8 +1711,46 @@
           "files": [
             "src/Sharpy.Compiler.Tests/Integration/Phase018IntegrationTests.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude-code",
+              "started_at": "2026-01-15T18:05:04.241811",
+              "completed_at": "2026-01-15T18:05:04.241813",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T18:05:04.241792",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the spec documents I need. Let me compile the Spec Adherence Report.\n\n## Spec Adherence Report: Create Phase 0.1.8 Integration Tests\n\n**Spec Documents:**\n- `docs/language_specification/structs.md`\n- `docs/language_specification/enums.md`\n- `docs/language_specification/constructors.md`\n\n**Implementation:** `src/Sharpy.Compiler.Tests/Integration/Phase018IntegrationTests.cs`\n\n---\n\n### Compliant \u2705\n\n#### Structs (from `structs.md`)\n\n- [x] **Struct definition syntax** - Tests use correct `struct Name:` syntax with field declarations (lines 28-35, 54-64, etc.)\n- [x] **Field declarations at struct level** - All tests declare fields before constructor (spec: \"All fields must be declared at struct level\")\n- [x] **Constructor initialization** - Tests verify constructors initialize fields via `self.x = x` pattern (lines 33-35)\n- [x] **Default initialization** - `BasicStruct_CompilesAndRuns` test (lines 248-265) tests `Point()` followed by field assignment (spec: \"Sharpy structs have implicit parameterless constructor that zero-initializes\")\n- [x] **Value semantics - copy on assignment** - `StructAssignment_CopiesValue` test (lines 349-372) verifies that `p2 = p1` creates a copy, and modifying `p2.x` leaves `p1.x` unchanged (spec: \"Structs are **copied** when assigned\")\n- [x] **Struct methods** - Multiple tests verify methods can access/modify fields (lines 106-131, 427-508)\n- [x] **Method return values** - Tests verify methods with return types work correctly (e.g., `area()`, `perimeter()`)\n- [x] **Multiple struct types** - Tests define multiple independent structs (lines 838-875, 1159-1201)\n- [x] **Float and int field types** - Tests cover both `int` and `float` fields (lines 193-216, 269-293)\n- [x] **String and bool field types** - `StructWithMultipleFields_AllTypesWork` tests `str`, `int`, `float`, `bool` (lines 268-293)\n\n#### Constructors (from `constructors.md`)\n\n- [x] **Constructor overloading** - `StructInstantiation_ConstructorOverloading_CompilesAndRuns` test (lines 133-164) verifies multiple `__init__` overloads work\n- [x] **Parameterless constructor** - Tests verify `Point()` with no arguments works (lines 51-74, 248-265)\n- [x] **Parameterized constructor** - Tests verify `Point(10, 20)` constructor invocation (lines 24-48)\n\n#### Enums (from `enums.md`)\n\n- [x] **Enum definition syntax** - Tests use correct `enum Name:` syntax with `MEMBER = value` (lines 549-556)\n- [x] **Integer enum values** - Tests define enums with integer values (lines 549-556)\n- [x] **String enum values** - Tests define enums with string values (lines 567-574)\n- [x] **Explicit value requirement** - `Error_EnumMemberWithoutValue` (lines 991-1004) validates that members without values produce errors (spec: \"All cases must have explicit constant values\")\n- [x] **Type consistency validation** - `Error_EnumMixedIntAndString` (lines 1006-1020) validates mixed types produce errors (spec: \"All values must be of the same type\")\n- [x] **Value type restriction** - `Error_EnumInvalidValueType` (lines 1022-1035) validates only int/str allowed (spec: \"either an integer type or the `str` type\")\n- [x] **Enum member access** - Tests use `Status.ACTIVE` syntax correctly\n\n---\n\n### Deviations \u26a0\ufe0f\n\n- [ ] **Section: Enum Value Resolution** - **DOCUMENTED IN TESTS**\n  - **Spec says:** (lines 22-24 of `enums.md`)\n    ```python\n    # Access underlying value\n    value = favorite.value  # 1\n    name = favorite.name    # \"RED\"\n    ```\n  - **Implementation:** Tests expect `print(Status.ACTIVE)` to output `1`, but the code generator produces C# enums where printing outputs the enum name (e.g., `ACTIVE`), not the underlying value\n  - **Impact:** Medium - Tests correctly identify this with `Skip` attribute and comment: \"Enum values don't resolve to underlying int values - see code gen issue\"\n  - **Note:** This is a known limitation properly documented in test comments (lines 542-544)\n\n- [ ] **Section: `.value` and `.name` Properties** - **NOT TESTED**\n  - **Spec says:** (lines 22-24 of `enums.md`)\n    ```python\n    value = favorite.value  # 1\n    name = favorite.name    # \"RED\"\n    ```\n  - **Implementation:** No tests exist for `.value` or `.name` property access on enum members\n  - **Impact:** Low - Tests focus on basic enum functionality; property access could be added in future\n\n- [ ] **Section: Enum Iteration** - **NOT TESTED**\n  - **Spec says:** (lines 32-56 of `enums.md`)\n    ```python\n    for color in Color:\n        print(f\"{color.name} = {color.value}\")\n    ```\n  - **Implementation:** No tests for iterating over enum values with `for x in EnumType`\n  - **Impact:** Low - Advanced feature not critical for Phase 0.1.8 scope\n\n- [ ] **Section: Implicit Parameterless Constructor with Explicit Constructor**\n  - **Spec says:** (lines 53-55 of `structs.md`)\n    ```python\n    v2 = Vector()  # x = 0.0, y = 0.0 (implicit parameterless still exists)\n    ```\n  - **Implementation:** Test `StructInstantiation_ConstructorOverloading_CompilesAndRuns` defines both `__init__(self)` and `__init__(self, x, y)`, but the spec says the implicit parameterless constructor exists **even when explicit constructors are defined**. This C# 10+ behavior isn't explicitly tested for structs with only parameterized constructors.\n  - **Impact:** Low - The test at line 51-74 does test parameterless explicitly defined, but not implicit alongside explicit parameterized.\n\n- [ ] **Section: Constructor Chaining** - **NOT TESTED**\n  - **Spec says:** (lines 25-48 of `constructors.md`)\n    ```python\n    def __init__(self):\n        self.__init__(0.0, 0.0)  # Chains to the two-parameter constructor\n    ```\n  - **Implementation:** No tests verify `self.__init__(...)` constructor chaining\n  - **Impact:** Low - Constructor chaining may be tested elsewhere or deferred\n\n---\n\n### Undocumented Behavior (Tests Beyond Spec)\n\n- [x] **Struct field mutation via methods** - Tests like `StructFieldMutation_WorksCorrectly` (lines 397-421) test mutating methods returning `None`, which is valid but not explicitly shown in spec examples\n- [x] **Inline struct instantiation with method call** - Test `StructInstantiation_NestedInExpression_CompilesAndRuns` (lines 218-245) tests `Point(3, 4).get_x()`, which follows Python semantics but isn't explicitly spec'd\n- [x] **Empty struct (no fields)** - Test `EdgeCase_StructWithNoFields` (lines 1041-1056) tests structs with only `pass` in constructor - valid edge case\n\n---\n\n### Recommendations\n\n1. **Address Enum Value Resolution** - The code generator should emit code that resolves enum member access to the underlying value when used in expressions like `print()`. Options:\n   - Add implicit `.value` access when enum is used in value context\n   - Generate enum-to-value helper methods\n\n2. **Add `.value`/`.name` Property Tests** - When enum value resolution is fixed, add tests for:\n   ```python\n   s = Status.ACTIVE\n   print(s.value)  # Should print: 1\n   print(s.name)   # Should print: \"ACTIVE\"\n   ```\n\n3. **Add Enum Iteration Tests** - Once basic enum functionality works:\n   ```python\n   for status in Status:\n       print(status.value)\n   ```\n\n4. **Add Implicit Parameterless Constructor Test** - Test that even with explicit parameterized constructor, `Point()` still works:\n   ```python\n   struct Point:\n       x: int\n       y: int\n       def __init__(self, x: int, y: int):\n           self.x = x\n           self.y = y\n   p = Point()  # Should still work with 0,0\n   ```\n\n---\n\n### Summary\n\n| Category | Status |\n|----------|--------|\n| Struct Definition & Fields | \u2705 Compliant |\n| Struct Constructors | \u2705 Compliant |\n| Struct Methods | \u2705 Compliant |\n| Struct Value Semantics | \u2705 Compliant |\n| Enum Definition | \u2705 Compliant |\n| Enum Semantic Validation | \u2705 Compliant |\n| Enum Value Resolution | \u26a0\ufe0f Known Issue (documented) |\n| Enum Properties (.value/.name) | \u274c Not Tested |\n| Enum Iteration | \u274c Not Tested |\n| Constructor Chaining | \u274c Not Tested |\n\n**Overall Assessment:** The integration tests provide **good coverage** of core struct and enum functionality. The enum value resolution issue is properly documented with skipped tests. The tests align well with the language specification for the features they cover.\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T18:05:04.241799",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the information needed for the verification report.\n\n---\n\n## Verification Report: Create Phase 0.1.8 Integration Tests\n\n### Test Results\n- **Total:** 3,635 (735 Core + 2,900 Compiler)\n- **Passed:** 3,585 (735 Core + 2,850 Compiler)\n- **Skipped:** 50\n- **Failed:** 0\n\n### Phase 0.1.8 Specific Results\n| Category | Count |\n|----------|-------|\n| Total | 45 |\n| Passed | 28 |\n| Skipped | 17 |\n| Failed | 0 |\n\n### Behavior Checks\n\n**Struct Features (All Passing):**\n- [x] Basic struct definition and instantiation\n- [x] Struct with multiple fields (all types: int, float, str, bool)\n- [x] Struct constructor with arguments\n- [x] Struct default/parameterless constructor\n- [x] Constructor overloading\n- [x] Multiple struct instances\n- [x] Struct methods that access fields\n- [x] Struct methods that modify fields\n- [x] Struct field mutation (value semantics)\n- [x] Struct assignment copies value (value semantics verified)\n- [x] Struct reassignment works correctly\n- [x] Nested structs as fields\n- [x] Computed fields in constructors\n- [x] PascalCase naming preserved\n- [x] Immediate method call on instantiation (`Point(3, 4).get_x()`)\n\n**Struct Error Cases (All Passing):**\n- [x] Error: Constructor missing field initialization detected\n- [x] Error: Enum member without value detected\n- [x] Error: Mixed int/string enum values detected\n- [x] Error: Invalid enum value type (float) detected\n\n**Edge Cases (All Passing):**\n- [x] Struct with no fields compiles and runs\n- [x] Struct fields initialized in different order\n\n**Enum Features (17 Skipped - Known Limitation):**\n- [ ] BasicIntEnum_CompilesAndRuns - Skipped\n- [ ] BasicStringEnum_CompilesAndRuns - Skipped\n- [ ] EnumUsage_MultipleMembers - Skipped\n- [ ] Enum conditionals and comparisons - Skipped\n- [ ] Struct with enum field - Skipped\n\nAll 17 skipped tests are intentionally marked with:\n> `Skip = \"Enum values don't resolve to underlying int/str values - see code gen issue\"`\n\nThis is a documented known limitation where the code generator creates C# enums but enum member access in Sharpy should resolve to the underlying int/str value, not the enum type itself.\n\n### Coverage Assessment\n\n**Struct Coverage: Excellent (100% of implemented features)**\n- \u2705 28 tests covering all struct functionality\n- \u2705 Instantiation patterns (default, parameterized, overloaded constructors)\n- \u2705 Value semantics properly verified\n- \u2705 Field access and mutation\n- \u2705 Method definitions and calls\n- \u2705 Error detection for invalid constructs\n- \u2705 Edge cases handled\n\n**Enum Coverage: Partial (Error cases only)**\n- \u2705 3 semantic error tests passing (validation works)\n- \u26a0\ufe0f 17 runtime behavior tests skipped (code gen limitation)\n\n### Regression Check\n- **No regressions detected**\n- Phase 0.1.7 tests: 40 passed, 2 skipped, 0 failed\n- Full test suite: 3,585 passed, 50 skipped, 0 failed\n- Tests are stable across multiple runs (verified 3x)\n\n### Notes on Flaky Test\n- One test (`ControlFlowTests.IfElifElseStatement_WorksCorrectly`) showed intermittent failure in initial run but passed consistently in subsequent runs\n- This appears to be an existing test isolation issue unrelated to Phase 0.1.8\n\n### Recommendations\n1. **Enum Code Generation Fix Needed**: The 17 skipped enum tests document a real limitation where `Status.ACTIVE` returns the enum member instead of the underlying value (e.g., `1`). This should be tracked as technical debt for Phase 0.1.8 completion.\n\n2. **Test Documentation**: The skip reasons are clear and well-documented, making it easy to identify what remains to be implemented.\n\n3. **Integration Test Quality**: The tests follow good practices with clear Arrange-Act-Assert structure, meaningful assertions, and comprehensive coverage of the struct feature set.\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T18:05:04.241805",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "I have enough information from the codebase and my knowledge to verify the claims. Let me compile my findings:\n\n---\n\n# Hallucination Defense Report: Phase 0.1.8 Integration Tests\n\n## Test Count Verification\n\n**Claim:** \"Total Integration Tests: 45 tests\"\n**Verification:** `grep -c '\\[Fact' Phase018IntegrationTests.cs` returns 45\n**Result:** \u2705 CORRECT \u2014 There are exactly 45 `[Fact]` attributes in the file.\n\n---\n\n**Claim:** \"Passing: 28 struct-related tests\"\n**Verification:** `grep -c '\\[Fact\\]$'` (tests without Skip) returns 28\n**Result:** \u2705 CORRECT \u2014 28 tests are not skipped.\n\n---\n\n**Claim:** \"Skipped: 17 enum-related tests (awaiting code generator fix)\"\n**Verification:** `grep -c 'Skip = '` returns 17\n**Result:** \u2705 CORRECT \u2014 All 17 skipped tests have `Skip = \"Enum values don't resolve...\"`.\n\n---\n\n## Test Category Verification\n\n**Claim:** \"Basic Struct Tests (13 tests)\"\n**Verification:** AWK count of `[Fact]` in that region returns 12\n**Result:** \u274c INCORRECT \u2014 There are **12** tests, not 13.\n\n---\n\n**Claim:** \"Struct Assignment and Value Semantics Tests (3 tests)\"\n**Verification:** AWK count returns 3\n**Result:** \u2705 CORRECT\n\n---\n\n**Claim:** \"Struct Method Tests (4 tests)\"\n**Verification:** AWK count returns 4\n**Result:** \u2705 CORRECT\n\n---\n\n**Claim:** \"Complex Struct Tests (2 tests)\"\n**Verification:** AWK count returns 2\n**Result:** \u2705 CORRECT\n\n---\n\n**Claim:** \"Error Cases (4 tests)\"\n**Verification:** AWK count returns 4\n**Result:** \u2705 CORRECT\n\n---\n\n**Claim:** \"Edge Cases (2 tests)\"\n**Verification:** AWK count returns 3\n**Result:** \u274c INCORRECT \u2014 There are **3** edge case tests, not 2:\n- `EdgeCase_StructWithNoFields`\n- `EdgeCase_SingleMemberEnum` (skipped)\n- `EdgeCase_StructFieldsInDifferentOrder`\n\n---\n\n## C# Version Compatibility Table Verification\n\n**Claim:** \"C# 9.0 \u2705: Records, Init-only setters, Pattern matching, Target-typed new\"\n**Verification:** These are all documented C# 9.0 features introduced with .NET 5\n**Result:** \u2705 CORRECT\n\n---\n\n**Claim:** \"C# 10+ \u274c: File-scoped namespaces, Global usings, Record structs, Required members\"\n**Verification:** \n- File-scoped namespaces: C# 10 \u2705\n- Global usings: C# 10 \u2705\n- Record structs: C# 10 \u2705\n- Required members: C# 11 (not C# 10)\n**Result:** \u26a0\ufe0f PARTIALLY CORRECT \u2014 \"Required members\" is C# 11, not C# 10. The spirit of the claim (post-C# 9.0) is correct, but technically imprecise.\n\n---\n\n## Summary\n\n| Aspect | Status |\n|--------|--------|\n| Total test count (45) | \u2705 CORRECT |\n| Passing tests (28) | \u2705 CORRECT |\n| Skipped tests (17) | \u2705 CORRECT |\n| Basic Struct Tests count | \u274c INCORRECT (12, not 13) |\n| Struct Assignment Tests (3) | \u2705 CORRECT |\n| Struct Method Tests (4) | \u2705 CORRECT |\n| Complex Struct Tests (2) | \u2705 CORRECT |\n| Error Cases (4) | \u2705 CORRECT |\n| Edge Cases count | \u274c INCORRECT (3, not 2) |\n| C# 9.0 features | \u2705 CORRECT |\n| C# 10+ features | \u26a0\ufe0f MOSTLY CORRECT |\n\n**Overall Assessment:** The summary contains **2 minor numeric errors** in category counts (Basic Struct: 12 vs claimed 13; Edge Cases: 3 vs claimed 2). The core claims about total tests, passing/skipped breakdown, and C# version compatibility are accurate.\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": false,
           "human_question": null,
@@ -1725,7 +1763,7 @@
           "title": "Document Phase 0.1.8 Exit Criteria Verification",
           "description": "**Type:** \ud83d\udcdd Documentation  \n**Priority:** High  \n**Estimated Time:** 30 minutes\n\n\ud83d\udcc1 **Files**: `docs/implementation/phase_0_1_8_complete.md`\n\n### Exit Criteria Checklist\n\n| Criterion | Test | Status |\n|-----------|------|--------|\n| Basic struct compiles | `BasicStruct_CompilesAndRuns` | [ ] |\n| Struct with constructor | `StructWithConstructor_Works` | [ ] |\n| Struct field init validation | `StructConstructorMustInitializeAllFields` | [ ] |\n| Struct implements interface | `StructWithInterface_Wor",
           "files": [],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -2165,14 +2203,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "0.1.8.10",
-  "total_attempts": 32,
-  "total_successes": 32,
+  "current_task_id": "0.1.8.11",
+  "total_attempts": 33,
+  "total_successes": 33,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 32,
-      "successes": 32,
+      "attempts": 33,
+      "successes": 33,
       "failures": 0
     },
     "copilot": {
@@ -2181,5 +2219,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 48.333333333333336
+  "overall_progress": 50.0
 }
