@@ -32,10 +32,14 @@ def build_graph(orchestrator: "Orchestrator") -> StateGraph:
     graph.add_node("handle_auto_decision", orchestrator._handle_auto_decision_node)
     graph.add_node("run_tests", orchestrator._run_tests_node)
     graph.add_node("fix_test_failures", orchestrator._fix_test_failures_node)
-    graph.add_node("validate_spec_adherence", orchestrator._validate_spec_adherence_node)
+    graph.add_node(
+        "validate_spec_adherence", orchestrator._validate_spec_adherence_node
+    )
     graph.add_node("validate_verification", orchestrator._validate_verification_node)
     graph.add_node("check_hallucinations", orchestrator._check_hallucinations_node)
-    graph.add_node("address_validation_issues", orchestrator._address_validation_issues_node)
+    graph.add_node(
+        "address_validation_issues", orchestrator._address_validation_issues_node
+    )
     graph.add_node("request_human_review", orchestrator._request_human_review_node)
     graph.add_node("update_ground_truth", orchestrator._update_ground_truth_node)
     graph.add_node("commit_changes", orchestrator._commit_changes_node)

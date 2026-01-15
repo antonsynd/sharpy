@@ -9,7 +9,12 @@ from typing import TYPE_CHECKING, Optional
 
 from langgraph.types import interrupt
 
-from ..types import OrchestratorState, HumanQuestionPayload, HumanReviewPayload, HumanResponse
+from ..types import (
+    OrchestratorState,
+    HumanQuestionPayload,
+    HumanReviewPayload,
+    HumanResponse,
+)
 from ...human_loop import QuestionPriority
 
 if TYPE_CHECKING:

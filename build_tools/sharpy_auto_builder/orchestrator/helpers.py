@@ -59,6 +59,7 @@ class OrchestratorHelpers:
         """Log when a potentially long-running step begins."""
         import sys
         from pathlib import Path
+
         sys.path.insert(0, str(Path(__file__).parent.parent.parent))
         from shared.logging import LogEventType
 
@@ -83,6 +84,7 @@ class OrchestratorHelpers:
         """Log when a step completes with duration."""
         import sys
         from pathlib import Path
+
         sys.path.insert(0, str(Path(__file__).parent.parent.parent))
         from shared.logging import LogEventType
 
