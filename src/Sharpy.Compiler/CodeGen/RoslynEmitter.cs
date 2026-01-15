@@ -346,6 +346,26 @@ public class RoslynEmitter
             }
         }
 
+        // Pre-scan for enum declarations and register them in the symbol table
+        // This ensures enum member access (e.g., Color.RED) works correctly
+        foreach (var stmt in statements)
+        {
+            if (stmt is EnumDef enumDef)
+            {
+                var enumSymbol = new TypeSymbol
+                {
+                    Name = enumDef.Name,
+                    ClrType = null,
+                    TypeKind = Semantic.TypeKind.Enum
+                };
+                // Only add if not already present
+                if (_context.LookupSymbol(enumDef.Name) == null)
+                {
+                    _context.SymbolTable.Define(enumSymbol);
+                }
+            }
+        }
+
         // Separate declarations (class members) from executable statements
         var declarations = new List<MemberDeclarationSyntax>();
         var executableStatements = new List<Statement>();
@@ -877,8 +897,9 @@ public class RoslynEmitter
 
     private EnumMemberDeclarationSyntax GenerateEnumMember(EnumMember member)
     {
-        // Use constant case transformation for enum members
-        var memberName = NameMangler.Transform(member.Name, NameContext.Constant);
+        // Enum members use PascalCase in C# (RED -> Red, DARK_BLUE -> DarkBlue)
+        // Need custom logic because NameMangler.ToPascalCase preserves all-caps words
+        var memberName = TransformEnumMemberName(member.Name);
 
         var enumMember = EnumMemberDeclaration(Identifier(memberName));
 
@@ -890,6 +911,24 @@ public class RoslynEmitter
         }
 
         return enumMember;
+    }
+
+    private static string TransformEnumMemberName(string name)
+    {
+        if (string.IsNullOrEmpty(name))
+            return name;
+
+        // Handle literal names (backtick-escaped)
+        if (name.StartsWith("`") && name.EndsWith("`"))
+            return name[1..^1];
+
+        // Split by underscores and capitalize each part
+        var parts = name.Split('_', StringSplitOptions.RemoveEmptyEntries);
+        var capitalizedParts = parts.Select(part =>
+            string.IsNullOrEmpty(part) ? part :
+            char.ToUpperInvariant(part[0]) + part.Substring(1).ToLowerInvariant());
+
+        return string.Join("", capitalizedParts);
     }
 
     private SyntaxTokenList GenerateTypeModifiersFromDecorators(List<Decorator> decorators)
@@ -2839,7 +2878,39 @@ public class RoslynEmitter
 
     private ExpressionSyntax GenerateMemberAccess(MemberAccess memberAccess)
     {
+        // Check for enum member access (e.g., Color.RED -> Color.Red)
+        if (memberAccess.Object is Identifier enumTypeIdentifier)
+        {
+            var symbol = _context.LookupSymbol(enumTypeIdentifier.Name);
+
+            // If this is an enum type, handle member access specially
+            if (symbol is TypeSymbol { TypeKind: Semantic.TypeKind.Enum })
+            {
+                // Enum member access: Color.RED -> Color.Red
+                var enumTypeName = NameMangler.ToPascalCase(enumTypeIdentifier.Name);
+                var enumMemberName = TransformEnumMemberName(memberAccess.Member);
+
+                return MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName(enumTypeName),
+                    IdentifierName(enumMemberName));
+            }
+        }
+
         var obj = GenerateExpression(memberAccess.Object);
+
+        // Handle special .value property for enum instances
+        // enum_instance.value -> (int)enum_instance
+        if (string.Equals(memberAccess.Member, "value", StringComparison.OrdinalIgnoreCase))
+        {
+            // Only cast to int if the object expression is of an enum type
+            if (IsEnumTypeExpression(memberAccess.Object))
+            {
+                return CastExpression(
+                    PredefinedType(Token(SyntaxKind.IntKeyword)),
+                    obj);
+            }
+        }
 
         // Apply name mangling to member names - fields and methods use PascalCase in generated C#
         var mangledMemberName = NameMangler.ToPascalCase(memberAccess.Member);
@@ -3512,5 +3583,24 @@ public class RoslynEmitter
         return hasFloatOperand
             ? floorCall
             : CastExpression(PredefinedType(Token(SyntaxKind.IntKeyword)), floorCall);
+    }
+
+    /// <summary>
+    /// Checks if an expression evaluates to an enum type.
+    /// Used to determine whether .value access should be translated to an int cast.
+    /// </summary>
+    private bool IsEnumTypeExpression(Expression expr)
+    {
+        if (expr is Identifier id)
+        {
+            var symbol = _context.LookupSymbol(id.Name);
+            if (symbol is VariableSymbol varSymbol &&
+                varSymbol.Type is Semantic.UserDefinedType udt &&
+                udt.Symbol?.TypeKind == Semantic.TypeKind.Enum)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 }

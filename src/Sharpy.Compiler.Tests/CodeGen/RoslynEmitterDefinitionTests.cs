@@ -1577,9 +1577,9 @@ public class RoslynEmitterDefinitionTests
 
         // Assert
         Assert.Contains("public enum Color", code);
-        Assert.Contains("RED = 1", code);
-        Assert.Contains("GREEN = 2", code);
-        Assert.Contains("BLUE = 3", code);
+        Assert.Contains("Red = 1", code);
+        Assert.Contains("Green = 2", code);
+        Assert.Contains("Blue = 3", code);
     }
 
     [Fact]
@@ -1604,9 +1604,9 @@ public class RoslynEmitterDefinitionTests
 
         // Assert
         Assert.Contains("public enum Status", code);
-        Assert.Contains("PENDING", code);
-        Assert.Contains("ACTIVE", code);
-        Assert.Contains("COMPLETE", code);
+        Assert.Contains("Pending", code);
+        Assert.Contains("Active", code);
+        Assert.Contains("Complete", code);
     }
 
     [Fact]
@@ -1632,6 +1632,120 @@ public class RoslynEmitterDefinitionTests
         Assert.Contains("/// <summary>", code);
         Assert.Contains("/// RGB color values", code);
         Assert.Contains("/// </summary>", code);
+    }
+
+    [Fact]
+    public void GenerateEnumMemberAccess_TransformsToPascalCase()
+    {
+        // Arrange: Color.RED -> Color.Red
+        var enumDef = new EnumDef
+        {
+            Name = "Color",
+            Members = new List<EnumMember>
+            {
+                new EnumMember { Name = "RED", Value = new IntegerLiteral { Value = "1" } },
+                new EnumMember { Name = "DARK_BLUE", Value = new IntegerLiteral { Value = "2" } }
+            }
+        };
+
+        var assignment = new Assignment
+        {
+            Target = new Identifier { Name = "favorite" },
+            Value = new MemberAccess
+            {
+                Object = new Identifier { Name = "Color" },
+                Member = "RED"
+            },
+            Operator = AssignmentOperator.Assign
+        };
+
+        var assignment2 = new Assignment
+        {
+            Target = new Identifier { Name = "dark" },
+            Value = new MemberAccess
+            {
+                Object = new Identifier { Name = "Color" },
+                Member = "DARK_BLUE"
+            },
+            Operator = AssignmentOperator.Assign
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { enumDef, assignment, assignment2 } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("Color.Red", code);
+        Assert.Contains("Color.DarkBlue", code);
+    }
+
+    [Fact]
+    public void GenerateEnumValueProperty_GeneratesCastToInt()
+    {
+        // Arrange: favorite.value -> (int)favorite
+        // This test requires proper symbol table setup to detect that 'favorite' is an enum type
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins);
+        var emitter = new RoslynEmitter(context);
+
+        var enumDef = new EnumDef
+        {
+            Name = "Color",
+            Members = new List<EnumMember>
+            {
+                new EnumMember { Name = "RED", Value = new IntegerLiteral { Value = "1" } }
+            }
+        };
+
+        // Register the enum type in the symbol table
+        var enumTypeSymbol = new TypeSymbol
+        {
+            Name = "Color",
+            Kind = Sharpy.Compiler.Semantic.SymbolKind.Type,
+            TypeKind = Sharpy.Compiler.Semantic.TypeKind.Enum
+        };
+        symbolTable.Define(enumTypeSymbol);
+
+        // Register the 'favorite' variable with the enum type
+        var favoriteSymbol = new VariableSymbol
+        {
+            Name = "favorite",
+            Kind = Sharpy.Compiler.Semantic.SymbolKind.Variable,
+            Type = new UserDefinedType { Symbol = enumTypeSymbol, Name = "Color" }
+        };
+        symbolTable.Define(favoriteSymbol);
+
+        var assignment1 = new Assignment
+        {
+            Target = new Identifier { Name = "favorite" },
+            Value = new MemberAccess
+            {
+                Object = new Identifier { Name = "Color" },
+                Member = "RED"
+            },
+            Operator = AssignmentOperator.Assign
+        };
+
+        var assignment2 = new Assignment
+        {
+            Target = new Identifier { Name = "value" },
+            Value = new MemberAccess
+            {
+                Object = new Identifier { Name = "favorite" },
+                Member = "value"
+            },
+            Operator = AssignmentOperator.Assign
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { enumDef, assignment1, assignment2 } };
+        var compilationUnit = emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("(int)favorite", code);
     }
 
     #endregion
