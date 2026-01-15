@@ -1,13 +1,13 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-15T01:34:09.176867",
+  "last_updated": "2026-01-15T01:45:03.330220",
   "phases": [
     {
       "id": "0.1.6",
       "name": "Classes - Comprehensive Task List (v2)",
       "goal": "",
       "status": "in_progress",
-      "progress": 45.45454545454545,
+      "progress": 54.54545454545454,
       "tasks": [
         {
           "id": "0.1.6.1",
@@ -307,8 +307,46 @@
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs",
             "src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude-code",
+              "started_at": "2026-01-15T01:45:03.325367",
+              "completed_at": "2026-01-15T01:45:03.325369",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T01:45:03.325354",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have everything needed to create the comprehensive spec adherence report.\n\n## Spec Adherence Report: Implement/Verify Static Method Detection and Code Generation\n\n**Spec:** `docs/language_specification/static_methods.md`\n**Secondary Specs:** `docs/language_specification/class_methods.md`, `docs/language_specification/decorators.md`\n**Implementation:** `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`, `src/Sharpy.Compiler/Semantic/NameResolver.cs`\n\n---\n\n### Compliant\n\n- [x] **Primary Detection Mechanism**: Static methods are detected by the absence of a `self` parameter\n  - **Spec says:** \"Static methods on a class, struct, etc. are like regular methods, except they do not have a `self` parameter (which has no type annotation) as the first parameter. This is how the compiler distinguishes between static methods and instance methods: instance methods always have an initial `self` parameter with no type annotation.\"\n  - **Implementation:** `NameResolver.cs:311-314` - `bool hasSelfParameter = method.Parameters.Any(p => string.Equals(p.Name, \"self\", StringComparison.OrdinalIgnoreCase)); bool isStatic = hasStaticDecorator || !hasSelfParameter;`\n  - **Implementation:** `RoslynEmitter.cs:1076-1084` - Same logic in code generation\n\n- [x] **C# `static` Keyword Emission**: Static methods emit the `static` keyword in generated C#\n  - **Spec says:** \"C# code emission results in `static` keyword being added\"\n  - **Implementation:** `RoslynEmitter.cs:1081-1084` - `if (!hasSelfParameter && !modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword))) { modifiers = modifiers.Add(Token(SyntaxKind.StaticKeyword)); }`\n\n- [x] **Instance Methods Have `self` Parameter**: Methods with `self` parameter are treated as instance methods\n  - **Spec says:** \"instance methods always have an initial `self` parameter with no type annotation\"\n  - **Implementation:** `RoslynEmitter.cs:1078-1079` - `bool hasSelfParameter = func.Parameters.Any(p => string.Equals(p.Name, \"self\", StringComparison.OrdinalIgnoreCase));`\n  - **Test:** `RoslynEmitterDefinitionTests.cs:1295-1329` - `GenerateMethod_WithSelfParameter_GeneratesInstanceMethod`\n\n- [x] **No `@staticmethod` Decorator Required**: No decorator/annotation needed for static methods\n  - **Spec says:** \"Sharpy has no annotation/decorator/keyword for static methods\"\n  - **Implementation:** Decorator is optional - `NameResolver.cs:307-314` checks for decorator but primary mechanism is `self` detection\n  - **Test:** `RoslynEmitterDefinitionTests.cs:1259-1292` - `GenerateMethod_WithoutSelfParameter_GeneratesStaticMethod` (no decorator, just missing `self`)\n\n- [x] **`@static` and `@staticmethod` Decorators Accepted (Optional)**\n  - **Spec (decorators.md):** Shows `@static` as a method modifier mapping to C# `static`\n  - **Implementation:** `RoslynEmitter.cs:1172-1175` and `NameResolver.cs:307` accept both `\"static\"` and `\"staticmethod\"`\n  - **Test:** `NameResolverTests.cs:546-571` - Tests both decorator variants\n\n- [x] **No `@classmethod` Support**: Python's `@classmethod` is explicitly not supported\n  - **Spec (class_methods.md):** \"Class methods as in the Python `@classmethod` decorator do not exist in Sharpy\"\n  - **Implementation:** No handling for `@classmethod` in the codebase (correct behavior)\n\n- [x] **`self` Parameter Filtering in Output**: `self` parameter is excluded from generated C# parameters\n  - **Implementation:** `RoslynEmitter.cs:1086-1092` - `.Where(p => !string.Equals(p.Name, \"self\", StringComparison.OrdinalIgnoreCase) && !string.Equals(p.Name, \"cls\", StringComparison.OrdinalIgnoreCase))`\n\n- [x] **`IsStatic` Symbol Property**: Semantic analysis correctly sets `IsStatic` on function symbols\n  - **Implementation:** `Symbol.cs:35` - `public bool IsStatic { get; init; }`\n  - **Implementation:** `NameResolver.cs:335` - `IsStatic = isStatic`\n\n---\n\n### Deviations\n\n- [ ] **Interfaces Cannot Have Static Methods** - **NOT ENFORCED**\n  - **Spec says (static_methods.md):** \"Note that interfaces cannot have static methods; all interfaces methods in the current version of Sharpy are instance methods.\"\n  - **Implementation:** `GenerateInterfaceMethod` at `RoslynEmitter.cs:1267-1293` does NOT check for static method detection or emit an error. Interface methods without `self` would currently NOT be flagged as errors.\n  - **Impact:** Medium - Violates spec constraint. Interface methods without `self` would silently generate incorrect C# (interface methods cannot be static in standard C#).\n  - **Note:** The interface method generation does filter out `self` parameters (line 1278) but does NOT check whether the method should be static and reject it.\n\n---\n\n### Undocumented Behavior\n\n1. **`cls` Parameter Handling**: The implementation also skips `cls` parameters (`RoslynEmitter.cs:1090`), which is Python's convention for `@classmethod`. While `@classmethod` is explicitly not supported per spec, the presence of `cls` filtering suggests partial/legacy support that isn't documented.\n\n2. **Case-Insensitive `self` Matching**: The implementation uses `StringComparison.OrdinalIgnoreCase` for `self` detection (`RoslynEmitter.cs:1079`). This means `Self`, `SELF`, etc. would all be treated as the instance parameter. The spec doesn't specify case sensitivity.\n\n---\n\n### Recommendations\n\n1. **Add Interface Static Method Validation**: Add a check in `NameResolver.ResolveMethodDeclaration` or a separate validator to reject methods without `self` in interfaces:\n   ```csharp\n   if (owningType.TypeKind == TypeKind.Interface && isStatic)\n   {\n       _errors.Add(new SemanticError($\"Interface '{owningType.Name}' cannot have static method '{method.Name}'\"));\n   }\n   ```\n\n2. **Clarify `cls` Behavior**: Either document that `cls` is filtered for Python compatibility or remove the filtering if it's truly unsupported.\n\n3. **Clarify Case Sensitivity**: Document whether `self` matching is case-sensitive or not in the language specification.\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T01:45:03.325358",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "**Verification Complete**: Static Method Detection and Code Generation is fully implemented and passing all tests.\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T01:45:03.325363",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "---\n\n# Hallucination Defense Report\n\n## Claim 1: Code Location in NameResolver.cs\n**Claim:** Static method detection is implemented at `NameResolver.cs:306-318`  \n**Verification:** Read the file at those line numbers  \n**Result:** \u2705 CORRECT \u2014 The code exists exactly as described at lines 306-314. The claim says 306-318, and the relevant static detection logic spans 306-314, with additional decorator checks for `abstract`/`virtual`/`override` continuing through line 318.\n\n---\n\n## Claim 2: Code Location in RoslynEmitter.cs\n**Claim:** Static modifier generation is at `RoslynEmitter.cs:1076-1084`  \n**Verification:** Read the file at those line numbers  \n**Result:** \u2705 CORRECT \u2014 The code exists exactly at lines 1076-1084 as described.\n\n---\n\n## Claim 3: Roslyn API - `Token(SyntaxKind.StaticKeyword)`\n**Claim:** `SyntaxFactory.Token(SyntaxKind.StaticKeyword)` is valid Roslyn API  \n**Verification:** Project builds successfully; verified `using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;` import at line 7  \n**Result:** \u2705 CORRECT \u2014 This is valid Roslyn API. The static import allows calling `Token()` directly.\n\n---\n\n## Claim 4: Roslyn API - `modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword))`\n**Claim:** `IsKind()` method exists on modifier tokens  \n**Verification:** Project compiles without errors  \n**Result:** \u2705 CORRECT \u2014 `IsKind()` is a valid extension method on `SyntaxToken` in Roslyn.\n\n---\n\n## Claim 5: Python Semantics - Method without `self` is static\n**Claim:** In Python, a method without `self` parameter is effectively static (the \"Pythonic\" way)  \n**Verification:** Tested with Python3 interpreter  \n**Result:** \u26a0\ufe0f PARTIALLY CORRECT / NEEDS CLARIFICATION\n\nPython behavior:\n- A method without `self` **can** be called on the class directly: `Foo.no_self_method()` \u2705\n- But calling it on an instance **fails**: `f.no_self_method()` \u274c (TypeError)\n- The method is NOT actually a `staticmethod` descriptor \u2014 it's a regular function\n\n**Important distinction:** In Python, omitting `self` does NOT make a method a proper static method. You must use `@staticmethod` for proper semantics. However, Sharpy's design decision to treat no-self as static for C# code generation is a **reasonable transpilation choice**, not a Python semantic fact.\n\n---\n\n## Claim 6: C# 9.0 Compatibility Table\n**Claim:** The table lists C# 9.0 features vs C# 10+ features correctly\n\n| Claimed C# 9.0 \u2705 | Verification |\n|-------------------|--------------|\n| Records | \u2705 CORRECT - C# 9.0 |\n| Init-only setters | \u2705 CORRECT - C# 9.0 |\n| Pattern matching | \u26a0\ufe0f IMPRECISE - Pattern matching started in C# 7.0, enhanced in 9.0 |\n| Target-typed new | \u2705 CORRECT - C# 9.0 |\n\n| Claimed C# 10+ \u274c | Verification |\n|------------------|--------------|\n| File-scoped namespaces | \u2705 CORRECT - C# 10 |\n| Global usings | \u2705 CORRECT - C# 10 |\n| Record structs | \u2705 CORRECT - C# 10 |\n| Required members | \u2705 CORRECT - C# 11 |\n\n**Result:** \u2705 CORRECT (with minor imprecision on \"pattern matching\")\n\n---\n\n## Claim 7: Code Logic Accuracy\n**Claim:** The code correctly detects static methods via `!hasSelfParameter`  \n**Verification:** Read source code  \n**Result:** \u2705 CORRECT \u2014 The logic `bool isStatic = hasStaticDecorator || !hasSelfParameter;` is implemented exactly as described.\n\n---\n\n## Summary\n\n| Claim | Result |\n|-------|--------|\n| NameResolver.cs location | \u2705 CORRECT |\n| RoslynEmitter.cs location | \u2705 CORRECT |\n| Roslyn Token() API | \u2705 CORRECT |\n| Roslyn IsKind() API | \u2705 CORRECT |\n| Python \"no self = static\" | \u26a0\ufe0f DESIGN CHOICE (not Python truth) |\n| C# 9.0 compatibility table | \u2705 CORRECT |\n| Code logic accuracy | \u2705 CORRECT |\n\n**Overall Assessment:** The implementation claims are factually accurate. The only nuance is that the claim about Python semantics should be understood as a Sharpy **design decision** rather than a Python language fact \u2014 Python does not automatically make methods without `self` into static methods; it requires the `@staticmethod` decorator for proper static method behavior.\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": true,
           "human_question": null,
@@ -324,7 +362,7 @@
             "src/Sharpy.Compiler/CodeGen/NameMangler.cs",
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -1214,14 +1252,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "0.1.6.7",
-  "total_attempts": 5,
-  "total_successes": 5,
+  "current_task_id": "0.1.6.8",
+  "total_attempts": 6,
+  "total_successes": 6,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 5,
-      "successes": 5,
+      "attempts": 6,
+      "successes": 6,
       "failures": 0
     },
     "copilot": {
@@ -1230,5 +1268,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 8.333333333333332
+  "overall_progress": 10.0
 }
