@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-15T09:50:23.952410",
+  "last_updated": "2026-01-15T10:03:52.032869",
   "phases": [
     {
       "id": "0.1.6",
@@ -550,7 +550,7 @@
       "name": "Inheritance & Interfaces - Comprehensive Task List (v2)",
       "goal": "",
       "status": "in_progress",
-      "progress": 23.076923076923077,
+      "progress": 30.76923076923077,
       "tasks": [
         {
           "id": "0.1.7.1",
@@ -724,8 +724,46 @@
           "files": [
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude-code",
+              "started_at": "2026-01-15T10:03:52.026725",
+              "completed_at": "2026-01-15T10:03:52.026728",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T10:03:52.026709",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have gathered all the information. Let me compile the Spec Adherence Report:\n\n## Spec Adherence Report: Implement Inheritance Code Generation\n\n**Spec:** `docs/language_specification/inheritance.md` and `docs/language_specification/properties_inheritance.md`\n**Implementation:** `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Compliant\n\n#### Single Class Inheritance (Spec \u00a71)\n- [x] **Single inheritance**: Class declarations with base classes generate C# `: BaseClass` syntax (lines 638-644)\n  - Spec says: \"A class can extend at most one base class but may implement multiple interfaces\"\n  - Implementation: `classDef.BaseClasses.Select(bc => SimpleBaseType(_typeMapper.MapType(bc)))` correctly generates base list\n\n#### Multiple Interface Implementation (Spec \u00a72)\n- [x] **Base class must come first**: Implementation preserves order from source in `BaseClasses` list (line 641-644)\n  - Spec says: \"Base class (if present) must come first\"\n  - Implementation: Order is preserved when generating `BaseList(SeparatedList<BaseTypeSyntax>(baseTypes))`\n\n#### super().__init__() Handling (Spec \u00a73)\n- [x] **Constructor chaining**: `super().__init__()` is correctly lowered to `: base(...)` constructor initializer (lines 974-997)\n  - Spec says: \"super().__init__()` \u2192 `: base()` or `base.Method()`\"\n  - Implementation: Detects `SuperExpression` + `__init__` access, creates `ConstructorInitializer` with `SyntaxKind.BaseConstructorInitializer`\n\n- [x] **Arguments passed correctly**: Base constructor arguments are properly generated (line 988)\n  - `var baseArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg))).ToArray();`\n\n- [x] **Statement removed from body**: The `super().__init__()` call is skipped in body generation (line 996: `bodyStartIndex = 1`)\n\n#### super().method() Calls (Spec \u00a73)\n- [x] **super() expression lowered**: `SuperExpression` is correctly converted to `base` (line 2067)\n  - Spec says: \"\ud83d\udd04 Lowered - `super()` maps to `base.Method()`\"\n  - Implementation: `SuperExpression => BaseExpression()`\n\n- [x] **Method calls on super()**: When generating FunctionCall on MemberAccess with SuperExpression object (lines 2152-2178)\n  - Implementation: `GenerateExpression(memberAccess.Object)` returns `base`, then generates `base.MethodName(args)`\n\n#### @virtual and @override Decorators (Spec \u00a73)\n- [x] **@virtual decorator**: Generates `virtual` C# keyword (lines 1224-1225, 563-564)\n  - Spec says: \"@virtual methods can be overridden by subclasses\"\n  - Implementation: `case \"virtual\": tokens.Add(Token(SyntaxKind.VirtualKeyword));`\n\n- [x] **@override decorator**: Generates `override` C# keyword (lines 1227-1228, 566-567)\n  - Spec says: \"@override is required when overriding a base class method\"\n  - Implementation: `case \"override\": tokens.Add(Token(SyntaxKind.OverrideKeyword));`\n\n#### Automatic Override for Object Methods (Spec inference)\n- [x] **__repr__ \u2192 ToString override**: Automatically adds override for `__repr__` (lines 1109-1117)\n- [x] **__eq__ \u2192 Equals override**: Automatically adds override for `__eq__` (lines 1112-1113)\n- [x] **GetHashCode override**: Protocol methods mapping to `GetHashCode` get override (line 1109)\n\n#### Generic Base Classes (Spec \u00a72 example)\n- [x] **Generic type arguments**: Base classes with type arguments correctly mapped via `_typeMapper.MapType(bc)` (line 642)\n  - Example: `class JSONEmployee(Employee, ISerializable, IComparable)` works correctly\n\n### Deviations\n\n- [ ] **Section 3 - super() position**: Not strictly enforced at code generation level\n  - **Spec says:** \"`super().__init__()` must be the first statement in `__init__`\" (implied by constructor initializer semantics)\n  - **Implementation:** Code generation checks only if the *first* statement is `super().__init__()` (line 979), but doesn't error if super() appears later in the body\n  - **Impact:** Low - This is validated at the semantic analysis phase (see `SuperValidationTests.cs`), not code generation. The semantic analyzer catches these cases before code generation runs.\n\n- [ ] **Section 3 - Field access via super()**: No code generation protection\n  - **Spec says:** \"Cannot use `super()` to access parent fields\" (line 206-207)\n  - **Implementation:** If semantic validation missed this, `super().field` would generate `base.Field` which is valid C# but violates spec intent\n  - **Impact:** Low - Semantic validation (`SuperValidationTests.cs:177-193`) catches this before code generation\n\n### Undocumented Behavior\n\n1. **Automatic `new` keyword for class instantiation**: Implementation tracks class names (`_classNames` set at line 616) and generates `new ClassName(args)` for constructor calls (lines 2116-2144). This behavior is not explicitly documented in the inheritance spec but is correct C# semantics.\n\n2. **Struct inheritance handling**: Structs also get base type generation (lines 682-688), with comment noting \"structs can only implement interfaces, not inherit\" - this is C# semantics, not explicitly in spec.\n\n3. **Interface base interface support**: Interface declarations support base interfaces (lines 726-732), consistent with C# but not explicitly covered in the inheritance.md spec (covered in interfaces.md).\n\n### Recommendations\n\n1. **No code changes recommended** - The implementation correctly handles inheritance code generation. All \"deviations\" noted are actually validated at the semantic analysis phase, which is the appropriate place for such validation.\n\n2. **Documentation enhancement** - Consider explicitly documenting in the spec that `super()` validation happens during semantic analysis, not code generation.\n\n3. **Test coverage** - The existing tests (`InheritanceVerificationTests.cs`, `SuperValidationTests.cs`) provide good coverage of inheritance parsing and semantic validation. Consider adding explicit code generation tests that verify the C# output for inheritance scenarios (e.g., verify `: BaseClass` appears in generated code).\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T10:03:52.026716",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "## Verification Report: Implement Inheritance Code Generation\n\n### Test Results\n- **Total:** 3455 (735 Core + 2720 Compiler) | **Passed:** 3424 | **Skipped:** 31 | **Failed:** 0\n\n### Inheritance-Specific Test Summary\n| Category | Test Count | Status |\n|----------|------------|--------|\n| Inheritance Parsing (`InheritanceVerificationTests`) | 7 | \u2705 All Pass |\n| Super Expression Parsing (`ParserTests`) | 9 | \u2705 All Pass |\n| Super Validation (`SuperValidationTests`) | 19 | \u2705 All Pass |\n| Code Generation (`RoslynEmitterDefinitionTests`) | 2 | \u2705 All Pass |\n| Semantic Analysis (`SemanticAnalyzerNegativeTests`) | 2 | \u2705 All Pass |\n| Phase 0.1.6 Class Integration | 39 | \u2705 All Pass |\n| **Total Inheritance-Related** | ~50+ | \u2705 All Pass |\n\n### Behavior Checks\n- [x] Single inheritance (`class Dog(Animal):`) parses correctly\n- [x] Multiple inheritance (`class Dog(Animal, ICanine):`) parses correctly  \n- [x] Generic base classes (`class StringList(List[str]):`) parse correctly\n- [x] Classes without inheritance (`class Animal:`) parse correctly\n- [x] Inheritance generates C# `: BaseClass` syntax\n- [x] Interface inheritance generates correct C# syntax\n- [x] `super().__init__()` converts to `: base(...)` constructor initializer\n- [x] `super().method()` converts to `base.method()` calls\n- [x] `super()` validation rejects usage outside classes\n- [x] `super()` validation rejects usage in classes without parent\n- [x] `super()` validation rejects standalone `super()` expressions\n- [x] `super()` validation rejects field access via `super().field`\n- [x] `super()` validation enforces control flow rules for `__init__`\n- [x] `super()` validation enforces `@override` method name rules\n- [x] `super()` validation enforces dunder method calling rules\n\n### Coverage Assessment\nThe inheritance code generation implementation has comprehensive coverage across:\n\n1. **Parser Layer (7+ tests):** Inheritance syntax parsing, type parameters, generic base classes\n2. **Semantic Layer (21+ tests):** Super expression validation, context rules, error detection\n3. **Code Generation Layer (2+ tests):** C# inheritance syntax generation for classes and interfaces\n4. **Integration Layer (39+ tests):** Full compilation and runtime verification\n\n### Regression Check\n- **No regressions detected** - All 3424 passing tests continue to pass\n- Skipped tests (31) are pre-existing deferred features unrelated to inheritance\n\n### Key Implementation Verified\n\n1. **RoslynEmitter.cs** correctly generates:\n   - `public class Employee : Person` from `class Employee(Person):`\n   - `public interface IShape : IDrawable` from interface inheritance\n   - `: base(...)` constructor initializers from `super().__init__(...)`\n   - `base.method()` calls from `super().method()`\n\n2. **TypeChecker.cs** correctly validates:\n   - `super()` only in class context\n   - `super()` only with parent class present\n   - `super().__init__()` rules (first statement, no control flow)\n   - `super().method()` in `@override` and dunder contexts\n\n### Recommendations\nNone - implementation is complete and all tests pass. The inheritance code generation is ready for use.\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T10:03:52.026721",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "All 12 inheritance tests pass. Now let me compile my verification report:\n\n---\n\n# Hallucination Defense Report: Inheritance Code Generation Claims\n\n## Claim 1: Line Number Reference (956-1076)\n**Claim:** `GenerateConstructor` method is at lines 956-1076\n\n**Verification:** Direct file read of `RoslynEmitter.cs`\n\n**Result:** \u2705 CORRECT \u2014 The `GenerateConstructor` method signature starts at line 956 and ends at line 1076. Verified via `Read` tool.\n\n---\n\n## Claim 2: Roslyn `ConstructorInitializer` API\n**Claim:** Uses `ConstructorInitializer(SyntaxKind.BaseConstructorInitializer, ArgumentList(...))` to generate `: base(...)` syntax\n\n**Verification:** Code inspection + successful build\n\n**Result:** \u2705 CORRECT \u2014 Lines 991-993 show:\n```csharp\nbaseInitializer = ConstructorInitializer(\n    SyntaxKind.BaseConstructorInitializer,\n    ArgumentList(SeparatedList(baseArgs)));\n```\nThe `SyntaxFactory.ConstructorInitializer()` method is a valid Roslyn API. Build succeeds with 0 errors.\n\n---\n\n## Claim 3: `SyntaxKind.BaseConstructorInitializer` \n**Claim:** Uses `SyntaxKind.BaseConstructorInitializer` enum value\n\n**Verification:** Build success + Roslyn documentation\n\n**Result:** \u2705 CORRECT \u2014 `SyntaxKind.BaseConstructorInitializer` is a valid enum member in `Microsoft.CodeAnalysis.CSharp.SyntaxKind`. Used at line 992.\n\n---\n\n## Claim 4: SuperExpression AST Node\n**Claim:** Added `SuperExpression` handling at line 2067\n\n**Verification:** Direct file read\n\n**Result:** \u2705 CORRECT \u2014 Line 2067 shows:\n```csharp\nSuperExpression => BaseExpression(),  // super() -> base\n```\nThe `SuperExpression` record is defined at `Expression.cs:394`.\n\n---\n\n## Claim 5: Roslyn `BaseExpression()` API\n**Claim:** Uses `BaseExpression()` to generate `base` keyword\n\n**Verification:** Build success + Roslyn API\n\n**Result:** \u2705 CORRECT \u2014 `SyntaxFactory.BaseExpression()` is a valid Roslyn API that generates the `base` keyword expression. The code compiles successfully.\n\n---\n\n## Claim 6: Super Call Detection Logic\n**Claim:** Detects `super().__init__()` pattern by checking:\n- First statement is `ExpressionStatement`\n- Expression is `FunctionCall`\n- Function is `MemberAccess`\n- Object is `SuperExpression`\n- Member is `\"__init__\"`\n\n**Verification:** Code inspection at lines 979-986\n\n**Result:** \u2705 CORRECT \u2014 The pattern matching is exactly as described:\n```csharp\nif (func.Body.Count > 0 && func.Body[0] is ExpressionStatement exprStmt)\n{\n    if (exprStmt.Expression is FunctionCall call &&\n        call.Function is MemberAccess memberAccess &&\n        memberAccess.Object is SuperExpression &&\n        memberAccess.Member == \"__init__\")\n```\n\n---\n\n## Claim 7: Body Statement Skipping\n**Claim:** Sets `bodyStartIndex = 1` to skip the super call in body generation\n\n**Verification:** Code inspection at lines 996, 1005\n\n**Result:** \u2705 CORRECT \u2014 Line 996 sets `bodyStartIndex = 1` when super call detected, and line 1005 starts the loop from `bodyStartIndex`.\n\n---\n\n## Claim 8: C# 9.0 Compatibility\n**Claim:** Generated code is C# 9.0 compatible (for Unity)\n\n**Verification:** Features used analysis\n\n**Result:** \u2705 CORRECT \u2014 The generated code uses:\n- Constructor initializers (`: base(...)`) \u2014 Available since C# 1.0\n- `SeparatedList`, `ArgumentList` \u2014 Roslyn API, not C# version dependent\n- No C# 10+ features (file-scoped namespaces, global usings, record structs, required members) detected in generated output\n\n---\n\n## Claim 9: Test Validation\n**Claim:** Implementation works correctly\n\n**Verification:** `dotnet test --filter \"Inheritance\"` \n\n**Result:** \u2705 CORRECT \u2014 All 12 inheritance-related tests pass:\n```\nPassed!  - Failed: 0, Passed: 12, Skipped: 0, Total: 12\n```\n\n---\n\n## Summary\n\n| Claim | Status |\n|-------|--------|\n| Line numbers 956-1076 | \u2705 CORRECT |\n| `ConstructorInitializer` API | \u2705 CORRECT |\n| `SyntaxKind.BaseConstructorInitializer` | \u2705 CORRECT |\n| `SuperExpression` at line 2067 | \u2705 CORRECT |\n| `BaseExpression()` API | \u2705 CORRECT |\n| Super call detection logic | \u2705 CORRECT |\n| Body skipping with `bodyStartIndex` | \u2705 CORRECT |\n| C# 9.0 compatibility | \u2705 CORRECT |\n| Tests pass | \u2705 CORRECT |\n\n**Overall Assessment: All 9 claims verified as factually accurate. No hallucinations detected.**\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": false,
           "human_question": null,
@@ -741,7 +779,7 @@
             "src/Sharpy.Compiler/Parser/Parser.cs",
             "src/Sharpy.Compiler/Parser/Ast/Decorator.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": true,
@@ -1493,14 +1531,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "0.1.7.4",
-  "total_attempts": 13,
-  "total_successes": 13,
+  "current_task_id": "0.1.7.5",
+  "total_attempts": 14,
+  "total_successes": 14,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 13,
-      "successes": 13,
+      "attempts": 14,
+      "successes": 14,
       "failures": 0
     },
     "copilot": {
@@ -1509,5 +1547,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 20.0
+  "overall_progress": 21.666666666666668
 }
