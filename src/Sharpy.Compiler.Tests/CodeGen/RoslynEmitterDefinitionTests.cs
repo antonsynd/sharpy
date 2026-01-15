@@ -1197,6 +1197,257 @@ public class RoslynEmitterDefinitionTests
         Assert.Contains("public struct Pair<T1, T2>", code);
     }
 
+    [Fact]
+    public void GenerateStructDeclaration_WithConstructor_GeneratesConstructorMethod()
+    {
+        // Arrange
+        var structDef = new StructDef
+        {
+            Name = "Point",
+            Body = new List<Statement>
+            {
+                new VariableDeclaration
+                {
+                    Name = "x",
+                    Type = new TypeAnnotation { Name = "double" },
+                    InitialValue = null
+                },
+                new VariableDeclaration
+                {
+                    Name = "y",
+                    Type = new TypeAnnotation { Name = "double" },
+                    InitialValue = null
+                },
+                new FunctionDef
+                {
+                    Name = "__init__",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self", Type = null },
+                        new Parameter { Name = "x", Type = new TypeAnnotation { Name = "double" } },
+                        new Parameter { Name = "y", Type = new TypeAnnotation { Name = "double" } }
+                    },
+                    ReturnType = null,
+                    Body = new List<Statement>
+                    {
+                        new Assignment
+                        {
+                            Target = new MemberAccess
+                            {
+                                Object = new Identifier { Name = "self" },
+                                Member = "x"
+                            },
+                            Value = new Identifier { Name = "x" }
+                        },
+                        new Assignment
+                        {
+                            Target = new MemberAccess
+                            {
+                                Object = new Identifier { Name = "self" },
+                                Member = "y"
+                            },
+                            Value = new Identifier { Name = "y" }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { structDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public struct Point", code);
+        Assert.Contains("public Point(double x, double y)", code);
+        Assert.Contains("this.X = x;", code);
+        Assert.Contains("this.Y = y;", code);
+    }
+
+    [Fact]
+    public void GenerateStructDeclaration_WithMethod_GeneratesMethod()
+    {
+        // Arrange
+        var structDef = new StructDef
+        {
+            Name = "Vector2",
+            Body = new List<Statement>
+            {
+                new VariableDeclaration
+                {
+                    Name = "x",
+                    Type = new TypeAnnotation { Name = "double" },
+                    InitialValue = null
+                },
+                new VariableDeclaration
+                {
+                    Name = "y",
+                    Type = new TypeAnnotation { Name = "double" },
+                    InitialValue = null
+                },
+                new FunctionDef
+                {
+                    Name = "length",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self", Type = null }
+                    },
+                    ReturnType = new TypeAnnotation { Name = "double" },
+                    Body = new List<Statement>
+                    {
+                        new ReturnStatement
+                        {
+                            Value = new BinaryOp
+                            {
+                                Left = new BinaryOp
+                                {
+                                    Left = new MemberAccess
+                                    {
+                                        Object = new Identifier { Name = "self" },
+                                        Member = "x"
+                                    },
+                                    Operator = BinaryOperator.Power,
+                                    Right = new IntegerLiteral { Value = "2" }
+                                },
+                                Operator = BinaryOperator.Add,
+                                Right = new BinaryOp
+                                {
+                                    Left = new MemberAccess
+                                    {
+                                        Object = new Identifier { Name = "self" },
+                                        Member = "y"
+                                    },
+                                    Operator = BinaryOperator.Power,
+                                    Right = new IntegerLiteral { Value = "2" }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { structDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public struct Vector2", code);
+        Assert.Contains("public double Length()", code);
+        Assert.Contains("return", code);
+    }
+
+    [Fact]
+    public void GenerateStructDeclaration_CompleteVector2_GeneratesCorrectCode()
+    {
+        // Arrange - Complete Vector2 example from task specification
+        var structDef = new StructDef
+        {
+            Name = "Vector2",
+            Body = new List<Statement>
+            {
+                new VariableDeclaration
+                {
+                    Name = "x",
+                    Type = new TypeAnnotation { Name = "float" }, // Sharpy float -> C# double
+                    InitialValue = null
+                },
+                new VariableDeclaration
+                {
+                    Name = "y",
+                    Type = new TypeAnnotation { Name = "float" },
+                    InitialValue = null
+                },
+                new FunctionDef
+                {
+                    Name = "__init__",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self", Type = null },
+                        new Parameter { Name = "x", Type = new TypeAnnotation { Name = "float" } },
+                        new Parameter { Name = "y", Type = new TypeAnnotation { Name = "float" } }
+                    },
+                    ReturnType = null,
+                    Body = new List<Statement>
+                    {
+                        new Assignment
+                        {
+                            Target = new MemberAccess
+                            {
+                                Object = new Identifier { Name = "self" },
+                                Member = "x"
+                            },
+                            Value = new Identifier { Name = "x" }
+                        },
+                        new Assignment
+                        {
+                            Target = new MemberAccess
+                            {
+                                Object = new Identifier { Name = "self" },
+                                Member = "y"
+                            },
+                            Value = new Identifier { Name = "y" }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { structDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public struct Vector2", code);
+        Assert.Contains("public double X;", code); // Sharpy float -> C# double
+        Assert.Contains("public double Y;", code);
+        Assert.Contains("public Vector2(double x, double y)", code);
+        Assert.Contains("this.X = x;", code);
+        Assert.Contains("this.Y = y;", code);
+    }
+
+    [Fact]
+    public void GenerateStructDeclaration_WithInterface_GeneratesImplementation()
+    {
+        // Arrange
+        var structDef = new StructDef
+        {
+            Name = "Point",
+            BaseClasses = new List<TypeAnnotation>
+            {
+                new TypeAnnotation { Name = "IDrawable" }
+            },
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "draw",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self", Type = null }
+                    },
+                    ReturnType = null,
+                    Body = new List<Statement>
+                    {
+                        new PassStatement()
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { structDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public struct Point : IDrawable", code);
+        Assert.Contains("public void Draw()", code);
+    }
+
     #endregion
 
     #region Interface Definition Tests
