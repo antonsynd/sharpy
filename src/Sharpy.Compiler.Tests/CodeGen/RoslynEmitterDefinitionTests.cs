@@ -300,6 +300,61 @@ public class RoslynEmitterDefinitionTests
     }
 
     [Fact]
+    public void GenerateClassDeclaration_InstanceMethod_WithMultipleParameters_GeneratesCorrectSignature()
+    {
+        // Arrange
+        var classDef = new ClassDef
+        {
+            Name = "Calculator",
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "add_numbers",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter { Name = "self", Type = null },
+                        new Parameter { Name = "first_num", Type = new TypeAnnotation { Name = "int" } },
+                        new Parameter { Name = "second_num", Type = new TypeAnnotation { Name = "int" } }
+                    },
+                    ReturnType = new TypeAnnotation { Name = "int" },
+                    Body = new List<Statement>
+                    {
+                        new ReturnStatement
+                        {
+                            Value = new BinaryOp
+                            {
+                                Left = new Identifier { Name = "first_num" },
+                                Operator = BinaryOperator.Add,
+                                Right = new Identifier { Name = "second_num" }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        // Method name should be PascalCase
+        Assert.Contains("AddNumbers", code);
+
+        // Parameters should be camelCase
+        Assert.Contains("int firstNum", code);
+        Assert.Contains("int secondNum", code);
+
+        // self parameter should be completely excluded
+        Assert.DoesNotContain("self", code);
+
+        // Complete signature verification
+        Assert.Contains("public int AddNumbers(int firstNum, int secondNum)", code);
+    }
+
+    [Fact]
     public void GenerateClassDeclaration_WithBaseClass_GeneratesInheritance()
     {
         // Arrange
