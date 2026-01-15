@@ -46,6 +46,13 @@ from .auto_decision import (
     DecisionType,
 )
 from .orchestrator import Orchestrator, OrchestratorState
+from .tasks import (
+    execute_claude_cli,
+    execute_copilot_cli,
+    run_tests,
+    TaskExecutionResult,
+    TaskIdempotencyFallback,
+)
 
 __all__ = [
     # Config
@@ -92,4 +99,10 @@ __all__ = [
     # Orchestrator
     "Orchestrator",
     "OrchestratorState",
+    # Tasks
+    "execute_claude_cli",
+    "execute_copilot_cli",
+    "run_tests",
+    "TaskExecutionResult",
+    "TaskIdempotencyFallback",
 ]

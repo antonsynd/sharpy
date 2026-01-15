@@ -33,6 +33,13 @@ from .state import (
 )
 from .agents import AgentRole, AGENT_CONFIGS, get_agent_prompt, get_specialist_for_task
 from .backends import BackendManager, ExecutionResult
+from .tasks import (
+    execute_claude_cli,
+    execute_copilot_cli,
+    run_tests,
+    TaskExecutionResult,
+    _get_fallback_tracker,
+)
 from .human_loop import (
     HumanLoopManager,
     HumanQuestion,
@@ -524,6 +531,85 @@ class Orchestrator:
         return graph
 
     # =========================================================================
+    # Task Execution Helpers
+    # =========================================================================
+
+    async def _execute_with_task_failover(
+        self,
+        prompt: str,
+        task_id: str,
+        attempt: int,
+        timeout: float,
+    ) -> TaskExecutionResult:
+        """
+        Execute a task using task functions with failover across backends.
+
+        This method provides:
+        1. Fallback idempotency checking (file-based cache)
+        2. Backend failover (Claude Code -> Copilot)
+        3. Integration with @task decorator for LangGraph idempotency
+
+        Args:
+            prompt: The prompt to execute
+            task_id: Task identifier for tracking
+            attempt: Attempt number
+            timeout: Execution timeout in seconds
+
+        Returns:
+            TaskExecutionResult: Result from task execution
+        """
+        # Get fallback idempotency tracker
+        tracker = _get_fallback_tracker()
+
+        # Try each backend in priority order
+        for backend_type in self.config.backend_priority:
+            # Check if backend is available
+            if backend_type not in self.config.backends:
+                continue
+
+            backend_config = self.config.backends[backend_type]
+
+            # Determine which task function to use
+            if backend_type == "claude_code":
+                task_func = execute_claude_cli
+                tools = ["Read", "Write", "Edit", "Bash"]
+                model = backend_config.model
+            elif backend_type == "copilot":
+                task_func = execute_copilot_cli
+                tools = ["read", "write", "edit", "bash"]
+                model = None  # Copilot doesn't support model selection
+            else:
+                continue
+
+            # Execute task function
+            # The @task decorator provides LangGraph-level idempotency
+            # The fallback tracker provides file-based idempotency for deployment environments
+            result = await task_func(
+                prompt=prompt,
+                tools=tools,
+                model=model,
+                timeout=timeout,
+                working_dir=self.config.project_root,
+                task_id=task_id,
+                attempt=attempt,
+                use_fallback_idempotency=True,
+            )
+
+            # Cache result in fallback tracker
+            tracker.cache_result(result.input_hash, result)
+
+            # Return on success
+            if result.success:
+                return result
+
+            # Continue to next backend on failure (unless CLI not found)
+            if result.error and "not found" in result.error.lower():
+                continue
+
+        # If all backends failed, return the last result
+        return result
+
+    # =========================================================================
     # Node implementations
     # =========================================================================
 
@@ -626,7 +712,7 @@ Provide:
     async def _execute_implementation_node(
         self, state: OrchestratorState
     ) -> OrchestratorState:
-        """Execute the implementation using an agent."""
+        """Execute the implementation using an agent via task functions."""
         task_data = state["current_task"]
         attempt = state["execution_attempt"] + 1
 
@@ -661,10 +747,12 @@ Provide:
             extra={"attempt": attempt, "specialist": specialist.value},
         )
 
-        # Execute via backend with configured timeout
-        result = await self.backend_manager.execute_with_failover(
-            prompt,
-            context={"files": task_data["files"]},
+        # Execute via task functions with failover
+        # Task functions provide idempotent execution via @task decorator
+        result = await self._execute_with_task_failover(
+            prompt=prompt,
+            task_id=task_data["id"],
+            attempt=attempt,
             timeout=self.config.agent_execution_timeout,
         )
 
@@ -673,22 +761,18 @@ Provide:
             event_type="agent_response",
             task_id=task_data["id"],
             output=result.output,
-            error=result.error,
+            error=result.error or "",
             success=result.success,
             backend=result.backend,
             duration=result.duration_seconds,
-            extra={"attempt": attempt, "timed_out": result.timed_out},
+            extra={"attempt": attempt, "exit_code": result.exit_code},
         )
 
         self._log_step_end(
             "execute_implementation",
             task_data["id"],
             result.success,
-            (
-                f"via {result.backend}"
-                if result.backend
-                else "" + (" (TIMED OUT)" if result.timed_out else "")
-            ),
+            f"via {result.backend}",
         )
 
         execution_result = {
@@ -731,13 +815,15 @@ Provide:
             f"component: {component}" if component else "all tests",
         )
 
-        # Run baseline tests with timeout to catch infinite loops
+        # Run baseline tests using task function with timeout to catch infinite loops
         test_cmd = self._build_test_command(component)
-        result = await self.backend_manager.execute_command(
-            test_cmd,
-            cwd=self.config.project_root,
-            env_override={"NO_COLOR": "1", "DOTNET_CLI_UI_LANGUAGE": "en"},
+        result = await run_tests(
+            test_command=test_cmd,
+            working_dir=self.config.project_root,
             timeout=self.config.test_timeout,
+            task_id=task_data["id"],
+            attempt=0,  # Baseline is always attempt 0
+            use_fallback_idempotency=True,
         )
 
         # Log baseline test results
@@ -745,17 +831,18 @@ Provide:
             event_type="baseline_test_run",
             task_id=task_data["id"],
             output=result.output,
-            error=result.error,
+            error=result.error or "",
             success=result.success,
             extra={
                 "test_command": test_cmd,
                 "component": component,
-                "timed_out": result.timed_out,
+                "exit_code": result.exit_code,
             },
         )
 
         # Handle timeout (infinite loop in baseline tests is a pre-existing issue)
-        if result.timed_out:
+        timed_out = result.exit_code == -1 and "timed out" in (result.error or "").lower()
+        if timed_out:
             self._log_step_end("run_baseline_tests", task_data["id"], False, "TIMEOUT")
             return {
                 **state,
@@ -1083,24 +1170,31 @@ Provide:
             f"component: {component}" if component else "all tests",
         )
 
-        result = await self.backend_manager.execute_command(
-            test_cmd,
-            cwd=self.config.project_root,
-            env_override={"NO_COLOR": "1", "DOTNET_CLI_UI_LANGUAGE": "en"},
+        # Run tests using task function
+        result = await run_tests(
+            test_command=test_cmd,
+            working_dir=self.config.project_root,
             timeout=self.config.test_timeout,
+            task_id=task_data["id"],
+            attempt=state.get("execution_attempt", 1),
+            use_fallback_idempotency=True,
         )
+
+        # Detect timeout from exit code and error message
+        timed_out = result.exit_code == -1 and "timed out" in (result.error or "").lower()
 
         # Log test results
         self._log_execution(
             event_type="test_run",
             task_id=task_data["id"],
             output=result.output,
-            error=result.error,
+            error=result.error or "",
             success=result.success,
             extra={
                 "test_command": test_cmd,
                 "component": component,
-                "timed_out": result.timed_out,
+                "exit_code": result.exit_code,
+                "timed_out": timed_out,
             },
         )
 
@@ -1109,10 +1203,10 @@ Provide:
         execution_result["tests_run"] = True
         execution_result["tests_passed"] = result.success
         execution_result["test_output"] = result.output
-        execution_result["tests_timed_out"] = result.timed_out
+        execution_result["tests_timed_out"] = timed_out
 
         # Handle timeout case - this is likely an infinite loop introduced by the agent
-        if result.timed_out:
+        if timed_out:
             self._log_step_end("run_tests", task_data["id"], False, "TIMEOUT")
             baseline_timed_out = state.get("baseline_test_output", "").startswith(
                 "TIMEOUT:"
