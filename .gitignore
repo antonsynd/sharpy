@@ -1,6 +1,10 @@
 # SQLite database files
+*.db
 *.db-wal
 *.db-shm
+
+# Task cache (Copilot/Claude CLI)
+.task_cache/
 
 # Test results
 **/TestResults/
