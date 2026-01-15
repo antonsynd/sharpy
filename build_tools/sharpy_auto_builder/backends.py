@@ -560,21 +560,19 @@ class CopilotBackend(Backend):
         effective_timeout = timeout or self.execution_timeout
 
         try:
-            # Copilot CLI flags (matching generate_code_walkthroughs.py pattern):
+            # Copilot CLI flags for non-interactive automated execution:
             # --prompt: The prompt to execute
-            # --allow-tool: Explicitly allow specific tools for safety
+            # --allow-all-tools: Allow all tools without confirmation (required for non-interactive)
+            # --allow-all-paths: Disable file path verification
+            # --add-dir: Add project root to allowed directories
             cmd = [
                 self.copilot_cli_path,
                 "--prompt",
                 prompt,
-                "--allow-tool",
-                "read",
-                "--allow-tool",
-                "write",
-                "--allow-tool",
-                "edit",
-                "--allow-tool",
-                "bash",
+                "--allow-all-tools",
+                "--allow-all-paths",
+                "--add-dir",
+                str(self.project_root),
             ]
 
             # Run Copilot CLI
