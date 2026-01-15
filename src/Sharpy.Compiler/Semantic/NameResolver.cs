@@ -111,6 +111,9 @@ public class NameResolver
             return;
         }
 
+        // Check for @abstract decorator
+        bool isAbstract = classDef.Decorators.Any(d => d.Name == "abstract");
+
         // Create type symbol
         var typeSymbol = new TypeSymbol
         {
@@ -119,6 +122,7 @@ public class NameResolver
             TypeKind = TypeKind.Class,
             AccessLevel = AccessLevel.Public,
             TypeParameters = classDef.TypeParameters,
+            IsAbstract = isAbstract,
             DeclarationLine = classDef.LineStart,
             DeclarationColumn = classDef.ColumnStart
         };

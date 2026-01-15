@@ -228,6 +228,28 @@ public class TypeChecker
         _controlFlowDepth = 0;
         _superInitCalled = false;
 
+        // Check for @abstract decorator
+        bool isAbstract = functionDef.Decorators.Any(d => d.Name == "abstract" || d.Name == "abstractmethod");
+
+        // Validate abstract methods
+        if (isAbstract)
+        {
+            // Abstract methods must have ... body (Ellipsis expression)
+            if (functionDef.Body.Count != 1 || functionDef.Body[0] is not ExpressionStatement exprStmt ||
+                exprStmt.Expression is not EllipsisLiteral)
+            {
+                AddError($"Abstract method '{functionDef.Name}' must have '...' as its body",
+                    functionDef.LineStart, functionDef.ColumnStart);
+            }
+
+            // Abstract methods must be in an abstract class
+            if (_currentClass != null && !_currentClass.IsAbstract)
+            {
+                AddError($"Abstract method '{functionDef.Name}' can only be declared in an abstract class. Add @abstract decorator to class '{_currentClass.Name}'",
+                    functionDef.LineStart, functionDef.ColumnStart);
+            }
+        }
+
         // Validate self parameter for instance methods
         // In Sharpy, methods without 'self' as the first parameter are treated as static methods
         // This is consistent with how the code generator handles them
@@ -1544,6 +1566,14 @@ public class TypeChecker
             // Special handling for constructor calls (calling a type)
             if (symbol is TypeSymbol typeSymbol)
             {
+                // Cannot instantiate abstract classes
+                if (typeSymbol.IsAbstract)
+                {
+                    AddError($"Cannot instantiate abstract class '{typeSymbol.Name}'",
+                        call.LineStart, call.ColumnStart);
+                    return SemanticType.Unknown;
+                }
+
                 // Constructor call returns an instance of the type
                 return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
             }

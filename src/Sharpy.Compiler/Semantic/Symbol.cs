@@ -48,6 +48,7 @@ public record TypeSymbol : Symbol
 {
     public TypeKind TypeKind { get; init; }
     public Type? ClrType { get; init; }
+    public bool IsAbstract { get; init; }
 
     // Generic type parameters
     public List<string> TypeParameters { get; init; } = new();
