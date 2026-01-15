@@ -1,13 +1,13 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-15T08:32:40.130171",
+  "last_updated": "2026-01-15T08:50:19.534143",
   "phases": [
     {
       "id": "0.1.6",
       "name": "Classes - Comprehensive Task List (v2)",
       "goal": "",
       "status": "in_progress",
-      "progress": 63.63636363636363,
+      "progress": 72.72727272727273,
       "tasks": [
         {
           "id": "0.1.6.1",
@@ -445,8 +445,46 @@
           "files": [
             "src/Sharpy.Compiler.Tests/Integration/Phase016IntegrationTests.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude-code",
+              "started_at": "2026-01-15T08:50:19.528625",
+              "completed_at": "2026-01-15T08:50:19.528627",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T08:50:19.528611",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the necessary spec documents. Let me compile the Spec Adherence Report.\n\n## Spec Adherence Report: Create Phase 0.1.6 Integration Tests\n\n**Spec Documents:**\n- `docs/language_specification/classes.md`\n- `docs/language_specification/constructors.md`\n- `docs/language_specification/static_methods.md`\n- `docs/language_specification/name_mangling.md`\n- `docs/language_specification/decorators.md`\n- `docs/language_specification/class_methods.md`\n\n**Implementation:** `src/Sharpy.Compiler.Tests/Integration/Phase016IntegrationTests.cs`\n\n---\n\n### Compliant\n\n#### Classes (classes.md)\n- [x] **Field declarations with type annotations** - Tests use `name: str`, `x: int`, etc. (lines 46-68, 92-97)\n- [x] **`self` parameter required for instance methods** - All instance methods correctly use `self` (e.g., line 242: `def greet(self)`)\n- [x] **`self` parameter is not type-annotated** - Tests correctly omit type annotation on `self`\n- [x] **`__init__` return type can be omitted** - Constructors correctly omit return type (line 95, 119, etc.)\n- [x] **Field declarations support default values** - Test at lines 46-48 (`count: int = 0`), lines 64-68 (`name: str = \"\"`, etc.)\n\n#### Constructors (constructors.md)\n- [x] **Constructor overloading** - Tests at lines 135-163 (two constructors) and lines 165-201 (three constructors)\n- [x] **Parameterless constructor** - Test at line 111-132 (`def __init__(self)`)\n- [x] **Constructor with parameters** - Tests at lines 87-108, 204-225\n\n#### Static Methods (static_methods.md)\n- [x] **Static methods have no `self` parameter** - Tests at lines 379-396 correctly define static methods without `self` (e.g., `def add(a: int, b: int) -> int:`)\n- [x] **Static methods called on class, not instance** - Tests correctly call `MathHelper.add(3, 4)` (line 388)\n- [x] **Instance methods have `self` as first parameter** - All instance method tests correctly use `self`\n\n#### Name Mangling (name_mangling.md)\n- [x] **`snake_case` functions \u2192 `PascalCase`** - Tests at lines 522-558 test `format_name`, `to_upper_case` methods\n- [x] **`snake_case` parameters \u2192 `camelCase`** - Test at lines 561-577 (`input_value`, `scale_factor`)\n- [x] **`_private` fields \u2192 `_camelCase`** - Test at lines 499-519 (`_balance`)\n- [x] **`snake_case` fields \u2192 `PascalCase`** - Test at lines 478-495 (`user_count`, `max_connections`)\n\n---\n\n### Deviations\n\n#### 1. **`@static` decorator test inconsistency**\n- **Spec (decorators.md, line 83):** `@static` decorator is described as marking class-level methods with no `self` parameter\n- **Spec (static_methods.md, lines 1-3):** \"Sharpy has no annotation/decorator/keyword for static methods... This is how the compiler distinguishes between static methods and instance methods: instance methods always have an initial `self` parameter with no type annotation.\"\n- **Test at lines 399-416:** Uses `@static` decorator\n- **Impact:** **Low** - The decorator appears to be supported for explicitness but is not required. The test is valid but tests optional syntax, not the primary detection mechanism.\n\n#### 2. **Constructor chaining not tested**\n- **Spec (constructors.md, lines 23-49):** Constructor chaining via `self.__init__(...)` as first statement is a documented feature\n- **Implementation:** No tests verify constructor chaining behavior\n- **Impact:** **Medium** - A documented feature is not being integration-tested\n\n#### 3. **Static method on instance error test may not match spec**\n- **Spec (static_methods.md):** Does not explicitly state that static methods CANNOT be called on instances\n- **Test at lines 884-900:** Expects `helper.add(1, 2)` to fail when called on instance\n- **Impact:** **Low** - This is reasonable defensive behavior but not explicitly specified. The spec only says static methods are \"like regular methods, except they do not have a `self` parameter.\"\n\n#### 4. **Empty class with `pass` not explicitly specified**\n- **Test at lines 24-40:** Tests `class Empty: pass`\n- **Spec:** The `pass` statement is documented elsewhere (pass_statement.md), but empty class behavior is not explicitly covered in classes.md\n- **Impact:** **Low** - This is reasonable expected behavior consistent with Python semantics\n\n#### 5. **F-string usage in tests**\n- **Tests at lines 243, 529:** Use f-strings like `f\"Hello, {self.name}!\"`\n- **Impact:** **None** - F-strings are documented in `fstrings.md`, so this is valid\n\n---\n\n### Undocumented Behavior Tested\n\n1. **Field without initializer (lines 91-108, 999-1013):** Tests fields declared with type annotation but no default value (`x: int`), which are then assigned in constructor. The spec says \"All instance fields must be declared at class level with type annotations or an assignment of a default value where the type can be inferred\" - the \"or\" is slightly ambiguous but the tests correctly assume declaration-only is valid.\n\n2. **Multiple instances with independent state (lines 757-789):** This is fundamental OOP behavior but not explicitly stated in the spec.\n\n---\n\n### Recommendations\n\n1. **Add constructor chaining tests** - The constructors.md spec documents `self.__init__(...)` chaining, but no integration test verifies this. Add a test like:\n   ```python\n   class Point:\n       x: float\n       y: float\n       \n       def __init__(self):\n           self.__init__(0.0, 0.0)\n       \n       def __init__(self, x: float, y: float):\n           self.x = x\n           self.y = y\n   ```\n\n2. **Clarify static method on instance behavior** - Either:\n   - Update spec to explicitly state static methods cannot be called on instances, OR\n   - Consider if this should be a warning rather than error (some languages allow it)\n\n3. **Remove or note the `@static` decorator test** - The test at lines 399-416 uses `@static` which contradicts the main static_methods.md spec. Either:\n   - Document that `@static` is supported but optional in decorators.md (it's mentioned at line 83 but static_methods.md says no decorator exists)\n   - Remove the test as it tests non-canonical syntax\n\n4. **Test copy constructor** - The constructors.md spec shows a copy constructor pattern (`def __init__(self, other: Point)`) but this isn't tested.\n\n---\n\n### Summary\n\n| Category | Count |\n|----------|-------|\n| Compliant requirements | 15 |\n| Minor deviations | 4 |\n| Missing test coverage | 2 features |\n| Overall Status | **PASS with minor gaps** |\n\nThe integration tests comprehensively cover the core Phase 0.1.6 features (classes, fields, constructors, instance methods, static methods, name mangling). The main gaps are:\n1. Constructor chaining (`self.__init__()`) is not tested\n2. Copy constructor pattern is not tested\n3. Minor spec inconsistency around `@static` decorator\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T08:50:19.528616",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "**Verification Status: \u2705 PASSED**\n\nAll 39 Phase 0.1.6 integration tests pass successfully, covering class definitions with fields, constructors (including overloading), instance methods, static methods, name mangling, and error cases. No regressions were introduced.\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T08:50:19.528621",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have enough information to provide the verification report:\n\n---\n\n# Hallucination Defense Report: Phase 0.1.6 Integration Tests\n\n## Test Count Verification\n\n**Claim:** \"The test suite includes **31 comprehensive end-to-end tests**\"\n\n**Verification:** Counted `[Fact]` attributes in the file\n\n**Result:** \u274c INCORRECT \u2014 The file contains **39 tests**, not 31.\n\n---\n\n## Category Count Verification\n\n| Category | Claimed Count | Actual Count | Result |\n|----------|---------------|--------------|--------|\n| Simple Class Tests | 3 | 3 | \u2705 CORRECT |\n| Constructor Tests | 5 | 5 | \u2705 CORRECT |\n| Instance Method Tests | 5 | 5 | \u2705 CORRECT |\n| Static Method Tests | 4 | 4 | \u2705 CORRECT |\n| Name Mangling Tests | 5 | 5 | \u2705 CORRECT |\n| Comprehensive Integration Tests | 5 | 5 | \u2705 CORRECT |\n| Error Cases | 7 | 7 | \u2705 CORRECT |\n| Edge Cases | 5 | 5 | \u2705 CORRECT |\n\n**Total:** 3+5+5+4+5+5+7+5 = **39** tests\n\n**Result:** \u274c INCORRECT \u2014 The claim of 31 tests is wrong. The individual category counts are correct and sum to 39, but the summary stated 31.\n\n---\n\n## C# 9.0 Compatibility Claim\n\n**Claim:** The code respects \"C# 9.0 feature availability (Unity constraint)\"\n\n**Verification:** Examined the test file and project configuration\n\n**Result:** \u26a0\ufe0f NOT APPLICABLE \u2014 The test project uses:\n- `LangVersion: latest`\n- `TargetFramework: net10.0`\n- File-scoped namespace syntax (line 4: `namespace Sharpy.Compiler.Tests.Integration;`)\n\nFile-scoped namespaces are a **C# 10 feature**, not available in C# 9.0. However, this is the **test project**, not the compiler output. The C# 9.0 constraint applies to the **generated code** from the Sharpy compiler, not to the compiler's own test code.\n\n---\n\n## Feature Coverage Verification\n\n**Claim:** Tests cover various class features\n\n| Feature Claimed | Present in Tests | Result |\n|-----------------|------------------|--------|\n| Empty classes | Line 28-39 | \u2705 CORRECT |\n| Field initialization | Line 46-57 | \u2705 CORRECT |\n| `__init__` constructor | Line 89-107 | \u2705 CORRECT |\n| Constructor overloading | Lines 135-200 | \u2705 CORRECT |\n| Instance methods with `self` | Lines 232-373 | \u2705 CORRECT |\n| Static methods | Lines 379-472 | \u2705 CORRECT |\n| Name mangling (snake_case \u2192 PascalCase) | Lines 478-577 | \u2705 CORRECT |\n| Error cases (undefined class, wrong args) | Lines 795-923 | \u2705 CORRECT |\n\n---\n\n## Summary\n\n| Aspect | Verdict |\n|--------|---------|\n| File exists | \u2705 CORRECT |\n| Test categories exist | \u2705 CORRECT |\n| Individual category counts | \u2705 CORRECT |\n| Total test count (31) | \u274c INCORRECT (actual: 39) |\n| Test content matches descriptions | \u2705 CORRECT |\n\n**Overall Assessment:** The claims are mostly accurate. The test file exists with the described structure and test categories. The only factual error is the **total test count**: the file contains **39 tests**, not 31. This appears to be an arithmetic error (the category counts add up to 39, not 31).\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": false,
           "human_question": null,
@@ -459,7 +497,7 @@
           "title": "Document Phase 0.1.6 Exit Criteria Verification",
           "description": "**Type:** \ud83d\udcdd Documentation  \n**Priority:** High  \n**Estimated Time:** 30 minutes\n\n\ud83d\udcc1 **Files**: `docs/implementation/phase_0_1_6_complete.md`\n\n### Objective\nVerify and document that all exit criteria are met.\n\n### Exit Criteria Checklist\n\n| Criterion | Test | Status |\n|-----------|------|--------|\n| Classes compile to C# classes | `SimpleClass_CompilesAndRuns` | [ ] |\n| Fields declared and accessible | `ClassWithConstructor_InitializesFields` | [ ] |\n| `__init__` compiles to constructor | `ClassWi",
           "files": [],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": true,
@@ -1303,14 +1341,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "0.1.6.10",
-  "total_attempts": 8,
-  "total_successes": 8,
+  "current_task_id": "0.1.6.11",
+  "total_attempts": 9,
+  "total_successes": 9,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 8,
-      "successes": 8,
+      "attempts": 9,
+      "successes": 9,
       "failures": 0
     },
     "copilot": {
@@ -1319,5 +1357,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 11.666666666666666
+  "overall_progress": 13.333333333333334
 }
