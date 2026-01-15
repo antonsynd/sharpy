@@ -745,7 +745,41 @@ public class RoslynEmitter
         return interfaceDecl;
     }
 
-    private EnumDeclarationSyntax GenerateEnumDeclaration(EnumDef enumDef)
+    private SyntaxNode GenerateEnumDeclaration(EnumDef enumDef)
+    {
+        // Determine if this is a string enum or integer enum
+        bool isStringEnum = IsStringEnum(enumDef);
+
+        if (isStringEnum)
+        {
+            return GenerateStringEnumClass(enumDef);
+        }
+        else
+        {
+            return GenerateIntegerEnum(enumDef);
+        }
+    }
+
+    /// <summary>
+    /// Determines if an enum is a string enum (has at least one string literal value)
+    /// </summary>
+    private bool IsStringEnum(EnumDef enumDef)
+    {
+        // Check if any member has a string value
+        foreach (var member in enumDef.Members)
+        {
+            if (member.Value is StringLiteral)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Generates a C# enum for integer enums
+    /// </summary>
+    private EnumDeclarationSyntax GenerateIntegerEnum(EnumDef enumDef)
     {
         // Transform enum name
         var enumName = NameMangler.Transform(enumDef.Name, NameContext.Type);
@@ -769,6 +803,76 @@ public class RoslynEmitter
         }
 
         return enumDecl;
+    }
+
+    /// <summary>
+    /// Generates a sealed class with public static readonly string fields for string enums
+    /// </summary>
+    private ClassDeclarationSyntax GenerateStringEnumClass(EnumDef enumDef)
+    {
+        // Transform enum name
+        var className = NameMangler.Transform(enumDef.Name, NameContext.Type);
+
+        // Create public sealed class
+        var modifiers = TokenList(
+            Token(SyntaxKind.PublicKeyword),
+            Token(SyntaxKind.SealedKeyword)
+        );
+
+        var classDecl = ClassDeclaration(className)
+            .WithModifiers(modifiers);
+
+        // Generate public static readonly string fields for each member
+        var members = new List<MemberDeclarationSyntax>();
+
+        foreach (var member in enumDef.Members)
+        {
+            var fieldName = NameMangler.Transform(member.Name, NameContext.Constant);
+
+            // Determine the value - use the explicit value if provided, otherwise use the member name
+            ExpressionSyntax valueExpr;
+            if (member.Value is StringLiteral strLit)
+            {
+                valueExpr = GenerateExpression(strLit);
+            }
+            else
+            {
+                // Default to the original member name as a string
+                valueExpr = LiteralExpression(
+                    SyntaxKind.StringLiteralExpression,
+                    Literal(member.Name)
+                );
+            }
+
+            var field = FieldDeclaration(
+                VariableDeclaration(
+                    PredefinedType(Token(SyntaxKind.StringKeyword))
+                )
+                .WithVariables(
+                    SingletonSeparatedList(
+                        VariableDeclarator(Identifier(fieldName))
+                            .WithInitializer(EqualsValueClause(valueExpr))
+                    )
+                )
+            )
+            .WithModifiers(TokenList(
+                Token(SyntaxKind.PublicKeyword),
+                Token(SyntaxKind.StaticKeyword),
+                Token(SyntaxKind.ReadOnlyKeyword)
+            ));
+
+            members.Add(field);
+        }
+
+        classDecl = classDecl.WithMembers(List(members));
+
+        // Add XML documentation from docstring if present
+        if (!string.IsNullOrEmpty(enumDef.DocString))
+        {
+            classDecl = classDecl.WithLeadingTrivia(GenerateXmlDocComment(enumDef.DocString));
+        }
+
+        return classDecl;
     }
 
     private EnumMemberDeclarationSyntax GenerateEnumMember(EnumMember member)
