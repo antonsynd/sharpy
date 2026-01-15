@@ -19,6 +19,7 @@ public class RoslynEmitter
     private readonly Dictionary<string, int> _variableVersions = new();
     private readonly HashSet<string> _constVariables = new(); // Track const variable names (original Sharpy names)
     private readonly HashSet<string> _moduleConstVariables = new(); // Track module-level const names (preserved across function scopes)
+    private readonly HashSet<string> _classNames = new(); // Track class names defined in the current module
     private int _tempVarCounter = 0;
 
     // Target type context for collection literal type inference
@@ -605,6 +606,9 @@ public class RoslynEmitter
 
     private ClassDeclarationSyntax GenerateClassDeclaration(ClassDef classDef)
     {
+        // Track this class name for instantiation detection
+        _classNames.Add(classDef.Name);
+
         // Transform class name
         var className = NameMangler.Transform(classDef.Name, NameContext.Type);
 
@@ -2066,6 +2070,15 @@ public class RoslynEmitter
     {
         if (call.Function is Identifier funcName)
         {
+            // Check if this is a class instantiation (calling a class constructor)
+            // We check both:
+            // 1. The _classNames set (populated during GenerateClassDeclaration)
+            // 2. The symbol table (for testing and imported classes)
+            var symbol = _context.LookupSymbol(funcName.Name);
+            var isClassInstantiation = _classNames.Contains(funcName.Name) ||
+                                      (symbol is TypeSymbol typeSymbol &&
+                                       typeSymbol.TypeKind == Semantic.TypeKind.Class);
+
             var name = _context.IsBuiltinFunction(funcName.Name)
                 ? $"global::Sharpy.Core.Exports.{NameMangler.ToPascalCase(funcName.Name)}"
                 : NameMangler.ToPascalCase(funcName.Name);
@@ -2081,6 +2094,14 @@ public class RoslynEmitter
             // Combine positional and keyword arguments
             var allArgs = positionalArgs.Concat(keywordArgs).ToArray();
 
+            // For class instantiation, generate 'new ClassName(args)' instead of 'ClassName(args)'
+            if (isClassInstantiation)
+            {
+                return ObjectCreationExpression(ParseName(name))
+                    .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+            }
+
+            // Regular function call
             return InvocationExpression(ParseName(name))
                 .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
         }

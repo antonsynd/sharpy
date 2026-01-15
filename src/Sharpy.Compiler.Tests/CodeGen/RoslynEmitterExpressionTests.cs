@@ -1222,6 +1222,175 @@ public class RoslynEmitterExpressionTests
         code.Should().Contain(")");
     }
 
+    [Fact]
+    public void GenerateExpression_ClassInstantiation_GeneratesNewExpression()
+    {
+        // Arrange: Register a class type in the symbol table
+        var classSymbol = new TypeSymbol
+        {
+            Name = "Point",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+        _context.SymbolTable.Define(classSymbol);
+
+        var expr = new FunctionCall
+        {
+            Function = new Identifier { Name = "Point" },
+            Arguments = new List<Expression>
+            {
+                new IntegerLiteral { Value = "3" },
+                new IntegerLiteral { Value = "4" }
+            }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().StartWith("new");
+        code.Should().Contain("Point");
+        code.Should().Contain("3");
+        code.Should().Contain("4");
+        result.Should().BeOfType<ObjectCreationExpressionSyntax>();
+    }
+
+    [Fact]
+    public void GenerateExpression_ClassInstantiation_WithSnakeCaseName_AppliesNameMangling()
+    {
+        // Arrange: Register a class type with snake_case name
+        var classSymbol = new TypeSymbol
+        {
+            Name = "user_profile",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+        _context.SymbolTable.Define(classSymbol);
+
+        var expr = new FunctionCall
+        {
+            Function = new Identifier { Name = "user_profile" },
+            Arguments = new List<Expression>
+            {
+                new StringLiteral { Value = "john" }
+            }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().StartWith("new");
+        code.Should().Contain("UserProfile");
+        code.Should().Contain("\"john\"");
+        result.Should().BeOfType<ObjectCreationExpressionSyntax>();
+    }
+
+    [Fact]
+    public void GenerateExpression_ClassInstantiation_WithKeywordArguments_GeneratesNamedArguments()
+    {
+        // Arrange: Register a class type
+        var classSymbol = new TypeSymbol
+        {
+            Name = "Rectangle",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+        _context.SymbolTable.Define(classSymbol);
+
+        var expr = new FunctionCall
+        {
+            Function = new Identifier { Name = "Rectangle" },
+            Arguments = new List<Expression>(),
+            KeywordArguments = new List<KeywordArgument>
+            {
+                new KeywordArgument
+                {
+                    Name = "width",
+                    Value = new IntegerLiteral { Value = "10" }
+                },
+                new KeywordArgument
+                {
+                    Name = "height",
+                    Value = new IntegerLiteral { Value = "20" }
+                }
+            }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().StartWith("new");
+        code.Should().Contain("Rectangle");
+        code.Should().Contain("width");
+        code.Should().Contain("10");
+        code.Should().Contain("height");
+        code.Should().Contain("20");
+        result.Should().BeOfType<ObjectCreationExpressionSyntax>();
+    }
+
+    [Fact]
+    public void GenerateExpression_ClassInstantiation_ParameterlessConstructor_GeneratesEmptyArgList()
+    {
+        // Arrange: Register a class type
+        var classSymbol = new TypeSymbol
+        {
+            Name = "Empty",
+            Kind = SymbolKind.Type,
+            TypeKind = TypeKind.Class
+        };
+        _context.SymbolTable.Define(classSymbol);
+
+        var expr = new FunctionCall
+        {
+            Function = new Identifier { Name = "Empty" },
+            Arguments = new List<Expression>()
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().StartWith("new");
+        code.Should().Contain("Empty");
+        code.Should().Contain("()");
+        result.Should().BeOfType<ObjectCreationExpressionSyntax>();
+    }
+
+    [Fact]
+    public void GenerateExpression_RegularFunctionCall_NotClass_GeneratesInvocation()
+    {
+        // Arrange: Register a regular function (not a class)
+        var funcSymbol = new FunctionSymbol
+        {
+            Name = "calculate",
+            Kind = SymbolKind.Function
+        };
+        _context.SymbolTable.Define(funcSymbol);
+
+        var expr = new FunctionCall
+        {
+            Function = new Identifier { Name = "calculate" },
+            Arguments = new List<Expression>
+            {
+                new IntegerLiteral { Value = "5" }
+            }
+        };
+
+        // Act
+        var result = InvokeGenerateExpression(expr);
+
+        // Assert
+        var code = result.ToString();
+        code.Should().Be("Calculate(5)");
+        code.Should().NotContain("new");
+    }
+
     #endregion
 
     #region Parenthesized Expression Tests
