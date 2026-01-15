@@ -446,13 +446,53 @@ public class TypeChecker
     {
         _logger.LogDebug($"Type checking struct: {structDef.Name}");
 
+        // Look up the struct symbol
+        var structSymbol = _symbolTable.Lookup(structDef.Name) as TypeSymbol;
+        if (structSymbol == null)
+        {
+            AddError($"Struct symbol for '{structDef.Name}' not found", structDef.LineStart, structDef.ColumnStart);
+            return;
+        }
+
         // Enter struct scope
         _symbolTable.EnterScope($"struct:{structDef.Name}");
 
+        // Resolve field types first (before checking methods that might reference them)
+        for (int i = 0; i < structSymbol.Fields.Count; i++)
+        {
+            var fieldSymbol = structSymbol.Fields[i];
+            if (fieldSymbol.Type == SemanticType.Unknown)
+            {
+                // Find the corresponding VariableDeclaration in the AST
+                var fieldDecl = structDef.Body
+                    .OfType<VariableDeclaration>()
+                    .FirstOrDefault(v => v.Name == fieldSymbol.Name);
+
+                if (fieldDecl != null)
+                {
+                    var resolvedType = _typeResolver.ResolveTypeAnnotation(fieldDecl.Type);
+                    structSymbol.Fields[i] = fieldSymbol with { Type = resolvedType };
+                }
+            }
+        }
+
+        // Set current class for method type checking (structs behave like classes)
+        var previousClass = _currentClass;
+        _currentClass = structSymbol;
+        _accessValidator.EnterClass(structSymbol);
+
+        // Check all members
         foreach (var statement in structDef.Body)
         {
             CheckStatement(statement);
         }
+
+        // Validate struct-specific rules
+        ValidateStructRules(structSymbol, structDef);
+
+        // Restore previous class
+        _currentClass = previousClass;
+        _accessValidator.ExitClass();
 
         _symbolTable.ExitScope();
     }
@@ -2355,6 +2395,106 @@ public class TypeChecker
                     $"Duplicate constructor signature in '{type.Name}': __init__({signature})",
                     ctor.DeclarationLine,
                     ctor.DeclarationColumn);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Validate struct-specific rules
+    /// </summary>
+    private void ValidateStructRules(TypeSymbol structSymbol, StructDef structDef)
+    {
+        _logger.LogDebug($"Validating struct-specific rules for '{structSymbol.Name}'");
+
+        // Validate that if a struct has a constructor, it initializes ALL fields
+        if (structSymbol.Constructors.Count > 0)
+        {
+            foreach (var constructor in structSymbol.Constructors)
+            {
+                ValidateStructConstructorInitializesAllFields(structSymbol, constructor, structDef);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Validate that a struct constructor initializes all fields
+    /// </summary>
+    private void ValidateStructConstructorInitializesAllFields(
+        TypeSymbol structSymbol,
+        FunctionSymbol constructor,
+        StructDef structDef)
+    {
+        // Find the constructor function definition in the struct body
+        var constructorDef = structDef.Body
+            .OfType<FunctionDef>()
+            .FirstOrDefault(f => f.Name == "__init__" && f.LineStart == constructor.DeclarationLine);
+
+        if (constructorDef == null)
+        {
+            return; // Constructor not found in AST (shouldn't happen)
+        }
+
+        // Track which fields are initialized
+        var initializedFields = new HashSet<string>();
+
+        // Analyze the constructor body to find field assignments (self.field = ...)
+        AnalyzeConstructorForFieldInitialization(constructorDef.Body, initializedFields);
+
+        // Check if all fields are initialized
+        var uninitializedFields = structSymbol.Fields
+            .Where(f => !initializedFields.Contains(f.Name))
+            .ToList();
+
+        if (uninitializedFields.Count > 0)
+        {
+            var fieldNames = string.Join(", ", uninitializedFields.Select(f => $"'{f.Name}'"));
+            AddError(
+                $"Struct '{structSymbol.Name}' constructor must initialize all fields. " +
+                $"Missing initialization for: {fieldNames}",
+                constructorDef.LineStart,
+                constructorDef.ColumnStart);
+        }
+    }
+
+    /// <summary>
+    /// Recursively analyze statements to find field initializations (self.field = ...)
+    /// </summary>
+    private void AnalyzeConstructorForFieldInitialization(
+        IReadOnlyList<Statement> statements,
+        HashSet<string> initializedFields)
+    {
+        foreach (var statement in statements)
+        {
+            switch (statement)
+            {
+                case Assignment assignment:
+                    // Check if this is a self.field assignment
+                    if (assignment.Target is MemberAccess memberAccess &&
+                        memberAccess.Object is Identifier id &&
+                        id.Name == "self")
+                    {
+                        initializedFields.Add(memberAccess.Member);
+                    }
+                    break;
+
+                case IfStatement ifStmt:
+                    // Don't track fields initialized inside conditionals
+                    // They must be initialized unconditionally
+                    break;
+
+                case WhileStatement whileStmt:
+                    // Don't track fields initialized inside loops
+                    break;
+
+                case ForStatement forStmt:
+                    // Don't track fields initialized inside loops
+                    break;
+
+                case TryStatement tryStmt:
+                    // Don't track fields initialized inside try/except
+                    break;
+
+                // For other statement types, we don't need special handling
             }
         }
     }
