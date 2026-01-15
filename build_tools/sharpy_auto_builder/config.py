@@ -84,6 +84,35 @@ class CheckpointConfig:
 
 
 @dataclass
+class MemoryConfig:
+    """Configuration for LangGraph memory store."""
+
+    # Enable memory store
+    enabled: bool = True
+
+    # Embedding provider: None (exact key matching), "openai", or "local"
+    embedding_provider: Optional[Literal["openai", "local"]] = None
+
+    # OpenAI embedding model
+    openai_embedding_model: str = "text-embedding-3-small"
+
+    # Local embedding model
+    local_embedding_model: str = "all-MiniLM-L6-v2"
+
+    # Maximum patterns to return per query
+    max_patterns_per_query: int = 5
+
+    # Minimum similarity score for pattern matching (0.0-1.0)
+    min_similarity_score: float = 0.5
+
+    # Maximum length for pattern text (truncate longer values)
+    max_pattern_length: int = 1000
+
+    # Maximum patterns to store (for cleanup)
+    max_patterns_stored: int = 10000
+
+
+@dataclass
 class Config(BaseConfig):
     """
     Main configuration for Sharpy Auto Builder.
@@ -139,6 +168,10 @@ class Config(BaseConfig):
     @property
     def checkpoint_db_path(self) -> Path:
         return self.state_dir / "orchestrator_checkpoints.db"
+
+    @property
+    def memory_store_path(self) -> Path:
+        return self.state_dir / "memory_store.db"
 
     # Backend configurations
     backends: dict[BackendType, BackendConfig] = field(
@@ -209,6 +242,9 @@ class Config(BaseConfig):
     # Checkpoint configuration
     checkpoint: CheckpointConfig = field(default_factory=CheckpointConfig)
 
+    # Memory store configuration
+    memory: MemoryConfig = field(default_factory=MemoryConfig)
+
     def ensure_directories(self) -> None:
         """
         Create required directories if they don't exist.
@@ -271,6 +307,16 @@ class Config(BaseConfig):
                 "max_checkpoints_per_thread": self.checkpoint.max_checkpoints_per_thread,
                 "cleanup_interval": self.checkpoint.cleanup_interval,
                 "retain_failed_checkpoints_days": self.checkpoint.retain_failed_checkpoints_days,
+            },
+            "memory": {
+                "enabled": self.memory.enabled,
+                "embedding_provider": self.memory.embedding_provider,
+                "openai_embedding_model": self.memory.openai_embedding_model,
+                "local_embedding_model": self.memory.local_embedding_model,
+                "max_patterns_per_query": self.memory.max_patterns_per_query,
+                "min_similarity_score": self.memory.min_similarity_score,
+                "max_pattern_length": self.memory.max_pattern_length,
+                "max_patterns_stored": self.memory.max_patterns_stored,
             },
         }
 
@@ -370,6 +416,22 @@ class Config(BaseConfig):
                 retain_failed_checkpoints_days=cp_data.get(
                     "retain_failed_checkpoints_days", 7
                 ),
+            )
+        if "memory" in data:
+            mem_data = data["memory"]
+            config.memory = MemoryConfig(
+                enabled=mem_data.get("enabled", True),
+                embedding_provider=mem_data.get("embedding_provider", None),
+                openai_embedding_model=mem_data.get(
+                    "openai_embedding_model", "text-embedding-3-small"
+                ),
+                local_embedding_model=mem_data.get(
+                    "local_embedding_model", "all-MiniLM-L6-v2"
+                ),
+                max_patterns_per_query=mem_data.get("max_patterns_per_query", 5),
+                min_similarity_score=mem_data.get("min_similarity_score", 0.5),
+                max_pattern_length=mem_data.get("max_pattern_length", 1000),
+                max_patterns_stored=mem_data.get("max_patterns_stored", 10000),
             )
         return config
 

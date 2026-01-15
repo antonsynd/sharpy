@@ -5,6 +5,10 @@ langgraph>=0.2.0
 langchain-core>=0.3.0
 langgraph-checkpoint-sqlite>=2.0.0
 
+# Memory store (optional embeddings - memory works without them via exact key matching)
+# langchain-openai>=0.2.0  # Uncomment for OpenAI embeddings
+# sentence-transformers>=2.2.0  # Uncomment for local embeddings
+
 # Async support
 aiofiles>=23.2.1
 

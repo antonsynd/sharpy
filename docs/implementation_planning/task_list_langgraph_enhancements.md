@@ -636,9 +636,9 @@
 
 **Actions**:
 
-1. [ ] Add `langchain-openai>=0.2.0` for OpenAI embeddings (optional)
-2. [ ] Or add `sentence-transformers>=2.2.0` for local embeddings (optional)
-3. [ ] Memory works without embeddings (exact key matching)
+1. [x] Add `langchain-openai>=0.2.0` for OpenAI embeddings (optional)
+2. [x] Or add `sentence-transformers>=2.2.0` for local embeddings (optional)
+3. [x] Memory works without embeddings (exact key matching)
 
 **Verification**:
 - ✅ Test: Dependencies install without error
@@ -653,7 +653,7 @@
 
 **Actions**:
 
-1. [ ] Add `MemoryConfig` dataclass with fields:
+1. [x] Add `MemoryConfig` dataclass with fields:
    - `enabled: bool = True`
    - `embedding_provider: Optional[Literal["openai", "local"]] = None`
    - `openai_embedding_model: str = "text-embedding-3-small"`
@@ -662,8 +662,8 @@
    - `min_similarity_score: float = 0.5`
    - `max_pattern_length: int = 1000`
    - `max_patterns_stored: int = 10000`
-2. [ ] Add `memory: MemoryConfig` field to main `Config` class
-3. [ ] Add `memory_store_path` property returning `self.state_dir / "memory_store.db"`
+2. [x] Add `memory: MemoryConfig` field to main `Config` class
+3. [x] Add `memory_store_path` property returning `self.state_dir / "memory_store.db"`
 
 **Verification**:
 - ✅ Test: `Config().memory.enabled` returns True
@@ -678,10 +678,10 @@
 
 **Actions**:
 
-1. [ ] Create new file `memory.py`
-2. [ ] Add `Pattern` dataclass with fields: `id`, `namespace`, `task_type`, `description`, `solution`, `files`, `tags`, `created_at`, `success`, `metadata`
-3. [ ] Add `to_dict()` and `from_store_item()` methods
-4. [ ] Create `MemoryManager` class with namespace constants:
+1. [x] Create new file `memory.py`
+2. [x] Add `Pattern` dataclass with fields: `id`, `namespace`, `task_type`, `description`, `solution`, `files`, `tags`, `created_at`, `success`, `metadata`
+3. [x] Add `to_dict()` and `from_store_item()` methods
+4. [x] Create `MemoryManager` class with namespace constants:
    - `NS_IMPLEMENTATION = ("sharpy", "implementation_patterns")`
    - `NS_ERRORS = ("sharpy", "error_patterns")`
    - `NS_CODEBASE = ("sharpy", "codebase_knowledge")`
@@ -700,11 +700,11 @@
 
 **Actions**:
 
-1. [ ] Implement `store_implementation_pattern(task_type, description, solution, files, tags, task_id, metadata)` returning pattern ID
-2. [ ] Implement `store_error_pattern(error_type, description, error_message, solution, files, task_id)` returning pattern ID
-3. [ ] Implement `store_codebase_knowledge(category, knowledge, source_file, confidence)` returning knowledge ID
-4. [ ] Truncate long values to `max_pattern_length`
-5. [ ] Return empty string if memory disabled
+1. [x] Implement `store_implementation_pattern(task_type, description, solution, files, tags, task_id, metadata)` returning pattern ID
+2. [x] Implement `store_error_pattern(error_type, description, error_message, solution, files, task_id)` returning pattern ID
+3. [x] Implement `store_codebase_knowledge(category, knowledge, source_file, confidence)` returning knowledge ID
+4. [x] Truncate long values to `max_pattern_length`
+5. [x] Return empty string if memory disabled
 
 **Verification**:
 - ✅ Test: Patterns stored in correct namespace
@@ -719,10 +719,10 @@
 
 **Actions**:
 
-1. [ ] Implement `search_patterns(query, namespace, limit)` returning list of `Pattern`
-2. [ ] Use `store.search(namespace, query=query, limit=limit)` for semantic search
-3. [ ] Fallback to listing if search fails
-4. [ ] Return empty list if memory disabled
+1. [x] Implement `search_patterns(query, namespace, limit)` returning list of `Pattern`
+2. [x] Use `store.search(namespace, query=query, limit=limit)` for semantic search
+3. [x] Fallback to listing if search fails
+4. [x] Return empty list if memory disabled
 
 **Verification**:
 - ✅ Test: Search returns relevant patterns
@@ -737,9 +737,9 @@
 
 **Actions**:
 
-1. [ ] Implement `get_implementation_context(task_description)` returning formatted context string
-2. [ ] Implement `get_error_avoidance_context(task_description)` returning warnings about past errors
-3. [ ] Implement `get_codebase_context(file_path)` returning relevant codebase knowledge
+1. [x] Implement `get_implementation_context(task_description)` returning formatted context string
+2. [x] Implement `get_error_avoidance_context(task_description)` returning warnings about past errors
+3. [x] Implement `get_codebase_context(file_path)` returning relevant codebase knowledge
 
 **Verification**:
 - ✅ Test: Context includes relevant patterns
