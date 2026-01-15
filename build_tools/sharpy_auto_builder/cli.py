@@ -16,6 +16,7 @@ from .state import GroundTruth, parse_task_list
 from .orchestrator import Orchestrator
 from .human_loop import HumanLoopManager
 from .interrupt_handler import display_interrupt, collect_response
+from .memory import MemoryManager
 
 # Import Command for interrupt resume
 from langgraph.types import Command
@@ -825,6 +826,272 @@ def cmd_checkpoint_cleanup(args):
         sys.exit(1)
 
 
+def cmd_memory_search(args):
+    """Search for patterns in memory store."""
+    config = Config()
+    if args.project_root:
+        config.project_root = Path(args.project_root)
+
+    if not config.memory.enabled:
+        print("Memory store is disabled in configuration.")
+        sys.exit(1)
+
+    db_path = config.memory_store_path
+    if not db_path.exists():
+        print("No memory store database found.")
+        print(f"  (Expected at {db_path})")
+        print("  Run the auto builder first to create patterns.")
+        return
+
+    # Create memory manager
+    from langgraph.store.memory import InMemoryStore
+
+    try:
+        store = InMemoryStore()
+        memory_manager = MemoryManager(store, config.memory)
+    except Exception as e:
+        print(f"Error initializing memory manager: {e}")
+        sys.exit(1)
+
+    # Map namespace names to tuples
+    namespace_map = {
+        "implementation": MemoryManager.NS_IMPLEMENTATION,
+        "errors": MemoryManager.NS_ERRORS,
+        "codebase": MemoryManager.NS_CODEBASE,
+        "spec": MemoryManager.NS_SPEC,
+    }
+
+    namespace = None
+    if args.namespace:
+        if args.namespace not in namespace_map:
+            print(
+                f"Error: Invalid namespace '{args.namespace}'. Must be one of: {', '.join(namespace_map.keys())}"
+            )
+            sys.exit(1)
+        namespace = namespace_map[args.namespace]
+
+    # Search patterns
+    try:
+        if namespace:
+            patterns = memory_manager.search_patterns(
+                query=args.query, namespace=namespace, limit=args.limit
+            )
+        else:
+            # Search across all namespaces
+            all_patterns = []
+            for ns in namespace_map.values():
+                patterns = memory_manager.search_patterns(
+                    query=args.query, namespace=ns, limit=args.limit
+                )
+                all_patterns.extend(patterns)
+            patterns = all_patterns[: args.limit]
+
+        if not patterns:
+            print(f'No patterns found matching query: "{args.query}"')
+            if namespace:
+                print(f"  (searched in namespace: {args.namespace})")
+            else:
+                print(f"  (searched across all namespaces)")
+            return
+
+        print(f"\n{'='*60}")
+        print(f"MEMORY SEARCH RESULTS: {len(patterns)} patterns found")
+        print(f"{'='*60}\n")
+
+        for i, pattern in enumerate(patterns, 1):
+            print(f"[{i}] {pattern.id}")
+            print(f"    Namespace: {'/'.join(pattern.namespace)}")
+            print(f"    Type: {pattern.task_type}")
+            print(f"    Description: {pattern.description}")
+            print(f"    Created: {pattern.created_at.strftime('%Y-%m-%d %H:%M:%S')}")
+            if pattern.files:
+                print(f"    Files: {', '.join(pattern.files[:3])}")
+                if len(pattern.files) > 3:
+                    print(f"           ... and {len(pattern.files) - 3} more")
+            if pattern.tags:
+                print(f"    Tags: {', '.join(pattern.tags)}")
+            print(f"    Solution preview: {pattern.solution[:100]}...")
+            print()
+
+    except Exception as e:
+        print(f"Error searching patterns: {e}")
+        sys.exit(1)
+
+
+def cmd_memory_stats(args):
+    """Show memory store statistics."""
+    config = Config()
+    if args.project_root:
+        config.project_root = Path(args.project_root)
+
+    if not config.memory.enabled:
+        print("Memory store is disabled in configuration.")
+        sys.exit(1)
+
+    db_path = config.memory_store_path
+    if not db_path.exists():
+        print("No memory store database found.")
+        print(f"  (Expected at {db_path})")
+        return
+
+    # Create memory manager
+    from langgraph.store.memory import InMemoryStore
+
+    try:
+        store = InMemoryStore()
+        memory_manager = MemoryManager(store, config.memory)
+    except Exception as e:
+        print(f"Error initializing memory manager: {e}")
+        sys.exit(1)
+
+    # Get stats for each namespace
+    namespace_map = {
+        "implementation": MemoryManager.NS_IMPLEMENTATION,
+        "errors": MemoryManager.NS_ERRORS,
+        "codebase": MemoryManager.NS_CODEBASE,
+        "spec": MemoryManager.NS_SPEC,
+    }
+
+    print(f"\n{'='*60}")
+    print("MEMORY STORE STATISTICS")
+    print(f"{'='*60}")
+    print(f"\nDatabase: {db_path}")
+    if db_path.exists():
+        size_bytes = db_path.stat().st_size
+        size_mb = size_bytes / (1024 * 1024)
+        print(f"Database size: {size_mb:.2f} MB ({size_bytes} bytes)")
+
+    print(f"\nConfiguration:")
+    print(f"  Enabled: {config.memory.enabled}")
+    print(f"  Embedding provider: {config.memory.embedding_provider or 'None (exact key matching)'}")
+    print(f"  Max patterns per query: {config.memory.max_patterns_per_query}")
+    print(f"  Max pattern length: {config.memory.max_pattern_length}")
+
+    # Filter by namespace if specified
+    if args.namespace:
+        if args.namespace not in namespace_map:
+            print(
+                f"Error: Invalid namespace '{args.namespace}'. Must be one of: {', '.join(namespace_map.keys())}"
+            )
+            sys.exit(1)
+        namespaces_to_query = {args.namespace: namespace_map[args.namespace]}
+    else:
+        namespaces_to_query = namespace_map
+
+    print(f"\nPatterns by namespace:")
+    total_patterns = 0
+    for name, ns in namespaces_to_query.items():
+        try:
+            # List all patterns in this namespace
+            patterns = memory_manager.search_patterns(query="", namespace=ns, limit=10000)
+            count = len(patterns)
+            total_patterns += count
+            print(f"  {name}: {count} patterns")
+
+            # Show breakdown by task_type
+            if count > 0:
+                task_types = {}
+                for p in patterns:
+                    task_types[p.task_type] = task_types.get(p.task_type, 0) + 1
+                print(f"     Types: {', '.join(f'{k}({v})' for k, v in sorted(task_types.items())[:5])}")
+                if len(task_types) > 5:
+                    print(f"            ... and {len(task_types) - 5} more types")
+        except Exception as e:
+            print(f"  {name}: Error - {e}")
+
+    print(f"\nTotal patterns: {total_patterns}")
+    print()
+
+
+def cmd_memory_clear(args):
+    """Clear patterns from memory store."""
+    config = Config()
+    if args.project_root:
+        config.project_root = Path(args.project_root)
+
+    if not config.memory.enabled:
+        print("Memory store is disabled in configuration.")
+        sys.exit(1)
+
+    db_path = config.memory_store_path
+    if not db_path.exists():
+        print("No memory store database found.")
+        return
+
+    # Map namespace names to tuples
+    namespace_map = {
+        "implementation": MemoryManager.NS_IMPLEMENTATION,
+        "errors": MemoryManager.NS_ERRORS,
+        "codebase": MemoryManager.NS_CODEBASE,
+        "spec": MemoryManager.NS_SPEC,
+    }
+
+    namespace = None
+    if args.namespace:
+        if args.namespace not in namespace_map:
+            print(
+                f"Error: Invalid namespace '{args.namespace}'. Must be one of: {', '.join(namespace_map.keys())}"
+            )
+            sys.exit(1)
+        namespace = namespace_map[args.namespace]
+
+    # Require confirmation
+    if not args.confirm:
+        if namespace:
+            print(
+                f"This will delete all patterns from namespace '{args.namespace}'."
+            )
+        else:
+            print("This will delete ALL patterns from the memory store.")
+        print("Add --confirm to proceed.")
+        return
+
+    # Create memory manager
+    from langgraph.store.memory import InMemoryStore
+
+    try:
+        store = InMemoryStore()
+        memory_manager = MemoryManager(store, config.memory)
+    except Exception as e:
+        print(f"Error initializing memory manager: {e}")
+        sys.exit(1)
+
+    # Delete patterns
+    try:
+        if namespace:
+            # Delete from specific namespace
+            patterns = memory_manager.search_patterns(
+                query="", namespace=namespace, limit=10000
+            )
+            count = len(patterns)
+
+            for pattern in patterns:
+                try:
+                    store.delete(namespace=namespace, key=pattern.id)
+                except Exception as e:
+                    print(f"Warning: Failed to delete pattern {pattern.id}: {e}")
+
+            print(f"Deleted {count} patterns from namespace '{args.namespace}'")
+        else:
+            # Delete from all namespaces
+            total_deleted = 0
+            for name, ns in namespace_map.items():
+                patterns = memory_manager.search_patterns(query="", namespace=ns, limit=10000)
+                for pattern in patterns:
+                    try:
+                        store.delete(namespace=ns, key=pattern.id)
+                        total_deleted += 1
+                    except Exception as e:
+                        print(f"Warning: Failed to delete pattern {pattern.id}: {e}")
+                print(f"  Deleted {len(patterns)} patterns from {name}")
+
+            print(f"\nTotal deleted: {total_deleted} patterns")
+
+    except Exception as e:
+        print(f"Error clearing patterns: {e}")
+        sys.exit(1)
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="sharpy-auto-builder",
@@ -997,11 +1264,82 @@ def main():
         help="Show what would be deleted without actually deleting",
     )
 
+    # memory command group
+    memory_parser = subparsers.add_parser(
+        "memory", help="Memory store commands for pattern management"
+    )
+    memory_subparsers = memory_parser.add_subparsers(
+        dest="memory_command", help="Memory commands"
+    )
+
+    # memory search command
+    memory_search_parser = memory_subparsers.add_parser(
+        "search", help="Search for patterns in memory store"
+    )
+    memory_search_parser.add_argument("query", help="Search query string")
+    memory_search_parser.add_argument(
+        "--namespace",
+        "-n",
+        choices=["implementation", "errors", "codebase", "spec"],
+        help="Limit search to specific namespace (default: search all)",
+        default=None,
+    )
+    memory_search_parser.add_argument(
+        "--limit",
+        "-l",
+        type=int,
+        help="Maximum number of results to return (default: 10)",
+        default=10,
+    )
+
+    # memory stats command
+    memory_stats_parser = memory_subparsers.add_parser(
+        "stats", help="Show memory store statistics"
+    )
+    memory_stats_parser.add_argument(
+        "--namespace",
+        "-n",
+        choices=["implementation", "errors", "codebase", "spec"],
+        help="Show stats for specific namespace only",
+        default=None,
+    )
+
+    # memory clear command
+    memory_clear_parser = memory_subparsers.add_parser(
+        "clear", help="Clear patterns from memory store"
+    )
+    memory_clear_parser.add_argument(
+        "--namespace",
+        "-n",
+        choices=["implementation", "errors", "codebase", "spec"],
+        help="Clear only this namespace (default: clear all)",
+        default=None,
+    )
+    memory_clear_parser.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Confirm deletion (required to actually delete)",
+    )
+
     args = parser.parse_args()
 
     if not args.command:
         parser.print_help()
         sys.exit(1)
+
+    # Handle memory subcommands
+    if args.command == "memory":
+        if not hasattr(args, "memory_command") or args.memory_command is None:
+            memory_parser.print_help()
+            sys.exit(1)
+
+        memory_commands = {
+            "search": cmd_memory_search,
+            "stats": cmd_memory_stats,
+            "clear": cmd_memory_clear,
+        }
+        memory_commands[args.memory_command](args)
+        return
 
     commands = {
         "init": cmd_init,

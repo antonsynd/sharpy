@@ -813,10 +813,10 @@
 
 **Actions**:
 
-1. [ ] Add `memory` command group
-2. [ ] Add `memory search --namespace -n --limit -l QUERY` command
-3. [ ] Add `memory stats --namespace -n` command
-4. [ ] Add `memory clear --namespace -n --confirm` command
+1. [x] Add `memory` command group
+2. [x] Add `memory search --namespace -n --limit -l QUERY` command
+3. [x] Add `memory stats --namespace -n` command
+4. [x] Add `memory clear --namespace -n --confirm` command
 
 **Verification**:
 - ✅ Test: `./auto_builder.sh memory search "parsing"` returns results
