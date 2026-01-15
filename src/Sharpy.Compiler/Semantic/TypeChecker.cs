@@ -1477,21 +1477,21 @@ public class TypeChecker
 
         if (objectType is UserDefinedType udt && udt.Symbol != null)
         {
-            // Look for field or property
-            var field = udt.Symbol.Fields.FirstOrDefault(f => f.Name == memberAccess.Member);
-            if (field != null)
+            // Look for field or property (including inherited fields)
+            var (field, fieldOwner) = FindFieldInHierarchy(udt.Symbol, memberAccess.Member);
+            if (field != null && fieldOwner != null)
             {
                 // Validate access level
-                _accessValidator.ValidateFieldAccess(field, udt.Symbol, memberAccess.LineStart, memberAccess.ColumnStart);
+                _accessValidator.ValidateFieldAccess(field, fieldOwner, memberAccess.LineStart, memberAccess.ColumnStart);
                 return field.Type;
             }
 
-            // Look for method
-            var method = udt.Symbol.Methods.FirstOrDefault(m => m.Name == memberAccess.Member);
-            if (method != null)
+            // Look for method (including inherited methods)
+            var (method, methodOwner) = FindMethodInHierarchy(udt.Symbol, memberAccess.Member);
+            if (method != null && methodOwner != null)
             {
                 // Validate access level
-                _accessValidator.ValidateMethodAccess(method, udt.Symbol, memberAccess.LineStart, memberAccess.ColumnStart);
+                _accessValidator.ValidateMethodAccess(method, methodOwner, memberAccess.LineStart, memberAccess.ColumnStart);
 
                 // When accessing a method via member access (obj.method), the object is implicitly
                 // bound as the first parameter (self), so we skip it when creating the FunctionType
@@ -1509,6 +1509,60 @@ public class TypeChecker
         }
 
         return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Finds a field by name in the type's hierarchy (including parent classes and interfaces).
+    /// </summary>
+    private (VariableSymbol? Field, TypeSymbol? Owner) FindFieldInHierarchy(TypeSymbol type, string fieldName)
+    {
+        // First check the type itself
+        var field = type.Fields.FirstOrDefault(f => f.Name == fieldName);
+        if (field != null)
+            return (field, type);
+
+        // Check base class chain
+        var current = type.BaseType;
+        while (current != null)
+        {
+            field = current.Fields.FirstOrDefault(f => f.Name == fieldName);
+            if (field != null)
+                return (field, current);
+            current = current.BaseType;
+        }
+
+        return (null, null);
+    }
+
+    /// <summary>
+    /// Finds a method by name in the type's hierarchy (including parent classes and interfaces).
+    /// </summary>
+    private (FunctionSymbol? Method, TypeSymbol? Owner) FindMethodInHierarchy(TypeSymbol type, string methodName)
+    {
+        // First check the type itself
+        var method = type.Methods.FirstOrDefault(m => m.Name == methodName);
+        if (method != null)
+            return (method, type);
+
+        // Check base class chain
+        var current = type.BaseType;
+        while (current != null)
+        {
+            method = current.Methods.FirstOrDefault(m => m.Name == methodName);
+            if (method != null)
+                return (method, current);
+            current = current.BaseType;
+        }
+
+        // Check interfaces (for method contracts)
+        foreach (var iface in type.Interfaces)
+        {
+            method = iface.Methods.FirstOrDefault(m => m.Name == methodName);
+            if (method != null)
+                return (method, iface);
+        }
+
+        return (null, null);
     }
 
     private SemanticType CheckIndexAccess(IndexAccess indexAccess)

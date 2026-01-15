@@ -31,6 +31,13 @@ public class ControlFlowValidator
     {
         _logger.LogDebug($"Validating control flow for function: {functionDef.Name}");
 
+        // Skip control flow validation for abstract methods - they're just declarations
+        bool isAbstract = functionDef.Decorators.Any(d => d.Name == "abstract" || d.Name == "abstractmethod");
+        if (isAbstract)
+        {
+            return;
+        }
+
         _inFunction = true;
         var (alwaysReturns, _) = ValidateBlock(functionDef.Body);
         _inFunction = false;

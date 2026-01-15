@@ -67,6 +67,7 @@ public abstract class IntegrationTestBase
 
             var nameResolver = new NameResolver(symbolTable, logger);
             nameResolver.ResolveDeclarations(module);
+            nameResolver.ResolveInheritance(); // Second pass: resolve inheritance relationships
 
             if (nameResolver.Errors.Any())
             {
