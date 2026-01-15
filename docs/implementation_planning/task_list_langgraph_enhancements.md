@@ -236,9 +236,9 @@
 
 **Actions**:
 
-1. [ ] Add `HumanQuestionPayload` TypedDict with fields: `type`, `task_id`, `task_description`, `question`, `priority`, `context`, `options`
-2. [ ] Add `HumanReviewPayload` TypedDict with fields: `type`, `task_id`, `task_description`, `execution_result`, `validation_results`, `files_changed`, `diff_summary`
-3. [ ] Add `HumanResponse` TypedDict with fields: `approved`, `feedback`, `modified_value`, `retry`
+1. [x] Add `HumanQuestionPayload` TypedDict with fields: `type`, `task_id`, `task_description`, `question`, `priority`, `context`, `options`
+2. [x] Add `HumanReviewPayload` TypedDict with fields: `type`, `task_id`, `task_description`, `execution_result`, `validation_results`, `files_changed`, `diff_summary`
+3. [x] Add `HumanResponse` TypedDict with fields: `approved`, `feedback`, `modified_value`, `retry`
 
 **Verification**:
 - ✅ Test: TypedDicts can be instantiated

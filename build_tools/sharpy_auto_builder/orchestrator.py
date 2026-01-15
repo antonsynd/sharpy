@@ -54,6 +54,40 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from shared.logging import ExecutionLogger, LogEventType
 
 
+# Interrupt payload data structures for human-in-the-loop
+class HumanQuestionPayload(TypedDict):
+    """Payload for interrupt when asking human a question."""
+
+    type: Literal["question"]
+    task_id: str
+    task_description: str
+    question: str
+    priority: str  # "high", "medium", "low"
+    context: str
+    options: Optional[list[str]]  # Predefined options if any
+
+
+class HumanReviewPayload(TypedDict):
+    """Payload for interrupt when requesting human review."""
+
+    type: Literal["review"]
+    task_id: str
+    task_description: str
+    execution_result: dict
+    validation_results: list[dict]
+    files_changed: list[str]
+    diff_summary: str
+
+
+class HumanResponse(TypedDict):
+    """Response structure from human after interrupt."""
+
+    approved: bool
+    feedback: Optional[str]
+    modified_value: Optional[str]
+    retry: bool
+
+
 class OrchestratorState(TypedDict):
     """State for the LangGraph orchestrator."""
 
