@@ -449,6 +449,7 @@ public class RoslynEmitter
             StructDef structDef => GenerateStructDeclaration(structDef),
             InterfaceDef interfaceDef => GenerateInterfaceDeclaration(interfaceDef),
             EnumDef enumDef => GenerateEnumDeclaration(enumDef),
+            TypeAlias => null,  // Type aliases are compile-time only, no C# output
             ReturnStatement ret => GenerateReturn(ret),
             Assignment assign => GenerateAssignment(assign),
             // Add more statement types...

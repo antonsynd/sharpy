@@ -95,6 +95,10 @@ public class NameResolver
                 ResolveFromImport(fromImport);
                 break;
 
+            case TypeAlias typeAlias:
+                ResolveTypeAliasDeclaration(typeAlias);
+                break;
+
                 // Other statements are handled in later passes
         }
     }
@@ -458,6 +462,48 @@ public class NameResolver
         };
 
         _symbolTable.Define(varSymbol);
+    }
+
+    private void ResolveTypeAliasDeclaration(TypeAlias typeAlias)
+    {
+        _logger.LogDebug($"Resolving type alias declaration: {typeAlias.Name}");
+
+        // Check for redefinition
+        if (_symbolTable.Lookup(typeAlias.Name, searchParents: false) != null)
+        {
+            AddError($"Type alias '{typeAlias.Name}' is already defined",
+                typeAlias.LineStart, typeAlias.ColumnStart);
+            return;
+        }
+
+        // Validate that exactly one of Type or FunctionType is set
+        if (typeAlias.Type == null && typeAlias.FunctionType == null)
+        {
+            AddError($"Type alias '{typeAlias.Name}' must have a type",
+                typeAlias.LineStart, typeAlias.ColumnStart);
+            return;
+        }
+
+        if (typeAlias.Type != null && typeAlias.FunctionType != null)
+        {
+            AddError($"Type alias '{typeAlias.Name}' cannot have both Type and FunctionType",
+                typeAlias.LineStart, typeAlias.ColumnStart);
+            return;
+        }
+
+        // Create type alias symbol
+        var aliasSymbol = new TypeAliasSymbol
+        {
+            Name = typeAlias.Name,
+            Kind = SymbolKind.TypeAlias,
+            AccessLevel = AccessLevel.Public,
+            TypeAnnotation = typeAlias.Type,
+            FunctionType = typeAlias.FunctionType,
+            DeclarationLine = typeAlias.LineStart,
+            DeclarationColumn = typeAlias.ColumnStart
+        };
+
+        _symbolTable.Define(aliasSymbol);
     }
 
     private void ResolveImport(ImportStatement import)

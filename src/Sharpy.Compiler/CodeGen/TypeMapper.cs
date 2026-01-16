@@ -50,6 +50,27 @@ public class TypeMapper
             return PredefinedType(Token(SyntaxKind.ObjectKeyword));
         }
 
+        // Check if this is a type alias and expand it
+        var aliasSymbol = _context.SymbolTable.LookupTypeAlias(type.Name);
+        if (aliasSymbol != null)
+        {
+            // Expand the alias
+            if (aliasSymbol.TypeAnnotation != null)
+            {
+                // For type annotations, recursively map the underlying type
+                var expandedType = MapType(aliasSymbol.TypeAnnotation);
+                // Apply nullable modifier from usage site
+                return type.IsNullable ? NullableType(expandedType) : expandedType;
+            }
+            else if (aliasSymbol.FunctionType != null)
+            {
+                // For function types, map to C# delegate/Func/Action
+                var expandedType = MapFunctionType(aliasSymbol.FunctionType);
+                // Function types typically shouldn't be nullable, but handle it anyway
+                return type.IsNullable ? NullableType(expandedType) : expandedType;
+            }
+        }
+
         // Get base type name
         var baseTypeName = GetMappedTypeName(type.Name);
 

@@ -1,242 +1,356 @@
-# Implementation Plan: Task 0.1.9.6 - Type Narrowing
+# Implementation Plan: Task 0.1.9.8 - Type Alias Expansion
 
-## Executive Summary
+## Overview
 
-**Status: Type narrowing is already substantially implemented.** The codebase has a working type narrowing system in `TypeChecker.cs` that handles the core patterns specified in the task description. This analysis identifies what exists, what might be enhanced, and potential gaps.
+Type aliases are **compile-time only** constructs. They are expanded at every usage point, and NO C# declaration is generated for the alias itself.
 
----
-
-## Current Implementation Analysis
-
-### What Already Exists (in `TypeChecker.cs`)
-
-1. **Core Infrastructure** (lines 31, 806-910, 2248-2345):
-   - `_narrowedTypes` dictionary tracks narrowed types per variable
-   - `ExtractNarrowedTypes()` extracts narrowing patterns from conditions
-   - `ExtractNarrowingKey()` generates keys for narrowed variables (supports identifiers and index access)
-   - Save/restore mechanism for scope management
-
-2. **Supported Narrowing Patterns**:
-   - `x is not None` → narrows `T?` to `T` in positive branch (lines 2274-2289)
-   - `x is None` → narrows `T?` to `T` in negative branch (else) (lines 2290-2305)
-   - `isinstance(x, Type)` → narrows to `Type` in positive branch (lines 2306-2328)
-   - `A and B` → combines narrowings from both conditions (lines 2252-2272)
-   - Subscript narrowing: `arr[i] is not None` (via `ExtractNarrowingKey`)
-
-3. **Scope Integration**:
-   - `CheckIf()` applies narrowings in then/elif/else branches (lines 806-879)
-   - `CheckWhile()` applies narrowings in loop body (lines 881-910)
-   - Proper save/restore of narrowed types on scope entry/exit
-
-4. **Type Lookup**:
-   - `CheckIdentifier()` returns narrowed type if available (lines 1148-1150)
-   - `CheckIndexAccess()` supports narrowed subscript expressions (lines 1648-1650)
-
-### Existing Tests (in `TypeCheckerTests.cs`)
-
-| Test Name | Pattern Tested |
-|-----------|----------------|
-| `InfersNullableTypeFromNone` | `x is not None` narrowing |
-| `TypeNarrowingWithIsInstance` | `isinstance(x, Type)` narrowing |
-| `TypeNarrowingWithIsInstanceDoesNotAffectElseBranch` | Else branch isolation |
-| `TypeNarrowingWithIsInstanceInWhileLoop` | While loop + `and` combination |
-| `IsInstanceWithMultipleTypeChecks` | Multiple sequential isinstance |
-| `CombinedTypeNarrowingIsNotNoneAndIsInstance` | Combined `is not None and isinstance` |
-
----
-
-## Gap Analysis: What Might Be Missing
-
-### 1. **`or` Pattern Non-Narrowing (Spec Compliance)**
-The spec says: "Type narrowing does not occur with `or` as type union semantics do not exist in Sharpy"
-
-**Current State**: No explicit handling for `or` - the code simply doesn't extract narrowings from `or` patterns (correct behavior).
-
-**Status**: ✅ Compliant by omission (no narrowing occurs with `or`)
-
-### 2. **`is None` Narrowing to Never-Type**
-The spec says: "`is None` narrows to never-type in the `if` branch"
-
-**Current State**: The implementation narrows in the *else* branch but doesn't narrow to a "never-type" in the *if* branch. The spec's "never-type" concept may not be implemented.
-
-**Status**: ⚠️ Partial - The else branch is correct, but no "never-type" narrowing in the if branch.
-
-### 3. **Property Access Narrowing**
-The current implementation only narrows:
-- Simple identifiers (`value`)
-- Index access (`arr[i]`)
-
-Not supported:
-- Property access (`obj.field is not None`)
-
-**Status**: ⚠️ Gap - May need enhancement if property narrowing is desired.
-
-### 4. **Early Return Pattern**
-Pattern like:
+**Example:**
 ```python
-if value is None:
-    return
-# After this, value should be narrowed
+type UserId = int
+type StringList = list[str]
+type Callback = (int, str) -> bool
+
+x: UserId = 42           # Treated as int
+items: StringList = []   # Treated as list[str]
 ```
-
-**Current State**: This flow-sensitive narrowing is NOT supported. The narrowing is scoped to conditional blocks only.
-
-**Status**: ⚠️ Gap - This is a more advanced flow analysis feature.
 
 ---
 
-## Recommended Implementation Steps
+## Step-by-Step Implementation
 
-Since the core implementation exists, this task should focus on **verification and potential enhancements**:
+### Step 1: Add TypeAliasSymbol to Symbol System
 
-### Step 1: Verify Existing Implementation (Verification Phase)
+**File:** `src/Sharpy.Compiler/Semantic/Symbol.cs`
 
-1. **Run existing tests** to confirm narrowing works:
-   ```bash
-   dotnet test --filter "TypeNarrowing|InfersNullable|IsInstance"
-   ```
-
-2. **Review test coverage** against the spec patterns in `type_narrowing.md`
-
-### Step 2: Add Missing Test Cases (If Needed)
-
-Add tests for any gaps identified:
+Add a new symbol class for type aliases:
 
 ```csharp
-// Test: or pattern does NOT narrow (spec compliance)
-[Fact]
-public void TypeNarrowingWithOrDoesNotNarrow()
+/// <summary>
+/// Type alias symbol (type UserId = int)
+/// Compile-time only - expanded at usage points, no C# output
+/// </summary>
+public record TypeAliasSymbol : Symbol
 {
-    var source = @"
-class Animal: ...
-class Dog(Animal): ...
-class Cat(Animal): ...
+    /// <summary>Target type annotation (for regular type aliases)</summary>
+    public TypeAnnotation? TargetType { get; init; }
 
-animal: Animal = Dog()
-if isinstance(animal, Dog) or isinstance(animal, Cat):
-    # animal should NOT be narrowed here
-    a: Animal = animal  # This should work (not narrowed to Dog or Cat)
-";
-    // Assert no errors - animal remains Animal type
-}
+    /// <summary>Target function type (for function type aliases)</summary>
+    public FunctionType? TargetFunctionType { get; init; }
 
-// Test: is None in else branch narrows
-[Fact]
-public void TypeNarrowingWithIsNoneElseBranch()
-{
-    var source = @"
-value: str? = get_value()
-if value is None:
-    pass  # value is None here
-else:
-    x: str = value  # value is narrowed to str
-";
-    // Assert no errors
-}
-
-// Test: nested and narrowing
-[Fact]
-public void TypeNarrowingWithMultipleAnd()
-{
-    var source = @"
-a: str? = None
-b: int? = None
-if a is not None and b is not None:
-    x: str = a
-    y: int = b
-";
-    // Assert no errors
+    /// <summary>Resolved semantic type (cached after first resolution)</summary>
+    public SemanticType? ResolvedType { get; set; }
 }
 ```
 
-### Step 3: Potential Enhancements (Optional)
+Update `SymbolKind` enum:
+```csharp
+public enum SymbolKind
+{
+    Variable,
+    Parameter,
+    Function,
+    Type,
+    Module,
+    Property,
+    TypeAlias  // NEW
+}
+```
 
-If enhancements are needed based on requirements:
+---
 
-#### 3a. Property Access Narrowing
-Extend `ExtractNarrowingKey()` to support member access:
+### Step 2: Handle TypeAlias in NameResolver (Declaration Phase)
+
+**File:** `src/Sharpy.Compiler/Semantic/NameResolver.cs`
+
+Add case to `ResolveDeclaration()` method (around line 97):
 
 ```csharp
-private string? ExtractNarrowingKey(Expression expr)
+case TypeAlias typeAlias:
+    ResolveTypeAliasDeclaration(typeAlias);
+    break;
+```
+
+Add new method `ResolveTypeAliasDeclaration()`:
+
+```csharp
+private void ResolveTypeAliasDeclaration(TypeAlias typeAlias)
 {
-    return expr switch
+    _logger.LogDebug($"Resolving type alias declaration: {typeAlias.Name}");
+
+    // Check for redefinition
+    if (_symbolTable.Lookup(typeAlias.Name, searchParents: false) != null)
     {
-        Identifier id => id.Name,
-        IndexAccess indexAccess => $"{ExtractNarrowingKey(indexAccess.Object)}[{ExtractNarrowingKey(indexAccess.Index)}]",
-        MemberAccess memberAccess => $"{ExtractNarrowingKey(memberAccess.Object)}.{memberAccess.Member}",
-        _ => null
+        AddError($"Type alias '{typeAlias.Name}' conflicts with existing definition",
+            typeAlias.LineStart, typeAlias.ColumnStart);
+        return;
+    }
+
+    var aliasSymbol = new TypeAliasSymbol
+    {
+        Name = typeAlias.Name,
+        Kind = SymbolKind.TypeAlias,
+        AccessLevel = AccessLevel.Public,
+        TargetType = typeAlias.Type,
+        TargetFunctionType = typeAlias.FunctionType,
+        DeclarationLine = typeAlias.LineStart,
+        DeclarationColumn = typeAlias.ColumnStart
+    };
+
+    _symbolTable.Define(aliasSymbol);
+}
+```
+
+---
+
+### Step 3: Expand Type Aliases in TypeResolver
+
+**File:** `src/Sharpy.Compiler/Semantic/TypeResolver.cs`
+
+This is the key change. Modify `ResolveTypeAnnotation()` to expand aliases.
+
+**Add field for recursion detection:**
+```csharp
+private readonly HashSet<string> _resolvingAliases = new();
+```
+
+**Modify type resolution logic (between builtin check and generic check):**
+
+After line 49 (after `result = builtinType;`), before the generic type check:
+
+```csharp
+// NEW: Check for type alias and expand it
+else if (TryExpandTypeAlias(annotation.Name, out var aliasType))
+{
+    result = aliasType;
+}
+```
+
+**Add helper methods:**
+
+```csharp
+private bool TryExpandTypeAlias(string name, out SemanticType type)
+{
+    type = null!;
+
+    var symbol = _symbolTable.Lookup(name);
+    if (symbol is not TypeAliasSymbol aliasSymbol)
+        return false;
+
+    // Check for circular alias (A -> B -> A)
+    if (_resolvingAliases.Contains(name))
+    {
+        AddError($"Circular type alias detected: '{name}'");
+        type = SemanticType.Unknown;
+        return true;
+    }
+
+    // Return cached resolution if available
+    if (aliasSymbol.ResolvedType != null)
+    {
+        type = aliasSymbol.ResolvedType;
+        return true;
+    }
+
+    // Mark as being resolved (for circular detection)
+    _resolvingAliases.Add(name);
+
+    try
+    {
+        if (aliasSymbol.TargetType != null)
+        {
+            // Regular type alias - recursively resolve target
+            type = ResolveTypeAnnotation(aliasSymbol.TargetType);
+        }
+        else if (aliasSymbol.TargetFunctionType != null)
+        {
+            // Function type alias
+            type = ResolveFunctionTypeAlias(aliasSymbol.TargetFunctionType);
+        }
+        else
+        {
+            AddError($"Type alias '{name}' has no target type");
+            type = SemanticType.Unknown;
+        }
+
+        // Cache the resolved type
+        aliasSymbol.ResolvedType = type;
+        return true;
+    }
+    finally
+    {
+        _resolvingAliases.Remove(name);
+    }
+}
+
+private SemanticType ResolveFunctionTypeAlias(Parser.Ast.FunctionType funcType)
+{
+    var paramTypes = funcType.ParameterTypes
+        .Select(ResolveTypeAnnotation)
+        .ToList();
+    var returnType = ResolveTypeAnnotation(funcType.ReturnType);
+
+    return new FunctionType  // FunctionType is in SemanticType.cs (line 225)
+    {
+        ParameterTypes = paramTypes,
+        ReturnType = returnType
     };
 }
 ```
 
-Then add to `CheckMemberAccess()` to look up narrowed types for property expressions.
+---
 
-#### 3b. Early Return Pattern (Advanced)
-This requires more significant changes:
-- Track "definite exit" paths (return, raise, break)
-- After an exit path with a condition, apply inverse narrowing to subsequent code
+### Step 4: Skip Type Aliases in Code Generation
 
-**Recommendation**: Defer to a future task if needed.
+**File:** `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`
+
+The existing code already handles this - the `GenerateStatement()` method at line 443 returns `null` for unrecognized statements via the `_ => null` default case. TypeAlias will fall through to this case.
+
+For clarity and explicit documentation, add an explicit case (around line 451, after EnumDef):
+
+```csharp
+TypeAlias => null,  // Type aliases are compile-time only, no C# output
+```
 
 ---
 
-## Key Files to Modify
+### Step 5: Add Tests
 
-| File | Purpose |
-|------|---------|
-| `src/Sharpy.Compiler/Semantic/TypeChecker.cs` | Main narrowing logic (lines 2248-2345) |
-| `src/Sharpy.Compiler.Tests/Semantic/TypeCheckerTests.cs` | Add/verify test cases |
+**File:** `src/Sharpy.Compiler.Tests/Semantic/TypeAliasTests.cs` (new file)
 
-The `SemanticAnalyzer.cs` file mentioned in the task description does NOT contain type narrowing logic - it's all in `TypeChecker.cs`.
+```csharp
+using Xunit;
+using FluentAssertions;
+using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Logging;
+
+namespace Sharpy.Compiler.Tests.Semantic;
+
+public class TypeAliasTests
+{
+    // Test 1: Basic builtin type alias
+    [Fact]
+    public void ExpandsBuiltinTypeAlias()
+    {
+        // type UserId = int
+        // x: UserId = 42
+        // Verify x is resolved as int
+    }
+
+    // Test 2: Generic type alias
+    [Fact]
+    public void ExpandsGenericTypeAlias()
+    {
+        // type StringList = list[str]
+        // items: StringList = []
+        // Verify items is resolved as list[str]
+    }
+
+    // Test 3: Function type alias
+    [Fact]
+    public void ExpandsFunctionTypeAlias()
+    {
+        // type Callback = (int, str) -> bool
+        // cb: Callback = ...
+        // Verify cb is resolved as function type
+    }
+
+    // Test 4: Transitive alias expansion
+    [Fact]
+    public void ExpandsTransitiveAliases()
+    {
+        // type A = int
+        // type B = A
+        // x: B = 42
+        // Verify x is resolved as int (not A, not B)
+    }
+
+    // Test 5: Circular alias detection
+    [Fact]
+    public void DetectsCircularAlias()
+    {
+        // type A = B
+        // type B = A
+        // Should produce error about circular type alias
+    }
+
+    // Test 6: Duplicate alias error
+    [Fact]
+    public void ReportsDuplicateAliasError()
+    {
+        // type UserId = int
+        // type UserId = str  // Error: already defined
+    }
+
+    // Test 7: No C# output for aliases
+    [Fact]
+    public void NoCodeGeneratedForAlias()
+    {
+        // Compile module with type alias
+        // Verify generated C# contains no alias declaration
+    }
+
+    // Test 8: Nullable type alias
+    [Fact]
+    public void ExpandsNullableTypeAlias()
+    {
+        // type OptionalId = int?
+        // Verify resolution as NullableType with int underlying
+    }
+}
+```
 
 ---
 
-## Tests to Verify
+## Files to Modify
 
-### Existing Tests (Should All Pass)
-- `InfersNullableTypeFromNone`
-- `TypeNarrowingWithIsInstance`
-- `TypeNarrowingWithIsInstanceDoesNotAffectElseBranch`
-- `TypeNarrowingWithIsInstanceInWhileLoop`
-- `IsInstanceWithMultipleTypeChecks`
-- `CombinedTypeNarrowingIsNotNoneAndIsInstance`
-
-### New Tests to Add
-1. `TypeNarrowingWithOrDoesNotNarrow` - Verify `or` doesn't narrow
-2. `TypeNarrowingWithIsNoneElseBranch` - Verify `is None` else branch
-3. `TypeNarrowingWithMultipleAnd` - Verify multiple `and` conditions
-4. `TypeNarrowingRestoredAfterBlock` - Verify narrowing doesn't leak
+| File | Changes | Lines Affected |
+|------|---------|----------------|
+| `Symbol.cs` | Add `TypeAliasSymbol` class, add `TypeAlias` to `SymbolKind` enum | After line 111, line 120 |
+| `NameResolver.cs` | Add `case TypeAlias` in switch, add `ResolveTypeAliasDeclaration()` | Line 97, new method |
+| `TypeResolver.cs` | Add `_resolvingAliases` field, add `TryExpandTypeAlias()`, add `ResolveFunctionTypeAlias()` | Line 14, after line 49, new methods |
+| `RoslynEmitter.cs` | Add explicit `TypeAlias => null` case (optional) | Line 451 |
+| `TypeAliasTests.cs` | New test file | New file |
 
 ---
 
-## Potential Risks and Questions
+## Key Design Decisions
 
-### Risks
+1. **No SemanticType subclass for aliases**: Aliases are expanded immediately to their target type. There is no `AliasType` - we return the underlying type directly.
 
-1. **Scope Leakage**: Narrowing must not persist after the conditional block. Current save/restore mechanism handles this, but tests should verify.
+2. **Recursion detection**: Track which aliases are currently being resolved to detect circular definitions like `type A = B` + `type B = A`.
 
-2. **Reassignment Invalidation**: If a variable is reassigned inside a narrowed block, the narrowing should potentially be invalidated. Current implementation doesn't handle this (common limitation).
+3. **Caching**: After resolving an alias once, cache the result on `TypeAliasSymbol.ResolvedType` to avoid repeated resolution.
 
-3. **Loop Iteration**: In while loops, if the variable is modified in the loop body, the narrowing from the condition may be invalid on subsequent iterations.
+4. **Module-level only**: Type aliases should only appear at module level. The current parser/NameResolver structure already enforces this by only processing top-level statements.
 
-### Questions for Clarification
-
-1. **Is property narrowing required?** (e.g., `if obj.field is not None`)
-
-2. **Is early return narrowing required?** (e.g., `if x is None: return` should narrow x after)
-
-3. **Should reassignment invalidate narrowing?** (e.g., `if x is not None: x = None` - should x still be narrowed?)
-
-4. **Is the current test coverage sufficient, or are additional specific scenarios needed?**
+5. **No special handling in code generation**: Type aliases naturally produce no output since `GenerateStatement()` returns `null` for them.
 
 ---
 
-## Conclusion
+## Potential Risks
 
-**The type narrowing implementation is already complete for the patterns described in the task and spec.** The recommended action is:
+1. **Forward references**: If `type A = B` appears before `type B = int`, does resolution work?
+   - **Mitigation**: NameResolver registers all aliases first (pass 1), TypeResolver expands them later. This should handle forward references correctly.
 
-1. **Verify** existing tests pass
-2. **Add additional tests** if coverage is incomplete
-3. **Optionally enhance** property narrowing if required
+2. **Alias shadowing builtins**: `type int = str` could shadow the builtin int.
+   - **Mitigation**: SymbolTable already checks for redefinition. Consider adding a warning.
 
-No major implementation work is needed unless the requirements extend beyond what's currently supported.
+3. **Generic alias parameters**: `type IntList[T] = list[T]` - generic type aliases.
+   - **Note**: This is NOT in scope for this task. The current `TypeAlias` AST doesn't support type parameters.
+
+4. **FunctionType**: ✅ Verified - `FunctionType` class exists in `SemanticType.cs` (line 225) with `ParameterTypes` and `ReturnType` properties.
+
+---
+
+## Verification Checklist
+
+- [ ] `type UserId = int` registers a TypeAliasSymbol in symbol table
+- [ ] `x: UserId` resolves to `SemanticType.Int` (not to an alias type)
+- [ ] `type StringList = list[str]` works with generic types
+- [ ] `type Callback = (int, str) -> bool` works with function types
+- [ ] `type A = B; type B = A` produces circular alias error
+- [ ] `type UserId = int; type UserId = str` produces duplicate error
+- [ ] Generated C# contains no type alias declarations
+- [ ] All existing tests still pass
+- [ ] Transitive aliases expand fully (`type A = B; type B = int` → `A` = `int`)

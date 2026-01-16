@@ -47,6 +47,11 @@ public class TypeResolver
         {
             result = builtinType;
         }
+        // Check for type alias and expand it
+        else if (_symbolTable.LookupTypeAlias(annotation.Name) is TypeAliasSymbol aliasSymbol)
+        {
+            result = ExpandTypeAlias(aliasSymbol, annotation.IsNullable);
+        }
         // Check for generic type
         else if (annotation.TypeArguments.Count > 0)
         {
@@ -71,8 +76,10 @@ public class TypeResolver
             }
         }
 
-        // Handle nullable types
-        if (annotation.IsNullable && result != SemanticType.Unknown)
+        // Handle nullable types (already handled for type aliases in ExpandTypeAlias)
+        // For non-alias types, apply nullable modifier here
+        if (annotation.IsNullable && result != SemanticType.Unknown
+            && _symbolTable.LookupTypeAlias(annotation.Name) == null)
         {
             result = new NullableType { UnderlyingType = result };
         }
@@ -128,6 +135,51 @@ public class TypeResolver
             Name = annotation.Name,
             TypeArguments = typeArgs,
             GenericDefinition = typeSymbol
+        };
+    }
+
+    private SemanticType ExpandTypeAlias(TypeAliasSymbol aliasSymbol, bool isNullable)
+    {
+        SemanticType result;
+
+        // Expand type annotation
+        if (aliasSymbol.TypeAnnotation != null)
+        {
+            result = ResolveTypeAnnotation(aliasSymbol.TypeAnnotation);
+        }
+        // Expand function type
+        else if (aliasSymbol.FunctionType != null)
+        {
+            result = ResolveFunctionType(aliasSymbol.FunctionType);
+        }
+        else
+        {
+            AddError($"Type alias '{aliasSymbol.Name}' has no type definition",
+                aliasSymbol.DeclarationLine, aliasSymbol.DeclarationColumn);
+            return SemanticType.Unknown;
+        }
+
+        // Apply nullable modifier if present at usage site
+        if (isNullable && result != SemanticType.Unknown)
+        {
+            result = new NullableType { UnderlyingType = result };
+        }
+
+        return result;
+    }
+
+    private Semantic.FunctionType ResolveFunctionType(Parser.Ast.FunctionType functionType)
+    {
+        var paramTypes = functionType.ParameterTypes
+            .Select(ResolveTypeAnnotation)
+            .ToList();
+
+        var returnType = ResolveTypeAnnotation(functionType.ReturnType);
+
+        return new Semantic.FunctionType
+        {
+            ParameterTypes = paramTypes,
+            ReturnType = returnType
         };
     }
 

@@ -81,6 +81,11 @@ public class SymbolTable
         return Lookup(name) as VariableSymbol;
     }
 
+    public TypeAliasSymbol? LookupTypeAlias(string name)
+    {
+        return Lookup(name) as TypeAliasSymbol;
+    }
+
     public Scope CurrentScope => _scopeStack.Peek();
     public Scope GlobalScope => _globalScope;
     public int ScopeDepth => _scopeStack.Count;

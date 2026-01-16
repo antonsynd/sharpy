@@ -560,9 +560,42 @@ class Program
             var parser = new Sharpy.Compiler.Parser.Parser(tokens, logger);
             var module = parser.ParseModule();
 
-            // Set up code generation context
+            // Run semantic analysis to register type aliases and resolve types
             var builtins = new BuiltinRegistry();
             var symbolTable = new SymbolTable(builtins);
+            var semanticInfo = new SemanticInfo();
+
+            // Name resolution pass (registers type aliases, classes, functions, etc.)
+            var nameResolver = new NameResolver(symbolTable, logger);
+            nameResolver.ResolveDeclarations(module);
+            nameResolver.ResolveInheritance();
+
+            if (nameResolver.Errors.Any())
+            {
+                Console.Error.WriteLine("Name resolution errors:");
+                foreach (var error in nameResolver.Errors)
+                {
+                    Console.Error.WriteLine($"  {error.Message}");
+                }
+                Environment.Exit(1);
+            }
+
+            // Type checking pass
+            var typeResolver = new TypeResolver(symbolTable, semanticInfo, logger);
+            var typeChecker = new TypeChecker(symbolTable, semanticInfo, typeResolver, logger);
+            typeChecker.CheckModule(module);
+
+            if (typeChecker.Errors.Any())
+            {
+                Console.Error.WriteLine("Type checking errors:");
+                foreach (var error in typeChecker.Errors)
+                {
+                    Console.Error.WriteLine($"  {error.Message}");
+                }
+                Environment.Exit(1);
+            }
+
+            // Set up code generation context with the analyzed symbol table
             var context = new CodeGenContext(symbolTable, builtins)
             {
                 SourceFilePath = inputFile.FullName

@@ -110,6 +110,15 @@ public record ModuleSymbol : Symbol
     public List<Symbol> Exports { get; init; } = new();
 }
 
+/// <summary>
+/// Type alias symbol (compile-time only, no C# output)
+/// </summary>
+public record TypeAliasSymbol : Symbol
+{
+    public TypeAnnotation? TypeAnnotation { get; init; }
+    public Parser.Ast.FunctionType? FunctionType { get; init; }
+}
+
 public enum SymbolKind
 {
     Variable,
@@ -117,7 +126,8 @@ public enum SymbolKind
     Function,
     Type,
     Module,
-    Property
+    Property,
+    TypeAlias
 }
 
 public enum TypeKind
