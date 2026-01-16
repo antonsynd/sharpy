@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-15T20:45:59.054941",
+  "last_updated": "2026-01-15T21:01:36.790431",
   "phases": [
     {
       "id": "0.1.6",
@@ -1816,7 +1816,7 @@
       "name": "Type System Enhancements - Comprehensive Task List (v2)",
       "goal": "",
       "status": "in_progress",
-      "progress": 30.76923076923077,
+      "progress": 38.46153846153847,
       "tasks": [
         {
           "id": "0.1.9.1",
@@ -2047,8 +2047,46 @@
             "src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs",
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
           ],
-          "status": "in_progress",
-          "executions": [],
+          "status": "completed",
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude-code",
+              "started_at": "2026-01-15T21:01:36.773740",
+              "completed_at": "2026-01-15T21:01:36.773745",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": true,
+              "tests_passed": true,
+              "validation_results": [
+                {
+                  "agent": "spec-adherence",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T21:01:36.773701",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have all the information needed. Here is my spec adherence report:\n\n---\n\n## Spec Adherence Report: Implement Null Conditional Operator (`?.`)\n\n**Spec:** `docs/language_specification/null_conditional_access.md`, `docs/language_specification/grammar.ebnf.txt`, `docs/language_specification/operator_precedence.md`\n**Implementation:** `src/Sharpy.Compiler/Parser/Parser.cs`, `src/Sharpy.Compiler/Semantic/TypeChecker.cs`, `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`\n\n### Compliant\n\n- [x] **Operator Token**: Lexer correctly tokenizes `?.` as `TokenType.NullConditional` (Lexer.cs:1590-1593)\n- [x] **Operator Precedence**: `?.` has precedence level 1 (highest) with grouping, indexing, and member access (operator_precedence.md line 7)\n- [x] **Basic Member Access**: `obj?.field` parses into `MemberAccess` with `IsNullConditional=true` (Parser.cs:1983-1999)\n- [x] **Null Conditional Method Calls**: `obj?.method()` works correctly - method calls chain after null conditional member access (Parser.cs postfix loop)\n- [x] **Chaining Support**: `obj?.field?.nested` - multiple null conditional accesses can be chained (parser handles via postfix loop)\n- [x] **Type Checking - Nullable Requirement**: Type checker enforces `?.` can only be used on nullable types (`T?`), reports error otherwise (TypeChecker.cs:1528-1537)\n- [x] **Type Checking - Result Wrapping (Fields)**: When accessing a non-nullable field via `?.`, result is wrapped in `NullableType` (TypeChecker.cs:1554-1557)\n- [x] **Type Checking - Result Wrapping (Method Calls)**: Method call results via `?.` are wrapped in nullable (TypeChecker.cs:1856-1859, 1890-1893)\n- [x] **Code Generation - Field Access**: Generates C# `ConditionalAccessExpression` with `MemberBindingExpression` (RoslynEmitter.cs:2951-2955)\n- [x] **Code Generation - Method Calls**: Generates C# `ConditionalAccessExpression` with invocation (RoslynEmitter.cs:2368-2378)\n- [x] **C# Interop**: Maps directly to C# `?.` operator (C# 6.0+) as specified in spec (\"\u2705 Native\")\n- [x] **Short-circuit Semantics**: Entire expression returns `None` if object is `None` (inherited from C# semantics)\n\n### Deviations\n\n- [ ] **Section: Grammar (line 682-683)**: Null conditional index access (`?.[expr]`) not implemented\n  - **Spec says:** \n    ```\n    null_cond_access ::= '?.' identifier [ call ]\n                       | '?.' '[' expression ']'\n    ```\n  - **Implementation:** The parser only handles `?.identifier` pattern (Parser.cs:1983-1999). The grammar specifies `?.[expr]` for null-conditional indexing but `IndexAccess` AST node has no `IsNullConditional` property, and the parser doesn't handle this case.\n  - **Impact:** **Medium** - Users cannot use `obj?.[0]` syntax for safe index access on nullable collections.\n\n- [ ] **Section: Optional Tagged Union Support (lines 18-30)**: Optional[T] null-conditional not implemented\n  - **Spec says:** \n    ```python\n    maybe_str: Optional[str] = Optional.Some(\"HELLO\")\n    val = maybe_str?.lower()  # val = Optional[str].Some(\"hello\")\n    ```\n  - **Implementation:** The type checker only handles `NullableType` (i.e., `T?`). There is no special handling for `Optional[T]` tagged union's `Nothing` case. The spec states `Nothing` should be \"treated similarly to `None`\" for null-conditional access.\n  - **Impact:** **Medium** - Users using `Optional[T]` instead of `T?` cannot use `?.` operator with the expected semantics.\n\n### Recommendations\n\n1. **Null Conditional Index Access**: \n   - Add `IsNullConditional: bool` property to `IndexAccess` record\n   - Update Parser.cs to handle `?.[` token sequence after a postfix expression\n   - Update TypeChecker.cs `CheckIndexAccess` to handle nullable unwrapping\n   - Update RoslynEmitter.cs `GenerateIndexAccess` to generate `ConditionalAccessExpression` with `ElementBindingExpression`\n\n2. **Optional[T] Support**:\n   - Update TypeChecker to recognize `Optional[T]` as compatible with null-conditional operator\n   - Either lower `Optional.Nothing` to `null` at codegen or generate special handling\n   - This may require coordination with tagged union implementation\n\n### Additional Notes\n\n- The implementation correctly enforces that `?.` can only be used on nullable types and provides clear error messages\n- The code generation correctly uses Roslyn's `ConditionalAccessExpression` and `MemberBindingExpression` which produce idiomatic C# null-conditional code\n- The AST representation (`MemberAccess.IsNullConditional`) cleanly separates `.` from `?.` access\n"
+                },
+                {
+                  "agent": "verification-expert",
+                  "status": "passed",
+                  "timestamp": "2026-01-15T21:01:36.773719",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Excellent! All error cases are properly rejected. Let me now generate the verification report:\n\n## Verification Report: Implement Null Conditional Operator (`?.`)\n\n### Test Results\n- **Total**: 3,647 | **Passed**: 3,597 | **Failed**: 0 | **Skipped**: 50\n\n### Unit Test Summary\n\n| Test Category | Tests | Status |\n|--------------|-------|--------|\n| Lexer: NullConditional Token | 4 | \u2705 Pass |\n| Parser: NullConditional MemberAccess | 3 | \u2705 Pass |\n| CodeGen: ConditionalAccessExpression | 1 | \u2705 Pass |\n| Nullable Type Tests | 38 | \u2705 Pass |\n| Full Test Suite | 3,647 | \u2705 Pass |\n\n### Behavior Checks\n\n- [x] Basic null conditional member access (`p?.name`) on non-null value returns value\n- [x] Basic null conditional member access on null value returns `None`\n- [x] Null conditional method call (`p?.get_name()`) on non-null returns value\n- [x] Null conditional method call on null returns `None`\n- [x] Chained null conditional (`p?.address?.city`) - all non-null returns value\n- [x] Chained null conditional - middle property null returns `None`\n- [x] Chained null conditional - first object null returns `None`\n- [x] Null conditional with null coalescing (`p?.name ?? \"default\"`) - non-null path uses actual value\n- [x] Null conditional with null coalescing - null path uses default value\n- [x] Method call on chained null conditional (`p?.address?.get_city()`) works correctly\n- [x] Error: Using `?.` on non-nullable class type is rejected\n- [x] Error: Using `?.` on non-nullable primitive (int) is rejected\n- [x] Error: Using `?.` on non-nullable string is rejected\n\n### Coverage Assessment\n\n**Covered Areas:**\n1. **Lexer**: `TokenType.NullConditional` tokenization (`?.` operator)\n2. **Parser**: `MemberAccess.IsNullConditional` flag parsing\n3. **Type Checker**: \n   - Validation that `?.` only applies to nullable types\n   - Result type wrapping in `NullableType` for field access\n   - Result type wrapping for method calls via `?.`\n4. **Code Generation**: C# `ConditionalAccessExpression` (`?.`) generation\n\n**Test Files with Null Conditional Coverage:**\n- `LexerTests.cs` - Token parsing tests\n- `ParserTests.cs` - AST node parsing tests\n- `Phase010ExitCriteriaTests.cs` - Lexer exit criteria\n- `Phase011ExitCriteriaTests.cs` - Parser exit criteria\n- `RoslynEmitterExpressionTests.cs` - C# code generation\n\n**Gap Identified:**\n- No explicit semantic analyzer test for rejection of `?.` on non-nullable types (but verified manually via compilation)\n\n### Regression Check\n- No regressions detected\n- All 2,862 compiler tests pass\n- All 735 core tests pass\n\n### Generated C# Code Verification\n\nSample input (`test_null_conditional.spy`):\n```python\np: Person? = Person(\"Alice\", 30)\nage_nullable = p?.age\n```\n\nGenerated C# output:\n```csharp\nPerson? p = new Person(\"Alice\", 30);\nvar ageNullable = p?.Age;\n```\n\nThe generated C# code correctly uses the `?.` conditional access operator.\n\n### Recommendations\n\n1. **Consider adding explicit semantic analyzer tests** for the error case \"Null conditional operator '?.' can only be used on nullable types\" in `SemanticAnalyzerNegativeTests.cs`\n\n2. **Integration tests recommended** for:\n   - End-to-end compilation and execution of null conditional expressions\n   - Complex chaining scenarios with mixed nullable/non-nullable access\n\n3. **Documentation**: The implementation matches the plan in `PLAN-0.1.9.5.md` and correctly handles all specified cases\n\n### Conclusion\n\n\u2705 **Implementation is complete and correct.** The null conditional operator (`?.`) is fully implemented across lexer, parser, semantic analyzer, and code generator. All positive and negative test cases pass. No regressions detected.\n"
+                },
+                {
+                  "agent": "hallucination-defense",
+                  "status": "minor_issues",
+                  "timestamp": "2026-01-15T21:01:36.773727",
+                  "findings": [],
+                  "recommendations": [],
+                  "raw_output": "Now I have enough information to compile my verification report.\n\n---\n\n# Hallucination Defense Report: Null Conditional Operator Implementation\n\n## Claim Verification\n\n### Claim 1: CheckMemberAccess method location (lines 1516-1588)\n**Claim:** \"Modified `CheckMemberAccess` method (lines 1516-1588)\"\n**Verification:** `grep -n` showed `CheckMemberAccess` starts at line 1516. Method body ends at line 1588.\n**Result:** \u2705 CORRECT \u2014 Method spans exactly lines 1516-1588.\n\n---\n\n### Claim 2: CheckFunctionCall method location (lines 1665-1898)\n**Claim:** \"Modified `CheckFunctionCall` method (lines 1665-1898)\"\n**Verification:** `grep -n` showed `CheckFunctionCall` starts at line 1665. Method body ends at line 1898.\n**Result:** \u2705 CORRECT \u2014 Method spans exactly lines 1665-1898.\n\n---\n\n### Claim 3: GenerateCall method location (lines 2349-2389)\n**Claim:** \"Modified `GenerateCall` method (lines 2349-2389)\"\n**Verification:** `grep -n` showed `GenerateCall` starts at line 2307. Code read showed null conditional handling is at lines 2369-2378, with method ending around line 2392.\n**Result:** \u26a0\ufe0f MINOR_INCORRECT \u2014 Method starts at line 2307, not 2349. The range 2349-2389 captures part of the method but not the full method. The null conditional code is within the method but line numbers are off.\n\n---\n\n### Claim 4: Validation that `?.` only works on nullable types\n**Claim:** \"Added validation that `?.` can only be used on nullable types\"\n**Verification:** Read TypeChecker.cs lines 1528-1537 - confirmed check exists and reports error for non-nullable types.\n**Result:** \u2705 CORRECT \u2014 Code at lines 1531-1536 validates and reports error.\n\n---\n\n### Claim 5: Error message format\n**Claim:** \"Reports clear error when `?.` is used on non-nullable types\"\n**Verification:** Built `test_null_conditional_error.spy`, got error: \"Null conditional operator '?.' can only be used on nullable types, but got 'Person'\"\n**Result:** \u2705 CORRECT \u2014 Error message matches implementation.\n\n---\n\n### Claim 6: Field access wraps in NullableType\n**Claim:** \"Wraps the result type in `NullableType` for field access via `?.`\"\n**Verification:** Read lines 1554-1557 - confirmed: `if (memberAccess.IsNullConditional && fieldType is not NullableType) return new NullableType { UnderlyingType = fieldType };`\n**Result:** \u2705 CORRECT\n\n---\n\n### Claim 7: Method call result wrapped in NullableType\n**Claim:** \"Wraps the return type in `NullableType` for null conditional method calls\"\n**Verification:** Read lines 1856-1858 and 1890-1892 - both paths wrap returnType in NullableType when `isNullConditionalCall` is true.\n**Result:** \u2705 CORRECT\n\n---\n\n### Claim 8: ConditionalAccessExpression and MemberBindingExpression usage\n**Claim:** \"Uses `ConditionalAccessExpression` with `MemberBindingExpression` for proper `?.Method()` syntax\"\n**Verification:** Read RoslynEmitter.cs lines 2374-2378 - code matches exactly:\n```csharp\nvar memberBinding = MemberBindingExpression(IdentifierName(methodName));\nvar invocation = InvocationExpression(memberBinding)...\nreturn ConditionalAccessExpression(obj, invocation);\n```\n**Result:** \u2705 CORRECT \u2014 These are valid Roslyn SyntaxFactory methods (verified by successful build).\n\n---\n\n### Claim 9: Python `upper()` example syntax\n**Claim:** Syntax example shows `name?.upper()` returning `str?`\n**Verification:** Python strings have `upper()` method (verified). However, Python strings don't have a `.length` property - they use `len()` function instead.\n**Result:** \u26a0\ufe0f MINOR_INCORRECT \u2014 The `name?.upper()` example is fine, but `name?.length` is not standard Python syntax (Python uses `len(name)`, not `name.length`). This is a documentation example issue, not an implementation bug.\n\n---\n\n### Claim 10: C# 9.0 Compatibility\n**Claim:** Implementation uses C# features available in C# 9.0\n**Verification:** \n- Null conditional operator `?.` introduced in C# 6.0 \u2705\n- `ConditionalAccessExpression` and `MemberBindingExpression` available in Roslyn \u2705\n- Pattern matching `is not NullableType` - C# 9.0 feature \u2705\n- Property patterns `{ IsNullConditional: true }` - C# 8.0 feature \u2705\n**Result:** \u2705 CORRECT \u2014 All features are C# 9.0 compatible.\n\n---\n\n### Claim 11: Generated C# output correctness\n**Claim:** Generated C# uses proper `?.` syntax\n**Verification:** Read `test_null_conditional.cs` - contains correct C# syntax:\n- `p?.Age` for field access\n- `p?.Greet()` for method calls\n- `p?.Address?.City` for chained access\n- `p?.Age ?? 0` for null coalescing combination\n**Result:** \u2705 CORRECT\n\n---\n\n### Claim 12: Type inference for chained access\n**Claim:** \"Chained access `obj?.a?.b` propagates nullability correctly\"\n**Verification:** Test file shows `city = p?.address?.city` compiles to `var city = p?.Address?.City` which is correct C# null propagation.\n**Result:** \u2705 CORRECT\n\n---\n\n## Hallucination Summary\n\n- **Minor Issues:** 2\n  1. GenerateCall method line numbers claimed as 2349-2389, actual is 2307-2392\n  2. Python `.length` property in example doesn't exist (Python uses `len()`)\n\n- **Major Issues:** 0\n\n- **Verdict:** MINOR_ISSUES\n\nAll core implementation claims about semantic analysis, code generation, Roslyn API usage, and C# feature availability are accurate. The implementation correctly validates nullable types, generates proper C# `?.` syntax, and wraps return types appropriately. The only issues are cosmetic: an incorrect line number range and a documentation example using non-standard Python syntax.\n"
+                }
+              ]
+            }
+          ],
           "dependencies": [],
           "is_critical": true,
           "human_question": null,
@@ -2064,7 +2102,7 @@
             "src/Sharpy.Compiler/Semantic/SemanticAnalyzer.cs",
             "src/Sharpy.Compiler/Semantic/TypeChecker.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -2393,14 +2431,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "0.1.9.5",
-  "total_attempts": 38,
-  "total_successes": 38,
+  "current_task_id": "0.1.9.6",
+  "total_attempts": 39,
+  "total_successes": 39,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 38,
-      "successes": 38,
+      "attempts": 39,
+      "successes": 39,
       "failures": 0
     },
     "copilot": {
@@ -2409,5 +2447,5 @@
       "failures": 0
     }
   },
-  "overall_progress": 58.333333333333336
+  "overall_progress": 60.0
 }
