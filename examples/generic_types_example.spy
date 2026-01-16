@@ -1,0 +1,83 @@
+# Generic Types Example - Sharpy v0.5
+# Demonstrates the new generic type syntax using square brackets [T]
+
+# Generic Function - Identity function
+def identity[T](value: T) -> T:
+    """Returns the same value passed in"""
+    return value
+
+# Generic Function - Multiple type parameters
+def find_max[T, U](a: T, b: U, compare_fn: (T, U) -> bool) -> T:
+    """Returns the first value if compare_fn returns True, otherwise returns the first value"""
+    if compare_fn(a, b):
+        return a
+    return a
+
+# Generic Function - Returns generic collection
+def create_list[T]() -> list[T]:
+    """Creates an empty list of type T"""
+    return []
+
+# Generic Class - Container
+class Box[T]:
+    """A simple container for a single value"""
+    value: T
+
+    def __init__(self, value: T):
+        self.value = value
+
+    def get(self) -> T:
+        return self.value
+
+    def set(self, value: T):
+        self.value = value
+
+# Generic Class - Multiple type parameters
+class Pair[T, U]:
+    """A container for two values of different types"""
+    first: T
+    second: U
+
+    def __init__(self, first: T, second: U):
+        self.first = first
+        self.second = second
+
+    def swap(self) -> Pair[U, T]:
+        """Returns a new Pair with swapped values"""
+        return Pair[U, T](self.second, self.first)
+
+# Generic Struct - Point
+struct Point[T]:
+    """A point in 2D space"""
+    x: T
+    y: T
+
+# Generic Interface - Converter
+interface IConverter[TInput, TOutput]:
+    """Interface for converting from one type to another"""
+    def convert(self, input: TInput) -> TOutput:
+        pass
+
+# Usage examples
+def main():
+    # Generic function usage
+    x = identity[int](42)
+    s = identity[str]("hello")
+
+    # Generic class instantiation
+    box = Box[int](42)
+    value = box.get()
+
+    # Multiple type parameters
+    pair = Pair[str, int]("age", 25)
+    swapped = pair.swap()  # Type is Pair[int, str]
+
+    # Generic struct
+    point = Point[float](3.14, 2.71)
+
+    # Nested generics
+    list_of_lists = create_list[list[int]]()
+
+    print(f"Box value: {value}")
+    print(f"Pair: ({pair.first}, {pair.second})")
+    print(f"Point: ({point.x}, {point.y})")

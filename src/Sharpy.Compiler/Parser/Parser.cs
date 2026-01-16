@@ -315,6 +315,24 @@ public class Parser
 
         Expect(TokenType.Def);
         var name = ExpectIdentifier();
+
+        var typeParams = new List<string>();
+
+        // Type parameters [T, U]
+        if (Current.Type == TokenType.LeftBracket)
+        {
+            Advance();
+            do
+            {
+                typeParams.Add(ExpectIdentifier());
+                if (Current.Type == TokenType.Comma)
+                    Advance();
+                else
+                    break;
+            } while (true);
+            Expect(TokenType.RightBracket);
+        }
+
         Expect(TokenType.LeftParen);
 
         var parameters = ParseParameters();
@@ -347,6 +365,7 @@ public class Parser
         return new FunctionDef
         {
             Name = name,
+            TypeParameters = typeParams,
             Parameters = parameters,
             ReturnType = returnType,
             Body = body,

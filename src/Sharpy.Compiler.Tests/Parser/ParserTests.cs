@@ -1575,6 +1575,72 @@ class Pair[T, U]:
         classDef.TypeParameters[1].Should().Be("U");
     }
 
+    [Fact]
+    public void ParseGenericFunctionDefinition()
+    {
+        var source = @"
+def identity[T](value: T) -> T:
+    return value
+";
+        var module = Parse(source);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Name.Should().Be("identity");
+        funcDef.TypeParameters.Should().HaveCount(1);
+        funcDef.TypeParameters[0].Should().Be("T");
+        funcDef.Parameters.Should().HaveCount(1);
+        funcDef.Parameters[0].Type!.Name.Should().Be("T");
+        funcDef.ReturnType!.Name.Should().Be("T");
+    }
+
+    [Fact]
+    public void ParseGenericFunctionWithMultipleTypeParameters()
+    {
+        var source = @"
+def find_max[T, U](a: T, b: U) -> T:
+    return a
+";
+        var module = Parse(source);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Name.Should().Be("find_max");
+        funcDef.TypeParameters.Should().HaveCount(2);
+        funcDef.TypeParameters[0].Should().Be("T");
+        funcDef.TypeParameters[1].Should().Be("U");
+        funcDef.Parameters.Should().HaveCount(2);
+        funcDef.Parameters[0].Type!.Name.Should().Be("T");
+        funcDef.Parameters[1].Type!.Name.Should().Be("U");
+        funcDef.ReturnType!.Name.Should().Be("T");
+    }
+
+    [Fact]
+    public void ParseGenericFunctionWithGenericReturnType()
+    {
+        var source = @"
+def create_list[T]() -> list[T]:
+    return []
+";
+        var module = Parse(source);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Name.Should().Be("create_list");
+        funcDef.TypeParameters.Should().HaveCount(1);
+        funcDef.TypeParameters[0].Should().Be("T");
+        funcDef.ReturnType!.Name.Should().Be("list");
+        funcDef.ReturnType!.TypeArguments.Should().HaveCount(1);
+        funcDef.ReturnType!.TypeArguments[0].Name.Should().Be("T");
+    }
+
+    [Fact]
+    public void ParseNonGenericFunctionHasEmptyTypeParameters()
+    {
+        var source = @"
+def normal_func(x: int) -> int:
+    return x
+";
+        var module = Parse(source);
+        var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        funcDef.Name.Should().Be("normal_func");
+        funcDef.TypeParameters.Should().BeEmpty();
+    }
+
     #endregion
 
     #region Keyword Argument Tests

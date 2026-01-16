@@ -186,6 +186,7 @@ public record ExceptHandler
 public record FunctionDef : Statement
 {
     public string Name { get; init; } = "";
+    public List<string> TypeParameters { get; init; } = new();
     public List<Parameter> Parameters { get; init; } = new();
     public TypeAnnotation? ReturnType { get; init; }
     public List<Statement> Body { get; init; } = new();
