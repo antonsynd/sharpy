@@ -205,6 +205,111 @@ public class RoslynEmitterDefinitionTests
         Assert.Contains("return a * b;", code);
     }
 
+    [Fact]
+    public void GenerateFunctionDeclaration_WithSingleTypeParameter_GeneratesGenericMethod()
+    {
+        // Arrange
+        var func = new FunctionDef
+        {
+            Name = "identity",
+            TypeParameters = new List<string> { "T" },
+            Parameters = new List<Parameter>
+            {
+                new Parameter { Name = "value", Type = new TypeAnnotation { Name = "T" } }
+            },
+            ReturnType = new TypeAnnotation { Name = "T" },
+            Body = new List<Statement>
+            {
+                new ReturnStatement { Value = new Identifier { Name = "value" } }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { func } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public static T Identity<T>(T value)", code);
+    }
+
+    [Fact]
+    public void GenerateFunctionDeclaration_WithMultipleTypeParameters_GeneratesGenericMethod()
+    {
+        // Arrange
+        var func = new FunctionDef
+        {
+            Name = "find_max",
+            TypeParameters = new List<string> { "T", "U" },
+            Parameters = new List<Parameter>
+            {
+                new Parameter { Name = "a", Type = new TypeAnnotation { Name = "T" } },
+                new Parameter { Name = "b", Type = new TypeAnnotation { Name = "U" } }
+            },
+            ReturnType = new TypeAnnotation { Name = "T" },
+            Body = new List<Statement>
+            {
+                new ReturnStatement { Value = new Identifier { Name = "a" } }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { func } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        Assert.Contains("public static T FindMax<T, U>(T a, U b)", code);
+    }
+
+    [Fact]
+    public void GenerateFunctionDeclaration_GenericWithListParameter_GeneratesGenericMethod()
+    {
+        // Arrange
+        var func = new FunctionDef
+        {
+            Name = "get_first",
+            TypeParameters = new List<string> { "T" },
+            Parameters = new List<Parameter>
+            {
+                new Parameter
+                {
+                    Name = "items",
+                    Type = new TypeAnnotation
+                    {
+                        Name = "list",
+                        TypeArguments = new List<TypeAnnotation>
+                        {
+                            new TypeAnnotation { Name = "T" }
+                        }
+                    }
+                }
+            },
+            ReturnType = new TypeAnnotation { Name = "T" },
+            Body = new List<Statement>
+            {
+                new ReturnStatement
+                {
+                    Value = new IndexAccess
+                    {
+                        Object = new Identifier { Name = "items" },
+                        Index = new IntegerLiteral { Value = "0" }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var module = new Module { Body = new List<Statement> { func } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        // Assert
+        // Check for method signature (name mangling converts get_first to GetFirst)
+        // Note: Sharpy's list[T] maps to global::Sharpy.Core.List<T>, not System.Collections.Generic.List<T>
+        Assert.Contains("T GetFirst<T>(global::Sharpy.Core.List<T> items)", code);
+    }
+
     #endregion
 
     #region Class Definition Tests

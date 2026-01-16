@@ -498,6 +498,16 @@ public class RoslynEmitter
             .WithParameterList(ParameterList(SeparatedList(parameters)))
             .WithBody(body);
 
+        // Add type parameters if generic
+        if (func.TypeParameters.Count > 0)
+        {
+            var typeParams = func.TypeParameters
+                .Select(tp => TypeParameter(tp))
+                .ToArray();
+            method = method.WithTypeParameterList(
+                TypeParameterList(SeparatedList(typeParams)));
+        }
+
         // Add XML documentation from docstring if present
         if (!string.IsNullOrEmpty(func.DocString))
         {
