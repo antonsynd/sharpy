@@ -49,9 +49,37 @@ public class RoslynEmitter
     /// <returns>The C# variable name with version suffix (e.g., "x", "x_1", "x_2")</returns>
     private string GetMangledVariableName(string name, bool isNewDeclaration)
     {
-        // Check if this is a reference to a const variable - use constant case
-        // Check both local and module-level consts
-        if (_constVariables.Contains(name) || _moduleConstVariables.Contains(name))
+        var baseName = NameMangler.ToCamelCase(name);
+
+        // FIRST: Check if this is a local variable that shadows a module-level one
+        // Local variables take precedence over module-level variables
+        if (_variableVersions.ContainsKey(baseName))
+        {
+            // There's a local variable with this name - use local resolution
+            if (isNewDeclaration)
+            {
+                // This is a redefinition of an existing local variable
+                var currentVersion = _variableVersions[baseName];
+                var newVersion = currentVersion + 1;
+                _variableVersions[baseName] = newVersion;
+                return $"{baseName}_{newVersion}";
+            }
+            else
+            {
+                // This is a reference to the local variable
+                var currentVersion = _variableVersions[baseName];
+                return currentVersion == 0 ? baseName : $"{baseName}_{currentVersion}";
+            }
+        }
+
+        // Check if this is a reference to a local const variable - use constant case
+        if (_constVariables.Contains(name))
+        {
+            return NameMangler.ToConstantCase(name);
+        }
+
+        // Check if this is a reference to a module-level const - use constant case
+        if (_moduleConstVariables.Contains(name))
         {
             return NameMangler.ToConstantCase(name);
         }
@@ -77,37 +105,18 @@ public class RoslynEmitter
             return name.Replace(".", "_");
         }
 
-        var baseName = NameMangler.ToCamelCase(name);
-
+        // If we reach here, this is a new local variable that doesn't shadow any module-level var
         if (isNewDeclaration)
         {
-            // This is a new declaration or redefinition
-            if (_variableVersions.TryGetValue(baseName, out var currentVersion))
-            {
-                // Variable already exists - increment version for redefinition
-                var newVersion = currentVersion + 1;
-                _variableVersions[baseName] = newVersion;
-                return $"{baseName}_{newVersion}";
-            }
-            else
-            {
-                // First declaration of this variable
-                _variableVersions[baseName] = 0;
-                return baseName;
-            }
+            // First declaration of this local variable
+            _variableVersions[baseName] = 0;
+            return baseName;
         }
         else
         {
-            // This is a reference - use the current version
-            if (_variableVersions.TryGetValue(baseName, out var currentVersion))
-            {
-                return currentVersion == 0 ? baseName : $"{baseName}_{currentVersion}";
-            }
-            else
-            {
-                // Variable not yet declared (shouldn't happen in valid code)
-                return baseName;
-            }
+            // Reference to a variable not yet declared (shouldn't happen in valid code)
+            // Fall back to just returning the base name
+            return baseName;
         }
     }
 
@@ -597,8 +606,14 @@ public class RoslynEmitter
         // Note: Main is generated for ALL entry point files (even empty ones), per line 557
         bool willHaveMainMethod = hasMainFunction || (!hasMainFunction && _context.IsEntryPoint);
 
+        // Collect all function names to check for class name collisions
+        var functionNames = statements
+            .OfType<FunctionDef>()
+            .Select(f => NameMangler.Transform(f.Name, NameContext.Method))
+            .ToHashSet();
+
         // Generate module class name from source file name
-        var moduleClassName = GetModuleClassName(willHaveMainMethod);
+        var moduleClassName = GetModuleClassName(willHaveMainMethod, functionNames);
 
         return ClassDeclaration(moduleClassName)
             .WithModifiers(TokenList(
@@ -607,7 +622,7 @@ public class RoslynEmitter
             .WithMembers(List(declarations));
     }
 
-    private string GetModuleClassName(bool willGenerateMainMethod = false)
+    private string GetModuleClassName(bool willGenerateMainMethod = false, HashSet<string>? functionNames = null)
     {
         // Get the file name without extension and convert to PascalCase
         if (!string.IsNullOrEmpty(_context.SourceFilePath))
@@ -622,6 +637,13 @@ public class RoslynEmitter
                 if (className == "Main" && willGenerateMainMethod)
                 {
                     return "Program";
+                }
+
+                // Avoid name collision: if the class name matches any function name in the module,
+                // append "Module" suffix to the class name (C# doesn't allow method name == enclosing type name)
+                if (functionNames != null && functionNames.Contains(className))
+                {
+                    return $"{className}Module";
                 }
 
                 return className;
