@@ -13,7 +13,7 @@ from typing import Optional
 
 from .config import Config
 from .state import GroundTruth, parse_task_list
-from .orchestrator import Orchestrator
+from .orchestrator import Orchestrator, create_initial_state
 from .human_loop import HumanLoopManager
 from .interrupt_handler import display_interrupt, collect_response
 from .memory import MemoryManager
@@ -57,7 +57,7 @@ async def run_with_interrupts(
         input_data = None  # Resume from checkpoint
     else:
         print(f"🆕 Starting new session...")
-        input_data = orchestrator._create_initial_state()
+        input_data = create_initial_state(str(orchestrator.config.ground_truth_path))
 
     tasks_processed = 0
     iteration = 0
