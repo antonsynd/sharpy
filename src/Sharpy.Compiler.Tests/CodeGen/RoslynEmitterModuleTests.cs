@@ -575,4 +575,200 @@ public class RoslynEmitterModuleTests
     }
 
     #endregion
+
+    #region Nullable Pragma Tests
+
+    [Fact]
+    public void GenerateCompilationUnit_IncludesNullablePragma()
+    {
+        // Arrange
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>()
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - #nullable enable should be present
+        Assert.Contains("#nullable enable", code);
+    }
+
+    [Fact]
+    public void GenerateCompilationUnit_NullablePragma_AppearsBeforeUsings()
+    {
+        // Arrange
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>()
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - #nullable enable should appear before using statements
+        var nullableIndex = code.IndexOf("#nullable enable");
+        var usingIndex = code.IndexOf("using System;");
+        Assert.True(nullableIndex >= 0, "#nullable enable should be present");
+        Assert.True(usingIndex > nullableIndex, "using statements should appear after #nullable enable");
+    }
+
+    [Fact]
+    public void GenerateCompilationUnit_NullableIntParameter_GeneratesIntQuestion()
+    {
+        // Arrange
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "test_func",
+                    Parameters = new List<Parameter>
+                    {
+                        new Parameter
+                        {
+                            Name = "value",
+                            Type = new TypeAnnotation { Name = "int", IsNullable = true }
+                        }
+                    },
+                    ReturnType = new TypeAnnotation { Name = "void" },
+                    Body = new List<Statement>()
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - should generate int? parameter
+        Assert.Contains("int?", code);
+        Assert.Contains("value", code);
+    }
+
+    [Fact]
+    public void GenerateCompilationUnit_NullableStringReturnType_GeneratesStringQuestion()
+    {
+        // Arrange
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "get_name",
+                    Parameters = new List<Parameter>(),
+                    ReturnType = new TypeAnnotation { Name = "str", IsNullable = true },
+                    Body = new List<Statement>
+                    {
+                        new ReturnStatement
+                        {
+                            Value = new NoneLiteral()
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - should generate string? return type
+        Assert.Contains("string?", code);
+    }
+
+    [Fact]
+    public void GenerateCompilationUnit_NullableListType_GeneratesListQuestion()
+    {
+        // Arrange
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "get_items",
+                    Parameters = new List<Parameter>(),
+                    ReturnType = new TypeAnnotation
+                    {
+                        Name = "list",
+                        TypeArguments = new List<TypeAnnotation>
+                        {
+                            new TypeAnnotation { Name = "int" }
+                        },
+                        IsNullable = true
+                    },
+                    Body = new List<Statement>
+                    {
+                        new ReturnStatement
+                        {
+                            Value = new NoneLiteral()
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - should generate global::Sharpy.Core.List<int>?
+        Assert.Contains("global::Sharpy.Core.List<int>?", code);
+    }
+
+    [Fact]
+    public void GenerateCompilationUnit_ListOfNullableType_GeneratesCorrectly()
+    {
+        // Arrange
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "get_items",
+                    Parameters = new List<Parameter>(),
+                    ReturnType = new TypeAnnotation
+                    {
+                        Name = "list",
+                        TypeArguments = new List<TypeAnnotation>
+                        {
+                            new TypeAnnotation { Name = "int", IsNullable = true }
+                        },
+                        IsNullable = false
+                    },
+                    Body = new List<Statement>
+                    {
+                        new ReturnStatement
+                        {
+                            Value = new ListLiteral
+                            {
+                                Elements = new List<Expression>()
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - should generate global::Sharpy.Core.List<int?>
+        Assert.Contains("global::Sharpy.Core.List<int?>", code);
+    }
+
+    #endregion
 }

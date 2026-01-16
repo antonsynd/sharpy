@@ -114,10 +114,18 @@ public class RoslynEmitter
         var namespaceDecl = NamespaceDeclaration(namespaceName)
             .WithMembers(SingletonList<MemberDeclarationSyntax>(moduleClass));
 
-        return CompilationUnit()
+        // Build compilation unit first
+        var compilationUnit = CompilationUnit()
             .WithUsings(List(usingDirectives))
             .WithMembers(SingletonList<MemberDeclarationSyntax>(namespaceDecl))
             .NormalizeWhitespace();
+
+        // Add #nullable enable directive to enable C# nullable reference types
+        // This aligns with Sharpy's "null-safe by default" principle (Axiom 3)
+        // Must be added AFTER NormalizeWhitespace to preserve leading position
+        var nullablePragma = ParseLeadingTrivia("#nullable enable\n\n");
+
+        return compilationUnit.WithLeadingTrivia(nullablePragma);
     }
 
     private NameSyntax GenerateNamespaceName()
