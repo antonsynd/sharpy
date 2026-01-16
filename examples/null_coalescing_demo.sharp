@@ -1,0 +1,29 @@
+# Null Coalescing Operator Demo
+# The ?? operator returns the left operand if it's not null, otherwise returns the right operand
+
+def get_username(user_name: str?) -> str:
+    # Use null coalescing to provide a default value
+    name = user_name ?? "Guest"
+    return name
+
+def get_config_value(config: dict[str, str]?, key: str, default: str) -> str:
+    # Chain null coalescing operators
+    value = config?.get(key) ?? default
+    return value
+
+def main() -> None:
+    # Example 1: Simple null coalescing
+    name1 = get_username("Alice")
+    name2 = get_username(None)
+    print(f"Name 1: {name1}")  # Output: Name 1: Alice
+    print(f"Name 2: {name2}")  # Output: Name 2: Guest
+
+    # Example 2: Chained null coalescing
+    result = None ?? None ?? "default" ?? "fallback"
+    print(f"Chained result: {result}")  # Output: Chained result: default
+
+    # Example 3: With expressions
+    x: int? = None
+    y: int? = 42
+    value = x ?? y ?? 0
+    print(f"Value: {value}")  # Output: Value: 42
