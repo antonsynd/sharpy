@@ -3145,6 +3145,13 @@ public class RoslynEmitter
 
     private ExpressionSyntax GenerateMemberAccess(MemberAccess memberAccess)
     {
+        // Check for nested module access (e.g., lib.math.add -> Lib.Math.Add)
+        // This must be checked before enum handling to ensure module paths take precedence
+        if (TryExtractModulePath(memberAccess, out var modulePath))
+        {
+            return BuildModuleAccessExpression(modulePath);
+        }
+
         // Check for enum member access (e.g., Color.RED -> Color.Red)
         if (memberAccess.Object is Identifier enumTypeIdentifier)
         {
@@ -3197,6 +3204,106 @@ public class RoslynEmitter
                 obj,
                 member);
         }
+    }
+
+    /// <summary>
+    /// Attempts to extract a module path from a member access chain.
+    /// For example, lib.math.add becomes ["lib", "math", "add"].
+    /// Returns true if the entire chain represents module access, false otherwise.
+    /// </summary>
+    private bool TryExtractModulePath(MemberAccess memberAccess, out List<string> modulePath)
+    {
+        modulePath = new List<string>();
+
+        // Build the path by traversing the member access chain
+        Expression current = memberAccess;
+        while (current is MemberAccess ma)
+        {
+            // Add the member name to the front of the list
+            modulePath.Insert(0, ma.Member);
+            current = ma.Object;
+        }
+
+        // The base should be an identifier
+        if (current is not Identifier identifier)
+        {
+            modulePath.Clear();
+            return false;
+        }
+
+        // Add the base identifier to the front
+        modulePath.Insert(0, identifier.Name);
+
+        // Now check if this path represents module access
+        // We need at least 2 parts (e.g., lib.math)
+        if (modulePath.Count < 2)
+        {
+            modulePath.Clear();
+            return false;
+        }
+
+        // Check if the base is a module symbol
+        var baseSymbol = _context.LookupSymbol(modulePath[0]);
+        if (baseSymbol is not ModuleSymbol)
+        {
+            modulePath.Clear();
+            return false;
+        }
+
+        // Verify that the path exists in the module hierarchy
+        var currentModule = (ModuleSymbol)baseSymbol;  // Safe cast - we already checked it's a ModuleSymbol
+        for (int i = 1; i < modulePath.Count; i++)
+        {
+            var memberName = modulePath[i];
+
+            // Check if this member exists in the current module's exports
+            if (!currentModule.Exports.TryGetValue(memberName, out var exportedSymbol))
+            {
+                modulePath.Clear();
+                return false;
+            }
+
+            // If this is not the last element, it should be a nested module
+            if (i < modulePath.Count - 1)
+            {
+                if (exportedSymbol is not ModuleSymbol nestedModule)
+                {
+                    modulePath.Clear();
+                    return false;
+                }
+                currentModule = nestedModule;
+            }
+            // The last element can be any symbol (function, variable, or module)
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Builds a C# member access expression from a module path.
+    /// For example, ["lib", "math", "add"] becomes Lib.Math.Add.
+    /// </summary>
+    private ExpressionSyntax BuildModuleAccessExpression(List<string> modulePath)
+    {
+        if (modulePath.Count == 0)
+        {
+            throw new ArgumentException("Module path cannot be empty", nameof(modulePath));
+        }
+
+        // Start with the first identifier (PascalCase)
+        ExpressionSyntax current = IdentifierName(NameMangler.ToPascalCase(modulePath[0]));
+
+        // Chain the rest of the path
+        for (int i = 1; i < modulePath.Count; i++)
+        {
+            var memberName = NameMangler.ToPascalCase(modulePath[i]);
+            current = MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                current,
+                IdentifierName(memberName));
+        }
+
+        return current;
     }
 
     private ExpressionSyntax GenerateIndexAccess(IndexAccess indexAccess)
