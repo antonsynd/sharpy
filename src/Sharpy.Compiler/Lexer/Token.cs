@@ -126,6 +126,7 @@ public enum TokenType
     CaretAssign,       // ^=
     LeftShiftAssign,   // <<=
     RightShiftAssign,  // >>=
+    NullCoalesceAssign, // ??=
 
     // Operators - Special
     Question,          // ?

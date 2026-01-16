@@ -1539,6 +1539,10 @@ public class Lexer
                     _position += 3;
                     _column += 3;
                     return new Token(TokenType.DoubleSlashAssign, threeChar, startLine, startColumn);
+                case "??=":
+                    _position += 3;
+                    _column += 3;
+                    return new Token(TokenType.NullCoalesceAssign, threeChar, startLine, startColumn);
             }
         }
 

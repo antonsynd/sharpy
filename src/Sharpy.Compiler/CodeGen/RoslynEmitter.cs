@@ -1772,6 +1772,7 @@ public class RoslynEmitter
             // Special cases handled by GenerateAugmentedValue
             AssignmentOperator.DoubleSlashAssign => SyntaxKind.None,
             AssignmentOperator.PowerAssign => SyntaxKind.None,
+            AssignmentOperator.NullCoalesceAssign => SyntaxKind.None,
             _ => throw new NotImplementedException($"Augmented assignment operator not supported: {op}")
         };
     }
@@ -1810,6 +1811,10 @@ public class RoslynEmitter
                 GenerateFloorDivision(left, right,
                     (targetAst != null && IsFloatExpression(targetAst)) ||
                     (valueAst != null && IsFloatExpression(valueAst))),
+
+            // x ??= y → x ?? y (null coalescing)
+            AssignmentOperator.NullCoalesceAssign =>
+                BinaryExpression(SyntaxKind.CoalesceExpression, left, right),
 
             // All other operators use simple binary expressions
             _ => BinaryExpression(GetAugmentedAssignmentOperator(op), left, right)

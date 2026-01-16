@@ -74,12 +74,34 @@ public class OperatorValidator
                 break;
 
             case BinaryOperator.NullCoalesce:
-                // TODO: Implement null coalescing operator support
-                // For now, return Unknown and log an error
-                AddError(
-                    $"Null coalescing operator ('??') is not yet implemented",
-                    line, column);
-                result = SemanticType.Unknown;
+                // Null coalescing operator: left ?? right
+                // Returns left if it's not null, otherwise returns right
+                // Left operand must be nullable, right operand should be assignable to the non-nullable version of left
+                if (left is not NullableType nullableLeft)
+                {
+                    AddError(
+                        $"Left operand of null coalescing operator must be nullable, but got '{left.GetDisplayName()}'",
+                        line, column);
+                    result = SemanticType.Unknown;
+                }
+                else
+                {
+                    // Result type is the non-nullable version of the left operand
+                    // (or stays nullable if right is also nullable)
+                    var leftNonNullable = nullableLeft.UnderlyingType;
+                    if (right.IsAssignableTo(leftNonNullable))
+                    {
+                        // If right is nullable, result is nullable, otherwise non-nullable
+                        result = right is NullableType ? left : leftNonNullable;
+                    }
+                    else
+                    {
+                        AddError(
+                            $"Right operand of null coalescing operator must be assignable to '{leftNonNullable.GetDisplayName()}', but got '{right.GetDisplayName()}'",
+                            line, column);
+                        result = SemanticType.Unknown;
+                    }
+                }
                 break;
 
             case BinaryOperator.In:
@@ -932,6 +954,7 @@ public class OperatorValidator
             AssignmentOperator.XorAssign => BinaryOperator.BitwiseXor,
             AssignmentOperator.LeftShiftAssign => BinaryOperator.LeftShift,
             AssignmentOperator.RightShiftAssign => BinaryOperator.RightShift,
+            AssignmentOperator.NullCoalesceAssign => BinaryOperator.NullCoalesce,
             AssignmentOperator.Assign => null,
             _ => null
         };
@@ -957,6 +980,7 @@ public class OperatorValidator
             AssignmentOperator.XorAssign => "^=",
             AssignmentOperator.LeftShiftAssign => "<<=",
             AssignmentOperator.RightShiftAssign => ">>=",
+            AssignmentOperator.NullCoalesceAssign => "??=",
             _ => op.ToString()
         };
     }
@@ -1023,6 +1047,14 @@ public class OperatorValidator
                 line,
                 column);
             return SemanticType.Unknown;
+        }
+
+        // Special case for ??=: the result type should be the target type (nullable)
+        // because the operation is: target = target ?? value
+        // and the target remains nullable after the operation
+        if (op == AssignmentOperator.NullCoalesceAssign)
+        {
+            return targetType;
         }
 
         // Verify result type is assignable to target type

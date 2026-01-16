@@ -192,7 +192,7 @@ public class Parser
             }
 
             // Now check if we have an assignment operator
-            if (Current.Type >= TokenType.Assign && Current.Type <= TokenType.RightShiftAssign)
+            if (Current.Type >= TokenType.Assign && Current.Type <= TokenType.NullCoalesceAssign)
             {
                 // This is a tuple unpacking assignment
                 var tuple = new TupleLiteral
@@ -226,7 +226,7 @@ public class Parser
         }
 
         // Check for assignment operators
-        if (Current.Type >= TokenType.Assign && Current.Type <= TokenType.RightShiftAssign)
+        if (Current.Type >= TokenType.Assign && Current.Type <= TokenType.NullCoalesceAssign)
         {
             var op = TokenTypeToAssignmentOperator(Current.Type);
             Advance();
@@ -303,6 +303,7 @@ public class Parser
         TokenType.CaretAssign => AssignmentOperator.XorAssign,
         TokenType.LeftShiftAssign => AssignmentOperator.LeftShiftAssign,
         TokenType.RightShiftAssign => AssignmentOperator.RightShiftAssign,
+        TokenType.NullCoalesceAssign => AssignmentOperator.NullCoalesceAssign,
         _ => throw new ParserError($"Not an assignment operator: {type}", Current.Line, Current.Column)
     };
 

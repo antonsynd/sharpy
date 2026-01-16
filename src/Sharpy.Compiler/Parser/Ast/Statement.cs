@@ -39,7 +39,8 @@ public enum AssignmentOperator
     OrAssign,      // |=
     XorAssign,     // ^=
     LeftShiftAssign,  // <<=
-    RightShiftAssign  // >>=
+    RightShiftAssign,  // >>=
+    NullCoalesceAssign // ??=
 }
 
 /// <summary>
