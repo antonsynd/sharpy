@@ -249,18 +249,33 @@ public class RoslynEmitter
             // Convert Python module name to C# namespace
             // e.g., "system.io" -> "System.IO"
             var namespaceName = ConvertModuleNameToNamespace(alias.Name);
+            var isNetFramework = IsNetFrameworkNamespace(alias.Name);
 
             if (alias.AsName != null)
             {
-                // import module as alias -> using alias = Module;
+                // import module as alias -> using alias = Module.Exports; (for Sharpy modules)
+                // import module as alias -> using alias = Module; (for .NET framework)
+                var targetName = isNetFramework ? namespaceName : $"{namespaceName}.Exports";
                 yield return UsingDirective(
                     NameEquals(alias.AsName),
-                    ParseName(namespaceName));
+                    ParseName(targetName));
             }
             else
             {
-                // import module -> using Module;
-                yield return UsingDirective(ParseName(namespaceName));
+                if (isNetFramework)
+                {
+                    // import system.io -> using System.IO; (standard .NET import)
+                    yield return UsingDirective(ParseName(namespaceName));
+                }
+                else
+                {
+                    // import module -> using module_alias = Module.Exports; (Sharpy module)
+                    // Convert "utils.helpers" to "utils_helpers" for valid C# identifier
+                    var sanitizedAlias = alias.Name.Replace(".", "_");
+                    yield return UsingDirective(
+                        NameEquals(sanitizedAlias),
+                        ParseName($"{namespaceName}.Exports"));
+                }
             }
         }
     }
@@ -269,12 +284,43 @@ public class RoslynEmitter
     {
         // Convert module name to namespace
         var namespaceName = ConvertModuleNameToNamespace(fromImport.Module);
+        var isNetFramework = IsNetFrameworkNamespace(fromImport.Module);
 
-        // from module import * -> using Module;
-        // from module import Name -> using Module;
-        // Note: C# doesn't have direct equivalent to Python's selective imports
-        // All types from the namespace become available
-        yield return UsingDirective(ParseName(namespaceName));
+        if (isNetFramework)
+        {
+            // from system.io import File -> using System.IO; (standard .NET import)
+            yield return UsingDirective(ParseName(namespaceName));
+        }
+        else
+        {
+            // Generate using static for the module's Exports class
+            // This enables direct access to module-level functions
+            // e.g., "from utils.helpers import format_text" → "using static Utils.Helpers.Exports;"
+            var exportsClass = $"{namespaceName}.Exports";
+            yield return UsingDirective(ParseName(exportsClass))
+                .WithStaticKeyword(Token(SyntaxKind.StaticKeyword));
+        }
+    }
+
+    /// <summary>
+    /// Determines if a module name refers to a .NET framework namespace.
+    /// .NET framework namespaces don't have an Exports class, so they need different import handling.
+    /// </summary>
+    private static bool IsNetFrameworkNamespace(string moduleName)
+    {
+        // Common .NET framework namespace prefixes
+        var netPrefixes = new[]
+        {
+            "system",
+            "microsoft",
+            "windows",
+            "xamarin",
+            "mono",
+            "netstandard"
+        };
+
+        var firstPart = moduleName.Split('.')[0].ToLowerInvariant();
+        return netPrefixes.Contains(firstPart);
     }
 
     private string ConvertModuleNameToNamespace(string moduleName)

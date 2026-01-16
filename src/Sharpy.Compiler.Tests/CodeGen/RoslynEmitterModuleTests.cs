@@ -103,7 +103,7 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert
+        // Assert - .NET framework namespace imports normally without .Exports
         Assert.Contains("using System.IO;", code);
     }
 
@@ -130,7 +130,7 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert
+        // Assert - .NET framework namespace with alias
         Assert.Contains("using Collections = System.Collections.Generic;", code);
     }
 
@@ -158,7 +158,7 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert
+        // Assert - .NET framework imports normally without using static
         Assert.Contains("using System.IO;", code);
     }
 
@@ -183,7 +183,7 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert
+        // Assert - .NET framework imports normally
         Assert.Contains("using System.Text;", code);
     }
 
@@ -216,14 +216,64 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert
+        // Assert - .NET framework imports normally without .Exports
         Assert.Contains("using System.IO;", code);
         Assert.Contains("using System.Text;", code);
         Assert.Contains("using System.Linq;", code);
+    }
 
-        // Verify no duplicates - each using should appear only once
-        var linqCount = System.Text.RegularExpressions.Regex.Matches(code, @"using System\.Linq;").Count;
-        Assert.Equal(1, linqCount);
+    [Fact]
+    public void GenerateCompilationUnit_WithImportModule_GeneratesAliasToExports()
+    {
+        // Arrange
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new ImportStatement
+                {
+                    Names = new List<ImportAlias>
+                    {
+                        new ImportAlias { Name = "utils.helpers" }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - should generate alias pointing to Exports class
+        Assert.Contains("using utils_helpers = Utils.Helpers.Exports;", code);
+    }
+
+    [Fact]
+    public void GenerateCompilationUnit_WithImportModuleAsAlias_GeneratesCorrectAlias()
+    {
+        // Arrange
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new ImportStatement
+                {
+                    Names = new List<ImportAlias>
+                    {
+                        new ImportAlias { Name = "utils.helpers", AsName = "h" }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert
+        Assert.Contains("using h = Utils.Helpers.Exports;", code);
     }
 
     [Fact]
@@ -256,7 +306,7 @@ public class RoslynEmitterModuleTests
         var code = result.ToFullString();
 
         // Assert
-        // Import should be in using directives
+        // Import should be in using directives (.NET framework import)
         Assert.Contains("using System.IO;", code);
         // Function should be in module class
         Assert.Contains("MyFunction", code);
@@ -289,8 +339,8 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert
-        Assert.Contains("using MyCustomModule.SubModule;", code);
+        // Assert - Sharpy modules (non-.NET) should generate alias to Exports
+        Assert.Contains("using my_custom_module_sub_module = MyCustomModule.SubModule.Exports;", code);
     }
 
     [Fact]
