@@ -1,216 +1,194 @@
-# Implementation Summary: Task 0.1.10.7 - Import Code Generation
+# Implementation Plan: Task 0.1.10.CG7 - Update Integration Tests
 
-## Overview
+## Summary
 
-**Task ID:** 0.1.10.7
-**Title:** Implement Import Code Generation
-**Status:** ✅ **COMPLETED**
-**Objective:** Generate C# `using` statements from Sharpy imports with proper handling of both Sharpy modules and .NET framework namespaces.
+**Task:** Fix Phase 0.1.10 integration tests to pass after code generation updates
+**Current Status:** 29 failing, 4 passing, 1 skipped (34 total tests)
+**Root Causes:** Multiple code generation issues in `RoslynEmitter.cs` related to module imports and namespace resolution
 
 ---
 
-## What Was Implemented
+## Step-by-Step Implementation Approach
 
-### 1. Updated `GenerateFromImportUsings` Method
+### Phase 1: Fix Using Directive Namespace Resolution (Highest Priority)
+**Problem:** `import utils` generates `using utils = Utils.Exports;` but should be `using utils = TestProject.Utils.Utils;`
 
-**File:** `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` (Lines 273-292)
+The using directive for regular imports (not `from X import Y`) is missing the project namespace prefix and using the old `Exports` class pattern instead of the module class name pattern.
 
-**Changes:**
-- Added logic to distinguish between .NET framework namespaces and Sharpy modules
-- For .NET framework: Generate standard `using` directive (e.g., `using System.IO;`)
-- For Sharpy modules: Generate `using static` for the module's `Exports` class (e.g., `using static Utils.Helpers.Exports;`)
+**File:** `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`
+**Location:** `GenerateImportUsings()` method (line ~245-281)
 
-**Example:**
+**Changes Required:**
+1. Update the non-aliased Sharpy module import to include project namespace prefix
+2. Change from `.Exports` to `.<ModuleClassName>` pattern (matching `GenerateFromImportUsings`)
+
+**Before:**
 ```csharp
-// from system.io import File
-using System.IO;
-
-// from utils.helpers import format_text
-using static Utils.Helpers.Exports;
+yield return UsingDirective(
+    NameEquals(sanitizedAlias),
+    ParseName($"{namespaceName}.Exports"));
 ```
 
----
-
-### 2. Updated `GenerateImportUsings` Method
-
-**File:** `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` (Lines 245-271)
-
-**Changes:**
-- Added logic to distinguish between .NET framework namespaces and Sharpy modules
-- For .NET framework with alias: `using alias = Namespace;`
-- For .NET framework without alias: `using Namespace;`
-- For Sharpy modules with alias: `using alias = Module.Exports;`
-- For Sharpy modules without alias: `using module_name = Module.Exports;`
-
-**Example:**
+**After:**
 ```csharp
-// import system.io
-using System.IO;
-
-// import system.io as io
-using io = System.IO;
-
-// import utils.helpers
-using utils_helpers = Utils.Helpers.Exports;
-
-// import utils.helpers as h
-using h = Utils.Helpers.Exports;
+// Build: ProjectNamespace.ModuleNamespace.ModuleClassName
+var moduleClassName = /* extract last part of namespaceName */;
+var fullPath = string.IsNullOrEmpty(_context.ProjectNamespace)
+    ? $"{namespaceName}.{moduleClassName}"
+    : $"{_context.ProjectNamespace}.{namespaceName}.{moduleClassName}";
+yield return UsingDirective(
+    NameEquals(sanitizedAlias),
+    ParseName(fullPath));
 ```
 
----
-
-### 3. Added `IsNetFrameworkNamespace` Helper Method
-
-**File:** `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` (Lines 286-301)
-
-**Purpose:** Determines if a module name refers to a .NET framework namespace (which doesn't have an `Exports` class).
-
-**Recognized .NET Prefixes:**
-- `system`
-- `microsoft`
-- `windows`
-- `xamarin`
-- `mono`
-- `netstandard`
+**Tests Fixed:** BasicImport_SimpleModule_Works, BasicImport_ImportFromSubdirectory_Works, BasicImport_MultipleImports_Works, and ~15 more
 
 ---
 
-## Import Mapping Reference
+### Phase 2: Fix Empty Module Code Generation
+**Problem:** Empty modules or modules with only comments don't generate a class, causing "namespace not found" errors.
 
-### For .NET Framework Namespaces
+**File:** `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`
+**Location:** `GenerateModuleClass()` method (line ~419-529)
 
-| Sharpy Import | Generated C# |
-|---------------|-------------|
-| `import system.io` | `using System.IO;` |
-| `import system.io as io` | `using io = System.IO;` |
-| `from system.io import File` | `using System.IO;` |
-| `from system.text import *` | `using System.Text;` |
+**Changes Required:**
+1. Always generate a module class, even if empty
+2. Currently the class is generated, but the issue is that an empty class with no members triggers other issues
 
-### For Sharpy Modules
+**Investigation Needed:** Check if the class is being generated for empty modules - the error suggests it's not being found by the importing module.
 
-| Sharpy Import | Generated C# |
-|---------------|-------------|
-| `import utils.helpers` | `using utils_helpers = Utils.Helpers.Exports;` |
-| `import utils.helpers as h` | `using h = Utils.Helpers.Exports;` |
-| `from utils.helpers import format_text` | `using static Utils.Helpers.Exports;` |
-| `from utils import *` | `using static Utils.Exports;` |
+**Tests Fixed:** EdgeCase_EmptyModule_CompilesSuccessfully, EdgeCase_ModuleWithOnlyComments_CompilesSuccessfully
 
 ---
 
-## Tests Added/Updated
+### Phase 3: Fix Entry Point Main() Generation
+**Problem:** Some tests fail with "Program does not contain a static 'Main' method suitable for an entry point"
 
-### Updated Existing Tests
-All existing import tests in `RoslynEmitterModuleTests.cs` were updated to reflect the new behavior:
+**File:** `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`
+**Location:** `GenerateModuleClass()` method - entry point detection logic (line ~477-515)
 
-1. `GenerateCompilationUnit_WithImportStatement_GeneratesUsing` - Now expects .NET imports without `.Exports`
-2. `GenerateCompilationUnit_WithImportAlias_GeneratesUsingAlias` - Now expects .NET imports without `.Exports`
-3. `GenerateCompilationUnit_WithFromImport_GeneratesUsing` - Now expects .NET imports without `using static`
-4. `GenerateCompilationUnit_WithFromImportAll_GeneratesUsing` - Now expects .NET imports normally
-5. `GenerateCompilationUnit_WithMultipleImports_GeneratesAllUsings` - Updated assertions for .NET framework
-6. `ConvertModuleNameToNamespace_SnakeCase_ConvertsToPascalCase` - Correctly tests Sharpy module with `.Exports`
+**Current Logic:**
+- Main() is generated if: no user main function AND is entry point AND has executable statements
+- Main() is NOT generated if the file only has declarations (like `x: int = 42`)
 
-### New Tests Added
+**Investigation Needed:**
+- Verify `_context.IsEntryPoint` is being set correctly
+- Variable declarations (`x: int = 42`) need to generate a Main() or be treated as executable
 
-1. **`GenerateCompilationUnit_WithImportModule_GeneratesAliasToExports`**
-   - Tests: `import utils.helpers` → `using utils_helpers = Utils.Helpers.Exports;`
-
-2. **`GenerateCompilationUnit_WithImportModuleAsAlias_GeneratesCorrectAlias`**
-   - Tests: `import utils.helpers as h` → `using h = Utils.Helpers.Exports;`
+**Tests Fixed:** ProjectFile_CustomSourceDirectory_FindsSourceFiles
 
 ---
 
-## Test Results
+### Phase 4: Fix Aliased Import Using Generation
+**Problem:** `import config as cfg` should generate correct using directive with alias
 
-✅ **All tests passing:**
-- **RoslynEmitterModuleTests:** 30/30 tests passed
-- **All CodeGen tests:** 378/378 tests passed
-- **Full test suite:** 2942/2942 tests passed (81 skipped)
+**File:** `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs`
+**Location:** `GenerateImportUsings()` method, aliased branch (line ~254-261)
 
----
-
-## Key Design Decisions
-
-### 1. .NET Framework vs Sharpy Module Detection
-- Used simple prefix matching on the first namespace component
-- This avoids needing access to the full module resolution system during code generation
-- Covers all common .NET framework namespaces
-
-### 2. Module Name Sanitization
-- For Sharpy modules without an alias, dots are replaced with underscores
-- Example: `utils.helpers` becomes `utils_helpers` for a valid C# identifier
-
-### 3. Backwards Compatibility
-- .NET framework imports work exactly as they did before
-- Only Sharpy module imports use the new `.Exports` pattern
-- This ensures existing code continues to compile
-
----
-
-## Files Modified
-
-| File | Changes | Lines |
-|------|---------|-------|
-| `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` | Updated import generation methods, added helper | 245-301 |
-| `src/Sharpy.Compiler.Tests/CodeGen/RoslynEmitterModuleTests.cs` | Updated existing tests, added 2 new tests | Multiple |
-
----
-
-## Example Usage
-
-### Complete Sharpy Example
-
-```python
-# Import .NET framework namespace
-import system.io
-import system.collections.generic as Collections
-
-# Import Sharpy modules
-import utils.helpers
-import utils.formatters as fmt
-
-# From imports
-from system.text import StringBuilder
-from utils.validators import is_valid, check_format
-
-# Usage
-file = system.io.File.ReadAllText("test.txt")
-result = utils_helpers.FormatText(file)
-validated = is_valid(result)
-```
-
-### Generated C# Code
-
+**Current Code:**
 ```csharp
-#nullable enable
-
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using global::Sharpy.Core;
-using System.IO;
-using Collections = System.Collections.Generic;
-using utils_helpers = Utils.Helpers.Exports;
-using fmt = Utils.Formatters.Exports;
-using System.Text;
-using static Utils.Validators.Exports;
-
-namespace Sharpy.MyModule
-{
-    public static class Exports
-    {
-        // Module code here...
-    }
-}
+var targetName = isNetFramework ? namespaceName : $"{namespaceName}.Exports";
 ```
+
+**Changes Required:** Similar to Phase 1 - add project namespace and use module class name
 
 ---
 
-## Conclusion
+### Phase 5: Handle Relative Imports (May Defer)
+**Problem:** `from .helpers import utility_func` fails with parser error - relative imports not supported
 
-The import code generation system now correctly handles both:
-1. **.NET framework namespaces** - imported normally without `.Exports`
-2. **Sharpy modules** - imported with `.Exports` for proper access to module-level functions
+**Files:** `src/Sharpy.Compiler/Parser/Parser.cs`
 
-This implementation provides a clean interop between Sharpy modules and .NET framework libraries while maintaining proper C# semantics.
+**Scope:** Parser doesn't recognize `.` prefix for relative imports. This is a parser feature, not code generation.
 
-**Status:** ✅ Task 0.1.10.7 Complete
+**Recommendation:** Mark these tests as `[Fact(Skip = "...")]` for now if parser changes are complex.
+
+**Tests Affected:**
+- PackageInit_WithReExports_ExportsModuleMembers
+- ComplexScenario_PackageWithMultipleModulesAndReExports_Works
+- ComplexScenario_PackageImportingFromParentPackage_Works
+
+---
+
+## Key Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` | Fix `GenerateImportUsings()` namespace resolution |
+| `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` | Ensure empty modules generate valid class |
+| `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` | Review entry point Main() generation |
+| `src/Sharpy.Compiler.Tests/Integration/Phase0110IntegrationTests.cs` | Mark relative import tests as skipped |
+
+---
+
+## Tests to Verify (Priority Order)
+
+### Must Pass (Core Import System)
+1. BasicImport_SimpleModule_Works
+2. BasicImport_ImportFromSubdirectory_Works
+3. BasicImport_MultipleImports_Works
+4. BasicImport_ImportVariable_Works
+
+### Must Pass (Multi-File)
+5. MultiFile_TwoFilesWithDependency_CompilesInCorrectOrder
+6. MultiFile_ThreeFilesChainedDependency_CompilesCorrectly
+7. MultiFile_SharedDependency_CompilesOnce
+8. MultiFile_ComplexDependencyGraph_ResolvesCorrectly
+9. MultiFile_FunctionCallAcrossModules_TypeChecksCorrectly
+
+### Should Pass (Packages)
+10. PackageInit_EmptyInit_MarksAsPackage
+11. PackageInit_WithVariables_DefinesPackageLevelVariables
+12. PackageInit_WithFunctions_DefinesPackageLevelFunctions
+13. PackageInit_NestedPackages_Works
+14. PackageInit_ImportFromPackage_Works
+
+### Should Pass (Project Files)
+15. ProjectFile_BasicConfiguration_CompilesSuccessfully
+16. ProjectFile_LibraryOutputType_CompilesWithoutEntryPoint
+17. ProjectFile_MultipleSourceFiles_CompilesAll
+18. ProjectFile_CustomSourceDirectory_FindsSourceFiles
+
+### Should Pass (Edge Cases)
+19. EdgeCase_EmptyModule_CompilesSuccessfully
+20. EdgeCase_ModuleWithOnlyComments_CompilesSuccessfully
+21. EdgeCase_ImportSameName_FromDifferentPackages_Works
+22. EdgeCase_DeepNesting_Works
+
+### Defer (Relative Imports - Parser Change Required)
+23. PackageInit_WithReExports_ExportsModuleMembers
+24. ComplexScenario_PackageWithMultipleModulesAndReExports_Works
+25. ComplexScenario_PackageImportingFromParentPackage_Works
+
+---
+
+## Potential Risks
+
+1. **Cascading Changes:** Fixing namespace resolution may reveal other issues in semantic analysis
+2. **Test Infrastructure:** Some failures may be test setup issues rather than compiler bugs
+3. **Backward Compatibility:** Changes to code generation could break existing compilations
+4. **Parser Complexity:** Relative imports require parser changes that may be out of scope
+
+---
+
+## Questions to Clarify
+
+1. **Relative Imports:** Should `from .module import X` be implemented in this task or deferred?
+   - Recommendation: Defer to separate task, skip affected tests
+
+2. **Empty Modules:** Should `import empty_module` be valid when module has no exports?
+   - Current tests expect this to work
+
+3. **Variable Declarations as Entry Point:** Should a file with only `x: int = 42` generate a Main()?
+   - Current logic requires executable statements, not just declarations
+
+---
+
+## Execution Order
+
+1. **Phase 1 First** - Fixing using directive generation will fix the majority of tests
+2. **Phase 2-3** - Fix edge cases for empty modules and entry points
+3. **Phase 4** - Fix aliased imports
+4. **Phase 5** - Defer or implement relative imports based on complexity assessment
+5. **Run all tests** to verify improvements
+6. **Skip remaining relative import tests** if not implementing parser changes

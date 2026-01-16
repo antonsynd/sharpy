@@ -61,6 +61,15 @@ public class RoslynEmitter
             return NameMangler.ToPascalCase(name);
         }
 
+        // Check if this is a module symbol - preserve the exact name (with sanitization)
+        // This ensures imported module names match their using alias (e.g., math_ops stays math_ops)
+        var symbol = _context.LookupSymbol(name);
+        if (symbol is ModuleSymbol)
+        {
+            // Use the same sanitization as in GenerateImportUsings
+            return name.Replace(".", "_");
+        }
+
         var baseName = NameMangler.ToCamelCase(name);
 
         if (isNewDeclaration)
@@ -253,12 +262,40 @@ public class RoslynEmitter
 
             if (alias.AsName != null)
             {
-                // import module as alias -> using alias = Module.Exports; (for Sharpy modules)
-                // import module as alias -> using alias = Module; (for .NET framework)
-                var targetName = isNetFramework ? namespaceName : $"{namespaceName}.Exports";
-                yield return UsingDirective(
-                    NameEquals(alias.AsName),
-                    ParseName(targetName));
+                // import module as alias
+                if (isNetFramework)
+                {
+                    // import system.io as io -> using io = System.IO; (for .NET framework)
+                    yield return UsingDirective(
+                        NameEquals(alias.AsName),
+                        ParseName(namespaceName));
+                }
+                else
+                {
+                    // import module as alias -> using alias = ProjectNamespace.Module.Module; (for Sharpy modules)
+                    // Extract just the last part for the class name
+                    // e.g., "Lib.Math.Operations" → "Operations"
+                    var lastDotIndex = namespaceName.LastIndexOf('.');
+                    var moduleClassName = lastDotIndex >= 0
+                        ? namespaceName.Substring(lastDotIndex + 1)
+                        : namespaceName;
+
+                    // Build full path: <ProjectNamespace>.<ModuleNamespace>.<ClassName>
+                    string fullModuleClass;
+                    if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+                    {
+                        fullModuleClass = $"{_context.ProjectNamespace}.{namespaceName}.{moduleClassName}";
+                    }
+                    else
+                    {
+                        // Fallback for single-file compilation without project namespace
+                        fullModuleClass = $"{namespaceName}.{moduleClassName}";
+                    }
+
+                    yield return UsingDirective(
+                        NameEquals(alias.AsName),
+                        ParseName(fullModuleClass));
+                }
             }
             else
             {
@@ -269,12 +306,35 @@ public class RoslynEmitter
                 }
                 else
                 {
-                    // import module -> using module_alias = Module.Exports; (Sharpy module)
+                    // import module -> using module_alias = ProjectNamespace.Module.Module; (Sharpy module)
                     // Convert "utils.helpers" to "utils_helpers" for valid C# identifier
                     var sanitizedAlias = alias.Name.Replace(".", "_");
+
+                    // Extract just the last part for the class name
+                    // e.g., "Lib.Math.Operations" → "Operations"
+                    var lastDotIndex = namespaceName.LastIndexOf('.');
+                    var moduleClassName = lastDotIndex >= 0
+                        ? namespaceName.Substring(lastDotIndex + 1)
+                        : namespaceName;
+
+                    // Build full path: <ProjectNamespace>.<ModuleNamespace>.<ClassName>
+                    // For example:
+                    //   - "config" → "TestProject.Config.Config"
+                    //   - "lib.math.operations" → "TestProject.Lib.Math.Operations.Operations"
+                    string fullModuleClass;
+                    if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+                    {
+                        fullModuleClass = $"{_context.ProjectNamespace}.{namespaceName}.{moduleClassName}";
+                    }
+                    else
+                    {
+                        // Fallback for single-file compilation without project namespace
+                        fullModuleClass = $"{namespaceName}.{moduleClassName}";
+                    }
+
                     yield return UsingDirective(
                         NameEquals(sanitizedAlias),
-                        ParseName($"{namespaceName}.Exports"));
+                        ParseName(fullModuleClass));
                 }
             }
         }
@@ -476,19 +536,22 @@ public class RoslynEmitter
 
         // Generate a Main method if:
         // 1. There's no user-defined main function, AND
-        // 2. This is the entry point file, AND
-        // 3. There are executable statements that need wrapping
-        if (!hasMainFunction && _context.IsEntryPoint && executableStatements.Count > 0)
+        // 2. This is the entry point file
+        // Note: We generate Main even if there are no executable statements, to support
+        // entry points that only contain imports or declarations
+        if (!hasMainFunction && _context.IsEntryPoint)
         {
-            // Create a Main method for executable statements
+            // Create a Main method for executable statements (or empty if none)
             // Clear declared variables and version tracking for Main method scope
             _declaredVariables.Clear();
             _variableVersions.Clear();
             _constVariables.Clear();
 
-            var mainBody = Block(executableStatements
-                .Select(GenerateBodyStatement)
-                .OfType<StatementSyntax>());
+            var mainBody = executableStatements.Count > 0
+                ? Block(executableStatements
+                    .Select(GenerateBodyStatement)
+                    .OfType<StatementSyntax>())
+                : Block(); // Empty block for entry points with no executable code
 
             var mainMethod = MethodDeclaration(
                     PredefinedType(Token(SyntaxKind.VoidKeyword)),
@@ -579,7 +642,10 @@ public class RoslynEmitter
         _constVariables.Clear();
 
         // Transform name using NameMangler
-        var mangledName = NameMangler.Transform(func.Name, NameContext.Method);
+        // Special case: only convert "main" to "Main" if this is the entry point file
+        var mangledName = func.Name == "main" && !_context.IsEntryPoint
+            ? "MainFunc"  // Rename to avoid C# entry point conflict in non-entry files
+            : NameMangler.Transform(func.Name, NameContext.Method);
 
         // Determine return type from annotation or infer void
         TypeSyntax returnType = func.ReturnType != null
@@ -2084,9 +2150,11 @@ public class RoslynEmitter
             _constVariables.Add(varDecl.Name);
         }
 
+        // Module-level fields are public static, so use PascalCase
+        // (Instance fields in classes use camelCase via NameContext.Field)
         var varName = varDecl.IsConst
             ? NameMangler.ToConstantCase(varDecl.Name)
-            : NameMangler.Transform(varDecl.Name, NameContext.Field);
+            : NameMangler.ToPascalCase(varDecl.Name);
 
         // Handle 'auto' type annotation - for fields, we must resolve to concrete type
         // For const without type annotation, infer type from initializer
@@ -3330,6 +3398,9 @@ public class RoslynEmitter
     /// <summary>
     /// Builds a C# member access expression from a module path.
     /// For example, ["lib", "math", "add"] becomes Lib.Math.Add.
+    /// Special handling for imported modules: if the base is an imported module with a using alias,
+    /// use the alias directly. For example, ["config", "MAX_SIZE"] with "import config" becomes
+    /// "config.MaxSize" (using the alias created by the using directive).
     /// </summary>
     private ExpressionSyntax BuildModuleAccessExpression(List<string> modulePath)
     {
@@ -3338,7 +3409,31 @@ public class RoslynEmitter
             throw new ArgumentException("Module path cannot be empty", nameof(modulePath));
         }
 
-        // Start with the first identifier (PascalCase)
+        // Check if this is a simple two-part access (e.g., config.MAX_SIZE)
+        // where the first part is an imported module that has a using alias
+        if (modulePath.Count == 2)
+        {
+            var baseModule = modulePath[0];
+            var memberName = modulePath[1];
+
+            // Check if the base is an imported module symbol
+            var baseSymbol = _context.LookupSymbol(baseModule);
+            if (baseSymbol is ModuleSymbol)
+            {
+                // For simple imports like "import config", we generate a using alias
+                // "using config = TestProject.Config.Config;", so we can use the alias directly
+                // Generate: alias.Member (e.g., config.MaxSize)
+                var aliasName = baseModule.Replace(".", "_"); // Same sanitization as in GenerateImportUsings
+                var mangledMemberName = NameMangler.ToPascalCase(memberName);
+                return MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName(aliasName),
+                    IdentifierName(mangledMemberName));
+            }
+        }
+
+        // For multi-part module paths (e.g., lib.math.add) or other cases,
+        // build the full qualified path (e.g., Lib.Math.Add)
         ExpressionSyntax current = IdentifierName(NameMangler.ToPascalCase(modulePath[0]));
 
         // Chain the rest of the path

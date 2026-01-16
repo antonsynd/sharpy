@@ -1,0 +1,19 @@
+{
+  "id": "q_20260116_142112_e2dd0545",
+  "task_id": "0.1.10.CG6",
+  "question": "Agent is asking for guidance on task 0.1.10.CG6: Fix Multiple Entry Points Issue",
+  "context": "Perfect! Let me now create a summary of the fix:\n\n## Summary: Fixed Multiple Entry Points Issue \u2713\n\n### Problem\nWhen compiling multiple Sharpy files, each file with a `main()` function would generate a C# `Main()` method, causing the C# compiler to fail with \"multiple entry points\" error.\n\n### Root Cause\nIn `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:582`, the `GenerateFunctionDeclaration` method was unconditionally converting all Sharpy `main` functions to C# `Main` methods using `NameMangler.Transform(func.Name, NameContext.Method)`, which applies PascalCase conversion (`main` \u2192 `Main`).\n\nThis happened regardless of whether the file was designated as the entry point.\n\n### Solution Implemented\n\n**File Modified:** `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:583-585`\n\nChanged the name mangling logic to check `_context.IsEntryPoint` before converting `main` to `Main`:\n\n```csharp\n// Transform name using NameMangler\n// Special case: only convert \"main\" to \"Main\" if this is the entry point file\nvar mangledName = func.Name == \"main\" && !_context.IsEntryPoint\n    ? \"MainFunc\"  // Rename to avoid C# entry point conflict in non-entry files\n    : NameMangler.Transform(func.Name, NameContext.Method);\n```\n\n**How it works:**\n- **Entry point file** (`_context.IsEntryPoint == true`): `main()` \u2192 `Main()` \u2713\n- **Non-entry files** (`_context.IsEntryPoint == false`): `main()` \u2192 `MainFunc()` \u2713\n\n### Entry Point Determination Logic\n\nThe entry point is determined in `src/Sharpy.Compiler/Project/ProjectCompiler.cs:401-420`:\n\n1. If `ProjectConfig.EntryPoint` is specified, that file is the entry point\n2. Otherwise, defaults to `main.spy` for executable projects\n\nThis context is passed to `RoslynEmitter` via `CodeGenContext.IsEntryPoint` (line 427).\n\n### Testing\n\n\u2705 **All 385 CodeGen tests pass:**\n```bash\ndotnet test --filter \"FullyQualifiedName~CodeGen\"\n```\n\n\u2705 **Build succeeds with no errors**\n\n### Benefits\n\n1. **Fixes the immediate issue**: Multiple files with `main()` functions no longer ",
+  "priority": "high",
+  "options": [
+    "1. If `ProjectConfig.EntryPoint` is specified, that file is the entry point",
+    "2. Otherwise, defaults to `main.spy` for executable projects",
+    "1. **Fixes the immediate issue**: Multiple files with `main()` functions no longer cause C# compilation errors",
+    "2. **Preserves functionality**: Non-entry point files can still have helper functions named `main()` (renamed to `MainFunc()`)",
+    "3. **Clean implementation**: Uses existing `IsEntryPoint` flag, no architectural changes needed"
+  ],
+  "created_at": "2026-01-16T14:21:12.898807",
+  "status": "pending",
+  "answer": null,
+  "answered_at": null,
+  "answer_source": null
+}
