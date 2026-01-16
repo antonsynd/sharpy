@@ -1056,6 +1056,61 @@ enum Status:
         fromImport.Names.Should().HaveCount(2);
     }
 
+    [Fact]
+    public void ParseDottedModuleImport()
+    {
+        var module = Parse("import utils.helpers");
+        var import = module.Body[0].Should().BeOfType<ImportStatement>().Subject;
+        import.Names.Should().HaveCount(1);
+        import.Names[0].Name.Should().Be("utils.helpers");
+        import.Names[0].AsName.Should().BeNull();
+    }
+
+    [Fact]
+    public void ParseDottedModuleImportWithAlias()
+    {
+        var module = Parse("import utils.helpers as h");
+        var import = module.Body[0].Should().BeOfType<ImportStatement>().Subject;
+        import.Names.Should().HaveCount(1);
+        import.Names[0].Name.Should().Be("utils.helpers");
+        import.Names[0].AsName.Should().Be("h");
+    }
+
+    [Fact]
+    public void ParseFromDottedModuleImport()
+    {
+        var module = Parse("from utils.helpers import format_text");
+        var fromImport = module.Body[0].Should().BeOfType<FromImportStatement>().Subject;
+        fromImport.Module.Should().Be("utils.helpers");
+        fromImport.Names.Should().HaveCount(1);
+        fromImport.Names[0].Name.Should().Be("format_text");
+        fromImport.Names[0].AsName.Should().BeNull();
+    }
+
+    [Fact]
+    public void ParseFromDottedModuleImportMultiple()
+    {
+        var module = Parse("from utils.helpers import func1, func2");
+        var fromImport = module.Body[0].Should().BeOfType<FromImportStatement>().Subject;
+        fromImport.Module.Should().Be("utils.helpers");
+        fromImport.Names.Should().HaveCount(2);
+        fromImport.Names[0].Name.Should().Be("func1");
+        fromImport.Names[1].Name.Should().Be("func2");
+    }
+
+    [Fact]
+    public void ParseFromDottedModuleImportWithAliases()
+    {
+        var module = Parse("from utils.helpers import func1 as f1, func2 as f2");
+        var fromImport = module.Body[0].Should().BeOfType<FromImportStatement>().Subject;
+        fromImport.Module.Should().Be("utils.helpers");
+        fromImport.Names.Should().HaveCount(2);
+        fromImport.Names[0].Name.Should().Be("func1");
+        fromImport.Names[0].AsName.Should().Be("f1");
+        fromImport.Names[1].Name.Should().Be("func2");
+        fromImport.Names[1].AsName.Should().Be("f2");
+    }
+
     #endregion
 
     #region Complex Examples
