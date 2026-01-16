@@ -479,11 +479,30 @@ public class RoslynEmitter
             Console.WriteLine($"Warning: {executableStatements.Count} module-level statement(s) ignored because a 'main' function is defined");
         }
 
-        return ClassDeclaration("Exports")
+        // Generate module class name from source file name
+        var moduleClassName = GetModuleClassName();
+
+        return ClassDeclaration(moduleClassName)
             .WithModifiers(TokenList(
                 Token(SyntaxKind.PublicKeyword),
                 Token(SyntaxKind.StaticKeyword)))
             .WithMembers(List(declarations));
+    }
+
+    private string GetModuleClassName()
+    {
+        // Get the file name without extension and convert to PascalCase
+        if (!string.IsNullOrEmpty(_context.SourceFilePath))
+        {
+            var fileName = Path.GetFileNameWithoutExtension(_context.SourceFilePath);
+            if (!string.IsNullOrEmpty(fileName))
+            {
+                return SimpleToPascalCase(fileName);
+            }
+        }
+
+        // Fallback to "Exports" if no source file path available
+        return "Exports";
     }
 
     private SyntaxNode? GenerateStatement(Statement stmt)
@@ -495,6 +514,7 @@ public class RoslynEmitter
             StructDef structDef => GenerateStructDeclaration(structDef),
             InterfaceDef interfaceDef => GenerateInterfaceDeclaration(interfaceDef),
             EnumDef enumDef => GenerateEnumDeclaration(enumDef),
+            VariableDeclaration varDecl => GenerateModuleLevelField(varDecl),
             TypeAlias => null,  // Type aliases are compile-time only, no C# output
             ReturnStatement ret => GenerateReturn(ret),
             Assignment assign => GenerateAssignment(assign),
@@ -2006,6 +2026,115 @@ public class RoslynEmitter
 
         return LocalDeclarationStatement(declaration)
             .WithModifiers(modifiers);
+    }
+
+    private FieldDeclarationSyntax GenerateModuleLevelField(VariableDeclaration varDecl)
+    {
+        // Track const variables by their original Sharpy name for consistent reference resolution
+        if (varDecl.IsConst)
+        {
+            _constVariables.Add(varDecl.Name);
+        }
+
+        var varName = varDecl.IsConst
+            ? NameMangler.ToConstantCase(varDecl.Name)
+            : NameMangler.Transform(varDecl.Name, NameContext.Field);
+
+        // Handle 'auto' type annotation - for fields, we must resolve to concrete type
+        // For const without type annotation, infer type from initializer
+        TypeSyntax typeSyntax;
+        if (varDecl.Type != null && varDecl.Type.Name == "auto")
+        {
+            // Infer type from initializer
+            if (varDecl.InitialValue != null)
+            {
+                typeSyntax = _typeMapper.InferTypeFromExpression(varDecl.InitialValue);
+            }
+            else
+            {
+                // No initializer - default to object
+                typeSyntax = PredefinedType(Token(SyntaxKind.ObjectKeyword));
+            }
+        }
+        else if (varDecl.Type == null && varDecl.IsConst && varDecl.InitialValue != null)
+        {
+            // Infer type from initializer for const declarations without type annotation
+            typeSyntax = _typeMapper.InferTypeFromExpression(varDecl.InitialValue);
+        }
+        else
+        {
+            typeSyntax = _typeMapper.MapType(varDecl.Type);
+        }
+
+        VariableDeclaratorSyntax declarator;
+        if (varDecl.InitialValue != null)
+        {
+            // Set target type context for collection literal type inference
+            var previousTargetType = _targetTypeContext;
+            _targetTypeContext = varDecl.Type;
+            try
+            {
+                var value = GenerateExpression(varDecl.InitialValue);
+                declarator = VariableDeclarator(Identifier(varName))
+                    .WithInitializer(EqualsValueClause(value));
+            }
+            finally
+            {
+                _targetTypeContext = previousTargetType;
+            }
+        }
+        else
+        {
+            declarator = VariableDeclarator(Identifier(varName));
+        }
+
+        var declaration = VariableDeclaration(typeSyntax)
+            .WithVariables(SingletonSeparatedList(declarator));
+
+        // Module-level fields must be static
+        // For const variables, try to use C# const if the initializer is a compile-time literal
+        // Otherwise fall back to public static readonly
+        // Regular variables become "public static"
+        SyntaxTokenList modifiers;
+        if (varDecl.IsConst && IsCompileTimeLiteral(varDecl.InitialValue))
+        {
+            // Use const for compile-time literals
+            modifiers = TokenList(
+                Token(SyntaxKind.PublicKeyword),
+                Token(SyntaxKind.ConstKeyword));
+        }
+        else if (varDecl.IsConst)
+        {
+            // Use static readonly for non-literal const values
+            modifiers = TokenList(
+                Token(SyntaxKind.PublicKeyword),
+                Token(SyntaxKind.StaticKeyword),
+                Token(SyntaxKind.ReadOnlyKeyword));
+        }
+        else
+        {
+            // Regular variables become public static
+            modifiers = TokenList(
+                Token(SyntaxKind.PublicKeyword),
+                Token(SyntaxKind.StaticKeyword));
+        }
+
+        return FieldDeclaration(declaration)
+            .WithModifiers(modifiers);
+    }
+
+    private static bool IsCompileTimeLiteral(Expression? expr)
+    {
+        // Check if the expression is a compile-time literal that can be used with C# const
+        return expr switch
+        {
+            IntegerLiteral => true,
+            FloatLiteral => true,
+            StringLiteral => true,
+            BooleanLiteral => true,
+            NoneLiteral => true,
+            _ => false
+        };
     }
 
     private StatementSyntax GenerateAssert(AssertStatement assert)

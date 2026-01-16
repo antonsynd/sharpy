@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-01-16T09:18:37.746554",
+  "last_updated": "2026-01-16T09:40:18.866056",
   "phases": [
     {
       "id": "0.1.10",
@@ -45,7 +45,20 @@
           "description": "**Type:** \ud83d\udcd0 Design\n**Priority:** Critical\n**Estimated Time:** 2 hours\n\n### Objective\nDecide how `import config` + `config.MAX_SIZE` should emit to C#.\n\n### Option A: Fully Qualified Names (Recommended)\n\n```python\n# config.spy\nMAX_SIZE: int = 100\n\n# main.spy\nimport config\nx = config.MAX_SIZE\n```\n\n**Generated C#:**\n```csharp\n// config.cs\nnamespace MyProject {\n    public static class Config {\n        public static int MAX_SIZE = 100;\n    }\n}\n\n// main.cs\nnamespace MyProject {\n    public static class",
           "files": [],
           "status": "in_progress",
-          "executions": [],
+          "executions": [
+            {
+              "attempt_number": 1,
+              "backend": "claude-code",
+              "started_at": "2026-01-16T09:40:18.861960",
+              "completed_at": "2026-01-16T09:40:18.861964",
+              "success": true,
+              "error_message": null,
+              "changes_made": [],
+              "tests_run": false,
+              "tests_passed": false,
+              "validation_results": []
+            }
+          ],
           "dependencies": [],
           "is_critical": false,
           "human_question": null,
@@ -60,7 +73,7 @@
           "files": [
             "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
           ],
-          "status": "pending",
+          "status": "in_progress",
           "executions": [],
           "dependencies": [],
           "is_critical": false,
@@ -137,14 +150,14 @@
     }
   ],
   "current_phase_id": null,
-  "current_task_id": "0.1.10.CG2",
-  "total_attempts": 1,
-  "total_successes": 1,
+  "current_task_id": "0.1.10.CG3",
+  "total_attempts": 2,
+  "total_successes": 2,
   "total_failures": 0,
   "backend_stats": {
     "claude_code": {
-      "attempts": 1,
-      "successes": 1,
+      "attempts": 2,
+      "successes": 2,
       "failures": 0
     },
     "copilot": {
