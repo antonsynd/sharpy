@@ -413,8 +413,9 @@ def parse_task_list(content: str) -> GroundTruth:
     goal_pattern = re.compile(r"\*\*Goal\*\*: (.+?)(?:\n|$)")
     # Task pattern: ## Task X.X.X.X: Title or ### Task X.X.X.X: Title
     # Also supports optional prefix like "R-" for remediation tasks
+    # Last segment can be alphanumeric (e.g., 0.1.10.CG1)
     task_pattern = re.compile(
-        r"^#{2,3} Task ([A-Z]+-)?(\d+\.\d+\.\d+\.\d+):?\s*(.*)$", re.MULTILINE
+        r"^#{2,3} Task ([A-Z]+-)?(\d+\.\d+\.\d+\.[A-Za-z0-9]+):?\s*(.*)$", re.MULTILINE
     )
     # File patterns - multiple ways files are referenced:
     # 1. 📁 **Files**: `path` (single file inline)
