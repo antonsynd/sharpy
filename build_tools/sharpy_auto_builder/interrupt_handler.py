@@ -73,7 +73,11 @@ def _display_review_request(data: Dict[str, Any]) -> None:
 
     # Task information
     console.print(f"[bold]Task ID:[/bold] {task_id}")
-    console.print(f"[bold]Description:[/bold] {task_desc}")
+    # Show task description as rendered markdown in a panel for better readability
+    if task_desc:
+        # Truncate description for display but show more than before
+        desc_display = task_desc[:1500] if len(task_desc) > 1500 else task_desc
+        console.print(Panel(Markdown(desc_display), title="Task Description", border_style="blue"))
     console.print()
 
     # Execution result
@@ -89,6 +93,17 @@ def _display_review_request(data: Dict[str, Any]) -> None:
     if execution_result.get("error"):
         console.print(f"[red]Error:[/red] {execution_result['error'][:200]}")
     console.print()
+
+    # Agent output (what the agent actually did/found)
+    agent_output = execution_result.get("output", "")
+    if agent_output:
+        console.print("[bold cyan]═══ Agent Output ═══[/bold cyan]")
+        console.print()
+        # Show full output - user can scroll
+        console.print(Markdown(agent_output))
+        console.print()
+        console.print("[bold cyan]═══ End of Agent Output ═══[/bold cyan]")
+        console.print()
 
     # Files changed
     if files_changed:
@@ -218,7 +233,7 @@ def collect_response(interrupt_data: Dict[str, Any]) -> Dict[str, Any]:
     interrupt_type = interrupt_data.get("type", "unknown")
 
     if interrupt_type == "review":
-        return _collect_review_response()
+        return _collect_review_response(interrupt_data)
     elif interrupt_type == "question":
         return _collect_question_response(interrupt_data)
     else:
@@ -226,38 +241,97 @@ def collect_response(interrupt_data: Dict[str, Any]) -> Dict[str, Any]:
         return {"error": f"Unknown interrupt type: {interrupt_type}"}
 
 
-def _collect_review_response() -> Dict[str, Any]:
+def _collect_review_response(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Collect user's review decision.
 
     Returns:
         Dictionary with approved, retry, feedback fields
     """
+    # Check if there are actual code changes
+    files_changed = data.get("files_changed", [])
+    diff_content = data.get("diff_content", "")
+    has_code_changes = bool(files_changed) or bool(diff_content)
+
+    # Check if agent is asking a follow-up question
+    agent_output = data.get("execution_result", {}).get("output", "")
+    asking_followup = any(phrase in agent_output.lower() for phrase in [
+        "would you like me to",
+        "shall i",
+        "do you want me to",
+        "next steps:",
+        "what would you like",
+    ])
+
     console.print("[bold yellow]What would you like to do?[/bold yellow]")
-    console.print("  1. Approve - Accept the implementation and commit")
-    console.print("  2. Retry - Request changes and re-run implementation")
-    console.print("  3. Skip - Skip this task and move on")
+
+    if has_code_changes:
+        console.print("  1. Approve - Accept the changes and commit")
+        console.print("  2. Retry - Request changes and re-run")
+        console.print("  3. Skip - Skip this task and move on")
+        console.print("  4. Continue - Mark complete and move to next task (no commit)")
+    else:
+        # No code changes - likely an investigation or analysis task
+        console.print("  1. Continue - Mark task complete and move to next task")
+        console.print("  2. Retry - Re-run with different instructions")
+        console.print("  3. Skip - Skip this task")
+        if asking_followup:
+            console.print("  4. Respond - Answer the agent's question")
     console.print()
 
-    choice = Prompt.ask(
-        "Enter your choice",
-        choices=["1", "2", "3", "approve", "retry", "skip"],
-        default="1",
-    )
+    if has_code_changes:
+        choices = ["1", "2", "3", "4", "approve", "retry", "skip", "continue"]
+        default = "1"
+    else:
+        choices = ["1", "2", "3", "continue", "retry", "skip"]
+        if asking_followup:
+            choices.extend(["4", "respond"])
+        default = "1"
 
-    # Normalize choice
-    if choice in ["1", "approve"]:
-        approved = True
-        retry = False
-        action = "approved"
-    elif choice in ["2", "retry"]:
-        approved = False
-        retry = True
-        action = "retry requested"
-    else:  # 3 or skip
-        approved = False
-        retry = False
-        action = "skipped"
+    choice = Prompt.ask("Enter your choice", choices=choices, default=default)
+
+    # Normalize choice based on context
+    if has_code_changes:
+        if choice in ["1", "approve"]:
+            approved = True
+            retry = False
+            action = "approved"
+        elif choice in ["2", "retry"]:
+            approved = False
+            retry = True
+            action = "retry requested"
+        elif choice in ["4", "continue"]:
+            approved = True  # Mark as complete
+            retry = False
+            action = "continued (no commit)"
+        else:  # 3 or skip
+            approved = False
+            retry = False
+            action = "skipped"
+    else:
+        if choice in ["1", "continue"]:
+            approved = True
+            retry = False
+            action = "completed"
+        elif choice in ["2", "retry"]:
+            approved = False
+            retry = True
+            action = "retry requested"
+        elif choice in ["4", "respond"] and asking_followup:
+            # User wants to respond to agent's question
+            console.print()
+            console.print("[bold]Enter your response to the agent:[/bold]")
+            response_text = Prompt.ask("Response")
+            return {
+                "approved": False,
+                "retry": True,
+                "feedback": response_text,
+                "modified_value": None,
+            }
+        else:  # 3 or skip
+            approved = False
+            retry = False
+            action = "skipped"
 
     # Collect optional feedback
     console.print()

@@ -168,6 +168,15 @@ Provide:
             and human_response.get("retry")
             and human_response.get("feedback")
         ):
+            # Include the previous agent output so feedback like "do all 3" makes sense
+            prev_output = state.get("last_execution_result", {}).get("output", "")
+            if prev_output:
+                # Truncate if very long but keep enough context
+                max_prev_output = 4000
+                if len(prev_output) > max_prev_output:
+                    prev_output = prev_output[-max_prev_output:] + "\n... [earlier output truncated]"
+                prompt += f"\n\n## Your Previous Response\n{prev_output}"
+
             prompt += f"\n\n## Human Reviewer Feedback (MUST ADDRESS)\nThe human reviewer requested a retry with the following feedback:\n{human_response['feedback']}\n\nPlease carefully address these concerns in this implementation attempt."
 
         # FEEDBACK LOOP: Include validation issues if we're retrying after validation failure

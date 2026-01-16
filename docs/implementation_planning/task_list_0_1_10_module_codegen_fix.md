@@ -4,6 +4,18 @@
 
 **Prerequisites:** Phase 0.1.10 semantic analysis must be working (completed in this PR).
 
+## Task Checklist
+
+- [ ] Task 0.1.10.CG1: Analyze Current Code Generation for Member Access
+- [ ] Task 0.1.10.CG2: Define C# Emission Strategy for Module Access
+- [ ] Task 0.1.10.CG3: Update Module Code Generation
+- [ ] Task 0.1.10.CG4: Handle Nested Module Access
+- [ ] Task 0.1.10.CG5: Handle From-Import Code Generation
+- [ ] Task 0.1.10.CG6: Fix Multiple Entry Points Issue
+- [ ] Task 0.1.10.CG7: Update Integration Tests
+
+---
+
 **Current Status:**
 - ✅ Semantic analysis for `import module` working
 - ✅ `ModuleSymbol` and `ModuleType` types created
