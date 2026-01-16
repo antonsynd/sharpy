@@ -1815,6 +1815,36 @@ public class TypeChecker
                 }
             }
         }
+        // Handle member access function calls (e.g., module.function() or obj.method())
+        else if (call.Function is MemberAccess memberAccessCall)
+        {
+            // For module member access (lib.math.add), we already checked the expression at line 1697
+            // which gave us a FunctionType. But we also need the FunctionSymbol for better validation.
+            // The calleeType already validated that memberAccessCall resolves to a function.
+            // We just need to extract the FunctionSymbol.
+
+            // Note: We can't just call CheckExpression again on memberAccessCall.Object because
+            // it was already called as part of checking call.Function at line 1697.
+            // Instead, we need to use the already-computed calleeType information or
+            // re-traverse the member access to find the function symbol.
+
+            // Since the semantic info stores resolved symbols, let's try to get the function symbol
+            // from the semantic info for the member access.
+            // But actually, the issue is that CheckMemberAccess returns a FunctionType but doesn't
+            // store the underlying FunctionSymbol anywhere we can retrieve it.
+
+            // The best approach is to re-evaluate the object to get the module, then lookup the member.
+            // This is duplicate work but necessary until we refactor to store symbols in SemanticInfo.
+            var objectType = CheckExpression(memberAccessCall.Object);
+            if (objectType is ModuleType moduleType)
+            {
+                var moduleSymbol = moduleType.Symbol;
+                if (moduleSymbol.Exports.TryGetValue(memberAccessCall.Member, out var exportedSymbol))
+                {
+                    funcSymbol = exportedSymbol as FunctionSymbol;
+                }
+            }
+        }
 
         // If we have a FunctionSymbol, use it for validation (supports default parameters)
         if (funcSymbol != null)

@@ -174,7 +174,10 @@ Provide:
                 # Truncate if very long but keep enough context
                 max_prev_output = 4000
                 if len(prev_output) > max_prev_output:
-                    prev_output = prev_output[-max_prev_output:] + "\n... [earlier output truncated]"
+                    prev_output = (
+                        prev_output[-max_prev_output:]
+                        + "\n... [earlier output truncated]"
+                    )
                 prompt += f"\n\n## Your Previous Response\n{prev_output}"
 
             prompt += f"\n\n## Human Reviewer Feedback (MUST ADDRESS)\nThe human reviewer requested a retry with the following feedback:\n{human_response['feedback']}\n\nPlease carefully address these concerns in this implementation attempt."
@@ -593,13 +596,21 @@ Focus only on fixing the failing tests. Do not re-implement the entire task.
 
     def _get_test_component(self: "Orchestrator", task_data: dict) -> str:
         """Determine which test component to filter by based on task."""
-        if "lexer" in task_data["id"].lower() or "0.1.0" in task_data["phase"]:
+        phase = task_data["phase"]
+        task_id_lower = task_data["id"].lower()
+
+        # Use exact phase prefix matching to avoid substring bugs
+        # (e.g., "0.1.1" in "0.1.10" incorrectly matches)
+        def phase_matches(prefix: str) -> bool:
+            return phase == prefix or phase.startswith(prefix + ".")
+
+        if "lexer" in task_id_lower or phase_matches("0.1.0"):
             return "Lexer"
-        elif "parser" in task_data["id"].lower() or "0.1.1" in task_data["phase"]:
+        elif "parser" in task_id_lower or phase_matches("0.1.1"):
             return "Parser"
-        elif "codegen" in task_data["id"].lower() or "0.1.2" in task_data["phase"]:
+        elif "codegen" in task_id_lower or phase_matches("0.1.2"):
             return "CodeGen"
-        elif "semantic" in task_data["id"].lower():
+        elif "semantic" in task_id_lower:
             return "Semantic"
         return ""
 

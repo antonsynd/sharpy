@@ -919,4 +919,60 @@ result = level1.level2.level3.deep_func()
     }
 
     #endregion
+
+    #region From-Import Tests
+
+    [Fact]
+    public void FromImport_DirectSymbolAccess_Works()
+    {
+        var helper = CreateHelper();
+
+        helper.AddSourceFile("config.spy", @"
+MAX_SIZE: int = 100
+MIN_SIZE: int = 10
+
+def get_range() -> int:
+    return MAX_SIZE - MIN_SIZE
+");
+
+        helper.AddSourceFile("main.spy", @"
+from config import MAX_SIZE, MIN_SIZE, get_range
+
+def main() -> int:
+    x: int = MAX_SIZE
+    y: int = MIN_SIZE
+    z: int = get_range()
+    return x + y + z
+");
+
+        helper.WithEntryPoint("main.spy");
+        var result = helper.Compile();
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+    }
+
+    [Fact(Skip = "Aliased from-imports not yet implemented - requires additional semantic analysis support")]
+    public void FromImport_WithAlias_Works()
+    {
+        var helper = CreateHelper();
+
+        helper.AddSourceFile("config.spy", @"
+MAX_VALUE: int = 100
+");
+
+        helper.AddSourceFile("main.spy", @"
+from config import MAX_VALUE as MAX
+
+def main() -> int:
+    x: int = MAX
+    return x
+");
+
+        helper.WithEntryPoint("main.spy");
+        var result = helper.Compile();
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
+    }
+
+    #endregion
 }

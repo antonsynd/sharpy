@@ -282,22 +282,50 @@ public class RoslynEmitter
 
     private IEnumerable<UsingDirectiveSyntax> GenerateFromImportUsings(FromImportStatement fromImport)
     {
-        // Convert module name to namespace
-        var namespaceName = ConvertModuleNameToNamespace(fromImport.Module);
         var isNetFramework = IsNetFrameworkNamespace(fromImport.Module);
 
         if (isNetFramework)
         {
             // from system.io import File -> using System.IO; (standard .NET import)
+            var namespaceName = ConvertModuleNameToNamespace(fromImport.Module);
             yield return UsingDirective(ParseName(namespaceName));
         }
         else
         {
-            // Generate using static for the module's Exports class
-            // This enables direct access to module-level functions
-            // e.g., "from utils.helpers import format_text" → "using static Utils.Helpers.Exports;"
-            var exportsClass = $"{namespaceName}.Exports";
-            yield return UsingDirective(ParseName(exportsClass))
+            // Generate using static for the module class
+            // This enables direct access to module-level functions and variables
+            // e.g., "from config import MAX_SIZE" → "using static TestFromImport.Config.Config;"
+            //
+            // For nested modules like "lib.math.operations":
+            // - Namespace: TestFromImport.Lib.Math.Operations
+            // - Class: Operations
+            // - Full path: TestFromImport.Lib.Math.Operations.Operations
+
+            var moduleNamespacePath = ConvertModuleNameToNamespace(fromImport.Module);
+
+            // Extract just the last part for the class name
+            // e.g., "Lib.Math.Operations" → "Operations"
+            var lastDotIndex = moduleNamespacePath.LastIndexOf('.');
+            var moduleClassName = lastDotIndex >= 0
+                ? moduleNamespacePath.Substring(lastDotIndex + 1)
+                : moduleNamespacePath;
+
+            // Build full path: <ProjectNamespace>.<ModuleNamespace>.<ClassName>
+            // For example:
+            //   - "config" → "TestFromImport.Config.Config"
+            //   - "lib.math.operations" → "TestFromImport.Lib.Math.Operations.Operations"
+            string fullModuleClass;
+            if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+            {
+                fullModuleClass = $"{_context.ProjectNamespace}.{moduleNamespacePath}.{moduleClassName}";
+            }
+            else
+            {
+                // Fallback for single-file compilation without project namespace
+                fullModuleClass = $"{moduleNamespacePath}.{moduleClassName}";
+            }
+
+            yield return UsingDirective(ParseName(fullModuleClass))
                 .WithStaticKeyword(Token(SyntaxKind.StaticKeyword));
         }
     }

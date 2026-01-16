@@ -278,11 +278,17 @@ class TestInterruptHandler:
     @patch("sharpy_auto_builder.interrupt_handler.Prompt.ask")
     @patch("sharpy_auto_builder.interrupt_handler.Confirm.ask")
     def test_collect_review_response_approve(self, mock_confirm, mock_prompt):
-        """Test collecting approve review response."""
+        """Test collecting approve review response with code changes."""
         mock_prompt.return_value = "1"  # Approve
         mock_confirm.return_value = False  # No feedback
 
-        response = interrupt_handler._collect_review_response()
+        # Provide data with file changes to test the "has_code_changes" branch
+        data = {
+            "files_changed": ["file1.py"],
+            "diff_content": "some diff",
+            "execution_result": {"output": "Done"},
+        }
+        response = interrupt_handler._collect_review_response(data)
 
         assert response["approved"] is True
         assert response["retry"] is False
@@ -291,11 +297,17 @@ class TestInterruptHandler:
     @patch("sharpy_auto_builder.interrupt_handler.Prompt.ask")
     @patch("sharpy_auto_builder.interrupt_handler.Confirm.ask")
     def test_collect_review_response_retry(self, mock_confirm, mock_prompt):
-        """Test collecting retry review response."""
+        """Test collecting retry review response with code changes."""
         mock_prompt.return_value = "2"  # Retry
         mock_confirm.return_value = False  # No feedback
 
-        response = interrupt_handler._collect_review_response()
+        # Provide data with file changes
+        data = {
+            "files_changed": ["file1.py"],
+            "diff_content": "some diff",
+            "execution_result": {"output": "Done"},
+        }
+        response = interrupt_handler._collect_review_response(data)
 
         assert response["approved"] is False
         assert response["retry"] is True
@@ -304,11 +316,17 @@ class TestInterruptHandler:
     @patch("sharpy_auto_builder.interrupt_handler.Prompt.ask")
     @patch("sharpy_auto_builder.interrupt_handler.Confirm.ask")
     def test_collect_review_response_skip(self, mock_confirm, mock_prompt):
-        """Test collecting skip review response."""
+        """Test collecting skip review response with code changes."""
         mock_prompt.return_value = "3"  # Skip
         mock_confirm.return_value = False  # No feedback
 
-        response = interrupt_handler._collect_review_response()
+        # Provide data with file changes
+        data = {
+            "files_changed": ["file1.py"],
+            "diff_content": "some diff",
+            "execution_result": {"output": "Done"},
+        }
+        response = interrupt_handler._collect_review_response(data)
 
         assert response["approved"] is False
         assert response["retry"] is False

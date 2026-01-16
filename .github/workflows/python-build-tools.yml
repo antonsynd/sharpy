@@ -1,0 +1,48 @@
+# This workflow runs Python tests for the build_tools module
+# Separate from the .NET tests to keep concerns isolated
+
+name: Python Build Tools
+
+on:
+  push:
+    branches: [ "mainline" ]
+    paths:
+      - 'build_tools/**'
+      - '.github/workflows/python-build-tools.yml'
+  pull_request:
+    branches: [ "mainline" ]
+    paths:
+      - 'build_tools/**'
+      - '.github/workflows/python-build-tools.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        # Install sharpy_auto_builder as editable package
+        pip install -e "build_tools/sharpy_auto_builder[dev]"
+
+    - name: Run tests with pytest
+      env:
+        # Add repo root to PYTHONPATH to support 'from build_tools.' imports
+        PYTHONPATH: ${{ github.workspace }}
+      run: |
+        python -m pytest build_tools/tests/ -v --tb=short

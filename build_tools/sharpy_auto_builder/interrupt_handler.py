@@ -77,7 +77,9 @@ def _display_review_request(data: Dict[str, Any]) -> None:
     if task_desc:
         # Truncate description for display but show more than before
         desc_display = task_desc[:1500] if len(task_desc) > 1500 else task_desc
-        console.print(Panel(Markdown(desc_display), title="Task Description", border_style="blue"))
+        console.print(
+            Panel(Markdown(desc_display), title="Task Description", border_style="blue")
+        )
     console.print()
 
     # Execution result
@@ -255,13 +257,16 @@ def _collect_review_response(data: Dict[str, Any]) -> Dict[str, Any]:
 
     # Check if agent is asking a follow-up question
     agent_output = data.get("execution_result", {}).get("output", "")
-    asking_followup = any(phrase in agent_output.lower() for phrase in [
-        "would you like me to",
-        "shall i",
-        "do you want me to",
-        "next steps:",
-        "what would you like",
-    ])
+    asking_followup = any(
+        phrase in agent_output.lower()
+        for phrase in [
+            "would you like me to",
+            "shall i",
+            "do you want me to",
+            "next steps:",
+            "what would you like",
+        ]
+    )
 
     console.print("[bold yellow]What would you like to do?[/bold yellow]")
 

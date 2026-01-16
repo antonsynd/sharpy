@@ -1,0 +1,19 @@
+{
+  "id": "q_20260116_091824_041bddce",
+  "task_id": "0.1.10.CG1",
+  "question": "Agent is asking for guidance on task 0.1.10.CG1: Analyze Current Code Generation for Member Access",
+  "context": "Perfect! Now let me create a comprehensive analysis document:\n\n## Analysis: Member Access Code Generation in Sharpy Compiler\n\n### Summary\n\nI've analyzed how `MemberAccess` expressions are currently emitted to C# code in the Sharpy compiler. The implementation is located in `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:3017-3071`.\n\n---\n\n### Core Implementation\n\n**Location**: `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs:3017`\n\n**Method**: `GenerateMemberAccess(MemberAccess memberAccess)`\n\n**AST Structure**: `src/Sharpy.Compiler/Parser/Ast/Expression.cs:181`\n```csharp\npublic record MemberAccess : Expression\n{\n    public Expression Object { get; init; } = null!;\n    public string Member { get; init; } = \"\";\n    public bool IsNullConditional { get; init; }  // obj?.member\n}\n```\n\n---\n\n### Transformation Rules\n\n#### 1. **Enum Member Access** (lines 3019-3036)\n**Pattern**: `EnumType.MEMBER_NAME`\n\n**Transformation**:\n- Sharpy: `Color.RED`\n- C#: `Color.Red`\n\n**Implementation**:\n- Detects when `Object` is an `Identifier` and looks up the symbol\n- If symbol is a `TypeSymbol` with `TypeKind.Enum`, applies special handling\n- Enum type name: `NameMangler.ToPascalCase(enumTypeIdentifier.Name)`\n- Enum member name: `TransformEnumMemberName(memberAccess.Member)`\n\n#### 2. **Enum Value Property** (lines 3040-3051)\n**Pattern**: `enum_instance.value`\n\n**Transformation**:\n- Sharpy: `color.value` (where `color` is an enum instance)\n- C#: `(int)color`\n\n**Implementation**:\n- Checks if member name equals \"value\" (case-insensitive)\n- Uses `IsEnumTypeExpression()` to verify the object is an enum type\n- Generates a cast to `int` instead of member access\n\n**Note**: There's a potential bug here - `IsEnumTypeExpression()` only handles `Identifier` expressions, not `MemberAccess` expressions like `Color.GREEN.value`.\n\n#### 3. **Regular Member Access** (lines 3053-3070)\n\n##### a. **Standard Member Access**\n**Pattern**: `obj.member`\n\n**Transformation**:\n- Sharpy: `self.x`, `obj._value`, `point.get_x`\n",
+  "priority": "high",
+  "options": [
+    "1. **Dunder methods**: Special mapping (e.g., `__init__` \u2192 `Constructor`, `__str__` \u2192 `ToString`)",
+    "2. **Private prefix**: `_value` \u2192 `_Value` (underscore preserved)",
+    "3. **Snake_case**: `my_field` \u2192 `MyField`",
+    "4. **Already PascalCase**: Preserved as-is (e.g., `MyField` \u2192 `MyField`)",
+    "5. **Backtick-escaped**: `` `Literal` `` \u2192 `Literal` (backticks stripped)"
+  ],
+  "created_at": "2026-01-16T09:18:24.691955",
+  "status": "pending",
+  "answer": null,
+  "answered_at": null,
+  "answer_source": null
+}

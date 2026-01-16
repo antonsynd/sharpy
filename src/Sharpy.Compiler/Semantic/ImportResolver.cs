@@ -266,10 +266,24 @@ public class ImportResolver
             case FunctionDef functionDef:
                 // All functions are tracked (visibility checked at import time)
                 var accessLevel = GetAccessLevel(functionDef.Name);
+
+                // Convert function parameters to parameter symbols
+                var parameters = functionDef.Parameters.Select(p => new ParameterSymbol
+                {
+                    Name = p.Name,
+                    // Type will be resolved during semantic analysis
+                    Type = SemanticType.Unknown,
+                    HasDefault = p.DefaultValue != null,
+                    DefaultValue = p.DefaultValue
+                }).ToList();
+
                 var funcSymbol = new FunctionSymbol
                 {
                     Name = functionDef.Name,
                     Kind = SymbolKind.Function,
+                    Parameters = parameters,
+                    // Return type will be resolved during semantic analysis
+                    ReturnType = SemanticType.Unknown,
                     AccessLevel = accessLevel,
                     DeclarationLine = functionDef.LineStart,
                     DeclarationColumn = functionDef.ColumnStart
