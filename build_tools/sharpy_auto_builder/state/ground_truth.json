@@ -1,0 +1,115 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-01-16T15:27:58.377185",
+  "phases": [
+    {
+      "id": "0.1.10",
+      "name": "Code Generation Fixes",
+      "goal": "",
+      "status": "pending",
+      "progress": 0.0,
+      "tasks": [
+        {
+          "id": "0.1.10.CG1",
+          "phase": "0.1.10",
+          "title": "Fix Module Import Alias to Use `Exports` Class",
+          "description": "**Files:**\n- `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` (lines 261-347 `GenerateImportUsings`)\n\n**Problem:**\nWhen importing a Sharpy module (not a .NET namespace), the generated using alias points to the wrong class:\n- Current: `using utils_helpers = Utils.Helpers.Helpers;`\n- Expected: `using utils_helpers = Utils.Helpers.Exports;`\n\nThe current code extracts the last segment of the namespace (`Helpers`) as the class name, but Sharpy modules expose their members via a class named `Exports`.\n\n",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.10.CG2",
+          "phase": "0.1.10",
+          "title": "Track Module-Level Variable Redefinitions",
+          "description": "**Files:**\n- `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` (lines 495-622 `GenerateModuleClass`, lines 2164-2259 `GenerateModuleLevelField`)\n\n**Problem:**\nSharpy allows variable redefinition at module level that changes the type:\n```python\nx: int = 1\nx: auto = \"hello\"  # Redefines x as string\n```\n\nCurrently generates invalid C# with duplicate field declarations:\n```csharp\npublic static int X = 1;\npublic static string X = \"hello\";  // CS0102: Duplicate definition\n```\n\n**Fix Approach:**\n1. Add `_",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.10.CG3",
+          "phase": "0.1.10",
+          "title": "Fix Nested Package Namespace Generation",
+          "description": "**Files:**\n- `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` (lines 193-220 `GenerateProjectNamespace`)\n- `src/Sharpy.Compiler/ProjectCompiler.cs` (namespace generation logic)\n\n**Problem:**\nFor deeply nested packages like `level1/level2/level3/__init__.spy`, the namespace is generated incorrectly:\n- Current: `TestProject.Level1.Level2.Level3.Level3` (duplicated segment)\n- Expected: `TestProject.Level1.Level2.Level3.Init`\n\nThe import alias also has issues:\n- Current: `using level1_level2_level3 = ",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs",
+            "src/Sharpy.Compiler/ProjectCompiler.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.10.CG4",
+          "phase": "0.1.10",
+          "title": "Fix `__init__.spy` Class Name for Packages",
+          "description": "**Files:**\n- `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` (lines 625-655 `GetModuleClassName`)\n\n**Problem:**\nPackage `__init__.spy` files generate a class named `Init`, but the import system expects `Exports`:\n- Generated: `namespace TestProject.Mypackage { public static class Init { ... } }`\n- Import expects: `using mypackage = TestProject.Mypackage.Exports;`\n\n**Fix Approach:**\n1. In `GetModuleClassName()`:\n   - If the filename is `__init__`, return `\"Exports\"` instead of `\"Init\"`\n   - This m",
+          "files": [
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        },
+        {
+          "id": "0.1.10.CG5",
+          "phase": "0.1.10",
+          "title": "Handle Re-export Syntax in `__init__.spy`",
+          "description": "**Files:**\n- `src/Sharpy.Compiler/Parser/Parser.cs` (import/export parsing)\n- `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` (re-export code generation)\n\n**Problem:**\nThe test `PackageInit_WithReExports_ExportsModuleMembers` fails with parser errors:\n```\nParser error at line 3, column 6: Expected identifier, got Dot\n```\n\nThis suggests the re-export syntax in `__init__.spy` is not being parsed correctly. The syntax likely involves:\n```python\nfrom .basic import BasicOperation\nfrom .advanced import",
+          "files": [
+            "src/Sharpy.Compiler/Parser/Parser.cs",
+            "src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs"
+          ],
+          "status": "pending",
+          "executions": [],
+          "dependencies": [],
+          "is_critical": false,
+          "human_question": null,
+          "human_answer": null,
+          "notes": []
+        }
+      ]
+    }
+  ],
+  "current_phase_id": null,
+  "current_task_id": null,
+  "total_attempts": 0,
+  "total_successes": 0,
+  "total_failures": 0,
+  "backend_stats": {
+    "claude_code": {
+      "attempts": 0,
+      "successes": 0,
+      "failures": 0
+    },
+    "copilot": {
+      "attempts": 0,
+      "successes": 0,
+      "failures": 0
+    }
+  },
+  "overall_progress": 0.0
+}
