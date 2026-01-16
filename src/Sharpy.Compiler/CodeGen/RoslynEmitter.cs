@@ -19,6 +19,7 @@ public class RoslynEmitter
     private readonly Dictionary<string, int> _variableVersions = new();
     private readonly HashSet<string> _constVariables = new(); // Track const variable names (original Sharpy names)
     private readonly HashSet<string> _moduleConstVariables = new(); // Track module-level const names (preserved across function scopes)
+    private readonly HashSet<string> _moduleVariables = new(); // Track module-level variable names (for PascalCase reference)
     private readonly HashSet<string> _classNames = new(); // Track class names defined in the current module
     private readonly HashSet<string> _structNames = new(); // Track struct names defined in the current module
     private int _tempVarCounter = 0;
@@ -53,6 +54,12 @@ public class RoslynEmitter
         if (_constVariables.Contains(name) || _moduleConstVariables.Contains(name))
         {
             return NameMangler.ToConstantCase(name);
+        }
+
+        // Check if this is a reference to a module-level variable - use PascalCase
+        if (_moduleVariables.Contains(name))
+        {
+            return NameMangler.ToPascalCase(name);
         }
 
         // Check if this is a reference to a class or struct name - preserve PascalCase
@@ -478,14 +485,22 @@ public class RoslynEmitter
 
     private ClassDeclarationSyntax GenerateModuleClass(List<Statement> statements)
     {
-        // Pre-scan for module-level const declarations to track them across all scopes
-        // This ensures functions can reference consts that appear anywhere in the module
+        // Pre-scan for module-level variable declarations to track them across all scopes
+        // This ensures functions can reference variables with correct casing
         _moduleConstVariables.Clear();
+        _moduleVariables.Clear();
         foreach (var stmt in statements)
         {
-            if (stmt is VariableDeclaration varDecl && varDecl.IsConst)
+            if (stmt is VariableDeclaration varDecl)
             {
-                _moduleConstVariables.Add(varDecl.Name);
+                if (varDecl.IsConst)
+                {
+                    _moduleConstVariables.Add(varDecl.Name);
+                }
+                else
+                {
+                    _moduleVariables.Add(varDecl.Name);
+                }
             }
         }
 
@@ -579,7 +594,8 @@ public class RoslynEmitter
 
         // Check if we're generating a Main method OR if there's a user-defined main function
         // (both will result in a method named "Main" in the class)
-        bool willHaveMainMethod = hasMainFunction || (!hasMainFunction && _context.IsEntryPoint && executableStatements.Count > 0);
+        // Note: Main is generated for ALL entry point files (even empty ones), per line 557
+        bool willHaveMainMethod = hasMainFunction || (!hasMainFunction && _context.IsEntryPoint);
 
         // Generate module class name from source file name
         var moduleClassName = GetModuleClassName(willHaveMainMethod);
@@ -1874,7 +1890,10 @@ public class RoslynEmitter
 
                 // Check if this variable was already declared in current scope
                 // _variableVersions tracks all variables by base name
-                if (_variableVersions.ContainsKey(baseName))
+                // Also check if this is a module-level variable which should be assigned, not declared
+                if (_variableVersions.ContainsKey(baseName) ||
+                    _moduleVariables.Contains(name.Name) ||
+                    _moduleConstVariables.Contains(name.Name))
                 {
                     // Variable exists - just update it with a regular assignment
                     var currentName = GetMangledVariableName(name.Name, isNewDeclaration: false);

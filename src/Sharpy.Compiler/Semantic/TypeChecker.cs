@@ -1516,7 +1516,7 @@ public class TypeChecker
 
     private SemanticType CheckMemberAccess(MemberAccess memberAccess)
     {
-        // Check for super() usage
+        // Check for super() usage - the parser directly produces SuperExpression for super()
         if (memberAccess.Object is SuperExpression superExpr)
         {
             return ValidateSuperMemberAccess(memberAccess, superExpr);
@@ -1816,7 +1816,8 @@ public class TypeChecker
             }
         }
         // Handle member access function calls (e.g., module.function() or obj.method())
-        else if (call.Function is MemberAccess memberAccessCall)
+        // Skip super() calls - they're already validated by ValidateSuperMemberAccess
+        else if (call.Function is MemberAccess memberAccessCall && memberAccessCall.Object is not SuperExpression)
         {
             // For module member access (lib.math.add), we already checked the expression at line 1697
             // which gave us a FunctionType. But we also need the FunctionSymbol for better validation.
