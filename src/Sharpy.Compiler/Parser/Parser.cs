@@ -316,21 +316,12 @@ public class Parser
         Expect(TokenType.Def);
         var name = ExpectIdentifier();
 
-        var typeParams = new List<string>();
+        var typeParams = new List<TypeParameterDef>();
 
-        // Type parameters [T, U]
+        // Type parameters [T, U] or [T: IComparable, U: class]
         if (Current.Type == TokenType.LeftBracket)
         {
-            Advance();
-            do
-            {
-                typeParams.Add(ExpectIdentifier());
-                if (Current.Type == TokenType.Comma)
-                    Advance();
-                else
-                    break;
-            } while (true);
-            Expect(TokenType.RightBracket);
+            typeParams = ParseTypeParameterList();
         }
 
         Expect(TokenType.LeftParen);
@@ -385,22 +376,13 @@ public class Parser
         Expect(TokenType.Class);
         var name = ExpectIdentifier();
 
-        var typeParams = new List<string>();
+        var typeParams = new List<TypeParameterDef>();
         var baseClasses = new List<TypeAnnotation>();
 
-        // Type parameters [T, U]
+        // Type parameters [T, U] or [T: IComparable, U: class]
         if (Current.Type == TokenType.LeftBracket)
         {
-            Advance();
-            do
-            {
-                typeParams.Add(ExpectIdentifier());
-                if (Current.Type == TokenType.Comma)
-                    Advance();
-                else
-                    break;
-            } while (true);
-            Expect(TokenType.RightBracket);
+            typeParams = ParseTypeParameterList();
         }
 
         // Base classes (ParentClass, Interface1, Interface2)
@@ -460,22 +442,13 @@ public class Parser
         Expect(TokenType.Struct);
         var name = ExpectIdentifier();
 
-        var typeParams = new List<string>();
+        var typeParams = new List<TypeParameterDef>();
         var baseInterfaces = new List<TypeAnnotation>();
 
-        // Type parameters [T, U]
+        // Type parameters [T, U] or [T: IComparable, U: class]
         if (Current.Type == TokenType.LeftBracket)
         {
-            Advance();
-            do
-            {
-                typeParams.Add(ExpectIdentifier());
-                if (Current.Type == TokenType.Comma)
-                    Advance();
-                else
-                    break;
-            } while (true);
-            Expect(TokenType.RightBracket);
+            typeParams = ParseTypeParameterList();
         }
 
         // Base interfaces (structs can only implement interfaces, no inheritance)
@@ -535,22 +508,13 @@ public class Parser
         Expect(TokenType.Interface);
         var name = ExpectIdentifier();
 
-        var typeParams = new List<string>();
+        var typeParams = new List<TypeParameterDef>();
         var baseInterfaces = new List<TypeAnnotation>();
 
-        // Type parameters
+        // Type parameters [T, U] or [T: IComparable, U: class]
         if (Current.Type == TokenType.LeftBracket)
         {
-            Advance();
-            do
-            {
-                typeParams.Add(ExpectIdentifier());
-                if (Current.Type == TokenType.Comma)
-                    Advance();
-                else
-                    break;
-            } while (true);
-            Expect(TokenType.RightBracket);
+            typeParams = ParseTypeParameterList();
         }
 
         // Base interfaces
@@ -600,6 +564,88 @@ public class Parser
             LineEnd = Current.Line,
             ColumnEnd = Current.Column
         };
+    }
+
+    private List<TypeParameterDef> ParseTypeParameterList()
+    {
+        var typeParams = new List<TypeParameterDef>();
+
+        Expect(TokenType.LeftBracket);
+
+        do
+        {
+            var paramName = ExpectIdentifier();
+            var constraints = new List<ConstraintClause>();
+
+            // Check for constraint: T: IComparable
+            if (Current.Type == TokenType.Colon)
+            {
+                Advance(); // consume ':'
+                constraints = ParseConstraints();
+            }
+
+            typeParams.Add(new TypeParameterDef
+            {
+                Name = paramName,
+                Constraints = constraints
+            });
+
+            if (Current.Type == TokenType.Comma)
+                Advance();
+            else
+                break;
+        } while (true);
+
+        Expect(TokenType.RightBracket);
+
+        return typeParams;
+    }
+
+    private List<ConstraintClause> ParseConstraints()
+    {
+        var constraints = new List<ConstraintClause>();
+
+        do
+        {
+            constraints.Add(ParseSingleConstraint());
+
+            if (Current.Type == TokenType.Ampersand)
+                Advance(); // consume '&'
+            else
+                break;
+        } while (true);
+
+        return constraints;
+    }
+
+    private ConstraintClause ParseSingleConstraint()
+    {
+        // class constraint
+        if (Current.Type == TokenType.Class)
+        {
+            Advance();
+            return new ClassConstraint();
+        }
+
+        // struct constraint
+        if (Current.Type == TokenType.Struct)
+        {
+            Advance();
+            return new StructConstraint();
+        }
+
+        // new() constraint
+        if (Current.Type == TokenType.Identifier && Current.Value == "new")
+        {
+            Advance();
+            Expect(TokenType.LeftParen);
+            Expect(TokenType.RightParen);
+            return new NewConstraint();
+        }
+
+        // Type constraint (interface or base type)
+        var type = ParseTypeAnnotation();
+        return new TypeConstraint { Type = type };
     }
 
     private EnumDef ParseEnumDef()

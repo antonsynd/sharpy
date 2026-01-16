@@ -186,7 +186,7 @@ public record ExceptHandler
 public record FunctionDef : Statement
 {
     public string Name { get; init; } = "";
-    public List<string> TypeParameters { get; init; } = new();
+    public List<TypeParameterDef> TypeParameters { get; init; } = new();
     public List<Parameter> Parameters { get; init; } = new();
     public TypeAnnotation? ReturnType { get; init; }
     public List<Statement> Body { get; init; } = new();
@@ -200,7 +200,7 @@ public record FunctionDef : Statement
 public record ClassDef : Statement
 {
     public string Name { get; init; } = "";
-    public List<string> TypeParameters { get; init; } = new();
+    public List<TypeParameterDef> TypeParameters { get; init; } = new();
     public List<TypeAnnotation> BaseClasses { get; init; } = new();
     public List<Statement> Body { get; init; } = new();
     public List<Decorator> Decorators { get; init; } = new();
@@ -213,7 +213,7 @@ public record ClassDef : Statement
 public record StructDef : Statement
 {
     public string Name { get; init; } = "";
-    public List<string> TypeParameters { get; init; } = new();
+    public List<TypeParameterDef> TypeParameters { get; init; } = new();
     public List<TypeAnnotation> BaseClasses { get; init; } = new();  // Interfaces only
     public List<Statement> Body { get; init; } = new();
     public List<Decorator> Decorators { get; init; } = new();
@@ -226,7 +226,7 @@ public record StructDef : Statement
 public record InterfaceDef : Statement
 {
     public string Name { get; init; } = "";
-    public List<string> TypeParameters { get; init; } = new();
+    public List<TypeParameterDef> TypeParameters { get; init; } = new();
     public List<TypeAnnotation> BaseInterfaces { get; init; } = new();
     public List<Statement> Body { get; init; } = new();
     public string? DocString { get; init; }
@@ -264,6 +264,43 @@ public record TypeAlias : Statement
     public TypeAnnotation? Type { get; init; }
     public FunctionType? FunctionType { get; init; }
 }
+
+/// <summary>
+/// Represents a single type parameter with its constraints (e.g., "T: IComparable")
+/// </summary>
+public record TypeParameterDef
+{
+    public string Name { get; init; } = "";
+    public List<ConstraintClause> Constraints { get; init; } = new();
+}
+
+/// <summary>
+/// Base type for constraint clauses
+/// </summary>
+public abstract record ConstraintClause;
+
+/// <summary>
+/// Interface/type constraint: T: IComparable
+/// </summary>
+public record TypeConstraint : ConstraintClause
+{
+    public TypeAnnotation Type { get; init; } = null!;
+}
+
+/// <summary>
+/// Reference type constraint: T: class
+/// </summary>
+public record ClassConstraint : ConstraintClause;
+
+/// <summary>
+/// Value type constraint: T: struct
+/// </summary>
+public record StructConstraint : ConstraintClause;
+
+/// <summary>
+/// Constructor constraint: T: new()
+/// </summary>
+public record NewConstraint : ConstraintClause;
 
 /// <summary>
 /// Decorator applied to function/class/struct

@@ -277,7 +277,7 @@ public class AstDumper
                 }
                 if (classDef.TypeParameters.Count > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}TypeParameters: [{string.Join(", ", classDef.TypeParameters)}]");
+                    _output.AppendLine($"{indent}{childPrefix}TypeParameters: [{string.Join(", ", classDef.TypeParameters.Select(tp => tp.Name))}]");
                 }
                 if (classDef.Decorators.Count > 0)
                 {
@@ -314,7 +314,7 @@ public class AstDumper
                 }
                 if (structDef.TypeParameters.Count > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}TypeParameters: [{string.Join(", ", structDef.TypeParameters)}]");
+                    _output.AppendLine($"{indent}{childPrefix}TypeParameters: [{string.Join(", ", structDef.TypeParameters.Select(tp => tp.Name))}]");
                 }
                 if (structDef.BaseClasses.Count > 0)
                 {
@@ -340,7 +340,7 @@ public class AstDumper
                 }
                 if (interfaceDef.TypeParameters.Count > 0)
                 {
-                    _output.AppendLine($"{indent}{childPrefix}TypeParameters: [{string.Join(", ", interfaceDef.TypeParameters)}]");
+                    _output.AppendLine($"{indent}{childPrefix}TypeParameters: [{string.Join(", ", interfaceDef.TypeParameters.Select(tp => tp.Name))}]");
                 }
                 if (interfaceDef.BaseInterfaces.Count > 0)
                 {

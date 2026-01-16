@@ -181,7 +181,7 @@ public class TypeResolverTests
         {
             Name = "list",
             Kind = SymbolKind.Type,
-            TypeParameters = new List<string> { "T" }
+            TypeParameters = new List<TypeParameterDef> { new TypeParameterDef { Name = "T" } }
         };
         symbolTable.Define(listTypeSymbol);
 

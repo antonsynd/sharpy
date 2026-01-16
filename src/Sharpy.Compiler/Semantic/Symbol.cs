@@ -51,7 +51,7 @@ public record TypeSymbol : Symbol
     public bool IsAbstract { get; init; }
 
     // Generic type parameters
-    public List<string> TypeParameters { get; init; } = new();
+    public List<TypeParameterDef> TypeParameters { get; init; } = new();
     public bool IsGeneric => TypeParameters.Count > 0;
 
     // Members

@@ -1558,7 +1558,7 @@ class Container[T]:
         var module = Parse(source);
         var classDef = module.Body[0].Should().BeOfType<ClassDef>().Subject;
         classDef.TypeParameters.Should().HaveCount(1);
-        classDef.TypeParameters[0].Should().Be("T");
+        classDef.TypeParameters[0].Name.Should().Be("T");
     }
 
     [Fact]
@@ -1571,8 +1571,8 @@ class Pair[T, U]:
         var module = Parse(source);
         var classDef = module.Body[0].Should().BeOfType<ClassDef>().Subject;
         classDef.TypeParameters.Should().HaveCount(2);
-        classDef.TypeParameters[0].Should().Be("T");
-        classDef.TypeParameters[1].Should().Be("U");
+        classDef.TypeParameters[0].Name.Should().Be("T");
+        classDef.TypeParameters[1].Name.Should().Be("U");
     }
 
     [Fact]
@@ -1586,7 +1586,7 @@ def identity[T](value: T) -> T:
         var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
         funcDef.Name.Should().Be("identity");
         funcDef.TypeParameters.Should().HaveCount(1);
-        funcDef.TypeParameters[0].Should().Be("T");
+        funcDef.TypeParameters[0].Name.Should().Be("T");
         funcDef.Parameters.Should().HaveCount(1);
         funcDef.Parameters[0].Type!.Name.Should().Be("T");
         funcDef.ReturnType!.Name.Should().Be("T");
@@ -1603,8 +1603,8 @@ def find_max[T, U](a: T, b: U) -> T:
         var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
         funcDef.Name.Should().Be("find_max");
         funcDef.TypeParameters.Should().HaveCount(2);
-        funcDef.TypeParameters[0].Should().Be("T");
-        funcDef.TypeParameters[1].Should().Be("U");
+        funcDef.TypeParameters[0].Name.Should().Be("T");
+        funcDef.TypeParameters[1].Name.Should().Be("U");
         funcDef.Parameters.Should().HaveCount(2);
         funcDef.Parameters[0].Type!.Name.Should().Be("T");
         funcDef.Parameters[1].Type!.Name.Should().Be("U");
@@ -1622,7 +1622,7 @@ def create_list[T]() -> list[T]:
         var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
         funcDef.Name.Should().Be("create_list");
         funcDef.TypeParameters.Should().HaveCount(1);
-        funcDef.TypeParameters[0].Should().Be("T");
+        funcDef.TypeParameters[0].Name.Should().Be("T");
         funcDef.ReturnType!.Name.Should().Be("list");
         funcDef.ReturnType!.TypeArguments.Should().HaveCount(1);
         funcDef.ReturnType!.TypeArguments[0].Name.Should().Be("T");
@@ -1639,6 +1639,100 @@ def normal_func(x: int) -> int:
         var funcDef = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
         funcDef.Name.Should().Be("normal_func");
         funcDef.TypeParameters.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ParseFunctionWithInterfaceConstraint()
+    {
+        var source = @"
+def find_max[T: IComparable](a: T, b: T) -> T:
+    return a
+";
+        var module = Parse(source);
+        var func = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        func.TypeParameters.Should().HaveCount(1);
+        func.TypeParameters[0].Name.Should().Be("T");
+        func.TypeParameters[0].Constraints.Should().HaveCount(1);
+        var typeConstraint = func.TypeParameters[0].Constraints[0].Should().BeOfType<TypeConstraint>().Subject;
+        typeConstraint.Type.Name.Should().Be("IComparable");
+    }
+
+    [Fact]
+    public void ParseFunctionWithClassConstraint()
+    {
+        var source = @"
+def process[T: class](item: T):
+    pass
+";
+        var module = Parse(source);
+        var func = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        func.TypeParameters[0].Constraints[0].Should().BeOfType<ClassConstraint>();
+    }
+
+    [Fact]
+    public void ParseFunctionWithStructConstraint()
+    {
+        var source = @"
+def process[T: struct](item: T):
+    pass
+";
+        var module = Parse(source);
+        var func = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        func.TypeParameters[0].Constraints[0].Should().BeOfType<StructConstraint>();
+    }
+
+    [Fact]
+    public void ParseFunctionWithNewConstraint()
+    {
+        var source = @"
+def create[T: new()]() -> T:
+    pass
+";
+        var module = Parse(source);
+        var func = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        func.TypeParameters[0].Constraints[0].Should().BeOfType<NewConstraint>();
+    }
+
+    [Fact]
+    public void ParseFunctionWithMultipleConstraints()
+    {
+        var source = @"
+def process[T: IFoo & IBar](item: T):
+    pass
+";
+        var module = Parse(source);
+        var func = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        func.TypeParameters[0].Constraints.Should().HaveCount(2);
+        func.TypeParameters[0].Constraints[0].Should().BeOfType<TypeConstraint>().Which.Type.Name.Should().Be("IFoo");
+        func.TypeParameters[0].Constraints[1].Should().BeOfType<TypeConstraint>().Which.Type.Name.Should().Be("IBar");
+    }
+
+    [Fact]
+    public void ParseClassWithConstraint()
+    {
+        var source = @"
+class Container[T: class]:
+    pass
+";
+        var module = Parse(source);
+        var classDef = module.Body[0].Should().BeOfType<ClassDef>().Subject;
+        classDef.TypeParameters[0].Constraints[0].Should().BeOfType<ClassConstraint>();
+    }
+
+    [Fact]
+    public void ParseMultipleTypeParamsWithConstraints()
+    {
+        var source = @"
+def convert[T: IInput, U: class & IOutput](val: T) -> U:
+    pass
+";
+        var module = Parse(source);
+        var func = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
+        func.TypeParameters.Should().HaveCount(2);
+        func.TypeParameters[0].Name.Should().Be("T");
+        func.TypeParameters[1].Name.Should().Be("U");
+        func.TypeParameters[0].Constraints.Should().HaveCount(1);
+        func.TypeParameters[1].Constraints.Should().HaveCount(2);
     }
 
     #endregion

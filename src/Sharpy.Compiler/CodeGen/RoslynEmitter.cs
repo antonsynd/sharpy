@@ -502,10 +502,11 @@ public class RoslynEmitter
         if (func.TypeParameters.Count > 0)
         {
             var typeParams = func.TypeParameters
-                .Select(tp => TypeParameter(tp))
+                .Select(tp => TypeParameter(tp.Name))
                 .ToArray();
-            method = method.WithTypeParameterList(
-                TypeParameterList(SeparatedList(typeParams)));
+            method = method
+                .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
+                .WithConstraintClauses(GenerateConstraintClauses(func.TypeParameters));
         }
 
         // Add XML documentation from docstring if present
@@ -669,10 +670,11 @@ public class RoslynEmitter
         if (classDef.TypeParameters.Count > 0)
         {
             var typeParams = classDef.TypeParameters
-                .Select(tp => TypeParameter(tp))
+                .Select(tp => TypeParameter(tp.Name))
                 .ToArray();
-            classDecl = classDecl.WithTypeParameterList(
-                TypeParameterList(SeparatedList(typeParams)));
+            classDecl = classDecl
+                .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
+                .WithConstraintClauses(GenerateConstraintClauses(classDef.TypeParameters));
         }
 
         // Add base class and interfaces
@@ -716,10 +718,11 @@ public class RoslynEmitter
         if (structDef.TypeParameters.Count > 0)
         {
             var typeParams = structDef.TypeParameters
-                .Select(tp => TypeParameter(tp))
+                .Select(tp => TypeParameter(tp.Name))
                 .ToArray();
-            structDecl = structDecl.WithTypeParameterList(
-                TypeParameterList(SeparatedList(typeParams)));
+            structDecl = structDecl
+                .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
+                .WithConstraintClauses(GenerateConstraintClauses(structDef.TypeParameters));
         }
 
         // Add interfaces (structs can only implement interfaces, not inherit)
@@ -760,10 +763,11 @@ public class RoslynEmitter
         if (interfaceDef.TypeParameters.Count > 0)
         {
             var typeParams = interfaceDef.TypeParameters
-                .Select(tp => TypeParameter(tp))
+                .Select(tp => TypeParameter(tp.Name))
                 .ToArray();
-            interfaceDecl = interfaceDecl.WithTypeParameterList(
-                TypeParameterList(SeparatedList(typeParams)));
+            interfaceDecl = interfaceDecl
+                .WithTypeParameterList(TypeParameterList(SeparatedList(typeParams)))
+                .WithConstraintClauses(GenerateConstraintClauses(interfaceDef.TypeParameters));
         }
 
         // Add base interfaces
@@ -786,6 +790,51 @@ public class RoslynEmitter
         }
 
         return interfaceDecl;
+    }
+
+    private SyntaxList<TypeParameterConstraintClauseSyntax> GenerateConstraintClauses(
+        List<TypeParameterDef> typeParameters)
+    {
+        var clauses = new List<TypeParameterConstraintClauseSyntax>();
+
+        foreach (var typeParam in typeParameters)
+        {
+            if (typeParam.Constraints.Count == 0)
+                continue;
+
+            var constraintSyntaxes = new List<TypeParameterConstraintSyntax>();
+
+            // Order: class/struct first, then types, then new()
+            var ordered = typeParam.Constraints
+                .OrderBy(c => c switch
+                {
+                    ClassConstraint => 0,
+                    StructConstraint => 0,
+                    Parser.Ast.TypeConstraint => 1,
+                    NewConstraint => 2,
+                    _ => 3
+                });
+
+            foreach (var constraint in ordered)
+            {
+                constraintSyntaxes.Add(constraint switch
+                {
+                    ClassConstraint => ClassOrStructConstraint(
+                        SyntaxKind.ClassConstraint),
+                    StructConstraint => ClassOrStructConstraint(
+                        SyntaxKind.StructConstraint),
+                    Parser.Ast.TypeConstraint tc => Microsoft.CodeAnalysis.CSharp.SyntaxFactory.TypeConstraint(
+                        _typeMapper.MapType(tc.Type)),
+                    NewConstraint => ConstructorConstraint(),
+                    _ => throw new InvalidOperationException($"Unknown constraint type: {constraint.GetType().Name}")
+                });
+            }
+
+            clauses.Add(TypeParameterConstraintClause(typeParam.Name)
+                .WithConstraints(SeparatedList(constraintSyntaxes)));
+        }
+
+        return List(clauses);
     }
 
     private SyntaxNode GenerateEnumDeclaration(EnumDef enumDef)

@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Discovery;
+using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Semantic;
 
@@ -84,8 +85,8 @@ public class BuiltinRegistry
             TypeKind = kind,
             ClrType = clrType,
             TypeParameters = isGeneric
-                ? Enumerable.Range(0, typeParamCount).Select(i => $"T{i}").ToList()
-                : new List<string>(),
+                ? Enumerable.Range(0, typeParamCount).Select(i => new TypeParameterDef { Name = $"T{i}" }).ToList()
+                : new List<TypeParameterDef>(),
             AccessLevel = AccessLevel.Public
         };
 

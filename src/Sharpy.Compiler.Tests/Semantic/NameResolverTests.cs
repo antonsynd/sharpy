@@ -228,7 +228,7 @@ class Container[T]:
         Assert.NotNull(containerType);
         Assert.True(containerType.IsGeneric);
         Assert.Single(containerType.TypeParameters);
-        Assert.Equal("T", containerType.TypeParameters[0]);
+        Assert.Equal("T", containerType.TypeParameters[0].Name);
     }
 
     [Fact]
@@ -477,8 +477,8 @@ class Pair[T, U]:
         Assert.NotNull(pairType);
         Assert.True(pairType.IsGeneric);
         Assert.Equal(2, pairType.TypeParameters.Count);
-        Assert.Equal("T", pairType.TypeParameters[0]);
-        Assert.Equal("U", pairType.TypeParameters[1]);
+        Assert.Equal("T", pairType.TypeParameters[0].Name);
+        Assert.Equal("U", pairType.TypeParameters[1].Name);
     }
 
     [Fact]

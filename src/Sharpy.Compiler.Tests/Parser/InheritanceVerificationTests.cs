@@ -173,7 +173,7 @@ class Repository[T](IRepository[T]):
 
         classDef.Name.Should().Be("Repository");
         classDef.TypeParameters.Should().HaveCount(1);
-        classDef.TypeParameters[0].Should().Be("T");
+        classDef.TypeParameters[0].Name.Should().Be("T");
         classDef.BaseClasses.Should().HaveCount(1);
         classDef.BaseClasses[0].Name.Should().Be("IRepository");
         classDef.BaseClasses[0].TypeArguments.Should().HaveCount(1);

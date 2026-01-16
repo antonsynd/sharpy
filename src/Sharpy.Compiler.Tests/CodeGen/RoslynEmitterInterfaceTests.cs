@@ -31,7 +31,7 @@ public class RoslynEmitterInterfaceTests
                 new InterfaceDef
                 {
                     Name = "IDrawable",
-                    TypeParameters = new List<string>(),
+                    TypeParameters = new List<TypeParameterDef>(),
                     BaseInterfaces = new List<TypeAnnotation>(),
                     Body = new List<Statement>
                     {
@@ -77,7 +77,7 @@ public class RoslynEmitterInterfaceTests
                 new InterfaceDef
                 {
                     Name = "IShape",
-                    TypeParameters = new List<string>(),
+                    TypeParameters = new List<TypeParameterDef>(),
                     BaseInterfaces = new List<TypeAnnotation>(),
                     Body = new List<Statement>
                     {
@@ -123,7 +123,7 @@ public class RoslynEmitterInterfaceTests
                 new InterfaceDef
                 {
                     Name = "IMovable",
-                    TypeParameters = new List<string>(),
+                    TypeParameters = new List<TypeParameterDef>(),
                     BaseInterfaces = new List<TypeAnnotation>(),
                     Body = new List<Statement>
                     {
@@ -179,7 +179,7 @@ public class RoslynEmitterInterfaceTests
                 new InterfaceDef
                 {
                     Name = "IEntity",
-                    TypeParameters = new List<string>(),
+                    TypeParameters = new List<TypeParameterDef>(),
                     BaseInterfaces = new List<TypeAnnotation>(),
                     Body = new List<Statement>
                     {
@@ -217,7 +217,7 @@ public class RoslynEmitterInterfaceTests
                 new InterfaceDef
                 {
                     Name = "IGameObject",
-                    TypeParameters = new List<string>(),
+                    TypeParameters = new List<TypeParameterDef>(),
                     BaseInterfaces = new List<TypeAnnotation>(),
                     Body = new List<Statement>
                     {
@@ -292,7 +292,7 @@ public class RoslynEmitterInterfaceTests
                 new InterfaceDef
                 {
                     Name = "IClickable",
-                    TypeParameters = new List<string>(),
+                    TypeParameters = new List<TypeParameterDef>(),
                     BaseInterfaces = new List<TypeAnnotation>
                     {
                         new TypeAnnotation { Name = "IDrawable" }
@@ -341,7 +341,7 @@ public class RoslynEmitterInterfaceTests
                 new InterfaceDef
                 {
                     Name = "IUIElement",
-                    TypeParameters = new List<string>(),
+                    TypeParameters = new List<TypeParameterDef>(),
                     BaseInterfaces = new List<TypeAnnotation>
                     {
                         new TypeAnnotation { Name = "IDrawable" },
@@ -391,7 +391,7 @@ public class RoslynEmitterInterfaceTests
                 new InterfaceDef
                 {
                     Name = "IRepository",
-                    TypeParameters = new List<string> { "T" },
+                    TypeParameters = new List<TypeParameterDef> { new TypeParameterDef { Name = "T" } },
                     BaseInterfaces = new List<TypeAnnotation>(),
                     Body = new List<Statement>
                     {
@@ -442,7 +442,7 @@ public class RoslynEmitterInterfaceTests
                 new InterfaceDef
                 {
                     Name = "IDrawable",
-                    TypeParameters = new List<string>(),
+                    TypeParameters = new List<TypeParameterDef>(),
                     BaseInterfaces = new List<TypeAnnotation>(),
                     DocString = "Represents an object that can be drawn on screen",
                     Body = new List<Statement>
@@ -491,7 +491,7 @@ public class RoslynEmitterInterfaceTests
                 new InterfaceDef
                 {
                     Name = "IDrawable",
-                    TypeParameters = new List<string>(),
+                    TypeParameters = new List<TypeParameterDef>(),
                     BaseInterfaces = new List<TypeAnnotation>(),
                     Body = new List<Statement>()
                 }

@@ -212,7 +212,7 @@ public class RoslynEmitterDefinitionTests
         var func = new FunctionDef
         {
             Name = "identity",
-            TypeParameters = new List<string> { "T" },
+            TypeParameters = new List<TypeParameterDef> { new TypeParameterDef { Name = "T" } },
             Parameters = new List<Parameter>
             {
                 new Parameter { Name = "value", Type = new TypeAnnotation { Name = "T" } }
@@ -240,7 +240,7 @@ public class RoslynEmitterDefinitionTests
         var func = new FunctionDef
         {
             Name = "find_max",
-            TypeParameters = new List<string> { "T", "U" },
+            TypeParameters = new List<TypeParameterDef> { new TypeParameterDef { Name = "T" }, new TypeParameterDef { Name = "U" } },
             Parameters = new List<Parameter>
             {
                 new Parameter { Name = "a", Type = new TypeAnnotation { Name = "T" } },
@@ -269,7 +269,7 @@ public class RoslynEmitterDefinitionTests
         var func = new FunctionDef
         {
             Name = "get_first",
-            TypeParameters = new List<string> { "T" },
+            TypeParameters = new List<TypeParameterDef> { new TypeParameterDef { Name = "T" } },
             Parameters = new List<Parameter>
             {
                 new Parameter
@@ -489,7 +489,7 @@ public class RoslynEmitterDefinitionTests
         var classDef = new ClassDef
         {
             Name = "Container",
-            TypeParameters = new List<string> { "T" },
+            TypeParameters = new List<TypeParameterDef> { new TypeParameterDef { Name = "T" } },
             Body = new List<Statement> { new PassStatement() }
         };
 
@@ -1289,7 +1289,7 @@ public class RoslynEmitterDefinitionTests
         var structDef = new StructDef
         {
             Name = "Pair",
-            TypeParameters = new List<string> { "T1", "T2" },
+            TypeParameters = new List<TypeParameterDef> { new TypeParameterDef { Name = "T1" }, new TypeParameterDef { Name = "T2" } },
             Body = new List<Statement> { new PassStatement() }
         };
 
@@ -1643,7 +1643,7 @@ public class RoslynEmitterDefinitionTests
         var interfaceDef = new InterfaceDef
         {
             Name = "IRepository",
-            TypeParameters = new List<string> { "T" },
+            TypeParameters = new List<TypeParameterDef> { new TypeParameterDef { Name = "T" } },
             Body = new List<Statement> { new PassStatement() }
         };
 
@@ -2377,6 +2377,184 @@ public class RoslynEmitterDefinitionTests
 
         // Assert
         Assert.Contains("public void PublicMethod()", code);
+    }
+
+    #endregion
+
+    #region Type Constraint Tests
+
+    [Fact]
+    public void EmitFunctionWithInterfaceConstraint()
+    {
+        var func = new FunctionDef
+        {
+            Name = "find_max",
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef
+                {
+                    Name = "T",
+                    Constraints = new List<ConstraintClause>
+                    {
+                        new TypeConstraint { Type = new TypeAnnotation { Name = "IComparable" } }
+                    }
+                }
+            },
+            Parameters = new List<Parameter>
+            {
+                new Parameter { Name = "a", Type = new TypeAnnotation { Name = "T" } },
+                new Parameter { Name = "b", Type = new TypeAnnotation { Name = "T" } }
+            },
+            ReturnType = new TypeAnnotation { Name = "T" },
+            Body = new List<Statement> { new ReturnStatement { Value = new Identifier { Name = "a" } } }
+        };
+
+        var module = new Module { Body = new List<Statement> { func } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        Assert.Contains("where T : IComparable", code);
+    }
+
+    [Fact]
+    public void EmitFunctionWithClassConstraint()
+    {
+        var func = new FunctionDef
+        {
+            Name = "process",
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef
+                {
+                    Name = "T",
+                    Constraints = new List<ConstraintClause> { new ClassConstraint() }
+                }
+            },
+            Parameters = new List<Parameter>
+            {
+                new Parameter { Name = "item", Type = new TypeAnnotation { Name = "T" } }
+            },
+            Body = new List<Statement> { new PassStatement() }
+        };
+
+        var module = new Module { Body = new List<Statement> { func } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        Assert.Contains("where T : class", code);
+    }
+
+    [Fact]
+    public void EmitFunctionWithStructConstraint()
+    {
+        var func = new FunctionDef
+        {
+            Name = "process",
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef
+                {
+                    Name = "T",
+                    Constraints = new List<ConstraintClause> { new StructConstraint() }
+                }
+            },
+            Parameters = new List<Parameter>
+            {
+                new Parameter { Name = "item", Type = new TypeAnnotation { Name = "T" } }
+            },
+            Body = new List<Statement> { new PassStatement() }
+        };
+
+        var module = new Module { Body = new List<Statement> { func } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        Assert.Contains("where T : struct", code);
+    }
+
+    [Fact]
+    public void EmitFunctionWithNewConstraint()
+    {
+        var func = new FunctionDef
+        {
+            Name = "create",
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef
+                {
+                    Name = "T",
+                    Constraints = new List<ConstraintClause> { new NewConstraint() }
+                }
+            },
+            Parameters = new List<Parameter>(),
+            ReturnType = new TypeAnnotation { Name = "T" },
+            Body = new List<Statement> { new PassStatement() }
+        };
+
+        var module = new Module { Body = new List<Statement> { func } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        Assert.Contains("where T : new()", code);
+    }
+
+    [Fact]
+    public void EmitFunctionWithMultipleConstraints()
+    {
+        var func = new FunctionDef
+        {
+            Name = "process",
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef
+                {
+                    Name = "T",
+                    Constraints = new List<ConstraintClause>
+                    {
+                        new ClassConstraint(),
+                        new TypeConstraint { Type = new TypeAnnotation { Name = "IFoo" } }
+                    }
+                }
+            },
+            Parameters = new List<Parameter>
+            {
+                new Parameter { Name = "item", Type = new TypeAnnotation { Name = "T" } }
+            },
+            Body = new List<Statement> { new PassStatement() }
+        };
+
+        var module = new Module { Body = new List<Statement> { func } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        Assert.Contains("where T : class, IFoo", code);
+    }
+
+    [Fact]
+    public void EmitClassWithConstraint()
+    {
+        var classDef = new ClassDef
+        {
+            Name = "Container",
+            TypeParameters = new List<TypeParameterDef>
+            {
+                new TypeParameterDef
+                {
+                    Name = "T",
+                    Constraints = new List<ConstraintClause>
+                    {
+                        new TypeConstraint { Type = new TypeAnnotation { Name = "ISerializable" } }
+                    }
+                }
+            },
+            Body = new List<Statement> { new PassStatement() }
+        };
+
+        var module = new Module { Body = new List<Statement> { classDef } };
+        var compilationUnit = _emitter.GenerateCompilationUnit(module);
+        var code = compilationUnit.NormalizeWhitespace().ToFullString();
+
+        Assert.Contains("where T : ISerializable", code);
     }
 
     #endregion
