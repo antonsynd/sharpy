@@ -280,29 +280,29 @@ class Orchestrator(
 
             backend_config = self.config.backends[backend_type]
 
-            # Determine which task function to use
+            # Determine which task function to use and build kwargs
+            base_kwargs = {
+                "prompt": prompt,
+                "timeout": timeout,
+                "working_dir": self.config.project_root,
+                "task_id": task_id,
+                "attempt": attempt,
+                "use_fallback_idempotency": True,
+            }
+
             if backend_type == "claude_code":
                 task_func = execute_claude_cli
-                tools = ["Read", "Write", "Edit", "Bash"]
-                model = backend_config.model
+                base_kwargs["tools"] = ["Read", "Write", "Edit", "Bash"]
+                base_kwargs["model"] = backend_config.model
             elif backend_type == "copilot":
                 task_func = execute_copilot_cli
-                tools = ["read", "write", "edit", "bash"]
-                model = None  # Copilot doesn't support model selection
+                base_kwargs["tools"] = ["read", "write", "edit", "bash"]
+                # Copilot doesn't support model selection - don't pass model kwarg
             else:
                 continue
 
             # Execute task function
-            result = await task_func(
-                prompt=prompt,
-                tools=tools,
-                model=model,
-                timeout=timeout,
-                working_dir=self.config.project_root,
-                task_id=task_id,
-                attempt=attempt,
-                use_fallback_idempotency=True,
-            )
+            result = await task_func(**base_kwargs)
 
             # Cache result in fallback tracker
             tracker.cache_result(result.input_hash, result)
