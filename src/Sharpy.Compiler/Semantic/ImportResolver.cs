@@ -98,15 +98,36 @@ public class ImportResolver
             moduleInfo = LoadModule(modulePath, fromImport.LineStart, fromImport.ColumnStart);
         }
 
-        // Validate that imported names exist in the module (unless it's import *)
-        if (moduleInfo != null && !fromImport.ImportAll)
+        // Validate imported names
+        if (moduleInfo != null)
         {
-            foreach (var importAlias in fromImport.Names)
+            if (fromImport.ImportAll)
             {
-                if (!moduleInfo.ExportedSymbols.ContainsKey(importAlias.Name))
+                // import * - only imports public symbols (no leading underscore)
+                // This is handled during symbol table population, not here
+                // We just validate the module exists
+            }
+            else
+            {
+                // Direct imports - validate each name exists and is importable
+                foreach (var importAlias in fromImport.Names)
                 {
-                    AddError($"Module '{fromImport.Module}' has no exported symbol '{importAlias.Name}'",
-                        importAlias.LineStart, importAlias.ColumnStart);
+                    var symbolName = importAlias.Name;
+
+                    // Check if symbol exists in the module's exported symbols
+                    if (!moduleInfo.ExportedSymbols.ContainsKey(symbolName))
+                    {
+                        AddError($"Module '{fromImport.Module}' has no exported symbol '{symbolName}'",
+                            importAlias.LineStart, importAlias.ColumnStart);
+                        continue;
+                    }
+
+                    // Check visibility rules for direct imports
+                    if (!IsDirectlyImportable(symbolName))
+                    {
+                        AddError($"Cannot import private symbol '{symbolName}' from module '{fromImport.Module}'",
+                            importAlias.LineStart, importAlias.ColumnStart);
+                    }
                 }
             }
         }
@@ -185,19 +206,21 @@ public class ImportResolver
     }
 
     /// <summary>
-    /// Extract exported symbols from a statement
+    /// Extract exported symbols from a statement.
+    /// All top-level symbols are added to ExportedSymbols, but visibility is enforced during import.
     /// </summary>
     private void ExtractExportedSymbol(Statement statement, ModuleInfo moduleInfo)
     {
         switch (statement)
         {
             case FunctionDef functionDef:
-                // Functions are exported
+                // All functions are tracked (visibility checked at import time)
+                var accessLevel = GetAccessLevel(functionDef.Name);
                 var funcSymbol = new FunctionSymbol
                 {
                     Name = functionDef.Name,
                     Kind = SymbolKind.Function,
-                    AccessLevel = AccessLevel.Public,
+                    AccessLevel = accessLevel,
                     DeclarationLine = functionDef.LineStart,
                     DeclarationColumn = functionDef.ColumnStart
                 };
@@ -205,13 +228,14 @@ public class ImportResolver
                 break;
 
             case ClassDef classDef:
-                // Classes are exported
+                // All classes are tracked
+                var classAccessLevel = GetAccessLevel(classDef.Name);
                 var classSymbol = new TypeSymbol
                 {
                     Name = classDef.Name,
                     Kind = SymbolKind.Type,
                     TypeKind = TypeKind.Class,
-                    AccessLevel = AccessLevel.Public,
+                    AccessLevel = classAccessLevel,
                     DeclarationLine = classDef.LineStart,
                     DeclarationColumn = classDef.ColumnStart
                 };
@@ -219,13 +243,14 @@ public class ImportResolver
                 break;
 
             case StructDef structDef:
-                // Structs are exported
+                // All structs are tracked
+                var structAccessLevel = GetAccessLevel(structDef.Name);
                 var structSymbol = new TypeSymbol
                 {
                     Name = structDef.Name,
                     Kind = SymbolKind.Type,
                     TypeKind = TypeKind.Struct,
-                    AccessLevel = AccessLevel.Public,
+                    AccessLevel = structAccessLevel,
                     DeclarationLine = structDef.LineStart,
                     DeclarationColumn = structDef.ColumnStart
                 };
@@ -233,13 +258,14 @@ public class ImportResolver
                 break;
 
             case InterfaceDef interfaceDef:
-                // Interfaces are exported
+                // All interfaces are tracked
+                var interfaceAccessLevel = GetAccessLevel(interfaceDef.Name);
                 var interfaceSymbol = new TypeSymbol
                 {
                     Name = interfaceDef.Name,
                     Kind = SymbolKind.Type,
                     TypeKind = TypeKind.Interface,
-                    AccessLevel = AccessLevel.Public,
+                    AccessLevel = interfaceAccessLevel,
                     DeclarationLine = interfaceDef.LineStart,
                     DeclarationColumn = interfaceDef.ColumnStart
                 };
@@ -247,13 +273,14 @@ public class ImportResolver
                 break;
 
             case EnumDef enumDef:
-                // Enums are exported
+                // All enums are tracked
+                var enumAccessLevel = GetAccessLevel(enumDef.Name);
                 var enumSymbol = new TypeSymbol
                 {
                     Name = enumDef.Name,
                     Kind = SymbolKind.Type,
                     TypeKind = TypeKind.Enum,
-                    AccessLevel = AccessLevel.Public,
+                    AccessLevel = enumAccessLevel,
                     DeclarationLine = enumDef.LineStart,
                     DeclarationColumn = enumDef.ColumnStart
                 };
@@ -261,13 +288,14 @@ public class ImportResolver
                 break;
 
             case VariableDeclaration varDecl when varDecl.IsConst:
-                // Constants are exported
+                // All constants are tracked
+                var constAccessLevel = GetAccessLevel(varDecl.Name);
                 var constSymbol = new VariableSymbol
                 {
                     Name = varDecl.Name,
                     Kind = SymbolKind.Variable,
                     IsConstant = true,
-                    AccessLevel = AccessLevel.Public,
+                    AccessLevel = constAccessLevel,
                     DeclarationLine = varDecl.LineStart,
                     DeclarationColumn = varDecl.ColumnStart
                 };
@@ -278,6 +306,18 @@ public class ImportResolver
                 // Other statements don't export symbols
                 break;
         }
+    }
+
+    /// <summary>
+    /// Determine access level based on naming convention
+    /// </summary>
+    private AccessLevel GetAccessLevel(string name)
+    {
+        if (name.StartsWith("__"))
+            return AccessLevel.Private;
+        if (name.StartsWith("_"))
+            return AccessLevel.Protected;
+        return AccessLevel.Public;
     }
 
     /// <summary>
@@ -344,6 +384,34 @@ public class ImportResolver
         // Use the ModuleResolver to find the module
         var result = _moduleResolver.Resolve(moduleName);
         return result?.FullPath;
+    }
+
+    /// <summary>
+    /// Check if a symbol name can be directly imported (not double-underscore private)
+    /// </summary>
+    private bool IsDirectlyImportable(string symbolName)
+    {
+        // Private symbols (starting with __) cannot be directly imported
+        return !symbolName.StartsWith("__");
+    }
+
+    /// <summary>
+    /// Check if a symbol name is exported by 'import *' (public symbols only)
+    /// </summary>
+    private bool IsExportedByImportAll(string symbolName)
+    {
+        // Only public symbols (not starting with _) are exported by import *
+        return !symbolName.StartsWith("_");
+    }
+
+    /// <summary>
+    /// Filter symbols for 'import *' - only includes public symbols
+    /// </summary>
+    public Dictionary<string, Symbol> GetImportAllSymbols(ModuleInfo moduleInfo)
+    {
+        return moduleInfo.ExportedSymbols
+            .Where(kvp => IsExportedByImportAll(kvp.Key))
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
     }
 
     private void AddError(string message, int? line, int? column)
