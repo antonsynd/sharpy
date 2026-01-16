@@ -254,6 +254,17 @@ public record EnumMember
 }
 
 /// <summary>
+/// Type alias declaration (type UserId = int, type Callback = (int, str) -> bool)
+/// Exactly one of Type or FunctionType must be set.
+/// </summary>
+public record TypeAlias : Statement
+{
+    public string Name { get; init; } = "";
+    public TypeAnnotation? Type { get; init; }
+    public FunctionType? FunctionType { get; init; }
+}
+
+/// <summary>
 /// Decorator applied to function/class/struct
 /// </summary>
 public record Decorator

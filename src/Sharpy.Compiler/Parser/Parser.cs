@@ -104,6 +104,7 @@ public class Parser
             TokenType.Struct => ParseStructDef(),
             TokenType.Interface => ParseInterfaceDef(),
             TokenType.Enum => ParseEnumDef(),
+            TokenType.Type => ParseTypeAlias(),
             TokenType.If => ParseIfStatement(),
             TokenType.While => ParseWhileStatement(),
             TokenType.For => ParseForStatement(),
@@ -656,6 +657,69 @@ public class Parser
             Name = name,
             Members = members,
             DocString = docString,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = Current.Line,
+            ColumnEnd = Current.Column
+        };
+    }
+
+    private TypeAlias ParseTypeAlias()
+    {
+        var startLine = Current.Line;
+        var startColumn = Current.Column;
+
+        Expect(TokenType.Type);
+        var name = ExpectIdentifier();
+        Expect(TokenType.Assign);
+
+        // Check if this is a function type: (params) -> returnType
+        TypeAnnotation? type = null;
+        FunctionType? functionType = null;
+
+        if (Current.Type == TokenType.LeftParen)
+        {
+            // Parse function type: (int, str) -> bool
+            Advance(); // consume '('
+            var paramTypes = new List<TypeAnnotation>();
+
+            // Parse parameter types
+            if (Current.Type != TokenType.RightParen)
+            {
+                do
+                {
+                    paramTypes.Add(ParseTypeAnnotation());
+
+                    if (Current.Type == TokenType.Comma)
+                        Advance();
+                    else
+                        break;
+                } while (true);
+            }
+
+            Expect(TokenType.RightParen);
+            Expect(TokenType.Arrow);
+            var returnType = ParseTypeAnnotation();
+
+            functionType = new FunctionType
+            {
+                ParameterTypes = paramTypes,
+                ReturnType = returnType
+            };
+        }
+        else
+        {
+            // Parse regular type annotation
+            type = ParseTypeAnnotation();
+        }
+
+        ExpectNewline();
+
+        return new TypeAlias
+        {
+            Name = name,
+            Type = type,
+            FunctionType = functionType,
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = Current.Line,
