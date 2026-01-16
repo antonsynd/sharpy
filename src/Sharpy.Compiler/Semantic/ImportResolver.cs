@@ -337,19 +337,19 @@ public class ImportResolver
                 moduleInfo.ExportedSymbols[enumDef.Name] = enumSymbol;
                 break;
 
-            case VariableDeclaration varDecl when varDecl.IsConst:
-                // All constants are tracked
-                var constAccessLevel = GetAccessLevel(varDecl.Name);
-                var constSymbol = new VariableSymbol
+            case VariableDeclaration varDecl:
+                // All module-level variables are tracked (constants and regular)
+                var varAccessLevel = GetAccessLevel(varDecl.Name);
+                var varSymbol = new VariableSymbol
                 {
                     Name = varDecl.Name,
                     Kind = SymbolKind.Variable,
-                    IsConstant = true,
-                    AccessLevel = constAccessLevel,
+                    IsConstant = varDecl.IsConst,
+                    AccessLevel = varAccessLevel,
                     DeclarationLine = varDecl.LineStart,
                     DeclarationColumn = varDecl.ColumnStart
                 };
-                moduleInfo.ExportedSymbols[varDecl.Name] = constSymbol;
+                moduleInfo.ExportedSymbols[varDecl.Name] = varSymbol;
                 break;
 
             default:

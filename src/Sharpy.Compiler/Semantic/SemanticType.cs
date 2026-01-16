@@ -247,3 +247,13 @@ public record TupleType : SemanticType
         return $"tuple[{elements}]";
     }
 }
+
+/// <summary>
+/// Module type (for imported modules used as namespaces)
+/// </summary>
+public record ModuleType : SemanticType
+{
+    public ModuleSymbol Symbol { get; init; } = null!;
+
+    public override string GetDisplayName() => $"module '{Symbol.Name}'";
+}

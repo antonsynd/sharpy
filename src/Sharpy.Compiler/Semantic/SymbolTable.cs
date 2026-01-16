@@ -61,6 +61,18 @@ public class SymbolTable
         CurrentScope.Define(symbol);
     }
 
+    /// <summary>
+    /// Define a symbol only if it doesn't already exist in the current scope.
+    /// Returns true if the symbol was defined, false if it already exists.
+    /// </summary>
+    public bool TryDefine(Symbol symbol)
+    {
+        if (CurrentScope.Contains(symbol.Name))
+            return false;
+        CurrentScope.Define(symbol);
+        return true;
+    }
+
     public Symbol? Lookup(string name, bool searchParents = true)
     {
         return CurrentScope.Lookup(name, searchParents);

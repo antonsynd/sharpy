@@ -1158,6 +1158,7 @@ public class TypeChecker
                 ParameterTypes = funcSymbol.Parameters.Select(p => p.Type).ToList(),
                 ReturnType = funcSymbol.ReturnType
             },
+            ModuleSymbol moduleSymbol => new ModuleType { Symbol = moduleSymbol },
             TypeSymbol => SemanticType.Unknown, // Type names used as values need special handling
             _ => SemanticType.Unknown
         };
@@ -1537,6 +1538,31 @@ public class TypeChecker
             }
             // Use the underlying type for member lookup
             memberLookupType = nullableObjectType.UnderlyingType;
+        }
+
+        // Handle module member access (e.g., config.MAX_SIZE, utils.helper())
+        if (memberLookupType is ModuleType moduleType)
+        {
+            var moduleSymbol = moduleType.Symbol;
+            if (moduleSymbol.Exports.TryGetValue(memberAccess.Member, out var exportedSymbol))
+            {
+                return exportedSymbol switch
+                {
+                    VariableSymbol varSymbol => varSymbol.Type,
+                    FunctionSymbol funcSymbol => new FunctionType
+                    {
+                        ParameterTypes = funcSymbol.Parameters.Select(p => p.Type).ToList(),
+                        ReturnType = funcSymbol.ReturnType
+                    },
+                    TypeSymbol typeSymbol => new UserDefinedType { Name = typeSymbol.Name, Symbol = typeSymbol },
+                    ModuleSymbol nestedModule => new ModuleType { Symbol = nestedModule },
+                    _ => SemanticType.Unknown
+                };
+            }
+
+            AddError($"Module '{moduleSymbol.Name}' has no member '{memberAccess.Member}'",
+                memberAccess.LineStart, memberAccess.ColumnStart);
+            return SemanticType.Unknown;
         }
 
         if (memberLookupType is UserDefinedType udt && udt.Symbol != null)

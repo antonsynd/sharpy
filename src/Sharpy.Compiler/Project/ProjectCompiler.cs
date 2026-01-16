@@ -232,12 +232,66 @@ public class ProjectCompiler
                 if (statement is ImportStatement import)
                 {
                     var modules = _importResolver.ResolveImport(import, config.ProjectDirectory);
-                    foreach (var moduleInfo in modules)
+
+                    // Match each resolved module with its import alias to get the correct name/alias
+                    for (int i = 0; i < import.Names.Count && i < modules.Count; i++)
                     {
-                        // Add imported symbols to symbol table
-                        foreach (var (name, symbol) in moduleInfo.ExportedSymbols)
+                        var importAlias = import.Names[i];
+                        var moduleInfo = modules[i];
+
+                        // Handle aliased imports (import x as y)
+                        if (importAlias.AsName != null)
                         {
-                            _symbolTable.Define(symbol);
+                            // Create a single ModuleSymbol with the alias name
+                            var aliasedModule = new ModuleSymbol
+                            {
+                                Name = importAlias.AsName,
+                                Kind = SymbolKind.Module,
+                                FilePath = moduleInfo.Path,
+                                Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols)
+                            };
+                            _symbolTable.TryDefine(aliasedModule);
+                            continue;
+                        }
+
+                        // Handle non-aliased imports by building nested module structure
+                        // For "import lib.math", we need lib -> math -> (exports)
+                        var parts = importAlias.Name.Split('.');
+
+                        // Create the leaf module with actual exports
+                        var leafModule = new ModuleSymbol
+                        {
+                            Name = parts[^1], // Last part (e.g., "math")
+                            Kind = SymbolKind.Module,
+                            FilePath = moduleInfo.Path,
+                            Exports = new Dictionary<string, Symbol>(moduleInfo.ExportedSymbols)
+                        };
+
+                        // Build nested structure from inside out
+                        ModuleSymbol currentModule = leafModule;
+                        for (int j = parts.Length - 2; j >= 0; j--)
+                        {
+                            var parentModule = new ModuleSymbol
+                            {
+                                Name = parts[j],
+                                Kind = SymbolKind.Module,
+                                FilePath = "", // Parent modules don't have their own file
+                                Exports = new Dictionary<string, Symbol> { { currentModule.Name, currentModule } }
+                            };
+                            currentModule = parentModule;
+                        }
+
+                        // Register the root module (or merge with existing if it exists)
+                        var rootName = parts[0];
+                        var existingSymbol = _symbolTable.Lookup(rootName, searchParents: false);
+                        if (existingSymbol is ModuleSymbol existingModule)
+                        {
+                            // Merge: add the new nested exports to the existing module
+                            MergeModuleExports(existingModule, currentModule);
+                        }
+                        else
+                        {
+                            _symbolTable.TryDefine(currentModule);
                         }
                     }
                 }
@@ -246,12 +300,12 @@ public class ProjectCompiler
                     var moduleInfo = _importResolver.ResolveFromImport(fromImport, config.ProjectDirectory);
                     if (moduleInfo != null)
                     {
-                        // Add specific imported symbols
+                        // Add specific imported symbols (skip if already defined from project files)
                         if (fromImport.ImportAll)
                         {
                             foreach (var (name, symbol) in moduleInfo.ExportedSymbols)
                             {
-                                _symbolTable.Define(symbol);
+                                _symbolTable.TryDefine(symbol);
                             }
                         }
                         else
@@ -266,11 +320,11 @@ public class ProjectCompiler
                                     {
                                         // Clone the symbol with new name
                                         var aliasedSymbol = symbol with { Name = symbolName };
-                                        _symbolTable.Define(aliasedSymbol);
+                                        _symbolTable.TryDefine(aliasedSymbol);
                                     }
                                     else
                                     {
-                                        _symbolTable.Define(symbol);
+                                        _symbolTable.TryDefine(symbol);
                                     }
                                 }
                             }
@@ -443,5 +497,29 @@ public class ProjectCompiler
             Errors = _errors,
             Metrics = _projectMetrics
         };
+    }
+
+    /// <summary>
+    /// Merge exports from a source module into a target module.
+    /// Used to combine nested module structures when the same root is imported multiple times.
+    /// </summary>
+    private void MergeModuleExports(ModuleSymbol target, ModuleSymbol source)
+    {
+        foreach (var (name, symbol) in source.Exports)
+        {
+            if (target.Exports.TryGetValue(name, out var existing))
+            {
+                // If both are modules, merge recursively
+                if (existing is ModuleSymbol existingModule && symbol is ModuleSymbol sourceModule)
+                {
+                    MergeModuleExports(existingModule, sourceModule);
+                }
+                // Otherwise, the existing symbol takes precedence (first import wins)
+            }
+            else
+            {
+                target.Exports[name] = symbol;
+            }
+        }
     }
 }

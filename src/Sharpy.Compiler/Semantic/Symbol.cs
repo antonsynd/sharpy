@@ -102,12 +102,12 @@ public record ParameterSymbol
 }
 
 /// <summary>
-/// Module symbol
+/// Module symbol - represents an imported module namespace
 /// </summary>
 public record ModuleSymbol : Symbol
 {
     public string FilePath { get; init; } = string.Empty;
-    public List<Symbol> Exports { get; init; } = new();
+    public Dictionary<string, Symbol> Exports { get; init; } = new();
 }
 
 /// <summary>
