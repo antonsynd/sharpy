@@ -1,8 +1,19 @@
+using System.Text;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Semantic;
+
+/// <summary>
+/// Entry in the import chain for error reporting
+/// </summary>
+internal record ImportChainEntry(
+    string ModulePath,
+    int? LineStart,
+    int? ColumnStart,
+    string? ImportingModule
+);
 
 /// <summary>
 /// Resolves imports and loads symbols from imported modules (both .spy files and .NET assemblies)
@@ -12,7 +23,7 @@ public class ImportResolver
     private readonly ICompilerLogger _logger;
     private readonly List<SemanticError> _errors = new();
     private readonly HashSet<string> _loadedModules = new();
-    private readonly HashSet<string> _loadingModules = new(); // For circular import detection
+    private readonly Stack<ImportChainEntry> _importChain = new(); // For detailed circular import detection
     private readonly Dictionary<string, ModuleInfo> _moduleCache = new();
     private readonly ModuleRegistry? _moduleRegistry;
     private readonly ModuleResolver _moduleResolver;
@@ -144,10 +155,11 @@ public class ImportResolver
         if (_moduleCache.TryGetValue(modulePath, out var cached))
             return cached;
 
-        // Check for circular imports
-        if (_loadingModules.Contains(modulePath))
+        // Check for circular imports with detailed chain
+        if (IsModuleInChain(modulePath))
         {
-            AddError($"Circular import detected for module '{modulePath}'", lineStart, columnStart);
+            var chainMessage = FormatCircularImportChain(modulePath);
+            AddError(chainMessage, lineStart, columnStart);
             return null;
         }
 
@@ -156,7 +168,14 @@ public class ImportResolver
             return _moduleCache.GetValueOrDefault(modulePath);
 
         _logger.LogInfo($"Loading module: {modulePath}");
-        _loadingModules.Add(modulePath);
+
+        // Push to import chain before loading
+        _importChain.Push(new ImportChainEntry(
+            modulePath,
+            lineStart,
+            columnStart,
+            _currentModulePath
+        ));
 
         try
         {
@@ -189,6 +208,18 @@ public class ImportResolver
                 ExtractExportedSymbol(statement, moduleInfo);
             }
 
+            // Recursively resolve imports within this module to detect transitive cycles
+            var previousModulePath = _currentModulePath;
+            _currentModulePath = modulePath;
+            try
+            {
+                ResolveModuleImports(module, Path.GetDirectoryName(modulePath));
+            }
+            finally
+            {
+                _currentModulePath = previousModulePath;
+            }
+
             _moduleCache[modulePath] = moduleInfo;
             _loadedModules.Add(modulePath);
 
@@ -201,7 +232,26 @@ public class ImportResolver
         }
         finally
         {
-            _loadingModules.Remove(modulePath);
+            _importChain.Pop();
+        }
+    }
+
+    /// <summary>
+    /// Resolve all imports within a module to detect transitive circular dependencies
+    /// </summary>
+    private void ResolveModuleImports(Module module, string? searchPath)
+    {
+        foreach (var statement in module.Body)
+        {
+            switch (statement)
+            {
+                case ImportStatement import:
+                    ResolveImport(import, searchPath);
+                    break;
+                case FromImportStatement fromImport:
+                    ResolveFromImport(fromImport, searchPath);
+                    break;
+            }
         }
     }
 
@@ -412,6 +462,40 @@ public class ImportResolver
         return moduleInfo.ExportedSymbols
             .Where(kvp => IsExportedByImportAll(kvp.Key))
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+    }
+
+    /// <summary>
+    /// Check if a module is already in the current import chain
+    /// </summary>
+    private bool IsModuleInChain(string modulePath)
+    {
+        return _importChain.Any(e => e.ModulePath == modulePath);
+    }
+
+    /// <summary>
+    /// Format a detailed circular import error message showing the full chain
+    /// </summary>
+    private string FormatCircularImportChain(string cycleStartModule)
+    {
+        var chain = new StringBuilder();
+        chain.AppendLine("Circular import detected:");
+
+        var entries = _importChain.Reverse().ToList();
+
+        // Find where the cycle starts
+        var cycleStartIndex = entries.FindIndex(e => e.ModulePath == cycleStartModule);
+
+        // Show only the relevant part of the chain (from cycle start to current)
+        for (int i = cycleStartIndex; i < entries.Count; i++)
+        {
+            var entry = entries[i];
+            chain.AppendLine($"  -> {Path.GetFileName(entry.ModulePath)}");
+        }
+
+        // Show the closing of the cycle
+        chain.AppendLine($"  -> {Path.GetFileName(cycleStartModule)} (cycle)");
+
+        return chain.ToString().TrimEnd();
     }
 
     private void AddError(string message, int? line, int? column)
