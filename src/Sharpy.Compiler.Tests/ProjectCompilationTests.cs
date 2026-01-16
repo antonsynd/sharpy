@@ -1,5 +1,6 @@
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Project;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests;
@@ -354,4 +355,258 @@ def main():
             Directory.Delete(tempDir, true);
         }
     }
+
+    [Fact]
+    public void ProjectFileParser_Load_ParsesEntryPoint()
+    {
+        // Arrange
+        var projectContent = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<Project>
+    <PropertyGroup>
+        <RootNamespace>TestApp</RootNamespace>
+        <OutputType>exe</OutputType>
+        <EntryPoint>app.spy</EntryPoint>
+    </PropertyGroup>
+    <ItemGroup>
+        <SpyFile Include=""src/**/*.spy"" />
+    </ItemGroup>
+</Project>";
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+        Directory.CreateDirectory(Path.Combine(tempDir, "src"));
+        var projectPath = Path.Combine(tempDir, "test.spyproj");
+
+        try
+        {
+            File.WriteAllText(projectPath, projectContent);
+            File.WriteAllText(Path.Combine(tempDir, "src", "app.spy"), "def main(): pass");
+
+            // Act
+            var config = ProjectFileParser.Load(projectPath);
+
+            // Assert
+            Assert.Equal("app.spy", config.EntryPoint);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public void ProjectFileParser_Load_SupportsExcludePatterns()
+    {
+        // Arrange
+        var projectContent = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<Project>
+    <PropertyGroup>
+        <RootNamespace>TestApp</RootNamespace>
+    </PropertyGroup>
+    <ItemGroup>
+        <SpyFile Include=""src/**/*.spy"" Exclude=""src/test/**/*.spy"" />
+    </ItemGroup>
+</Project>";
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+        Directory.CreateDirectory(Path.Combine(tempDir, "src"));
+        Directory.CreateDirectory(Path.Combine(tempDir, "src", "test"));
+
+        var projectPath = Path.Combine(tempDir, "test.spyproj");
+
+        try
+        {
+            File.WriteAllText(projectPath, projectContent);
+            File.WriteAllText(Path.Combine(tempDir, "src", "main.spy"), "# Main file");
+            File.WriteAllText(Path.Combine(tempDir, "src", "test", "test_main.spy"), "# Test file");
+
+            // Act
+            var config = ProjectFileParser.Load(projectPath);
+
+            // Assert
+            Assert.Single(config.SourceFiles);
+            Assert.Contains(config.SourceFiles, f => f.EndsWith("main.spy"));
+            Assert.DoesNotContain(config.SourceFiles, f => f.EndsWith("test_main.spy"));
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public void ProjectFileParser_Load_SupportsSourceFileElement()
+    {
+        // Arrange
+        var projectContent = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<Project>
+    <PropertyGroup>
+        <RootNamespace>TestApp</RootNamespace>
+    </PropertyGroup>
+    <ItemGroup>
+        <SourceFile Include=""src/**/*.spy"" />
+    </ItemGroup>
+</Project>";
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+        Directory.CreateDirectory(Path.Combine(tempDir, "src"));
+        var projectPath = Path.Combine(tempDir, "test.spyproj");
+
+        try
+        {
+            File.WriteAllText(projectPath, projectContent);
+            File.WriteAllText(Path.Combine(tempDir, "src", "main.spy"), "# Main file");
+
+            // Act
+            var config = ProjectFileParser.Load(projectPath);
+
+            // Assert
+            Assert.Single(config.SourceFiles);
+            Assert.Contains(config.SourceFiles, f => f.EndsWith("main.spy"));
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public void SpyProjectLoader_Load_ParsesFullProject()
+    {
+        // Arrange
+        var projectContent = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<Project>
+    <PropertyGroup>
+        <RootNamespace>MyApp</RootNamespace>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <AssemblyName>MyApplication</AssemblyName>
+        <EntryPoint>startup.spy</EntryPoint>
+    </PropertyGroup>
+    <ItemGroup>
+        <SourceFile Include=""src/**/*.spy"" />
+    </ItemGroup>
+</Project>";
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+        Directory.CreateDirectory(Path.Combine(tempDir, "src"));
+        var projectPath = Path.Combine(tempDir, "test.spyproj");
+
+        try
+        {
+            File.WriteAllText(projectPath, projectContent);
+            File.WriteAllText(Path.Combine(tempDir, "src", "startup.spy"), "def main(): pass");
+
+            // Act
+            var project = SpyProjectLoader.Load(projectPath);
+
+            // Assert
+            Assert.Equal("MyApp", project.RootNamespace);
+            Assert.Equal("Exe", project.OutputType);
+            Assert.Equal("net8.0", project.TargetFramework);
+            Assert.Equal("MyApplication", project.AssemblyName);
+            Assert.Equal("startup.spy", project.EntryPoint);
+            Assert.True(project.IsExecutable);
+            Assert.NotNull(project.GetEntryPointPath());
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public void SpyProject_ToProjectConfig_ConvertsCorrectly()
+    {
+        // Arrange
+        var projectContent = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<Project>
+    <PropertyGroup>
+        <RootNamespace>TestApp</RootNamespace>
+        <OutputType>exe</OutputType>
+        <EntryPoint>main.spy</EntryPoint>
+    </PropertyGroup>
+    <ItemGroup>
+        <SpyFile Include=""src/**/*.spy"" />
+    </ItemGroup>
+</Project>";
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+        Directory.CreateDirectory(Path.Combine(tempDir, "src"));
+        var projectPath = Path.Combine(tempDir, "test.spyproj");
+
+        try
+        {
+            File.WriteAllText(projectPath, projectContent);
+            File.WriteAllText(Path.Combine(tempDir, "src", "main.spy"), "def main(): pass");
+
+            // Act
+            var spyProject = SpyProjectLoader.Load(projectPath);
+            var projectConfig = spyProject.ToProjectConfig();
+
+            // Assert
+            Assert.Equal(spyProject.RootNamespace, projectConfig.RootNamespace);
+            Assert.Equal(spyProject.OutputType, projectConfig.OutputType);
+            Assert.Equal(spyProject.TargetFramework, projectConfig.TargetFramework);
+            Assert.Equal(spyProject.EntryPoint, projectConfig.EntryPoint);
+            Assert.Equal(spyProject.SourceFiles, projectConfig.SourceFiles);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public void Compiler_CompileProject_UsesCustomEntryPoint()
+    {
+        // Arrange
+        var tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_test_{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempDir);
+        Directory.CreateDirectory(Path.Combine(tempDir, "src"));
+
+        var projectPath = Path.Combine(tempDir, "test.spyproj");
+        var startupPath = Path.Combine(tempDir, "src", "startup.spy");
+        var utilsPath = Path.Combine(tempDir, "src", "utils.spy");
+
+        try
+        {
+            File.WriteAllText(projectPath, @"<?xml version=""1.0"" encoding=""utf-8""?>
+<Project>
+    <PropertyGroup>
+        <RootNamespace>TestApp</RootNamespace>
+        <OutputType>exe</OutputType>
+        <EntryPoint>startup.spy</EntryPoint>
+    </PropertyGroup>
+    <ItemGroup>
+        <SpyFile Include=""src/**/*.spy"" />
+    </ItemGroup>
+</Project>");
+
+            File.WriteAllText(startupPath, @"
+def main():
+    print('Hello from startup!')
+");
+
+            File.WriteAllText(utilsPath, @"
+def helper() -> str:
+    return 'utility'
+");
+
+            var config = ProjectFileParser.Load(projectPath);
+            var compiler = new Compiler(_logger);
+
+            // Act
+            var result = compiler.CompileProject(config);
+
+            // Assert
+            Assert.True(result.Success, $"Compilation failed with errors: {string.Join(", ", result.Errors)}");
+            Assert.Empty(result.Errors);
+            Assert.NotNull(result.OutputAssemblyPath);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
 }
+

@@ -40,6 +40,12 @@ public class ProjectConfig
     public string? AssemblyName { get; init; }
 
     /// <summary>
+    /// Entry point file for executable projects (e.g., "main.spy")
+    /// If not specified, defaults to "main.spy" for Exe projects
+    /// </summary>
+    public string? EntryPoint { get; init; }
+
+    /// <summary>
     /// List of Sharpy source files to compile (resolved from glob patterns)
     /// </summary>
     public List<string> SourceFiles { get; init; } = new();
@@ -125,6 +131,7 @@ public class ProjectFileParser
         var outputType = propertyGroup.Element("OutputType")?.Value ?? "library";
         var targetFramework = propertyGroup.Element("TargetFramework")?.Value ?? "net8.0";
         var assemblyName = propertyGroup.Element("AssemblyName")?.Value;
+        var entryPoint = propertyGroup.Element("EntryPoint")?.Value;
 
         // Parse ItemGroup for source files
         var sourceFiles = new List<string>();
@@ -133,13 +140,28 @@ public class ProjectFileParser
 
         foreach (var itemGroup in root.Elements("ItemGroup"))
         {
-            // Parse SpyFile includes
+            // Parse SpyFile includes with Exclude support
             foreach (var spyFile in itemGroup.Elements("SpyFile"))
             {
                 var include = spyFile.Attribute("Include")?.Value;
+                var exclude = spyFile.Attribute("Exclude")?.Value;
+
                 if (!string.IsNullOrWhiteSpace(include))
                 {
-                    var resolvedFiles = ResolveGlobPattern(projectDirectory, include);
+                    var resolvedFiles = ResolveGlobPattern(projectDirectory, include, exclude);
+                    sourceFiles.AddRange(resolvedFiles);
+                }
+            }
+
+            // Also support SourceFile element name (alias for SpyFile)
+            foreach (var sourceFile in itemGroup.Elements("SourceFile"))
+            {
+                var include = sourceFile.Attribute("Include")?.Value;
+                var exclude = sourceFile.Attribute("Exclude")?.Value;
+
+                if (!string.IsNullOrWhiteSpace(include))
+                {
+                    var resolvedFiles = ResolveGlobPattern(projectDirectory, include, exclude);
                     sourceFiles.AddRange(resolvedFiles);
                 }
             }
@@ -172,9 +194,13 @@ public class ProjectFileParser
             }
         }
 
+        // Remove duplicates from source files
+        sourceFiles = sourceFiles.Distinct().ToList();
+
         if (sourceFiles.Count == 0)
         {
-            throw new InvalidDataException("No source files found in project. Add <SpyFile Include=\"...\" /> elements.");
+            throw new InvalidDataException(
+                "No source files found in project. Add <SpyFile Include=\"...\" /> or <SourceFile Include=\"...\" /> elements.");
         }
 
         return new ProjectConfig
@@ -185,6 +211,7 @@ public class ProjectFileParser
             OutputType = outputType,
             TargetFramework = targetFramework,
             AssemblyName = assemblyName,
+            EntryPoint = entryPoint,
             SourceFiles = sourceFiles,
             References = references,
             ModulePaths = modulePaths,
@@ -215,12 +242,23 @@ public class ProjectFileParser
     }
 
     /// <summary>
-    /// Resolve glob patterns to actual file paths
+    /// Resolve glob patterns to actual file paths with support for Exclude patterns
     /// </summary>
-    private static List<string> ResolveGlobPattern(string baseDirectory, string pattern)
+    private static List<string> ResolveGlobPattern(string baseDirectory, string includePattern, string? excludePattern = null)
     {
         var matcher = new Matcher();
-        matcher.AddInclude(pattern);
+        matcher.AddInclude(includePattern);
+
+        // Add exclude patterns if specified
+        if (!string.IsNullOrWhiteSpace(excludePattern))
+        {
+            // Support multiple exclude patterns separated by semicolons
+            var excludePatterns = excludePattern.Split(';', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var pattern in excludePatterns)
+            {
+                matcher.AddExclude(pattern.Trim());
+            }
+        }
 
         var directoryInfo = new DirectoryInfo(baseDirectory);
         var result = matcher.Execute(new DirectoryInfoWrapper(directoryInfo));

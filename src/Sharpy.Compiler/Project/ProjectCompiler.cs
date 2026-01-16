@@ -345,9 +345,25 @@ public class ProjectCompiler
             fileMetrics.StartPhase("Code Generation");
 
             // Determine if this file is the entry point
-            // Entry point is main.spy or a file that contains executable statements
-            var fileName = Path.GetFileNameWithoutExtension(sourceFile);
-            var isEntryPoint = fileName.Equals("main", StringComparison.OrdinalIgnoreCase);
+            // If EntryPoint is specified in config, use that; otherwise default to main.spy
+            var isEntryPoint = IsEntryPointFile(sourceFile, config);
+
+            // Helper method to determine entry point
+            bool IsEntryPointFile(string file, ProjectConfig cfg)
+            {
+                var fileName = Path.GetFileName(file);
+
+                // If EntryPoint is specified in config, check against it
+                if (!string.IsNullOrWhiteSpace(cfg.EntryPoint))
+                {
+                    return fileName.Equals(cfg.EntryPoint, StringComparison.OrdinalIgnoreCase) ||
+                           fileName.Equals(Path.GetFileName(cfg.EntryPoint), StringComparison.OrdinalIgnoreCase);
+                }
+
+                // Otherwise, default to main.spy for executable projects
+                var fileNameNoExt = Path.GetFileNameWithoutExtension(file);
+                return fileNameNoExt.Equals("main", StringComparison.OrdinalIgnoreCase);
+            }
 
             var codeGenContext = new CodeGenContext(_symbolTable, builtinRegistry)
             {
