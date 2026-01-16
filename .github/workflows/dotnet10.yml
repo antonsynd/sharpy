@@ -11,8 +11,6 @@ on:
 
 jobs:
   build:
-    if: false  # Temporarily disabled
-
     runs-on: ubuntu-latest
 
     permissions:
