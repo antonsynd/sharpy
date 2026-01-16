@@ -254,21 +254,44 @@ class ValidationNodes:
             extra={"validation_type": "hallucination_defense"},
         )
 
+        # Classify hallucinations by severity
+        output_upper = result.output.upper()
+        has_major_hallucinations = "MAJOR_INCORRECT" in output_upper or (
+            "MAJOR_ISSUES" in output_upper and "MAJOR_ISSUES: 0" not in output_upper
+        )
+        has_minor_hallucinations = "MINOR_INCORRECT" in output_upper or (
+            "MINOR_ISSUES" in output_upper and "MINOR_ISSUES: 0" not in output_upper
+        )
+        # Legacy check for old-style INCORRECT markers (treat as major if no classification)
+        has_legacy_incorrect = (
+            "INCORRECT" in output_upper
+            and "MINOR_INCORRECT" not in output_upper
+            and "MAJOR_INCORRECT" not in output_upper
+        )
+
+        # Determine status based on hallucination severity
+        if has_major_hallucinations or has_legacy_incorrect:
+            hallucination_status = "major_issues"
+        elif has_minor_hallucinations:
+            hallucination_status = "minor_issues"
+        else:
+            hallucination_status = "passed"
+
         validation_result = {
             "agent": "hallucination-defense",
-            "status": "passed" if result.success else "warnings",
+            "status": hallucination_status,
             "findings": [],
             "raw_output": result.output,
             "execution_error": result.error if not result.success else None,
+            "has_major_hallucinations": has_major_hallucinations
+            or has_legacy_incorrect,
+            "has_minor_hallucinations": has_minor_hallucinations,
         }
 
         validation_results = state.get("validation_results", [])
         validation_results.append(validation_result)
 
-        # Check if human review needed
-        has_hallucinations = "INCORRECT" in result.output.upper()
-
-        # Check for actionable issues
+        # Check for actionable issues (only major hallucinations trigger re-implementation)
         actionable_issues = self._extract_actionable_issues(validation_results)
 
         if (
@@ -276,14 +299,37 @@ class ValidationNodes:
             and state.get("validation_fix_attempt", 0)
             < self.config.max_validation_fix_attempts
         ):
+            # Log why we're re-invoking the build flow
+            self._log_execution(
+                event_type="hallucination_reflow",
+                task_id=task_data["id"],
+                extra={
+                    "reason": "Major hallucinations detected requiring re-implementation",
+                    "issues": [
+                        issue["description"][:200] for issue in actionable_issues[:5]
+                    ],
+                },
+            )
             next_action = "address_issues"
-        elif has_hallucinations and task_data.get("is_critical"):
+        elif has_major_hallucinations and task_data.get("is_critical"):
             next_action = "human_review"
         else:
+            # Minor hallucinations or no hallucinations -> proceed to commit
+            if has_minor_hallucinations:
+                self._log_execution(
+                    event_type="hallucination_minor",
+                    task_id=task_data["id"],
+                    extra={
+                        "note": "Minor hallucinations detected but proceeding (cosmetic issues only)",
+                    },
+                )
             next_action = "commit"
 
+        # Log success only if no major hallucinations
         self._log_step_end(
-            "check_hallucinations", task_data["id"], not has_hallucinations
+            "check_hallucinations",
+            task_data["id"],
+            not (has_major_hallucinations or has_legacy_incorrect),
         )
         return {
             **state,
@@ -343,12 +389,13 @@ class ValidationNodes:
             ]
         )
 
-        # Collect raw outputs for context
+        # Collect raw outputs for context (include reports with issues)
         validation_context = "\n\n---\n\n".join(
             [
                 f"## {vr['agent']} Report\n{vr.get('raw_output', 'No output')[:1500]}"
                 for vr in validation_results
-                if vr.get("status") != "passed"
+                if vr.get("status") not in ("passed", "minor_issues")
+                or vr.get("has_major_hallucinations")
             ]
         )
 
@@ -573,10 +620,31 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
                     }
                 )
 
-            # Pattern 5: INCORRECT marker from hallucination defense
-            if "INCORRECT" in raw_output.upper():
+            # Pattern 5: MAJOR_INCORRECT marker from hallucination defense (critical)
+            if "MAJOR_INCORRECT" in raw_output.upper():
+                major_incorrect_matches = re.finditer(
+                    r"MAJOR_INCORRECT[:\s—\-]*(.*?)(?:\n\n|\*\*Claim|\Z)",
+                    raw_output,
+                    re.IGNORECASE | re.DOTALL,
+                )
+                for match in major_incorrect_matches:
+                    actionable_issues.append(
+                        {
+                            "agent": agent,
+                            "severity": "critical",
+                            "description": f"Major factual incorrectness: {match.group(1).strip()[:200]}",
+                            "pattern_matched": "major_incorrect_marker",
+                        }
+                    )
+
+            # Pattern 5b: Legacy INCORRECT marker (only if no MINOR/MAJOR classification)
+            # Treat as critical since we don't know the severity
+            elif (
+                "INCORRECT" in raw_output.upper()
+                and "MINOR_INCORRECT" not in raw_output.upper()
+            ):
                 incorrect_context = re.search(
-                    r"INCORRECT[:\s]*(.*?)(?:\n\n|\Z)",
+                    r"INCORRECT[:\s—\-]*(.*?)(?:\n\n|\Z)",
                     raw_output,
                     re.IGNORECASE | re.DOTALL,
                 )
@@ -585,10 +653,13 @@ Focus on addressing the specific issues identified. Do not re-implement the enti
                         {
                             "agent": agent,
                             "severity": "critical",
-                            "description": f"Factual incorrectness: {incorrect_context.group(1)[:200]}",
-                            "pattern_matched": "incorrect_marker",
+                            "description": f"Factual incorrectness (unclassified): {incorrect_context.group(1).strip()[:200]}",
+                            "pattern_matched": "legacy_incorrect_marker",
                         }
                     )
+
+            # Note: MINOR_INCORRECT is intentionally NOT added to actionable_issues
+            # Minor issues (wrong test counts, line numbers, etc.) don't require re-implementation
 
         # Filter to only critical and high severity issues
         return [

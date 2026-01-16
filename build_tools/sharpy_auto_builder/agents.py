@@ -266,10 +266,35 @@ python3 -c "print(-7 // 2)"  # Verify Python floor division
 | Target-typed new | Required members |
 
 ## Output Format
+For each claim, categorize errors by severity:
+
+### MINOR Issues (cosmetic, don't affect correctness)
+- Wrong test counts or names
+- Incorrect line numbers
+- Typos in method/class names that don't affect meaning
+- Minor documentation discrepancies
+
+### MAJOR Issues (affect correctness, require re-implementation)
+- Wrong API behavior claims (e.g., "List.Add returns bool" when it returns void)
+- Incorrect code logic or algorithm descriptions
+- Wrong language semantic claims (e.g., Python floor division behavior)
+- Invalid C# syntax or unavailable C# features
+- Claims about code that doesn't exist or works differently
+- Security or correctness issues
+
 ```markdown
 **Claim:** [The assertion being checked]
 **Verification:** [How it was verified]
-**Result:** ✅ CORRECT / ❌ INCORRECT — [Explanation]
+**Result:** ✅ CORRECT / ⚠️ MINOR_INCORRECT / ❌ MAJOR_INCORRECT — [Explanation]
+```
+
+## Summary Section (REQUIRED)
+At the end of your report, include:
+```markdown
+## Hallucination Summary
+- **Minor Issues:** [count] (list briefly)
+- **Major Issues:** [count] (list briefly)
+- **Verdict:** PASS / MINOR_ISSUES / MAJOR_ISSUES
 ```
 """,
     ),

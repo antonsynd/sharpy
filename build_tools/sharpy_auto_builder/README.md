@@ -177,7 +177,7 @@ The orchestrator uses a sophisticated LangGraph state machine with the following
 - `fix_test_failures` - Fix broken tests
 - `validate_spec_adherence` - Check spec compliance
 - `validate_verification` - Independent verification
-- `check_hallucinations` - Fact-check claims
+- `check_hallucinations` - Fact-check claims (distinguishes MINOR vs MAJOR issues)
 - `address_validation_issues` - Fix validation problems
 - `request_human_review` - Native interrupt for human review
 - `update_ground_truth` - Persist results + store memory patterns
@@ -190,6 +190,7 @@ The orchestrator uses a sophisticated LangGraph state machine with the following
 - **Idempotency**: CLI calls wrapped with `@task` decorator for replay safety
 - **Memory**: Successful patterns stored in memory store for context injection
 - **Routing**: Conditional edges based on state (tests pass/fail, validation results, etc.)
+- **Hallucination Severity**: Minor issues (test counts, line numbers) logged but don't block; major issues (wrong API behavior, incorrect code) trigger re-implementation
 
 ## Quick Start
 
