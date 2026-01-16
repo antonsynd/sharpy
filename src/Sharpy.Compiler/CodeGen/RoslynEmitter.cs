@@ -448,10 +448,11 @@ public class RoslynEmitter
 
         // Generate a Main method if:
         // 1. There's no user-defined main function, AND
-        // 2. This is the entry point file (or there are executable statements that need wrapping)
-        if (!hasMainFunction && (_context.IsEntryPoint || executableStatements.Count > 0))
+        // 2. This is the entry point file, AND
+        // 3. There are executable statements that need wrapping
+        if (!hasMainFunction && _context.IsEntryPoint && executableStatements.Count > 0)
         {
-            // Create a Main method for executable statements (or empty if no statements)
+            // Create a Main method for executable statements
             // Clear declared variables and version tracking for Main method scope
             _declaredVariables.Clear();
             _variableVersions.Clear();
@@ -478,9 +479,19 @@ public class RoslynEmitter
             // This is a corner case we'll handle later
             Console.WriteLine($"Warning: {executableStatements.Count} module-level statement(s) ignored because a 'main' function is defined");
         }
+        else if (!_context.IsEntryPoint && executableStatements.Count > 0)
+        {
+            // Non-entry-point files with executable statements: ignore them
+            // Module-level executable code should only run in the entry point
+            Console.WriteLine($"Warning: {executableStatements.Count} module-level executable statement(s) in non-entry-point file ignored");
+        }
+
+        // Check if we're generating a Main method OR if there's a user-defined main function
+        // (both will result in a method named "Main" in the class)
+        bool willHaveMainMethod = hasMainFunction || (!hasMainFunction && _context.IsEntryPoint && executableStatements.Count > 0);
 
         // Generate module class name from source file name
-        var moduleClassName = GetModuleClassName();
+        var moduleClassName = GetModuleClassName(willHaveMainMethod);
 
         return ClassDeclaration(moduleClassName)
             .WithModifiers(TokenList(
@@ -489,7 +500,7 @@ public class RoslynEmitter
             .WithMembers(List(declarations));
     }
 
-    private string GetModuleClassName()
+    private string GetModuleClassName(bool willGenerateMainMethod = false)
     {
         // Get the file name without extension and convert to PascalCase
         if (!string.IsNullOrEmpty(_context.SourceFilePath))
@@ -497,7 +508,16 @@ public class RoslynEmitter
             var fileName = Path.GetFileNameWithoutExtension(_context.SourceFilePath);
             if (!string.IsNullOrEmpty(fileName))
             {
-                return SimpleToPascalCase(fileName);
+                var className = SimpleToPascalCase(fileName);
+
+                // Avoid name collision: if the class would be named "Main" and we're generating
+                // a Main method, use "Program" instead (following C# convention)
+                if (className == "Main" && willGenerateMainMethod)
+                {
+                    return "Program";
+                }
+
+                return className;
             }
         }
 
