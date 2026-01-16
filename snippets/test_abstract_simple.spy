@@ -1,0 +1,17 @@
+@abstract
+class Base:
+    @abstractmethod
+    def abstract_method(self: Base) -> int:
+        ...
+
+    def concrete_method(self: Base) -> int:
+        return 100
+
+class Derived(Base):
+    @override
+    def abstract_method(self: Derived) -> int:
+        return 42
+
+d = Derived()
+print(d.abstract_method())
+print(d.concrete_method())

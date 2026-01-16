@@ -2365,6 +2365,19 @@ public class RoslynEmitter
             // Combine positional and keyword arguments
             var allArgs = positionalArgs.Concat(keywordArgs).ToArray();
 
+            // Handle null conditional method calls: obj?.Method(args)
+            if (memberAccess.IsNullConditional)
+            {
+                // Generate: obj?.Method(args)
+                // Uses ConditionalAccessExpression with MemberBindingExpression for the method
+                // followed by InvocationExpression for the call
+                var memberBinding = MemberBindingExpression(IdentifierName(methodName));
+                var invocation = InvocationExpression(memberBinding)
+                    .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+
+                return ConditionalAccessExpression(obj, invocation);
+            }
+
             // Generate: obj.Method(args)
             var methodAccess = MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,

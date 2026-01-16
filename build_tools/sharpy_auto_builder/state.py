@@ -35,6 +35,8 @@ class ValidationStatus(str, Enum):
     PASSED = "passed"
     FAILED = "failed"
     WARNINGS = "warnings"
+    MINOR_ISSUES = "minor_issues"
+    MAJOR_ISSUES = "major_issues"
 
 
 @dataclass

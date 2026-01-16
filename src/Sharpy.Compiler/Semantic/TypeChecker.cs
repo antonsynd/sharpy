@@ -1523,7 +1523,23 @@ public class TypeChecker
 
         var objectType = CheckExpression(memberAccess.Object);
 
-        if (objectType is UserDefinedType udt && udt.Symbol != null)
+        // Handle null conditional access (?.)
+        SemanticType memberLookupType = objectType;
+        if (memberAccess.IsNullConditional)
+        {
+            // Null conditional can only be used on nullable types
+            if (objectType is not NullableType nullableObjectType)
+            {
+                AddError(
+                    $"Null conditional operator '?.' can only be used on nullable types, but got '{objectType.GetDisplayName()}'",
+                    memberAccess.LineStart, memberAccess.ColumnStart);
+                return SemanticType.Unknown;
+            }
+            // Use the underlying type for member lookup
+            memberLookupType = nullableObjectType.UnderlyingType;
+        }
+
+        if (memberLookupType is UserDefinedType udt && udt.Symbol != null)
         {
             // Look for field or property (including inherited fields)
             var (field, fieldOwner) = FindFieldInHierarchy(udt.Symbol, memberAccess.Member);
@@ -1531,7 +1547,15 @@ public class TypeChecker
             {
                 // Validate access level
                 _accessValidator.ValidateFieldAccess(field, fieldOwner, memberAccess.LineStart, memberAccess.ColumnStart);
-                return field.Type;
+
+                var fieldType = field.Type;
+
+                // Wrap result in nullable for null conditional access
+                if (memberAccess.IsNullConditional && fieldType is not NullableType)
+                {
+                    return new NullableType { UnderlyingType = fieldType };
+                }
+                return fieldType;
             }
 
             // Look for method (including inherited methods)
@@ -1545,14 +1569,18 @@ public class TypeChecker
                 // bound as the first parameter (self), so we skip it when creating the FunctionType
                 var paramTypes = method.Parameters.Skip(1).Select(p => p.Type).ToList();
 
-                return new FunctionType
+                var methodFunctionType = new FunctionType
                 {
                     ParameterTypes = paramTypes,
                     ReturnType = method.ReturnType
                 };
+
+                // For null conditional method access, we don't wrap the FunctionType itself,
+                // but the eventual call result should be nullable (handled in CheckFunctionCall)
+                return methodFunctionType;
             }
 
-            AddError($"Type '{objectType.GetDisplayName()}' has no member '{memberAccess.Member}'",
+            AddError($"Type '{memberLookupType.GetDisplayName()}' has no member '{memberAccess.Member}'",
                 memberAccess.LineStart, memberAccess.ColumnStart);
         }
 
@@ -1636,6 +1664,9 @@ public class TypeChecker
 
     private SemanticType CheckFunctionCall(FunctionCall call)
     {
+        // Check if this is a null conditional method call (obj?.method())
+        bool isNullConditionalCall = call.Function is MemberAccess { IsNullConditional: true };
+
         // Check the called expression type first
         var calleeType = CheckExpression(call.Function);
 
@@ -1819,7 +1850,14 @@ public class TypeChecker
                 }
             }
 
-            return funcSymbol.ReturnType;
+            var returnType = funcSymbol.ReturnType;
+
+            // Wrap result in nullable for null conditional calls
+            if (isNullConditionalCall && returnType is not NullableType)
+            {
+                return new NullableType { UnderlyingType = returnType };
+            }
+            return returnType;
         }
 
         // Fallback to FunctionType validation (no default parameter support)
@@ -1846,7 +1884,14 @@ public class TypeChecker
                 }
             }
 
-            return ft.ReturnType;
+            var returnType = ft.ReturnType;
+
+            // Wrap result in nullable for null conditional calls
+            if (isNullConditionalCall && returnType is not NullableType)
+            {
+                return new NullableType { UnderlyingType = returnType };
+            }
+            return returnType;
         }
 
         return SemanticType.Unknown;
