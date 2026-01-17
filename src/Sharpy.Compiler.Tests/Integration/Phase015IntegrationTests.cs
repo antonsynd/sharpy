@@ -264,7 +264,7 @@ print(scale(10.0, 0.5))
 
     #region Keyword Argument Tests
 
-    [Fact(Skip = "TODO: Fix keyword-only argument counting. TypeChecker doesn't count keyword arguments in argument count validation.")]
+    [Fact]
     public void KeywordArgument_SingleKeyword_WorksCorrectly()
     {
         var source = @"
@@ -281,7 +281,7 @@ print(divide(b=2, a=10))
         Assert.Equal("5\n5\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Fix keyword-only argument counting. TypeChecker doesn't count keyword arguments in argument count validation.")]
+    [Fact]
     public void KeywordArgument_MixedPositionalAndKeyword_WorksCorrectly()
     {
         var source = @"
@@ -298,7 +298,7 @@ print(compute(1, 2, c=3))
         Assert.Equal("7\n7\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Fix keyword-only argument counting. TypeChecker doesn't count keyword arguments in argument count validation.")]
+    [Fact]
     public void KeywordArgument_WithDefaults_SkipsMiddleParameter()
     {
         var source = @"
@@ -317,7 +317,7 @@ print(configure(""item"", size=20, color=""green""))
         Assert.Equal("item: 10, blue\nitem: 10, red\nitem: 20, blue\nitem: 20, green\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Fix keyword-only argument counting. TypeChecker doesn't count keyword arguments in argument count validation.")]
+    [Fact]
     public void KeywordArgument_AllKeywords_AnyOrder()
     {
         var source = @"

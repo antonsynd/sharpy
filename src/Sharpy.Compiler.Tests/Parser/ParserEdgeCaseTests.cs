@@ -339,12 +339,19 @@ def foo(a, b, c,):
         module.Body.Should().HaveCount(1);
     }
 
-    [Fact(Skip = "Unimplemented: Callable type syntax not yet supported")]
+    [Fact]
     public void ParsesCallableType()
     {
-        var source = "x: callable[[int, str], bool]";
+        // Sharpy uses (ParamType, ...) -> ReturnType syntax for callable types
+        var source = "type Callback = (int, str) -> bool";
         var module = Parse(source);
         module.Body.Should().HaveCount(1);
+        var typeAlias = module.Body[0] as TypeAlias;
+        typeAlias.Should().NotBeNull();
+        typeAlias!.Name.Should().Be("Callback");
+        typeAlias.FunctionType.Should().NotBeNull();
+        typeAlias.FunctionType!.ParameterTypes.Should().HaveCount(2);
+        typeAlias.FunctionType.ReturnType.Name.Should().Be("bool");
     }
 
     #endregion
