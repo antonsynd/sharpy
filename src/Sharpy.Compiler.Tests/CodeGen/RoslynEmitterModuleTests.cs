@@ -848,8 +848,9 @@ public class RoslynEmitterModuleTests
         var result = emitter.GenerateCompilationUnit(module);
         var code = result.ToFullString();
 
-        // Assert - Sharpy modules should generate using static
-        Assert.Contains("using static Config.Config;", code);
+        // Assert - Sharpy modules should generate using static with Exports class
+        // (Sharpy modules expose their members via a class named "Exports")
+        Assert.Contains("using static Config.Exports;", code);
     }
 
     [Fact]
@@ -878,7 +879,8 @@ public class RoslynEmitterModuleTests
         var code = result.ToFullString();
 
         // Assert - Should generate using static for the module (not individual symbols)
-        Assert.Contains("using static Utils.Helpers.Helpers;", code);
+        // Module class is always "Exports"
+        Assert.Contains("using static Utils.Helpers.Exports;", code);
     }
 
     [Fact]
@@ -906,7 +908,8 @@ public class RoslynEmitterModuleTests
         var code = result.ToFullString();
 
         // Assert - Nested module path should be converted to PascalCase
-        Assert.Contains("using static Lib.Math.Operations.Operations;", code);
+        // Module class is always "Exports"
+        Assert.Contains("using static Lib.Math.Operations.Exports;", code);
     }
 
     [Fact]
@@ -931,7 +934,8 @@ public class RoslynEmitterModuleTests
         var code = result.ToFullString();
 
         // Assert - from module import * should generate using static
-        Assert.Contains("using static Utils.Utils;", code);
+        // Module class is always "Exports"
+        Assert.Contains("using static Utils.Exports;", code);
     }
 
     [Fact]
@@ -959,7 +963,8 @@ public class RoslynEmitterModuleTests
         var code = result.ToFullString();
 
         // Assert - Snake_case module names should be converted to PascalCase
-        Assert.Contains("using static DatabaseUtils.ConnectionPool.ConnectionPool;", code);
+        // Module class is always "Exports"
+        Assert.Contains("using static DatabaseUtils.ConnectionPool.Exports;", code);
     }
 
     [Fact]
@@ -989,7 +994,8 @@ public class RoslynEmitterModuleTests
         // Assert - Should still generate using static (alias handled at usage site)
         // Note: C# using static doesn't support aliasing individual members
         // The semantic analyzer should handle the symbol aliasing
-        Assert.Contains("using static Config.Config;", code);
+        // Module class is always "Exports"
+        Assert.Contains("using static Config.Exports;", code);
     }
 
     [Fact]
@@ -1025,13 +1031,121 @@ public class RoslynEmitterModuleTests
         var code = result.ToFullString();
 
         // Assert - Should only have one using static directive
-        var firstIndex = code.IndexOf("using static Config.Config;");
-        var lastIndex = code.LastIndexOf("using static Config.Config;");
+        // Module class is always "Exports"
+        var firstIndex = code.IndexOf("using static Config.Exports;");
+        var lastIndex = code.LastIndexOf("using static Config.Exports;");
 
         // If they're the same index, there's only one occurrence
         // If different, count how many there are (could be deduplicated or not)
         // The important thing is that it compiles correctly
-        Assert.Contains("using static Config.Config;", code);
+        Assert.Contains("using static Config.Exports;", code);
+    }
+
+    #endregion
+
+    #region Package __init__ Tests
+
+    [Fact]
+    public void GenerateCompilationUnit_InitFile_GeneratesExportsClass()
+    {
+        // Arrange - Package __init__.spy file
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = "/project/src/mypackage/__init__.spy",
+            ProjectNamespace = "TestProject",
+            ProjectRootPath = "/project/src"
+        };
+        var emitter = new RoslynEmitter(context);
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new FunctionDef
+                {
+                    Name = "package_func",
+                    Parameters = new List<Parameter>(),
+                    Body = new List<Statement>()
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - __init__.spy files should generate "Exports" class, not "Init"
+        // This ensures imports like "using mypackage = TestProject.Mypackage.Exports;" work correctly
+        Assert.Contains("namespace TestProject.Mypackage", code);
+        Assert.Contains("public static class Exports", code);
+        Assert.DoesNotContain("public static class Init", code);
+        Assert.Contains("PackageFunc", code); // Verify function is in the class
+    }
+
+    [Fact]
+    public void GenerateCompilationUnit_NestedInitFile_GeneratesCorrectNamespaceAndExportsClass()
+    {
+        // Arrange - Nested package __init__.spy file
+        var builtins = new BuiltinRegistry();
+        var symbolTable = new SymbolTable(builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            SourceFilePath = "/project/src/level1/level2/__init__.spy",
+            ProjectNamespace = "TestProject",
+            ProjectRootPath = "/project/src"
+        };
+        var emitter = new RoslynEmitter(context);
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new VariableDeclaration
+                {
+                    Name = "VERSION",
+                    Type = new TypeAnnotation { Name = "str" },
+                    InitialValue = new StringLiteral { Value = "1.0.0" },
+                    IsConst = true
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - Verify correct namespace and Exports class for nested __init__.spy
+        Assert.Contains("namespace TestProject.Level1.Level2", code);
+        Assert.Contains("public static class Exports", code);
+        Assert.DoesNotContain("Level2.Level2", code); // No duplicate segment
+        Assert.DoesNotContain("public static class Init", code);
+    }
+
+    [Fact]
+    public void GenerateCompilationUnit_ImportFromInitPackage_GeneratesCorrectAlias()
+    {
+        // Arrange - Importing a package's __init__.spy file
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                new ImportStatement
+                {
+                    Names = new List<ImportAlias>
+                    {
+                        new ImportAlias { Name = "mypackage" }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+
+        // Assert - Import should create alias to Exports class (from __init__.spy)
+        Assert.Contains("using mypackage = Mypackage.Exports;", code);
     }
 
     #endregion

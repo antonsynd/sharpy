@@ -1,0 +1,17 @@
+{
+  "id": "q_20260116_215707_cb2acc1d",
+  "task_id": "0.1.10.CG4",
+  "question": "Agent is asking for guidance on task 0.1.10.CG4: Fix `__init__.spy` Class Name for Packages",
+  "context": "## Summary\n\nI've investigated the `__init__.spy` class name issue for packages and found that **the problem described in the task has already been fixed**. The current implementation correctly handles `__init__.spy` files.\n\n### Current Implementation\n\nThe `GetModuleClassName()` method in `src/Sharpy.Compiler/CodeGen/RoslynEmitter.cs` (lines 717-729) already returns `\"Exports\"` for all modules, including `__init__.spy` files. There is no special case that generates `\"Init\"` anymore.\n\n```csharp\nprivate string GetModuleClassName(bool willGenerateMainMethod = false, HashSet<string>? functionNames = null)\n{\n    // All modules use \"Exports\" as the class name\n    // This matches the spec and import system expectation:\n    // \"using config = ProjectNamespace.Config.Exports;\"\n    // Exception: entry point modules that generate a Main method use \"Program\"\n    if (willGenerateMainMethod)\n    {\n        return \"Program\";\n    }\n\n    return \"Exports\";\n}\n```\n\n### What I Added\n\nTo ensure this behavior is explicitly documented and tested, I added **3 comprehensive tests** to `src/Sharpy.Compiler.Tests/CodeGen/RoslynEmitterModuleTests.cs`:\n\n1. **`GenerateCompilationUnit_InitFile_GeneratesExportsClass`** - Tests that `__init__.spy` files generate `Exports` class, not `Init`\n2. **`GenerateCompilationUnit_NestedInitFile_GeneratesCorrectNamespaceAndExportsClass`** - Tests nested packages (e.g., `level1/level2/__init__.spy`) generate correct namespace without duplication\n3. **`GenerateCompilationUnit_ImportFromInitPackage_GeneratesCorrectAlias`** - Tests that imports correctly reference the `Exports` class\n\n### Test Results\n\n\u2713 **All 396 CodeGen tests pass** (including the 3 new tests)\n- 0 failed\n- 0 skipped\n- No regressions introduced\n\nThe fix appears to have been completed in a previous commit (cc91362 \"src: Rename __Module__ to Exports\" from Dec 1, 2025), where the class name was changed from `__Module__` to `Exports` for all modules.\n",
+  "priority": "high",
+  "options": [
+    "1. **`GenerateCompilationUnit_InitFile_GeneratesExportsClass`** - Tests that `__init__.spy` files generate `Exports` class, not `Init`",
+    "2. **`GenerateCompilationUnit_NestedInitFile_GeneratesCorrectNamespaceAndExportsClass`** - Tests nested packages (e.g., `level1/level2/__init__.spy`) generate correct namespace without duplication",
+    "3. **`GenerateCompilationUnit_ImportFromInitPackage_GeneratesCorrectAlias`** - Tests that imports correctly reference the `Exports` class"
+  ],
+  "created_at": "2026-01-16T21:57:07.877420",
+  "status": "pending",
+  "answer": null,
+  "answered_at": null,
+  "answer_source": null
+}

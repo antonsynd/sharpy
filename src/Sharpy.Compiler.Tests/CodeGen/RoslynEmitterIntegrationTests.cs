@@ -386,4 +386,96 @@ public class RoslynEmitterIntegrationTests
         Assert.Contains("const int @BASE = 10", code);
         Assert.Contains("@BASE * 2", code);
     }
+
+    [Fact]
+    public void GeneratedCode_ModuleLevelVariableRedefinition_SkipsDuplicateField()
+    {
+        // Arrange - Module-level variable redefined with different type
+        // Sharpy allows: x: int = 1; x: auto = "hello"
+        // C# doesn't allow duplicate fields, so we skip the redefinition
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                // x: int = 1
+                new VariableDeclaration
+                {
+                    Name = "x",
+                    Type = new TypeAnnotation { Name = "int" },
+                    InitialValue = new IntegerLiteral { Value = "1" }
+                },
+                // x: auto = "hello" (redefinition with different type)
+                new VariableDeclaration
+                {
+                    Name = "x",
+                    Type = new TypeAnnotation { Name = "auto" },
+                    InitialValue = new StringLiteral { Value = "\"hello\"" }
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+        var compiles = CompileCode(code, out var errors);
+
+        // Assert
+        Assert.True(compiles, $"Generated code should compile. Errors:\n{errors}\n\nGenerated code:\n{code}");
+
+        // Verify only the first declaration appears (int X = 1)
+        Assert.Contains("public static int X = 1", code);
+
+        // Verify the second declaration does NOT appear (no duplicate string X field)
+        var xFieldCount = System.Text.RegularExpressions.Regex.Matches(code, @"public static \w+ X").Count;
+        Assert.Equal(1, xFieldCount);
+    }
+
+    [Fact]
+    public void GeneratedCode_ModuleLevelConstRedefinition_SkipsDuplicateField()
+    {
+        // Arrange - Module-level const redefined with different type
+        var emitter = CreateEmitter();
+        var module = new Module
+        {
+            Body = new List<Statement>
+            {
+                // const MAX_SIZE: int = 100
+                new VariableDeclaration
+                {
+                    Name = "MAX_SIZE",
+                    Type = new TypeAnnotation { Name = "int" },
+                    InitialValue = new IntegerLiteral { Value = "100" },
+                    IsConst = true
+                },
+                // const MAX_SIZE: auto = 200 (redefinition with same type but different value)
+                new VariableDeclaration
+                {
+                    Name = "MAX_SIZE",
+                    Type = new TypeAnnotation { Name = "auto" },
+                    InitialValue = new IntegerLiteral { Value = "200" },
+                    IsConst = true
+                }
+            }
+        };
+
+        // Act
+        var result = emitter.GenerateCompilationUnit(module);
+        var code = result.ToFullString();
+        var compiles = CompileCode(code, out var errors);
+
+        // Assert
+        Assert.True(compiles, $"Generated code should compile. Errors:\n{errors}\n\nGenerated code:\n{code}");
+
+        // Verify only the first declaration appears (MAX_SIZE = 100)
+        // Constants keep their CAPS_SNAKE_CASE naming
+        Assert.Contains("MAX_SIZE = 100", code);
+
+        // Verify the second declaration does NOT appear (no MAX_SIZE = 200)
+        Assert.DoesNotContain("200", code);
+
+        // Verify there's only one MAX_SIZE field
+        var maxSizeFieldCount = System.Text.RegularExpressions.Regex.Matches(code, @"\bMAX_SIZE\b").Count;
+        Assert.Equal(1, maxSizeFieldCount);
+    }
 }

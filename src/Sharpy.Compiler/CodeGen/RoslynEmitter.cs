@@ -20,8 +20,10 @@ public class RoslynEmitter
     private readonly HashSet<string> _constVariables = new(); // Track const variable names (original Sharpy names)
     private readonly HashSet<string> _moduleConstVariables = new(); // Track module-level const names (preserved across function scopes)
     private readonly HashSet<string> _moduleVariables = new(); // Track module-level variable names (for PascalCase reference)
+    private readonly HashSet<string> _moduleFieldNames = new(); // Track module-level field names (C# names) to prevent duplicates
     private readonly HashSet<string> _classNames = new(); // Track class names defined in the current module
     private readonly HashSet<string> _structNames = new(); // Track struct names defined in the current module
+    private readonly HashSet<string> _fromImportSymbols = new(); // Track symbols imported via "from X import Y" for proper casing
     private int _tempVarCounter = 0;
 
     // Target type context for collection literal type inference
@@ -96,13 +98,31 @@ public class RoslynEmitter
             return NameMangler.ToPascalCase(name);
         }
 
+        // Check if this is a symbol imported via "from X import Y"
+        // These are accessed via "using static" and must match the exported name casing
+        if (_fromImportSymbols.Contains(name))
+        {
+            // Use the same casing rules as exported module members:
+            // - ALL_CAPS names (constants) stay as CONSTANT_CASE
+            // - Other names become PascalCase
+            if (IsConstantCaseName(name))
+            {
+                return NameMangler.ToConstantCase(name);
+            }
+            else
+            {
+                return NameMangler.ToPascalCase(name);
+            }
+        }
+
         // Check if this is a module symbol - preserve the exact name (with sanitization)
         // This ensures imported module names match their using alias (e.g., math_ops stays math_ops)
         var symbol = _context.LookupSymbol(name);
         if (symbol is ModuleSymbol)
         {
             // Use the same sanitization as in GenerateImportUsings
-            return name.Replace(".", "_");
+            // Also escape C# keywords like "base" -> "@base"
+            return EscapeCSharpKeyword(name.Replace(".", "_"));
         }
 
         // If we reach here, this is a new local variable that doesn't shadow any module-level var
@@ -122,6 +142,25 @@ public class RoslynEmitter
 
     public CompilationUnitSyntax GenerateCompilationUnit(Module module)
     {
+        // Pre-process from-import statements to track imported symbol names
+        // This allows proper casing when these symbols are referenced
+        _fromImportSymbols.Clear();
+        foreach (var stmt in module.Body)
+        {
+            if (stmt is FromImportStatement fromImport)
+            {
+                foreach (var importedName in fromImport.Names)
+                {
+                    // Track both the original name and its alias (if present)
+                    _fromImportSymbols.Add(importedName.Name);
+                    if (importedName.AsName != null)
+                    {
+                        _fromImportSymbols.Add(importedName.AsName);
+                    }
+                }
+            }
+        }
+
         // Collect all using directives from import statements
         var usingDirectives = GenerateUsingDirectives(module);
 
@@ -220,7 +259,8 @@ public class RoslynEmitter
         }
 
         // Add file name as final namespace component
-        if (!string.IsNullOrEmpty(fileName))
+        // EXCEPT for __init__.spy files, which represent the package itself
+        if (!string.IsNullOrEmpty(fileName) && fileName != "__init__")
         {
             namespaceParts.Add(SimpleToPascalCase(fileName));
         }
@@ -288,24 +328,20 @@ public class RoslynEmitter
                 }
                 else
                 {
-                    // import module as alias -> using alias = ProjectNamespace.Module.Module; (for Sharpy modules)
-                    // Extract just the last part for the class name
-                    // e.g., "Lib.Math.Operations" → "Operations"
-                    var lastDotIndex = namespaceName.LastIndexOf('.');
-                    var moduleClassName = lastDotIndex >= 0
-                        ? namespaceName.Substring(lastDotIndex + 1)
-                        : namespaceName;
+                    // import module as alias -> using alias = ProjectNamespace.Module.Exports; (for Sharpy modules)
+                    // Sharpy modules expose their members via a class named "Exports"
+                    const string exportsClassName = "Exports";
 
-                    // Build full path: <ProjectNamespace>.<ModuleNamespace>.<ClassName>
+                    // Build full path: <ProjectNamespace>.<ModuleNamespace>.Exports
                     string fullModuleClass;
                     if (!string.IsNullOrEmpty(_context.ProjectNamespace))
                     {
-                        fullModuleClass = $"{_context.ProjectNamespace}.{namespaceName}.{moduleClassName}";
+                        fullModuleClass = $"{_context.ProjectNamespace}.{namespaceName}.{exportsClassName}";
                     }
                     else
                     {
                         // Fallback for single-file compilation without project namespace
-                        fullModuleClass = $"{namespaceName}.{moduleClassName}";
+                        fullModuleClass = $"{namespaceName}.{exportsClassName}";
                     }
 
                     yield return UsingDirective(
@@ -322,30 +358,27 @@ public class RoslynEmitter
                 }
                 else
                 {
-                    // import module -> using module_alias = ProjectNamespace.Module.Module; (Sharpy module)
+                    // import module -> using module_alias = ProjectNamespace.Module.Exports; (Sharpy module)
                     // Convert "utils.helpers" to "utils_helpers" for valid C# identifier
-                    var sanitizedAlias = alias.Name.Replace(".", "_");
+                    // Also escape C# reserved keywords like "base" -> "@base"
+                    var sanitizedAlias = EscapeCSharpKeyword(alias.Name.Replace(".", "_"));
 
-                    // Extract just the last part for the class name
-                    // e.g., "Lib.Math.Operations" → "Operations"
-                    var lastDotIndex = namespaceName.LastIndexOf('.');
-                    var moduleClassName = lastDotIndex >= 0
-                        ? namespaceName.Substring(lastDotIndex + 1)
-                        : namespaceName;
+                    // Sharpy modules expose their members via a class named "Exports"
+                    const string exportsClassName = "Exports";
 
-                    // Build full path: <ProjectNamespace>.<ModuleNamespace>.<ClassName>
+                    // Build full path: <ProjectNamespace>.<ModuleNamespace>.Exports
                     // For example:
-                    //   - "config" → "TestProject.Config.Config"
-                    //   - "lib.math.operations" → "TestProject.Lib.Math.Operations.Operations"
+                    //   - "config" → "TestProject.Config.Exports"
+                    //   - "lib.math.operations" → "TestProject.Lib.Math.Operations.Exports"
                     string fullModuleClass;
                     if (!string.IsNullOrEmpty(_context.ProjectNamespace))
                     {
-                        fullModuleClass = $"{_context.ProjectNamespace}.{namespaceName}.{moduleClassName}";
+                        fullModuleClass = $"{_context.ProjectNamespace}.{namespaceName}.{exportsClassName}";
                     }
                     else
                     {
                         // Fallback for single-file compilation without project namespace
-                        fullModuleClass = $"{namespaceName}.{moduleClassName}";
+                        fullModuleClass = $"{namespaceName}.{exportsClassName}";
                     }
 
                     yield return UsingDirective(
@@ -370,26 +403,23 @@ public class RoslynEmitter
         {
             // Generate using static for the module class
             // This enables direct access to module-level functions and variables
-            // e.g., "from config import MAX_SIZE" → "using static TestFromImport.Config.Config;"
+            // e.g., "from config import MAX_SIZE" → "using static TestProject.Config.Exports;"
             //
-            // For nested modules like "lib.math.operations":
-            // - Namespace: TestFromImport.Lib.Math.Operations
-            // - Class: Operations
-            // - Full path: TestFromImport.Lib.Math.Operations.Operations
+            // The module class is always named "Exports" (see GetModuleClassName),
+            // not the module name duplicated. For nested modules like "lib.math.operations":
+            // - Namespace: TestProject.Lib.Math.Operations
+            // - Class: Exports
+            // - Full path: TestProject.Lib.Math.Operations.Exports
 
             var moduleNamespacePath = ConvertModuleNameToNamespace(fromImport.Module);
 
-            // Extract just the last part for the class name
-            // e.g., "Lib.Math.Operations" → "Operations"
-            var lastDotIndex = moduleNamespacePath.LastIndexOf('.');
-            var moduleClassName = lastDotIndex >= 0
-                ? moduleNamespacePath.Substring(lastDotIndex + 1)
-                : moduleNamespacePath;
+            // The module class is always named "Exports" (not the module name)
+            const string moduleClassName = "Exports";
 
-            // Build full path: <ProjectNamespace>.<ModuleNamespace>.<ClassName>
+            // Build full path: <ProjectNamespace>.<ModuleNamespace>.Exports
             // For example:
-            //   - "config" → "TestFromImport.Config.Config"
-            //   - "lib.math.operations" → "TestFromImport.Lib.Math.Operations.Operations"
+            //   - "config" → "TestProject.Config.Exports"
+            //   - "lib.math.operations" → "TestProject.Lib.Math.Operations.Exports"
             string fullModuleClass;
             if (!string.IsNullOrEmpty(_context.ProjectNamespace))
             {
@@ -425,6 +455,61 @@ public class RoslynEmitter
 
         var firstPart = moduleName.Split('.')[0].ToLowerInvariant();
         return netPrefixes.Contains(firstPart);
+    }
+
+    /// <summary>
+    /// Checks if a name appears to be in CONSTANT_CASE (ALL_CAPS with optional underscores).
+    /// Used to determine proper casing for symbols imported via "from X import Y".
+    /// </summary>
+    private static bool IsConstantCaseName(string name)
+    {
+        if (string.IsNullOrEmpty(name))
+            return false;
+
+        // A constant name should contain at least one letter and be all uppercase
+        // Allowed characters: uppercase letters, digits, underscores
+        bool hasLetter = false;
+        foreach (char c in name)
+        {
+            if (char.IsLetter(c))
+            {
+                if (!char.IsUpper(c))
+                    return false;
+                hasLetter = true;
+            }
+            else if (!char.IsDigit(c) && c != '_')
+            {
+                return false;
+            }
+        }
+        return hasLetter;
+    }
+
+    /// <summary>
+    /// C# keywords that need @ prefix when used as identifiers.
+    /// </summary>
+    private static readonly HashSet<string> CSharpKeywords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "abstract", "as", "base", "bool", "break", "byte", "case", "catch",
+        "char", "checked", "class", "const", "continue", "decimal", "default",
+        "delegate", "do", "double", "else", "enum", "event", "explicit",
+        "extern", "false", "finally", "fixed", "float", "for", "foreach",
+        "goto", "if", "implicit", "in", "int", "interface", "internal",
+        "is", "lock", "long", "namespace", "new", "null", "object",
+        "operator", "out", "override", "params", "private", "protected",
+        "public", "readonly", "ref", "return", "sbyte", "sealed", "short",
+        "sizeof", "stackalloc", "static", "string", "struct", "switch",
+        "this", "throw", "true", "try", "typeof", "uint", "ulong",
+        "unchecked", "unsafe", "ushort", "using", "virtual", "void",
+        "volatile", "while"
+    };
+
+    /// <summary>
+    /// Escapes C# keywords by prefixing with @ symbol.
+    /// </summary>
+    private static string EscapeCSharpKeyword(string name)
+    {
+        return CSharpKeywords.Contains(name) ? "@" + name : name;
     }
 
     private string ConvertModuleNameToNamespace(string moduleName)
@@ -498,11 +583,13 @@ public class RoslynEmitter
         // This ensures functions can reference variables with correct casing
         _moduleConstVariables.Clear();
         _moduleVariables.Clear();
+        _moduleFieldNames.Clear();
         foreach (var stmt in statements)
         {
             if (stmt is VariableDeclaration varDecl)
             {
-                if (varDecl.IsConst)
+                // Treat as constant if explicitly const OR if name is ALL_CAPS (Python-style constant)
+                if (varDecl.IsConst || IsConstantCaseName(varDecl.Name))
                 {
                     _moduleConstVariables.Add(varDecl.Name);
                 }
@@ -550,6 +637,11 @@ public class RoslynEmitter
             if (member is MemberDeclarationSyntax memberDecl)
             {
                 declarations.Add(memberDecl);
+            }
+            else if (member == null && stmt is VariableDeclaration)
+            {
+                // This is a skipped redefinition - don't add to executable statements
+                // (GenerateModuleLevelField returned null for duplicate field)
             }
             else
             {
@@ -624,33 +716,15 @@ public class RoslynEmitter
 
     private string GetModuleClassName(bool willGenerateMainMethod = false, HashSet<string>? functionNames = null)
     {
-        // Get the file name without extension and convert to PascalCase
-        if (!string.IsNullOrEmpty(_context.SourceFilePath))
+        // All modules use "Exports" as the class name
+        // This matches the spec and import system expectation:
+        // "using config = ProjectNamespace.Config.Exports;"
+        // Exception: entry point modules that generate a Main method use "Program"
+        if (willGenerateMainMethod)
         {
-            var fileName = Path.GetFileNameWithoutExtension(_context.SourceFilePath);
-            if (!string.IsNullOrEmpty(fileName))
-            {
-                var className = SimpleToPascalCase(fileName);
-
-                // Avoid name collision: if the class would be named "Main" and we're generating
-                // a Main method, use "Program" instead (following C# convention)
-                if (className == "Main" && willGenerateMainMethod)
-                {
-                    return "Program";
-                }
-
-                // Avoid name collision: if the class name matches any function name in the module,
-                // append "Module" suffix to the class name (C# doesn't allow method name == enclosing type name)
-                if (functionNames != null && functionNames.Contains(className))
-                {
-                    return $"{className}Module";
-                }
-
-                return className;
-            }
+            return "Program";
         }
 
-        // Fallback to "Exports" if no source file path available
         return "Exports";
     }
 
@@ -2183,7 +2257,7 @@ public class RoslynEmitter
             .WithModifiers(modifiers);
     }
 
-    private FieldDeclarationSyntax GenerateModuleLevelField(VariableDeclaration varDecl)
+    private FieldDeclarationSyntax? GenerateModuleLevelField(VariableDeclaration varDecl)
     {
         // Track const variables by their original Sharpy name for consistent reference resolution
         if (varDecl.IsConst)
@@ -2191,11 +2265,32 @@ public class RoslynEmitter
             _constVariables.Add(varDecl.Name);
         }
 
-        // Module-level fields are public static, so use PascalCase
-        // (Instance fields in classes use camelCase via NameContext.Field)
-        var varName = varDecl.IsConst
-            ? NameMangler.ToConstantCase(varDecl.Name)
-            : NameMangler.ToPascalCase(varDecl.Name);
+        // Module-level fields naming:
+        // - Explicitly const declarations use CONSTANT_CASE
+        // - Names that look like constants (ALL_CAPS) also use CONSTANT_CASE
+        //   This supports Python-style convention where MAX_SIZE implies a constant
+        // - Other names use PascalCase
+        string varName;
+        if (varDecl.IsConst || IsConstantCaseName(varDecl.Name))
+        {
+            varName = NameMangler.ToConstantCase(varDecl.Name);
+        }
+        else
+        {
+            varName = NameMangler.ToPascalCase(varDecl.Name);
+        }
+
+        // Check if we've already generated a field with this name (redefinition)
+        // Sharpy allows variable redefinition at module level with different types,
+        // but C# doesn't allow duplicate field names. Skip subsequent redefinitions.
+        if (_moduleFieldNames.Contains(varName))
+        {
+            // This is a redefinition - skip generating a duplicate field
+            return null;
+        }
+
+        // Track this field name to detect future redefinitions
+        _moduleFieldNames.Add(varName);
 
         // Handle 'auto' type annotation - for fields, we must resolve to concrete type
         // For const without type annotation, infer type from initializer
@@ -3343,8 +3438,12 @@ public class RoslynEmitter
             }
         }
 
-        // Apply name mangling to member names - fields and methods use PascalCase in generated C#
-        var mangledMemberName = NameMangler.ToPascalCase(memberAccess.Member);
+        // Apply name mangling to member names:
+        // - ALL_CAPS names (Python-style constants) use CONSTANT_CASE
+        // - Other names use PascalCase
+        var mangledMemberName = IsConstantCaseName(memberAccess.Member)
+            ? NameMangler.ToConstantCase(memberAccess.Member)
+            : NameMangler.ToPascalCase(memberAccess.Member);
         var member = IdentifierName(mangledMemberName);
 
         if (memberAccess.IsNullConditional)
@@ -3450,27 +3549,67 @@ public class RoslynEmitter
             throw new ArgumentException("Module path cannot be empty", nameof(modulePath));
         }
 
-        // Check if this is a simple two-part access (e.g., config.MAX_SIZE)
-        // where the first part is an imported module that has a using alias
-        if (modulePath.Count == 2)
+        // Check if the base is an imported module symbol
+        var baseSymbol = _context.LookupSymbol(modulePath[0]);
+        if (baseSymbol is ModuleSymbol)
         {
-            var baseModule = modulePath[0];
-            var memberName = modulePath[1];
+            // For imported modules, we need to check if we have a using alias
+            // For "import parent.child", the alias is "parent_child"
+            // For accessing "parent.child.member", we use "parent_child.Member"
 
-            // Check if the base is an imported module symbol
-            var baseSymbol = _context.LookupSymbol(baseModule);
-            if (baseSymbol is ModuleSymbol)
+            // Find the longest module path prefix that matches an import
+            // For example, if we have "import parent.child" and access "parent.child.child_func",
+            // we want to find "parent.child" as the import and "child_func" as the member
+
+            ModuleSymbol currentModule = (ModuleSymbol)baseSymbol;
+            int modulePartCount = 1;
+
+            // Try to traverse the module hierarchy to find how deep the imported module goes
+            for (int i = 1; i < modulePath.Count; i++)
             {
-                // For simple imports like "import config", we generate a using alias
-                // "using config = TestProject.Config.Config;", so we can use the alias directly
-                // Generate: alias.Member (e.g., config.MaxSize)
-                var aliasName = baseModule.Replace(".", "_"); // Same sanitization as in GenerateImportUsings
-                var mangledMemberName = NameMangler.ToPascalCase(memberName);
-                return MemberAccessExpression(
+                var memberName = modulePath[i];
+
+                // Check if this is a nested module in the current module's exports
+                if (currentModule.Exports.TryGetValue(memberName, out var exportedSymbol)
+                    && exportedSymbol is ModuleSymbol nestedModule)
+                {
+                    currentModule = nestedModule;
+                    modulePartCount++;
+                }
+                else
+                {
+                    // Not a nested module - this is a member access
+                    break;
+                }
+            }
+
+            // Build the import alias from the module path parts
+            // Also escape C# keywords like "base" -> "@base"
+            var moduleParts = modulePath.Take(modulePartCount);
+            var aliasName = EscapeCSharpKeyword(string.Join("_", moduleParts));
+
+            // If the entire path is just the module (no member access), return the alias
+            if (modulePartCount == modulePath.Count)
+            {
+                return IdentifierName(aliasName);
+            }
+
+            // Build member access: alias.Member1.Member2...
+            ExpressionSyntax expr = IdentifierName(aliasName);
+            for (int i = modulePartCount; i < modulePath.Count; i++)
+            {
+                // Use CONSTANT_CASE for ALL_CAPS names (Python-style constants)
+                var memberPart = modulePath[i];
+                var mangledMemberName = IsConstantCaseName(memberPart)
+                    ? NameMangler.ToConstantCase(memberPart)
+                    : NameMangler.ToPascalCase(memberPart);
+                expr = MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName(aliasName),
+                    expr,
                     IdentifierName(mangledMemberName));
             }
+
+            return expr;
         }
 
         // For multi-part module paths (e.g., lib.math.add) or other cases,
@@ -3480,7 +3619,11 @@ public class RoslynEmitter
         // Chain the rest of the path
         for (int i = 1; i < modulePath.Count; i++)
         {
-            var memberName = NameMangler.ToPascalCase(modulePath[i]);
+            // Use CONSTANT_CASE for ALL_CAPS names (Python-style constants)
+            var memberPart = modulePath[i];
+            var memberName = IsConstantCaseName(memberPart)
+                ? NameMangler.ToConstantCase(memberPart)
+                : NameMangler.ToPascalCase(memberPart);
             current = MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
                 current,

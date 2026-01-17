@@ -179,7 +179,7 @@ x = nonexistent_module.func()
         var result = helper.Compile();
 
         Assert.False(result.Success, "Expected compilation to fail due to module not found");
-        Assert.Contains(result.Errors, e => e.Contains("not found") || e.Contains("cannot find"));
+        Assert.Contains(result.Errors, e => e.Contains("not found", StringComparison.OrdinalIgnoreCase) || e.Contains("cannot find", StringComparison.OrdinalIgnoreCase));
     }
 
     #endregion

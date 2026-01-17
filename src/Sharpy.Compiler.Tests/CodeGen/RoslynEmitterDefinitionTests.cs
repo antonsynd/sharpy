@@ -1743,6 +1743,8 @@ public class RoslynEmitterDefinitionTests
     public void GenerateEnumMemberAccess_TransformsToPascalCase()
     {
         // Arrange: Color.RED -> Color.Red
+        // Set IsEntryPoint to generate Main method for module-level statements
+        _context.IsEntryPoint = true;
         var enumDef = new EnumDef
         {
             Name = "Color",
@@ -1792,7 +1794,10 @@ public class RoslynEmitterDefinitionTests
         // This test requires proper symbol table setup to detect that 'favorite' is an enum type
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
-        var context = new CodeGenContext(symbolTable, builtins);
+        var context = new CodeGenContext(symbolTable, builtins)
+        {
+            IsEntryPoint = true  // Generate Main method for module-level statements
+        };
         var emitter = new RoslynEmitter(context);
 
         var enumDef = new EnumDef

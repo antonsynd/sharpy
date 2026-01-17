@@ -94,7 +94,8 @@ public abstract class IntegrationTestBase
             // Phase 4: Generate C# code
             var codeGenContext = new CodeGenContext(symbolTable, builtinRegistry)
             {
-                SourceFilePath = fileName
+                SourceFilePath = fileName,
+                IsEntryPoint = true  // Integration tests are executable programs
             };
             var emitter = new RoslynEmitter(codeGenContext);
             var compilationUnit = emitter.GenerateCompilationUnit(module);

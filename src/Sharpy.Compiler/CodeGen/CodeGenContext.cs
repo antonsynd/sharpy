@@ -26,9 +26,9 @@ public class CodeGenContext
 
     /// <summary>
     /// If true, this file should generate a Main entry point.
-    /// Defaults to true for single-file compilation, false for multi-file.
+    /// Defaults to false; explicitly set to true for the entry point file.
     /// </summary>
-    public bool IsEntryPoint { get; set; } = true;
+    public bool IsEntryPoint { get; set; } = false;
 
     public CodeGenContext(SymbolTable symbolTable, BuiltinRegistry builtins)
     {

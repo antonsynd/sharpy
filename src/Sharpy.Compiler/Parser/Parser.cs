@@ -1357,7 +1357,7 @@ public class Parser
         var startColumn = Current.Column;
 
         Expect(TokenType.From);
-        var module = ParseDottedName();
+        var module = ParseModuleName();
         Expect(TokenType.Import);
 
         var names = new List<ImportAlias>();
@@ -1428,6 +1428,35 @@ public class Parser
         }
 
         return string.Join(".", parts);
+    }
+
+    private string ParseModuleName()
+    {
+        // Handle relative imports with leading dots (e.g., ".helpers", "..utils")
+        var leadingDots = new StringBuilder();
+        while (Current.Type == TokenType.Dot)
+        {
+            leadingDots.Append('.');
+            Advance();
+        }
+
+        // After the leading dots, there may be an identifier and more dotted parts
+        // For example: ".helpers" or "..package.module"
+        // But it's also valid to have just dots (e.g., "." for current package)
+        if (Current.Type == TokenType.Identifier)
+        {
+            var dottedName = ParseDottedName();
+            return leadingDots.ToString() + dottedName;
+        }
+
+        // If we have leading dots, that's a valid relative import (e.g., "from . import something")
+        if (leadingDots.Length > 0)
+        {
+            return leadingDots.ToString();
+        }
+
+        // No dots and no identifier means invalid syntax (e.g., "from import x")
+        throw new ParserError("Expected module name", Current.Line, Current.Column);
     }
 
     private List<Statement> ParseBlock()
