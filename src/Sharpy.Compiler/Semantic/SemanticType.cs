@@ -246,6 +246,48 @@ public record TupleType : SemanticType
         var elements = string.Join(", ", ElementTypes.Select(e => e.GetDisplayName()));
         return $"tuple[{elements}]";
     }
+
+    public override bool IsAssignableTo(SemanticType other)
+    {
+        if (other is TupleType otherTuple && ElementTypes.Count == otherTuple.ElementTypes.Count)
+        {
+            for (int i = 0; i < ElementTypes.Count; i++)
+            {
+                if (!ElementTypes[i].IsAssignableTo(otherTuple.ElementTypes[i]))
+                    return false;
+            }
+            return true;
+        }
+        return base.IsAssignableTo(other);
+    }
+
+    // Override Equals and GetHashCode to compare ElementTypes by content
+    public virtual bool Equals(TupleType? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+
+        if (ElementTypes.Count != other.ElementTypes.Count)
+            return false;
+
+        for (int i = 0; i < ElementTypes.Count; i++)
+        {
+            if (!ElementTypes[i].Equals(other.ElementTypes[i]))
+                return false;
+        }
+
+        return true;
+    }
+
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        foreach (var elem in ElementTypes)
+        {
+            hash.Add(elem);
+        }
+        return hash.ToHashCode();
+    }
 }
 
 /// <summary>

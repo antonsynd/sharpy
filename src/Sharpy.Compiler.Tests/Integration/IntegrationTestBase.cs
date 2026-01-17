@@ -37,12 +37,16 @@ public abstract class IntegrationTestBase
         public List<string> CompilationErrors { get; init; } = new();
         public string? GeneratedCSharp { get; init; }
         public Exception? Exception { get; init; }
+        public bool TimedOut { get; init; }
     }
 
     /// <summary>
     /// Compiles Sharpy source code to C# and executes it, returning the result.
     /// </summary>
-    protected ExecutionResult CompileAndExecute(string sharpySource, string fileName = "test.spy")
+    /// <param name="sharpySource">The Sharpy source code to compile and execute.</param>
+    /// <param name="fileName">The file name to use for the source (for error messages).</param>
+    /// <param name="executionTimeoutMs">Optional timeout in milliseconds for execution. Default is no timeout (0). Use for tests that may have infinite loops.</param>
+    protected ExecutionResult CompileAndExecute(string sharpySource, string fileName = "test.spy", int executionTimeoutMs = 0)
     {
         // Set up assembly resolution for Sharpy.Runtime
         string? runtimePath = null;
@@ -210,6 +214,8 @@ public abstract class IntegrationTestBase
 
             var stdout = new StringBuilder();
             var stderr = new StringBuilder();
+            bool timedOut = false;
+            Exception? executionException = null;
 
             // Lock console I/O to prevent interference from parallel tests
             lock (TestHelpers.ConsoleLock)
@@ -224,25 +230,63 @@ public abstract class IntegrationTestBase
                     Console.SetOut(outWriter);
                     Console.SetError(errWriter);
 
-                    // Find and invoke the entry point
+                    // Find the entry point
                     var entryPoint = assembly.EntryPoint;
+                    MethodInfo? methodToInvoke = null;
+
                     if (entryPoint == null)
                     {
                         // Try to find a Main method or main function
                         var moduleType = assembly.GetTypes().FirstOrDefault(t => t.Name.Contains("Module"));
                         if (moduleType != null)
                         {
-                            var mainMethod = moduleType.GetMethod("Main", BindingFlags.Public | BindingFlags.Static)
+                            methodToInvoke = moduleType.GetMethod("Main", BindingFlags.Public | BindingFlags.Static)
                                           ?? moduleType.GetMethod("main", BindingFlags.Public | BindingFlags.Static);
-                            if (mainMethod != null)
-                            {
-                                mainMethod.Invoke(null, mainMethod.GetParameters().Length == 0 ? null : new object[] { Array.Empty<string>() });
-                            }
                         }
                     }
                     else
                     {
-                        entryPoint.Invoke(null, entryPoint.GetParameters().Length == 0 ? null : new object[] { Array.Empty<string>() });
+                        methodToInvoke = entryPoint;
+                    }
+
+                    if (methodToInvoke != null)
+                    {
+                        // Execute with or without timeout
+                        if (executionTimeoutMs > 0)
+                        {
+                            // Run with timeout using a background thread
+                            var cts = new CancellationTokenSource();
+                            var executionTask = Task.Run(() =>
+                            {
+                                methodToInvoke.Invoke(null, methodToInvoke.GetParameters().Length == 0 ? null : new object[] { Array.Empty<string>() });
+                            }, cts.Token);
+
+                            try
+                            {
+                                // Wait for completion or timeout
+                                if (!executionTask.Wait(executionTimeoutMs))
+                                {
+                                    timedOut = true;
+                                    cts.Cancel();
+                                    // Note: We can't forcibly terminate the thread, but marking as timed out
+                                    // allows the test to proceed. The thread will eventually complete or
+                                    // be cleaned up when the test process exits.
+                                }
+                                else if (executionTask.IsFaulted && executionTask.Exception != null)
+                                {
+                                    executionException = executionTask.Exception.InnerException ?? executionTask.Exception;
+                                }
+                            }
+                            catch (AggregateException ae)
+                            {
+                                executionException = ae.InnerException ?? ae;
+                            }
+                        }
+                        else
+                        {
+                            // No timeout - execute directly
+                            methodToInvoke.Invoke(null, methodToInvoke.GetParameters().Length == 0 ? null : new object[] { Array.Empty<string>() });
+                        }
                     }
                 }
                 finally
@@ -250,6 +294,24 @@ public abstract class IntegrationTestBase
                     Console.SetOut(originalOut);
                     Console.SetError(originalErr);
                 }
+            }
+
+            if (timedOut)
+            {
+                return new ExecutionResult
+                {
+                    Success = false,
+                    TimedOut = true,
+                    StandardOutput = stdout.ToString(),
+                    StandardError = stderr.ToString(),
+                    GeneratedCSharp = generatedCSharp,
+                    CompilationErrors = new List<string> { $"Execution timed out after {executionTimeoutMs}ms" }
+                };
+            }
+
+            if (executionException != null)
+            {
+                throw executionException;
             }
 
             return new ExecutionResult

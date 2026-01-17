@@ -66,8 +66,9 @@ public class TypeChecker
     {
         get
         {
-            // Combine errors from type checker, control flow validator, access validator, operator validator, protocol validator, and default parameter validator.
+            // Combine errors from type checker, type resolver, control flow validator, access validator, operator validator, protocol validator, and default parameter validator.
             var allErrors = new List<SemanticError>(_errors);
+            allErrors.AddRange(_typeResolver.Errors);
             allErrors.AddRange(_controlFlowValidator.Errors);
             allErrors.AddRange(_accessValidator.Errors);
             allErrors.AddRange(_operatorValidator.Errors);

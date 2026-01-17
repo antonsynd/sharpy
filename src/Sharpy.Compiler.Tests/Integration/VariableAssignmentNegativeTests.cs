@@ -84,11 +84,11 @@ test(5)
         Assert.Equal("6\nchanged\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Infinite loop test - would hang without timeout mechanism")]
+    [Fact]
     public void WhileLoop_InfiniteLoop_Detection_TimeoutTest()
     {
         // This test verifies that infinite loops don't hang the test suite
-        // TODO: Add timeout mechanism to CompileAndExecute
+        // Uses a 500ms timeout to detect the infinite loop
         var source = @"
 # This would create an infinite loop if variable updates don't work
 i: int = 0
@@ -97,17 +97,17 @@ while i < 5:
     # Missing: i = i + 1
 ";
 
-        var result = CompileAndExecute(source);
+        var result = CompileAndExecute(source, executionTimeoutMs: 500);
 
-        // The test should either timeout or produce an error
-        // If it succeeds, it should not print more than expected
-        if (result.Success)
-        {
-            // Should have timed out or been stopped
-            var lines = result.StandardOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            // If the loop doesn't increment, it would print "0" repeatedly until timeout
-            Assert.True(lines.Length > 0, "Expected some output before timeout");
-        }
+        // The test should timeout because the loop never terminates
+        Assert.True(result.TimedOut, "Expected execution to timeout due to infinite loop");
+        Assert.False(result.Success, "Expected execution to fail due to timeout");
+
+        // Verify some output was produced before timeout (the loop ran at least once)
+        var lines = result.StandardOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.True(lines.Length > 0, "Expected some output before timeout");
+        // All lines should be "0" since i is never incremented
+        Assert.All(lines, line => Assert.Equal("0", line));
     }
 
     [Fact]

@@ -119,6 +119,16 @@ public class TypeResolver
 
     private SemanticType ResolveGenericType(TypeAnnotation annotation)
     {
+        // Special handling for tuple types - they have variable arity (tuple[int], tuple[int, str], etc.)
+        if (annotation.Name == "tuple")
+        {
+            var elementTypes = annotation.TypeArguments
+                .Select(ResolveTypeAnnotation)
+                .ToList();
+
+            return new TupleType { ElementTypes = elementTypes };
+        }
+
         var typeSymbol = _symbolTable.LookupType(annotation.Name);
         if (typeSymbol == null)
         {

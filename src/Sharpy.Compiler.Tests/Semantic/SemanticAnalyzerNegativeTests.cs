@@ -268,17 +268,17 @@ def foo():
         typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot assign"));
     }
 
-    [Fact(Skip = "Type checking: Bool to int assignment validation not yet implemented")]
+    [Fact]
     public void RejectsBoolToIntAssignment()
     {
         var source = @"
 def foo():
-    x: int = True  # bool to int might be allowed in some languages
+    x: int = True  # bool to int is not allowed in Sharpy
 ";
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Check if bool to int is allowed
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot assign"));
     }
 
     [Fact]
@@ -294,7 +294,7 @@ def foo():
         typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot assign"));
     }
 
-    [Fact(Skip = "Type checking: Generic list element type validation not yet implemented")]
+    [Fact]
     public void RejectsWrongGenericType()
     {
         var source = @"
@@ -304,10 +304,10 @@ def foo():
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Generic type checking might not be fully implemented
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot assign"));
     }
 
-    [Fact(Skip = "Type checking: Dictionary key/value type validation not yet implemented")]
+    [Fact]
     public void RejectsIncompatibleDictTypes()
     {
         var source = @"
@@ -317,7 +317,7 @@ def foo():
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Dictionary type checking might not be fully implemented
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("Cannot assign"));
     }
 
     #endregion
@@ -787,20 +787,25 @@ def foo():
 
     #region Generic and Advanced Type Errors
 
-    [Fact(Skip = "Type checking: Generic argument validation not yet fully implemented")]
+    [Fact]
     public void RejectsInvalidGenericArgument()
     {
+        // Generic arguments must be type names (identifiers), not literals
+        // The parser enforces this at parse time by expecting an identifier
         var source = @"
 def foo():
     x: list[123] = []  # generic argument must be a type
 ";
-        var (module, _, _, _, typeChecker) = CompileAndCheck(source);
-        typeChecker.CheckModule(module);
+        var lexer = new global::Sharpy.Compiler.Lexer.Lexer(source, NullLogger.Instance);
+        var tokens = lexer.TokenizeAll();
+        var parser = new global::Sharpy.Compiler.Parser.Parser(tokens, NullLogger.Instance);
 
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("type"));
+        var act = () => parser.ParseModule();
+        act.Should().Throw<global::Sharpy.Compiler.Parser.ParserError>()
+            .WithMessage("*Expected identifier*");
     }
 
-    [Fact(Skip = "Type checking: Generic argument count validation not yet implemented")]
+    [Fact]
     public void RejectsWrongNumberOfGenericArguments()
     {
         var source = @"
@@ -810,7 +815,7 @@ def foo():
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // Generic argument count checking might not be implemented
+        typeChecker.Errors.Should().ContainSingle(e => e.Message.Contains("expects 1 type arguments but got 2"));
     }
 
     [Fact]
