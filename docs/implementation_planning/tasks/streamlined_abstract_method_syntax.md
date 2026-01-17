@@ -1,8 +1,8 @@
 # Task List: Streamlined Abstract Method Syntax
 
-**Feature:** Simplify abstract method declarations by making `@abstract` decorator optional when ellipsis body is used in abstract classes/interfaces  
-**Status:** Proposed  
-**Created:** 2025-01-17  
+**Feature:** Simplify abstract method declarations by making `@abstract` decorator optional when ellipsis body is used in abstract classes/interfaces
+**Status:** Proposed
+**Created:** 2025-01-17
 **Related Specs:** `decorators.md`, `interfaces.md`, `grammar.ebnf.txt`
 
 ---
@@ -16,7 +16,7 @@ class Shape:
     @abstract
     def area(self) -> float:
         ...
-    
+
     @abstract
     def perimeter(self) -> float:
         ...
@@ -83,7 +83,7 @@ Update the "Abstract Classes" section to show:
 ```markdown
 ## Abstract Classes
 
-Classes marked `@abstract` cannot be instantiated directly and may contain abstract members.
+Classes marked `@abstract` cannot be instantiated directly and may contain abstract members, but not necessarily.
 
 ### Declaring Abstract Methods
 
@@ -95,10 +95,10 @@ The `@abstract` decorator on individual methods is optional but allowed for expl
 class Shape:
     # These are equivalent:
     def area(self) -> float: ...              # Implicit abstract (recommended)
-    
+
     @abstract
     def perimeter(self) -> float: ...         # Explicit abstract (also valid)
-    
+
     # Concrete method (has real body)
     def describe(self) -> str:
         return f"Shape with area {self.area()}"
@@ -115,7 +115,6 @@ def area(self) -> float: ...
 # Multi-line (also valid)
 def area(self) -> float:
     ...
-```
 ```
 
 **Acceptance Criteria:**
@@ -205,7 +204,7 @@ if (isAbstract)
     {
         AddError($"Abstract method '{functionDef.Name}' must have '...' as its body", ...);
     }
-    
+
     // Abstract methods must be in an abstract class
     if (_currentClass != null && !_currentClass.IsAbstract)
     {
@@ -218,8 +217,8 @@ if (isAbstract)
 ```csharp
 // Helper: Check if body is just ellipsis
 bool HasEllipsisBody(FunctionDef func) =>
-    func.Body.Count == 1 
-    && func.Body[0] is ExpressionStatement exprStmt 
+    func.Body.Count == 1
+    && func.Body[0] is ExpressionStatement exprStmt
     && exprStmt.Expression is EllipsisLiteral;
 
 // Determine if method is abstract:
@@ -274,7 +273,7 @@ bool isAbstract = func.Decorators.Any(d =>
 // 1. Has @abstract decorator, OR
 // 2. Is in abstract class context AND has ellipsis body
 bool hasAbstractDecorator = func.Decorators.Any(d => d.Name == "abstract");
-bool hasEllipsisBody = func.Body.Count == 1 
+bool hasEllipsisBody = func.Body.Count == 1
     && func.Body[0] is ExpressionStatement { Expression: EllipsisLiteral };
 
 // Note: isInAbstractClass needs to be passed or tracked in context
@@ -362,7 +361,7 @@ else
 public class TypeCheckerAbstractMethodTests
 {
     #region Implicit Abstract (ellipsis in @abstract class)
-    
+
     [Fact]
     public void EllipsisBody_InAbstractClass_TreatedAsAbstract()
     {
@@ -375,7 +374,7 @@ class Shape:
         Assert.True(result.Success);
         // Verify method is marked abstract in semantic info
     }
-    
+
     [Fact]
     public void EllipsisBody_InAbstractClass_MultiLine_TreatedAsAbstract()
     {
@@ -388,7 +387,7 @@ class Shape:
         var result = TypeCheck(source);
         Assert.True(result.Success);
     }
-    
+
     [Fact]
     public void MultipleAbstractMethods_AllTreatedAsAbstract()
     {
@@ -402,11 +401,11 @@ class Shape:
         var result = TypeCheck(source);
         Assert.True(result.Success);
     }
-    
+
     #endregion
-    
+
     #region Explicit @abstract decorator (still valid)
-    
+
     [Fact]
     public void ExplicitAbstractDecorator_StillWorks()
     {
@@ -419,11 +418,11 @@ class Shape:
         var result = TypeCheck(source);
         Assert.True(result.Success);
     }
-    
+
     #endregion
-    
+
     #region Mixed abstract and concrete methods
-    
+
     [Fact]
     public void MixedAbstractAndConcrete_InAbstractClass()
     {
@@ -431,18 +430,18 @@ class Shape:
 @abstract
 class Shape:
     def area(self) -> float: ...  # abstract
-    
+
     def describe(self) -> str:     # concrete
         return ""shape""
 ";
         var result = TypeCheck(source);
         Assert.True(result.Success);
     }
-    
+
     #endregion
-    
+
     #region Ellipsis in concrete class (NotImplementedException)
-    
+
     [Fact]
     public void EllipsisBody_InConcreteClass_NotTreatedAsAbstract()
     {
@@ -454,11 +453,11 @@ class TodoService:
         Assert.True(result.Success);
         // Should NOT be abstract - will generate NotImplementedException
     }
-    
+
     #endregion
-    
+
     #region Error cases
-    
+
     [Fact]
     public void AbstractDecorator_OnMethod_InConcreteClass_Error()
     {
@@ -471,7 +470,7 @@ class Shape:
         Assert.False(result.Success);
         Assert.Contains("abstract class", result.Errors[0].Message);
     }
-    
+
     [Fact]
     public void AbstractDecorator_WithRealBody_Error()
     {
@@ -486,7 +485,7 @@ class Shape:
         Assert.False(result.Success);
         Assert.Contains("...", result.Errors[0].Message);
     }
-    
+
     #endregion
 }
 ```
@@ -512,39 +511,39 @@ public class ParserInlineEllipsisTests
     {
         var source = "def area(self) -> float: ...";
         var module = Parse(source);
-        
+
         var func = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
         func.Name.Should().Be("area");
         func.Body.Should().HaveCount(1);
         func.Body[0].Should().BeOfType<ExpressionStatement>()
             .Which.Expression.Should().BeOfType<EllipsisLiteral>();
     }
-    
+
     [Fact]
     public void ParseFunctionDef_InlineEllipsis_NoReturnType()
     {
         var source = "def do_something(self): ...";
         var module = Parse(source);
-        
+
         var func = module.Body[0].Should().BeOfType<FunctionDef>().Subject;
         func.Body[0].Should().BeOfType<ExpressionStatement>()
             .Which.Expression.Should().BeOfType<EllipsisLiteral>();
     }
-    
+
     [Fact]
     public void ParseFunctionDef_InlineEllipsis_EquivalentToMultiLine()
     {
         var inlineSource = "def area(self) -> float: ...";
         var multiLineSource = @"def area(self) -> float:
     ...";
-        
+
         var inlineFunc = Parse(inlineSource).Body[0] as FunctionDef;
         var multiLineFunc = Parse(multiLineSource).Body[0] as FunctionDef;
-        
+
         // Bodies should be structurally identical
         inlineFunc.Body.Should().BeEquivalentTo(multiLineFunc.Body);
     }
-    
+
     [Fact]
     public void ParseClassDef_WithInlineEllipsisMethods()
     {
@@ -556,7 +555,7 @@ class Shape:
 ";
         var module = Parse(source);
         var classDef = module.Body[0].Should().BeOfType<ClassDef>().Subject;
-        
+
         classDef.Body.Should().HaveCount(2);
         foreach (var stmt in classDef.Body)
         {
@@ -565,7 +564,7 @@ class Shape:
                 .Which.Expression.Should().BeOfType<EllipsisLiteral>();
         }
     }
-    
+
     [Fact]
     public void ParseInterface_WithInlineEllipsisMethods()
     {
@@ -576,7 +575,7 @@ interface IDrawable:
 ";
         var module = Parse(source);
         var interfaceDef = module.Body[0].Should().BeOfType<InterfaceDef>().Subject;
-        
+
         interfaceDef.Body.Should().HaveCount(2);
     }
 }
@@ -607,12 +606,12 @@ class Shape:
     def area(self) -> float: ...
 ";
         var code = CompileToCSharp(source);
-        
+
         Assert.Contains("public abstract class Shape", code);
         Assert.Contains("public abstract double Area();", code);
         Assert.DoesNotContain("NotImplementedException", code);
     }
-    
+
     [Fact]
     public void GenerateAbstractMethod_ExplicitDecorator_NoBody()
     {
@@ -623,10 +622,10 @@ class Shape:
     def area(self) -> float: ...
 ";
         var code = CompileToCSharp(source);
-        
+
         Assert.Contains("public abstract double Area();", code);
     }
-    
+
     [Fact]
     public void GenerateConcreteMethod_WithEllipsis_ThrowsNotImplementedException()
     {
@@ -635,10 +634,10 @@ class TodoService:
     def not_done(self) -> int: ...
 ";
         var code = CompileToCSharp(source);
-        
+
         Assert.Contains("throw new System.NotImplementedException()", code);
     }
-    
+
     [Fact]
     public void GenerateInterfaceMethod_WithInlineEllipsis_NoBody()
     {
@@ -647,7 +646,7 @@ interface IDrawable:
     def draw(self) -> None: ...
 ";
         var code = CompileToCSharp(source);
-        
+
         Assert.Contains("void Draw();", code);
         Assert.DoesNotContain("NotImplementedException", code);
     }
@@ -664,7 +663,7 @@ interface IDrawable:
 
 ## Task AM.3.4: Fix Existing Tests Using Wrong Decorator
 
-📁 **Files**: 
+📁 **Files**:
 - `src/Sharpy.Compiler.Tests/CodeGen/RoslynEmitterDefinitionTests.cs`
 - `snippets/test_abstract_ellipsis.spy`
 - Any other files using `@abstractmethod`
@@ -718,27 +717,27 @@ Create new test files using streamlined syntax:
 @abstract
 class Shape:
     name: str
-    
+
     def __init__(self, name: str):
         self.name = name
-    
+
     def area(self) -> float: ...
     def perimeter(self) -> float: ...
-    
+
     def describe(self) -> str:
         return f"{self.name}: area={self.area()}"
 
 class Circle(Shape):
     radius: float
-    
+
     def __init__(self, radius: float):
         super().__init__("Circle")
         self.radius = radius
-    
+
     @override
     def area(self) -> float:
         return 3.14159 * self.radius * self.radius
-    
+
     @override
     def perimeter(self) -> float:
         return 2.0 * 3.14159 * self.radius
@@ -765,7 +764,7 @@ class FriendlyGreeter(IGreeter):
     @override
     def greet(self, name: str) -> str:
         return f"Hello, {name}!"
-    
+
     @override
     def farewell(self, name: str) -> str:
         return f"Goodbye, {name}!"
@@ -874,21 +873,21 @@ Update to use streamlined syntax as the primary example:
 @abstract
 class Shape:
     """Base shape class with abstract methods"""
-    
+
     def area(self) -> float: ...
     def perimeter(self) -> float: ...
-    
+
     def describe(self) -> str:
         return "I am a shape"
 
 class Circle(Shape):
     def __init__(self, radius: float):
         self.radius = radius
-    
+
     @override
     def area(self) -> float:
         return 3.14159 * self.radius * self.radius
-    
+
     @override
     def perimeter(self) -> float:
         return 2.0 * 3.14159 * self.radius
