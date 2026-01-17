@@ -160,6 +160,8 @@ public class Compiler
                 ProjectNamespace = !string.IsNullOrEmpty(defaultNamespace)
                     ? $"Sharpy.{ToPascalCase(defaultNamespace)}"
                     : null,
+                // Single-file compilation is always an entry point - generate Main method
+                IsEntryPoint = true,
                 Logger = _logger
             };
             var emitter = new RoslynEmitter(codeGenContext);

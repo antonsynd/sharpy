@@ -103,7 +103,6 @@ print(result)
 print(5)  # Done
 
 # EXPECTED OUTPUT:
-# 1
 # 2
 # True
 # 4

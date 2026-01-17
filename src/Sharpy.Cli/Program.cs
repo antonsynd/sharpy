@@ -599,6 +599,8 @@ class Program
             var context = new CodeGenContext(symbolTable, builtins)
             {
                 SourceFilePath = inputFile.FullName,
+                // Single-file emit is treated as an entry point for consistency with run/build
+                IsEntryPoint = true,
                 Logger = logger
             };
 

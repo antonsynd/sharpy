@@ -2753,6 +2753,34 @@ public class RoslynEmitter
         if (target is Identifier varName)
         {
             var loopVar = NameMangler.ToCamelCase(varName.Name);
+
+            // Check if the variable is already declared in an enclosing scope
+            // If so, we need to use a temporary variable to avoid CS0136
+            if (_declaredVariables.Contains(loopVar) || _variableVersions.ContainsKey(loopVar))
+            {
+                // Variable already exists - use a temporary loop variable and assign
+                var tempLoopVar = GenerateTempVarName("loopVar");
+
+                // Prepend assignment to existing variable at the start of the body
+                var assignToExisting = ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        IdentifierName(loopVar),
+                        IdentifierName(tempLoopVar)));
+
+                var newBodyStatements = new List<StatementSyntax> { assignToExisting };
+                newBodyStatements.AddRange(body.Statements);
+                var newBody = Block(newBodyStatements);
+
+                return ForEachStatement(
+                    IdentifierName("var"),
+                    Identifier(tempLoopVar),
+                    iterator,
+                    newBody);
+            }
+
+            // Variable is new - declare it in the foreach
+            _declaredVariables.Add(loopVar);
             return ForEachStatement(
                 IdentifierName("var"),
                 Identifier(loopVar),

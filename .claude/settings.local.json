@@ -23,7 +23,9 @@
       "Bash(for i in {1..5})",
       "Bash(do echo \"=== Run $i ===\")",
       "Bash(for:*)",
-      "Bash(do dotnet test --no-build)"
+      "Bash(do dotnet test --no-build)",
+      "Bash(dotnet run:*)",
+      "Bash(dotnet restore:*)"
     ]
   }
 }
