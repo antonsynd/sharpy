@@ -47,7 +47,7 @@ public class ModuleResolver
     /// <summary>
     /// Resolve a module name to a file path
     /// </summary>
-    /// <param name="moduleName">The dotted module name (e.g., "utils.helpers")</param>
+    /// <param name="moduleName">The dotted module name (e.g., "utils.helpers") or relative import (e.g., ".helpers", "..parent")</param>
     /// <returns>Resolution result if found, null otherwise</returns>
     public ModuleResolutionResult? Resolve(string moduleName)
     {
@@ -57,11 +57,17 @@ public class ModuleResolver
             return null;
         }
 
+        var searchedPaths = new List<string>();
+
+        // Handle relative imports (starting with .)
+        if (moduleName.StartsWith("."))
+        {
+            return ResolveRelativeImport(moduleName, searchedPaths);
+        }
+
         // Convert module.submodule to module/submodule.spy
         var relativePath = moduleName.Replace('.', Path.DirectorySeparatorChar) + ".spy";
         var packagePath = moduleName.Replace('.', Path.DirectorySeparatorChar);
-
-        var searchedPaths = new List<string>();
 
         // 1. Try relative to current module (if set)
         if (_currentModulePath != null)
@@ -118,6 +124,173 @@ public class ModuleResolver
         _logger.LogDebug($"Module '{moduleName}' not found. Searched: {string.Join(", ", searchedPaths)}");
 
         return null;
+    }
+
+    /// <summary>
+    /// Resolve a relative import (starting with . or ..)
+    /// </summary>
+    /// <param name="moduleName">The relative module name (e.g., ".helpers", "..parent", "...")</param>
+    /// <param name="searchedPaths">List to track searched paths for error reporting</param>
+    /// <returns>Resolution result if found, null otherwise</returns>
+    private ModuleResolutionResult? ResolveRelativeImport(string moduleName, List<string> searchedPaths)
+    {
+        if (_currentModulePath == null)
+        {
+            _logger.LogDebug($"Cannot resolve relative import '{moduleName}' without current module context");
+            return null;
+        }
+
+        var currentDir = Path.GetDirectoryName(_currentModulePath);
+        if (currentDir == null)
+        {
+            _logger.LogDebug($"Cannot get directory for current module: {_currentModulePath}");
+            return null;
+        }
+
+        // Count leading dots to determine how many parent directories to go up
+        int dotCount = 0;
+        while (dotCount < moduleName.Length && moduleName[dotCount] == '.')
+        {
+            dotCount++;
+        }
+
+        // Get the module part after the leading dots
+        var moduleNamePart = dotCount < moduleName.Length ? moduleName.Substring(dotCount) : "";
+
+        // For a single dot, start from current package directory
+        // For each additional dot, go up one directory level
+        var baseDir = currentDir;
+        for (int i = 1; i < dotCount; i++)
+        {
+            var parentDir = Path.GetDirectoryName(baseDir);
+            if (parentDir == null)
+            {
+                _logger.LogDebug($"Cannot go up {dotCount - 1} levels from {currentDir}");
+                return null;
+            }
+            baseDir = parentDir;
+        }
+
+        // If there's no module name part (e.g., just ".."), we're importing the parent package itself
+        if (string.IsNullOrEmpty(moduleNamePart))
+        {
+            // Look for __init__.spy in the target directory
+            var initPath = Path.Combine(baseDir, "__init__.spy");
+            searchedPaths.Add(initPath);
+
+            if (File.Exists(initPath))
+            {
+                _logger.LogDebug($"Resolved relative import '{moduleName}' to package {initPath}");
+                var canonicalName = ComputeCanonicalModuleName(Path.GetFullPath(initPath));
+                return new ModuleResolutionResult
+                {
+                    FullPath = Path.GetFullPath(initPath),
+                    ModuleName = moduleName,
+                    CanonicalModuleName = canonicalName,
+                    Kind = ModuleResolutionKind.RelativeToCurrentModule,
+                    SearchPath = currentDir
+                };
+            }
+        }
+        else
+        {
+            // Convert remaining module path (e.g., "helpers.utils" -> "helpers/utils")
+            var relativePath = moduleNamePart.Replace('.', Path.DirectorySeparatorChar);
+
+            // Try as a direct file: module.spy
+            var filePath = Path.Combine(baseDir, relativePath + ".spy");
+            searchedPaths.Add(filePath);
+
+            if (File.Exists(filePath))
+            {
+                _logger.LogDebug($"Resolved relative import '{moduleName}' to {filePath}");
+                var canonicalName = ComputeCanonicalModuleName(Path.GetFullPath(filePath));
+                return new ModuleResolutionResult
+                {
+                    FullPath = Path.GetFullPath(filePath),
+                    ModuleName = moduleName,
+                    CanonicalModuleName = canonicalName,
+                    Kind = ModuleResolutionKind.RelativeToCurrentModule,
+                    SearchPath = currentDir
+                };
+            }
+
+            // Try as a package directory: module/__init__.spy
+            var packageDir = Path.Combine(baseDir, relativePath);
+            var initPath = Path.Combine(packageDir, "__init__.spy");
+            searchedPaths.Add(initPath);
+
+            if (File.Exists(initPath))
+            {
+                _logger.LogDebug($"Resolved relative import '{moduleName}' to package {initPath}");
+                var canonicalName = ComputeCanonicalModuleName(Path.GetFullPath(initPath));
+                return new ModuleResolutionResult
+                {
+                    FullPath = Path.GetFullPath(initPath),
+                    ModuleName = moduleName,
+                    CanonicalModuleName = canonicalName,
+                    Kind = ModuleResolutionKind.RelativeToCurrentModule,
+                    SearchPath = currentDir
+                };
+            }
+        }
+
+        _logger.LogDebug($"Module '{moduleName}' not found. Searched: {string.Join(", ", searchedPaths)}");
+        return null;
+    }
+
+    /// <summary>
+    /// Compute the canonical (fully-qualified) module name from a file path.
+    /// For relative imports, computes the package path based on directory structure.
+    /// </summary>
+    private string? ComputeCanonicalModuleName(string fullPath)
+    {
+        // Normalize the path
+        fullPath = Path.GetFullPath(fullPath);
+        var fullPathDir = Path.GetDirectoryName(fullPath);
+        var fileName = Path.GetFileNameWithoutExtension(fullPath);
+
+        if (fullPathDir == null)
+            return fileName;
+
+        // For relative imports from a package __init__.spy, we need to build
+        // the canonical path using the package directory structure.
+        // Walk up the directory tree, collecting package names until we find a non-package directory.
+        var packageParts = new List<string>();
+        var currentDir = fullPathDir;
+
+        // Start with the target module's directory
+        while (currentDir != null)
+        {
+            var dirName = Path.GetFileName(currentDir);
+            var initFile = Path.Combine(currentDir, "__init__.spy");
+
+            // Check if this directory is a package (has __init__.spy)
+            if (File.Exists(initFile))
+            {
+                packageParts.Insert(0, dirName);
+                currentDir = Path.GetDirectoryName(currentDir);
+            }
+            else
+            {
+                // We've found the source root (non-package directory)
+                break;
+            }
+        }
+
+        // Build the canonical name
+        if (fileName != "__init__")
+        {
+            packageParts.Add(fileName);
+        }
+
+        // If no packages were found, just return the filename
+        if (packageParts.Count == 0)
+        {
+            return fileName;
+        }
+
+        return string.Join(".", packageParts);
     }
 
     /// <summary>
@@ -183,6 +356,13 @@ public class ModuleResolutionResult
     /// Original module name that was resolved
     /// </summary>
     public string ModuleName { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The canonical (fully-qualified) module name for relative imports.
+    /// For example, when ".helpers" is resolved from "mypackage/__init__.spy",
+    /// this would be "mypackage.helpers".
+    /// </summary>
+    public string? CanonicalModuleName { get; init; }
 
     /// <summary>
     /// How the module was resolved (which search path or strategy)

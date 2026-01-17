@@ -370,6 +370,20 @@ public record FromImportStatement : Statement
     public string Module { get; init; } = "";
     public List<ImportAlias> Names { get; init; } = new();
     public bool ImportAll { get; init; }  // from module import *
+
+    /// <summary>
+    /// The resolved module path relative to the project root, set during semantic analysis.
+    /// For example, ".helpers" in package "mypackage" resolves to "mypackage.helpers".
+    /// This is used during code generation to generate correct namespace references.
+    /// </summary>
+    public string? ResolvedModulePath { get; set; }
+
+    /// <summary>
+    /// Symbols that are re-exported from this from-import statement, set during semantic analysis.
+    /// Maps the local name (possibly aliased) to the symbol information.
+    /// This is used during code generation to generate delegating members in the Exports class.
+    /// </summary>
+    public Dictionary<string, Semantic.Symbol>? ReExportedSymbols { get; set; }
 }
 
 #endregion

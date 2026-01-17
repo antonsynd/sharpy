@@ -12,6 +12,16 @@ public abstract record Symbol
     public AccessLevel AccessLevel { get; init; } = AccessLevel.Public;
     public int? DeclarationLine { get; init; }
     public int? DeclarationColumn { get; init; }
+
+    /// <summary>
+    /// Indicates if this symbol is re-exported from another module (e.g., via "from .submodule import func")
+    /// </summary>
+    public bool IsReExport { get; init; }
+
+    /// <summary>
+    /// For re-exported symbols, the original module name where the symbol was defined
+    /// </summary>
+    public string? OriginalModule { get; init; }
 }
 
 /// <summary>

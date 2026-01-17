@@ -12,13 +12,14 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// </summary>
 public class RoslynEmitterIntegrationTests
 {
-    private RoslynEmitter CreateEmitter(string? sourceFilePath = null)
+    private RoslynEmitter CreateEmitter(string? sourceFilePath = null, bool isEntryPoint = true)
     {
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
         var context = new CodeGenContext(symbolTable, builtins)
         {
-            SourceFilePath = sourceFilePath
+            SourceFilePath = sourceFilePath,
+            IsEntryPoint = isEntryPoint
         };
         return new RoslynEmitter(context);
     }
@@ -388,11 +389,12 @@ public class RoslynEmitterIntegrationTests
     }
 
     [Fact]
-    public void GeneratedCode_ModuleLevelVariableRedefinition_SkipsDuplicateField()
+    public void GeneratedCode_ModuleLevelVariableRedefinition_BecomesLocalVariables()
     {
         // Arrange - Module-level variable redefined with different type
         // Sharpy allows: x: int = 1; x: auto = "hello"
-        // C# doesn't allow duplicate fields, so we skip the redefinition
+        // When there are multiple declarations for the same variable,
+        // they become local variables in Main() to preserve execution order
         var emitter = CreateEmitter();
         var module = new Module
         {
@@ -410,7 +412,7 @@ public class RoslynEmitterIntegrationTests
                 {
                     Name = "x",
                     Type = new TypeAnnotation { Name = "auto" },
-                    InitialValue = new StringLiteral { Value = "\"hello\"" }
+                    InitialValue = new StringLiteral { Value = "hello" }
                 }
             }
         };
@@ -423,12 +425,16 @@ public class RoslynEmitterIntegrationTests
         // Assert
         Assert.True(compiles, $"Generated code should compile. Errors:\n{errors}\n\nGenerated code:\n{code}");
 
-        // Verify only the first declaration appears (int X = 1)
-        Assert.Contains("public static int X = 1", code);
+        // With execution order issues (multiple declarations), variables become locals in Main
+        // Verify first declaration appears as local variable (uses explicit type since it's specified as int)
+        Assert.True(code.Contains("int x = 1"), $"Expected 'int x = 1' in generated code but got:\n{code}");
 
-        // Verify the second declaration does NOT appear (no duplicate string X field)
+        // Verify second declaration appears as versioned local (var x_1 since type is auto)
+        Assert.Contains("var x_1 = ", code);
+
+        // Verify no static fields for x
         var xFieldCount = System.Text.RegularExpressions.Regex.Matches(code, @"public static \w+ X").Count;
-        Assert.Equal(1, xFieldCount);
+        Assert.Equal(0, xFieldCount);
     }
 
     [Fact]

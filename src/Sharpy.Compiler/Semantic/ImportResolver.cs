@@ -98,25 +98,42 @@ public class ImportResolver
         // If not found in .NET assemblies, try .spy file
         if (moduleInfo == null)
         {
-            var modulePath = ResolveModulePath(fromImport.Module, searchPath);
-            if (modulePath == null)
+            var resolution = ResolveModuleWithResult(fromImport.Module, searchPath);
+            if (resolution == null)
             {
                 AddError($"Cannot find module '{fromImport.Module}'",
                     fromImport.LineStart, fromImport.ColumnStart);
                 return null;
             }
 
-            moduleInfo = LoadModule(modulePath, fromImport.LineStart, fromImport.ColumnStart);
+            // Store the resolved module path for code generation
+            // For relative imports like ".helpers", this gives the canonical name like "mypackage.helpers"
+            fromImport.ResolvedModulePath = resolution.CanonicalModuleName ?? resolution.ModuleName;
+
+            moduleInfo = LoadModule(resolution.FullPath, fromImport.LineStart, fromImport.ColumnStart);
         }
 
-        // Validate imported names
+        // Validate imported names and populate re-export information for code generation
         if (moduleInfo != null)
         {
+            // Initialize the re-exported symbols dictionary for code generation
+            fromImport.ReExportedSymbols ??= new Dictionary<string, Symbol>();
+
             if (fromImport.ImportAll)
             {
                 // import * - only imports public symbols (no leading underscore)
                 // This is handled during symbol table population, not here
                 // We just validate the module exists
+
+                // Populate re-export symbols for code generation
+                foreach (var (name, symbol) in moduleInfo.ExportedSymbols)
+                {
+                    if (!name.StartsWith("_"))
+                    {
+                        var reExportSymbol = CreateReExportSymbol(symbol, fromImport);
+                        fromImport.ReExportedSymbols[name] = reExportSymbol;
+                    }
+                }
             }
             else
             {
@@ -124,6 +141,7 @@ public class ImportResolver
                 foreach (var importAlias in fromImport.Names)
                 {
                     var symbolName = importAlias.Name;
+                    var targetName = importAlias.AsName ?? importAlias.Name;
 
                     // Check if symbol exists in the module's exported symbols
                     if (!moduleInfo.ExportedSymbols.ContainsKey(symbolName))
@@ -138,6 +156,13 @@ public class ImportResolver
                     {
                         AddError($"Cannot import private symbol '{symbolName}' from module '{fromImport.Module}'",
                             importAlias.LineStart, importAlias.ColumnStart);
+                    }
+
+                    // Populate re-export symbols for code generation
+                    if (moduleInfo.ExportedSymbols.TryGetValue(symbolName, out var symbol))
+                    {
+                        var reExportSymbol = CreateReExportSymbol(symbol, fromImport, targetName);
+                        fromImport.ReExportedSymbols[targetName] = reExportSymbol;
                     }
                 }
             }
@@ -202,22 +227,29 @@ public class ImportResolver
                 ExportedSymbols = new Dictionary<string, Symbol>()
             };
 
-            // Extract exported symbols (all top-level declarations)
-            foreach (var statement in module.Body)
-            {
-                ExtractExportedSymbol(statement, moduleInfo);
-            }
-
-            // Recursively resolve imports within this module to detect transitive cycles
+            // Set current module path BEFORE extracting symbols (needed for relative imports in re-exports)
             var previousModulePath = _currentModulePath;
             _currentModulePath = modulePath;
+            _moduleResolver.SetCurrentModulePath(modulePath);
+
             try
             {
+                // Extract exported symbols (all top-level declarations)
+                foreach (var statement in module.Body)
+                {
+                    ExtractExportedSymbol(statement, moduleInfo);
+                }
+
+                // Recursively resolve imports within this module to detect transitive cycles
                 ResolveModuleImports(module, Path.GetDirectoryName(modulePath));
             }
             finally
             {
                 _currentModulePath = previousModulePath;
+                if (previousModulePath != null)
+                {
+                    _moduleResolver.SetCurrentModulePath(previousModulePath);
+                }
             }
 
             _moduleCache[modulePath] = moduleInfo;
@@ -271,8 +303,8 @@ public class ImportResolver
                 var parameters = functionDef.Parameters.Select(p => new ParameterSymbol
                 {
                     Name = p.Name,
-                    // Type will be resolved during semantic analysis
-                    Type = SemanticType.Unknown,
+                    // Convert type annotation to semantic type for primitive types
+                    Type = ConvertTypeAnnotationToSemanticType(p.Type),
                     HasDefault = p.DefaultValue != null,
                     DefaultValue = p.DefaultValue
                 }).ToList();
@@ -282,8 +314,8 @@ public class ImportResolver
                     Name = functionDef.Name,
                     Kind = SymbolKind.Function,
                     Parameters = parameters,
-                    // Return type will be resolved during semantic analysis
-                    ReturnType = SemanticType.Unknown,
+                    // Convert return type annotation to semantic type
+                    ReturnType = ConvertTypeAnnotationToSemanticType(functionDef.ReturnType),
                     AccessLevel = accessLevel,
                     DeclarationLine = functionDef.LineStart,
                     DeclarationColumn = functionDef.ColumnStart
@@ -358,6 +390,8 @@ public class ImportResolver
                 {
                     Name = varDecl.Name,
                     Kind = SymbolKind.Variable,
+                    // Convert type annotation to semantic type for primitive types
+                    Type = ConvertTypeAnnotationToSemanticType(varDecl.Type),
                     IsConstant = varDecl.IsConst,
                     AccessLevel = varAccessLevel,
                     DeclarationLine = varDecl.LineStart,
@@ -366,10 +400,122 @@ public class ImportResolver
                 moduleInfo.ExportedSymbols[varDecl.Name] = varSymbol;
                 break;
 
+            case FromImportStatement fromImport:
+                // Re-export imported symbols from the module
+                // This enables patterns like: from .submodule import func
+                // which makes 'func' available as an export of this module
+                ExtractReExportedSymbols(fromImport, moduleInfo);
+                break;
+
             default:
                 // Other statements don't export symbols
                 break;
         }
+    }
+
+    /// <summary>
+    /// Extract re-exported symbols from a from-import statement.
+    /// When a module does "from .submodule import func", func becomes an export of that module.
+    /// </summary>
+    private void ExtractReExportedSymbols(FromImportStatement fromImport, ModuleInfo moduleInfo)
+    {
+        // Resolve the source module to get its exported symbols
+        var sourceModulePath = ResolveModulePath(fromImport.Module, Path.GetDirectoryName(moduleInfo.Path));
+        if (sourceModulePath == null)
+        {
+            // Module not found - error will be reported during full import resolution
+            return;
+        }
+
+        // Load the source module to get its symbols
+        var sourceModule = LoadModule(sourceModulePath, fromImport.LineStart, fromImport.ColumnStart);
+        if (sourceModule == null)
+        {
+            return;
+        }
+
+        // Initialize the re-exported symbols dictionary for code generation
+        fromImport.ReExportedSymbols ??= new Dictionary<string, Symbol>();
+
+        if (fromImport.ImportAll)
+        {
+            // "from .module import *" - re-export all public symbols
+            foreach (var (name, symbol) in sourceModule.ExportedSymbols)
+            {
+                if (!name.StartsWith("_"))
+                {
+                    // Create a re-export symbol that references the original
+                    var reExportSymbol = CreateReExportSymbol(symbol, fromImport);
+                    moduleInfo.ExportedSymbols[name] = reExportSymbol;
+                    fromImport.ReExportedSymbols[name] = reExportSymbol;
+                }
+            }
+        }
+        else
+        {
+            // "from .module import name1, name2" - re-export specific symbols
+            foreach (var importAlias in fromImport.Names)
+            {
+                var sourceName = importAlias.Name;
+                var targetName = importAlias.AsName ?? importAlias.Name;
+
+                if (sourceModule.ExportedSymbols.TryGetValue(sourceName, out var symbol))
+                {
+                    // Create a re-export symbol, possibly with a different name (alias)
+                    var reExportSymbol = CreateReExportSymbol(symbol, fromImport, targetName);
+                    moduleInfo.ExportedSymbols[targetName] = reExportSymbol;
+                    fromImport.ReExportedSymbols[targetName] = reExportSymbol;
+                }
+                // If symbol not found, error will be reported during full import resolution
+            }
+        }
+    }
+
+    /// <summary>
+    /// Create a symbol for a re-exported item
+    /// </summary>
+    private Symbol CreateReExportSymbol(Symbol originalSymbol, FromImportStatement fromImport, string? newName = null)
+    {
+        // Clone the symbol with the new name if provided
+        return originalSymbol switch
+        {
+            FunctionSymbol func => new FunctionSymbol
+            {
+                Name = newName ?? func.Name,
+                Kind = func.Kind,
+                Parameters = func.Parameters,
+                ReturnType = func.ReturnType,
+                AccessLevel = func.AccessLevel,
+                DeclarationLine = fromImport.LineStart,
+                DeclarationColumn = fromImport.ColumnStart,
+                IsReExport = true,
+                OriginalModule = fromImport.Module
+            },
+            TypeSymbol type => new TypeSymbol
+            {
+                Name = newName ?? type.Name,
+                Kind = type.Kind,
+                TypeKind = type.TypeKind,
+                AccessLevel = type.AccessLevel,
+                DeclarationLine = fromImport.LineStart,
+                DeclarationColumn = fromImport.ColumnStart,
+                IsReExport = true,
+                OriginalModule = fromImport.Module
+            },
+            VariableSymbol var => new VariableSymbol
+            {
+                Name = newName ?? var.Name,
+                Kind = var.Kind,
+                Type = var.Type,  // Preserve the type from the original symbol
+                IsConstant = var.IsConstant,
+                AccessLevel = var.AccessLevel,
+                DeclarationLine = fromImport.LineStart,
+                DeclarationColumn = fromImport.ColumnStart,
+                IsReExport = true,
+                OriginalModule = fromImport.Module
+            },
+            _ => originalSymbol // Fallback: use as-is
+        };
     }
 
     /// <summary>
@@ -382,6 +528,43 @@ public class ImportResolver
         if (name.StartsWith("_"))
             return AccessLevel.Protected;
         return AccessLevel.Public;
+    }
+
+    /// <summary>
+    /// Convert a type annotation to a semantic type for simple/primitive types.
+    /// This is used during import resolution to provide type information before
+    /// full semantic analysis. Returns Unknown for complex types.
+    /// </summary>
+    private SemanticType ConvertTypeAnnotationToSemanticType(TypeAnnotation? typeAnnotation)
+    {
+        if (typeAnnotation == null)
+            return SemanticType.Unknown;
+
+        // Handle nullable types
+        var isNullable = typeAnnotation.IsNullable;
+
+        // Map primitive type names
+        var baseType = typeAnnotation.Name switch
+        {
+            "int" => SemanticType.Int,
+            "long" => SemanticType.Long,
+            "float" => SemanticType.Float,
+            "double" => SemanticType.Double,
+            "float32" => SemanticType.Float32,
+            "bool" => SemanticType.Bool,
+            "str" or "string" => SemanticType.Str,
+            "void" or "None" => SemanticType.Void,
+            "object" => SemanticType.Object,
+            _ => SemanticType.Unknown // Complex types will be resolved during semantic analysis
+        };
+
+        // Wrap in nullable if needed
+        if (isNullable && baseType != SemanticType.Unknown && baseType != SemanticType.Void)
+        {
+            return new NullableType { UnderlyingType = baseType };
+        }
+
+        return baseType;
     }
 
     /// <summary>
@@ -439,6 +622,14 @@ public class ImportResolver
     /// </summary>
     private string? ResolveModulePath(string moduleName, string? searchPath = null)
     {
+        return ResolveModuleWithResult(moduleName, searchPath)?.FullPath;
+    }
+
+    /// <summary>
+    /// Resolve a module name and return the full resolution result
+    /// </summary>
+    private ModuleResolutionResult? ResolveModuleWithResult(string moduleName, string? searchPath = null)
+    {
         // Add the optional search path if provided
         if (searchPath != null)
         {
@@ -446,8 +637,7 @@ public class ImportResolver
         }
 
         // Use the ModuleResolver to find the module
-        var result = _moduleResolver.Resolve(moduleName);
-        return result?.FullPath;
+        return _moduleResolver.Resolve(moduleName);
     }
 
     /// <summary>

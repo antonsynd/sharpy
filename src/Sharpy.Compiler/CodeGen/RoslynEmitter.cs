@@ -21,6 +21,7 @@ public class RoslynEmitter
     private readonly HashSet<string> _moduleConstVariables = new(); // Track module-level const names (preserved across function scopes)
     private readonly HashSet<string> _moduleVariables = new(); // Track module-level variable names (for PascalCase reference)
     private readonly HashSet<string> _moduleFieldNames = new(); // Track module-level field names (C# names) to prevent duplicates
+    private HashSet<string> _variablesWithExecutionOrderIssues = new(); // Variables that should not become fields
     private readonly HashSet<string> _classNames = new(); // Track class names defined in the current module
     private readonly HashSet<string> _structNames = new(); // Track struct names defined in the current module
     private readonly HashSet<string> _fromImportSymbols = new(); // Track symbols imported via "from X import Y" for proper casing
@@ -169,8 +170,20 @@ public class RoslynEmitter
             .Where(s => s is not ImportStatement && s is not FromImportStatement)
             .ToList();
 
-        // Generate module class wrapper with non-import statements
-        var moduleClass = GenerateModuleClass(nonImportStatements);
+        // Collect from-import statements with re-exports for generating delegating members
+        // Only generate re-export members for non-entry-point files (i.e., library modules/packages)
+        // Entry point files should not re-export - they just use the imports
+        List<FromImportStatement>? fromImports = null;
+        if (!_context.IsEntryPoint)
+        {
+            fromImports = module.Body
+                .OfType<FromImportStatement>()
+                .Where(f => f.ReExportedSymbols != null && f.ReExportedSymbols.Count > 0)
+                .ToList();
+        }
+
+        // Generate module class wrapper with non-import statements and re-exports
+        var moduleClass = GenerateModuleClass(nonImportStatements, fromImports);
 
         // Generate namespace from source file path (if available)
         // Use block-scoped namespace for C# 9.0 compatibility (Unity)
@@ -411,7 +424,10 @@ public class RoslynEmitter
             // - Class: Exports
             // - Full path: TestProject.Lib.Math.Operations.Exports
 
-            var moduleNamespacePath = ConvertModuleNameToNamespace(fromImport.Module);
+            // Use ResolvedModulePath for relative imports (e.g., ".helpers" → "mypackage.helpers")
+            // Fall back to Module for non-relative imports or when resolution hasn't been performed
+            var moduleName = fromImport.ResolvedModulePath ?? fromImport.Module;
+            var moduleNamespacePath = ConvertModuleNameToNamespace(moduleName);
 
             // The module class is always named "Exports" (not the module name)
             const string moduleClassName = "Exports";
@@ -577,13 +593,51 @@ public class RoslynEmitter
         return string.IsNullOrEmpty(result) ? "_" : result;
     }
 
-    private ClassDeclarationSyntax GenerateModuleClass(List<Statement> statements)
+    private ClassDeclarationSyntax GenerateModuleClass(List<Statement> statements, List<FromImportStatement>? reExportImports = null)
     {
         // Pre-scan for module-level variable declarations to track them across all scopes
         // This ensures functions can reference variables with correct casing
         _moduleConstVariables.Clear();
         _moduleVariables.Clear();
         _moduleFieldNames.Clear();
+
+        // Track variables that need special handling due to execution order issues
+        // (e.g., variables assigned before they are declared, or variables with multiple declarations)
+        _variablesWithExecutionOrderIssues = new HashSet<string>();
+        var variableFirstSeen = new Dictionary<string, int>();
+        var variableFirstDeclaration = new Dictionary<string, int>();
+
+        for (int i = 0; i < statements.Count; i++)
+        {
+            var stmt = statements[i];
+            if (stmt is VariableDeclaration varDecl && !varDecl.IsConst && !IsConstantCaseName(varDecl.Name))
+            {
+                var varName = varDecl.Name;
+                if (variableFirstDeclaration.ContainsKey(varName))
+                {
+                    // Multiple declarations - needs special handling
+                    _variablesWithExecutionOrderIssues.Add(varName);
+                }
+                else
+                {
+                    variableFirstDeclaration[varName] = i;
+                    // Check if there was an assignment before this declaration
+                    if (variableFirstSeen.TryGetValue(varName, out var firstSeenIndex) && firstSeenIndex < i)
+                    {
+                        _variablesWithExecutionOrderIssues.Add(varName);
+                    }
+                }
+            }
+            else if (stmt is Assignment assign && assign.Target is Identifier assignId)
+            {
+                var varName = assignId.Name;
+                if (!variableFirstSeen.ContainsKey(varName))
+                {
+                    variableFirstSeen[varName] = i;
+                }
+            }
+        }
+
         foreach (var stmt in statements)
         {
             if (stmt is VariableDeclaration varDecl)
@@ -593,10 +647,13 @@ public class RoslynEmitter
                 {
                     _moduleConstVariables.Add(varDecl.Name);
                 }
-                else
+                else if (!_variablesWithExecutionOrderIssues.Contains(varDecl.Name))
                 {
+                    // Only track as module variable if no execution order issues
                     _moduleVariables.Add(varDecl.Name);
                 }
+                // Variables with execution order issues are NOT added to _moduleVariables
+                // They will be handled as local variables in Main()
             }
         }
 
@@ -638,10 +695,16 @@ public class RoslynEmitter
             {
                 declarations.Add(memberDecl);
             }
-            else if (member == null && stmt is VariableDeclaration)
+            else if (member == null && stmt is VariableDeclaration varRedefinition)
             {
-                // This is a skipped redefinition - don't add to executable statements
-                // (GenerateModuleLevelField returned null for duplicate field)
+                // This is a variable redefinition (GenerateModuleLevelField returned null)
+                // For const variables, we skip the duplicate entirely (consts can't be redeclared at runtime)
+                // For regular variables, add to executable statements so it becomes a local in Main
+                if (!varRedefinition.IsConst && !IsConstantCaseName(varRedefinition.Name))
+                {
+                    executableStatements.Add(stmt);
+                }
+                // else: skip const redefinitions - first declaration wins
             }
             else
             {
@@ -704,6 +767,18 @@ public class RoslynEmitter
             .Select(f => NameMangler.Transform(f.Name, NameContext.Method))
             .ToHashSet();
 
+        // Generate re-export delegating members for from-import statements
+        // This enables patterns like: from .helpers import utility_func
+        // which makes utility_func accessible from this module's Exports class
+        if (reExportImports != null)
+        {
+            foreach (var fromImport in reExportImports)
+            {
+                var reExportMembers = GenerateReExportMembers(fromImport);
+                declarations.AddRange(reExportMembers);
+            }
+        }
+
         // Generate module class name from source file name
         var moduleClassName = GetModuleClassName(willHaveMainMethod, functionNames);
 
@@ -726,6 +801,123 @@ public class RoslynEmitter
         }
 
         return "Exports";
+    }
+
+    /// <summary>
+    /// Generate delegating members for re-exported symbols from a from-import statement.
+    /// For example: "from .helpers import utility_func" generates a method that delegates to helpers.Exports.UtilityFunc()
+    /// </summary>
+    private IEnumerable<MemberDeclarationSyntax> GenerateReExportMembers(FromImportStatement fromImport)
+    {
+        if (fromImport.ReExportedSymbols == null || fromImport.ResolvedModulePath == null)
+            yield break;
+
+        // Convert the resolved module path to a namespace path
+        // e.g., "mypackage.helpers" -> "Mypackage.Helpers.Exports"
+        var sourceModuleNamespace = ConvertModuleNameToNamespace(fromImport.ResolvedModulePath);
+        var sourceClassName = $"{sourceModuleNamespace}.Exports";
+
+        foreach (var (localName, symbol) in fromImport.ReExportedSymbols)
+        {
+            switch (symbol)
+            {
+                case FunctionSymbol funcSymbol:
+                    yield return GenerateReExportMethod(localName, funcSymbol, sourceClassName);
+                    break;
+
+                case VariableSymbol varSymbol:
+                    yield return GenerateReExportProperty(localName, varSymbol, sourceClassName);
+                    break;
+
+                // TypeSymbol (classes, structs, enums) are handled differently - they use type aliases
+                // which are already supported via the import system, so we don't need to re-export them here
+            }
+        }
+    }
+
+    /// <summary>
+    /// Generate a delegating method for a re-exported function.
+    /// </summary>
+    private MemberDeclarationSyntax GenerateReExportMethod(string localName, FunctionSymbol funcSymbol, string sourceClassName)
+    {
+        var methodName = NameMangler.Transform(localName, NameContext.Method);
+        var sourceMethodName = NameMangler.Transform(funcSymbol.Name, NameContext.Method);
+
+        // Generate parameter list
+        var parameters = funcSymbol.Parameters
+            .Select(p =>
+            {
+                var paramName = NameMangler.Transform(p.Name, NameContext.Parameter);
+                var paramType = _typeMapper.MapSemanticType(p.Type);
+                return Parameter(Identifier(paramName)).WithType(paramType);
+            })
+            .ToArray();
+
+        // Generate arguments to pass to the delegate call
+        var arguments = funcSymbol.Parameters
+            .Select(p => Argument(IdentifierName(NameMangler.Transform(p.Name, NameContext.Parameter))))
+            .ToArray();
+
+        // Map return type
+        var returnType = _typeMapper.MapSemanticType(funcSymbol.ReturnType);
+
+        // Build the delegate call: SourceModule.Exports.Method(args)
+        var delegateCall = InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                ParseExpression(sourceClassName),
+                IdentifierName(sourceMethodName)))
+            .WithArgumentList(ArgumentList(SeparatedList(arguments)));
+
+        // If return type is void, generate expression statement; otherwise, generate return statement
+        StatementSyntax body;
+        if (funcSymbol.ReturnType is VoidType || funcSymbol.ReturnType == SemanticType.Void)
+        {
+            body = ExpressionStatement(delegateCall);
+        }
+        else
+        {
+            body = ReturnStatement(delegateCall);
+        }
+
+        return MethodDeclaration(returnType, methodName)
+            .WithModifiers(TokenList(
+                Token(SyntaxKind.PublicKeyword),
+                Token(SyntaxKind.StaticKeyword)))
+            .WithParameterList(ParameterList(SeparatedList(parameters)))
+            .WithBody(Block(body));
+    }
+
+    /// <summary>
+    /// Generate a delegating property for a re-exported variable/constant.
+    /// </summary>
+    private MemberDeclarationSyntax GenerateReExportProperty(string localName, VariableSymbol varSymbol, string sourceClassName)
+    {
+        // For constants/variables with ALL_CAPS names, preserve the case
+        var propertyName = IsConstantCaseName(localName)
+            ? NameMangler.ToConstantCase(localName)
+            : NameMangler.ToPascalCase(localName);
+
+        var sourcePropertyName = IsConstantCaseName(varSymbol.Name)
+            ? NameMangler.ToConstantCase(varSymbol.Name)
+            : NameMangler.ToPascalCase(varSymbol.Name);
+
+        // Map the type
+        var propertyType = _typeMapper.MapSemanticType(varSymbol.Type);
+
+        // Build the delegate access: SourceModule.Exports.Property
+        var delegateAccess = MemberAccessExpression(
+            SyntaxKind.SimpleMemberAccessExpression,
+            ParseExpression(sourceClassName),
+            IdentifierName(sourcePropertyName));
+
+        // Generate a read-only property with expression body
+        return PropertyDeclaration(propertyType, propertyName)
+            .WithModifiers(TokenList(
+                Token(SyntaxKind.PublicKeyword),
+                Token(SyntaxKind.StaticKeyword)))
+            .WithExpressionBody(ArrowExpressionClause(delegateAccess))
+            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
     }
 
     private SyntaxNode? GenerateStatement(Statement stmt)
@@ -2259,6 +2451,13 @@ public class RoslynEmitter
 
     private FieldDeclarationSyntax? GenerateModuleLevelField(VariableDeclaration varDecl)
     {
+        // Check if this variable has execution order issues (assigned before declared, or multiple declarations)
+        // If so, skip generating a field - it will be handled as a local variable in Main()
+        if (_variablesWithExecutionOrderIssues.Contains(varDecl.Name))
+        {
+            return null;
+        }
+
         // Track const variables by their original Sharpy name for consistent reference resolution
         if (varDecl.IsConst)
         {
@@ -2281,11 +2480,12 @@ public class RoslynEmitter
         }
 
         // Check if we've already generated a field with this name (redefinition)
-        // Sharpy allows variable redefinition at module level with different types,
-        // but C# doesn't allow duplicate field names. Skip subsequent redefinitions.
+        // Sharpy allows variable redefinition at module level with different types.
+        // When there are redefinitions, we return null to handle them as executable
+        // statements in Main() to preserve proper execution order semantics.
         if (_moduleFieldNames.Contains(varName))
         {
-            // This is a redefinition - skip generating a duplicate field
+            // This is a redefinition - handle as executable statement in Main
             return null;
         }
 

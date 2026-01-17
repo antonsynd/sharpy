@@ -40,6 +40,117 @@ public class TypeMapper
     }
 
     /// <summary>
+    /// Maps a SemanticType to a C# TypeSyntax
+    /// </summary>
+    public TypeSyntax MapSemanticType(SemanticType type)
+    {
+        return type switch
+        {
+            null or UnknownType => PredefinedType(Token(SyntaxKind.ObjectKeyword)),
+            VoidType => PredefinedType(Token(SyntaxKind.VoidKeyword)),
+
+            // Handle builtin types by matching against singleton instances
+            BuiltinType builtin when type == SemanticType.Int => PredefinedType(Token(SyntaxKind.IntKeyword)),
+            BuiltinType builtin when type == SemanticType.Long => PredefinedType(Token(SyntaxKind.LongKeyword)),
+            BuiltinType builtin when type == SemanticType.Bool => PredefinedType(Token(SyntaxKind.BoolKeyword)),
+            BuiltinType builtin when type == SemanticType.Str => PredefinedType(Token(SyntaxKind.StringKeyword)),
+            BuiltinType builtin when type == SemanticType.Float => PredefinedType(Token(SyntaxKind.DoubleKeyword)), // Sharpy float = C# double
+            BuiltinType builtin when type == SemanticType.Double => PredefinedType(Token(SyntaxKind.DoubleKeyword)),
+            BuiltinType builtin when type == SemanticType.Float32 => PredefinedType(Token(SyntaxKind.FloatKeyword)),
+            BuiltinType builtin => ParseTypeName(GetMappedTypeName(builtin.Name)),
+
+            // Handle generic types
+            GenericType generic => MapGenericSemanticType(generic),
+
+            // Handle nullable types
+            NullableType nullable => NullableType(MapSemanticType(nullable.UnderlyingType)),
+
+            // Handle user-defined types
+            UserDefinedType udt => ParseTypeName(GetMappedTypeName(udt.Name)),
+
+            // Handle function types
+            Semantic.FunctionType funcType => MapSemanticFunctionType(funcType),
+
+            // Handle tuple types
+            Semantic.TupleType tupleType => MapSemanticTupleType(tupleType),
+
+            // Fallback
+            _ => PredefinedType(Token(SyntaxKind.ObjectKeyword))
+        };
+    }
+
+    private TypeSyntax MapGenericSemanticType(GenericType generic)
+    {
+        var baseTypeName = GetMappedTypeName(generic.Name);
+        var typeArgs = generic.TypeArguments
+            .Select(MapSemanticType)
+            .ToArray();
+
+        return GenericName(Identifier(baseTypeName))
+            .WithTypeArgumentList(
+                TypeArgumentList(SeparatedList(typeArgs)));
+    }
+
+    private TypeSyntax MapSemanticFunctionType(Semantic.FunctionType funcType)
+    {
+        var paramTypes = funcType.ParameterTypes
+            .Select(MapSemanticType)
+            .ToArray();
+
+        var returnType = MapSemanticType(funcType.ReturnType);
+
+        // If return type is void, use Action<T1, T2, ...>
+        if (funcType.ReturnType is VoidType)
+        {
+            if (paramTypes.Length == 0)
+            {
+                return ParseTypeName("System.Action");
+            }
+
+            return GenericName("System.Action")
+                .WithTypeArgumentList(
+                    TypeArgumentList(SeparatedList(paramTypes)));
+        }
+
+        // Otherwise use Func<T1, T2, ..., TResult>
+        var allTypes = paramTypes.Append(returnType).ToArray();
+
+        if (allTypes.Length == 1)
+        {
+            return GenericName("System.Func")
+                .WithTypeArgumentList(
+                    TypeArgumentList(SingletonSeparatedList(returnType)));
+        }
+
+        return GenericName("System.Func")
+            .WithTypeArgumentList(
+                TypeArgumentList(SeparatedList(allTypes)));
+    }
+
+    private TypeSyntax MapSemanticTupleType(Semantic.TupleType tupleType)
+    {
+        if (tupleType.ElementTypes.Count == 0)
+        {
+            return ParseTypeName("System.ValueTuple");
+        }
+
+        var elementTypes = tupleType.ElementTypes
+            .Select(MapSemanticType)
+            .ToArray();
+
+        // For single element, it's just the type (not a tuple)
+        if (elementTypes.Length == 1)
+        {
+            return elementTypes[0];
+        }
+
+        // Use ValueTuple<T1, T2, ...>
+        return GenericName("System.ValueTuple")
+            .WithTypeArgumentList(
+                TypeArgumentList(SeparatedList(elementTypes)));
+    }
+
+    /// <summary>
     /// Maps a Sharpy type annotation to a C# TypeSyntax
     /// </summary>
     public TypeSyntax MapType(TypeAnnotation? type)
