@@ -951,7 +951,7 @@ def main() -> int:
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.Errors)}");
     }
 
-    [Fact(Skip = "Aliased from-imports not yet implemented - requires additional semantic analysis support")]
+    [Fact]
     public void FromImport_WithAlias_Works()
     {
         var helper = CreateHelper();

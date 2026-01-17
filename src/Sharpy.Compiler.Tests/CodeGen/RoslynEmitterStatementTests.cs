@@ -601,7 +601,12 @@ public class RoslynEmitterStatementTests
 
         var result = GenerateStatementCode(stmt);
 
-        Assert.Contains("foreach (var item in items)", result);
+        // Note: For loops use a temporary variable pattern to allow modification of
+        // the loop variable inside the body (C# foreach iteration variables are read-only).
+        // The pattern is: foreach (var __loopVar_N in items) { var item = __loopVar_N; ... }
+        Assert.Contains("foreach (var", result);
+        Assert.Contains("in items)", result);
+        Assert.Contains("var item =", result);  // Loop variable is declared inside body
         Assert.Contains("break;", result);
     }
 

@@ -174,8 +174,9 @@ public class OperatorValidatorTests
     }
 
     [Fact]
-    public void ValidateBinaryOp_IntDivideInt_ReturnsInt()
+    public void ValidateBinaryOp_IntDivideInt_ReturnsDouble()
     {
+        // Python semantics: division always returns float (double)
         var validator = CreateValidator();
         var result = validator.ValidateBinaryOp(
             BinaryOperator.Divide,
@@ -183,7 +184,7 @@ public class OperatorValidatorTests
             SemanticType.Int,
             1, 1);
 
-        result.Should().Be(SemanticType.Int);
+        result.Should().Be(SemanticType.Double);
     }
 
     [Fact]
@@ -213,8 +214,9 @@ public class OperatorValidatorTests
     }
 
     [Fact]
-    public void ValidateBinaryOp_IntPowerInt_ReturnsInt()
+    public void ValidateBinaryOp_IntPowerInt_ReturnsDouble()
     {
+        // Python semantics: power always returns float (double) due to Math.Pow
         var validator = CreateValidator();
         var result = validator.ValidateBinaryOp(
             BinaryOperator.Power,
@@ -222,7 +224,7 @@ public class OperatorValidatorTests
             SemanticType.Int,
             1, 1);
 
-        result.Should().Be(SemanticType.Int);
+        result.Should().Be(SemanticType.Double);
     }
 
     [Fact]
@@ -1490,16 +1492,18 @@ public class OperatorValidatorTests
     [Fact]
     public void ValidateAugmentedAssignment_PowerAssign_WorksCorrectly()
     {
-        // Test **= operator with builtin numeric types
+        // Test **= operator with double target type
+        // Python semantics: power always returns float (double) due to Math.Pow
+        // Note: Using int target would fail because double is not assignable to int
         var validator = CreateValidator();
 
         var result = validator.ValidateAugmentedAssignment(
             AssignmentOperator.PowerAssign,
-            SemanticType.Int,
+            SemanticType.Double,
             SemanticType.Int,
             1, 1);
 
-        result.Should().Be(SemanticType.Int);
+        result.Should().Be(SemanticType.Double);
     }
 
     [Fact]

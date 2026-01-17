@@ -242,6 +242,19 @@ public class TypeChecker
             }
         }
 
+        // Validate @override is required when a subclass method shadows a virtual base method
+        if (_currentClass != null && !_currentMethodIsOverride && _currentClass.BaseType != null)
+        {
+            var (baseMethod, baseOwner) = FindMethodInHierarchy(_currentClass.BaseType, functionDef.Name);
+            if (baseMethod != null && baseMethod.IsVirtual)
+            {
+                AddError(
+                    $"Method '{functionDef.Name}' overrides a virtual method in base class '{baseOwner?.Name ?? _currentClass.BaseType.Name}' and requires the @override decorator",
+                    functionDef.LineStart,
+                    functionDef.ColumnStart);
+            }
+        }
+
         // Check for @abstract decorator
         bool isAbstract = functionDef.Decorators.Any(d => d.Name == "abstract" || d.Name == "abstractmethod");
 
@@ -521,6 +534,16 @@ public class TypeChecker
 
     private void CheckAssignment(Assignment assignment)
     {
+        // First, validate that the assignment target is a valid assignable expression
+        // Valid targets: Identifier, MemberAccess (attribute), IndexAccess, TupleLiteral (unpacking)
+        // Invalid targets: FunctionCall, Literal, BinaryExpression, etc.
+        if (!IsValidAssignmentTarget(assignment.Target))
+        {
+            AddError($"Cannot assign to {GetAssignmentTargetDescription(assignment.Target)}",
+                assignment.Target.LineStart, assignment.Target.ColumnStart);
+            return;
+        }
+
         // Validate that 'self' cannot be reassigned
         if (assignment.Target is Identifier selfId && selfId.Name == "self")
         {
@@ -738,14 +761,15 @@ public class TypeChecker
         var existingSymbol = _symbolTable.Lookup(varDecl.Name, searchParents: false);
 
         // For constants:
-        // - Module-level consts are already created by NameResolver, so we skip creation
+        // - Module-level consts are already created by NameResolver, so we update their type
         // - Function-level consts are NOT created by NameResolver, so we need to create them
         if (varDecl.IsConst)
         {
-            if (existingSymbol != null)
+            if (existingSymbol is VariableSymbol existingConst)
             {
                 // Module-level const was already created by NameResolver
-                // Just do type checking and return
+                // Update its type now that we've resolved it
+                existingConst.Type = declaredType;
                 return;
             }
 
@@ -2530,6 +2554,47 @@ public class TypeChecker
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Checks if an expression is a valid assignment target.
+    /// Valid targets: Identifier, MemberAccess (attribute), IndexAccess, TupleLiteral (for unpacking)
+    /// Invalid targets: FunctionCall, Literal, BinaryExpression, etc.
+    /// </summary>
+    private bool IsValidAssignmentTarget(Expression target)
+    {
+        return target switch
+        {
+            Identifier => true,
+            MemberAccess => true,
+            IndexAccess => true,
+            TupleLiteral tuple => tuple.Elements.All(IsValidAssignmentTarget),
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Gets a human-readable description of an invalid assignment target for error messages.
+    /// </summary>
+    private string GetAssignmentTargetDescription(Expression target)
+    {
+        return target switch
+        {
+            FunctionCall call => call.Function is Identifier id ? $"function call '{id.Name}()'" : "function call result",
+            IntegerLiteral => "integer literal",
+            FloatLiteral => "float literal",
+            StringLiteral => "string literal",
+            BooleanLiteral => "boolean literal",
+            NoneLiteral => "'None'",
+            ListLiteral => "list literal",
+            DictLiteral => "dictionary literal",
+            SetLiteral => "set literal",
+            BinaryOp => "expression result",
+            UnaryOp => "expression result",
+            ConditionalExpression => "conditional expression result",
+            ComparisonChain => "comparison result",
+            _ => "expression"
+        };
     }
 
     /// <summary>

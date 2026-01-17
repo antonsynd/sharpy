@@ -602,10 +602,13 @@ public class OperatorValidator
                 BinaryOperator.Add or
                 BinaryOperator.Subtract or
                 BinaryOperator.Multiply or
-                BinaryOperator.Divide or
                 BinaryOperator.FloorDivide or
-                BinaryOperator.Modulo or
-                BinaryOperator.Power => InferNumericResultType(left, right),
+                BinaryOperator.Modulo => InferNumericResultType(left, right),
+
+                // Division always returns float64 (Python semantics)
+                // Power also always returns float64 (Math.Pow returns double)
+                BinaryOperator.Divide or
+                BinaryOperator.Power => SemanticType.Double,
 
                 BinaryOperator.Equal or
                 BinaryOperator.NotEqual or

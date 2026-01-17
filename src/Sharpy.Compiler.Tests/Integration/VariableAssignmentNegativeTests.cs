@@ -165,12 +165,11 @@ print(x)  # Should still be 1
         Assert.Equal("1\n2\n3\n1\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "For loop variable modification has code generation issues - tracked separately")]
+    [Fact]
     public void ForLoop_ModifyLoopVariable_WorksCorrectly()
     {
         // In Python, modifying the loop variable doesn't affect the iteration
         // but we should handle it correctly in Sharpy
-        // TODO: Fix code generation for loop variable updates
         var source = @"
 for i in range(3):
     print(i)
@@ -224,11 +223,9 @@ print(i)
         Assert.Equal("5\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Parenthesized expression code generation bug - tracked separately")]
+    [Fact]
     public void Assignment_OperatorPrecedence_InUpdate_WorksCorrectly()
     {
-        // TODO: Fix parenthesis handling in code generation
-        // Currently (x + 1) * 2 is generated as x + 1 * 2
         var source = @"
 x: int = 1
 x = x * 2 + 3

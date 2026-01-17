@@ -24,7 +24,9 @@ public class RoslynEmitter
     private HashSet<string> _variablesWithExecutionOrderIssues = new(); // Variables that should not become fields
     private readonly HashSet<string> _classNames = new(); // Track class names defined in the current module
     private readonly HashSet<string> _structNames = new(); // Track struct names defined in the current module
+    private readonly HashSet<string> _stringEnumNames = new(); // Track string enum names (enums with string values)
     private readonly HashSet<string> _fromImportSymbols = new(); // Track symbols imported via "from X import Y" for proper casing
+    private readonly Dictionary<string, string> _importAliasToOriginal = new(); // Map alias → original name for from-imports
     private int _tempVarCounter = 0;
 
     // Target type context for collection literal type inference
@@ -103,16 +105,22 @@ public class RoslynEmitter
         // These are accessed via "using static" and must match the exported name casing
         if (_fromImportSymbols.Contains(name))
         {
+            // If this is an alias, use the original name for code generation
+            // e.g., "from config import MAX_VALUE as MAX" → MAX maps to MAX_VALUE
+            var actualName = _importAliasToOriginal.TryGetValue(name, out var originalName)
+                ? originalName
+                : name;
+
             // Use the same casing rules as exported module members:
             // - ALL_CAPS names (constants) stay as CONSTANT_CASE
             // - Other names become PascalCase
-            if (IsConstantCaseName(name))
+            if (IsConstantCaseName(actualName))
             {
-                return NameMangler.ToConstantCase(name);
+                return NameMangler.ToConstantCase(actualName);
             }
             else
             {
-                return NameMangler.ToPascalCase(name);
+                return NameMangler.ToPascalCase(actualName);
             }
         }
 
@@ -146,17 +154,20 @@ public class RoslynEmitter
         // Pre-process from-import statements to track imported symbol names
         // This allows proper casing when these symbols are referenced
         _fromImportSymbols.Clear();
+        _importAliasToOriginal.Clear();
         foreach (var stmt in module.Body)
         {
             if (stmt is FromImportStatement fromImport)
             {
                 foreach (var importedName in fromImport.Names)
                 {
-                    // Track both the original name and its alias (if present)
+                    // Track the original name
                     _fromImportSymbols.Add(importedName.Name);
                     if (importedName.AsName != null)
                     {
+                        // Track the alias and map it to the original name
                         _fromImportSymbols.Add(importedName.AsName);
+                        _importAliasToOriginal[importedName.AsName] = importedName.Name;
                     }
                 }
             }
@@ -1458,8 +1469,10 @@ public class RoslynEmitter
         // Determine if this is a string enum or integer enum
         bool isStringEnum = IsStringEnum(enumDef);
 
+        // Track string enums for proper code generation of enum member access
         if (isStringEnum)
         {
+            _stringEnumNames.Add(enumDef.Name);
             return GenerateStringEnumClass(enumDef);
         }
         else
@@ -1482,6 +1495,14 @@ public class RoslynEmitter
             }
         }
         return false;
+    }
+
+    /// <summary>
+    /// Checks if a TypeSymbol represents a string enum
+    /// </summary>
+    private bool IsStringEnumSymbol(TypeSymbol enumSymbol)
+    {
+        return _stringEnumNames.Contains(enumSymbol.Name);
     }
 
     /// <summary>
@@ -2441,14 +2462,14 @@ public class RoslynEmitter
             AssignmentOperator.PlusAssign => SyntaxKind.AddExpression,
             AssignmentOperator.MinusAssign => SyntaxKind.SubtractExpression,
             AssignmentOperator.StarAssign => SyntaxKind.MultiplyExpression,
-            AssignmentOperator.SlashAssign => SyntaxKind.DivideExpression,
             AssignmentOperator.PercentAssign => SyntaxKind.ModuloExpression,
             AssignmentOperator.AndAssign => SyntaxKind.BitwiseAndExpression,
             AssignmentOperator.OrAssign => SyntaxKind.BitwiseOrExpression,
             AssignmentOperator.XorAssign => SyntaxKind.ExclusiveOrExpression,
             AssignmentOperator.LeftShiftAssign => SyntaxKind.LeftShiftExpression,
             AssignmentOperator.RightShiftAssign => SyntaxKind.RightShiftExpression,
-            // Special cases handled by GenerateAugmentedValue
+            // Special cases handled by GenerateAugmentedValue (require casts or method calls)
+            AssignmentOperator.SlashAssign => SyntaxKind.None,  // True division needs cast to double
             AssignmentOperator.DoubleSlashAssign => SyntaxKind.None,
             AssignmentOperator.PowerAssign => SyntaxKind.None,
             AssignmentOperator.NullCoalesceAssign => SyntaxKind.None,
@@ -2483,6 +2504,10 @@ public class RoslynEmitter
                         Argument(left),
                         Argument(right)),
 
+            // x /= y → true division with Python semantics (always returns float64)
+            // Cast left to double if both operands are integers
+            AssignmentOperator.SlashAssign => GenerateTrueDivisionAugmented(left, right, targetAst, valueAst),
+
             // x //= y → floor division with Python semantics (toward negative infinity)
             // Integer operands: (long)Math.Floor((double)x / y) → result is int64
             // Float operands: Math.Floor(x / y) → result is float type
@@ -2498,6 +2523,27 @@ public class RoslynEmitter
             // All other operators use simple binary expressions
             _ => BinaryExpression(GetAugmentedAssignmentOperator(op), left, right)
         };
+    }
+
+    /// <summary>
+    /// Generates true division for augmented assignment (x /= y).
+    /// If both operands are integers, casts the left to double before division.
+    /// </summary>
+    private ExpressionSyntax GenerateTrueDivisionAugmented(ExpressionSyntax left, ExpressionSyntax right, Expression? targetAst, Expression? valueAst)
+    {
+        var targetIsFloat = targetAst != null && IsFloatExpression(targetAst);
+        var valueIsFloat = valueAst != null && IsFloatExpression(valueAst);
+
+        if (!targetIsFloat && !valueIsFloat)
+        {
+            // Both operands are integers: cast left to double
+            return BinaryExpression(SyntaxKind.DivideExpression,
+                CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
+                right);
+        }
+
+        // At least one operand is float, so result will be float naturally
+        return BinaryExpression(SyntaxKind.DivideExpression, left, right);
     }
 
     /// <summary>
@@ -2851,8 +2897,7 @@ public class RoslynEmitter
         // If there's no else clause, generate simple foreach loop
         if (forStmt.ElseBody.Count == 0)
         {
-            var body = Block(forStmt.Body.Select(GenerateBodyStatement).OfType<StatementSyntax>());
-            return GenerateForEachCore(forStmt.Target, iterator, body);
+            return GenerateForEachCore(forStmt.Target, iterator, forStmt.Body);
         }
 
         // Loop with else clause: use boolean flag pattern
@@ -2868,10 +2913,9 @@ public class RoslynEmitter
 
         // Transform the body to set flag to false before break
         var transformedBody = TransformLoopBodyForElse(forStmt.Body, flagName);
-        var bodyBlock = Block(transformedBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
 
         // foreach (...) { transformedBody }
-        statements.Add(GenerateForEachCore(forStmt.Target, iterator, bodyBlock));
+        statements.Add(GenerateForEachCore(forStmt.Target, iterator, transformedBody));
 
         // if (_loopCompleted) { elseBody }
         var elseBodyBlock = Block(forStmt.ElseBody.Select(GenerateBodyStatement).OfType<StatementSyntax>());
@@ -2880,44 +2924,68 @@ public class RoslynEmitter
         return Block(statements);
     }
 
-    private StatementSyntax GenerateForEachCore(Expression target, ExpressionSyntax iterator, BlockSyntax body)
+    /// <summary>
+    /// Generates a foreach statement from AST body statements.
+    /// This overload registers loop variables before generating the body so that
+    /// assignments to the loop variable inside are treated as updates.
+    ///
+    /// In C#, foreach iteration variables are read-only. To allow Python-like
+    /// modification of the loop variable, we always use a pattern like:
+    ///   foreach (var __loopVar in items) { var i = __loopVar; ... }
+    /// This allows the user to modify 'i' inside the loop body.
+    /// </summary>
+    private StatementSyntax GenerateForEachCore(Expression target, ExpressionSyntax iterator, List<Statement> bodyStatements)
     {
         if (target is Identifier varName)
         {
             var loopVar = NameMangler.ToCamelCase(varName.Name);
+            var tempLoopVar = GenerateTempVarName("loopVar");
 
             // Check if the variable is already declared in an enclosing scope
-            // If so, we need to use a temporary variable to avoid CS0136
-            if (_declaredVariables.Contains(loopVar) || _variableVersions.ContainsKey(loopVar))
-            {
-                // Variable already exists - use a temporary loop variable and assign
-                var tempLoopVar = GenerateTempVarName("loopVar");
+            bool varExistsInOuterScope = _declaredVariables.Contains(loopVar) || _variableVersions.ContainsKey(loopVar);
 
-                // Prepend assignment to existing variable at the start of the body
-                var assignToExisting = ExpressionStatement(
+            // Register the loop variable BEFORE generating the body
+            // so that assignments to it are treated as updates
+            if (!varExistsInOuterScope)
+            {
+                _declaredVariables.Add(loopVar);
+            }
+            _variableVersions[loopVar] = 0;
+
+            // Generate the body - assignments to loopVar will be updates, not declarations
+            var body = Block(bodyStatements.Select(GenerateBodyStatement).OfType<StatementSyntax>());
+
+            // Create the assignment or declaration at the start of the body
+            StatementSyntax loopVarInit;
+            if (varExistsInOuterScope)
+            {
+                // Variable exists in outer scope - just assign to it
+                loopVarInit = ExpressionStatement(
                     AssignmentExpression(
                         SyntaxKind.SimpleAssignmentExpression,
                         IdentifierName(loopVar),
                         IdentifierName(tempLoopVar)));
-
-                var newBodyStatements = new List<StatementSyntax> { assignToExisting };
-                newBodyStatements.AddRange(body.Statements);
-                var newBody = Block(newBodyStatements);
-
-                return ForEachStatement(
-                    IdentifierName("var"),
-                    Identifier(tempLoopVar),
-                    iterator,
-                    newBody);
+            }
+            else
+            {
+                // Variable is new - declare and initialize it inside the loop body
+                // This makes it a new variable scoped to the loop body, not the foreach iteration variable
+                loopVarInit = LocalDeclarationStatement(
+                    VariableDeclaration(IdentifierName("var"))
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(Identifier(loopVar))
+                                .WithInitializer(EqualsValueClause(IdentifierName(tempLoopVar))))));
             }
 
-            // Variable is new - declare it in the foreach
-            _declaredVariables.Add(loopVar);
+            var newBodyStatements = new List<StatementSyntax> { loopVarInit };
+            newBodyStatements.AddRange(body.Statements);
+            var newBody = Block(newBodyStatements);
+
             return ForEachStatement(
                 IdentifierName("var"),
-                Identifier(loopVar),
+                Identifier(tempLoopVar),
                 iterator,
-                body);
+                newBody);
         }
 
         // Handle tuple unpacking in for loops: for x, y in items
@@ -2929,6 +2997,17 @@ public class RoslynEmitter
             if (allIdentifiers)
             {
                 var identifiers = tuple.Elements.Cast<Identifier>().ToList();
+
+                // Register all tuple element variables BEFORE generating body
+                foreach (var id in identifiers)
+                {
+                    var name = NameMangler.ToCamelCase(id.Name);
+                    _declaredVariables.Add(name);
+                    _variableVersions[name] = 0;
+                }
+
+                // Now generate the body
+                var body = Block(bodyStatements.Select(GenerateBodyStatement).OfType<StatementSyntax>());
 
                 // Generate: foreach (var (x, y) in items)
                 var variables = identifiers
@@ -3286,6 +3365,22 @@ public class RoslynEmitter
                         Argument(left),
                         Argument(right));
 
+            case BinaryOperator.Divide:
+                // x / y → true division with Python semantics (always returns float64)
+                // Cast at least one operand to double to ensure float result
+                // If either operand is already float, the division will naturally produce float
+                var leftIsFloat = IsFloatExpression(binOp.Left);
+                var rightIsFloat = IsFloatExpression(binOp.Right);
+                if (!leftIsFloat && !rightIsFloat)
+                {
+                    // Both operands are integers: cast left to double
+                    return BinaryExpression(SyntaxKind.DivideExpression,
+                        CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
+                        right);
+                }
+                // At least one operand is float, so result will be float naturally
+                return BinaryExpression(SyntaxKind.DivideExpression, left, right);
+
             case BinaryOperator.FloorDivide:
                 // x // y → floor division with Python semantics (toward negative infinity)
                 // Integer operands: (long)Math.Floor((double)x / y) → result is int64
@@ -3354,11 +3449,10 @@ public class RoslynEmitter
         // Standard binary operators
         var kind = binOp.Operator switch
         {
-            // Arithmetic
+            // Arithmetic (Divide is handled specially above for Python semantics)
             BinaryOperator.Add => SyntaxKind.AddExpression,
             BinaryOperator.Subtract => SyntaxKind.SubtractExpression,
             BinaryOperator.Multiply => SyntaxKind.MultiplyExpression,
-            BinaryOperator.Divide => SyntaxKind.DivideExpression,
             BinaryOperator.Modulo => SyntaxKind.ModuloExpression,
 
             // Comparison
@@ -3797,16 +3891,44 @@ public class RoslynEmitter
             var symbol = _context.LookupSymbol(enumTypeIdentifier.Name);
 
             // If this is an enum type, handle member access specially
-            if (symbol is TypeSymbol { TypeKind: Semantic.TypeKind.Enum })
+            if (symbol is TypeSymbol enumSymbol && enumSymbol.TypeKind == Semantic.TypeKind.Enum)
             {
-                // Enum member access: Color.RED -> Color.Red
+                // Enum member access: Color.RED -> (int)Program.Color.Red
+                // We fully qualify with "Program." to avoid shadowing by local variables/fields with the same name
+                // This makes the enum value resolve to its underlying int value (Python semantics)
                 var enumTypeName = NameMangler.ToPascalCase(enumTypeIdentifier.Name);
-                var enumMemberName = TransformEnumMemberName(memberAccess.Member);
 
-                return MemberAccessExpression(
+                // Build qualified enum type: Program.EnumName
+                var qualifiedEnumType = MemberAccessExpression(
                     SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName(enumTypeName),
-                    IdentifierName(enumMemberName));
+                    IdentifierName("Program"),
+                    IdentifierName(enumTypeName));
+
+                // Check if this is a string enum (string enums are generated as classes, not C# enums)
+                if (IsStringEnumSymbol(enumSymbol))
+                {
+                    // String enums use CONSTANT_CASE field names (same as NameContext.Constant)
+                    var fieldName = NameMangler.Transform(memberAccess.Member, NameContext.Constant);
+                    var enumMemberAccess = MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        qualifiedEnumType,
+                        IdentifierName(fieldName));
+                    // String enums: Color.RED already returns the string value from the static field
+                    return enumMemberAccess;
+                }
+                else
+                {
+                    // Integer enums use PascalCase member names
+                    var enumMemberName = TransformEnumMemberName(memberAccess.Member);
+                    var enumMemberAccess = MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        qualifiedEnumType,
+                        IdentifierName(enumMemberName));
+                    // Integer enums: cast to int to get the underlying value
+                    return CastExpression(
+                        PredefinedType(Token(SyntaxKind.IntKeyword)),
+                        enumMemberAccess);
+                }
             }
         }
 

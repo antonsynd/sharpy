@@ -1071,7 +1071,7 @@ class MyClass:
         Assert.NotEmpty(result.CompilationErrors);
     }
 
-    [Fact(Skip = "Override checking not yet implemented - subclass can shadow base method without @override")]
+    [Fact]
     public void Error_MissingOverrideDecorator_ReportsError()
     {
         var source = @"
@@ -1122,7 +1122,7 @@ class MyClass(NonExistentClass):
         Assert.NotEmpty(result.CompilationErrors);
     }
 
-    [Fact(Skip = "Dunder override checking not yet implemented - dunder methods can be defined without @override")]
+    [Fact]
     public void Error_DunderOverrideWithoutDecorator_ReportsError()
     {
         var source = @"
