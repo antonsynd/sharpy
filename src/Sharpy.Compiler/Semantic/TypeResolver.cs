@@ -57,6 +57,15 @@ public class TypeResolver
         {
             result = ResolveGenericType(annotation);
         }
+        // Check for type parameter (e.g., T in class Box[T])
+        else if (_symbolTable.Lookup(annotation.Name) is TypeParameterSymbol typeParamSymbol)
+        {
+            result = new TypeParameterType
+            {
+                Name = annotation.Name,
+                DeclaringType = typeParamSymbol.DeclaringType
+            };
+        }
         // Look up user-defined type
         else
         {

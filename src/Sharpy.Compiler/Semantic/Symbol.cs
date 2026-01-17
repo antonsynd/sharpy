@@ -129,6 +129,17 @@ public record TypeAliasSymbol : Symbol
     public Parser.Ast.FunctionType? FunctionType { get; init; }
 }
 
+/// <summary>
+/// Type parameter symbol (e.g., T in class Box[T])
+/// </summary>
+public record TypeParameterSymbol : Symbol
+{
+    /// <summary>
+    /// The type symbol that declares this type parameter
+    /// </summary>
+    public TypeSymbol? DeclaringType { get; init; }
+}
+
 public enum SymbolKind
 {
     Variable,
@@ -137,7 +148,8 @@ public enum SymbolKind
     Type,
     Module,
     Property,
-    TypeAlias
+    TypeAlias,
+    TypeParameter
 }
 
 public enum TypeKind

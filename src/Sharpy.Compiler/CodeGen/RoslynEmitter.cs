@@ -602,17 +602,42 @@ public class RoslynEmitter
         _moduleFieldNames.Clear();
 
         // Track variables that need special handling due to execution order issues
-        // (e.g., variables assigned before they are declared, or variables with multiple declarations)
+        // (e.g., variables assigned before they are declared, or variables with multiple declarations,
+        // or variables whose initializers reference other local variables)
         _variablesWithExecutionOrderIssues = new HashSet<string>();
         var variableFirstSeen = new Dictionary<string, int>();
         var variableFirstDeclaration = new Dictionary<string, int>();
 
+        // Collect class, struct, and function names - these are valid to reference from module-level fields
+        var typeAndFunctionNames = new HashSet<string>();
+        foreach (var stmt in statements)
+        {
+            if (stmt is ClassDef classDef)
+                typeAndFunctionNames.Add(classDef.Name);
+            else if (stmt is StructDef structDef)
+                typeAndFunctionNames.Add(structDef.Name);
+            else if (stmt is FunctionDef funcDef)
+                typeAndFunctionNames.Add(funcDef.Name);
+            else if (stmt is EnumDef enumDef)
+                typeAndFunctionNames.Add(enumDef.Name);
+        }
+
+        // First pass: collect const variables and detect basic execution order issues
+        var constVariables = new HashSet<string>();
         for (int i = 0; i < statements.Count; i++)
         {
             var stmt = statements[i];
-            if (stmt is VariableDeclaration varDecl && !varDecl.IsConst && !IsConstantCaseName(varDecl.Name))
+            if (stmt is VariableDeclaration varDecl)
             {
                 var varName = varDecl.Name;
+
+                // Track const variables
+                if (varDecl.IsConst || IsConstantCaseName(varDecl.Name))
+                {
+                    constVariables.Add(varName);
+                    continue;
+                }
+
                 if (variableFirstDeclaration.ContainsKey(varName))
                 {
                     // Multiple declarations - needs special handling
@@ -634,6 +659,113 @@ public class RoslynEmitter
                 if (!variableFirstSeen.ContainsKey(varName))
                 {
                     variableFirstSeen[varName] = i;
+                }
+            }
+        }
+
+        // Second pass: detect variables whose initializers reference local variables
+        // A variable must be local if its initializer references any identifier that:
+        // 1. Is in _variablesWithExecutionOrderIssues (already known to be local), OR
+        // 2. Is a variable created by an Assignment statement (these go to Main), OR
+        // 3. Is a variable (not const, not type/function) that will be local
+        // We iterate until no new variables are added (transitive closure)
+        var variableDeclarations = new Dictionary<string, VariableDeclaration>();
+        var variableDeclarationOrder = new Dictionary<string, int>();
+
+        // Track variables created by Assignment statements (without type annotations)
+        // These always go to Main() as executable statements, so any VariableDeclaration
+        // that references them must also be local
+        var assignmentVariables = new HashSet<string>();
+        for (int i = 0; i < statements.Count; i++)
+        {
+            if (statements[i] is VariableDeclaration vd && !constVariables.Contains(vd.Name))
+            {
+                variableDeclarations[vd.Name] = vd;
+                if (!variableDeclarationOrder.ContainsKey(vd.Name))
+                    variableDeclarationOrder[vd.Name] = i;
+            }
+            else if (statements[i] is Assignment assign && assign.Target is Identifier targetId)
+            {
+                // This is an assignment without type annotation - it goes to Main
+                // and any VariableDeclaration referencing it must also go to Main
+                assignmentVariables.Add(targetId.Name);
+            }
+        }
+
+        bool changed = true;
+        while (changed)
+        {
+            changed = false;
+            foreach (var kvp in variableDeclarations)
+            {
+                var varName = kvp.Key;
+                var varDecl = kvp.Value;
+
+                if (_variablesWithExecutionOrderIssues.Contains(varName))
+                    continue; // Already marked
+
+                if (varDecl.InitialValue == null)
+                    continue; // No initializer to check
+
+                // Collect all identifiers referenced in the initializer
+                var referencedIds = new HashSet<string>();
+                CollectReferencedIdentifiers(varDecl.InitialValue, referencedIds);
+
+                // Check if any referenced identifier requires this to be local
+                foreach (var refId in referencedIds)
+                {
+                    // Skip if it's a type/function name (these are always available)
+                    if (typeAndFunctionNames.Contains(refId))
+                        continue;
+
+                    // Skip if it's a const variable (always available at module level)
+                    if (constVariables.Contains(refId))
+                        continue;
+
+                    // Skip if it's a builtin or known symbol
+                    var symbol = _context.LookupSymbol(refId);
+                    if (symbol is FunctionSymbol or TypeSymbol)
+                        continue;
+
+                    // If referenced variable is already marked as local, this one must be too
+                    if (_variablesWithExecutionOrderIssues.Contains(refId))
+                    {
+                        _variablesWithExecutionOrderIssues.Add(varName);
+                        changed = true;
+                        break;
+                    }
+
+                    // If referenced variable is created by an Assignment (no type annotation),
+                    // it will be a local variable in Main, so this one must be too
+                    if (assignmentVariables.Contains(refId))
+                    {
+                        _variablesWithExecutionOrderIssues.Add(varName);
+                        changed = true;
+                        break;
+                    }
+
+                    // If referenced variable is a module variable declared AFTER this one,
+                    // the order of static field initialization is undefined, so make this local
+                    if (variableDeclarationOrder.TryGetValue(refId, out var refOrder) &&
+                        variableDeclarationOrder.TryGetValue(varName, out var thisOrder) &&
+                        refOrder < thisOrder)
+                    {
+                        // Referenced variable is declared before this one, but if it has
+                        // execution order issues, it will be local, so check that
+                        // (This case is already handled above by the _variablesWithExecutionOrderIssues check)
+                    }
+                    else if (variableDeclarations.ContainsKey(refId) && !constVariables.Contains(refId))
+                    {
+                        // Referenced variable is NOT const and is a module-level variable
+                        // If it doesn't have explicit execution order issues yet, we need to check
+                        // if it references this variable (mutual dependency) or will be local
+                        // For safety, if a variable references another non-const variable that
+                        // is declared later (or at all, to be safe), make it local
+                        // This ensures proper execution order semantics
+                        _variablesWithExecutionOrderIssues.Add(varName);
+                        changed = true;
+                        break;
+                    }
                 }
             }
         }
@@ -3021,6 +3153,33 @@ public class RoslynEmitter
 
     private ExpressionSyntax GenerateCall(FunctionCall call)
     {
+        // Handle generic type instantiation: Box[int](42)
+        // This is parsed as FunctionCall(Function: IndexAccess(Object: Box, Index: int), Arguments: [42])
+        if (call.Function is IndexAccess indexAccess &&
+            indexAccess.Object is Identifier genericTypeName)
+        {
+            var symbol = _context.LookupSymbol(genericTypeName.Name);
+            if (symbol is TypeSymbol genericTypeSymbol && genericTypeSymbol.IsGeneric)
+            {
+                // Map the type argument
+                var typeArgSyntax = _typeMapper.MapTypeFromExpression(indexAccess.Index);
+
+                // Generate: new GenericType<TypeArg>(args)
+                var genericName = GenericName(NameMangler.ToPascalCase(genericTypeName.Name))
+                    .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(typeArgSyntax)));
+
+                // Generate arguments
+                var positionalArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg)));
+                var keywordArgs = call.KeywordArguments.Select(kwarg =>
+                    Argument(GenerateExpression(kwarg.Value))
+                        .WithNameColon(NameColon(IdentifierName(kwarg.Name))));
+                var allArgs = positionalArgs.Concat(keywordArgs).ToArray();
+
+                return ObjectCreationExpression(genericName)
+                    .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+            }
+        }
+
         if (call.Function is Identifier funcName)
         {
             // Check if this is a type instantiation (calling a class or struct constructor)
@@ -4531,5 +4690,126 @@ public class RoslynEmitter
             }
         }
         return false;
+    }
+
+    /// <summary>
+    /// Collects all identifier names referenced in an expression.
+    /// Used for dependency analysis to determine if a variable declaration
+    /// should be a module-level field or a local variable in Main.
+    /// </summary>
+    private void CollectReferencedIdentifiers(Expression? expr, HashSet<string> identifiers)
+    {
+        if (expr == null) return;
+
+        switch (expr)
+        {
+            case Identifier id:
+                identifiers.Add(id.Name);
+                break;
+            case FunctionCall call:
+                CollectReferencedIdentifiers(call.Function, identifiers);
+                foreach (var arg in call.Arguments)
+                    CollectReferencedIdentifiers(arg, identifiers);
+                foreach (var kwarg in call.KeywordArguments)
+                    CollectReferencedIdentifiers(kwarg.Value, identifiers);
+                break;
+            case MemberAccess ma:
+                CollectReferencedIdentifiers(ma.Object, identifiers);
+                break;
+            case IndexAccess ia:
+                CollectReferencedIdentifiers(ia.Object, identifiers);
+                CollectReferencedIdentifiers(ia.Index, identifiers);
+                break;
+            case SliceAccess sa:
+                CollectReferencedIdentifiers(sa.Object, identifiers);
+                CollectReferencedIdentifiers(sa.Start, identifiers);
+                CollectReferencedIdentifiers(sa.Stop, identifiers);
+                CollectReferencedIdentifiers(sa.Step, identifiers);
+                break;
+            case BinaryOp binOp:
+                CollectReferencedIdentifiers(binOp.Left, identifiers);
+                CollectReferencedIdentifiers(binOp.Right, identifiers);
+                break;
+            case UnaryOp unOp:
+                CollectReferencedIdentifiers(unOp.Operand, identifiers);
+                break;
+            case ListLiteral list:
+                foreach (var elem in list.Elements)
+                    CollectReferencedIdentifiers(elem, identifiers);
+                break;
+            case DictLiteral dict:
+                foreach (var entry in dict.Entries)
+                {
+                    CollectReferencedIdentifiers(entry.Key, identifiers);
+                    CollectReferencedIdentifiers(entry.Value, identifiers);
+                }
+                break;
+            case SetLiteral set:
+                foreach (var elem in set.Elements)
+                    CollectReferencedIdentifiers(elem, identifiers);
+                break;
+            case TupleLiteral tuple:
+                foreach (var elem in tuple.Elements)
+                    CollectReferencedIdentifiers(elem, identifiers);
+                break;
+            case LambdaExpression lambda:
+                // Lambda body may reference outer scope variables
+                CollectReferencedIdentifiers(lambda.Body, identifiers);
+                break;
+            case ConditionalExpression cond:
+                CollectReferencedIdentifiers(cond.Test, identifiers);
+                CollectReferencedIdentifiers(cond.ThenValue, identifiers);
+                CollectReferencedIdentifiers(cond.ElseValue, identifiers);
+                break;
+            case ComparisonChain chain:
+                foreach (var operand in chain.Operands)
+                    CollectReferencedIdentifiers(operand, identifiers);
+                break;
+            case FStringLiteral fstr:
+                foreach (var part in fstr.Parts)
+                    CollectReferencedIdentifiers(part.Expression, identifiers);
+                break;
+            case ListComprehension comp:
+                CollectReferencedIdentifiers(comp.Element, identifiers);
+                foreach (var clause in comp.Clauses)
+                {
+                    if (clause is ForClause fc)
+                        CollectReferencedIdentifiers(fc.Iterator, identifiers);
+                    else if (clause is IfClause ic)
+                        CollectReferencedIdentifiers(ic.Condition, identifiers);
+                }
+                break;
+            case SetComprehension comp:
+                CollectReferencedIdentifiers(comp.Element, identifiers);
+                foreach (var clause in comp.Clauses)
+                {
+                    if (clause is ForClause fc)
+                        CollectReferencedIdentifiers(fc.Iterator, identifiers);
+                    else if (clause is IfClause ic)
+                        CollectReferencedIdentifiers(ic.Condition, identifiers);
+                }
+                break;
+            case DictComprehension comp:
+                CollectReferencedIdentifiers(comp.Key, identifiers);
+                CollectReferencedIdentifiers(comp.Value, identifiers);
+                foreach (var clause in comp.Clauses)
+                {
+                    if (clause is ForClause fc)
+                        CollectReferencedIdentifiers(fc.Iterator, identifiers);
+                    else if (clause is IfClause ic)
+                        CollectReferencedIdentifiers(ic.Condition, identifiers);
+                }
+                break;
+            // Literals and other expressions with no identifier references
+            case IntegerLiteral:
+            case FloatLiteral:
+            case StringLiteral:
+            case BooleanLiteral:
+            case NoneLiteral:
+            case EllipsisLiteral:
+            case SuperExpression:
+                // No identifiers to collect
+                break;
+        }
     }
 }

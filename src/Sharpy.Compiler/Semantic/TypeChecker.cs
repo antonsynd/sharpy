@@ -402,6 +402,20 @@ public class TypeChecker
         // Enter class scope
         _symbolTable.EnterScope($"class:{classDef.Name}");
 
+        // Register type parameters in the scope so they can be resolved in field/method types
+        foreach (var typeParam in classDef.TypeParameters)
+        {
+            var typeParamSymbol = new TypeParameterSymbol
+            {
+                Name = typeParam.Name,
+                Kind = SymbolKind.TypeParameter,
+                DeclaringType = classSymbol,
+                DeclarationLine = classDef.LineStart,
+                DeclarationColumn = classDef.ColumnStart
+            };
+            _symbolTable.Define(typeParamSymbol);
+        }
+
         // Resolve field types first (before checking methods that might reference them)
         for (int i = 0; i < classSymbol.Fields.Count; i++)
         {
@@ -1676,6 +1690,27 @@ public class TypeChecker
             return narrowedType;
         }
 
+        // Special handling for generic type reference: Box[int]
+        // This is parsed as IndexAccess(Object: Box, Index: int)
+        // When the object is a generic type and the index can be resolved as a type,
+        // this represents a generic type with type arguments, not an index operation
+        if (indexAccess.Object is Identifier typeId &&
+            _symbolTable.Lookup(typeId.Name) is TypeSymbol genericTypeSymbol &&
+            genericTypeSymbol.IsGeneric)
+        {
+            var typeArg = TryResolveExpressionAsType(indexAccess.Index);
+            if (typeArg != null)
+            {
+                // Return a GenericType representing the instantiated type
+                return new GenericType
+                {
+                    Name = genericTypeSymbol.Name,
+                    TypeArguments = new List<SemanticType> { typeArg },
+                    GenericDefinition = genericTypeSymbol
+                };
+            }
+        }
+
         var objectType = CheckExpression(indexAccess.Object);
         var indexType = CheckExpression(indexAccess.Index);
 
@@ -1722,6 +1757,36 @@ public class TypeChecker
 
         // Try to get the function symbol directly for better validation
         FunctionSymbol? funcSymbol = null;
+
+        // Special handling for generic type instantiation: Box[int](42)
+        // This is parsed as FunctionCall(Function: IndexAccess(Object: Box, Index: int), Arguments: [42])
+        if (call.Function is IndexAccess indexAccess &&
+            indexAccess.Object is Identifier genericTypeId &&
+            _symbolTable.Lookup(genericTypeId.Name) is TypeSymbol genericTypeSymbol &&
+            genericTypeSymbol.IsGeneric)
+        {
+            // The "index" is actually a type argument - try to resolve it as a type
+            var typeArg = TryResolveExpressionAsType(indexAccess.Index);
+            if (typeArg != null)
+            {
+                // Cannot instantiate abstract classes
+                if (genericTypeSymbol.IsAbstract)
+                {
+                    AddError($"Cannot instantiate abstract class '{genericTypeSymbol.Name}'",
+                        call.LineStart, call.ColumnStart);
+                    return SemanticType.Unknown;
+                }
+
+                // Return a GenericType with the type argument
+                return new GenericType
+                {
+                    Name = genericTypeSymbol.Name,
+                    TypeArguments = new List<SemanticType> { typeArg },
+                    GenericDefinition = genericTypeSymbol
+                };
+            }
+        }
+
         if (call.Function is Identifier id)
         {
             // Special handling for builtin len() - validate that argument supports __len__ protocol
@@ -1952,6 +2017,33 @@ public class TypeChecker
         }
 
         return SemanticType.Unknown;
+    }
+
+    /// <summary>
+    /// Tries to resolve an expression as a type. This is used for generic type instantiation
+    /// where Box[int](42) parses the type argument as an expression.
+    /// Returns null if the expression cannot be interpreted as a type.
+    /// </summary>
+    private SemanticType? TryResolveExpressionAsType(Expression expr)
+    {
+        // Handle simple identifier as type name (e.g., "int", "str", "MyClass")
+        if (expr is Identifier typeId)
+        {
+            // Create a synthetic type annotation and resolve it
+            var typeAnnotation = new Parser.Ast.TypeAnnotation
+            {
+                Name = typeId.Name,
+                LineStart = expr.LineStart,
+                ColumnStart = expr.ColumnStart
+            };
+            var resolved = _typeResolver.ResolveTypeAnnotation(typeAnnotation);
+            return resolved != SemanticType.Unknown ? resolved : null;
+        }
+
+        // TODO: Handle more complex type expressions like list[int], dict[str, int], etc.
+        // For now, only simple type names are supported
+
+        return null;
     }
 
     private SemanticType CheckListLiteral(ListLiteral list)

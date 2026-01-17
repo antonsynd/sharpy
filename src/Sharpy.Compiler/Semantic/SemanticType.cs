@@ -257,3 +257,25 @@ public record ModuleType : SemanticType
 
     public override string GetDisplayName() => $"module '{Symbol.Name}'";
 }
+
+/// <summary>
+/// Type parameter type (e.g., T in class Box[T])
+/// Used during type checking within generic classes/structs
+/// </summary>
+public record TypeParameterType : SemanticType
+{
+    public string Name { get; init; } = string.Empty;
+    public TypeSymbol? DeclaringType { get; init; }
+
+    public override string GetDisplayName() => Name;
+
+    public override bool IsAssignableTo(SemanticType other)
+    {
+        // Type parameters can be assigned to themselves
+        if (other is TypeParameterType otherParam && Name == otherParam.Name)
+            return true;
+
+        // Type parameters can be assigned to object
+        return base.IsAssignableTo(other);
+    }
+}

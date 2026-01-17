@@ -68,6 +68,9 @@ public class TypeMapper
             // Handle user-defined types
             UserDefinedType udt => ParseTypeName(GetMappedTypeName(udt.Name)),
 
+            // Handle type parameters (e.g., T in class Box[T])
+            TypeParameterType typeParam => IdentifierName(typeParam.Name),
+
             // Handle function types
             Semantic.FunctionType funcType => MapSemanticFunctionType(funcType),
 
@@ -436,5 +439,22 @@ public class TypeMapper
 
         return ArrayType(elementType)
             .AddRankSpecifiers(rankSpecifier);
+    }
+
+    /// <summary>
+    /// Maps an expression (typically an identifier used as a type) to a TypeSyntax.
+    /// Used for generic type instantiation like Box[int](42) where "int" is parsed as an expression.
+    /// </summary>
+    public TypeSyntax MapTypeFromExpression(Expression expr)
+    {
+        if (expr is Identifier id)
+        {
+            // Create a type annotation from the identifier and map it
+            var annotation = new TypeAnnotation { Name = id.Name };
+            return MapType(annotation);
+        }
+
+        // For more complex expressions, fall back to object
+        return PredefinedType(Token(SyntaxKind.ObjectKeyword));
     }
 }
