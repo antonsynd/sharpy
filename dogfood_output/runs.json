@@ -1,0 +1,57 @@
+[
+  {
+    "iteration": 1,
+    "feature_focus": "abstract_class",
+    "complexity": "medium",
+    "success": false,
+    "issue_type": "compilation_failed",
+    "issue_dir": "/Users/anton/Documents/github/sharpy/dogfood_output/issues/20260117_001155_compilation_failed_0000",
+    "duration": 22.568781,
+    "timestamp": "2026-01-17T00:11:55.425395",
+    "skip_reason": null
+  },
+  {
+    "iteration": 2,
+    "feature_focus": "break_continue",
+    "complexity": "complex",
+    "success": false,
+    "issue_type": "compilation_failed",
+    "issue_dir": "/Users/anton/Documents/github/sharpy/dogfood_output/issues/20260117_001232_compilation_failed_0001",
+    "duration": 36.783923,
+    "timestamp": "2026-01-17T00:12:32.209515",
+    "skip_reason": null
+  },
+  {
+    "iteration": 3,
+    "feature_focus": "inheritance_with_override",
+    "complexity": "medium",
+    "success": false,
+    "issue_type": "compilation_failed",
+    "issue_dir": "/Users/anton/Documents/github/sharpy/dogfood_output/issues/20260117_001249_compilation_failed_0002",
+    "duration": 17.560679,
+    "timestamp": "2026-01-17T00:12:49.770607",
+    "skip_reason": null
+  },
+  {
+    "iteration": 4,
+    "feature_focus": "super_init_call",
+    "complexity": "simple",
+    "success": false,
+    "issue_type": "compilation_failed",
+    "issue_dir": "/Users/anton/Documents/github/sharpy/dogfood_output/issues/20260117_001304_compilation_failed_0003",
+    "duration": 14.875563,
+    "timestamp": "2026-01-17T00:13:04.646726",
+    "skip_reason": null
+  },
+  {
+    "iteration": 5,
+    "feature_focus": "class_static_methods",
+    "complexity": "simple",
+    "success": false,
+    "issue_type": "compilation_failed",
+    "issue_dir": "/Users/anton/Documents/github/sharpy/dogfood_output/issues/20260117_001321_compilation_failed_0004",
+    "duration": 17.007781,
+    "timestamp": "2026-01-17T00:13:21.661420",
+    "skip_reason": null
+  }
+]

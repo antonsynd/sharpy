@@ -1,0 +1,22 @@
+# Testing super().__init__() call in inheritance
+
+class Animal:
+    age: int
+    
+    def __init__(self, age: int):
+        self.age = age
+
+class Dog(Animal):
+    name: str
+    
+    def __init__(self, name: str, age: int):
+        super().__init__(age)
+        self.name = name
+
+dog = Dog("Buddy", 5)
+print(dog.age)
+print(dog.name)
+
+# EXPECTED OUTPUT:
+# 5
+# Buddy

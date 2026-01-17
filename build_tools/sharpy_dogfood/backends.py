@@ -3,28 +3,36 @@ AI Backend implementations for code generation and validation.
 
 Supports GitHub Copilot CLI and Claude Code with rate limiting and failover.
 
-This module has been refactored to use shared utilities from build_tools.shared:
-- Rate limit detection: shared.rate_limiting.is_rate_limit_error
-- Wait time extraction: shared.rate_limiting.extract_rate_limit_wait_time
-- Rate limit state tracking: shared.rate_limiting.RateLimitState
-- Model selection: shared.model_selector.TaskType, TaskComplexity
+This module has been refactored to use shared backends from build_tools.shared.backends:
+- ClaudeCodeBackend: Claude Code CLI with heartbeat logging
+- CopilotBackend: GitHub Copilot CLI with heartbeat logging
+- BackendManager: Automatic failover and rate limiting
+- ExecutionLogger: JSONL-based execution logging
+
+The shared backends provide:
+- Rate limit detection and automatic backoff
+- Heartbeat logging for long-running operations (visibility into active processes)
+- Timeout handling with process termination
+- Tool permission enforcement
 """
 
 import asyncio
 import sys
 import time
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Callable
 
-# Import shared utilities
-from build_tools.shared.rate_limiting import (
-    is_rate_limit_error,
-    extract_rate_limit_wait_time,
-    RateLimitState,
+# Import shared backends (with heartbeat support)
+from build_tools.shared.backends import (
+    ClaudeCodeBackend as SharedClaudeBackend,
+    CopilotBackend as SharedCopilotBackend,
+    BackendConfig as SharedBackendConfig,
+    BackendResponse,
+    ToolPermission,
 )
-from build_tools.shared.model_selector import TaskType, TaskComplexity
+from build_tools.shared.rate_limiting import RateLimitState
+from build_tools.shared.logging import ExecutionLogger, LogEventType
 
 from .config import Config, BackendConfig, RateLimitConfig, BackendType
 
@@ -46,8 +54,41 @@ class ExecutionResult:
     rate_limited: bool = False
     timed_out: bool = False
 
+    @classmethod
+    def from_backend_response(
+        cls, response: BackendResponse, backend_name: str
+    ) -> "ExecutionResult":
+        """Convert a shared BackendResponse to ExecutionResult."""
+        return cls(
+            success=response.success,
+            output=response.output,
+            error=response.error_message,
+            duration_seconds=response.duration_seconds,
+            backend=backend_name,
+            rate_limited=response.rate_limited,
+            timed_out="timed out" in (response.error_message or "").lower(),
+        )
 
-# Adapter class to bridge shared RateLimitState with local RateLimitConfig
+
+def create_heartbeat_callback(backend_name: str) -> Callable[[str], None]:
+    """Create a heartbeat callback that logs to stderr.
+
+    This provides visibility into long-running AI backend operations,
+    matching the behavior of sharpy_auto_builder.
+
+    Args:
+        backend_name: Name of the backend for log messages
+
+    Returns:
+        Callback function that prints heartbeat messages
+    """
+
+    def heartbeat_callback(message: str) -> None:
+        print(f"[{backend_name}] {message}", file=sys.stderr)
+
+    return heartbeat_callback
+
+
 class DogfoodRateLimitState(RateLimitState):
     """
     Rate limit state adapter for the dogfood tool.
@@ -98,13 +139,25 @@ class DogfoodRateLimitState(RateLimitState):
         return False, 0.0
 
 
-class Backend(ABC):
-    """Abstract base class for AI execution backends."""
+class ClaudeBackend:
+    """Backend adapter for Claude Code CLI using shared implementation.
+
+    Wraps the shared ClaudeCodeBackend to provide the dogfood-specific
+    interface while leveraging heartbeat logging and rate limiting.
+    """
 
     def __init__(self, config: BackendConfig, project_root: Path):
         self.config = config
         self.project_root = project_root
         self.rate_limit_state = DogfoodRateLimitState()
+
+        # Create the shared backend with heartbeat callback
+        self._shared_backend = SharedClaudeBackend(
+            rate_limit_state=self.rate_limit_state,
+            heartbeat_callback=create_heartbeat_callback("claude"),
+            cli_path=config.claude_cli_path,
+            project_root=project_root,
+        )
 
     @property
     def name(self) -> str:
@@ -115,10 +168,7 @@ class Backend(ABC):
         """Check if this backend is currently available."""
         if not self.config.enabled:
             return False
-        should_wait, _ = self.rate_limit_state.should_wait_with_config(
-            self.config.rate_limit
-        )
-        return not should_wait
+        return self._shared_backend.is_available()
 
     def get_wait_time(self) -> float:
         """Get time to wait before next request."""
@@ -139,255 +189,104 @@ class Backend(ABC):
             )
             await asyncio.sleep(wait_time)
 
-    @abstractmethod
     async def execute(
         self, prompt: str, timeout: Optional[float] = None
     ) -> ExecutionResult:
-        """Execute a prompt and return the result."""
-        pass
+        """Execute a prompt using Claude Code CLI with heartbeat logging."""
+        await self.wait_for_availability()
+
+        # Build shared config
+        effective_timeout = timeout or self.config.execution_timeout
+        shared_config = SharedBackendConfig(
+            timeout_seconds=int(effective_timeout),
+            allowed_tools={ToolPermission.READ},  # Read-only for validation
+        )
+
+        # Execute via shared backend (includes heartbeat logging)
+        response = await self._shared_backend.execute(prompt, shared_config)
+
+        # Update our rate limit state based on response
+        if response.rate_limited:
+            self.rate_limit_state.record_error_with_config(self.config.rate_limit)
+
+        return ExecutionResult.from_backend_response(response, self.name)
 
 
-class ClaudeBackend(Backend):
-    """Backend for Claude Code CLI."""
+class CopilotBackend:
+    """Backend adapter for GitHub Copilot CLI using shared implementation.
+
+    Wraps the shared CopilotBackend to provide the dogfood-specific
+    interface while leveraging heartbeat logging and rate limiting.
+    """
 
     def __init__(self, config: BackendConfig, project_root: Path):
-        super().__init__(config, project_root)
-        self.cli_path = config.claude_cli_path or "claude"
-        self.heartbeat_interval = 30.0
+        self.config = config
+        self.project_root = project_root
+        self.rate_limit_state = DogfoodRateLimitState()
+
+        # Create the shared backend with heartbeat callback
+        self._shared_backend = SharedCopilotBackend(
+            rate_limit_state=self.rate_limit_state,
+            heartbeat_callback=create_heartbeat_callback("copilot"),
+            cli_path=config.copilot_cli_path,
+            project_root=project_root,
+        )
+
+    @property
+    def name(self) -> str:
+        return self.config.name
+
+    @property
+    def is_available(self) -> bool:
+        """Check if this backend is currently available."""
+        if not self.config.enabled:
+            return False
+        return self._shared_backend.is_available()
+
+    def get_wait_time(self) -> float:
+        """Get time to wait before next request."""
+        _, wait_time = self.rate_limit_state.should_wait_with_config(
+            self.config.rate_limit
+        )
+        return wait_time
+
+    async def wait_for_availability(self) -> None:
+        """Wait until this backend is available."""
+        should_wait, wait_time = self.rate_limit_state.should_wait_with_config(
+            self.config.rate_limit
+        )
+        if should_wait and wait_time > 0:
+            print(
+                f"[{self.name}] Waiting {wait_time:.1f}s for rate limit...",
+                file=sys.stderr,
+            )
+            await asyncio.sleep(wait_time)
 
     async def execute(
         self, prompt: str, timeout: Optional[float] = None
     ) -> ExecutionResult:
-        """Execute a prompt using Claude Code CLI."""
+        """Execute a prompt using GitHub Copilot CLI with heartbeat logging."""
         await self.wait_for_availability()
-        self.rate_limit_state.record_request()
 
-        start_time = time.time()
+        # Build shared config
         effective_timeout = timeout or self.config.execution_timeout
+        shared_config = SharedBackendConfig(
+            timeout_seconds=int(effective_timeout),
+            allowed_tools={ToolPermission.READ},  # Read-only for validation
+        )
 
-        try:
-            cmd = [
-                self.cli_path,
-                "--print",
-                "--allowedTools",
-                "Read",  # Read-only for validation
-            ]
+        # Execute via shared backend (includes heartbeat logging)
+        response = await self._shared_backend.execute(prompt, shared_config)
 
-            process = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=self.project_root,
-            )
-
-            try:
-                stdout, stderr = await asyncio.wait_for(
-                    process.communicate(prompt.encode()), timeout=effective_timeout
-                )
-            except asyncio.TimeoutError:
-                duration = time.time() - start_time
-                try:
-                    process.kill()
-                    await process.wait()
-                except Exception:
-                    pass
-
-                self.rate_limit_state.record_error_with_config(self.config.rate_limit)
-                return ExecutionResult(
-                    success=False,
-                    output="",
-                    error=f"Execution timed out after {duration:.1f}s (limit: {effective_timeout:.0f}s)",
-                    duration_seconds=duration,
-                    backend=self.name,
-                    timed_out=True,
-                )
-
-            duration = time.time() - start_time
-            stdout_text = stdout.decode()
-            stderr_text = stderr.decode()
-
-            combined_output = (stdout_text + stderr_text).lower()
-            rate_limited = is_rate_limit_error(combined_output)
-
-            if process.returncode == 0 and not rate_limited:
-                self.rate_limit_state.record_success()
-                return ExecutionResult(
-                    success=True,
-                    output=stdout_text,
-                    duration_seconds=duration,
-                    backend=self.name,
-                )
-            else:
-                error_msg = stderr_text or stdout_text
-
-                if rate_limited:
-                    self.rate_limit_state.record_error_with_config(
-                        self.config.rate_limit
-                    )
-                    wait_time = extract_rate_limit_wait_time(combined_output)
-                    if wait_time:
-                        self.rate_limit_state.disable_temporarily(wait_time)
-
-                return ExecutionResult(
-                    success=False,
-                    output=stdout_text,
-                    error=error_msg,
-                    duration_seconds=duration,
-                    backend=self.name,
-                    rate_limited=rate_limited,
-                )
-
-        except FileNotFoundError:
-            return ExecutionResult(
-                success=False,
-                output="",
-                error=f"Claude CLI not found at: {self.cli_path}",
-                backend=self.name,
-            )
-        except Exception as e:
+        # Update our rate limit state based on response
+        if response.rate_limited:
             self.rate_limit_state.record_error_with_config(self.config.rate_limit)
-            return ExecutionResult(
-                success=False,
-                output="",
-                error=str(e),
-                duration_seconds=time.time() - start_time,
-                backend=self.name,
-            )
+
+        return ExecutionResult.from_backend_response(response, self.name)
 
 
-class CopilotBackend(Backend):
-    """Backend for GitHub Copilot CLI."""
-
-    def __init__(self, config: BackendConfig, project_root: Path):
-        super().__init__(config, project_root)
-        # Try common paths for the Copilot CLI
-        self.cli_path = config.copilot_cli_path or self._find_copilot_cli()
-
-    def _find_copilot_cli(self) -> str:
-        """Find the Copilot CLI executable."""
-        import os
-
-        # Check common installation locations
-        candidates = [
-            # VS Code global storage (macOS)
-            Path.home()
-            / "Library/Application Support/Code/User/globalStorage/github.copilot-chat/copilotCli/copilot",
-            # Homebrew (legacy)
-            Path("/opt/homebrew/bin/copilot"),
-            # Standard PATH
-            Path("/usr/local/bin/copilot"),
-        ]
-        for path in candidates:
-            if path.exists():
-                return str(path)
-
-        # Fall back to assuming it's in PATH
-        return "copilot"
-
-    async def execute(
-        self, prompt: str, timeout: Optional[float] = None
-    ) -> ExecutionResult:
-        """Execute a prompt using GitHub Copilot CLI."""
-        await self.wait_for_availability()
-        self.rate_limit_state.record_request()
-
-        start_time = time.time()
-        effective_timeout = timeout or self.config.execution_timeout
-
-        try:
-            # Use --prompt flag for direct prompt input (new CLI API)
-            # --allow-all-tools enables non-interactive execution
-            cmd = [
-                self.cli_path,
-                "--prompt",
-                prompt,
-                "--allow-all-tools",
-                "--add-dir",
-                str(self.project_root),
-            ]
-
-            process = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=self.project_root,
-            )
-
-            try:
-                stdout, stderr = await asyncio.wait_for(
-                    process.communicate(), timeout=effective_timeout
-                )
-            except asyncio.TimeoutError:
-                duration = time.time() - start_time
-                try:
-                    process.kill()
-                    await process.wait()
-                except Exception:
-                    pass
-
-                self.rate_limit_state.record_error_with_config(self.config.rate_limit)
-                return ExecutionResult(
-                    success=False,
-                    output="",
-                    error=f"Execution timed out after {duration:.1f}s",
-                    duration_seconds=duration,
-                    backend=self.name,
-                    timed_out=True,
-                )
-
-            duration = time.time() - start_time
-            stdout_text = stdout.decode()
-            stderr_text = stderr.decode()
-
-            combined_output = (stdout_text + stderr_text).lower()
-            rate_limited = is_rate_limit_error(combined_output)
-
-            if process.returncode == 0 and not rate_limited:
-                self.rate_limit_state.record_success()
-                return ExecutionResult(
-                    success=True,
-                    output=stdout_text,
-                    duration_seconds=duration,
-                    backend=self.name,
-                )
-            else:
-                error_msg = stderr_text or stdout_text
-
-                if rate_limited:
-                    self.rate_limit_state.record_error_with_config(
-                        self.config.rate_limit
-                    )
-                    wait_time = extract_rate_limit_wait_time(combined_output)
-                    if wait_time:
-                        self.rate_limit_state.disable_temporarily(wait_time)
-
-                return ExecutionResult(
-                    success=False,
-                    output=stdout_text,
-                    error=error_msg,
-                    duration_seconds=duration,
-                    backend=self.name,
-                    rate_limited=rate_limited,
-                )
-
-        except FileNotFoundError:
-            return ExecutionResult(
-                success=False,
-                output="",
-                error=f"Copilot CLI not found at: {self.cli_path}",
-                backend=self.name,
-            )
-        except Exception as e:
-            self.rate_limit_state.record_error_with_config(self.config.rate_limit)
-            return ExecutionResult(
-                success=False,
-                output="",
-                error=str(e),
-                duration_seconds=time.time() - start_time,
-                backend=self.name,
-            )
+# Type alias for any dogfood backend
+DogfoodBackend = ClaudeBackend | CopilotBackend
 
 
 class BackendManager:
@@ -397,7 +296,7 @@ class BackendManager:
 
     def __init__(self, config: Config):
         self.config = config
-        self.backends: dict[str, Backend] = {}
+        self.backends: dict[str, DogfoodBackend] = {}
         self._init_backends()
 
     def _init_backends(self) -> None:
@@ -409,12 +308,12 @@ class BackendManager:
                     self.backends[name] = ClaudeBackend(
                         backend_config, self.config.project_root
                     )
-                elif name == "copilot":
+                if name == "copilot":
                     self.backends[name] = CopilotBackend(
                         backend_config, self.config.project_root
                     )
 
-    def get_available_backend(self) -> Optional[Backend]:
+    def get_available_backend(self) -> Optional[DogfoodBackend]:
         """Get the best available backend."""
         for name in self.BACKEND_PRIORITY:
             if name in self.backends and self.backends[name].is_available:
