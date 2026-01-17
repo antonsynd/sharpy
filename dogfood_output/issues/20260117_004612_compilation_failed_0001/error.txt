@@ -1,3 +1,0 @@
-Assembly compilation failed:
-  dogfood_test.cs(55,38): error CS0103: The name 'account1' does not exist in the current context
-  dogfood_test.cs(55,58): error CS0103: The name 'account2' does not exist in the current context

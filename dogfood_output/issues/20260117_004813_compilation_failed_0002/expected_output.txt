@@ -1,9 +1,0 @@
-Calculator initialized
-Computing steps:
-1
-2
-6
-24
-120
-Final result:
-120

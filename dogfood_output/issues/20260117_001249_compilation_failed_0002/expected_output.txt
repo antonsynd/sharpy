@@ -1,7 +1,0 @@
-Dog:
-Buddy
-Woof!
-Labrador
-Cat:
-Whiskers
-Meow!

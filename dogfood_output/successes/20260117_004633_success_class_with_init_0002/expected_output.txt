@@ -1,9 +1,0 @@
-Water freezing point
-0
-32
-273.15
-100
-212
-Room temperature
-25
-298.15
