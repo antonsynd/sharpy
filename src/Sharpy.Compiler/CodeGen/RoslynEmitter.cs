@@ -829,8 +829,8 @@ public class RoslynEmitter
                     yield return GenerateReExportProperty(localName, varSymbol, sourceClassName);
                     break;
 
-                // TypeSymbol (classes, structs, enums) are handled differently - they use type aliases
-                // which are already supported via the import system, so we don't need to re-export them here
+                    // TypeSymbol (classes, structs, enums) are handled differently - they use type aliases
+                    // which are already supported via the import system, so we don't need to re-export them here
             }
         }
     }
