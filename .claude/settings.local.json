@@ -25,7 +25,8 @@
       "Bash(for:*)",
       "Bash(do dotnet test --no-build)",
       "Bash(dotnet run:*)",
-      "Bash(dotnet restore:*)"
+      "Bash(dotnet restore:*)",
+      "mcp__Desktop_Commander__create_directory"
     ]
   }
 }

@@ -26,4 +26,9 @@
     <ProjectReference Include="../Sharpy.Core/Sharpy.Core.csproj" />
   </ItemGroup>
 
+  <!-- Copy test fixture files to output directory -->
+  <ItemGroup>
+    <None Include="Integration\TestFixtures\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="Integration\TestFixtures" />
+  </ItemGroup>
+
 </Project>
