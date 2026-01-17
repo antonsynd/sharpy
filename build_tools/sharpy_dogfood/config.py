@@ -79,7 +79,7 @@ class Config(BaseConfig):
         }
     )
 
-    # Feature coverage phases (0.1.0 to 0.1.5)
+    # Feature coverage phases (0.1.0 to 0.1.10)
     supported_phases: list[str] = field(
         default_factory=lambda: [
             "0.1.0",  # Lexer Foundation
@@ -88,6 +88,11 @@ class Config(BaseConfig):
             "0.1.3",  # Variables & Expressions
             "0.1.4",  # Control Flow
             "0.1.5",  # Functions
+            "0.1.6",  # Classes
+            "0.1.7",  # Inheritance & Interfaces
+            "0.1.8",  # Structs & Enums
+            "0.1.9",  # Type System Enhancements
+            "0.1.10",  # Module System
         ]
     )
 
@@ -103,7 +108,7 @@ class Config(BaseConfig):
     def task_list_file(self) -> Path:
         return (
             self.project_root
-            / "docs/implementation_planning/task_list_0.1.0_to_0.1.5.md"
+            / "docs/implementation_planning/task_list_0.1.0_to_0.1.10.md"
         )
 
     @property

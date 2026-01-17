@@ -6,7 +6,7 @@ A comprehensive testing tool that generates random/novel Sharpy code using AI, v
 
 The dogfooding tool helps catch compiler bugs by:
 1. **Generating** novel Sharpy code using Claude or GitHub Copilot
-2. **Validating** the generated code against the language spec (phases 0.1.0-0.1.5)
+2. **Validating** the generated code against the language spec (phases 0.1.0-0.1.10)
 3. **Compiling** the code using the Sharpy compiler
 4. **Executing** the compiled code and capturing output
 5. **Verifying** that the output matches expectations (via print statements)
@@ -68,32 +68,47 @@ The tool detects several types of issues:
 
 ## Features Tested
 
-The tool tests features from implementation phases 0.1.0 through 0.1.5:
+The tool tests features from implementation phases 0.1.0 through 0.1.10:
 
 - **0.1.0** - Lexer: tokens, keywords, operators, indentation
 - **0.1.1** - Parser: AST, expressions, literals
 - **0.1.2** - Code Generation: entry point, primitive types
 - **0.1.3** - Variables: declarations, assignments, operators
 - **0.1.4** - Control Flow: if/elif/else, for, while
-- **0.1.5** - Functions: definitions, positional parameters, return
+- **0.1.5** - Functions: definitions, parameters (positional + default), keyword arguments
+- **0.1.6** - Classes: class definitions, fields, `__init__`, instance methods, static methods
+- **0.1.7** - Inheritance & Interfaces: single inheritance, abstract classes, interfaces, decorators (`@virtual`, `@override`, `@abstract`, `@final`)
+- **0.1.8** - Structs & Enums: value types (structs), enumerations
+- **0.1.9** - Type System: nullable types (`T?`), type aliases, basic generics, null coalescing (`??`), null conditional (`?.`)
+- **0.1.10** - Module System: imports, module resolution, multi-file compilation
 
 ### Allowed Features (Strict)
 
 ✅ Variables: `x: int = 42`, `x = 42` (inference)
-✅ Types: `int`, `str`, `bool`, `float` only
-✅ Operators: `+`, `-`, `*`, `/`, `//`, `%`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`
+✅ Types: `int`, `str`, `bool`, `float`, plus nullable variants `T?`
+✅ Operators: `+`, `-`, `*`, `/`, `//`, `%`, `**`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`, `??`, `?.`
 ✅ Control flow: `if/elif/else`, `while`, `for i in range(...)`
-✅ Functions: `def name(param: type) -> return_type:`
+✅ Functions: `def name(param: type) -> return_type:`, default params, keyword args
+✅ Classes: `class Name:`, fields, `__init__`, instance/static methods
+✅ Inheritance: `class Child(Parent):`, `super().__init__()`, `@virtual`, `@override`
+✅ Interfaces: `interface IName:`, multiple interface implementation
+✅ Abstract: `@abstract` classes and methods
+✅ Structs: `struct Name:` (value types)
+✅ Enums: `enum Name:` with explicit values
+✅ Generics: `class Box[T]:`, `def foo[T](x: T) -> T:`
+✅ Type aliases: `type UserId = int`
+✅ Imports: `import module`, `from module import item`
 ✅ Built-ins: `print()`, `range()`
 
 ### Forbidden Features (Not Yet Implemented)
 
 ❌ f-strings, string concatenation
-❌ Default parameters, keyword arguments
-❌ Classes, structs, interfaces
-❌ Lists, dicts, sets
-❌ Imports, exceptions, lambdas
-❌ Nullable types, type aliases
+❌ Lists, dicts, sets literals
+❌ List comprehensions
+❌ .NET interop imports (`from system import ...`)
+❌ Exceptions (try/except)
+❌ Lambdas
+❌ Multiple assignment, walrus operator
 
 ## Validation
 

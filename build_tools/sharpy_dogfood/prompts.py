@@ -13,7 +13,7 @@ def get_spec_context(spec_dir: Path, phases_file: Path) -> str:
     # Load phases overview
     if phases_file.exists():
         content = phases_file.read_text()
-        # Extract phases 0.1.0 through 0.1.5
+        # Extract phases 0.1.0 through 0.1.10
         lines = content.split("\n")
         in_relevant_section = False
         relevant_lines = []
@@ -21,7 +21,7 @@ def get_spec_context(spec_dir: Path, phases_file: Path) -> str:
         for line in lines:
             if "## Phase 0.1.0" in line:
                 in_relevant_section = True
-            elif "## Phase 0.1.6" in line:
+            elif "## Phase 0.1.11" in line:
                 in_relevant_section = False
                 break
 
@@ -29,8 +29,8 @@ def get_spec_context(spec_dir: Path, phases_file: Path) -> str:
                 relevant_lines.append(line)
 
         if relevant_lines:
-            context_parts.append("# Implementation Phases (0.1.0 - 0.1.5)\n\n")
-            context_parts.append("\n".join(relevant_lines[:500]))  # Limit size
+            context_parts.append("# Implementation Phases (0.1.0 - 0.1.10)\n\n")
+            context_parts.append("\n".join(relevant_lines[:1500]))  # Limit size
 
     # Load key spec files
     key_specs = [
@@ -42,6 +42,15 @@ def get_spec_context(spec_dir: Path, phases_file: Path) -> str:
         "while_statement.md",
         "primitive_types.md",
         "expressions.md",
+        "class_definition.md",
+        "inheritance.md",
+        "interfaces.md",
+        "structs.md",
+        "enums.md",
+        "nullable_types.md",
+        "generics.md",
+        "type_aliases.md",
+        "modules.md",
     ]
 
     for spec_name in key_specs:
@@ -73,64 +82,114 @@ def get_code_generation_prompt(
     complexity_guide = {
         "simple": """
 Generate SIMPLE code:
-- 5-15 lines total
-- 0-1 functions
+- 5-20 lines total
+- 0-1 functions OR 1 simple class
 - Basic arithmetic with int variables
 - 1-3 print statements showing results
 """,
         "medium": """
 Generate MEDIUM complexity code:
-- 15-30 lines total
-- 1-2 functions that may call each other
+- 20-40 lines total
+- 1-2 functions OR 1-2 classes with methods
+- Can use structs, enums, or simple inheritance
 - Use ONE control flow type (if/elif/else OR for OR while)
 - 3-5 print statements showing intermediate steps
 """,
         "complex": """
 Generate COMPLEX code:
-- 30-50 lines total
-- 2-3 functions
+- 40-70 lines total
+- 2-3 classes with inheritance OR interfaces
+- Can include: abstract classes, virtual/override methods, structs, enums
 - Mix of control flow (if + for, or if + while)
+- Can use nullable types, type aliases, generics, or module imports
 - 5-8 print statements showing the flow
 """,
     }
 
     return f"""You are generating Sharpy code for compiler testing (dogfooding).
 
-## CRITICAL: Allowed Features (Phases 0.1.0-0.1.5 ONLY)
+## CRITICAL: Allowed Features (Phases 0.1.0-0.1.10 ONLY)
 
 ### ✅ ALLOWED - Use these features:
+
+#### Variables & Types (0.1.3)
 - **Variables**: `x: int = 42` or `x = 42` (type inference)
-- **Types**: `int`, `str`, `bool`, `float` only (no `int32`, no nullable `?`)
-- **Operators**: `+`, `-`, `*`, `/`, `//`, `%`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`
+- **Types**: `int`, `str`, `bool`, `float` (primitive types)
+- **Nullable types**: `int?`, `str?` with `None` assignment
+- **Operators**: `+`, `-`, `*`, `/`, `//`, `%`, `**`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not`
 - **Augmented assignment**: `+=`, `-=`, `*=`, `/=`
+- **Null coalescing**: `??` (e.g., `name ?? "default"`)
+- **Null conditional**: `?.` (e.g., `name?.upper()`)
+- **Constants**: `const NAME: int = 42`
+
+#### Control Flow (0.1.4)
 - **If statements**: `if`, `elif`, `else` with conditions
 - **While loops**: `while condition:`
 - **For loops**: `for i in range(n):`, `for i in range(start, end):`, `for i in range(start, end, step):`
-- **Functions**: `def name(param: type) -> return_type:` with positional parameters
-- **Return**: `return value`
-- **Print**: `print(value)` - SINGLE argument only, NO multiple args
-- **Pass**: `pass` statement
 - **Break/Continue**: inside loops only
-- **Constants**: `const NAME: int = 42`
-- **String literals**: `"hello"`, `'world'` (simple strings only)
-- **Boolean literals**: `True`, `False`
-- **None literal**: `None` (but no nullable types)
 
-### ❌ FORBIDDEN - Do NOT use these features:
-- **NO f-strings**: `f"hello {{x}}"` is NOT allowed - use separate `print()` calls
-- **NO multi-argument print**: `print(a, b, c)` is NOT allowed - use multiple `print()` calls
-- **NO string concatenation with +**: `"a" + "b"` may not work yet
-- **NO default parameters**: `def foo(x: int = 5)` is NOT allowed yet
-- **NO keyword arguments**: `foo(name="value")` is NOT allowed yet
-- **NO classes/structs**: no `class`, `struct`, `interface`
-- **NO lists/dicts/sets**: no `[]`, `{{}}`, `set()`
-- **NO imports**: no `import`, `from`
-- **NO try/except**: no exception handling
-- **NO lambdas**: no `lambda`
-- **NO type aliases**: no `type X = Y`
-- **NO nullable types**: no `int?`, `str?`
-- **NO recursion**: keep functions non-recursive for simplicity
-- **NO nested functions**: define all functions at top level
+#### Functions (0.1.5)
+- **Function definition**: `def name(param: type) -> return_type:`
+- **Default parameters**: `def foo(x: int, y: int = 5) -> int:`
+- **Keyword arguments**: `foo(x=10, y=20)`
+- **Return**: `return value`
+
+#### Classes (0.1.6)
+- **Class definition**: `class ClassName:`
+- **Fields**: `x: int` inside class body
+- **Constructor**: `def __init__(self, params):`
+- **Instance methods**: `def method(self) -> type:`
+- **Static methods**: methods without `self` parameter (auto-detected)
+- **Field access**: `obj.field`, `self.field`
+
+#### Inheritance & Interfaces (0.1.7)
+- **Single inheritance**: `class Child(Parent):`
+- **Super calls**: `super().__init__(args)` in `__init__`, `super().method()` in `@override` methods
+- **Abstract classes**: `@abstract` decorator on class
+- **Abstract methods**: `@abstract` decorator + `...` body
+- **Virtual methods**: `@virtual` decorator
+- **Override methods**: `@override` decorator
+- **Final classes/methods**: `@final` decorator
+- **Interfaces**: `interface IName:` with method signatures using `...`
+- **Multiple interfaces**: `class Foo(IBar, IBaz):`
+- **Access modifiers**: `@private`, `@protected`, `@internal` (default is public)
+
+#### Structs & Enums (0.1.8)
+- **Structs**: `struct Name:` (value types, copied on assignment)
+- **Enums**: `enum Name:` with explicit values
+- **Enum values**: `EnumName.VALUE`
+
+#### Type System (0.1.9)
+- **Nullable types**: `T?` syntax
+- **Type narrowing**: `if x is not None:` narrows type
+- **Type aliases**: `type UserId = int`
+- **Basic generics**: `class Box[T]:`, `def identity[T](x: T) -> T:`
+- **Generic constraints**: `[T: IComparable]`
+
+#### Module System (0.1.10)
+- **Import**: `import module_name`, `import module as alias`
+- **From import**: `from module import item1, item2`
+- **Import alias**: `from module import Item as Alias`
+
+#### Built-ins
+- **Print**: `print(value)` - SINGLE argument only
+- **Range**: `range()` in for loops
+- **Boolean/None literals**: `True`, `False`, `None`
+- **String literals**: `"hello"`, `'world'`
+
+### ❌ FORBIDDEN - Do NOT use these features (v0.1.11+):
+- **NO f-strings**: `f"hello {{x}}"` is NOT allowed yet
+- **NO multi-argument print**: `print(a, b, c)` - use multiple `print()` calls
+- **NO string concatenation**: `"a" + "b"` may not work reliably
+- **NO lists/dicts/sets literals**: `[]`, `{{}}`, `set()` - collections are v0.1.11
+- **NO list comprehensions**: `[x for x in items]` - v0.1.11
+- **NO try/except**: exception handling is v0.1.13
+- **NO lambdas**: lambda expressions are v0.1.14
+- **NO .NET interop imports**: `from system import ...` is v0.1.12
+- **NO isinstance with tuples**: `isinstance(x, (int, str))` - use `or` instead
+- **NO ternary expressions**: `x if cond else y`
+- **NO multiple assignment**: `a, b = 1, 2`
+- **NO walrus operator**: `:=`
 
 ### ⚠️ NAMING RULES - Avoid builtin conflicts:
 - **Do NOT name functions** `double`, `int`, `str`, `float`, `bool`, `len`, `print`, `range`, `abs`, `min`, `max`, `sum`, `round`, `input`, `type`, `list`, `dict`, `set`, `tuple`, `map`, `filter`, `zip`, `any`, `all`, `sorted`, `reversed`, `enumerate`, `chr`, `ord`, `hex`, `bin`, `oct`, `hash`, `id`, `open`, `file`, `exit`, `quit`
@@ -150,14 +209,25 @@ Complexity level: **{complexity}**
 Return ONLY valid Sharpy code with expected output in comments:
 
 ```python
-# Example: Simple arithmetic test
-x: int = 10
-y: int = 20
-result: int = x + y
-print(result)
+# Example: Simple class with method
+class Counter:
+    value: int
+
+    def __init__(self, start: int):
+        self.value = start
+
+    def increment(self) -> None:
+        self.value += 1
+
+    def get(self) -> int:
+        return self.value
+
+c = Counter(10)
+c.increment()
+print(c.get())
 
 # EXPECTED OUTPUT:
-# 30
+# 11
 ```
 
 IMPORTANT:
@@ -171,34 +241,76 @@ IMPORTANT:
 def get_spec_validation_prompt(code: str, spec_context: str) -> str:
     """Generate a prompt for validating code against the spec."""
 
-    return f"""You are a STRICT Sharpy language specification validator for phases 0.1.0-0.1.5.
+    return f"""You are a STRICT Sharpy language specification validator for phases 0.1.0-0.1.10.
 
-## ALLOWED Features (Phases 0.1.0-0.1.5):
+## ALLOWED Features (Phases 0.1.0-0.1.10):
 
-### Variables & Types
+### Variables & Types (0.1.3)
 - Variable declaration: `x: int = 42` or `x = 42` (inference)
-- Primitive types ONLY: `int`, `str`, `bool`, `float`
+- Primitive types: `int`, `str`, `bool`, `float`
+- Nullable types: `int?`, `str?`, etc.
 - Constants: `const NAME: int = 42`
 
-### Operators
-- Arithmetic: `+`, `-`, `*`, `/`, `//`, `%`
+### Operators (0.1.3)
+- Arithmetic: `+`, `-`, `*`, `/`, `//`, `%`, `**`
 - Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`
 - Logical: `and`, `or`, `not`
 - Assignment: `=`, `+=`, `-=`, `*=`, `/=`
+- Null coalescing: `??`
+- Null conditional: `?.`
 
-### Control Flow
+### Control Flow (0.1.4)
 - If: `if condition:` / `elif condition:` / `else:`
 - While: `while condition:`
 - For: `for i in range(n):`, `for i in range(start, end):`, `for i in range(start, end, step):`
 - Break/continue inside loops
+- Pass statement
 
-### Functions
+### Functions (0.1.5)
 - Definition: `def name(param: type) -> return_type:`
-- Positional parameters with explicit types
+- Default parameters: `def foo(x: int = 5) -> int:`
+- Keyword arguments: `foo(x=10, y=20)`
 - Return statement: `return value`
 
+### Classes (0.1.6)
+- Class definition: `class Name:`
+- Fields: `x: int` in class body
+- Constructor: `def __init__(self, ...):`
+- Instance methods: `def method(self) -> type:`
+- Static methods: methods without `self` parameter
+- Field access: `obj.field`, `self.field`
+
+### Inheritance & Interfaces (0.1.7)
+- Single inheritance: `class Child(Parent):`
+- Super calls: `super().__init__(...)`, `super().method()`
+- Abstract classes: `@abstract` decorator
+- Abstract methods: `@abstract` + `...` body
+- Virtual methods: `@virtual` decorator
+- Override methods: `@override` decorator
+- Final: `@final` decorator
+- Interfaces: `interface IName:` with `...` method bodies
+- Multiple interfaces: `class Foo(IBar, IBaz):`
+- Access modifiers: `@private`, `@protected`, `@internal`
+
+### Structs & Enums (0.1.8)
+- Structs: `struct Name:` with fields and methods
+- Enums: `enum Name:` with explicit values (e.g., `RED = 1`)
+- Enum access: `EnumName.VALUE`
+
+### Type System (0.1.9)
+- Nullable types: `T?` syntax
+- Type narrowing: `if x is not None:`
+- Type aliases: `type UserId = int`
+- Basic generics: `class Box[T]:`, `def foo[T](x: T) -> T:`
+- Generic constraints: `[T: IComparable]`
+
+### Module System (0.1.10)
+- Import: `import module`, `import module as alias`
+- From import: `from module import item1, item2`
+- Import alias: `from module import Item as Alias`
+
 ### Built-ins
-- `print(value)` - single argument only, no multi-arg print
+- `print(value)` - single argument only
 - `range()` in for loops only
 
 ### Literals
@@ -208,25 +320,20 @@ def get_spec_validation_prompt(code: str, spec_context: str) -> str:
 - Boolean: `True`, `False`
 - None: `None`
 
-## FORBIDDEN Features (NOT in phases 0.1.0-0.1.5):
+## FORBIDDEN Features (NOT in phases 0.1.0-0.1.10):
 
 ❌ f-strings: `f"text {{var}}"` - REJECT
 ❌ Multi-argument print: `print(a, b, c)` - REJECT (use multiple print calls)
-❌ Default parameters: `def foo(x: int = 5)` - REJECT
-❌ Keyword arguments: `foo(name="value")` - REJECT
-❌ Nullable types: `int?`, `str?` - REJECT
-❌ Classes/structs/interfaces/enums - REJECT
-❌ Lists/dicts/sets: `[]`, `{{}}`, `set()` - REJECT
-❌ Imports: `import`, `from` - REJECT
-❌ Try/except/raise - REJECT
-❌ Lambda expressions - REJECT
-❌ Type aliases - REJECT
+❌ Lists/dicts/sets literals: `[]`, `{{}}`, `set()` - REJECT (v0.1.11)
+❌ List comprehensions: `[x for x in items]` - REJECT (v0.1.11)
+❌ Try/except/raise - REJECT (v0.1.13)
+❌ Lambda expressions - REJECT (v0.1.14)
+❌ .NET interop imports: `from system import ...` - REJECT (v0.1.12)
 ❌ String concatenation: `"a" + "b"` - REJECT
-❌ String formatting methods - REJECT
 ❌ Ternary expressions: `x if cond else y` - REJECT
-❌ List comprehensions - REJECT
 ❌ Multiple assignment: `a, b = 1, 2` - REJECT
 ❌ Walrus operator: `:=` - REJECT
+❌ isinstance with tuple: `isinstance(x, (int, str))` - REJECT
 
 ## Code to Validate
 
@@ -243,7 +350,7 @@ Scan the code line by line. If ANY forbidden feature is used, mark as INVALID.
 If ALL features are from the allowed list:
 ```
 VALID
-The code uses only features from phases 0.1.0-0.1.5.
+The code uses only features from phases 0.1.0-0.1.10.
 ```
 
 If ANY forbidden feature is found:

@@ -165,6 +165,8 @@ def _sharpy_to_python(sharpy_code: str) -> str:
 
     For basic features (phases 0.1.0-0.1.5), Sharpy is syntactically
     identical to Python, so minimal transformation is needed.
+    Note: Classes, structs, enums, interfaces (0.1.6-0.1.10) may need
+    additional conversion or skipping for Python verification.
     """
     lines = []
     for line in sharpy_code.split("\n"):
@@ -239,16 +241,18 @@ def _has_multi_arg_print(line: str) -> bool:
     return False
 
 
-# Feature focuses for code generation - matched to phases 0.1.0-0.1.5
+# Feature focuses for code generation - matched to phases 0.1.0-0.1.10
 # Each focus tests specific compiler functionality
 FEATURE_FOCUSES = [
+    # Phase 0.1.3: Variables & Expressions
     "integer_variables",  # x: int = 42
     "float_variables",  # y: float = 3.14
     "bool_variables",  # flag: bool = True
-    "arithmetic_operators",  # +, -, *, /, //, %
+    "arithmetic_operators",  # +, -, *, /, //, %, **
     "comparison_operators",  # ==, !=, <, <=, >, >=
     "logical_operators",  # and, or, not
     "augmented_assignment",  # +=, -=, *=, /=
+    # Phase 0.1.4: Control Flow
     "if_else_simple",  # basic if/else
     "if_elif_else",  # if/elif/else chains
     "while_loop",  # while with counter
@@ -256,15 +260,50 @@ FEATURE_FOCUSES = [
     "for_range_start_end",  # for i in range(start, end)
     "for_range_with_step",  # for i in range(start, end, step)
     "break_continue",  # break/continue in loops
+    # Phase 0.1.5: Functions
     "simple_function",  # def with parameters, return
     "function_with_print",  # function that prints values
     "function_calling_function",  # one function calls another
+    "function_default_params",  # def foo(x: int, y: int = 5)
+    "function_keyword_args",  # foo(x=10, y=20)
+    # Phase 0.1.6: Classes
+    "simple_class",  # class with fields
+    "class_with_init",  # class with __init__
+    "class_instance_methods",  # instance methods with self
+    "class_static_methods",  # static methods (no self)
+    "class_field_access",  # obj.field, self.field
+    # Phase 0.1.7: Inheritance & Interfaces
+    "class_inheritance",  # class Child(Parent)
+    "super_init_call",  # super().__init__()
+    "abstract_class",  # @abstract class
+    "virtual_override",  # @virtual and @override methods
+    "interface_definition",  # interface with method signatures
+    "interface_implementation",  # class implements interface
+    "access_modifiers",  # @private, @protected
+    # Phase 0.1.8: Structs & Enums
+    "struct_definition",  # struct with fields
+    "enum_definition",  # enum with values
+    "enum_usage",  # using enum values
+    # Phase 0.1.9: Type System
+    "nullable_types",  # T? syntax
+    "null_coalescing",  # ?? operator
+    "null_conditional",  # ?. operator
+    "type_narrowing",  # if x is not None
+    "type_alias",  # type UserId = int
+    "generic_class",  # class Box[T]
+    "generic_function",  # def foo[T](x: T) -> T
+    # Phase 0.1.10: Module System
+    "import_statement",  # import module
+    "from_import",  # from module import item
+    # Combinations
     "nested_if_in_loop",  # if inside for/while
     "loop_in_function",  # for/while inside function
+    "class_with_loop",  # class with method using loop
+    "inheritance_with_override",  # override methods with logic
 ]
 
 # Bias toward simpler tests initially - complex tests often hit unimplemented features
-COMPLEXITY_LEVELS = ["simple", "simple", "medium"]  # 2/3 simple, 1/3 medium
+COMPLEXITY_LEVELS = ["simple", "simple", "simple", "medium", "medium", "complex"]
 
 
 class DogfoodOrchestrator:
@@ -314,46 +353,42 @@ class DogfoodOrchestrator:
     def _load_example_snippets(self) -> None:
         """Load example Sharpy snippets from the snippets directory.
 
-        Filters to only include snippets that use features from phases 0.1.0-0.1.5.
+        Filters to only include snippets that use features from phases 0.1.0-0.1.10.
+        Excludes snippets with v0.1.11+ features like collections, comprehensions, etc.
         """
         snippets_dir = self.config.snippets_dir
         if not snippets_dir.exists():
             return
 
-        # Features that indicate code is beyond phases 0.1.0-0.1.5
+        # Features that indicate code is beyond phases 0.1.0-0.1.10
+        # (collections, comprehensions, exceptions, lambdas, .NET interop)
         forbidden_patterns = [
-            "class ",
-            "struct ",
-            "interface ",
-            "import ",
-            "from ",
             "lambda",
             "try:",
             "except:",
             "raise ",
-            'f"',
-            "f'",
-            "= [",
-            "= {",
-            ": list",
-            ": dict",
-            ": set",
-            "-> list",
-            "-> dict",
-            "Optional[",
-            "?",  # nullable types
-            "@",  # decorators
+            'f"',  # f-strings (v0.1.11)
+            "f'",  # f-strings (v0.1.11)
+            "= [",  # list literals (v0.1.11)
+            "= {",  # dict/set literals (v0.1.11)
+            ": list[",  # list type (v0.1.11)
+            ": dict[",  # dict type (v0.1.11)
+            ": set[",  # set type (v0.1.11)
+            "-> list[",  # list return type (v0.1.11)
+            "-> dict[",  # dict return type (v0.1.11)
+            "Optional[",  # Use T? instead
+            "from system",  # .NET interop (v0.1.12)
+            "from System",  # .NET interop (v0.1.12)
+            " for ",  # comprehensions (approximate check)
         ]
 
         for spy_file in snippets_dir.glob("*.spy"):
             try:
                 content = spy_file.read_text()
                 # Only include smaller snippets without forbidden features
-                if len(content) < 400:
-                    content_lower = content.lower()
+                if len(content) < 500:
                     has_forbidden = any(
-                        pattern.lower() in content_lower
-                        for pattern in forbidden_patterns
+                        pattern in content for pattern in forbidden_patterns
                     )
                     if not has_forbidden:
                         self.example_snippets.append(content)
@@ -423,7 +458,7 @@ class DogfoodOrchestrator:
         if prevalidation_error:
             print(f"  Pre-validation failed: {prevalidation_error}", file=sys.stderr)
             print(
-                "  Skipping (generated code uses features beyond phases 0.1.0-0.1.5)",
+                "  Skipping (generated code uses features beyond phases 0.1.0-0.1.10)",
                 file=sys.stderr,
             )
             return IterationResult(
@@ -598,45 +633,45 @@ class DogfoodOrchestrator:
 
         Returns None if code passes, or an error message if it fails.
         This catches obvious issues before expensive AI validation.
+
+        Validates against phases 0.1.0-0.1.10 (excludes v0.1.11+ features).
         """
         import re
 
-        # Patterns that indicate features beyond phases 0.1.0-0.1.5
+        # Patterns that indicate features beyond phases 0.1.0-0.1.10
+        # Note: Classes, structs, interfaces, enums, imports, decorators,
+        # nullable types, default params, keyword args ARE allowed now
         forbidden_checks = [
-            (r'f"[^"]*\{', "f-string interpolation"),
-            (r"f'[^']*\{", "f-string interpolation"),
-            # Note: multi-argument print is checked separately with _has_multi_arg_print()
-            (r"def\s+\w+\s*\([^)]*=\s*[^,)]+", "default parameter value"),
-            (
-                r"\w+\s*=\s*\w+\s*\(",
-                None,
-            ),  # skip - this is just a function call assignment
-            (r"\(\s*\w+\s*=\s*", "keyword argument"),
-            (r"\bclass\s+\w+", "class definition"),
-            (r"\bstruct\s+\w+", "struct definition"),
-            (r"\binterface\s+\w+", "interface definition"),
-            (r"\bimport\s+", "import statement"),
-            (r"\bfrom\s+\w+\s+import", "from import statement"),
-            (r"\blambda\s*[^:]*:", "lambda expression"),
-            (r"\btry\s*:", "try block"),
-            (r"\bexcept\s*", "except block"),
-            (r"\braise\s+", "raise statement"),
-            (r"\bwith\s+", "with statement"),
-            (r"\basync\s+def", "async function"),
-            (r"\bawait\s+", "await expression"),
-            (r":\s*list\[", "list type annotation"),
-            (r":\s*dict\[", "dict type annotation"),
-            (r":\s*set\[", "set type annotation"),
-            (r":\s*\w+\?", "nullable type annotation"),
-            (r"->\s*\w+\?", "nullable return type"),
-            (r":\s*Optional\[", "Optional type"),
-            (r"\[\s*\]", "empty list literal"),
-            (r"\{\s*\}", "empty dict/set literal"),
-            (r"\[\s*\w+.*for\s+\w+\s+in", "list comprehension"),
-            (r"\{[^}]*for\s+\w+\s+in", "dict/set comprehension"),
-            (r"^\s*@\w+", "decorator"),
-            (r"\bx\s+if\s+.+\s+else\s+", "ternary expression"),
-            (r"\w+\s*,\s*\w+\s*=", "tuple unpacking"),
+            # String features not yet supported
+            (r'f"[^"]*\{', "f-string interpolation (v0.1.11)"),
+            (r"f'[^']*\{", "f-string interpolation (v0.1.11)"),
+            # Collections (v0.1.11)
+            (r":\s*list\[", "list type annotation (v0.1.11)"),
+            (r":\s*dict\[", "dict type annotation (v0.1.11)"),
+            (r":\s*set\[", "set type annotation (v0.1.11)"),
+            (r":\s*Optional\[", "Optional type - use T? instead"),
+            (r"\[\s*\]", "empty list literal (v0.1.11)"),
+            (r"\{\s*\}", "empty dict/set literal (v0.1.11)"),
+            (r"\[\s*\w+.*for\s+\w+\s+in", "list comprehension (v0.1.11)"),
+            (r"\{[^}]*for\s+\w+\s+in", "dict/set comprehension (v0.1.11)"),
+            # Exception handling (v0.1.13)
+            (r"\btry\s*:", "try block (v0.1.13)"),
+            (r"\bexcept\s*", "except block (v0.1.13)"),
+            (r"\braise\s+", "raise statement (v0.1.13)"),
+            # Lambdas (v0.1.14)
+            (r"\blambda\s*[^:]*:", "lambda expression (v0.1.14)"),
+            # Async/await (deferred)
+            (r"\basync\s+def", "async function (deferred)"),
+            (r"\bawait\s+", "await expression (deferred)"),
+            # Context managers (deferred)
+            (r"\bwith\s+", "with statement (deferred)"),
+            # Tuple unpacking
+            (r"\w+\s*,\s*\w+\s*=", "tuple unpacking (not supported)"),
+            # Ternary expression
+            (r"\bx\s+if\s+.+\s+else\s+", "ternary expression (not supported)"),
+            # .NET interop imports (v0.1.12)
+            (r"\bfrom\s+system\s+import", ".NET interop import (v0.1.12)"),
+            (r"\bfrom\s+System\s+import", ".NET interop import (v0.1.12)"),
         ]
 
         lines = code.split("\n")
@@ -654,14 +689,6 @@ class DogfoodOrchestrator:
                 if description is None:
                     continue
                 if re.search(pattern, stripped):
-                    # Special case: skip "keyword argument" false positives for comparisons
-                    if description == "keyword argument":
-                        # Check if it's actually a comparison or assignment in a function call
-                        if re.search(r"\w+\s*==\s*", stripped):
-                            continue
-                        # Skip if it's a regular assignment (no parenthesis before =)
-                        if not re.search(r"\([^)]*\w+\s*=\s*[^=]", stripped):
-                            continue
                     return f"Line {i}: {description} - '{stripped[:50]}...'"
 
         return None
