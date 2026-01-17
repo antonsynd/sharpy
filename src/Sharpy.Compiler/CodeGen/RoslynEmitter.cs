@@ -877,9 +877,9 @@ public class RoslynEmitter
         else if (hasMainFunction && executableStatements.Count > 0)
         {
             // There's a main function and also module-level statements
-            // For now, just ignore them or add to Main after the user's main is called
-            // This is a corner case we'll handle later
-            _context.Logger.LogWarning($"{executableStatements.Count} module-level statement(s) ignored because a 'main' function is defined", 0, 0);
+            // This is an error - when main() is defined, it will be automatically invoked
+            // Users should not have executable statements alongside a main function definition
+            _context.AddError("Cannot have module-level executable statements when a 'main' function is defined. The main function is automatically invoked as the entry point.");
         }
         else if (!_context.IsEntryPoint && executableStatements.Count > 0)
         {

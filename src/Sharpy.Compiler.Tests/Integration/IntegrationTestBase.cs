@@ -105,6 +105,17 @@ public abstract class IntegrationTestBase
             Output.WriteLine(generatedCSharp);
             Output.WriteLine("====================");
 
+            // Check for code generation errors
+            if (codeGenContext.HasErrors)
+            {
+                return new ExecutionResult
+                {
+                    Success = false,
+                    CompilationErrors = codeGenContext.Errors.ToList(),
+                    GeneratedCSharp = generatedCSharp
+                };
+            }
+
             // Phase 5: Compile C# to assembly
             var syntaxTree = CSharpSyntaxTree.ParseText(generatedCSharp);
 

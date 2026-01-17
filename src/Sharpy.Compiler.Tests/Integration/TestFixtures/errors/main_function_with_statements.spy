@@ -1,0 +1,17 @@
+# Error test: main() function defined with other executable statements
+# This should be an error because main() is automatically invoked
+
+x: int = 42
+print(x)  # This is an executable statement
+
+def helper() -> int:
+    return 10
+
+y = helper()  # This is also an executable statement
+print(y)
+
+def main() -> None:
+    print("In main")
+
+# The above executable statements (print(x), y = helper(), print(y))
+# are not allowed when main() is defined

@@ -434,6 +434,16 @@ public class ProjectCompiler
 
             fileMetrics.EndPhase();
 
+            // Check for code generation errors
+            if (codeGenContext.HasErrors)
+            {
+                foreach (var error in codeGenContext.Errors)
+                {
+                    _errors.Add($"{sourceFile}: error: {error}");
+                }
+                continue;
+            }
+
             // Log per-file code gen metrics at Debug level
             if (_logger.IsEnabled(CompilerLogLevel.Debug))
             {

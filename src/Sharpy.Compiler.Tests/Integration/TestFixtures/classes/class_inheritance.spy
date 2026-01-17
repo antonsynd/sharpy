@@ -3,7 +3,7 @@
 interface IMovable:
     def move(self, distance: int) -> None:
         ...
-    
+
     def get_position(self) -> int:
         ...
 
@@ -11,29 +11,29 @@ interface IMovable:
 class Vehicle(IMovable):
     position: int
     name: str
-    
+
     def __init__(self, name: str):
         self.name = name
         self.position = 0
-    
+
     @virtual
     def move(self, distance: int) -> None:
         self.position += distance
-    
+
     def get_position(self) -> int:
         return self.position
-    
+
     @abstract
     def describe(self) -> None:
         ...
 
 class Car(Vehicle):
     wheels: int
-    
+
     def __init__(self, name: str, wheels: int):
         super().__init__(name)
         self.wheels = wheels
-    
+
     @override
     def describe(self) -> None:
         print("Car description:")
@@ -42,11 +42,11 @@ class Car(Vehicle):
 
 class Motorcycle(Vehicle):
     has_sidecar: bool
-    
+
     def __init__(self, name: str, has_sidecar: bool):
         super().__init__(name)
         self.has_sidecar = has_sidecar
-    
+
     @override
     def move(self, distance: int) -> None:
         multiplier: int = 1
@@ -55,7 +55,7 @@ class Motorcycle(Vehicle):
         else:
             multiplier = 2
         self.position += distance * multiplier
-    
+
     @override
     def describe(self) -> None:
         print("Motorcycle description:")
@@ -68,28 +68,14 @@ def test_vehicle(v: Vehicle) -> None:
 
 def main() -> None:
     print("Testing inheritance")
-    
+
     car: Car = Car("Sedan", 4)
     test_vehicle(car)
-    
+
     bike: Motorcycle = Motorcycle("Speedy", False)
     test_vehicle(bike)
-    
+
     bike_with_sidecar: Motorcycle = Motorcycle("Cruiser", True)
     test_vehicle(bike_with_sidecar)
-    
-    print("All tests complete")
 
-# EXPECTED OUTPUT:
-# Testing inheritance
-# Car description:
-# Sedan
-# 4
-# 10
-# Motorcycle description:
-# Speedy
-# 20
-# Motorcycle description:
-# Cruiser
-# 10
-# All tests complete
+    print("All tests complete")

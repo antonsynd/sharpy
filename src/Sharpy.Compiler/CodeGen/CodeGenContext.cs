@@ -10,10 +10,26 @@ public class CodeGenContext
 {
     private int _indentLevel = 0;
     private const int IndentSize = 4;
+    private readonly List<string> _errors = new();
 
     public SymbolTable SymbolTable { get; }
     public BuiltinRegistry Builtins { get; }
     public string? SourceFilePath { get; set; }
+
+    /// <summary>
+    /// Errors collected during code generation
+    /// </summary>
+    public IReadOnlyList<string> Errors => _errors;
+
+    /// <summary>
+    /// Returns true if there are any errors
+    /// </summary>
+    public bool HasErrors => _errors.Count > 0;
+
+    /// <summary>
+    /// Add an error during code generation
+    /// </summary>
+    public void AddError(string message) => _errors.Add(message);
 
     /// <summary>
     /// Project root namespace (for multi-file compilation)

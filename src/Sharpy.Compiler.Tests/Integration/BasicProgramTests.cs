@@ -28,11 +28,11 @@ print(""Hello, World!"")
     [Fact]
     public void HelloWorld_WithFunction_PrintsCorrectly()
     {
+        // main() function is automatically invoked as the entry point
+        // No explicit main() call is needed (or allowed) when main is defined
         var source = @"
 def main():
     print(""Hello, World!"")
-
-main()
 ";
 
         var result = CompileAndExecute(source);

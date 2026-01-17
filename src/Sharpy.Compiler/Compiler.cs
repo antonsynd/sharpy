@@ -169,6 +169,17 @@ public class Compiler
             var csharpCode = compilationUnit.ToFullString();
             metrics.EndPhase();
 
+            // Check for code generation errors
+            if (codeGenContext.HasErrors)
+            {
+                return new CompilationResult
+                {
+                    Success = false,
+                    Errors = codeGenContext.Errors.ToList(),
+                    Metrics = metrics
+                };
+            }
+
             return new CompilationResult
             {
                 Success = true,

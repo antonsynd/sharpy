@@ -1,0 +1,16 @@
+# Test arithmetic operators with int variables
+a: int = 15
+b: int = 4
+
+# Basic arithmetic
+sum_result: int = a + b
+diff_result: int = a - b
+prod_result: int = a * b
+div_result: int = a // b
+mod_result: int = a % b
+
+print(sum_result)
+print(diff_result)
+print(prod_result)
+print(div_result)
+print(mod_result)
