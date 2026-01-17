@@ -12,6 +12,40 @@ from pathlib import Path
 from typing import Optional
 
 
+def _extract_program_output(actual_output: str) -> str:
+    """Extract just the program output from actual_output.txt.
+
+    The actual_output.txt contains lines like:
+        Successfully compiled to: /path/to/exe
+        === Running Program ===
+        <actual program output here>
+
+    This function extracts only the program output portion.
+    Note: The dogfood tool strips trailing whitespace from output, but
+    Console.WriteLine actually produces a trailing newline, so we add it back.
+    """
+    lines = actual_output.split("\n")
+    output_lines = []
+    in_output = False
+
+    for line in lines:
+        if "=== Running Program ===" in line:
+            in_output = True
+            continue
+        if in_output:
+            output_lines.append(line)
+
+    # Join and preserve the trailing newline if present
+    result = "\n".join(output_lines)
+    # Remove leading empty line if present (from the blank line after "=== Running Program ===")
+    if result.startswith("\n"):
+        result = result[1:]
+    # Add trailing newline since print() adds one but dogfood strips it
+    if result and not result.endswith("\n"):
+        result += "\n"
+    return result
+
+
 def sanitize_test_name(name: str) -> str:
     """Convert a directory name to a valid test name.
 
@@ -121,6 +155,7 @@ def convert_dogfood_to_test(
     """
     # Check required files
     source_file = dogfood_dir / "source.spy"
+    actual_output_file = dogfood_dir / "actual_output.txt"
     expected_file = dogfood_dir / "expected_output.txt"
     metadata_file = dogfood_dir / "metadata.json"
 
@@ -181,10 +216,16 @@ def convert_dogfood_to_test(
         return test_spy
 
     # Read expected output for success tests
-    if expected_file.exists():
+    # Prefer actual_output.txt (compiler output) over expected_output.txt (AI-generated)
+    # because actual_output.txt has the correct floating-point precision
+    if actual_output_file.exists():
+        expected_output = _extract_program_output(actual_output_file.read_text())
+    elif expected_file.exists():
         expected_output = expected_file.read_text()
     else:
-        print(f"  Error: No expected_output.txt found for success test")
+        print(
+            f"  Error: No actual_output.txt or expected_output.txt found for success test"
+        )
         return None
 
     # Write test files

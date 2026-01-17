@@ -452,7 +452,10 @@ def extract_expected_output(code: str) -> Optional[str]:
                 break
 
     if expected_lines:
-        return "\n".join(expected_lines).strip()
+        # Join lines and strip trailing whitespace from each line,
+        # but preserve the structure. Add trailing newline since print() adds one.
+        result = "\n".join(expected_lines).rstrip()
+        return result + "\n" if result else None
     return None
 
 
