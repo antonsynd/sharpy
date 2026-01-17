@@ -1,0 +1,2 @@
+# Error: empty braces shorthand is not valid
+x: {} = {}

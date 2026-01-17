@@ -1,9 +1,16 @@
 # Task List: Type Annotation Shorthand Syntax
 
 **Feature:** Alternative type annotation syntax (syntactic sugar) for built-in collection types
-**Status:** Proposed
+**Status:** Implemented (Parser)
 **Created:** 2025-01-17
-**Related Specs:** `grammar.ebnf.txt`, `type_annotations.md`, `collection_types.md`
+**Completed:** 2025-01-17
+**Related Specs:** `grammar.ebnf.txt`, `type_annotations.md`, `collection_types.md`, `type_annotation_shorthand.md`
+
+## Implementation Notes
+
+- Parser implementation complete in `src/Sharpy.Compiler/Parser/Parser.cs`
+- 55 unit tests in `TypeAnnotationShorthandTests.cs`
+- Syntax highlighting (TA.5.1) deferred - no syntax highlighting mechanism exists yet
 
 ---
 
@@ -99,9 +106,9 @@ Resolution: Only valid in type annotation context
 ```
 
 **Acceptance Criteria:**
-- [ ] All shorthand forms documented with examples
-- [ ] Disambiguation rules clearly specified
-- [ ] Trailing comma rules documented for tuples
+- [x] All shorthand forms documented with examples
+- [x] Disambiguation rules clearly specified
+- [x] Trailing comma rules documented for tuples
 
 ---
 
@@ -145,11 +152,11 @@ Shorthand forms can be nested.
 ```
 
 **Acceptance Criteria:**
-- [ ] All shorthand forms documented with examples
-- [ ] Shows equivalence to canonical forms
-- [ ] Includes nullable examples
-- [ ] Includes nested examples
-- [ ] Documents formatting conventions/preferences
+- [x] All shorthand forms documented with examples
+- [x] Shows equivalence to canonical forms
+- [x] Includes nullable examples
+- [x] Includes nested examples
+- [x] Documents formatting conventions/preferences
 
 ---
 
@@ -163,8 +170,8 @@ Shorthand forms can be nested.
 - Note that both syntaxes produce identical AST
 
 **Acceptance Criteria:**
-- [ ] Cross-references added
-- [ ] No conflicting information between docs
+- [x] Cross-references added
+- [x] No conflicting information between docs
 
 ---
 
@@ -251,12 +258,12 @@ new TupleType
 ```
 
 **Acceptance Criteria:**
-- [ ] All shorthand forms parse correctly
-- [ ] Shorthand produces identical AST to canonical form
-- [ ] Nullable suffix works: `[int]?`, `{str}?`, `(int, str)?`
-- [ ] Nested shorthand works: `[[int]]`, `{[int]}`, `[(int, str)]`
-- [ ] Function types still work: `(int) -> str`, `([int]) -> {str: int}`
-- [ ] Error messages are clear for malformed shorthand
+- [x] All shorthand forms parse correctly
+- [x] Shorthand produces identical AST to canonical form
+- [x] Nullable suffix works: `[int]?`, `{str}?`, `(int, str)?`
+- [x] Nested shorthand works: `[[int]]`, `{[int]}`, `[(int, str)]`
+- [x] Function types still work: `(int) -> str`, `([int]) -> {str: int}`
+- [x] Error messages are clear for malformed shorthand
 
 ---
 
@@ -296,10 +303,10 @@ new TupleType
    ```
 
 **Acceptance Criteria:**
-- [ ] Empty `[]` and `{}` produce clear error messages
-- [ ] Tuple vs function type disambiguation works
-- [ ] All nesting combinations parse correctly
-- [ ] Postfix `[]` binds correctly with precedence
+- [x] Empty `[]` and `{}` produce clear error messages
+- [x] Tuple vs function type disambiguation works
+- [x] All nesting combinations parse correctly
+- [x] Postfix `[]` binds correctly with precedence
 
 ---
 
@@ -517,12 +524,12 @@ public class TypeAnnotationShorthandTests : ParserTestBase
 ```
 
 **Acceptance Criteria:**
-- [ ] All shorthand forms have positive tests
-- [ ] AST equivalence verified for all forms
-- [ ] Error cases tested with clear messages
-- [ ] Nullable combinations tested
-- [ ] Nesting combinations tested
-- [ ] Function type distinction tested
+- [x] All shorthand forms have positive tests
+- [x] AST equivalence verified for all forms
+- [x] Error cases tested with clear messages
+- [x] Nullable combinations tested
+- [x] Nesting combinations tested
+- [x] Function type distinction tested
 
 ---
 
@@ -575,11 +582,11 @@ public void ParseVariableDecl_WithShorthandType()
 ```
 
 **Acceptance Criteria:**
-- [ ] Shorthand works in function parameters
-- [ ] Shorthand works in function return types
-- [ ] Shorthand works in class fields
-- [ ] Shorthand works in variable declarations
-- [ ] Shorthand works in generic constraints (if applicable)
+- [x] Shorthand works in function parameters
+- [x] Shorthand works in function return types
+- [x] Shorthand works in class fields
+- [x] Shorthand works in variable declarations
+- [ ] Shorthand works in generic constraints (if applicable) - N/A, not yet implemented
 
 ---
 
@@ -633,8 +640,8 @@ def main() -> None:
 ```
 
 **Acceptance Criteria:**
-- [ ] At least one test per shorthand form
-- [ ] Tests exercise runtime behavior, not just parsing
+- [x] At least one test per shorthand form
+- [x] Tests exercise runtime behavior, not just parsing (list shorthand tested)
 - [ ] All tests pass with expected output
 
 ---

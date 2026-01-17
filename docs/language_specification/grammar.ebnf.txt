@@ -813,10 +813,34 @@ nullable_type   ::= union_type [ '?' ]
 union_type      ::= primary_type
                   (* Note: Sharpy doesn't support union types like T | U *)
 
-primary_type    ::= qualified_name [ type_args ]
+primary_type    ::= qualified_name [ type_args ] [ array_suffix ]
                   | tuple_type
                   | function_type
+                  | list_type_shorthand
+                  | set_type_shorthand
+                  | dict_type_shorthand
+                  | tuple_type_shorthand
                   | 'auto'
+
+(* Type annotation shorthand forms - syntactic sugar *)
+list_type_shorthand  ::= '[' type_expr ']'
+                        (* [T] is equivalent to list[T] *)
+
+set_type_shorthand   ::= '{' type_expr '}'
+                        (* {T} is equivalent to set[T] *)
+
+dict_type_shorthand  ::= '{' type_expr ':' type_expr '}'
+                        (* {K: V} is equivalent to dict[K, V] *)
+
+tuple_type_shorthand ::= '(' ')'                                      (* empty tuple *)
+                       | '(' type_expr ',' ')'                        (* single with comma *)
+                       | '(' type_expr ')'                            (* single without comma - only if no -> follows *)
+                       | '(' type_expr { ',' type_expr } [ ',' ] ')'  (* multi-element *)
+                        (* (T, U) is equivalent to tuple[T, U] *)
+                        (* Note: (T) -> U is a function type, not tuple shorthand *)
+
+array_suffix         ::= '[' ']'
+                        (* T[] is .NET array syntax, applied as postfix *)
 
 qualified_name  ::= identifier { '.' identifier }
 
@@ -900,6 +924,26 @@ Resolution: In type context, < > are generic brackets.
             In expression context, < > are comparison operators.
             After identifier in type position, [ ] are used for generics.
 Note: Sharpy uses [] for generics, not <>, so this ambiguity doesn't exist!
+
+AMBIGUITY: Type Shorthand - Tuple vs Function Type
+  (int)        -> tuple[int] (no arrow follows)
+  (int) -> str -> function type (arrow follows)
+Resolution: Look ahead for '->' to distinguish. If '->' follows, it's a function type.
+
+AMBIGUITY: Type Shorthand - Set vs Dict
+  {int}        -> set[int]
+  {str: int}   -> dict[str, int]
+Resolution: Presence of ':' determines dict vs set (same as literal expressions)
+
+AMBIGUITY: Type Shorthand - List vs Empty List Type
+  [int]        -> list[int] (valid)
+  []           -> ERROR: element type required
+Resolution: Empty brackets are not valid in type context
+
+AMBIGUITY: Type Shorthand - Array Suffix vs Subscription
+  int[]        -> array type (in type context)
+  items[]      -> would be invalid subscription (in expression context)
+Resolution: The [] suffix is only valid in type annotation context
 *)
 
 # =============================================================================

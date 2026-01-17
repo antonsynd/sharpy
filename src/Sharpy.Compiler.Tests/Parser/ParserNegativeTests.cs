@@ -290,11 +290,16 @@ public class ParserNegativeTests
     }
 
     [Fact]
-    public void RejectsEmptyGenericArguments()
+    public void ArraySuffixOnTypeIsValid()
     {
+        // With shorthand syntax, list[] is valid and means "array of list"
+        // This is now valid syntax: array[list] (though semantically list may need type args)
         var source = "x: list[]";
-        Action act = () => Parse(source);
-        act.Should().Throw<ParserError>();
+        var module = Parse(source);
+        var varDecl = module.Body[0].Should().BeOfType<VariableDeclaration>().Subject;
+        varDecl.Type.Name.Should().Be("array");
+        varDecl.Type.TypeArguments.Should().HaveCount(1);
+        varDecl.Type.TypeArguments[0].Name.Should().Be("list");
     }
 
     #endregion

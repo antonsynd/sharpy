@@ -2696,6 +2696,75 @@ public class Parser
         var startLine = Current.Line;
         var startColumn = Current.Column;
 
+        TypeAnnotation baseType;
+
+        // Check for shorthand forms first
+        if (Current.Type == TokenType.LeftBracket)
+        {
+            // [T] list shorthand
+            baseType = ParseListTypeShorthand(startLine, startColumn);
+        }
+        else if (Current.Type == TokenType.LeftBrace)
+        {
+            // {T} set or {K: V} dict shorthand
+            baseType = ParseSetOrDictTypeShorthand(startLine, startColumn);
+        }
+        else if (Current.Type == TokenType.LeftParen)
+        {
+            // () empty tuple, (T) single tuple, (T, U) tuple, or (T) -> U function type
+            baseType = ParseTupleOrFunctionTypeShorthand(startLine, startColumn);
+        }
+        else
+        {
+            // Standard type: identifier with optional generic args
+            baseType = ParseStandardTypeAnnotation(startLine, startColumn);
+        }
+
+        // Check for array suffix: T[]
+        while (Current.Type == TokenType.LeftBracket && Peek().Type == TokenType.RightBracket)
+        {
+            Advance(); // consume '['
+            Advance(); // consume ']'
+
+            var endLine = Peek(-1).Line;
+            var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+            baseType = new TypeAnnotation
+            {
+                Name = "array",
+                TypeArguments = new List<TypeAnnotation> { baseType },
+                IsNullable = false,
+                LineStart = startLine,
+                ColumnStart = startColumn,
+                LineEnd = endLine,
+                ColumnEnd = endColumn
+            };
+        }
+
+        // Nullable type suffix T?
+        if (Current.Type == TokenType.Question)
+        {
+            Advance();
+            var endLine = Peek(-1).Line;
+            var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+            baseType = baseType with
+            {
+                IsNullable = true,
+                LineEnd = endLine,
+                ColumnEnd = endColumn
+            };
+        }
+
+        return baseType;
+    }
+
+    /// <summary>
+    /// Parses standard type annotation: identifier with optional generic arguments.
+    /// Handles: int, list[T], dict[K, V], auto, None
+    /// </summary>
+    private TypeAnnotation ParseStandardTypeAnnotation(int startLine, int startColumn)
+    {
         // Handle 'auto' keyword for type inference
         string name;
         if (Current.Type == TokenType.Auto)
@@ -2715,10 +2784,9 @@ public class Parser
         }
 
         var typeArgs = new List<TypeAnnotation>();
-        var isNullable = false;
 
         // Generic type arguments [T, U]
-        if (Current.Type == TokenType.LeftBracket)
+        if (Current.Type == TokenType.LeftBracket && Peek().Type != TokenType.RightBracket)
         {
             Advance();
             do
@@ -2733,13 +2801,6 @@ public class Parser
             Expect(TokenType.RightBracket);
         }
 
-        // Nullable type suffix T?
-        if (Current.Type == TokenType.Question)
-        {
-            isNullable = true;
-            Advance();
-        }
-
         var endLine = Peek(-1).Line;
         var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
 
@@ -2747,7 +2808,170 @@ public class Parser
         {
             Name = name,
             TypeArguments = typeArgs,
-            IsNullable = isNullable,
+            IsNullable = false,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = endLine,
+            ColumnEnd = endColumn
+        };
+    }
+
+    /// <summary>
+    /// Parses [T] list shorthand. Produces same AST as list[T].
+    /// </summary>
+    private TypeAnnotation ParseListTypeShorthand(int startLine, int startColumn)
+    {
+        Advance(); // consume '['
+
+        // Check for empty brackets - error case
+        if (Current.Type == TokenType.RightBracket)
+        {
+            throw new ParserError("List type shorthand requires an element type: [T]", Current.Line, Current.Column);
+        }
+
+        var elementType = ParseTypeAnnotation();
+        Expect(TokenType.RightBracket);
+
+        var endLine = Peek(-1).Line;
+        var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+        return new TypeAnnotation
+        {
+            Name = "list",
+            TypeArguments = new List<TypeAnnotation> { elementType },
+            IsNullable = false,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = endLine,
+            ColumnEnd = endColumn
+        };
+    }
+
+    /// <summary>
+    /// Parses {T} set or {K: V} dict shorthand.
+    /// Presence of ':' distinguishes dict from set.
+    /// </summary>
+    private TypeAnnotation ParseSetOrDictTypeShorthand(int startLine, int startColumn)
+    {
+        Advance(); // consume '{'
+
+        // Check for empty braces - error case
+        if (Current.Type == TokenType.RightBrace)
+        {
+            throw new ParserError("Set/dict type shorthand requires type arguments: {T} for set or {K: V} for dict", Current.Line, Current.Column);
+        }
+
+        var firstType = ParseTypeAnnotation();
+
+        // Check if this is a dict (has ':')
+        if (Current.Type == TokenType.Colon)
+        {
+            Advance(); // consume ':'
+            var valueType = ParseTypeAnnotation();
+            Expect(TokenType.RightBrace);
+
+            var endLine = Peek(-1).Line;
+            var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+            return new TypeAnnotation
+            {
+                Name = "dict",
+                TypeArguments = new List<TypeAnnotation> { firstType, valueType },
+                IsNullable = false,
+                LineStart = startLine,
+                ColumnStart = startColumn,
+                LineEnd = endLine,
+                ColumnEnd = endColumn
+            };
+        }
+
+        // Otherwise it's a set
+        Expect(TokenType.RightBrace);
+
+        var setEndLine = Peek(-1).Line;
+        var setEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+        return new TypeAnnotation
+        {
+            Name = "set",
+            TypeArguments = new List<TypeAnnotation> { firstType },
+            IsNullable = false,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = setEndLine,
+            ColumnEnd = setEndColumn
+        };
+    }
+
+    /// <summary>
+    /// Parses tuple shorthand or function type.
+    /// () = empty tuple, (T) = single tuple, (T, U) = tuple, (T) -> U = function type.
+    /// Presence of '->' distinguishes function type from tuple.
+    /// </summary>
+    private TypeAnnotation ParseTupleOrFunctionTypeShorthand(int startLine, int startColumn)
+    {
+        Advance(); // consume '('
+
+        var types = new List<TypeAnnotation>();
+        var hasTrailingComma = false;
+
+        // Parse type list
+        if (Current.Type != TokenType.RightParen)
+        {
+            do
+            {
+                types.Add(ParseTypeAnnotation());
+
+                if (Current.Type == TokenType.Comma)
+                {
+                    hasTrailingComma = true;
+                    Advance();
+                }
+                else
+                {
+                    hasTrailingComma = false;
+                    break;
+                }
+            } while (Current.Type != TokenType.RightParen);
+        }
+
+        Expect(TokenType.RightParen);
+
+        // Check if this is a function type (has '->')
+        if (Current.Type == TokenType.Arrow)
+        {
+            Advance(); // consume '->'
+            var returnType = ParseTypeAnnotation();
+
+            var funcEndLine = Peek(-1).Line;
+            var funcEndColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+            // For function types, we return a special representation
+            // The Name "function" with TypeArguments containing params + return type
+            // Last type argument is the return type
+            var funcTypeArgs = new List<TypeAnnotation>(types) { returnType };
+
+            return new TypeAnnotation
+            {
+                Name = "function",
+                TypeArguments = funcTypeArgs,
+                IsNullable = false,
+                LineStart = startLine,
+                ColumnStart = startColumn,
+                LineEnd = funcEndLine,
+                ColumnEnd = funcEndColumn
+            };
+        }
+
+        // It's a tuple
+        var endLine = Peek(-1).Line;
+        var endColumn = Peek(-1).Column + Peek(-1).Value.Length;
+
+        return new TypeAnnotation
+        {
+            Name = "tuple",
+            TypeArguments = types,
+            IsNullable = false,
             LineStart = startLine,
             ColumnStart = startColumn,
             LineEnd = endLine,
