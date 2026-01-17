@@ -637,7 +637,7 @@ f: auto = 200
         Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
     }
 
-    [Fact(Skip = "TODO: Augmented assignment type checking issue - '+=' with const operand fails semantic analysis")]
+    [Fact]
     public void MixedDeclarations_WithOperations_CompilesAndRuns()
     {
         var source = @"

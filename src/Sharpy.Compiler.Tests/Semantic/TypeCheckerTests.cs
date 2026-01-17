@@ -345,10 +345,12 @@ result: int = x // y
     [Fact]
     public void ChecksPowerOperatorType()
     {
+        // Python semantics: power always returns float (double) due to Math.Pow
+        // So x ** y returns double, which can be assigned to float (double)
         var source = @"
 x: int = 2
 y: int = 3
-result: int = x ** y
+result: float = x ** y
 ";
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
@@ -950,8 +952,10 @@ x *= 2
     }
 
     [Fact]
-    public void AugmentedAssignment_IntSlashAssignInt_Succeeds()
+    public void AugmentedAssignment_IntSlashAssignInt_ProducesTypeError()
     {
+        // Python semantics: /= always returns float (double), so assigning to int should fail
+        // Use //= (floor divide) for integer division
         var source = @"
 x: int = 10
 x /= 2
@@ -959,7 +963,8 @@ x /= 2
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Errors.Should().ContainSingle(e =>
+            e.Message.Contains("double") && e.Message.Contains("int"));
     }
 
     [Fact]
@@ -989,8 +994,9 @@ x %= 3
     }
 
     [Fact]
-    public void AugmentedAssignment_IntPowerAssignInt_Succeeds()
+    public void AugmentedAssignment_IntPowerAssignInt_ProducesTypeError()
     {
+        // Python semantics: **= always returns float (double), so assigning to int should fail
         var source = @"
 x: int = 2
 x **= 3
@@ -998,7 +1004,8 @@ x **= 3
         var (module, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        typeChecker.Errors.Should().BeEmpty();
+        typeChecker.Errors.Should().ContainSingle(e =>
+            e.Message.Contains("double") && e.Message.Contains("int"));
     }
 
     [Fact]

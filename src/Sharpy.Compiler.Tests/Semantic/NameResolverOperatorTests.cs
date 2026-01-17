@@ -306,9 +306,7 @@ class BadAdd:
 
     #region Overload Tests
 
-    // Note: Method overloading is not yet fully supported in Sharpy's symbol table.
-    // This test is skipped until overload resolution is implemented.
-    [Fact(Skip = "Method overloading not yet supported in symbol table")]
+    [Fact]
     public void RegistersMultipleOverloadsOfSameOperator()
     {
         var source = @"

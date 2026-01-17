@@ -366,9 +366,20 @@ public class NameResolver
                 _symbolTable.Define(funcSymbol);
             }
         }
+        else if (OperatorSignatureValidator.IsOperatorDunder(method.Name) ||
+                 ProtocolSignatureValidator.IsProtocolDunder(method.Name))
+        {
+            // For operator and protocol dunder methods, allow multiple overloads
+            // Only register the first overload in the symbol table to avoid duplicate name errors
+            // All overloads are tracked in the OperatorMethods/ProtocolMethods dictionaries
+            if (!_symbolTable.TryDefine(funcSymbol))
+            {
+                _logger.LogDebug($"Method overload registered (not in symbol table): {owningType.Name}.{method.Name}");
+            }
+        }
         else
         {
-            // For non-constructor methods, register in symbol table normally
+            // For regular methods, register in symbol table normally
             _symbolTable.Define(funcSymbol);
         }
 

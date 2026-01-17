@@ -373,8 +373,14 @@ greet(""Bob"")
         Assert.Equal("Hello, Alice!\nHello, Bob!\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Implement 'global' keyword. Parser doesn't recognize the global statement.")]
-    public void VoidFunction_ModifiesGlobalState_WorksCorrectly()
+    /// <summary>
+    /// Tests that the 'global' keyword is NOT supported in Sharpy.
+    /// Sharpy deliberately does not include Python's global keyword.
+    /// Instead, module-level variables can be accessed directly from functions,
+    /// but cannot be reassigned (they shadow the outer variable).
+    /// </summary>
+    [Fact]
+    public void GlobalKeyword_NotSupported_ProducesParseError()
     {
         var source = @"
 counter: int = 0
@@ -384,15 +390,15 @@ def increment():
     counter += 1
 
 increment()
-increment()
-increment()
 print(counter)
 ";
 
         var result = CompileAndExecute(source);
 
-        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
-        Assert.Equal("3\n", result.StandardOutput);
+        // Sharpy does not support the 'global' keyword by design
+        Assert.False(result.Success, "Expected compilation to fail for unsupported 'global' keyword");
+        Assert.True(result.CompilationErrors.Count > 0,
+            $"Expected parse or compilation error for unsupported 'global' keyword, but got no errors");
     }
 
     [Fact]

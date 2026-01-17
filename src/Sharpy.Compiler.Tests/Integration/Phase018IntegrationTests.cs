@@ -539,11 +539,7 @@ print(r.perimeter())
 
     #region Basic Enum Tests
 
-    // NOTE: Enum tests are currently skipped because the code generator creates C# enums
-    // but enums in Sharpy should resolve to their underlying int/str values when accessed.
-    // This is a known limitation that needs to be addressed in the code generator.
-
-    [Fact(Skip = "Enum values don't resolve to underlying int values - see code gen issue")]
+    [Fact]
     public void BasicIntEnum_CompilesAndRuns()
     {
         var source = @"
@@ -561,7 +557,7 @@ print(s)
         Assert.Equal("1\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Enum values don't resolve to underlying str values - see code gen issue")]
+    [Fact]
     public void BasicStringEnum_CompilesAndRuns()
     {
         var source = @"
@@ -579,7 +575,7 @@ print(c)
         Assert.Equal("red\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Enum values don't resolve to underlying int values - see code gen issue")]
+    [Fact]
     public void EnumUsage_MultipleMembers()
     {
         var source = @"
@@ -598,7 +594,7 @@ print(Status.INACTIVE)
         Assert.Equal("0\n1\n2\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Enum values don't resolve to underlying int values - see code gen issue")]
+    [Fact]
     public void EnumAssignment_WorksCorrectly()
     {
         var source = @"
@@ -620,7 +616,7 @@ print(s1)
         Assert.Equal("0\n1\n2\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Enum values don't resolve to underlying str values - see code gen issue")]
+    [Fact]
     public void StringEnum_AllMembers()
     {
         var source = @"
@@ -641,7 +637,7 @@ print(LogLevel.ERROR)
         Assert.Equal("debug\ninfo\nwarning\nerror\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Enum values don't resolve to underlying int values - see code gen issue")]
+    [Fact]
     public void EnumWithNegativeValues_Works()
     {
         var source = @"
@@ -660,7 +656,7 @@ print(Direction.DOWN)
         Assert.Equal("-1\n0\n1\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Enum values don't resolve to underlying int values - see code gen issue")]
+    [Fact]
     public void EnumWithLargeValues_Works()
     {
         var source = @"
@@ -683,7 +679,7 @@ print(Flags.FLAG_C)
 
     #region Enum with Conditionals Tests
 
-    [Fact(Skip = "Enum values don't resolve to underlying int values - see code gen issue")]
+    [Fact]
     public void EnumInConditional_Works()
     {
         var source = @"
@@ -704,7 +700,7 @@ else:
         Assert.Equal("Active\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Enum values don't resolve to underlying int values - see code gen issue")]
+    [Fact]
     public void EnumComparison_MultipleConditions()
     {
         var source = @"
@@ -731,7 +727,7 @@ else:
 
     #region Struct and Enum Integration Tests
 
-    [Fact(Skip = "Enum values don't resolve to underlying int values - see code gen issue")]
+    [Fact]
     public void StructWithEnumField_CompilesAndRuns()
     {
         var source = @"
@@ -758,7 +754,7 @@ print(t.status)
         Assert.Equal("My Task\n1\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Enum values don't resolve to underlying int values - see code gen issue")]
+    [Fact]
     public void StructMethod_UsingEnum()
     {
         var source = @"
@@ -792,7 +788,7 @@ print(t.status)
         Assert.Equal("0\n1\n2\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Enum values don't resolve to underlying int values - see code gen issue")]
+    [Fact]
     public void MultipleStructs_WithEnum()
     {
         var source = @"
@@ -916,7 +912,7 @@ print(r.perimeter())
 
     #region Multiple Enums Tests
 
-    [Fact(Skip = "Enum values don't resolve to underlying int values - see code gen issue")]
+    [Fact]
     public void MultipleEnums_IndependentUsage()
     {
         var source = @"
@@ -939,7 +935,7 @@ print(p)
         Assert.Equal("1\n20\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Enum values don't resolve to underlying int/str values - see code gen issue")]
+    [Fact]
     public void MixedEnumTypes_IntAndString()
     {
         var source = @"
@@ -1055,7 +1051,7 @@ print(""Created"")
         Assert.Equal("Created\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "Enum values don't resolve to underlying int values - see code gen issue")]
+    [Fact]
     public void EdgeCase_SingleMemberEnum()
     {
         var source = @"
@@ -1100,7 +1096,7 @@ print(p.z)
 
     #region Comprehensive Integration Tests
 
-    [Fact(Skip = "Enum values don't resolve to underlying int values - see code gen issue")]
+    [Fact]
     public void ComprehensiveTest_StructsAndEnums_Together()
     {
         var source = @"
@@ -1200,7 +1196,7 @@ print(c.contains_point(p.x, p.y))
         Assert.Contains("True", result.StandardOutput);
     }
 
-    [Fact(Skip = "Enum values don't resolve to underlying str values - see code gen issue")]
+    [Fact]
     public void ComprehensiveTest_StructWithStringEnum()
     {
         var source = @"

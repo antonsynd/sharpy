@@ -29,7 +29,7 @@ public abstract record Symbol
 /// </summary>
 public record VariableSymbol : Symbol
 {
-    public SemanticType Type { get; init; } = SemanticType.Unknown;
+    public SemanticType Type { get; set; } = SemanticType.Unknown;
     public bool IsParameter { get; init; }
     public bool IsConstant { get; init; }
     public bool HasDefaultValue { get; init; }

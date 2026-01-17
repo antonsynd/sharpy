@@ -701,12 +701,11 @@ def foo():
         var (module, _, _, _, typeChecker) = CompileAndCheck(source);
         typeChecker.CheckModule(module);
 
-        // The error is reported for undefined 'x', not the assignment to literal
-        // This is a limitation of the current implementation
-        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Undefined"));
+        // The type checker now properly validates assignment targets
+        typeChecker.Errors.Should().Contain(e => e.Message.Contains("Cannot assign to") && e.Message.Contains("literal"));
     }
 
-    [Fact(Skip = "TODO: Assignment target validation is handled by CodeGen (RoslynEmitter), not TypeChecker. Need to implement in TypeChecker.")]
+    [Fact]
     public void RejectsAssignmentToFunctionCall()
     {
         var source = @"
