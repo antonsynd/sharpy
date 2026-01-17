@@ -454,7 +454,32 @@ public class TypeMapper
             return MapType(annotation);
         }
 
+        // Handle nested generic types (e.g., Box[int] in Container[Box[int]])
+        if (expr is IndexAccess indexAccess && indexAccess.Object is Identifier nestedTypeName)
+        {
+            var typeArgs = MapTypeArgumentsFromExpression(indexAccess.Index);
+            return GenericName(NameMangler.ToPascalCase(nestedTypeName.Name))
+                .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgs)));
+        }
+
         // For more complex expressions, fall back to object
         return PredefinedType(Token(SyntaxKind.ObjectKeyword));
+    }
+
+    /// <summary>
+    /// Maps an expression containing one or more type arguments to a list of TypeSyntax.
+    /// Handles both single type arguments (int) and multiple type arguments (int, str as TupleLiteral).
+    /// Used for generic instantiation like Box[int] or Pair[int, str].
+    /// </summary>
+    public TypeSyntax[] MapTypeArgumentsFromExpression(Expression expr)
+    {
+        // Handle multiple type arguments: Pair[int, str] parses as TupleLiteral
+        if (expr is TupleLiteral tuple)
+        {
+            return tuple.Elements.Select(MapTypeFromExpression).ToArray();
+        }
+
+        // Handle single type argument
+        return new[] { MapTypeFromExpression(expr) };
     }
 }

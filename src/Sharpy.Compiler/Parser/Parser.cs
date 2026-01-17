@@ -2285,9 +2285,44 @@ public class Parser
 
         var isSlice = false;
 
-        // [start:stop:step] or [index]
+        // [start:stop:step] or [index] or [type1, type2, ...] for multiple type arguments
         if (Current.Type != TokenType.Colon)
             start = ParseExpression();
+
+        // Handle multiple type arguments: [int, str, bool] for generics
+        // If we see a comma after the first expression, continue parsing as a tuple
+        if (Current.Type == TokenType.Comma)
+        {
+            var elements = new List<Expression> { start! };
+            while (Current.Type == TokenType.Comma)
+            {
+                Advance(); // consume ','
+                // Allow trailing comma
+                if (Current.Type == TokenType.RightBracket)
+                    break;
+                elements.Add(ParseExpression());
+            }
+
+            // Create a TupleLiteral to hold multiple type arguments
+            var tuple = new TupleLiteral
+            {
+                Elements = elements,
+                LineStart = start!.LineStart,
+                ColumnStart = start!.ColumnStart,
+                LineEnd = Current.Line,
+                ColumnEnd = Current.Column
+            };
+
+            return new IndexAccess
+            {
+                Object = null!,  // Will be filled in by caller
+                Index = tuple,
+                LineStart = Current.Line,
+                ColumnStart = Current.Column,
+                LineEnd = Current.Line,
+                ColumnEnd = Current.Column
+            };
+        }
 
         if (Current.Type == TokenType.Colon)
         {

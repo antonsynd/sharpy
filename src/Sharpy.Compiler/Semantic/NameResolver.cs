@@ -140,6 +140,20 @@ public class NameResolver
         // Enter class scope to resolve members
         _symbolTable.EnterScope($"class:{classDef.Name}");
 
+        // Register type parameters in the scope so they can be resolved in field/method types
+        foreach (var typeParam in classDef.TypeParameters)
+        {
+            var typeParamSymbol = new TypeParameterSymbol
+            {
+                Name = typeParam.Name,
+                Kind = SymbolKind.TypeParameter,
+                DeclaringType = typeSymbol,
+                DeclarationLine = classDef.LineStart,
+                DeclarationColumn = classDef.ColumnStart
+            };
+            _symbolTable.Define(typeParamSymbol);
+        }
+
         foreach (var statement in classDef.Body)
         {
             if (statement is FunctionDef method)
@@ -184,6 +198,20 @@ public class NameResolver
 
         _symbolTable.EnterScope($"struct:{structDef.Name}");
 
+        // Register type parameters in the scope so they can be resolved in field/method types
+        foreach (var typeParam in structDef.TypeParameters)
+        {
+            var typeParamSymbol = new TypeParameterSymbol
+            {
+                Name = typeParam.Name,
+                Kind = SymbolKind.TypeParameter,
+                DeclaringType = typeSymbol,
+                DeclarationLine = structDef.LineStart,
+                DeclarationColumn = structDef.ColumnStart
+            };
+            _symbolTable.Define(typeParamSymbol);
+        }
+
         foreach (var statement in structDef.Body)
         {
             if (statement is FunctionDef method)
@@ -227,6 +255,20 @@ public class NameResolver
         _interfaceDefs.Add(interfaceDef);
 
         _symbolTable.EnterScope($"interface:{interfaceDef.Name}");
+
+        // Register type parameters in the scope so they can be resolved in method signatures
+        foreach (var typeParam in interfaceDef.TypeParameters)
+        {
+            var typeParamSymbol = new TypeParameterSymbol
+            {
+                Name = typeParam.Name,
+                Kind = SymbolKind.TypeParameter,
+                DeclaringType = typeSymbol,
+                DeclarationLine = interfaceDef.LineStart,
+                DeclarationColumn = interfaceDef.ColumnStart
+            };
+            _symbolTable.Define(typeParamSymbol);
+        }
 
         foreach (var statement in interfaceDef.Body)
         {
@@ -299,6 +341,7 @@ public class NameResolver
             Kind = SymbolKind.Function,
             AccessLevel = AccessLevel.Public,
             Parameters = parameters,
+            TypeParameters = functionDef.TypeParameters,
             DeclarationLine = functionDef.LineStart,
             DeclarationColumn = functionDef.ColumnStart
         };
@@ -342,6 +385,7 @@ public class NameResolver
             Kind = SymbolKind.Function,
             AccessLevel = accessLevel,
             Parameters = parameters,
+            TypeParameters = method.TypeParameters,
             IsStatic = isStatic,
             IsAbstract = isAbstract,
             IsVirtual = isVirtual,

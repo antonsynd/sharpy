@@ -33,7 +33,7 @@ public class Phase019IntegrationTests : IntegrationTestBase
 
     #region Basic Generic Class Tests
 
-    [Fact(Skip = "TODO: Semantic analysis doesn't recognize type parameters (T). Need to add type parameter symbols to symbol table.")]
+    [Fact]
     public void GenericClass_SingleTypeParameter_CompilesAndRuns()
     {
         // Arrange: Generic class with single type parameter
@@ -59,7 +59,7 @@ print(box.get())
         Assert.Equal("42\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericClass_MultipleTypeParameters_CompilesAndRuns()
     {
         // Arrange: Generic class with two type parameters
@@ -91,7 +91,7 @@ print(p.get_second())
         Assert.Equal("42\nhello\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericClass_StringTypeArgument_CompilesAndRuns()
     {
         // Arrange: Generic class instantiated with string
@@ -117,7 +117,7 @@ c.display()
         Assert.Equal("test\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericClass_BoolTypeArgument_CompilesAndRuns()
     {
         // Arrange: Generic class instantiated with bool
@@ -143,7 +143,7 @@ print(w.get_data())
         Assert.Equal("True\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericClass_MultipleInstances_DifferentTypeArguments()
     {
         // Arrange: Multiple instances of the same generic class with different type arguments
@@ -175,7 +175,7 @@ print(str_box.get())
 
     #region Generic Method Tests
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericMethod_SingleTypeParameter_CompilesAndRuns()
     {
         // Arrange: Generic function with single type parameter
@@ -197,7 +197,7 @@ print(y)
         Assert.Equal("42\ntest\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericMethod_MultipleTypeParameters_CompilesAndRuns()
     {
         // Arrange: Generic function with two type parameters
@@ -217,7 +217,7 @@ print(result)
         Assert.Equal("10, value\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericMethod_ReturnTypeParameter_CompilesAndRuns()
     {
         // Arrange: Generic method that returns the type parameter
@@ -243,7 +243,7 @@ print(val2)
 
     #region Generic Struct Tests
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericStruct_SingleTypeParameter_CompilesAndRuns()
     {
         // Arrange: Generic struct with single type parameter
@@ -269,7 +269,7 @@ print(p.y)
         Assert.Equal("10\n20\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericStruct_FloatTypeArgument_CompilesAndRuns()
     {
         // Arrange: Generic struct with float type argument
@@ -295,7 +295,7 @@ print(v.y)
         Assert.Equal("3.5\n4.5\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericStruct_MultipleTypeParameters_CompilesAndRuns()
     {
         // Arrange: Generic struct with two type parameters
@@ -325,13 +325,14 @@ print(t.second)
 
     #region Type Constraint Tests
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericClass_InterfaceConstraint_CompilesAndRuns()
     {
         // Arrange: Generic class with interface constraint
         var source = @"
 interface IComparable:
-    def compare_to(self, other: int) -> int
+    def compare_to(self, other: int) -> int:
+        pass
 
 class Comparer[T: IComparable]:
     value: T
@@ -356,7 +357,7 @@ print(""OK"")
         Assert.Equal("OK\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericClass_ClassConstraint_CompilesAndRuns()
     {
         // Arrange: Generic class with 'class' constraint (reference type)
@@ -382,7 +383,7 @@ print(c.get())
         Assert.Equal("test\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericStruct_StructConstraint_CompilesAndRuns()
     {
         // Arrange: Generic struct with 'struct' constraint (value type)
@@ -405,13 +406,14 @@ print(w.value)
         Assert.Equal("100\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericClass_MultipleConstraints_CompilesAndRuns()
     {
         // Arrange: Generic class with multiple constraints
         var source = @"
 interface IDisposable:
-    def dispose(self) -> None
+    def dispose(self) -> None:
+        pass
 
 class Manager[T: class, IDisposable]:
     resource: T
@@ -434,13 +436,14 @@ print(""OK"")
         Assert.Equal("OK\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericMethod_InterfaceConstraint_CompilesAndRuns()
     {
         // Arrange: Generic method with interface constraint
         var source = @"
 interface IComparable:
-    def compare_to(self, other: int) -> int
+    def compare_to(self, other: int) -> int:
+        pass
 
 def find_max[T: IComparable](a: T, b: T) -> T:
     # Simple implementation - just return first argument
@@ -462,7 +465,7 @@ print(""OK"")
 
     #region Complex Generic Scenarios
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericClass_NestedGenericUsage_CompilesAndRuns()
     {
         // Arrange: Generic class containing a field of another generic type
@@ -498,7 +501,7 @@ print(outer.get_item().get())
         Assert.Equal("42\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericClass_MethodReturnsGenericType_CompilesAndRuns()
     {
         // Arrange: Generic class with method that returns the generic type
@@ -525,7 +528,7 @@ print(result)
         Assert.Equal("default\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericClass_ThreeTypeParameters_CompilesAndRuns()
     {
         // Arrange: Generic class with three type parameters
@@ -554,7 +557,7 @@ print(t.third)
         Assert.Equal("1\ntwo\nTrue\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericMethod_WithGenericClassParameter_CompilesAndRuns()
     {
         // Arrange: Generic method that takes a generic class as parameter
@@ -584,7 +587,7 @@ print(result)
         Assert.Equal("99\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericClass_MultipleMethodsUsingTypeParameter_CompilesAndRuns()
     {
         // Arrange: Generic class with multiple methods using the type parameter
@@ -622,14 +625,16 @@ repo.display()
 
     #region Generic Interface Tests
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericInterface_SingleTypeParameter_CompilesAndRuns()
     {
         // Arrange: Generic interface definition
         var source = @"
 interface IContainer[T]:
-    def get(self) -> T
-    def set(self, value: T) -> None
+    def get(self) -> T:
+        pass
+    def set(self, value: T) -> None:
+        pass
 
 # Just verify the interface compiles
 print(""OK"")
@@ -643,13 +648,14 @@ print(""OK"")
         Assert.Equal("OK\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericInterface_MultipleTypeParameters_CompilesAndRuns()
     {
         // Arrange: Generic interface with two type parameters
         var source = @"
 interface IMapper[T, U]:
-    def map(self, input: T) -> U
+    def map(self, input: T) -> U:
+        pass
 
 # Just verify the interface compiles
 print(""OK"")
@@ -667,7 +673,7 @@ print(""OK"")
 
     #region Edge Cases and Special Scenarios
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericClass_TypeParameterAsReturnAndParameter_CompilesAndRuns()
     {
         // Arrange: Generic class with type parameter used in both parameters and return types
@@ -689,7 +695,7 @@ print(result)
         Assert.Equal("55\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericStruct_WithMethod_CompilesAndRuns()
     {
         // Arrange: Generic struct with methods
@@ -720,7 +726,7 @@ print(c.value)
         Assert.Equal("10\n10\n20\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericMethod_ThreeTypeParameters_CompilesAndRuns()
     {
         // Arrange: Generic function with three type parameters
@@ -740,7 +746,7 @@ print(result)
         Assert.Equal("1, test, False\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void GenericClass_FieldsOfDifferentGenericTypes_CompilesAndRuns()
     {
         // Arrange: Class with multiple fields using the same type parameter
@@ -778,7 +784,7 @@ print(p.second)
 
     #region Comprehensive Integration Tests
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void ComprehensiveTest_GenericClassAndMethod_Together()
     {
         // Arrange: Combination of generic class and generic method
@@ -810,7 +816,7 @@ print(unwrap[str](str_box))
         Assert.Equal("42\nhello\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void ComprehensiveTest_GenericStructWithConstraints()
     {
         // Arrange: Generic struct with constraints
@@ -841,7 +847,7 @@ print(w.is_valid)
         Assert.Equal("100\nTrue\nFalse\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void ComprehensiveTest_MultipleGenericClasses_Interacting()
     {
         // Arrange: Multiple generic classes working together
@@ -873,7 +879,7 @@ print(result)
         Assert.Equal("99\n", result.StandardOutput);
     }
 
-    [Fact(Skip = "TODO: Semantic analysis does not support generics yet. Need type parameter symbol tracking and generic instantiation support.")]
+    [Fact]
     public void ComprehensiveTest_GenericClassWithMixedTypeParameters()
     {
         // Arrange: Complex scenario with mixed type usage

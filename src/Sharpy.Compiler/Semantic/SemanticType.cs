@@ -279,3 +279,21 @@ public record TypeParameterType : SemanticType
         return base.IsAssignableTo(other);
     }
 }
+
+/// <summary>
+/// Represents a generic function that has been instantiated with type arguments
+/// (e.g., identity[int] from def identity[T](value: T) -> T)
+/// This is an internal type used to pass type arguments from IndexAccess to FunctionCall
+/// </summary>
+public record GenericFunctionType : SemanticType
+{
+    public FunctionSymbol FunctionSymbol { get; init; } = null!;
+    public List<SemanticType> TypeArguments { get; init; } = new();
+
+    public override string GetDisplayName()
+    {
+        var typeArgs = string.Join(", ", TypeArguments.Select(t => t.GetDisplayName()));
+        var paramTypes = string.Join(", ", FunctionSymbol.Parameters.Select(p => p.Type.GetDisplayName()));
+        return $"{FunctionSymbol.Name}[{typeArgs}]({paramTypes}) -> {FunctionSymbol.ReturnType.GetDisplayName()}";
+    }
+}

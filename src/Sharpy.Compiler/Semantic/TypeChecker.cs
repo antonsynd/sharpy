@@ -195,7 +195,24 @@ public class TypeChecker
             functionSymbol = _symbolTable.LookupFunction(functionDef.Name);
         }
 
-        // Resolve return type
+        // Enter function scope FIRST so we can register type parameters before resolving types
+        _symbolTable.EnterScope($"function:{functionDef.Name}");
+
+        // Register type parameters for generic functions so they can be resolved in parameter/return types
+        foreach (var typeParam in functionDef.TypeParameters)
+        {
+            var typeParamSymbol = new TypeParameterSymbol
+            {
+                Name = typeParam.Name,
+                Kind = SymbolKind.TypeParameter,
+                DeclaringType = null,  // No declaring type for standalone generic functions
+                DeclarationLine = functionDef.LineStart,
+                DeclarationColumn = functionDef.ColumnStart
+            };
+            _symbolTable.Define(typeParamSymbol);
+        }
+
+        // Resolve return type AFTER type parameters are registered
         var returnType = _typeResolver.ResolveTypeAnnotation(functionDef.ReturnType);
 
         // Special case: __init__ always returns None/void
@@ -211,9 +228,6 @@ public class TypeChecker
         }
 
         _currentFunctionReturnType = returnType;
-
-        // Enter function scope
-        _symbolTable.EnterScope($"function:{functionDef.Name}");
 
         // Save previous method context and set new context for super() validation
         var previousMethodName = _currentMethodName;
@@ -483,6 +497,20 @@ public class TypeChecker
 
         // Enter struct scope
         _symbolTable.EnterScope($"struct:{structDef.Name}");
+
+        // Register type parameters in the scope so they can be resolved in field/method types
+        foreach (var typeParam in structDef.TypeParameters)
+        {
+            var typeParamSymbol = new TypeParameterSymbol
+            {
+                Name = typeParam.Name,
+                Kind = SymbolKind.TypeParameter,
+                DeclaringType = structSymbol,
+                DeclarationLine = structDef.LineStart,
+                DeclarationColumn = structDef.ColumnStart
+            };
+            _symbolTable.Define(typeParamSymbol);
+        }
 
         // Resolve field types first (before checking methods that might reference them)
         for (int i = 0; i < structSymbol.Fields.Count; i++)
@@ -1714,24 +1742,45 @@ public class TypeChecker
             return narrowedType;
         }
 
-        // Special handling for generic type reference: Box[int]
-        // This is parsed as IndexAccess(Object: Box, Index: int)
-        // When the object is a generic type and the index can be resolved as a type,
+        // Special handling for generic type reference: Box[int] or Pair[int, str]
+        // This is parsed as IndexAccess(Object: Box, Index: int or TupleLiteral)
+        // When the object is a generic type and the index can be resolved as type(s),
         // this represents a generic type with type arguments, not an index operation
-        if (indexAccess.Object is Identifier typeId &&
-            _symbolTable.Lookup(typeId.Name) is TypeSymbol genericTypeSymbol &&
-            genericTypeSymbol.IsGeneric)
+        if (indexAccess.Object is Identifier typeId)
         {
-            var typeArg = TryResolveExpressionAsType(indexAccess.Index);
-            if (typeArg != null)
+            var symbol = _symbolTable.Lookup(typeId.Name);
+
+            // Handle generic type reference (e.g., Box[int])
+            if (symbol is TypeSymbol genericTypeSymbol && genericTypeSymbol.IsGeneric)
             {
-                // Return a GenericType representing the instantiated type
-                return new GenericType
+                var typeArgs = TryResolveTypeArguments(indexAccess.Index);
+                if (typeArgs != null)
                 {
-                    Name = genericTypeSymbol.Name,
-                    TypeArguments = new List<SemanticType> { typeArg },
-                    GenericDefinition = genericTypeSymbol
-                };
+                    // Return a GenericType representing the instantiated type
+                    return new GenericType
+                    {
+                        Name = genericTypeSymbol.Name,
+                        TypeArguments = typeArgs,
+                        GenericDefinition = genericTypeSymbol
+                    };
+                }
+            }
+
+            // Handle generic function reference (e.g., identity[int])
+            // This creates a special "instantiated generic function" type for use in function calls
+            if (symbol is FunctionSymbol genericFuncSymbol && genericFuncSymbol.IsGeneric)
+            {
+                var typeArgs = TryResolveTypeArguments(indexAccess.Index);
+                if (typeArgs != null)
+                {
+                    // Store the type arguments in SemanticInfo for use in CheckFunctionCall
+                    _semanticInfo.SetExpressionType(indexAccess, new GenericFunctionType
+                    {
+                        FunctionSymbol = genericFuncSymbol,
+                        TypeArguments = typeArgs
+                    });
+                    return _semanticInfo.GetExpressionType(indexAccess)!;
+                }
             }
         }
 
@@ -1782,16 +1831,16 @@ public class TypeChecker
         // Try to get the function symbol directly for better validation
         FunctionSymbol? funcSymbol = null;
 
-        // Special handling for generic type instantiation: Box[int](42)
-        // This is parsed as FunctionCall(Function: IndexAccess(Object: Box, Index: int), Arguments: [42])
+        // Special handling for generic type instantiation: Box[int](42) or Pair[int, str](1, "a")
+        // This is parsed as FunctionCall(Function: IndexAccess(Object: Box, Index: int or TupleLiteral), Arguments: [...])
         if (call.Function is IndexAccess indexAccess &&
             indexAccess.Object is Identifier genericTypeId &&
             _symbolTable.Lookup(genericTypeId.Name) is TypeSymbol genericTypeSymbol &&
             genericTypeSymbol.IsGeneric)
         {
-            // The "index" is actually a type argument - try to resolve it as a type
-            var typeArg = TryResolveExpressionAsType(indexAccess.Index);
-            if (typeArg != null)
+            // The "index" is actually type argument(s) - try to resolve them as types
+            var typeArgs = TryResolveTypeArguments(indexAccess.Index);
+            if (typeArgs != null)
             {
                 // Cannot instantiate abstract classes
                 if (genericTypeSymbol.IsAbstract)
@@ -1801,14 +1850,27 @@ public class TypeChecker
                     return SemanticType.Unknown;
                 }
 
-                // Return a GenericType with the type argument
+                // Return a GenericType with the type arguments
                 return new GenericType
                 {
                     Name = genericTypeSymbol.Name,
-                    TypeArguments = new List<SemanticType> { typeArg },
+                    TypeArguments = typeArgs,
                     GenericDefinition = genericTypeSymbol
                 };
             }
+        }
+
+        // Handle generic function call: identity[int](42)
+        // The calleeType will be GenericFunctionType from CheckIndexAccess
+        if (calleeType is GenericFunctionType genericFuncType)
+        {
+            // For now, just return the substituted return type
+            // We substitute type parameters with type arguments in the return type
+            var substitutedReturnType = SubstituteTypeParameters(
+                genericFuncType.FunctionSymbol.ReturnType,
+                genericFuncType.FunctionSymbol.TypeParameters,
+                genericFuncType.TypeArguments);
+            return substitutedReturnType;
         }
 
         if (call.Function is Identifier id)
@@ -2064,10 +2126,55 @@ public class TypeChecker
             return resolved != SemanticType.Unknown ? resolved : null;
         }
 
-        // TODO: Handle more complex type expressions like list[int], dict[str, int], etc.
-        // For now, only simple type names are supported
+        // Handle nested generic types (e.g., Box[int] in Container[Box[int]])
+        if (expr is IndexAccess indexAccess &&
+            indexAccess.Object is Identifier nestedTypeId &&
+            _symbolTable.Lookup(nestedTypeId.Name) is TypeSymbol nestedGenericType &&
+            nestedGenericType.IsGeneric)
+        {
+            var nestedTypeArgs = TryResolveTypeArguments(indexAccess.Index);
+            if (nestedTypeArgs != null)
+            {
+                return new GenericType
+                {
+                    Name = nestedGenericType.Name,
+                    TypeArguments = nestedTypeArgs,
+                    GenericDefinition = nestedGenericType
+                };
+            }
+        }
 
         return null;
+    }
+
+    /// <summary>
+    /// Tries to resolve one or more type arguments from an index expression.
+    /// Handles both single type arguments (int) and multiple type arguments (int, str as TupleLiteral).
+    /// Returns null if the expressions cannot be interpreted as types.
+    /// </summary>
+    private List<SemanticType>? TryResolveTypeArguments(Expression indexExpr)
+    {
+        var typeArgs = new List<SemanticType>();
+
+        // Handle multiple type arguments: Pair[int, str] parses as TupleLiteral
+        if (indexExpr is TupleLiteral tuple)
+        {
+            foreach (var element in tuple.Elements)
+            {
+                var typeArg = TryResolveExpressionAsType(element);
+                if (typeArg == null)
+                    return null;
+                typeArgs.Add(typeArg);
+            }
+            return typeArgs;
+        }
+
+        // Handle single type argument
+        var singleTypeArg = TryResolveExpressionAsType(indexExpr);
+        if (singleTypeArg == null)
+            return null;
+        typeArgs.Add(singleTypeArg);
+        return typeArgs;
     }
 
     private SemanticType CheckListLiteral(ListLiteral list)
@@ -2554,6 +2661,58 @@ public class TypeChecker
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Substitutes type parameters with their corresponding type arguments in a type.
+    /// For example, given return type T and type argument int, returns int.
+    /// </summary>
+    private SemanticType SubstituteTypeParameters(
+        SemanticType type,
+        List<TypeParameterDef> typeParams,
+        List<SemanticType> typeArgs)
+    {
+        if (typeParams.Count != typeArgs.Count)
+            return type;
+
+        // Create a mapping from type parameter name to type argument
+        var substitutions = new Dictionary<string, SemanticType>();
+        for (int i = 0; i < typeParams.Count; i++)
+        {
+            substitutions[typeParams[i].Name] = typeArgs[i];
+        }
+
+        return SubstituteTypeParametersInType(type, substitutions);
+    }
+
+    private SemanticType SubstituteTypeParametersInType(
+        SemanticType type,
+        Dictionary<string, SemanticType> substitutions)
+    {
+        return type switch
+        {
+            TypeParameterType tpt when substitutions.TryGetValue(tpt.Name, out var subst) => subst,
+            GenericType gt => new GenericType
+            {
+                Name = gt.Name,
+                TypeArguments = gt.TypeArguments.Select(t => SubstituteTypeParametersInType(t, substitutions)).ToList(),
+                GenericDefinition = gt.GenericDefinition
+            },
+            NullableType nt => new NullableType
+            {
+                UnderlyingType = SubstituteTypeParametersInType(nt.UnderlyingType, substitutions)
+            },
+            FunctionType ft => new FunctionType
+            {
+                ParameterTypes = ft.ParameterTypes.Select(t => SubstituteTypeParametersInType(t, substitutions)).ToList(),
+                ReturnType = SubstituteTypeParametersInType(ft.ReturnType, substitutions)
+            },
+            TupleType tt => new TupleType
+            {
+                ElementTypes = tt.ElementTypes.Select(t => SubstituteTypeParametersInType(t, substitutions)).ToList()
+            },
+            _ => type // For types that don't contain type parameters, return as-is
+        };
     }
 
     /// <summary>

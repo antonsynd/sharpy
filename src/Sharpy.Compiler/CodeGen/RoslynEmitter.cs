@@ -3232,20 +3232,21 @@ public class RoslynEmitter
 
     private ExpressionSyntax GenerateCall(FunctionCall call)
     {
-        // Handle generic type instantiation: Box[int](42)
-        // This is parsed as FunctionCall(Function: IndexAccess(Object: Box, Index: int), Arguments: [42])
+        // Handle generic type/function instantiation: Box[int](42) or identity[int](42)
+        // This is parsed as FunctionCall(Function: IndexAccess(Object: Box/identity, Index: int), Arguments: [42])
         if (call.Function is IndexAccess indexAccess &&
-            indexAccess.Object is Identifier genericTypeName)
+            indexAccess.Object is Identifier genericName)
         {
-            var symbol = _context.LookupSymbol(genericTypeName.Name);
+            var symbol = _context.LookupSymbol(genericName.Name);
+
+            // Map the type argument(s)
+            var typeArgsSyntax = _typeMapper.MapTypeArgumentsFromExpression(indexAccess.Index);
+
             if (symbol is TypeSymbol genericTypeSymbol && genericTypeSymbol.IsGeneric)
             {
-                // Map the type argument
-                var typeArgSyntax = _typeMapper.MapTypeFromExpression(indexAccess.Index);
-
-                // Generate: new GenericType<TypeArg>(args)
-                var genericName = GenericName(NameMangler.ToPascalCase(genericTypeName.Name))
-                    .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(typeArgSyntax)));
+                // Generate: new GenericType<TypeArgs>(args)
+                var genericTypeSyntax = GenericName(NameMangler.ToPascalCase(genericName.Name))
+                    .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
 
                 // Generate arguments
                 var positionalArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg)));
@@ -3254,7 +3255,24 @@ public class RoslynEmitter
                         .WithNameColon(NameColon(IdentifierName(kwarg.Name))));
                 var allArgs = positionalArgs.Concat(keywordArgs).ToArray();
 
-                return ObjectCreationExpression(genericName)
+                return ObjectCreationExpression(genericTypeSyntax)
+                    .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+            }
+
+            if (symbol is FunctionSymbol genericFuncSymbol && genericFuncSymbol.IsGeneric)
+            {
+                // Generate: GenericFunction<TypeArgs>(args)
+                var genericFuncSyntax = GenericName(NameMangler.ToPascalCase(genericName.Name))
+                    .WithTypeArgumentList(TypeArgumentList(SeparatedList(typeArgsSyntax)));
+
+                // Generate arguments
+                var positionalArgs = call.Arguments.Select(arg => Argument(GenerateExpression(arg)));
+                var keywordArgs = call.KeywordArguments.Select(kwarg =>
+                    Argument(GenerateExpression(kwarg.Value))
+                        .WithNameColon(NameColon(IdentifierName(kwarg.Name))));
+                var allArgs = positionalArgs.Concat(keywordArgs).ToArray();
+
+                return InvocationExpression(genericFuncSyntax)
                     .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
             }
         }

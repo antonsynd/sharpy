@@ -47,6 +47,10 @@ public record FunctionSymbol : Symbol
     public bool IsVirtual { get; init; }
     public bool IsOverride { get; init; }
 
+    // Generic type parameters (for generic functions like def identity[T](value: T) -> T)
+    public List<TypeParameterDef> TypeParameters { get; init; } = new();
+    public bool IsGeneric => TypeParameters.Count > 0;
+
     // For .NET interop
     public System.Reflection.MethodInfo? ClrMethod { get; init; }
 }
