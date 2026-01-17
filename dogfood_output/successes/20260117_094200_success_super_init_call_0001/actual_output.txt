@@ -1,0 +1,6 @@
+Successfully compiled to: /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/dogfood_test_579bb947becb4086829e779630f0ce0c.exe
+
+=== Running Program ===
+
+5
+Buddy

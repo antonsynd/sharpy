@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-01-17T10:42:35.625804",
+  "generated_code": "# Test class with loop: Counter that sums numbers using a loop\n\nclass Accumulator:\n    total: int\n\n    def __init__(self):\n        self.total = 0\n\n    def sum_to(self, n: int) -> int:\n        for i in range(1, n + 1):\n            self.total += i\n        return self.total\n\nacc = Accumulator()\nresult = acc.sum_to(5)\nprint(result)\nprint(acc.total)\n\n# EXPECTED OUTPUT:\n# 15\n# 15",
+  "expected_output": "15\n15",
+  "actual_output": "Successfully compiled to: /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/dogfood_test_b22b493ee85f466ab8e2c9303bb61b5c.exe\n\n=== Running Program ===\n\n15\n15",
+  "feature_focus": "class_with_loop",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 4.483576774597168,
+  "execution_duration": 1.312812089920044
+}

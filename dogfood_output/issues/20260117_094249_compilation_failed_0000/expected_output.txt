@@ -1,0 +1,7 @@
+BasicSum
+30
+EvenSum
+20
+70
+12
+2

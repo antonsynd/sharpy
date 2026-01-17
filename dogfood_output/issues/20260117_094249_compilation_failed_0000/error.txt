@@ -1,0 +1,4 @@
+Assembly compilation failed:
+  dogfood_test.cs(65,21): error CS0103: The name 'i' does not exist in the current context
+  dogfood_test.cs(66,25): error CS0103: The name 'i' does not exist in the current context
+  dogfood_test.cs(68,45): error CS0103: The name 'i' does not exist in the current context

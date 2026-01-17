@@ -1,0 +1,16 @@
+# Test: loop inside a function
+def sum_range(n: int) -> int:
+    total: int = 0
+    for i in range(n):
+        total += i
+    return total
+
+result = sum_range(5)
+print(result)
+
+result2 = sum_range(10)
+print(result2)
+
+# EXPECTED OUTPUT:
+# 10
+# 45

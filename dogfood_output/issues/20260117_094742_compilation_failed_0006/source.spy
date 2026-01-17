@@ -1,0 +1,52 @@
+# Enum definition with explicit values for order status tracking
+enum OrderStatus:
+    PENDING = 0
+    PROCESSING = 1
+    SHIPPED = 2
+    DELIVERED = 3
+    CANCELLED = 4
+
+def get_status_description(status: OrderStatus) -> str:
+    if status == OrderStatus.PENDING:
+        return "Order is pending"
+    elif status == OrderStatus.PROCESSING:
+        return "Order is being processed"
+    elif status == OrderStatus.SHIPPED:
+        return "Order has been shipped"
+    elif status == OrderStatus.DELIVERED:
+        return "Order delivered successfully"
+    else:
+        return "Order was cancelled"
+
+def can_cancel(status: OrderStatus) -> bool:
+    if status == OrderStatus.PENDING:
+        return True
+    elif status == OrderStatus.PROCESSING:
+        return True
+    else:
+        return False
+
+# Test enum values and functions
+current_status: OrderStatus = OrderStatus.PENDING
+print(get_status_description(current_status))
+print(can_cancel(current_status))
+
+current_status = OrderStatus.PROCESSING
+print(get_status_description(current_status))
+print(can_cancel(current_status))
+
+current_status = OrderStatus.SHIPPED
+print(get_status_description(current_status))
+print(can_cancel(current_status))
+
+current_status = OrderStatus.DELIVERED
+print(get_status_description(current_status))
+
+# EXPECTED OUTPUT:
+# Order is pending
+# True
+# Order is being processed
+# True
+# Order has been shipped
+# False
+# Order delivered successfully

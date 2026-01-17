@@ -1,0 +1,3 @@
+Assembly compilation failed:
+  dogfood_test.cs(22,39): error CS0535: 'Program.Shape' does not implement interface member 'Program.IDisplayable.Display()'
+  dogfood_test.cs(85,22): error CS1061: 'Program.Square' does not contain a definition for 'name' and no accessible extension method 'name' accepting a first argument of type 'Program.Square' could be found (are you missing a using directive or an assembly reference?)

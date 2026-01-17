@@ -1,0 +1,10 @@
+Starting import test
+SquareProcessor
+18
+CubeProcessor
+18
+2
+8
+18
+48
+Import test complete

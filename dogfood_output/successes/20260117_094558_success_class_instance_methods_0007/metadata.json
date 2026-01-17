@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-01-17T09:45:32.585590",
+  "generated_code": "# Testing class instance methods with a BankAccount class\n\nclass BankAccount:\n    balance: int\n    account_id: int\n    \n    def __init__(self, account_id: int, initial_balance: int):\n        self.account_id = account_id\n        self.balance = initial_balance\n    \n    def deposit(self, amount: int) -> None:\n        self.balance += amount\n    \n    def withdraw(self, amount: int) -> bool:\n        if amount <= self.balance:\n            self.balance -= amount\n            return True\n        return False\n    \n    def get_balance(self) -> int:\n        return self.balance\n    \n    def transfer_to(self, other: BankAccount, amount: int) -> bool:\n        if self.withdraw(amount):\n            other.deposit(amount)\n            return True\n        return False\n\naccount1 = BankAccount(101, 500)\naccount2 = BankAccount(102, 200)\n\nprint(account1.get_balance())\nprint(account2.get_balance())\n\naccount1.deposit(100)\nprint(account1.get_balance())\n\nsuccess = account1.withdraw(150)\nprint(success)\nprint(account1.get_balance())\n\ntransferred = account1.transfer_to(account2, 200)\nprint(transferred)\nprint(account1.get_balance())\nprint(account2.get_balance())\n\n# EXPECTED OUTPUT:\n# 500\n# 200\n# 600\n# True\n# 450\n# True\n# 250\n# 400",
+  "expected_output": "500\n200\n600\nTrue\n450\nTrue\n250\n400",
+  "actual_output": "Successfully compiled to: /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/dogfood_test_39f23659f8454d11a5955348168193b7.exe\n\n=== Running Program ===\n\n500\n200\n600\nTrue\n450\nTrue\n250\n400",
+  "feature_focus": "class_instance_methods",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 7.14355993270874,
+  "execution_duration": 1.29628586769104
+}

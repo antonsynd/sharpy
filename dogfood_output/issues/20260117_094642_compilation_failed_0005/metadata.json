@@ -1,0 +1,17 @@
+{
+  "issue_type": "compilation_failed",
+  "timestamp": "2026-01-17T09:46:25.842915",
+  "generated_code": "# Test: Functions with print statements showing computation steps\n\ndef compute_factorial(n: int) -> int:\n    print(n)\n    result: int = 1\n    i: int = 1\n    while i <= n:\n        result *= i\n        i += 1\n    return result\n\ndef show_factorial_result(n: int, result: int) -> None:\n    print(n)\n    print(result)\n\ndef main() -> None:\n    num: int = 5\n    print(num)\n    \n    factorial_result: int = compute_factorial(num)\n    \n    show_factorial_result(num, factorial_result)\n\nmain()\n\n# EXPECTED OUTPUT:\n# 5\n# 5\n# 5\n# 120",
+  "expected_output": "5\n5\n5\n120",
+  "actual_output": null,
+  "error_message": "Compilation failed:\n  Cannot have module-level executable statements when a 'main' function is defined. The main function is automatically invoked as the entry point.\n",
+  "compiler_output": "",
+  "generated_cs": null,
+  "validation_result": "I'll analyze this code line by line against the Sharpy language specification for phases 0.1.0-0.1.10.\n\n## Line-by-Line Analysis:\n\n**Line 3:** `def compute_factorial(n: int) -> int:` \u2705 Function definition with typed parameter and return type (0.1.5)\n\n**Line 4:** `print(n)` \u2705 Single-argument print (built-in)\n\n**Line 5:** `result: int = 1` \u2705 Variable declaration with type annotation (0.1.3)\n\n**Line 6:** `i: int = 1` \u2705 Variable declaration with type annotation (0.1.3)\n\n**Line 7:** `while i <= n:` \u2705 While loop with comparison operator (0.1.4)\n\n**Line 8:** `result *= i` \u2705 Compound assignment operator (0.1.3)\n\n**Line 9:** `i += 1` \u2705 Compound assignment operator (0.1.3)\n\n**Line 10:** `return result` \u2705 Return statement (0.1.5)\n\n**Line 12:** `def show_factorial_result(n: int, result: int) -> None:` \u2705 Function with multiple parameters and None return (0.1.5)\n\n**Line 13:** `print(n)` \u2705 Single-argument print (built-in)\n\n**Line 14:** `print(result)` \u2705 Single-argument print (built-in)\n\n**Line 16:** `def main() -> None:` \u2705 Function definition (0.1.5)\n\n**Line 17:** `num: int = 5` \u2705 Variable declaration (0.1.3)\n\n**Line 18:** `print(num)` \u2705 Single-argument print (built-in)\n\n**Line 20:** `factorial_result: int = compute_factorial(num)` \u2705 Variable declaration with function call (0.1.3, 0.1.5)\n\n**Line 22:** `show_factorial_result(num, factorial_result)` \u2705 Function call with multiple arguments (0.1.5)\n\n**Line 24:** `main()` \u2705 Function call (0.1.5)\n\n---\n\n```\nVALID\nThe code uses only features from phases 0.1.0-0.1.10.\n```\n\n**Features used:**\n- Function definitions with typed parameters and return types (0.1.5)\n- Variable declarations with type annotations (0.1.3)\n- While loops (0.1.4)\n- Comparison operators: `<=` (0.1.3)\n- Compound assignment operators: `*=`, `+=` (0.1.3)\n- Return statements (0.1.5)\n- Single-argument print calls (built-in)\n- Function calls with positional arguments (0.1.5)\n",
+  "feature_focus": "function_with_print",
+  "complexity": "medium",
+  "backend_used": "claude",
+  "generation_duration": 5.077379941940308,
+  "compilation_duration": null,
+  "execution_duration": 0.8932919502258301
+}

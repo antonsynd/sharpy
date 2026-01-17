@@ -1,0 +1,7 @@
+Compilation failed:
+  Semantic error at line 10, column 16: Undefined identifier 'Color'
+  Semantic error at line 15, column 18: Undefined identifier 'Circle'
+  Semantic error at line 18, column 25: Undefined identifier 'ColoredShape'
+  Semantic error at line 23, column 13: Undefined identifier 'calculate_area'
+  Semantic error at line 34, column 19: Undefined identifier 'Circle'
+  Semantic error at line 36, column 14: Undefined identifier 'calculate_area'

@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-01-17T09:45:16.472517",
+  "generated_code": "# Test: loop inside a function\ndef sum_range(n: int) -> int:\n    total: int = 0\n    for i in range(n):\n        total += i\n    return total\n\nresult = sum_range(5)\nprint(result)\n\nresult2 = sum_range(10)\nprint(result2)\n\n# EXPECTED OUTPUT:\n# 10\n# 45",
+  "expected_output": "10\n45",
+  "actual_output": "Successfully compiled to: /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/dogfood_test_e7051752c0b747a0953caf80a0dc9397.exe\n\n=== Running Program ===\n\n10\n45",
+  "feature_focus": "loop_in_function",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 4.604724884033203,
+  "execution_duration": 1.3480401039123535
+}

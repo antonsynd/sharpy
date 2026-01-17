@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-01-17T09:48:24.093237",
+  "generated_code": "# Test augmented assignment operators with int variables\n\nx: int = 10\nprint(x)\n\nx += 5\nprint(x)\n\nx -= 3\nprint(x)\n\nx *= 2\nprint(x)\n\nx //= 4\nprint(x)\n\n# EXPECTED OUTPUT:\n# 10\n# 15\n# 12\n# 24\n# 6",
+  "expected_output": "10\n15\n12\n24\n6",
+  "actual_output": "Successfully compiled to: /var/folders/6r/tsfytt4x6s1cl4_t14c961040000gn/T/dogfood_test_755c8558ceeb430c88e5af1424d926e2.exe\n\n=== Running Program ===\n\n10\n15\n12\n24\n6",
+  "feature_focus": "augmented_assignment",
+  "complexity": "simple",
+  "backend_used": "claude",
+  "generation_duration": 4.0994322299957275,
+  "execution_duration": 1.5876579284667969
+}
